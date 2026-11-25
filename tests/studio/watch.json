@@ -1,0 +1,25 @@
+{
+  "events": [
+    {"t": 0.5, "type": "tap", "tag": "prompt"},
+    {"t": 0.6, "type": "type", "text": "work"},
+    {"t": 0.7, "type": "key", "name": "Enter"},
+    {"t": 1.4, "type": "mark", "name": "working"},
+    {"t": 1.5, "type": "tap", "tag": "prompt"},
+    {"t": 1.6, "type": "type", "text": "make the rows warmer"},
+    {"t": 1.7, "type": "key", "name": "Enter"},
+    {"t": 2.0, "type": "mark", "name": "directed"},
+    {"t": 2.1, "type": "key", "name": "b", "secondary": true},
+    {"t": 2.5, "type": "mark", "name": "collapsed"},
+    {"t": 2.6, "type": "key", "name": "b", "secondary": true},
+    {"t": 2.8, "type": "tap", "tag": "chat-stop"},
+    {"t": 3.4, "type": "mark", "name": "stopped"},
+    {"t": 3.5, "type": "tap", "tag": "prompt"},
+    {"t": 3.6, "type": "type", "text": "wait"},
+    {"t": 3.7, "type": "key", "name": "Enter"},
+    {"t": 4.3, "type": "mark", "name": "question"},
+    {"t": 4.4, "type": "tap", "tag": "card-option-0"},
+    {"t": 4.7, "type": "tap", "tag": "chat-stop"},
+    {"t": 5.0, "type": "tap", "tag": "stage", "ox": 240, "oy": 200},
+    {"t": 5.3, "type": "mark", "name": "end"}
+  ]
+}

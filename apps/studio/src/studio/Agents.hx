@@ -1,7 +1,5 @@
 package studio;
 
-import studio.AcpAgent;
-
 using StringTools;
 
 // The coding agents the studio knows, each spoken to over ACP (AcpAgent):
@@ -34,6 +32,28 @@ class Agents {
 		}
 		if (name != null) throw '$name: not found on the PATH';
 		return null;
+	}
+
+	// the agents found on this machine (the chat's menu), local last
+	public static function found():Array<String> {
+		#if (hxmc.target == "wasm32-wasi")
+		return ["local"];
+		#else
+		return [for (n in ["claude", "codex", "gemini"]) if (of(n, true) != null) n].concat(["local"]);
+		#end
+	}
+
+	// an agent's name as the chat writes it ("Claude"; local: the studio's tools)
+	public static function label(id:String):String
+		return switch id {
+			case "local": "Studio";
+			case _: id.charAt(0).toUpperCase() + id.substr(1);
+		}
+
+	// its colour: the known ones' in Theme.AGENTS' order (Claude's the warm orange), another's after them
+	public static function colour(id:String):String {
+		var i = ["claude", "codex", "gemini"].indexOf(id);
+		return id == "local" ? "#8b8b94" : Theme.AGENTS[i < 0 ? 3 : i];
 	}
 
 	// (fallback: chosen by default, it needs its own CLI on the PATH, not npx alone)
@@ -80,4 +100,11 @@ class Agents {
 		}
 		return null;
 	}
+}
+
+// how an agent is started: its name, its command and arguments
+typedef AgentCommand = {
+	name:String,
+	cmd:String,
+	args:Array<String>,
 }

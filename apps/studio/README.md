@@ -8,8 +8,43 @@ helder.ui, and it opens itself.
 ```sh
 bun run helder studio examples/ts-todo     # this checkout; npx helder studio in a project
 bun run helder studio tests/studio/design      # design files alone: nothing built
-bun run helder studio                      # the project in this directory
+bun run helder studio                      # the project in this directory, else a new one
 ```
+
+## The shell
+
+The studio is a blank sheet with a prompt; the user's agent works and the
+user watches it on a canvas that is theirs (`Watch`):
+
+- **A header**: the window's buttons, the project's tab (its dot the
+  working agent's colour, pulsing while it works, ringed while a question
+  waits), Play.
+- **A blank sheet**: a project with nothing on its canvas yet (an empty
+  folder; `helder studio` outside a project makes `~/Helder/Untitled n`)
+  is the dot grid and one prompt in the middle, the agent's chip in it
+  (its menu: the agents found). The first prompt moves into the chat.
+- **The chat** (`Chat`, left; Cmd+B puts it away): the user's prompts as
+  bubbles; the agent's reply as Markdown (helder.markdown, updated as it
+  streams), its links to places (`studio:screen/<name>`,
+  `studio:frame/<file>#<name>`, `studio:group/<file>#<title>`) and to the
+  project's files (`app.tsx:12`, `app.tsx#L12`, a code span naming one) as
+  chips: a place's flies the camera there, a file's opens it read only
+  over the canvas at its line (`CodePanel`; Escape closes it); its plan
+  one dim line, "Thinking…" while it thinks, its last tools as lines
+  (the ones before folded: "Made N changes"), a failed build's row, its
+  question as a card (answered there, and only there). Below: the
+  questions waiting, what it does (Stop), the input. What the user types
+  while it works is a note for it (`Inbox`: "sent while working", then
+  "seen"), not a new prompt: carried by its next tool call to the
+  studio, or, over ACP, sent as the next prompt when its turn ends.
+- **The canvas** (`Board`, watched): every frame as before, panned and
+  zoomed; a click makes a frame the prompt's focus (a quiet ring), a
+  double click plays it. Nothing on it is selected, dragged or edited:
+  every input is the chat's.
+
+`--classic` mounts the earlier shell (the sidebar, the inspector, the
+layers, the command field, the prompt bar, below), which tests/studio's
+scripted lanes drive; the browser's studio is still that one.
 
 - **The project's files** in the sidebar (below, "The sidebar"), each
   opening in its view.

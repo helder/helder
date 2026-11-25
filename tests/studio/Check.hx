@@ -195,14 +195,22 @@ class Check {
 		check('phone: a frame picked in the files\' sheet', focused != null && focused.screen == "app.helder#Home", Json.stringify(focused));
 	}
 
-	// the scripted agent over ACP: its Markdown reply streamed whole, its
-	// question answered from the transcript's button (reaching it), Stop
+	// the studio's own shell with the scripted agent over ACP: a turn
+	// streamed, a note sent while it worked (a direction, not a prompt),
+	// delivered as the next prompt once the turn was stopped; the chat put
+	// away and back; a question answered in its card (reaching the agent),
+	// stopped; a frame aimed at by a click
 	static function acp(ev:Array<Dynamic>) {
 		var replies = ev.filter(e -> e.event == "replied");
-		var md:Dynamic = replies[0], wait:Dynamic = replies[1];
-		check('acp: the Markdown reply streamed whole', md != null && md.end == "end_turn" && (md.reply : String).indexOf("```ts\nlet a = 1\n```") > 0,
-			Json.stringify(md));
-		check('acp: the question answered, then stopped', wait != null && wait.reply == "waiting selected" && wait.end == "cancelled", Json.stringify(wait));
+		function reply(p:String):Dynamic
+			return Lambda.find(replies, r -> StringTools.startsWith(r.prompt, p));
+		var work:Dynamic = reply("work"), noted:Dynamic = reply("The user says"), wait:Dynamic = reply("wait");
+		check('acp: the turn streamed, stopped', work != null && work.end == "cancelled" && (work.reply : String).indexOf("studio:screen/Home") > 0, Json.stringify(work));
+		check('acp: the note a direction, then the next prompt', Lambda.exists(ev, e -> e.event == "directed" && e.text == "make the rows warmer") && noted != null
+			&& ev.indexOf(noted) > ev.indexOf(work), Json.stringify(noted));
+		check('acp: the chat put away and back', [for (e in ev) if (e.event == "chat") e.open].join(",") == "false,true");
+		check('acp: the question answered in the card, then stopped', wait != null && wait.reply == "waiting selected" && wait.end == "cancelled", Json.stringify(wait));
+		check('acp: a frame aimed at', Lambda.exists(ev, e -> e.event == "aimed" && e.screen != null));
 	}
 
 	static function files(original:String, final_:String, ev:Array<Dynamic>, dir:String) {

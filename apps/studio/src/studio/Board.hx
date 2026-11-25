@@ -21,15 +21,18 @@ using StringTools;
 // The world (the screens) is one node under the camera's transform; what is
 // read at any zoom (flows' titles, captions, the selection) is drawn in the
 // stage's own points from the camera.
+// Watched (the default shell, not --classic): nothing on it takes input but
+// the camera (pan, zoom), a click (a frame the prompt's focus) and a double
+// click (Play): no selection, no drags, no drops; its ground the dots.
 class Board implements Markup {
 	public static function view(studio:Studio):View {
-		var stage:Null<Node> = null, panned = false;
-		return <view tag="stage" grow={1} min-width={0} overflow="hidden" cursor="default" background={c("canvas")} ref={n -> {
+		var stage:Null<Node> = null, panned = false, watch = !studio.classic;
+		return <view tag="stage" grow={1} min-width={0} overflow="hidden" cursor="default" background={c(watch ? "ground" : "canvas")} ref={n -> {
 			stage = n;
 			studio.stageNode = n;
 		}}
 			onPointerDown={_ -> panned = false}
-			onClick={e -> if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
+			onClick={e -> if (watch && !panned) studio.aimAt(e.localX, e.localY) else if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
 			onWheel={e -> {
 				// (a pinch's deltaY is -100 ln of its scale, as browsers make it:
 				// e^(-dy/100) follows the fingers; a wheel's notch, 40 to 120
@@ -44,15 +47,20 @@ class Board implements Markup {
 				var d = studio.drag;
 				// (the mouse's release after a drag is a click too: not the stage's)
 				panned = true;
+				if (watch) {
+					studio.camera.panBy(g.dx, g.dy);
+					return;
+				}
 				if (g.state == Began) d.begin(g.x - g.tx, g.y - g.ty);
 				if (!d.active) studio.camera.panBy(g.dx, g.dy) else if (g.state == Ended || g.state == Cancelled) d.end() else d.move(g.tx, g.ty);
 			}}
-			onDragOver={e -> if (Std.isOfType(e.data, String) && FileTree.kindOf(e.data) == Image) e.preventDefault()}
-			onDrop={e -> if (Std.isOfType(e.data, String)) studio.dropImage(e.data, e.localX, e.localY)}
+			onDragOver={e -> if (!watch && Std.isOfType(e.data, String) && FileTree.kindOf(e.data) == Image) e.preventDefault()}
+			onDrop={e -> if (!watch && Std.isOfType(e.data, String)) studio.dropImage(e.data, e.localX, e.localY)}
 			onPinch={g -> {
 				studio.camera.zoomAt(g.x, g.y, g.dscale);
 				if (g.state == Ended) studio.log("pinched", {k: studio.camera.k});
 			}}>
+			{watch ? dots(studio) : null}
 			<Show when={studio.mode() != "stories"}>
 				<view tag="world" position="absolute" left={0} top={0} width={1} height={1} transform-origin="left top" transform={transform(studio)}>
 					<For each={studio.layout.screens()} by={(r:Rect) -> r.name}>{(r:Read<Rect>) -> {
@@ -63,8 +71,17 @@ class Board implements Markup {
 				{overlay(studio)}
 			</Show>
 			<Show when={studio.mode() == "stories"}>{stories(studio)}</Show>
-			<Show when={studio.mode() != "code" && !studio.compact()}>{Prompt.view(studio)}</Show>
+			<Show when={studio.classic && studio.mode() != "code" && !studio.compact()}>{Prompt.view(studio)}</Show>
 		</view>;
+	}
+
+	// (the ground's dots, following the camera)
+	static function dots(studio:Studio):Node {
+		var d = new Dots(studio.camera, c("dots"));
+		d.style.position = Absolute;
+		d.style.inset = 0;
+		effect(() -> studio.camera.changed(), _ -> d.moved());
+		return d;
 	}
 
 	// a story's or the app's screen: the program's last frame

@@ -9,14 +9,16 @@ using StringTools;
 
 // `helder studio [project] [--mcp-port <n>] [--agent <name>]`: helder studio (apps/studio,
 // beside helder's src/) built for this machine when a source of it changed,
-// then run on the project (the directory given, else this one) in a window
+// then run on the project (the directory given, else this one when it is a
+// project, else a new one: the studio's ~/Helder/Untitled n) in a window
 // of its own. The project's program is never in the studio's process: the
 // studio builds it (a dev build) and runs each screen in a process of its
 // own (apps/studio/README.md).
 class StudioCommand {
 	@:coroutine public static function run(o:Options):Int {
-		var dir = o.entry ?? ".";
-		if (!FileSystem.exists(dir) || !FileSystem.isDirectory(dir)) {
+		// (no project named: this directory when it is one, else the studio's new folder: its blank sheet)
+		var dir = o.entry ?? ((try Entry.resolve(".") catch (_:Dynamic) null) != null ? "." : null);
+		if (dir != null && (!FileSystem.exists(dir) || !FileSystem.isDirectory(dir))) {
 			Term.err(Style.usage('helder studio: $dir is not a directory (helder studio [project])'));
 			return 2;
 		}
@@ -29,11 +31,11 @@ class StudioCommand {
 			Term.err(Style.status("error", Fail, Std.string(err)));
 			return 1;
 		}
-		Term.out(Style.header("studio", [e.target, FileSystem.fullPath(dir)]));
+		Term.out(Style.header("studio", [e.target, dir == null ? "a new project" : FileSystem.fullPath(dir)]));
 		var exe = e.out(e.target);
 		var r = BuildCommand.build(e, exe, Release);
 		if (!r.ok) return 1;
-		var args = [FileSystem.fullPath(dir)];
+		var args = dir == null ? [] : [FileSystem.fullPath(dir)];
 		var port = o.value("mcp-port");
 		if (port != null) args = args.concat(["--mcp-port", port]);
 		var agent = o.value("agent");

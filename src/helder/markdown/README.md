@@ -87,7 +87,8 @@ function chunk(text:String) {
 
 - **Links** (`Link`, `Autolink`, a link around an image) call
   `onLink(href)`; the app decides what a relative path, an anchor or a
-  URL opens.
+  URL opens. `linkSlot(href)` gives a link's span a slot of the app's
+  (its chips: a screen's, a file's; null: `markdown-link`).
 - **Images** call `image(src, alt)` for a node (an `ImageNode`, its image
   set once it is decoded); without one the alt text stands in
   (`markdown-image-alt`). A paragraph with images is a wrapping row of its

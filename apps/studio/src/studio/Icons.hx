@@ -8,6 +8,7 @@ import helder.ui.Svg;
 // 16 or 14 points (Theme.ICON), their strokes Lucide's 2
 class Icons {
 	public static final appWindow = load(Asset.embed("icons/app-window.svg"));
+	public static final arrowUp = load(Asset.embed("icons/arrow-up.svg"));
 	public static final audioLines = load(Asset.embed("icons/audio-lines.svg"));
 	public static final bookOpen = load(Asset.embed("icons/book-open.svg"));
 	public static final model = load(Asset.embed("icons/box.svg"));
@@ -36,6 +37,7 @@ class Icons {
 	public static final element = load(Asset.embed("icons/square.svg"));
 	public static final font = load(Asset.embed("icons/type.svg"));
 	public static final undo = load(Asset.embed("icons/undo-2.svg"));
+	public static final close = load(Asset.embed("icons/x.svg"));
 
 	static function load(b:haxe.io.Bytes):Svg
 		return Svg.parse(b.toString());

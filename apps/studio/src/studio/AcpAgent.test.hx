@@ -95,7 +95,7 @@ function tests() {
 	return events;
 }
 
-private function fake():AcpAgent.AgentCommand {
+private function fake():Agents.AgentCommand {
 	var script = FileSystem.exists("tests/studio/acp-agent.mjs") ? "tests/studio/acp-agent.mjs" : "../../tests/studio/acp-agent.mjs";
 	return {name: "fake", cmd: "node", args: [FileSystem.fullPath(script)]};
 }

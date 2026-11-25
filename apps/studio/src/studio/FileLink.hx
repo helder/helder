@@ -8,7 +8,8 @@ using StringTools;
 class FileLink {
 	public static function parse(href:String, dir:String):Null<{path:String, line:Null<Int>}> {
 		var h = href.trim();
-		if (~/^[a-z][a-z0-9+.-]*:/i.match(h) && !h.startsWith("file:")) return null;
+		// (a scheme: "https:", "mailto:"; not a file's line, "pond.helder:41")
+		if (~/^[a-z][a-z0-9+.-]*:(?![0-9])/i.match(h) && !h.startsWith("file:")) return null;
 		if (h.startsWith("file://")) h = h.substr(7) else if (h.startsWith("file:")) h = h.substr(5);
 		h = try h.urlDecode() catch (_:Dynamic) h;
 		var line:Null<Int> = null, at = ~/^(.*?)(?:#L(\d+)(?:-L?\d+)?|:(\d+)(?::\d+)?)$/;

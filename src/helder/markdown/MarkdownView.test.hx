@@ -217,6 +217,10 @@ function tests() {
 			equals([for (i in all(t.view, "markdown-item", [])) (cast i.find("markdown-p") : TextNode).allText()], ["one", "two", "three"]);
 			equals(all(t.view, "markdown-list", []).length, 1);
 		});
+		test("a link's slot by its href", () -> {
+			var v = view("[Pond](studio:screen/Pond) and [web](https://x.y)\n", {linkSlot: (h:String) -> StringTools.startsWith(h, "studio:") ? "chip" : null}).view;
+			equals(slots(v, []), ["markdown", "markdown-scroll", "markdown-p", "chip", "markdown-link"]);
+		});
 		test("the first blocks alone, without a scroller", () -> {
 			var v = view("# A\n\nb\n\nc\n\nd\n", {scroll: false, blocks: 2}).view;
 			equals(v.scroller, null);

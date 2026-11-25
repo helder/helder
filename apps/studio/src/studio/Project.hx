@@ -98,8 +98,9 @@ class Project {
 		// (a design file opened: its folder the project)
 		this.dir = full.endsWith(".helder") && !FileSystem.isDirectory(full) ? Path.directory(full) : full;
 		var files = found(this.dir);
+		// (a folder of design files alone, or an empty one: a new project's, the blank sheet's)
 		entry = try Entry.resolve(this.dir) catch (e:Dynamic) {
-			if (!Lambda.exists(files, f -> f.endsWith(".helder"))) throw e;
+			if (!Lambda.exists(files, f -> f.endsWith(".helder")) && !empty(this.dir)) throw e;
 			null;
 		}
 		typescript = entry != null && entry.typescript != null;
@@ -107,6 +108,10 @@ class Project {
 		out = (entry == null ? this.dir : FileSystem.fullPath(entry.root).split("\\").join("/")) + '/bin/studio/$name';
 		findScreens(files, entry != null);
 	}
+
+	// (nothing in it but dotfiles: .git, .claude)
+	static function empty(dir:String):Bool
+		return !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));
 
 	// the project in dir (a thrown message: not one)
 	public static function open(dir:String):Project
