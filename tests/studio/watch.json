@@ -17,9 +17,17 @@
     {"t": 3.6, "type": "type", "text": "wait"},
     {"t": 3.7, "type": "key", "name": "Enter"},
     {"t": 4.3, "type": "mark", "name": "question"},
-    {"t": 4.4, "type": "tap", "tag": "card-option-0"},
+    {"t": 4.4, "type": "tap", "tag": "ask-option-0"},
     {"t": 4.7, "type": "tap", "tag": "chat-stop"},
     {"t": 5.0, "type": "tap", "tag": "stage", "ox": 240, "oy": 200},
-    {"t": 5.3, "type": "mark", "name": "end"}
+    {"t": 5.4, "type": "tap", "tag": "prompt"},
+    {"t": 5.5, "type": "type", "text": "ask"},
+    {"t": 5.6, "type": "key", "name": "Enter"},
+    {"t": 6.3, "type": "mark", "name": "asked"},
+    {"t": 6.4, "type": "tap", "tag": "ask-option-done"},
+    {"t": 6.5, "type": "tap", "tag": "ask-option-new"},
+    {"t": 6.7, "type": "mark", "name": "picked"},
+    {"t": 6.8, "type": "tap", "tag": "ask-send"},
+    {"t": 7.6, "type": "mark", "name": "end"}
   ]
 }

@@ -32,7 +32,10 @@ user watches it on a canvas that is theirs (`Watch`):
   over the canvas at its line (`CodePanel`; Escape closes it); its plan
   one dim line, "Thinking…" while it thinks, its last tools as lines
   (the ones before folded: "Made N changes"), a failed build's row, its
-  question as a card (answered there, and only there). Below: the
+  question as a card (answered there, and only there: studio.ask's and an
+  ACP agent's permission asks alike, the asker named and in its colour in
+  the card, the status line, the input's glow and the tab's dot; several
+  picks toggled, then Send). Below: the
   questions waiting, what it does (Stop), the input. What the user types
   while it works is a note for it (`Inbox`: "sent while working", then
   "seen"), not a new prompt: carried by its next tool call to the

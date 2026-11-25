@@ -30,13 +30,12 @@ class Conversation {
 	public function list():Array<Turn>
 		return all;
 
-	// the questions waiting for the user
-	public function questions():Int {
-		var t = turns();
-		return asked() + (t.length > 0 && t[t.length - 1].ask != null ? 1 : 0);
-	}
+	// the questions waiting for the user (Questions': studio.ask's and ACP's permission asks)
+	public function questions():Int
+		return asked();
 
 	// whether the agent waits for the user
 	public function waits():Bool
 		return questions() > 0;
 }
+

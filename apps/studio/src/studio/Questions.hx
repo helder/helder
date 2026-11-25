@@ -61,6 +61,37 @@ class Questions {
 		return q;
 	}
 
+	// an ACP agent's permission ask (by: its name and colour): the same card,
+	// text options (their ids the options' indices), answered through reply
+	public function permission(by:{name:String, colour:String}, question:String, options:Array<String>,
+			reply:(picked:Array<String>, text:Null<String>) -> Void):Question {
+		var q:Question = {
+			id: 'q${++next}',
+			agent: null,
+			by: by.name,
+			colour: by.colour,
+			question: question,
+			options: [for (k => o in options) {id: '$k', label: o, note: null, screen: null, image: null}],
+			multiple: false,
+			picked: [],
+			text: null,
+			answered: false,
+			turn: studio.talk.list().length - 1,
+			waited: true,
+			reply: reply
+		};
+		set(list.concat([q]));
+		return q;
+	}
+
+	// a question no longer asked (its turn ended, the agent gone): closed, nothing answered
+	public function close(id:String) {
+		var q = get(id);
+		if (q == null || q.answered) return;
+		update(q, n -> n.answered = true);
+		if (answering == id) replyTo(null);
+	}
+
 	public function get(id:String):Null<Question>
 		return Lambda.find(list, q -> q.id == id);
 
@@ -119,7 +150,7 @@ class Questions {
 			n.answered = true;
 		});
 		if (answering == q.id) replyTo(null);
-		if (!n.waited) studio.inbox.answer(said(n), n.turn);
+		if (n.reply != null) n.reply(n.picked, n.text) else if (!n.waited) studio.inbox.answer(said(n), n.turn);
 		studio.log("answered", {question: n.question, picked: n.picked, text: n.text});
 	}
 
@@ -171,6 +202,8 @@ typedef Question = {
 	turn:Int,
 	// a call waits for its answer (studio.ask's wait)
 	waited:Bool,
+	// (an ACP agent's permission ask: its answer given here, not the inbox's)
+	?reply:(picked:Array<String>, text:Null<String>) -> Void,
 }
 
 // an option: on the canvas (screen: a design's frame's or a screen's name), an image (a project's file), or text alone

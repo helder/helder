@@ -23,20 +23,30 @@ using StringTools;
 // the input, with the agent's chip and its menu. Every input of the
 // studio's is here: the canvas is to watch.
 class Chat implements Markup {
-	public static function view(studio:Studio):View
+	public static function view(studio:Studio):View {
+		// (the log follows what comes while it is at its end: a reply, a card, a note)
+		var follow = true;
+		effect(() -> {
+			var t = studio.talk.turns();
+			'${t.length} ${t.length == 0 ? 0 : t[t.length - 1].text.length + t[t.length - 1].tools.length} ${studio.questions.all().length} ${studio.questions.open().length} ${studio.inbox.notes().length} ${studio.marks.changes().length}';
+		}, _ -> if (follow) toEnd());
 		return <view tag="chat" width={Theme.CHAT} shrink={0} background={c("chat")} border-width="0 1 0 0" border-color={c("hair")} min-height={0}
 			transition="fade slide-left(24)">
 			<scroll tag="chat-log" grow={1} min-height={0} padding="18 18 8" row-gap={14} font-size={Theme.CHAT_SIZE} color={c("ink2")}
-				ref={(n:Node) -> log = n}>
+				ref={(n:Node) -> {
+					log = n;
+					n.onScroll = () -> follow = n.scrollY >= n.contentHeight - n.height - 24;
+				}}>
 				<For each={[for (i in 0...studio.talk.turns().length) i]}>{(i:Read<Int>) -> turn(studio, i())}</For>
 				<For each={studio.marks.changes().filter(c -> c.turn < 0)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
 				<For each={studio.questions.all().filter(q -> q.turn < 0)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
+				<view tag="chat-end" height={16} shrink={0}/>
 			</scroll>
 			<view padding="12 14 14" row-gap={8} shrink={0}>
 				<Show when={studio.talk.questions() > 0}>
 					<view:button tag="chat-questions" role="button" label="The questions for you" direction="row" align-items="center" column-gap={6}
-						cursor="pointer" color={c("ink3")} onPress={() -> if (log != null) log.scrollY = 1e9}>
-						<view width={6} height={6} radius={3} background={Color.parse(studio.agentColour())}/>
+						cursor="pointer" color={c("ink3")} onPress={() -> toEnd()}>
+						<view width={6} height={6} radius={3} background={Color.parse(waiter(studio).colour)}/>
 						<text font-size={12}>{questions(studio.talk.questions())}</text>
 					</view:button>
 				</Show>
@@ -44,9 +54,21 @@ class Chat implements Markup {
 				{input(studio, false)}
 			</view>
 		</view>;
+	}
 
 	// (the chat's scroller: the questions' strip scrolls it to them, at its end)
 	static var log:Null<Node> = null;
+
+	// (the log at its end, once laid out with what came)
+	static function toEnd() {
+		function end() {
+			var l = log;
+			if (l != null) l.scrollY = Math.max(0, l.contentHeight + l.style.padding.bottom - l.height);
+		}
+		// (again once a card's lift and the panel below have settled)
+		Clock.after(0.02, end);
+		Clock.after(0.4, end);
+	}
 
 	static function questions(n:Int):String
 		return n == 1 ? "1 question for you" : '$n questions for you';
@@ -68,6 +90,12 @@ class Chat implements Markup {
 			{bubble(n().text)}
 			<text tag="chat-note-mark" font-size={11} color={c("dim")}>{n().delivered ? "sent while working · seen" : "sent while working"}</text>
 		</view>;
+
+	// who the user's answer is waited for by: the first open question's agent, else the prompt's
+	public static function waiter(studio:Studio):{name:String, colour:String} {
+		var q = studio.questions.open()[0];
+		return q != null ? {name: q.by, colour: q.colour} : {name: studio.agentName(), colour: studio.agentColour()};
+	}
 
 	// a turn: the prompt, then the agent's part
 	static function turn(studio:Studio, i:Int):View {
@@ -111,7 +139,6 @@ class Chat implements Markup {
 			</Show>
 			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
 			<For each={studio.marks.changes().filter(c -> c.turn == i)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
-			<Show when={t().ask != null}>{card(studio, t)}</Show>
 			<For each={studio.questions.all().filter(q -> q.turn == i)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 			<For each={studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction")} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) -> note(n)}</For>
 		</view>;
@@ -162,34 +189,11 @@ class Chat implements Markup {
 		</view>;
 	}
 
-	// the agent's question (a permission, studio.ask's): its options as
-	// buttons, "Something else…" the input; answered here alone
-	static function card(studio:Studio, t:Void->Turn):View
-		return <view tag="chat-card" row-gap={10} padding={12} radius={Theme.CARD} background={c("card")} border-width={1} border-color={c("hair2")}
-			shadow="0 4 16 rgba(0,0,0,0.35)">
-			<view direction="row" column-gap={8} align-items="flex-start">
-				<text grow={1} min-width={0} color={c("ink")} font-size={Theme.CHAT_SIZE}>{t().ask?.question ?? ""}</text>
-				<view tag="chat-card-dot" width={6} height={6} radius={3} margin-top={6} background={Color.parse(studio.agentColour())}/>
-			</view>
-			<view direction="row" wrap={true} gap={6}>
-				<For each={[for (i => o in t().ask?.options ?? []) {i: i, name: o}]}>{(o:Read<{i:Int, name:String}>) ->
-					<view:button tag={"card-option-" + o().i} role="button" label={o().name} focusable height={28} padding="0 10" radius={8}
-						background={c("bubble")} color={c("ink")} justify="center" cursor="pointer" onPress={() -> studio.answer(o().i)}>
-						<text font-size={12}>{o().name}</text>
-					</view:button>
-				}</For>
-				<view:button tag="card-else" role="button" label="Something else" focusable height={28} padding="0 10" radius={8} justify="center"
-					color={c("ink3")} cursor="pointer" onPress={() -> if (studio.talk.field != null) studio.talk.field.focus()}>
-					<text font-size={12}>Something else…</text>
-				</view:button>
-			</view>
-		</view>;
-
 	// what the agent does: working (Stop), or waiting for the user
 	static function status(studio:Studio):View
 		return <view tag="chat-status" direction="row" align-items="center" column-gap={8} font-size={12} color={c("ink3")}>
-			<view width={8} height={8} radius={4} background={Color.parse(studio.agentColour())}/>
-			<text grow={1}>{studio.agentName() + (studio.talk.waits() ? " waits for you" : " is working")}</text>
+			<view width={8} height={8} radius={4} background={Color.parse(studio.talk.waits() ? waiter(studio).colour : studio.agentColour())}/>
+			<text grow={1}>{studio.talk.waits() ? waiter(studio).name + " waits for you" : studio.agentName() + " is working"}</text>
 			<Show when={working(studio)}>
 				<view:button tag="chat-stop" role="button" label="Stop" focusable height={24} padding="0 10" radius={Theme.CHIP} background={c("bubble")}
 					color={c("ink2")} justify="center" cursor="pointer" onPress={() -> studio.stopTurn()}>
@@ -212,7 +216,7 @@ class Chat implements Markup {
 		}
 		return <view tag="chat-input" matched="prompt" padding={blank ? "16 16 12" : "10 12"} row-gap={blank ? 14 : 8} radius={blank ? 14 : Theme.CARD}
 			background={c("card")} border-width={1}
-			border-color={studio.talk.waits() ? Color.parse(studio.agentColour()) : c(blank ? "hair" : "hair2")}
+			border-color={studio.talk.waits() ? Color.parse(waiter(studio).colour) : c(blank ? "hair" : "hair2")}
 			shadow={blank ? "0 24 80 rgba(0,0,0,0.35)" : "none"}>
 			<field tag="prompt" slot="ask-input" label="Prompt" value={text} min-height={blank ? 48 : 22} font-size={blank ? 16 : Theme.CHAT_SIZE}
 				placeholder={blank ? "What do you want to make?" : working(studio) ? "Steer while it works…" : "Reply…"} ref={(n:Node) -> studio.talk.field = n}
