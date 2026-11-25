@@ -19,7 +19,7 @@ import helder.ui.draw.FrameWriter.ImageRef;
 // A set of frames as a file (the studio's: bin/studio/<project>/frames.hframes):
 // each screen's frame (FrameWriter's) under its name and key, the fonts and
 // images they draw stored once, by hash. Fonts by reference (the file they
-// were read from, their face, the hash of their bytes: a face whose file
+// were read from, their face, a fingerprint of their file: a face whose file
 // changed is not drawn), but those no file is behind (an app's own,
 // SystemFonts.add's), stored; images as the file they were decoded from,
 // else their pixels as a PNG; an SVG icon as its drawing (SvgData), a
@@ -30,7 +30,7 @@ import helder.ui.draw.FrameWriter.ImageRef;
 // bytes, its hash first, then 1 when they are deflated) and one "BODY"
 // (deflated: the font table, the screens).
 class FrameArchive {
-	public static inline var VERSION = 1;
+	public static inline var VERSION = 2;
 
 	final screens = new Map<String, Screen>();
 	final order:Array<String> = [];
@@ -86,6 +86,18 @@ class FrameArchive {
 				}
 			]
 		});
+	}
+
+	// another archive's screen (a host's still) under key, its fonts' and images' bytes with it
+	public function take(from:FrameArchive, name:String, key:String) {
+		var s = from.screens.get(name);
+		if (s == null) return;
+		for (f in s.fonts)
+			if (!blobs.exists(f.hash) && from.blobs.exists(f.hash)) blobs.set(f.hash, from.blobs.get(f.hash));
+		for (i in s.images)
+			if (!blobs.exists(i.hash) && from.blobs.exists(i.hash)) blobs.set(i.hash, from.blobs.get(i.hash));
+		if (!screens.exists(name)) order.push(name);
+		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, fonts: s.fonts, images: s.images});
 	}
 
 	public function remove(name:String) {
@@ -228,8 +240,7 @@ class FrameArchive {
 	// a face by reference (FrameWriter's); its bytes only when no file is behind it
 	@:access(helder.text.FontFile)
 	public static function fontRef(f:FontFile):FontRef {
-		var hash = hashes.get(f.id);
-		if (hash == null) hashes.set(f.id, hash = Md5.make(f.data).toHex());
+		var hash = hashes.get(f.id) ?? hash(f);
 		return {
 			hash: hash,
 			family: f.family,
@@ -266,22 +277,20 @@ class FrameArchive {
 	function face(r:FontRef):Null<FontFile> {
 		function same(f:Null<FontFile>):Null<FontFile>
 			return f != null && f.faceIndex == r.index && (hashes.get(f.id) ?? hash(f)) == r.hash ? f : null;
-		#if sys
-		if (r.path != null && sys.FileSystem.exists(r.path)) {
-			var f = same(try FontFile.parse(sys.io.File.getBytes(r.path), r.index) catch (e:Dynamic) null);
-			if (f != null) {
-				f.path = r.path;
-				return f;
-			}
-		}
-		#end
+		var f = r.path == null ? null : same(SystemFonts.get().file(r.path, r.index));
+		if (f != null) return f;
 		var b = blobs.get(r.hash);
 		if (b != null) return same(try FontFile.parse(b, r.index) catch (e:Dynamic) null);
 		return same(SystemFonts.get().match(r.family, r.weight, r.italic));
 	}
 
+	// (a face's file told apart without reading all of it, an emoji font's
+	// 190 MB: its length, its head table's checksum of the whole file, its
+	// first 4 KB's md5)
 	static function hash(f:FontFile):String {
-		var h = Md5.make(f.data).toHex();
+		var head = f.table("head"), d = f.data;
+		var sum = head == null || head.length < 12 ? 0 : head.getInt32(8);
+		var h = d.length + "-" + StringTools.hex(sum, 8) + "-" + Md5.make(d.sub(0, d.length < 4096 ? d.length : 4096)).toHex();
 		hashes.set(f.id, h);
 		return h;
 	}

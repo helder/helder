@@ -105,14 +105,25 @@ class Board implements Markup {
 			onPointerEnter={_ -> studio.hovered(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
+			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
 			<Show when={s.crashedSignal()}>
 				<view tag="crashed" position="absolute" left={8} top={8} right={8} row-gap={2}>
 					<text color={c("fg2")} font-size={Theme.SMALL}>stopped</text>
 					<text color={c("fg3")} font-size={Theme.SMALL} max-lines={8} text-overflow="ellipsis">{s.report()}</text>
 				</view>
 			</Show>
-			<Show when={s.frames() == 0 && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
+			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
+	}
+
+	// (a screen's still from the frames file until the program draws it: dimmed when its files changed since)
+	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
+		var n = new StillFrame(s.still.peek(), s.stillWidth, s.stillHeight);
+		n.tag = "still";
+		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null}, v -> {
+			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
+		});
+		return n;
 	}
 
 	// a design's frame: its nodes, interpreted, under a theme of none and

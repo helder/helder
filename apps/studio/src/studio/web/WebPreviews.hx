@@ -224,6 +224,9 @@ class WebPreviews {
 	// the screens in view (the others suspended in the host, their last
 	// frames kept) and the one zoomed into, drawn at scale pixels a point
 	// (the canvas' zoom: its frames as sharp as the studio shows them)
+	// (natively the host started when the screens were drawn from the frames file; here it always runs)
+	public function wake() {}
+
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
 		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;

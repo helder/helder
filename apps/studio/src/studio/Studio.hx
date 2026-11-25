@@ -494,6 +494,8 @@ class Studio {
 			Sys.println('studio: first frame $ms ms after start');
 			log("first-frame", {ms: ms});
 		}
+		// (the stills from the frames file: shown with the studio's frame)
+		allShown();
 		var w = Main.window == null ? 0.0 : Main.window.ui.width;
 		if (w > 0 && (w < Theme.COMPACT) != compactNow) {
 			compactNow = w < Theme.COMPACT;
@@ -566,6 +568,8 @@ class Studio {
 		var play = playing.peek();
 		var live = play == null || play.kind == "design" || play.kind == "target" ? null : play.screen;
 		if (live != null) {
+			// (Play runs the program, the screens drawn from the frames file or not)
+			pr.wake();
 			if (!names.contains(live)) names.push(live);
 			// (fitted larger on a phone: its pixels at the size shown)
 			var s = pr.screen(live), k = s == null ? 1.0 : Math.max(1, Play.fit(this, s.width(), s.height(), play.kind == "story"));
@@ -1252,14 +1256,7 @@ class Studio {
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
 		if (s.version == 1) log("screen-shown", {screen: s.info.name});
-		if (!shownAll && previews.allShown()) {
-			shownAll = true;
-			var ms = Math.round((haxe.Timer.stamp() - openedAt) * 1000);
-			var host = previews.sinceHost();
-			Sys.println('studio: all ${previews.screens.length} screens shown $ms ms after opening ${project.name}' + (host >= 0 ? ', $host ms after the screens\' program started' : ''));
-			log("all-shown", {ms: ms, screens: previews.screens.length, hostMs: host, sharing: previews.sharing});
-			fitView(false);
-		}
+		allShown();
 		var m = measuring;
 		if (m != null && m.screen == s && s.version > m.version) {
 			measuring = null;
@@ -1269,6 +1266,19 @@ class Studio {
 			log("patch-shown", {ms: ms, frames: frames - m.frame, programMs: s.patchedMs, label: m.label, color: color, version: s.version});
 		}
 		if (focused.peek() == s.info.name && selection.peek() != null) refreshSelection();
+	}
+
+	// (every screen showing a frame, the program's or its still from the frames file: told once)
+	function allShown() {
+		var pr = previews;
+		if (shownAll || pr == null || openedAt <= 0 || !pr.allShown()) return;
+		shownAll = true;
+		var ms = Math.round((haxe.Timer.stamp() - openedAt) * 1000);
+		var host = pr.sinceHost(), stills = [for (s in pr.screens) if (s.version == 0 && s.still.peek() != null && !s.stale.peek()) s].length;
+		Sys.println('studio: all ${pr.screens.length} screens shown $ms ms after opening ${project.name}' + (host >= 0 ? ', $host ms after the screens\' program started' : '')
+			+ (stills > 0 ? ', $stills from the frames file' : ''));
+		log("all-shown", {ms: ms, screens: pr.screens.length, hostMs: host, sharing: pr.sharing, stills: stills});
+		fitView(false);
 	}
 
 	// the strongest colour in the selection's box of the screen's last frame (a check's: what it shows)

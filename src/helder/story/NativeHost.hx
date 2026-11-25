@@ -23,6 +23,9 @@ import hxmc.unsafe.*;
 //   Host.frame {screen, version, width, height, pixelWidth, pixelHeight, buffer, handle}
 //                                          a screen's frame (screen: its index; handle: the
 //                                          texture to open, or copy:<file> of its pixels)
+//   Host.still {screen, path}              a still's frame as data (Host.written), settled (no
+//                                          frame of it for STILL seconds): a frames file of its
+//                                          screen alone (helder.ui.draw.FrameArchive), its key ""
 //   Hot.patched                            a patch's first frame (helder.dev)
 //
 // and a frame's target is drawn into again once the studio sends
@@ -35,6 +38,8 @@ import hxmc.unsafe.*;
 //   // the studio's generated main (bin/studio/<name>/gen/StudioScreens.hx, screens.tsx)
 //   helder.story.Screens.run(helder.story.Stories.of("Todo_story"));   // here, natively
 class NativeHost {
+	static inline var STILL = 0.25;
+
 	public static function run(stories:Array<Story>) {
 		#if !hxmc.dev
 		throw "helder.story: the preview host runs in a dev build (helder studio's)";
@@ -57,10 +62,19 @@ class NativeHost {
 		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.story.mounted", [for (s in host.screens) if (s.ui != null) s.name],
 			helder.dev.Hot.typeOf((_ : Array<String>))));
 		helder.dev.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
+		// (a still's frames: written once it settled, not each it drew on its way)
+		var due = new Map<String, Float>();
+		host.onFrame = s -> if (host.stills && s != host.looping) due.set(s.name, haxe.Timer.stamp());
 		while (true) {
 			helder.dev.Hot.poll();
 			var drawn = host.frame(haxe.Timer.stamp());
 			if (drawn > 0) helder.dev.Hot.framed();
+			var now = haxe.Timer.stamp();
+			for (name in [for (n => at in due) if (now - at > STILL) n]) {
+				due.remove(name);
+				var s = host.screen(name);
+				if (s != null && host.stills && s != host.looping) frames.still(s);
+			}
 			// (nothing due: a nap, the next timer's or the studio's next message's latency)
 			if (drawn == 0) Sys.sleep(host.busy() ? 0.001 : Math.max(0.001, Math.min(0.004, host.nextTimer() - haxe.Timer.stamp())));
 		}
@@ -184,6 +198,24 @@ class SharedFrames implements HostRuntime {
 			buffer: f.id,
 			handle: f.handle
 		});
+		#end
+	}
+
+	// a still's frame as data, a frames file of it alone, told (Host.still)
+	public function still(s:HostScreen) {
+		var h = hosted(), f = h.written(s);
+		if (f == null) return;
+		var a = new helder.ui.draw.FrameArchive();
+		a.add(s.name, "", s.width, s.height, f);
+		var i = h.screens.indexOf(s);
+		var path = (dir ?? haxe.io.Path.directory(Sys.programPath())) + '/helder-still-$session-$i.hframes';
+		// (written whole, then named: the studio never reads half a file)
+		sys.io.File.saveBytes(path + ".part", a.encode());
+		// (Windows renames onto no file)
+		if (sys.FileSystem.exists(path)) sys.FileSystem.deleteFile(path);
+		sys.FileSystem.rename(path + ".part", path);
+		#if hxmc.dev
+		helder.dev.Agent.notify("Host.still", {screen: i, path: path});
 		#end
 	}
 
