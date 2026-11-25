@@ -8,7 +8,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Model} from "helder/scene";
+import type {Model} from "../scene/runtime";
 
 declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image", FontFile: "helder.text.FontFile", Strings: "helder.asset.Strings", ScriptAssets: "helder.asset.ScriptAssets", __module: "helder.asset.TypeScript"};
 

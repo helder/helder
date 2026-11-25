@@ -36,10 +36,10 @@ test("the filters' shortcuts: Todo's actions, from the text field", () => {
 	const ui = headless(480, 560);
 	const dispose = mount(ui, <App/>);
 	focus(find(rootOf(ui), "draft"));
-	press(ui, "ctrl-2");
+	press(ui, 'secondary-2')
 	flush();
 	equals(filter(), "active");
-	press(ui, "ctrl-3");
+	press(ui, 'secondary-3')
 	flush();
 	equals(filter(), "done");
 	equals(actionName(TodoActions.show("all")), "todo::Show");

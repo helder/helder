@@ -169,8 +169,17 @@ class Declarations {
 			}
 			if (d == null) return null;
 			if (d.module != m) {
-				var names = imports.get(d.module.name);
-				if (names == null) imports.set(d.module.name, names = []);
+				var specifier = d.module.name;
+				// A library type reference can use the runtime declaration directly.
+				// Going through its public .ts module would also load that module's code.
+				if (StringTools.startsWith(m.name, "helder/")
+					&& d.module.file == "runtime.d.ts") {
+					var up = [for (_ in 1...m.name.split("/").length) ".."];
+					var down = specifier.split("/").slice(1);
+					specifier = up.concat(down).concat(["runtime"]).join("/");
+				}
+				var names = imports.get(specifier);
+				if (names == null) imports.set(specifier, names = []);
 				if (names.indexOf(d.name) < 0) names.push(d.name);
 			}
 			return d.name;
