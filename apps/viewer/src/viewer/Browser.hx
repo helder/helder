@@ -318,7 +318,7 @@ class Browser {
 		return n;
 	}
 
-	// the last trashed put back where they were, selected
+	// the last trashed, renamed or moved put back where they were, selected
 	public function undo():Bool {
 		var group = undone.pop(), rename = files.rename;
 		canUndo(undone.length > 0 && rename != null);
@@ -330,13 +330,110 @@ class Browser {
 		if (back.length == 0) return false;
 		var d = parent(back[0]);
 		if (d == dir.value) {
+			// (a rename's or a move's new name in this folder goes too)
 			var names = [for (p in back) name(p) => true];
+			for (u in group)
+				if (parent(u.to) == d) names.set(name(u.to), true);
 			var put = [for (p in back) files.stat(p)].filter(e -> e != null);
 			rescan([for (x in all) if (!names.exists(x.name)) x].concat(put));
 			select(name(back[0]));
 			if (back.length > 1) selection.setKeys([for (p in back) name(p)]);
 		} else if (d != null) go(d, name(back[0]));
 		return true;
+	}
+
+	// --- changes: a new folder, a name, files moved or copied into a folder
+
+	// what went wrong, shown a moment ("" none), and the entry renamed in place ("" none)
+	public final notice = new Cell("");
+	public final renaming = new Cell("");
+
+	// a new folder ("untitled folder", numbered when there is one), selected
+	// and renamed in place: its name; null when none could be made (notice says why)
+	public function newFolder():Null<String> {
+		var make = files.makeFolder;
+		if (make == null) {
+			fail("Folders cannot be made here");
+			return null;
+		}
+		var name = "untitled folder", k = 2;
+		while (Lambda.exists(all, e -> e.name == name))
+			name = 'untitled folder ${k++}';
+		try make(path(name)) catch (e:Dynamic) {
+			fail('The folder could not be made: $e');
+			return null;
+		}
+		var made = files.stat(path(name)) ?? ({name: name, kind: Folder, size: 0, modified: Date.now().getTime() / 1000, created: 0} : Entry);
+		rescan(all.concat([made]));
+		select(name);
+		renaming(name);
+		return name;
+	}
+
+	// an entry named to: null when done (or nothing to do), else why not (in
+	// notice too); undone by Undo, as a trash is
+	public function rename(name:String, to:String):Null<String> {
+		renaming("");
+		to = StringTools.trim(to);
+		if (to == "" || to == name) return null;
+		if (to.indexOf("/") >= 0 || to.indexOf("\\") >= 0 || to == "." || to == "..") return fail('"$to" is not a name a file can have');
+		var move = files.rename, was = Lambda.find(all, e -> e.name == name);
+		if (move == null || was == null) return fail("Names cannot be changed here");
+		if (Lambda.exists(all, e -> e.name == to)) return fail('"$to" is already in this folder');
+		try move(path(name), path(to)) catch (e:Dynamic) return fail('"$name" could not be renamed: $e');
+		undone.push([{from: path(name), to: path(to)}]);
+		canUndo(true);
+		var now = files.stat(path(to)) ?? ({name: to, kind: was.kind, size: was.size, modified: was.modified, created: was.created} : Entry);
+		rescan([for (e in all) if (e.name != name) e].concat([now]));
+		select(to);
+		return null;
+	}
+
+	// files (paths) moved, or copied, into the folder into: how many; the
+	// moves undone by Undo; what is already there, the folder itself or one
+	// inside it left out
+	public function transfer(paths:Array<String>, into:String, copying:Bool):Int {
+		into = normalize(into);
+		var act = copying ? files.copy : files.rename;
+		if (act == null) {
+			fail(copying ? "Files cannot be copied here" : "Files cannot be moved here");
+			return 0;
+		}
+		var group = [], done = [], failed:Null<String> = null;
+		for (p in paths) {
+			p = normalize(p);
+			var to = FolderModel.join(into, name(p));
+			if (p == into || StringTools.startsWith(into, p + "/") || parent(p) == into) continue;
+			try {
+				act(p, to);
+				done.push({from: p, to: to});
+				if (!copying) group.push({from: p, to: to});
+			} catch (e:Dynamic) {
+				failed ??= '"${name(p)}" could not be ${copying ? "copied" : "moved"}: $e';
+			}
+		}
+		if (failed != null) fail(failed);
+		if (group.length > 0) {
+			undone.push(group);
+			canUndo(true);
+		}
+		// (the folder shown, what left it and what came in)
+		var d = dir.value, gone = [for (m in done) if (!copying && parent(m.from) == d) name(m.from) => true];
+		var came = [for (m in done) if (parent(m.to) == d) files.stat(m.to)].filter(e -> e != null);
+		if (Lambda.count(gone) > 0 || came.length > 0) rescan([for (e in all) if (!gone.exists(e.name)) e].concat(came));
+		return done.length;
+	}
+
+	// (why something could not be done, in notice for a few seconds: null, to return)
+	public function fail(why:String):Null<String> {
+		notice(why);
+		#if (target.name == "hxmc")
+		helder.async.Async.launch(_ -> {
+			helder.async.Async.delay(4);
+			if (notice.value == why) notice("");
+		});
+		#end
+		return why;
 	}
 
 	// --- paths

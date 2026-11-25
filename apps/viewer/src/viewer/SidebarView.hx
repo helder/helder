@@ -73,9 +73,17 @@ class SidebarView implements Markup {
 
 	static function folderRow(x:Explorer, r:Sidebar.Row):View {
 		var b = x.browser;
-		return <view:button slot="side-row" role="button" focusable label={r.name} data-selected={b.dir() == r.path} onPress={() -> b.go(r.path)}>
+		// (its context menu: Open, Rename…, Move to Trash, Show in Finder, Copy Path; a folder dropped on: moved into it)
+		return <view:button slot="side-row" role="button" focusable label={r.name} data-selected={b.dir() == r.path} onPress={() -> b.go(r.path)}
+			ref={(n:Node) -> {
+				helder.ui.menu.ContextMenu.attach(n, () -> ViewerActions.sidebarFolder(r.path));
+				Drops.folder(x, n, () -> r.path);
+			}}>
 			<image src={Glyphs.get("folder")} width={16} height={16} shrink={0} color={b.dir() == r.path ? Look.ref.fg : Look.ref.fg3}/>
-			<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{r.name}</text>
+			<Show when={x.sidebar.renaming() == r.path}>{() -> NameField.field(r.name, t -> x.renameFolder(r.path, t), () -> x.sidebar.renaming(""))}</Show>
+			<Show when={x.sidebar.renaming() != r.path}>
+				<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{r.name}</text>
+			</Show>
 			<Show when={r.deeper}>
 				<view:button tag="deeper" role="button" label={"Into " + r.name} width={20} height={20} radius={5} align-items="center" justify="center"
 					onPress={() -> x.sidebar.show(r.path)} onClick={e -> e.stop()}>

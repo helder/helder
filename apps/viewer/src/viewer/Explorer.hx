@@ -283,6 +283,44 @@ class Explorer {
 		return browser.trash(browser.picked());
 	}
 
+	// --- a sidebar's folders: renamed, trashed (the folder shown, if it is
+	// that one or inside it, followed)
+
+	public function renameFolder(path:String, to:String):Null<String> {
+		sidebar.renaming("");
+		to = StringTools.trim(to);
+		var move = files.rename, up = Browser.parent(path);
+		if (to == "" || up == null || to == Browser.name(path) || move == null) return null;
+		if (to.indexOf("/") >= 0 || to.indexOf("\\") >= 0) return browser.fail('"$to" is not a name a folder can have');
+		var now = FolderModel.join(up, to);
+		if (files.stat(now) != null) return browser.fail('"$to" is already there');
+		try move(path, now) catch (e:Dynamic) return browser.fail('"${Browser.name(path)}" could not be renamed: $e');
+		var d = browser.dir.value;
+		if (d == path || StringTools.startsWith(d, path + "/")) browser.go(now + d.substr(path.length));
+		sidebar.reload();
+		return null;
+	}
+
+	function trashFolder(path:String):Bool {
+		var move = files.trash;
+		if (move == null) return false;
+		try move(path) catch (e:Dynamic) {
+			browser.fail('"${Browser.name(path)}" could not be moved to the trash: $e');
+			return false;
+		}
+		var d = browser.dir.value, up = Browser.parent(path);
+		if ((d == path || StringTools.startsWith(d, path + "/")) && up != null) browser.go(up);
+		sidebar.reload();
+		return true;
+	}
+
+	function revealPath(path:String):Bool {
+		var local = files.localPath(path);
+		if (local == null || reveal == null) return false;
+		reveal(local);
+		return true;
+	}
+
 	// --- actions (the keymap's and the menus'): true when taken
 
 	public function perform(a:ViewerAction):Bool {
@@ -313,6 +351,23 @@ class Explorer {
 			case Trash: return trash() > 0;
 			case UndoTrash: return browser.undo();
 			case Close: close();
+			case NewFolder: return !full.value && browser.newFolder() != null;
+			case Rename:
+				var c = browser.current();
+				if (full.value || c == null || files.rename == null) return false;
+				browser.renaming(c.name);
+			case GetInfo:
+				browser.select("");
+				browser.inspector(true);
+			case RevealFolder: return revealPath(browser.dir.value);
+			case RevealPath(path): return revealPath(path);
+			case CopyPathOf(path):
+				if (copy == null) return false;
+				copy(files.localPath(path) ?? path);
+			case RenameFolder(path):
+				if (files.rename == null) return false;
+				sidebar.renaming(path);
+			case TrashFolder(path): return trashFolder(path);
 			case CopyPath:
 				var all = full.value ? [viewer.folder.current] : [for (n in browser.picked()) browser.path(n)];
 				if (all.length == 0 || all[0] == null || copy == null) return false;
@@ -352,6 +407,12 @@ class Explorer {
 			case Trash: on(files.trash != null && target() != null);
 			case UndoTrash: on(b.canUndo.value);
 			case CopyPath | ShowInFolder | OpenWithDefault: on(target() != null);
+			case NewFolder: on(!full.value && files.makeFolder != null);
+			case Rename: on(!full.value && files.rename != null && b.current() != null);
+			case RenameFolder(_): on(files.rename != null);
+			case TrashFolder(_): on(files.trash != null);
+			case RevealFolder | RevealPath(_): on(reveal != null);
+			case CopyPathOf(_): on(copy != null);
 			case Search | EditPath: on(!full.value);
 			case Next | Previous | First | Last | ZoomIn | ZoomOut | Fit | ActualSize | NextPage | PreviousPage | FirstPage | LastPage | GoToPage | ScrollDown
 				| ScrollUp | LineDown | LineUp | ToggleSource | PlayPause

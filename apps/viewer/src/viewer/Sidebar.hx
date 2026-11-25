@@ -80,6 +80,16 @@ class Sidebar {
 
 	var target = "";
 
+	// the folder renamed in place (its path; "" none)
+	public final renaming = new Cell("");
+
+	// the level read again (a folder of it renamed, made, trashed)
+	public function reload() {
+		var l = target;
+		target = "\x00";
+		show(l);
+	}
+
 	// (whether a row has subfolders of its own, for its "›": its listing stopped at the first)
 	function deeper(at:String, row:Row) {
 		var stop:Null<Void->Void> = null, found = false;
