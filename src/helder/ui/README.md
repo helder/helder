@@ -864,7 +864,7 @@ Attributes:
   `onPointerEnter`, `onPointerLeave`, `onPointerCancel`,
   `onLostPointerCapture`, `onWheel`, `onKeyDown`, `onKeyUp`,
   `onTextInput`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut` (bubbling) (an `Event -> Void`);
-  `onPress` (`Node.onActivate`: a click, or Enter or Space unless `onKeyDown`
+  `onPress` (`Node.onActivate`: a click of the primary button (a right click is the context menu's, as a browser's), or Enter or Space unless `onKeyDown`
   took it, as a DOM button's click); the gestures `onTap`, `onLongPress`
   (held still half a second: it wins the press then), `onPan`
   (`pan-axis="x"`, `pan-min-pointers`), `onPinch`, `onScale` (a
