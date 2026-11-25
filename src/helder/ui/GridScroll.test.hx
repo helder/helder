@@ -25,6 +25,13 @@ function tests() {
 		check: f -> f.check(),
 		teardown: f -> f.dispose()
 	}, {cases: 60, steps: 30}));
+	test("a grid made one cell high by a resize: Up shows the first cell whole", () -> {
+		var f = new Fixture();
+		f.resize(40, 70);
+		f.key("up", false);
+		f.check();
+		f.dispose();
+	});
 }
 
 private final KEYS = [
