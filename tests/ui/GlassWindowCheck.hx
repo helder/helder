@@ -180,7 +180,11 @@ private class Input {
 	var presses = 0;
 	var wheels = 0;
 	var before = 0;
-	var sent = 0.0;
+	var listBefore = 0.0;
+	// (the phase, when it began; when the first scroll was seen in the list)
+	var phase = 0;
+	var at = 0.0;
+	var seen = 0.0;
 
 	public function new(w:helder.ui.UiWindow) {
 		this.w = w;
@@ -249,41 +253,69 @@ private class Input {
 		});
 	}
 
-	// at step n: whether all passed, once done, else null
+	// (how long an input may take to reach helder: the main thread reads the
+	// application's queue, then the program's turn; seconds)
+	static inline var WAIT = 3.0;
+
+	// at step n: whether all passed, once done, else null. Each input's
+	// outcome waited for, WAIT at most: not a count of the loop's turns,
+	// which take well under a millisecond while nothing is drawn (a press
+	// or a wheel at the root changes nothing on screen), so that one posted
+	// was not read yet when the check came (CI: "0 wheel events at the root")
 	public function step(n:Int):Null<Bool> {
-		switch n {
-			case 10:
-				sent = haxe.Timer.stamp();
+		if (n < 10) return null;
+		var now = haxe.Timer.stamp();
+		switch phase {
+			case 0:
 				if (!Inject.at(w.window, 200, 200, false, 6)) {
 					Sys.println("GlassWindowCheck: input not sent (CI's, or HELDER_TEST_INPUT=1): skipped");
 					return true;
 				}
-			case 30:
-				if (!check(list.scrollY > 0, 'a scroll where no glass is reaches the list under it: scrolled ${list.scrollY}')) return false;
-			case 50:
-				// (past the wheel's latch to the list the first scroll went to, ScrollHost.WHEEL_LATCH: 0.5 s)
-				var left = 1.0 - (haxe.Timer.stamp() - sent);
-				if (left > 0) Sys.sleep(left);
+				next(now);
+			case 1 if (list.scrollY > 0 || now - at > WAIT):
+				if (!check(list.scrollY > 0, 'a scroll where no glass is reaches the list under it: scrolled ${list.scrollY} (${ms(now - at)} ms)')) return false;
+				seen = now;
+				next(now);
+			// (past the wheel's latch to the list (ScrollHost.WHEEL_LATCH, the
+			// mirror's too: 0.5 s from the last notch, which came before it was
+			// seen scrolled): else the next scroll is the list's)
+			case 2 if (now - seen > @:privateAccess helder.ui.ScrollHost.WHEEL_LATCH + 0.3):
 				before = wheels;
+				listBefore = list.scrollY;
 				var m = middle(button);
 				Inject.at(w.window, m[0], m[1], false, 6);
-			case 80:
-				if (!check(wheels > before, 'a scroll over the glass button reaches helder: ${wheels - before} wheel events at the root')) return false;
+				next(now);
+			case 3 if (wheels > before || now - at > WAIT):
+				// (the list's offset: whether a lost scroll went to the list (its latch) or nowhere)
+				if (!check(wheels > before, 'a scroll over the glass button reaches helder: ${wheels - before} wheel events at the root (${ms(now - at)} ms), the list at ${list.scrollY} (${listBefore} before it)')) return false;
+				before = presses;
 				var m = middle(button);
 				Inject.at(w.window, m[0], m[1], true);
-			case 90:
+				next(now);
+			case 4 if (presses > before || now - at > WAIT):
 				for (g in [button, grouped]) {
 					var m = middle(g), hit = hit(m[0], m[1]);
 					check(hit == "", 'AppKit\'s hit test at a glass: ${hit == "" ? "no glass view, no host" : hit}');
 				}
 				var m = middle(grouped);
 				Inject.at(w.window, m[0], m[1], true);
-			case 110:
+				next(now);
+			// (and a moment on: a press that reached both would be seen)
+			case 5 if ((presses >= 11 && now - at > 0.2) || now - at > WAIT):
 				check(presses == 11, 'a press on the glass button and one on a group\'s glass reach helder: $presses (of 11: 1 and 10)');
 				return passed;
+			case _:
 		}
 		return null;
 	}
+
+	function next(now:Float) {
+		phase++;
+		at = now;
+	}
+
+	static function ms(s:Float):Int
+		return Math.round(s * 1000);
 }
 
 private class Scale {
