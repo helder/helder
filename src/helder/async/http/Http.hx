@@ -4,6 +4,7 @@ import haxe.Exception;
 import haxe.coro.Coroutine;
 import haxe.io.Bytes;
 import helder.async.*;
+import helder.async.Errors;
 
 // A minimal HTTP/1.1 server on helder.async's TCP: enough for a dev server.
 // Each connection is a child task of the caller's; its requests (kept alive)
@@ -33,7 +34,7 @@ class Http {
 			var res = try handler(req) catch (e:Exception) {
 				if (e is haxe.exceptions.CancellationException) {
 					s.close();
-					throw e;
+					throw Errors.kept(e);
 				}
 				Response.text("error: " + e.message, 500);
 			}

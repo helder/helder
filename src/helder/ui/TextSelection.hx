@@ -144,9 +144,9 @@ class TextSelection {
 					} else if (r == null && which == ALL && v.onMakeRow != null) {
 						var row = v.textRow(i);
 						path.push(i);
-						try visit(row.node) catch (e:Dynamic) {
+						try visit(row.node) catch (e:haxe.Exception) {
 							v.dropTextRow(row);
-							throw e;
+							throw helder.async.Errors.kept(e);
 						}
 						path.pop();
 						v.dropTextRow(row);

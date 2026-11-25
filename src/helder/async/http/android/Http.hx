@@ -8,6 +8,7 @@ import helder.async.http.Client.Reply;
 import helder.async.http.Client.RequestOptions;
 import helder.os.android.Jni;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // Client.request on Android: java.net.HttpURLConnection (the system's TLS
 // and certificates, the app's network security config: its cleartext rules
@@ -55,7 +56,7 @@ class Http {
 				r;
 			} catch (e:Exception) {
 				LibC.free(args);
-				throw e;
+				throw Errors.kept(e);
 			}
 		});
 
@@ -151,7 +152,7 @@ class Http {
 			return new Reply(status, map, all.getBytes());
 		} catch (e:Exception) {
 			JniEnv.PopLocalFrame(env, Ptr.nil());
-			throw e;
+			throw Errors.kept(e);
 		}
 	}}
 
@@ -320,7 +321,7 @@ class AndroidSocket implements helder.async.Stream.Source implements helder.asyn
 		} catch (e:Exception) {
 			LibC.free(args);
 			JniEnv.PopLocalFrame(env, Ptr.nil());
-			throw e;
+			throw Errors.kept(e);
 		}
 		LibC.free(args);
 		JniEnv.PopLocalFrame(env, Ptr.nil());
@@ -337,7 +338,7 @@ class AndroidSocket implements helder.async.Stream.Source implements helder.asyn
 		LibC.free(args);
 		try Java.check(env) catch (e:Exception) {
 			JniEnv.PopLocalFrame(env, Ptr.nil());
-			throw e;
+			throw Errors.kept(e);
 		}
 		var b = Bytes.alloc(got > 0 ? got : 0);
 		if (got > 0) {
@@ -368,7 +369,7 @@ class AndroidSocket implements helder.async.Stream.Source implements helder.asyn
 		LibC.free(args);
 		try Java.check(env) catch (e:Exception) {
 			JniEnv.PopLocalFrame(env, Ptr.nil());
-			throw e;
+			throw Errors.kept(e);
 		}
 		JniEnv.PopLocalFrame(env, Ptr.nil());
 		return null;
@@ -438,7 +439,7 @@ private class Java {
 			return r;
 		} catch (e:Exception) {
 			if (attach) JavaVm.DetachCurrentThread(vm);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

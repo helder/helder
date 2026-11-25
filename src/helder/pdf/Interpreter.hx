@@ -12,6 +12,7 @@ import helder.pdf.PdfValue;
 import helder.pdf.Document;
 import helder.pdf.Colors;
 import helder.pdf.PdfFont;
+import helder.async.Errors;
 
 // A page's content streams run on a helder.canvas Painter (after leanpdf's
 // interpreter, which runs them on Canvas 2D): the graphics state (q, Q,
@@ -73,7 +74,7 @@ class Interpreter {
 		var level = stack.length;
 		while (true) {
 			var v = try p.next() catch (e:PdfError) {
-				if (e.kind == TooLarge) throw e;
+				if (e.kind == TooLarge) throw Errors.kept(e);
 				p.pos++;
 				continue;
 			}
@@ -92,7 +93,7 @@ class Interpreter {
 			try
 				exec(op, resources)
 			catch (e:PdfError) {
-				if (e.kind == TooLarge) throw e;
+				if (e.kind == TooLarge) throw Errors.kept(e);
 			}
 			operands.resize(0);
 		}
@@ -371,7 +372,7 @@ class Interpreter {
 		var f = fonts.get(d);
 		if (f == null) {
 			f = try new PdfFont(doc, d) catch (e:PdfError) {
-				if (e.kind == TooLarge) throw e;
+				if (e.kind == TooLarge) throw Errors.kept(e);
 				null;
 			}
 			if (f == null) return null;
@@ -534,7 +535,7 @@ class Interpreter {
 			sub.gs.fillComps = gs.fillComps;
 		}
 		try sub.run(doc.stream(pv), Values.dict(doc.resolve(pd.get("Resources")))) catch (e:PdfError) {
-			if (e.kind == TooLarge) throw e;
+			if (e.kind == TooLarge) throw Errors.kept(e);
 		}
 		var pat = new helder.canvas.Pattern(cell.snapshot(), true, true, true);
 		// (the cell's pixels to pattern space, flipped as the cell was drawn)
@@ -618,7 +619,7 @@ class Interpreter {
 			pushState();
 			gs.ctm.transform(sx, 0, 0, sy, rx0 - x0 * sx, ry0 - y0 * sy);
 			try form(d, n, res) catch (e:PdfError) {
-				if (e.kind == TooLarge) throw e;
+				if (e.kind == TooLarge) throw Errors.kept(e);
 			}
 			popState();
 		}
@@ -726,7 +727,7 @@ class Interpreter {
 			var s = shownSize();
 			drawImage(PdfImage.decode(doc, d, PNull, res, fill, data, s[0], s[1]), Values.bool(d.get("Interpolate")));
 		} catch (e:PdfError) {
-			if (e.kind == TooLarge) throw e;
+			if (e.kind == TooLarge) throw Errors.kept(e);
 		}
 	}
 

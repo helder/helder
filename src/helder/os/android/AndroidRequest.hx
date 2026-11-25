@@ -1,6 +1,7 @@
 package helder.os.android;
 
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // org.hxmc.Request (helder.pack.android.Glue): what NativeActivity cannot
 // get, permissions' answers and an activity's result, through a
@@ -28,9 +29,9 @@ class AndroidRequest {
 		pending.set(id, done);
 		try
 			Jni.call(Jni.activity, Jni.method(Jni.cls("android.app.Activity"), "startActivity", "(Landroid/content/Intent;)V"), i.toI64())
-		catch (e:Dynamic) {
+		catch (e:haxe.Exception) {
 			pending.remove(id);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

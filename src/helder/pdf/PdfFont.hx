@@ -8,6 +8,7 @@ import helder.pdf.Document;
 import helder.pdf.Colors;
 
 import helder.text.FontFile;
+import helder.async.Errors;
 
 // A page's font: its codes (one byte, or a CMap's for a composite font),
 // each code's glyph as an outline and its advance (the font's /Widths, /W
@@ -53,7 +54,7 @@ class PdfFont {
 		switch tu {
 			case PStream(_, _):
 				toUnicode = try CMap.toUnicode(doc.stream(tu)) catch (e:PdfError) {
-					if (e.kind == TooLarge) throw e;
+					if (e.kind == TooLarge) throw Errors.kept(e);
 					null;
 				}
 			case _:
@@ -181,7 +182,7 @@ class PdfFont {
 					return;
 				}
 			} catch (e:PdfError) {
-				if (e.kind == TooLarge) throw e;
+				if (e.kind == TooLarge) throw Errors.kept(e);
 			} catch (_:Dynamic) {}
 		}
 		// (not embedded, or not read: a system face by the name's kind)

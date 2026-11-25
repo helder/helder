@@ -23,7 +23,7 @@ final class Replay {
 	public var began(default, null) = false;
 	public var framing(default, null) = false;
 	// (the render thread's: the first command that threw, rethrown to the program at its next wait)
-	public var error:Null<Dynamic> = null;
+	public var error:Null<haxe.Exception> = null;
 	// after each frame's present returned, where it ran (latency measured:
 	// tests/ui/RenderThreadTest)
 	public var onEndFrame:Null<Void->Void> = null;
@@ -80,7 +80,7 @@ final class Replay {
 					start = c.cursor();
 					step(c);
 				}
-			} catch (e:Dynamic) {
+			} catch (e:haxe.Exception) {
 				if (error == null) error = e;
 				c.seek(start + c.sizeAt(start));
 			}

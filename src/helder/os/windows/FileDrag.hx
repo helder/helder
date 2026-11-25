@@ -6,6 +6,7 @@ import helder.os.windows.Com.IUnknown;
 import helder.os.windows.FileOpenDialog.Shell32Com;
 import helder.os.windows.User32;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // OLE's source and the Shell's data object both live on the window's STA.
 @:hxmc.unsafe(gc)
@@ -51,7 +52,7 @@ class FileDrag {
 			if (image != null) attachImage(data, image, scale, x, y);
 		} catch (e:haxe.Exception) {
 			Com.release(data);
-			throw e;
+			throw Errors.kept(e);
 		}
 		return new FileDrag(hwnd, data, allowed, done);
 	}

@@ -176,7 +176,7 @@ class Property {
 					c.note(step.name + "(" + [for (a in c.drawn.slice(from)) show(a)].join(", ") + ")");
 				try step.run(s, c) catch (e:haxe.Exception) {
 					noted();
-					throw e;
+					throw helder.async.Errors.kept(e);
 				}
 				noted();
 				c.span(start);
@@ -184,7 +184,7 @@ class Property {
 			}
 		} catch (e:haxe.Exception) {
 			if (m.teardown != null) m.teardown(s);
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 		if (m.teardown != null) m.teardown(s);
 	}

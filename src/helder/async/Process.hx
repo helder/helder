@@ -53,9 +53,9 @@ class Process {
 			for (k in saved.keys()) if (!env.exists(k)) Sys.putEnv(k, null);
 			for (k => v in env) Sys.putEnv(k, v);
 		}
-		var p = try new sys.io.Process(cmd, args) catch (e:Dynamic) {
+		var p = try new sys.io.Process(cmd, args) catch (e:haxe.Exception) {
 			restore(dir, env, saved);
-			throw e;
+			throw Errors.kept(e);
 		}
 		restore(dir, env, saved);
 		pid = p.getPid();

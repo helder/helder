@@ -9,18 +9,18 @@ class Strips {
 		#if target.threaded
 		var n = Std.int(Math.max(1, Math.min(threads, count)));
 		if (n > 1) {
-			var done = new sys.thread.Lock(), failure:Null<Dynamic> = null;
+			var done = new sys.thread.Lock(), failure:Null<haxe.Exception> = null;
 			for (k in 1...n) {
 				var from = Std.int(count * k / n), to = Std.int(count * (k + 1) / n);
 				sys.thread.Thread.create(() -> {
-					try f(from, to) catch (e:Dynamic) failure = e;
+					try f(from, to) catch (e:haxe.Exception) failure = e;
 					done.release();
 				});
 			}
-			try f(0, Std.int(count / n)) catch (e:Dynamic) failure = e;
+			try f(0, Std.int(count / n)) catch (e:haxe.Exception) failure = e;
 			for (k in 1...n)
 				done.wait();
-			if (failure != null) throw failure;
+			if (failure != null) throw helder.async.Errors.carried(failure);
 			return;
 		}
 		#end

@@ -6,6 +6,7 @@ import helder.gfx.*;
 import helder.os.Event as OsEvent;
 import helder.ui.*;
 import sys.thread.Mutex;
+import helder.async.Errors;
 
 // A window's compositor (Layers' step 4b): scrolling at the display's rate
 // while the program is busy. The main thread hands it each input event as
@@ -216,7 +217,7 @@ class Compositor implements RenderIdle {
 		lock.acquire();
 		var r = try UiEvents.route(mirror, e) catch (x:haxe.Exception) {
 			lock.release();
-			throw x;
+			throw Errors.kept(x);
 		}
 		if (r == ScrollMirror.TAKEN) routedAt = haxe.Timer.stamp();
 		lock.release();

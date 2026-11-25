@@ -49,20 +49,20 @@ class Owner {
 	function clean() {
 		if (children == null && cleanups == null) return;
 		disposing++;
-		var failure:Null<Dynamic> = null;
+		var failure:Null<haxe.Exception> = null;
 		if (children != null) {
 			var cs = children;
 			children = null;
 			var i = cs.length;
 			while (i-- > 0)
-				try cs[i].dispose() catch (e:Dynamic) if (failure == null) failure = e;
+				try cs[i].dispose() catch (e:haxe.Exception) if (failure == null) failure = e;
 		}
 		if (cleanups != null) {
 			var fs = cleanups;
 			cleanups = null;
 			var i = fs.length;
 			while (i-- > 0)
-				try fs[i]() catch (e:Dynamic) if (failure == null) failure = e;
+				try fs[i]() catch (e:haxe.Exception) if (failure == null) failure = e;
 		}
 		disposing--;
 		// (every cleanup ran; the first failure reported: in a flush, at its end)

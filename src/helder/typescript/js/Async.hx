@@ -2,6 +2,7 @@ package helder.typescript.js;
 
 import helder.typescript.js.Values;
 import helder.typescript.js.Lib.*;
+import helder.async.Errors;
 
 // Generator objects: a compiled step function (see Frontend.resumableClosure)
 // resumed with a value and a mode (0 next, 1 throw, 2 return).
@@ -52,10 +53,10 @@ class Async {
 		g.suspended = false;
 		var v:Dynamic;
 		try v = call(g.step, undef(), [g, sent, mode])
-		catch (e:Dynamic) {
+		catch (e:haxe.Exception) {
 			g.running = false;
 			g.finished = true;
-			throw e;
+			throw Errors.kept(e);
 		}
 		g.running = false;
 		if (!g.suspended) {

@@ -4,6 +4,7 @@ import hxmc.NativeThread;
 import hxmc.Platform;
 import sys.thread.Lock;
 import sys.thread.Mutex;
+import helder.async.Errors;
 
 // The main thread and the program's. App.run on macOS, iOS, Windows and Linux runs the
 // program's loop on a thread of its own, as on Android, so that the main
@@ -144,7 +145,7 @@ class OsThread {
 			call(f, toProgram, programWake, toMain, mainWake)
 		catch (e:haxe.Exception) {
 			nest--;
-			throw e;
+			throw Errors.kept(e);
 		}
 		nest--;
 	}
@@ -177,7 +178,7 @@ class OsThread {
 		while (true) {
 			try drain(toMain) catch (e:haxe.Exception) {
 				nest--;
-				throw e;
+				throw Errors.kept(e);
 			}
 			mutex.acquire();
 			var done = c.done, left = until - haxe.Timer.stamp();
@@ -196,7 +197,7 @@ class OsThread {
 			mainWake.wait(Math.min(left, 0.002));
 		}
 		nest--;
-		if (c.error != null) throw c.error;
+		if (c.error != null) throw Errors.carried(c.error);
 		return true;
 	}
 
@@ -252,7 +253,7 @@ class OsThread {
 		}
 		program = 0;
 		helder.async.Driven.MainLoop.program = 0;
-		if (failure != null) throw failure;
+		if (failure != null) throw Errors.carried(failure);
 	}
 
 	// (a frame's handoffs allocate nothing: their Calls are reused)
@@ -280,7 +281,7 @@ class OsThread {
 		mutex.acquire();
 		spare.push(c);
 		mutex.release();
-		if (error != null) throw error;
+		if (error != null) throw Errors.carried(error);
 	}
 
 	static function drain(inbox:Array<Call>) {
@@ -305,7 +306,7 @@ class OsThread {
 			mutex.release();
 			if (wake != null) wake.release();
 			// (no one waits for it any more: its error is this thread's)
-			if (left && error != null) throw error;
+			if (left && error != null) throw Errors.carried(error);
 		}
 	}
 }

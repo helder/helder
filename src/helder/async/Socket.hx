@@ -24,7 +24,7 @@ class Socket implements Source implements Sink {
 		var sock = new Socket(s);
 		try new Op(Connect, sock.handle, null, 0, 0, host, port).run() catch (e:haxe.Exception) {
 			s.close();
-			throw e;
+			throw Errors.kept(e);
 		}
 		return sock;
 	}

@@ -2,6 +2,7 @@ package helder.ui;
 
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
+import helder.async.Errors;
 
 // What one screen of a program has of its own, instead of the program's
 // globals: the animation clock's steps and its timers (Clock), the keymap
@@ -105,9 +106,9 @@ class ScreenContext {
 	public function run<T>(f:Void->T):T {
 		var was = cur;
 		enter();
-		var r = try f() catch (e:Dynamic) {
+		var r = try f() catch (e:haxe.Exception) {
 			leave(was);
-			throw e;
+			throw Errors.kept(e);
 		}
 		leave(was);
 		return r;
