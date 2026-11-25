@@ -21,7 +21,7 @@ nav.back()             // pop
 ```
 
 ```haxe
-final nav = new Router();
+final nav = new Routes();
 nav.route('/', _ -> <Home/>)
   .route('/product/:id', p -> <Product id={p.id}/>)   // p: {id:String}
   .fallback(path -> <NotFound path={path}/>);
