@@ -657,7 +657,7 @@ final class Device {
 	@:typescript public function endFrame() {
 		#if helder.headless
 		// (a headless run's window: its frame read before it is presented, for the run's outputs)
-		if (surface.kind == Headless) helder.headless.Headless.run.present(surface, width, height, readPixels);
+		if (surface.kind == Headless) helder.os.headless.Headless.run.present(surface, width, height, readPixels);
 		#end
 		commands.begin(Replay.END_FRAME);
 		commands.end();

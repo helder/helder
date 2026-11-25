@@ -260,23 +260,23 @@ class App {
 		// (a headless run: the script's events, then a frame at the run's virtual time, its outputs taken)
 		if (!running || windows.length == 0) {
 			running = false;
-			helder.headless.Headless.run.finish();
+			helder.os.headless.Headless.run.finish();
 			return false;
 		}
 		Pointers.step();
-		helder.headless.Headless.run.events(onEvent);
+		helder.os.headless.Headless.run.events(onEvent);
 		// (a run on the virtual clock: the jobs handed to the pool so far land
 		// in this frame, whatever the machine's speed, not when their threads
 		// happen to end; serve's frames are the machine's clock's)
-		if (helder.headless.Headless.run.serve == null) {
+		if (helder.os.headless.Headless.run.serve == null) {
 			var l = MainLoop.main;
 			if (l != null) l.settle();
 		}
 		loopTurn();
 		if (running && windows.length > 0) {
-			frame.tick(helder.headless.Time.now, false);
+			frame.tick(helder.async.Time.now, false);
 			onFrame();
-			if (!helder.headless.Headless.run.framed()) running = false;
+			if (!helder.os.headless.Headless.run.framed()) running = false;
 		}
 		#if hxmc.dev helder.dev.Hot.framed(); #end return true; // (a dev build's frame: helder.dev.Literals' patches)
 		#end
@@ -463,7 +463,7 @@ class App {
 
 	public static function prefersDark():Bool {
 		#if helder.headless
-		return helder.headless.Headless.run.dark;
+		return helder.os.headless.Headless.run.dark;
 		#end
 		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) return helder.os.web.Dom.prefers_dark() == 1; #end
 		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) return IosWindow.dark(); #end
