@@ -1,5 +1,5 @@
 // TSX's holes through helder.markup's planner, as Haxe's markup's (helder.view
-// DESIGN.md 3.3): a hole or an attribute that reads is bound with no () =>
+// view's README, Markup): a hole or an attribute that reads is bound with no () =>
 // (a call, a read through a getter), a constant or a name is set once; a
 // component's prop that reads (Read, helder's and the program's) is given as a
 // function of its value; a signal's call is a read, a write or an update by

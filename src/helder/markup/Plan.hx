@@ -2,7 +2,7 @@ package helder.markup;
 
 import helder.markup.Syntax;
 
-// The markup compiler's middle (DESIGN.md 7.2): one literal's code, decided
+// The markup compiler's middle (typescript's README): one literal's code, decided
 // here for every language, written by a Target in its own (the Haxe macro's
 // expressions; helder's compiler, TypeScript's lowering): its holes ({expr}
 // children and attribute values, spreads, components' factories) declared
@@ -616,7 +616,7 @@ interface Target<E> {
 	// neutral: a neutral element's, whose events are ui's), checked against
 	// the events its renderer declares (@:events: a function of its event or
 	// of none, an untyped parameter typed as it; another an error at where);
-	// one that takes no event (DESIGN.md 6, 8: onPress={() -> ...}) given one
+	// one that takes no event (onPress={() -> ...}) given one
 	// it ignores, where the language needs that
 	function handler(e:E, name:String, renderer:Null<String>, neutral:Bool, where:Where):E;
 	// whether components are mounted with fast refresh's keys (hxmc.dev)

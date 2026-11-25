@@ -1,9 +1,9 @@
 // helder.view for TypeScript programs (helder.typescript): signals,
 // computations, markup (TSX) and its control flow, on helder.view.graph
-// (DESIGN.md). Each class is the Haxe class `__haxe` names; a function is one
+// (its README). Each class is the Haxe class `__haxe` names; a function is one
 // of a class's statics (`__haxe` names it), called directly by the compiled
 // program, its values converted by the types Haxe declares (the manifest,
-// DESIGN.md 7.3); a signal, a memo or a Read comes to the program as a
+// typescript's README); a signal, a memo or a Read comes to the program as a
 // function.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
@@ -11,7 +11,7 @@
 
 declare const __haxe: {render: "helder.view.Render.render", insert: "helder.view.Render.insert", signal: "helder.view.graph.Graph.signalValue", memo: "helder.view.graph.Graph.memo", effect: "helder.view.graph.Graph.effect", renderEffect: "helder.view.graph.Graph.renderEffect", flush: "helder.view.graph.Scheduler.flush", untrack: "helder.view.graph.Graph.untrack", root: "helder.view.graph.Graph.root", onCleanup: "helder.view.graph.Graph.onCleanup", onSettled: "helder.view.graph.Graph.onSettled", isPending: "helder.view.graph.Graph.isPending", For: "helder.view.Flow.For", Repeat: "helder.view.Flow.Repeat", Show: "helder.view.Flow.Show", Switch: "helder.view.Flow.Switch", Match: "helder.view.Flow.Match", Loading: "helder.view.Flow.Loading", Errored: "helder.view.Flow.Errored", __module: "helder.view.TypeScript"};
 
-// A value in the graph (DESIGN.md 3.1): called to read it (tracked inside
+// A value in the graph (view's README, Signals): called to read it (tracked inside
 // a computation), called with a value to write it, with a function to
 // update it from the latest value written (a write is committed at the
 // next flush: reads see the committed value until then). Made by
@@ -29,7 +29,7 @@ export interface Signal<T> {
 	peek(): T;
 }
 
-// A derived value (DESIGN.md 2, Memos): called to read it, computed when
+// A derived value (view's README, Signals): called to read it, computed when
 // first read and again when read after what it read changed; its readers
 // are marked only when the result differs.
 export interface Memo<T> {
@@ -38,7 +38,7 @@ export interface Memo<T> {
 	peek(): T;
 }
 
-// A prop that reads (DESIGN.md 3.2): a constant, a signal, a memo or a
+// A prop that reads (view's README, Signals): a constant, a signal, a memo or a
 // function, each read by calling it (`props.step()`), tracked as what it
 // reads is. Markup binds a prop of this type the way Solid binds props: a
 // hole that may read (3.3) is given as a function of it, so the component

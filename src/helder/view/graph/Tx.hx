@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// A transaction (DESIGN.md 2, Holds): the change one flush makes, or an
+// A transaction (view's README, Holds): the change one flush makes, or an
 // async answer landing, over the nodes it stages. Computations run for it
 // read its staged values; a render effect that reads a value not ready
 // (no armed boundary above it) blocks it, and it waits, parked, its

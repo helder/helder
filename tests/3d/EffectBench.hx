@@ -2,7 +2,7 @@ import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
 
-// What each of post's effects costs a frame (DESIGN-3D.md 7's budgets),
+// What each of post's effects costs a frame,
 // measured headless on the machine's software rasterizer (Linux: Mesa's
 // llvmpipe; Windows: D3D11's WARP): EffectScenes' courtyard at a phone's
 // render size (0.75 of 1080 x 2400: 810 x 1800), each configuration
