@@ -190,6 +190,28 @@ function tests() {
 					for (c in (layout == List ? [r.node] : r.node.children))
 						inside(c, c);
 			});
+		test("each grid cell asks for its thumbnail once (a hole's picture made once, not twice)", () -> {
+			Kinds.utc = true;
+			Tiles.forget();
+			var m = new OnDisk();
+			m.add("tests/fixtures/folder/");
+			for (n in sys.FileSystem.readDirectory("tests/fixtures/folder"))
+				m.add('tests/fixtures/folder/$n', sys.io.File.getBytes('tests/fixtures/folder/$n'));
+			var x = new Explorer(m, (_, _, _) -> {}, [], [], (_, _) -> () -> {});
+			var dir = helder.os.Paths.temp() + "/viewer-window-thumbs-" + Std.random(0x40000000);
+			x.thumbnails = new Thumbnails(new ThumbCache(1 << 20, 128 << 10, dir), 1);
+			var ui = new Ui(new StoryText(), 1212, 592);
+			var before:Int = @:privateAccess Tiles.serial;
+			Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+			x.start("tests/fixtures/folder");
+			for (_ in 0...3) {
+				helder.view.graph.Graph.flush();
+				ui.update();
+			}
+			var asked = @:privateAccess Tiles.serial - before, cells = [for (e in x.browser.items.value) if (Kinds.viewable(e) && !FolderModel.isMarkdown(e.name)) e];
+			x.thumbnails.close();
+			equals(asked, cells.length);
+		});
 	});
 }
 
@@ -210,4 +232,10 @@ private class Trickle extends MemoryFiles {
 		all.sort((a, b) -> Reflect.compare(b.name.length, a.name.length) * 2 + Reflect.compare(b.name, a.name));
 		return all;
 	}
+}
+
+// (files whose paths are on this disk: the thumbnails' queue reads them)
+private class OnDisk extends MemoryFiles {
+	override public function localPath(path:String):Null<String>
+		return path;
 }
