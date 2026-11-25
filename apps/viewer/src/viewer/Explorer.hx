@@ -21,6 +21,8 @@ class Explorer {
 	public final viewer:Viewer;
 	// a file open full size
 	public final full = new Cell(false);
+	// its opening from its tile and closing into it
+	public final zoom:Flight;
 	// the path bar being edited (Mod+L)
 	public final editingPath = helder.view.graph.Graph.signal(false);
 	// the shell's: the system's file manager at a file, the default app, the clipboard
@@ -68,6 +70,7 @@ class Explorer {
 		viewer = new Viewer(decode, null, pdfSizes);
 		viewer.read = this.read;
 		viewer.measure = (paths, done) -> measureAll(files, paths, done);
+		zoom = new Flight(this);
 		browser.onDir = d -> {
 			if (!choosing) sidebar.follow(d);
 			// (another folder: the decodes of the last let go)
@@ -242,21 +245,24 @@ class Explorer {
 	}
 
 	// a file of the folder full size, the viewer's list the browser's viewable files
+	// (from the browser: zoomed from its tile; a link followed in place)
 	public function view(name:String) {
-		var names = browser.viewable();
+		var names = browser.viewable(), was = full.value;
 		viewer.view(browser.dir.value, names, name);
 		full(true);
+		if (!was) zoom.open(browser.path(name));
 	}
 
 	// back to the browser, the file viewed last selected
 	public function close() {
 		if (!full.value) return;
-		var last = viewer.folder.name;
+		var last = viewer.folder.name, path = viewer.folder.current;
 		full(false);
 		viewer.fullscreen(false);
 		viewer.close();
 		if (last != "") browser.select(last);
 		if (focusList != null) focusList();
+		zoom.close(path ?? "");
 	}
 
 	// what a path or menu action acts on: the file shown full size, else the selection
