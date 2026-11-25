@@ -154,16 +154,18 @@ class Marks {
 	}
 
 	// the project's screens now: those new since the last (not the first time) rise into place, a stagger apart
-	public function saw(names:Array<String>) {
+	// (whether any did)
+	public function saw(names:Array<String>):Bool {
 		var was = seen;
 		seen = names.copy();
-		if (was == null) return;
+		if (was == null) return false;
 		var t = Clock.now, k = 0;
 		var fresh = [for (n in names) if (!was.contains(n)) {screen: n, at: t + STAGGER * k++}];
-		if (fresh.length == 0) return;
+		if (fresh.length == 0) return false;
 		arrivals(arrivalList = arrivalList.concat(fresh));
 		this.fresh(freshList = freshList.filter(n -> names.contains(n)).concat([for (a in fresh) a.screen]));
 		wake();
+		return true;
 	}
 
 	// frames shown now that were there before (the blank sheet's, unveiled by the first prompt): risen into place
