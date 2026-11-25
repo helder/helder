@@ -55,6 +55,16 @@ enum abstract Role(Int) to Int {
 	var Toolbar;
 	// a group of links that navigate (a landmark: ARIA's navigation; breadcrumbs, pages)
 	var Navigation;
+	// the other landmarks (markup's main, header, footer, aside, section,
+	// form: ARIA's main, banner, contentinfo, complementary, region, form),
+	// and a self-contained composition (article)
+	var Main;
+	var Banner;
+	var ContentInfo;
+	var Complementary;
+	var Region;
+	var Form;
+	var Article;
 
 	// the ARIA role of each (the browser's mirror)
 	public function aria():String
@@ -99,6 +109,20 @@ enum abstract Role(Int) to Int {
 			case MenuBar: "menubar";
 			case Toolbar: "toolbar";
 			case Navigation: "navigation";
+			case Main: "main";
+			case Banner: "banner";
+			case ContentInfo: "contentinfo";
+			case Complementary: "complementary";
+			case Region: "region";
+			case Form: "form";
+			case Article: "article";
+		}
+
+	// a landmark (ARIA's): a region of the window a screen reader moves between
+	public function landmark():Bool
+		return switch (cast this : Role) {
+			case Navigation | Main | Banner | ContentInfo | Complementary | Region | Form: true;
+			case _: false;
 		}
 
 	// a role whose name comes from its contents' text (ARIA's "name from

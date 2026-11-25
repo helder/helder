@@ -113,8 +113,8 @@ class Neutral {
 	}
 
 	// a field's keyboard (helder.os.TextKind's names): keyboard as its type
-	// (an input's email, url, search, tel) and inputmode, enterkey as
-	// enterkeyhint, autocapitalize, autocorrect (and spellcheck)
+	// (an input's email, url, search, tel) and inputmode, enterKeyHint,
+	// autoCapitalize, autoCorrect (and spellcheck)
 	public static function fieldKind(el:Dynamic, name:String, v:Dynamic) {
 		var s:Null<String> = v == null ? null : Std.string(v);
 		switch name {
@@ -123,11 +123,11 @@ class Neutral {
 				if (el.tagName == "INPUT" && el.type != "password") el.type = s != null && types.exists(s) ? types[s] : "text";
 				var mode = s == "number" ? "numeric" : s == "phone" ? "tel" : s;
 				if (mode == null) el.removeAttribute("inputmode") else el.setAttribute("inputmode", mode);
-			case "enterkey":
+			case "enterKeyHint":
 				if (s == null || s == "default") el.removeAttribute("enterkeyhint") else el.setAttribute("enterkeyhint", s);
-			case "autocapitalize":
+			case "autoCapitalize":
 				if (s == null) el.removeAttribute("autocapitalize") else el.setAttribute("autocapitalize", s);
-			case "autocorrect":
+			case "autoCorrect":
 				var on = v == true || s == "true" || s == "on" || s == "";
 				if (v == null) el.removeAttribute("autocorrect") else el.setAttribute("autocorrect", on ? "on" : "off");
 				if (v != null) el.spellcheck = on;

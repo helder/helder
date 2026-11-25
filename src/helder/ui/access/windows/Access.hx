@@ -465,7 +465,9 @@ class Access {
 			case 30022: bool(v, n.x + n.width <= 0 || n.y + n.height <= 0 || n.x >= a.ui.width || n.y >= a.ui.height); // IsOffscreen
 			case 30023 if (n.role == Slider || n.role == ProgressIndicator): int(v, 1); // Orientation: horizontal
 			case 30135 if (n.live != Off): int(v, n.live == Assertive ? 2 : 1); // LiveSetting (Polite, Assertive)
-			case 30157 if (n.role == Navigation): int(v, 80003); // LandmarkType (Navigation)
+			// LandmarkType (Navigation, Main, Form; the others custom, their kind LocalizedLandmarkType's)
+			case 30157 if (n.role.landmark()): int(v, n.role == Navigation ? 80003 : n.role == Main ? 80002 : n.role == Form ? 80001 : 80000);
+			case 30158 if (n.role.landmark() && n.role != Navigation && n.role != Main && n.role != Form): str(v, n.role.aria());
 			case 30102 if (n.current): str(v, "current=page"); // AriaProperties
 			case 30152 if (n.setSize > 0): int(v, n.posInSet); // PositionInSet
 			case 30153 if (n.setSize > 0): int(v, n.setSize); // SizeOfSet
