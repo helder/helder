@@ -33,18 +33,20 @@ typedef SurfaceProps = {
 	?title:helder.view.graph.Read<String>,
 	?width:helder.view.graph.Read<Int>,
 	?height:helder.view.graph.Read<Int>,
-	?theme:helder.view.graph.Read<Dynamic>,
+	?theme:helder.view.graph.Read<StyleSheet>,
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
-	?background:helder.view.graph.Read<Dynamic>,
+	?background:helder.view.graph.Read<Color>,
 	// the system's material behind the window ("blur", "mica", "sidebar", "glass":
-	// helder.os's Backdrop, where the system has it), seen through a clear or
-	// half-clear background; one makes the window transparent
-	?backdrop:helder.view.graph.Read<String>,
+	// helder.os's WindowBackdrop, where the system has it), seen through a
+	// clear or half-clear background; one makes the window transparent
+	?backdrop:helder.view.graph.Read<helder.os.WindowBackdrop>,
 	// a transparent window's clicks passing through what it doesn't draw
 	// (default true: UiWindow.clickThrough; pointer-events="none" on a
 	// node lets them through it too); false: it takes them everywhere
-	?clickThrough:Bool,
+	?clickThrough:helder.view.graph.Read<Bool>,
+	// the system's shadow around the window (helder.os's Window.shadow)
+	?shadow:helder.view.graph.Read<Bool>,
 	// dark or light (default: the system's appearance, UiWindow.dark)
 	?dark:helder.view.graph.Read<Bool>,
 	// the window closed by its user (default: closed)
@@ -59,27 +61,16 @@ typedef SurfaceProps = {
 	// window's buttons in its layout (WindowControls), dragged by its
 	// drag-region nodes, env(titlebar-area-*) its free area; "none": no
 	// title bar nor frame (its drag regions still move it); default the system's
-	?titlebar:String,
-	// over every other window (helder.os's Window.onTop)
-	?onTop:helder.view.graph.Read<Bool>,
-	// false: out of the task bar and the window switcher (Window.taskbar)
-	?taskbar:helder.view.graph.Read<Bool>,
-	// helder.text's own engine's font smoothing in this window: "on" (as
-	// macOS draws by default) or "off" ("antialiased", as CSS's
-	// -webkit-font-smoothing); default the app's (helder.text.Shaping.smoothing)
-	?fontSmoothing:helder.view.graph.Read<String>,
-	// "native": the platform's own scrolling drives the scrollers where it
-	// has it (iOS's UIScrollView, the browser's: their physics, bounce,
-	// indicators; Android's fling, VelocityTracker and OverScroller; macOS's
-	// trackpad gestures and momentum, stretching at the ends, its overlay
-	// scrollbars);
-	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
-	?scrolling:String,
+	?titlebar:helder.os.TitleBar,
 	// the scrollbars: "system" (default: macOS's System Settings' Show
 	// scroll bars; elsewhere always shown), "overlay" (shown while
 	// scrolling, hovered or dragged, over the content: macOS's, helder's
 	// thin ones on Windows, Linux and the web) or "always"
 	?scrollbars:String,
+	// over every other window (helder.os's Window.onTop)
+	?onTop:helder.view.graph.Read<Bool>,
+	// false: out of the task bar and the window switcher (Window.taskbar)
+	?taskbar:helder.view.graph.Read<Bool>,
 	?children:UiView
 };
 
@@ -978,37 +969,34 @@ class UiWindow {
 	// (a background as Surface takes it: a Color, or a string Color.parse
 	// reads, markup's background="#333333", which taken as the Int it is not
 	// was 0: transparent black)
-	@:allow(helder.ui) static function colour(v:Dynamic):Color
-		return Std.isOfType(v, String) ? Color.parse((v : String)) : (cast v : Color);
-
 	// <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
 	@:typescript public static function Surface(props:SurfaceProps):RootView {
 		var web = Platform.os() == 3;
 		var width:Null<Int> = Render.read(props.width), height:Null<Int> = Render.read(props.height);
 		var title:Null<String> = Render.read(props.title);
-		var bg:Dynamic = Render.read(props.background), backdrop:Null<String> = Render.read(props.backdrop);
+		var bg:Null<Color> = props.background == null ? null : props.background();
+		var backdrop:Null<helder.os.WindowBackdrop> = props.backdrop == null ? null : props.backdrop();
 		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar == "inset" ? Inset : props.titlebar == "none" ? helder.os.TitleBar.None : Standard, (bg != null && colour(bg).a < 255) || (backdrop != null && backdrop != "none"));
+			props.titlebar ?? Standard, (bg != null && bg.a < 255) || (backdrop != null && backdrop != None));
 		// (a backdrop seen through a clear background, unless one is given)
-		if (bg == null && backdrop != null && backdrop != "none") w.background = Color.TRANSPARENT;
-		if (props.backdrop != null) Graph.renderEffect(() -> (Render.read(props.backdrop) : String), v -> w.window.backdrop = cast v);
+		if (bg == null && backdrop != null && backdrop != None) w.background = Color.TRANSPARENT;
+		if (props.backdrop != null) Graph.renderEffect(() -> props.backdrop(), v -> w.window.backdrop = v);
 		// (each reactive prop followed after its first value)
 		follow(props.title, (v:String) -> w.window.title = v);
 		follow(props.width, (_:Int) -> resize(w, props));
 		follow(props.height, (_:Int) -> resize(w, props));
-		if (props.theme != null) Graph.renderEffect(() -> Render.read(props.theme), v -> w.ui.theme = v);
-		if (props.background != null) Graph.renderEffect(() -> Render.read(props.background), (v:Dynamic) -> {
-			w.background = colour(v);
+		if (props.theme != null) Graph.renderEffect(() -> props.theme(), v -> w.ui.theme = v);
+		if (props.background != null) Graph.renderEffect(() -> props.background(), v -> {
+			w.background = v;
 			w.ui.requestFrame();
 		});
 		if (props.dark != null) Graph.renderEffect(() -> Render.read(props.dark), v -> w.ui.dark = v);
-		if (props.fontSmoothing != null) Graph.renderEffect(() -> (Render.read(props.fontSmoothing) : String), v -> {
-			w.atlas().smoothing = helder.text.FontSmoothing.parse(v);
+		if (props.clickThrough != null) Graph.renderEffect(() -> props.clickThrough(), v -> {
+			w.clickThrough = v;
 			w.ui.requestFrame();
 		});
-		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
+		if (props.shadow != null) Graph.renderEffect(() -> props.shadow(), v -> w.window.shadow = v);
 		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
-		if (props.clickThrough == false) w.clickThrough = false;
 		if (props.onTop != null) Graph.renderEffect(() -> (Render.read(props.onTop) : Bool), v -> w.window.onTop = v);
 		if (props.taskbar != null) Graph.renderEffect(() -> (Render.read(props.taskbar) : Bool), v -> w.window.taskbar = v);
 		if (props.onClose != null) w.onClose = props.onClose;

@@ -380,7 +380,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// handles e's actions dispatched through it (Ui.dispatchAction: from the focus
 	// up): handle true takes one, false lets it bubble; state what a menu
 	// shows it as (default: Enabled). Returns what removes it.
-	public function on<T>(type:helder.ui.actions.Actions.ActionType<T>, handle:T->Bool, ?state:T->helder.ui.actions.Actions.ActionState):Void->Void {
+	public function on<T>(type:helder.ui.actions.Actions.ActionType<T>, handle:T->Bool, ?state:T->helder.ui.actions.ActionState):Void->Void {
 		var h = helder.ui.actions.Actions.ActionHandler.of(type, handle, state);
 		if (actionHandlers == null) actionHandlers = [];
 		actionHandlers.push(h);

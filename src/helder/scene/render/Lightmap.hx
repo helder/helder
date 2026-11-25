@@ -42,9 +42,3 @@ class Lightmap {
 	public static inline function of(node:Node):Null<Lightmap>
 		return node.world.store(KIND).get(node);
 }
-
-// what a Lightmap holds: the ambient light alone (the lights added), or all of it
-enum abstract LightmapMode(String) {
-	var Indirect = "indirect";
-	var All = "all";
-}

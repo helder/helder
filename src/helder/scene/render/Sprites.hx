@@ -128,11 +128,11 @@ class Sprites extends InstancedMesh {
 	}
 
 	// sprite i's colour (linear rgb, times the material's base colour)
-	override public function setColor(i:Int, r:Float, g:Float, b:Float) {
+	override public function setColor(i:Int, color:Vec3) {
 		var o = i * FIELDS;
-		sprites[o + 7] = r;
-		sprites[o + 8] = g;
-		sprites[o + 9] = b;
+		sprites[o + 7] = color.x;
+		sprites[o + 8] = color.y;
+		sprites[o + 9] = color.z;
 		turned = false;
 	}
 
@@ -258,16 +258,6 @@ class Sprites extends InstancedMesh {
 		var l = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 		return l > 0 ? a / l : a;
 	}
-}
-
-// how sprites face the camera (Sprites.mode)
-enum abstract SpriteMode(String) {
-	// facing the camera, upright on the screen
-	var Spherical = "spherical";
-	// turning about Sprites.axis only, upright along it
-	var Axis = "axis";
-	// facing +z, turned about z by their rotation
-	var Fixed = "fixed";
 }
 
 // what Sprites are made with (each optional): how they face the camera

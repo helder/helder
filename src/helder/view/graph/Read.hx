@@ -26,6 +26,25 @@ abstract Read<T>(Reader<T>) from Reader<T> to Reader<T> {
 	@:from static inline function ofValue<T>(v:T):Read<T>
 		return new Read(new Const(v));
 
+	// (a value where a Read of a type made from it is wanted: Read<Color>'s
+	// "#333333", Read<Dim>'s 320, converted as that type converts it)
+	@:noCompletion @:from static macro function ofConverted(e:haxe.macro.Expr):haxe.macro.Expr {
+		var inner = switch haxe.macro.Context.follow(haxe.macro.Context.getExpectedType()) {
+			case TAbstract(_.get() => {name: "Read"}, [t]): haxe.macro.TypeTools.toComplexType(t);
+			case _: return e;
+		}
+		// (a function of no arguments, a hole markup made one: each value converted)
+		var fn = try switch haxe.macro.Context.follow(haxe.macro.Context.typeof(e)) {
+			case TFun([], _): true;
+			case _: false;
+		} catch (_:Dynamic) false;
+		if (fn) return macro {
+			var f = $e;
+			(new helder.view.graph.Read.Thunk<$inner>(() -> (f() : $inner)) : helder.view.graph.Read<$inner>);
+		};
+		return macro (new helder.view.graph.Read.Const<$inner>($e) : helder.view.graph.Read<$inner>);
+	}
+
 	@:op(a()) inline function get():T
 		return this.read();
 

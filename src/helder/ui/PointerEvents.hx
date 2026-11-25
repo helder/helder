@@ -5,4 +5,7 @@ package helder.ui;
 enum abstract PointerEvents(String) {
 	var Auto = "auto";
 	var None = "none";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

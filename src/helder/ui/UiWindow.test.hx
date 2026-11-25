@@ -2,22 +2,23 @@ package helder.ui;
 
 import helder.test.Test;
 import helder.gfx.Color;
+import helder.ui.UiWindow.SurfaceProps;
 
 // A <Surface>'s background as markup gives it: a string ("#333333")
 // parsed, a Color as it is
 function tests() {
 	describe("UiWindow", () -> {
 		test("a background string: the colour it names", () -> {
-			equals((@:privateAccess UiWindow.colour("#333333") : Int), (Color.rgb(0x333333) : Int));
-			equals((@:privateAccess UiWindow.colour("#7fb8ff") : Int), (Color.rgb(0x7fb8ff) : Int));
+			var p:SurfaceProps = {background: "#333333"};
+			equals((p.background() : Int), (Color.rgb(0x333333) : Int));
 		});
 		test("transparent: a background clear, or of an alpha", () -> {
-			equals(@:privateAccess UiWindow.colour("transparent").a, 0);
-			equals(@:privateAccess UiWindow.colour("#00000080").a, 128);
+			var p:SurfaceProps = {background: "transparent"}, q:SurfaceProps = {background: "#00000080"};
+			equals([p.background().a, q.background().a], [0, 128]);
 		});
 		test("a Color as it is", () -> {
-			equals((@:privateAccess UiWindow.colour(Color.rgb(0x161618)) : Int), (Color.rgb(0x161618) : Int));
-			equals((@:privateAccess UiWindow.colour(0xFFFFFFFF) : Int), 0xFFFFFFFF);
+			var p:SurfaceProps = {background: Color.rgb(0x161618)};
+			equals((p.background() : Int), (Color.rgb(0x161618) : Int));
 		});
 	});
 }

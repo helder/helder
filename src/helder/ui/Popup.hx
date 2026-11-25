@@ -40,33 +40,3 @@ class Popup extends Node {
 		style.position = Absolute;
 	}
 }
-
-enum abstract Placement(Int) {
-	var Below;
-	var Above;
-	var Right;
-	var Left;
-	var Center;
-	var Manual;
-	var Point;
-	var TopLeft;
-	var TopRight;
-	var BottomLeft;
-	var BottomRight;
-
-	@:from public static function parse(s:String):Placement
-		return switch s.toLowerCase() {
-			case "below" | "bottom": Below;
-			case "above" | "top": Above;
-			case "right": Right;
-			case "left": Left;
-			case "center": Center;
-			case "manual": Manual;
-			case "point": Point;
-			case "top-left": TopLeft;
-			case "top-right": TopRight;
-			case "bottom-left": BottomLeft;
-			case "bottom-right": BottomRight;
-			case _: throw "Placement: not a placement: " + s;
-		}
-}

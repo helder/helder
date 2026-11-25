@@ -93,7 +93,7 @@ class Controls implements Markup {
 	// What a control does, said under it once the pointer rests on it (half
 	// a second), with its shortcut beside it: for a button that shows only an
 	// icon. A press or the pointer leaving hides it. Slots: "tip", "kbd".
-	public static function Tip(props:{label:String, ?keys:String, ?placement:String, ?children:Any}):View {
+	public static function Tip(props:{label:String, ?keys:String, ?placement:helder.ui.Placement, ?children:Any}):View {
 		// (on the animation clock: the same in a headless run as on a screen)
 		var open = signal(false), hovered = -1.0;
 		function hide() {
@@ -111,7 +111,7 @@ class Controls implements Markup {
 			});
 		}} onPointerLeave={_ -> hide()} onPointerDown={_ -> hide()}>
 			{props.children}
-			<Popover open={open} placement={props.placement ?? "below"} gap={6} dismissOnOutside={false}>
+			<Popover open={open} placement={props.placement ?? Below} gap={6} dismissOnOutside={false}>
 				<view slot="tip" role="tooltip" direction="row" align-items="center" column-gap={8} pointer-events="none">
 					<text>{props.label}</text>
 					<Show when={props.keys != null}><text slot="kbd">{props.keys ?? ""}</text></Show>

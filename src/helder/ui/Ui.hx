@@ -2101,7 +2101,7 @@ class Ui extends ScrollHost {
 	var pendingSerial = 0;
 
 	// a window's handler of e's actions (Node.on's)
-	public function on<T>(type:helder.ui.actions.Actions.ActionType<T>, handle:T->Bool, ?state:T->helder.ui.actions.Actions.ActionState):Void->Void {
+	public function on<T>(type:helder.ui.actions.Actions.ActionType<T>, handle:T->Bool, ?state:T->helder.ui.actions.ActionState):Void->Void {
 		var h = helder.ui.actions.Actions.ActionHandler.of(type, handle, state);
 		actionHandlers.push(h);
 		return () -> actionHandlers.remove(h);
@@ -2147,7 +2147,7 @@ class Ui extends ScrollHost {
 
 	// what a menu shows an action as, from (default: the focus): the state
 	// of the first handler on the path that takes it
-	public function actionState(a:helder.ui.actions.Actions.Action, ?from:Node):helder.ui.actions.Actions.ActionState {
+	public function actionState(a:helder.ui.actions.Actions.Action, ?from:Node):helder.ui.actions.ActionState {
 		var h = handlerOf(a, from);
 		return h == null ? Unhandled : h.state(a);
 	}
@@ -2304,7 +2304,7 @@ class Ui extends ScrollHost {
 	// indicators; a finger's drag over one is theirs to take (nativeBegins),
 	// what they scroll to the scrollers' (nativeScrolled), and TouchScroll,
 	// helder's own, takes only the touches elsewhere. Off: helder's own
-	// everywhere (a Surface's scrolling="helder")
+	// everywhere (UiWindow.scrolling false)
 	public var nativeScroll = false;
 	// (the platform draws the scrollbars: the thumbs not drawn; barsOf:
 	// those of the scrollers it says, the browser's where a scroller's

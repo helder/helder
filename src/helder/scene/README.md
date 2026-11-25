@@ -1182,7 +1182,7 @@ InstancedMesh.attach(world.node("belt"), rocks);                  // drawn while
 rocks.bounds = beltBounds;                                        // optional: culled whole, fitted by Shadows
 // each frame, nothing allocated:
 for (i in 0...rocks.count) rocks.setTransform(i, x, y, z, qx, qy, qz, qw, scale);
-rocks.setColor(i, r, g, b);
+rocks.setColor(i, new Vec3(r, g, b));
 ```
 
 The data is the instance buffer's layout (`data`, 64 bytes an instance;
@@ -1263,7 +1263,7 @@ var trees = new Sprites(device, Material.unlit({texture: atlas, alphaCutoff: 0.5
 Sprites.attach(world.node("trees"), trees);
 trees.count = n;
 for (i in 0...n) trees.set(i, x[i], h[i] / 2, z[i], h[i] * 0.7, h[i], 0, i % 2);   // position, size, rotation, atlas cell
-trees.setColor(i, r, g, b);
+trees.setColor(i, new Vec3(r, g, b));
 ```
 
 `mode` is `Spherical` (facing the camera, turned on the screen by a

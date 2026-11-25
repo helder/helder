@@ -180,8 +180,7 @@ constants are Rune's measurements, credited where they are kept).
 - Chosen per app with `Shaping.smoothing` (`HELDER_FONT_SMOOTHING=on|off`,
   or `-D helder.text.smoothing=off`; On by default on every OS, so
   goldens do not vary), per window with its atlas's
-  (`renderer.atlas.smoothing`), in markup and TSX with `<Surface
-  fontSmoothing="off">` (or `"antialiased"`; reactive). Each mode, and
+  (`renderer.atlas.smoothing`). Each mode, and
   each radius an ink gives, keeps its own atlas entries: switching back
   draws nothing again. `GlyphAtlas.get` takes the ink (0xRRGGBB).
 - Its masks land within 3 levels of 255 of CoreGraphics' for Inter at 8

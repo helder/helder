@@ -88,9 +88,3 @@ class Dof {
 		return mode == Focus ? new Vec4(1, distance, aperture, radius) : new Vec4(2, band, Math.max(falloff, 0.0001), radius * Math.max(0, strength));
 
 }
-
-// how depth of field's circle grows (Dof.focus, Dof.tiltShift)
-enum abstract DofMode(String) {
-	var Focus = "focus";
-	var TiltShift = "tilt-shift";
-}

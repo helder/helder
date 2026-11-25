@@ -590,7 +590,7 @@ class Viewer {
 	}
 
 	// what a menu shows it as
-	public function actionState(a:ViewerAction):helder.ui.actions.Actions.ActionState
+	public function actionState(a:ViewerAction):helder.ui.actions.ActionState
 		return switch a {
 			case Next | Previous | First | Last: folder.index >= 0 ? Enabled : Disabled;
 			case ZoomIn | ZoomOut | Fit | ActualSize: (state.peek() == Shown && md == null) || doc != null ? Enabled : Disabled;

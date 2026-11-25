@@ -33,7 +33,7 @@ class MediaIcon extends helder.ui.Node {
 			case "pause":
 				canvas.path(new Path().rect(6, 4, 4, 16, 1).rect(14, 4, 4, 16, 1), c);
 			case _:
-				var line = {width: 2.0, paint: (c : helder.ui.Paint), cap: helder.ui.Stroke.LineCap.Round, join: helder.ui.Stroke.LineJoin.Round};
+				var line = {width: 2.0, paint: (c : helder.ui.Paint), cap: helder.ui.LineCap.Round, join: helder.ui.LineJoin.Round};
 				canvas.path(new Path().moveTo(11, 5).lineTo(6, 9).lineTo(2, 9).lineTo(2, 15).lineTo(6, 15).lineTo(11, 19).close(), null, line);
 				if (kind == "muted") canvas.path(new Path().moveTo(16, 9).lineTo(22, 15).moveTo(22, 9).lineTo(16, 15), null, line);
 				else canvas.path(new Path().moveTo(15.5, 8.5).arcTo(5, 5, 0, false, true, 15.5, 15.5).moveTo(19, 5).arcTo(10, 10, 0, false, true, 19, 19), null, line);

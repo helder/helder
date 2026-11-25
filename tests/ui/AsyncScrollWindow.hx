@@ -128,7 +128,7 @@ class AsyncScrollWindow {
 		}, e -> w.handle(e));
 	}
 
-	static function touch(w:helder.ui.UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
+	static function touch(w:helder.ui.UiWindow, kind:helder.os.EventKind, x:Float, y:Float, ms:Float) {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;

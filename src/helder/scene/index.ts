@@ -51,7 +51,7 @@ export {
   RaycastOptions, Raycaster, Bvh, Text3D, ClusteredLights, Clusters, Lod,
   InstanceCulling, Environment, Sh, LightProbe, ProbeGrid, ReflectionProbe,
   Probes, Lightmap, Lightmaps, AreaLights, InputMap, Bindings, FixedStep,
-  Device, Surface, Window, App, Event
+  Device, Surface, Window, App, Event, Aabb, CameraRay
 } from './runtime'
 export type {
   MaterialShader, BoxOptions, CapsuleOptions, CircleOptions, ClusteredOptions,
@@ -62,7 +62,7 @@ export type {
   SsaoOptions, SsrOptions, TaaOptions, Text3DOptions, TextGeometryOptions,
   ToonOptions, TorusKnotOptions, TorusOptions, TubeOptions, EventKind,
   Feature, ToneMap, Antialias, DofMode, LineUnits, LineJoin, LineCap,
-  LightKind, LightmapMode, SpriteMode, MaterialBlend
+  LightKind, LightmapMode, SpriteMode, MaterialBlend, Texture
 } from './runtime'
 export {
 	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, pbrDirect, pbrIndirect, reflectance, litSurface, daylight,

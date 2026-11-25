@@ -67,7 +67,7 @@ function tests() {
 				for (i in 0...s.count) {
 					var a = t + i * 0.01;
 					s.set(i, Math.cos(a) * i * 0.01, Math.sin(a), -i * 0.02, 1, 1, a, i % 16);
-					s.setColor(i, 1, Math.sin(a) * 0.5 + 0.5, 1);
+					s.setColor(i, new Vec3(1, Math.sin(a) * 0.5 + 0.5, 1));
 				}
 				s.prepare(Mat4.perspective(1, 1, 0.1, 100) * MathTools.lookAt(new Vec3(Math.sin(t) * 5, 1, 5), new Vec3(0, 0, 0), new Vec3(0, 1, 0)));
 			}

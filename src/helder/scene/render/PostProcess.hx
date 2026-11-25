@@ -587,23 +587,3 @@ class PostProcess {
 		device.destroyTexture(black);
 	}
 }
-
-// the curve from linear light to the display
-enum abstract ToneMap(String) {
-	// Sobotka's AgX: hues kept, highlights to white
-	var AgX = "agx";
-	// ACES filmic, Narkowicz's fit: the 8-bit path's (aces), so a
-	// scene tuned there keeps its look
-	var Aces = "aces";
-	// none: clipped at 1
-	var Clamp = "clamp";
-}
-
-// antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
-// None, or Fxaa (in the composite: its read of the scene along the edges);
-// SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
-// value set at run time would link every technique's passes)
-enum abstract Antialias(String) {
-	var None = "none";
-	var Fxaa = "fxaa";
-}

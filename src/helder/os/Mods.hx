@@ -6,6 +6,9 @@ enum abstract Mod(String) {
 	var Control = "control";
 	var Alt = "alt";
 	var Meta = "meta";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }
 
 // The modifier keys held with an event (Event.mods), a set of Mod kept as

@@ -22,9 +22,9 @@ import helder.view.graph.Signal;
 class SafeArea {
 	// top, right, bottom, left in UI pixels (the current screen's:
 	// helder.ui.ScreenContext, a story host's screens each their own)
-	public static var insets(get, never):Signal<Edges>;
+	public static var insets(get, never):helder.view.graph.Read<Edges>;
 
-	static inline function get_insets():Signal<Edges>
+	static inline function get_insets():helder.view.graph.Read<Edges>
 		return ScreenContext.current.safeArea;
 
 	// (UiWindow) the insets now: the signal set when they changed

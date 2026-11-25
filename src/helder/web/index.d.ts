@@ -32,7 +32,7 @@ export type Stop = "offscreen";
 // them; regions carry the markers hydration reads (HtmlNode).
 export declare class Static {
 	// content as HTML
-	static render(content: unknown): string;
+	static render(content: View): string;
 	// a whole page: <!doctype html> and content (an <html> element)
 	static document(content: unknown): string;
 	// writes a page (or any text), its directories made

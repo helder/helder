@@ -22,7 +22,7 @@ package helder.scene;
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
 @:typescript("helder/scene", "runtime.d.ts")
-@:typescript.classes(helder.scene.World, helder.scene.Camera, helder.scene.render.Light, helder.scene.render.Renderer, helder.scene.render.Shadows, helder.scene.render.Fog, helder.scene.render.Material,
+@:typescript.classes(helder.scene.World, helder.scene.Camera, helder.scene.Camera.CameraRay, helder.scene.math.Aabb, helder.scene.render.Light, helder.scene.render.Renderer, helder.scene.render.Shadows, helder.scene.render.Fog, helder.scene.render.Material,
 	helder.scene.render.Material.UvTransform, helder.scene.render.Physical, helder.scene.render.Transmission,
 	helder.scene.render.MeshRenderer, helder.scene.render.Shapes, helder.scene.render.Geometry, helder.scene.render.VertexData, helder.scene.math.Curve3,
 	helder.scene.render.InstancedMesh, helder.scene.render.Sprites, helder.scene.render.Model, helder.scene.render.MaterialShader, helder.scene.render.PostProcess,
@@ -37,9 +37,9 @@ package helder.scene;
 	helder.scene.render.ProbeGrid, helder.scene.render.ReflectionProbe, helder.scene.render.Probes, helder.scene.render.Lightmap, helder.scene.render.Lightmaps,
 	helder.scene.render.AreaLights, helder.scene.input.InputMap,
 	helder.scene.input.Bindings, helder.scene.FixedStep, helder.gfx.Device, helder.os.Surface, helder.os.Window, helder.os.App, helder.os.Event, helder.scene.Script)
-@:typescript.types(helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.Event.EventKind, helder.scene.input.Binding, helder.gfx.Feature,
-	helder.scene.render.PostProcess.ToneMap, helder.scene.render.PostProcess.Antialias, helder.scene.render.Dof.DofMode, helder.scene.render.Lines.LineUnits,
-	helder.scene.render.Lines.LineJoin, helder.scene.render.Lines.LineCap, helder.scene.render.Light.LightKind, helder.scene.render.Lightmap.LightmapMode,
-	helder.scene.render.Sprites.SpriteMode, helder.scene.render.Material.MaterialBlend)
+@:typescript.types(helder.gfx.Texture, helder.gfx.shader.Shader, helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.EventKind, helder.scene.input.Binding, helder.gfx.Feature,
+	helder.scene.render.ToneMap, helder.scene.render.Antialias, helder.scene.render.DofMode, helder.scene.render.LineUnits,
+	helder.scene.render.LineJoin, helder.scene.render.LineCap, helder.scene.render.LightKind, helder.scene.render.LightmapMode,
+	helder.scene.render.SpriteMode, helder.scene.render.MaterialBlend)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

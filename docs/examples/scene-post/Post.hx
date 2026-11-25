@@ -9,7 +9,7 @@ import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
 import helder.scene.render.*;
-import helder.scene.render.PostProcess.ToneMap;
+import helder.scene.render.ToneMap;
 
 // An HDR renderer (offscreen, hdr: new Renderer(device, true, samples,
 // true)) keeps light brighter than white in RGBA16F targets; a PostProcess

@@ -4,7 +4,7 @@ import helder.os.Places;
 import viewer.Decode.Decoded;
 import viewer.Files;
 import viewer.Listing;
-import helder.ui.actions.Actions.ActionState;
+import helder.ui.actions.ActionState;
 import viewer.ViewerActions;
 
 using StringTools;

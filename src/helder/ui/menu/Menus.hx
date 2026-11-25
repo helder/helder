@@ -116,7 +116,7 @@ class Menus {
 		};
 		n.onPointerUp = e -> if (e.pointerType == helder.os.PointerType.Mouse && drawn != null && drawn.isOpen) drawn.release(e.x, e.y);
 		// (a mouse's click: its press opened it already)
-		n.onActivate = e -> if (e == null || e.type != helder.ui.Event.EventType.Click || e.pointerType != helder.os.PointerType.Mouse) open();
+		n.onActivate = e -> if (e == null || e.type != helder.ui.EventType.Click || e.pointerType != helder.os.PointerType.Mouse) open();
 	}
 }
 

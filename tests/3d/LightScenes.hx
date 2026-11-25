@@ -4,7 +4,7 @@ import helder.gfx.shader.Vec4;
 import helder.scene.*;
 import helder.scene.math.Quat;
 import helder.scene.render.*;
-import helder.scene.render.Light.LightKind;
+import helder.scene.render.LightKind;
 import helder.scene.render.Lod.LodLevel;
 
 // Lighting reference frames: lights at scale and

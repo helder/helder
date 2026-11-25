@@ -17,4 +17,7 @@ enum abstract Feature(String) {
 	// Encoder.drawIndirect, drawIndexedIndirect, dispatchIndirect), written
 	// by a compute stage
 	var Indirect = "indirect";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

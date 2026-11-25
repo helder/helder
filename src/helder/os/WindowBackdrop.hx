@@ -13,4 +13,7 @@ enum abstract WindowBackdrop(String) to String {
 	var Mica = "mica";
 	var Sidebar = "sidebar";
 	var Glass = "glass";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

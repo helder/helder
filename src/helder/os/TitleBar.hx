@@ -13,6 +13,9 @@ enum abstract TitleBar(String) to String {
 	var Standard = "standard";
 	var Inset = "inset";
 	var None = "none";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }
 
 // what a point of an inset window is
@@ -30,6 +33,9 @@ enum abstract TitleHit(String) {
 	var TopRight = "top-right";
 	var BottomLeft = "bottom-left";
 	var BottomRight = "bottom-right";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }
 
 @:noCompletion

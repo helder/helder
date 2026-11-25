@@ -671,7 +671,7 @@ class Scenes {
 					var a = i * 0.25, d = 0.4 + i * 0.012;
 					var q = helder.scene.math.Quat.axisAngle(new Vec3(0.2822, 0.9407, 0.1881), i * 0.37);
 					set.setTransform(i, Math.cos(a) * d, Math.sin(i * 0.05) * 0.4, Math.sin(a) * d, q.x, q.y, q.z, q.w, 0.6 + (i % 5) * 0.12);
-					set.setColor(i, 0.5 + 0.5 * Math.cos(a), 0.5 + 0.5 * Math.cos(a + 2.1), 0.5 + 0.5 * Math.cos(a + 4.2));
+					set.setColor(i, new Vec3(0.5 + 0.5 * Math.cos(a), 0.5 + 0.5 * Math.cos(a + 2.1), 0.5 + 0.5 * Math.cos(a + 4.2)));
 				}
 				set.bounds = new helder.scene.math.Aabb(new Vec3(-6, -0.8, -6), new Vec3(6, 0.8, 6));
 				InstancedMesh.attach(world.node("swarm"), set);
@@ -1000,7 +1000,7 @@ class Scenes {
 				for (i in 0...9) {
 					var x = -3.2 + i * 0.8, z = -1.5 - (i % 3) * 0.9, h = 1.1 + (i % 4) * 0.25;
 					trees.set(i, x, h / 2, z, h * 0.7, h, 0, i % 2);
-					trees.setColor(i, 0.7 + 0.1 * (i % 3), 0.9, 0.7);
+					trees.setColor(i, new Vec3(0.7 + 0.1 * (i % 3), 0.9, 0.7));
 				}
 				var clouds = new Sprites(device,
 					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: Alpha, fog: false}), 8);
@@ -1021,7 +1021,7 @@ class Scenes {
 					n.position = new Vec3(x, 0.5, 0.6);
 					MeshRenderer.attach(n, postMesh);
 					halos.set(i, x, 1.05, 0.6, 0.7, 0.7);
-					halos.setColor(i, 1, 1 - i * 0.25, 0.5 + i * 0.5);
+					halos.setColor(i, new Vec3(1, 1 - i * 0.25, 0.5 + i * 0.5));
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.9, 0.8), 1.6));

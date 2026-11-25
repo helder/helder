@@ -411,7 +411,7 @@ class WinLayersWindow {
 			}
 			if (w.needsFrame()) w.frame() else App.wait(0.004);
 			w.device.settle();
-		}, e -> if (e.kind == helder.os.Event.EventKind.Close) w.close() else w.handle(e));
+		}, e -> if (e.kind == helder.os.EventKind.Close) w.close() else w.handle(e));
 	}
 
 	// (the compositor's frames from t0 to t1, ms from t0: when the render
