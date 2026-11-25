@@ -15,6 +15,9 @@ import helder.cli.Options.Usage;
 class Cli {
 	static function main() {
 		Term.init();
+		// (hxmc's module cache off for every build this starts: no faster for
+		// helder's builds, and seen building stale code; HXMC_MODULE_CACHE=1 turns it on)
+		if (Sys.getEnv("HXMC_MODULE_CACHE") == null) Sys.putEnv("HXMC_MODULE_CACHE", "0");
 		// (helder build's compilation server, started by it in the background)
 		if (BuildServer.isCommand(Sys.args())) {
 			Async.main(task -> Sys.exit(BuildServer.serve(task, Sys.args())));

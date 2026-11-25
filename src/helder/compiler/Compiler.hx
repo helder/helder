@@ -55,6 +55,8 @@ class Compiler {
 		var hxmcStd = Sys.getEnv("HXMC_STD");
 		if (hxmcStd != null && hxmcStd != "" && @:privateAccess hxmc.HaxeMain.selectsHxmc(args, 0)) args = args.concat(["-cp", hxmcStd]);
 		hxmc.Defines.install();
+		// (off unless HXMC_MODULE_CACHE=1: no faster for helder's builds, and seen building stale code)
+		if (Sys.getEnv("HXMC_MODULE_CACHE") == null) Sys.putEnv("HXMC_MODULE_CACHE", "0");
 		hxmc.ModuleCache.install();
 		hxmc.ir.CInterop.install();
 		hxmc.TargetFlags.install();

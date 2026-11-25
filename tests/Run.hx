@@ -37,6 +37,8 @@ class Run {
 		// (no helder build server kept warm: the lanes' builds, many at once, each its own compiler; BuildServer)
 		if (Sys.getEnv("HELDER_BUILD_SERVER") == null) Sys.putEnv("HELDER_BUILD_SERVER", "0");
 		if (Sys.getEnv("HELDER_BACKGROUND") == null) Sys.putEnv("HELDER_BACKGROUND", "1");
+		// (hxmc's module cache off: no faster for helder's builds, and seen building stale code; HXMC_MODULE_CACHE=1 turns it on)
+		if (Sys.getEnv("HXMC_MODULE_CACHE") == null) Sys.putEnv("HXMC_MODULE_CACHE", "0");
 		var args = Sys.args();
 		buildOnly = args.remove("--build-only");
 		usePrebuilt = args.remove("--prebuilt");
