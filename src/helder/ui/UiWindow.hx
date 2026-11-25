@@ -246,8 +246,8 @@ class UiWindow {
 		if (open[0] != this) open[0].ui.claim();
 		#if helder.headless
 		// (a headless run: the ui's events and clock the run's virtual time, the first window's nodes its tree)
-		Ui.now = () -> helder.headless.Time.now;
-		var run = helder.headless.Headless.run;
+		Ui.now = () -> helder.async.Time.now;
+		var run = helder.os.headless.Headless.run;
 		Clock.reducedMotion = run.reducedMotion;
 		if (run.inspector == null) run.inspector = new helder.ui.draw.UiInspector(ui);
 		#end
@@ -423,7 +423,7 @@ class UiWindow {
 
 	// there is something new to draw
 	public function needsFrame():Bool
-		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
+		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
 			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves();
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
@@ -442,7 +442,7 @@ class UiWindow {
 	// first (now: what the frame's events started, Ui.now's, is not after
 	// it, as the vsync's time App.frame.time may be)
 	public function frame() {
-		Clock.tick(clock != null ? clock() : #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end);
+		Clock.tick(clock != null ? clock() : #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end);
 		// (laid out at the surface's size: the device's follows it only at
 		// beginFrame, so that a single resize, a maximise's, laid out at the
 		// last size would be drawn into the new one and stay so)
@@ -644,7 +644,7 @@ class UiWindow {
 			capture = null;
 		}
 		#if helder.headless
-		helder.headless.Headless.run.present(window.surface, w, h, c.readPixels);
+		helder.os.headless.Headless.run.present(window.surface, w, h, c.readPixels);
 		#else
 		c.present(window.surface);
 		#end
@@ -892,7 +892,7 @@ class UiWindow {
 	@:typescript public static function run(?content:RootView) {
 		if (content != null) Render.open(content);
 		App.run(() -> {
-			var now = #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end;
+			var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;
 			if (now - darkAsked > 1) {
 				darkAsked = now;
 				// (the user's keymap file, read again when it changed: the menus' labels too)

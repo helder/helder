@@ -15,7 +15,10 @@ using StringTools;
 // after its last key, three at most, in a corner (bottom-left by default);
 // and a ripple at each press. One fixed style, light or dark (keysTheme;
 // the run's theme by default), whatever the program's look.
-class Overlay {
+@:keep class Overlay implements helder.os.headless.Headless.HeadlessOverlay {
+	static function __init__()
+		helder.os.headless.Headless.overlays = (keys, theme, pointer) -> new Overlay(keys, theme, pointer);
+
 	static inline var SHOWN = 1.5;
 	static inline var FADE = 0.25;
 	static inline var JOIN = 1.0;
