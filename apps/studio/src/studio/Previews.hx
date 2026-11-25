@@ -53,12 +53,16 @@ class Previews {
 	// "starting", "building", "running", "failed" (the last good build keeps running)
 	public final status = signal("starting");
 	public final diagnostics:Signal<Array<Diagnostic>> = signal([]);
+	// (the last build's, as a plain value: a signal's write lands at the event's end)
+	public var latest(default, null):Array<Diagnostic> = [];
 	// the last build's time, a patch's (ms)
 	public final buildMs = signal(0);
 	// told: a screen's new frame
 	public var onFrame:Null<Screen->Void> = null;
 	// told: a line of the studio's log (the builds, the programs' output)
 	public var onLog:String->Void = s -> Sys.println(s);
+	// told: a build's end (failed: why, its diagnostics), or nothing could start
+	public var onBuilt:Null<(ok:Bool, why:String, diagnostics:Array<Diagnostic>) -> Void> = null;
 	// how the host's frames come: "iosurface", "dxgi", "dmabuf" (shared
 	// textures), "copy" (shared memory), "file" (a project without stories);
 	// null until it said
@@ -109,6 +113,12 @@ class Previews {
 
 	public function screen(name:String):Null<Screen>
 		return Lambda.find(screens, s -> s.info.name == name);
+
+	// the project's screens changed (a story file read again): those whose
+	// names stay kept (their last frames), the new made, the gone let go;
+	// the next build's host draws them
+	public function follow()
+		Screen.follow(screens, project.live());
 
 	// whether every screen shows a frame
 	public function allShown():Bool
@@ -180,6 +190,7 @@ class Previews {
 	function fail(why:String) {
 		setStatus("failed");
 		onLog('studio: $why');
+		if (onBuilt != null) onBuilt(false, why, []);
 	}
 
 	// a file of the project written: at once, or after the build in progress
@@ -216,13 +227,15 @@ class Previews {
 		var r = service.build(words, project.dir, changed);
 		var ms = Math.round((haxe.Timer.stamp() - t0) * 1000);
 		if (r.ok) try helder.cli.AssetStep.after(next, project.entry.target, project.entry.classPaths.concat([project.entry.root]), true) catch (_:Dynamic) {}
-		diagnostics([for (d in r.diagnostics) d.file == null ? d : {file: project.real(d.file), line: d.line, column: d.column, endColumn: d.endColumn, severity: d.severity, message: d.message}]);
+		var ds = [for (d in r.diagnostics) d.file == null ? d : {file: project.real(d.file), line: d.line, column: d.column, endColumn: d.endColumn, severity: d.severity, message: d.message}];
+		diagnostics(latest = ds);
 		building = false;
 		buildMs(ms);
 		if (!r.ok) {
 			setStatus("failed");
 			onLog('studio: the build failed in $ms ms' + (exe == "" ? "" : "; the last good build keeps running"));
 			if (r.messages != "") onLog(r.messages);
+			if (onBuilt != null) onBuilt(false, "the build failed", ds);
 			return false;
 		}
 		exe = next;
@@ -230,12 +243,13 @@ class Previews {
 		crashes = 0;
 		onLog('studio: built ${project.name}\'s screens in $ms ms');
 		setStatus("running");
+		if (onBuilt != null) onBuilt(true, "", ds);
 		return true;
 	}
 
 	// whether the program is the stories' host (else the project's own main: one window)
 	inline function hosting():Bool
-		return screens[0].info.source.match(Story(_));
+		return screens.length > 0 && screens[0].info.source.match(Story(_));
 
 	// the host started (withSnapshot: from the state its last one saved)
 	@:coroutine function launch(task:Node, withSnapshot:Bool) {
@@ -266,6 +280,7 @@ class Previews {
 		if (p == null) return;
 		p.closeStdin();
 		process = p;
+		hosted = hosting();
 		said = "";
 		startedAt = haxe.Timer.stamp();
 		// (the last process's frames' targets are not this one's; its copies' mappings let go: their pixels copied here)
@@ -317,6 +332,8 @@ class Previews {
 
 	// the program's report of an uncaught error (hxmc's: the error, then its frames), its last
 	var said = "";
+	// (whether the running program is the stories' host: a reload to the other kind starts afresh)
+	var hosted = false;
 
 	// the program's connection: its hello answered, then its messages
 	@:coroutine function connected(socket:Socket) {
@@ -450,6 +467,8 @@ class Previews {
 	@:coroutine public function saved(task:Node, file:String, ?literalsOnly:Bool):String {
 		if (service == null || service.sources == null) return "failed";
 		if (building || rebuilding) return rebuild(task, [file]) ? "built" : "failed";
+		// (after a failed build: built again, its failure shown until one is good)
+		if (failed && literalsOnly != true) return rebuild(task, project.sources()) ? "built" : "failed";
 		var why = null;
 		var patches = service.sources.patches(file, w -> why = w);
 		if (patches != null && patches.length == 0) return "unchanged";
@@ -531,7 +550,7 @@ class Previews {
 		}
 		process = null;
 		connection = null;
-		launch(task, saved);
+		launch(task, saved && hosted == hosting());
 	}
 
 	// the screens in view (the others suspended in the host, their last
@@ -597,7 +616,7 @@ class Previews {
 
 // One screen: its story, its last frame (natively: the host's target it is, its buffer)
 class Screen {
-	public final info:ScreenInfo;
+	public var info(default, null):ScreenInfo;
 	public final slug:String;
 	// its last frame (replaced in place: one texture) and the frames' count
 	public final image:Signal<Null<Image>> = signal(null);
@@ -628,6 +647,22 @@ class Screen {
 	public function new(info:ScreenInfo) {
 		this.info = info;
 		slug = ~/[^A-Za-z0-9_-]+/g.replace(info.name, "-");
+	}
+
+	// (screens following the project's: by name, the kept ones' info the new)
+	public static function follow(screens:Array<Screen>, live:Array<ScreenInfo>) {
+		var next = [
+			for (i in live) {
+				var s = Lambda.find(screens, s -> s.info.name == i.name);
+				if (s == null) new Screen(i) else {
+					s.info = i;
+					s;
+				}
+			}
+		];
+		screens.resize(0);
+		for (s in next)
+			screens.push(s);
 	}
 
 	// its size in points (the program's window when the story has none)

@@ -71,7 +71,7 @@ class Board implements Markup {
 		var s = studio.previews.screen(r().name);
 		return <view tag={"screen-" + Shell.slug(s.info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}>
-			<image src={s.image()} width={r().w} height={r().h}/>
+			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
 			<Show when={s.crashedSignal()}>
 				<view tag="crashed" position="absolute" left={8} top={8} right={8} row-gap={2}>
 					<text color={c("fg2")} font-size={Theme.SMALL}>stopped</text>
@@ -113,9 +113,15 @@ class Board implements Markup {
 			}</For>
 			<For each={studio.layout.screens()} by={(r:Rect) -> r.name}>{(r:Read<Rect>) ->
 				<view tag={"caption-" + Shell.slug(r().name)} position="absolute" left={sx(studio, r().x) - 4} top={sy(studio, r().y) - 22} height={18} padding="0 4"
-					justify="center">
-					<text font-size={Theme.SMALL} max-lines={1} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
+					direction="row" align-items="center" column-gap={6} max-width={frameWidth(studio, r()) + 8}>
+					<text font-size={Theme.SMALL} max-lines={1} shrink={0} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
 						color={studio.focused() == r().name ? c("accent-ink") : c("fg3")}>{label(studio, r().name)}</text>
+					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_))}>
+						<view tag={"failed-" + Shell.slug(r().name)} height={18} padding="0 6" radius={Theme.RADIUS} shrink={1} min-width={0} background={c("error-soft")}
+							justify="center">
+							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" color={c("error")}>{failed(studio)}</text>
+						</view>
+					</Show>
 				</view>
 			}</For>
 			<Show when={selected(studio) != null}>{selectionBox(studio)}</Show>
@@ -130,6 +136,18 @@ class Board implements Markup {
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
 			}</For>
 		</view>;
+	}
+
+	// (a failed build, by each live frame: its first error and where)
+	static function failed(studio:Studio):String {
+		var f = studio.failure();
+		return f == null ? "" : "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}');
+	}
+
+	// (a frame's width in the stage's points)
+	static function frameWidth(studio:Studio, r:Rect):Float {
+		studio.camera.changed();
+		return r.w * studio.camera.k;
 	}
 
 	// (a design's selection: the others' boxes, in the stage's points)
