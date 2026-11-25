@@ -134,7 +134,7 @@ class Tools {
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
-		var diags = pr == null ? [] : [for (d in pr.diagnostics.peek()) d];
+		var diags = pr == null ? [] : [for (d in pr.latest) d];
 		return {
 			result: pr == null ? "saved" : pr.failed ? "failed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
 			message: studio.message.peek(),
