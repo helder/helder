@@ -5,7 +5,7 @@ import viewer.Decode.Decoded;
 import viewer.PdfLayout;
 
 // A PDF shown as one continuous column of pages (PdfLayout), without a
-// window: where it is scrolled, its zoom (fit to the width until zoomed
+// window: where it is scrolled, its zoom (PdfLayout.auto until zoomed
 // otherwise, then about a point), the page the view is on, and the pages
 // drawn: those in view first, then the one before and after, each at the
 // size shown in device pixels (again when a zoom needs more, the one drawn
@@ -59,13 +59,13 @@ class PdfDoc {
 	function get_pages():Int
 		return layout.sizes.length;
 
-	// the view's size (its first: fitted to its width, at the top)
+	// the view's size (its first: auto, at the top)
 	public function view(width:Float, height:Float) {
 		if (width <= 0 || height <= 0 || (sized && width == layout.viewWidth && height == layout.viewHeight)) return;
 		sized = true;
 		layout.setView(width, height);
 		if (fitted) {
-			var s = layout.zoomAbout(layout.fitWidth(), x, y, 0, 0);
+			var s = layout.zoomAbout(layout.auto(), x, y, 0, 0);
 			moved(s.x, s.y);
 		} else moved(layout.clampX(x), layout.clampY(y));
 	}
@@ -93,18 +93,19 @@ class PdfDoc {
 	public function step(dir:Int)
 		zoomBy(dir > 0 ? 1.25 : 0.8, layout.viewWidth / 2, layout.viewHeight / 2);
 
-	// fitted to the width, the top of the view where it was in its page
+	// auto again (as it opened), the top of the view where it was in its page
 	public function fit() {
-		var s = layout.zoomAbout(layout.fitWidth(), x, y, layout.viewWidth / 2, 0);
+		var s = layout.zoomAbout(layout.auto(), x, y, layout.viewWidth / 2, 0);
 		fitted = true;
 		moved(s.x, s.y);
 	}
 
 	public function actual()
-		zoomTo(1, layout.viewWidth / 2, layout.viewHeight / 2);
+		zoomTo(PdfLayout.ACTUAL, layout.viewWidth / 2, layout.viewHeight / 2);
 
+	// the zoom of the actual size (96 dpi)
 	public function percent():Int
-		return Math.round(layout.zoom * 100);
+		return Math.round(layout.zoom / PdfLayout.ACTUAL * 100);
 
 	// --- moves
 

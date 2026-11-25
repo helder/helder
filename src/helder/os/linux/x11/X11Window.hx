@@ -324,7 +324,7 @@ class X11Window {
 	}
 
 	// (Window.backdrop: KDE's blur behind the window, its whole area
-	// (_KDE_NET_WM_BLUR_BEHIND_REGION empty); blur and mica alike, no glass;
+	// (_KDE_NET_WM_BLUR_BEHIND_REGION empty); blur, mica and sidebar alike, no glass;
 	// none where no one made the atom: KWin does)
 	function setBackdrop(b:WindowBackdrop):Bool {
 		if (b == Glass) return false;

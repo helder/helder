@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.async.Async;
 import helder.story.StoryText;
 import helder.test.Test;
 import helder.ui.Clock;
@@ -18,7 +19,7 @@ import helder.view.Render;
 // decoded as the viewer decodes, a remote one's alt text; the source
 // (Mod+U, the bar's button); the keys scrolling; its text one selection
 // (a drag across blocks copied, Mod+A once pressed in it); the inspector's
-// preview and the grid's tile
+// preview and the grid's tile; pictures laid out at their sizes before they decode
 function tests() {
 	describe("Markdown", () -> {
 		beforeEach(() -> helder.ui.actions.Keymap.mac = false);
@@ -127,6 +128,48 @@ function tests() {
 			equals(md.source.peek(), false);
 			equals(x.actionState(ToggleSource), Unchecked);
 		});
+		test("its pictures at their sizes from the first frame: nothing moves as they decode", async(() -> {
+			// (its pictures measured through the files, on the loop; decoded once asked to)
+			var m = Fixtures.files([dir, "tests/fixtures/folder"]), decodes = [];
+			m.add('$dir/two.md', haxe.io.Bytes.ofString("# Two\n\n![small](pic.png)\n\nBetween them.\n\n![large](../folder/photo%202.jpg)\n\n## After\n\nThe end.\n"));
+			var x = new Explorer(m, (path, side, done) -> decodes.push(() -> done(Decode.file({path: path, side: side}))), [], [], Preview.now, null,
+				(path, done) -> done(m.text(path)));
+			var ui = new Ui(new StoryText(), 1100, 900);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			function frame() {
+				for (_ in 0...2) {
+					helder.view.graph.Graph.flush();
+					ui.update();
+					Clock.finish();
+				}
+			}
+			x.start('$dir/two.md');
+			var t0 = haxe.Timer.stamp();
+			while (x.viewer.state.peek() != Shown && haxe.Timer.stamp() - t0 < 2) Async.delay(0.001);
+			frame();
+			var page = ui.root.find("markdown-page");
+			function blocks():Array<String> {
+				var out = [];
+				function walk(n:Node) {
+					if (n.slot != null && StringTools.startsWith(n.slot, "markdown-")) out.push(n.slot + " " + n.rect().y + " " + n.rect().height);
+					for (c in n.children)
+						walk(c);
+				}
+				walk(page);
+				return out;
+			}
+			var first = blocks(), pictures = all(page, "markdown-image", []);
+			equals(pictures.length, 2);
+			equals([for (p in pictures) (cast p : ImageNode).image == null], [true, true]);
+			equals([for (p in pictures) p.width], [13.0, 680.0]);
+			equals(pictures[1].height, Math.round(680 * 1048 / 1242) + 0.0);
+			for (d in decodes)
+				d();
+			frame();
+			equals([for (p in pictures) (cast p : ImageNode).image != null], [true, true]);
+			equals(blocks(), first);
+		}));
 		test("its text one selection: across its blocks, copied; Mod+A with the focus in it", () -> {
 			var t = open(), x = t.x;
 			x.start('$dir/doc.md');

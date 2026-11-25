@@ -531,6 +531,8 @@ class Renderer implements TextureCanvas {
 	final tiled = new haxe.ds.ObjectMap<Layer, LayerTiles>();
 	final tileWalk = new Walk();
 	var rastering = false;
+	// (the tile drawn into: what it is drawn from noted)
+	var into:Null<LayerTile> = null;
 
 	public function layerTiles(l:Layer):Bool {
 		if (!tiles || rastering) return false;
@@ -591,7 +593,7 @@ class Renderer implements TextureCanvas {
 			for (i in i0...i1) {
 				var k = t.get(i, j);
 				if (k == null || !k.valid(l)) k = raster(l, t, i, j);
-				k.frame = frames;
+				used(k);
 			}
 		if (a == 0) drawTiles(t, i0, j0, i1, j1) else {
 			var x0 = clipX0, y0 = clipY0, x1 = clipX1, y1 = clipY1, r0 = clipR0, r1 = clipR1, r2 = clipR2, r3 = clipR3;
@@ -652,6 +654,18 @@ class Renderer implements TextureCanvas {
 		return true;
 	}
 
+	// (a tile drawn or composed this frame, and the images and opacity
+	// groups it was drawn from: not freed while it is shown)
+	function used(k:LayerTile) {
+		k.frame = frames;
+		for (id in k.images) {
+			var e = textures.get(id);
+			if (e != null) e.frame = frames;
+		}
+		for (g in k.groups)
+			g.frame = frames;
+	}
+
 	// (the tiles i0...i1, j0...j1 drawn where their layer is now, under the
 	// clip; flat, each cut to it, so that no pixel outside is shaded)
 	function drawTiles(t:LayerTiles, i0:Int, j0:Int, i1:Int, j1:Int) {
@@ -699,6 +713,9 @@ class Renderer implements TextureCanvas {
 		var s = scale, x0 = i * TILE, y0 = j * TILE;
 		k.content = l.content;
 		k.stamp = l.stamp;
+		k.images.resize(0);
+		k.groups.resize(0);
+		into = k;
 		k.whole = l.covers(x0 / s - t.rx, y0 / s - t.ry, (x0 + TILE) / s - t.rx, (y0 + TILE) / s - t.ry);
 		var sBatch = batch, sTextures = runTextures, sRun = run, sOx = ox, sOy = oy, sW = targetW, sH = targetH;
 		var c0 = clipX0, c1 = clipY0, c2 = clipX1, c3 = clipY1, r0 = clipR0, r1 = clipR1, r2 = clipR2, r3 = clipR3;
@@ -731,6 +748,7 @@ class Renderer implements TextureCanvas {
 		rastering = true;
 		l.list.replay(this, w);
 		rastering = false;
+		into = null;
 		batch = sBatch;
 		runTextures = sTextures;
 		run = sRun;
@@ -765,7 +783,8 @@ class Renderer implements TextureCanvas {
 	}
 
 	// (past the budget: the tiles longest unseen first, of layers not drawn
-	// for EVICT frames all of them; none at all: trim)
+	// for EVICT frames all of them, but those of the compositor's frame
+	// shown (the last one's); none at all: trim)
 	function evictTiles(all:Bool) {
 		var gone:Array<Layer> = null;
 		for (l => t in tiled)
@@ -782,7 +801,7 @@ class Renderer implements TextureCanvas {
 			var worst:Null<LayerTile> = null, from:Null<LayerTiles> = null;
 			for (t in tiled)
 				for (k in t.tiles)
-					if (k.frame < frames && (worst == null || k.frame < worst.frame)) {
+					if (k.frame < frames - 1 && (worst == null || k.frame < worst.frame)) {
 						worst = k;
 						from = t;
 					}
@@ -1016,6 +1035,11 @@ class Renderer implements TextureCanvas {
 		if (!l.scroll || contentFrame < 0 || !flat || l.backdrop == 0) return false;
 		var t = tiled.get(l), s = scale;
 		if (t == null || t.content != l.content || t.scale != s || t.tiles.length == 0) return false;
+		// (what the compositor draws from is drawn: the program's own frame
+		// may not draw the scroller (kept, or the system's layers'), and what
+		// it shows must not age out under the compositor, blank until the
+		// program draws it again)
+		t.frame = frames;
 		c.groups.push(batch.count);
 		c.tileAt.push(Std.int(c.tiles.length / 2));
 		for (v in [contentFrame, clipFrame, clipX0, clipY0, clipX1, clipY1, clipR0, clipR1, clipR2, clipR3, t.rx, t.ry, tx, ty, alpha, 0])
@@ -1026,6 +1050,7 @@ class Renderer implements TextureCanvas {
 			for (i in ri0...ri1) {
 				var k = t.get(i, j);
 				if (k == null || !k.valid(l) || k.group.texture == null) continue;
+				used(k);
 				c.tiles.push(i);
 				c.tiles.push(j);
 				c.tileTextures.push(cast k.group.texture);
@@ -1235,6 +1260,8 @@ class Renderer implements TextureCanvas {
 	// image of up to PAGED pixels a side with its pixels here into a page,
 	// any other (a browser's, a large one) a texture of its own
 	function texture(img:Image):ImageEntry {
+		var k = into;
+		if (k != null && k.images.indexOf(img.id) < 0) k.images.push(img.id);
 		if (img.shared != null) return sharedTexture(img);
 		var e = textures.get(img.id);
 		if (e != null) e.frame = frames;
@@ -1525,6 +1552,7 @@ class Renderer implements TextureCanvas {
 		g.y = gy0;
 		g.alpha = alpha * a;
 		g.frame = frames;
+		if (into != null) into.groups.push(g);
 		// (the state it is drawn in, given back at popOpacity)
 		g.outer = batch;
 		g.outerTextures = runTextures;
@@ -2242,6 +2270,9 @@ private class LayerTile {
 	public var stamp = -1;
 	public var whole = false;
 	public var frame = 0;
+	// (the images, by id, and the opacity groups it was drawn from)
+	public final images:Array<Int> = [];
+	public final groups:Array<Group> = [];
 
 	public function new(i, j) {
 		this.i = i;

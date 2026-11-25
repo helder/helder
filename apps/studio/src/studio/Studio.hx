@@ -105,6 +105,10 @@ class Studio {
 	// view's making (Reload: made again, the project and previews kept)
 	public final crash:Signal<Null<Crash>> = signal(null);
 	public final made = signal(0);
+	// the last build's failure (null: none, or the next build was good):
+	// why, its first error and the diagnostics (the live frames show it,
+	// Board; the prompt's turn can)
+	public final failure:Signal<Null<Failure>> = signal(null);
 	// the status line's message
 	public final message = signal("");
 	// the stage's size (points): what fits a view; its node; bumped when it changes
@@ -171,6 +175,7 @@ class Studio {
 		docs.onChange = changed;
 		if (previews != null) {
 			previews.onFrame = framed;
+			previews.onBuilt = built;
 			var pr = previews;
 			hold(() -> pr.allShown(), "the screens' first frames", 300);
 		}
@@ -895,6 +900,7 @@ class Studio {
 	function framed(s:Screen) {
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
+		if (s.version == 1) log("screen-shown", {screen: s.info.name});
 		if (!shownAll && previews.allShown()) {
 			shownAll = true;
 			var ms = Math.round((haxe.Timer.stamp() - openedAt) * 1000);
@@ -1063,21 +1069,32 @@ class Studio {
 		log("frames", {file: file, frames: [for (s in project.screens) if (s.file == file) s.name], renamed: renamed});
 	}
 
-	// (natively) the design files on disk watched, a second apart: one changed
-	// there (another editor's save, git) read into the studio as an edit of
-	// the file's (in the history, undone like any other), one added or
-	// deleted its frames shown or gone
+	// (natively) the design and story files on disk watched, a second apart:
+	// one changed there (another editor's save, an agent's, git) read into the
+	// studio as an edit of the file's (in the history, undone like any other),
+	// one added or deleted its frames or stories shown or gone (a story's: built)
 	@:coroutine function watch() {
 		#if !(hxmc.target == "wasm32-wasi")
 		var stamps = new Map<String, Float>();
 		function stamp(f:String):Float
 			return try sys.FileSystem.stat(f).mtime.getTime() catch (_:Dynamic) -1;
-		for (f in project.designFiles())
+		// (each file's text as it was: a change on disk is one from it)
+		for (f in Project.found(project.dir)) {
 			stamps.set(f, stamp(f));
+			try docs.get(f) catch (_:Dynamic) {}
+		}
+		function added(f:String, text:Null<String>) {
+			if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
+			else if (storiesChanged(f, text) && previews != null) {
+				message(text == null ? "a story file removed: building" : "a story file added: building");
+				log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
+				rebuild(f, true);
+			}
+		}
 		while (true) {
 			Async.delay(1);
 			tree?.scan();
-			var now = [for (f in Project.found(project.dir)) if (f.endsWith(".helder")) f];
+			var now = Project.found(project.dir);
 			for (f in now) {
 				var t = stamp(f);
 				if (stamps.get(f) == t) continue;
@@ -1085,7 +1102,7 @@ class Studio {
 				stamps.set(f, t);
 				var text = try Files.read(f) catch (_:Dynamic) continue;
 				if (!known) {
-					framesChanged(f, project.design(f, text));
+					added(f, text);
 					continue;
 				}
 				var d = docs.get(f);
@@ -1094,7 +1111,7 @@ class Studio {
 			for (f in [for (k in stamps.keys()) k])
 				if (!now.contains(f)) {
 					stamps.remove(f);
-					framesChanged(f, project.design(f, null));
+					added(f, null);
 				}
 		}
 		#end
@@ -1116,6 +1133,22 @@ class Studio {
 			f.save();
 			return;
 		}
+		// (a story file's stories changed: the host's screens with them, every source built)
+		if (Project.isStory(file) && storiesChanged(file, f.text)) {
+			pr.write(file, f.text);
+			message("the stories changed: building");
+			log("building", {file: file, why: "the stories changed"});
+			rebuild(file, true);
+			return;
+		}
+		// (after a failed build: built again, every source, whatever changed: the failure shown until one is good)
+		if (pr.failed) {
+			pr.write(file, f.text);
+			message("building again after a failed build");
+			log("building", {file: file, why: "the last build failed"});
+			rebuild(file, true);
+			return;
+		}
 		var why = null;
 		var patches = pr.literalPatches(file, f.text, w -> why = w);
 		if (patches != null && patches.length > 0 && pr.patch(patches)) {
@@ -1133,17 +1166,51 @@ class Studio {
 		rebuild(file);
 	}
 
-	function rebuild(file:String) {
+	function rebuild(file:String, all = false) {
 		var pr = previews;
 		var done = false;
 		Async.launch(task -> {
-			var ok = pr.rebuild(task, [file]);
+			var ok = pr.rebuild(task, all ? project.sources() : [file]);
 			done = true;
 			message(ok ? 'rebuilt in ${pr.buildMs.peek()} ms' : "the build failed: the last good build keeps running");
-			log("built", {ok: ok, ms: pr.buildMs.peek(), diagnostics: pr.diagnostics.peek().length});
-			if (codeFile.peek() != null) editor.setDiagnostics(pr.diagnostics.peek(), codeFile.peek());
+			log("built", {ok: ok, ms: pr.buildMs.peek(), diagnostics: pr.latest.length});
+			if (codeFile.peek() != null) editor.setDiagnostics(pr.latest, codeFile.peek());
 		});
 		hold(() -> done && !pr.busy(), "a build and the screens' reload");
+	}
+
+	// a build's end: its failure shown (its first error), cleared by a good one
+	function built(ok:Bool, why:String, diagnostics:Array<helder.compiler.service.Diagnostic>) {
+		if (ok) {
+			if (failure.peek() != null) log("failure", {cleared: true});
+			failure(null);
+			return;
+		}
+		var first = Lambda.find(diagnostics, d -> d.severity == "error") ?? (diagnostics.length > 0 ? diagnostics[0] : null);
+		var at = first?.file == null ? null : (project != null && first.file.startsWith(project.dir + "/") ? first.file.substr(project.dir.length + 1) : haxe.io.Path.withoutDirectory(first.file)) + ":" + first.line;
+		var f:Failure = {
+			message: first == null ? why : first.message,
+			at: at,
+			diagnostics: diagnostics
+		};
+		failure(f);
+		log("failure", {message: f.message, at: at, errors: diagnostics.filter(d -> d.severity == "error").length});
+	}
+
+	// a story file's text now (null: gone), its stories read again: when the
+	// screens changed, the previews follow them (a build's new host draws
+	// them), what was focused or selected on one gone let go; whether they changed
+	function storiesChanged(file:String, text:Null<String>):Bool {
+		if (project == null || !project.story(file, text)) return false;
+		previews?.follow();
+		var f = focused.peek(), sel = selection.peek();
+		if (sel != null && project.screen(sel.screen) == null) {
+			selection(null);
+			others([]);
+		}
+		if (f != null && project.screen(f) == null) focus(null, false);
+		log("stories", {file: file, screens: [for (s in project.live()) s.name]});
+		return true;
 	}
 
 	// (a patch's frame to come, measured)
@@ -1294,7 +1361,7 @@ class Studio {
 			editor.path = file;
 			editor.text = docs.get(file).text;
 			applyingToEditor = false;
-			if (previews != null) editor.setDiagnostics(previews.diagnostics.peek(), file);
+			if (previews != null) editor.setDiagnostics(previews.latest, file);
 		}
 	}
 
@@ -1347,6 +1414,12 @@ class Studio {
 			f.save();
 			return;
 		}
+		if (Project.isStory(file) && storiesChanged(file, f.text)) {
+			pr.write(file, f.text);
+			log("building", {file: file, why: "the stories changed"});
+			rebuild(file, true);
+			return;
+		}
 		pr.write(file, f.text);
 		var done = false;
 		Async.launch(task -> {
@@ -1359,7 +1432,7 @@ class Studio {
 				case _: r;
 			});
 			log(r == "patched" ? "patched" : "built", {file: file, result: r, ms: pr.buildMs.peek()});
-			editor.setDiagnostics(pr.diagnostics.peek(), file);
+			editor.setDiagnostics(pr.latest, file);
 		});
 		hold(() -> done && !pr.busy(), "a save's build or patch");
 	}
@@ -1451,6 +1524,13 @@ class Studio {
 		if (events != null) events.close();
 		#end
 	}
+}
+
+// a build's failure: why (its first error's message), where (file:line of the project's), every diagnostic
+typedef Failure = {
+	message:String,
+	at:Null<String>,
+	diagnostics:Array<helder.compiler.service.Diagnostic>,
 }
 
 typedef Selection = {

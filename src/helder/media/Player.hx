@@ -106,9 +106,16 @@ class Player {
 	public static function open(source:ByteSource, ?options:PlayerOptions):Player
 		return new Player(source, options ?? {});
 
+	// (the players not closed: a test's count of those playing, none unseen)
+	static final live:Array<Player> = [];
+	// (no output for any: each player silent, its pictures on the monotonic
+	// clock; a headless run's, which needs no sound device, and a test's)
+	static var quiet = #if helder.headless true #else false #end;
+
 	function new(source:ByteSource, options:PlayerOptions) {
 		this.source = source;
 		this.options = options;
+		live.push(this);
 		Async.launch(_ -> run());
 	}
 
@@ -125,7 +132,7 @@ class Player {
 	// (unmuted after playing on without its output: the output again, from where it is)
 	function set_muted(m:Bool):Bool {
 		muted = m;
-		if (!m && out == null && adec != null && options.silent != true && loaded && !closed) {
+		if (!m && out == null && adec != null && options.silent != true && !quiet && loaded && !closed) {
 			out = output(adec.rate);
 			if (out != null) seek(time);
 		}
@@ -236,7 +243,9 @@ class Player {
 			clock.audio(0, 0);
 		}
 		collect();
-		if (stepping > 0) return shown;
+		// (a seek not begun yet: what was decoded before it is not shown, a
+		// drag's keyframe after its exact release)
+		if (stepping > 0 || asked > -1e299) return shown;
 		if (playing && !primed) clock.seek(from);
 		var settled = drained() ? frames.length : frames.length - REORDER;
 		times.resize(0);
@@ -418,7 +427,7 @@ class Player {
 			// (two seconds, and room for a packet's 16384 frames over the
 			// first that decodes asks for: a low rate's, 8 kHz's, too)
 			ring = new AudioRing(Std.int(Math.max(adec.rate * 2, 65536)));
-			out = options.silent == true ? null : output(adec.rate);
+			out = options.silent == true || quiet ? null : output(adec.rate);
 		}
 	}
 
@@ -610,6 +619,7 @@ class Player {
 	public function close() {
 		if (closed) return;
 		closed = true;
+		live.remove(this);
 		#if (hxmc.target == "wasm32-wasi")
 		if (element != null) element.close();
 		#end

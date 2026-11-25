@@ -81,6 +81,9 @@ class Viewer {
 	public final markdown:Signal<Null<MarkdownDoc>> = Graph.signal((null : Null<MarkdownDoc>));
 	var md:Null<MarkdownDoc> = null;
 	public var read:(path:String, done:Null<String>->Void) -> Void = (_, done) -> done(null);
+	// its pictures' sizes, as their headers say, before it is shown
+	// (Explorer's: through its Files; null: not said)
+	public var measure:(paths:Array<String>, done:Array<Null<{width:Int, height:Int}>>->Void) -> Void = (paths, done) -> done([for (_ in paths) null]);
 
 	// the Markdown document shown now (markdown's value before its signal's write lands)
 	public function markdownDoc():Null<MarkdownDoc>
@@ -339,7 +342,7 @@ class Viewer {
 		});
 	}
 
-	// (a Markdown document: its text read and parsed, then shown)
+	// (a Markdown document: its text read and parsed, its pictures measured, then shown)
 	function showMarkdown(path:String) {
 		if (md != null && md.path == path) {
 			updateTitle();
@@ -362,14 +365,18 @@ class Viewer {
 				return;
 			}
 			var d = new MarkdownDoc(path, text);
-			d.anchor = anchor;
-			anchor = null;
-			md = d;
-			markdown(d);
-			state(Shown);
-			message("");
-			detail("");
-			updateTitle();
+			measure(d.pictures, sizes -> {
+				if (closed || folder.current != path || md != null) return;
+				for (i => s in sizes) if (s != null) d.sizes.set(d.pictures[i], s);
+				d.anchor = anchor;
+				anchor = null;
+				md = d;
+				markdown(d);
+				state(Shown);
+				message("");
+				detail("");
+				updateTitle();
+			});
 		});
 	}
 

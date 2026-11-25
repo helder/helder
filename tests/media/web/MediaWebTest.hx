@@ -14,8 +14,8 @@ import hxmc.unsafe.*;
 // as MediaAppleTest checks Apple's), the audio tracks' frames and samples;
 // frames turned to RGB on the GPU (the browser's copy, then VideoTexture's
 // pass) against ffmpeg's where flat (decoded.json's, and rgb.json's of VP9
-// and AV1: expect.mjs); exact seeks and steps through the
-// player; a clip played through the page's AudioWorklet, its frames in
+// and AV1: expect.mjs); exact seeks and steps through the player, a
+// drag's keyframe seeks and its exact release; a clip played through the page's AudioWorklet, its frames in
 // order and on the audio's clock; the <video> element's fallback played
 // once. What a browser does not decode is skipped, each skip printed.
 // Prints "ok" and the number of checks; exits 1 on a failure.
@@ -306,6 +306,26 @@ class MediaWebTest {
 		var key = keys.filter(x -> x <= pts[k] + 1e-9).pop();
 		pl.seek(pts[k] + dt / 2, false);
 		at("seek to its keyframe", shown(pl, key), pts.indexOf(key));
+		// (a scrub bar's drag: keyframe seeks as it goes, the release exact;
+		// the first frame shown after it its, none decoded before; its
+		// pixels read while shown: the player lets a frame go a few updates later)
+		for (i in [n >> 3, n >> 2, n >> 1]) {
+			pl.seek(pts[i], false);
+			pl.update();
+			Async.delay(0.016);
+		}
+		var before = pl.shown, first = -1.0, ok = false, t0 = haxe.Timer.stamp();
+		pl.seek(pts[k] + dt / 2);
+		while (first < 0 && haxe.Timer.stamp() - t0 < 2) {
+			var fr = pl.update();
+			if (fr != null && fr != before) {
+				first = fr.time;
+				ok = !decoded(f, fr) || crc(fr) == crcs[k];
+			}
+			Async.delay(0.004);
+		}
+		check('$f: dragged: the frame at ${pts[k]} first', first == pts[k] && ok, '$first');
+		check('$f: dragged: the time where it was let go', pl.time == pts[k] + dt / 2, '${pl.time}');
 		pl.close();
 	}
 

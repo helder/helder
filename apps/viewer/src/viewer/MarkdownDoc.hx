@@ -30,6 +30,11 @@ class MarkdownDoc {
 	public var code:Null<helder.ui.code.CodeView> = null;
 	// a heading to show first ("#id" of the link that opened it)
 	public var anchor:Null<String> = null;
+	// its pictures of its folder (local's paths, each once), and the sizes
+	// their headers say, read before it is shown (Viewer.measure): each laid
+	// out at its size before it is decoded
+	public final pictures:Array<String> = [];
+	public final sizes = new Map<String, {width:Int, height:Int}>();
 
 	public function new(path:String, text:String) {
 		this.path = path;
@@ -39,7 +44,36 @@ class MarkdownDoc {
 		words = c.words;
 		headings = c.headings;
 		size = haxe.io.Bytes.ofString(text).length;
+		function inlines(is:Array<Inline>)
+			for (i in is) switch i {
+				case Image(src, _, _):
+					var p = local(src);
+					if (p != null && !pictures.contains(p)) pictures.push(p);
+				case Emphasis(c) | Strong(c) | Strike(c) | Link(_, _, c): inlines(c);
+				case _:
+			}
+		function blocks(bs:Array<Block>)
+			for (b in bs) switch b {
+				case Paragraph(c): inlines(c);
+				case List(_, _, _, items): for (i in items) blocks(i.blocks);
+				case Quote(inner): blocks(inner);
+				case _:
+			}
+		blocks(doc.blocks);
 	}
+
+	// a picture's path in its folder (null: remote, a data: URL, none)
+	public function local(src:String):Null<String> {
+		var s = src.trim();
+		if (s == "" || s.indexOf("://") >= 0 || s.startsWith("data:") || s.startsWith("//")) return null;
+		if (s.indexOf("#") >= 0) s = s.substr(0, s.indexOf("#"));
+		if (s.indexOf("?") >= 0) s = s.substr(0, s.indexOf("?"));
+		return Explorer.resolve(Browser.parent(path) ?? "", unescape(s));
+	}
+
+	// (a link's "#Set%20up": the heading's id; a picture's "my%20photo.png")
+	public static function unescape(s:String):String
+		return try StringTools.urlDecode(s) catch (_:Dynamic) s;
 
 	// a document's words (its text's, code's not) and headings
 	public static function count(doc:Doc):{words:Int, headings:Int} {
