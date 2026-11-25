@@ -1,7 +1,7 @@
 // helder.ui for TypeScript programs (helder.typescript): windows and their
 // markup (see helder/view), the events handlers are given, the keys. Each
 // class is the Haxe class `__haxe` names. The neutral elements (view, text,
-// view:button...) take any attribute, their handlers given ui's events.
+// button...) take any attribute, their handlers given ui's events.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
