@@ -452,7 +452,8 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   or taken out above it (`splice`; VirtualList diffs its list by key into
   them) move nothing in view; at the very top there is no anchor (as a
   browser's scroll anchoring at offset 0), so a list filled in batches
-  that sort above its first row stays at its top. Rows leaving the window are hidden and kept
+  that sort above its first row stays at its top, and so does one whose
+  top inset grows (a bar's large title laid out after it). Rows leaving the window are hidden and kept
   by key (`keep`, the farthest let go), coming back made already;
   `scrollToIndex` and `focusIndex` reach rows not made, the arrows, Page
   Up and Down, Home and End move the focus (and `selected`, a key that

@@ -22,7 +22,11 @@ browser engine and no runtime to install.
   manager, mail, chat, a browser's upload.
 - **Large folders.** A folder is read off the window's thread, 2,000
   entries at a time; the first show at once, the rest are merged in sorted
-  without moving what you look at or losing the selection. Sorted the way
+  without moving what you look at or losing the selection. A folder
+  entered shows its top; back and forward show a folder where you left it
+  (its scroll and selection kept with the history, put back once enough of
+  it is read), and closing a file shown full size leaves the folder where
+  it was with the last file viewed in view. Sorted the way
   people count (`img2` before `img10`), or by kind, date or size. Watched:
   files added, removed or changed show up.
 - **The inspector**: the selected file's preview (several: a stack of
@@ -491,7 +495,11 @@ about its point, a page that cannot be drawn),
 `Inspector.test.hx` (a search's keystrokes: the selected file's preview
 asked for once, its picture and details kept), `Window.test.hx` (a
 folder among 30, at desktop sizes: the panels and the path bar end at
-the window's bottom, the sidebar's level scrolls),
+the window's bottom, the sidebar's level scrolls; a folder entered from a
+scrolled one at its top and back at the old offset, read a frame later,
+in the list and the grid; a folder read in batches that each sort above
+the last, still at its top; the full-size viewer closed with the folder
+where it was and the last file in view),
 `Viewer.story.hx` (the grid and the list dark and light, several
 selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
 being dragged over the grid, an empty folder, a missing one, no results, a file full size, a

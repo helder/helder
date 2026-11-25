@@ -40,6 +40,12 @@ class Browser {
 	public final canBack = new Cell(false);
 	public final canForward = new Cell(false);
 	public final canUndo = new Cell(false);
+	// where the view goes when a folder is shown: its top (0), the place it
+	// had in the history (back, forward, read again), or the entry asked to
+	// be selected in view (-1: up's folder left); scrolled, the view's
+	// scroll now (the list's or the grid's), kept with the history
+	public var offset(default, null) = 0.0;
+	public var scrolled:Void->Float = () -> 0;
 	// the folder changed (the sidebar follows it)
 	public var onDir:Null<String->Void> = null;
 	// the entries changed (the viewer's list follows them); files changed on disk named
@@ -50,8 +56,8 @@ class Browser {
 	var stopList:Null<Void->Void> = null;
 	var stopWatch:Null<Void->Void> = null;
 	var keep = "";
-	final back:Array<{dir:String, selected:String}> = [];
-	final forward:Array<{dir:String, selected:String}> = [];
+	final back:Array<Place> = [];
+	final forward:Array<Place> = [];
 	final undone:Array<Array<{from:String, to:String}>> = [];
 
 	public function new(files:Files) {
@@ -71,24 +77,24 @@ class Browser {
 			if (select != null) this.select(select);
 			return;
 		}
-		if (dir.value != "") back.push({dir: dir.value, selected: selected.value});
+		if (dir.value != "") back.push(here());
 		forward.resize(0);
-		load(path, select ?? "");
+		load(path, select ?? "", select == null ? 0 : -1);
 	}
 
 	public function goBack():Bool {
 		var to = back.pop();
 		if (to == null) return false;
-		forward.push({dir: dir.value, selected: selected.value});
-		load(to.dir, to.selected);
+		forward.push(here());
+		load(to.dir, to.selected, to.scroll);
 		return true;
 	}
 
 	public function goForward():Bool {
 		var to = forward.pop();
 		if (to == null) return false;
-		back.push({dir: dir.value, selected: selected.value});
-		load(to.dir, to.selected);
+		back.push(here());
+		load(to.dir, to.selected, to.scroll);
 		return true;
 	}
 
@@ -114,10 +120,14 @@ class Browser {
 
 	// the folder read again from the start (Try again)
 	public function reload()
-		if (dir.value != "") load(dir.value, selected.value);
+		if (dir.value != "") load(dir.value, selected.value, scrolled());
 
-	function load(path:String, select:String) {
+	function here():Place
+		return {dir: dir.value, selected: selected.value, scroll: scrolled()};
+
+	function load(path:String, select:String, at:Float) {
 		stop();
+		offset = at;
 		dir(path);
 		all = [];
 		keep = select;
@@ -349,3 +359,6 @@ class Browser {
 	static function isDrive(p:String):Bool
 		return p.length == 3 && p.charAt(1) == ":" && (p.charAt(2) == "\\" || p.charAt(2) == "/");
 }
+
+// (a folder of the history: what was selected, the view's scroll)
+private typedef Place = {dir:String, selected:String, scroll:Float};

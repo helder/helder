@@ -160,8 +160,34 @@ class ContentView implements Markup {
 			var s = scroller, i = b.indexOf(v);
 			if (s != null && i >= 0) s.scrollToIndex(i);
 		});
+		// (a folder shown: where the browser says, once its items are in: its
+		// top; a place kept in the history, the batches it needs waited for;
+		// the selected entry in view. Not the scroller's own anchor, which
+		// would keep the last folder's offset)
+		var want:Null<Float> = 0.0;
+		function place() {
+			var v = scroller, w = want;
+			if (v == null || w == null) return;
+			if (w < 0) {
+				var i = b.indexOf(b.selected.value);
+				if (i >= 0) v.scrollToIndex(i, "center");
+				if (i >= 0 || !b.reading.value) want = null;
+				return;
+			}
+			var max = Math.max(0, @:privateAccess (v.extent() - v.viewHeight()));
+			if (w > max && b.reading.value) return;
+			v.scrollY = Math.min(w, max);
+			want = null;
+		}
+		b.scrolled = () -> scroller == null ? 0 : scroller.scrollY;
+		effect(() -> b.dir(), _ -> want = b.offset);
+		effect(() -> {
+			b.items();
+			b.reading();
+		}, _ -> place());
 		function made(v:VirtualScroll) {
 			scroller = v;
+			place();
 			// (on the next frame: the list shown again first)
 			x.focusList = () -> Clock.add(_ -> {
 				var i = b.indexOf(b.selected.value);

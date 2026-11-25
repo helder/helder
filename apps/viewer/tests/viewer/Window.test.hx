@@ -5,6 +5,7 @@ import helder.test.Test;
 import helder.ui.Node;
 import helder.ui.Ui;
 import helder.view.Render;
+import viewer.Files;
 
 // The window's content within the window at desktop sizes, with a large
 // folder among many: the panels and the path bar end at its bottom, the
@@ -23,6 +24,9 @@ function tests() {
 				m.add('/home/folder $i/');
 			for (i in 0...300)
 				m.add('/home/folder 0/file $i.txt', haxe.io.Bytes.ofString("x"));
+			m.add("/home/folder 0/sub/");
+			for (i in 0...300)
+				m.add('/home/folder 0/sub/inner $i.txt', haxe.io.Bytes.ofString("x"));
 			return new Explorer(m, (_, _, done) -> {}, [], [], (_, _) -> () -> {});
 		}
 		for (size in [{w: 1000, h: 488, layout: Browser.Layout.List}, {w: 1212, h: 592, layout: Browser.Layout.Grid}, {w: 1440, h: 900, layout: Browser.Layout.List}])
@@ -45,5 +49,127 @@ function tests() {
 				equals(bottom(side), h);
 				assert(side.contentHeight > side.height, 'the sidebar scrolls: ${side.contentHeight} in ${side.height}');
 			});
+		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
+			test('a folder entered shows its top, back its old place (${layout})', () -> {
+				var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+				Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+				function frame()
+					for (_ in 0...3) {
+						helder.view.graph.Graph.flush();
+						ui.update();
+					}
+				x.start("/home/folder 0");
+				x.browser.layout(layout);
+				frame();
+				var view = ui.root.find(layout == List ? "rows" : "grid");
+				equals(view.scrollY, 0.0);
+				view.scrollY = 3000;
+				frame();
+				var was = view.scrollY;
+				assert(was > 2000, 'scrolled: $was');
+				x.browser.go("/home/folder 0/sub");
+				frame();
+				view = ui.root.find(layout == List ? "rows" : "grid");
+				equals(view.scrollY, 0.0);
+				// (back: read again, as a disk would, a frame later; its offset once its items are in)
+				var files:MemoryFiles = cast x.files;
+				files.hold = true;
+				x.browser.goBack();
+				frame();
+				files.release();
+				frame();
+				view = ui.root.find(layout == List ? "rows" : "grid");
+				equals(view.scrollY, was);
+			});
+		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
+			test('a folder read in batches, each sorting above the last, stays at its top (${layout})', () -> {
+				Kinds.utc = true;
+				Tiles.forget();
+				var m = new Trickle();
+				m.size = 50;
+				m.add("/home/");
+				m.add("/home/many/");
+				for (i in 0...400)
+					m.add('/home/many/file $i.txt', haxe.io.Bytes.ofString("x"));
+				var x = new Explorer(m, (_, _, done) -> {}, [], [], (_, _) -> () -> {});
+				var ui = new Ui(new StoryText(), 1212, 592);
+				Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+				x.browser.layout(layout);
+				x.start("/home/many");
+				function frame() {
+					helder.view.graph.Graph.flush();
+					ui.update();
+				}
+				frame();
+				while (m.queue.length > 0) {
+					m.queue.shift()();
+					frame();
+				}
+				frame();
+				equals(x.browser.items.value.length, 400);
+				equals(ui.root.find(layout == List ? "rows" : "grid").scrollY, 0.0);
+			});
+		test("the full-size viewer closed: the folder where it was, the last file viewed in view", () -> {
+			Kinds.utc = true;
+			Tiles.forget();
+			var m = new MemoryFiles();
+			m.add("/home/");
+			m.add("/home/pics/");
+			for (i in 0...300)
+				m.add('/home/pics/pic $i.png', haxe.io.Bytes.ofString("x"));
+			var x = new Explorer(m, (_, _, _) -> {}, [], [], (_, _) -> () -> {});
+			var ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+			function frame()
+				for (_ in 0...3) {
+					helder.view.graph.Graph.flush();
+					ui.update();
+				}
+			x.browser.layout(List);
+			x.start("/home/pics");
+			frame();
+			var rows = ui.root.find("rows");
+			rows.scrollY = 3000;
+			frame();
+			// (rows 100 to 116 in view: one of them opened, flipped twice, closed)
+			x.browser.select("pic 105.png");
+			x.view("pic 105.png");
+			frame();
+			x.viewer.next();
+			x.viewer.next();
+			x.close();
+			frame();
+			equals(x.browser.selected.value, "pic 107.png");
+			equals(ui.root.find("rows").scrollY, 3000.0);
+			// (flipped past what was in view: scrolled to show it)
+			x.view("pic 107.png");
+			frame();
+			for (_ in 0...40)
+				x.viewer.next();
+			x.close();
+			frame();
+			var y = ui.root.find("rows").scrollY, at = 147 * 30.0;
+			equals(x.browser.selected.value, "pic 147.png");
+			assert(at >= y && at + 30 <= y + 490, 'pic 147 at $at in view from $y');
+		});
 	});
+}
+
+// (a folder's batches one a frame, the names from the last: each batch sorts above what came before)
+private class Trickle extends MemoryFiles {
+	public final queue:Array<Void->Void> = [];
+
+	override public function list(dir:String, batch:Batch->Void):Void->Void {
+		var got = [];
+		var stop = super.list(dir, b -> got.push(b));
+		for (b in got)
+			queue.push(() -> batch(b));
+		return stop;
+	}
+
+	override function children(dir:String):Array<Entry> {
+		var all = super.children(dir);
+		all.sort((a, b) -> Reflect.compare(b.name.length, a.name.length) * 2 + Reflect.compare(b.name, a.name));
+		return all;
+	}
 }

@@ -738,6 +738,12 @@ class MarkupTest implements Markup {
 		items(next);
 		flush();
 		ui.update();
+		// (at the top, a bar's inset grown over it: still at the top, the first row under the inset)
+		l.insets(60, 0);
+		ui.update();
+		check("virtual rows: at the top, the inset grown: still at the top", l.scrollY == 0 && drawnY(shown()[0]) == 60, '${l.scrollY} ${drawnY(shown()[0])}');
+		l.insets(0, 0);
+		ui.update();
 		// (a jump to the last row: made, measured, its end at the view's)
 		l.scrollToIndex(l.count - 1, "end");
 		ui.update();

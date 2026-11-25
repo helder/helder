@@ -112,6 +112,8 @@ class VirtualScroll extends Node {
 	// ends: a NavScreen's), its rows placed again
 	public function insets(top:Float, bottom:Float) {
 		if (top == insetTop && bottom == insetBottom) return;
+		// (at the very top it stays there: the first row moves with the inset)
+		if (anchorRow == 0 && anchorDelta <= 0 && target < 0) anchorDelta -= top - insetTop;
 		insetTop = top;
 		insetBottom = bottom;
 		place();
@@ -343,9 +345,10 @@ class VirtualScroll extends Node {
 
 	// (the anchor taken from the scroll)
 	function anchor() {
+		// (no rows: where the first will be, the scroll above it its inset's)
 		if (count == 0) {
 			anchorRow = 0;
-			anchorDelta = 0;
+			anchorDelta = scrollY - insetTop;
 			return;
 		}
 		anchorRow = rowAtOffset(scrollY);

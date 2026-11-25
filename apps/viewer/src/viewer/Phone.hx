@@ -180,11 +180,13 @@ class Phone implements Markup {
 	}
 
 	// (the folder's grid or list, the screen's scroller: its last items kept
-	// while the browser is elsewhere, a screen sliding away)
+	// while the browser is elsewhere, a screen sliding away, and while its
+	// folder is read again before the first batch is in (popped back to:
+	// its place kept, not emptied and refilled))
 	static function Listed(props:{p:PhoneState, path:String}):View {
 		var p = props.p, x = p.x, b = x.browser, path = props.path, nav = use(Bar.here);
 		var last:Array<Entry> = [];
-		var items = memo(() -> b.dir() == path ? (last = b.items()) : last);
+		var items = memo(() -> b.dir() == path && !(b.reading() && b.items().length == 0 && last.length > 0) ? (last = b.items()) : last);
 		effect(() -> b.selection.version(), _ -> b.selectionChanged());
 		function scroller(v:helder.ui.VirtualScroll)
 			if (nav != null) nav.scroller(v);
