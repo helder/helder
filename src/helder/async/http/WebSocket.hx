@@ -6,16 +6,16 @@ import helder.async.*;
 import helder.async.http.Http;
 
 #if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
-import helder.async.http.AppleHttp.AppleWebSocket;
+import helder.async.http.apple.Http.AppleWebSocket;
 #end
 #if (hxmc.target == "wasm32-wasi")
-import helder.async.http.WebHttp.WebWebSocket;
+import helder.async.http.web.Http.WebWebSocket;
 #end
 #if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
-import helder.async.http.WinHttp.WinWebSocket;
+import helder.async.http.windows.Http.WinWebSocket;
 #end
 #if (target.name == "hxmc" && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
-import helder.async.http.AndroidHttp.AndroidSocket;
+import helder.async.http.android.Http.AndroidSocket;
 #end
 
 // A WebSocket (RFC 6455) on a connection: a server's, from an HTTP request

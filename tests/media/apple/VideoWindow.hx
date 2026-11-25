@@ -303,14 +303,14 @@ class VideoWindow {
 	static function layer(video:VideoNode):Array<Float> {
 		var sample = @:privateAccess video.sample, l:hxmc.unsafe.Ptr = @:privateAccess sample.layer;
 		return OsThread.get(() -> {
-			var status = helder.os.objc.Msg.i(l, helder.os.objc.ObjC.sel("status")).toInt();
-			var error = helder.os.objc.Msg.id(l, helder.os.objc.ObjC.sel("error"));
+			var status = helder.os.apple.objc.Msg.i(l, helder.os.apple.objc.ObjC.sel("status")).toInt();
+			var error = helder.os.apple.objc.Msg.id(l, helder.os.apple.objc.ObjC.sel("error"));
 			check('layer: rendering, no error', status == 1 && error.isNull(), 'status $status');
-			var b = helder.os.objc.Msg.rect(l, helder.os.objc.ObjC.sel("bounds"));
-			var r = helder.os.objc.Msg.rectRectPtr(l, helder.os.objc.ObjC.sel("convertRect:toLayer:"), b, hxmc.unsafe.Ptr.nil());
-			var clip = helder.os.objc.Msg.id(l, helder.os.objc.ObjC.sel("superlayer"));
-			var cb = helder.os.objc.Msg.rect(clip, helder.os.objc.ObjC.sel("bounds"));
-			var c = helder.os.objc.Msg.rectRectPtr(clip, helder.os.objc.ObjC.sel("convertRect:toLayer:"), cb, hxmc.unsafe.Ptr.nil());
+			var b = helder.os.apple.objc.Msg.rect(l, helder.os.apple.objc.ObjC.sel("bounds"));
+			var r = helder.os.apple.objc.Msg.rectRectPtr(l, helder.os.apple.objc.ObjC.sel("convertRect:toLayer:"), b, hxmc.unsafe.Ptr.nil());
+			var clip = helder.os.apple.objc.Msg.id(l, helder.os.apple.objc.ObjC.sel("superlayer"));
+			var cb = helder.os.apple.objc.Msg.rect(clip, helder.os.apple.objc.ObjC.sel("bounds"));
+			var c = helder.os.apple.objc.Msg.rectRectPtr(clip, helder.os.apple.objc.ObjC.sel("convertRect:toLayer:"), cb, hxmc.unsafe.Ptr.nil());
 			[r.origin.x, r.origin.y, r.size.width, r.size.height, 0.0, c.origin.y, c.size.height];
 		});
 	}
@@ -319,7 +319,7 @@ class VideoWindow {
 		w.device.settle();
 		Sys.sleep(0.15);
 		var view = w.window.surface.handle;
-		var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+		var id = OsThread.get(() -> helder.os.apple.objc.Msg.i(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("windowNumber")).toInt());
 		var img = Capture.window(id);
 		if (img == null) return;
 		// (the content at the capture's own scale: its pixels a point, the window 400 by 300 points; the title bar above cut)

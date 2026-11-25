@@ -2918,14 +2918,14 @@ export declare class Surface {
 
 // A top-level window, its size in points (pixels on X11). Its Surface
 // carries the native handles for helder.gfx, its size in pixels. Cocoa on
-// macOS (helder.os.cocoa.CocoaWindow), Win32 on Windows
-// (helder.os.win32.Win32Window), a canvas in the browser (WebAssembly:
+// macOS (helder.os.apple.MacWindow), Win32 on Windows
+// (helder.os.windows.WinWindow), a canvas in the browser (WebAssembly:
 // helder.os.web.CanvasWindow, its size in CSS pixels), X11 elsewhere
-// (helder.os.x11.X11Window); on Android the activity's window
+// (helder.os.linux.x11.X11Window); on Android the activity's window
 // (helder.os.android.AndroidWindow: full screen, one per app, the size and
-// title the system's), on iOS a UIWindow (helder.os.uikit.UIKitWindow: the
+// title the system's), on iOS a UIWindow (helder.os.apple.IosWindow: the
 // same); on Linux with WAYLAND_DISPLAY set, Wayland's
-// (helder.os.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
+// (helder.os.linux.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
 export declare class Window {
 	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
 	// where the system cannot, opaque: see transparent)
@@ -2960,7 +2960,7 @@ export declare class Window {
 // The app loop, callback driven (Cocoa, GTK and the browser own their
 // loops): run calls onEvent for each pending event, then onFrame, until
 // quit() or the last window closes. The loop is hxmc's own, polling the
-// system's events without waiting (CocoaWindow on macOS, Win32Window on
+// system's events without waiting (MacWindow on macOS, WinWindow on
 // Windows, X11Window elsewhere); a frame's pace comes from the GPU's
 // present (vsync), its time (App.frame) when it began. In the browser
 // (WebAssembly) run returns at once, and main after it: each turn of the
@@ -2971,7 +2971,7 @@ export declare class Window {
 // NativeActivity's callbacks reach it through the thread's looper), and a
 // frame is drawn only while the activity has its window and is not paused
 // (otherwise the loop sleeps in the looper). On iOS the program runs inside
-// UIKit's loop (helder.os.uikit.UIKitApp): each turn runs the main run loop
+// UIKit's loop (helder.os.apple.IosApp): each turn runs the main run loop
 // without waiting, and draws only while the app is active (not in the
 // background, nor inactive: otherwise it sleeps in the run loop). On both
 // the frames are the display's: a turn that may draw asks for the next

@@ -128,7 +128,7 @@ class UiDrawTest {
 	@:hxmc.unsafe(gc) static function shown(w:UiWindow, frame:Bytes) {
 		var s = w.window.surface;
 		if (s.kind != X11) return;
-		var img = helder.os.x11.Xlib.XGetImage(s.display, s.handle.toI64(), 0, 0, W, H, (-1 : hxmc.unsafe.Int64), 2);
+		var img = helder.os.linux.x11.Xlib.XGetImage(s.display, s.handle.toI64(), 0, 0, W, H, (-1 : hxmc.unsafe.Int64), 2);
 		var differ = 0;
 		for (y in 0...H) {
 			var row = img.value.data.add(y * img.value.bytes_per_line);
@@ -136,7 +136,7 @@ class UiDrawTest {
 				for (k in 0...3)
 					if (row[4 * x + 2 - k] != frame.get(4 * (y * W + x) + k)) differ++;
 		}
-		helder.os.x11.Xlib.XDestroyImage(img);
+		helder.os.linux.x11.Xlib.XDestroyImage(img);
 		if (differ > 0) failedShown = true;
 		Sys.println('UiDrawTest: window, X11 pixels: ' + (differ == 0 ? "ok (the frame's)" : 'FAIL ($differ channels differ from the frame)'));
 	}

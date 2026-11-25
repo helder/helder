@@ -80,7 +80,7 @@ class Shaping {
 		#if (!helder.os || helder.os == "linux") if (hxmc.Platform.os() == 0 && hxmc.Platform.target() < 9) platform = helder.text.linux.LinuxText.create(); #end
 		#if (!helder.os || helder.os == "windows") if (hxmc.Platform.os() == 2) platform = helder.text.windows.DirectWrite.create(); #end
 		// (macOS and iOS: Core Text is both's)
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (hxmc.Platform.os() == 1) platform = helder.text.mac.CoreText.create(); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (hxmc.Platform.os() == 1) platform = helder.text.apple.CoreText.create(); #end
 		#end
 		return platform;
 	}

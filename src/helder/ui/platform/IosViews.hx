@@ -1,7 +1,7 @@
 package helder.ui.platform;
 
-import helder.os.objc.*;
-import helder.os.uikit.UIKitTraits;
+import helder.os.apple.objc.*;
+import helder.os.apple.Traits;
 import helder.ui.*;
 import hxmc.unsafe.*;
 
@@ -11,7 +11,7 @@ import hxmc.unsafe.*;
 // content boxes are laid out (points: the layout's pixels), in the node's
 // font (by family, else the system's at its weight), colour and alignment,
 // the placeholder in the theme's colour; their keyboard the node's
-// TextKind (UIKitTraits: keyboard and return key types, capitalisation,
+// TextKind (Traits: keyboard and return key types, capitalisation,
 // corrections, secure entry, AutoFill's content type). So UIKit's own
 // editing is the app's: marked text (Japanese, Chinese, Korean
 // compositions, dictation) shown and committed by UIKit, the selection's
@@ -276,7 +276,7 @@ class IosEditor implements PlatformEditor {
 	}
 
 	public function setKind(kind:helder.os.TextKind)
-		helder.os.OsThread.run(() -> if (!gone) UIKitTraits.apply(view, kind));
+		helder.os.OsThread.run(() -> if (!gone) Traits.apply(view, kind));
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool)
 		helder.os.OsThread.run(() -> placeNow(x, y, width, height, shown));
@@ -306,7 +306,7 @@ class IosEditor implements PlatformEditor {
 		// (NSTextAlignment on iOS: left 0, center 1, right 2, justified 3)
 		Msg.vInt(view, ObjC.sel("setTextAlignment:"), align == Center ? 1 : align == Right ? 2 : align == Justify ? 3 : 0);
 		if (multiline) return;
-		var p = ObjC.str(placeholder), key = UIKitTraits.constant("NSForegroundColorAttributeName");
+		var p = ObjC.str(placeholder), key = Traits.constant("NSForegroundColorAttributeName");
 		var attrs = Msg.idPtrPtr(ObjC.cls("NSDictionary"), ObjC.sel("dictionaryWithObject:forKey:"), IosViews.uiColor(placeholderColor), key);
 		var s = Msg.idPtrPtr(Msg.id(ObjC.cls("NSAttributedString"), ObjC.sel("alloc")), ObjC.sel("initWithString:attributes:"), p, attrs);
 		Msg.vPtr(view, ObjC.sel("setAttributedPlaceholder:"), s);

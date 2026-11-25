@@ -4,7 +4,7 @@ import hxmc.unsafe.*;
 
 // WASAPI (the Windows Audio Session API, Vista and later): COM's entry
 // points (ole32), the events of kernel32, then the interfaces the output
-// calls (helder.os.win32.Com: a method is its vtable slot in the official
+// calls (helder.os.windows.Com: a method is its vtable slot in the official
 // headers, the object its first argument). HRESULTs are Int (negative:
 // failed), REFERENCE_TIME Int64 (100 ns units); objects and GUIDs are Ptr.
 @:hxmc.c @:hxmc.lib("ole32") extern class Ole32 {
@@ -23,19 +23,19 @@ import hxmc.unsafe.*;
 	static function WaitForMultipleObjects(count:Int, handles:Ptr<Ptr>, all:Int, ms:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMMDeviceEnumerator {
 	@:slot(4) static function GetDefaultAudioEndpoint(self:Ptr, flow:Int, role:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMMDevice {
 	@:slot(3) static function Activate(self:Ptr, iid:Ptr, context:Int, params:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IAudioClient {
 	@:slot(3) static function Initialize(self:Ptr, shareMode:Int, flags:Int, bufferDuration:Int64, periodicity:Int64, format:Ptr, session:Ptr):Int;
@@ -50,7 +50,7 @@ class IAudioClient {
 	@:slot(14) static function GetService(self:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IAudioRenderClient {
 	@:slot(3) static function GetBuffer(self:Ptr, frames:Int, data:Ptr<Ptr>):Int;
@@ -89,8 +89,8 @@ class WASAPI {
 	public static inline var E_NOTFOUND = 0x80070490;
 	public static inline var AUDCLNT_E_DEVICE_INVALIDATED = 0x88890004;
 
-	public static final CLSID_MMDeviceEnumerator = helder.os.win32.Com.guid(0xBCDE0395, 0xE52F, 0x467C, [0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E]);
-	public static final IID_IMMDeviceEnumerator = helder.os.win32.Com.guid(0xA95664D2, 0x9614, 0x4F35, [0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6]);
-	public static final IID_IAudioClient = helder.os.win32.Com.guid(0x1CB9AD4C, 0xDBFA, 0x4C32, [0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2]);
-	public static final IID_IAudioRenderClient = helder.os.win32.Com.guid(0xF294ACFC, 0x3146, 0x4483, [0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2]);
+	public static final CLSID_MMDeviceEnumerator = helder.os.windows.Com.guid(0xBCDE0395, 0xE52F, 0x467C, [0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E]);
+	public static final IID_IMMDeviceEnumerator = helder.os.windows.Com.guid(0xA95664D2, 0x9614, 0x4F35, [0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6]);
+	public static final IID_IAudioClient = helder.os.windows.Com.guid(0x1CB9AD4C, 0xDBFA, 0x4C32, [0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2]);
+	public static final IID_IAudioRenderClient = helder.os.windows.Com.guid(0xF294ACFC, 0x3146, 0x4483, [0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2]);
 }

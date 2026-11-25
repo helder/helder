@@ -13,12 +13,12 @@ import hxmc.unsafe.Ptr;
 class Blit {
 	// (each surface's, made at its first frame: the program's thread may be another than the main one)
 	#if (helder.os == "linux")
-	static var x11:Null<haxe.ds.ObjectMap<Surface, helder.os.x11.X11Blit>> = null;
-	static var wayland:Null<haxe.ds.ObjectMap<Surface, helder.os.wayland.WaylandBlit>> = null;
+	static var x11:Null<haxe.ds.ObjectMap<Surface, helder.os.linux.x11.X11Blit>> = null;
+	static var wayland:Null<haxe.ds.ObjectMap<Surface, helder.os.linux.wayland.WaylandBlit>> = null;
 	#elseif (helder.os == "macos")
-	static var cocoa:Null<haxe.ds.ObjectMap<Surface, helder.os.cocoa.CocoaBlit>> = null;
+	static var cocoa:Null<haxe.ds.ObjectMap<Surface, helder.os.apple.MacBlit>> = null;
 	#elseif (helder.os == "windows")
-	static var win32:Null<haxe.ds.ObjectMap<Surface, helder.os.win32.Win32Blit>> = null;
+	static var win32:Null<haxe.ds.ObjectMap<Surface, helder.os.windows.WinBlit>> = null;
 	#end
 
 	public static function present(s:Surface, px:Ptr, w:Int, h:Int, rects:Null<Array<Int>>) {
@@ -26,22 +26,22 @@ class Blit {
 		#if (helder.os == "linux")
 		if (s.kind == X11) {
 			var b = x11.get(s);
-			if (b == null) x11.set(s, b = new helder.os.x11.X11Blit(s));
+			if (b == null) x11.set(s, b = new helder.os.linux.x11.X11Blit(s));
 			b.present(px, w, h, rects);
 		} else if (s.kind == Wayland) {
 			var b = wayland.get(s);
-			if (b == null) wayland.set(s, b = new helder.os.wayland.WaylandBlit(s));
+			if (b == null) wayland.set(s, b = new helder.os.linux.wayland.WaylandBlit(s));
 			b.present(px, w, h, rects);
 		}
 		#elseif (helder.os == "macos")
 		if (s.kind != Cocoa) return;
 		var b = cocoa.get(s);
-		if (b == null) cocoa.set(s, b = new helder.os.cocoa.CocoaBlit(s));
+		if (b == null) cocoa.set(s, b = new helder.os.apple.MacBlit(s));
 		b.present(px, w, h, rects);
 		#elseif (helder.os == "windows")
 		if (s.kind != Win32) return;
 		var b = win32.get(s);
-		if (b == null) win32.set(s, b = new helder.os.win32.Win32Blit(s));
+		if (b == null) win32.set(s, b = new helder.os.windows.WinBlit(s));
 		b.present(px, w, h, rects);
 		#elseif (helder.os == "web")
 		if (s.kind == Canvas) helder.os.web.Dom.put_pixels(s.handle.toI64().toInt(), px, w, h);
@@ -56,7 +56,7 @@ class Blit {
 
 	static function pace() {
 		#if (helder.os == "windows")
-		helder.os.win32.Win32Blit.Dwm.DwmFlush();
+		helder.os.windows.WinBlit.Dwm.DwmFlush();
 		#elseif (helder.os != "web")
 		var now = haxe.Timer.stamp(), wait = last + 1 / 60 - now;
 		if (wait > 0 && wait < 1 / 60) Sys.sleep(wait);

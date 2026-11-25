@@ -868,18 +868,18 @@ class UiTest {
 		Ui.now = haxe.Timer.stamp;
 	}
 
-	// Android's fling (AndroidFling: a least-squares speed, OverScroller's
+	// Android's fling (helder.os.android.Fling: a least-squares speed, OverScroller's
 	// spline) and its stretch past an end (Ui.stretch: Flutter's port of
 	// Android 12's)
 	static function androidScroll() {
-		var f = new helder.os.AndroidFling();
+		var f = new helder.os.android.Fling();
 		f.start(0);
 		for (i in 1...6)
 			f.move(0, 10, i * 10.0);
 		var v = f.velocity(50);
 		check("android: a drag's speed fitted (1000 a second)", Math.abs(v.y - 1000) < 1 && v.x == 0, v.y + "");
 		check("android: none once it stood still 40 ms", f.velocity(100).y == 0);
-		var slow = new helder.os.AndroidFling();
+		var slow = new helder.os.android.Fling();
 		slow.start(0);
 		for (i in 1...4)
 			slow.move(0, 120, i * 120.0);
@@ -929,7 +929,7 @@ class UiTest {
 		}
 		check("android: let go, it springs back", @:privateAccess st.amount == 0 && @:privateAccess st.node == null, "" + @:privateAccess st.amount);
 		// (a finger's fling with the stretch on: it glides on, nothing left over mid-way taken for an end)
-		@:privateAccess ui.touchScroll.g = new helder.os.AndroidFling();
+		@:privateAccess ui.touchScroll.g = new helder.os.android.Fling();
 		page.scrollY = 0;
 		tall.style.height = 5000;
 		page.style.height = 100;

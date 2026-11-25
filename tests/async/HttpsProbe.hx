@@ -1,4 +1,4 @@
-// Client.request's https by hand (macOS, iOS: AppleHttp's NSURLSession;
+// Client.request's https by hand (macOS, iOS: helder.async.http.apple.Http's NSURLSession;
 // the network: not a lane's): a GraphQL POST to mock.shop, its status, type
 // and the start of its body.
 //   helder run tests/async/HttpsProbe.hx            (on a Mac)

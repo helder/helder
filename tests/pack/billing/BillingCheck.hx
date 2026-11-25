@@ -1,18 +1,18 @@
 import helder.store.Purchases;
 #if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 import helder.os.android.Jni;
-import helder.store.PurchasesAndroid as P;
+import helder.store.android.AndroidPurchases as P;
 #end
 
 // helder.store's Google Play Billing on a device or emulator
 // (tests/pack/billing.sh, CI's emulator): billing 9.1.0 and its tree put in
-// by use (PurchasesAndroid's keep list), the client built and connected,
+// by use (AndroidPurchases's keep list), the client built and connected,
 // products of an id no store sells, owned(), each line printed; available()
 // before and after. An emulator without the Play Store has no billing
 // service: available false, the calls a short error (BILLING_UNAVAILABLE,
 // SERVICE_UNAVAILABLE); one with it signed out, an error too; signed in, an
 // empty list. Then, with no store: the library's ProductDetails and
-// Purchase made from fixture JSON and read through PurchasesAndroid's
+// Purchase made from fixture JSON and read through AndroidPurchases's
 // getters, the queries' and the billing flow's params built, a purchase's
 // signature checked against a key made for this test ("billing: fixtures
 // ok"). The program's thread turns its loop and the activity's commands in
@@ -58,7 +58,7 @@ class BillingCheck {
 	static final JSON = '{"orderId":"GPA.3312-5551-0623-12345","packageName":"org.helder.billingcheck","productId":"coins","purchaseTime":1763700000000,"purchaseState":0,"purchaseToken":"abcdefghijklmnop.AO-J1Oy","quantity":3,"acknowledged":false}';
 
 	// (on the main thread: what each read gave, "ok" when all agree)
-	@:access(helder.store.PurchasesAndroid) @:hxmc.unsafe(gc)
+	@:access(helder.store.android.AndroidPurchases) @:hxmc.unsafe(gc)
 	static function fixtures():String {
 		var said = [];
 		helder.os.android.MainThread.run(() -> try {

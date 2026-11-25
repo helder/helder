@@ -18,11 +18,11 @@ import hxmc.unsafe.*;
 // layout already); Linux's joystick devices (/dev/input/js0 to js3, read
 // without waiting; the xpad driver's numbering, an Xbox pad's, mapped to
 // the standard one); XInput on Windows (xinput1_4.dll); GameController's
-// extended gamepads on macOS and iOS (GamepadsApple); the input queue's
+// extended gamepads on macOS and iOS (helder.os.apple.AppleGamepads); the input queue's
 // gamepad and joystick events on Android (AndroidGamepads: no UI keys
 // then). set() feeds a pad from a program (an on-screen stick, a test),
 // which poll then leaves alone.
-@:allow(helder.os.GamepadsApple, helder.os.android.AndroidGamepads)
+@:allow(helder.os.apple.AppleGamepads, helder.os.android.AndroidGamepads)
 @:hxmc.unsafe(gc)
 class Gamepads {
 	public static inline var MAX = 4;
@@ -84,7 +84,7 @@ class Gamepads {
 		#if (hxmc.target == "wasm32-wasi")
 		pollWeb();
 		#elseif !eval
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) GamepadsApple.poll() else #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) helder.os.apple.AppleGamepads.poll() else #end
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidGamepads.poll() else #end
 		if (Platform.os() == Platform.LINUX) pollLinux() else
 		if (Platform.os() == Platform.WINDOWS) pollWindows() else
@@ -166,7 +166,7 @@ class Gamepads {
 			if (virtual[i]) continue;
 			var there = Arena.scopedValue(a -> {
 				var p = a.alloc(16, 8);
-				var r = helder.os.win32.XInput.XInputGetState(i, p);
+				var r = helder.os.windows.XInput.XInputGetState(i, p);
 				if (r == 0) BytesPtr.copyIn(xstate, 0, p, 16);
 				r;
 			}) == 0;

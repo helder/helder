@@ -5,7 +5,7 @@ import helder.ui.LayerSlot;
 import hxmc.Platform;
 #if (!helder.os || helder.os == "macos" || helder.os == "ios")
 import helder.media.apple.CoreMedia;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 #end
 

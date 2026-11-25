@@ -276,7 +276,7 @@ interface, `TextBackend`:
   gamma and grayscale enhanced contrast, the user's ClearType tuning;
   helder.ui's shader applies it). A face is opened from
   its file; a font's file named by the local loader's path.
-- macOS (`mac/CoreText`, Core Foundation and the Objective-C runtime): a
+- macOS (`apple/CoreText`, Core Foundation and the Objective-C runtime): a
   family's faces by a CTFontDescriptor, a character's fallback from
   CTFontCopyDefaultCascadeListForLanguages then CTFontCreateForString,
   shaping as a CTLine's runs (a run Core Text gave another font not
@@ -310,8 +310,8 @@ script drawn with both engines, `bin/text/system-<os>.png`).
 `suggest(word)`, `add(word)` (the user's dictionary); `Spell.words(text)`
 and `Spell.misspelled(checker, text, ?cache)` give the words and the
 misspelled ones as start and end pairs (UTF-16). macOS:
-NSSpellChecker's shared checker (`mac/MacSpell`); Windows 8 and later:
-ISpellChecker over COM (`windows/WinSpell`: ISpellCheckerFactory's
+NSSpellChecker's shared checker (`apple/Spell`); Windows 8 and later:
+ISpellChecker over COM (`windows/Spell`: ISpellCheckerFactory's
 checker for the language); Linux: Enchant (`linux/LinuxSpell`,
 libenchant-2 loaded at run time with helder.os.Dl: its providers and
 personal dictionary), else Hunspell itself (libhunspell and a dictionary

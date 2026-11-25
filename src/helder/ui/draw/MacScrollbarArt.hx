@@ -2,7 +2,7 @@ package helder.ui.draw;
 
 import haxe.io.Bytes;
 import helder.image.Image;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // macOS's own scrollers drawn into the tree (Ui.scrollbarArt): an

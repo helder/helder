@@ -15,7 +15,7 @@ import sys.thread.Mutex;
 // waits for the other runs what the other hands it meanwhile, so calls nest
 // both ways without a deadlock and only one of the two runs at a time: the
 // program's state and the system's objects are touched as on one thread.
-// The calls are handed over inside the macOS classes (CocoaWindow, MacViews,
+// The calls are handed over inside the macOS classes (MacWindow, MacViews,
 // ...), not around their run-time Platform branches: a closure there is
 // compiled on every target, and would link AppKit into Linux's and
 // Windows' builds. While the program runs on, the main thread may read the
@@ -40,7 +40,7 @@ class OsThread {
 	static var waiting = false;
 
 	// the main thread's wait while the program runs on (the platform's:
-	// CocoaWindow reads the input meanwhile, for the compositor; false: not
+	// MacWindow reads the input meanwhile, for the compositor; false: not
 	// now, it waits on its lock), and what wakes it from the program's
 	// thread when a call is handed over
 	@:noCompletion public static var waitMain:Null<Void->Bool> = null;

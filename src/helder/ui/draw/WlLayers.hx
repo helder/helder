@@ -4,14 +4,14 @@ package helder.ui.draw;
 import haxe.Timer;
 import helder.gfx.*;
 import helder.gfx.gl.GLBackend;
-import helder.os.wayland.Proxy;
-import helder.os.wayland.WaylandClient;
-import helder.os.wayland.WaylandWindow;
-import helder.os.wayland.protocol.LinuxDmabufV1Protocol;
-import helder.os.wayland.protocol.PresentationTimeProtocol;
-import helder.os.wayland.protocol.SinglePixelBufferV1Protocol;
-import helder.os.wayland.protocol.ViewporterProtocol;
-import helder.os.wayland.protocol.WaylandProtocol;
+import helder.os.linux.wayland.Proxy;
+import helder.os.linux.wayland.WaylandClient;
+import helder.os.linux.wayland.WaylandWindow;
+import helder.os.linux.wayland.protocol.LinuxDmabufV1Protocol;
+import helder.os.linux.wayland.protocol.PresentationTimeProtocol;
+import helder.os.linux.wayland.protocol.SinglePixelBufferV1Protocol;
+import helder.os.linux.wayland.protocol.ViewporterProtocol;
+import helder.os.linux.wayland.protocol.WaylandProtocol;
 import hxmc.unsafe.*;
 
 // The system's compositor on Wayland (Layers' step 5): a window's layers
@@ -53,7 +53,7 @@ import hxmc.unsafe.*;
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.CompositeFrame)
 @:access(helder.ui.Node)
-@:access(helder.os.wayland.WaylandWindow)
+@:access(helder.os.linux.wayland.WaylandWindow)
 class WlLayers extends LayerSplit {
 	public static function wanted(device:Device):Bool
 		return Sys.getEnv("HELDER_SYSTEM_LAYERS") != "0" && device.backend == GL && device.surface.kind == Wayland
@@ -690,7 +690,7 @@ class WlLayers extends LayerSplit {
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.WlLayers)
 @:access(helder.ui.draw.LayerSplit)
-@:access(helder.os.wayland.WaylandWindow)
+@:access(helder.os.linux.wayland.WaylandWindow)
 private class WlPlane extends LayerPlane {
 	public var owner:WlLayers;
 	public var surface:WlSurface = Ptr.nil();
@@ -981,7 +981,7 @@ private class WlPlane extends LayerPlane {
 // compositor holds it; the draw of its layer it holds)
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.WlLayers)
-@:access(helder.os.wayland.WaylandWindow)
+@:access(helder.os.linux.wayland.WaylandWindow)
 private class WlBuf {
 	public var buffer:WlBuffer = Ptr.nil();
 	public var texture = 0;
@@ -1104,7 +1104,7 @@ private class WlBuf {
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.WlLayers)
 @:access(helder.ui.draw.LayerSplit)
-@:access(helder.os.wayland.WaylandWindow)
+@:access(helder.os.linux.wayland.WaylandWindow)
 private class WlSlot {
 	final owner:WlLayers;
 	public final surface:WlSurface;

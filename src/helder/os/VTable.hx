@@ -5,7 +5,7 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 
 // The build macro of function tables reached through an object whose first
-// word points at them: COM's interfaces (helder.os.win32.Com: WASAPI, Direct3D
+// word points at them: COM's interfaces (helder.os.windows.Com: WASAPI, Direct3D
 // 11, UI Automation) and JNI's JNIEnv and JavaVM (helder.os.android.Jni). Each
 // function declared without a body and with @:slot(n) is the entry at index
 // n of the table (the order of the official headers' C structs), its first

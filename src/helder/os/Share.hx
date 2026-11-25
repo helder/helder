@@ -10,9 +10,9 @@ class Share {
 		#elseif (hxmc.target == "wasm32-wasi")
 		return helder.os.web.WebServices.share(item.text, item.url, item.files ?? []);
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return ShareApple.share(item.text, item.url, item.files ?? []);
+		return helder.os.apple.Share.share(item.text, item.url, item.files ?? []);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return helder.os.android.AndroidShare.share(item.text, item.url, item.files ?? []);
+		return helder.os.android.Share.share(item.text, item.url, item.files ?? []);
 		#else
 		return false;
 		#end

@@ -2,7 +2,7 @@ import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
 #if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
-import helder.os.x11.Xlib;
+import helder.os.linux.x11.Xlib;
 #end
 
 // A transparent window (helder.os.Window's transparent; bun run test
@@ -169,14 +169,14 @@ class ShapeWindow {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = win.surface.handle;
 		return OsThread.get(() -> {
-			var content = helder.os.objc.Msg.id(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("contentView"));
-			var subs = helder.os.objc.Msg.id(content, helder.os.objc.ObjC.sel("subviews"));
-			var first = helder.os.objc.Msg.idInt(subs, helder.os.objc.ObjC.sel("objectAtIndex:"), 0);
-			var name = helder.os.objc.ObjC.string(helder.os.objc.Msg.id(helder.os.objc.Msg.id(first, helder.os.objc.ObjC.sel("className")), helder.os.objc.ObjC.sel("description")));
+			var content = helder.os.apple.objc.Msg.id(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("contentView"));
+			var subs = helder.os.apple.objc.Msg.id(content, helder.os.apple.objc.ObjC.sel("subviews"));
+			var first = helder.os.apple.objc.Msg.idInt(subs, helder.os.apple.objc.ObjC.sel("objectAtIndex:"), 0);
+			var name = helder.os.apple.objc.ObjC.string(helder.os.apple.objc.Msg.id(helder.os.apple.objc.Msg.id(first, helder.os.apple.objc.ObjC.sel("className")), helder.os.apple.objc.ObjC.sel("description")));
 			if (name == "NSGlassEffectView") return WindowBackdrop.Glass;
 			if (name != "NSVisualEffectView") return WindowBackdrop.None;
-			var m = helder.os.objc.Msg.i(first, helder.os.objc.ObjC.sel("material")).toInt();
-			var behind = helder.os.objc.Msg.i(first, helder.os.objc.ObjC.sel("blendingMode")).toInt() == 0;
+			var m = helder.os.apple.objc.Msg.i(first, helder.os.apple.objc.ObjC.sel("material")).toInt();
+			var behind = helder.os.apple.objc.Msg.i(first, helder.os.apple.objc.ObjC.sel("blendingMode")).toInt() == 0;
 			return !behind ? WindowBackdrop.None : m == 13 ? WindowBackdrop.Blur : m == 21 ? WindowBackdrop.Mica : WindowBackdrop.None;
 		});
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
@@ -235,10 +235,10 @@ class ShapeWindow {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = win.surface.handle;
 		var got = OsThread.get(() -> {
-			var w = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
-			[helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("styleMask")).toInt(), helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("level")).toInt(),
-				helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("collectionBehavior")).toInt(), helder.os.objc.Msg.b(w, helder.os.objc.ObjC.sel("isExcludedFromWindowsMenu")) ? 1 : 0,
-				helder.os.objc.Msg.b(w, helder.os.objc.ObjC.sel("canBecomeKeyWindow")) ? 1 : 0];
+			var w = helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window"));
+			[helder.os.apple.objc.Msg.i(w, helder.os.apple.objc.ObjC.sel("styleMask")).toInt(), helder.os.apple.objc.Msg.i(w, helder.os.apple.objc.ObjC.sel("level")).toInt(),
+				helder.os.apple.objc.Msg.i(w, helder.os.apple.objc.ObjC.sel("collectionBehavior")).toInt(), helder.os.apple.objc.Msg.b(w, helder.os.apple.objc.ObjC.sel("isExcludedFromWindowsMenu")) ? 1 : 0,
+				helder.os.apple.objc.Msg.b(w, helder.os.apple.objc.ObjC.sel("canBecomeKeyWindow")) ? 1 : 0];
 		});
 		check(got[0] == 0 && got[4] == 1, 'macOS: borderless, and may be key (style ${got[0]}, key ${got[4]})');
 		check(got[1] == 3, 'macOS: on top, the floating level (${got[1]})');
@@ -321,9 +321,9 @@ class ShapeWindow {
 	static function level(win:Window, n:Int) {
 		var view = win.surface.handle;
 		OsThread.get(() -> {
-			var w = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
-			helder.os.objc.Msg.vInt(w, helder.os.objc.ObjC.sel("setLevel:"), n);
-			helder.os.objc.Msg.v(w, helder.os.objc.ObjC.sel("orderFrontRegardless"));
+			var w = helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window"));
+			helder.os.apple.objc.Msg.vInt(w, helder.os.apple.objc.ObjC.sel("setLevel:"), n);
+			helder.os.apple.objc.Msg.v(w, helder.os.apple.objc.ObjC.sel("orderFrontRegardless"));
 			0;
 		});
 	}
@@ -332,13 +332,13 @@ class ShapeWindow {
 	static function macState(w:UiWindow) {
 		var view = w.window.surface.handle;
 		Sys.println(OsThread.get(() -> {
-			var win = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
-			var o = helder.os.objc.Msg.point(win, helder.os.objc.ObjC.sel("mouseLocationOutsideOfEventStream"));
-			var p = helder.os.objc.Msg.pointPointPtr(view, helder.os.objc.ObjC.sel("convertPoint:fromView:"), o, hxmc.unsafe.Ptr.nil());
-			var b = helder.os.objc.Msg.rect(view, helder.os.objc.ObjC.sel("bounds"));
-			var g = helder.os.objc.Msg.point(helder.os.objc.ObjC.cls("NSEvent"), helder.os.objc.ObjC.sel("mouseLocation"));
+			var win = helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window"));
+			var o = helder.os.apple.objc.Msg.point(win, helder.os.apple.objc.ObjC.sel("mouseLocationOutsideOfEventStream"));
+			var p = helder.os.apple.objc.Msg.pointPointPtr(view, helder.os.apple.objc.ObjC.sel("convertPoint:fromView:"), o, hxmc.unsafe.Ptr.nil());
+			var b = helder.os.apple.objc.Msg.rect(view, helder.os.apple.objc.ObjC.sel("bounds"));
+			var g = helder.os.apple.objc.Msg.point(helder.os.apple.objc.ObjC.cls("NSEvent"), helder.os.apple.objc.ObjC.sel("mouseLocation"));
 			// (the window server's window there, and ours front to back)
-			var M = helder.os.objc.Msg, S = helder.os.objc.ObjC;
+			var M = helder.os.apple.objc.Msg, S = helder.os.apple.objc.ObjC;
 			var at = M.iPointInt(S.cls("NSWindow"), S.sel("windowNumberAtPoint:belowWindowWithWindowNumber:"), g, 0).toInt();
 			var ordered = M.id(M.id(S.cls("NSApplication"), S.sel("sharedApplication")), S.sel("orderedWindows"));
 			var order = [for (i in 0...M.i(ordered, S.sel("count")).toInt()) {
@@ -346,7 +346,7 @@ class ShapeWindow {
 				M.i(o, S.sel("windowNumber")).toInt() + (M.b(o, S.sel("ignoresMouseEvents")) ? " (ignores)" : "") + " level " + M.i(o, S.sel("level")).toInt();
 			}];
 			Sys.println('ShapeWindow: at the press: the window server\'s window there ${at}, this one ${M.i(win, S.sel("windowNumber")).toInt()}, ours front to back ${order.join(", ")}');
-			'ShapeWindow: at the press: ignores the mouse ${helder.os.objc.Msg.b(win, helder.os.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
+			'ShapeWindow: at the press: ignores the mouse ${helder.os.apple.objc.Msg.b(win, helder.os.apple.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
 		}));
 	}
 	#end
@@ -382,7 +382,7 @@ class ShapeWindow {
 		if (!w.window.transparent) return;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = w.window.surface.handle;
-		var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+		var id = OsThread.get(() -> helder.os.apple.objc.Msg.i(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("windowNumber")).toInt());
 		var img = SystemLayersWindow.Capture.window(id);
 		if (img == null) return Sys.println("ShapeWindow: no window capture here: skipped");
 		// (BGRA, the title bar above the content)
@@ -508,7 +508,7 @@ class Click {
 		if (!allowed) return;
 		var p = w.position();
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-		var at:hxmc.unsafe.Ptr<helder.os.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
+		var at:hxmc.unsafe.Ptr<helder.os.apple.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
 		at.value.x = p.x + x;
 		at.value.y = p.y + y;
 		var ev = TapCG.CGEventCreateMouseEvent(hxmc.unsafe.Ptr.nil(), [5, 1, 2][what], at.value, 0);
@@ -538,7 +538,7 @@ class Click {
 
 #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") extern class TapCG {
-	static function CGEventCreateMouseEvent(source:hxmc.unsafe.Ptr, type:Int, p:helder.os.objc.CGPoint, button:Int):hxmc.unsafe.Ptr;
+	static function CGEventCreateMouseEvent(source:hxmc.unsafe.Ptr, type:Int, p:helder.os.apple.objc.CGPoint, button:Int):hxmc.unsafe.Ptr;
 	static function CGEventPost(tap:Int, ev:hxmc.unsafe.Ptr):Void;
 }
 #end
@@ -567,17 +567,17 @@ class Plain {
 
 	public static function open(x:Int, y:Int, w:Int, h:Int)
 		hwnd = OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
-			var name = a.wstring("ShapeWindowBehind"), instance = helder.os.win32.User32.Kernel32.GetModuleHandleW(hxmc.unsafe.Ptr.nil());
-			var wc = a.make(helder.os.win32.User32.WNDCLASSEXW);
+			var name = a.wstring("ShapeWindowBehind"), instance = helder.os.windows.User32.Kernel32.GetModuleHandleW(hxmc.unsafe.Ptr.nil());
+			var wc = a.make(helder.os.windows.User32.WNDCLASSEXW);
 			wc.value.cbSize = 80;
 			wc.value.lpfnWndProc = hxmc.unsafe.Callback.addr(proc);
 			wc.value.hInstance = instance;
 			wc.value.hbrBackground = ScreenPixel.CreateSolidBrush(0x0000FF00);
 			wc.value.lpszClassName = name;
-			helder.os.win32.User32.User32.RegisterClassExW(wc);
+			helder.os.windows.User32.User32.RegisterClassExW(wc);
 			// (WS_POPUP | WS_VISIBLE; scaled as helder's windows place theirs: points times the system's DPI)
-			var k = helder.os.win32.User32.User32.GetDpiForSystem() / 96;
-			helder.os.win32.User32.User32.CreateWindowExW(0, name, name, (0x80000000 : Int) | 0x10000000, Math.round(x * k), Math.round(y * k), Math.round(w * k), Math.round(h * k),
+			var k = helder.os.windows.User32.User32.GetDpiForSystem() / 96;
+			helder.os.windows.User32.User32.CreateWindowExW(0, name, name, (0x80000000 : Int) | 0x10000000, Math.round(x * k), Math.round(y * k), Math.round(w * k), Math.round(h * k),
 				hxmc.unsafe.Ptr.nil(), hxmc.unsafe.Ptr.nil(), instance, hxmc.unsafe.Ptr.nil());
 		}));
 
@@ -586,16 +586,16 @@ class Plain {
 
 	@:hxmc.callback static function proc(hwnd:hxmc.unsafe.Ptr, message:Int, wParam:haxe.Int64, lParam:haxe.Int64):haxe.Int64 {
 		if (message == 0x0201) downs++;
-		return helder.os.win32.User32.User32.DefWindowProcW(hwnd, message, wParam, lParam);
+		return helder.os.windows.User32.User32.DefWindowProcW(hwnd, message, wParam, lParam);
 	}
 
 	// (the transparent window's extended styles and the cursor at a press: WS_EX_LAYERED and TRANSPARENT while it passes)
 	public static function styles(top:hxmc.unsafe.Ptr)
 		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
-			var p = a.make(helder.os.win32.User32.POINT);
+			var p = a.make(helder.os.windows.User32.POINT);
 			ScreenDc.GetCursorPos(p);
 			var c = {x: p.value.x, y: p.value.y};
-			helder.os.win32.User32.User32.ScreenToClient(top, p);
+			helder.os.windows.User32.User32.ScreenToClient(top, p);
 			var ex = ScreenDc.GetWindowLongPtrW(top, -20).toI64();
 			Sys.println('ShapeWindow: at the press the cursor at ${c.x}, ${c.y} (in it ${p.value.x}, ${p.value.y}), its extended style 0x${StringTools.hex(ex.toInt())}');
 			0;
@@ -610,16 +610,16 @@ class Plain {
 				next = ScreenDc.GetWindow(next, 2);
 				n++;
 			}
-			var r = a.make(helder.os.win32.User32.RECT), q = a.make(helder.os.win32.User32.RECT);
-			helder.os.win32.User32.User32.GetWindowRect(under, r);
-			helder.os.win32.User32.User32.GetWindowRect(top, q);
+			var r = a.make(helder.os.windows.User32.RECT), q = a.make(helder.os.windows.User32.RECT);
+			helder.os.windows.User32.User32.GetWindowRect(under, r);
+			helder.os.windows.User32.User32.GetWindowRect(top, q);
 			// (its own pixels: PrintWindow, PW_RENDERFULLCONTENT 2, into a bitmap of its size, the middle read)
 			var w = r.value.right - r.value.left, h = r.value.bottom - r.value.top, screen = ScreenDc.GetDC(hxmc.unsafe.Ptr.nil());
-			var dc = helder.os.win32.User32.Gdi32.CreateCompatibleDC(screen), bmp = ScreenPixel.CreateCompatibleBitmap(screen, w, h);
-			var old = helder.os.win32.User32.Gdi32.SelectObject(dc, bmp), printed = ScreenDc.PrintWindow(under, dc, 2), c = ScreenPixel.GetPixel(dc, w >> 1, h >> 1);
-			helder.os.win32.User32.Gdi32.SelectObject(dc, old);
-			helder.os.win32.User32.Gdi32.DeleteObject(bmp);
-			helder.os.win32.User32.Gdi32.DeleteDC(dc);
+			var dc = helder.os.windows.User32.Gdi32.CreateCompatibleDC(screen), bmp = ScreenPixel.CreateCompatibleBitmap(screen, w, h);
+			var old = helder.os.windows.User32.Gdi32.SelectObject(dc, bmp), printed = ScreenDc.PrintWindow(under, dc, 2), c = ScreenPixel.GetPixel(dc, w >> 1, h >> 1);
+			helder.os.windows.User32.Gdi32.SelectObject(dc, old);
+			helder.os.windows.User32.Gdi32.DeleteObject(bmp);
+			helder.os.windows.User32.Gdi32.DeleteDC(dc);
 			ScreenDc.ReleaseDC(hxmc.unsafe.Ptr.nil(), screen);
 			Sys.println('ShapeWindow: behind it: visible ${ScreenDc.IsWindowVisible(under)}, minimised ${ScreenDc.IsIconic(under)}, '
 				+ (at < 0 ? "not under it in the z-order" : 'under it, ${at} windows between') + ', at ${r.value.left}, ${r.value.top} to ${r.value.right}, ${r.value.bottom}'
@@ -644,7 +644,7 @@ class Screen {
 	static function GetDC(hwnd:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function ReleaseDC(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr):Int;
 	static function SetCursorPos(x:Int, y:Int):Int;
-	static function GetCursorPos(p:hxmc.unsafe.Ptr<helder.os.win32.User32.POINT>):Int;
+	static function GetCursorPos(p:hxmc.unsafe.Ptr<helder.os.windows.User32.POINT>):Int;
 	static function GetWindowLongPtrW(hwnd:hxmc.unsafe.Ptr, index:Int):hxmc.unsafe.Ptr;
 	static function SendInput(count:Int, inputs:hxmc.unsafe.Ptr, size:Int):Int;
 	static function GetWindow(hwnd:hxmc.unsafe.Ptr, cmd:Int):hxmc.unsafe.Ptr;

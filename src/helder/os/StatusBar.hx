@@ -35,7 +35,7 @@ class StatusBar {
 		#if (target.name == "hxmc" && !helder.headless)
 		if (Platform.apple() >= 1) {
 			// (UIStatusBarStyle: default 0, the system's own Auto; lightContent 1; darkContent 3)
-			@:privateAccess helder.os.uikit.UIKitWindow.statusBar(current == Light ? 1 : current == Dark ? 3 : 0, hide);
+			@:privateAccess helder.os.apple.IosWindow.statusBar(current == Light ? 1 : current == Dark ? 3 : 0, hide);
 		} else if (Platform.target() >= 9) {
 			if (current == Auto && !following) {
 				following = true;

@@ -1,6 +1,6 @@
 package helder.os;
 
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 

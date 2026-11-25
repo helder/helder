@@ -1,9 +1,9 @@
 import helder.ui.*;
 import helder.ui.draw.UiWindow;
 import helder.ui.widgets.EditableText;
-import helder.os.win32.Com;
-import helder.os.win32.Tsf;
-import helder.os.win32.Tsf.IUnknownQi;
+import helder.os.windows.Com;
+import helder.os.windows.Tsf;
+import helder.os.windows.Tsf.IUnknownQi;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 import hxmc.unsafe.*;
@@ -96,7 +96,7 @@ class WinTextTest implements Markup {
 		var tsf:Null<Tsf> = null;
 		function store():Null<Tsf> {
 			var native = @:privateAccess w.window.native;
-			return cast @:privateAccess (cast native : helder.os.win32.Win32Window).tsf;
+			return cast @:privateAccess (cast native : helder.os.windows.WinWindow).tsf;
 		}
 		function session(body:Int->Void) {
 			TextSession.body = body;
@@ -264,34 +264,34 @@ class TextView {
 	}
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfContext {
 	@:slot(3) static function RequestEditSession(self:Ptr, client:Int, session:Ptr, flags:Int, hr:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfInsertAtSelection {
 	@:slot(3) static function InsertTextAtSelection(self:Ptr, ec:Int, flags:Int, text:Ptr, n:Int, range:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class UiaSimple {
 	@:slot(4) static function GetPatternProvider(o:Ptr, id:Int, out:Ptr<Ptr>):Int;
 	@:slot(5) static function GetPropertyValue(o:Ptr, id:Int, v:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class UiaFragment {
 	@:slot(3) static function Navigate(o:Ptr, dir:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class UiaValue {
 	@:slot(3) static function SetValue(o:Ptr, s:Ptr):Int;
 	@:slot(4) static function get_Value(o:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class IOwner {
 	@:slot(3) static function OnStartComposition(self:Ptr, view:Ptr, ok:Ptr<Int32>):Int;
 	@:slot(5) static function OnEndComposition(self:Ptr, view:Ptr):Int;

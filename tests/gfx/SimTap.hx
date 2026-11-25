@@ -1,4 +1,4 @@
-import helder.os.objc.CGPoint;
+import helder.os.apple.objc.CGPoint;
 import hxmc.unsafe.*;
 
 // A tap on the iOS simulator's screen for ios.sh (macOS, a GUI session):

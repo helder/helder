@@ -17,7 +17,7 @@ import helder.typescript.ir.Builder;
 // body never run. The calls go through hxmc's extern machinery, as Haxe's
 // do (hxmc.ir.CInterop's tables): native.c's to the symbol (a Haxe
 // @:hxmc.c extern's), the others through a function's address (an
-// @:hxmc.indirect extern's): objc_msgSend's (helder.os.objc.Msg's), a
+// @:hxmc.indirect extern's): objc_msgSend's (helder.os.apple.objc.Msg's), a
 // vtable's slot (helder.os.VTable's, COM's and JNIEnv's). Values cross as
 // helder.native.Script converts them (helder/native's runtime.d.ts).
 @:access(helder.typescript.lower.Frontend)

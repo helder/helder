@@ -1,6 +1,6 @@
 package helder.gfx.d3d11;
 
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 import hxmc.unsafe.*;
 
 // DirectComposition (dcomp.dll, Windows 8 on): the device, a window's
@@ -26,7 +26,7 @@ import hxmc.unsafe.*;
 	static function WaitForSingleObjectEx(handle:Ptr, ms:Int, alertable:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionDevice {
 	@:slot(3) static function Commit(self:Ptr):Int;
@@ -40,13 +40,13 @@ class IDCompositionDevice {
 	@:slot(26) static function CheckDeviceState(self:Ptr, valid:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionTarget {
 	@:slot(3) static function SetRoot(self:Ptr, visual:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionVisual {
 	@:slot(4) static function SetOffsetX(self:Ptr, x:Float32):Int;
@@ -65,7 +65,7 @@ class IDCompositionVisual {
 	@:slot(18) static function RemoveAllVisuals(self:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionSurface {
 	// (update: a RECT or nil (all of it); the texture's interface; where the rectangle's corner is in it)
@@ -73,13 +73,13 @@ class IDCompositionSurface {
 	@:slot(4) static function EndDraw(self:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionEffectGroup {
 	@:slot(4) static function SetOpacity(self:Ptr, opacity:Float32):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionRectangleClip {
 	@:slot(4) static function SetLeft(self:Ptr, v:Float32):Int;

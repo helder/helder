@@ -2,7 +2,7 @@ package helder.os;
 
 import helder.test.Test;
 
-// text/uri-list's file paths (X11's drops: helder.os.x11.X11Window)
+// text/uri-list's file paths (X11's drops: helder.os.linux.x11.X11Window)
 @:test.interp function tests() {
 	describe("UriList", () -> {
 		test("file URIs, CRLF and LF, comments and other schemes left out", () -> {

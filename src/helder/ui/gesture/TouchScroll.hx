@@ -85,7 +85,7 @@ class TouchScroll extends Gesture {
 		if (ui.stretch && @:privateAccess ui.stretcher.held()) {
 			// (Android's fling only Android's: UiWindow.native)
 			var s = @:privateAccess ui.stretcher,
-				v = #if (!helder.os || helder.os == "android") Std.isOfType(g, helder.os.AndroidFling) ? (cast g : helder.os.AndroidFling).velocity(time * 1000) : #end {x: 0.0, y: 0.0};
+				v = #if (!helder.os || helder.os == "android") Std.isOfType(g, helder.os.android.Fling) ? (cast g : helder.os.android.Fling).velocity(time * 1000) : #end {x: 0.0, y: 0.0};
 			@:privateAccess s.release(cancelled ? 0 : @:privateAccess s.alongX ? v.x : v.y);
 			return;
 		}
@@ -107,8 +107,8 @@ class TouchScroll extends Gesture {
 		if (!g.step(now)) return gliding;
 		// (Android's: a fling into an end stops there, its speed a stretch's)
 		#if (!helder.os || helder.os == "android")
-		if (ui.stretch && Std.isOfType(g, helder.os.AndroidFling)) {
-			var f:helder.os.AndroidFling = cast g;
+		if (ui.stretch && Std.isOfType(g, helder.os.android.Fling)) {
+			var f:helder.os.android.Fling = cast g;
 			if (!@:privateAccess ui.stretcher.glide(startX, startY, g.dx, g.dy, f.speedX, f.speedY)) g.stop();
 			flush();
 		} else

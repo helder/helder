@@ -92,10 +92,10 @@ class Settings {
 		if (!musl()) {
 			v.dark = App.prefersDark();
 			v.orientation = windowOrientation();
-			#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) { if (Platform.apple() >= 1) SettingsApple.ios(v) else SettingsApple.mac(v); } else #end
-			#if (!helder.os || helder.os == "windows") if (Platform.os() == Platform.WINDOWS) SettingsDesktop.windows(v) else #end
-			#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidSettings.read(v) else #end
-			#if (!helder.os || helder.os == "linux") SettingsDesktop.linux(v); #else {} #end
+			#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) { if (Platform.apple() >= 1) helder.os.apple.Settings.ios(v) else helder.os.apple.Settings.mac(v); } else #end
+			#if (!helder.os || helder.os == "windows") if (Platform.os() == Platform.WINDOWS) helder.os.windows.Settings.read(v) else #end
+			#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.Settings.read(v) else #end
+			#if (!helder.os || helder.os == "linux") helder.os.linux.Settings.read(v); #else {} #end
 		}
 		#end
 		#elseif js

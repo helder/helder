@@ -94,12 +94,12 @@ class Win {
 		var hwnd = u.window.surface.handle, w = u.window.surface.width, h = u.window.surface.height;
 		return OsThread.get(() -> {
 			var screen = WinGdi.GetDC(hxmc.unsafe.Ptr.nil());
-			var dc = helder.os.win32.User32.Gdi32.CreateCompatibleDC(screen), bmp = WinPixel.CreateCompatibleBitmap(screen, w, h);
-			var old = helder.os.win32.User32.Gdi32.SelectObject(dc, bmp);
+			var dc = helder.os.windows.User32.Gdi32.CreateCompatibleDC(screen), bmp = WinPixel.CreateCompatibleBitmap(screen, w, h);
+			var old = helder.os.windows.User32.Gdi32.SelectObject(dc, bmp);
 			var c = WinGdi.PrintWindow(hwnd, dc, 3) == 0 ? -1 : rgb(WinPixel.GetPixel(dc, w >> 1, h >> 1));
-			helder.os.win32.User32.Gdi32.SelectObject(dc, old);
-			helder.os.win32.User32.Gdi32.DeleteObject(bmp);
-			helder.os.win32.User32.Gdi32.DeleteDC(dc);
+			helder.os.windows.User32.Gdi32.SelectObject(dc, old);
+			helder.os.windows.User32.Gdi32.DeleteObject(bmp);
+			helder.os.windows.User32.Gdi32.DeleteDC(dc);
 			WinGdi.ReleaseDC(hxmc.unsafe.Ptr.nil(), screen);
 			c;
 		});

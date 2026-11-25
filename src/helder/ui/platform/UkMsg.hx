@@ -1,11 +1,11 @@
 package helder.ui.platform;
 
-import helder.os.objc.UIEdgeInsets;
+import helder.os.apple.objc.UIEdgeInsets;
 import hxmc.unsafe.*;
 
-// The message shapes IosViews sends beside Msg's (helder.os.objc.Sender):
+// The message shapes IosViews sends beside Msg's (helder.os.apple.objc.Sender):
 // named by the result, then the arguments, as Msg's.
-@:build(helder.os.objc.Sender.build())
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class UkMsg {
 	static function iPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Int64;

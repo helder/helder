@@ -1,6 +1,6 @@
 package helder.os.audio;
 
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // iOS's AVAudioSession for helder.os.audio's RemoteIO output
@@ -61,7 +61,7 @@ class AudioSession {
 	}
 }
 
-@:build(helder.os.objc.Sender.build())
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class SessionMsg {
 	static function bPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Bool;

@@ -1,7 +1,7 @@
 import helder.os.*;
-import helder.os.objc.*;
-import helder.os.win32.User32;
-import helder.os.x11.Xlib;
+import helder.os.apple.objc.*;
+import helder.os.windows.User32;
+import helder.os.linux.x11.Xlib;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -103,20 +103,20 @@ function integration(check:(String, Bool, String) -> Void) {
 			var buf:Ptr<UInt16> = a.alloc(1024), size:Ptr<Int32> = a.alloc(4);
 			size.value = 1024;
 			// (HKEY_CURRENT_USER, RRF_RT_REG_SZ 2)
-			var r = helder.os.win32.User32.Advapi32.RegGetValueW(Ptr.ofI64((0x80000001 : Int64)), a.wstring("Software\\Classes\\helder.windowtest.file\\shell\\open\\command"), Ptr.nil(), 2, Ptr.nil(), cast buf, cast size);
+			var r = helder.os.windows.User32.Advapi32.RegGetValueW(Ptr.ofI64((0x80000001 : Int64)), a.wstring("Software\\Classes\\helder.windowtest.file\\shell\\open\\command"), Ptr.nil(), 2, Ptr.nil(), cast buf, cast size);
 			var b = new StringBuf(), k = 0;
 			if (r == 0) while (buf[k] != 0) b.addChar(buf[k++]);
 			b.toString();
 		});
 		check("FileTypes: the ProgID's command", command == '"C:\\tools\\viewer.exe" "%1"', command);
 		check("FileTypes: the extensions' OpenWithProgids", w.indexOf("HKCU\\Software\\Classes\\.jpg\\OpenWithProgids\\helder.windowtest.file") >= 0, w.length + " values");
-		check("FileDialog: IFileOpenDialog made", !helder.os.win32.FileOpenDialog.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
+		check("FileDialog: IFileOpenDialog made", !helder.os.windows.FileOpenDialog.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		WinDragOut.check(check);
 		#end
 	}
 	if (Platform.os() == 1) {
-		check("FileDialog: NSOpenPanel made", !helder.os.cocoa.OpenPanel.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
+		check("FileDialog: NSOpenPanel made", !helder.os.apple.OpenPanel.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
 		var got:Array<String> = [];
 		App.onOpen = paths -> got = paths;
 		var s = ObjC.str("/tmp/photos/a b.png");
@@ -179,29 +179,29 @@ private class DragOut {
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	function mac() {
-		var w:helder.os.cocoa.CocoaWindow = cast @:privateAccess window.native;
+		var w:helder.os.apple.MacWindow = cast @:privateAccess window.native;
 		// (ASCII: NSURL's path gives é decomposed)
 		var files = ["/tmp/photos/a b.png", "/tmp/photos/c.jpg"];
-		var items = @:privateAccess helder.os.cocoa.CocoaFileDrag.items(w, Ptr.nil(), files, null, 0, 0), got = [];
+		var items = @:privateAccess helder.os.apple.FileDrag.items(w, Ptr.nil(), files, null, 0, 0), got = [];
 		for (i in 0...Msg.i(items, ObjC.sel("count")).toInt()) {
 			var url = Msg.id(Msg.idInt(items, ObjC.sel("objectAtIndex:"), i), ObjC.sel("item"));
 			got.push(ObjC.string(Msg.id(url, ObjC.sel("path"))));
 		}
 		check("drag out: a dragging item per file URL", got.join("|") == files.join("|"), got.join("|"));
-		var drag = @:privateAccess new helder.os.cocoa.CocoaFileDrag([Copy, Move], op -> done = op), source = @:privateAccess drag.source;
+		var drag = @:privateAccess new helder.os.apple.FileDrag([Copy, Move], op -> done = op), source = @:privateAccess drag.source;
 		var answers = Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:sourceOperationMaskForDraggingContext:"))
 			&& Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:endedAtPoint:operation:"));
-		@:privateAccess helder.os.cocoa.CocoaFileDrag.active.push(drag);
-		var mask = @:privateAccess helder.os.cocoa.CocoaFileDrag.operations(source, Ptr.nil(), Ptr.nil(), 0);
+		@:privateAccess helder.os.apple.FileDrag.active.push(drag);
+		var mask = @:privateAccess helder.os.apple.FileDrag.operations(source, Ptr.nil(), Ptr.nil(), 0);
 		check("drag out: the source's methods, its mask copy and move", answers && mask == 17, 'mask $mask');
 		// (NSDragOperationCopy)
-		@:privateAccess helder.os.cocoa.CocoaFileDrag.ended(source, Ptr.nil(), Ptr.nil(), 0, 0, 1);
+		@:privateAccess helder.os.apple.FileDrag.ended(source, Ptr.nil(), Ptr.nil(), 0, 0, 1);
 	}
 	#end
 
 	#if (hxmc.libc == "glibc")
 	function x11() {
-		var w:helder.os.x11.X11Window = cast @:privateAccess window.native;
+		var w:helder.os.linux.x11.X11Window = cast @:privateAccess window.native;
 		app = @:privateAccess w.id;
 		d = Xlib.XOpenDisplay(Ptr.nil());
 		for (n in ["XdndAware", "XdndEnter", "XdndPosition", "XdndStatus", "XdndDrop", "XdndFinished", "XdndSelection", "XdndActionCopy", "text/uri-list", "HXMC_DRAG_OUT"])
@@ -328,13 +328,13 @@ private class DropSource {
 
 	// --- Windows: WM_DROPFILES of an HDROP
 	function windows() {
-		var hwnd = @:privateAccess (cast @:privateAccess window.native : helder.os.win32.Win32Window).hwnd;
+		var hwnd = @:privateAccess (cast @:privateAccess window.native : helder.os.windows.WinWindow).hwnd;
 		var chars = 0;
 		for (f in files)
 			chars += f.length + 1;
 		// (DROPFILES: pFiles 20, pt, fNC, fWide; the paths, a 0 after each and one more)
-		var mem = helder.os.win32.User32.Kernel32.GlobalAlloc(0x42, (20 + 2 * (chars + 1) : Int64));
-		var p:Ptr<UInt8> = helder.os.win32.User32.Kernel32.GlobalLock(mem);
+		var mem = helder.os.windows.User32.Kernel32.GlobalAlloc(0x42, (20 + 2 * (chars + 1) : Int64));
+		var p:Ptr<UInt8> = helder.os.windows.User32.Kernel32.GlobalLock(mem);
 		var h:Ptr<Int32> = cast p;
 		h[0] = 20;
 		h[1] = x;
@@ -348,29 +348,29 @@ private class DropSource {
 			w[k++] = 0;
 		}
 		w[k] = 0;
-		helder.os.win32.User32.Kernel32.GlobalUnlock(mem);
-		helder.os.win32.User32.PostMessageW(hwnd, 0x0233, mem.toI64(), 0);
+		helder.os.windows.User32.Kernel32.GlobalUnlock(mem);
+		helder.os.windows.User32.PostMessageW(hwnd, 0x0233, mem.toI64(), 0);
 	}
 
 	// --- macOS: the window's dragging destination given a dragging info of our own
 	function mac() {
-		var w = @:privateAccess (cast @:privateAccess window.native : helder.os.cocoa.CocoaWindow).window;
+		var w = @:privateAccess (cast @:privateAccess window.native : helder.os.apple.MacWindow).window;
 		MacDrag.make(w, files);
 	}
 
 	// --- X11: XDND from a second connection
 	function x11() {
-		target = @:privateAccess (cast @:privateAccess window.native : helder.os.x11.X11Window).id;
-		d = helder.os.x11.Xlib.XOpenDisplay(Ptr.nil());
-		var root = helder.os.x11.Xlib.XDefaultRootWindow(d);
-		src = helder.os.x11.Xlib.XCreateSimpleWindow(d, root, 0, 0, 10, 10, 0, 0, 0);
+		target = @:privateAccess (cast @:privateAccess window.native : helder.os.linux.x11.X11Window).id;
+		d = helder.os.linux.x11.Xlib.XOpenDisplay(Ptr.nil());
+		var root = helder.os.linux.x11.Xlib.XDefaultRootWindow(d);
+		src = helder.os.linux.x11.Xlib.XCreateSimpleWindow(d, root, 0, 0, 10, 10, 0, 0, 0);
 		for (n in ["XdndEnter", "XdndPosition", "XdndStatus", "XdndDrop", "XdndFinished", "XdndSelection", "XdndActionCopy", "text/uri-list"])
-			Arena.scoped(a -> atoms.set(n, helder.os.x11.Xlib.XInternAtom(d, a.cstring(n), 0)));
-		helder.os.x11.Xlib.XSetSelectionOwner(d, atoms["XdndSelection"], src, 0);
+			Arena.scoped(a -> atoms.set(n, helder.os.linux.x11.Xlib.XInternAtom(d, a.cstring(n), 0)));
+		helder.os.linux.x11.Xlib.XSetSelectionOwner(d, atoms["XdndSelection"], src, 0);
 		var p = window.position();
 		send("XdndEnter", src, (5 : Int64) << 24, atoms["text/uri-list"], 0, 0);
 		send("XdndPosition", src, 0, ((p.x + x : Int64) << 16) | (p.y + y), 0, atoms["XdndActionCopy"]);
-		helder.os.x11.Xlib.XFlush(d);
+		helder.os.linux.x11.Xlib.XFlush(d);
 	}
 
 	function send(type:String, l0:Int64, l1:Int64, l2:Int64, l3:Int64, l4:Int64)
@@ -378,7 +378,7 @@ private class DropSource {
 			var raw:Ptr<UInt8> = a.alloc(192);
 			for (i in 0...192)
 				raw[i] = 0;
-			var m:Ptr<helder.os.x11.Xlib.XClientMessageEvent> = cast raw;
+			var m:Ptr<helder.os.linux.x11.Xlib.XClientMessageEvent> = cast raw;
 			m.value.type = 33;
 			m.value.display = d;
 			m.value.window = target;
@@ -390,7 +390,7 @@ private class DropSource {
 			l[2] = l2;
 			l[3] = l3;
 			l[4] = l4;
-			helder.os.x11.Xlib.XSendEvent(d, target, 0, 0, cast raw);
+			helder.os.linux.x11.Xlib.XSendEvent(d, target, 0, 0, cast raw);
 		});
 
 	// (a path's bytes percent-encoded but for letters, digits, / . - _)
@@ -408,11 +408,11 @@ private class DropSource {
 
 	function pumpX11() {
 		var ev:Ptr<UInt8> = LibC.malloc(192);
-		while (helder.os.x11.Xlib.XPending(d) > 0) {
-			helder.os.x11.Xlib.XNextEvent(d, cast ev);
+		while (helder.os.linux.x11.Xlib.XPending(d) > 0) {
+			helder.os.linux.x11.Xlib.XNextEvent(d, cast ev);
 			var type = (cast ev : Ptr<Int32>).value;
 			if (type == 33) {
-				var m:Ptr<helder.os.x11.Xlib.XClientMessageEvent> = cast ev, l:Ptr<Int64> = cast ev.add(56);
+				var m:Ptr<helder.os.linux.x11.Xlib.XClientMessageEvent> = cast ev, l:Ptr<Int64> = cast ev.add(56);
 				if (m.value.message_type == atoms["XdndStatus"]) {
 					accepted = l[1].toInt() & 1;
 					if (!dropSent) {
@@ -423,15 +423,15 @@ private class DropSource {
 				if (m.value.message_type == atoms["XdndFinished"]) finished = l[1].toInt() & 1;
 			} else if (type == 30) {
 				// (SelectionRequest: the files as text/uri-list into the requestor's property)
-				var r:Ptr<helder.os.x11.Xlib.XSelectionRequestEvent> = cast ev;
+				var r:Ptr<helder.os.linux.x11.Xlib.XSelectionRequestEvent> = cast ev;
 				var list = [for (f in files) "file://" + escape(f)].join("\r\n") + "\r\n";
 				var b = haxe.io.Bytes.ofString(list);
 				Arena.scoped(a -> {
-					helder.os.x11.Xlib.XChangeProperty(d, r.value.requestor, r.value.property, atoms["text/uri-list"], 8, 0, a.copyBytes(b), b.length);
+					helder.os.linux.x11.Xlib.XChangeProperty(d, r.value.requestor, r.value.property, atoms["text/uri-list"], 8, 0, a.copyBytes(b), b.length);
 					var raw:Ptr<UInt8> = a.alloc(192);
 					for (i in 0...192)
 						raw[i] = 0;
-					var n:Ptr<helder.os.x11.Xlib.XSelectionEvent> = cast raw;
+					var n:Ptr<helder.os.linux.x11.Xlib.XSelectionEvent> = cast raw;
 					n.value.type = 31;
 					n.value.display = d;
 					n.value.requestor = r.value.requestor;
@@ -439,13 +439,13 @@ private class DropSource {
 					n.value.target = r.value.target;
 					n.value.property = r.value.property;
 					n.value.time = r.value.time;
-					helder.os.x11.Xlib.XSendEvent(d, r.value.requestor, 0, 0, cast raw);
+					helder.os.linux.x11.Xlib.XSendEvent(d, r.value.requestor, 0, 0, cast raw);
 				});
 				answered = true;
 			}
 		}
 		LibC.free(ev);
-		helder.os.x11.Xlib.XFlush(d);
+		helder.os.linux.x11.Xlib.XFlush(d);
 	}
 }
 
@@ -503,7 +503,7 @@ private class WinDragOut {
 			var how = items ? "items" : "folder";
 			var got = OsThread.get(() -> {
 				step('the data object ($how)');
-				var data = @:privateAccess helder.os.win32.WinFileDrag.dataObject(files, items);
+				var data = @:privateAccess helder.os.windows.FileDrag.dataObject(files, items);
 				step(data.isNull() ? "none" : "its CF_HDROP");
 				hdrop(data);
 			});
@@ -538,16 +538,16 @@ private class WinDragOut {
 				out.push(b.toString());
 			}
 			step("ReleaseStgMedium");
-			@:privateAccess helder.os.win32.WinFileDrag.DragOle32.ReleaseStgMedium(medium);
+			@:privateAccess helder.os.windows.FileDrag.DragOle32.ReleaseStgMedium(medium);
 			return out;
 		});
 		step("released");
-		helder.os.win32.Com.release(data);
+		helder.os.windows.Com.release(data);
 		return got;
 	}
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 private class DataObject {
 	@:slot(3) static function GetData(self:Ptr, format:Ptr, medium:Ptr):Int;

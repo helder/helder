@@ -2,7 +2,7 @@ package helder.ui.platform;
 
 #if ((!helder.os || helder.os == "macos" || helder.os == "ios") && (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64"))
 import helder.os.OsThread;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // The system's Liquid Glass (iOS and macOS 26, helder.ui.Glass's): macOS's
@@ -145,7 +145,7 @@ class AppleGlass {
 		});
 }
 
-@:build(helder.os.objc.Sender.build())
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 private class GlassMsg {
 	static function idFloat4(self:Ptr, sel:Ptr, a:Float, b:Float, c:Float, d:Float):Ptr;

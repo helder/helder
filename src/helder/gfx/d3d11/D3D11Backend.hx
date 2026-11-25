@@ -3,8 +3,8 @@ package helder.gfx.d3d11;
 import helder.gfx.*;
 import helder.gfx.d3d11.D3D11;
 import helder.gfx.d3d11.DComp;
-import helder.os.win32.Com;
-import helder.os.win32.Com.IUnknown;
+import helder.os.windows.Com;
+import helder.os.windows.Com.IUnknown;
 import helder.os.Surface;
 import hxmc.unsafe.*;
 

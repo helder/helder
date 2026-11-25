@@ -1,7 +1,7 @@
 import helder.os.*;
-import helder.os.objc.*;
-import helder.os.x11.Xlib;
-import helder.os.win32.User32;
+import helder.os.apple.objc.*;
+import helder.os.linux.x11.Xlib;
+import helder.os.windows.User32;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 

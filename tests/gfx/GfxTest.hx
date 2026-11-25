@@ -1,7 +1,7 @@
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
-import helder.os.x11.Xlib;
+import helder.os.linux.x11.Xlib;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 import BuiltinShader;

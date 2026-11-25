@@ -24,10 +24,10 @@ class FileTypes {
 			Arena.scoped(a -> {
 				var hk:Ptr<Ptr> = a.alloc(8);
 				// (HKEY_CURRENT_USER 0x80000001; KEY_WRITE 0x20006)
-				if (helder.os.win32.User32.Advapi32.RegCreateKeyExW(Ptr.ofI64((0x80000001 : Int64)), a.wstring(key), 0, Ptr.nil(), 0, 0x20006, Ptr.nil(), hk, Ptr.nil()) != 0) return;
+				if (helder.os.windows.User32.Advapi32.RegCreateKeyExW(Ptr.ofI64((0x80000001 : Int64)), a.wstring(key), 0, Ptr.nil(), 0, 0x20006, Ptr.nil(), hk, Ptr.nil()) != 0) return;
 				var w:Ptr<UInt16> = a.wstring(data);
-				helder.os.win32.User32.Advapi32.RegSetValueExW(hk.value, value == null ? Ptr.nil() : a.wstring(value), 0, 1, cast w, 2 * (data.length + 1));
-				helder.os.win32.User32.Advapi32.RegCloseKey(hk.value);
+				helder.os.windows.User32.Advapi32.RegSetValueExW(hk.value, value == null ? Ptr.nil() : a.wstring(value), 0, 1, cast w, 2 * (data.length + 1));
+				helder.os.windows.User32.Advapi32.RegCloseKey(hk.value);
 				done.push("HKCU\\" + key + (value == null ? "" : "\\" + value));
 			});
 		var command = '"$exe" "%1"';

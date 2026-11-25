@@ -61,10 +61,10 @@ class IosScrollCheck {
 				var k = @:privateAccess s.k;
 				target = 1200;
 				OsThread.run(() -> {
-					var p:hxmc.unsafe.Ptr<helder.os.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
+					var p:hxmc.unsafe.Ptr<helder.os.apple.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
 					p.value.x = 0;
 					p.value.y = target * k;
-					helder.os.objc.Msg.vPointBool(v, helder.os.objc.ObjC.sel("setContentOffset:animated:"), p.value, true);
+					helder.os.apple.objc.Msg.vPointBool(v, helder.os.apple.objc.ObjC.sel("setContentOffset:animated:"), p.value, true);
 					hxmc.unsafe.LibC.free(cast p);
 				});
 				var l = c.layers, quads0 = l == null ? 0 : l.quadsTotal, frames0 = l == null ? 0 : l.frames;
@@ -94,9 +94,9 @@ class IosScrollCheck {
 				var e = @:privateAccess (cast field.editor : helder.ui.platform.IosViews.IosEditor);
 				check("the field native", e != null, "");
 				if (e != null) OsThread.run(() -> {
-					var s = helder.os.objc.ObjC.str("typed");
-					helder.os.objc.Msg.vPtr(@:privateAccess e.view, helder.os.objc.ObjC.sel("insertText:"), s);
-					helder.os.objc.ObjC.release(s);
+					var s = helder.os.apple.objc.ObjC.str("typed");
+					helder.os.apple.objc.Msg.vPtr(@:privateAccess e.view, helder.os.apple.objc.ObjC.sel("insertText:"), s);
+					helder.os.apple.objc.ObjC.release(s);
 				});
 			}
 			if (step == 30 + 60) {

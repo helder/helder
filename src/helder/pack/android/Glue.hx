@@ -65,7 +65,7 @@ import helder.pack.android.Dex;
 // program uses it (a class marked @:helder.android.dex("<name>"):
 // Classes), with its manifest entry (Apk):
 // - Main: NativeActivity whose onNewIntent sets the activity's intent (a
-//   deep link while running: helder.os.android.AndroidLinks reads it on
+//   deep link while running: helder.os.android.Links reads it on
 //   resume); the activity of an app with links (org.hxmc.Activity has it
 //   too).
 // - Request: a transparent activity asking for permissions (the intent's

@@ -1,6 +1,6 @@
 package helder.ui.draw;
 
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // A UiWindow's scrollers driven by UIScrollViews on iOS (Ui.nativeScroll),

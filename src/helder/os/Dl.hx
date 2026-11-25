@@ -10,7 +10,7 @@ import haxe.macro.Expr;
 // (@:hxmc.indirect, in a safe region: such calls may block) and an inline
 // wrapper of the declared name; load(path) opens the library and fills the
 // slots (dlsym), returning null or what failed. win: Windows' (LoadLibraryW,
-// GetProcAddress: helder.os.win32.Library), a DLL the system may lack
+// GetProcAddress: helder.os.windows.Library), a DLL the system may lack
 // (Media Foundation: Windows' N editions, Server without the feature).
 class Dl {
 	public static function build(win = false):Array<Field> {
@@ -36,7 +36,7 @@ class Dl {
 						kind: FFun({args: fn.args, ret: fn.ret, expr: macro return $i{raw}($a{args})}),
 						pos: f.pos
 					});
-					var find = win ? macro helder.os.win32.Library.GetProcAddress(lib, hxmc.unsafe.Mem.cstr($v{name})) : macro hxmc.unsafe.Posix.dlsym(lib,
+					var find = win ? macro helder.os.windows.Library.GetProcAddress(lib, hxmc.unsafe.Mem.cstr($v{name})) : macro hxmc.unsafe.Posix.dlsym(lib,
 						hxmc.unsafe.Mem.cstr($v{name}));
 					loads.push(macro {
 						$i{slot} = $find;
@@ -46,7 +46,7 @@ class Dl {
 					out.push(f);
 			}
 		loads.unshift(macro if (lib.isNull()) return "cannot load " + path);
-		loads.unshift(win ? macro var lib = hxmc.unsafe.Arena.scopedValue(a -> helder.os.win32.Library.LoadLibraryW(a.wstring(path))) : macro var lib = hxmc.unsafe.Arena.scopedValue(a -> hxmc.unsafe.Posix.dlopen(a.cstring(path),
+		loads.unshift(win ? macro var lib = hxmc.unsafe.Arena.scopedValue(a -> helder.os.windows.Library.LoadLibraryW(a.wstring(path))) : macro var lib = hxmc.unsafe.Arena.scopedValue(a -> hxmc.unsafe.Posix.dlopen(a.cstring(path),
 			2))); // (RTLD_NOW)
 		loads.push(macro return null);
 		// (a static Linux executable, musl's, has no dlopen: none loads there, a

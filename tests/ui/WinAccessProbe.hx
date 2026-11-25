@@ -546,7 +546,7 @@ class WinAccessProbe {
 	}
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Automation {
 	@:slot(3) static function CompareElements(o:Ptr, a:Ptr, b:Ptr, same:Ptr<Int32>):Int;
 	@:slot(6) static function ElementFromHandle(o:Ptr, hwnd:Ptr, out:Ptr<Ptr>):Int;
@@ -559,20 +559,20 @@ class Automation {
 	@:slot(41) static function RemoveAllEventHandlers(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Walker {
 	@:slot(3) static function GetParentElement(o:Ptr, e:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(4) static function GetFirstChildElement(o:Ptr, e:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(6) static function GetNextSiblingElement(o:Ptr, e:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ElementArray {
 	@:slot(3) static function get_Length(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(4) static function GetElement(o:Ptr, i:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Element {
 	@:slot(6) static function FindAll(o:Ptr, scope:Int, condition:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(10) static function GetCurrentPropertyValue(o:Ptr, id:Int, v:Ptr):Int;
@@ -580,80 +580,80 @@ class Element {
 	@:slot(16) static function GetCurrentPattern(o:Ptr, id:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Unknown {
 	@:slot(0) static function QueryInterface(o:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(2) static function Release(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class InvokePattern {
 	@:slot(3) static function Invoke(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class TogglePattern {
 	@:slot(3) static function Toggle(o:Ptr):Int;
 	@:slot(4) static function get_CurrentToggleState(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ValuePattern {
 	@:slot(3) static function SetValue(o:Ptr, s:Ptr):Int;
 	@:slot(4) static function get_CurrentValue(o:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(5) static function get_CurrentIsReadOnly(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class RangeValuePattern {
 	@:slot(3) static function SetValue(o:Ptr, v:Float):Int;
 	@:slot(4) static function get_CurrentValue(o:Ptr, out:Ptr<Float>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ExpandCollapsePattern {
 	@:slot(3) static function Expand(o:Ptr):Int;
 	@:slot(5) static function get_CurrentExpandCollapseState(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class SelectionItemPattern {
 	@:slot(3) static function Select(o:Ptr):Int;
 	@:slot(6) static function get_CurrentIsSelected(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ScrollItemPattern {
 	@:slot(3) static function ScrollIntoView(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class GridPattern {
 	@:slot(3) static function GetItem(o:Ptr, row:Int, col:Int, out:Ptr<Ptr>):Int;
 	@:slot(4) static function get_CurrentRowCount(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(5) static function get_CurrentColumnCount(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class GridItemPattern {
 	@:slot(4) static function get_CurrentRow(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(5) static function get_CurrentColumn(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class TextPattern {
 	@:slot(5) static function GetSelection(o:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(7) static function get_DocumentRange(o:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class TextRange {
 	@:slot(12) static function GetText(o:Ptr, max:Int, out:Ptr<Ptr>):Int;
 	@:slot(14) static function MoveEndpointByUnit(o:Ptr, endpoint:Int, unit:Int, count:Int, moved:Ptr<Int32>):Int;
 	@:slot(16) static function Select(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class RangeArray {
 	@:slot(3) static function get_Length(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(4) static function GetElement(o:Ptr, i:Int, out:Ptr<Ptr>):Int;

@@ -26,9 +26,9 @@ class Location {
 		#if helder.headless
 		return null;
 		#elseif (hxmc.target == "wasm32-wasi")
-		return helder.os.web.WebLocation.current(precise);
+		return helder.os.web.Location.current(precise);
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return LocationApple.current(precise);
+		return helder.os.apple.Location.current(precise);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		return helder.os.android.AndroidLocation.current(precise);
 		#else
@@ -40,17 +40,17 @@ class Location {
 	@:typescript @:helder.permission("location") public static function watch(f:GeoPosition->Void, ?options:{?precise:Bool}):Void->Void {
 		var precise = options?.precise ?? true;
 		#if (!helder.headless && hxmc.target == "wasm32-wasi")
-		var id = helder.os.web.WebLocation.watch(precise, f);
-		return () -> helder.os.web.WebLocation.stop(id);
+		var id = helder.os.web.Location.watch(precise, f);
+		return () -> helder.os.web.Location.stop(id);
 		#elseif (!helder.headless && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		var id = 0, stopped = false;
 		helder.async.Async.launch(_ -> {
-			if (LocationApple.bundled() && PermissionsApple.request(Permissions.Permission.Location) == Granted && !stopped)
-				id = LocationApple.start(precise, f);
+			if (helder.os.apple.Location.bundled() && helder.os.apple.Permissions.request(Permissions.Permission.Location) == Granted && !stopped)
+				id = helder.os.apple.Location.start(precise, f);
 		});
 		return () -> {
 			stopped = true;
-			if (id != 0) LocationApple.stop(id);
+			if (id != 0) helder.os.apple.Location.stop(id);
 		};
 		#elseif (!helder.headless && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
 		var id = 0, stopped = false, loop = helder.async.Loop.current();

@@ -33,7 +33,7 @@ class Locale {
 		#if (target.name == "hxmc")
 		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == Platform.WASI) {
-			LocaleWeb.watch(refresh);
+			helder.os.locale.web.Locale.watch(refresh);
 		} else
 		#end
 		#if !helder.headless
@@ -58,12 +58,12 @@ class Locale {
 		var tags = [];
 		#if (target.name == "hxmc")
 		if (Platform.os() == Platform.WASI) {
-			#if (!helder.os || helder.os == "web") tags = LocaleWeb.preferred(); #end
+			#if (!helder.os || helder.os == "web") tags = helder.os.locale.web.Locale.preferred(); #end
 		} else if (Platform.os() == Platform.WINDOWS) {
-			#if (!helder.os || helder.os == "windows") tags = WindowsLocale.preferred(); #end
+			#if (!helder.os || helder.os == "windows") tags = helder.os.locale.windows.Locale.preferred(); #end
 		} else if (Platform.os() == Platform.MACOS) {
 			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-			tags = AppleLocale.preferred();
+			tags = helder.os.locale.apple.Locale.preferred();
 			#end
 		} else if (Platform.target() >= 9) {
 			#if (!helder.os || helder.os == "android") tags = helder.os.android.AndroidLocale.preferred(); #end

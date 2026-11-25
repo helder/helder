@@ -321,7 +321,7 @@ class AndroidWindow {
 				App.lifecycle(false);
 				#if helder.links
 				// (a deep link it was started or brought back with: org.hxmc.Main's intent)
-				AndroidLinks.check();
+				Links.check();
 				#end
 				for (f in resumed)
 					f();

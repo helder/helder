@@ -91,7 +91,7 @@ class WinAccess {
 		helder.os.OsThread.run(() -> {
 			if (!started) start();
 			all.push(this);
-			helder.os.win32.Win32Window.getObject = getObject;
+			helder.os.windows.WinWindow.getObject = getObject;
 		});
 	}
 
@@ -604,10 +604,10 @@ class WinAccess {
 	// the window's client area's top left on the screen
 	function origin():Array<Float>
 		return Arena.scopedValue(a -> {
-			var p = a.make(helder.os.win32.User32.POINT);
+			var p = a.make(helder.os.windows.User32.POINT);
 			p.value.x = 0;
 			p.value.y = 0;
-			helder.os.win32.User32.User32.ClientToScreen(hwnd, p);
+			helder.os.windows.User32.User32.ClientToScreen(hwnd, p);
 			[(p.value.x : Float), (p.value.y : Float)];
 		});
 
@@ -1245,7 +1245,7 @@ class WinAccess {
 }
 
 // IAccPropServices (oleacc): an HWND's MSAA property set (the GUID by address: Windows x64 passes it so)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class AccProps {
 	@:slot(7) static function SetHwndPropStr(o:Ptr, hwnd:Ptr, idObject:Int, idChild:Int, prop:Ptr, s:Ptr):Int;

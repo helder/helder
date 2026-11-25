@@ -1,12 +1,12 @@
 package helder.ui.platform;
 
-import helder.os.objc.CGPoint;
+import helder.os.apple.objc.CGPoint;
 import hxmc.unsafe.*;
 
-// The message shapes MacViews sends beside Msg's (helder.os.objc.Sender):
+// The message shapes MacViews sends beside Msg's (helder.os.apple.objc.Sender):
 // named by the result (id, v: void, i: an integer, b: BOOL, f: a double,
 // or a struct), then the arguments.
-@:build(helder.os.objc.Sender.build())
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class AkMsg {
 	static function id(self:Ptr, sel:Ptr):Ptr;

@@ -1,7 +1,7 @@
 package helder.ui.draw;
 
 #if ((!helder.os || helder.os == "macos" || helder.os == "ios") && hxmc.target != "wasm32-wasi")
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // The views CaLayers places native views between (a LayerSlot's view, in a
@@ -245,7 +245,7 @@ class CaViews {
 }
 
 // (the message shapes beside Msg's)
-@:build(helder.os.objc.Sender.build())
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 private class ViewMsg {
 	static function idPointPtr(self:Ptr, sel:Ptr, p:CGPoint, a:Ptr):Ptr;
