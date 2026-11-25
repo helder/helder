@@ -1,6 +1,7 @@
 package viewer;
 
 import helder.story.StoryText;
+import helder.test.Gen;
 import helder.test.Test;
 import helder.ui.Clock;
 import helder.ui.TextNode;
@@ -12,7 +13,9 @@ import helder.view.graph.Graph;
 // what); going between levels as a push, both panes together on the
 // spring at whole-point offsets, settled soon, the old one gone after;
 // clicked again on the way, turned from where they are (no third pane, no
-// restart); reduced motion: a cross-fade in place
+// restart); clicked fast, a burst of levels: two at most on screen, the
+// ones between never shown, settled on the last within a spring's time;
+// reduced motion: a cross-fade in place
 function tests() {
 	describe("SidebarView", () -> {
 		var t = 0.0;
@@ -116,6 +119,67 @@ function tests() {
 			equals(panes(ui)[0].title, "fixtures");
 			equals(panes(ui)[0].x, 0.0);
 		});
+		test("Back clicked fast: no queue, the ones between never shown, settled on the last", () -> {
+			var w = new Levels();
+			w.x.browser.go("/r/a/b/c/d");
+			w.settle();
+			var seen = [];
+			for (_ in 0...5) {
+				w.x.browser.up();
+				w.wait(20);
+				var p = w.panes();
+				assert(p.length <= 2, 'at most two levels: $p');
+				for (t in p)
+					if (!seen.contains(t)) seen.push(t);
+			}
+			// (from c's level to the overview's by way of r's: a, b only on the way, if at all)
+			var t = 0.0;
+			while (w.panes().length > 1 && t < 0.6) {
+				w.wait(1000 / 60);
+				t += 1 / 60;
+			}
+			assert(t < 0.6, 'settled in $t s');
+			equals(w.panes(), [w.title()]);
+		});
+		test("bursts of Back, Forward and Go: two levels at most, settled on the last", () -> stateful({
+			setup: () -> {
+				var w = new Levels();
+				w.settle();
+				w;
+			},
+			steps: [
+				{name: "go", run: (w, c) -> {
+					w.x.browser.go(c.draw(pick(["/r", "/r/a", "/r/a/b", "/r/a/b/c", "/r/a/b/c/d", "/r/x"])));
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "back", run: (w, c) -> {
+					w.x.browser.goBack();
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "forward", run: (w, c) -> {
+					w.x.browser.goForward();
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "sidebar's back", run: (w, c) -> {
+					w.x.sidebar.back();
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "sidebar's level", run: (w, c) -> {
+					w.x.sidebar.show(c.draw(pick(["", "/r", "/r/a", "/r/a/b"])));
+					w.wait(c.draw(int(0, 50)));
+				}}
+			],
+			check: w -> assert(w.panes().length <= 2, 'at most two levels drawn: ${w.panes()}'),
+			teardown: w -> {
+				var t = 0.0;
+				while (w.panes().length > 1 && t < 0.6) {
+					w.wait(1000 / 60);
+					t += 1 / 60;
+				}
+				assert(t < 0.6, 'settled in $t s');
+				equals(w.panes(), [w.title()], 'at ${w.x.sidebar.level.value}');
+			}
+		}, {cases: 60, steps: 15}));
 		test("reduced motion: a cross-fade in place", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
 			Clock.reducedMotion = true;
@@ -132,4 +196,65 @@ function tests() {
 			equals(panes(ui).length, 1);
 		});
 	});
+}
+
+// (an explorer of nested folders in a window: /r/a/b/c/d, /r/x)
+private class Levels {
+	public final x:Explorer;
+	final ui:Ui;
+	var t = 0.0;
+
+	public function new() {
+		t = 0;
+		Ui.now = () -> t;
+		Clock.tick(0);
+		var files = new MemoryFiles().add("/r/a/b/c/d/").add("/r/x/").add("/r/a/b/c/d/f.png", haxe.io.Bytes.alloc(1));
+		x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+		x.browser.go("/r/a");
+		ui = new Ui(new StoryText(), 1100, 700);
+		Render.render(Shell.view(x), ui.root);
+		frame();
+	}
+
+	function frame() {
+		Graph.flush();
+		ui.update();
+		Graph.flush();
+		ui.update();
+	}
+
+	// (ms of frames)
+	public function wait(ms:Float) {
+		var end = t + ms / 1000;
+		frame();
+		while (t < end - 1e-9) {
+			t = Math.min(end, t + 1 / 60);
+			Clock.tick(t);
+			frame();
+		}
+	}
+
+	public function settle() {
+		wait(200);
+		Clock.finish();
+		frame();
+		t = Clock.now;
+		wait(200);
+	}
+
+	// (the levels drawn: each pane's title, "" the overview's)
+	public function panes():Array<String> {
+		var body = ui.root.find("sidebar-body");
+		return [for (n in body.children) if (n.tag == "sidebar-pane") {
+			var title = n.find("level-title");
+			title == null ? "" : text(title);
+		}];
+	}
+
+	// (the level's title now)
+	public function title():String
+		return x.sidebar.level.value == "" ? "" : x.sidebar.title(x.sidebar.level.value);
+
+	static function text(n:helder.ui.Node):String
+		return Std.isOfType(n, TextNode) ? (cast n : TextNode).text : [for (c in n.children) text(c)].join("");
 }

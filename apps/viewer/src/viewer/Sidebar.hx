@@ -42,7 +42,7 @@ class Sidebar {
 		show(levelFor(dir));
 
 	// the level shown (the one going to: target; the last one's rows kept
-	// until its are read, or Browser.STALE seconds pass, then both in one
+	// until its are read, or SLOW seconds pass, then both in one
 	// write, so that going between levels never shows an empty one)
 	public function show(path:String) {
 		path = path == "" ? "" : Browser.normalize(path);
@@ -72,13 +72,16 @@ class Sidebar {
 			for (r in got)
 				deeper(path, r);
 		}));
+		// (a level not read in SLOW seconds: shown empty, its rows as they come; a
+		// shorter wait pushed an empty level in, its rows popping in after)
 		if (!shown && target == path) helder.async.Async.launch(_ -> {
-			helder.async.Async.delay(Browser.STALE);
+			helder.async.Async.delay(SLOW);
 			if (!shown && target == path) land([]);
 		});
 	}
 
 	var target = "";
+	static inline var SLOW = 1.0;
 
 	// the folder renamed in place (its path; "" none)
 	public final renaming = new Cell("");

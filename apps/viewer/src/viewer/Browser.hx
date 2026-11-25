@@ -47,10 +47,10 @@ class Browser {
 	public var offset(default, null) = 0.0;
 	public var scrolled:Void->Float = () -> 0;
 	// items are still the last folder's: kept until this one's first batch
-	// comes, never emptied meanwhile (a list gone blank for a moment reads
-	// as a flash), waiting after STALE seconds (the view dims them, takes no
-	// presses on them); a folder seen lately shows its entries as they were
-	// at once (back, forward), replaced whole when it is read again
+	// comes, never emptied nor dimmed meanwhile (either, for a moment, reads
+	// as a flash), waiting after STALE seconds (the view takes no presses on
+	// them); a folder seen lately shows its entries as they were at once
+	// (back, forward), replaced whole when it is read again
 	public var stale(default, null) = false;
 	public final waiting = new Cell(false);
 	public static inline var STALE = 0.15;

@@ -26,7 +26,7 @@ class SidebarView implements Markup {
 	public static inline var WIDTH = 236;
 
 	public static function make(x:Explorer):View {
-		var s = x.sidebar, body:Null<Node> = null, ticking = false;
+		var s = x.sidebar, body:Null<Node> = null, ticking = false, ready = false;
 		var panes = signal([new Pane(s.level.value, s.rows.value)]);
 		// (the current pane's rows, the model's; one going keeps its own)
 		renderEffect(() -> s.rows(), r -> for (p in panes.peek()) if (p.level == s.level.value) p.rows(r));
@@ -49,27 +49,53 @@ class SidebarView implements Markup {
 			if (level == now.level) return;
 			var n = body;
 			// (not shown yet, or just: the sidebar's first level landing as it is made, in place)
-			if (n == null || n.ui == null || helder.ui.Clock.now < now.born + 0.05) {
+			if (n == null || n.ui == null || !ready) {
 				panes([new Pane(level, s.rows.value)]);
 				return;
 			}
-			var deeper = now.level == "" || StringTools.startsWith(level, now.level + "/")
-				|| (StringTools.endsWith(now.level, "/") && StringTools.startsWith(level, now.level));
-			var dir = deeper ? 1 : -1, w = n.width > 0 ? n.width : WIDTH, reduced = helder.ui.Clock.reducedMotion;
-			// (the level asked for still on its way out: back from where it is)
-			var into = Lambda.find(list, p -> p.level == level);
-			if (into == null) {
-				into = new Pane(level, s.rows.value);
-				if (reduced) into.fade.set(0) else into.at.set(dir * w);
+			var w = n.width > 0 ? n.width : WIDTH, reduced = helder.ui.Clock.reducedMotion, fade = helder.ui.motion.Curve.REDUCED_FADE;
+			if (list.length > 1) {
+				// (on the way already: two levels at most, never a queue of them)
+				var from = list[0];
+				if (level == from.level) {
+					// (back to where it began: each turned from where it is, as fast, no detour)
+					from.rows(s.rows.value);
+					if (reduced) {
+						from.fade.animate(-1, 1, fade);
+						now.fade.animate(-1, 0, fade);
+					} else {
+						var side = from.at.target;
+						from.at.animate(-1, 0, Flight.SPRING);
+						now.at.animate(-1, -side, Flight.SPRING);
+					}
+					panes([now, from]);
+				} else {
+					// (another level: in place of the one coming, its motion carried on; the ones between never shown)
+					var into = new Pane(level, s.rows.value);
+					into.at = now.at.copy();
+					into.fade = now.fade.copy();
+					into.x(Math.round(into.at.value));
+					into.shown(into.fade.value);
+					panes([from, into]);
+				}
+			} else {
+				// (a push: the new level from its side, the current one out the other way)
+				var deeper = now.level == "" || StringTools.startsWith(level, now.level + "/")
+					|| (StringTools.endsWith(now.level, "/") && StringTools.startsWith(level, now.level));
+				var dir = deeper ? 1 : -1, into = new Pane(level, s.rows.value);
+				if (reduced) {
+					into.fade.set(0);
+					into.fade.animate(-1, 1, fade);
+					now.fade.animate(-1, 0, fade);
+				} else {
+					into.at.set(dir * w);
+					into.at.animate(-1, 0, Flight.SPRING);
+					now.at.animate(-1, -dir * w, Flight.SPRING);
+				}
 				into.x(Math.round(into.at.value));
 				into.shown(into.fade.value);
-			} else into.rows(s.rows.value);
-			for (p in list)
-				if (p != into) {
-					if (reduced) p.fade.animate(-1, 0, helder.ui.motion.Curve.REDUCED_FADE) else p.at.animate(-1, -dir * w, Flight.SPRING);
-				}
-			if (reduced) into.fade.animate(-1, 1, helder.ui.motion.Curve.REDUCED_FADE) else into.at.animate(-1, 0, Flight.SPRING);
-			panes(list.filter(p -> p != into).concat([into]));
+				panes([now, into]);
+			}
 			if (ticking) return;
 			ticking = true;
 			helder.ui.Clock.addFor(n, step);
@@ -77,7 +103,17 @@ class SidebarView implements Markup {
 		return <view tag="sidebar" width={WIDTH} shrink={0} padding="0 10" row-gap={6} overflow="hidden"
 			padding-top={WindowButtons.side() == "start" ? 0 : 8}>
 			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} shrink={0} drag-region/></Show>
-			<view tag="sidebar-body" grow={1} min-height={0} ref={(n:Node) -> body = n}>
+			<view tag="sidebar-body" grow={1} min-height={0} ref={(n:Node) -> {
+				body = n;
+				// (shown a tenth of a second: levels from now on pushed)
+				var from = -1.0;
+				helder.ui.Clock.addFor(n, t -> {
+					if (from < 0) from = t;
+					if (t - from < 0.1) return true;
+					ready = true;
+					return false;
+				});
+			}}>
 				<For each={panes}>{p -> pane(x, p.peek())}</For>
 			</view>
 		</view>;
@@ -201,12 +237,11 @@ class SidebarView implements Markup {
 private class Pane {
 	public final level:String;
 	public final rows:helder.view.graph.Signal<Array<Sidebar.Row>>;
-	public final at = new helder.ui.motion.Track(0, 0.01);
-	public final fade = new helder.ui.motion.Track(1, 1e-3);
+	// (its springs: another level's carried over when it takes that one's place)
+	public var at = new helder.ui.motion.Track(0, 0.01);
+	public var fade = new helder.ui.motion.Track(1, 1e-3);
 	public final x = helder.view.graph.Graph.signal(0.0);
 	public final shown = helder.view.graph.Graph.signal(1.0);
-	// (when it was made, the clock's)
-	public final born = helder.ui.Clock.now;
 
 	public function new(level:String, rows:Array<Sidebar.Row>) {
 		this.level = level;
