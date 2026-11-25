@@ -6,7 +6,9 @@ import helder.text.SystemFonts.FaceInfo;
 // what discovery reads of a font file, its headers alone (FaceInfo.read)
 function tests() {
 	describe("FaceInfo", () -> {
-		var dir = Sys.getEnv("TMPDIR") ?? "/tmp";
+		// (a directory of the checkout: wasm32-wasi reaches no /tmp)
+		var dir = "bin/test/faceinfo";
+		sys.FileSystem.createDirectory(dir);
 		test("a font's family, weight and axis", () -> {
 			var p = dir + "/helder-faceinfo-" + Std.random(1 << 30) + ".ttf";
 			sys.io.File.saveBytes(p, helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
