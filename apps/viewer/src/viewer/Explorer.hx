@@ -105,7 +105,7 @@ class Explorer {
 		choosing = true;
 		browser.go(path);
 		choosing = false;
-		sidebar.show(Browser.normalize(path));
+		sidebar.choose(path);
 	}
 
 	// the selected entry (or one named) opened: a folder entered, a file the

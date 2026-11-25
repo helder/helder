@@ -17,7 +17,10 @@ import helder.view.graph.Graph;
 // clicked again on the way, turned from where they are (no third pane, no
 // restart); clicked fast, a burst of levels: two at most on screen, the
 // ones between never shown, settled on the last within a spring's time;
-// reduced motion: a cross-fade in place
+// a folder's double click, at any speed: its level entered when quick and
+// near, the folder shown once either way; back retracing the way in (a
+// place or a device chosen: back to the overview); reduced motion: a
+// cross-fade in place
 function tests() {
 	describe("SidebarView", () -> {
 		var t = 0.0;
@@ -180,7 +183,9 @@ function tests() {
 			assert(t < 0.6, 'settled in $t s');
 			equals(w.panes(), [w.title()]);
 		});
-		test("bursts of Back, Forward and Go: two levels at most, settled on the last", () -> stateful({
+		// (the way in, as the user took it: the levels back goes through, last
+		// first, "" the overview; null when the main view moved the level)
+		test("bursts of Back, Forward, Go and the way in: two levels at most, back retracing it, settled on the last", () -> stateful({
 			setup: () -> {
 				var w = new Levels();
 				w.settle();
@@ -188,28 +193,83 @@ function tests() {
 			},
 			steps: [
 				{name: "go", run: (w, c) -> {
-					w.x.browser.go(c.draw(pick(["/r", "/r/a", "/r/a/b", "/r/a/b/c", "/r/a/b/c/d", "/r/x"])));
+					w.x.browser.go(c.draw(pick(["/r", "/r/a", "/r/a/b", "/r/a/b/c", "/r/a/b/c/d", "/r/x", "/v/w/u"])));
+					w.way = null;
 					w.wait(c.draw(int(0, 50)));
 				}},
 				{name: "back", run: (w, c) -> {
 					w.x.browser.goBack();
+					w.way = null;
 					w.wait(c.draw(int(0, 50)));
 				}},
 				{name: "forward", run: (w, c) -> {
 					w.x.browser.goForward();
+					w.way = null;
 					w.wait(c.draw(int(0, 50)));
 				}},
 				{name: "sidebar's back", run: (w, c) -> {
+					var to = w.way == null ? null : w.way.pop();
 					w.x.sidebar.back();
+					if (to != null) equals(w.x.sidebar.level.value, to, "back along the way in");
 					w.wait(c.draw(int(0, 50)));
 				}},
 				{name: "sidebar's level", run: (w, c) -> {
-					w.x.sidebar.show(c.draw(pick(["", "/r", "/r/a", "/r/a/b"])));
+					var l = c.draw(pick(["", "/r", "/r/a", "/r/a/b"]));
+					w.x.sidebar.show(l);
+					w.way = l == "" ? [] : null;
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "a place or a device", run: (w, c) -> {
+					w.x.choose(c.draw(pick(["/r/a/b", "/v"])));
+					w.way = [""];
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "into a folder (›)", run: (w, c) -> {
+					var s = w.x.sidebar, r = s.rows.value;
+					if (s.level.value == "" || r.length == 0) return;
+					var at = s.level.value;
+					s.show(r[c.draw(int(0, r.length - 1))].path);
+					if (w.way != null) w.way.push(at);
+					w.wait(c.draw(int(0, 50)));
+				}},
+				{name: "a folder clicked twice", run: (w, c) -> {
+					// (in place first: a level sliding in takes no presses; a fresh click)
+					w.settle();
+					w.wait(500);
+					var s = w.x.sidebar, r = s.rows.value;
+					if (s.level.value == "" || r.length == 0) return;
+					var at = s.level.value, row = r[c.draw(int(0, r.length - 1))];
+					var gap = c.draw(pick([0, 100, 300, 440, 460, 700])), dx = c.draw(int(0, 8)), p = w.spot(row.name);
+					w.gone.resize(0);
+					w.clickAt(p.x, p.y);
+					// (a device's row: its own level at once, sliding under the pointer)
+					var moved = s.level.value != at;
+					w.wait(gap);
+					w.clickAt(p.x + dx, p.y);
+					// (the folder shown, nothing else: the second press on another row none)
+					for (d in w.gone)
+						equals(d, row.path, "one folder shown");
+					if (moved) {
+						w.way = null;
+						equals(s.level.value, row.path, "the device's level");
+					} else if (gap < 450 && dx < 5) {
+						if (w.way != null) w.way.push(at);
+						equals(s.level.value, row.path, "into its level");
+					} else equals(s.level.value, at, "two clicks");
 					w.wait(c.draw(int(0, 50)));
 				}}
 			],
-			check: w -> assert(w.panes().length <= 2, 'at most two levels drawn: ${w.panes()}'),
+			check: w -> {
+				assert(w.panes().length <= 2, 'at most two levels drawn: ${w.panes()}');
+				// (the back row says where it goes)
+				if (w.way != null && w.way.length > 0) {
+					var to = w.way[w.way.length - 1];
+					equals(w.back(), to == "" ? "Overview" : w.x.sidebar.title(to), 'the back row at ${w.x.sidebar.level.value}');
+				}
+			},
 			teardown: w -> {
+				// (the last step's writes landed: a case shrunk may end inside one)
+				w.wait(0);
 				var t = 0.0;
 				while (w.panes().length > 1 && t < 0.6) {
 					w.wait(1000 / 60);
@@ -219,6 +279,77 @@ function tests() {
 				equals(w.panes(), [w.title()], 'at ${w.x.sidebar.level.value}');
 			}
 		}, {cases: 60, steps: 15}));
+		test("a folder's double click: into its level when quick and near, shown once, a third click on none", () -> property(c -> {
+			gap: c.draw(int(0, 900)),
+			dx: c.draw(int(0, 8)),
+			third: c.draw(int(0, 1200))
+		}, k -> {
+			// (a gap on the line: either way; a third click once its level is in place, or before)
+			assume(Math.abs(k.gap - 450) > 2 && (k.third < 448 || k.third > 700));
+			var w = new Levels();
+			// (another folder shown: a's click shows it; under a, b's row of a's level)
+			w.x.browser.go("/r/x");
+			w.settle();
+			equals(w.x.sidebar.level.value, "/r");
+			w.gone.resize(0);
+			var p = w.spot("a");
+			w.clickAt(p.x, p.y);
+			w.wait(k.gap);
+			w.clickAt(p.x + k.dx, p.y);
+			var double = k.gap < 450 && k.dx < 5;
+			equals(w.x.sidebar.level.value, double ? "/r/a" : "/r");
+			w.wait(k.third);
+			w.clickAt(p.x, p.y);
+			w.settle();
+			// (the third: of a triple, none; later, a click on b; after two clicks, their double)
+			var next = k.third < 448 && k.dx < 5;
+			equals(w.gone, double && !next ? ["/r/a", "/r/a/b"] : ["/r/a"]);
+			equals(w.x.sidebar.level.value, double || next ? "/r/a" : "/r");
+			equals(w.panes(), [w.title()]);
+		}, {cases: 100}));
+		test("back retraces the way in: a place's or a device's to the overview, past it the real parent", () -> {
+			var w = new Levels(), s = w.x.sidebar;
+			w.settle();
+			// (a place chosen: back to the overview, not its parent)
+			w.x.choose("/r/a/b");
+			w.settle();
+			equals(w.back(), "Overview");
+			s.show("/r/a/b/c");
+			w.settle();
+			equals(w.back(), "B");
+			s.back();
+			w.settle();
+			equals(s.level.value, "/r/a/b");
+			s.back();
+			w.settle();
+			equals(s.level.value, "");
+			// (a device: the same)
+			w.x.choose("/v");
+			w.settle();
+			equals(w.back(), "Overview");
+			s.show("/v/w");
+			w.settle();
+			equals(w.back(), "V");
+			s.back();
+			s.back();
+			w.settle();
+			equals(s.level.value, "");
+			// (entered by the main view: the real parent)
+			w.x.browser.go("/r/a/b/c");
+			w.settle();
+			equals(s.level.value, "/r/a/b");
+			equals(w.back(), "a");
+			// (a place's, gone up past it in the main view: the real parent again)
+			w.x.choose("/r/a/b");
+			w.x.browser.go("/r/a/b/c/d");
+			w.settle();
+			equals(w.back(), "B");
+			w.x.browser.go("/r/a");
+			w.x.browser.go("/r/a/b/c");
+			w.settle();
+			equals(s.level.value, "/r/a/b");
+			equals(w.back(), "a");
+		});
 		test("reduced motion: a cross-fade in place", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
 			Clock.reducedMotion = true;
@@ -240,6 +371,10 @@ function tests() {
 // (an explorer of nested folders in a window: /r/a/b/c/d, /r/x)
 private class Levels {
 	public final x:Explorer;
+	// (the folders the main view went to)
+	public final gone:Array<String> = [];
+	// (the way in, the stateful property's model of it)
+	public var way:Null<Array<String>> = null;
 	final ui:Ui;
 	var t = 0.0;
 
@@ -247,9 +382,15 @@ private class Levels {
 		t = 0;
 		Ui.now = () -> t;
 		Clock.tick(0);
-		var files = new MemoryFiles().add("/r/a/b/c/d/").add("/r/x/").add("/r/a/b/c/d/f.png", haxe.io.Bytes.alloc(1));
-		x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+		var files = new MemoryFiles().add("/r/a/b/c/d/").add("/r/x/").add("/r/a/b/c/d/f.png", haxe.io.Bytes.alloc(1)).add("/v/w/u/");
+		x = new Explorer(files, (_, _, _) -> {}, [{kind: Pictures, name: "B", path: "/r/a/b"}],
+			[{name: "V", path: "/v", total: 0, free: 0, removable: true, network: false, root: true}], Preview.now);
 		x.browser.go("/r/a");
+		var on = x.browser.onDir;
+		x.browser.onDir = d -> {
+			gone.push(d);
+			on(d);
+		};
 		ui = new Ui(new StoryText(), 1100, 700);
 		Render.render(Shell.view(x), ui.root);
 		frame();
@@ -288,6 +429,37 @@ private class Levels {
 			var title = n.find("level-title");
 			title == null ? "" : text(title);
 		}];
+	}
+
+	// (the back row's label as shown)
+	public function back():String
+		return text(ui.root.find("level-back"));
+
+	// (a folder's row of the level shown, clicked dx points right of its middle)
+	public function click(name:String, dx:Float) {
+		var p = spot(name);
+		clickAt(p.x + dx, p.y);
+	}
+
+	public function clickAt(px:Float, py:Float) {
+		ui.pointerDown(px, py, 1);
+		ui.pointerUp(px, py, 1);
+		frame();
+	}
+
+	// (the middle of a folder's row of the level shown)
+	public function spot(name:String):{x:Float, y:Float} {
+		var row:Null<helder.ui.Node> = null;
+		function named(n:helder.ui.Node):Bool
+			return Std.isOfType(n, TextNode) && (cast n : TextNode).text == name || Lambda.exists(n.children, named);
+		function walk(n:helder.ui.Node) {
+			if (n.slot == "side-row" && named(n)) row = n;
+			for (c in n.children)
+				walk(c);
+		}
+		walk(ui.root.find("sidebar-body"));
+		var b = row.windowBounds();
+		return {x: b.x + b.width / 2, y: b.y + b.height / 2};
 	}
 
 	// (the level's title now)

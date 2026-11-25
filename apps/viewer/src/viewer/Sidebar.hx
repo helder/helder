@@ -10,7 +10,12 @@ typedef Row = {name:String, path:String, deeper:Bool};
 // parent, the current folder highlighted among them). The level follows
 // the folder shown: its parent, so the folder is among its siblings (a
 // volume's top: the volume itself); a place chosen shows its own level;
-// "›" goes a level deeper without moving the folder shown.
+// "›" (or a row's double click) goes a level deeper without moving the
+// folder shown. Back retraces the way in (the levels gone through, from
+// the overview by a place or a device chosen, or from a level); where the
+// folder shown moves the level, the way is kept along it (up it, or deeper
+// in by the parents between), else let go: back then goes to the real
+// parent (a volume's top: the overview).
 class Sidebar {
 	// (a cell: the web's grow by the folders opened)
 	public final places:Cell<Array<Place>>;
@@ -18,6 +23,11 @@ class Sidebar {
 	// the level ("" the overview), its subfolders as they are read
 	public final level = new Cell("");
 	public final rows:Cell<Array<Row>> = new Cell([]);
+	// the levels above the level on the way in, the last where back goes
+	// ("" the overview; none: the real parent)
+	public final way:Cell<Array<String>> = new Cell([]);
+	// (the way of the level going to)
+	var going:Array<String> = [];
 
 	final files:Files;
 	var stops:Array<Void->Void> = [];
@@ -41,19 +51,31 @@ class Sidebar {
 	public function follow(dir:String)
 		show(levelFor(dir));
 
+	// a place or a device chosen: its own level, back from it the overview
+	public function choose(path:String)
+		show(path, [""]);
+
 	// the level shown (the one going to: target; the last one's rows kept
 	// until its are read, or SLOW seconds pass, then both in one
-	// write, so that going between levels never shows an empty one)
-	public function show(path:String) {
+	// write, so that going between levels never shows an empty one); the
+	// way to it through (else retraced)
+	public function show(path:String, ?through:Array<String>) {
 		path = path == "" ? "" : Browser.normalize(path);
-		if (path == target) return;
+		var w = through ?? retrace(path);
+		if (path == target) {
+			going = w;
+			if (level.value == path) way(w);
+			return;
+		}
 		for (s in stops)
 			s();
 		stops = [];
 		target = path;
+		going = w;
 		if (path == "") {
 			level(path);
 			rows([]);
+			way(w);
 			return;
 		}
 		var got:Array<Row> = [], shown = false;
@@ -61,6 +83,7 @@ class Sidebar {
 			shown = true;
 			level(path);
 			rows(r);
+			way(going);
 		}
 		stops.push(files.list(path, b -> {
 			if (target != path) return;
@@ -120,21 +143,43 @@ class Sidebar {
 		stops.push(stop);
 	}
 
-	// the back row: the level above (a volume's top: the overview)
-	public function back() {
-		var l = level.value;
-		show(l == "" || isVolume(l) ? "" : Browser.parent(l) ?? "");
+	// the back row: the way in's last level, else the level above (a volume's top: the overview)
+	public function back()
+		show(backOf(level.value, way.value));
+
+	// the back row's label (tracked: the level, its way; read as the model has them)
+	public function backLabel():String {
+		level();
+		way();
+		var to = backOf(level.value, way.value);
+		return to == "" ? "Overview" : title(to);
 	}
 
-	public function backLabel():String
-		return backLabelOf(level.value);
+	function backOf(l:String, w:Array<String>):String
+		return w.length > 0 ? w[w.length - 1] : l == "" || isVolume(l) ? "" : Browser.parent(l) ?? "";
 
-	// (the back row's label at level l)
-	public function backLabelOf(l:String):String {
-		if (l == "" || isVolume(l)) return "Overview";
-		var p = Browser.parent(l);
-		return p == null ? "Overview" : title(p);
+	// (the way to level l from the way to the level going to: back along it
+	// to one of its levels, deeper inside the deepest it is inside by the
+	// parents between, else none)
+	function retrace(l:String):Array<String> {
+		if (l == "") return [];
+		var p = going.concat([target]), i = p.length;
+		while (--i >= 0)
+			if (p[i] != "" && inside(l, p[i])) break;
+		if (i < 0) return [];
+		if (p[i] == l) return p.slice(0, i);
+		var between = [], q = Browser.parent(l);
+		while (q != null && q != p[i]) {
+			between.unshift(q);
+			q = Browser.parent(q);
+		}
+		return p.slice(0, i + 1).concat(between);
 	}
+
+	// (path the folder dir or inside it)
+	static function inside(path:String, dir:String):Bool
+		return path == dir || StringTools.startsWith(path, StringTools.endsWith(dir, "/") || StringTools.endsWith(dir, "\\") ? dir : dir + "/")
+			|| StringTools.startsWith(path, dir + "\\");
 
 	// a folder's name as the sidebar says it: a place's, a volume's, else its own
 	public function title(path:String):String {
