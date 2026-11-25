@@ -127,8 +127,8 @@ class Shell implements Markup {
 		// (--store: what it keeps under that home, a test's run, as HELDER_HOME
 		// puts it; set here, before anything is opened: Launch Services' open -a
 		// passes the program no environment)
-		var home = storeDir(args);
-		if (home != null) Sys.putEnv("HELDER_HOME", home);
+		var own = storeDir(args);
+		if (own != null) Sys.putEnv("HELDER_HOME", own);
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
