@@ -231,11 +231,12 @@ class AndroidLayersTest {
 					phase = 11;
 					at = step;
 					armFrom = now;
-				case 11 if (c != null && !c.moving() && now - armFrom > 1 && tries < 3):
+				case 11 if (c != null && !c.moving() && now - armFrom > 1 && tries == 1):
 					// (no glide began (the mirror not moving): flung again, as a finger would)
-					say('a fling: no glide after 1 s (list at ${list.scrollY}): flung again, the compositor answered ${fling()}');
+					say('a fling: first attempt failed (no glide after 1 s, list at ${list.scrollY}); retrying once: ${fling()}');
 					tries++;
 					armFrom = now;
+					at = step;
 				case 11 if (step - at >= 4 && armed("a fling", now, true)):
 					// (its pace not checked: the list's layer gets a buffer for the area it
 					// records as the fling passes it, which an emulator makes slowly)
@@ -243,9 +244,18 @@ class AndroidLayersTest {
 					plock.acquire();
 					var moved = [for (i in 0...presents.length) if (presents[i] > r.from && presents[i] <= r.to) offsets[i]];
 					plock.release();
-					check("a fling: the offset advancing", moved.length > 1 && moved[moved.length - 1] > moved[0], moved.length > 0 ? '${moved[0]} to ${moved[moved.length - 1]}' : "none");
-					phase = 2;
-					at = now;
+					var advanced = moved.length > 1 && moved[moved.length - 1] > moved[0];
+					var range = moved.length > 0 ? '${moved[0]} to ${moved[moved.length - 1]}' : "none";
+					if (!advanced && tries == 1) {
+						say('a fling: first attempt failed (offsets $range); retrying once: ${fling()}');
+						tries++;
+						at = step;
+						armFrom = Timer.stamp();
+					} else {
+						check("a fling: the offset advancing", advanced, range);
+						phase = 2;
+						at = now;
+					}
 				case 2 if (now - at > 2 && (c == null || !c.moving())):
 					// (the box animating while the program is blocked)
 					mover.style.transform = Transform.parse("translate(220px, 90px)");

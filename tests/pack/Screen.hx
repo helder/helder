@@ -5,8 +5,9 @@ import helder.os.*;
 // a Window, its size, scale and safe area; the display's frames (App.run's
 // from Choreographer, CADisplayLink): the first ones' times, then over 120
 // frames their mean, least and largest delta, the period App.frame
-// learnt, whether they were vsyncs, and what was allocated meanwhile
-// (nothing: the loop's frames are allocation-free); then the bars hidden
+// learnt, whether they were vsyncs, and what the loop allocated meanwhile
+// (nothing: its frames are allocation-free, its thread's and, where the
+// program has a thread of its own, the main thread's); then the bars hidden
 // (Window.immersive) and the safe area again. Then it runs until the system
 // ends it, a line for each Resize (a rotation: its size and safe area),
 // ScaleChange, Suspend and Resume (the first frame after it: its delta one
@@ -19,7 +20,11 @@ class Screen {
 	static var frames = 0;
 	static var measuredFrom = -1;
 	static var allocated = 0.0;
+	static var mainBytes = 0.0;
 	static var resumed = false;
+
+	static function mainAllocated()
+		mainBytes = hxmc.GcStats.threadBytesAllocated();
 
 	static function main() {
 		var w = new Window("Screen", 0, 0);
@@ -32,14 +37,26 @@ class Screen {
 				resumed = false;
 				Sys.println('screen: first frame after resume: delta ${ms(f.delta)} ms, period ${ms(f.period)} ms');
 			}
-			// (the frames measured: from the 10th, nothing printed meanwhile)
+			// (the frames measured: from the 10th, nothing printed meanwhile;
+			// each thread's own count, as the process's counts other threads'
+			// current buffers whole: the main thread's read first at the start
+			// and last at the end, the reads' own handoffs outside)
 			if (frames == 10) {
 				measuredFrom = frames;
-				allocated = hxmc.GcStats.bytesAllocated();
+				allocated = 0;
+				if (OsThread.program != 0) {
+					OsThread.run(mainAllocated);
+					allocated -= mainBytes;
+				}
+				allocated -= hxmc.GcStats.threadBytesAllocated();
 			} else if (measuredFrom > 0 && frames <= measuredFrom + MEASURED) {
 				deltas[frames - measuredFrom - 1] = f.delta;
 				if (frames == measuredFrom + MEASURED) {
-					allocated = hxmc.GcStats.bytesAllocated() - allocated;
+					allocated += hxmc.GcStats.threadBytesAllocated();
+					if (OsThread.program != 0) {
+						OsThread.run(mainAllocated);
+						allocated += mainBytes;
+					}
 					report(f);
 					w.immersive = true;
 					Sys.println("screen: immersive");
