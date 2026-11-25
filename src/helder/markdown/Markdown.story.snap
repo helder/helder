@@ -1,0 +1,39 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- story Markdown/selected across blocks: Markdown/selected across blocks (36 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    MarkdownView#markdown 0,0 390x844
+      Node#markdown-scroll 0,0 390x844
+        Node#markdown-row 0,24 390x62
+          TextNode#markdown-h1 24,32 342x38 ""
+            TextNode#text 24,32 0x0 "Selecting text"
+        Node#markdown-row 0,86 390x79
+          TextNode#markdown-p 24,86 342x63 ""
+            TextNode#text 24,86 0x0 "The whole document is "
+            TextNode#markdown-strong 24,86 0x0 ""
+              TextNode#text 24,86 0x0 "one selection"
+            TextNode#text 24,86 0x0 ": a drag runs from a paragraph into the next, through "
+            TextNode#markdown-link 24,86 0x0 ""
+              TextNode#text 24,86 0x0 "links"
+            TextNode#text 24,86 0x0 ", lists and code."
+        Node#markdown-row 0,165 390x60
+          Node#markdown-list 24,165 342x44
+            Node#markdown-item 24,165 342x21
+              TextNode#markdown-marker 24,165 22x21 "•"
+              Node#markdown-item-body 46,165 320x21
+                TextNode#markdown-p 46,165 320x21 ""
+                  TextNode#text 46,165 0x0 "a list item"
+            Node#markdown-item 24,188 342x21
+              TextNode#markdown-marker 24,188 22x21 "•"
+              Node#markdown-item-body 46,188 320x21
+                TextNode#markdown-p 46,188 320x21 ""
+                  TextNode#text 46,188 0x0 "another, "
+                  TextNode#markdown-em 46,188 0x0 ""
+                    TextNode#text 46,188 0x0 "emphasised"
+        Node#markdown-row 0,225 390x60
+          Node#markdown-code 24,225 342x44
+            CodeView#code-view 24,237 330x20
+        Node#markdown-row 0,285 390x37
+          TextNode#markdown-p 24,285 342x21 ""
+            TextNode#text 24,285 0x0 "Copied with a blank line between blocks."
