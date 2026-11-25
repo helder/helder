@@ -289,8 +289,10 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   atlas pages, so that a frame is one draw call (a texture of its own, a
   large image or a `<Scene>`'s, a draw more where it is bound), its
   instances in a ring of buffers written where they changed; `UiWindow` puts a
-  `Ui` in an `helder.os` window, shows the hovered node's cursor and runs
-  the loop. In markup the window is `<Surface>` (`UiWindow.Surface`, a
+  `Ui` in an `helder.os` window, shows the hovered node's cursor (in a
+  browser a hand over what is pressed and sets none, as web pages have it:
+  a button, a link, a menu item, a tab, a toggle; the arrow while it is
+  disabled; natively the arrow, `Ui.pressCursor`) and runs the loop. In markup the window is `<Surface>` (`UiWindow.Surface`, a
   root): `UiWindow.run(<Surface title="Todo" width={480} height={560}
   theme={sheet}>...</Surface>)` opens it and runs the loop; its props
   (title, size, theme, background, dark) are values or reactive, several

@@ -37,7 +37,9 @@ App.run(() -> {
 X11 or Wayland on Linux (the glibc mode, `-D hxmc.libc=glibc`; Wayland
 when `WAYLAND_DISPLAY` is set and it connects, `HELDER_X11=1` X11's), Cocoa on macOS,
 Win32 on Windows, a canvas in the browser (wasm32-wasi: `App.run` returns
-and `requestAnimationFrame` runs the loop). `Event` is one object, refilled
+and `requestAnimationFrame` runs the loop; a canvas resized is drawn in its
+`ResizeObserver`, before the paint, so that the frame laying out its new
+size shows it rather than the old one stretched). `Event` is one object, refilled
 for each event: keys as X11 KeySyms, `TextInput` characters (and an input
 method's `TextEditing`), the mouse in
 pixels from the top left, `Scroll` in pixels, `Resize`, `ScaleChange`,
@@ -55,7 +57,9 @@ in order, and what the program reads at once (the pixel ratio, the soft
 keyboard, media queries, `localStorage`) is the page's as it last told it.
 Each of the worker's frames waits for the page's frame that delivered its
 input, 4 ms at most, so input reaches the same frame as on the page's
-thread, and a page busy with its own scripts holds no frame back. It fits
+thread, and a page busy with its own scripts holds no frame back; a resize
+is drawn as soon as the worker hears of it, unless it waited behind a slow
+frame, whose next takes the newest size. It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;

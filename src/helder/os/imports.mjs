@@ -278,7 +278,7 @@ export default function os(host) {
 		if (w > 0 && hh > 0 && (w !== b.width || hh !== b.height)) {
 			b.width = w;
 			b.height = hh;
-			program?.post({ type: 'size', h, w, hh });
+			program?.post({ type: 'size', h, w, hh, at: performance.timeOrigin + performance.now() });
 			return true;
 		}
 		return false;
@@ -581,6 +581,9 @@ export default function os(host) {
 	let query = 0;
 	// the next frame's requestAnimationFrame
 	let frameId = 0;
+	// (a frame now, outside the animation frames: start's; a resize's, so
+	// that the frame laying out the new size shows it, not the old one stretched)
+	let frameNow = null;
 	let keyboardAt = 0;
 	// App.backDepth's history entry (one of the page's own, state
 	// {helderBack: 1}, while want: the app deep): pushed, or on its way out
@@ -704,6 +707,10 @@ export default function os(host) {
 			c.width = m.w;
 			c.height = m.hh;
 			push([m.h, RESIZE, 0, m.w, m.hh, 0, 0]);
+			// (drawn at once: the page shows the old frame stretched until a new
+			// one comes; not when it waited behind a slow frame, the next of
+			// which takes the newest size, rather than one for each)
+			if (performance.timeOrigin + performance.now() - (m.at ?? 0) < 8) frameNow?.();
 		});
 		page.on('state', (m) => {
 			const t = m.state;
@@ -882,11 +889,17 @@ export default function os(host) {
 			if (hw) host.handles.set(hw, c);
 			program?.post({ type: 'size', h, w: bw, hh: bh });
 			// (its displayed size followed: the page's styles, a ResizeObserver
-			// telling the next frame, or at once the worker)
+			// drawing a frame at once (its callbacks come after the animation
+			// frames' and before the paint: a frame later the page would show the
+			// old one stretched), or telling the worker)
 			c.hxmcResized = true;
 			c.hxmcSize = new ResizeObserver(() => {
 				c.hxmcResized = true;
 				if (program) sync(h);
+				else if (frameNow && sync(h)) {
+					push([h, RESIZE, 0, b.width, b.height, 0, 0]);
+					frameNow();
+				}
 			});
 			c.hxmcSize.observe(c);
 			sync(h);
@@ -1333,10 +1346,15 @@ export default function os(host) {
 				else timer = setTimeout(go, 4);
 			});
 			const shown = (h) => (page ? page.state.shown[h] : host.handles.get(h).hxmcShown);
+			const hidden = () => windows.size > 0 && [...windows].every((h) => shown(h) === false);
 			const tick = () => {
 				frameId = 0;
 				if (stopped) return;
-				if (windows.size > 0 && [...windows].every((h) => shown(h) === false)) return (frameId = raf(tick));
+				if (hidden()) return (frameId = raf(tick));
+				if (step()) frameId = raf(tick);
+			};
+			// (false once the program asks for no more)
+			const step = () => {
 				// (in a worker the page tells these as they change)
 				if (!page && pixelRatio() !== ratio) {
 					ratio = pixelRatio();
@@ -1363,10 +1381,15 @@ export default function os(host) {
 					stopped = true;
 					if (!host.options.onError) throw e;
 					host.options.onError(e);
-					return;
+					return false;
 				}
 				if (host.exitCode && host.options.onError) host.options.onError(new Error('the program exited with code ' + host.exitCode));
-				if (more) frameId = raf(tick);
+				return more;
+			};
+			frameNow = () => {
+				if (stopped || hidden()) return;
+				// (the animation frames go on: one asked for already, else from here)
+				if (step() && !frameId) frameId = raf(tick);
 			};
 			frameId = raf(tick);
 		},
