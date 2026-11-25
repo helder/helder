@@ -55,7 +55,7 @@ class Run {
 		{name: "jobs", about: "helder.jobs: the sendable check's rejections (tests/jobs/reject); the pool, cancellation, errors and channels are the test lane's (tests/jobs/Jobs.test.hx, natively and on wasm32-wasi with node's workers)", run: jobsLane},
 		{name: "jobs-web", about: "helder.jobs in headless Chromium: Web Workers instantiating the module, a cancelled one ended, the loop without frames (tests/jobs/JobsWeb.hx)", run: jobsWeb},
 		{name: "app", about: "App.run turning helder.async's loop: a timer and a job's reply ending App.wait (tests/os/AppLoopTest.hx; Linux: Xvfb)", run: app},
-		{name: "window", about: "helder.os's windows (tests/os/WindowTest.hx): files dropped through each system's own mechanism (X11: XDND from a second connection; Windows: WM_DROPFILES of an HDROP, also under Wine with GFX_TARGET=windows-x86_64; macOS: the window's dragging destination given a dragging info), moveTo and position, fullscreen asked; an inset title bar (tests/os/TitleBarTest.hx: macOS's full-size content view, its buttons measured and placed, a press on the bar the app's; Windows' caption removed, WM_NCHITTEST's answers; X11's Motif hints); the platform's spellchecker (tests/text/SpellTest.hx: Enchant or Hunspell, ISpellChecker, NSSpellChecker; Wine has none); Windows' TSF for drawn text fields (tests/os/TsfTest.hx: the test the input method, through msctf and the store's composition sink; again with HELDER_NO_TSF=1; tests/ui/WinTextTest.hx: a drawn field typed into and composed in through it); Windows' UI Automation for the drawn tree (tests/ui/WinAccessTest.hx, WinPatternsTest.hx in process; WinAccessProbe.hx, IUIAutomation from another process, on AccessApp's fixture, todo, mail and guide; under Wine the tree and properties); macOS's NSAccessibility (tests/ui/MacAccessTest.hx, MacPatternsTest.hx, in process); helder.ui.menu's model as each platform's menus (tests/os/MenuTest.hx: macOS's NSMenu bar and roles, Windows' HMENU and accelerators, Linux's drawn bar and context menu driven by the keys, bin/os/menus-linux*.png); Windows' program on a thread of its own, the windows the main thread's (RenderThreadTest; AsyncScrollWindow, --anim and --native: the compositor while the program is blocked) (Linux: Xvfb); Windows' DirectComposition layers (tests/ui/WinLayersWindow.hx: the wheel and an animation while the program is blocked, moved not drawn, stills against the textured compositor's, the stalled layers falling back); macOS: a <Video> in a scroller under a popup, drawn and in the system's layer (tests/media/apple/VideoWindow.hx); macOS's Core Animation layers (tests/ui/SystemLayersWindow.hx --swap, --resize: a sidebar switched, each capture the frame read back; a live resize on them and on the window's layer alone, each frame presented at the window's size; in the background); Windows: a <Video> drawn and on its DirectComposition layer, a still read (tests/media/windows/WinVideoStill.hx); Windows: two helder windows on screen, opaque and transparent (tests/ui/TwoWindows.hx)", run: window},
+		{name: "window", about: "helder.os's windows (tests/os/WindowTest.hx): files dropped through each system's own mechanism (X11: XDND from a second connection; Windows: WM_DROPFILES of an HDROP, also under Wine with GFX_TARGET=windows-x86_64; macOS: the window's dragging destination given a dragging info), moveTo and position, fullscreen asked; macOS: a real click on an inactive window making the app active and the window key, helder.ui's (its compositor's) and helder.os's alone (tests/os/KeyClick.hx, CI's or HELDER_TEST_INPUT=1's); an inset title bar (tests/os/TitleBarTest.hx: macOS's full-size content view, its buttons measured and placed, a press on the bar the app's; Windows' caption removed, WM_NCHITTEST's answers; X11's Motif hints); the platform's spellchecker (tests/text/SpellTest.hx: Enchant or Hunspell, ISpellChecker, NSSpellChecker; Wine has none); Windows' TSF for drawn text fields (tests/os/TsfTest.hx: the test the input method, through msctf and the store's composition sink; again with HELDER_NO_TSF=1; tests/ui/WinTextTest.hx: a drawn field typed into and composed in through it); Windows' UI Automation for the drawn tree (tests/ui/WinAccessTest.hx, WinPatternsTest.hx in process; WinAccessProbe.hx, IUIAutomation from another process, on AccessApp's fixture, todo, mail and guide; under Wine the tree and properties); macOS's NSAccessibility (tests/ui/MacAccessTest.hx, MacPatternsTest.hx, in process); helder.ui.menu's model as each platform's menus (tests/os/MenuTest.hx: macOS's NSMenu bar and roles, Windows' HMENU and accelerators, Linux's drawn bar and context menu driven by the keys, bin/os/menus-linux*.png); Windows' program on a thread of its own, the windows the main thread's (RenderThreadTest; AsyncScrollWindow, --anim and --native: the compositor while the program is blocked) (Linux: Xvfb); Windows' DirectComposition layers (tests/ui/WinLayersWindow.hx: the wheel and an animation while the program is blocked, moved not drawn, stills against the textured compositor's, the stalled layers falling back); macOS: a <Video> in a scroller under a popup, drawn and in the system's layer (tests/media/apple/VideoWindow.hx); macOS's Core Animation layers (tests/ui/SystemLayersWindow.hx --swap, --resize: a sidebar switched, each capture the frame read back; a live resize on them and on the window's layer alone, each frame presented at the window's size; in the background); Windows: a <Video> drawn and on its DirectComposition layer, a still read (tests/media/windows/WinVideoStill.hx); Windows: two helder windows on screen, opaque and transparent (tests/ui/TwoWindows.hx)", run: window},
 		{name: "wayland", about: "helder.os on Wayland: the protocol bindings generated again from the system's XML (helder.os.linux.wayland.Scanner) and compared with src/helder/os/linux/wayland/protocol; then, where weston is installed, under a headless weston at scale 1 and 2 (tests/os/wayland.sh): tests/os/WaylandTest.hx (the back end chosen, configured, GL's frames through EGL on the wl_surface read back, the buffer at the scale, fullscreen and back, the clipboard; text-input-v3's requests where weston has it), the viewer showing a photo, the compositor's screenshot (bin/os/wayland-viewer.png); the system's layers (tests/ui/WaylandLayersWindow.hx, helder.ui.layers.linux.Layers: subsurfaces, under a kiosk weston at scale 1 and 2: a fling and an animation while the program blocks, moved not drawn, stills against the textured compositor's (bin/os/layers-*/), the stalled layers falling back); without weston, built only", run: wayland},
 		{name: "viewer", about: "helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, the web build's sample folder, its stories) natively and on Eval; its build for this machine (its web build: ui-web)", run: viewerApp},
 		{name: "viewer-window", about: "the viewer in a real window on the GPU (GFX_TARGET's build: Linux under Xvfb, Windows under Wine from another host): a photo of the fixtures opened, decoded on helder.jobs and shown, closed after 3 s (--exit-after); again with no system font found (HELDER_NO_SYSTEM_FONTS=1: its own fallback font); a 9000x2000 PNG (apps/viewer/tests/bigpng.mjs) shown in tiles; a PDF's first page and a Markdown document (tests/fixtures/markdown) shown; macOS: a video of tests/media played", run: viewerWindow},
@@ -117,7 +117,7 @@ class Run {
 		{name: "million-bench", about: "helder.ui's VirtualList measured, not checked (Linux: Mesa's llvmpipe, no display): examples/million (a million rows of their own heights) run headless with --stats on a script of the wheel over new rows and over rows made before, jumps to the end and back, rows put in above the view and the keyboard (tests/bench/million.mjs: each phase's ms and GC bytes a frame against the 8 ms budget), then tests/bench/MillionBench.hx: the list's own work a frame natively without the renderer, and what it holds (tests/bench/results/million.md)", run: millionBench},
 		{name: "headless-run", about: "`helder run --headless` (helder.headless; Linux: Mesa's llvmpipe, no display): examples/todo and examples/ts-todo driven by one script (tests/headless/todo.json: typed into, Enter, the Add button, a checkbox by its role and label, a filter), their --tree at a mark and at the end checked, their --snap against tests/headless's goldens, the --trace's lines, --frames with --every and keycaps; examples/glow's --snap at 0.5 s against its golden; examples/million and ts-million (a VirtualList of a million rows of their own heights, tests/headless/million.json: the wheel, End, the keyboard, the selection through recycling, rows put in above the view; their trees' options, places and rects at each mark, their last frame against its golden); examples/code-editor (helder.ui.code) on a 2,000-line TSX file (tests/headless/code-editor.tsx.txt repeated; tests/headless/code-editor.json: a word double-clicked and typed over, go to line, three cursors by secondary-D, undo and redo, find and replace all, a drag), its text and status bar at each mark and its last frame against its golden; apps/viewer opening a file through its file dialog (the script's answer) and a context menu's item picked (tests/headless/viewer.json; its status bar shown by its key, its store empty as in every headless run); examples/todo's and ts-todo's dev builds with a live literal's colour and a text patched by the script (tests/headless/literals.json: helder.dev.Literals), the frame after showing them; all run twice, the outputs byte for byte the same (tests/headless/Check.hx); a --video when ffmpeg is installed", run: headlessRun},
 		{name: "thread-web", about: "not in CI: the program on the page's thread against the program in a worker (browser.mjs's option worker), ThreadBench.wasm in headless Chromium, Firefox and WebKit where Playwright has them: the first frame, input to frame, frame times, and both while the page is busy (tests/ui/thread-bench.mjs)", run: threadWeb},
-		{name: "ui-web", about: "the todo example, text editors, the accessibility fixture's ARIA mirror (web-access.mjs) and the browser's scroll views (web-scroll.mjs) as wasm32-wasi in headless Chromium; the viewer's web build (apps/viewer/tests/web.mjs: at its sample folder, the PDF opened, the Markdown sample opened, files dropped on the page, Open folder on a tree of handles)", run: uiWeb},
+		{name: "ui-web", about: "the todo example, resized with the page in steps (web-resize.mjs: each frame shown at its size), the pointer's shape over a button, a disabled one, a link, a field and text (web-cursor.mjs), text editors, the accessibility fixture's ARIA mirror (web-access.mjs) and the browser's scroll views (web-scroll.mjs) as wasm32-wasi in headless Chromium; the viewer's web build (apps/viewer/tests/web.mjs: at its sample folder, the PDF opened, the Markdown sample opened, files dropped on the page, Open folder on a tree of handles)", run: uiWeb},
 		{name: "bench", about: "the engine's benchmarks (tests/bench) natively and as wasm32-wasi, and the examples' sizes and compile times: a table (bin/bench/results.md)", run: bench},
 		{name: "scene-markup-bench", about: "3D in markup against the same scene in code (tests/bench/SceneMarkupBench.hx, DESIGN-MARKUP.md 9): 1,000 and 10,000 meshes mounted, moved every frame (the markup's share and the recorded pass; natively on a headless device, as wasm32-wasi without a GPU), idle, unmounted; each variant in a process of its own, the median of RUNS (3) (SCENE_BENCH: the variants): bin/bench/scene-markup.md, the results' tests/bench/results/scene-markup.md", run: sceneMarkupBench},
 		{name: "jobs-bench", about: "background work against the main thread's frames: a 4K PNG decoded between frames, as a GC job, as a GC-free job on off-heap memory (IoBuffer), natively and as wasm32-wasi workers, by hand (tests/bench/Jobs.hx) and through helder.jobs (JobsApi.hx), and a job's round trip: a table (bin/jobs/results.md)", run: jobs},
@@ -938,6 +938,14 @@ class Run {
 		var exe = exePath('bin/os/$GFX_TARGET/WindowTest', GFX_TARGET);
 		var wine = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? "wine " : "";
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$exe') else run(exe, []);
+		if (GFX_TARGET.startsWith("macos-") && HOST.startsWith("macos-")) {
+			// (a click on an inactive window: the app active, the window key; a real click, CI's or
+			// HELDER_TEST_INPUT=1's, the app not in the background: it takes the focus)
+			native('bin/os/$GFX_TARGET/KeyClick', cps(["src", "tests/os"]).concat(["-main", "KeyClick"]), GFX_TARGET);
+			var k = 'bin/os/$GFX_TARGET/KeyClick';
+			shell('env -u HELDER_BACKGROUND $k');
+			shell('env -u HELDER_BACKGROUND $k --plain');
+		}
 		native('bin/os/$GFX_TARGET/SettingsCheck', cps(["src", "tests/os"]).concat(["-main", "SettingsCheck"]), GFX_TARGET);
 		var settings = exePath('bin/os/$GFX_TARGET/SettingsCheck', GFX_TARGET);
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$settings') else run(settings, []);
@@ -1778,8 +1786,84 @@ class Run {
 			"run", "--headless", "apps/studio", "--script", "tests/studio/files.json", "--size", "1180x740", "--snap", '$b/files-image.png', "--at",
 			"mark:image", "--snap", '$b/files-end.png', "--at", "mark:end", "--", '$b/files', "--events", '$b/files.jsonl'
 		]);
+		studioStories(h, b);
 		exe('$b/Check', cps(["src", "tests/studio"]).concat(["-main", "Check"]));
 		run(exePath('$b/Check', HOST), [b].concat(BLESS ? ["--bless"] : []));
+	}
+
+	// (a story file changed under the studio, as an agent changes it: a copy
+	// of examples/ts-todo held open (--hold-while) and driven over its MCP
+	// server: app.story.tsx's exports renamed and a story added
+	// (project.patch), a story file written on disk, a type error in app.tsx
+	// and its fix; Check reads the events)
+	static function studioStories(h:String, b:String) {
+		var dir = '$b/stories', hold = '$b/stories.hold';
+		copy('examples/ts-todo', dir);
+		run("git", ["init", "-q", "-b", "studio", dir]);
+		File.saveContent(hold, "");
+		var p = new Process(h, [
+			"run", "--headless", "apps/studio", "--script", "tests/studio/stories.json", "--size", "1180x740", "--snap", '$b/stories-end.png', "--at",
+			"mark:end", "--", dir, "--events", '$b/stories.jsonl', "--hold-while", hold
+		]);
+		var url:Null<String> = null;
+		function drain(i:haxe.io.Input)
+			sys.thread.Thread.create(() -> try while (true) {
+				var l = i.readLine();
+				Sys.println(l);
+				var at = l.indexOf("studio: MCP at ");
+				if (at >= 0) url = l.substr(at + 15).split(" ")[0];
+			} catch (_:Dynamic) {});
+		drain(p.stdout);
+		drain(p.stderr);
+		function events(name:String):Array<Dynamic>
+			return try [for (l in File.getContent('$b/stories.jsonl').split("\n")) if (l.indexOf('"event":"$name"') >= 0) haxe.Json.parse(l)] catch (_:Dynamic) [];
+		function until(what:String, done:Void->Bool) {
+			var t0 = Sys.time();
+			while (!done()) {
+				if (Sys.time() - t0 > 300) throw new Failed('studio: stories: no $what in 300 s');
+				Sys.sleep(0.2);
+			}
+		}
+		function call(tool:String, args:Dynamic):String {
+			var http = new sys.Http(url);
+			http.cnxTimeout = 300;
+			http.setHeader("content-type", "application/json");
+			http.setPostData(haxe.Json.stringify({jsonrpc: "2.0", id: 1, method: "tools/call", params: {name: tool, arguments: args}}));
+			var out = "";
+			http.onData = d -> out = d;
+			http.onError = e -> throw new Failed('studio: stories: $tool: $e');
+			http.request(true);
+			var r:Dynamic = haxe.Json.parse(out);
+			var text:String = r.result.content[0].text;
+			Sys.println('studio: stories: $tool: ' + text.split("\n").join(" ").substr(0, 200));
+			return text;
+		}
+		try {
+			until("first build", () -> url != null && events("all-shown").length > 0);
+			var story = File.getContent('$dir/app.story.tsx'), app = File.getContent('$dir/app.tsx');
+			// (the exports renamed, a story renamed, one added)
+			call("project.patch", {
+				path: "app.story.tsx",
+				text: story.replace("export const empty", "export const serve").replace("export const items", "export const play")
+					.replace('export const done = story({ name: "Todo/Done"', 'export const over = story({ name: "Todo/All done"')
+					+ '\nexport const more = story({ name: "Todo/One item", width: 480, height: 560, render: () => <App store={store([three[0]])}/> });\n'
+			});
+			// (a story file written on disk: the watcher's)
+			File.saveContent('$dir/extra.story.tsx', 'import { story } from "helder/story";\nimport { App, store } from "./app";\n\nexport const blank = story({ name: "Extra/Blank", width: 480, height: 560, render: () => <App store={store()}/> });\n');
+			until("extra.story.tsx read", () -> Lambda.exists(events("stories"), e -> (e.file : String).endsWith("extra.story.tsx")));
+			until("Extra/Blank shown", () -> Lambda.exists(events("screen-shown"), e -> e.screen == "Extra/Blank"));
+			// (a type error, then its fix)
+			call("project.patch", {path: "app.tsx", text: app + 'export const broken: number = "not a number";\n'});
+			call("project.patch", {path: "app.tsx", text: app});
+		} catch (e:Dynamic) {
+			try sys.FileSystem.deleteFile(hold) catch (_:Dynamic) {}
+			p.kill();
+			throw e;
+		}
+		sys.FileSystem.deleteFile(hold);
+		var code = p.exitCode();
+		p.close();
+		if (code != 0) throw new Failed('studio: stories: the studio ended with $code');
 	}
 
 	// the demos' stills: [name, entry, script or "", the program's arguments, times (seconds or mark:<name>)]
@@ -2124,6 +2208,12 @@ class Run {
 		var b = "bin/ui";
 		wasm('$b/WebTodo.wasm', uiCp().concat(["-main", "WebTodo"]));
 		run(NODE, ["tests/ui/web.mjs", '$b/WebTodo.wasm', b]);
+		// (resized in steps with the page: each frame shown at the size it lays out)
+		run(NODE, ["tests/ui/web-resize.mjs", '$b/WebTodo.wasm']);
+		// (the pointer's shape: a hand over what is pressed, as web pages have it)
+		wasm('$b/WebCursorPage.wasm', uiCp().concat(["-main", "WebCursorPage"]));
+		run(NODE, ["tests/ui/web-cursor.mjs", '$b/WebCursorPage.wasm']);
+		run(NODE, ["tests/ui/web-cursor.mjs", '$b/WebCursorPage.wasm', "worker"]);
 		wasm('$b/WebField.wasm', uiCp().concat(["-main", "WebField"]));
 		run(NODE, ["tests/ui/web-field.mjs", '$b/WebField.wasm']);
 		run(NODE, ["tests/ui/web-field.mjs", '$b/WebField.wasm', "worker"]);

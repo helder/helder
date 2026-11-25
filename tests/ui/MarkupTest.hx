@@ -390,9 +390,14 @@ class MarkupTest implements Markup {
 		Render.render(<view align-items="start" padding={10}>
 			<view:button tag="b" slot="button" focusable states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : StyleProps)}>Go</view:button>
 			<view tag="c" data-state={() -> ticked() ? "checked" : "unchecked"} states={(s:States) -> (s.attr("data-state")() == "checked" ? {opacity: 0.5} : {} : StyleProps)}/>
+			<glass tag="g" width={40} height={20} states={(s:States) -> (s.hovered() ? {opacity: 0.5} : {} : StyleProps)}/>
 		</view>, ui.root);
 		ui.update();
-		var b = ui.root.find("b"), c = ui.root.find("c");
+		var b = ui.root.find("b"), c = ui.root.find("c"), g = ui.root.find("g");
+		// (an element not neutral (<glass>): its states a function too, set once, not read as a hole)
+		ui.pointerMove(g.absX + 2, g.absY + 2);
+		ui.update();
+		check("states: an element of its renderer's own (<glass>), its style a function of its states", g.style.opacity == 0.5, '${g.style.opacity}');
 		var before = b.style.background;
 		ui.pointerMove(b.absX + 2, b.absY + 2);
 		ui.update();

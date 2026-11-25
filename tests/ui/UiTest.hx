@@ -2997,6 +2997,29 @@ static function transitions() {
 		check("cursor: the node's own", ui.cursor() == Text);
 		ui.pointerMove(190, 90);
 		check("cursor: outside", ui.cursor() == Default);
+		// over what is pressed: the arrow, or a browser's hand (pressCursor), Default while disabled
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.root.style.set({direction: Row});
+		var button = new Node("button"), off = new Node("off"), field = new TextField(""), plain = new TextNode("hi");
+		button.append(new TextNode("OK"));
+		off.semantics = ({role: helder.ui.access.Role.Button, disabled: true} : helder.ui.access.Semantics);
+		for (n in [button, off, field, plain]) {
+			n.style.set({width: 40, height: 20});
+			ui.root.append(n);
+		}
+		ui.update();
+		var over = (x:Float) -> {
+			ui.pointerMove(x, 10);
+			return ui.cursor();
+		};
+		check("cursor: the arrow over a button natively", over(5) == Default);
+		ui.pressCursor = Pointer;
+		check("cursor: pressCursor over a button's label", over(5) == Pointer);
+		check("cursor: Default over a disabled button", over(45) == Default);
+		check("cursor: a field's I-beam", over(85) == Text);
+		check("cursor: Default over plain text", over(125) == Default);
+		button.style.cursor = Crosshair;
+		check("cursor: the button's own", over(5) == Crosshair);
 	}
 
 	// --- layout against Chromium ---

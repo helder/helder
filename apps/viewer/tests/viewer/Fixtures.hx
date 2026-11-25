@@ -23,7 +23,10 @@ class Fixtures implements Markup {
 		Kinds.utc = true;
 		Tiles.forget();
 		var m = files(dirs ?? ["tests/fixtures/folder", "tests/fixtures/pdf"]);
-		return new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], Preview.now, null, (path, done) -> done(m.text(path)));
+		var x = new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], Preview.now, null, (path, done) -> done(m.text(path)));
+		// (a document's pictures measured at once, as its text is read)
+		x.viewer.measure = (paths, done) -> done([for (p in paths) FileSystem.exists(p) ? helder.image.Image.size(File.getBytes(p)) : null]);
+		return x;
 	}
 
 	// (on this disk: a story's program runs elsewhere, helder publish's)
@@ -44,9 +47,11 @@ class Fixtures implements Markup {
 			bytes.set(f.path, sample(f));
 			m.add(f.path, bytes.get(f.path), Samples.MODIFIED);
 		}
-		return new Explorer(m, (path, side, done) -> done(Decode.of({path: path, bytes: bytes.get(Decode.parseKey(path).path), side: side})),
+		var x = new Explorer(m, (path, side, done) -> done(Decode.of({path: path, bytes: bytes.get(Decode.parseKey(path).path), side: side})),
 			[{kind: Pictures, name: Samples.ROOT, path: Samples.ROOT}], [], (_, _) -> () -> {},
 			(path, done) -> done(PdfPages.sizesIn({path: path, bytes: bytes.get(path)})), (path, done) -> done(m.text(path)));
+		x.viewer.measure = (paths, done) -> done([for (p in paths) bytes.exists(p) ? helder.image.Image.size(bytes.get(p)) : null]);
+		return x;
 	}
 
 	// the thumbnails of the folder shown made at once (Tiles', as the queue

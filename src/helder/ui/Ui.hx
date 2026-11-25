@@ -69,6 +69,9 @@ class Ui extends ScrollHost {
 	// colours and the rules for "dark" apply
 	public var theme(default, set):Null<StyleSheet> = null;
 	public var dark(default, set) = false;
+	// whether its window is the key one (UiWindow's: macOS's key window, else
+	// always): Liquid Glass drawn flat, untinted, when not, as the system's
+	public var active = true;
 
 	function set_focusVisible(v:Bool):Bool {
 		if (v == focusVisible) return v;
@@ -2626,18 +2629,39 @@ class Ui extends ScrollHost {
 		return false;
 	}
 
+	// the pointer's shape over what is pressed (a button, a link, a menu
+	// item, a tab, a toggle) whose style sets none, Default while it is
+	// disabled: Auto, the arrow, as native apps have it; a browser's
+	// window's Pointer, as web pages have it (UiWindow)
+	public var pressCursor:Cursor = Auto;
+
 	// the pointer's shape: the style of the node under it (or that has it
-	// captured), Auto taking the parent's; Default over a scrollbar's drag
+	// captured), Auto taking the parent's (or pressCursor, over what is
+	// pressed); Default over a scrollbar's drag
 	public function cursor():Cursor {
 		if (drag != null) return Default;
 		var n = capture != null ? capture : hover;
 		while (n != null) {
 			if (n.style.cursor != Auto) return n.style.cursor;
+			if (pressCursor != Auto && pressable(n)) return n.semantics?.disabled == true ? Default : pressCursor;
 			// (a text of a selectable scope: the text's, as a browser's over text)
 			if (Std.isOfType(n, TextNode) && !Std.isOfType(n.parent, TextNode) && n.userSelect() != None && n.selectionScope() != null) return Text;
 			n = n.parent;
 		}
 		return Default;
+	}
+
+	// (a button's element (view:button, a link's view:a), what has an
+	// onPress (Node.onActivate), or what assistive technology is told is pressed)
+	static function pressable(n:Node):Bool {
+		if (n.tag == "button" || n.tag == "a" || n.onActivate != null) return true;
+		var s = n.semantics;
+		if (s == null) return false;
+		if (s.href != null) return true;
+		return switch s.role {
+			case Button | Link | MenuItem | MenuItemCheckBox | MenuItemRadio | Tab | CheckBox | Switch | RadioButton: true;
+			case _: false;
+		}
 	}
 
 	// --- accessibility ---

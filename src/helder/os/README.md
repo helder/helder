@@ -37,7 +37,9 @@ App.run(() -> {
 X11 or Wayland on Linux (the glibc mode, `-D hxmc.libc=glibc`; Wayland
 when `WAYLAND_DISPLAY` is set and it connects, `HELDER_X11=1` X11's), Cocoa on macOS,
 Win32 on Windows, a canvas in the browser (wasm32-wasi: `App.run` returns
-and `requestAnimationFrame` runs the loop). `Event` is one object, refilled
+and `requestAnimationFrame` runs the loop; a canvas resized is drawn in its
+`ResizeObserver`, before the paint, so that the frame laying out its new
+size shows it rather than the old one stretched). `Event` is one object, refilled
 for each event: keys as X11 KeySyms, `TextInput` characters (and an input
 method's `TextEditing`), the mouse in
 pixels from the top left, `Scroll` in pixels, `Resize`, `ScaleChange`,
@@ -55,7 +57,18 @@ in order, and what the program reads at once (the pixel ratio, the soft
 keyboard, media queries, `localStorage`) is the page's as it last told it.
 Each of the worker's frames waits for the page's frame that delivered its
 input, 4 ms at most, so input reaches the same frame as on the page's
-thread, and a page busy with its own scripts holds no frame back. It fits
+thread, and a page busy with its own scripts holds no frame back; a resize
+is told at the page's `resize` event, before its layout, and the worker's
+frame waiting for the marker resizes the canvas and draws it then (a frame
+a frame, the newest size: a burst's sizes, each a new drawing buffer, made
+once). The page shows the worker's frames as they come, so a resized one
+can come late: on a GPU 0–2 of ~90 frames of a drag, none more than a frame
+late (`tests/ui/web-resize.mjs`, which checks that with Chromium on a GPU:
+`CHROMIUM_ARGS`). CI's browser lanes have no GPU (SwiftShader, whose
+headless frame times are no GPU's either), so there the test reports the
+timing and checks only what holds on any GPU: the last size drawn, no size
+drawn that the page did not lay out, no resize shown cleared, the worker
+drawing on. It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;
@@ -312,7 +325,7 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 ```
 
 ```tsx
-<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "glass"
+<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "sidebar", "glass"
 ```
 
 ```haxe
@@ -353,10 +366,11 @@ by a scroller's clip; macOS and Windows follow the pointer at the program's
 polls, so while it sleeps (0.1 s at most) the window keeps its last answer.
 The system's material behind a transparent window (`backdrop`): macOS's
 NSVisualEffectView under the layer's view (behind the window, active;
-blur its hudWindow material, mica underWindowBackground) or, macOS 26,
-an NSGlassEffectView filling it (glass); Windows 11 (22H2 on):
-`DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica Mica), the frame extended
-over the client area; KDE's blur for both: `org_kde_kwin_blur` on Wayland
+blur its hudWindow material, mica underWindowBackground; sidebar the
+sidebar material, Finder's, dimmed with the window as it goes inactive)
+or, macOS 26, an NSGlassEffectView filling it (glass); Windows 11 (22H2
+on): `DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica and sidebar Mica),
+the frame extended over the client area; KDE's blur for all three: `org_kde_kwin_blur` on Wayland
 (plasma-wayland-protocols' XML, generated as the others), on X11
 `_KDE_NET_WM_BLUR_BEHIND_REGION` where its atom exists (KWin makes it).
 Elsewhere, on an opaque window, and for one the system lacks it reads
@@ -548,7 +562,8 @@ program's.
 
 `helder.os.Settings` exposes read-only `helder.view` signals. Read them in
 markup or an effect as `Settings.textScale()`, `Settings.reducedMotion()`,
-`Settings.contrast()`, `Settings.dark()`, and `Settings.orientation()`.
+`Settings.reducedTransparency()`, `Settings.contrast()`, `Settings.dark()`,
+and `Settings.orientation()`.
 In TypeScript, import `Settings` from `helder/os`.
 
 Text scale is a multiplier, defaulting to 1. Contrast is `normal`, `more`,
@@ -563,7 +578,9 @@ iOS text scale is Dynamic Type at the body size. Android reads the font
 scale and animation setting, with contrast on API 34 and later. Windows
 reads the system text size, animation, and high-contrast settings.
 Linux reads GNOME's preferences where its GSettings schemas are installed.
-macOS exposes motion and contrast through AppKit. macOS and the web
+macOS exposes motion, transparency and contrast through AppKit; iOS reads
+Reduce Transparency, Windows Personalization's Transparency effects;
+reduced transparency is false elsewhere (an app keeps its materials). macOS and the web
 report 1 for text scale.
 
 `Clipboard.write(window, text)` and `Clipboard.read(window, callback)`

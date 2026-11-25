@@ -23,7 +23,8 @@ import viewer.ViewerActions;
 // sidebar's top on macOS, at the top right elsewhere); files dropped on it
 // opened; its size and place, the folder, the layout, the order and the
 // inspector kept between runs (helder.os.Store "helder-viewer"); decodes
-// and listings as helder.jobs' jobs.
+// and listings as helder.jobs' jobs. On a desktop that has one, the
+// sidebar is the system's material (Finder's), the rest opaque.
 class Shell implements Markup {
 	// the toolbar's height, the window's buttons' row (macOS: the sidebar's top)
 	public static inline var BAR = 40;
@@ -106,7 +107,7 @@ class Shell implements Markup {
 		{mime: "image/heic", extensions: ["heic", "heif"]},
 		{mime: "image/avif", extensions: ["avif"]}
 	].concat(helder.media.Decoders.available() ? [
-		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
+		// (helder.media's, where the system decodes them: FolderModel.media())
 		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
 		{mime: "video/quicktime", extensions: ["mov"]},
 		{mime: "video/webm", extensions: ["webm"]},
@@ -253,8 +254,13 @@ class Shell implements Markup {
 				opener(p);
 		}
 		var window:Null<UiWindow> = null;
+		// (the sidebar's material: the window clear, its content opaque but
+		// for the sidebar; reduce transparency's opaque as ever)
+		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
+		var shows = signal(false);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" scrollbars="overlay" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? "none" : "sidebar" : null} clickThrough={false}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
@@ -269,6 +275,8 @@ class Shell implements Markup {
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
 				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
 				attach(w.ui.root, x);
+				// (what the system made of it: none where it has no such material)
+				if (glass) renderEffect(() -> helder.os.Settings.reducedTransparency(), _ -> shows(w.window.backdrop == helder.os.WindowBackdrop.Sidebar));
 				effect(() -> viewer.fullscreen(), on -> w.window.fullscreen = on);
 				// (the window's size and place kept as they change, not only at its close: macOS's Quit, a crash, a logout)
 				Async.launch(_ -> while (!w.window.closed) {
@@ -288,7 +296,7 @@ class Shell implements Markup {
 				});
 			}}>
 			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
-			{view(x)}
+			{view(x, null, shows)}
 		</Surface>);
 	}
 
@@ -314,6 +322,23 @@ class Shell implements Markup {
 		return i >= 0 && i + 1 < args.length && args[i + 1] != "" ? args[i + 1] : null;
 	}
 
+	#end
+
+	// whether the sidebar is the system's material on this desktop (os:
+	// Sys.systemName, version: DeviceInfo's, desktop: XDG_CURRENT_DESKTOP):
+	// macOS's; Windows 11's Mica (22H2, build 22621, on); KDE's blur. Else
+	// none: the window opaque as ever (Windows 10, GNOME, a phone, the web)
+	public static function material(os:String, version:String, desktop:String):Bool
+		return switch os {
+			case "Mac": true;
+			case "Windows":
+				var parts = version.split(".");
+				parts.length >= 3 && (Std.parseInt(parts[2]) ?? 0) >= 22621;
+			case "Linux": desktop.split(":").contains("KDE");
+			case _: false;
+		}
+
+	#if (hxmc.target != "wasm32-wasi")
 	// (a phone's explorer: its Documents and its grants; a file on disk
 	// (Documents', iOS's grants') decoded as the desktop's are, one that is
 	// not (Android's documents) from its bytes)
@@ -491,27 +516,32 @@ class Shell implements Markup {
 	// on a tablet (Medium) the browser with its sidebar over the folder and
 	// its inspector in a sheet, no path bar; else (Expanded) the browser,
 	// or a file full size over it (to assistive technology the one shown
-	// alone)
-	public static function view(x:Explorer, ?size:Read<SizeClass>):View {
+	// alone). material: the system's behind the window (Shell.material),
+	// seen through the sidebar alone
+	public static function view(x:Explorer, ?size:Read<SizeClass>, ?material:Read<Bool>):View {
 		var cls:Read<SizeClass> = size ?? () -> SizeClass.current();
+		var glass:Read<Bool> = material ?? () -> false;
 		return <Standard.Themed look={look}>
 			<Switch>
 				<Match when={cls() == Compact}><Phone.Root x={x}/></Match>
-				<Match when={true}><Desktop x={x} medium={() -> cls() == Medium}/></Match>
+				<Match when={true}><Desktop x={x} medium={() -> cls() == Medium} material={glass}/></Match>
 			</Switch>
 		</Standard.Themed>;
 	}
 
-	static function Desktop(props:{x:Explorer, medium:Read<Bool>}):View {
+	static function Desktop(props:{x:Explorer, medium:Read<Bool>, material:Read<Bool>}):View {
 		var x = props.x, b = x.browser, medium = props.medium;
+		// (the material through the sidebar: the window's own canvas under the rest)
+		var clear = () -> props.material() && !medium();
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} min-height={0} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
+		return <view tag="window" grow={1} min-height={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
 			ref={(n:Node) -> x.zoom.attach(n)}>
 			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
-				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
+				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}
+					background={clear() ? Look.ref.canvas : null}>
 					{ContentView.make(x, medium)}
 					<Show when={b.inspector() && !medium()}>{InspectorView.make(x)}</Show>
 				</view>

@@ -97,6 +97,7 @@ export declare class Store {
 export declare class Settings {
 	static readonly textScale: Read<number>;
 	static readonly reducedMotion: Read<boolean>;
+	static readonly reducedTransparency: Read<boolean>;
 	static readonly contrast: Read<Contrast>;
 	static readonly dark: Read<boolean>;
 	static readonly orientation: Read<Orientation | null>;

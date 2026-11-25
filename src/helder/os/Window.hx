@@ -318,6 +318,11 @@ class Window {
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().minimize() : x11().minimize()); #else {} #end
 	}
 
+	// whether it is the key window, taking the keyboard (macOS's: false until
+	// it first is; elsewhere always): what draws as the system's does dims
+	// when not (Liquid Glass)
+	public var active(default, null) = true;
+
 	// maximised (macOS: zoomed), or back
 	public var maximized(get, set):Bool;
 
@@ -388,8 +393,8 @@ class Window {
 
 	// the system's material behind a transparent window, seen through its
 	// clear and half-clear pixels (WindowBackdrop): macOS's NSVisualEffectView
-	// (blur, mica) or NSGlassEffectView (glass, macOS 26) under its layer;
-	// Windows 11's DWMWA_SYSTEMBACKDROP_TYPE (Acrylic, Mica); KDE's blur
+	// (blur, mica, sidebar) or NSGlassEffectView (glass, macOS 26) under its
+	// layer; Windows 11's DWMWA_SYSTEMBACKDROP_TYPE (Acrylic, Mica); KDE's blur
 	// (Wayland's org_kde_kwin_blur, X11's _KDE_NET_WM_BLUR_BEHIND_REGION).
 	// What the system has: None where it has none of it, or the window is
 	// not transparent

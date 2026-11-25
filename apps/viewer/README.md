@@ -9,7 +9,9 @@ browser engine and no runtime to install.
 - **A browser of folders.** A sidebar of your places (Home, Desktop,
   Documents, Downloads, Pictures, Movies, Music) and drives, one level at a
   time: a folder's subfolders, the one you are in highlighted, › to go
-  deeper, the drive's free space at the foot. A toolbar with back and
+  deeper, the drive's free space at the foot. The sidebar is the
+  system's material, as Finder's is: macOS's sidebar, Windows 11's Mica,
+  KDE's blur (opaque with Reduce Transparency, and elsewhere). A toolbar with back and
   forward, the folder's name (its menu lists the folders enclosing it),
   search, the View menu (the order, folders first, hidden files: a menu
   button, opened as the mouse goes down, an item picked by dragging onto
@@ -200,7 +202,7 @@ Ctrl is Cmd on macOS.
 | PDF: next, previous page | `]`, `[` |
 | PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
-| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
+| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted as it opened, `1` 100% (96 dpi) |
 | Markdown: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line; Home, End the top and the end |
 | Markdown: the source | Ctrl+U, or Source in the bar; again for the document |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
@@ -395,9 +397,12 @@ hidden files, the inspector and the status line are kept between runs
   `PdfView.hx`): a PDF as pdf.js shows one by default: its pages down one
   column, centred, 12 points apart, a white sheet each with a soft shadow
   on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
-  known first: `PdfPages.sizes`, on a job), fitted to the width until
-  zoomed (Ctrl and the wheel, a pinch, about the pointer: the point under
-  it stays; `+`, `-` about the middle; 100% a point a point). Only the
+  known first: `PdfPages.sizes`, on a job), at pdf.js's "auto" zoom until
+  zoomed (fitted to the width, at most 125% of the actual size, so a wide
+  window's column stays a page wide, an A4 page some 990 points; a
+  landscape document fitted whole; Ctrl and the wheel, a pinch, about the
+  pointer: the point under it stays; `+`, `-` about the middle; 100% its
+  points at 96 dpi, as pdf.js's). Only the
   pages in view and one each side are made, and drawn: those in view
   first, two at a time, at the size shown in device pixels (again larger
   when a zoom needs it, the smaller drawing shown meanwhile; again smaller
@@ -426,8 +431,10 @@ hidden files, the inspector and the status line are kept between runs
   browsed; another file the system's app's); `http`, `https` and `mailto`
   are helder.os's `Links.open` (the browser; a new tab on the web). Its
   pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
-  most 1600 a side), at most the column's width; a web address's is not
-  fetched, its alt text shown. The key context `markdown` (a document
+  most 1600 a side), at most the column's width, and laid out at the size
+  their headers say (helder.image's `Image.size`, read through Files
+  before the document is shown: `Viewer.measure`), so nothing below one
+  moves when it lands; a web address's is not fetched, its alt text shown. The key context `markdown` (a document
   shown) gives Page Down, Space, Up, Down, Home and End to the column and
   Mod+U to the source. The grid's tile is a page with the document's
   first heading (`Tiles`: read once, its first 16 KB, no rendering), the
@@ -501,8 +508,13 @@ distance, a budget too small for every neighbour, a changed file),
 opened among its folder's files, its column, its picture decoded and a
 remote one's alt text, its links: an anchor, another document at a
 heading of it, a web address, a missing file; the keys scrolling, the
-source by Mod+U and back, the inspector's preview and the grid's tiles),
-`ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
+source by Mod+U and back, the inspector's preview and the grid's tiles;
+two pictures at their sizes before they decode), `Media.test.hx`
+(tests/fixtures/media's silent Vorbis files, the desktop's and the
+phone's shells: over open, next, previous, close, another folder,
+another file and a PDF, at most one player plays, the shown file's),
+`Scrub.test.hx` (the scrub bar: keyframe seeks as it is dragged, the
+release exact), `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
 the steps, the double click, pans, the glide), `Samples.test.hx` (the web
 build's sample folder as its browser has it: at Samples, its files and
 subfolder, the PDF opened and its pages), `Viewer.test.hx` (a
@@ -514,7 +526,7 @@ with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
 and list, the inspector, search; a PDF's column: the keys scrolling
 it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
 the pages a scroll shows and draws, go to page's scroll, a zoom kept
-about its point, a page that cannot be drawn),
+about its point, a page that cannot be drawn, the auto zoom it opens at),
 `Inspector.test.hx` (a search's keystrokes: the selected file's preview
 asked for once, its picture and details kept), `Window.test.hx` (a
 folder among 30, at desktop sizes: the panels and the path bar end at

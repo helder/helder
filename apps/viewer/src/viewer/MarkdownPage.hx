@@ -20,8 +20,9 @@ using StringTools;
 // to that heading, the rest are Explorer.follow's (a file the viewer
 // shows, a folder, a web address);
 // its images: a relative path decoded as the viewer decodes its files
-// (through Files), at most the column's width; a remote one is not
-// fetched (its alt text in its place).
+// (through Files), at most the column's width, laid out at the size its
+// header says before (MarkdownDoc.sizes: no shift once decoded); a remote
+// one is not fetched (its alt text in its place).
 class MarkdownPage implements Markup {
 	// (an image decoded at most this large a side: the column's width on a 2x screen)
 	static inline var SIDE = 1600;
@@ -32,8 +33,8 @@ class MarkdownPage implements Markup {
 		var view:Null<MarkdownView> = null;
 		view = new MarkdownView({
 			doc: d.doc,
-			onLink: href -> if (href.startsWith("#")) view.scrollToHeading(anchor(href.substr(1))) else x.follow(d.path, href),
-			image: (src, alt) -> image(x, d.path, src)
+			onLink: href -> if (href.startsWith("#")) view.scrollToHeading(MarkdownDoc.unescape(href.substr(1))) else x.follow(d.path, href),
+			image: (src, alt) -> image(x, d, src)
 		});
 		d.view = view;
 		var model = new CodeModel(d.text);
@@ -46,7 +47,7 @@ class MarkdownPage implements Markup {
 		var first = d.anchor;
 		d.anchor = null;
 		if (first != null) Clock.add(_ -> {
-			view.scrollToHeading(anchor(first));
+			view.scrollToHeading(MarkdownDoc.unescape(first));
 			false;
 		});
 		return <view tag="markdown-page" position="absolute" inset={0}>
@@ -55,21 +56,16 @@ class MarkdownPage implements Markup {
 		</view>;
 	}
 
-	// (a link's "#Set%20up": the heading's id)
-	static function anchor(s:String):String
-		return try StringTools.urlDecode(s) catch (_:Dynamic) s;
-
-	// (an image of the document's folder: decoded, its pixels copied out; null: remote or missing, its alt text instead)
-	static function image(x:Explorer, from:String, src:String):Null<Node> {
-		var s = src.trim();
-		if (s == "" || s.indexOf("://") >= 0 || s.startsWith("data:") || s.startsWith("//")) return null;
-		if (s.indexOf("#") >= 0) s = s.substr(0, s.indexOf("#"));
-		if (s.indexOf("?") >= 0) s = s.substr(0, s.indexOf("?"));
-		var path = Explorer.resolve(Browser.parent(from) ?? "", anchor(s));
-		var e = x.files.stat(path);
+	// (an image of the document's folder: at the size its header says, then
+	// decoded, its pixels copied out; null: remote or missing, its alt text instead)
+	static function image(x:Explorer, d:MarkdownDoc, src:String):Null<Node> {
+		var path = d.local(src);
+		var e = path == null ? null : x.files.stat(path);
 		if (e == null || e.kind == Folder) return null;
 		var n = new ImageNode();
 		n.style.maxWidth = "100%";
+		var s = d.sizes.get(path);
+		if (s != null) size(n, s.width, s.height);
 		x.viewer.decode(path, SIDE, dec -> {
 			if (dec.error != null || dec.frames.length == 0) {
 				Decode.release(dec);
@@ -78,10 +74,14 @@ class MarkdownPage implements Markup {
 			var rgba = Bytes.alloc(dec.pixelsWidth * dec.pixelsHeight * 4);
 			dec.frames[0].pixels.blitToBytes(0, rgba, 0, rgba.length);
 			Decode.release(dec);
-			n.style.width = Math.min(dec.width, COLUMN);
-			n.style.aspectRatio = dec.width / dec.height;
+			size(n, dec.width, dec.height);
 			n.image = new Image(dec.pixelsWidth, dec.pixelsHeight, rgba);
 		});
 		return n;
+	}
+
+	static function size(n:ImageNode, width:Int, height:Int) {
+		n.style.width = Math.min(width, COLUMN);
+		n.style.aspectRatio = width / height;
 	}
 }
