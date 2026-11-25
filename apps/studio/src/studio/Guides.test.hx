@@ -11,9 +11,15 @@ using StringTools;
 function tests() {
 	describe("Guides", () -> {
 		test("every topic listed, start the default", () -> {
-			equals([for (t in Guides.topics) t.name], ["start", "ui", "game", "design", "assets"]);
+			equals([for (t in Guides.topics) t.name], ["start", "ui", "game", "design", "assets", "3d"]);
+			equals(Guides.get("3d").indexOf("<Scene") > 0, true);
 			equals(Guides.get(null).startsWith("# Start"), true);
 			equals(Guides.get("game").indexOf("Clock.add") > 0, true);
+		});
+		test("studio.guide's description names every topic", () -> {
+			var tool:Dynamic = Lambda.find(Tools.list, (t:Dynamic) -> t.name == "studio.guide");
+			var said = (tool.description : String) + " " + (tool.inputSchema.properties.topic.description : String);
+			equals([for (t in Guides.topics) if (!said.contains(t.name)) t.name], []);
 		});
 		#if !(hxmc.target == "wasm32-wasi")
 		test("each topic's code builds, its design markup reads", () -> {

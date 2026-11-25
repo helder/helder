@@ -12,6 +12,7 @@ class Guides {
 		{name: "game", about: "a per-frame step, keys and the pointer, shapes that move, timing; a paddle and a ball", text: Asset.embed("guide/game.md").toString()},
 		{name: "design", about: "design files: frames and groups, sketched at once", text: Asset.embed("guide/design.md").toString()},
 		{name: "assets", about: "images, fonts and sound from the project", text: Asset.embed("guide/assets.md").toString()},
+		{name: "3d", about: "3D as markup: a <Scene> of meshes, lights and a camera, posed by stories; markup only", text: Asset.embed("guide/3d.md").toString()},
 	];
 
 	// a topic's text (null: start), the others listed after it; an unknown one a thrown message

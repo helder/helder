@@ -122,8 +122,8 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "studio.guide",
-			description: "How to build here, fast: the project's files, screens as stories, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets). Call it instead of exploring the repository: start first, then the topic you need.",
-			inputSchema: {type: "object", properties: {topic: {type: "string", description: "start (the default), ui, game, design, assets"}}}
+			description: "How to build here, fast: the project's files, screens as stories, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets, 3d). Call it instead of exploring the repository: start first, then the topic you need.",
+			inputSchema: {type: "object", properties: {topic: {type: "string", description: "start (the default), ui, game, design, assets, 3d"}}}
 		},
 		{
 			name: "studio.inbox",
