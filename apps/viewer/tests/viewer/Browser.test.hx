@@ -1,6 +1,7 @@
 package viewer;
 
 import haxe.io.Bytes;
+import helder.test.Gen;
 import helder.test.Test;
 import viewer.Files;
 
@@ -8,9 +9,50 @@ import viewer.Files;
 // history, the sidebar's level for a folder, the order, the filter and
 // folders first, listings in batches with the selection kept, a file
 // opened full size and back, the trash and its undo, several selected,
-// a new folder, a rename, files moved and copied into a folder
+// a new folder, a rename, files moved and copied into a folder; between
+// folders (random goes, backs and forwards, on a disk slow or not) never
+// a list gone empty but a folder's read empty or failed, a folder seen
+// lately shown as it was at once
 function tests() {
 	describe("Browser", () -> {
+		test("between folders: never a list gone blank but for a folder read empty", () -> stateful({
+			setup: () -> {
+				var files = new MemoryFiles().add("/a/1.png", Bytes.alloc(1)).add("/a/2.png", Bytes.alloc(2)).add("/b/x.mjs", Bytes.alloc(3)).add("/c/")
+					.add("/d/e/y.png", Bytes.alloc(4));
+				var b = new Browser(files);
+				b.go("/a");
+				{files: files, b: b};
+			},
+			steps: [
+				{name: "go", run: (s, c) -> blank(s, () -> {
+					s.files.hold = c.draw(bool());
+					s.b.go(c.draw(pick(["/a", "/b", "/c", "/d", "/d/e", "/missing"])));
+				})},
+				{name: "disk answers", run: (s, c) -> blank(s, () -> s.files.release())},
+				{name: "back", run: (s, c) -> blank(s, () -> s.b.goBack())},
+				{name: "forward", run: (s, c) -> blank(s, () -> s.b.goForward())}
+			]
+		}, {cases: 80, steps: 25}));
+		test("a folder seen lately: as it was, at once, the disk slow", () -> {
+			var files = tree(), b = new Browser(files);
+			b.go("/Users/ben/Pictures");
+			b.go("/Users/ben/Pictures/Trips");
+			files.hold = true;
+			b.goBack();
+			equals(b.stale, false);
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			// (read again: the same, replaced whole)
+			files.release();
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			equals(b.reading.value, false);
+			// (a folder not seen yet: the last one's kept, never emptied, until it is read)
+			files.hold = true;
+			b.go("/Users/ben/Pictures/Trips/Iceland");
+			equals(b.stale, true);
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			files.release();
+			equals(names(b), ["x.jpg"]);
+		});
 		test("navigation and history", () -> {
 			var b = new Browser(tree());
 			b.go("/Users/ben/Pictures");
@@ -229,3 +271,11 @@ private function tree():MemoryFiles
 
 private function names(b:Browser):Array<String>
 	return [for (e in b.items.value) e.name];
+
+// (a step on the browser: a list that showed entries empty after it only
+// for the folder that is empty (/c: read now, or as last read), or failed)
+private function blank(s:{files:MemoryFiles, b:Browser}, step:Void->Void) {
+	var b = s.b, had = b.items.value.length > 0;
+	step();
+	if (had && b.items.value.length == 0) assert(b.error.value != "" || b.dir.value == "/c", 'blank at ${b.dir.value}, reading ${b.reading.value}');
+}

@@ -47,10 +47,18 @@ class Browser {
 	public var offset(default, null) = 0.0;
 	public var scrolled:Void->Float = () -> 0;
 	// items are still the last folder's: kept until this one's first batch
-	// comes (or STALE seconds pass, then none: the loading state), so that
-	// going between folders never shows an empty list for a frame
+	// comes, never emptied meanwhile (a list gone blank for a moment reads
+	// as a flash), waiting after STALE seconds (the view dims them, takes no
+	// presses on them); a folder seen lately shows its entries as they were
+	// at once (back, forward), replaced whole when it is read again
 	public var stale(default, null) = false;
+	public final waiting = new Cell(false);
 	public static inline var STALE = 0.15;
+	// (folders seen lately, their entries as last read: the newest last)
+	static inline var SEEN = 32;
+	final seen = new Map<String, Array<Entry>>();
+	final seenOrder:Array<String> = [];
+	var fromSeen = false;
 	var loads = 0;
 	// the folder changed (the sidebar follows it)
 	public var onDir:Null<String->Void> = null;
@@ -142,15 +150,20 @@ class Browser {
 		dir(path);
 		all = [];
 		keep = select;
-		var load = ++loads;
-		stale = items.value.length > 0;
-		if (!stale) items([]) else helder.async.Async.launch(_ -> {
-			helder.async.Async.delay(STALE);
-			if (!stale || loads != load) return;
+		var load = ++loads, was = seen.get(path);
+		fromSeen = was != null;
+		waiting(false);
+		if (was != null) {
+			// (as it was when last read: at once, read again under it)
 			stale = false;
-			items([]);
-			if (onItems != null) onItems();
-		});
+			items(Listing.of(was, order.value, hidden.value, ""));
+		} else {
+			stale = items.value.length > 0;
+			if (!stale) items([]) else helder.async.Async.launch(_ -> {
+				helder.async.Async.delay(STALE);
+				if (stale && loads == load) waiting(true);
+			});
+		}
 		selection.clear();
 		total(0);
 		error("");
@@ -175,9 +188,14 @@ class Browser {
 		if (b.error != null) error(b.error);
 		all = all.concat(b.entries);
 		total(all.length);
+		// (shown as it was when last read: kept until it is read whole, then replaced in one frame)
+		if (fromSeen && !b.done && b.error == null) return;
 		// (the last folder's entries, kept until now, replaced whole: in one frame)
-		var was = stale ? [] : items.value;
+		var was = stale || fromSeen ? [] : items.value;
+		if (fromSeen) b = {entries: all, done: true, error: b.error};
+		fromSeen = false;
 		stale = false;
+		waiting(false);
 		var t0 = Timing.on ? haxe.Timer.stamp() : 0.0;
 		var merged = Listing.merge(was, b.entries, order.value, hidden.value, query.value);
 		if (Timing.on) Timing.mark('batch ${b.entries.length}${b.done ? " done" : ""} merged in ${Math.round((haxe.Timer.stamp() - t0) * 10000) / 10} ms');
@@ -193,6 +211,7 @@ class Browser {
 		if (onItems != null) onItems();
 		if (b.done) {
 			stopList = null;
+			if (b.error == null) remember(dir.value, all);
 			if (b.error == null && all.length < WATCH_BELOW) stopWatch = files.watch(dir.value, WATCH_EVERY, rescan);
 		}
 	}
@@ -210,6 +229,7 @@ class Browser {
 		}
 		var at = indexOf(selected.value);
 		all = entries;
+		remember(dir.value, all);
 		total(all.length);
 		reshow();
 		selection.prune();
@@ -219,6 +239,19 @@ class Browser {
 		}
 		if (modified.length > 0 && onModified != null) onModified(modified);
 		if (onItems != null) onItems();
+	}
+
+	// (a folder's entries as read: kept for its next visit, a small one's, the last SEEN folders')
+	function remember(path:String, entries:Array<Entry>) {
+		seenOrder.remove(path);
+		if (entries.length >= WATCH_BELOW) {
+			seen.remove(path);
+			return;
+		}
+		seen.set(path, entries.copy());
+		seenOrder.push(path);
+		while (seenOrder.length > SEEN)
+			seen.remove(seenOrder.shift());
 	}
 
 	// --- how it is shown

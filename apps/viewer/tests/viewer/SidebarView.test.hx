@@ -31,10 +31,12 @@ function tests() {
 			var ui = new Ui(new StoryText(), 1100, 700);
 			Render.render(Shell.view(x), ui.root);
 			frame(ui);
-			// (its first level landed and settled)
+			// (its first level landed and settled; a while shown)
 			Clock.finish();
 			frame(ui);
-			t = Clock.now;
+			t = Clock.now + 0.2;
+			Clock.tick(t);
+			frame(ui);
 			return {ui: ui, x: x};
 		}
 		function at(ui:Ui, dt:Float) {

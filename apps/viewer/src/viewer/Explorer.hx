@@ -111,6 +111,8 @@ class Explorer {
 	// the selected entry (or one named) opened: a folder entered, a file the
 	// viewer shows full size, any other the system's app for it
 	public function open(?name:String):Bool {
+		// (the last folder's rows still shown, this one's not read yet: theirs are not here)
+		if (browser.stale) return false;
 		var e = browser.entry(name ?? browser.selected.value);
 		if (e == null) return false;
 		browser.select(e.name);

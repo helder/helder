@@ -331,6 +331,22 @@ function tests() {
 			equals(ui.root.find("zoom"), null);
 			equals(hidden(photo(ui, "photo 2.jpg")), false);
 		});
+		test("a PDF: its page 1 as its column draws it, over the thumbnail before it lands", () -> {
+			var m = mount(1100, 700, "tests/fixtures/pdf"), ui = m.ui, x = m.x;
+			Tiles.remember(x, x.browser.entry("pages.pdf"), picture(181, 256));
+			x.open("pages.pdf");
+			frame(ui);
+			at(ui, 0);
+			var carried = false, n = 0;
+			while (x.zoom.flying.peek() != "" && n++ < 120) {
+				at(ui, 1 / 60);
+				if (x.zoom.sharp.peek() != null) carried = true;
+			}
+			var doc = x.viewer.document();
+			assert(doc != null && doc.image(0) != null, "page 1 drawn");
+			assert(carried, "the drawn page carried before it landed");
+			same(x.zoom.box.peek(), ui.root.find("page").windowBounds(), "on the first page");
+		});
 		test("closed mid-flight: back from where it is, no jump", () -> {
 			var m = mount(1100, 700), ui = m.ui, x = m.x;
 			var tile = photo(ui, "photo 2.jpg").windowBounds();

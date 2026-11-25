@@ -284,9 +284,10 @@ class Flight implements Markup {
 			snap(large[k], d);
 		}
 		// (the sharp picture as soon as it is decoded; closing, the thumbnail's again near the tile)
-		if (!sharpTried && opening && decodedFor(path)) {
-			sharpTried = true;
+		// (a PDF's page 1 as its column draws it, a picture's decode: as soon as either is there)
+		if (!sharpTried && opening && (Viewer.isPdf(path) || decodedFor(path))) {
 			var s = sharpOf(path);
+			if (s != null || !Viewer.isPdf(path)) sharpTried = true;
 			if (s != null) {
 				sharp(s);
 				clear.animate(t, 1, SHARPEN);
@@ -300,9 +301,12 @@ class Flight implements Markup {
 	}
 
 	// (an image still decoding, opened: its thumbnail kept in its place a while)
+	// (a PDF's first page not drawn yet: the thumbnail kept over it a while, no blank page landed on)
 	function held(t:Float):Bool {
 		var v = x.viewer;
-		return opening && v.state.peek() == Loading && !decodedFor(path) && t - since < HOLD;
+		if (!opening || t - since >= HOLD) return false;
+		if (Viewer.isPdf(path)) return sharp.peek() == null && v.state.peek() != Failed;
+		return v.state.peek() == Loading && !decodedFor(path);
 	}
 
 	// (the flight over: the tile and the image shown again)
@@ -584,6 +588,11 @@ class Flight implements Markup {
 
 	// (the decode shown, as a picture to draw over the thumbnail: its first frame's pixels)
 	function sharpOf(path:String):Null<Image> {
+		// (a PDF's page as its column has drawn it: the first, opening; the one shown, closing)
+		if (Viewer.isPdf(path)) {
+			var d = x.viewer.document();
+			return d == null || d.path != path ? null : d.image(opening ? 0 : x.viewer.page);
+		}
 		if (!decodedFor(path)) return null;
 		var d = x.viewer.shown;
 		if (d.frames.length == 0 || d.pixelsWidth * d.pixelsHeight > SHARP_PIXELS) return null;

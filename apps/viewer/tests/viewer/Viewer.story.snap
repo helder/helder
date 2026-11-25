@@ -1346,7 +1346,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/marquee: Browser/marquee (182 lines)
+--- story Browser/marquee: Browser/marquee (178 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1355,10 +1355,6 @@ Node#root 0,0 390x844
           Node#browser 0,0 1100x700
             Node#sidebar 0,0 236x700
               Node#sidebar-body 10,8 216x692
-                Node#sidebar-pane 10,8 216x692
-                  Node#overview 10,8 216x692
-                    Node#view 10,8 216x24
-                      TextNode#text 10,8 216x24 "Locations"
                 Node#sidebar-pane 10,8 216x692
                   Node#view 10,8 216x692
                     Node#view 10,8 216x30

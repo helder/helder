@@ -222,7 +222,9 @@ class ContentView implements Markup {
 			if (s != null && s.ui != null) Menus.popup(s.ui, i < 0 ? ViewerActions.background() : ViewerActions.entry, px, py, s);
 		}
 		// (the folder's own space: what is dropped on it, into the folder shown)
-		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
+		// (the last folder's rows, this one slow to read: dimmed, not pressed, never blank)
+		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"} opacity={b.waiting() ? 0.45 : 1}
+			pointer-events={b.waiting() ? "none" : "auto"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
 			<Show when={b.layout() == List}>
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"

@@ -48,7 +48,8 @@ class SidebarView implements Markup {
 			var list = panes.peek(), now = list[list.length - 1];
 			if (level == now.level) return;
 			var n = body;
-			if (n == null || n.ui == null) {
+			// (not shown yet, or just: the sidebar's first level landing as it is made, in place)
+			if (n == null || n.ui == null || helder.ui.Clock.now < now.born + 0.05) {
 				panes([new Pane(level, s.rows.value)]);
 				return;
 			}
@@ -204,6 +205,8 @@ private class Pane {
 	public final fade = new helder.ui.motion.Track(1, 1e-3);
 	public final x = helder.view.graph.Graph.signal(0.0);
 	public final shown = helder.view.graph.Graph.signal(1.0);
+	// (when it was made, the clock's)
+	public final born = helder.ui.Clock.now;
 
 	public function new(level:String, rows:Array<Sidebar.Row>) {
 		this.level = level;
