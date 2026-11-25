@@ -427,7 +427,7 @@ system's API (X11's states unread: Xvfb runs no window manager).
 ### Dialogs, file types, the files the system opens
 
 ```haxe
-var path = FileDialog.open(window, "Open an image", [{name: "Images", extensions: ["jpg", "png"]}]); // null: cancelled
+var path = FileDialog.pick(window, "Open an image", [{name: "Images", extensions: ["jpg", "png"]}]); // null: cancelled
 FileTypes.register("helder-viewer", "Viewer", exe, [{mime: "image/jpeg", extensions: ["jpg"]}]);   // "Open with", this user's
 App.onOpen = paths -> open(paths[0]);       // macOS: Finder's Open With, the Dock's icon (application:openURLs:)
 window.raise();                              // to the front (a second launch handing its file over)

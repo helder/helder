@@ -910,7 +910,7 @@ helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, 
   `--theme`'s (light by default); `--reduced-motion` sets helder.ui's
   `Clock.reducedMotion` (Style's transitions of transform and shadow, and
   Motion's transition and spring, jump; fades and colours still ease).
-  `FileDialog.open` takes the script's next `file-dialog` answer.
+  `FileDialog.pick` takes the script's next `file-dialog` answer.
   helder.os's `Store` starts empty and stays in memory (what an earlier
   run or the user's own copy of the app kept changes nothing; the run
   keeps nothing).

@@ -240,7 +240,7 @@ class Shell implements Markup {
 		viewer.openDialog = () -> {
 			if (x.openFolder != null) return x.openFolder();
 			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
-			var picked = helder.os.FileDialog.open(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
+			var picked = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
 			if (picked != null) x.start(picked);
 		};
 		if (path != null) x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path) else {

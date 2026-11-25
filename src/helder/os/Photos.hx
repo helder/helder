@@ -50,7 +50,7 @@ class Photos {
 	@:allow(helder.os) static function dialog():Array<Bytes> {
 		var w = App.windows[0];
 		if (w == null) return [];
-		var path = FileDialog.open(w, "Photos", [{name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "heic", "tiff", "bmp"]}]);
+		var path = FileDialog.pick(w, "Photos", [{name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp", "heic", "tiff", "bmp"]}]);
 		return path == null ? [] : try [sys.io.File.getBytes(path)] catch (_:Dynamic) [];
 	}
 }

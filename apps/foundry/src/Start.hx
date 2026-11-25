@@ -78,7 +78,7 @@ class Start implements Markup {
 			ws.say("A blank font: trace the grey letter behind each one, or draw your own");
 		}
 		function open() {
-			var path = helder.os.FileDialog.open(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
+			var path = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
 			if (path == null) return;
 			try {
 				var face = Outlines.face(FontFile.parse(sys.io.File.getBytes(path)), "My Font");
