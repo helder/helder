@@ -6,7 +6,7 @@ import helder.scene.math.Quat;
 import helder.scene.render.*;
 import helder.scene.render.Lines;
 
-// Phase 3's frames (src/helder/scene/DESIGN-3D.md): lines with width,
+// Line reference frames: lines with width,
 // debug drawing, the helpers, text in the world (Scenes):
 //   lines      a zig-zag three times, 9 pixels wide (Miter joins and butt
 //              caps, Round joins and caps, Bevel joins and square caps),

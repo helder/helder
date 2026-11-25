@@ -22,3 +22,5 @@ helder is in early preview: its APIs and commands change between nightlies.
 <Sections/>
 
 Each page is a short tour. The complete reference for every package lives in its README on GitHub, linked at the end of each page.
+
+<Reference to="cli,gfx,ui,view"/>

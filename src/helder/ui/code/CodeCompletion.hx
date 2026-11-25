@@ -98,10 +98,10 @@ class CodeCompletion extends Node {
 		return listFont;
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null || !open) return;
 		var c = editor.view.codeTheme.colors, rh = rowHeight(), f = fontFor();
 		canvas.shadow(x, y, width, height, 6, Color.rgba(0, ui.dark ? 0.4 : 0.14), 18, null, [0, 6, 0]);

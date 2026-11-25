@@ -6,7 +6,7 @@ import haxe.macro.Expr;
 import haxe.macro.Type;
 import helder.definition.Kernel;
 
-// The Haxe side of definitions (DESIGN.md 2): a definition is a `macro`
+// The Haxe side of definitions (compiler/DESIGN.md 2): a definition is a `macro`
 // function marked @:definition, a forwarder that hands its argument to this
 // adapter and returns what the handler's output makes:
 //

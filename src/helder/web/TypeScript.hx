@@ -6,7 +6,7 @@ package helder.web;
 // README has them). Each class is the Haxe class `__haxe` names.
 @:typescript("helder/web")
 @:typescript.types(helder.web.Island.Load, helder.web.Island.Stop)
-@:typescript.classes(helder.web.Static, helder.web.Island, helder.web.WebTags)
+@:typescript.classes(helder.web.Static, helder.web.Island)
 @:typescript.functions(Surface = helder.web.WebTags.Surface)
 @:typescript.renderers(helder.web.StaticRenderer)
 @:build(helder.typescript.api.Manifest.build())

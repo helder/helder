@@ -24,8 +24,8 @@ import hxmc.unsafe.*;
 class Haptics {
 	public static var enabled = true;
 	// how many were asked for (each kind), enabled or not on this target: for tests
-	public static var taps(default, null) = 0;
-	public static var impacts(default, null) = 0;
+	@:noCompletion public static var taps(default, null) = 0;
+	@:noCompletion public static var impacts(default, null) = 0;
 
 	public static function tap()
 		play(false);
@@ -34,12 +34,12 @@ class Haptics {
 		play(true);
 
 	// the browser's vibration (ms) for each
-	public static inline function vibration(strong:Bool):Int
+	@:noCompletion public static inline function vibration(strong:Bool):Int
 		return strong ? 25 : 10;
 
 	// Android's HapticFeedbackConstants for each at an API level: CLOCK_TICK
 	// (4); CONFIRM (16, API 30), else VIRTUAL_KEY (1)
-	public static function androidFeedback(strong:Bool, sdk:Int):Int
+	@:noCompletion public static function androidFeedback(strong:Bool, sdk:Int):Int
 		return strong ? (sdk >= 30 ? 16 : 1) : 4;
 
 	static function play(strong:Bool) {

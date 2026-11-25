@@ -8,7 +8,7 @@ import helder.typescript.lower.Api;
 // Calls from the compiled TypeScript program into helder's Haxe API,
 // straight to the functions Haxe's typing lowered (their IR names: hxmc's,
 // the manifest's classes' idents), each value converted by the type the
-// manifest gives (DESIGN.md 7.3): a JavaScript value into a Haxe parameter
+// manifest gives (typescript's README): a JavaScript value into a Haxe parameter
 // (a number into an Int or a Float, a string, a Bool, a Read, an instance
 // checked, an array's elements, a function as a closure of the parameter's
 // signature, a structure field by field; else untyped, Interop.toHaxe), a

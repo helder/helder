@@ -15,7 +15,7 @@ import helder.async.*;
 //   var server = Server.listen("127.0.0.1", 8080);
 //   Http.serve(server, req -> Http.file("public", req.path) ?? Response.text("not found", 404));
 class Http {
-	@:coroutine public static function serve(server:Server, handler:Coroutine<Request->Null<Response>>):Void {
+	@:noCompletion @:coroutine public static function serve(server:Server, handler:Coroutine<Request->Null<Response>>):Void {
 		var node = Async.context().get(Node.key);
 		while (true) {
 			var s = server.accept();
@@ -87,8 +87,8 @@ class Request {
 	// names in lower case
 	public final headers:Map<String, String>;
 	public var body(default, null):Bytes;
-	public final socket:Socket;
-	public final reader:Reader;
+	@:noCompletion public final socket:Socket;
+	@:noCompletion public final reader:Reader;
 
 	function new(method, path, query, version, headers, socket, reader) {
 		this.method = method;
@@ -109,7 +109,7 @@ class Request {
 	}
 
 	// the next request on the connection; null at its end
-	@:coroutine public static function read(s:Socket, r:Reader):Null<Request> {
+	@:noCompletion @:coroutine public static function read(s:Socket, r:Reader):Null<Request> {
 		var line = r.readLine();
 		if (line == null) return null;
 		if (line == "") line = r.readLine();
@@ -152,7 +152,7 @@ class Response {
 		return r;
 	}
 
-	@:coroutine public function write(s:Socket, head:Bool, keepAlive:Bool):Void {
+	@:noCompletion @:coroutine public function write(s:Socket, head:Bool, keepAlive:Bool):Void {
 		var b = new StringBuf();
 		b.add('HTTP/1.1 $status ${reason(status)}\r\n');
 		for (k => v in headers)

@@ -11,7 +11,7 @@ import helder.scene.math.*;
 import helder.scene.render.*;
 import helder.scene.render.Lod.LodLevel;
 
-// DESIGN-3D.md's phase 4 at once (src/helder/scene/README.md, "Lights and
+// the lighting paths together (src/helder/scene/README.md, "Lights and
 // shadows", "Levels of detail"): 200 point lights, each pixel lit by the
 // few of its cell of the view (ClusteredLights: its cells made by a
 // compute pass where the device has one, on the CPU on WebGL2); two

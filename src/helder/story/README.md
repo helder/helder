@@ -18,10 +18,10 @@ final fleet = story({
 
 ```tsx
 // TypeScript: helder/story, the same definition
-import {story, tree} from "helder/story";
+import {story, tree} from 'helder/story'
 
-export const plain = story({name: "Card/plain", render: (c) => <Card title={c.text("title", "Fleet")}/>});
-console.log(tree(plain));
+export const plain = story({name: 'Card/plain', render: c => <Card title={c.text('title', 'Fleet')}/>})
+console.log(tree(plain))
 ```
 
 - **`story({...})`** is a definition (src/helder/compiler/DESIGN.md 4;

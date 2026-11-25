@@ -4,7 +4,7 @@ import helder.async.Async;
 import helder.test.Test;
 import helder.view.graph.Graph.*;
 
-// A coroutine computation (DESIGN.md 2, Holds): a task started now, on helder.async's loop,
+// A coroutine computation (view's README, Holds): a task started now, on helder.async's loop,
 // which also flushes the writes when its task ends.
 function tests() {
 	test("reads before the first suspension are tracked; a superseded run is cancelled", async(() -> {

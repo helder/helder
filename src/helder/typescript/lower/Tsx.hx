@@ -43,7 +43,7 @@ enum TsMarkup {
 	MLive(fn:String, id:String, value:TsMarkup, anchor:String);
 }
 
-// TSX through helder.markup's planner (DESIGN.md 7.2): the same decisions
+// TSX through helder.markup's planner (typescript's README): the same decisions
 // as Haxe's markup (renderer boundaries, components, neutral elements,
 // bound holes, handlers), its facts from the manifest (a renderer's
 // elements, a component's props that read, its children's renderer) and

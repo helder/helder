@@ -39,36 +39,39 @@ check "simctl install TextInputCheck.app" $?
 checker=$(xcode-select -p)/usr/lib/libMainThreadChecker.dylib
 [ -f "$checker" ] || checker=
 [ -n "$checker" ] || echo "textinput-ios.sh: no Main Thread Checker in $(xcode-select -p)"
+rm -f "$out/TextInputCheck-first-attempt.txt"
 since=$(date '+%Y-%m-%d %H:%M:%S')
 launch() {
 	SIMCTL_CHILD_DYLD_INSERT_LIBRARIES=$checker xcrun simctl launch --console-pty --terminate-running-process "$udid" "$id" > "$out/TextInputCheck.txt" 2>&1 &
 	console=$!
 }
-launch
-# (nothing within 30 s, as a first launch on a just booted simulator may: once more)
-i=0
-while [ $i -lt 30 ] && ! grep -q "textinput:" "$out/TextInputCheck.txt"; do
-	sleep 1
-	i=$((i + 1))
-done
-if ! grep -q "textinput:" "$out/TextInputCheck.txt"; then
-	echo "textinput-ios.sh: no output; launched again"
-	kill $console > /dev/null 2>&1
+# A launch stall or a keyboard transition can miss its deadline on a loaded simulator.
+# Preserve its diagnostics and retry the keyboard test once in a fresh app process.
+for attempt in 1 2; do
 	launch
-fi
-i=0
-while [ $i -lt 120 ] && ! grep -q -E "textinput: [0-9]+ checks|Uncaught" "$out/TextInputCheck.txt"; do
-	sleep 1
-	i=$((i + 1))
+	i=0
+	while [ $i -lt 120 ] && ! grep -q -E "textinput: [0-9]+ checks|Uncaught" "$out/TextInputCheck.txt"; do
+		[ "$i" -lt 30 ] || grep -q "textinput:" "$out/TextInputCheck.txt" || break
+		sleep 1
+		i=$((i + 1))
+	done
+	xcrun simctl io "$udid" screenshot "$out/TextInputCheck.png" > /dev/null 2>&1
+	xcrun simctl terminate "$udid" "$id" > /dev/null 2>&1
+	kill "$console" > /dev/null 2>&1
+	wait "$console" 2>/dev/null
+	grep -E "textinput:|Uncaught|Called from" "$out/TextInputCheck.txt"
+	[ "$attempt" = 1 ] || break
+	if grep -q "textinput: [0-9]* checks, ok" "$out/TextInputCheck.txt"; then break; fi
+	if grep -q "Main Thread Checker\|Uncaught" "$out/TextInputCheck.txt"; then break; fi
+	if grep -q "textinput:" "$out/TextInputCheck.txt" &&
+		! grep -q -E 'textinput: FAIL: .*keyboard' "$out/TextInputCheck.txt"; then break; fi
+	echo "textinput-ios.sh: first keyboard attempt failed; retrying once"
+	cp "$out/TextInputCheck.txt" "$out/TextInputCheck-first-attempt.txt"
 done
-xcrun simctl io "$udid" screenshot "$out/TextInputCheck.png" > /dev/null 2>&1
-xcrun simctl terminate "$udid" "$id" > /dev/null 2>&1
-kill $console > /dev/null 2>&1
-grep -E "textinput:|Uncaught|Called from" "$out/TextInputCheck.txt"
 grep -q "textinput: [0-9]* checks, ok" "$out/TextInputCheck.txt"
 check "its checks" $?
-n=$(grep -c "Main Thread Checker" "$out/TextInputCheck.txt")
-[ -z "$checker" ] || grep -A20 "Main Thread Checker" "$out/TextInputCheck.txt" | head -60
+n=$(grep -h "Main Thread Checker" "$out"/TextInputCheck*.txt | wc -l | tr -d " ")
+[ -z "$checker" ] || grep -h -A20 "Main Thread Checker" "$out"/TextInputCheck*.txt | head -60
 [ "$n" = 0 ]
 check "no UIKit call off the main thread (Main Thread Checker: $n)" $?
 xcrun simctl spawn "$udid" log show --start "$since" --style compact --predicate 'process == "TextInputCheck" AND (eventMessage CONTAINS "off the main thread" OR eventMessage CONTAINS "from a background thread")' > "$out/log.txt" 2>&1

@@ -7,6 +7,7 @@ package helder.jobs;
 // its result.
 @:typescript("helder/jobs")
 @:typescript.classes(helder.jobs.script.Job)
+@:typescript.internal(Job)
 @:typescript.functions(job = helder.jobs.script.Job.of)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

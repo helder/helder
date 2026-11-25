@@ -6,7 +6,7 @@ import helder.scene.*;
 import helder.scene.render.*;
 import helder.scene.render.Lightmap.LightmapMode;
 
-// Phase 5's frames (src/helder/scene/DESIGN-3D.md): indirect light (Scenes):
+// Indirect light reference frames: indirect light (Scenes):
 //   sh          the environment frame's spheres (mirror to rough, metal and
 //               not) lit by the same panorama prefiltered by helder
 //               (Environment.prefilter: an octahedral atlas, its irradiance

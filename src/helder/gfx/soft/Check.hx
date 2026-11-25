@@ -45,7 +45,7 @@ class Check {
 
 	function alloc(n:Int):Ptr {
 		var p:Ptr = LibC.malloc((n : I64));
-		Mem.zero(p, (n : I64));
+		LibC.memset(p, 0, (n : I64));
 		owned.push(p);
 		return p;
 	}
@@ -108,8 +108,8 @@ class Check {
 			}
 		Mem.setPtr(ctx, Abi.IN, input);
 		Mem.setI32(ctx, Abi.MASK, 15);
-		Mem.zero(simd, (outBytes : I64));
-		Mem.zero(scalar, (outBytes : I64));
+		LibC.memset(simd, 0, (outBytes : I64));
+		LibC.memset(scalar, 0, (outBytes : I64));
 		Mem.setPtr(ctx, Abi.OUT, simd);
 		var a = Entry.call(Ptr.ofI64(entry), ctx);
 		Mem.setPtr(ctx, Abi.OUT, scalar);

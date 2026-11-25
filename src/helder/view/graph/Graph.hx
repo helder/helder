@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// helder.view's reactive graph (DESIGN.md): Solid 2's semantics on a
+// helder.view's reactive graph: Solid 2's semantics on a
 // runtime of helder's own. Signals hold values, memos derive them, effects
 // run in two halves (compute tracked, apply after the commit). Writes are
 // deferred: committed together at the next flush (the loop's task ending,
@@ -14,7 +14,7 @@ package helder.view.graph;
 //   count(c -> c + 1);
 class Graph {
 	// a signal: of a value, or of a function's value (derived from what it
-	// reads, writable); a signal never holds a function (DESIGN.md 3.1, Init)
+	// reads, writable); a signal never holds a function (view's README, Signals)
 	#if hxmc.dev
 	// (hxmc dev: kept across a reload by its key, helder.view.Refresh)
 	public static macro function signal(init:haxe.macro.Expr, rest:Array<haxe.macro.Expr>):haxe.macro.Expr

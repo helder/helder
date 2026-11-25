@@ -15,6 +15,8 @@ import hxmc.unsafe.*;
 	static function canvas(id:CString):Int;
 	static function width(canvas:Int):Int;
 	static function height(canvas:Int):Int;
+	// (a frame drawn on the CPU: helder.os.Blit)
+	static function put_pixels(canvas:Int, px:Ptr, width:Int, height:Int):Void;
 	// device pixels per CSS pixel
 	static function scale():Float;
 	// the page's prefers-color-scheme: dark (1) or not (0)

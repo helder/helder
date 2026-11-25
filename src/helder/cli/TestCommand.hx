@@ -98,7 +98,7 @@ class TestCommand {
 		var ts = files.filter(f -> f.ts == true);
 		files = files.filter(f -> f.ts != true);
 		generate(files, regex);
-		writeTypescriptMain(ts);
+		writeTypescriptMain(ts, p.helder);
 		var map = new Mapper(files);
 		var cp = Compiler.markup(p.defines);
 		for (c in p.classPaths(files).concat([GEN])) cp = cp.concat(["-cp", c]);
@@ -241,19 +241,24 @@ class TestCommand {
 	// its name (bin/test/ts/file<i>.ts), then the file itself, imported (ES
 	// modules run in the order imported: a file's top level registers its
 	// tests in its group); then the run
-	static function writeTypescriptMain(files:Array<TestFile>) {
+	static function writeTypescriptMain(files:Array<TestFile>, helder:String) {
 		if (files.length == 0) return;
 		var dir = Path.directory(TS_MAIN);
 		mkdirs(dir);
+		var runner = Path.join([FileSystem.fullPath(helder), "helder/test/runner"]).split("\\").join("/");
+		var at = FileSystem.fullPath(dir).split("\\").join("/");
+		if (!~/^[A-Za-z]:/.match(runner) || runner.substr(0, 2) == at.substr(0, 2))
+			runner = "./" + Link.relative(runner, at);
+		var importRunner = 'import {Script} from "${lit(runner)}"';
 		var main = ["// `helder test`'s runner for the TypeScript test files, in order"];
 		for (i in 0...files.length) {
 			var f = files[i];
-			save('$dir/file$i.ts', 'import { Script } from "helder/test/runner";\nScript.file("${lit(f.real)}");\n');
+			save('$dir/file$i.ts', '$importRunner\nScript.file("${lit(f.real)}");\n');
 			main.push('import "./file$i";');
 			var rel = f.real.startsWith("/") || ~/^[A-Za-z]:/.match(f.real) ? f.real : "../../../" + f.real;
 			main.push('import "${lit(~/\.tsx?$/.replace(rel, ""))}";');
 		}
-		main.push('import { Script } from "helder/test/runner";');
+		main.push(importRunner);
 		main.push("Script.run();");
 		save(TS_MAIN, main.join("\n") + "\n");
 	}

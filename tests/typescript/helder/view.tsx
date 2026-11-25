@@ -1,6 +1,6 @@
 // helder.view from TypeScript: signals, memos and effects, TSX bound to them,
 // a component of the program's, control flow, events, rendered headless.
-import { signal, memo, effect, flush, For, Show, Render } from "helder/view";
+import { signal, memo, effect, flush, For, Show, render } from "helder/view";
 import { TestNode } from "./test-renderer";
 
 const count = signal(1);
@@ -13,7 +13,7 @@ function Item(props: { label: string }) {
 }
 
 const root = TestNode.root("root");
-Render.render(
+render(
 	<div class="box">
 		<p>
 			{count} doubled {doubled}
@@ -39,5 +39,5 @@ console.log(root.toHtml(), doubled(), items().length);
 // an element its renderer makes with a function of its own (TestRenderer's
 // element_card, as helder.scene.view's material tags): called for its name
 const cards = TestNode.root("cards");
-Render.render(<div><card title="c" /></div>, cards);
+render(<div><card title="c" /></div>, cards);
 console.log(cards.toHtml());

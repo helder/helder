@@ -26,6 +26,7 @@ using haxe.macro.TypeTools;
 // Not: classes and interfaces (shared mutable state), enums, functions,
 // Dynamic, Ptr (an address means nothing in another instance), type
 // parameters, Map, recursive types.
+@:noCompletion
 class Sendable {
 	// ---- the check (JobDefinition's)
 

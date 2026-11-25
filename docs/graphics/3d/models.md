@@ -5,23 +5,23 @@ Load glTF models with their names checked when you build: a typo in a node or an
 <Example id="scene-materials"/>
 
 ```haxe
-var hero = Model.of("models/hero.glb");      // read and typed when compiling
+var hero = Model.of('models/hero.glb');      // read and typed when compiling
 var root = hero.instantiate(world, device);  // GPU meshes made once, shared
 var hand = root.find(hero.nodes.LeftHand);   // LeftHnad: a compile error
 
 // base colour, metallic, roughness
-var gold = new Material("gold", new Vec4(1, 0.78, 0.34, 1), 1, 0.2);
-MeshRenderer.attach(world.node("ball"), Shapes.sphere(device, gold, 0.5));
+var gold = new Material('gold', new Vec4(1, 0.78, 0.34, 1), 1, 0.2);
+MeshRenderer.attach(world.node('ball'), Shapes.sphere(device, gold, 0.5));
 ```
 
 A material of your own replaces slots of the standard one: here a pulsing emission, in TypeScript.
 
 ```ts
 const Glow = material(pbr.with({
-  emissive: (s: PbrSurface, p: { glow: GlowParams }): Vec3 =>
-    p.glow.color.xyz.mul(0.6 + 0.4 * sin(p.glow.time.x * 3 + s.world.x)),
-}));
-Glow.apply(orb, { glow: bytes });
+  emissive: (s: PbrSurface, p: {glow: GlowParams}): Vec3 =>
+    p.glow.color.xyz.mul(0.6 + 0.4 * sin(p.glow.time.x * 3 + s.world.x))
+}))
+Glow.apply(orb, {glow: bytes})
 ```
 
 ## What else

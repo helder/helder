@@ -27,7 +27,7 @@ class SafeArea {
 		return ScreenContext.current.safeArea;
 
 	// (UiWindow) the insets now: the signal set when they changed
-	public static function set(top:Float, right:Float, bottom:Float, left:Float) {
+	@:noCompletion public static function set(top:Float, right:Float, bottom:Float, left:Float) {
 		var s = ScreenContext.current.safeArea, e = s.peek();
 		if (e.top == top && e.right == right && e.bottom == bottom && e.left == left) return;
 		s(new Edges(top, right, bottom, left));
@@ -45,19 +45,19 @@ class SafeArea {
 		return ScreenContext.current.titlebarArea;
 
 	// (UiWindow) the title bar's area now: the signal set when it changed
-	public static function setTitlebar(a:Null<TitlebarArea>) {
+	@:noCompletion public static function setTitlebar(a:Null<TitlebarArea>) {
 		var s = ScreenContext.current.titlebarArea;
 		if (!TitlebarArea.same(s.peek(), a)) s(a);
 	}
 
 	// (markup: NodeRenderer.setProperty, a literal value naming env()) the
 	// attribute set from the value resolved, again when the insets change
-	public static function bind(n:Node, set:(n:Node, name:String, v:Dynamic) -> Void, name:String, value:String)
+	@:noCompletion public static function bind(n:Node, set:(n:Node, name:String, v:Dynamic) -> Void, name:String, value:String)
 		Graph.renderEffect(() -> resolve(value, insets(), value.indexOf("titlebar-area-") >= 0 ? titlebar() : null), (v:String) -> set(n, name, v));
 
 	// value with each env() replaced by its pixels (of e, t), then calc(), max()
 	// and min() of pixels folded
-	public static function resolve(value:String, e:Edges, ?t:TitlebarArea):String {
+	@:noCompletion public static function resolve(value:String, e:Edges, ?t:TitlebarArea):String {
 		var s = replace(value, "env", inner -> {
 			var comma = inner.indexOf(",");
 			var name = StringTools.trim(comma < 0 ? inner : inner.substr(0, comma));

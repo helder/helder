@@ -55,7 +55,7 @@ class Run {
 		{name: "jobs", about: "helder.jobs: the sendable check's rejections (tests/jobs/reject); the pool, cancellation, errors and channels are the test lane's (tests/jobs/Jobs.test.hx, natively and on wasm32-wasi with node's workers)", run: jobsLane},
 		{name: "jobs-web", about: "helder.jobs in headless Chromium: Web Workers instantiating the module, a cancelled one ended, the loop without frames (tests/jobs/JobsWeb.hx)", run: jobsWeb},
 		{name: "app", about: "App.run turning helder.async's loop: a timer and a job's reply ending App.wait (tests/os/AppLoopTest.hx; Linux: Xvfb)", run: app},
-		{name: "window", about: "helder.os's windows (tests/os/WindowTest.hx): files dropped through each system's own mechanism (X11: XDND from a second connection; Windows: WM_DROPFILES of an HDROP, also under Wine with GFX_TARGET=windows-x86_64; macOS: the window's dragging destination given a dragging info), moveTo and position, fullscreen asked; an inset title bar (tests/os/TitleBarTest.hx: macOS's full-size content view, its buttons measured and placed, a press on the bar the app's; Windows' caption removed, WM_NCHITTEST's answers; X11's Motif hints); the platform's spellchecker (tests/text/SpellTest.hx: Enchant or Hunspell, ISpellChecker, NSSpellChecker; Wine has none); Windows' TSF for drawn text fields (tests/os/TsfTest.hx: the test the input method, through msctf and the store's composition sink; again with HELDER_NO_TSF=1; tests/ui/WinTextTest.hx: a drawn field typed into and composed in through it); Windows' UI Automation for the drawn tree (tests/ui/WinAccessTest.hx, WinPatternsTest.hx in process; WinAccessProbe.hx, IUIAutomation from another process, on AccessApp's fixture, todo, mail and guide; under Wine the tree and properties); macOS's NSAccessibility (tests/ui/MacAccessTest.hx, MacPatternsTest.hx, in process); helder.ui.menu's model as each platform's menus (tests/os/MenuTest.hx: macOS's NSMenu bar and roles, Windows' HMENU and accelerators, Linux's drawn bar and context menu driven by the keys, bin/os/menus-linux*.png); Windows' program on a thread of its own, the windows the main thread's (RenderThreadTest; AsyncScrollWindow, --anim and --native: the compositor while the program is blocked) (Linux: Xvfb); Windows' DirectComposition layers (tests/ui/WinLayersWindow.hx: the wheel and an animation while the program is blocked, moved not drawn, stills against the textured compositor's, the stalled layers falling back); macOS: a <Video> in a scroller under a popup, drawn and in the system's layer (tests/media/apple/VideoWindow.hx); macOS's Core Animation layers (tests/ui/SystemLayersWindow.hx --swap, --resize: a sidebar switched, each capture the frame read back; a live resize on them and on the window's layer alone, each frame presented at the window's size; in the background); Windows: a <Video> drawn and on its DirectComposition layer, a still read (tests/media/windows/WinVideoStill.hx)", run: window},
+		{name: "window", about: "helder.os's windows (tests/os/WindowTest.hx): files dropped through each system's own mechanism (X11: XDND from a second connection; Windows: WM_DROPFILES of an HDROP, also under Wine with GFX_TARGET=windows-x86_64; macOS: the window's dragging destination given a dragging info), moveTo and position, fullscreen asked; an inset title bar (tests/os/TitleBarTest.hx: macOS's full-size content view, its buttons measured and placed, a press on the bar the app's; Windows' caption removed, WM_NCHITTEST's answers; X11's Motif hints); the platform's spellchecker (tests/text/SpellTest.hx: Enchant or Hunspell, ISpellChecker, NSSpellChecker; Wine has none); Windows' TSF for drawn text fields (tests/os/TsfTest.hx: the test the input method, through msctf and the store's composition sink; again with HELDER_NO_TSF=1; tests/ui/WinTextTest.hx: a drawn field typed into and composed in through it); Windows' UI Automation for the drawn tree (tests/ui/WinAccessTest.hx, WinPatternsTest.hx in process; WinAccessProbe.hx, IUIAutomation from another process, on AccessApp's fixture, todo, mail and guide; under Wine the tree and properties); macOS's NSAccessibility (tests/ui/MacAccessTest.hx, MacPatternsTest.hx, in process); helder.ui.menu's model as each platform's menus (tests/os/MenuTest.hx: macOS's NSMenu bar and roles, Windows' HMENU and accelerators, Linux's drawn bar and context menu driven by the keys, bin/os/menus-linux*.png); Windows' program on a thread of its own, the windows the main thread's (RenderThreadTest; AsyncScrollWindow, --anim and --native: the compositor while the program is blocked) (Linux: Xvfb); Windows' DirectComposition layers (tests/ui/WinLayersWindow.hx: the wheel and an animation while the program is blocked, moved not drawn, stills against the textured compositor's, the stalled layers falling back); macOS: a <Video> in a scroller under a popup, drawn and in the system's layer (tests/media/apple/VideoWindow.hx); macOS's Core Animation layers (tests/ui/SystemLayersWindow.hx --swap, --resize: a sidebar switched, each capture the frame read back; a live resize on them and on the window's layer alone, each frame presented at the window's size; in the background); Windows: a <Video> drawn and on its DirectComposition layer, a still read (tests/media/windows/WinVideoStill.hx); Windows: two helder windows on screen, opaque and transparent (tests/ui/TwoWindows.hx)", run: window},
 		{name: "wayland", about: "helder.os on Wayland: the protocol bindings generated again from the system's XML (helder.os.wayland.Scanner) and compared with src/helder/os/wayland/protocol; then, where weston is installed, under a headless weston at scale 1 and 2 (tests/os/wayland.sh): tests/os/WaylandTest.hx (the back end chosen, configured, GL's frames through EGL on the wl_surface read back, the buffer at the scale, fullscreen and back, the clipboard; text-input-v3's requests where weston has it), the viewer showing a photo, the compositor's screenshot (bin/os/wayland-viewer.png); the system's layers (tests/ui/WaylandLayersWindow.hx, helder.ui.draw.WlLayers: subsurfaces, under a kiosk weston at scale 1 and 2: a fling and an animation while the program blocks, moved not drawn, stills against the textured compositor's (bin/os/layers-*/), the stalled layers falling back); without weston, built only", run: wayland},
 		{name: "viewer", about: "helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, the web build's sample folder, its stories) natively and on Eval; its build for this machine (its web build: ui-web)", run: viewerApp},
 		{name: "viewer-window", about: "the viewer in a real window on the GPU (GFX_TARGET's build: Linux under Xvfb, Windows under Wine from another host): a photo of the fixtures opened, decoded on helder.jobs and shown, closed after 3 s (--exit-after); again with no system font found (HELDER_NO_SYSTEM_FONTS=1: its own fallback font); a 9000x2000 PNG (apps/viewer/tests/bigpng.mjs) shown in tiles; macOS: a video of tests/media played", run: viewerWindow},
@@ -79,6 +79,7 @@ class Run {
 		{name: "canvas-doc", about: "helder.canvas's documents (helder.canvas.doc): the reference scenes recorded by the DOM facade (tests/canvas/render-doc.ts) as one multi-page PDF (PdfWriter) and an SVG each (SvgWriter), the PDF drawn by poppler (pdftoppm, where installed) and the SVGs by Chromium (doc.mjs), against the CPU back end's pixels (compare.mjs: bin/canvas/pdf-report.md, svg-report.md; composite's unbounded operators and the dots of zero-length subpaths have no vector form; shadows and filters are not written yet)", run: canvasDoc},
 		{name: "pdf", about: "helder.pdf: page 1 of each corpus PDF (tests/pdf/corpus, made by ReportLab, pypdf, LibreOffice and by hand: tests/pdf/corpus.py: the standard 14 fonts, Type 1, TrueType, Type 3, RC4, AES-128 and AES-256, object streams, a shading, a tiling pattern, an inline image, a damaged xref) drawn natively against pdf.js's (tests/pdf/ref, pdfjs.mjs): of the 3x3 blocks either inks at most 10% off, of the page 2%, and its text (Pdf.text) against pdf.js's getTextContent (check.mjs: bin/pdf/report.md); its crypto and limits are the test lane's (src/helder/pdf/*.test.hx)", run: pdfLane},
 		{name: "pdf-fuzz", about: "helder.pdf under a time-boxed mutation fuzzer (tests/pdf/Fuzz.hx, natively): the corpus mutated, each mutant opened and drawn under small limits, ending in pixels or a PdfError (FUZZ_SECONDS, FUZZ_SEED)", run: pdfFuzz},
+		{name: "declarations", about: "the generated TypeScript declarations for helder, the tests, platform and scene", run: declarations},
 		{name: "typescript", about: "helder.typescript (TypeScript through tsgo straight to hxmc IR): the IR checks, then every program of tests/typescript compiled by tsc and run on node, and by helder's compiler (helder.compiler, with this frontend) natively and as wasm32-wasi, the outputs compared; the programs it must reject", run: () -> run(NODE, ["tests/typescript/run.mjs"])},
 		{name: "typescript-native", about: "helder/native's definitions where their systems are (tests/typescript/native.mjs; the typescript lane runs it too): native.c (libc and libm on Linux, natively, static and glibc; Core Foundation on a Mac), native.objc (Foundation's NSProcessInfo and NSString on a Mac), native.com (WIC's factory, a bitmap's size read back, on Windows; on Linux under Wine with Windows' runtime objects), each refused where its system is not; native.jni's on Android is the android job's (tests/typescript/native/android.sh)", run: () -> run(NODE, ["tests/typescript/native.mjs"])},
 		{name: "examples", about: "every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too", run: examples},
@@ -96,12 +97,12 @@ class Run {
 		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); helder.ui's Stack and the history: a push's URL, back, Escape, a reload (tests/ui/NavWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
 		{name: "web", about: "helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium", run: web},
 		{name: "compiler-web", about: "helder.compiler.web, helder's toolchain as wasm in a worker: its modules built (src/helder/compiler/web/build.mjs: bin/compiler-web), todo and ts-todo checked and built in node (tests/compiler-web/node.mjs: warm, a type error, a check writing nothing), then in headless Chromium the worker loaded (brotli), both built to wasm32 on the page and each run in a frame of its own (preview.mjs), a literal edit patched with no build and a structural one built and swapped in, each read back from the program's view (Ui.getTree), and the numbers printed (tests/compiler-web/browser.mjs)", run: compilerWeb},
-		{name: "gfx-soft", about: "helder.gfx on the CPU (helder.gfx.soft), no GPU linked: every shader of src/helder in its SIMD form against its scalar code bit for bit (tests/gfx/SoftShaderTest.hx), gfx's frames (GfxTest) and 3d's scenes (tests/3d/check.sh, SOFT=1) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images", run: gfxSoft},
+		{name: "gfx-soft", about: "helder.gfx on the CPU (helder.gfx.soft), no GPU linked: every shader of src/helder in its SIMD form against its scalar code bit for bit (tests/gfx/SoftShaderTest.hx), the compute tier (tests/gfx/ComputeTest.hx), gfx's frames (GfxTest) and 3d's scenes (tests/3d/check.sh, SOFT=1) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images", run: gfxSoft},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU (helder.ui.draw.soft), no GPU linked: the image tests (tests/ui) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images, which these write (BLESS=1: the same bytes on every machine with the same fonts) and ui-draw's GPU frames are compared with", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (ui-soft's, the CPU's canvas's: within the tests' tolerance) (Linux: Mesa, Xvfb, AT-SPI); layers drawn from their tiles against the same replayed (LayerTest); a window's frame kept and drawn only where it changed against the same drawn whole (DamageTest); the controls' gallery (tests/ui/controls) and cost (ControlsBench); the compositor's scrolling and what moves on its own (layers' transitions, springs and tweens, sticky nodes, overlay scrollbars) against the program's, its values each vsync and its frames pixel for pixel (AsyncScrollTest), and in a window with the program blocked while scroll input comes or a layer animates (AsyncScrollWindow); macOS's Core Animation layers against the textured compositor, window captures compared (SystemLayersWindow); the system's Liquid Glass in the layer tree (GlassWindow, macOS 26: each <glass> an NSGlassEffectView at its box, a group's in its container)", run: uiDraw},
 		{name: "syntax", about: "helder.syntax, the syntax trees the studio edits (src/helder/syntax; its edits' tests are the test lane's, Syntax.test.hx): every .ts and .tsx file, and every .hx file with markup, of the repository read and printed back byte for byte, read structurally, each Haxe markup literal read as the macro's parser reads it (tests/syntax/Check.hx, on Eval and natively: the read of the largest file timed)", run: syntaxLane},
 		{name: "syntax-run", about: "helder.syntax's edits on the examples (tests/syntax/Examples.hx; Linux: Mesa's llvmpipe, no display): todo, ts-todo, mail, the guide's screen and the viewer's shell and shader copied into bin/syntax/run and edited (attributes set, added and removed, literals, children inserted, elements moved, deleted, wrapped, unwrapped and renamed, a component renamed, a definition's field), each edit's change only in its span and undone by its inverse; each built and run headless (helder run --headless), its --tree showing each change; ts-todo's story renamed and its tests run (helder test)", run: syntaxRun},
-		{name: "studio", about: "helder studio (apps/studio; Linux: Mesa's llvmpipe, no display) run headless on copies of examples/todo and examples/ts-todo by tests/studio/edit.json: every screen shown (the stories in one dev build's process, helder.story.NativeHost: its frames shared GPU textures, else shared memory, llvmpipe's), one zoomed into, its title clicked and selected, its colour changed in the inspector (the value's span alone, a live literal patched, the program's frame showing it within 3 frames), a padding added and undone (built twice), tag=\"title\" typed into the code view (built, the node tagged), the prompt bar's /tree; the files at the end and every edit's span checked, the overview, zoomed and selected frames against tests/studio's goldens, the times printed (tests/studio/Check.hx); then examples/design, design files alone, by tests/studio/design.json: its frames interpreted in the studio (nothing built), a frame moved by its caption (snapped), the title clicked and selected, its colour changed in the inspector (drawn again within 3 frames), undone and redone, resized by its handle (snapped to the frame's centre), a node shift-clicked into the selection and out, its layer dragged below the next, both undone (the resize one entry), every edit's span and the file checked; the free canvas by tests/studio/free.json on examples/todo (a click selects a frame, the camera where it was; a story moved by its caption, its place written into canvas.helder; a double click enters a frame and selects a node; Escape leaves, then selects nothing; Play: the story live, a tap in it its program's, Escape stops); a phone's sheets by tests/studio/phone.json (opened from the bar, a frame picked lowering the files' to peek, the handle dragged up to full and flung away, the code's at half); the sidebar's file browser by tests/studio/files.json (folders opened, an image, a font and code each in its view, the image dragged onto a frame, a file dropped from the system on a folder); `helder studio --help`", run: studioLane},
+		{name: "studio", about: "helder studio (apps/studio; Linux: Mesa's llvmpipe, no display) run headless on copies of examples/todo and examples/ts-todo by tests/studio/edit.json: every screen shown (the stories in one dev build's process, helder.story.NativeHost: its frames shared GPU textures, else shared memory, llvmpipe's), one zoomed into, its title clicked and selected, its colour changed in the inspector (the value's span alone, a live literal patched, the program's frame showing it within 3 frames), a padding added and undone (built twice), tag=\"title\" typed into the code view (built, the node tagged), the prompt bar's /tree; the files at the end and every edit's span checked, the overview, zoomed and selected frames against tests/studio's goldens, the times printed (tests/studio/Check.hx); then tests/studio/design, design files alone, by tests/studio/design.json: its frames interpreted in the studio (nothing built), a frame moved by its caption (snapped), the title clicked and selected, its colour changed in the inspector (drawn again within 3 frames), undone and redone, resized by its handle (snapped to the frame's centre), a node shift-clicked into the selection and out, its layer dragged below the next, both undone (the resize one entry), every edit's span and the file checked; the free canvas by tests/studio/free.json on examples/todo (a click selects a frame, the camera where it was; a story moved by its caption, its place written into canvas.helder; a double click enters a frame and selects a node; Escape leaves, then selects nothing; Play: the story live, a tap in it its program's, Escape stops); a phone's sheets by tests/studio/phone.json (opened from the bar, a frame picked lowering the files' to peek, the handle dragged up to full and flung away, the code's at half); the sidebar's file browser by tests/studio/files.json (folders opened, an image, a font and code each in its view, the image dragged onto a frame, a file dropped from the system on a folder); `helder studio --help`", run: studioLane},
 		{name: "demos", about: "the showcase demos run headless (Linux: Mesa's llvmpipe, no display) at half scale: examples/showreel's scenes each by --scene, examples/fx's gallery, its --tour with an effect open and its reduced-motion stills, examples/literal's and examples/notes' demo scripts (their pointer and keys); each one's stills at a few times against tests/demos's goldens, within a tolerance (tests/demos/Check.hx)", run: demosLane},
 		{name: "studio-web", about: "helder studio in the browser (apps/studio/web: the studio built for the web, its projects in OPFS, the preview host in a worker, helder.story.web.Preview) in headless Chromium on WebGPU (tests/studio-web/check.mjs): examples/todo opened from the welcome, all screens shown, one zoomed into, its title selected, its colour changed in the inspector (a live literal patched in the worker's preview, the next frames showing it, the file saved in OPFS), a padding added (built by the compiler's worker, helder.compiler.web's toolchain built as the compiler-web lane builds it, and the preview swapped in with its state); at a phone's width with touches: the inspector a bottom sheet, a tap selecting, a pinch zooming, the screens' drawer; 50 screens (tests/story/host/host.mjs project) opened, timed and measured; the overview and zoomed states against tests/studio-web's goldens at both widths: bin/studio-web/results.md", run: studioWeb},
 		{name: "story-host", about: "helder.story.Host, the studio's preview host (Linux: Mesa's llvmpipe, no display): 50 stories of examples/todo (tests/story/host/host.mjs gen) mounted in one program, each its own root and ScreenContext, drawn offscreen and read back; then the desktop studio (apps/studio, headless) on the same stories as a project, its one preview process (helder.story.NativeHost: shared GPU textures, else shared memory): the start to every screen's first frame and the memory then (resident, Pss: the host's and the studio's), an inspector's colour change to the host's new frame (tests/story/host/studio.json); the headless host's turns with one screen focused (only it draws) and none (none draws): bin/story-host/results.md", run: storyHost},
@@ -357,7 +358,26 @@ class Run {
 		var cp = cps(["src", "tests/ui"]);
 		interp(cp, "UiTest");
 		interp(cp, "MarkupTest");
-		interp(cp, "GuideTest");
+		interp(cp.concat(cps([guideTestSource()])), "GuideTest");
+	}
+
+	static function guideTestSource():String {
+		var dir = "bin/ui/guide";
+		var sample = "docs/apps/interactions.md";
+		var source = File.getContent("tests/ui/GuideTest.hx").replace("\r\n", "\n");
+		var blocks = File.getContent(sample).replace("\r\n", "\n").split("\n```haxe\n").slice(1).map(b -> b.split("\n```")[0]);
+		for (name in ["Confirm", "Editor"]) {
+			var declaration = 'static function $name(';
+			var code = Lambda.find(blocks, b -> b.startsWith(declaration));
+			if (code == null) throw new Failed('$sample: missing Haxe sample for $name');
+			var start = source.indexOf('\t' + declaration);
+			var end = source.indexOf("\n\n", start);
+			if (start < 0 || end < 0) throw new Failed('GuideTest: missing $name');
+			source = source.substr(0, start) + code + source.substr(end);
+		}
+		mkdirs(dir);
+		File.saveContent('$dir/GuideTest.hx', source);
+		return dir;
 	}
 
 	static function layoutConformance()
@@ -659,7 +679,9 @@ class Run {
 		"/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml", "/usr/share/wayland-protocols/stable/viewporter/viewporter.xml",
 		"/usr/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml", "/usr/share/wayland-protocols/staging/cursor-shape/cursor-shape-v1.xml",
 		"/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml", "/usr/share/wayland-protocols/stable/presentation-time/presentation-time.xml",
-		"/usr/share/wayland-protocols/staging/single-pixel-buffer/single-pixel-buffer-v1.xml", "/usr/share/wayland-protocols/stable/linux-dmabuf/linux-dmabuf-v1.xml"
+		"/usr/share/wayland-protocols/staging/single-pixel-buffer/single-pixel-buffer-v1.xml", "/usr/share/wayland-protocols/stable/linux-dmabuf/linux-dmabuf-v1.xml",
+		// (KDE's blur behind a window: plasma-wayland-protocols)
+		"/usr/share/plasma-wayland-protocols/blur.xml"
 	];
 
 	static function wayland() {
@@ -679,13 +701,14 @@ class Run {
 		native('bin/os/$GFX_TARGET/WaylandTest', cps(["src", "tests/os"]).concat(["-main", "WaylandTest"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/AsyncScrollWindow', uiCp().concat(["-main", "AsyncScrollWindow"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/WaylandLayersWindow', uiCp().concat(["-main", "WaylandLayersWindow"]), GFX_TARGET);
+		native('bin/os/$GFX_TARGET/SoftWaylandTest', cps(["src", "tests/os", "tests/gfx"]).concat(["-main", "SoftWaylandTest", "-D", "helder.soft"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/ShapeWindow', uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
 		run(helderCli(), ["build", "apps/viewer"]);
 		if (Sys.systemName() != "Linux" || Sys.command("sh", ["-c", "command -v weston > /dev/null"]) != 0) {
 			Sys.println("wayland: no weston here: built, not run");
 			return;
 		}
-		shell('sh tests/os/wayland.sh bin/os/$GFX_TARGET/WaylandTest apps/viewer/bin/$GFX_TARGET/viewer bin/os bin/ui/$GFX_TARGET/AsyncScrollWindow bin/ui/$GFX_TARGET/WaylandLayersWindow');
+		shell('sh tests/os/wayland.sh bin/os/$GFX_TARGET/WaylandTest apps/viewer/bin/$GFX_TARGET/viewer bin/os bin/ui/$GFX_TARGET/AsyncScrollWindow bin/ui/$GFX_TARGET/WaylandLayersWindow bin/os/$GFX_TARGET/SoftWaylandTest');
 		// (a transparent window: X11's, with a compositing manager and without, and Wayland's)
 		shell('sh tests/ui/shape.sh bin/ui/$GFX_TARGET/ShapeWindow');
 	}
@@ -698,6 +721,23 @@ class Run {
 		native('bin/os/$GFX_TARGET/SettingsCheck', cps(["src", "tests/os"]).concat(["-main", "SettingsCheck"]), GFX_TARGET);
 		var settings = exePath('bin/os/$GFX_TARGET/SettingsCheck', GFX_TARGET);
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$settings') else run(settings, []);
+		// (a window drawn on the CPU, -D helder.soft: its frames shown by
+		// helder.os.Blit, read back from the window: GfxTest's window mode;
+		// macOS: in a GUI session, the program on the main thread)
+		native('bin/os/$GFX_TARGET/GfxTestSoft', gfxCp().concat(["-main", "GfxTest", "-D", "helder.soft"]), GFX_TARGET);
+		var soft = exePath('bin/os/$GFX_TARGET/GfxTestSoft', GFX_TARGET);
+		var gui = !GFX_TARGET.startsWith("macos-") || StringTools.trim(output("launchctl", ["managername"], true) ?? "") == "Aqua";
+		for (s in ["triangle", "cube"]) {
+			var args = ["window", s, 'tests/gfx/$s.png', 'bin/os/soft-$s.png', "5"];
+			if (Sys.systemName() == "Linux") shell('$XVFB -a -s "-screen 0 640x480x24" $wine$soft ' + args.join(" "))
+			else if (gui) run(soft, args, ["HELDER_THREAD" => "0", "HELDER_BACKGROUND" => "1"])
+			else Sys.println("window: not a GUI session: the soft window not run");
+		}
+		// (a UI in a window drawn on the CPU: its kept frame shown where it
+		// changed; Linux's: the golden's fonts, a window of scale 1)
+		if (GFX_TARGET.startsWith("linux-")) native('bin/os/$GFX_TARGET/UiDrawTestSoft', uiCp().concat(["-main", "UiDrawTest", "-D", "helder.soft"]), GFX_TARGET);
+		var ui = exePath('bin/os/$GFX_TARGET/UiDrawTestSoft', GFX_TARGET);
+		if (GFX_TARGET.startsWith("linux-")) shell('$XVFB -a $ui tests/ui/draw.png bin/os/soft-draw.png --window');
 		native('bin/os/$GFX_TARGET/LocaleCheck', cps(["src", "tests/os"]).concat(["-main", "LocaleCheck"]), GFX_TARGET);
 		var locale = exePath('bin/os/$GFX_TARGET/LocaleCheck', GFX_TARGET);
 		if (wine != "") shell('$wine$locale') else run(locale, []);
@@ -768,9 +808,16 @@ class Run {
 		if ((GFX_TARGET.startsWith("macos-") && Sys.systemName() == "Mac") || (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-"))) {
 			var s = 'bin/ui/$GFX_TARGET/ShapeWindow';
 			native(s, uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
-			// (Windows: first over a helder window, its state and the screen told, not checked)
+			// (Windows: over a helder window, then over a plain one)
 			if (GFX_TARGET.startsWith("windows-")) run(exePath(s, GFX_TARGET), ["--behind", "helder"], ["HELDER_BACKGROUND" => "1"]);
 			run(exePath(s, GFX_TARGET), [], ["HELDER_BACKGROUND" => "1"]);
+		}
+		// (two helder windows on screen, each its background alone: tests/ui/TwoWindows.hx)
+		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
+			var s = 'bin/ui/$GFX_TARGET/TwoWindows';
+			native(s, uiCp().concat(["-main", "TwoWindows"]), GFX_TARGET);
+			for (m in ["opaque", "transparent"])
+				run(exePath(s, GFX_TARGET), [m], ["HELDER_BACKGROUND" => "1"]);
 		}
 		// (Core Animation's layers: a sidebar switched (#111), a live resize on
 		// them and on the window's layer alone (#113), in the background)
@@ -1316,14 +1363,25 @@ class Run {
 		}
 	}
 
+	static function declarations() {
+		var check = ["src/helder/typescript/api/declarations.mjs", "--check"];
+		run(NODE, check);
+		run(NODE, check.concat(["--cp", "tests/view", "--cp", "tests/ui",
+			"TestTypeScript", "UiTypeScript"]));
+		run(NODE, check.concat(["--cp", "tests/typescript/platform", "PlatformTypeScript"]));
+		run(NODE, check.concat(sceneTsPaths()).concat(["frames.FramesTypeScript"]));
+	}
+
+	static function sceneTsPaths():Array<String>
+		return [for (d in ["tests/3d/ts", "tests/gfx"].concat(GFX_EXAMPLES))
+			for (a in ["--cp", d]) a];
+
 	// helder/scene from TypeScript (tests/3d/ts/frames.ts, examples/ts-scene's
-	// scenes): its module's declarations as FramesTypeScript makes them, then
-	// its frames headless as RenderTest's, glow against Haxe's glow.png,
+	// scenes): its frames headless as RenderTest's, glow against Haxe's glow.png,
 	// tsscene against tsscene.png (which check.sh's Haxe twin matches too)
 	static function sceneTs(t:String) {
 		var compiler = StringTools.trim(output(NODE, ["src/helder/compiler/build.mjs", "--quiet"]));
-		var cp = [for (d in ["tests/3d/ts", "tests/gfx"].concat(GFX_EXAMPLES)) for (a in ["--cp", d]) a];
-		run(NODE, ["src/helder/typescript/api/declarations.mjs", "--check"].concat(cp).concat(["helder.asset.TypeScript", "helder.scene.TypeScript", "frames.FramesTypeScript"]));
+		var cp = sceneTsPaths();
 		var exe = exePath('bin/3d/$t/ts-frames', t);
 		mkdirs(Path.directory(exe));
 		run(compiler, ["tests/3d/ts/frames.ts", "-o", exe].concat(cp).concat(targetArgs(t)));
@@ -1444,7 +1502,7 @@ class Run {
 			]);
 		}
 		// (a project of design files alone: its frames interpreted, nothing built)
-		copy('examples/design', '$b/design');
+		copy('tests/studio/design', '$b/design');
 		run("git", ["init", "-q", "-b", "studio", '$b/design']);
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
@@ -1457,13 +1515,13 @@ class Run {
 			"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--events", '$b/free.jsonl'
 		]);
 		// (a phone's: the sheets over the canvas, switched by the bar, dragged by the handle)
-		copy('examples/design', '$b/phone');
+		copy('tests/studio/design', '$b/phone');
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
 			"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--events", '$b/phone.jsonl'
 		]);
 		// (the sidebar's file browser: design files, an image, a font, code in folders)
-		copy('examples/design', '$b/files');
+		copy('tests/studio/design', '$b/files');
 		mkdirs('$b/files/assets');
 		mkdirs('$b/files/fonts');
 		mkdirs('$b/files/src');
@@ -1718,13 +1776,15 @@ class Run {
 		pack();
 		var builds = [
 			{out: exePath('$b/SoftShaderTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderTest", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
-			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest"]).concat(soft)},
+			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/ComputeTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/RenderTest', HOST), args: sceneCp().concat(["-main", "RenderTest"]).concat(soft)}
 		];
 		prebuild(builds);
 		for (p in builds)
 			hxmc(p.out, p.args);
 		run(exePath('$b/SoftShaderTest', HOST), []);
+		run(exePath('$b/ComputeTest', HOST), []);
 		for (s in ["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"])
 			run(exePath('$b/GfxTest', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
 		run("sh", ["tests/3d/check.sh", b], ["SOFT" => "1"]);
@@ -1734,9 +1794,11 @@ class Run {
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
 		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest", "GlassTest"];
-		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST'])}]);
+		// (-D helder.headless: no window code, static on Linux)
+		var soft = ["-D", "helder.soft", "-D", "helder.headless", "-D", 'hxmc.target=$HOST'];
+		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m]).concat(soft)}]);
 		for (m in programs)
-			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST']));
+			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m]).concat(soft));
 		shell('$b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
 		shell('$b/TodoTest tests/ui/todo.png $b/todo.png$bless');
 		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');
@@ -1832,6 +1894,12 @@ class Run {
 		// (Liquid Glass drawn on WebGPU and WebGL2 against the CPU's golden)
 		wasm('$b/WebGlass.wasm', uiCp().concat(["-main", "WebGlass"]));
 		run(NODE, ["tests/ui/web-glass.mjs", '$b/WebGlass.wasm']);
+		// (the browser as the compositor: the window's layers canvases of the page, against the flat window; scrolled while the program is busy)
+		wasm('$b/WebLayersPage.wasm', uiCp().concat(["-main", "WebLayersPage"]));
+		run(NODE, ["tests/ui/web-layers.mjs", '$b/WebLayersPage.wasm']);
+		// (a video's frames on its system layer, a canvas of the page, between the window's and the layer over it)
+		wasm('$b/WebVideoLayers.wasm', uiCp().concat(["-main", "WebVideoLayers"]));
+		run(NODE, ["tests/ui/web-video-layers.mjs", '$b/WebVideoLayers.wasm']);
 	}
 
 	// (each program run twice, the second from the first's snapshot)

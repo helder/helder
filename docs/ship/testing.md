@@ -5,20 +5,20 @@ Write tests in TypeScript or Haxe, run them natively and as WebAssembly, and dri
 <Image src="todo.webp" alt="A todo app with one item, Ship the docs, added by a script" caption="Every picture in these docs is a headless frame: here a script tapped the field, typed and pressed Enter."/>
 
 ```ts
-import { describe, test, equals } from "helder/test";
-import { added, left } from "./todos";
+import {describe, test, equals} from 'helder/test'
+import {added, left} from './todos'
 
-describe("todos", () => {
-  test("left", () => equals(left(added([], 1, "Buy milk")), "1 item left"));
-});
+describe('todos', () => {
+  test('left', () => equals(left(added([], 1, 'Buy milk')), '1 item left'))
+})
 ```
 
 ```haxe
 import helder.test.Test;
 
 function tests() {
-  describe("todos", () -> {
-    test("left", () -> equals(left(added([], 1, "Buy milk")), "1 item left"));
+  describe('todos', () -> {
+    test('left', () -> equals(left(added([], 1, 'Buy milk')), '1 item left'));
   });
 }
 ```
@@ -40,6 +40,12 @@ A script is a list of steps, aimed at nodes by their role or label:
   {"t": 1.0, "type": "key", "name": "Enter"}
 ]
 ```
+
+For a layout or interaction test without a window, create a `Ui` with
+a test text engine and mount your markup with `Render.render`.
+Use `ui.update()` before reading layout, find named nodes by `tag`,
+and send input with `pointerDown`, `pointerUp` or `keyDown`.
+`ui.paint(canvas)` can record what would be drawn.
 
 ## What else
 

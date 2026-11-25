@@ -184,11 +184,12 @@ read-only or turned into an accessor (TSHX100 as well).
 
 A program calls helder's Haxe API through declarations: `helder/view`,
 `helder/ui`, `helder/web`, `helder/canvas`, `helder/async` (helder.async's tasks,
-each a promise: a Task<T> is a Promise<T>), `helder/dev`, `helder/story`, `helder/jobs`, `helder/asset`, `helder/scene/runtime` and `helder/test/runner` (`index.d.ts` beside the packages, exported
-by package.json), generated from the Haxe types (below). Each declares its
+each a promise: a Task<T> is a Promise<T>), `helder/dev`, `helder/story`,
+`helder/jobs` and `helder/asset`, generated from the Haxe types (below).
+Other modules use declaration files internally. Each declares its
 classes, each the Haxe class `__haxe` names, its functions and components
-as `const f: typeof Class.f`, that class's static, and names the module's
-declaration class (`__module`). TSX is helder.view's markup.
+(`function f`, the static `__haxe` names: `f: "pack.Class.f"`, its class
+not declared) and the module's declaration class (`__module`). TSX is helder.view's markup.
 
 `helder/gfx` is TypeScript itself (`src/helder/gfx/index.ts`, written by
 `src/helder/gfx/typescript.mjs`), compiled with the program: the shader
@@ -229,9 +230,8 @@ the other branch calls is not reached and not linked (tests/typescript/platform:
 a Windows branch's kernel32 import absent from the Linux and WASI builds,
 in TypeScript and Haxe).
 
-`helder/scene` (src/helder/scene/index.ts, TypeScript over
-`helder/scene/runtime`, which re-exports it: a module's `export * from` a
-declaration file, whose names resolve to their declarations) is
+`helder/scene` (src/helder/scene/index.ts, which
+re-exports the scene API by name from its own `runtime.d.ts`) is
 helder.scene: World, Node, Camera, Light, Material, MeshRenderer, Shapes,
 Model (helder/asset's `model(path)` loads one), Renderer, InputMap and
 Bindings, FixedStep, and what a scene is drawn with: helder.os's Window,
@@ -307,7 +307,7 @@ Objective-C delegate class, a Java interface's proxy: Haxe's
 the frontend does not make), structs by value, variadic functions.
 
 `helder/ui/actions` (src/helder/ui/actions/index.ts, TypeScript over
-`helder/ui/actions/runtime`) is helder.ui's actions: `actions("viewer",
+its own `runtime.d.ts`) is helder.ui's actions: `actions("viewer",
 {next() {}, zoomTo(percent: number) { return {percent}; }})` is a
 definition (the handler Haxe's `actions("viewer", ViewerAction)` runs,
 `ActionsDefinition`; the methods read by `TsActionsAdapter`), its values
@@ -316,7 +316,7 @@ keymaps, dispatch and menus recognise (src/helder/ui/README.md, "Actions
 and keymaps").
 
 `helder/test` (src/helder/test/index.ts, TypeScript over
-`helder/test/runner`) is helder.test for `*.test.ts(x)`: its assertions'
+its own `runner.d.ts`) is helder.test for `*.test.ts(x)`: its assertions'
 calls are given their file and line as their last argument, as Haxe's
 PosInfos (src/helder/test/README.md, "TypeScript").
 Their handlers are Haxe's (`helder.dev.KeepDefinition`,
@@ -324,13 +324,13 @@ Their handlers are Haxe's (`helder.dev.KeepDefinition`,
 `helder.asset.AssetCheck`).
 
 ```tsx
-import { signal } from "helder/view";
-import { UiWindow, Surface } from "helder/ui";
+import {signal} from 'helder/view'
+import {UiWindow, Surface} from 'helder/ui'
 
-const count = signal(0);
+const count = signal(0)
 UiWindow.run(<Surface title="Counter">
-	<view:button onPress={() => count(c => c + 1)}>{count() * 2}</view:button>
-</Surface>);
+  <view:button onPress={() => count(c => c + 1)}>{count() * 2}</view:button>
+</Surface>)
 ```
 
 **Modules.** A TypeScript module is a Haxe class, its package's
@@ -345,7 +345,7 @@ values), the renderers its markup reaches that its types do not name
 program's own Haxe classes are declared the same way (tests/view's
 TestTypeScript).
 
-**The manifest** (`api/Manifest.hx`, the format there; DESIGN.md 7.3): the
+**The manifest** (`api/Manifest.hx`, the format there): the
 declaration class's build macro writes its module's manifest, from the
 Haxe types, as the class's metadata (`@:helder.manifest`, JSON): each
 class's members (methods, fields, properties' accessors, inline constants'
@@ -411,12 +411,12 @@ defaults, not the callee), else null, 0 or false.
 helder's objects pass as they are, opaque to the program. A signal's call
 is chosen by its static type: `count()` its node read, `count(v)` written,
 `count(c => c + 1)` (an argument of a function type) updated;
-`Render.render(content, parent)` mounts with the runtime of the renderer
+`render(content, parent)` mounts with the runtime of the renderer
 whose node parent is (its class's `@:rendered`). The `Interop` functions are
 where values cross.
 
 **TSX** (`lower/Tsx.hx`) goes through helder.markup's planner
-(`helder.markup.Plan`, DESIGN.md 7.2), its TypeScript target, so a literal
+(`helder.markup.Plan`), its TypeScript target, so a literal
 means what the same Haxe markup means: renderer boundaries, components,
 neutral elements, keys, refs and handlers, and holes that read bound
 (3.3): a hole or an attribute whose expression may read, a call or a read
@@ -437,7 +437,7 @@ is IR on Haxe values, calling its renderer and its runtime directly
 (createElement, put, prop, the setter for a literal attribute name...), as
 the markup macro's code does. A literal's renderer is the one where it is:
 a call's parameter of type `ViewOf<R>` (`UiWindow.run`'s, a root's),
-`Render.render`'s parent, the literal around it (its holes), a component's
+`render`'s parent, the literal around it (its holes), a component's
 children's; else it is agnostic and its mount is made for each renderer
 the manifest has, installed at the start (ViewRuntime's late, as HostMacro's
 late code is). Handlers are checked by tsgo against the declarations' JSX
@@ -484,8 +484,6 @@ BigInt64Array), `process` and node's other globals.
 
 ## What is built
 
-helder.view's DESIGN.md §7, as built:
-
 - **TSX through the shared markup planner**: helder.markup's `Plan<E>`
   compiles Haxe's markup (`MarkupMacro.HaxeTarget`) and TSX (`lower/Tsx.hx`'s
   `TsTarget`) with the same decisions, so the two read the same, the
@@ -504,13 +502,13 @@ helder.view's DESIGN.md §7, as built:
 
 ```tsx
 function Checkbox(props: {checked: Signal<boolean>, label: string}) {
-	return <view:button role="checkbox" checked={props.checked} onPress={() => props.checked(c => !c)}>
-		<Show when={props.checked()}><icon name="check"/></Show>
-	</view:button>;
+  return <view:button role="checkbox" checked={props.checked} onPress={() => props.checked(c => !c)}>
+    <Show when={props.checked()}><icon name="check"/></Show>
+  </view:button>
 }
 ```
 
-**Async** (DESIGN.md 7.4): a program of helder's API with promises or
+**Async:** a program of helder's API with promises or
 timers runs its event loop on helder.async's (`Interop.hostLoop`: its
 microtasks a checkpoint on the loop, its timers the loop's), which
 helder.os's App turns between its frames and which commits helder.view's
@@ -526,10 +524,10 @@ program as promises.
 
 ```ts
 const user = memo(async () => {
-	const n = id();                      // tracked
-	const r = await load(n);             // cancelled when id changes meanwhile
-	return r.name;
-});
+  const n = id()                      // tracked
+  const r = await load(n)             // cancelled when id changes meanwhile
+  return r.name
+})
 ```
 
 ## Tests

@@ -65,7 +65,7 @@
 // descriptor from its annotations, its ID found once; a Java exception
 // thrown after a call as an error with its text; `class` the class (a
 // global reference). Names are the class's binary name: android.os.Build$VERSION.
-import { Script } from "helder/native/runtime";
+import { Script } from './runtime';
 
 export type i8 = number;
 export type u8 = number;

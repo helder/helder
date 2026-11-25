@@ -145,6 +145,8 @@ class IDXGIDevice {
 @:hxmc.unsafe(gc)
 class IDXGIAdapter {
 	@:slot(6) static function GetParent(self:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
+	// (DXGI_ADAPTER_DESC: its description, 128 WCHARs, then VendorId, DeviceId)
+	@:slot(8) static function GetDesc(self:Ptr, desc:Ptr<Int32>):Int;
 }
 
 @:build(helder.os.win32.Com.build())

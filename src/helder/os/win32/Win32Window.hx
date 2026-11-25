@@ -73,6 +73,10 @@ class Win32Window {
 	// (the child windows clipped out of its painting: native editors over it)
 	static inline var STYLE = WM.WS_OVERLAPPEDWINDOW | 0x02000000;
 
+	// (no title bar: WS_POPUP, no frame; WS_CLIPCHILDREN)
+	inline function style():Int
+		return owner.titlebar == None ? (0x80000000 : Int) | 0x02000000 : STYLE;
+
 	final owner:Window;
 	final hwnd:Ptr;
 	final surface:Surface;
@@ -110,11 +114,11 @@ class Win32Window {
 			var r = a.make(RECT);
 			r.value.right = w;
 			r.value.bottom = h;
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			// (inset: no caption above the client area)
 			if (owner.titlebar == Inset) r.value.top = 0;
 			// (transparent: no redirection surface, its pixels DirectComposition's alone)
-			User32.CreateWindowExW(owner.clear ? 0x00200000 : 0, className, a.wstring(title), STYLE, WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
+			User32.CreateWindowExW(owner.clear ? 0x00200000 : 0, className, a.wstring(title), style(), WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
 				r.value.bottom - r.value.top, Ptr.nil(), Ptr.nil(), instance, Ptr.nil());
 		});
 		if (hwnd.isNull()) throw "helder.os: CreateWindowExW failed (error " + Kernel32.GetLastError() + ")";
@@ -270,7 +274,7 @@ class Win32Window {
 			var r = a.make(RECT);
 			r.value.right = Math.round(w * scale);
 			r.value.bottom = Math.round(h * scale);
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			// (inset: no caption above the client area)
 			if (owner.titlebar == Inset) r.value.top = 0;
 			{w: r.value.right - r.value.left, h: r.value.bottom - r.value.top};
@@ -315,6 +319,87 @@ class Win32Window {
 		}));
 	}
 
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere). Elsewhere WM_NCHITTEST answers HTTRANSPARENT,
+	// which passes a press to this thread's windows alone; for other apps'
+	// the window is WS_EX_LAYERED | WS_EX_TRANSPARENT while the pointer is
+	// there (as found at each poll)
+	var taking:Null<Array<Int>> = null;
+	var passing = false;
+
+	function setInput(rects:Null<Array<Int>>)
+		OsThread.run(() -> {
+			taking = rects;
+			track();
+		});
+
+	function takes(x:Int, y:Int):Bool {
+		var r = taking;
+		if (r == null) return true;
+		var i = 0;
+		while (i + 3 < r.length) {
+			if (x >= r[i] && y >= r[i + 1] && x < r[i] + r[i + 2] && y < r[i + 1] + r[i + 3]) return true;
+			i += 4;
+		}
+		return false;
+	}
+
+	function track() {
+		var pass = taking != null && Arena.scopedValue(a -> {
+			var p = a.make(POINT);
+			User32.GetCursorPos(p);
+			User32.ScreenToClient(hwnd, p);
+			!takes(p.value.x, p.value.y);
+		});
+		if (pass == passing) return;
+		passing = pass;
+		// (GWL_EXSTYLE; WS_EX_LAYERED 0x80000, WS_EX_TRANSPARENT 0x20; LWA_ALPHA, all of it: its pixels as they are)
+		var ex = User32.GetWindowLongPtrW(hwnd, -20).toI64();
+		User32.SetWindowLongPtrW(hwnd, -20, Ptr.ofI64(pass ? ex | 0x80020 : ex & ~(0x80020 : Int64)));
+		if (pass) User32.SetLayeredWindowAttributes(hwnd, 0, 255, 2);
+	}
+
+	// (Window.backdrop: DWMWA_SYSTEMBACKDROP_TYPE 38, Windows 11 22H2 on:
+	// DWMSBT_NONE 1, MAINWINDOW 2 (Mica), TRANSIENTWINDOW 3 (Acrylic); the
+	// frame extended over the client area (MARGINS -1), the backdrop behind
+	// it all; no glass)
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (b == Glass) return false;
+		return OsThread.get(() -> Arena.scopedValue(a -> {
+			var m:Ptr<Int32> = a.alloc(16), v:Ptr<Int32> = a.alloc(4);
+			for (i in 0...4)
+				m[i] = b == None ? 0 : -1;
+			v.value = b == None ? 1 : b == Blur ? 3 : 2;
+			var ok = Dwmapi.DwmSetWindowAttribute(hwnd, 38, v, 4) >= 0;
+			if (ok) Dwmapi.DwmExtendFrameIntoClientArea(hwnd, m);
+			ok;
+		}));
+	}
+
+	// (Window.onTop: HWND_TOPMOST -1, HWND_NOTOPMOST -2; SWP_NOMOVE, NOSIZE, NOACTIVATE)
+	function setOnTop(on:Bool)
+		OsThread.run(() -> User32.SetWindowPos(hwnd, Ptr.ofI64(on ? -1 : -2), 0, 0, 0, 0, 0x2 | 0x1 | 0x10));
+
+	// (Window.taskbar false: WS_EX_TOOLWINDOW 0x80, out of the task bar and
+	// Alt+Tab; hidden and shown again, as the task bar reads it when shown)
+	function setTaskbar(on:Bool)
+		OsThread.run(() -> {
+			var ex = User32.GetWindowLongPtrW(hwnd, -20).toI64(), shown = User32.IsWindowVisible(hwnd) != 0;
+			if (shown) User32.ShowWindow(hwnd, 0);
+			User32.SetWindowLongPtrW(hwnd, -20, Ptr.ofI64(on ? ex & ~(0x80 : Int64) : ex | 0x80));
+			if (shown) User32.ShowWindow(hwnd, 4); // (SW_SHOWNOACTIVATE)
+		});
+
+	// (Window.workArea: the monitor's rcWork, clear of the task bar)
+	function workArea():{x:Int, y:Int, width:Int, height:Int}
+		return OsThread.get(() -> Arena.scopedValue(a -> {
+			var info:Ptr<Int32> = a.alloc(40);
+			info[0] = 40;
+			User32.GetMonitorInfoW(User32.MonitorFromWindow(hwnd, 2), info);
+			var k = scale;
+			{x: Math.ceil(info[5] / k), y: Math.ceil(info[6] / k), width: Math.floor((info[7] - info[5]) / k), height: Math.floor((info[8] - info[6]) / k)};
+		}));
+
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)
 	var shadow = true;
 
@@ -345,6 +430,16 @@ class Win32Window {
 	}
 
 	// an inset title bar's answer at a point of the screen: the window's edges, the app's regions and buttons
+	// (a message's screen point, in the client area's pixels)
+	function client(lParam:Int64):{x:Int, y:Int}
+		return Arena.scopedValue(a -> {
+			var p = a.make(POINT);
+			p.value.x = lParam.toInt() << 16 >> 16;
+			p.value.y = lParam.toInt() >> 16;
+			User32.ScreenToClient(hwnd, p);
+			{x: p.value.x, y: p.value.y};
+		});
+
 	function titleHit(lParam:Int64):TitleHit
 		return Arena.scopedValue(a -> {
 			var p = a.make(POINT);
@@ -375,7 +470,7 @@ class Win32Window {
 	function moveTo(x:Int, y:Int)
 		OsThread.run(() -> Arena.scoped(a -> {
 			var r = a.make(RECT);
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			if (owner.titlebar == Inset) r.value.top = 0;
 			User32.SetWindowPos(hwnd, Ptr.nil(), Math.round(x * scale) + r.value.left, Math.round(y * scale) + r.value.top, 0, 0, 0x1 | 0x4 | 0x10);
 		}));
@@ -536,6 +631,8 @@ class Win32Window {
 	static function pollNow(onFrame:Void->Void, onEvent:Event->Void) {
 		Win32Window.onFrame = onFrame;
 		Win32Window.onEvent = onEvent;
+		for (w in open)
+			w.track();
 		// (the windows polled before the last frame: drawn by it, shown now)
 		for (w in open)
 			if (w.hidden) {
@@ -750,7 +847,9 @@ class Win32Window {
 				r.value.bottom -= fy;
 				if (User32.IsZoomed(hwnd) != 0) r.value.top += fy;
 				return 0;
-			case 0x0084 if (w.owner.titlebar == Inset && !w.fullscreen): // WM_NCHITTEST
+			case 0x0084 if (w.taking != null && !w.takes(w.client(lParam).x, w.client(lParam).y)): // WM_NCHITTEST outside its input
+				return -1; // (HTTRANSPARENT)
+			case 0x0084 if (w.owner.titlebar != Standard && !w.fullscreen): // WM_NCHITTEST
 				var d = User32.DefWindowProcW(hwnd, message, wParam, lParam);
 				if (d.toInt() != WM.HTCLIENT) return d;
 				return TitleBars.win32(w.titleHit(lParam));
@@ -784,9 +883,27 @@ class Win32Window {
 				e.kind = Close;
 				dispatch(e);
 				return 0;
+			#if helder.soft
+			// (a frame drawn on the CPU: GDI keeps none, so the window's last
+			// frame painted again where Windows asks, PrintWindow's too)
+			case WM.PAINT:
+				Arena.scoped(a -> {
+					var ps = a.alloc(72);
+					var dc = User32.BeginPaint(hwnd, ps);
+					Blit.repaint(w.surface, dc);
+					User32.EndPaint(hwnd, ps);
+				});
+				return 0;
+			case 0x0318: // WM_PRINTCLIENT
+				Blit.repaint(w.surface, Ptr.ofI64(wParam));
+				return 0;
+			case 0x0014: // WM_ERASEBKGND: the frame covers it
+				return 1;
+			#else
 			case WM.PAINT:
 				// (DefWindowProc validates the window)
 				e.kind = Redraw;
+			#end
 			case WM.SIZE:
 				// (no loop yet, a size set before App.run: told at its first poll)
 				if (w.measure()) {
