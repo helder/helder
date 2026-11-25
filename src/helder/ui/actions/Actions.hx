@@ -72,8 +72,17 @@ class Actions {
 
 	// (every space, StandardAction's among them)
 	static function all():Array<ActionSpace<Dynamic>> {
-		Standard.declare();
+		standard();
 		return spaces;
+	}
+
+	static var standardSpace:Null<ActionSpace<StandardAction>> = null;
+
+	// StandardAction's actions, declared (standard::Quit, standard::Copy... in
+	// a keymap) before any space is looked up
+	@:noCompletion public static function standard():ActionSpace<StandardAction> {
+		if (standardSpace == null) standardSpace = actions("standard", StandardAction);
+		return standardSpace;
 	}
 
 	// the actions of a namespace (null: none declared)

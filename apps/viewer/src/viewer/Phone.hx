@@ -3,7 +3,7 @@ package viewer;
 import helder.ui.Node;
 import helder.ui.NavScreen;
 import helder.ui.NavScreen.NavButton;
-import helder.ui.Router;
+import helder.ui.nav.Routes;
 import helder.ui.ScreenContext;
 import helder.ui.Sheet;
 import helder.ui.Stack;
@@ -397,7 +397,7 @@ class Phone implements Markup {
 // mode, the info sheet, the full view's bars
 class PhoneState implements Markup {
 	public final x:Explorer;
-	public final nav = new Router();
+	public final nav = new Routes();
 	public final tab = signal("browse");
 	public final selecting = signal(false);
 	public final info = signal(false);
