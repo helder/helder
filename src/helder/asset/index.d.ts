@@ -8,9 +8,9 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Model} from "helder/scene/runtime";
+import type {Model} from "../scene/runtime";
 
-declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image", FontFile: "helder.text.FontFile", Strings: "helder.asset.Strings", ScriptAssets: "helder.asset.ScriptAssets", __module: "helder.asset.TypeScript"};
+declare const __haxe: {Strings: "helder.asset.Strings", image: "helder.asset.ScriptAssets.image", font: "helder.asset.ScriptAssets.font", model: "helder.asset.ScriptAssets.model", sound: "helder.asset.ScriptAssets.sound", bytes: "helder.asset.ScriptAssets.bytes", loaded: "helder.asset.ScriptAssets.loaded", ready: "helder.asset.ScriptAssets.ready", strings: "helder.asset.ScriptAssets.strings", __module: "helder.asset.TypeScript"};
 
 // A file of the program, by its path (AssetPath): an image, a font, a model,
 // a sound or bytes. The path is checked when compiling (the file there, in
@@ -89,41 +89,26 @@ export declare class FontFile {
 }
 
 export declare class Strings {
+	private constructor();
 	// Read a message with named string and number arguments.
 	get(key: string, params?: any): string;
 }
 
-// helder.asset for TypeScript programs (helder/asset): image(path), font,
-// model, sound and bytes, definitions (as Haxe's Asset.image...: the same
-// check, AssetCheck), each a handle (Asset). Their calls are compiled: the
-// path a literal, found and bundled when the program is built
-// (helder.typescript.lower's TsAssets), the call given its key's marker
-// and, where the program reads it from disk (helder dev), the file. Also
-// written `import icon from "./icon.png" with {type: "image"}`.
-export declare class ScriptAssets {
-	// an image (helder.image.Image)
-	static image(path: string, file?: string): Asset<Image>;
-	// a font (helder.text.FontFile)
-	static font(path: string, file?: string): Asset<FontFile>;
-	// a glTF model (helder.scene.render.Model; its names are Haxe's alone)
-	static model(path: string, file?: string): Asset<Model<any, any, any, any>>;
-	// a sound file's bytes
-	static sound(path: string, file?: string): Asset<Uint8Array>;
-	// a file's bytes
-	static bytes(path: string, file?: string): Asset<Uint8Array>;
-	// Load a folder of locale JSON files. Use get(key, params) to read a message.
-	static strings: (path: string) => Strings;
-	// the asset's value once it is loaded (its AssetError if it failed): a promise
-	static loaded<T>(asset: Asset<T>): Promise<T>;
-	// whether it is loaded
-	static ready<T>(asset: Asset<T>): boolean;
-}
+// an image (helder.image.Image)
+export declare function image(path: string, file?: string): Asset<Image>;
+// a font (helder.text.FontFile)
+export declare function font(path: string, file?: string): Asset<FontFile>;
+// a glTF model (helder.scene.render.Model; its names are Haxe's alone)
+export declare function model(path: string, file?: string): Asset<Model<any, any, any, any>>;
+// a sound file's bytes
+export declare function sound(path: string, file?: string): Asset<Uint8Array>;
+// a file's bytes
+export declare function bytes(path: string, file?: string): Asset<Uint8Array>;
+// the asset's value once it is loaded (its AssetError if it failed): a promise
+export declare function loaded<T>(asset: Asset<T>): Promise<T>;
+// whether it is loaded
+export declare function ready<T>(asset: Asset<T>): boolean;
+// Load a folder of locale JSON files. Use get(key, params) to read a message.
+export declare const strings: (path: string) => Strings;
 
-export declare const image: typeof ScriptAssets.image;
-export declare const font: typeof ScriptAssets.font;
-export declare const model: typeof ScriptAssets.model;
-export declare const sound: typeof ScriptAssets.sound;
-export declare const bytes: typeof ScriptAssets.bytes;
-export declare const loaded: typeof ScriptAssets.loaded;
-export declare const ready: typeof ScriptAssets.ready;
-export declare const strings: typeof ScriptAssets.strings;
+export {};

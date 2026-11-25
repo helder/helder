@@ -60,3 +60,5 @@ export declare class Script {
 	// a java.lang.String's text (null for 0), its local reference deleted
 	static jniText(at: number): string | null;
 }
+
+export {};

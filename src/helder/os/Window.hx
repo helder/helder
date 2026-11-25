@@ -180,7 +180,7 @@ class Window {
 	// area's bottom following it; keyboardDuration is its animation's
 	// seconds where the system gives them (iOS's), else 0
 	@:typescript public var keyboard(get, never):Read<Float>;
-	public var keyboardDuration(default, null) = 0.0;
+	@:noCompletion public var keyboardDuration(default, null) = 0.0;
 
 	final keyboardHeight:Signal<Float> = Graph.signal(0.0);
 
@@ -233,7 +233,7 @@ class Window {
 	// pan-y): true, the drag is the program's (its pointer's moves, the page
 	// held still); false, or null (not asked), the page pans (the pointer
 	// cancelled: PointerCancel). Elsewhere every drag is the program's
-	public var scrollsAt:Null<(x:Int, y:Int, dx:Float, dy:Float) -> Bool> = null;
+	@:noCompletion public var scrollsAt:Null<(x:Int, y:Int, dx:Float, dy:Float) -> Bool> = null;
 
 	// an inset title bar's answer for a press at x, y (pixels): a drag
 	// region, one of the app's window buttons, or the content's (null: the
@@ -241,7 +241,7 @@ class Window {
 	// (macOS: a drag then performWindowDragWithEvent:, a double click the
 	// zoom; Wayland's and X11's moves), and on Windows for each
 	// WM_NCHITTEST (HTCAPTION, HTMAXBUTTON for its snap layouts)
-	public var titlebarAt:Null<(x:Int, y:Int) -> TitleHit> = null;
+	@:noCompletion public var titlebarAt:Null<(x:Int, y:Int) -> TitleHit> = null;
 
 	// each input event as it is read, before the program gets it (helder.ui's
 	// compositor: Event.routed set; where the main thread reads input while
@@ -293,7 +293,7 @@ class Window {
 
 	// the system's buttons' top left moved to x, y (pixels: macOS's, again
 	// after each resize; nothing elsewhere)
-	public function placeControls(x:Int, y:Int) {
+	@:noCompletion public function placeControls(x:Int, y:Int) {
 		if (titlebar != Inset || closed) return;
 		if (Platform.os() == 1) {
 			if (Platform.apple() >= 1) {} else
@@ -503,7 +503,7 @@ class Window {
 
 	// whether text is typed into it now (startTextInput until stopTextInput:
 	// a text field focused, ui's UiWindow), when Escape is the field's, not App.onBack's
-	public var typing(default, null) = false;
+	@:noCompletion public var typing(default, null) = false;
 
 	// where text is typed now (a text field's caret: x, y, width, height in
 	// pixels from the top left), until stopTextInput: an input method shows
@@ -519,7 +519,7 @@ class Window {
 	// Android shows the soft keyboard, its input method through a hidden
 	// EditText (helder.os.android.TextInput, once enabled), compositions as
 	// TextEditing; iOS its keyboard, the view's UIKeyInput (no compositions)
-	public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
+	@:noCompletion public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
 		if (closed) return;
 		typing = true;
 		#if (!helder.os || helder.headless) if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else #end
@@ -539,7 +539,7 @@ class Window {
 	// methods told) its kind. Given after startTextInput, again whenever it
 	// changes; the input method's edits of it come as TextReplace (and
 	// TextInput, TextEditing, TextSelect). Nothing elsewhere
-	public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
+	@:noCompletion public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
 		if (closed || !typing || HEADLESS) return;
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().textContext(secret ? "" : text, secret ? 0 : start, secret ? 0 : end) else #end
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Platform.os() == 0 && Platform.target() < 9 && Std.isOfType(native, WaylandWindow)) wayland().textContext(text, start, end, multiline, secret) else #end
@@ -551,14 +551,14 @@ class Window {
 	// key, capitalisation, corrections), given before startTextInput and
 	// whenever it changes: iOS's keyboard (the view's UITextInputTraits) and
 	// Android's EditorInfo for a drawn field; nothing elsewhere
-	public function textKind(kind:TextKind) {
+	@:noCompletion public function textKind(kind:TextKind) {
 		if (closed || HEADLESS) return;
 		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().setKind(kind) else #end
 		#if (!helder.os || helder.os == "android") if (Platform.os() == 0 && Platform.target() >= 9) android().textKind(kind) else #end
 		{};
 	}
 
-	public function stopTextInput() {
+	@:noCompletion public function stopTextInput() {
 		typing = false;
 		if (closed || HEADLESS) return;
 		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().textInput(false, 0, 0, 0, 0) else #end

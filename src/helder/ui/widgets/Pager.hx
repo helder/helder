@@ -37,6 +37,9 @@ class Pager implements helder.view.Markup {
 		position = Motion.spring(() -> page() - drag() / width(), 420, 40);
 	}
 
+	public static function create(page:Read<Int>, count:Int, onPage:Int->Void):Pager
+		return new Pager(page, count, onPage);
+
 	function width():Float
 		return root == null || root.width <= 0 ? 1 : root.width;
 

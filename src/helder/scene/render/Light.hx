@@ -37,7 +37,7 @@ import helder.scene.World;
 // castShadows (a directional light by default, a point or spot light when
 // asked: Shadows' tiles, within its budget), filtered as shadow says.
 class Light {
-	public static final KIND = new StoreKind<Light>("light");
+	@:noCompletion public static final KIND = new StoreKind<Light>("light");
 
 	public var kind(default, null):LightKind;
 	public var color:Vec3;

@@ -288,7 +288,7 @@ class Frontend extends ApiCalls {
 				}
 			case KindExportDeclaration:
 				var decl = n;
-				// (a declared module's re-exported, helder/scene's of helder/scene/runtime: its
+				// (a declared module's re-exported, helder/scene's of its runtime.d.ts: its
 				// names resolve to their declarations, which the API calls)
 				if (decl.isTypeOnly() || decl.moduleSpecifier() != null && declared(decl.moduleSpecifier())) continue;
 				var target = decl.moduleSpecifier() == null ? null : targetModule(decl.moduleSpecifier());

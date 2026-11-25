@@ -241,10 +241,10 @@ class ImageNode extends Node {
 	@:allow(helder.ui) override function paintsLive():Bool
 		return Type.getClass(this) != ImageNode;
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		if (image == null && svg == null) return new Size(Math.isNaN(knownWidth) ? 0 : knownWidth, Math.isNaN(knownHeight) ? 0 : knownHeight);
 		var iw = intrinsicWidth(), ih = intrinsicHeight();
 		// (a ratio given, CSS's aspect-ratio without auto: the image's own not, a 4:7 photo in a 3:4 frame)
@@ -273,7 +273,7 @@ class ImageNode extends Node {
 		return [x0, y0, x1 - x0, y1 - y0, (x0 - ix) / dw, (y0 - iy) / dh, (x1 - ix) / dw, (y1 - iy) / dh];
 	}
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if ((image == null && svg == null) || width <= 0 || height <= 0) return;
 		var p = placement(x, y, width, height);
 		if (p[2] <= 0 || p[3] <= 0) return;

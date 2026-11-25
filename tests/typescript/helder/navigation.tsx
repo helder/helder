@@ -1,7 +1,7 @@
 // helder.ui's Router and Stack from TypeScript: a route's params typed by
 // its path (p.id a string, no annotation), go, back, replace, the query,
 // the fallback, open's deep link; the screens kept below the top.
-import { flush, Render } from "helder/view";
+import { flush, render } from "helder/view";
 import { Clock, Router, Stack } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
@@ -27,7 +27,7 @@ function step(what: string) {
 }
 
 const root = UiProbe.root(320, 240);
-Render.render(<Stack router={nav} transition="slide"/>, root);
+render(<Stack router={nav} transition="slide"/>, root);
 step("start");
 nav.go("/product/3?tab=specs");
 step("go");

@@ -54,7 +54,7 @@ class Pointers {
 
 	// a frame begins (App.run's turns, before the events): dx and dy start
 	// again, and what justDown, justUp and cancelled answer
-	public static function step() {
+	@:noCompletion public static function step() {
 		for (i in 0...MAX) {
 			slots[i].frame();
 			downs[i] = ups[i] = false;

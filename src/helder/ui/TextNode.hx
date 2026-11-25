@@ -39,17 +39,17 @@ class TextNode extends Node {
 	@:allow(helder.ui) override function paintsLive():Bool
 		return Type.getClass(this) != TextNode;
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		var p = layoutText(engine, Math.isNaN(knownWidth) ? availWidth : knownWidth);
 		return new Size(p.width, p.height);
 	}
 
 	// (from the max-content paragraph, which the layout asks for too)
 	// (not wrapped: as wide as its longest line)
-	override public function minContentWidth(engine:TextEngine):Float {
+	@:noCompletion override public function minContentWidth(engine:TextEngine):Float {
 		var p = layoutText(engine, Math.NaN);
 		return wraps() ? p.minWidth : p.width;
 	}
@@ -122,7 +122,7 @@ class TextNode extends Node {
 	}
 
 	// (laid out as content: its spans are not boxes)
-	override public function contentOwnsChildren():Bool
+	@:noCompletion override public function contentOwnsChildren():Bool
 		return true;
 
 	// whether its text can be selected: a drag, a double click (a word), a
@@ -190,7 +190,7 @@ class TextNode extends Node {
 	}
 
 	// the paragraph for a width (NaN: unbounded), from the last one when the same
-	public function layoutText(engine:TextEngine, maxWidth:Float):Paragraph {
+	@:noCompletion public function layoutText(engine:TextEngine, maxWidth:Float):Paragraph {
 		var f = font(), text = shownText();
 		var rich = children.length > 0 ? spanned() : null;
 		var shown = rich != null ? rich.text : text, spans = rich != null ? rich.spans : null, clamp = style.maxLines;
@@ -252,7 +252,7 @@ class TextNode extends Node {
 	override public function firstBaseline():Float
 		return paragraph == null ? Math.NaN : style.borderEdges.top + style.padding.top + paragraph.baseline;
 
-	override public function contentInk():Size
+	@:noCompletion override public function contentInk():Size
 		return paragraph == null ? Size.NONE : new Size(paragraph.width, paragraph.height);
 
 	// (what the laid out paragraph depends on besides its font and width:
@@ -265,7 +265,7 @@ class TextNode extends Node {
 		return text;
 	}
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		var text = shownText();
 		// (a node leaving, drawn out of its tree: the Ui drawing it, helder.ui.motion)
 		var ui = this.ui ?? Ui.painting;

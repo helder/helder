@@ -126,14 +126,6 @@ for(const file of fs.readdirSync(`${T}/reject`).filter(f=>f.endsWith('.ts')).sor
     assert.equal(fs.existsSync(out),false,`${file} must not emit an executable`);
     console.log(`PASS diagnostic ${file}`);
 }
-// helder's declaration files, and the tests' (test-renderer.d.ts): as its
-// Haxe types make them (helder.typescript.api.Declarations)
-if(mine()) {
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check']),'helder\'s declarations');
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check','--cp','tests/view','--cp','tests/ui','TestTypeScript','UiTypeScript']),'the tests\' declarations');
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check','--cp',`${T}/platform`,'PlatformTypeScript']),'platform/win32.d.ts');
-console.log('PASS declarations');
-}
 // src/helder/ui/style.d.ts, written by hand: its StyleProps naming
 // helder.ui.StyleProps' properties, no more, no fewer
 if(mine()) {

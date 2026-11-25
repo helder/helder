@@ -16,7 +16,7 @@ import helder.scene.Node;
 //   var hall = ReflectionProbe.attach(world.node("hall"), new ReflectionProbe(new Vec3(12, 4, 8), 0.5));
 //   hall.node.position = new Vec3(0, 2, 0);
 class ReflectionProbe {
-	public static final KIND = new StoreKind<ReflectionProbe>("reflectionProbe");
+	@:noCompletion public static final KIND = new StoreKind<ReflectionProbe>("reflectionProbe");
 
 	// its box's size (scene units), centred on its node
 	public var size:Vec3;

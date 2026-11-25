@@ -14,3 +14,5 @@ export declare class Win32 {
 	// milliseconds since Windows started
 	static ticks(): number;
 }
+
+export {};
