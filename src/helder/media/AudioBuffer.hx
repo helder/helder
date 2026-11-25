@@ -32,7 +32,7 @@ class AudioBuffer {
 	public inline function get(i:Int):Float
 		return Mem.getF32(data, i * 4);
 
-	public function free() {
+	public function dispose() {
 		if (!data.isNull()) LibC.free(data);
 		data = Ptr.nil();
 		frames = 0;

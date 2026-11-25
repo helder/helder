@@ -123,7 +123,7 @@ class MediaLinuxCheck {
 		} catch (e:MediaError) why = e.message;
 		m.close();
 		if (why != null) {
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			if (d != null) d.close();
 			if (t.codec == H264 && !gpu) check('$f: decoded', false, why);
 			else say('skipped: $f${gpu ? " on VAAPI" : ""} (${t.codec}: $why)');
@@ -149,7 +149,7 @@ class MediaLinuxCheck {
 		var times = [for (fr in frames) fr.time].join(",");
 		check('$f ($how): ${frames.length} frames, each packet\'s time, planes as ffmpeg decodes them', ok,
 			'${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad + ", times " + times : ""}');
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 	}
 
@@ -194,7 +194,7 @@ class MediaLinuxCheck {
 		var ok = d.rate == e.rate && left.length == frames && worst <= tolerance;
 		check('$key ${t.codec} ($name): ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', ok, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -223,7 +223,7 @@ class MediaLinuxCheck {
 			var r = compare(e, px, w), how = gpu ? 'VAAPI, ${handle.split(":")[0]}${AvVideo.copies ? " (copied: no DMA-BUF import)" : ""}' : "software";
 			check('$f ($how): frame ${e.frame} in RGB on ${device.backend}, ${w}x$h upright, as ffmpeg turns it where flat', ok && w == e.width && h == e.height
 				&& r.mean < 1 && r.worst <= 8, '${frame.matrix}${frame.full ? " full" : ""} ${frame.bits} bits, ${r.detail}');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			close();
 		}
 		vt.dispose();

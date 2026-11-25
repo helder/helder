@@ -130,7 +130,7 @@ decoders here; `Decoders.supported(track)`, awaited: the browser's
 answer; `Decoders.missing()`: what the system lacks, said, Linux's
 libavcodec; the player's error where it decodes nothing). Packets go in in decode order; a `VideoFrame` comes out (its
 time, size, matrix: 601, 709 or 2020, range, 8 or 10 bits, the system's
-image held until `release()`), audio as interleaved 32-bit floats, two
+image held until `dispose()`), audio as interleaved 32-bit floats, two
 channels (mono doubled, more: the first two), at the track's rate; a
 decoder that gives a packet's audio later says which packet it was
 (`decoded`).

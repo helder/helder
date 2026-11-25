@@ -57,7 +57,7 @@ class Decode {
 			var p = PdfPages.render(path, bytes, page, side, first, source);
 			var mem = ImageMemory.offHeapMemory();
 			var px = mem.take(p.rgba);
-			mem.free();
+			mem.dispose();
 			{
 				width: p.width,
 				height: p.height,
@@ -229,7 +229,7 @@ class Decode {
 					case "WebP": WebpDecoder.decode(bytes, mem);
 					case "PDF":
 						// (its first page, the document not kept: PdfPages; a file's pages are file's)
-						mem.free();
+						mem.dispose();
 						return pdf(null, bytes, 0, side, bytes.length);
 					case _: PngDecoder.decode(bytes, mem);
 				}
@@ -276,7 +276,7 @@ class Decode {
 			}
 			// (the frames' buffers: a still image's kept from its memory, the rest freed; an animation's copied off the heap)
 			var out = [for (f in frames) {pixels: mem.take(f.rgba), delay: f.delay}];
-			mem.free();
+			mem.dispose();
 			return {
 				width: w,
 				height: h,

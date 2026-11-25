@@ -114,7 +114,7 @@ class MediaWindowsCheck {
 		} catch (e:MediaError) why = e.message;
 		m.close();
 		if (why != null) {
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			if (d != null) d.close();
 			if (t.codec == H264) check('$f: decoded', false, '$why; ${MfTransform.found}');
 			else say('skipped: $f (${t.codec}: $why; ${MfTransform.found})');
@@ -131,7 +131,7 @@ class MediaWindowsCheck {
 		if (frames == null) return;
 		if (gpu && !decoders[0].hardware) {
 			say('$f: DXVA not taken (${decoders[0].why})');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			close();
 			return;
 		}
@@ -147,7 +147,7 @@ class MediaWindowsCheck {
 		var times = [for (fr in frames) fr.time].join(",");
 		check('$f ($how): ${frames.length} frames, each packet\'s time, planes as ffmpeg decodes them', ok,
 			'${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad + ", times " + times : ""}');
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 	}
 
@@ -185,7 +185,7 @@ class MediaWindowsCheck {
 		} catch (x:MediaError) {
 			check('$key ${t.codec}: decoded', false, x.message);
 			d.close();
-			buf.free();
+			buf.dispose();
 			m.close();
 			return;
 		}
@@ -223,7 +223,7 @@ class MediaWindowsCheck {
 			say('$key: ours fit ffmpeg\'s best shifted by $best frames (the largest difference then $bestErr)');
 		}
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -262,7 +262,7 @@ class MediaWindowsCheck {
 				var l = compare(e, rgba, cw);
 				check('$f: frame ${e.frame} in RGB as the system layer is given it, as ffmpeg turns it where flat', l.mean < 1 && l.worst <= 8, l.detail);
 			}
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			close();
 		}
 		vt.dispose();

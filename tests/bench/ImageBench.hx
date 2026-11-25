@@ -24,7 +24,7 @@ class ImageBench {
 		function off(f:ImageMemory->Void) {
 			var m = ImageMemory.offHeapMemory();
 			f(m);
-			m.free();
+			m.dispose();
 		}
 		time("jpeg decode, 1 thread", () -> off(m -> JpegDecoder.decode(jpg, m)));
 		JpegDecoder.threads = 4;

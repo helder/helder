@@ -111,7 +111,7 @@ class MediaWebCheck {
 		order.sort((a, b) -> frames[a].time < frames[b].time ? -1 : 1);
 		pts.sort((a, b) -> a < b ? -1 : 1);
 		var sorted = [for (i in order) frames[i]], c = [for (i in order) crcs[i]];
-		if (!keep) for (f in sorted) f.release();
+		if (!keep) for (f in sorted) f.dispose();
 		if (!keep) d.close();
 		return {frames: sorted, pts: pts, crcs: c};
 	}
@@ -133,7 +133,7 @@ class MediaWebCheck {
 		check('$f: ${r.frames.length} frames, each packet\'s time', one != null && r.frames.length == crcs.length && times.length == 0, times.length > 0 ? 'differing: $times' : "");
 		if (one != null) given('$f: planes as ffmpeg decodes them, its size', bad.length == 0 && one.width == e.width && one.height == e.height && (!asDecoded || one.bits == e.bits),
 			one == null ? "none" : '${r.frames.length} of ${crcs.length}, ${one.width}x${one.height} ${one.bits} bits ${one.matrix}${one.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}');
-		for (fr in r.frames) fr.release();
+		for (fr in r.frames) fr.dispose();
 		m.close();
 	}
 
@@ -149,7 +149,7 @@ class MediaWebCheck {
 		try audible(m, t, d, buf, left) catch (x:MediaError) {
 			Sys.println('skipped: $key ${t.codec}: ${x.message}');
 			d.close();
-			buf.free();
+			buf.dispose();
 			return m.close();
 		}
 		var samples:Array<Float> = e.samples, worst = 0.0;
@@ -164,7 +164,7 @@ class MediaWebCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && Math.abs(left.length - frames) <= slack
 			&& worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -248,7 +248,7 @@ class MediaWebCheck {
 			if (hdr && ok) Sys.println('$f: in RGB, the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst (PQ mapped by the browser: not checked)');
 			else given('$f: frame ${e.frame} in RGB on ${device.backend == WebGPU ? "WebGPU" : "WebGL2"}, ${w}x$h upright, as ffmpeg turns it where flat (${frame.matrix})', ok && w == e.width && h == e.height
 				&& mean < 1 && worst <= 8, 'the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst');
-			for (fr in r.frames) fr.release();
+			for (fr in r.frames) fr.dispose();
 			m.close();
 			vt.dispose();
 			device.dispose();

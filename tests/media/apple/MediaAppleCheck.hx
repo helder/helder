@@ -108,7 +108,7 @@ class MediaAppleCheck {
 			'${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}');
 		if (f == "apple/hevc10.mp4") check("hevc10.mp4: P010, BT.2020", first.bits == 10 && first.matrix == "2020" && !first.full);
 		if (f == "apple/h264-full.mp4") check("h264-full.mp4: full range, BT.709", first.full && first.matrix == "709");
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		d.close();
 		m.close();
 	}
@@ -142,7 +142,7 @@ class MediaAppleCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && left.length == frames
 			&& worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -193,7 +193,7 @@ class MediaAppleCheck {
 			}
 			check('$f: frame ${e.frame} in RGB, ${w}x$h upright, as ffmpeg turns it where flat (${Std.int(pixels.length / 5)} pixels)', ok && w == e.width && h == e.height && mean < 1 && worst <= 3,
 				'the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			d.close();
 			m.close();
 		}

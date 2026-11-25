@@ -228,7 +228,7 @@ class Player {
 	public function update():Null<VideoFrame> {
 		updates++;
 		while (retired.length > 0 && updates - retiredAt[0] > 3) {
-			retired.shift().release();
+			retired.shift().dispose();
 			retiredAt.shift();
 		}
 		#if (hxmc.target == "wasm32-wasi")
@@ -254,7 +254,7 @@ class Player {
 		if (due >= 0) {
 			retire(shown);
 			shown = frames[due];
-			for (i in 0...due) frames[i].release();
+			for (i in 0...due) frames[i].dispose();
 			frames.splice(0, due + 1);
 		}
 		// (a frame settled, shown or due later; or none to come)
@@ -324,7 +324,7 @@ class Player {
 		d.take(fresh);
 		for (f in fresh) {
 			if (f.time < target - EPS || asked > -1e299) {
-				f.release();
+				f.dispose();
 				continue;
 			}
 			var i = frames.length;
@@ -460,7 +460,7 @@ class Player {
 	// (before a seek: the output stopped while the ring is emptied, what was decoded dropped)
 	function reset() {
 		if (out != null) out.stop();
-		for (f in frames) f.release();
+		for (f in frames) f.dispose();
 		frames.resize(0);
 		if (vdec != null) {
 			vdec.reset();
@@ -508,7 +508,7 @@ class Player {
 		}
 		retire(shown);
 		shown = frames[i];
-		for (k in 0...i) frames[k].release();
+		for (k in 0...i) frames[k].dispose();
 		frames.splice(0, i + 1);
 		clock.seek(shown.time);
 		prime();
@@ -624,15 +624,15 @@ class Player {
 		if (element != null) element.close();
 		#end
 		if (out != null) out.close();
-		if (shown != null) shown.release();
-		for (f in retired) f.release();
+		if (shown != null) shown.dispose();
+		for (f in retired) f.dispose();
 		retired.resize(0);
-		for (f in frames) f.release();
+		for (f in frames) f.dispose();
 		frames.resize(0);
 		if (vdec != null) vdec.close();
 		if (adec != null) adec.close();
 		if (media != null) media.close() else source.close();
-		if (ring != null) ring.free();
-		pcm.free();
+		if (ring != null) ring.dispose();
+		pcm.dispose();
 	}
 }

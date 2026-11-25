@@ -92,7 +92,7 @@ class MediaAndroidCheck {
 		m.close();
 		if (why != null && t.codec != H264) {
 			Sys.println('MediaAndroidCheck: skipped: $f (${t.codec}: $why)');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			if (d != null) d.close();
 			return null;
 		}
@@ -131,7 +131,7 @@ class MediaAndroidCheck {
 		var first = frames[0], name = @:privateAccess decoders[0].codec.name;
 		var ok = frames.length == crcs.length && bad.length == 0 && first.width == e.width && first.height == e.height && first.bits == e.bits;
 		var detail = '${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}';
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 		return {ok: ok, detail: detail, name: name, count: frames.length};
 	}
@@ -181,7 +181,7 @@ class MediaAndroidCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s',
 			d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -239,7 +239,7 @@ class MediaAndroidCheck {
 			k += 5;
 		}
 		var mean = sum / (pixels.length / 5 * 3), name = @:privateAccess decoders[0].codec.name;
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 		return {
 			ok: ok && w == e.width && h == e.height && mean < 1.5 && worst <= 8,

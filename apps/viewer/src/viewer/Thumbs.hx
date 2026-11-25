@@ -99,10 +99,10 @@ class Thumbs {
 		if (frames.length == 0) return null;
 		try {
 			var img = image(frames[0], rotation, side);
-			for (f in frames) f.release();
+			for (f in frames) f.dispose();
 			return img;
 		} catch (e:Dynamic) {
-			for (f in frames) f.release();
+			for (f in frames) f.dispose();
 			throw e;
 		}
 	}

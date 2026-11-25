@@ -154,7 +154,7 @@ class SharedFrames implements HostRuntime {
 					if (f == null) f = x;
 				} else {
 					// (another size: the screen zoomed, or not any more)
-					x.free(device);
+					x.dispose(device);
 					list.remove(x);
 				}
 			}
@@ -304,7 +304,7 @@ class Frame {
 		this.file = file;
 	}
 
-	public function free(device:Device) {
+	public function dispose(device:Device) {
 		if (texture != null) device.destroyTexture(texture);
 		if (file != null) file.remove();
 	}
