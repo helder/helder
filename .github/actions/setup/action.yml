@@ -1,27 +1,20 @@
-# The compiler caches are content-addressed. Key the archive by OS and
-# architecture, compiler version, lockfile and source tree so an old
-# archive can warm a changed tree. Only one job per OS refreshes it.
+# A job's start after its checkout: node and bun pinned, apt's retries and
+# Mesa's version, the module cache restored (.github/actions/key: one per
+# OS, every job's), bun install, Playwright's Chromium where asked. On main
+# each job hands what it compiled to .github/actions/save; the cache job
+# merges them into the OS's one entry.
 name: setup
-description: Set up Node, Bun and shared compiler caches
+description: node, bun, the module cache, bun install
 inputs:
-  cache-writer:
-    description: Whether this job refreshes the compiler cache on main
-    default: 'false'
   node-version:
-    description: Node version
+    description: node's version
     default: '22'
   playwright:
-    description: Playwright version, with Chromium and its system packages
+    description: Playwright's version, installed with its Chromium (cached) and Chromium's system packages
     default: ''
 outputs:
-  key:
-    description: Compiler cache key
-    value: ${{ steps.key.outputs.key }}
-  prefix:
-    description: OS and architecture prefix used for pruning
-    value: ${{ steps.key.outputs.prefix }}
   save:
-    description: Whether to refresh the compiler cache
+    description: whether the job's end hands its caches to the cache job (.github/actions/save)
     value: ${{ steps.save.outputs.save }}
 runs:
   using: composite
@@ -35,35 +28,19 @@ runs:
     - if: runner.os == 'Linux'
       shell: bash
       run: |
-        # Also applies to the apt commands launched by Playwright.
+        # (Playwright's apt-get too)
         echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-helder-retries
-        # EGL is absent from the runner image and depends on matching Mesa
-        # libraries. Use the coherent Mesa version from the verified main build.
+        # (the goldens are this Mesa's llvmpipe: every job's Mesa packages
+        # at one version, not the image's beside a newer one apt pulls in.
+        # Preferred, not required: once Ubuntu drops it, apt takes the
+        # newest rather than failing every job; bump it then)
         sudo tee /etc/apt/preferences.d/helder-mesa <<'PREFERENCES'
         Package: src:mesa:any
         Pin: version 25.2.8-0ubuntu0.24.04.5
         Pin-Priority: 1001
-
-        Package: src:mesa:any
-        Pin: version *
-        Pin-Priority: -1
         PREFERENCES
     - id: key
-      shell: bash
-      run: |
-        hxmc=$(node -p "require('./package.json').dependencies['@hxmc/cli']")
-        prefix="modules-${{ runner.os }}-${{ runner.arch }}-"
-        toolchain="${prefix}hxmc-$hxmc-"
-        revision=$(git rev-parse HEAD:bun.lock HEAD:src HEAD:tests HEAD:examples HEAD:apps HEAD:docs/examples HEAD:site | git hash-object --stdin)
-        case "$RUNNER_OS" in
-          Linux) legacy=examples ;;
-          macOS) legacy=desktop-macos ;;
-          Windows) legacy=desktop-windows ;;
-        esac
-        echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
-        echo "toolchain=$toolchain" >> "$GITHUB_OUTPUT"
-        echo "key=$toolchain$revision" >> "$GITHUB_OUTPUT"
-        echo "legacy=${{ runner.os }}-${{ runner.arch }}-$legacy-hxmc-$hxmc-" >> "$GITHUB_OUTPUT"
+      uses: ./.github/actions/key
     - id: restore
       uses: actions/cache/restore@v6
       with:
@@ -75,13 +52,13 @@ runs:
           ~/AppData/Local/hxmc/cache
           ~/AppData/Local/helder
         key: ${{ steps.key.outputs.key }}
-        restore-keys: |
-          ${{ steps.key.outputs.toolchain }}
-          ${{ steps.key.outputs.legacy }}
+        restore-keys: ${{ steps.key.outputs.prefix }}
     - id: save
       shell: bash
       run: |
-        echo "save=${{ inputs.cache-writer == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.restore.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
+        # (what is newer than this, the job's, goes to the cache job: .github/actions/save)
+        touch "$RUNNER_TEMP/modules-restored"
+        echo "save=${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.restore.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
     - shell: bash
       run: bun install --frozen-lockfile
     - id: pw-restore
