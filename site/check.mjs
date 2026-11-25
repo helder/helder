@@ -5,7 +5,7 @@
 // examples' pages, and behind the docs' menu there; then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
-// drawn in more than one colour; a sound only started), no console errors. Then
+// different from before once it rendered frames; a sound only started), no console errors. Then
 // the docs (bin/site/docs): every page, its sidebar, pictures, language
 // tabs and live example (started once in view), the old addresses sent
 // on, the search. With a
@@ -101,10 +101,11 @@ try {
 	}
 	for (const id of play) {
 		await page.goto(url + 'examples/');
-		const island = page.locator(`#play-${id}`);
+		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
 		await island.scrollIntoViewIfNeeded();
 		// (a sound has no canvas: started, nothing drawn)
-		const drawn = (await island.locator('canvas').count()) > 0;
+		const drawn = (await canvas.count()) > 0;
+		const before = drawn ? await canvas.screenshot() : null;
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => {
 			const el = document.getElementById('play-' + id);
@@ -115,8 +116,9 @@ try {
 		if (!drawn || error !== null) continue;
 		check(!!gfx, `${id} draws with ${gfx}`);
 		await island.scrollIntoViewIfNeeded();
-		const colours = await renderedFrames(island);
-		check(colours > 1, `${id}'s canvas drawn (${colours} colours)`);
+		// (a frame's colours are no test here: a game may open on a dark screen)
+		await renderedFrames(island);
+		check(!before.equals(await canvas.screenshot()), `${id}'s canvas drawn`);
 		if (shots) {
 			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
 			await page.setViewportSize({ width: 390, height: 844 });
