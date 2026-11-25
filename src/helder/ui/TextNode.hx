@@ -125,22 +125,46 @@ class TextNode extends Node {
 	@:noCompletion override public function contentOwnsChildren():Bool
 		return true;
 
-	// whether its text can be selected: a drag, a double click (a word), a
-	// triple click (all of it); Ui.textSelection holds it, Mod+C copies it
-	public var selectable(default, set) = false;
-
-	function set_selectable(v:Bool):Bool {
-		selectable = v;
+	override function set_selectable(v:Bool):Bool {
 		if (v && style.cursor == Auto) style.cursor = Text;
-		return v;
+		return super.set_selectable(v);
 	}
 
 	// the character index nearest to a point in the window (its lines' alignment taken off)
-	public function textIndexAt(px:Float, py:Float):Int {
-		if (paragraph == null) return 0;
+	public function textIndexAt(px:Float, py:Float):Int
+		return selectableIndex(px, py);
+
+	// (its text, a span's none: its paragraph's)
+	@:noCompletion override public function selectableText():Null<String>
+		return Std.isOfType(parent, TextNode) ? null : allText();
+
+	// (under: the character whose run covers the point, before the nearest
+	// index or after it: a word's double click, a span's hit, either direction)
+	@:noCompletion override public function selectableIndex(px:Float, py:Float, under = false):Int {
+		var p = paragraph;
+		if (p == null) return 0;
 		var s = style, x = localX(px, py) - s.borderEdges.left - s.padding.left, y = localY(px, py) - s.borderEdges.top - s.padding.top;
-		y -= topOffset(paragraph, contentBoxHeight());
-		return paragraph.hit(x - alignOffset(paragraph, y, contentBoxWidth()), y);
+		y -= topOffset(p, contentBoxHeight());
+		x -= alignOffset(p, y, contentBoxWidth());
+		var i = p.hit(x, y);
+		if (!under) return i;
+		var n = shownText().length, cy = Math.max(0, Math.min(p.height - 0.01, y));
+		for (k in [i, i - 1]) {
+			if (k < 0 || k >= n) continue;
+			var c = p.caret(k);
+			if (cy < c.y || cy >= c.y + c.height) continue;
+			for (r in p.selection(k, k + 1))
+				if (x >= r.x && x < r.x + r.width) return k;
+		}
+		return i >= n ? n - 1 : i;
+	}
+
+	@:noCompletion override public function selectableCaret(i:Int):Null<{x:Float, y:Float, height:Float}> {
+		var p = paragraph;
+		if (p == null) return null;
+		var b = windowBounds(), s = style, c = p.caret(i);
+		var x = b.x + s.borderEdges.left + s.padding.left, y = b.y + s.borderEdges.top + s.padding.top + topOffset(p, contentBoxHeight());
+		return {x: x + alignOffset(p, c.y, contentBoxWidth()) + c.x, y: y + c.y, height: c.height};
 	}
 
 	inline function contentBoxWidth():Float
@@ -173,13 +197,7 @@ class TextNode extends Node {
 	override public function hitTest(px:Float, py:Float):Null<Node> {
 		var own = super.hitTest(px, py);
 		if (own != this || children.length == 0 || paragraph == null) return own;
-		var s = style, x = localX(px, py) - s.borderEdges.left - s.padding.left, y = localY(px, py) - s.borderEdges.top - s.padding.top;
-		y -= topOffset(paragraph, contentBoxHeight());
-		var i = paragraph.hit(x - alignOffset(paragraph, y, contentBoxWidth()), y);
-		var c = paragraph.caret(i);
-		// (the hit's character: before the caret it gave when that is right of the point)
-		var at = c.x > x && i > 0 ? i - 1 : i;
-		var span = spanAt(at);
+		var span = spanAt(selectableIndex(px, py, true));
 		return span != null ? span : this;
 	}
 
@@ -290,9 +308,9 @@ class TextNode extends Node {
 						canvas.rect(x + lx + r.x, y + r.y, r.width, r.height, 0, d.color, 0, 0);
 					}
 		// (the selection under it all: each line's run, as high as its line)
-		var sel = ui.textSelection;
-		if (sel != null && sel.node == this && sel.anchor != sel.caret) {
-			var rs = p.selection(Std.int(Math.min(sel.anchor, sel.caret)), Std.int(Math.max(sel.anchor, sel.caret)));
+		var sel = ui.textSelection, range = sel == null ? null : sel.rangeIn(this, length);
+		if (range != null) {
+			var rs = p.selection(range.start, range.end);
 			for (k in 0...rs.length) {
 				var r = rs[k], bottom = p.height;
 				for (q in rs)

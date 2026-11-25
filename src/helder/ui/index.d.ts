@@ -545,6 +545,12 @@ export declare class Node {
 	// takes the focus when it comes into a window (a dialog's first button, a
 	// menu's first item: as the DOM's autofocus, wherever it is inserted)
 	autofocus: boolean;
+	// whether its text can be selected (Ui.textSelection: a drag, a double
+	// click a word, a triple a line, Shift extending; Mod+C copies it, Mod+A
+	// selects all of it): a TextNode's with its spans; any other node's
+	// texts all in one selection, as a document's (TextSelection: its scope,
+	// the outermost such node)
+	selectable: boolean;
 	// what it is to assistive technology (helder.ui.access.AccessTree)
 	semantics: unknown | null;
 	// the pointer is over it (or a descendant), the button is down on it, it has the focus
@@ -638,6 +644,9 @@ export declare class Node {
 	releaseCapture(): void;
 	// (a text field's: EditableText's)
 	select(start: number, end: number): void;
+	// the scope its text is selected in: its outermost selectable ancestor
+	// (itself too; user-select none: not one), else null
+	selectionScope(): Node | null;
 	// (kept wherever nodes are laid out: a Part's, which a component calls opaquely in a page too)
 	editable(): boolean;
 	contains(p: unknown): boolean;
@@ -711,9 +720,6 @@ export declare class TextNode extends Node {
 	allText(): string;
 	// the span whose text is at index i (null: none, or no spans)
 	spanAt(i: number): TextNode | null;
-	// whether its text can be selected: a drag, a double click (a word), a
-	// triple click (all of it); Ui.textSelection holds it, Mod+C copies it
-	selectable: boolean;
 	// the character index nearest to a point in the window (its lines' alignment taken off)
 	textIndexAt(px: number, py: number): number;
 	// a point over a span's text: that span (its handlers, its cursor)
@@ -1365,7 +1371,7 @@ export declare class Toggle extends Press {
 }
 
 export declare class CodeActions {
-	// the actions declared and their default bindings added to the global keymap (once)
+	// the actions declared (once) and their default bindings added to the global keymap (once each)
 	static declare(): void;
 }
 
