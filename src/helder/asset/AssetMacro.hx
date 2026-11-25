@@ -49,9 +49,44 @@ class AssetMacro {
 	public static function embed(path:String):Expr {
 		var f = find(path, "embed");
 		Context.registerModuleDependency(Context.getLocalModule(), f);
-		var b = File.getBytes(f);
-		return macro haxe.crypto.Base64.decode($v{haxe.crypto.Base64.encode(b)});
+		// (a file embedded twice read once; by its time and size too, where a
+		// compilation server keeps the macros' statics)
+		var st = FileSystem.stat(f), k = f + "\x00" + st.mtime.getTime() + "\x00" + st.size;
+		var s = embedded.get(k);
+		if (s == null) embedded.set(k, s = base64(File.getBytes(f)));
+		return macro haxe.crypto.Base64.decode($v{s});
 	}
+
+	static final embedded = new Map<String, String>();
+
+	// haxe.crypto.Base64.encode's string (padded), three bytes at a time,
+	// each half's two characters from a table: BaseCode's bit by bit takes
+	// ~0.6 ms a KB in the macros' interpreter
+	static function base64(b:haxe.io.Bytes):String {
+		var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		if (pairs == null) {
+			pairs = new haxe.ds.Vector(4096);
+			for (k in 0...4096)
+				pairs[k] = chars.charCodeAt(k >> 6) | chars.charCodeAt(k & 63) << 8;
+		}
+		var p = pairs, n = b.length, out = haxe.io.Bytes.alloc(Std.int((n + 2) / 3) * 4), i = 0, o = 0;
+		while (i + 2 < n) {
+			var v = (b.get(i) << 16) | (b.get(i + 1) << 8) | b.get(i + 2);
+			out.setInt32(o, p[v >> 12] | p[v & 4095] << 16);
+			i += 3;
+			o += 4;
+		}
+		if (i < n) {
+			var v = b.get(i) << 16 | (i + 1 < n ? b.get(i + 1) << 8 : 0);
+			out.set(o, chars.charCodeAt(v >> 18));
+			out.set(o + 1, chars.charCodeAt((v >> 12) & 63));
+			out.set(o + 2, i + 1 < n ? chars.charCodeAt((v >> 6) & 63) : "=".code);
+			out.set(o + 3, "=".code);
+		}
+		return out.toString();
+	}
+
+	static var pairs:Null<haxe.ds.Vector<Int>> = null;
 
 	// path as the program has it: its marker (Bundle's: a literal the output
 	// has while the code naming it is there; sync: read before main), the
