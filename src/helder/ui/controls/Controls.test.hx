@@ -322,6 +322,26 @@ function tests() {
 			equals(lamp.children[0].slot, "switch-icon");
 			m.dispose();
 		});
+		test("a composite field: one ring round its box while its field has the focus, none on the field", () -> {
+			var m = mount(Fixture.searchBox());
+			var box = m.ui.root.find("box"), field = m.ui.root.find("q"), other = m.ui.root.find("other");
+			settle(m.ui);
+			equals(box.style.ringWidth, 0.0);
+			m.ui.setFocus(field);
+			m.ui.focusVisible = true;
+			settle(m.ui);
+			equals(box.style.ringWidth, 3.0);
+			equals(box.style.ringColor, light("focusSoft"));
+			equals(box.style.ringOffsetWidth, 0.0);
+			equals(field.style.outlineStyle, helder.ui.OutlineStyle.None);
+			m.ui.dark = true;
+			settle(m.ui);
+			equals(box.style.ringColor, dark("focusSoft"));
+			m.ui.setFocus(other);
+			settle(m.ui);
+			equals(box.style.ringWidth, 0.0);
+			m.dispose();
+		});
 		test("a grid's marquee: drawn in the accent while it is dragged", () -> {
 			var m = mount(Fixture.grid(), 320, 200);
 			var grid = m.ui.root.find("files");
@@ -468,6 +488,17 @@ private class Fixture implements helder.view.Markup {
 
 	public static function lamped(look:LookOf<Dynamic>, on:Signal<Bool>):View
 		return <Standard.Themed look={look}><Standard.Switch label="Porch" checked={on} onChange={v -> on(v)}/></Standard.Themed>;
+
+	public static function searchBox():View
+		return <Standard.Themed look={Look.base}>
+			<view padding={10} row-gap={8}>
+				<view tag="box" slot="field-box" width={196} height={30}>
+					<image src={helder.ui.widgets.Icons.svg("search")} width={14} height={14}/>
+					<field tag="q" slot="field-box-input" placeholder="Search"/>
+				</view>
+				<view tag="other" focusable width={20} height={20}/>
+			</view>
+		</Standard.Themed>;
 
 	public static function grid():View
 		return <Standard.Themed look={Look.base}>

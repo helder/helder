@@ -90,10 +90,10 @@ class ContentView implements Markup {
 
 	static function search(x:Explorer):View {
 		var b = x.browser;
-		return <view tag="search-box" direction="row" align-items="center" column-gap={7} width={196} height={30} shrink={0} padding="0 8" radius={8}
-			background={Look.ref.fill} key-context="search">
+		// (Look's composite field: one ring round the box while the field has the focus)
+		return <view tag="search-box" slot="field-box" width={196} height={30} shrink={0} radius={8} key-context="search">
 			<image src={Glyphs.get("search")} width={14} height={14} color={Look.ref.fg3}/>
-			<field tag="search-field" grow={1} min-width={0} value={() -> b.query()} placeholder="Search" label="Search this folder" font-size={13}
+			<field tag="search-field" slot="field-box-input" value={() -> b.query()} placeholder="Search" label="Search this folder" font-size={13}
 				onInput={e -> b.search(e.text)}
 				onKeyDown={e -> if (e.key == helder.ui.Key.ESCAPE) {
 					b.closeSearch();

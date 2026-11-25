@@ -1061,7 +1061,11 @@ look its controls take; its node grows to fill its place and takes no
 minimum from its content, so a scroller inside it scrolls rather than
 pushing it past a window's bottom); a control under none takes
 `Look.base` for itself. Base's parts include the grid's marquee
-(`grid-marquee`: the accent's soft tint, a one-point accent border).
+(`grid-marquee`: the accent's soft tint, a one-point accent border) and a
+composite field (an icon and a text field in a box, a search field):
+`field-box` on the box, ringed as one at its radius in `focusSoft` while
+its field has the focus (`focusWithin`, as macOS rings a field), and
+`field-box-input` on the text field, which then draws no ring of its own.
 
 **Tokens.** Colours are tones (`Look.tone(light, dark)`, as CSS writes a
 colour: `oklch()`, `#hex`), the rest plain values; a recipe reads them
@@ -1073,7 +1077,7 @@ as `Refs` (colours as token references, light or dark by the window,
 | --- | --- |
 | Surfaces | `canvas` (the window), `surface` (what rests on it), `raised` (what floats), `well` (fields), `hover`, `press` (washes), `fill`, `fillHover`, `fillPress` (a filled control's gray), `rail`, `railHover` (a switch's track off), `line`, `edge`, `edgeStrong` |
 | Text | `fg`, `fg2`, `fg3` |
-| Accent | `accent`, `accentStrong` (its hover), `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring: one blue for every accent) |
+| Accent | `accent`, `accentStrong` (its hover), `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring: one blue for every accent), `focusSoft` (a field's ring: it half seen) |
 | Status | `danger`, `dangerStrong`, `dangerSoft`, `dangerFg`, `success`, `warning`, `info` |
 | Other colours | `knob`, `scrim`, `shadow` |
 | Type | `font` (Inter), `display` (Inter Display), `mono` (Geist Mono), `size` 14, `small` 12, `large` 16, `title` 20, `medium` 500 |
@@ -1105,6 +1109,7 @@ part's style; a style's keys may be states, nested (`checked: {hover:
 | `pressed` | pressed | | `selected`, `open` | `data-selected`, `data-state=open` |
 | `focus` | the keyboard's focus | | `invalid`, `readonly` | `data-invalid`, `data-readonly` |
 | `disabled` | `data-disabled` | | `dark` | the dark appearance |
+| `focusWithin` | the focus in it (`has:focus`), by the pointer too | | | |
 
 `variants: {variant: {...}, size: {...}}` gives each value's parts,
 `defaults: {variant, size}` what a control takes when its props give
