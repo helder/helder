@@ -86,6 +86,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # (labeled: adding full-ci reruns a pull request with every job)
+    types: [opened, synchronize, reopened, labeled]
   schedule:
     # (nightly: the full iOS suite and the fuzzers on main)
     - cron: '17 3 * * *'
@@ -115,6 +117,10 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.code.outputs.code }}
+      # (a pull request runs the macOS, iOS, Android and Windows jobs only
+      # when labelled full-ci: 3 macOS jobs per run jammed the 5 runners;
+      # main and the nightly always run them)
+      full: ${{ steps.code.outputs.code == 'true' && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')) }}
     steps:
       - uses: actions/checkout@v7
       - id: filter
@@ -467,7 +473,7 @@ jobs:
   # headless job's pack lane.)
   android:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 45
@@ -557,7 +563,7 @@ jobs:
   # 4 and 17 s without it; the apps while it boots. One job: 910 s)
   ios-simulator:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 40
@@ -629,7 +635,7 @@ jobs:
   # moveTo and position, fullscreen) on the runner's own session.
   desktop-macos:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 30
@@ -662,7 +668,7 @@ jobs:
 
   desktop-windows:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: windows-2025
     continue-on-error: true
     timeout-minutes: 30
