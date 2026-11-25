@@ -450,6 +450,7 @@ class UiWindow {
 		#if !helder.soft if (renderer != null) renderer.scale = scale; #end
 		ui.resize(w / scale, h / scale);
 		ui.scale = scale;
+		ui.active = window.active;
 		ui.live = window.surface.resizing;
 		if (!ui.live && ui.stretched.length > 0) {
 			for (n in ui.stretched)

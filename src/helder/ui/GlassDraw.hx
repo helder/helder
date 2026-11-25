@@ -11,7 +11,7 @@ class GlassDraw {
 		if (g.pass == null) g.pass = new helder.ui.draw.GlassPass();
 		var p:helder.ui.draw.GlassPass = g.pass;
 		if (p.draw(canvas, [g.absX, g.absY, g.width, g.height, g.radius()], g.clear, g.tint, u != null && u.dark, 0, press, u == null ? 0 : u.pointerX,
-			u == null ? 0 : u.pointerY)) return;
+			u == null ? 0 : u.pointerY, g.active ?? (u == null || u.active))) return;
 		#end
 		plain(canvas, g);
 	}
@@ -29,7 +29,7 @@ class GlassDraw {
 		if (group.pass == null) group.pass = new helder.ui.draw.GlassPass();
 		var p:helder.ui.draw.GlassPass = group.pass;
 		if (p.draw(canvas, shapes, first.clear, first.tint, u != null && u.dark, group.spacing, press, u == null ? 0 : u.pointerX,
-			u == null ? 0 : u.pointerY)) return;
+			u == null ? 0 : u.pointerY, first.active ?? (u == null || u.active))) return;
 		#end
 		for (g in glass)
 			plain(canvas, g);

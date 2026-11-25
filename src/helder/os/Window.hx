@@ -318,6 +318,11 @@ class Window {
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().minimize() : x11().minimize()); #else {} #end
 	}
 
+	// whether it is the key window, taking the keyboard (macOS's: false until
+	// it first is; elsewhere always): what draws as the system's does dims
+	// when not (Liquid Glass)
+	public var active(default, null) = true;
+
 	// maximised (macOS: zoomed), or back
 	public var maximized(get, set):Bool;
 

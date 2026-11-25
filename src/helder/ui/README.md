@@ -1381,39 +1381,48 @@ it is drawn (`helder.ui.draw.GlassPass`, `GlassShader`), on every back end
 handed to the canvas where it paints, `TextureCanvas.pass`) is what was
 drawn under it so far: the Renderer draws the quads that meet it again
 into a target of their own before the frame's pass, the CPU's canvas
-copies its pixels. That is blurred at a half or a quarter of its size
-(a Gaussian along x, then y), then the glass is shaded over its box and
-its shadow's: a distance field of its shape (a group's shapes blended by
-a smooth minimum within `spacing`), what is behind it read from further in
-near its rim (a lens), frosted, saturated, tinted by the light behind it,
-a rim light from the top left and the bottom right, a soft shadow, a
-press's glow. A frame with drawn glass is drawn whole (what the glass reads
-reaches past what changed) and by the program, onto the window's own layer:
-the compositor's own frames and the system's layers would move what is
-under it without it.
+copies its pixels. That is brought down to a half or a quarter of its size
+by a box filter (each texel its block's mean: nothing aliases), blurred
+there (a Gaussian along x, then y), then the glass is shaded over its box
+and its shadow's: a rounded box's exact distance (Inigo Quilez's
+sdRoundBox; a group's shapes blended by a smooth minimum within
+`spacing`), what is behind it read a little further in near its rim (a
+lens within a bevel at most half the shape's thickness, moved at most 0.45
+of the bevel so that it never folds, along the normal of a rounder box so
+that it never jumps across a corner's diagonal), frosted, saturated, washed
+toward its tint, a rim light, a soft shadow, a press's glow, a dither of a
+level against banding. In a window that is not the key one (`Ui.active`:
+macOS's key window, `Window.active`; `Glass.active` overrides it) it is
+the system's flatter look: more frosted, untinted, no rim light nor
+shadow, clear glass a dimmed blur. A frame with drawn glass is drawn whole
+(what the glass reads reaches past what changed) and by the program, onto
+the window's own layer: the compositor's own frames and the system's
+layers would move what is under it without it.
 
-Its look is tuned against the system's (`tests/ui/GlassTest.hx --tune`):
-regular glass's blur, frost, saturation and brightness against macOS 26's
-NSGlassEffectView, drawn offscreen by Core Animation
-(`tests/ui/glass-reference.swift`: CARenderer, which needs no screen
-capture); its lens, rim, clear glass and tint against iOS 27's
-UIGlassEffect in the simulator (`tests/ui/GlassIos.hx`), as CARenderer
-draws no lens, rim or tint (its portal layers). Over GlassScene's
-backgrounds, mean levels over each glass and its shadow:
+Its look is tuned against the system's on screen (`tests/ui/GlassKinds.hx`:
+every kind of the glass demo, regular, clear, four tints, four shapes, a
+group, over fixed bands): out of a key window against macOS 26's
+NSGlassEffectView over the same bands, shown behind every window and
+captured by the window server (`tests/ui/glass-kinds.swift`, which needs
+Screen Recording's permission; a key window would take the focus), in a
+key window against iOS 27's UIGlassEffect in the simulator
+(`tests/ui/GlassKindsIos.hx`). Mean levels over each kind and its rim, at
+2x:
 
-| | regular | clear | tinted |
-|---|---:|---:|---:|
-| macOS 26, CARenderer, 1x | 7.4 | 23.3 | 23.5 |
-| iOS 27 simulator, 3x | 10.7 | 12.0 | 7.3 |
+| | regular | clear | tints | shapes | group | all |
+|---|---:|---:|---:|---:|---:|---:|
+| not key, macOS 26 | 4.9 | 5.0 | 4.3 to 13.4 | 2.8 to 4.9 | 2.7 | 5.6 |
+| key, iOS 27 | 8.3 | 20.0 | 6.4 to 8.6 | 4.5 to 8.8 | 4.7 | 8.3 |
 
-Where it differs: the system's specular highlights at a capsule's ends
-(a reflection the lens makes bright), its continuous corners (a rounded
-rectangle's here), Apple's dimming of clear glass by what is behind it;
-a group draws all its glass in its first glass's variant and tint. The
-golden (`tests/ui/glass.png`: stripes over text, a group among the
-glass; its text in helder's embedded Inter, so the same on every
+Where it differs: the system's ghosts of strong stripes behind regular
+glass (its blur keeps more of them), iOS's clear glass, which magnifies
+behind its rim more than macOS's slight bend, and the dark and green tints
+out of a key window, which the system keeps a little of; a group draws all
+its glass in its first glass's variant and tint. The golden
+(`tests/ui/glass.png`: stripes over text, a group among the glass, a key
+window's look; its text in helder's embedded Inter, so the same on every
 machine) is the CPU's, made on Linux by ui-soft; Metal, llvmpipe, WebGPU
-and WebGL2 land within 8 levels of it, one pixel over 6
+and WebGL2 land within 12 levels of it, under 0.1% of its pixels over 6
 (`tests/ui/web-glass.mjs` checks the browsers', `GlassTest --smoke` D3D11).
 
 ### Native or drawn, per widget

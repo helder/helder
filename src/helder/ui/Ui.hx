@@ -69,6 +69,9 @@ class Ui extends ScrollHost {
 	// colours and the rules for "dark" apply
 	public var theme(default, set):Null<StyleSheet> = null;
 	public var dark(default, set) = false;
+	// whether its window is the key one (UiWindow's: macOS's key window, else
+	// always): Liquid Glass drawn flat, untinted, when not, as the system's
+	public var active = true;
 
 	function set_focusVisible(v:Bool):Bool {
 		if (v == focusVisible) return v;

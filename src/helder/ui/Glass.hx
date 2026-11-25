@@ -20,6 +20,8 @@ class Glass extends Node {
 
 	public var tint(default, set):Null<Color> = null;
 	public var interactive(default, set) = false;
+	// whether it is drawn as in a key window (null: as its window is, Ui.active)
+	public var active:Null<Bool> = null;
 
 	var native:Null<GlassNative> = null;
 	// (its drawing's, helder.ui.draw.GlassPass: a GPU's, natively)
