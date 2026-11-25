@@ -12,7 +12,8 @@ import helder.view.graph.Graph;
 
 // The viewer on a phone (390 by 844) and a tablet (820 by 1180), headless
 // and touched: Browse's places, a folder pushed and popped (the browser
-// following), a subfolder, a file full size and back, a swipe to the
+// following), a folder pushed at its top and the one under it where it
+// was when popped back to, a subfolder, a file full size and back, a swipe to the
 // next; select mode's taps and toolbar; a long press's menu and its Get
 // Info sheet; the tablet's drawer and its inspector's popover
 function tests() {
@@ -96,6 +97,46 @@ function tests() {
 			press(ui, find(ui, "nav-back"));
 			equals(x.browser.dir.value, "tests/fixtures");
 			equals(x.recent.value, ["tests/fixtures/folder/alpha.png"]);
+		});
+		test("a folder pushed shows its top; popped back to, the one under it where it was", () -> {
+			t = 0;
+			Ui.now = () -> t;
+			Kinds.utc = true;
+			Tiles.forget();
+			var files = new MemoryFiles();
+			files.add("/home/");
+			files.add("/home/big/");
+			files.add("/home/big/sub/");
+			for (i in 0...300) {
+				files.add('/home/big/file $i.txt', haxe.io.Bytes.ofString("x"));
+				files.add('/home/big/sub/inner $i.txt', haxe.io.Bytes.ofString("x"));
+			}
+			var x = new Explorer(files, (_, _, _) -> {}, [{kind: Pictures, name: "Big", path: "/home/big"}], [], (_, _) -> () -> {});
+			var p:Null<Phone.PhoneState> = null;
+			var ui = new Ui(new StoryText(), 390, 844);
+			Render.render(Fixtures.phone(x, s -> p = s), ui.root);
+			settle(ui);
+			press(ui, find(ui, "place-Big"));
+			equals(x.browser.dir.value, "/home/big");
+			var grid = top(ui).find("grid");
+			equals(grid.scrollY, 0.0);
+			grid.scrollY = 3000;
+			settle(ui);
+			var was = grid.scrollY;
+			assert(was > 2000, 'scrolled: $was');
+			p.open("sub");
+			settle(ui);
+			equals(x.browser.dir.value, "/home/big/sub");
+			equals(top(ui).find("grid").scrollY, 0.0);
+			// (popped: the folder read again, as a disk would, a frame later)
+			files.hold = true;
+			press(ui, find(ui, "nav-back"));
+			equals(x.browser.dir.value, "/home/big");
+			equals(grid.scrollY, was);
+			files.release();
+			settle(ui);
+			equals(top(ui).find("grid") == grid, true);
+			equals(grid.scrollY, was);
 		});
 		test("select mode: taps toggle, the toolbar acts on them", () -> {
 			var m = mount(390, 844), ui = m.ui, x = m.x;

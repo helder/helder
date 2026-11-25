@@ -79,6 +79,220 @@ function tests() {
 			}
 			equals(paints, 0);
 		});
+		// (the user's recording: a folder of two rows in Icons view, the pointer over the sidebar's rows, the grid's
+		// offset swinging between its top and one row down from frame to frame)
+		for (from in ["fresh", "from a scrolled folder"])
+			test('the grid\'s offset stable while the pointer moves over the sidebar (${from})', () -> {
+				var t = 0.0;
+				Ui.now = () -> t;
+				var files = new MemoryFiles();
+				files.add("/ben/");
+				for (i in 0...17)
+					files.add('/ben/f$i/');
+				for (n in ["build", "docs", "gen", "refs", "site", "sources", "tools"])
+					files.add('/ben/f0/$n/');
+				for (n in ["README.md", "serve.sh"])
+					files.add('/ben/f0/$n', haxe.io.Bytes.ofString("x"));
+				for (i in 0...200)
+					files.add('/ben/f1/img$i.png', haxe.io.Bytes.alloc(10));
+				var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+				var ui = new Ui(new StoryText(), 1212, 592), canvas = new Nothing();
+				Render.render(Shell.view(x), ui.root);
+				Shell.attach(ui.root, x);
+				function tick() {
+					t += 1 / 60;
+					Clock.tick(t);
+					Graph.flush();
+					ui.update();
+					if (ui.needsFrame) ui.paint(canvas);
+				}
+				if (from == "fresh") x.start("/ben/f0") else {
+					x.start("/ben/f1");
+					for (_ in 0...10)
+						tick();
+					ui.root.find("grid").scrollY = 2000;
+					for (_ in 0...10)
+						tick();
+					x.browser.go("/ben/f0");
+				}
+				for (_ in 0...30)
+					tick();
+				var grid = ui.root.find("grid"), side = ui.root.find("sidebar");
+				equals(grid.scrollY, 0.0);
+				// (its columns changed and back: the inspector hidden and shown)
+				for (on in [false, true]) {
+					x.browser.inspector(on);
+					for (_ in 0...10)
+						tick();
+					equals(grid.scrollY, 0.0);
+				}
+				var first = cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y;
+				var rows = [for (c in cells(side)) if (c.slot == "side-row") c];
+				assert(rows.length >= 17, "the sidebar's rows");
+				for (r in rows) {
+					var b = r.windowBounds();
+					for (dy in [4.0, 14.0, 24.0]) {
+						ui.pointerMove(b.x + 40, b.y + dy);
+						tick();
+						equals(grid.scrollY, 0.0);
+						equals(cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y, first);
+					}
+				}
+			});
+		// (the user's recording: the grid blank on still frames after a file
+		// was opened and closed, drawn again on frames the pointer moved over
+		// a tile)
+		test("after a file opened and closed: the grid whole, every idle frame the same", () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...9)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592), log = new Log();
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			var asked = 0;
+			function tick() {
+				t += 1 / 60;
+				Clock.tick(t);
+				Graph.flush();
+				ui.update();
+				if (ui.needsFrame) {
+					asked++;
+					ui.paint(new Nothing());
+				}
+			}
+			for (_ in 0...30)
+				tick();
+			x.view("img4.png");
+			for (_ in 0...90)
+				tick();
+			x.close();
+			for (_ in 0...120)
+				tick();
+			var grid = ui.root.find("grid"), browser = ui.root.find("browser");
+			equals(x.full.value, false);
+			assert(browser.visible() && browser.style.opacity == 1, 'the browser shown: ${browser.visible()} ${browser.style.opacity}');
+			equals([for (c in cells(grid)) if (c.slot == "grid-tile" && c.visible()) c].length, 9);
+			// (still: nothing asked for, and what a frame would draw the same each time, every tile's picture whole)
+			asked = 0;
+			var frames = [for (_ in 0...5) {
+				tick();
+				log.lines.resize(0);
+				ui.paint(log);
+				log.lines.join("\n");
+			}];
+			equals(asked, 0);
+			for (f in frames)
+				equals(f, frames[0]);
+			// (the nine tiles' and the inspector's, of the file selected as it closed)
+			equals([for (l in frames[0].split("\n")) if (StringTools.startsWith(l, "image 4x3")) l].length, 10);
+			assert(frames[0].indexOf("alpha 0 ") < 0, "nothing at opacity 0");
+		});
+		test("pointer moves that change nothing ask for no frame", () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...60)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			function tick():Bool {
+				t += 1 / 60;
+				Clock.tick(t);
+				Graph.flush();
+				ui.update();
+				var asked = ui.needsFrame;
+				if (asked) ui.paint(new Nothing());
+				return asked;
+			}
+			for (_ in 0...60)
+				tick();
+			var tile = [for (c in cells(ui.root.find("grid"))) if (c.slot == "grid-tile") c][0].windowBounds();
+			var side = ui.root.find("sidebar").windowBounds();
+			for (spot in [{x: tile.x + 30, y: tile.y + 30}, {x: side.x + 100, y: side.y + side.height - 10}]) {
+				ui.pointerMove(spot.x, spot.y);
+				for (_ in 0...120)
+					tick();
+				var asked = [for (k in 0...30) {
+					ui.pointerMove(spot.x + (k % 3), spot.y + (k % 2));
+					tick();
+				}].filter(a -> a).length;
+				equals(asked, 0);
+			}
+		});
+		// (the user's log: a file opened, closed by the back pill, then the wheel over the grid moved nothing)
+		for (kind in ["png", "pdf"])
+		test('a ${kind} opened, scrolled and closed by its back pill: the wheel scrolls the grid', () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...80)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var pdf = sys.io.File.getBytes("tests/fixtures/pdf/pages.pdf");
+			files.add("/pictures/img10.pdf", pdf);
+			function bytes(path:String):haxe.io.Bytes
+				return StringTools.endsWith(path, ".pdf") ? pdf : haxe.io.Bytes.alloc(10);
+			var x = new Explorer(files, (path, side, done) -> done(Decode.of({path: path, bytes: bytes(Decode.parseKey(path).path), side: side})), [], [],
+				Preview.now, (path, done) -> done(PdfPages.sizesIn({path: path, bytes: bytes(path)})));
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			function tick(n = 1)
+				for (_ in 0...n) {
+					t += 1 / 60;
+					Clock.tick(t);
+					Graph.flush();
+					ui.update();
+					if (ui.needsFrame) ui.paint(new Nothing());
+				}
+			tick(30);
+			var grid = ui.root.find("grid"), b = grid.windowBounds();
+			// (scrolled a little, a tile double-clicked: full size)
+			ui.wheel(b.x + 100, b.y + 100, 0, 300);
+			tick(30);
+			var was = grid.scrollY;
+			assert(was > 0, 'the wheel scrolls it first: $was');
+			var name = 'img10.$kind';
+			x.browser.select(name);
+			x.view(name);
+			tick(90);
+			// (scrolled in the full view: a PDF's column)
+			ui.wheel(600, 300, 0, 400);
+			tick(10);
+			equals(x.full.value, true);
+			var pill = ui.root.find("back-pill").windowBounds();
+			ui.pointerDown(pill.x + 10, pill.y + 10, 1);
+			ui.pointerUp(pill.x + 10, pill.y + 10, 1);
+			tick(120);
+			equals(x.full.value, false);
+			var under = @:privateAccess ui.hit(b.x + 100, b.y + 100);
+			var path = [];
+			var n = under;
+			while (n != null) {
+				path.push(n.tag);
+				n = n.parent;
+			}
+			trace('under the pointer: ' + path.join(" < "));
+			ui.wheel(b.x + 100, b.y + 100, 0, 300);
+			tick(30);
+			assert(grid.scrollY > was, 'scrolled after closing: ${grid.scrollY}, was $was');
+		});
 		test("the sidebar scrolls: the wheel over it, its last row shown", () -> {
 			Ui.now = () -> 0.0;
 			var x = Fixtures.explorer();
@@ -176,4 +390,24 @@ private class Nothing implements helder.ui.Canvas {
 
 	public function textShadow(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color, blur:Float,
 		?colors:Array<helder.ui.Color>) {}
+}
+
+// (what is drawn, as lines: each picture and text with the opacity it is drawn at)
+private class Log extends Nothing {
+	public final lines:Array<String> = [];
+	final alphas:Array<Float> = [1];
+
+	override public function pushOpacity(alpha:Float)
+		alphas.push(alphas[alphas.length - 1] * alpha);
+
+	override public function popOpacity()
+		alphas.pop();
+
+	override public function image(img:helder.image.Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float,
+			?corners:helder.ui.Corners)
+		lines.push('image ${img.width}x${img.height} alpha ${alphas[alphas.length - 1]} at $x,$y ${w}x$h');
+
+	override public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color,
+			?colors:Array<helder.ui.Color>)
+		lines.push('text alpha ${alphas[alphas.length - 1]} at $x,$y');
 }

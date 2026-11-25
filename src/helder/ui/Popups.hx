@@ -66,9 +66,9 @@ class Popups {
 	}
 
 	// a press outside the popups on top (and their anchors) dismisses them;
-	// on a modal one's backdrop, it
-	static function dismissOutside(ui:Ui, target:Null<Node>) {
-		var i = ui.overlay.children.length;
+	// on a modal one's backdrop, it. True: a menu was, the press taken
+	static function dismissOutside(ui:Ui, target:Null<Node>):Bool {
+		var i = ui.overlay.children.length, taken = false;
 		while (--i >= 0) {
 			if (i >= ui.overlay.children.length) continue;
 			var p = at(ui, i);
@@ -79,7 +79,21 @@ class Popups {
 				break;
 			}
 			if (target != null && p.anchor != null && Ui.contains(p.anchor, target)) break;
-			if (p.onDismiss != null && p.dismissOnOutside) p.onDismiss();
+			if (p.onDismiss != null && p.dismissOnOutside) {
+				if (p.menu) taken = true;
+				p.onDismiss();
+			}
+		}
+		return taken;
+	}
+
+	// the window resized: its menus dismissed (the popovers follow their anchors)
+	static function resized(ui:Ui) {
+		var i = ui.overlay.children.length;
+		while (--i >= 0) {
+			if (i >= ui.overlay.children.length) continue;
+			var p = at(ui, i);
+			if (p != null && p.menu && p.onDismiss != null) p.onDismiss();
 		}
 	}
 

@@ -16,9 +16,11 @@ import helder.ui.access.Semantics;
 //
 // The scroll is anchored to a row: the first in view and how far into it,
 // kept through measures, a new estimate and rows put in or taken out
-// before it (splice), so the content does not move. scrollToIndex (start,
+// before it (splice), so the content does not move; at the very top it
+// stays at the top (rows put in above the first come into view). scrollToIndex (start,
 // center, end or the nearest edge: auto) goes to a row made or not, held
-// there while its rows are measured; focusIndex makes the row, scrolls to
+// there while its rows are measured, within the insets (a bar over the
+// top, a padding: the row shown with their room); focusIndex makes the row, scrolls to
 // it and focuses it. The rows are a listbox's options to assistive
 // technology (rowRole), each its place among all (posInSet, setSize). The
 // keyboard on a row (its focus within the list): Up and Down, Page Up and
@@ -112,6 +114,8 @@ class VirtualScroll extends Node {
 	// ends: a NavScreen's), its rows placed again
 	public function insets(top:Float, bottom:Float) {
 		if (top == insetTop && bottom == insetBottom) return;
+		// (at the very top it stays there: the first row moves with the inset)
+		if (anchorRow == 0 && anchorDelta <= 0 && target < 0) anchorDelta -= top - insetTop;
 		insetTop = top;
 		insetBottom = bottom;
 		place();
@@ -176,7 +180,11 @@ class VirtualScroll extends Node {
 			slots.sort((a, b) -> a.index - b.index);
 			reorder(1, [for (s in slots) s.node]);
 		}
-		var a = map(anchorRow);
+		// (at the very top it stays there, as a browser's scroll anchoring takes
+		// no anchor at offset 0: rows coming in above the first, a folder read
+		// in batches, would carry the view down with that row)
+		var top = anchorRow == 0 && anchorDelta <= 0 && target < 0;
+		var a = top ? 0 : map(anchorRow);
 		// (its row taken out: the row now where it was, among those put there, else the next)
 		if (a < 0) {
 			var k = anchorRow - start;
@@ -241,7 +249,8 @@ class VirtualScroll extends Node {
 			case "center": 1;
 			case "end": 2;
 			case _:
-				var top = rowOffset(index), bottom = top + heights.heightOf(index);
+				// (shown: with its insets' room, a bar's over them or the padding)
+				var top = rowOffset(index) - insetTop, bottom = rowOffset(index) + heights.heightOf(index) + insetBottom;
 				if (top >= scrollY && bottom <= scrollY + viewHeight()) -1 else top < scrollY ? 0 : 2;
 		}
 		if (a < 0) return;
@@ -317,11 +326,12 @@ class VirtualScroll extends Node {
 	function wanted():Float {
 		var vh = viewHeight(), y:Float;
 		if (target >= 0 && target < count) {
+			// (the row within the insets: under a bar over the top, the last clear of the bottom's padding)
 			var top = rowOffset(target), h = heights.heightOf(target);
 			y = switch targetAlign {
-				case 1: top + h / 2 - vh / 2;
-				case 2: top + h - vh;
-				case _: top;
+				case 1: top + h / 2 - insetTop - (vh - insetTop - insetBottom) / 2;
+				case 2: top + h + insetBottom - vh;
+				case _: top - insetTop;
 			}
 		} else y = count == 0 ? 0 : rowOffset(anchorRow) + anchorDelta;
 		var max = extent() - vh;
@@ -339,9 +349,10 @@ class VirtualScroll extends Node {
 
 	// (the anchor taken from the scroll)
 	function anchor() {
+		// (no rows: where the first will be, the scroll above it its inset's)
 		if (count == 0) {
 			anchorRow = 0;
-			anchorDelta = 0;
+			anchorDelta = scrollY - insetTop;
 			return;
 		}
 		anchorRow = rowAtOffset(scrollY);

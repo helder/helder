@@ -128,7 +128,7 @@ export type StyleProps = {
 };
 
 // a control's states, and dark, under which a part's style changes
-export type State = 'hover' | 'pressed' | 'focus' | 'disabled' | 'checked' | 'mixed' | 'selected' | 'open' | 'invalid' | 'readonly' | 'dark';
+export type State = 'hover' | 'pressed' | 'focus' | 'focusWithin' | 'disabled' | 'checked' | 'mixed' | 'selected' | 'open' | 'invalid' | 'readonly' | 'dark';
 
 export type PartStyle = StyleProps & {[S in State]?: PartStyle};
 
