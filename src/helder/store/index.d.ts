@@ -60,3 +60,5 @@ export declare class Purchases {
 	// button's; owned() after it
 	static restore(): Promise<void>;
 }
+
+export {};

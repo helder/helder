@@ -188,8 +188,8 @@ each a promise: a Task<T> is a Promise<T>), `helder/dev`, `helder/story`,
 `helder/jobs` and `helder/asset`, generated from the Haxe types (below).
 Other modules use declaration files internally. Each declares its
 classes, each the Haxe class `__haxe` names, its functions and components
-as `const f: typeof Class.f`, which can name a private host class, and the module's
-declaration class (`__module`). TSX is helder.view's markup.
+(`function f`, the static `__haxe` names: `f: "pack.Class.f"`, its class
+not declared) and the module's declaration class (`__module`). TSX is helder.view's markup.
 
 `helder/gfx` is TypeScript itself (`src/helder/gfx/index.ts`, written by
 `src/helder/gfx/typescript.mjs`), compiled with the program: the shader

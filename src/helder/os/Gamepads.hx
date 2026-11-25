@@ -73,7 +73,7 @@ class Gamepads {
 	static var devices:Null<Void->Void>;
 
 	// the devices read from now on (a program reading gamepads calls it once)
-	@:noCompletion public static function enable() {
+	public static function enable() {
 		devices = pollDevices;
 		#if (hxmc.target != "wasm32-wasi" && !eval)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidGamepads.enable(); #end

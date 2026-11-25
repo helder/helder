@@ -3,7 +3,7 @@ package helder.view;
 // helder.view for TypeScript programs (helder.typescript): signals,
 // computations, markup (TSX) and its control flow, on helder.view.graph
 // (DESIGN.md). Each class is the Haxe class `__haxe` names; a function is one
-// of a class's statics (typeof Class.name), called directly by the compiled
+// of a class's statics (`__haxe` names it), called directly by the compiled
 // program, its values converted by the types Haxe declares (the manifest,
 // DESIGN.md 7.3); a signal, a memo or a Read comes to the program as a
 // function.

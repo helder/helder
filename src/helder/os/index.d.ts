@@ -9,7 +9,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -226,10 +226,7 @@ export declare class StatusBar {
 	static hidden(h: boolean): void;
 }
 
-declare class Sys {
-	static args(): string[];
-	static getEnv(s: string): string | null;
-}
+export declare function args(): string[];
+export declare function env(s: string): string | null;
 
-export declare const args: typeof Sys.args;
-export declare const env: typeof Sys.getEnv;
+export {};

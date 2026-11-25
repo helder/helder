@@ -11,7 +11,7 @@ import type {View} from "helder/view";
 declare const __haxe: {Script: "helder.test.Script", Entry: "helder.test.Runner.Entry", UiScript: "helder.test.UiScript", __module: "helder.test.TypeScript"};
 
 // helder.test's runner for TypeScript test files (helder/test, its
-// index.ts, over helder/test/runner: helder.test.TypeScript): the same
+// index.ts, over runner.d.ts: helder.test.TypeScript): the same
 // groups, hooks, filters, snapshots and report as `*.test.hx`'s. Each step
 // of a TypeScript test is started with its timeout and calls done once:
 // with null, with the error's text, or stopped (require and fail, their
@@ -60,3 +60,5 @@ export declare class UiScript {
 	// each keystroke of keys typed ("ctrl-k ctrl-s"), through the keymap
 	static type(ui: unknown, keys: string): void;
 }
+
+export {};

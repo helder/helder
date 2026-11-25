@@ -8,7 +8,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", Tasks: "helder.async.Tasks", __module: "helder.async.TypeScript"};
+declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", delay: "helder.async.Tasks.delay", readBytes: "helder.async.Tasks.bytes", __module: "helder.async.TypeScript"};
 
 export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8Array; text?: string; contentType?: string; ca?: string };
 
@@ -117,15 +117,9 @@ export declare class WebSocket {
 	close(code?: number): Promise<void>;
 }
 
-// helder.async for code that has no coroutines (a TypeScript program,
-// helder/async): each a task started now on this thread's loop, which
-// TypeScript awaits as a promise (cancelling the promise cancels it).
-declare class Tasks {
-	// done after that many seconds
-	static delay(seconds: number): Promise<void>;
-	// a file's bytes: natively read, in the browser fetched (Fetch.bytes)
-	static bytes(path: string): Promise<Uint8Array>;
-}
+// done after that many seconds
+export declare function delay(seconds: number): Promise<void>;
+// a file's bytes: natively read, in the browser fetched (Fetch.bytes)
+export declare function readBytes(path: string): Promise<Uint8Array>;
 
-export declare const delay: typeof Tasks.delay;
-export declare const readBytes: typeof Tasks.bytes;
+export {};

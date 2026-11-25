@@ -1,7 +1,7 @@
 // helder.scene for TypeScript: a World of Nodes (src/helder/scene/README.md),
 // cameras, lights, meshes and materials, glTF models, the renderer, input
 // actions, and what a scene is drawn with (a window, its device, the app's
-// loop: helder/scene/runtime, helder's Haxe classes), with Node, a class of
+// loop: runtime.d.ts, helder's Haxe classes), with Node, a class of
 // the program's over a node's handle:
 //
 //   import { World, Camera, Light, Renderer, Window, Device, App } from "helder/scene";

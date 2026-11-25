@@ -1311,7 +1311,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// --- content (subclasses) ---
 
-	@:noCompletion public function hasContent():Bool
+	public function hasContent():Bool
 		return false;
 
 	// the content's size for the given content-box constraints (NaN: unknown
@@ -1392,7 +1392,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return measureContent(text, Math.NaN, Math.NaN, 0, Math.NaN).width;
 
 	// draws the content in its content box at (x, y), in window pixels
-	@:noCompletion public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {}
+	public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {}
 
 	// its children in their layout order (Style.order: lower first, ties in
 	// the tree's order): the children themselves when none has an order

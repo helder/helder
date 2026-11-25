@@ -12,7 +12,7 @@
 import "helder/ui";
 import type {Signal, View} from "helder/view";
 
-declare const __haxe: {Story: "helder.story.Story", Controls: "helder.story.Story.Controls", Stories: "helder.story.Stories", Screens: "helder.story.Screens", StoreShots: "helder.story.StoreShots", __module: "helder.story.TypeScript"};
+declare const __haxe: {Controls: "helder.story.Story.Controls", story: "helder.story.Stories.define", tree: "helder.story.Stories.tree", screens: "helder.story.Screens.run", shots: "helder.story.StoreShots.run", __module: "helder.story.TypeScript"};
 
 export declare class Story {
 	private readonly story: never;
@@ -59,70 +59,16 @@ declare class Controls {
 	random(): number;
 }
 
-// The stories of the story files (Story.story), registered (add), mounted
-// headless (mount: a Ui of a size in a ScreenContext of its own, the
-// story's view rendered into its root and brought to its moment: settle),
-// and as tests (test: each story's tree snapshotted, helder test's runner
-// calls it for a .story.hx file with its stories: of, helder.cli.TestCommand)
-declare class Stories {
-	// story({...}) in a TypeScript program (helder/story; the definition
-	// checked its fields where they are written)
-	static define(def: StoryDef): Story;
-	// the tree as text: each node's tag (or kind), box and text, indented
-	// (in a phone's size, WIDTH x HEIGHT, unless given)
-	static tree(s: Story, width?: number, height?: number): string;
-}
+// story({...}) in a TypeScript program (helder/story; the definition
+// checked its fields where they are written)
+export declare function story(def: StoryDef): Story;
+// the tree as text: each node's tag (or kind), box and text, indented
+// (in a phone's size, WIDTH x HEIGHT, unless given)
+export declare function tree(s: Story, width?: number, height?: number): string;
 
-export declare const story: typeof Stories.define;
-export declare const tree: typeof Stories.tree;
+export declare function screens(stories: Story[]): void;
 
-// A project's stories as the studio's screens (apps/studio): the program
-// the studio builds of a project (a dev build, -D hxmc.dev) runs every
-// story in one program, the studio's preview host (helder.story.Host: each
-// story a root of its own with a context of its own): natively one process
-// (helder.story.NativeHost: its frames GPU textures the studio's process
-// opens, or shared memory where the GPU shares none), built for the web
-// (wasm32-wasi) a worker (helder.story.web.Preview). Over the devtools
-// protocol `Studio.screens` answers the screens: {screens: [{name, width,
-// height}]}.
-//
-//   // the studio's generated main (bin/studio/<name>/gen/StudioScreens.hx, screens.tsx)
-//   helder.story.Screens.run(helder.story.Stories.of("Todo_story"));
-//   import { screens } from "helder/story"; screens([empty, items]);
-declare class Screens {
-	static run(stories: Story[]): void;
-}
+// (TypeScript's shots(stories): main over them; helder/story)
+export declare function shots(stories: Story[]): void;
 
-export declare const screens: typeof Screens.run;
-
-// The screenshots of the stories with store: true, the one place an app's
-// screenshots come from: the stores' and helder.run's. Each rendered
-// offscreen on the GPU (helder.gfx's headless surface: Mesa's llvmpipe on
-// Linux) at a size as a real layout (the size in points, the screen's
-// scale), text in the system's fonts (DrawText), in a ScreenContext of its
-// own whose clock is the shot's alone (Ui.now reads it): brought to its
-// moment frame by frame (Stories.settle: a story that plays, Controls.play,
-// laid out and painted each frame, its last one drawn), so a 3D scene
-// mid-play comes out as it would on a screen, whatever the machine's speed.
-// Written as opaque RGB PNGs (no alpha channel: Apple's rule).
-//
-// - The stores' (store): at each store's size (SIZES), the story's caption
-//   (StoreOptions) in a band over it: <dir>/<size>/<story>.png; the first
-//   story with feature: true also as Google Play's feature graphic
-//   (FEATURE, no band): <dir>/android-feature/<story>.png.
-// - helder.run's (web): at one size (a window's, 1280x800, or a phone's,
-//   390x844 at 2x, for a portrait app), no band (helder.run's page shows
-//   plain frames), in the stories' order, at most a number of them:
-//   <dir>/shot-<n>.png.
-//
-// Either way <dir>/shots.json lists them (each file's size, story, caption,
-// SHA-256 and MD5, which helder publish compares with the stores'). helder
-// publish --screenshots and --run build a program of the project's story
-// files around main (helder.cli.Shots); a TypeScript project's calls shots
-// (helder/story) with its stories.
-declare class StoreShots {
-	// (TypeScript's shots(stories): main over them; helder/story)
-	static run(stories: Story[]): void;
-}
-
-export declare const shots: typeof StoreShots.run;
+export {};

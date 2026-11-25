@@ -10,7 +10,7 @@ declare const __haxe: {Script: "helder.ui.actions.Script", __module: "helder.ui.
 
 // helder.ui.actions for TypeScript programs (helder/ui/actions:
 // src/helder/ui/actions/index.ts, which a program imports; this is its
-// runtime, helder/ui/actions/runtime). A program's actions are objects,
+// runtime, its runtime.d.ts). A program's actions are objects,
 // {type: "zoomTo", percent: 100}, made and recognised by index.ts's
 // functions (each space's form: which action a value is, its arguments, a
 // value of them), and its spaces Haxe's (ActionSpace): a definition's
@@ -82,3 +82,5 @@ export declare class Script {
 	static menuBar(ui: unknown, menus: Menu[]): unknown;
 	static setMenus(bar: unknown, menus: Menu[]): void;
 }
+
+export {};

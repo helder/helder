@@ -8,7 +8,7 @@
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
+declare const __haxe: {UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.draw.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -161,7 +161,8 @@ export declare class UiWindow {
 	close(): void;
 }
 
-export declare const Surface: typeof UiWindow.Surface;
+// <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
+export declare function Surface(props: SurfaceProps): View;
 
 // An event as Ui dispatches it: to the target, then (unless stopped) to
 // each ancestor (current), except PointerEnter, PointerLeave, Focus and
@@ -624,6 +625,7 @@ export declare class Node {
 	// the transform (Style.transform about Style.transformOrigin) in window
 	// pixels, as Canvas.pushTransform takes it; null: none
 	transformMatrix(): unknown | null;
+	hasContent(): boolean;
 	// a text input's value for assistive technology when it is not a
 	// TextNode's text (a code editor's document); null: none
 	accessValue(): string | null;
@@ -645,6 +647,8 @@ export declare class Node {
 	backgroundImage(scale: number): Image;
 	// whether it takes typed text while focused (a text field): keys that type are its, not shortcuts
 	takesText(): boolean;
+	// draws the content in its content box at (x, y), in window pixels
+	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 	// the topmost node under (px, py) in window pixels, among this subtree
 	// (clipped by Overflow, through the transforms), or null
 	hitTest(px: number, py: number): Node | null;
@@ -700,50 +704,46 @@ export declare class TextNode extends Node {
 //   <Popover open={open} placement="below">{...}</Popover>
 //   <VirtualList each={rows} by={r -> r.id} estimate={44} selected={sel}>{(row, i) -> ...}</VirtualList>
 declare class UiFlow {
-	// the children in a popup (helder.ui.Popup: a layer over the tree), open
-	// while open is true: anchored to anchor (else the node the markup puts
-	// it in), placed by placement ("below", "above", "right", "left",
-	// "center"; gap pixels away), modal or not; onDismiss when a click
-	// outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
-	// the focus into it); a modal one's backdrop its colour; the popup's
-	// slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-	static Popover(props: { open: Read<boolean>; anchor?: Node; placement?: string; gap?: number; modal?: boolean; backdrop?: number; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
-	// the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
-	// drawn here (put it first in the window's content); ref: the bar
-	static MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
-	// a long list in a scroller (helder.ui.VirtualScroll): only the rows in
-	// view are made, and overscan more on each side (3); rows that leave are
-	// hidden and kept (keep of them, 64, the farthest let go first), by key
-	// as For keeps them: by the item itself, by what by gives for it (a
-	// row's Read then its key's latest item: a change to one item changes
-	// its row alone), or keyed={false} by index. Its rows' heights are their
-	// own, estimated (estimate, 44 pixels) until each is measured, the scroll
-	// anchored to the row in view (an estimate made real, rows put in or
-	// taken out above it: nothing moves); itemHeight: every row that high.
-	// height pixels high, else it grows in its parent from 0 (flex: 1). A
-	// listbox of options to assistive technology (label: its name), each
-	// with its place among all of them; Up, Down, Page Up and Down, Home
-	// and End move the focus to a row (made if need be), selected (the key
-	// of the row selected: written as the focus moves, a row pressed) and
-	// onActivate (Enter, Space) given its item. Its child function gets a
-	// row's item (a Read) and its index when made; ref the VirtualScroll
-	// (scrollToIndex, focusIndex, the window). With a Selection the callback
-	// takes the selected indices (Enter or double click); by still keys rows.
-	static VirtualList: <T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown;
-	// VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
-	// gap apart and padding in (4, 12), in a GridScroll: only the rows in
-	// view made, a cell made again when its row's keys (by) change, else
-	// its item written. A Selection (its own unless given; ref: the
-	// GridScroll's) with the keyboard, presses and a marquee from empty
-	// space; onActivate given the selected indices (Enter, double click),
-	// onContextMenu an item and where; textOf: type-ahead.
-	static VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 }
 
-export declare const VirtualList: typeof UiFlow.VirtualList;
-export declare const VirtualGrid: typeof UiFlow.VirtualGrid;
-export declare const Popover: typeof UiFlow.Popover;
-export declare const MenuBarView: typeof UiFlow.MenuBarView;
+// a long list in a scroller (helder.ui.VirtualScroll): only the rows in
+// view are made, and overscan more on each side (3); rows that leave are
+// hidden and kept (keep of them, 64, the farthest let go first), by key
+// as For keeps them: by the item itself, by what by gives for it (a
+// row's Read then its key's latest item: a change to one item changes
+// its row alone), or keyed={false} by index. Its rows' heights are their
+// own, estimated (estimate, 44 pixels) until each is measured, the scroll
+// anchored to the row in view (an estimate made real, rows put in or
+// taken out above it: nothing moves); itemHeight: every row that high.
+// height pixels high, else it grows in its parent from 0 (flex: 1). A
+// listbox of options to assistive technology (label: its name), each
+// with its place among all of them; Up, Down, Page Up and Down, Home
+// and End move the focus to a row (made if need be), selected (the key
+// of the row selected: written as the focus moves, a row pressed) and
+// onActivate (Enter, Space) given its item. Its child function gets a
+// row's item (a Read) and its index when made; ref the VirtualScroll
+// (scrollToIndex, focusIndex, the window). With a Selection the callback
+// takes the selected indices (Enter or double click); by still keys rows.
+export declare const VirtualList: <T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown;
+// VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
+// gap apart and padding in (4, 12), in a GridScroll: only the rows in
+// view made, a cell made again when its row's keys (by) change, else
+// its item written. A Selection (its own unless given; ref: the
+// GridScroll's) with the keyboard, presses and a marquee from empty
+// space; onActivate given the selected indices (Enter, double click),
+// onContextMenu an item and where; textOf: type-ahead.
+export declare function VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
+// the children in a popup (helder.ui.Popup: a layer over the tree), open
+// while open is true: anchored to anchor (else the node the markup puts
+// it in), placed by placement ("below", "above", "right", "left",
+// "center"; gap pixels away), modal or not; onDismiss when a click
+// outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
+// the focus into it); a modal one's backdrop its colour; the popup's
+// slot for a theme (Node.slot). Its content is rendered once, kept while closed.
+export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: string; gap?: number; modal?: boolean; backdrop?: number; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
+// the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
+// drawn here (put it first in the window's content); ref: the bar
+export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
 
 // The main window's safe area for markup, as CSS's env(): a literal
 // attribute naming env(safe-area-inset-top) (right, bottom, left; a
@@ -803,25 +803,22 @@ export declare class Router {
 //   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
 //   <Tip label="Tracing letter" keys="T"><view:button ...><image src={eye}/></view:button></Tip>
 declare class Controls {
-	// A number between min and max, shown as a field (its label inside on
-	// the left, its value on the right, the part up to it filled): a press
-	// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
-	// Home and End go to the ends. step 0: any value. Slots: "slider",
-	// "slider-fill", "field-label", "slider-value".
-	static Slider(props: { label: string; value: Read<number>; min: number; max: number; step?: number; digits?: number; unit?: string; onChange: (arg0: number) => void; tag?: string }): View;
-	// One of a few options side by side, the chosen one marked (data-on):
-	// a press chooses, the arrow keys move between them. Slots: "seg",
-	// "seg-item" (an icon follows its colour).
-	static Segmented(props: { label: string; value: Read<string>; options: Array<{ value: string; label: string; icon?: Svg; hint?: string }>; onChange: (arg0: string) => void; tag?: string; compact?: boolean }): View;
-	// What a control does, said under it once the pointer rests on it (half
-	// a second), with its shortcut beside it: for a button that shows only an
-	// icon. A press or the pointer leaving hides it. Slots: "tip", "kbd".
-	static Tip(props: { label: string; keys?: string; placement?: string; children?: unknown }): View;
 }
 
-export declare const Slider: typeof Controls.Slider;
-export declare const Segmented: typeof Controls.Segmented;
-export declare const Tip: typeof Controls.Tip;
+// A number between min and max, shown as a field (its label inside on
+// the left, its value on the right, the part up to it filled): a press
+// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
+// Home and End go to the ends. step 0: any value. Slots: "slider",
+// "slider-fill", "field-label", "slider-value".
+export declare function Slider(props: { label: string; value: Read<number>; min: number; max: number; step?: number; digits?: number; unit?: string; onChange: (arg0: number) => void; tag?: string }): View;
+// One of a few options side by side, the chosen one marked (data-on):
+// a press chooses, the arrow keys move between them. Slots: "seg",
+// "seg-item" (an icon follows its colour).
+export declare function Segmented(props: { label: string; value: Read<string>; options: Array<{ value: string; label: string; icon?: Svg; hint?: string }>; onChange: (arg0: string) => void; tag?: string; compact?: boolean }): View;
+// What a control does, said under it once the pointer rests on it (half
+// a second), with its shortcut beside it: for a button that shows only an
+// icon. A press or the pointer leaving hides it. Slots: "tip", "kbd".
+export declare function Tip(props: { label: string; keys?: string; placement?: string; children?: unknown }): View;
 
 // A grid of many rows, drawn (a table browser's, a spreadsheet's): only
 // the cells in view are laid out and drawn, their text cut with an
@@ -1037,23 +1034,6 @@ export declare class GridColumn {
 // here. Resolved once per sheet and appearance.
 declare class GridTheme {
 	constructor();
-	static readonly NAMES: string[];
-	static readonly BACKGROUND: number;
-	static readonly FOREGROUND: number;
-	static readonly MUTED: number;
-	static readonly LINE: number;
-	static readonly HEADER: number;
-	static readonly HEADER_FOREGROUND: number;
-	static readonly GUTTER: number;
-	static readonly HOVER: number;
-	static readonly SELECTION: number;
-	static readonly CURSOR: number;
-	static readonly EDITED: number;
-	static readonly ADDED: number;
-	static readonly DELETED: number;
-	static readonly SKELETON: number;
-	static readonly SCROLLBAR: number;
-	static readonly RESIZE: number;
 	// the colours now, by the indices above
 	readonly colors: number[];
 	// the colours for a sheet and an appearance; whether they changed
@@ -1088,20 +1068,15 @@ export declare class Icons {
 declare class Pager {
 	// (made in a component: its spring stops with it)
 	constructor(page: Read<number>, count: number, onPage: (arg0: number) => void);
-	static create(page: Read<number>, count: number, onPage: (arg0: number) => void): Pager;
-	// the page a drag let go goes to: the next or the previous one past a
-	// fifth of the width or flung (points a second), else the same
-	static settle(page: number, count: number, travel: number, speed: number, width: number): number;
-	// the pages (slides), shown as the pager has them
-	static Pages(props: { pager: Pager; slides: View[] }): View;
 	readonly page: Read<number>;
 	readonly count: number;
 	// where the pages are: the shown one's index, between two while moving
 	readonly position: Signal<number>;
 }
 
-export declare const pager: typeof Pager.create;
-export declare const Pages: typeof Pager.Pages;
+export declare function pager(page: Read<number>, count: number, onPage: (arg0: number) => void): Pager;
+// the pages (slides), shown as the pager has them
+export declare function Pages(props: { pager: Pager; slides: View[] }): View;
 
 // Several lines of text edited in place (EditableText's keys and pointer):
 // wrapped to its width, rows lines high unless its style says (a height;
@@ -1202,16 +1177,14 @@ export declare class Theme {
 //   <view drag-region><WindowControls side="start"/><text>Project</text></view>
 //   <view drag-region><text>Inspector</text><view grow={1}/><WindowControls side="end"/></view>
 declare class WindowButtons {
-	// the side of the window the system puts its buttons: "start" (macOS's,
-	// at the left: env(titlebar-area-x) after them), "end" (Windows', Linux's),
-	// null without an inset title bar (the system's, the browser, a phone).
-	// Reactive, as SafeArea.titlebar: a bar's padding at that end can follow it.
-	static side(): string | null;
-	static WindowControls(props: { tag?: string; side?: string }): View;
 }
 
-export declare const windowControlsSide: typeof WindowButtons.side;
-export declare const WindowControls: typeof WindowButtons.WindowControls;
+// the side of the window the system puts its buttons: "start" (macOS's,
+// at the left: env(titlebar-area-x) after them), "end" (Windows', Linux's),
+// null without an inset title bar (the system's, the browser, a phone).
+// Reactive, as SafeArea.titlebar: a bar's padding at that end can follow it.
+export declare function windowControlsSide(): string | null;
+export declare function WindowControls(props: { tag?: string; side?: string }): View;
 
 // A control's states as amounts that ease between 0 and 1 (hover, pressed,
 // checked, focus: the keyboard's ring, open), each over its look's time
@@ -1223,11 +1196,6 @@ export declare const WindowControls: typeof WindowButtons.WindowControls;
 declare class Eased {
 	// times: each state's seconds (HOVER... OPEN)
 	constructor(times: number[]);
-	static readonly HOVER: number;
-	static readonly PRESSED: number;
-	static readonly CHECKED: number;
-	static readonly FOCUS: number;
-	static readonly OPEN: number;
 	readonly hover: number;
 	readonly pressed: number;
 	readonly checked: number;
@@ -1285,7 +1253,8 @@ export declare class Look<V> {
 	readonly Switch: ((arg0: SwitchProps<V>) => View);
 }
 
-export declare const tone: typeof Look.tone;
+// a tone (a token's light and dark colours), as CSS writes them (one for both)
+export declare function tone(light: string, dark?: string): Tone;
 
 // The behaviour of what is pressed (WAI-ARIA's button): a click, Enter or
 // Space activates it (Ui's onActivate), none while it is disabled (then
@@ -1301,8 +1270,6 @@ export declare const tone: typeof Look.tone;
 //   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
 declare class Press {
 	constructor(slot: string, disabled?: Read<boolean>, onPress?: () => void);
-	// a press of props' (a replaced rendering's: Look's render) for a control named slot
-	static of(props: { label?: string; disabled?: Read<boolean>; selected?: Read<boolean>; onPress?: () => void }, slot: string): Press;
 	readonly hovered: Signal<boolean>;
 	readonly pressed: Signal<boolean>;
 	readonly focusVisible: Signal<boolean>;
@@ -1337,19 +1304,14 @@ declare class Press {
 //   <Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
 // (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
 declare class Standard {
-	static Button(props: ButtonProps<BaseVariants>): View;
-	static PathBar(props: PathBarProps): View;
-	static Checkbox(props: CheckboxProps<BaseVariants>): View;
-	static Switch(props: SwitchProps<BaseVariants>): View;
-	// a look for what it holds: its sheet, and the look its controls draw with
-	static Themed(props: { look: Look<any>; children?: unknown }): View;
 }
 
-export declare const Button: typeof Standard.Button;
-export declare const PathBar: typeof Standard.PathBar;
-export declare const Checkbox: typeof Standard.Checkbox;
-export declare const Switch: typeof Standard.Switch;
-export declare const Themed: typeof Standard.Themed;
+export declare function Button(props: ButtonProps<BaseVariants>): View;
+export declare function PathBar(props: PathBarProps): View;
+export declare function Checkbox(props: CheckboxProps<BaseVariants>): View;
+export declare function Switch(props: SwitchProps<BaseVariants>): View;
+// a look for what it holds: its sheet, and the look its controls draw with
+export declare function Themed(props: { look: Look<any>; children?: unknown }): View;
 
 // The behaviour of what is on or off (WAI-ARIA's checkbox and switch): a
 // Press whose activation toggles it, Space and a click (a switch's Enter
@@ -1564,13 +1526,6 @@ export declare class CodeDiagnostic {
 // onChange as they are: a Transaction's.
 declare class CodeModel {
 	constructor(text?: string, language?: CodeLanguage);
-	static readonly EDIT: number;
-	static readonly TYPE: number;
-	static readonly DELETE: number;
-	// where offset pos is after changes (against the text before): inside a
-	// replaced range its end; at an insertion, after it (assoc > 0) or before
-	static map(pos: number, changes: unknown[], assoc: number): number;
-	static isWordChar(c: number): boolean;
 	readonly rope: Rope;
 	language: CodeLanguage | null;
 	// the selections, in order and not overlapping; primary: the one the view follows
@@ -1840,8 +1795,6 @@ export declare class CodeView extends Node {
 // owner's to normalise: CodeModel does on load).
 declare class Rope {
 	constructor(text?: string);
-	// (a chunk's size: an edit's rebuilt chunk split above MAX, joined to its next below MIN)
-	static readonly MAX: number;
 	// UTF-16 units, lines (breaks + 1), UTF-8 bytes
 	readonly length: number;
 	readonly lineCount: number;
@@ -1885,17 +1838,7 @@ export declare class SqlLanguage {
 	tokenize(line: string, state: number, out: number[]): number;
 }
 
-// A router's stack on screen (helder.ui.Stack): each entry mounted once,
-// kept below the top (hidden once covered, its state and scroll as they
-// were), disposed after its exit. While deep it is the system's back
-// (App.onBack, App.backDepth: Android's back, Escape, the browser's
-// history: an entry a push); on iOS's slide a drag from the left edge
-// pops it as it goes.
-declare class Screens {
-	static Stack(props: { router: Router; transition?: StackTransition }): View;
-}
-
-export declare const Stack: typeof Screens.Stack;
+export declare function Stack(props: { router: Router; transition?: StackTransition }): View;
 
 // a neutral element's attributes: any, its handlers given ui's events (helder.ui.view.NodeEvents)
 export interface NeutralAttributes {
@@ -1957,3 +1900,5 @@ declare global {
 		}
 	}
 }
+
+export {};

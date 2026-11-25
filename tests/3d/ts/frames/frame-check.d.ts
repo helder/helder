@@ -23,3 +23,5 @@ export declare class FrameCheck {
 	// 3 skipped: no Metal device)
 	static run(make: (arg0: Device) => ((arg0: Encoder) => void)): void;
 }
+
+export {};

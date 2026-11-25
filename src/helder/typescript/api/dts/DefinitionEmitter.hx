@@ -90,34 +90,42 @@ class DefinitionEmitter {
 
 	function emitField(f:ClassField, isStatic:Bool) {
 		var s = isStatic ? 'static ' : '';
+		comment(Docs.of(f.pos));
+		switch signature(f) {
+			case Left(sig): line(s + f.name + sig + ';');
+			case Right(t): line(s + (readonly(f) ? 'readonly ' : '') + f.name + ': ' + t + ';');
+		}
+	}
+
+	// (a method's parameters and result, or a field's type)
+	function signature(f:ClassField):haxe.ds.Either<String, String> {
+		var t = TypeEmitter.typeMeta(f.meta);
+		if (t != null) return Right(t);
 		switch f.kind {
 			case FMethod(_):
-				var t = TypeEmitter.typeMeta(f.meta);
-				comment(Docs.of(f.pos));
-				if (t != null) {
-					line(s + f.name + ': ' + t + ';');
-					return;
-				}
 				// (a coroutine: called, it starts; its result a promise: helder.typescript.api.Coroutines)
 				switch helder.typescript.api.Coroutines.promised(f) {
 					case TFun(args, ret):
-						line(s + f.name + params(f.params) + '(' + args_(args, argMetas(f)) + '): ' + given(ret) + ';');
-						return;
+						return Left(params(f.params) + '(' + args_(args, argMetas(f)) + '): ' + given(ret));
 					case _:
 				}
 				switch Context.follow(f.type) {
 					case TFun(args, ret):
 						var r = TypeEmitter.typeMeta(returnMeta(f));
-						line(s + f.name + params(f.params) + '(' + args_(args, argMetas(f)) + '): ' + (r != null ? r : given(ret)) + ';');
+						return Left(params(f.params) + '(' + args_(args, argMetas(f)) + '): ' + (r != null ? r : given(ret)));
 					case _:
+						return Right(given(f.type));
 				}
-			case FVar(read, write):
-				comment(Docs.of(f.pos));
-				var readonly = write == AccNever || write == AccNo || write == AccCtor || read == AccInline || f.isFinal;
-				var t = TypeEmitter.typeMeta(f.meta);
-				line(s + (readonly ? 'readonly ' : '') + f.name + ': ' + (t != null ? t : given(unlazy(f.type))) + ';');
+			case FVar(_, _):
+				return Right(given(unlazy(f.type)));
 		}
 	}
+
+	static function readonly(f:ClassField):Bool
+		return switch f.kind {
+			case FVar(read, write): write == AccNever || write == AccNo || write == AccCtor || read == AccInline || f.isFinal;
+			case _: false;
+		}
 
 	// (a field's type typed when asked for: a property's, a static's, until then TLazy)
 	static function unlazy(t:Type):Type {
@@ -242,9 +250,13 @@ class DefinitionEmitter {
 		line('export type ' + name + params(dt.params) + ' = ' + (t != null ? t : type(dt.type)) + ';');
 	}
 
-	// a function of the module: a class's static
-	public function emitFunction(alias:String, cls:String, field:String) {
-		line('export declare const ' + alias + ': typeof ' + cls + '.' + field + ';');
+	// a function of the module: a class's static, its host not declared
+	public function emitFunction(alias:String, f:ClassField) {
+		comment(Docs.of(f.pos));
+		switch signature(f) {
+			case Left(sig): line('export declare function ' + alias + sig + ';');
+			case Right(t): line('export declare const ' + alias + ': ' + t + ';');
+		}
 	}
 }
 

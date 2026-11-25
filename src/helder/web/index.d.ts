@@ -7,7 +7,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {View} from "helder/view";
 
-declare const __haxe: {Static: "helder.web.Static", Island: "helder.web.Island", WebTags: "helder.web.WebTags", __module: "helder.web.TypeScript"};
+declare const __haxe: {Static: "helder.web.Static", Island: "helder.web.Island", Surface: "helder.web.WebTags.Surface", Wasm: "helder.web.Island.Wasm", __module: "helder.web.TypeScript"};
 
 // when the loader hydrates an island (data-load)
 export type Load = "visible" | "idle" | "load" | "click";
@@ -76,26 +76,18 @@ export declare class Island<P> {
 	static Wasm(props: { src: string; imports?: string[]; args?: string[]; runner?: string; load?: Load; id?: string; width?: number; height?: number; fonts?: string[]; assets?: string; canvas?: boolean; stop?: Stop; children?: unknown }): View;
 }
 
-export declare const Wasm: typeof Island.Wasm;
+// a WebAssembly island: a canvas (width x height, when given) the loader
+// hands to src, a wasm32-wasi module, run by runner (Island.runner) with
+// imports (each package's imports.mjs, as browser.mjs takes them) and
+// args, and fonts (files helder.text may use: a browser gives a module
+// none); its id names it (Wasm.island); children shown with the canvas
+// (a caption, what shows before it runs); assets: the URL of the build's
+// <module>.assets.json (helder.asset's: the files it reads before main,
+// fetched with the module); canvas false: none (a sound);
+// stop Offscreen: stopped once out of view, its GPU memory given back,
+// and run again as load says (loader.js)
+export declare function Wasm(props: { src: string; imports?: string[]; args?: string[]; runner?: string; load?: Load; id?: string; width?: number; height?: number; fonts?: string[]; assets?: string; canvas?: boolean; stop?: Stop; children?: unknown }): View;
 
-// helder.web's boundary tags, for a page's markup (the DOM renderer's, the
-// static renderer's): import helder.web.WebTags.*
-//
-//   <main>
-//     <h1>Todo</h1>
-//     <Surface src="todo.wasm" fonts={["fonts/Inter.ttf"]} class="app"/>
-//   </main>
-//
-// <Surface> is a ui program on the page: a <canvas> the page's styles size
-// (100% of its element, the element's size the page's CSS), running src, a
-// wasm32-wasi module whose root is ui's <Surface> (UiWindow.run: it takes
-// this canvas and follows its size). The static renderer writes it as an
-// island (Island.Wasm's element, loader.js starts it: load says when); the
-// DOM renderer starts it once mounted (WasmModule.load). A page can hold
-// several. Another renderer's markup has no <Surface> of helder.web's (an
-// error naming it: ui's is UiWindow.Surface).
-declare class WebTags {
-	static Surface(props: { src: string; imports?: string[]; fonts?: string[]; args?: string[]; runner?: string; load?: Load; id?: string; className?: string; style?: string; children?: unknown }): View;
-}
+export declare function Surface(props: { src: string; imports?: string[]; fonts?: string[]; args?: string[]; runner?: string; load?: Load; id?: string; className?: string; style?: string; children?: unknown }): View;
 
-export declare const Surface: typeof WebTags.Surface;
+export {};
