@@ -421,11 +421,12 @@ hidden files, the inspector and the status line are kept between runs
   column, centred, 12 points apart, a white sheet each with a soft shadow
   on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
   known first: `PdfPages.sizes`, on a job), at pdf.js's "auto" zoom until
-  zoomed (fitted to the width, at most 125% of the actual size, so a wide
-  window's column stays a page wide, an A4 page some 990 points; a
+  zoomed (fitted to the width, at most 110% of the actual size, so a wide
+  window's column stays a page wide, an A4 page some 873 points; a
   landscape document fitted whole; Ctrl and the wheel, a pinch, about the
   pointer: the point under it stays; `+`, `-` about the middle; 100% its
-  points at 96 dpi, as pdf.js's). Only the
+  points at 96 dpi, as pdf.js's; the window resized: the column centred
+  again, the page point at the view's top middle kept there). Only the
   pages in view and one each side are made, and drawn: those in view
   first, two at a time, at the size shown in device pixels (again larger
   when a zoom needs it, the smaller drawing shown meanwhile; again smaller

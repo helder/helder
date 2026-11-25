@@ -220,10 +220,12 @@ function tests() {
 			ui.keyDown(Key.PAGE_DOWN, 0);
 			frame();
 			equals(doc.y, 548 * 0.9);
+			// (the next after the page the view is on)
+			var next = viewer.page + 1;
 			ui.keyDown("]".code, 0);
 			frame();
-			equals(doc.y, doc.layout.scrollFor(1));
-			equals(viewer.title.peek(), "pages.pdf · 1 / 1 · page 2 / 3");
+			equals(doc.y, doc.layout.scrollFor(next));
+			equals(viewer.title.peek(), 'pages.pdf · 1 / 1 · page ${next + 1} / 3');
 			ui.keyDown(Key.END, 0);
 			frame();
 			equals(viewer.page, 2);
@@ -248,6 +250,14 @@ function tests() {
 			ui.keyDown("0".code, 0);
 			frame();
 			equals(doc.layout.zoom, doc.layout.auto());
+			// (the window made larger: the pages still centred in the column)
+			for (w in [1400.0, 800.0]) {
+				ui.resize(w, 600);
+				frame();
+				var scroll = ui.root.find("pdf-scroll").windowBounds();
+				var page = ui.root.find("page").windowBounds();
+				assert(Math.abs(page.x + page.width / 2 - (scroll.x + scroll.width / 2)) < 1, '$w: the page at ${page.x}, ${page.width} wide, in ${scroll.x}, ${scroll.width}');
+			}
 			ui.keyDown("i".code, 0);
 			frame();
 			equals(text(ui, "status"), '${doc.percent()}% · page ${viewer.page + 1} / 3 · PDF · 1 KB · 1 / 1');

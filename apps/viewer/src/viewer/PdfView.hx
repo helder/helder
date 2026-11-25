@@ -38,9 +38,11 @@ class PdfView implements Markup {
 				}}>
 				<view tag="pdf-pages" shrink={0} width={() -> {
 					doc.zoom();
+			doc.laid();
 					doc.layout.width();
 				}} height={() -> {
 					doc.zoom();
+			doc.laid();
 					doc.layout.height();
 				}}>
 					<For each={() -> doc.shown()}>{i -> page(doc, i())}</For>
@@ -56,15 +58,19 @@ class PdfView implements Markup {
 	static function page(doc:PdfDoc, i:Int):View
 		return <view tag="page" position="absolute" background="#ffffff" border-width={1} border-color="rgba(0,0,0,0.08)" shadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
 			doc.zoom();
+			doc.laid();
 			doc.layout.left(i);
 		}} top={() -> {
 			doc.zoom();
+			doc.laid();
 			doc.layout.top(i);
 		}} width={() -> {
 			doc.zoom();
+			doc.laid();
 			doc.layout.pageWidth(i);
 		}} height={() -> {
 			doc.zoom();
+			doc.laid();
 			doc.layout.pageHeight(i);
 		}}>
 			<image tag="page-image" width="100%" height="100%" src={() -> {
