@@ -58,8 +58,9 @@ keyboard, media queries, `localStorage`) is the page's as it last told it.
 Each of the worker's frames waits for the page's frame that delivered its
 input, 4 ms at most, so input reaches the same frame as on the page's
 thread, and a page busy with its own scripts holds no frame back; a resize
-is drawn as soon as the worker hears of it, unless it waited behind a slow
-frame, whose next takes the newest size. It fits
+is told at the page's `resize` event, before its layout, and the worker's
+frame waiting for the marker draws it then (a frame a frame: a burst of
+sizes draws the newest). It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;

@@ -88,6 +88,11 @@ window.start = async (gfx, worker) => {
 	}).observe(c);
 	return window.result.host.gfx.backend + (window.result.host.worker ? ' in a worker' : '');
 };
+// (the GL renderer, as WebGL tells it: SwiftShader's in CI and headless)
+window.renderer = () => {
+	const g = document.createElement('canvas').getContext('webgl2'), x = g?.getExtension('WEBGL_debug_renderer_info');
+	return g ? g.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : g.RENDERER) : 'none';
+};
 window.frame = () => new Promise((ok) => requestAnimationFrame(() => ok()));
 </script>`;
 const server = createServer(async (req, res) => {
@@ -102,7 +107,7 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const browser = await pw.chromium.launch({ args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] });
-let failed = 0;
+let failed = 0, renderer = null;
 const newest = (list, t) => {
 	let r = null;
 	for (const x of list) if (x[0] < t) r = x;
@@ -116,6 +121,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 	let line;
 	try {
 		await p.goto(`http://localhost:${server.address().port}/`);
+		renderer ??= await p.evaluate(() => window.renderer());
 		const backend = await p.evaluate(([g, w]) => window.start(g, w), [gfx, worker]);
 		if (backend !== mode) errors.push('on ' + backend);
 		await p.waitForFunction(() => window.log.some((l) => l.startsWith('boxes ')), null, { timeout: 20000 });
@@ -160,15 +166,18 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const at = (q) => times[Math.min(times.length - 1, Math.floor(q * times.length))].toFixed(1);
 		const sizes = new Set(resizes.filter((r) => r[0] > t0).map((r) => r[1] + 'x' + r[2])).size;
 		// (the worker's frames: their gaps while resized, at most two of the page's frames each when it keeps up)
-		const gaps = drawn.filter((d) => d[0] > t0).map((d, i, a) => (i ? d[0] - a[i - 1][0] : 0)).filter((g) => g > 1).sort((a, b) => a - b);
+		const t1 = resizes[resizes.length - 1][0] + 50;
+		const gaps = drawn.filter((d) => d[0] > t0 && d[0] < t1).map((d, i, a) => (i ? d[0] - a[i - 1][0] : 0)).filter((g) => g > 1).sort((a, b) => a - b);
 		const keeps = gaps.length > 0 && gaps[gaps.length >> 1] < 40;
 		const last = resizes[resizes.length - 1], end = drawn[drawn.length - 1];
 		const settled = !!end && end[1] === last[1] && end[2] === last[2];
 		const ok = errors.length === 0 && sizes >= n / 2 && settled && (!worker ? stale === 0 : !keeps || stale * 10 <= shown);
 		if (!ok) failed++;
 		const ms = (v) => (v === Infinity ? 'never' : v.toFixed(1));
+		// (a worker's longest wait between draws while resized: a stall)
+		const stall = worker && gaps.length ? `, its longest gap between draws ${gaps[gaps.length - 1].toFixed(1)} ms` : '';
 		const how = late.length ? ` (seen ${late.map((l) => ms(l[0])).join(' ')} ms into their frames, drawn ${late.map((l) => ms(l[1])).join(' ')} ms after the next began)` : '';
-		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${worker && !keeps ? ' (its frames slower than the steps)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
+		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${stall}${worker && !keeps ? ' (its frames slower than the steps)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
 	} catch (e) {
 		failed++;
 		line = `${mode}: ${e.message} FAILED`;
@@ -177,6 +186,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 	for (const e of errors) console.log('  error: ' + e);
 	await p.close();
 }
+console.log('web-resize.mjs: on ' + renderer);
 await browser.close();
 server.close();
 process.exit(failed ? 1 : 0);

@@ -278,7 +278,7 @@ export default function os(host) {
 		if (w > 0 && hh > 0 && (w !== b.width || hh !== b.height)) {
 			b.width = w;
 			b.height = hh;
-			program?.post({ type: 'size', h, w, hh, at: performance.timeOrigin + performance.now() });
+			program?.post({ type: 'size', h, w, hh });
 			return true;
 		}
 		return false;
@@ -581,8 +581,9 @@ export default function os(host) {
 	let query = 0;
 	// the next frame's requestAnimationFrame
 	let frameId = 0;
-	// (a frame now, outside the animation frames: start's; a resize's, so
-	// that the frame laying out the new size shows it, not the old one stretched)
+	// (a resize's frame now, start's, so that the frame laying out the new
+	// size shows it, not the old one stretched: on the page's thread one
+	// outside the animation frames; in a worker the one waiting, if any)
 	let frameNow = null;
 	let keyboardAt = 0;
 	// App.backDepth's history entry (one of the page's own, state
@@ -707,10 +708,10 @@ export default function os(host) {
 			c.width = m.w;
 			c.height = m.hh;
 			push([m.h, RESIZE, 0, m.w, m.hh, 0, 0]);
-			// (drawn at once: the page shows the old frame stretched until a new
-			// one comes; not when it waited behind a slow frame, the next of
-			// which takes the newest size, rather than one for each)
-			if (performance.timeOrigin + performance.now() - (m.at ?? 0) < 16) frameNow?.();
+			// (drawn by the frame waiting for the page's marker, at once: the
+			// page shows the old frame stretched until a new one comes; never a
+			// frame more, so that a burst of sizes draws the newest once)
+			frameNow?.();
 		});
 		page.on('state', (m) => {
 			const t = m.state;
@@ -1393,7 +1394,10 @@ export default function os(host) {
 				if (host.exitCode && host.options.onError) host.options.onError(new Error('the program exited with code ' + host.exitCode));
 				return more;
 			};
-			frameNow = () => {
+			// (in a worker, one a step outside its animation frames was a frame
+			// more each step: under a slow GL, CI's SwiftShader, a burst of
+			// resizes stalled it for frames)
+			frameNow = page ? () => due && go() : () => {
 				if (stopped || hidden()) return;
 				// (the animation frames go on: one asked for already, else from here)
 				if (step() && !frameId) frameId = raf(tick);
