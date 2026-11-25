@@ -1733,11 +1733,11 @@ helder.gfx's Device). A Node is the program's class over a node's handle
 helder/gfx's values:
 
 ```ts
-const world = new World("demo");
-const eye = world.node("eye");
-const camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
-eye.position = vec3(0, 1, 4);
-eye.lookAt(vec3(0, 0, 0));
+const world = new World('demo')
+const eye = world.node('eye')
+const camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100))
+eye.position = vec3(0, 1, 4)
+eye.lookAt(vec3(0, 0, 0))
 ```
 
 The examples with a TypeScript twin show both, a tab each: the scene
@@ -1757,11 +1757,11 @@ and its value's `apply(material, {glow: bytes})` gives a material the
 shader and its blocks (`params.glow.write(value, bytes)`):
 
 ```ts
-type GlowParams = {color: Vec4, time: Vec4};
+type GlowParams = {color: Vec4, time: Vec4}
 const Glow = material(pbr.with({
-	emissive: (s: PbrSurface, p: {glow: GlowParams}): Vec3 => p.glow.color.xyz.mul(0.6 + 0.4 * sin(p.glow.time.x * 3 + s.world.x)),
-}));
-Glow.apply(orb, {glow: bytes});
+  emissive: (s: PbrSurface, p: {glow: GlowParams}): Vec3 => p.glow.color.xyz.mul(0.6 + 0.4 * sin(p.glow.time.x * 3 + s.world.x))
+}))
+Glow.apply(orb, {glow: bytes})
 ```
 
 The shading models are `helder/scene`'s too: `lambert`, `toon`, `phong`,

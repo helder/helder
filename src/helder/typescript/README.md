@@ -324,13 +324,13 @@ Their handlers are Haxe's (`helder.dev.KeepDefinition`,
 `helder.asset.AssetCheck`).
 
 ```tsx
-import { signal } from "helder/view";
-import { UiWindow, Surface } from "helder/ui";
+import {signal} from 'helder/view'
+import {UiWindow, Surface} from 'helder/ui'
 
-const count = signal(0);
+const count = signal(0)
 UiWindow.run(<Surface title="Counter">
-	<view:button onPress={() => count(c => c + 1)}>{count() * 2}</view:button>
-</Surface>);
+  <view:button onPress={() => count(c => c + 1)}>{count() * 2}</view:button>
+</Surface>)
 ```
 
 **Modules.** A TypeScript module is a Haxe class, its package's
@@ -502,9 +502,9 @@ BigInt64Array), `process` and node's other globals.
 
 ```tsx
 function Checkbox(props: {checked: Signal<boolean>, label: string}) {
-	return <view:button role="checkbox" checked={props.checked} onPress={() => props.checked(c => !c)}>
-		<Show when={props.checked()}><icon name="check"/></Show>
-	</view:button>;
+  return <view:button role="checkbox" checked={props.checked} onPress={() => props.checked(c => !c)}>
+    <Show when={props.checked()}><icon name="check"/></Show>
+  </view:button>
 }
 ```
 
@@ -524,10 +524,10 @@ program as promises.
 
 ```ts
 const user = memo(async () => {
-	const n = id();                      // tracked
-	const r = await load(n);             // cancelled when id changes meanwhile
-	return r.name;
-});
+  const n = id()                      // tracked
+  const r = await load(n)             // cancelled when id changes meanwhile
+  return r.name
+})
 ```
 
 ## Tests

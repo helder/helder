@@ -41,13 +41,13 @@ Async.run(task -> {
 In TypeScript (`helder/jobs`), the same definition:
 
 ```ts
-import {job} from "helder/jobs";
+import {job} from 'helder/jobs'
 
-const shortest = 3;                       // a constant it reads: sent with its input
+const shortest = 3                       // a constant it reads: sent with its input
 function words(t: {text: string}): number {
-  return t.text.split(" ").filter((w) => w.length >= shortest).length;
+  return t.text.split(' ').filter(w => w.length >= shortest).length
 }
-const n = await job(words).run({text: "a fleet of ships"});   // a promise: 2
+const n = await job(words).run({text: 'a fleet of ships'})   // a promise: 2
 ```
 
 `f` is a module-level function of the program, named, in the module that
