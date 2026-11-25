@@ -268,7 +268,7 @@ class Shell implements Markup {
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
 			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
 			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? helder.os.WindowBackdrop.None : helder.os.WindowBackdrop.Sidebar : null} clickThrough={false}
-			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
+			onDrop={(files, px, py) -> if (files.length > 0 && (window == null || !Drops.external(x, window.ui, files, px, py))) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
 				if (x.thumbnails != null) x.thumbnails.close();

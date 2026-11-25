@@ -56,7 +56,8 @@ class Timing {
 		if (frames == 1) mark("window");
 		var b = x.browser, n = nav;
 		if (n != null && b.dir.value == n.dir) {
-			if (!n.rows && (b.items.value.length > 0 || !b.reading.value)) {
+			// (not the last folder's, kept on screen until the new one's first batch: Browser.stale)
+			if (!n.rows && !b.stale && (b.items.value.length > 0 || !b.reading.value)) {
 				n.rows = true;
 				mark('rows ${b.items.value.length}');
 			}

@@ -52,9 +52,9 @@ class Decode {
 	}
 
 	// a PDF's page (helder.pdf, PdfPages: the document kept open for its next pages)
-	static function pdf(path:Null<String>, bytes:Null<Bytes>, page:Int, side:Int, size:Int):Decoded {
+	static function pdf(path:Null<String>, bytes:Null<Bytes>, page:Int, side:Int, size:Int, first = false, ?source:helder.pdf.PdfSource):Decoded {
 		return try {
-			var p = PdfPages.render(path, bytes, page, side);
+			var p = PdfPages.render(path, bytes, page, side, first, source);
 			var mem = ImageMemory.offHeapMemory();
 			var px = mem.take(p.rgba);
 			mem.free();
@@ -87,17 +87,29 @@ class Decode {
 	}
 
 	#if (hxmc.target != "wasm32-wasi")
-	// the job: a key in (a path, maybe a PDF's page: key; and the side it is shown at: 0, all of it), a Decoded out
-	public static function file(req:{path:String, side:Int}):Decoded {
+	// the job: a key in (a path, maybe a PDF's page: key; and the side it is shown at: 0, all of it;
+	// first: a PDF's first page alone, its document not kept: the inspector's), a Decoded out
+	public static function file(req:{path:String, side:Int, ?first:Bool}):Decoded {
 		var k = parseKey(req.path);
-		// (a PDF already open: its page drawn, the file not read again)
+		// (a PDF already open: its page drawn, the file not read again; another read where its pages need)
 		if (PdfPages.isOpen(k.path)) return pdf(k.path, null, k.page, req.side, 0);
+		if (pdfAt(k.path)) return pdf(k.path, null, k.page, req.side, 0, req.first == true);
 		var bytes = try sys.io.File.getBytes(k.path) catch (e:Dynamic) null;
 		if (bytes == null) return failed("unreadable", "The file cannot be read", 0, "");
 		// (none of helder.image's: the system's decoders, TIFF, HEIC, AVIF, RAW, where there are some)
 		if (formatOf(bytes) == "" && helder.os.SystemImages.supports(k.path)) return system(k.path, req.side, bytes.length);
 		if (formatOf(bytes) == "PDF") return pdf(k.path, bytes, k.page, req.side, bytes.length);
 		return decode(bytes, req.side);
+	}
+
+	// (whether the file on disk is a PDF: its first bytes)
+	static function pdfAt(path:String):Bool {
+		return try {
+			var f = sys.io.File.read(path, true), b = Bytes.alloc(5);
+			var n = try f.readBytes(b, 0, 5) catch (_:haxe.io.Eof) 0;
+			f.close();
+			n == 5 && formatOf(b) == "PDF";
+		} catch (_:Dynamic) false;
 	}
 
 	// (helder.os's SystemImages: WIC, ImageIO; ImageLimits before any pixel; upright, scaled where the system scales)
@@ -134,8 +146,8 @@ class Decode {
 	// job (ImageJobs: PngCore over off-heap memory), the rest as a GC job
 	// (file); never throws
 	@:coroutine public static function job(path:String, side = 0):Decoded {
-		// (a PDF's page: the GC job, its document kept there)
-		if (path.indexOf("\n") >= 0 || PdfPages.isOpen(path))
+		// (a PDF's page: the GC job, its document kept there, the file read there)
+		if (path.indexOf("\n") >= 0 || PdfPages.isOpen(path) || pdfAt(path))
 			return try helder.jobs.Jobs.job(file).run({path: path, side: side}) catch (e:Dynamic) failed("corrupt", "The decode failed: " + Std.string(e), 0, "PDF");
 		var bytes = try sys.io.File.getBytes(path) catch (e:Dynamic) null;
 		if (bytes == null) return failed("unreadable", "The file cannot be read", 0, "");
@@ -172,7 +184,14 @@ class Decode {
 	// a decode of bytes read through files (the web's, a phone's documents),
 	// on a worker (helder.jobs: Web Workers in a browser), a PDF on the page
 	// there (onPage); never throws
-	@:coroutine public static function read(files:Files, key:String, side:Int):Decoded {
+	@:coroutine public static function read(files:Files, key:String, side:Int, first = false):Decoded {
+		#if (hxmc.target == "wasm32-wasi")
+		// (a PDF on the page, read as its page needs: its blocks fetched through files)
+		var k = parseKey(key);
+		if (Viewer.isPdf(k.path))
+			return try PdfPages.through(files, k.path, !first, src -> pdf(k.path, null, k.page, side, 0, first, src)) catch (e:Dynamic)
+				failed("unreadable", "The file cannot be read: " + Std.string(e), 0, "PDF");
+		#end
 		var b = try FileBytes.read(files, parseKey(key).path) catch (_:Dynamic) null;
 		if (b == null) return failed("unreadable", "The file cannot be read", 0, "");
 		var req = {path: key, bytes: b, side: side};

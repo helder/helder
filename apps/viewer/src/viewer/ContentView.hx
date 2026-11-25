@@ -173,7 +173,7 @@ class ContentView implements Markup {
 			var v = scroller, w = want;
 			// (none of the folder read yet: its first batch places it; placed
 			// on the empty list, the rows coming in would carry their old place)
-			if (v == null || w == null || b.reading.value && b.items.value.length == 0) return;
+			if (v == null || w == null || b.stale || b.reading.value && b.items.value.length == 0) return;
 			if (w < 0) {
 				// (the entry asked for, once it is read; gone: the top)
 				var i = b.indexOf(b.selected.value);
@@ -214,9 +214,11 @@ class ContentView implements Markup {
 		}
 		function menu(i:Int, px:Float, py:Float) {
 			var s = scroller;
-			if (s != null && s.ui != null) Menus.popup(s.ui, ViewerActions.entry, px, py, s);
+			// (on empty space, -1: the folder's own: New Folder, View, Show in Finder, Get Info)
+			if (s != null && s.ui != null) Menus.popup(s.ui, i < 0 ? ViewerActions.background() : ViewerActions.entry, px, py, s);
 		}
-		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"}>
+		// (the folder's own space: what is dropped on it, into the folder shown)
+		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
 			<Show when={b.layout() == List}>
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
@@ -261,11 +263,17 @@ class ContentView implements Markup {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
-		return <view slot="list-row" data-selected={on()} ref={(n:Node) -> DragOut.from(x, n, () -> e().name)}>
+		return <view slot="list-row" data-selected={on()} ref={(n:Node) -> {
+			DragOut.from(x, n, () -> e().name);
+			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
+		}}>
 			<view direction="row" align-items="center" column-gap={8} grow={1} min-width={0}>
 				{Tiles.mini(x, e)}
-				<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="middle" color={on() ? Look.ref.accentFg : Look.ref.fg}
-					dir={helder.ui.Dir.Ltr}>{e().name}</text>
+				<Show when={b.renaming() == e().name}>{() -> NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""))}</Show>
+				<Show when={b.renaming() != e().name}>
+					<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="middle" color={on() ? Look.ref.accentFg : Look.ref.fg}
+						dir={helder.ui.Dir.Ltr}>{e().name}</text>
+				</Show>
 			</view>
 			<text width={156} shrink={0} max-lines={1}>{Kinds.date(e().modified)}</text>
 			<text width={84} shrink={0} max-lines={1} text-align="right">{e().kind == Folder ? "—" : Kinds.size(e().size)}</text>
@@ -302,9 +310,10 @@ class ContentView implements Markup {
 		</view>;
 	}
 
-	// "28 items", "3 of 28 selected", "Reading… 31,402"
+	// "28 items", "3 of 28 selected", "Reading… 31,402"; a notice first
 	public static function count(x:Explorer):String {
 		var b = x.browser, n = b.items().length;
+		if (b.notice() != "") return b.notice();
 		if (b.reading()) return "Reading… " + Kinds.count(b.total());
 		b.selected();
 		b.selection.version();

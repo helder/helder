@@ -183,6 +183,9 @@ class PdfFont {
 				}
 			} catch (e:PdfError) {
 				if (e.kind == TooLarge) throw Errors.kept(e);
+			} catch (e:PdfSource.PdfMissing) {
+				// (its program's bytes not fetched yet: read again once they are)
+				throw e;
 			} catch (_:Dynamic) {}
 		}
 		// (not embedded, or not read: a system face by the name's kind)
@@ -298,6 +301,11 @@ class PdfFont {
 
 	// the code's glyph outline into path through m (glyph units: a thousand an em in; m from text space by matrix)
 	public function outline(code:Int, path:Path, m:Matrix) {
+		// (a damaged program's glyph, its data read past its end: drawn as far as it got, the page's other text drawn)
+		try glyph(code, path, m) catch (e:haxe.io.Error) {}
+	}
+
+	function glyph(code:Int, path:Path, m:Matrix) {
 		var gm = m.clone().multiply(matrix);
 		if (type1 != null) {
 			var name = names[code] ?? ".notdef";

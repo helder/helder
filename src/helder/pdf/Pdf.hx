@@ -14,23 +14,31 @@ import helder.canvas.Painter;
 // PDF reading and rendering on helder.canvas (src/helder/pdf/README.md):
 //
 //   var pdf = Pdf.open(bytes);                 // Document: PdfError when it is not one
+//   Pdf.openSource(source);                    // read as pages need it (PdfSource: a file, a fetched one)
+//   Pdf.openSource(source, true);              // its first page alone: a thumbnail's (linearized: its start)
 //   Pdf.openPlain(bytes);                      // no decryption linked (an encrypted one: PdfError)
 //   var bitmap = Pdf.render(pdf, 0, 2.0);      // page 1 at 2 pixels a point, on the CPU
 //   Pdf.draw(pdf.pages[0], painter, scale);    // onto any Painter (the GPU's, a recording)
 //   Pdf.text(pdf.pages[0]);                    // its text
 class Pdf {
-	public static function open(bytes:Bytes, password = "", ?limits:PdfLimits):Document {
+	public static function open(bytes:Bytes, password = "", ?limits:PdfLimits):Document
+		return openSource(new PdfSource.PdfBytes(bytes), false, password, limits);
+
+	// the file read through source as its pages need it (the header, the tail, each object at its
+	// offset); first: its first page alone (Document.pages: that one, Document.count: how many there
+	// are), a linearized file's from its first section, another's by the page tree's first leaf
+	public static function openSource(source:PdfSource, first = false, password = "", ?limits:PdfLimits):Document {
 		PdfImage.useJpeg();
 		PdfImage.jpx = (d, r, m) -> Jpx.decode(d, r, m);
 		PdfImage.jpxInfo = d -> Jpx.info(d);
-		return new Document(bytes, password, limits, Crypto.open);
+		return new Document(source, password, limits, Crypto.open, first);
 	}
 
 	// the same without decryption, JPEG 2000 or the JPEG decoder linked (an encrypted file a PdfError,
 	// Encrypted; a JPX image Unsupported; JPEGs by Pdf.render's decoder, or on the web PdfWeb.prepare's
 	// browser or PdfImage.useJpeg): the smaller build
 	public static function openPlain(bytes:Bytes, ?limits:PdfLimits):Document
-		return new Document(bytes, "", limits);
+		return new Document(new PdfSource.PdfBytes(bytes), "", limits);
 
 	// the page's transform from its user space to pixels at scale (its box at the origin, its rotation)
 	public static function pageMatrix(page:Page, scale:Float):Matrix {

@@ -175,6 +175,9 @@ class Thumbnails {
 		#if (hxmc.target == "wasm32-wasi")
 		var files = files;
 		var job = Async.launch(_ -> {
+			// (a PDF's first page on the page, read as it needs: its blocks fetched through files)
+			if (Viewer.isPdf(w.request.path))
+				return try PdfPages.through(files, w.request.path, false, src -> pdfThumb(w.request, src)) catch (_:Dynamic) null;
 			var b = try FileBytes.read(files, w.request.path) catch (_:Dynamic) null;
 			b == null ? null : Decode.onPage(b) ? made({request: w.request, bytes: b}) : Jobs.job(made).run({request: w.request, bytes: b});
 		});
@@ -234,6 +237,23 @@ class Thumbnails {
 	}
 
 	#if (hxmc.target == "wasm32-wasi")
+	// (a PDF's first page through its source, fitted)
+	static function pdfThumb(req:ThumbRequest, src:helder.pdf.PdfSource):ThumbResult {
+		var mem = ImageMemory.offHeapMemory();
+		try {
+			var d = PdfPages.render(req.path, null, 0, req.side, true, src);
+			var t = fit({width: d.pixelsWidth, height: d.pixelsHeight, rgba: d.rgba}, req.side, mem);
+			var pixels = mem.take(t.rgba);
+			mem.free();
+			return {width: t.width, height: t.height, pixels: pixels, cold: true};
+		} catch (e:helder.pdf.PdfSource.PdfMissing) {
+			mem.free();
+			throw e;
+		} catch (_:Dynamic) {}
+		mem.free();
+		return {width: 0, height: 0, pixels: null, cold: true};
+	}
+
 	// (the web's job: the file's bytes read already)
 	static function made(input:{request:ThumbRequest, bytes:Bytes}):ThumbResult {
 		var b = input.bytes, req = input.request, mem = ImageMemory.offHeapMemory();
@@ -321,7 +341,8 @@ class Thumbnails {
 				var bytes = whole(), d = WebpDecoder.decode(bytes, mem);
 				Exif.apply(d.rgba, d.width, d.height, Exif.orientation(bytes), mem);
 			case "pdf":
-				var d = PdfPages.render(null, whole(), 0, side);
+				// (its first page alone, read where it needs: from disk; on the web its bytes read already)
+				var d = #if (hxmc.target == "wasm32-wasi") PdfPages.render(null, whole(), 0, side, true) #else PdfPages.render(path, null, 0, side, true) #end;
 				{width: d.pixelsWidth, height: d.pixelsHeight, rgba: d.rgba};
 			case _:
 				#if (hxmc.target == "wasm32-wasi")

@@ -3,9 +3,11 @@ package viewer;
 import helder.story.StoryText;
 import helder.test.Test;
 import helder.ui.Node;
+import helder.ui.menu.Menu.MenuItem;
 import helder.ui.Ui;
 import helder.view.Render;
 import viewer.Files;
+import viewer.ViewerActions.ViewerAction;
 
 // The window's content within the window at desktop sizes, with a large
 // folder among many: the panels and the path bar end at its bottom, the
@@ -273,6 +275,151 @@ function tests() {
 			var asked = @:privateAccess Tiles.serial - before, cells = [for (e in x.browser.items.value) if (Kinds.viewable(e) && !FolderModel.isMarkdown(e.name)) e];
 			x.thumbnails.close();
 			equals(asked, cells.length);
+		});
+		test("going between folders: the old entries and level shown until the new are read, never an empty grid", () -> {
+			var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+			function frame()
+				for (_ in 0...3) {
+					helder.view.graph.Graph.flush();
+					ui.update();
+				}
+			function tiles():Int {
+				var n = 0;
+				function walk(c:Node) {
+					if (c.slot == "grid-tile" && c.visible()) n++;
+					for (k in c.children)
+						walk(k);
+				}
+				walk(ui.root.find("grid"));
+				return n;
+			}
+			x.start("/home/folder 0");
+			frame();
+			var before = tiles(), level = x.sidebar.level.value, sideRows = x.sidebar.rows.value.length;
+			assert(before > 0, "the folder's tiles");
+			var files:MemoryFiles = cast x.files;
+			files.hold = true;
+			x.browser.go("/home/folder 0/sub");
+			x.sidebar.show("/home/folder 0");
+			frame();
+			// (not read yet: the last folder's tiles and level still shown)
+			equals(tiles(), before);
+			equals(x.sidebar.level.value, level);
+			equals(x.sidebar.rows.value.length, sideRows);
+			files.release();
+			frame();
+			equals(x.browser.items.value.length, 300);
+			equals(x.browser.items.value[0].name, "inner 0.txt");
+			equals(x.sidebar.level.value, "/home/folder 0");
+		});
+		function shown(path:String):{x:Explorer, ui:Ui, frame:Void->Void} {
+			var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+			function frame()
+				for (_ in 0...3) {
+					helder.view.graph.Graph.flush();
+					ui.update();
+				}
+			x.start(path);
+			frame();
+			return {x: x, ui: ui, frame: frame};
+		}
+		function texts(n:Node):Array<String> {
+			var out = [];
+			function walk(c:Node) {
+				if (Std.isOfType(c, helder.ui.TextNode)) out.push((cast c : helder.ui.TextNode).text);
+				for (k in c.children)
+					walk(k);
+			}
+			walk(n);
+			return out;
+		}
+		function tile(ui:Ui, name:String):Node {
+			var found:Null<Node> = null;
+			function walk(c:Node) {
+				if (found == null && c.slot == "grid-tile" && c.visible() && texts(c).contains(name)) found = c;
+				for (k in c.children)
+					walk(k);
+			}
+			walk(ui.root.find("grid"));
+			return found;
+		}
+		test("a right press on the empty space: the folder's menu; a new folder renamed in place", () -> {
+			var w = shown("/home/folder 1"), ui = w.ui, x = w.x;
+			var grid = ui.root.find("grid"), px = grid.absX + 200, py = grid.absY + 200;
+			ui.pointerDown(px, py, 3);
+			ui.pointerUp(px, py, 3);
+			w.frame();
+			var menu = texts(ui.overlay);
+			for (label in ["New Folder", "View", "Get Info"])
+				assert(menu.contains(label), '$label in $menu');
+			assert(!menu.contains("Open"), 'no entry\'s items: $menu');
+			ui.keyDown(helder.ui.Key.ESCAPE, 0);
+			w.frame();
+			assert(x.perform(NewFolder));
+			w.frame();
+			// (the field focused a step later)
+			helder.ui.Clock.tick(helder.ui.Clock.now + 0.1);
+			w.frame();
+			equals(x.files.stat("/home/folder 1/untitled folder")?.kind, Folder);
+			notEquals(ui.root.find("rename"), null);
+			ui.keyDown(helder.ui.Key.ESCAPE, 0);
+			w.frame();
+			equals(ui.root.find("rename"), null);
+			equals(x.browser.selected.value, "untitled folder");
+		});
+		test("files dragged onto a folder's tile: moved in, the tile marked while over it; undone", () -> {
+			var w = shown("/home/folder 0"), ui = w.ui, x = w.x;
+			var from = tile(ui, "file 0.txt"), to = tile(ui, "sub");
+			notEquals(from, null);
+			notEquals(to, null);
+			var ax = from.absX + from.width / 2, ay = from.absY + 30, bx = to.absX + to.width / 2, by = to.absY + 30;
+			ui.pointerDown(ax, ay, 1);
+			ui.pointerMove(ax + 10, ay);
+			ui.pointerMove(bx, by);
+			w.frame();
+			notEquals(to.find("drop-mark"), null);
+			ui.pointerUp(bx, by, 1);
+			w.frame();
+			equals(to.find("drop-mark"), null);
+			notEquals(x.files.stat("/home/folder 0/sub/file 0.txt"), null);
+			equals(x.files.stat("/home/folder 0/file 0.txt"), null);
+			equals(x.browser.entry("file 0.txt"), null);
+			assert(x.perform(UndoTrash));
+			notEquals(x.files.stat("/home/folder 0/file 0.txt"), null);
+		});
+		test("another app's files dropped on a folder's tile: copied in; on the space, into the folder shown", () -> {
+			var w = shown("/home/folder 0"), ui = w.ui, x = w.x;
+			var m:MemoryFiles = cast x.files;
+			m.add("/elsewhere/photo.jpg", haxe.io.Bytes.ofString("jpg"));
+			var to = tile(ui, "sub");
+			assert(Drops.external(x, ui, ["/elsewhere/photo.jpg"], to.absX + to.width / 2, to.absY + 30));
+			equals(x.files.stat("/home/folder 0/sub/photo.jpg")?.size, 3);
+			notEquals(x.files.stat("/elsewhere/photo.jpg"), null);
+			var grid = ui.root.find("grid");
+			assert(Drops.external(x, ui, ["/elsewhere/photo.jpg"], grid.absX + grid.width - 10, grid.absY + 5));
+			notEquals(x.browser.entry("photo.jpg"), null);
+			assert(!Drops.external(x, ui, ["/elsewhere/photo.jpg"], 2, 2), "the toolbar takes none");
+		});
+		test("a sidebar folder's menu; renamed in place, the folder shown followed", () -> {
+			var w = shown("/home/folder 3"), ui = w.ui, x = w.x;
+			x.sidebar.show("/home");
+			w.frame();
+			var labels = [for (i in ViewerActions.sidebarFolder("/home/folder 3")) switch i {
+				case Item(label, _): label;
+				default: "-";
+			}];
+			for (label in ["Open", "Rename…", "Copy Path"])
+				assert(labels.contains(label), '$label in $labels');
+			assert(x.perform(RenameFolder("/home/folder 3")));
+			w.frame();
+			notEquals(ui.root.find("sidebar").find("rename"), null);
+			equals(x.renameFolder("/home/folder 3", "folder 4"), '"folder 4" is already there');
+			equals(x.renameFolder("/home/folder 3", "three"), null);
+			w.frame();
+			equals(x.browser.dir.value, "/home/three");
+			assert(Lambda.exists(x.sidebar.rows.value, r -> r.path == "/home/three"));
 		});
 	});
 }
