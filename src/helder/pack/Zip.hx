@@ -11,7 +11,7 @@ class Zip {
 	// 0xd935, as zipalign -P 16 and apksigner write it), with a Unix mode
 	// when it has one (an .ipa's executable: 0755); a fixed date
 	// (1981-01-01): the same input gives the same bytes. An entry with
-	// deflate is deflated (Deflate.raw: method 8) where that makes it
+	// deflate is deflated (helder.image.Deflate.raw: method 8) where that makes it
 	// smaller, a desktop release's archive (helder.cli.Desktop)
 	public static function stored(entries:Array<ZipEntry>):Bytes {
 		var out = new Buf(1 << 20), cd = new Buf(4096);
@@ -22,7 +22,7 @@ class Zip {
 		for (e in entries) {
 			var at = out.len, name = Bytes.ofString(e.name);
 			var crc = haxe.crypto.Crc32.make(e.data);
-			var packed = e.deflate == true && e.align <= 1 ? Deflate.raw(e.data) : null;
+			var packed = e.deflate == true && e.align <= 1 ? helder.image.Deflate.raw(e.data) : null;
 			if (packed != null && packed.length >= e.data.length) packed = null;
 			var method = packed != null ? 8 : 0, body = packed ?? e.data;
 			// the data's offset: header (30) + name + extra (4 + 2 + padding)
@@ -100,7 +100,9 @@ class Zip {
 			var dataAt = local + 30 + b.getUInt16(local + 26) + b.getUInt16(local + 28);
 			var data = switch method {
 				case 0: b.sub(dataAt, size);
-				case 8: inflate(b.sub(dataAt, size), full);
+				// (not in a macro: iOS's build types Zip there, through Bundle, and
+				// Inflate's kernel is hxmc's, not Eval's)
+				case 8: #if macro throw name + ": not inflated in a macro"; #else helder.image.Inflate.exact(b.sub(dataAt, size), full, false); #end
 				case m: throw name + ": compression method " + m;
 			}
 			if (haxe.crypto.Crc32.make(data) != crc) throw name + ": its CRC-32 differs";
@@ -121,13 +123,6 @@ class Zip {
 		for (e in read(b))
 			if (e.name == name) return e.data;
 		return null;
-	}
-
-	static function inflate(raw:Bytes, size:Int):Bytes {
-		var out = Bytes.alloc(size);
-		var n = new haxe.zip.InflateImpl(new haxe.io.BytesInput(raw), false, false).readBytes(out, 0, size);
-		if (n != size) throw "a deflated entry shorter than its size";
-		return out;
 	}
 }
 
