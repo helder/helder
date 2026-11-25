@@ -13,7 +13,8 @@ import sys.io.File;
 // audio track through AudioToolbox and helder's Vorbis, its frames and
 // samples against ffmpeg's (libopus's for Opus), trimmed as the player
 // trims them; exact seeks and frame steps landing on the frame by its
-// time and pixels; a clip played through CoreAudio's "file:" output, each
+// time and pixels; a scrub bar's drag (keyframe seeks, the release exact)
+// left where it was let go, paused and playing; a clip played through CoreAudio's "file:" output, each
 // frame shown within a frame of the clock, the audio's frames in the
 // file. AV1, VP9 and 10-bit HEVC where the machine decodes them (VP9 and
 // AV1: the hardware's; CI's virtual Macs have neither), each skip printed;
@@ -44,6 +45,7 @@ class MediaAppleTest {
 			var rgbs:DynamicAccess<Dynamic> = expected.rgb;
 			colours(rgbs);
 			seeks(videos);
+			dragged(videos);
 			played();
 		});
 		Sys.println('MediaAppleTest: ${Math.round((haxe.Timer.stamp() - t0) * 10) / 10} s');
@@ -257,6 +259,40 @@ class MediaAppleTest {
 		f = shown(p, 0.55);
 		check("editlist.mov: seek(0.6): 0.55", f != null && f.time == 0.55 && crc(f) == crcs[10], f == null ? "none" : '${f.time}');
 		p.close();
+	}
+
+	// (a scrub bar's drag: keyframe seeks as it goes, a frame apart, the
+	// release exact; paused, the frame and the time there; playing, on from
+	// there, no frame before it shown)
+	@:coroutine static function dragged(videos:DynamicAccess<Dynamic>) {
+		var crcs:Array<Int> = videos["h264-aac.mp4"].crcs;
+		for (playing in [false, true]) {
+			var what = 'h264-aac.mp4: dragged, ${playing ? "playing" : "paused"}';
+			var p = Player.open(new FileSource("tests/media/h264-aac.mp4"), {silent: true});
+			var t0 = haxe.Timer.stamp();
+			while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+			if (playing) p.play();
+			for (t in [0.2, 0.4, 0.6]) {
+				p.seek(t, false);
+				p.update();
+				Async.delay(0.016);
+			}
+			p.seek(0.65);
+			// (its pixels read while shown: the player lets a frame go a few updates later)
+			var before = p.shown, first = -1.0, pixels = 0, t1 = haxe.Timer.stamp();
+			while (haxe.Timer.stamp() - t1 < 0.2) {
+				var f = p.update();
+				if (first < 0 && f != null && f != before) {
+					first = f.time;
+					pixels = crc(f);
+				}
+				Async.delay(0.002);
+			}
+			check('$what: the frame at 0.6 first', first == 0.6 && pixels == crcs[6], '$first');
+			var at = p.time;
+			check('$what: the time from 0.65', playing ? at > 0.65 && at < 0.65 + 0.2 + 0.05 : at == 0.65, '$at');
+			p.close();
+		}
 	}
 
 	// a clip played through CoreAudio's file output (its clock's pace): each

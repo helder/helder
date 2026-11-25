@@ -15,6 +15,7 @@ reads this folder when compiling; this file is left out).
 | More/Spinner.gif | an animated GIF | `tests/fixtures/folder/anim.gif` |
 | Starlings.mp4 | 6 s of H.264, 640×400 | `examples/murmuration`, `--video`, then ffmpeg (CRF 28) |
 | Chimes.m4a | 8 s of AAC | ffmpeg's `aevalsrc`: four decaying sines (C, E, G, C) |
+| More/Bells.webm | 6 s of Opus (32 kb/s), what every Chromium plays (its open builds have no AAC nor H.264) | ffmpeg's `aevalsrc`: four decaying sines (C, E, G, C), libopus |
 | About Viewer.pdf | three A4 pages: text, two of these photos | `node tests/samplepdf.mjs` |
 | Welcome.md | a Markdown page: headings, a list, a table, code, links, Planet.jpg | written by hand |
 
