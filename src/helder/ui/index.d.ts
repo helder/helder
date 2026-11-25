@@ -1706,7 +1706,7 @@ declare class CodeModel {
 	// sensitive or not, whole words or not) or a regular expression
 	findAll(query: string, caseSensitive?: boolean, wholeWord?: boolean, regex?: boolean): number[];
 	// the matches replaced (start, end pairs; one edit, undone as one)
-	replaceMatches(matches: number[], with: string): boolean;
+	replaceMatches(matches: number[], replacement: string): boolean;
 	canUndo(): boolean;
 	canRedo(): boolean;
 	undo(): boolean;

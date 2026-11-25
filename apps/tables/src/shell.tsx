@@ -6,6 +6,7 @@
 // one; a menu over everything
 import { For, Match, Read, Repeat, Show, Switch, signal } from "helder/view";
 import { DataGrid, Key, Node, SafeArea, Svg, TextField, Theme, WindowControls } from "helder/ui";
+import {uiOf} from 'helder/ui/actions'
 import * as format from "./format";
 import * as icons from "./icons";
 import { Table } from "./table";
@@ -561,8 +562,8 @@ function MenuLayer(props: { app: Tables }) {
 	const at = signal({ x: m.x, y: m.y });
 	const close = () => {
 		app.menu(null);
-		m.from?.focus(false)
-		else app.grid.focus(false);
+		if (m.from !== undefined && uiOf(m.from) !== null) m.from.focus(false)
+		else app.grid.focus(false)
 	};
 	const step = (d: number) => {
 		const on = nodes.findIndex(n => n.focused);
