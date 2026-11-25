@@ -80,7 +80,7 @@ class Settings {
 		#if (target.name == "hxmc")
 		#if helder.headless
 		v.dark = App.prefersDark();
-		v.reducedMotion = helder.headless.Headless.run.reducedMotion;
+		v.reducedMotion = helder.os.headless.Headless.run.reducedMotion;
 		v.orientation = windowOrientation();
 		#else
 		#if (!helder.os || helder.os == "web")

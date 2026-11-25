@@ -522,7 +522,7 @@ class Window {
 	@:noCompletion public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
 		if (closed) return;
 		typing = true;
-		#if (!helder.os || helder.headless) if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else #end
+		#if (!helder.os || helder.headless) if (HEADLESS) helder.os.headless.Headless.run.textInputAt(x, y, width, height) else #end
 		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().textInput(true, x, y, width, height) else #end
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().textInputArea(x, y, width, height) else #end
 		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().textInput(true) else #end

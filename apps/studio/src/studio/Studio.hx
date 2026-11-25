@@ -210,7 +210,7 @@ class Studio {
 	// (a headless run's script waits while the studio waits on its processes: Headless.hold)
 	public static function hold(done:Void->Bool, why:String, seconds = 120.0) {
 		#if helder.headless
-		helder.headless.Headless.run.hold(done, why, seconds);
+		helder.os.headless.Headless.run.hold(done, why, seconds);
 		#end
 	}
 
@@ -493,7 +493,7 @@ class Studio {
 	// selects its node; on nothing, nothing selected (add: shift held, a
 	// design's node added to the selection or taken from it)
 	public function clickStage(px:Float, py:Float, add = false) {
-		var now = #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end;
+		var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;
 		var double = now - lastClick.t < 0.4 && Math.abs(px - lastClick.x) < 6 && Math.abs(py - lastClick.y) < 6;
 		lastClick = {t: double ? -1.0 : now, x: px, y: py};
 		var wx = camera.wx(px), wy = camera.wy(py);
