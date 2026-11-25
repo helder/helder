@@ -8,6 +8,8 @@
     "src/",
     "apps/studio/src/",
     "apps/studio/fonts/",
+    "apps/studio/icons/",
+    "apps/studio/guide/",
     "apps/studio/web/",
     "apps/studio/package.json",
     "!**/*.test.hx",

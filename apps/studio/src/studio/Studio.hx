@@ -32,8 +32,15 @@ class Studio {
 	// when the program started (Main's first line): the cold start's measure
 	public static var processStart = haxe.Timer.stamp();
 
-	public final project:Null<Project>;
-	public final previews:Null<Previews>;
+	// the project was an empty folder, the starter's now (the blank sheet until the first prompt)
+	public final starter:Bool;
+	// (the blank sheet gone with the first prompt: the canvas fitted again once the chat is beside it)
+	var unveiled = false;
+	// (read again when what the project is changes: revive)
+	public var project(default, null):Null<Project>;
+	public var previews(default, null):Null<Previews>;
+	// bumped when they are (a view of the old program's screens made again)
+	public final revived = signal(0);
 	public final designs:Designs;
 	public final docs = new Docs();
 	public final camera = new Camera();
@@ -153,23 +160,31 @@ class Studio {
 	var covering = false;
 	var covered = false;
 
-	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String, ?classic:Bool}) {
+	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String, ?classic:Bool, ?starter:Bool}) {
 		current = this;
 		classic = options.classic ?? false;
 		startedAt = processStart;
 		var p:Null<Project> = null;
 		#if (hxmc.target == "wasm32-wasi")
 		// (the page's project, opened before the module started)
+		starter = false;
 		p = try Project.opened() catch (e:Dynamic) {
 			Sys.println('studio: the project: $e');
 			null;
 		}
 		#else
 		events = options.events == null ? null : sys.io.File.write(options.events, false);
+		// (an empty folder: the starter's project, the agent's start)
+		starter = dir != null && options.starter == true && Starter.write(dir);
+		if (starter) log("starter", {dir: dir});
+		Starter.typescript();
 		if (dir != null) p = try Project.open(dir) catch (e:Dynamic) {
 			Sys.println('studio: $dir: $e');
 			null;
 		}
+		#end
+		#if !(hxmc.target == "wasm32-wasi")
+		if (p != null && p.typescript) Starter.config(p.dir);
 		#end
 		project = p;
 		previews = p == null || p.live().length == 0 ? null : new Previews(p);
@@ -193,6 +208,7 @@ class Studio {
 		editor.view.lineHeight = Theme.CODE_LINE;
 		editor.onChange = codeChanged;
 		docs.onChange = changed;
+		docs.onGone = gone;
 		if (previews != null) {
 			previews.onFrame = framed;
 			previews.onBuilt = built;
@@ -298,6 +314,62 @@ class Studio {
 		#end
 	}
 
+	// a file made (an agent's project.patch of a path not there, an ACP agent's
+	// write): one entry of the history (its undo: gone)
+	public function create(file:String, text:String, ?by:String)
+		docs.create(file, text, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), "agent", by);
+
+	// a file a made file's undo took back: deleted, its frames or stories gone
+	function gone(file:String) {
+		Files.remove(file);
+		if (project == null) return;
+		if (file.endsWith(".helder")) framesChanged(file, project.design(file, null));
+		else if (Project.isStory(file)) storiesChanged(file, null);
+		if (shaping(file)) revive();
+	}
+
+	// (a file that can change what the project is: a story, its main, a package's or helder's file)
+	static function shaping(file:String):Bool {
+		var n = haxe.io.Path.withoutDirectory(file);
+		return Project.isStory(file) || ~/^(main\.tsx?|Main\.hx|package\.json|helder\.json)$/.match(n);
+	}
+
+	// the project read again when what it is may have changed (its first
+	// story or main made, its kind): when its entry, its kind or whether it
+	// has a program changed, the new project and its program (Previews,
+	// started), the old one stopped; whether it did
+	public function revive():Bool {
+		#if (hxmc.target == "wasm32-wasi")
+		return false;
+		#else
+		var old = project;
+		if (old == null) return false;
+		var p:Null<Project> = try Project.open(old.dir) catch (e:Dynamic) {
+			Sys.println('studio: ${old.dir}: $e');
+			null;
+		}
+		if (p == null) return false;
+		var live = p.live().length > 0;
+		if (p.typescript) Starter.config(p.dir);
+		if (p.typescript == old.typescript && p.entry?.main == old.entry?.main && p.entry?.typescript == old.entry?.typescript && live == (previews != null)) return false;
+		var was = previews;
+		project = p;
+		previews = live ? new Previews(p) : null;
+		if (was != null) Async.launch(_ -> was.stop());
+		var pr = previews;
+		if (pr != null) {
+			pr.onFrame = framed;
+			pr.onBuilt = built;
+			Async.launch(task -> pr.start(task));
+			hold(() -> pr.allShown(), "the screens' first frames", 300);
+		}
+		revived(v -> v + 1);
+		marks.saw([for (s in p.screens) s.name]);
+		log("revived", {typescript: p.typescript, entry: p.entry?.main, screens: [for (s in p.screens) s.name]});
+		return true;
+		#end
+	}
+
 	// the project an MCP route reaches (name null: the one in front; one project today)
 	function served(name:Null<String>):Null<Mcp.Target>
 		return project != null && (name == null || name == project.name) ? tools : null;
@@ -368,7 +440,8 @@ class Studio {
 		}
 		if (stage != null && (stage.width != stageWidth || stage.height != stageHeight) && stage.width > 0) {
 			// (the canvas stays where it is when the window is resized: fitted at the first size, or a phone's turn)
-			var first = stageWidth <= 0 || compactNow;
+			var first = stageWidth <= 0 || compactNow || unveiled;
+			unveiled = false;
 			stageWidth = stage.width;
 			stageHeight = stage.height;
 			stageSize(v -> v + 1);
@@ -1261,6 +1334,8 @@ class Studio {
 		}
 		function added(f:String, text:Null<String>) {
 			if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
+			// (a story where there was no program: the project read again, its program started)
+			else if (previews == null) revive();
 			else if (storiesChanged(f, text) && previews != null) {
 				message(text == null ? "a story file removed: building" : "a story file added: building");
 				log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
@@ -1308,8 +1383,11 @@ class Studio {
 		if (pr == null) {
 			f.save();
 			marks.landed(false);
+			if (shaping(file)) revive();
 			return;
 		}
+		// (a file that may change what the project is: its main, a package's)
+		if (shaping(file) && !Project.isStory(file) && revive()) return;
 		// (a story file's stories changed: the host's screens with them, every source built)
 		if (Project.isStory(file) && storiesChanged(file, f.text)) {
 			pr.write(file, f.text);
@@ -1660,6 +1738,10 @@ class Studio {
 			return;
 		}
 		var a = LocalAgent.tool(p) != null ? local : agent;
+		if (talk.list().length == 0 && Watch.blank(this)) {
+			unveiled = true;
+			if (project != null) marks.rise([for (s in project.screens) s.name]);
+		}
 		setTurn(Turns.start(said ? p : ""), true);
 		var answered = false, heard = -1.0, asked:Null<String> = null;
 		function end(e:Agent.AgentEvent) {
@@ -1787,6 +1869,8 @@ class Layout {
 	// out below the design frames, a row a page
 	public function screens():Array<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}> {
 		var out:Array<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}> = [];
+		// (the project read again: its screens the new one's)
+		studio.revived();
 		var p = studio.project, pr = studio.previews;
 		if (p == null) return out;
 		function size(i:Project.ScreenInfo):{w:Float, h:Float} {

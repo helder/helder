@@ -105,7 +105,11 @@ class Project {
 		}
 		typescript = entry != null && entry.typescript != null;
 		name = entry?.name ?? Path.withoutDirectory(this.dir);
-		out = (entry == null ? this.dir : FileSystem.fullPath(entry.root).split("\\").join("/")) + '/bin/studio/$name';
+		// (the package's root, when the project is in it; else the project's own folder: an entry
+		// outside any package has the working directory as its root, the CLI's, not the studio's)
+		var root = entry == null ? this.dir : FileSystem.fullPath(entry.root).split("\\").join("/");
+		if (root != this.dir && !this.dir.startsWith(root + "/")) root = this.dir;
+		out = root + '/bin/studio/$name';
 		findScreens(files, entry != null);
 	}
 

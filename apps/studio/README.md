@@ -517,7 +517,7 @@ initializes again), and `DELETE /mcp` with it ends the session.
 | Tool | Does |
 |---|---|
 | `project.read {path?}` | a file's text as the studio has it (its unsaved state too); without a path, the files and the screens by flow |
-| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other, the agent's name on it): live literals patched in the screens, anything else built; answers what happened and the diagnostics |
+| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other, the agent's name on it): live literals patched in the screens, anything else built; answers what happened and the diagnostics. `{path, text}` on a path not there makes the file (its folders too; its undo deletes it) |
 | `build.check {}` | the program typed (tsgo's check too), nothing written: diagnostics at file and line |
 | `run.snap {screen?, path?}` | a screen's last frame as a PNG (the selected one, else the first); a design's frame drawn offscreen |
 | `run.tree {screen?}` | a screen's node tree: tags, boxes, texts, colours and each node's `file:line` (a design's frame: its interpreted nodes) |
@@ -526,6 +526,19 @@ initializes again), and `DELETE /mcp` with it ends the session.
 | `studio.done {note?}` | the agent finished: its marks fade, the note its status |
 | `studio.ask {question, options: [{id?, label, note?, frame?, screen?, image?}], multiple?, wait?}` | a question in the chat: options pointing at the canvas (`frame`: `<file>#<name>`, `screen`, `image`) or text alone; `{id}` at once (the answer comes with a later result), `wait: true` blocks (10 minutes, then `{pending: true}`), `{id}` alone waits for an earlier one |
 | `studio.inbox {}` | what the user said since (answers, direction typed while the agent works) |
+| `studio.guide {topic?}` | how to build here, fast (`apps/studio/guide/*.md`): `start` (the default: the project's files, screens as stories, sketching, the loop, what builds take), `ui`, `game`, `design`, `assets`; each topic's TypeScript is built by its test (`Guides.test.hx`) |
+
+**A project starts working.** An empty folder opened in the studio (the
+Untitled one, or any) becomes the starter (`Starter`): the smallest
+TypeScript program that builds and shows on the canvas (`main.tsx`,
+`app.tsx`, `app.story.tsx` with one screen, a `tsconfig.json` mapping
+helder's modules to the helder the studio was built with when no package
+resolves them, and TypeScript's checker found beside it). The blank sheet
+stays until the first prompt; then its frame rises onto the canvas, built.
+What a project is (TypeScript or Haxe, its main, whether it has a program)
+is read again whenever a story or a main is made or changes (`revive`), so
+a folder that starts empty or changes kind comes alive: its screens shown,
+its program built and checked.
 
 **Questions and the inbox.** A question (`Questions`) is a card in the
 chat (`Asks`): its options as thumbnails of the frames they point at (or
