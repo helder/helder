@@ -170,6 +170,53 @@ function tests() {
 			assert(StringTools.startsWith(whole, "Paragraph 0.\n\nParagraph 1.\n\n"));
 			assert(StringTools.endsWith(whole, "Paragraph 998.\n\nParagraph 999."));
 		});
+		test("a reply streamed: the blocks before the last kept, the last made again", () -> {
+			var t = view("# Title\n\nFirst para.\n\nSec", {scroll: false});
+			var h = t.view.find("markdown-h1"), first = all(t.view, "markdown-p", [])[0];
+			drag(t.ui, point(first, 0), point(first, 5));
+			t.view.update(Markdown.parse("# Title\n\nFirst para.\n\nSecond one.\n\nThird"));
+			t.ui.update();
+			var ps = all(t.view, "markdown-p", []);
+			assert(t.view.find("markdown-h1") == h);
+			assert(ps[0] == first);
+			equals([for (p in ps) (cast p : TextNode).allText()], ["First para.", "Second one.", "Third"]);
+			equals(t.ui.selectedText(), "First");
+			equals(t.view.headings(), ["title"]);
+		});
+		test("in a scroller: kept the same, the scroll too", () -> {
+			var t = view([for (k in 0...40) 'Paragraph $k.'].join("\n\n"));
+			var first = all(t.view, "markdown-p", [])[0];
+			t.view.scroller.scrollY = 120;
+			t.view.update(Markdown.parse([for (k in 0...41) 'Paragraph $k.'].join("\n\n")));
+			t.ui.update();
+			assert(all(t.view, "markdown-p", [])[0] == first);
+			equals(all(t.view, "markdown-p", []).length, 41);
+			equals(t.view.scroller.scrollY, 120.0);
+		});
+		test("an open fence streamed, then closed", () -> {
+			var t = view("Intro.\n\n```ts\nlet a", {scroll: false});
+			var intro = t.view.find("markdown-p");
+			var code:CodeView = cast t.view.find("code-view");
+			equals(code.model.text(), "let a");
+			t.view.update(Markdown.parse("Intro.\n\n```ts\nlet a = 1\n```\n\nAfter."));
+			t.ui.update();
+			code = cast t.view.find("code-view");
+			equals(code.model.text(), "let a = 1");
+			equals(code.model.language?.name(), "typescript");
+			var ps = all(t.view, "markdown-p", []);
+			assert(ps[0] == intro);
+			equals((cast ps[1] : TextNode).allText(), "After.");
+		});
+		test("a list growing item by item", () -> {
+			var t = view("Steps:\n\n- one", {scroll: false});
+			var lead = t.view.find("markdown-p");
+			for (text in ["Steps:\n\n- one\n- tw", "Steps:\n\n- one\n- two\n- three"])
+				t.view.update(Markdown.parse(text));
+			t.ui.update();
+			assert(t.view.find("markdown-p") == lead);
+			equals([for (i in all(t.view, "markdown-item", [])) (cast i.find("markdown-p") : TextNode).allText()], ["one", "two", "three"]);
+			equals(all(t.view, "markdown-list", []).length, 1);
+		});
 		test("the first blocks alone, without a scroller", () -> {
 			var v = view("# A\n\nb\n\nc\n\nd\n", {scroll: false, blocks: 2}).view;
 			equals(v.scroller, null);
