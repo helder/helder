@@ -1,4 +1,4 @@
-package helder.headless;
+package helder.os.headless;
 
 // What a headless run sees of a window's content, given by the library that
 // draws it (helder.ui's UiWindow: helder.ui.draw.UiInspector): its nodes as

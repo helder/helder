@@ -63,7 +63,7 @@ class Async {
 	// resumed after that many seconds (a CancellationException if cancelled first)
 	@:coroutine public static function delay(seconds:Float):Void {
 		suspendCancellable(cont -> {
-			var t = loopOf(cont.context).at(#if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end + seconds, cont);
+			var t = loopOf(cont.context).at(#if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end + seconds, cont);
 			return _ -> t.close();
 		});
 	}
@@ -88,7 +88,7 @@ class Async {
 		return suspend(cont -> {
 			var t = new Task<T>(cont.context.get(Node.key), cont.context, body, false);
 			var e = new TimeoutException();
-			var timer = t.loop.at(#if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end + seconds, new Call(cont.context, () -> t.cancel(e)));
+			var timer = t.loop.at(#if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end + seconds, new Call(cont.context, () -> t.cancel(e)));
 			t.onCompletion((r, err) -> {
 				timer.close();
 				resumeLater(cont, r, err);

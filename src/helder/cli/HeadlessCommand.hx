@@ -33,8 +33,9 @@ class HeadlessCommand {
 		Term.out(Style.header("run", ["headless", e.label()]));
 		// (--soft: drawn on the CPU, no GPU linked: helder.ui.draw.soft; a build of its own)
 		var soft = o.has("soft"), exe = e.out(soft ? "headless-soft" : "headless");
+		// (helder.headless.Overlay compiled in: what --keys and --pointer draw)
 		// (--dev: a dev build, -D hxmc.dev: its live literals, which a script's literal step patches)
-		var defines = ["-D", "helder.headless"].concat(soft ? ["-D", "helder.soft"] : []);
+		var defines = ["-D", "helder.headless", "helder.headless.Overlay"].concat(soft ? ["-D", "helder.soft"] : []);
 		var r = BuildCommand.build(e, exe, o.has("dev") ? Dev : Release, null, defines);
 		if (!r.ok) return 1;
 		var frames = video == null ? null : Path.withoutExtension(video) + ".frames";
