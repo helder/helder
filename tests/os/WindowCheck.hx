@@ -195,6 +195,19 @@ private class DragOut {
 			got.push(ObjC.string(Msg.id(url, ObjC.sel("path"))));
 		}
 		check("drag out: a dragging item per file URL", got.join("|") == files.join("|"), got.join("|"));
+		// (every item a frame AppKit takes, finite and not empty: one without made beginDraggingSession throw and abort the app)
+		function frames(paths:Array<String>, img:Null<helder.image.Image>):Array<String> {
+			var list = @:privateAccess helder.os.apple.FileDrag.items(w, Ptr.nil(), paths, img, 4, 6);
+			return [for (i in 0...Msg.i(list, ObjC.sel("count")).toInt()) {
+				var f = Msg.rect(Msg.idInt(list, ObjC.sel("objectAtIndex:"), i), ObjC.sel("draggingFrame"));
+				var ok = Math.isFinite(f.origin.x) && Math.isFinite(f.origin.y) && f.size.width > 0 && f.size.height > 0;
+				(ok ? "" : "bad ") + f.size.width + "x" + f.size.height;
+			}];
+		}
+		// (an empty picture never comes: helder.image's Image refuses an empty size)
+		var none = frames(files, null), three = frames(files.concat(["/tmp/photos/d.gif"]), new helder.image.Image(40, 30));
+		check("drag out: no picture, each item a valid frame", none.join(",") == "32x32,32x32", none.join(","));
+		check("drag out: a picture and three files, the first its size, the others valid", three.join(",") == "40x30,32x32,32x32", three.join(","));
 		var drag = @:privateAccess new helder.os.apple.FileDrag([Copy, Move], op -> done = op), source = @:privateAccess drag.source;
 		var answers = Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:sourceOperationMaskForDraggingContext:"))
 			&& Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:endedAtPoint:operation:"));

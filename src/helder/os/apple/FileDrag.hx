@@ -56,32 +56,66 @@ class FileDrag {
 	}
 
 	// One NSDraggingItem per file URL (autoreleased; nil: a path AppKit
-	// refuses), the first one showing the image under the pointer.
+	// refuses), each with a dragging frame AppKit takes (finite, not empty:
+	// one it would set itself, for an item without, throws and aborts the
+	// app, as dragging several files or one without a picture did): the
+	// first the picture under the pointer, the others (all of them without
+	// one) the file's icon, stacked as Finder's.
 	static function items(w:MacWindow, ev:Ptr, paths:Array<String>, image:Null<Image>, x:Float, y:Float):Ptr {
 		var items = Msg.id(ObjC.cls("NSMutableArray"), ObjC.sel("array"));
-		var preview = image == null ? Ptr.nil() : dragImage(image);
-		for (path in paths) {
-			var url = fileURL(path);
+		var picture = image != null && image.width > 0 && image.height > 0;
+		var preview = picture ? dragImage(image) : Ptr.nil();
+		// (the pointer in the view; not finite: the view's middle)
+		var at = Msg.pointPointPtr(w.view, ObjC.sel("convertPoint:fromView:"), w.location(ev), Ptr.nil());
+		var px = at.x, py = at.y;
+		if (!Math.isFinite(px) || !Math.isFinite(py)) {
+			var b = Msg.rect(w.view, ObjC.sel("bounds"));
+			px = b.size.width / 2;
+			py = b.size.height / 2;
+		}
+		var dx = Math.isFinite(x) ? x : 0.0, dy = Math.isFinite(y) ? y : 0.0;
+		for (k in 0...paths.length) {
+			var url = fileURL(paths[k]);
 			if (url.isNull()) {
 				ObjC.release(preview);
 				return Ptr.nil();
 			}
 			var item = Msg.idPtr(Msg.id(ObjC.cls("NSDraggingItem"), ObjC.sel("alloc")), ObjC.sel("initWithPasteboardWriter:"), url);
-			if (!preview.isNull() && Msg.i(items, ObjC.sel("count")) == 0) Arena.scoped(a -> {
+			var first = k == 0 && !preview.isNull();
+			var contents = first ? preview : icon(paths[k]);
+			Arena.scoped(a -> {
 				// (the view isn't flipped: the frame's origin is its bottom left)
-				var at = Msg.pointPointPtr(w.view, ObjC.sel("convertPoint:fromView:"), w.location(ev), Ptr.nil());
 				var frame = a.make(CGRect);
-				frame.value.origin.x = at.x - x;
-				frame.value.origin.y = at.y + y - image.height;
-				frame.value.size.width = image.width;
-				frame.value.size.height = image.height;
-				Msg.vRectPtr(item, ObjC.sel("setDraggingFrame:contents:"), frame.value, preview);
+				if (first) {
+					frame.value.origin.x = px - dx;
+					frame.value.origin.y = py + dy - image.height;
+					frame.value.size.width = image.width;
+					frame.value.size.height = image.height;
+				} else {
+					frame.value.origin.x = px - ICON / 2 + k * 3;
+					frame.value.origin.y = py - ICON / 2 - k * 3;
+					frame.value.size.width = ICON;
+					frame.value.size.height = ICON;
+				}
+				Msg.vRectPtr(item, ObjC.sel("setDraggingFrame:contents:"), frame.value, contents);
 			});
 			Msg.vPtr(items, ObjC.sel("addObject:"), item);
 			ObjC.release(item);
 		}
 		ObjC.release(preview);
 		return items;
+	}
+
+	// (a file's icon's size in a drag, points)
+	static inline var ICON = 32.0;
+
+	// the file's icon, as Finder shows it (autoreleased)
+	static function icon(path:String):Ptr {
+		var text = ObjC.str(path);
+		var ws = Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace"));
+		var img = text.isNull() ? Ptr.nil() : Msg.idPtr(ws, ObjC.sel("iconForFile:"), text);
+		ObjC.release(text);
+		return img;
 	}
 
 	static function fileURL(path:String):Ptr {
