@@ -26,7 +26,7 @@ import viewer.ViewerActions;
 class ContentView implements Markup {
 	public static inline var ROW = 30;
 	static inline var EDGE = 6;
-	// the path bar's height, the sidebar's volume foot's too (one line across)
+	// the path bar's height
 	public static inline var FOOT = 32;
 
 	// (medium: a tablet's, its sidebar a button's, its inspector a sheet's, no path bar)
@@ -230,9 +230,10 @@ class ContentView implements Markup {
 					}}>{(e, i) -> row(x, e)}</VirtualList>
 			</Show>
 			<Show when={b.layout() == Grid}>
-				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={Tiles.CELL_WIDTH} cellHeight={Tiles.CELL_HEIGHT}
+				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={tablet() ? Tiles.TABLET_WIDTH : Tiles.CELL_WIDTH}
+					cellHeight={tablet() ? Tiles.TABLET_HEIGHT : Tiles.CELL_HEIGHT}
 					gap={4} padding={12} selection={b.selection} label="Files" textOf={(e:Entry) -> e.name} onActivate={activate} onContextMenu={menu}
-					ref={v -> made(v)}>{(e, i) -> tablet() ? Phone.pressed(x, e, Tiles.cell(x, e)) : Tiles.cell(x, e)}</VirtualGrid>
+					ref={v -> made(v)}>{(e, i) -> tablet() ? Phone.pressed(x, e, Tiles.cell(x, e, true)) : Tiles.cell(x, e)}</VirtualGrid>
 			</Show>
 		</view>;
 	}
@@ -270,7 +271,7 @@ class ContentView implements Markup {
 				{Tiles.mini(x, e)}
 				<Show when={b.renaming() == e().name}>{() -> NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""))}</Show>
 				<Show when={b.renaming() != e().name}>
-					<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={on() ? Look.ref.accentFg : Look.ref.fg}
+					<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="middle" color={on() ? Look.ref.accentFg : Look.ref.fg}
 						dir={helder.ui.Dir.Ltr}>{e().name}</text>
 				</Show>
 			</view>

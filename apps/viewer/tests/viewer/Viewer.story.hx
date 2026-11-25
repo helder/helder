@@ -161,6 +161,18 @@ final inspectorMarkdown = story({
 	}
 });
 
+// (the sidebar at a level of a volume: its capacity card at the foot)
+final capacity = story({
+	name: "Browser/sidebar's volume",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = Fixtures.explorer(null, [Fixtures.DISK]);
+		x.start("tests/fixtures/folder");
+		themed(x, false);
+	}
+});
+
 final status = story({
 	name: "Viewer/status line",
 	width: 1100,

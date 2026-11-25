@@ -108,7 +108,7 @@ export type StyleProps = {
 	fontFeatureSettings?: string;
 	fontVariantNumeric?: string;
 	textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
-	textOverflow?: 'clip' | 'ellipsis';
+	textOverflow?: 'clip' | 'ellipsis' | 'middle';
 	order?: number;
 	zIndex?: number;
 	maxLines?: number;

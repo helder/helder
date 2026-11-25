@@ -620,7 +620,7 @@ nav.path(); nav.depth(); nav.query();                  // Reads of the top
   (`Settings.reducedMotion`, `Clock.reducedMotion`): a 150 ms fade
   for a slide or a fade (`None` stays none); the edge's drag still follows
   the finger there, as a fade. A still entry (`go(path, true)`) comes and
-  goes as a cross-fade in place over 220 ms, ease-out, whatever the
+  goes as a cross-fade in place over 160 ms, easing out, whatever the
   transition, and is not dragged from the edge: for an app that moves what
   matters itself (the viewer zooms a picture from its tile). Screens are see-through unless their content
   has a background: give a screen's root one under a slide.
