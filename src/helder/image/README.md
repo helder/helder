@@ -33,8 +33,8 @@ anim.play(helder.ui.Clock.add);             // on a clock: its image the frame s
   (`hxmc.Span`, `ReadOnlySpan`), which decodes a Bytes lent for the call
   on the calling thread (`ReadOnlySpan.ofBytes`) and an off-heap buffer in
   a GC-free job alike; on Eval and JavaScript the same code over hxmc's
-  Bytes-backed spans. Its inflate is its own (as hxmc's std's), reading
-  the IDAT chunks where they are (no copy of the image data), the rows
+  Bytes-backed spans. Its inflate is `Inflate` (as hxmc's std's, a
+  kernel too, zip's and PDF's), reading the IDAT chunks where they are (no copy of the image data), the rows
   unfiltered and widened to RGBA8 in the one buffer; its scratch (the
   inflater's state and tables, the fixed codes built when a block uses
   them) in the decode's frame (`Span.stack`), so that jobs on a pool's
@@ -75,6 +75,9 @@ anim.play(helder.ui.Clock.add);             // on a clock: its image the frame s
   asset step (helder.scene's `Pack --textures bc|astc`), and back
   (`decode`, tests); helder.gfx's `TextureFormat.BC1`, `BC3`, `ASTC4x4`
   sample them where `Device.supports` says the GPU does.
+- `Deflate`, `Inflate`: helder's deflate encoder (`zlib`, `raw`: one block
+  of the fixed codes, PNG's, zip's, gzip's and PDF's) and inflater (a
+  kernel: PNG's, `exact` for zip's entries, `all` for PDF's streams).
 
 ## Limits and errors
 
