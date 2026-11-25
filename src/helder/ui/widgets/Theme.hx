@@ -141,7 +141,7 @@ class Theme {
 		return m;
 	}
 
-	public static function c(@:typescript.type("keyof Tokens") name:String):Color
+	public static function c(name:String):Color
 		return (appearance() ? dark : light).get(name);
 
 	// the one shadow, of what floats
