@@ -1817,6 +1817,11 @@ class Renderer implements TextureCanvas {
 
 	// (blur < 0: the text itself)
 	function glyphs(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, colors:Null<Array<Color>>, blur:Float) {
+		// (a frame read back: its glyphs as they were placed, drawn the same way)
+		if (Std.isOfType(p, RunParagraph)) {
+			placed(cast p, x, y, width, align, color, colors, blur);
+			return;
+		}
 		var dp = cast(p, DrawParagraph);
 		var t = dp.layout, s = scale;
 		var size = t.fonts.size * s;
@@ -1851,29 +1856,66 @@ class Renderer implements TextureCanvas {
 				var set = t.glyphFontSet(i);
 				var size = run < 0 ? size : set.size * s, oblique = set.oblique;
 				var color = run >= 0 && colors != null && run < colors.length ? colors[run] : color;
-				if (f.hasColor && blur < 0) {
-					// (colour layers: each its glyph in its colour; else a colour bitmap)
-					var layers = f.colorLayers(id);
-					if (layers != null) {
-						for (layer in layers)
-							glyph(f, layer.glyph, size, gx, gy, layer.color == -1 ? color : (layer.color : Color), oblique);
-						continue;
-					}
-					var b = colorGlyph(f, id, size);
-					if (b != null) {
-						var ex = flat ? 0.0 : me - Std.int(me), ey = flat ? 0.0 : mf - Std.int(mf);
-						var qx = Math.round(gx + b.left + ex) - ex, qy = gy - b.top - ey;
-						if (!flat || !culled(qx, qy, qx + b.image.width, qy + b.image.height)) {
-							texture(b.image);
-							qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
-							quad(qx, qy, qx + b.image.width, qy + b.image.height, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 1, b.image.id);
-						}
-						continue;
-					}
-				}
-				glyph(f, id, size, gx, gy, color, oblique, sigma);
+				one(f, id, size, gx, gy, color, oblique, sigma, blur);
 			}
 		}
+	}
+
+	// (a RunParagraph's glyphs: glyphs()'s placing, from what it kept)
+	function placed(p:RunParagraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, colors:Null<Array<Color>>, blur:Float) {
+		var s = scale;
+		var size = p.size * s;
+		var ox = x + tx, oy = y + ty;
+		if (!flat) {
+			if (mk < 1e-6) return;
+			s *= mk;
+			size *= mk;
+		}
+		var sigma = blur > 0 ? Math.round(blur * s / 2 * 4) / 4 : 0.0, reach = 3 * sigma;
+		for (l in p.lines) {
+			var lx = switch align {
+				case Center: (width - l.width) / 2;
+				case Right: width - l.width;
+				case _: 0.0;
+			}
+			var by = Math.round((oy + l.top + l.baseline) * s + (flat ? 0 : mf - Std.int(mf)));
+			var lineX = (ox + lx) * s;
+			if (grid) lineX = Math.fround(lineX);
+			if (flat && !uncull && (by - size * 1.5 - reach > clipY1 || by + size + reach < clipY0)) continue;
+			if (!flat && !uncull && away(lineX - size, by - size * 1.5 - reach, lineX + l.width * s + size, by + size + reach)) continue;
+			for (i in l.start...l.end) {
+				var run = p.spans[i];
+				var gx = lineX + p.xs[i] * s, gy = by + Math.round(p.dys[i] * s);
+				var size = run < 0 ? size : p.sizes[i] * s;
+				var color = run >= 0 && colors != null && run < colors.length ? colors[run] : color;
+				one(p.faces[i], p.ids[i], size, gx, gy, color, p.obliques[i], sigma, blur);
+			}
+		}
+	}
+
+	// (a glyph: a colour font's layers or bitmap, else its outline from the atlas)
+	function one(f:helder.text.FontFile, id:Int, size:Float, gx:Float, gy:Int, color:Color, oblique:Bool, sigma:Float, blur:Float) {
+		if (f.hasColor && blur < 0) {
+			// (colour layers: each its glyph in its colour; else a colour bitmap)
+			var layers = f.colorLayers(id);
+			if (layers != null) {
+				for (layer in layers)
+					glyph(f, layer.glyph, size, gx, gy, layer.color == -1 ? color : (layer.color : Color), oblique);
+				return;
+			}
+			var b = colorGlyph(f, id, size);
+			if (b != null) {
+				var ex = flat ? 0.0 : me - Std.int(me), ey = flat ? 0.0 : mf - Std.int(mf);
+				var qx = Math.round(gx + b.left + ex) - ex, qy = gy - b.top - ey;
+				if (!flat || !culled(qx, qy, qx + b.image.width, qy + b.image.height)) {
+					texture(b.image);
+					qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
+					quad(qx, qy, qx + b.image.width, qy + b.image.height, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 1, b.image.id);
+				}
+				return;
+			}
+		}
+		glyph(f, id, size, gx, gy, color, oblique, sigma);
 	}
 
 	// glyphs past this ppem (device pixels) are drawn alone, each an image of
