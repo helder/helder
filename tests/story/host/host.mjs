@@ -218,7 +218,7 @@ async function studio() {
 	writeFileSync(flag, '');
 	const helder = process.env.HELDER ?? 'bin/cli/helder';
 	const p = spawn(helder, ['run', '--headless', 'apps/studio', '--script', 'tests/story/host/studio.json', '--size', '1180x740', '--snap', path.join(dir, 'studio-overview.png'), '--at', 'mark:overview',
-		'--snap', path.join(dir, 'studio-zoomed.png'), '--at', 'mark:end', '--', proj, '--events', events,
+		'--snap', path.join(dir, 'studio-zoomed.png'), '--at', 'mark:end', '--', proj, '--classic', '--events', events,
 		'--hold-while', flag], { env: { ...process.env, LC_ALL: 'C.UTF-8', LANG: 'C.UTF-8' }, stdio: ['ignore', 'inherit', 'inherit'] });
 	const read = () => (existsSync(events) ? readFileSync(events, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l)) : []);
 	let shown;

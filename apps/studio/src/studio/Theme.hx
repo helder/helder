@@ -81,7 +81,18 @@ class Theme {
 	// the agents' colours (Presence: one each, in order of arrival), apart
 	// from the selection's blue, mid tones that read on a light screen and
 	// on the canvas
-	public static final AGENTS = ["#f59e0b", "#10b981", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444"];
+	public static final AGENTS = ["#e8875b", "#4fd1a5", "#ec4899", "#8b5cf6", "#06b6d4", "#f59e0b"];
+
+	// the watched shell (Watch, Chat): the chat column's width, the blank
+	// sheet's prompt's, a card's and the input's radius, a chip's; the dot
+	// grid's step
+	public static inline var CHAT = 380;
+	public static inline var BLANK = 640;
+	public static inline var CARD = 12;
+	public static inline var CHIP = 6;
+	public static inline var DOTS = 24;
+	// the chat's type: 13 points, a line of 1.55
+	public static inline var CHAT_SIZE = 13;
 
 	public static final colors:Map<String, Color> = withKinds(withCode([
 		// the darks, near neutral (a hint of cool): the canvas under everything, the cards, fields, hovers, what is pressed
@@ -122,6 +133,21 @@ class Theme {
 		"sand" => Color.parse("#dcc994"),
 		"rose" => Color.parse("#dba7b6"),
 		"red" => Color.parse("#ec8383"),
+		// the watched shell's (the boards'): the ground and its dots, the chat
+		// column, cards and the input, hairlines, text in four greys, the
+		// user's bubble and a chip's fill, the header's tab
+		"ground" => Color.parse("#0f0f11"),
+		"dots" => Color.parse("#25252b"),
+		"chat" => Color.parse("#111114"),
+		"card" => Color.parse("#17171a"),
+		"hair" => Color.parse("#1f1f24"),
+		"hair2" => Color.parse("#26262c"),
+		"ink" => Color.parse("#ececef"),
+		"ink2" => Color.parse("#c4c4cc"),
+		"ink3" => Color.parse("#8b8b94"),
+		"dim" => Color.parse("#6b6b73"),
+		"bubble" => Color.parse("#1f1f24"),
+		"tab" => Color.parse("#1a1a1e"),
 		// a failed build (its chip by each live frame's caption): the red, on a tint of it
 		"error" => Color.parse("#ec8383"),
 		"error-soft" => Color.parse("rgba(236, 131, 131, 0.16)"),
@@ -218,18 +244,22 @@ class Theme {
 			{slot: "ask-input", when: ["selection"], style: {background: t("sel-soft")}},
 			// the agent's reply (helder.markdown's MarkdownView): compact, 13 points, code on a quiet fill
 			{slot: "markdown-row", style: {width: "100%", maxWidth: 100000, padding: [0, 0, 6, 0]}},
-			{slot: "markdown-p", style: {fontSize: 13, lineHeight: 1.45, color: t("fg")}},
+			{slot: "markdown-p", style: {fontSize: CHAT_SIZE, lineHeight: 1.55, color: t("ink2")}},
 			{slot: "markdown-h1", style: {fontSize: 14, fontWeight: MEDIUM, color: t("fg"), marginTop: 0}},
 			{slot: "markdown-h2", style: {fontSize: 13, fontWeight: MEDIUM, color: t("fg"), marginTop: 0}},
 			{slot: "markdown-h3", style: {fontSize: 13, fontWeight: MEDIUM, color: t("fg"), marginTop: 0}},
 			{slot: "markdown-h4", style: {fontSize: 13, fontWeight: MEDIUM, color: t("fg2")}},
 			{slot: "markdown-list", style: {rowGap: 3}},
 			{slot: "markdown-item-body", style: {rowGap: 3}},
-			{slot: "markdown-marker", style: {minWidth: 16, paddingRight: 4, fontSize: 13, lineHeight: 1.45, color: t("fg3")}},
+			{slot: "markdown-marker", style: {minWidth: 16, paddingRight: 4, fontSize: CHAT_SIZE, lineHeight: 1.55, color: t("dim")}},
 			{slot: "markdown-quote", style: {rowGap: 4, padding: [0, 0, 0, 8], borders: [0, 0, 0, 2], borderColor: t("line"), color: t("fg2")}},
-			{slot: "markdown-code", style: {padding: [6, 8, 6, 0], radius: RADIUS, background: t("well")}},
-			{slot: "markdown-code-span", style: {fontFamily: CODE, fontSize: 12, color: t("fg"), background: t("well")}},
-			{slot: "markdown-link", style: {color: t("accent-ink"), textDecoration: 0}},
+			{slot: "markdown-code", style: {padding: [6, 8, 6, 0], radius: CHIP, background: t("card")}},
+			{slot: "markdown-code-span", style: {fontFamily: CODE, fontSize: 12, color: t("ink"), background: t("bubble")}},
+			{slot: "markdown-link", style: {color: t("ink"), textDecoration: 1}},
+			// links the studio knows (Replies.chip): a screen's (the camera flies there), a file's (the code panel at its line)
+			{slot: "chip-screen", style: {color: t("ink"), background: t("bubble"), fontSize: 12, fontWeight: MEDIUM}},
+			{slot: "chip-group", style: {color: t("ink"), background: t("bubble"), fontSize: 12, fontWeight: MEDIUM}},
+			{slot: "chip-file", style: {color: t("ink"), background: t("bubble"), fontFamily: CODE, fontSize: 11}},
 			{slot: "markdown-table", style: {borders: [1, 0, 0, 1], borderColor: t("line")}},
 			{slot: "markdown-th", style: {fontSize: 12, fontWeight: MEDIUM, padding: [3, 6], borders: [0, 1, 1, 0], borderColor: t("line")}},
 			{slot: "markdown-td", style: {fontSize: 12, padding: [3, 6], borders: [0, 1, 1, 0], borderColor: t("line")}},

@@ -7,6 +7,7 @@ import helder.async.*;
 import helder.syntax.Transaction;
 import studio.Acp;
 import studio.Agent;
+import studio.Agents.AgentCommand;
 
 using StringTools;
 
@@ -216,12 +217,6 @@ class AcpAgent implements Agent {
 		return "file://" + (path.startsWith("/") ? "" : "/") + path.replace("%", "%25").replace(" ", "%20").replace("#", "%23");
 }
 
-// how an agent is started: its name, its command and arguments
-typedef AgentCommand = {
-	name:String,
-	cmd:String,
-	args:Array<String>,
-}
 
 // what an agent over ACP works in: the project's directory, its files as the
 // studio has them (Docs: one history), the studio's MCP server (its URL once

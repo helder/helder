@@ -18,7 +18,9 @@ using StringTools;
 // the inspector (Inspector) or the code (Code); the toolbar between them
 // (a breadcrumb, the command field, undo and redo, Design and Code, Play),
 // its empty parts dragging the window (an inset title bar: helder.os's). Compact (a phone, a tablet upright): a
-// top bar above the canvas, the panels sheets over it (Sheets).
+// top bar above the canvas, the panels sheets over it (Sheets). This is the
+// classic shell (--classic: tests/studio's scripted lanes); the studio's
+// own is Watch (a chat, a canvas watched), mounted here the same way.
 class Shell implements Markup {
 	public static function view(studio:Studio):View {
 		var p = studio.project;
@@ -32,7 +34,8 @@ class Shell implements Markup {
 				case Undo: studio.undo();
 				case Redo: studio.redo();
 				case Overview: studio.escape();
-				case Jump: studio.commandOpen(!studio.commandOpen.peek());
+				case Jump: if (studio.classic) studio.commandOpen(!studio.commandOpen.peek());
+				case Chat: if (!studio.classic) studio.toggleChat();
 				case FitAll: studio.fitAll();
 				case FitSelection: studio.fitSelection();
 			}
@@ -46,8 +49,10 @@ class Shell implements Markup {
 					haxe.Timer.delay(() -> studio.crashed(e), 0);
 					return <view grow={1}/>;
 				}}>
-					<Show when={studio.compact()} fallback={desktop(studio)}>{compact(studio)}</Show>
-					<Show when={studio.commandOpen()}>{Command.view(studio)}</Show>
+					<Show when={studio.classic} fallback={Watch.view(studio)}>
+						<Show when={studio.compact()} fallback={desktop(studio)}>{compact(studio)}</Show>
+						<Show when={studio.commandOpen()}>{Command.view(studio)}</Show>
+					</Show>
 				</Errored>
 			}</For>
 			<For each={studio.crash() == null ? [] : [studio.crash()]}>{(k:Read<Crash>) -> Crash.view(studio, k(), () -> studio.reload())}</For>
@@ -316,5 +321,7 @@ enum StudioAction {
 	Jump;
 	FitAll;
 	FitSelection;
+	// the chat column shown or put away (secondary-b, the watched shell)
+	Chat;
 }
 

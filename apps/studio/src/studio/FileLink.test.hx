@@ -10,6 +10,7 @@ function tests() {
 			equals(FileLink.parse("src/a.ts:12:4", "/p"), {path: "/p/src/a.ts", line: 12});
 			equals(FileLink.parse("file:///p/a%20b.ts#L3-L9", "/p"), {path: "/p/a b.ts", line: 3});
 			equals(FileLink.parse("/p/app.tsx", "/p"), {path: "/p/app.tsx", line: null});
+			equals(FileLink.parse("pond.helder:41", "/p"), {path: "/p/pond.helder", line: 41});
 		});
 		test("not the project's", () -> {
 			equals(FileLink.parse("https://helder.build", "/p"), null);

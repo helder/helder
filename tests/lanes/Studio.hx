@@ -112,7 +112,7 @@ class Studio {
 			run(h, [
 				"run", "--headless", "apps/studio", "--script", "tests/studio/edit.json", "--size", "1180x740", "--snap", '$b/$app-overview.png', "--at",
 				"mark:overview", "--snap", '$b/$app-zoomed.png', "--at", "mark:zoomed", "--snap", '$b/$app-selected.png', "--at", "mark:selected", "--snap", '$b/$app-end.png', "--at", "mark:end", "--",
-				'$b/$app', "--events", '$b/$app.jsonl'
+				'$b/$app', "--classic", "--events", '$b/$app.jsonl'
 			]);
 		}
 		// (a project of design files alone: its frames interpreted, nothing built)
@@ -120,19 +120,19 @@ class Studio {
 		run("git", ["init", "-q", "-b", "studio", '$b/design']);
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
-			"mark:selected", "--snap", '$b/design-end.png', "--at", "mark:end", "--", '$b/design', "--events", '$b/design.jsonl'
+			"mark:selected", "--snap", '$b/design-end.png', "--at", "mark:end", "--", '$b/design', "--classic", "--events", '$b/design.jsonl'
 		]);
 		// (the free canvas: a frame selected, a story moved (its place made in canvas.helder), a frame entered, left, every frame fitted)
 		copy('examples/todo', '$b/free');
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/free.json", "--size", "1180x740", "--snap", '$b/free-entered.png', "--at",
-			"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--events", '$b/free.jsonl'
+			"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--classic", "--events", '$b/free.jsonl'
 		]);
 		// (a phone's: the sheets over the canvas, switched by the bar, dragged by the handle)
 		copy('tests/studio/design', '$b/phone');
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
-			"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--events", '$b/phone.jsonl'
+			"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--classic", "--events", '$b/phone.jsonl'
 		]);
 		// (the sidebar's file browser: design files, an image, a font, code in folders)
 		copy('tests/studio/design', '$b/files');
@@ -144,14 +144,14 @@ class Studio {
 		File.saveContent('$b/files/src/Main.hx', 'class Main {\n\tstatic function main() trace("hi");\n}\n');
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/files.json", "--size", "1180x740", "--snap", '$b/files-image.png', "--at",
-			"mark:image", "--snap", '$b/files-end.png', "--at", "mark:end", "--", '$b/files', "--events", '$b/files.jsonl'
+			"mark:image", "--snap", '$b/files-end.png', "--at", "mark:end", "--", '$b/files', "--classic", "--events", '$b/files.jsonl'
 		]);
-		// (an agent over ACP: the scripted one, tests/studio/acp-agent.mjs on node)
+		// (the studio's own shell, watched, with an agent over ACP: the scripted one, tests/studio/acp-agent.mjs on node)
 		copy('tests/studio/design', '$b/acp');
 		run("git", ["init", "-q", "-b", "studio", '$b/acp']);
 		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/acp.json", "--size", "1180x740", "--snap", '$b/acp-reply.png', "--at", "mark:md",
-			"--snap", '$b/acp-ask.png', "--at", "mark:ask", "--snap", '$b/acp-end.png', "--at", "mark:end", "--", '$b/acp', "--agent",
+			"run", "--headless", "apps/studio", "--script", "tests/studio/watch.json", "--size", "1180x740", "--snap", '$b/acp-working.png', "--at",
+			"mark:working", "--snap", '$b/acp-question.png', "--at", "mark:question", "--snap", '$b/acp-end.png', "--at", "mark:end", "--", '$b/acp', "--agent",
 			'$NODE ${FileSystem.fullPath("tests/studio/acp-agent.mjs")}', "--events", '$b/acp.jsonl'
 		]);
 		studioStories(h, b);
@@ -171,7 +171,7 @@ class Studio {
 		File.saveContent(hold, "");
 		var p = new Process(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/stories.json", "--size", "1180x740", "--snap", '$b/stories-end.png', "--at",
-			"mark:end", "--", dir, "--events", '$b/stories.jsonl', "--hold-while", hold
+			"mark:end", "--", dir, "--classic", "--events", '$b/stories.jsonl', "--hold-while", hold
 		]);
 		var url:Null<String> = null;
 		function drain(i:haxe.io.Input)

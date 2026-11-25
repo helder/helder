@@ -1,6 +1,8 @@
 // A scripted ACP agent for the studio's tests (apps/studio/src/studio/AcpAgent.test.hx):
 // newline-delimited JSON-RPC on stdin/stdout, as the Agent Client Protocol's
-// agents speak it. Prompts: "markdown" streams a Markdown reply in small
+// agents speak it. Prompts: "work" streams a plan, a thought, a Markdown
+// reply with chips and five tool calls (the last running), then waits for
+// session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
 // chunks; "edit" streams text, a thought, a tool call, a
 // plan, asks permission, reads and writes app.helder (and a file outside the
 // project), then reports what the client answered; "wait" streams a chunk,
@@ -32,6 +34,29 @@ async function prompt(id, p) {
   if (text.startsWith('die')) {
     process.stderr.write('fake: about to die\n')
     process.exit(3)
+  }
+  if (text.startsWith('The user says')) {
+    update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Noted: ' + text.slice(14)}})
+    send({id, result: {stopReason: 'end_turn'}})
+    return
+  }
+  if (text.startsWith('work')) {
+    update(s, {sessionUpdate: 'plan', entries: [
+      {content: 'the title', priority: 'high', status: 'completed'},
+      {content: 'the list', priority: 'high', status: 'in_progress'},
+      {content: 'the empty state', priority: 'medium', status: 'pending'}
+    ]})
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'The list first.'}})
+    const reply = 'The [Home](studio:screen/Home) frame has its title. Now the list, drawn in `app.helder:4`: three rows, the first one done.\n\n- a **checked** row\n- two open ones'
+    for (let i = 0; i < reply.length; i += 9)
+      update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 9)}})
+    const tools = ['app.helder · the title', 'app.helder · the input row', 'Read app.helder', 'app.helder · the list', 'app.helder · <view row-gap={1}>']
+    tools.forEach((title, k) => {
+      update(s, {sessionUpdate: 'tool_call', toolCallId: 'w' + k, title, kind: 'edit', status: k < tools.length - 1 ? 'completed' : 'in_progress'})
+    })
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
+    return
   }
   if (text.startsWith('markdown')) {
     const reply = 'Changed the **title**:\n\n- read `app.helder`\n- patched it\n\n```ts\nlet a = 1\n```\n\nSee [app.helder](app.helder#L2) or [helder](https://helder.build).'

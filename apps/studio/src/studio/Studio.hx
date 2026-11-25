@@ -46,15 +46,22 @@ class Studio {
 	public final shown:Signal<Null<String>> = signal(null);
 	// the prompt's agent (Agents: the user's own over ACP, else the studio's
 	// tools alone), the turn it runs or ran last (the prompt bar's transcript)
-	public final agent:Agent;
+	public var agent(default, null):Agent;
 	final local:LocalAgent;
 	public final turn:Signal<Null<Turn>> = signal(null);
 	// (the turn as just changed: the signal's write lands at the event's end)
 	var turnNow:Null<Turn> = null;
+	// the old shell (--classic: the sidebar, the inspector, the prompt bar;
+	// tests/studio's scripted lanes), else the watched one (Watch: a chat, a canvas to watch)
+	public final classic:Bool;
+	// the chat's turns, the code panel (Watch's shell); what the user tells the agent while it works
+	public final talk = new Conversation();
+	public final inbox = new Inbox();
 
-	function setTurn(t:Null<Turn>) {
+	function setTurn(t:Null<Turn>, fresh = false) {
 		turnNow = t;
 		turn(t);
+		if (t != null) talk.set(t, fresh);
 	}
 	public var mcp(default, null):Null<Mcp> = null;
 	// the agents here and where they work (Presence: Mcp's sessions, the tools they call), their marks
@@ -144,8 +151,9 @@ class Studio {
 	var covering = false;
 	var covered = false;
 
-	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String}) {
+	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String, ?classic:Bool}) {
 		current = this;
+		classic = options.classic ?? false;
 		startedAt = processStart;
 		var p:Null<Project> = null;
 		#if (hxmc.target == "wasm32-wasi")
@@ -193,6 +201,36 @@ class Studio {
 		#end
 		coverPath = options.cover;
 		if (coverPath != null) hold(() -> covered, "the cover", 600);
+	}
+
+	// another agent for the prompts (the chat's menu: Agents' names), the one before closed
+	public function useAgent(name:String) {
+		if (Turns.running(turnNow)) return;
+		agent.close();
+		agent = agentOf(name);
+		agentChanged(v -> v + 1);
+	}
+
+	// bumped when the agent changes (what shows its name reads it)
+	public final agentChanged = signal(0);
+
+	// the agent's name as the chat writes it ("Claude"), its colour (Theme.AGENTS)
+	public function agentName():String {
+		agentChanged();
+		return Agents.label(agentId());
+	}
+
+	public function agentColour():String {
+		agentChanged();
+		return Agents.colour(agentId());
+	}
+
+	function agentId():String {
+		#if (hxmc.target == "wasm32-wasi")
+		return "local";
+		#else
+		return Std.isOfType(agent, AcpAgent) ? (cast agent : AcpAgent).command.name : "local";
+		#end
 	}
 
 	// (the one chosen, else the first found; a headless run's local unless one is named)
@@ -415,7 +453,7 @@ class Studio {
 
 	// Escape: out of Play, out of a frame's contents (the frame selected), else nothing selected
 	public function escape() {
-		if (playing.peek() != null) stopPlay() else if (commandOpen.peek()) commandOpen(false) else if (entered.peek() && focused.peek() != null) focus(focused.peek(), false) else if (focused.peek() != null) focus(null, false);
+		if (talk.reading.peek() != null) talk.reading(null) else if (playing.peek() != null) stopPlay() else if (commandOpen.peek()) commandOpen(false) else if (entered.peek() && focused.peek() != null) focus(focused.peek(), false) else if (focused.peek() != null) focus(null, false);
 	}
 
 	// a page's screens (a design file's, a story flow's) fitted, none zoomed into
@@ -529,6 +567,8 @@ class Studio {
 	// sidebar and the code at the left, the inspector at the right, the
 	// toolbar above, the prompt bar below; compact, none
 	public function insets(?m:String):{left:Float, right:Float, top:Float, bottom:Float} {
+		// (the watched canvas: beside the chat, below the header, nothing over it)
+		if (!classic) return {left: 0, right: 0, top: 0, bottom: 0};
 		if (compactNow) {
 			// (the sheet open, at most at half: at full the canvas is under it anyway)
 			var d = detentNow, open = sheetNow == null ? 0 : sheetHeight(d == "full" ? "half" : d);
@@ -581,6 +621,62 @@ class Studio {
 			return;
 		}
 		pick(hit.name, wx - hit.x, wy - hit.y, add);
+	}
+
+	// the watched canvas' click at (px, py): a frame the prompt's focus (its
+	// ring; the camera stays), nothing on none; a double click plays it
+	public function aimAt(px:Float, py:Float) {
+		var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;
+		var double = now - lastClick.t < 0.4 && Math.abs(px - lastClick.x) < 6 && Math.abs(py - lastClick.y) < 6;
+		lastClick = {t: double ? -1.0 : now, x: px, y: py};
+		var hit = layout.at(camera.wx(px), camera.wy(py));
+		focused(hit?.name);
+		log("aimed", {screen: hit?.name});
+		if (double && hit != null) play();
+	}
+
+	// the chat column put away or back (Cmd+B): the frames kept where they are on screen
+	public function toggleChat() {
+		var open = !talk.open.peek();
+		talk.open(open);
+		camera.panBy(open ? -Theme.CHAT : Theme.CHAT, 0);
+		log("chat", {open: open});
+	}
+
+	// the camera flown to a frame (a chip's, a marker's: the user's click)
+	public function flyTo(name:String) {
+		if (layout.rect(name) == null) return;
+		fitTo(name, true);
+		log("flown", {screen: name});
+	}
+
+	// a design file's group by its title, where it is in the world (the
+	// groups' side sets it: <Group title> in design files; null: not known)
+	public var groupAt:Null<(file:String, title:String) -> Null<{x:Float, y:Float, w:Float, h:Float}>> = null;
+
+	// a chip's place flown to: a screen, a design file's frame (Project's screens by file and name), a group (groupAt; else the file's frames)
+	public function flyToPlace(p:Replies.Spot) {
+		if (project == null) return;
+		function file(f:String):String
+			return haxe.io.Path.normalize(haxe.io.Path.isAbsolute(f) ? f : project.dir + "/" + f);
+		switch p {
+			case Screen(name): flyTo(name);
+			case Frame(f, name):
+				var s = Lambda.find(project.screens, s -> s.file == file(f) && (s.name == name || s.label == name));
+				if (s != null) flyTo(s.name);
+			case Group(f, title):
+				var r = groupAt == null ? null : groupAt(file(f), title);
+				if (r == null) {
+					var rs = [for (s in project.screens) if (s.file == file(f)) layout.rect(s.name)].filter(r -> r != null);
+					if (rs.length == 0) return;
+					var x0 = Lambda.fold(rs, (r, m) -> Math.min(m, r.x), 1e9), y0 = Lambda.fold(rs, (r, m) -> Math.min(m, r.y), 1e9);
+					var x1 = Lambda.fold(rs, (r, m) -> Math.max(m, r.x + r.w), -1e9), y1 = Lambda.fold(rs, (r, m) -> Math.max(m, r.y + r.h), -1e9);
+					r = {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
+				}
+				var v = Camera.fit(r.x, r.y, r.w, r.h, stageWidth, stageHeight, 28, 0, 0, Theme.TITLES, 0);
+				camera.fly(v.x, v.y, v.k);
+				log("flown", {group: title});
+		}
 	}
 
 	// Play: what is selected, else the app from its start (Play's notes)
@@ -1294,12 +1390,20 @@ class Studio {
 			helder.os.Links.open(h, false);
 			return;
 		}
+		var place = Replies.place(h);
+		if (place != null) {
+			flyToPlace(place);
+			return;
+		}
 		var l = project == null ? null : FileLink.parse(h, project.dir);
 		if (l == null || !Files.exists(l.path) || Files.isDirectory(l.path)) {
 			message('$href: not a file of the project');
 			return;
 		}
-		openCode(l.path, l.line);
+		if (classic) openCode(l.path, l.line) else {
+			talk.reading({file: l.path, line: l.line});
+			log("reading", {file: l.path, line: l.line});
+		}
 	}
 
 	// a file of the tree opened in its view: a design or story file's page
@@ -1479,12 +1583,19 @@ class Studio {
 
 	// a prompt to the agent (the studio's own /tree, /snap, /check, /read to
 	// its tools), its events folded into the turn; one turn at a time
-	public function ask(prompt:String) {
+	// (said: the chat's bubble; a turn of the inbox's notes has none)
+	public function ask(prompt:String, said = true) {
 		var p = prompt.trim();
-		if (p == "" || Turns.running(turnNow)) return;
+		if (p == "") return;
+		// (typed while a turn runs: a direction, the inbox's, not a prompt)
+		if (Turns.running(turnNow)) {
+			inbox.direct(p, talk.list().length - 1);
+			log("directed", {text: p});
+			return;
+		}
 		var a = LocalAgent.tool(p) != null ? local : agent;
-		setTurn(Turns.start(p));
-		var answered = false;
+		setTurn(Turns.start(said ? p : ""), true);
+		var answered = false, heard = -1.0;
 		function end(e:Agent.AgentEvent) {
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
 			var ps = a == local ? [] : problems();
@@ -1492,8 +1603,11 @@ class Studio {
 			setTurn(t);
 			answered = true;
 			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
+			// (the notes its tools did not carry: the next prompt, at once)
+			var notes = a == local ? [] : inbox.take();
+			if (notes.length > 0) ask(Inbox.text(notes), false);
 		}
-		a.ask(p, {screen: focused.peek(), selection: selection.peek(), problems: problems()}, e -> switch e {
+		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems()}, e -> switch e {
 			case Done(_) | Failed(_):
 				// (not done before the studio's build of its edits is: a failed one shown with the turn)
 				var pr = previews;
@@ -1504,14 +1618,17 @@ class Studio {
 					end(e);
 				});
 			case _:
+				heard = haxe.Timer.stamp();
 				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
 				switch e {
 					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
 					case _:
 				}
 		});
-		// (a question for the user lets the script go on: its answer is the script's)
-		hold(() -> answered || turnNow?.ask != null, "the agent's reply", a == local ? 30 : 300);
+		// (a question for the user lets the script go on: its answer is the
+		// script's; so does an agent quiet for half a second after it spoke:
+		// the script steers it, stops it)
+		hold(() -> answered || turnNow?.ask != null || (heard > 0 && haxe.Timer.stamp() - heard > 0.5), "the agent's reply", a == local ? 30 : 300);
 	}
 
 	// the last build's errors, "file:line: message" (none: it did not fail)

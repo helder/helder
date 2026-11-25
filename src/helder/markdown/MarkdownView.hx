@@ -27,6 +27,8 @@ typedef MarkdownProps = {
 	?blocks:Int,
 	// code blocks' font (a monospace family: CodeView's JetBrains Mono by default) and size
 	?codeFont:String,
+	// a link's slot by its href (an app's chips: null, or no function: markdown-link)
+	?linkSlot:(href:String) -> Null<String>,
 	?codeSize:Float
 }
 
@@ -429,10 +431,11 @@ class MarkdownView extends Node {
 				var s = new TextNode(code, "markdown-code-span");
 				s.slot = "markdown-code-span";
 				into.append(s);
-			case Link(href, _, c): link(span(into, "markdown-link", c), href);
+			case Link(href, _, c): link(span(into, linkSlot(href), c), href);
 			case Autolink(href, shown):
-				var s = new TextNode(shown, "markdown-link");
-				s.slot = "markdown-link";
+				var slot = linkSlot(href);
+				var s = new TextNode(shown, slot);
+				s.slot = slot;
 				link(s, href);
 				into.append(s);
 			case Image(_, alt, _):
@@ -444,6 +447,9 @@ class MarkdownView extends Node {
 				h.slot = "markdown-html";
 				into.append(h);
 		}
+
+	function linkSlot(href:String):String
+		return (props.linkSlot == null ? null : props.linkSlot(href)) ?? "markdown-link";
 
 	function span(into:Node, slot:String, content:Array<Inline>):TextNode {
 		var s = new TextNode("", slot);

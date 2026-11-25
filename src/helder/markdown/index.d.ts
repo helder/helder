@@ -13,7 +13,7 @@ declare const __haxe: {Markdown: "helder.markdown.Markdown", MarkdownView: "held
 // "---" or "...", unparsed; null: none)
 export type Doc = { blocks: unknown[]; frontMatter: string | null };
 
-export type MarkdownProps = { doc: Doc; onLink?: (href: string) => void; image?: (src: string, alt: string) => Node | null; scroll?: boolean; blocks?: number; codeFont?: string; codeSize?: number };
+export type MarkdownProps = { doc: Doc; onLink?: (href: string) => void; image?: (src: string, alt: string) => Node | null; scroll?: boolean; blocks?: number; codeFont?: string; linkSlot?: (href: string) => string | null; codeSize?: number };
 
 // Markdown as CommonMark reads it (0.31: its block structure, inline
 // rules, entities, reference definitions) with GFM's tables, task list
