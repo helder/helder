@@ -532,7 +532,6 @@ class Headless {
 		return m;
 	}
 
-	// where a step aims (points): its node's centre (or ox, oy from its top left), x, y, else the pointer
 	// whether a step's node is there to aim at
 	function shown(s:Step):Bool {
 		if (inspector == null) return true;
@@ -541,6 +540,7 @@ class Headless {
 		return n != null && n.width > 0 && n.height > 0 && n.opacity > 0;
 	}
 
+	// where a step aims (points): its node's centre (or ox, oy from its top left), x, y, else the pointer
 	function target(s:Step):{x:Float, y:Float} {
 		var tag = s.str("tag"), path = s.str("path"), role = s.str("role"), label = s.str("label"), id = s.str("id");
 		if (tag == null && path == null && role == null && label == null && id == null) {
