@@ -118,15 +118,15 @@ class Compositor implements RenderIdle {
 	public var layers(default, null):Null<LayerSplit> = null;
 	// (the window's frames drawn onto its layer last, as the textured compositor draws: not quiet)
 	var loud = true;
-	// (whether a frame of the program's ended with its quads: until one has
-	// (a window of its background alone) the layers have nothing to show,
-	// so the window's own frames are)
-	var ended = false;
+	// (whether the last frame ended with no quads ever drawn (a window of its
+	// background alone): the layers have nothing to show, so the window's
+	// own frames are, until one has quads)
+	var empty = false;
 
 	// whether the program's frames go to the system's layers
 	public function planes():Bool {
 		if (layers != null) layers.prepare();
-		return layers != null && ended && !layers.single && !layers.priming;
+		return layers != null && !empty && !layers.single && !layers.priming;
 	}
 
 	// (before the program's frame: whether it draws onto the window's layer
@@ -291,8 +291,8 @@ class Compositor implements RenderIdle {
 		spots = made;
 		lock.release();
 		drewSince = false;
-		if (!f.ready || !r.ended(f)) return;
-		ended = true;
+		empty = f.ready && !r.ended(f);
+		if (!f.ready || empty) return;
 		// (room for every quad it may draw, in each buffer of the ring)
 		var need = (f.quads() + 64) * CompositeFrame.STRIDE;
 		if (need > capacity) {
