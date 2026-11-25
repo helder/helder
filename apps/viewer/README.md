@@ -415,7 +415,14 @@ hidden files, the inspector and the status line are kept between runs
   decoded images and page contents (`PdfLimits.imageCache`, 48 MB each),
   so the next page decodes none of what the last one did; one page is
   drawn at a time under a lock; each page has its own decompression
-  budget; a changed file is opened again. The key context `pdf` (a PDF
+  budget; a changed file is opened again. A file is read where its pages
+  need it, not whole (helder.pdf's `Pdf.openSource`): one on disk through
+  its handle, kept open while its document is; on the web through Files
+  (`PdfPages.through`: its blocks fetched as a page needs them, on the
+  page); a phone's document with no path is read whole (a job's thread
+  cannot share the blocks fetched). A thumbnail and the inspector read the
+  first page alone, its document not kept (a linearized file's from its
+  start). The key context `pdf` (a PDF
   shown) gives Page Down, Space, Up, Down, `[`, `]`, Home and End to the
   column, Left and Right stay the folder's; `goto` is the go to page card's.
 - **MarkdownDoc**, **MarkdownPage** (`MarkdownDoc.hx`, `MarkdownPage.hx`):

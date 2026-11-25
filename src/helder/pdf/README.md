@@ -13,6 +13,8 @@ port.
 var doc = helder.pdf.Pdf.open(bytes);          // Document; PdfError when it is not one
 var page1 = helder.pdf.Pdf.render(doc, 0, 2);  // a premultiplied Bitmap at 2 pixels a point
 helder.pdf.Pdf.draw(doc.pages[3], painter, 1.5);
+var lazy = helder.pdf.Pdf.openSource(source);  // read as its pages need it (a PdfSource)
+var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, doc.count its pages
 ```
 
 - **Reading** (`Document`, `Parser`): the xref table or stream at
@@ -21,6 +23,33 @@ helder.pdf.Pdf.draw(doc.pages[3], painter, 1.5);
   whose xref is missing or wrong rebuilt from its `n g obj` headers (the
   trailer, or an xref stream's dictionary, or the catalog). The page tree
   with what pages inherit (resources, boxes, rotation).
+- **Read where a page needs it** (`PdfSource`, `Pdf.openSource`): the
+  file's bytes through a source read at any offset, synchronously (a
+  file's handle seeked, a `PdfBytes`, a `PdfFetched`): its tail (startxref,
+  the xref and those it chains to), then each object at its offset when it
+  is needed, object streams when an object in one is; in blocks
+  (`PdfLimits.readBlock`, 64 KB) with `readCache` of them kept, so the
+  parser's small reads are not each a read of the file. Only a damaged
+  file rebuilt from its `n g obj` headers is read whole. A 300 MB scan's
+  first page reads its tail and that page's objects (`Document.bytesRead`).
+  `Pdf.open(bytes)` is the same over a `PdfBytes`, parsed in place.
+- **A first page alone** (`Pdf.openSource(source, true)`: a thumbnail's,
+  a preview's): `Document.pages` that page, `Document.count` how many
+  there are. A linearized file (a `/Linearized` dictionary in its first KB,
+  `/L` its length) from its first `/E` bytes: the first page's xref after
+  that dictionary, page `/O`, `/N` pages; an object not in that xref has
+  the rest of the file's read then (the first page's trailer's `/Prev`),
+  and a file updated since (`/L` not its length) is read as any other.
+  Another file by its page tree's first leaf, the count its root's
+  `/Count`, without reading every page's dictionary. The hint tables are
+  not read: once the first page is shown a page's objects are found
+  through the main xref at the file's end, one read, as fast on a local
+  file; they would spare round trips only on a slow remote source.
+- **A slower reader** (`PdfFetched`: a browser's Blob, a phone's
+  document): its blocks given as they are fetched; a read of one not
+  given yet throws `PdfMissing` (not a PdfError: what catches those lets it
+  through), which says which, and the caller fetches it and does the work
+  again, the objects read so far kept (apps/viewer's `PdfPages.through`).
 - **Filters** (`Filters`): FlateDecode (haxe.zip's inflate; raw deflate
   too) and LZWDecode with PNG and TIFF predictors, ASCIIHexDecode,
   ASCII85Decode, RunLengthDecode; DCTDecode through helder.image's JPEG

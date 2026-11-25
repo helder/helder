@@ -65,6 +65,19 @@ function tests() {
 			doc.view(2400, 1300);
 			equals(doc.layout.zoom, (1000 - 32) / 595.28 * 0.8);
 		});
+		test("a file on disk read where its pages need: a first page alone not kept, its count all the same", () -> {
+			var path = "tests/fixtures/pdf/pages.pdf";
+			PdfPages.clear();
+			var first = PdfPages.render(path, null, 0, 64, true);
+			equals([first.pages, first.fileSize], [3, Std.int(sys.FileSystem.stat(path).size)]);
+			equals(PdfPages.isOpen(path), false);
+			var second = PdfPages.render(path, null, 1, 64);
+			equals(second.pages, 3);
+			equals(PdfPages.isOpen(path), true);
+			equals(PdfPages.sizes(path).sizes.length, 3);
+			PdfPages.clear();
+			equals(PdfPages.isOpen(path), false);
+		});
 		test("the pages a scroll shows; the page the view is on", () -> {
 			var l = new PdfLayout(sizes);
 			l.setView(1000, 700);
