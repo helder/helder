@@ -62,8 +62,13 @@ is told at the page's `resize` event, before its layout, and the worker's
 frame waiting for the marker resizes the canvas and draws it then (a frame
 a frame, the newest size: a burst's sizes, each a new drawing buffer, made
 once). The page shows the worker's frames as they come, so a resized one
-can come late: on a GPU 0–2 of ~90 frames of a drag, on CI's SwiftShader
-4–6 of 30, each less than a frame late (`tests/ui/web-resize.mjs`). It fits
+can come late: on a GPU 0–2 of ~90 frames of a drag, none more than a frame
+late (`tests/ui/web-resize.mjs`, which checks that with Chromium on a GPU:
+`CHROMIUM_ARGS`). CI's browser lanes have no GPU (SwiftShader, whose
+headless frame times are no GPU's either), so there the test reports the
+timing and checks only what holds on any GPU: the last size drawn, no size
+drawn that the page did not lay out, no resize shown cleared, the worker
+drawing on. It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;

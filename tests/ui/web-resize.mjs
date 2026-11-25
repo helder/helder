@@ -6,16 +6,21 @@
 // getCurrentTexture; a worker's told over a BroadcastChannel) the canvas's
 // displayed size in device pixels; else the frame shows the one before
 // stretched (or cleared). On the page's thread none may be: an observer
-// after the program's, the last before the paint, compares them. In a
-// worker, whose frames reach the compositor on their own, a frame shows the
-// newest draw before the next began (its size laid out as the page's resize
-// event told the worker, before its observer's), and at most one in ten may
-// be stale; on SwiftShader (the renderer WebGL names: CI's, headless
-// Chromium's) none drawn more than a frame late, and no gap between its
-// draws of 100 ms (CI: 4 and 6 of 30 stale, each less than a frame late,
-// gaps to 92 ms). The frames' times printed (median, p95); a worker's
-// failed run (TRACE=1: each) its trace around its longest wait between draws.
-//   node tests/ui/web-resize.mjs <WebTodo.wasm>
+// after the program's, the last before the paint, compares them (an
+// order, not a time: the program draws in its own, before). In a worker,
+// whose frames reach the compositor on their own, a frame shows the newest
+// draw before the next began (its size laid out as the page's resize event
+// told the worker, before its observer's): on a GPU at most one in ten
+// stale, none drawn more than a frame late. On SwiftShader (the renderer
+// WebGL names: CI's browser lanes, which have no GPU; their headless frame
+// times are no GPU's either) that is printed, not checked: a loaded runner
+// drawing in software gave 4 and then 22 stale of 30 on the same code. Both
+// check what is so on any GPU: the last size drawn, none drawn at a size the
+// page did not lay out, a worker's canvas drawn after each resize (none
+// shown cleared) and drawing on (no gap of a second). The frames' times
+// printed (median, p95); a worker's failed run (TRACE=1: each) its trace
+// around its longest wait between draws.
+//   node tests/ui/web-resize.mjs <WebTodo.wasm>   (CHROMIUM_ARGS: Chromium's flags, a GPU's)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -159,7 +164,9 @@ const server = createServer(async (req, res) => {
 		res.end();
 	}
 }).listen(0);
-const browser = await pw.chromium.launch({ args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] });
+// (CHROMIUM_ARGS: others, a GPU's: "--enable-unsafe-webgpu --enable-gpu --ignore-gpu-blocklist", the timing then checked)
+const args = process.env.CHROMIUM_ARGS?.split(' ') ?? ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
+const browser = await pw.chromium.launch({ args });
 let failed = 0, renderer = null;
 const newest = (list, t) => {
 	let r = null;
@@ -225,10 +232,19 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const gaps = drawn.filter((d) => d[0] > t0 && d[0] < t1).map((d, i, a) => (i ? d[0] - a[i - 1][0] : 0)).filter((g) => g > 1).sort((a, b) => a - b);
 		const last = resizes[resizes.length - 1], end = drawn[drawn.length - 1];
 		const settled = !!end && end[1] === last[1] && end[2] === last[2];
-		// (SwiftShader's: a frame, the page's median (1 ms more: the two threads' clocks), the most a stale one's draw may come late)
+		// (none drawn at a size the page had not laid out by the end of its frame: on
+		// the page's thread the program draws in its observer, before the test's)
+		const by = (t) => frames.find((f) => f > t) ?? Infinity;
+		const odd = drawn.filter((d) => d[0] > t0 && !resizes.some((r) => r[0] <= by(d[0]) && r[1] === d[1] && r[2] === d[2])).length;
+		// (a worker's canvas resized and not drawn within 50 ms: shown cleared)
+		const sets = trace.filter((e) => e[0] > t0 && e[1].startsWith('canvas.'));
+		const blank = sets.filter((e) => !drawn.some((d) => d[0] > e[0] && d[0] < e[0] + e[3] + 50)).length;
+		const longest = gaps[gaps.length - 1] ?? 0;
+		// (on a GPU: a frame, the page's median (1 ms more: the two threads' clocks), the most a stale one's draw may come late)
 		const soft = /SwiftShader/.test(renderer), frame = times[times.length >> 1] + 1;
-		const near = late.every((l) => l[1] <= frame) && (gaps[gaps.length - 1] ?? 0) < 100;
-		const ok = errors.length === 0 && sizes >= n / 2 && settled && (!worker ? stale === 0 : soft ? near : stale * 10 <= shown);
+		const timely = stale * 10 <= shown && late.every((l) => l[1] <= frame);
+		const ok = errors.length === 0 && sizes >= n / 2 && settled && odd === 0
+			&& (!worker ? stale === 0 : blank === 0 && longest < 1000 && (soft || timely));
 		if (!ok) failed++;
 		const ms = (v) => (v === Infinity ? 'never' : v.toFixed(1));
 		// (a worker's longest wait between draws while resized: a stall)
@@ -245,7 +261,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			trail.push(`  the worker's trace from 30 ms before its longest gap (${(ds[k][0] - ds[k - 1][0]).toFixed(1)} ms, from +30.0):`);
 			for (const e of events.slice(0, 160)) trail.push(`    +${(e[0] - from).toFixed(1)} ${e[1]} ${e[2] ?? ''}${e[3] ? ' (' + e[3].toFixed(1) + ' ms)' : ''}`);
 		}
-		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${stall}${worker && soft ? ' (SwiftShader: none more than a frame late, gaps under 100 ms)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
+		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${stall}${worker && soft ? ' (SwiftShader: timing reported, not checked)' : ''}${settled ? '' : ', the last not at the last size'}${odd ? `, ${odd} drawn at a size not laid out` : ''}${blank ? `, ${blank} resizes not drawn (shown cleared)` : ''}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
 	} catch (e) {
 		failed++;
 		line = `${mode}: ${e.message} FAILED`;
