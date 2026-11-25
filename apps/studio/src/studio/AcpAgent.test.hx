@@ -36,7 +36,8 @@ function tests() {
 			equals(report.line, '\t<text>Hello</text>');
 			equals([report.wrote, report.outside, report.missing], ["ok", "error", -32601]);
 			equals(report.servers, ["http helder-studio http://127.0.0.1:7340/mcp"]);
-			equals(report.denied, ["Bash", "Write", "Edit", "NotebookEdit"]);
+			equals(report.denied, AcpAgent.DENIED);
+			equals(["Bash", "Write", "Agent", "Task", "Workflow", "Monitor"].filter(t -> !AcpAgent.DENIED.contains(t)), []);
 			equals(report.link, "app.helder:2");
 			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");
 			var f = w.dir + "/app.helder";

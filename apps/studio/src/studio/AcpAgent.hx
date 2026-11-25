@@ -146,10 +146,15 @@ class AcpAgent implements Agent {
 		return a;
 	}
 
-	// (Claude Code's session options, claude-agent-acp's: its own shell and
-	// file writes not its, the project changed through the studio's tools;
-	// another agent ignores them)
-	public static final DENIED = ["Bash", "Write", "Edit", "NotebookEdit"];
+	// (Claude Code's session options, claude-agent-acp's: its own shell, file
+	// writes and subagents not its, the project changed through the studio's
+	// tools; another agent ignores them; a name this version lacks is no harm)
+	public static final DENIED = [
+		"Bash", "PowerShell", "BashOutput", "KillShell", "TaskOutput", "TaskStop", "Monitor", "REPL",
+		"Write", "Edit", "NotebookEdit",
+		"Agent", "Task", "Workflow", "TeamCreate", "SendMessage", "RemoteTrigger", "CronCreate", "ScheduleWakeup", "EnterWorktree",
+		"SendToProject", "SendToProjectContext", "Skill"
+	];
 
 	static final SESSION:Dynamic = {claudeCode: {options: {disallowedTools: DENIED}}};
 
