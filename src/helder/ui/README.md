@@ -1615,13 +1615,27 @@ thumbnails, documents.
 writer's. What a writer gets: rectangles with their borders and corners,
 shadows and inset shadows (calls of their own, not pixels), opacity groups,
 clips, transforms, images (`Image.source`: the file decoded, to embed as it
-is; `Image.drawing`: the SVG an icon was rendered from, to draw as vectors),
+is; `Image.drawing`: the SVG an icon was rendered from, or a box's
+gradient, to draw as vectors),
 vector paths (`canvas.path(path, fill, ?stroke)`: `Path`'s moves, lines,
 curves, arcs, even-odd; a `Paint`, a colour or a CSS gradient; a `Stroke`'s
 width, caps, joins, miter and dashes), and text as paragraphs whose
 `runs(width, align)` give the glyphs as placed: the face's file, the size,
 the glyph ids and each glyph's source text. `breakBefore`, `breakAfter`,
 `breakInside` and `page` are kept for a paged layout; a window has none.
+
+A frame can be kept as data and drawn again later (the studio's stills):
+`FrameWriter` is a canvas `ui.paint` writes each call into as an op and
+its numbers, in column streams (`FrameStreams`: floats on a 1/64 grid as
+steps from the same field's last value, others raw: lossless); paragraphs
+as their lines and placed glyphs; a pass's box (a scene, a shader, video,
+sprites, glass) as a `GpuPlaceholder`. `FrameArchive` keeps frames by
+screen name and key, their fonts (by file and hash, those of no file
+stored) and images (the file, else PNG pixels, an SVG icon or a gradient
+as its data) once by hash, deflated. `list(name)` records one into a
+`DisplayList` (`FrameReader`), whose text is a `RunParagraph` the GPU and
+CPU renderers draw as the paragraph it came from: replayed, the same
+pixels, at any scale its glyphs rasterized anew.
 
 ### On the CPU
 

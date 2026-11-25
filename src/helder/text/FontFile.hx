@@ -254,6 +254,7 @@ class FontFile {
 	// the others): a face of its own (its own id), the same data
 	public function instance(values:Map<String, Float>):FontFile {
 		var f = new FontFile(data, index, cmap >= 0);
+		f.path = path;
 		if (vars == null) return f;
 		f.vars = vars;
 		f.coords = vars.normalize(values);
