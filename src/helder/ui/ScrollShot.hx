@@ -225,11 +225,23 @@ private class Taking {
 		this.shot = shot;
 	}
 
-	// (n under the scroller entry up and the entry outer, clipped to x0...y1 in up's content's coordinates)
-	public function walk(n:Node, up:Int, outer:Int, x0:Float, y0:Float, x1:Float, y1:Float) {
+	// (n under the scroller entry up and the entry outer, clipped to x0...y1
+	// in up's content's coordinates; on, seen: its parent's pointer-events
+	// and visibility, inherited as Node.hittable reads them. A node that
+	// takes no input (pointer-events none, hidden) is no scroller, gate or
+	// cover of the compositor's: a wheel goes through it to what is under it,
+	// as the program's own hit test sends it (a closed view kept drawn
+	// transparent over the page took its wheels otherwise); its children
+	// may take input again)
+	public function walk(n:Node, up:Int, outer:Int, x0:Float, y0:Float, x1:Float, y1:Float, on = true, seen = true) {
 		var s = n.style;
 		if (s.display == None || n.present != null && n.present.away) return;
-		var claims = claimsOf(n);
+		if (s.pointerEvents != null) on = s.pointerEvents == Auto;
+		if (s.visibility != null) seen = s.visibility == Visible;
+		var takes = on && seen;
+		var claims = takes ? claimsOf(n) : 0;
+		// (a scroller that takes none: nor do what it scrolls, laid out in its content)
+		if (s.overflow == Scroll && !takes) return;
 		if (s.overflow == Scroll) {
 			var mx = s.overflowX == Scroll ? Scrolling.maxScroll(n, true) : 0, my = s.overflowY == Scroll ? Scrolling.maxScroll(n, false) : 0;
 			if (mx > 0 || my > 0) {
@@ -254,7 +266,7 @@ private class Taking {
 				e.own = ui.mirrorOwn(n);
 				bars(n, e);
 				var inner = covers.length;
-				walkChildren(n, i, i, -1e9, -1e9, 1e9, 1e9);
+				walkChildren(n, i, i, -1e9, -1e9, 1e9, 1e9, on, seen);
 				covers.resize(inner);
 				covers.push(i);
 				return;
@@ -266,7 +278,7 @@ private class Taking {
 			e.clip(x0, y0, x1, y1);
 			e.claims = claims;
 			outer = shot.count - 1;
-		} else if (n.width > 0 && n.height > 0 && over(n)) {
+		} else if (takes && n.width > 0 && n.height > 0 && over(n)) {
 			var e = shot.add(n, ScrollShot.COVER, up, outer);
 			e.box(n.absX, n.absY, n.width, n.height);
 			e.clip(x0, y0, x1, y1);
@@ -280,20 +292,20 @@ private class Taking {
 			y1 = Math.min(y1, n.absY + n.height - be.bottom);
 			if (x1 <= x0 || y1 <= y0) return;
 		}
-		walkChildren(n, up, outer, x0, y0, x1, y1);
+		walkChildren(n, up, outer, x0, y0, x1, y1, on, seen);
 	}
 
-	function walkChildren(n:Node, up:Int, outer:Int, x0:Float, y0:Float, x1:Float, y1:Float) {
+	function walkChildren(n:Node, up:Int, outer:Int, x0:Float, y0:Float, x1:Float, y1:Float, on:Bool, seen:Bool) {
 		var order = n.paintOrder();
 		if (order != null) {
 			for (c in order)
-				walk(c, up, outer, x0, y0, x1, y1);
+				walk(c, up, outer, x0, y0, x1, y1, on, seen);
 			return;
 		}
 		for (c in n.children)
-			if (c.style.position == Relative) walk(c, up, outer, x0, y0, x1, y1);
+			if (c.style.position == Relative) walk(c, up, outer, x0, y0, x1, y1, on, seen);
 		for (c in n.children)
-			if (c.style.position != Relative) walk(c, up, outer, x0, y0, x1, y1);
+			if (c.style.position != Relative) walk(c, up, outer, x0, y0, x1, y1, on, seen);
 	}
 
 	// (whether n is over a scroller painted before it that it is not in)
