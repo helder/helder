@@ -37,11 +37,13 @@ class MediaView {
 		root.append(audio);
 		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
 			borders: [1, 0, 0, 0]});
+		bar.tag = "media-bar";
 		var scrub = new Scrub((at, exact) -> {
 			video.seek(at, exact);
 			if (refresh != null) refresh();
 		});
-		var thumb = box({position: Absolute, bottom: 18, padding: 3, radius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
+		// (the thumbnail over the scrub bar, within the stage's content: never over the status line under it)
+		var thumb = box({position: Absolute, bottom: 26, padding: 3, radius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
 			pointerEvents: None, alignItems: Center, rowGap: 2, display: None});
 		var picture = new ImageNode();
 		picture.style.set({width: Thumbs.WIDTH, radius: 3});

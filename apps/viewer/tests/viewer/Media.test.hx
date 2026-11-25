@@ -91,5 +91,53 @@ function tests() {
 				equals(playing().length, 0);
 				@:privateAccess Player.quiet = false;
 			})).timeout(30);
+		// (the media bar, a PDF's column and a picture above the status line, not under it, at any size; the status line off: the bar at the window's foot)
+		for (size in [{width: 1100.0, height: 700.0}, {width: 800.0, height: 500.0}, {width: 1600.0, height: 1000.0}, {width: 390.0, height: 844.0}])
+			test('${size.width}x${size.height}: the media bar, a PDF and a picture clear of the status line', () -> {
+				helder.media.VorbisDecoder.link();
+				@:privateAccess Player.quiet = true;
+				var x = Fixtures.explorer([dir]), viewer = x.viewer;
+				var ui = new Ui(new StoryText(), size.width, size.height);
+				ui.scrollDuration = 0;
+				Render.render(Shell.view(x), ui.root);
+				Shell.attach(ui.root, x);
+				function frame() {
+					for (_ in 0...2) {
+						helder.view.graph.Graph.flush();
+						ui.update();
+						Clock.finish();
+					}
+				}
+				function clear(what:String, tag:String) {
+					for (on in [false, true]) {
+						viewer.statusOn(on);
+						frame();
+						var n = ui.root.find(tag), s = ui.root.find("status");
+						assert(n != null, '$what: no $tag');
+						var b = n.windowBounds();
+						assert(b.height > 0 && b.y + b.height <= size.height + 0.5, '$what: $tag at ${b.y}, ${b.height} high');
+						if (!on) {
+							assert(s == null, '$what: a status line, off');
+							continue;
+						}
+						assert(s != null, '$what: no status line');
+						var t = s.windowBounds();
+						assert(b.y + b.height <= t.y + 0.5, '$what, the status line on: $tag to ${b.y + b.height}, the status line from ${t.y}');
+					}
+				}
+				x.start('$dir/a.webm');
+				frame();
+				if (FolderModel.isMedia("a.webm")) clear("a.webm", "media-bar");
+				x.start('$dir/d.pdf');
+				frame();
+				clear("d.pdf", "pdf-scroll");
+				x.start('$dir/b.png');
+				frame();
+				clear("b.png", "photo");
+				viewer.statusOn(false);
+				x.perform(Close);
+				frame();
+				@:privateAccess Player.quiet = false;
+			});
 	});
 }

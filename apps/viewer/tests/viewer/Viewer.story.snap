@@ -1,6 +1,6 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Browser/empty: Browser/empty (84 lines)
+--- story Browser/empty: Browser/empty (85 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -79,14 +79,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, dark: Browser/grid, dark (146 lines)
+--- story Browser/grid, dark: Browser/grid, dark (147 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -227,14 +228,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, light: Browser/grid, light (146 lines)
+--- story Browser/grid, light: Browser/grid, light (147 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -375,14 +377,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, PDF: Browser/inspector, PDF (118 lines)
+--- story Browser/inspector, PDF: Browser/inspector, PDF (119 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -495,14 +498,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (324 lines)
+--- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (325 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -821,14 +825,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, photo: Browser/inspector, photo (170 lines)
+--- story Browser/inspector, photo: Browser/inspector, photo (171 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -993,14 +998,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, dark: Browser/list, dark (161 lines)
+--- story Browser/list, dark: Browser/list, dark (162 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1156,14 +1162,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, light: Browser/list, light (161 lines)
+--- story Browser/list, light: Browser/list, light (162 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1319,14 +1326,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/missing folder: Browser/missing folder (87 lines)
+--- story Browser/missing folder: Browser/missing folder (88 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1408,14 +1416,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/no results: Browser/no results (94 lines)
+--- story Browser/no results: Browser/no results (95 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1504,14 +1513,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/several selected: Browser/several selected (174 lines)
+--- story Browser/several selected: Browser/several selected (175 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1680,14 +1690,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 495,353 110x22 "No image open"
-              TextNode#detail 550,383 0x16 ""
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, dark: Viewer/Markdown, dark (439 lines)
+--- story Viewer/Markdown, dark: Viewer/Markdown, dark (440 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1992,143 +2003,144 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#markdown-page 0,52 1100x648
-              Node#markdown-doc 0,52 1100x648
-                MarkdownView#markdown 0,52 1100x648
-                  Node#markdown-scroll 0,52 1100x648
-                    Node#markdown-row 170,88 760x66
-                      TextNode#markdown-h1 210,94 680x44 ""
-                        TextNode#text 210,94 0x0 "Welcome to Viewer"
-                    Node#markdown-row 170,154 760x86
-                      TextNode#markdown-p 210,154 680x72 ""
-                        TextNode#text 210,154 0x0 "Viewer is a fast image viewer and file browser built on"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#markdown-link 210,154 0x0 ""
-                          TextNode#text 210,154 0x0 "helder"
-                        TextNode#text 210,154 0x0 " alone. This page is a "
-                        TextNode#markdown-strong 210,154 0x0 ""
-                          TextNode#text 210,154 0x0 "Markdown"
-                        TextNode#text 210,154 0x0 " file, shown"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#text 210,154 0x0 "the way the viewer shows every "
-                        TextNode#markdown-code-span 210,154 0x0 ".md"
-                        TextNode#text 210,154 0x0 " file: a column of text, its links"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#text 210,154 0x0 "followed, its pictures from the same folder."
-                    Node#markdown-row 170,240 760x439
-                      Node#markdown-p 210,240 680x425
-                        ImageNode#image 210,240 680x425
-                    Node#markdown-row 170,679 760x58
-                      TextNode#markdown-h2 210,689 680x34 ""
-                        TextNode#text 210,689 0x0 "What is in this folder"
-                    Node#markdown-row 170,737 760x128
-                      Node#markdown-list 210,737 680x114
-                        Node#markdown-item 210,737 680x24
-                          TextNode#markdown-marker 210,737 24x24 "•"
-                          Node#markdown-item-body 234,737 656x24
-                            TextNode#markdown-p 234,737 656x24 ""
-                              TextNode#markdown-strong 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Photos"
-                              TextNode#text 234,737 0x0 ": "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Murmuration"
-                              TextNode#text 234,737 0x0 ", "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Starlings"
-                              TextNode#text 234,737 0x0 " and a"
-                              TextNode#text 234,737 0x0 " "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "wide panorama"
-                        Node#markdown-item 210,767 680x24
-                          TextNode#markdown-marker 210,767 24x24 "•"
-                          Node#markdown-item-body 234,767 656x24
-                            TextNode#markdown-p 234,767 656x24 ""
-                              TextNode#markdown-strong 234,767 0x0 ""
-                                TextNode#text 234,767 0x0 "A PDF"
-                              TextNode#text 234,767 0x0 " of three pages: "
-                              TextNode#markdown-link 234,767 0x0 ""
-                                TextNode#text 234,767 0x0 "About Viewer"
-                        Node#markdown-item 210,797 680x24
-                          TextNode#markdown-marker 210,797 24x24 "•"
-                          Node#markdown-item-body 234,797 656x24
-                            TextNode#markdown-p 234,797 656x24 ""
-                              TextNode#markdown-strong 234,797 0x0 ""
-                                TextNode#text 234,797 0x0 "A video and a sound"
-                              TextNode#text 234,797 0x0 ": Starlings.mp4, Chimes.m4a"
-                        Node#markdown-item 210,827 680x24
-                          TextNode#markdown-marker 210,827 24x24 "•"
-                          Node#markdown-item-body 234,827 656x24
-                            TextNode#markdown-p 234,827 656x24 ""
-                              TextNode#text 234,827 0x0 "More pictures in the "
-                              TextNode#markdown-link 234,827 0x0 ""
-                                TextNode#text 234,827 0x0 "More"
-                              TextNode#text 234,827 0x0 " folder"
-                    Node#markdown-row 170,865 760x59
-                      TextNode#markdown-h2 210,875 680x35 ""
-                        TextNode#text 210,875 0x0 "Keys"
-                    Node#markdown-row 170,924 760x224
-                      Node#markdown-table-scroll 210,924 680x210
-                        Node#markdown-table 210,924 457x210
-                          TextNode#markdown-th 211,925 186x32 ""
-                            TextNode#text 211,925 0x0 "Key"
-                          TextNode#markdown-th 397,925 270x32 ""
-                            TextNode#text 397,925 0x0 "In a document"
-                          TextNode#markdown-td 211,957 186x35 ""
-                            TextNode#text 211,957 0x0 "Space, Page Down"
-                          TextNode#markdown-td 397,957 270x35 ""
-                            TextNode#text 397,957 0x0 "a screen down"
-                          TextNode#markdown-td 211,992 186x36 ""
-                            TextNode#text 211,992 0x0 "Up, Down"
-                          TextNode#markdown-td 397,992 270x36 ""
-                            TextNode#text 397,992 0x0 "a line"
-                          TextNode#markdown-td 211,1028 186x35 ""
-                            TextNode#text 211,1028 0x0 "Home, End"
-                          TextNode#markdown-td 397,1028 270x35 ""
-                            TextNode#text 397,1028 0x0 "the top, the end"
-                          TextNode#markdown-td 211,1063 186x35 ""
-                            TextNode#text 211,1063 0x0 "Left, Right"
-                          TextNode#markdown-td 397,1063 270x35 ""
-                            TextNode#text 397,1063 0x0 "the folder's previous and next file"
-                          TextNode#markdown-td 211,1098 186x36 ""
-                            TextNode#text 211,1098 0x0 "Ctrl+U (Cmd+U on a Mac)"
-                          TextNode#markdown-td 397,1098 270x36 ""
-                            TextNode#text 397,1098 0x0 "the source"
-                    Node#markdown-row 170,1148 760x58
-                      TextNode#markdown-h2 210,1158 680x34 ""
-                        TextNode#text 210,1158 0x0 "A bit of code"
-                    Node#markdown-row 170,1206 760x98
-                      Node#markdown-code 210,1206 680x84
-                        CodeView#code-view 210,1218 666x60
-                    Node#markdown-row 170,1304 760x42
-                      Node#markdown-quote 210,1304 680x28
-                        TextNode#markdown-p 229,1306 661x24 ""
-                          TextNode#text 229,1306 0x0 "Everything here was made for the viewer's samples, under the MIT license."
-                    Node#markdown-row 170,1346 760x68
-                      Node#markdown-list 210,1346 680x54
-                        Node#markdown-item 210,1346 680x24
-                          Node#markdown-task 210,1351 15x15
-                            TextNode#markdown-task-mark 215,1352 5x13 "✓"
-                          Node#markdown-item-body 234,1346 656x24
-                            TextNode#markdown-p 234,1346 656x24 ""
-                              TextNode#text 234,1346 0x0 "Open a folder of your own with "
-                              TextNode#markdown-strong 234,1346 0x0 ""
-                                TextNode#text 234,1346 0x0 "Open folder"
-                        Node#markdown-item 210,1376 680x24
-                          Node#markdown-task 210,1381 15x15
-                          Node#markdown-item-body 234,1376 656x24
-                            TextNode#markdown-p 234,1376 656x24 ""
-                              TextNode#text 234,1376 0x0 "Drop files on the page"
-                    Node#markdown-row 170,1414 760x38
-                      TextNode#markdown-p 210,1414 680x24 ""
-                        TextNode#text 210,1414 0x0 "Back to "
-                        TextNode#markdown-link 210,1414 0x0 ""
-                          TextNode#text 210,1414 0x0 "the top"
-                        TextNode#text 210,1414 0x0 "."
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#markdown-page 0,52 1100x648
+                Node#markdown-doc 0,52 1100x648
+                  MarkdownView#markdown 0,52 1100x648
+                    Node#markdown-scroll 0,52 1100x648
+                      Node#markdown-row 170,88 760x66
+                        TextNode#markdown-h1 210,94 680x44 ""
+                          TextNode#text 210,94 0x0 "Welcome to Viewer"
+                      Node#markdown-row 170,154 760x86
+                        TextNode#markdown-p 210,154 680x72 ""
+                          TextNode#text 210,154 0x0 "Viewer is a fast image viewer and file browser built on"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#markdown-link 210,154 0x0 ""
+                            TextNode#text 210,154 0x0 "helder"
+                          TextNode#text 210,154 0x0 " alone. This page is a "
+                          TextNode#markdown-strong 210,154 0x0 ""
+                            TextNode#text 210,154 0x0 "Markdown"
+                          TextNode#text 210,154 0x0 " file, shown"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#text 210,154 0x0 "the way the viewer shows every "
+                          TextNode#markdown-code-span 210,154 0x0 ".md"
+                          TextNode#text 210,154 0x0 " file: a column of text, its links"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#text 210,154 0x0 "followed, its pictures from the same folder."
+                      Node#markdown-row 170,240 760x439
+                        Node#markdown-p 210,240 680x425
+                          ImageNode#image 210,240 680x425
+                      Node#markdown-row 170,679 760x58
+                        TextNode#markdown-h2 210,689 680x34 ""
+                          TextNode#text 210,689 0x0 "What is in this folder"
+                      Node#markdown-row 170,737 760x128
+                        Node#markdown-list 210,737 680x114
+                          Node#markdown-item 210,737 680x24
+                            TextNode#markdown-marker 210,737 24x24 "•"
+                            Node#markdown-item-body 234,737 656x24
+                              TextNode#markdown-p 234,737 656x24 ""
+                                TextNode#markdown-strong 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Photos"
+                                TextNode#text 234,737 0x0 ": "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Murmuration"
+                                TextNode#text 234,737 0x0 ", "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Starlings"
+                                TextNode#text 234,737 0x0 " and a"
+                                TextNode#text 234,737 0x0 " "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "wide panorama"
+                          Node#markdown-item 210,767 680x24
+                            TextNode#markdown-marker 210,767 24x24 "•"
+                            Node#markdown-item-body 234,767 656x24
+                              TextNode#markdown-p 234,767 656x24 ""
+                                TextNode#markdown-strong 234,767 0x0 ""
+                                  TextNode#text 234,767 0x0 "A PDF"
+                                TextNode#text 234,767 0x0 " of three pages: "
+                                TextNode#markdown-link 234,767 0x0 ""
+                                  TextNode#text 234,767 0x0 "About Viewer"
+                          Node#markdown-item 210,797 680x24
+                            TextNode#markdown-marker 210,797 24x24 "•"
+                            Node#markdown-item-body 234,797 656x24
+                              TextNode#markdown-p 234,797 656x24 ""
+                                TextNode#markdown-strong 234,797 0x0 ""
+                                  TextNode#text 234,797 0x0 "A video and a sound"
+                                TextNode#text 234,797 0x0 ": Starlings.mp4, Chimes.m4a"
+                          Node#markdown-item 210,827 680x24
+                            TextNode#markdown-marker 210,827 24x24 "•"
+                            Node#markdown-item-body 234,827 656x24
+                              TextNode#markdown-p 234,827 656x24 ""
+                                TextNode#text 234,827 0x0 "More pictures in the "
+                                TextNode#markdown-link 234,827 0x0 ""
+                                  TextNode#text 234,827 0x0 "More"
+                                TextNode#text 234,827 0x0 " folder"
+                      Node#markdown-row 170,865 760x59
+                        TextNode#markdown-h2 210,875 680x35 ""
+                          TextNode#text 210,875 0x0 "Keys"
+                      Node#markdown-row 170,924 760x224
+                        Node#markdown-table-scroll 210,924 680x210
+                          Node#markdown-table 210,924 457x210
+                            TextNode#markdown-th 211,925 186x32 ""
+                              TextNode#text 211,925 0x0 "Key"
+                            TextNode#markdown-th 397,925 270x32 ""
+                              TextNode#text 397,925 0x0 "In a document"
+                            TextNode#markdown-td 211,957 186x35 ""
+                              TextNode#text 211,957 0x0 "Space, Page Down"
+                            TextNode#markdown-td 397,957 270x35 ""
+                              TextNode#text 397,957 0x0 "a screen down"
+                            TextNode#markdown-td 211,992 186x36 ""
+                              TextNode#text 211,992 0x0 "Up, Down"
+                            TextNode#markdown-td 397,992 270x36 ""
+                              TextNode#text 397,992 0x0 "a line"
+                            TextNode#markdown-td 211,1028 186x35 ""
+                              TextNode#text 211,1028 0x0 "Home, End"
+                            TextNode#markdown-td 397,1028 270x35 ""
+                              TextNode#text 397,1028 0x0 "the top, the end"
+                            TextNode#markdown-td 211,1063 186x35 ""
+                              TextNode#text 211,1063 0x0 "Left, Right"
+                            TextNode#markdown-td 397,1063 270x35 ""
+                              TextNode#text 397,1063 0x0 "the folder's previous and next file"
+                            TextNode#markdown-td 211,1098 186x36 ""
+                              TextNode#text 211,1098 0x0 "Ctrl+U (Cmd+U on a Mac)"
+                            TextNode#markdown-td 397,1098 270x36 ""
+                              TextNode#text 397,1098 0x0 "the source"
+                      Node#markdown-row 170,1148 760x58
+                        TextNode#markdown-h2 210,1158 680x34 ""
+                          TextNode#text 210,1158 0x0 "A bit of code"
+                      Node#markdown-row 170,1206 760x98
+                        Node#markdown-code 210,1206 680x84
+                          CodeView#code-view 210,1218 666x60
+                      Node#markdown-row 170,1304 760x42
+                        Node#markdown-quote 210,1304 680x28
+                          TextNode#markdown-p 229,1306 661x24 ""
+                            TextNode#text 229,1306 0x0 "Everything here was made for the viewer's samples, under the MIT license."
+                      Node#markdown-row 170,1346 760x68
+                        Node#markdown-list 210,1346 680x54
+                          Node#markdown-item 210,1346 680x24
+                            Node#markdown-task 210,1351 15x15
+                              TextNode#markdown-task-mark 215,1352 5x13 "✓"
+                            Node#markdown-item-body 234,1346 656x24
+                              TextNode#markdown-p 234,1346 656x24 ""
+                                TextNode#text 234,1346 0x0 "Open a folder of your own with "
+                                TextNode#markdown-strong 234,1346 0x0 ""
+                                  TextNode#text 234,1346 0x0 "Open folder"
+                          Node#markdown-item 210,1376 680x24
+                            Node#markdown-task 210,1381 15x15
+                            Node#markdown-item-body 234,1376 656x24
+                              TextNode#markdown-p 234,1376 656x24 ""
+                                TextNode#text 234,1376 0x0 "Drop files on the page"
+                      Node#markdown-row 170,1414 760x38
+                        TextNode#markdown-p 210,1414 680x24 ""
+                          TextNode#text 210,1414 0x0 "Back to "
+                          TextNode#markdown-link 210,1414 0x0 ""
+                            TextNode#text 210,1414 0x0 "the top"
+                          TextNode#text 210,1414 0x0 "."
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, light: Viewer/Markdown, light (439 lines)
+--- story Viewer/Markdown, light: Viewer/Markdown, light (440 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2433,143 +2445,144 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#markdown-page 0,52 1100x648
-              Node#markdown-doc 0,52 1100x648
-                MarkdownView#markdown 0,52 1100x648
-                  Node#markdown-scroll 0,52 1100x648
-                    Node#markdown-row 170,88 760x66
-                      TextNode#markdown-h1 210,94 680x44 ""
-                        TextNode#text 210,94 0x0 "Welcome to Viewer"
-                    Node#markdown-row 170,154 760x86
-                      TextNode#markdown-p 210,154 680x72 ""
-                        TextNode#text 210,154 0x0 "Viewer is a fast image viewer and file browser built on"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#markdown-link 210,154 0x0 ""
-                          TextNode#text 210,154 0x0 "helder"
-                        TextNode#text 210,154 0x0 " alone. This page is a "
-                        TextNode#markdown-strong 210,154 0x0 ""
-                          TextNode#text 210,154 0x0 "Markdown"
-                        TextNode#text 210,154 0x0 " file, shown"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#text 210,154 0x0 "the way the viewer shows every "
-                        TextNode#markdown-code-span 210,154 0x0 ".md"
-                        TextNode#text 210,154 0x0 " file: a column of text, its links"
-                        TextNode#text 210,154 0x0 " "
-                        TextNode#text 210,154 0x0 "followed, its pictures from the same folder."
-                    Node#markdown-row 170,240 760x439
-                      Node#markdown-p 210,240 680x425
-                        ImageNode#image 210,240 680x425
-                    Node#markdown-row 170,679 760x58
-                      TextNode#markdown-h2 210,689 680x34 ""
-                        TextNode#text 210,689 0x0 "What is in this folder"
-                    Node#markdown-row 170,737 760x128
-                      Node#markdown-list 210,737 680x114
-                        Node#markdown-item 210,737 680x24
-                          TextNode#markdown-marker 210,737 24x24 "•"
-                          Node#markdown-item-body 234,737 656x24
-                            TextNode#markdown-p 234,737 656x24 ""
-                              TextNode#markdown-strong 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Photos"
-                              TextNode#text 234,737 0x0 ": "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Murmuration"
-                              TextNode#text 234,737 0x0 ", "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "Starlings"
-                              TextNode#text 234,737 0x0 " and a"
-                              TextNode#text 234,737 0x0 " "
-                              TextNode#markdown-link 234,737 0x0 ""
-                                TextNode#text 234,737 0x0 "wide panorama"
-                        Node#markdown-item 210,767 680x24
-                          TextNode#markdown-marker 210,767 24x24 "•"
-                          Node#markdown-item-body 234,767 656x24
-                            TextNode#markdown-p 234,767 656x24 ""
-                              TextNode#markdown-strong 234,767 0x0 ""
-                                TextNode#text 234,767 0x0 "A PDF"
-                              TextNode#text 234,767 0x0 " of three pages: "
-                              TextNode#markdown-link 234,767 0x0 ""
-                                TextNode#text 234,767 0x0 "About Viewer"
-                        Node#markdown-item 210,797 680x24
-                          TextNode#markdown-marker 210,797 24x24 "•"
-                          Node#markdown-item-body 234,797 656x24
-                            TextNode#markdown-p 234,797 656x24 ""
-                              TextNode#markdown-strong 234,797 0x0 ""
-                                TextNode#text 234,797 0x0 "A video and a sound"
-                              TextNode#text 234,797 0x0 ": Starlings.mp4, Chimes.m4a"
-                        Node#markdown-item 210,827 680x24
-                          TextNode#markdown-marker 210,827 24x24 "•"
-                          Node#markdown-item-body 234,827 656x24
-                            TextNode#markdown-p 234,827 656x24 ""
-                              TextNode#text 234,827 0x0 "More pictures in the "
-                              TextNode#markdown-link 234,827 0x0 ""
-                                TextNode#text 234,827 0x0 "More"
-                              TextNode#text 234,827 0x0 " folder"
-                    Node#markdown-row 170,865 760x59
-                      TextNode#markdown-h2 210,875 680x35 ""
-                        TextNode#text 210,875 0x0 "Keys"
-                    Node#markdown-row 170,924 760x224
-                      Node#markdown-table-scroll 210,924 680x210
-                        Node#markdown-table 210,924 457x210
-                          TextNode#markdown-th 211,925 186x32 ""
-                            TextNode#text 211,925 0x0 "Key"
-                          TextNode#markdown-th 397,925 270x32 ""
-                            TextNode#text 397,925 0x0 "In a document"
-                          TextNode#markdown-td 211,957 186x35 ""
-                            TextNode#text 211,957 0x0 "Space, Page Down"
-                          TextNode#markdown-td 397,957 270x35 ""
-                            TextNode#text 397,957 0x0 "a screen down"
-                          TextNode#markdown-td 211,992 186x36 ""
-                            TextNode#text 211,992 0x0 "Up, Down"
-                          TextNode#markdown-td 397,992 270x36 ""
-                            TextNode#text 397,992 0x0 "a line"
-                          TextNode#markdown-td 211,1028 186x35 ""
-                            TextNode#text 211,1028 0x0 "Home, End"
-                          TextNode#markdown-td 397,1028 270x35 ""
-                            TextNode#text 397,1028 0x0 "the top, the end"
-                          TextNode#markdown-td 211,1063 186x35 ""
-                            TextNode#text 211,1063 0x0 "Left, Right"
-                          TextNode#markdown-td 397,1063 270x35 ""
-                            TextNode#text 397,1063 0x0 "the folder's previous and next file"
-                          TextNode#markdown-td 211,1098 186x36 ""
-                            TextNode#text 211,1098 0x0 "Ctrl+U (Cmd+U on a Mac)"
-                          TextNode#markdown-td 397,1098 270x36 ""
-                            TextNode#text 397,1098 0x0 "the source"
-                    Node#markdown-row 170,1148 760x58
-                      TextNode#markdown-h2 210,1158 680x34 ""
-                        TextNode#text 210,1158 0x0 "A bit of code"
-                    Node#markdown-row 170,1206 760x98
-                      Node#markdown-code 210,1206 680x84
-                        CodeView#code-view 210,1218 666x60
-                    Node#markdown-row 170,1304 760x42
-                      Node#markdown-quote 210,1304 680x28
-                        TextNode#markdown-p 229,1306 661x24 ""
-                          TextNode#text 229,1306 0x0 "Everything here was made for the viewer's samples, under the MIT license."
-                    Node#markdown-row 170,1346 760x68
-                      Node#markdown-list 210,1346 680x54
-                        Node#markdown-item 210,1346 680x24
-                          Node#markdown-task 210,1351 15x15
-                            TextNode#markdown-task-mark 215,1352 5x13 "✓"
-                          Node#markdown-item-body 234,1346 656x24
-                            TextNode#markdown-p 234,1346 656x24 ""
-                              TextNode#text 234,1346 0x0 "Open a folder of your own with "
-                              TextNode#markdown-strong 234,1346 0x0 ""
-                                TextNode#text 234,1346 0x0 "Open folder"
-                        Node#markdown-item 210,1376 680x24
-                          Node#markdown-task 210,1381 15x15
-                          Node#markdown-item-body 234,1376 656x24
-                            TextNode#markdown-p 234,1376 656x24 ""
-                              TextNode#text 234,1376 0x0 "Drop files on the page"
-                    Node#markdown-row 170,1414 760x38
-                      TextNode#markdown-p 210,1414 680x24 ""
-                        TextNode#text 210,1414 0x0 "Back to "
-                        TextNode#markdown-link 210,1414 0x0 ""
-                          TextNode#text 210,1414 0x0 "the top"
-                        TextNode#text 210,1414 0x0 "."
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#markdown-page 0,52 1100x648
+                Node#markdown-doc 0,52 1100x648
+                  MarkdownView#markdown 0,52 1100x648
+                    Node#markdown-scroll 0,52 1100x648
+                      Node#markdown-row 170,88 760x66
+                        TextNode#markdown-h1 210,94 680x44 ""
+                          TextNode#text 210,94 0x0 "Welcome to Viewer"
+                      Node#markdown-row 170,154 760x86
+                        TextNode#markdown-p 210,154 680x72 ""
+                          TextNode#text 210,154 0x0 "Viewer is a fast image viewer and file browser built on"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#markdown-link 210,154 0x0 ""
+                            TextNode#text 210,154 0x0 "helder"
+                          TextNode#text 210,154 0x0 " alone. This page is a "
+                          TextNode#markdown-strong 210,154 0x0 ""
+                            TextNode#text 210,154 0x0 "Markdown"
+                          TextNode#text 210,154 0x0 " file, shown"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#text 210,154 0x0 "the way the viewer shows every "
+                          TextNode#markdown-code-span 210,154 0x0 ".md"
+                          TextNode#text 210,154 0x0 " file: a column of text, its links"
+                          TextNode#text 210,154 0x0 " "
+                          TextNode#text 210,154 0x0 "followed, its pictures from the same folder."
+                      Node#markdown-row 170,240 760x439
+                        Node#markdown-p 210,240 680x425
+                          ImageNode#image 210,240 680x425
+                      Node#markdown-row 170,679 760x58
+                        TextNode#markdown-h2 210,689 680x34 ""
+                          TextNode#text 210,689 0x0 "What is in this folder"
+                      Node#markdown-row 170,737 760x128
+                        Node#markdown-list 210,737 680x114
+                          Node#markdown-item 210,737 680x24
+                            TextNode#markdown-marker 210,737 24x24 "•"
+                            Node#markdown-item-body 234,737 656x24
+                              TextNode#markdown-p 234,737 656x24 ""
+                                TextNode#markdown-strong 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Photos"
+                                TextNode#text 234,737 0x0 ": "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Murmuration"
+                                TextNode#text 234,737 0x0 ", "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "Starlings"
+                                TextNode#text 234,737 0x0 " and a"
+                                TextNode#text 234,737 0x0 " "
+                                TextNode#markdown-link 234,737 0x0 ""
+                                  TextNode#text 234,737 0x0 "wide panorama"
+                          Node#markdown-item 210,767 680x24
+                            TextNode#markdown-marker 210,767 24x24 "•"
+                            Node#markdown-item-body 234,767 656x24
+                              TextNode#markdown-p 234,767 656x24 ""
+                                TextNode#markdown-strong 234,767 0x0 ""
+                                  TextNode#text 234,767 0x0 "A PDF"
+                                TextNode#text 234,767 0x0 " of three pages: "
+                                TextNode#markdown-link 234,767 0x0 ""
+                                  TextNode#text 234,767 0x0 "About Viewer"
+                          Node#markdown-item 210,797 680x24
+                            TextNode#markdown-marker 210,797 24x24 "•"
+                            Node#markdown-item-body 234,797 656x24
+                              TextNode#markdown-p 234,797 656x24 ""
+                                TextNode#markdown-strong 234,797 0x0 ""
+                                  TextNode#text 234,797 0x0 "A video and a sound"
+                                TextNode#text 234,797 0x0 ": Starlings.mp4, Chimes.m4a"
+                          Node#markdown-item 210,827 680x24
+                            TextNode#markdown-marker 210,827 24x24 "•"
+                            Node#markdown-item-body 234,827 656x24
+                              TextNode#markdown-p 234,827 656x24 ""
+                                TextNode#text 234,827 0x0 "More pictures in the "
+                                TextNode#markdown-link 234,827 0x0 ""
+                                  TextNode#text 234,827 0x0 "More"
+                                TextNode#text 234,827 0x0 " folder"
+                      Node#markdown-row 170,865 760x59
+                        TextNode#markdown-h2 210,875 680x35 ""
+                          TextNode#text 210,875 0x0 "Keys"
+                      Node#markdown-row 170,924 760x224
+                        Node#markdown-table-scroll 210,924 680x210
+                          Node#markdown-table 210,924 457x210
+                            TextNode#markdown-th 211,925 186x32 ""
+                              TextNode#text 211,925 0x0 "Key"
+                            TextNode#markdown-th 397,925 270x32 ""
+                              TextNode#text 397,925 0x0 "In a document"
+                            TextNode#markdown-td 211,957 186x35 ""
+                              TextNode#text 211,957 0x0 "Space, Page Down"
+                            TextNode#markdown-td 397,957 270x35 ""
+                              TextNode#text 397,957 0x0 "a screen down"
+                            TextNode#markdown-td 211,992 186x36 ""
+                              TextNode#text 211,992 0x0 "Up, Down"
+                            TextNode#markdown-td 397,992 270x36 ""
+                              TextNode#text 397,992 0x0 "a line"
+                            TextNode#markdown-td 211,1028 186x35 ""
+                              TextNode#text 211,1028 0x0 "Home, End"
+                            TextNode#markdown-td 397,1028 270x35 ""
+                              TextNode#text 397,1028 0x0 "the top, the end"
+                            TextNode#markdown-td 211,1063 186x35 ""
+                              TextNode#text 211,1063 0x0 "Left, Right"
+                            TextNode#markdown-td 397,1063 270x35 ""
+                              TextNode#text 397,1063 0x0 "the folder's previous and next file"
+                            TextNode#markdown-td 211,1098 186x36 ""
+                              TextNode#text 211,1098 0x0 "Ctrl+U (Cmd+U on a Mac)"
+                            TextNode#markdown-td 397,1098 270x36 ""
+                              TextNode#text 397,1098 0x0 "the source"
+                      Node#markdown-row 170,1148 760x58
+                        TextNode#markdown-h2 210,1158 680x34 ""
+                          TextNode#text 210,1158 0x0 "A bit of code"
+                      Node#markdown-row 170,1206 760x98
+                        Node#markdown-code 210,1206 680x84
+                          CodeView#code-view 210,1218 666x60
+                      Node#markdown-row 170,1304 760x42
+                        Node#markdown-quote 210,1304 680x28
+                          TextNode#markdown-p 229,1306 661x24 ""
+                            TextNode#text 229,1306 0x0 "Everything here was made for the viewer's samples, under the MIT license."
+                      Node#markdown-row 170,1346 760x68
+                        Node#markdown-list 210,1346 680x54
+                          Node#markdown-item 210,1346 680x24
+                            Node#markdown-task 210,1351 15x15
+                              TextNode#markdown-task-mark 215,1352 5x13 "✓"
+                            Node#markdown-item-body 234,1346 656x24
+                              TextNode#markdown-p 234,1346 656x24 ""
+                                TextNode#text 234,1346 0x0 "Open a folder of your own with "
+                                TextNode#markdown-strong 234,1346 0x0 ""
+                                  TextNode#text 234,1346 0x0 "Open folder"
+                          Node#markdown-item 210,1376 680x24
+                            Node#markdown-task 210,1381 15x15
+                            Node#markdown-item-body 234,1376 656x24
+                              TextNode#markdown-p 234,1376 656x24 ""
+                                TextNode#text 234,1376 0x0 "Drop files on the page"
+                      Node#markdown-row 170,1414 760x38
+                        TextNode#markdown-p 210,1414 680x24 ""
+                          TextNode#text 210,1414 0x0 "Back to "
+                          TextNode#markdown-link 210,1414 0x0 ""
+                            TextNode#text 210,1414 0x0 "the top"
+                          TextNode#text 210,1414 0x0 "."
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (125 lines)
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (126 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2682,21 +2695,22 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#pdf 0,52 1100x648
-              Node#pdf-scroll 0,52 1100x648
-                Node#pdf-pages 0,52 1100x1889
-                  Node#page 300,68 500x667
-                    ImageNode#page-image 301,69 498x665
-                  Node#page 217,747 666x500
-                    ImageNode#page-image 218,748 664x498
-                  Node#page 300,1259 500x666
-                    ImageNode#page-image 301,1260 498x664
-              TextNode#page-indicator 1034,64 50x23 "2 / 3"
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#pdf 0,52 1100x648
+                Node#pdf-scroll 0,52 1100x648
+                  Node#pdf-pages 0,52 1100x1889
+                    Node#page 300,68 500x667
+                      ImageNode#page-image 301,69 498x665
+                    Node#page 217,747 666x500
+                      ImageNode#page-image 218,748 664x498
+                    Node#page 300,1259 500x666
+                      ImageNode#page-image 301,1260 498x664
+                TextNode#page-indicator 1034,64 50x23 "2 / 3"
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/error: Viewer/error (168 lines)
+--- story Viewer/error: Viewer/error (169 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2859,14 +2873,15 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-            Node#message 0,52 1100x648
-              TextNode#title 376,353 348x22 "Damaged or cut short: a truncated segment"
-              TextNode#detail 469,383 162x16 "broken.jpg · JPEG · 300 B"
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 376,353 348x22 "Damaged or cut short: a truncated segment"
+                TextNode#detail 469,383 162x16 "broken.jpg · JPEG · 300 B"
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/fit: Viewer/fit (168 lines)
+--- story Viewer/fit: Viewer/fit (169 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3031,12 +3046,13 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-              Node#image-rect 166,52 768x648
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+                Node#image-rect 166,52 768x648
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/status line: Viewer/status line (170 lines)
+--- story Viewer/status line: Viewer/status line (171 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3201,8 +3217,9 @@ Node#root 0,0 390x844
             Node#viewer-trash 1056,11 30x30
               ImageNode#image 1063,18 16x16
           Node#stage 0,52 1100x648
-            ImageView#photo 0,52 1100x648
-              Node#image-rect 166,52 768x648
+            Node#stage-content 0,52 1100x619
+              ImageView#photo 0,52 1100x619
+                Node#image-rect 166,52 768x648
             Node#status 0,671 1100x29
               TextNode#text 12,678 254x16 "62% · 1242×1048 · JPEG · 197 KB · 5 / 6"
         Node#window-start 16,0 0x40

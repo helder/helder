@@ -1,6 +1,6 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Web/Samples: Web/Samples (116 lines)
+--- story Web/Samples: Web/Samples (117 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
@@ -111,9 +111,10 @@ Node#root 0,0 390x844
           Node#viewer-trash 346,11 30x30
             ImageNode#image 353,18 16x16
         Node#stage 0,52 390x792
-          ImageView#photo 0,52 390x792
-          Node#message 0,52 390x792
-            TextNode#title 140,425 110x22 "No image open"
-            TextNode#detail 195,455 0x16 ""
+          Node#stage-content 0,52 390x792
+            ImageView#photo 0,52 390x792
+            Node#message 0,52 390x792
+              TextNode#title 140,425 110x22 "No image open"
+              TextNode#detail 195,455 0x16 ""
       Node#window-start 16,0 0x40
       Node#window-end 390,0 0x0
