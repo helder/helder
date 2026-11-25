@@ -206,7 +206,7 @@ class VideoWindowCheck {
 		w.root.append(layered);
 		video.open("tests/media/apple/quads.mp4");
 		video.muted = true;
-		var step = 0, start = 0.0, k = 1.0, shots = new Map<String, haxe.io.Bytes>(), placed:Array<Float> = [];
+		var step = 0, start = 0.0, seekAt = 0.0, k = 1.0, shots = new Map<String, haxe.io.Bytes>(), placed:Array<Float> = [];
 		var vbox = [], pbox = [], lbox = [];
 		inline function box(n:Node):Array<Int>
 			return [n.absX, n.absY, n.absX + n.width, n.absY + n.height].map(v -> Math.round(v * k));
@@ -224,7 +224,13 @@ class VideoWindowCheck {
 					step = 9;
 				case 10:
 					video.seek(0.45);
+					seekAt = haxe.Timer.stamp();
+				// (the seek's frame decoded and shown: waited for, 5 s at most; twenty
+				// frames after it were too few on a loaded machine, CI's or a build's)
+				case 30 if ((p.shown == null || p.shown.time != 0.4) && haxe.Timer.stamp() - seekAt < 5):
+					step = 29;
 				case 30:
+					Sys.println('VideoWindowCheck: $mode: the seek shown after ${Math.round((haxe.Timer.stamp() - seekAt) * 1000)} ms');
 					k = w.device.width / 400;
 					width = w.device.width;
 					vbox = box(video);
