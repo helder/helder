@@ -21,6 +21,13 @@ import hxmc.unsafe.*;
 	static function buffer(size:Int, usage:Int, data:Ptr, length:Int):Int;
 	// size bytes at data into the buffer at offset (multiples of 4: WebGPU's writeBuffer)
 	static function write_buffer(buffer:Int, offset:Int, data:Ptr, size:Int):Void;
+	// a buffer's first size bytes read back (helder.parallel's Items.read),
+	// after the work submitted before: its handle, polled (read_state: 0
+	// reading, 1 read, -1 failed; a turn of the loop when it changes), its
+	// bytes taken at data (read_take: the handle freed)
+	static function read_start(buffer:Int, size:Int):Int;
+	static function read_state(read:Int):Int;
+	static function read_take(read:Int, data:Ptr, size:Int):Void;
 	// a texture: its TextureFormat, mip levels, whether it is a render
 	// target, its samples a pixel; its first level's texels at data (or none,
 	// every layer's); storage 1: a compute stage writes it, STORAGE_BINDING;

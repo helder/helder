@@ -221,6 +221,8 @@ class UiWindow {
 			renderer = new helder.ui.draw.Renderer(device);
 			renderer.groups = true;
 			renderer.steps = true;
+			// (helder.parallel's Gpu form on the windows' device, where it has compute and none was set)
+			if (device != null && helder.parallel.Parallel.device == null) helder.parallel.Parallel.device = device;
 			#end
 		}
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);

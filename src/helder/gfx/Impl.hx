@@ -1,4 +1,4 @@
-package helder.gfx;
+﻿package helder.gfx;
 
 import helder.os.Surface;
 #if (helder.soft || (helder.os && helder.os != "web"))
@@ -26,6 +26,10 @@ import helder.gfx.gl.GLBackend as Native;
 abstract Impl(Native) {
 	public inline function new(surface:Surface, antialias:Bool)
 		this = new Native(surface, antialias);
+
+	// (a buffer's bytes the CPU shares: Metal's, the CPU back end's; else none)
+	@:hxmc.unsafe(gc) public inline function memory(id:Int):hxmc.unsafe.Ptr
+		return #if (helder.soft || helder.os == "macos" || helder.os == "ios") this.bufferMemory(id) #else hxmc.unsafe.Ptr.nil() #end;
 
 	#if helder.soft
 	// (a texture's record: the soft canvas reads a <Scene>'s pixels where they are)
@@ -222,6 +226,10 @@ abstract Impl(Any) {
 
 	public inline function createComputePipeline(shader:Int):Int
 		return webgl() ? gl().createComputePipeline(shader) : wgpu().createComputePipeline(shader);
+
+	// (WebGPU's and WebGL2's buffers: none the CPU shares)
+	@:hxmc.unsafe(gc) public inline function memory(id:Int):hxmc.unsafe.Ptr
+		return hxmc.unsafe.Ptr.nil();
 
 	public inline function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int)
 		webgl() ? gl().readBuffer(id, offset, dst, dstOffset, size) : wgpu().readBuffer(id, offset, dst, dstOffset, size);
@@ -442,6 +450,9 @@ abstract Impl(Any) {
 
 	public inline function has(f:Feature):Bool
 		return Platform.os() == 1 ? mtl().has(f) : Platform.os() == 2 ? d3d().has(f) : Platform.os() != 3 ? gl().has(f) : webgl() ? gl().has(f) : wgpu().has(f);
+
+	@:hxmc.unsafe(gc) public inline function memory(id:Int):hxmc.unsafe.Ptr
+		return Platform.os() == 1 ? mtl().bufferMemory(id) : hxmc.unsafe.Ptr.nil();
 
 	public inline function createComputePipeline(shader:Int):Int
 		return Platform.os() == 1 ? mtl().createComputePipeline(shader) : Platform.os() == 2 ? d3d().createComputePipeline(shader) : Platform.os() != 3 ? gl().createComputePipeline(shader) : webgl() ? gl().createComputePipeline(shader) : wgpu().createComputePipeline(shader);

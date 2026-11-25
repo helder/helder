@@ -135,7 +135,7 @@ function tests() {
 			var c = a;
 			throws(() -> each(4, i -> a[i] = c[i] + 1));
 		});
-		test("On.Gpu: not yet", () -> {
+		test("On.Gpu without a device: thrown", () -> {
 			var a = new Items<Float>(4);
 			throws(() -> each(4, i -> a[i] = 1, Gpu));
 		});

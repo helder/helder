@@ -100,7 +100,7 @@ class Async {
 			expect(check, [], ["HELDER_PARALLEL" => form], 'ForcedCheck.hx:9 each: $form');
 			expect(check, [], ["HELDER_PARALLEL" => form], 'ForcedCheck.hx:11 sum: $form');
 		}
-		expect(check, [], ["HELDER_PARALLEL" => "gpu"], "On.Gpu is not there yet", 1);
+		expect(check, [], ["HELDER_PARALLEL" => "gpu"], "On.Gpu: no Parallel.device with compute stages", 1);
 	}
 
 	static function jobsWeb() {

@@ -70,7 +70,7 @@ class ItemsMacro {
 			}
 
 			@:arrayAccess public function set(i:Int, v:$ct):$ct {
-				var o = this.at(i);
+				var o = this.atWrite(i);
 				$b{store(t, st, layout, 0, macro v)};
 				return v;
 			}
@@ -94,6 +94,13 @@ class ItemsMacro {
 
 			@:noCompletion public inline function data():helder.parallel.ItemsData
 				return this;
+
+			// its GPU buffer on device (a storage buffer, a vertex and
+			// instance buffer too: drawn from without a copy where a dispatch
+			// wrote it), its values uploaded where the CPU's are newer; a
+			// body that writes it then runs on the GPU under Auto
+			public function buffer(device:helder.gfx.Device):helder.gfx.Buffer
+				return helder.parallel.GpuRunner.drawn(this, device);
 		};
 		// (a struct class's item set from an object literal of its fields: items[i] = {pos: p, vel: v})
 		switch Context.follow(t) {
@@ -104,7 +111,7 @@ class ItemsMacro {
 				]);
 				cls.fields = cls.fields.concat((macro class {
 					@:arrayAccess @:noCompletion public function setFields(i:Int, v:$at):$at {
-						var o = this.at(i);
+						var o = this.atWrite(i);
 						$b{store(t, st, layout, 0, macro v)};
 						return v;
 					}

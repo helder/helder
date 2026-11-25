@@ -20,6 +20,11 @@ import ParallelShaders;
 //   simd     each(n, ..., Simd): 4 particles a turn, one thread
 //   jobs     each(n, ..., Jobs): simd's chunks on helder.jobs' threads
 //   auto     each(n, ...): the form Auto picks
+//   gpu      each(n, ..., Gpu) on a headless device, its particles staying
+//            there (k steps, then 32 bytes read back: the wait for them)
+//   gpu+read a step on the GPU, then all of it read back (a CPU reader's cost)
+//
+// PARALLEL_GPU=0: no device (the CPU's forms alone).
 //
 // Each the least of its runs (a run: enough steps for 2 ms), in µs a step.
 // First the forms are checked against each other after 64 steps of 1003
@@ -32,16 +37,24 @@ class ParallelBench {
 	static inline var DRAG = 0.999;
 	static inline var BOUNCE = 0.8;
 	static final SIZES = [1000, 3000, 10000, 30000, 100000, 300000, 1000000];
-	static final FORMS = ["today", "hand", "scalar", "simd", "jobs", "auto"];
+	static final FORMS = ["today", "hand", "scalar", "simd", "jobs", "auto", "gpu", "gpu+read"];
+	static var device:Null<helder.gfx.Device> = null;
+	static final small = haxe.io.Bytes.alloc(32);
 
 	static var failures = 0;
 
 	static function main() {
 		Sys.println('parallel: ${hxmc.Platform.os() == 2 ? "windows" : hxmc.Platform.os() == 1 ? "macos" : hxmc.Platform.os() == 3 ? "wasm32" : "linux"}, ${helder.jobs.Spread.threads() + 1} threads');
+		if (Sys.getEnv("PARALLEL_GPU") != "0") {
+			device = try helder.gfx.Device.create(helder.os.Surface.headless(64, 64)) catch (_:Dynamic) null;
+			if (device != null && !device.has(Compute)) device = null;
+			Parallel.device = device;
+			Sys.println('parallel: gpu: ' + (device == null ? "none" : Std.string(device.backend)));
+		}
 		check(1003, 64);
 		var given = Sys.getEnv("PARALLEL_N"), only = Sys.getEnv("PARALLEL_FORMS");
 		var sizes = given == null ? SIZES : [for (x in given.split(" ")) if (x != "") Std.parseInt(x)];
-		var names = only == null ? FORMS : FORMS.filter(x -> only.split(",").contains(x));
+		var names = (only == null ? FORMS : FORMS.filter(x -> only.split(",").contains(x))).filter(x -> device != null || !StringTools.startsWith(x, "gpu"));
 		var rows:Array<Array<String>> = [];
 		for (n in sizes) {
 			var row = [Std.string(n)];
@@ -57,6 +70,7 @@ class ParallelBench {
 		Sys.println("|" + [for (_ in 0...names.length + 1) "---:"].join("|") + "|");
 		for (r in rows)
 			Sys.println("| " + r.join(" | ") + " |");
+		if (device != null) device.dispose();
 		Sys.exit(failures == 0 ? 0 : 1);
 	}
 
@@ -122,6 +136,15 @@ class ParallelBench {
 			case "jobs":
 				for (_ in 0...steps)
 					step(ps, Jobs);
+			case "gpu":
+				for (_ in 0...steps)
+					step(ps, Gpu);
+				device.readBuffer(cast ps.data().buffer, 0, small);
+			case "gpu+read":
+				for (_ in 0...steps) {
+					step(ps, Gpu);
+					ps.data().cpu();
+				}
 			case _:
 				for (_ in 0...steps)
 					step(ps, Auto);
@@ -147,11 +170,11 @@ class ParallelBench {
 		var ref = initial(n);
 		steps("simd", ref, count);
 		var want = floats("simd", ref);
-		for (name in ["jobs", "auto", "hand", "scalar", "today"]) {
+		for (name in ["jobs", "auto", "hand", "scalar", "today"].concat(device == null ? [] : ["gpu"])) {
 			var ps = initial(n);
 			prepare(name, ps);
 			steps(name, ps, count);
-			compare(name, floats(name, ps), want, name == "scalar" || name == "today" ? 1e-4 : 0);
+			compare(name, floats(name, ps), want, name == "scalar" || name == "today" || name == "gpu" ? 1e-4 : 0);
 			ps.dispose();
 		}
 		ref.dispose();
