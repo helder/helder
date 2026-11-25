@@ -307,7 +307,8 @@ export default function os(host) {
 			c.addEventListener(type, f, { ...o, signal: off.signal });
 			if (FORWARD.has(type)) forwarded.push([type, f, o]);
 		};
-		const over = (e) => e.currentTarget !== c;
+		// (over a scroll view; not a clear element taking a popup's input there for the canvas: hxmcBlock, ui's)
+		const over = (e) => e.currentTarget !== c && !e.target.hxmcBlock;
 		const bar = (e) => over(e) && e.target.hxmcScroller === true;
 		// (a pointer no longer active, a synthetic event's: NotFoundError, and the press goes on uncaptured)
 		const capture = (e) => {

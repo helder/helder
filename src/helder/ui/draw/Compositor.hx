@@ -30,7 +30,8 @@ import sys.thread.Mutex;
 // IosScroll), their offsets come to it on the main thread as they move
 // (nativeScrolled), its frames drawn at them, the physics the system's.
 // Where the system composites layers (macOS and iOS: CaLayers; Android:
-// ScLayers; Windows: DcLayers; Wayland: WlLayers; LayerSplit), every
+// ScLayers; Windows: DcLayers; Wayland: WlLayers; LayerSplit; the browser's
+// is WebCompositor's, WebLayers), every
 // frame, the program's too, is handed to it from the same state, a
 // scroller's content and a mover on layers the system moves. Off with
 // HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own

@@ -1909,6 +1909,41 @@ ms of CPU a frame on the layers, 1–4 quads drawn, against 19–23 ms for
 the textured compositor's. X11 and headless stay on the textured
 compositor.
 
+In a browser the page is the compositor (`helder.ui.draw.WebLayers`):
+the same split, each layer but the window's a canvas of the page. A
+top-level scroller's content goes in its scroll view (the clear
+`overflow: auto` element it already has), so the browser scrolls it at
+the screen's rate while the program draws nothing or is busy (in a
+worker, on the page's own thread too); what is over it is a layer over
+it, stacked in paint order. A layer that moves on its own (`Mover`) is a
+Web Animation of the program's samples a frame apart, until it rests (2 s
+at most, the program's next frames sending what follows), so it moves
+while the program is busy. A node's `LayerSlot` is an element of the page
+at its box among the layers, cut by its clip, in its scroll view where its
+scroller's content is a layer: a `<Video layer>`'s canvas (helder.media's
+`WebSample`, each frame read from the browser's VideoFrame) and the text
+editors' inputs and textareas (`WebEditor.slot`), so a popup's layer
+covers them. Each layer is drawn by the window's own
+device (WebGPU or WebGL2, one context) into the window's canvas, in tiles
+of the canvas's size at most and only the tiles its changes meet, each
+read back as an ImageBitmap, then the window's own layer last, which the
+canvas shows. The bitmaps go to the page with the layers' places in one
+task, once all are read. The canvas has premultiplied alpha for it. A
+popup over a scroll view holding a layer leaves the view whole (a
+clip-path would cut its content) and takes the input there through a
+clear element. A frame the page reads back (`host.gfx.readPixels`) is
+drawn whole onto the canvas, as the reference draws it. Rounded scrollers
+and scrollers with a sticky node in them stay drawn for now. Off with
+`HELDER_SYSTEM_LAYERS=0`, the flat split with `=flat` (run's option
+`env`). `tests/ui/web-layers.mjs` (the ui-web lane) runs a list taller
+than the window on WebGPU and WebGL2, on the page's thread and in a
+worker: its content in its scroll view in tiles, the page's screenshot
+against the flat split's at rest and scrolled, a frame read back, and the
+list scrolled by the wheel while the program is busy, shown at once as
+the program then draws it, and a box's slide going on while the program
+is busy; `tests/ui/web-video-layers.mjs` a video playing on its slot
+between the window's canvas and the layer over it.
+
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
 nested chain through both paths with an injected clock, the program held

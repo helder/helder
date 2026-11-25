@@ -28,6 +28,8 @@ class WebScroll {
 	// (the popups' rectangles each was given, as their JSON)
 	final sentCovers = new Map<Int, String>();
 	final seen = new Map<Int, Bool>();
+	// (the views by their scroller, at the last update: WebLayers places a scroller's content in its own)
+	final byNode = new Map<Node, ScrollView>();
 
 	public function new(canvas:Int, ui:Ui) {
 		this.ui = ui;
@@ -44,8 +46,10 @@ class WebScroll {
 		buf.add(num(ui.width));
 		buf.add(',"v":[');
 		seen.clear();
+		byNode.clear();
 		for (s in list) {
 			seen.set(s.id, true);
+			byNode.set(s.node, s);
 			views.set(s.id, s.node);
 			var p = s.parent, last = sent.get(s.id);
 			// (inside its parent's content: where it is, its parent scrolled to 0)
@@ -102,6 +106,10 @@ class WebScroll {
 		buf.add(']}');
 		if (any) Arena.scoped(a -> WebScrolls.scroll_update(canvas, a.cstring(buf.toString())));
 	}
+
+	// a scroller's view (null: none at the last update)
+	public function viewOf(n:Node):Null<ScrollView>
+		return byNode.get(n);
 
 	// the views' scrolls since the last frame, taken
 	public function poll()
