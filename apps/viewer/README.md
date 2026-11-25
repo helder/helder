@@ -111,6 +111,23 @@ Every target is at least 44 points, the bars stay inside the screen's
 safe areas, and light and dark follow the system. In a browser at a
 phone's width the phone's screens are the ones shown.
 
+## Where it keeps things
+
+The viewer keeps its settings (the window's size and place, the folder,
+the layout, the order, recent files), its error log, your keymap file and
+its thumbnails' cache where your system keeps an app's data. Point it
+somewhere else with helder's `HELDER_HOME` environment variable (its data
+under `<dir>/data`, its cache under `<dir>/cache`: helder.os's README), or
+with `--store <dir>`, which sets it where no environment reaches the program
+(macOS's `open -a`). The test lanes (`viewer-window`, `viewer-app`) do, and
+check afterwards that your own store is as it was; a second launch hands
+its file to the viewer started with the same home. When you try a build by
+hand, do the same:
+
+```sh
+HELDER_HOME=$(mktemp -d) apps/viewer/bin/macos-arm64/viewer --new some/folder
+```
+
 ## Install
 
 Download the package for your system from the

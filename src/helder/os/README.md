@@ -163,8 +163,9 @@ window tests run while someone uses the machine.
 
 `HELDER_HOME=dir` puts what an app keeps under dir: `Paths.data` and
 `Paths.cache` (`dir/data/<name>`, `dir/cache/<name>`), so every `Store`
-too. A test's run of an app (the viewer-window lane's) keeps to its own
-and leaves the user's settings and caches alone.
+too. A test's run of an app keeps to its own and leaves the user's
+settings and caches alone (the viewer's lanes; its `--store <dir>` flag
+sets it where no environment reaches the program, macOS's `open -a`).
 
 ### Files dropped, full screen, a window's place
 

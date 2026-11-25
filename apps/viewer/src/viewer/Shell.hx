@@ -124,6 +124,11 @@ class Shell implements Markup {
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
+		// (--store: what it keeps under that home, a test's run, as HELDER_HOME
+		// puts it; set here, before anything is opened: Launch Services' open -a
+		// passes the program no environment)
+		var home = storeDir(args);
+		if (home != null) Sys.putEnv("HELDER_HOME", home);
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
@@ -145,7 +150,7 @@ class Shell implements Markup {
 		// (--exit-after s: the window closed after s seconds, what it shows
 		// printed: a smoke run of the real window and GPU, CI's)
 		// (--report file: that line written there too, for a launch whose output is the system's: open -a)
-		var valued = ["--exit-after", "--report"];
+		var valued = ["--exit-after", "--report", "--store"];
 		inline function arg(name:String):Null<String>
 			return args.indexOf(name) >= 0 ? args[args.indexOf(name) + 1] : null;
 		var exitAfter = arg("--exit-after") != null ? Std.parseFloat(arg("--exit-after")) : -1.0, report = arg("--report");
@@ -293,6 +298,15 @@ class Shell implements Markup {
 		}
 		var list = ui.root.find("rows") ?? ui.root.find("grid");
 		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}, scrolled ${list == null ? 0 : Math.round(list.scrollY)}';
+	}
+
+	// where the viewer keeps what it keeps (its store, beside it its errors'
+	// log and keymap, the running viewer's port, the thumbnails' cache):
+	// --store <dir>'s home (helder.os's HELDER_HOME), else null: the
+	// environment's HELDER_HOME, else the platform's place for the user's own
+	public static function storeDir(args:Array<String>):Null<String> {
+		var i = args.indexOf("--store");
+		return i >= 0 && i + 1 < args.length && args[i + 1] != "" ? args[i + 1] : null;
 	}
 
 	// (a phone's explorer: its Documents and its grants; a file on disk
