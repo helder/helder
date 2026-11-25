@@ -295,7 +295,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// a Signal's write (s(v)): a function never written (a value of no static
 	// type, Dynamic, that is one: Haxe chose the write by the type, never by
-	// the value, DESIGN.md 3.1)
+	// the value, view's README, Signals)
 	public function set(v:T) {
 		if (Reflect.isFunction(v))
 			throw new GraphError("a signal never holds a function: a Dynamic value that is one written (an update is a function of its type, s(v -> ...), chosen by its static type)");

@@ -8,7 +8,7 @@ import helder.typescript.api.dts.DefinitionEmitter;
 import helder.typescript.api.dts.TypeEmitter;
 
 // helder's TypeScript declaration files, generated from its Haxe types
-// (DESIGN.md 7.3): each module's (Modules: helder/view, helder/ui,
+// (typescript's README): each module's (Modules: helder/view, helder/ui,
 // helder/web), beside its declaration class (src/helder/view/index.d.ts...).
 // An init macro, run by api/declarations.mjs with helder's compiler:
 //

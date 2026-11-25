@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// A derived value (DESIGN.md 2, Memos): called to read it, computed when
+// A derived value (view's README, Signals): called to read it, computed when
 // first read and again when read after what it read changed; its readers
 // are marked only when the result differs.
 abstract Memo<T>(Node<T>) {

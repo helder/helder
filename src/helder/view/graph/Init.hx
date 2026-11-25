@@ -3,7 +3,7 @@ package helder.view.graph;
 // What Graph.signal is made from: a value, or a function (with or
 // without the previous value) for a value derived from what it reads.
 // No macro: the function forms are tried first. A signal never holds a
-// function (DESIGN.md 3.1): a lambda whose parameter has no type, which
+// function (view's README, Signals): a lambda whose parameter has no type, which
 // Haxe cannot match to the derived form, would make one, and is an error
 // where a type is expected and when the signal is made.
 abstract Init<T>(InitKind<T>) {
