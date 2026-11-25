@@ -57,6 +57,10 @@ class ShapeWindow {
 				if (u.needsFrame() || step < 40) u.frame();
 			w.device.settle();
 			if (step == 14) frame(w);
+			// (macOS: each window ordered front at its first frame, the one behind's may come later: this one in front again)
+			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+			if (step == 30 && desk != null) w.window.raise();
+			#end
 			// (the window server's after some of its frames)
 			if (step == 40) {
 				Sys.sleep(0.3);
@@ -68,7 +72,8 @@ class ShapeWindow {
 			// behind's, which it activates and raises, so it comes last)
 			for (i => at in [[80.0, 70.0], [10.0, 10.0]]) {
 				var s0 = 41 + i * 14, through = i == 1;
-				if (step == s0) Click.move(w.window, at[0], at[1]);
+				// (twice: a runner's first posted move was seen dropped)
+				if (step == s0 || step == s0 + 2) Click.move(w.window, at[0], at[1]);
 				if (step == s0 + 4) {
 					downs = [0, 0];
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
