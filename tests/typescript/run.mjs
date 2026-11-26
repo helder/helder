@@ -187,6 +187,12 @@ if(mine()) {
         console.log('PASS platform control (a condition that is no constant: GetTickCount64 linked)');
     }
 }
+// errors' stacks: stacks.mjs (their frames against node's)
+if(mine()) {
+// (22 builds: past run's two minutes on a loaded machine)
+ok(spawnSync(process.execPath,[`${T}/stacks.mjs`],{encoding:'utf8',timeout:600000}),'errors\' stacks (stacks.mjs)');
+console.log('PASS stacks (stacks.mjs)');
+}
 // helder/native's definitions: native.mjs (native.c, objc, com, jni where
 // their systems are; refused elsewhere)
 if(mine()) {
@@ -196,6 +202,15 @@ console.log('PASS native (native.mjs)');
 // helder's declaration files written by a build when stale (stamp.mjs)
 if(mine()) {
 const r=run(process.execPath,[`${T}/stamp.mjs`]);ok(r,'the declarations\' stamp (stamp.mjs)');process.stdout.write(r.stdout);
+}
+// helder/asset without helder/scene: model(path)'s type is unknown there
+// (helder.asset.Models), so helder/scene's declaration class is not typed
+if(mine()) {
+fs.writeFileSync(`${dir}/asset-only.ts`,'import {image} from "helder/asset";\nconsole.log("ok");\n');
+const r=spawnSync(compiler,[`${dir}/asset-only.ts`,'-o',`${dir}/asset-only`],{encoding:'utf8',env:{...process.env,HELDER_TS_TIMES:'1'}});ok(r,'asset-only.ts compile');
+assert.match(r.stderr,/manifest helder\/asset:/,'helder/asset typed');
+assert.doesNotMatch(r.stderr,/manifest helder\/scene:/,'helder/scene typed for a program of helder/asset alone');
+console.log('PASS helder/asset alone: helder/scene not typed');
 }
 // Programs whose values their types do not describe: compiled, then stopped
 // where such a value enters a typed slot (TSHX100, at the line of expect)

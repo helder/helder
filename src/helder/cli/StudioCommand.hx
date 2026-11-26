@@ -40,11 +40,11 @@ class StudioCommand {
 		if (port != null) args = args.concat(["--mcp-port", port]);
 		var agent = o.value("agent");
 		if (agent != null) args = args.concat(["--agent", agent]);
-		// (the studio's Play runs `helder dev` with this helder)
-		var env = Sys.environment();
+		// (the studio's Play runs `helder dev` with this helder; its stdin a pipe never written:
+		// this launcher gone, however it ended, the studio ends with it, helder.async.Parent)
+		var env = Parent.env(Sys.environment());
 		env.set("HELDER_CLI", Sys.programPath());
 		var p = new Process(FileSystem.fullPath(exe), args.concat(o.programArgs ?? []), {env: env});
-		p.closeStdin();
 		Async.scope(task -> {
 			task.async(_ -> Lines.forward(p.stdout, false));
 			task.async(_ -> Lines.forward(p.stderr, true));

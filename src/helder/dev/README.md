@@ -226,7 +226,7 @@ studio, a request about a screen naming it (`screen`); `Ui.getTree` and
 
 | method | params | result |
 | --- | --- | --- |
-| `Host.show` | `{screens, focused, scale}` | `{}`: the screens in view (the others suspended), the one zoomed into and its pixels a point |
+| `Host.show` | `{screens, focused, scale, sharp}` | `{}`: the screens in view (the others suspended), the one zoomed into and its pixels a point, the others in view's |
 | `Host.release` | `{screen, buffer}` | `{}`: a frame's target the studio no longer shows (natively: drawn into again) |
 | `Host.snap` | `{screen, path}` | `{path, width, height}`: the screen's last frame read back into a file (natively) |
 | `Studio.screens` | `{}` | `{screens: [{name, width, height}]}` |

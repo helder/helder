@@ -259,14 +259,45 @@ still draw it again). A story with `loop: <seconds>` (`story({..., loop:
 2})`, at most 30) plays that long from its moment while its frame is
 hovered, then from its moment again, watch-only (no input reaches it), and
 is its still again when the pointer leaves; such frames have a small loop
-mark by their caption. Play opens a window of its own: the header's Play
-the app (the frame aimed at, when one is), a double click on a frame that
-screen, live, its input its own, at its size. It is `helder dev` on it (a
-TypeScript story: a main of it the studio writes, `.helder-play.tsx` at
-the project's root, `play(story)` from helder/story; the app: the
-project), so it rebuilds in place as the project changes, its state kept,
-while the agent works; closing the window ends it, another Play replaces
-it. A headless run says what it would open (`play-window`).
+mark by their caption. The header's **Play app** opens the app from its
+start in a window of its own, whatever is selected. A selected frame has a
+bar under it (`SelectionBar`), moving with the camera and readable at any
+zoom: its group and name; **Play from here**, a window of the app at that
+frame's moment (a double click on the frame too); **Ask**, the prompt about
+that frame (a chip over the chat's field says so, its picture too: what the
+agent is sent; its × sends the prompt about the whole app, the frame still
+selected); **Code**, its file at its line. A loop frame's bar plays,
+pauses and scrubs the loop as recorded in the frames file (the time:
+`1.9 s / 3 s`), never the live program; a loop that is not recorded (one a
+3D scene draws in, until the frames file keeps those) says so. A window is
+`helder dev` on its entry (a TypeScript story: a main the studio writes,
+`.helder-play.tsx` at the project's root, `play(story)` from helder/story;
+a scenario: `.helder-play.tsx` imports `.helder-play-boot.tsx`, whose
+`hold()` keeps the main's root, then every scenario of the project and the
+app's main, then `play(them, name)` from helder/scenario,
+helder.scenario.Player: the root in one ScreenContext with a store of its
+own, as the preview host runs a scenario's screen; the app: the project),
+so it rebuilds in place as the project changes, its state kept, while the
+agent works. Play from here on another scenario with that window open plays
+it there: `Scenario.play {name}` over its helder dev's devtools, the store
+let go (`Atoms.clear`, the top-level effects made again), the scenario's
+boot, the root again; the window, its place, its size and hot reload kept,
+nothing built ("Playing: Dusk sweep" beside the button). An edit not built
+yet: after the build on its way. A scenario the window's main does not
+have: its main written again, built and reloaded at that one. A story, or a
+Haxe project: a window of its own again. The button says Starting… at once (the build's line
+beside it), Stop while it runs, what failed beside it (a link to the line);
+closing the window ends it, another Play replaces it. A headless run says
+what it would open (`play-window`); `--play <screen|app>` plays one at
+start.
+
+Nothing outlives the studio's launcher, however it ends (SIGKILL too):
+`helder studio` keeps a pipe on the studio's stdin that it never writes
+(`helder.async.Parent`: its end read, the studio stops), `helder dev
+apps/studio` its dev connection (closed: the studio exits). The studio's
+own children end with it: the previews' host with its socket, Play's
+`helder dev` with a pipe of its own (and its window with its dev
+connection), the ACP agent with its stdin (the studio-orphans lane).
 
 In the old shell (`--classic`) the toolbar's Play (`Play.hx`) runs what is
 selected, else the app from its start; the target beside it says where;

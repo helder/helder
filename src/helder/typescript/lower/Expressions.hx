@@ -17,7 +17,43 @@ import helder.typescript.lower.Core.*;
 // constructions, optional chains and spreads.
 @:access(helder.typescript.lower.Core)
 abstract class Expressions extends Statements {
+	// (a call, a construction, a property read, an await: where its frame is
+	// when what it runs makes an error, V8's column; the code after it from
+	// where it was before)
 	function expr(n:Node):Ex {
+		if (!lines && n.kind == KindNewExpression) {
+			// (no table of lines: what an error made here is named by, Frames.site)
+			b.runtime("libSite", [EStr(location(n))]);
+			var e = expression(n);
+			b.runtime("libSite", [EStr("")]);
+			return e;
+		}
+		var site = lines ? siteOf(n) : -1;
+		if (site < 0) return expression(n);
+		var file = b.file, line = b.line;
+		at(n, site);
+		var e = switch expression(n) {
+			case x = EInt(_) | EF64(_) | EStr(_) | ENull(_) | ELocal(_) | EGlobal(_) | ECast(_, EInt(_)): x;
+			// (helder's API's: its call here, at its position)
+			case x: Ir.typeOf(x) == TVoid ? x : b.temp(x);
+		}
+		if (b.line != line || b.file != file) b.mark(file, line);
+		return e;
+	}
+
+	// (V8's: a call's callee or its method's name, a property's name, an element's `[`)
+	static function siteOf(n:Node):Int
+		return switch n.kind {
+			case KindCallExpression:
+				var callee = strip(n.expression());
+				callee.kind == KindPropertyAccessExpression ? callee.name().pos : callee.pos;
+			case KindPropertyAccessExpression: n.name().pos;
+			case KindElementAccessExpression: n.expression().end;
+			case KindNewExpression | KindAwaitExpression | KindYieldExpression | KindTaggedTemplateExpression: n.pos;
+			case _: -1;
+		}
+
+	function expression(n:Node):Ex {
 		expressions++;
 		// (a dev build's live literal, an attribute's branch: its slot's read, Tsx.liveIn)
 		if (tsx != null && (n.kind == KindStringLiteral || n.kind == KindNumericLiteral)) {
@@ -118,7 +154,7 @@ abstract class Expressions extends Statements {
 				}
 			case KindAwaitExpression:
 				if (b.resumable == null || !b.resumable.async) fail(n, "await outside an async function");
-				yieldPoint(any(expr(n.expression())), true, AWAIT);
+				yieldPoint(any(expr(n.expression())), true, AWAIT, "async " + b.f.display + " (" + location(n) + ")");
 			case KindTemplateExpression:
 				var t = n;
 				var result:Ex = EStr(t.head().text);

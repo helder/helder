@@ -8,9 +8,8 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Model} from "../scene/runtime";
 
-declare const __haxe: {Strings: "helder.asset.Strings", image: "helder.asset.ScriptAssets.image", font: "helder.asset.ScriptAssets.font", model: "helder.asset.ScriptAssets.model", sound: "helder.asset.ScriptAssets.sound", bytes: "helder.asset.ScriptAssets.bytes", loaded: "helder.asset.ScriptAssets.loaded", ready: "helder.asset.ScriptAssets.ready", strings: "helder.asset.ScriptAssets.strings", __module: "helder.asset.TypeScript"};
+declare const __haxe: {Strings: "helder.asset.Strings", Models: "helder.asset.Models", image: "helder.asset.ScriptAssets.image", font: "helder.asset.ScriptAssets.font", model: "helder.asset.ScriptAssets.model", sound: "helder.asset.ScriptAssets.sound", bytes: "helder.asset.ScriptAssets.bytes", loaded: "helder.asset.ScriptAssets.loaded", ready: "helder.asset.ScriptAssets.ready", strings: "helder.asset.ScriptAssets.strings", __module: "helder.asset.TypeScript"};
 
 // A file of the program, by its path (AssetPath): an image, a font, a model,
 // a sound or bytes. The path is checked when compiling (the file there, in
@@ -88,10 +87,22 @@ export declare class FontFile {
 	private readonly fontFile: never;
 }
 
+// (Models' model, when added)
+export type ModelOf = Models extends {model: infer M} ? M : unknown;
+
 export declare class Strings {
 	private constructor();
 	// Read a message with named string and number arguments.
 	get(key: string, params?: any): string;
+}
+
+// What helder/asset's model(path) gives a TypeScript program: helder/scene's
+// Model where the program has helder/scene (its declarations add `model` to
+// Models: src/helder/scene/index.ts), else unknown. So helder/asset's
+// declarations name no type of helder/scene's, and a program of helder/ui
+// alone neither reads helder/scene's nor types its declaration class (its
+// manifest: seconds of every build).
+export declare interface Models {
 }
 
 // an image (helder.image.Image)
@@ -99,7 +110,7 @@ export declare function image(path: string, file?: string): Asset<Image>;
 // a font (helder.text.FontFile)
 export declare function font(path: string, file?: string): Asset<FontFile>;
 // a glTF model (helder.scene.render.Model; its names are Haxe's alone)
-export declare function model(path: string, file?: string): Asset<Model<any, any, any, any>>;
+export declare function model(path: string, file?: string): Asset<ModelOf>;
 // a sound file's bytes
 export declare function sound(path: string, file?: string): Asset<Uint8Array>;
 // a file's bytes

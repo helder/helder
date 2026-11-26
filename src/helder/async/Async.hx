@@ -53,12 +53,17 @@ class Async {
 	}
 
 	// body as a root task on this thread's loop, started when the loop turns
+	// (in a screen's store, Home: there, its continuations too)
 	public static function launch<T>(body:Body<T>, ?context:Context):Task<T> {
-		var loop = Loop.current();
-		var t = new Task<T>(null, context ?? loop.context(), body, false);
-		loop.dispatch(t);
+		var s = Home.current;
+		var t = new Task<T>(null, context ?? (s != null ? Context.create(s) : Loop.current().context()), body, false);
+		start(t);
 		return t;
 	}
+
+	// (a task started through its context's dispatcher: a Home's in its screen)
+	@:noCompletion public static inline function start<T>(t:Task<T>)
+		(t.context.get(Dispatcher) ?? t.loop).dispatch(t);
 
 	// resumed after that many seconds (a CancellationException if cancelled first)
 	@:coroutine public static function delay(seconds:Float):Void {
@@ -79,7 +84,7 @@ class Async {
 		return suspend(cont -> {
 			var t = new Task<T>(cont.context.get(Node.key), cont.context, body, false);
 			t.onCompletion((r, e) -> resumeLater(cont, r, e));
-			t.loop.dispatch(t);
+			start(t);
 		});
 	}
 
@@ -93,7 +98,7 @@ class Async {
 				timer.close();
 				resumeLater(cont, r, err);
 			});
-			t.loop.dispatch(t);
+			start(t);
 		});
 	}
 

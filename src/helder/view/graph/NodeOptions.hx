@@ -8,4 +8,7 @@ typedef NodeOptions<T> = {
 	?unobserved:Void->Void,
 	// (a signal) writable inside a computation (view's README, Signals)
 	?ownedWrite:Bool,
+	// (a signal) one node every store reads and writes, never a store's copy:
+	// a value of the program's code, not its state (a live literal: Literals)
+	?shared:Bool,
 }

@@ -343,4 +343,32 @@ function tests() {
 		flush();
 		equals([local(), a.run(() -> local()), b.run(() -> local())], [2, 2, 1]);
 	}));
+	// (a live literal's slot, helder.dev.Literals: code, not state)
+	test("a shared signal: one node every store reads, a write seen by all, a store made later too", () -> two((a, b) -> {
+		var literal:Signal<String> = new Signal(Node.signal("#3b82f6", {shared: true}));
+		var inA = [], inB = [];
+		a.run(() -> root(_ -> renderEffect(() -> literal(), v -> inA.push(v))));
+		b.run(() -> root(_ -> renderEffect(() -> '${count()}:${literal()}', v -> inB.push(v))));
+		flush();
+		// (written outside the stores, as Hot.literals patches it, beside a store's own write)
+		literal("#ef4444");
+		b.run(() -> count(1));
+		flush();
+		equals([inA, inB], [["#3b82f6", "#ef4444"], ["0:#3b82f6", "1:#ef4444"]]);
+		var c = new Atoms("c");
+		equals([a.run(() -> literal()), c.run(() -> literal()), literal()], ["#ef4444", "#ef4444", "#ef4444"]);
+		// (written in a store: the same node)
+		c.run(() -> literal("#22c55e"));
+		flush();
+		equals([a.run(() -> literal()), b.run(() -> literal())], ["#22c55e", "#22c55e"]);
+		equals(inA, ["#3b82f6", "#ef4444", "#22c55e"]);
+		c.dispose();
+	}));
+	test("a shared signal first read in a store is the default store's", () -> two((a, b) -> {
+		var literal:Null<Signal<Int>> = null;
+		a.run(() -> literal = new Signal(Node.signal(1, {shared: true})));
+		literal(2);
+		flush();
+		equals([a.run(() -> literal()), b.run(() -> literal()), literal()], [2, 2, 2]);
+	}));
 }

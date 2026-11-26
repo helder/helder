@@ -383,7 +383,9 @@ export default function ui(host) {
 		// id, their geometry g (parent, box, content in ui points, axes,
 		// bars, covered) and offsets o when they changed; r: the ids gone)
 		scroll_update(canvas, json) {
-			const c = host.handles.get(canvas), u = JSON.parse(host.string(json)), l = scrollLayer(c);
+			const c = host.handles.get(canvas);
+			if (!c) return;
+			const u = JSON.parse(host.string(json)), l = scrollLayer(c);
 			let views = scrollers.get(canvas);
 			if (!views) scrollers.set(canvas, (views = new Map()));
 			l.fit();
@@ -539,7 +541,13 @@ export default function ui(host) {
 	// browser), the others in the layer of scroll views, stacked by z
 	const layered = new Map();
 	hxmc_ui.layers_apply = (canvas, json, bitmaps, at) => {
-		const c = host.handles.get(canvas), u = JSON.parse(json), l = scrollLayer(c), views = scrollers.get(canvas);
+		const c = host.handles.get(canvas);
+		// (its bitmaps read after the canvas went, a preview closed: nothing to draw them on)
+		if (!c) {
+			for (const b of bitmaps) b?.close?.();
+			return;
+		}
+		const u = JSON.parse(json), l = scrollLayer(c), views = scrollers.get(canvas);
 		let all = layered.get(canvas);
 		if (!all) layered.set(canvas, (all = new Map()));
 		// (CSS pixels a point)

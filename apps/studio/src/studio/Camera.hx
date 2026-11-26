@@ -15,6 +15,9 @@ class Camera {
 	public var y(default, null) = 0.0;
 	public var k(default, null) = 1.0;
 	public final changed = signal(0);
+	// the scale it came to rest at (REST seconds without a move): what the
+	// frames are drawn sharp for, not each step of a pinch
+	public final rest = signal(1.0);
 	// the hand over the watched canvas: Space held (ready to pan: an open
 	// hand), a drag panning it (a closed one)
 	public final held = signal(false);
@@ -50,6 +53,7 @@ class Camera {
 		fl.set(Math.log(nk));
 		running = false;
 		changed(c -> c + 1);
+		moved();
 	}
 
 	// on the spring (Theme's: from where it is, its velocity kept when it is re-aimed)
@@ -77,7 +81,16 @@ class Camera {
 		k = Math.exp(fl.value);
 		running = fx.moving() || fy.moving() || fl.moving();
 		changed(c -> c + 1);
+		if (!running) moved();
 		return running;
+	}
+
+	static inline var REST = 0.2;
+	var moves = 0;
+
+	function moved() {
+		var n = ++moves;
+		Clock.after(REST, () -> if (n == moves && !running) rest(k));
 	}
 
 	// moved by dx, dy (stage points)

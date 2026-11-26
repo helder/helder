@@ -191,6 +191,9 @@ class Cli {
 		// (an effect's thrown value uncaught in a dev build: printed, exit code 1, not a crash: tests/headless/DevThrow.hx)
 		exe("bin/dev/DevThrow", cps(["src", "tests/headless"]).concat(["-D", "hxmc.dev", "-main", "DevThrow"]));
 		expect(exePath("bin/dev/DevThrow", HOST), [], [], "Uncaught exception: helder.ui: <view> has no attribute flex-direction", 1);
+		// (live literals in a variant and beside a number: tests/headless/DevLiterals.hx)
+		exe("bin/dev/DevLiterals", cps(["src", "tests/headless"]).concat(["-D", "hxmc.dev", "-main", "DevLiterals"]));
+		expect(exePath("bin/dev/DevLiterals", HOST), [], [], "built: 1 view");
 		run(exePath("bin/dev/RefreshCheck", HOST), ["save", "bin/dev/refresh.snapshot"]);
 		run(exePath("bin/dev/RefreshCheck", HOST), ["restore", "-"], snapshot("bin/dev/refresh.snapshot"));
 		exe("bin/dev/RefreshTestChanged", views.concat(["-main", "RefreshCheck", "-D", "refresh_changed"]));

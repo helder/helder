@@ -59,15 +59,39 @@ class Starter {
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));
 
 	// a tsconfig.json mapping helder's modules to the helder the studio was
-	// built with, when the project has none and no package resolves them
+	// built with, when the project has none and no package resolves them;
+	// one the studio wrote (written's shape) for another helder (an older
+	// checkout's: its modules not the compiler's, TSHX004) written again
 	public static function config(dir:String) {
 		#if !(hxmc.target == "wasm32-wasi")
-		if (Files.exists('$dir/tsconfig.json') || resolves(dir)) return;
-		var src = BuildInfo.helderSrc();
-		Files.save('$dir/tsconfig.json', haxe.Json.stringify({
-			compilerOptions: {paths: {"helder/*": ['$src/helder/*/index.d.ts', '$src/helder/*/index.ts', '$src/helder/*.ts']}}
-		}, "\t") + "\n");
+		var path = '$dir/tsconfig.json', src = BuildInfo.helderSrc();
+		if (Files.exists(path)) {
+			var was = written(Files.read(path));
+			if (was == null || was == src) return;
+			Sys.println('studio: tsconfig.json mapped helder to $was, written again for this studio\'s ($src)');
+		} else if (resolves(dir)) return;
+		Files.save(path, configText(src));
 		#end
+	}
+
+	public static function configText(src:String):String
+		return haxe.Json.stringify({
+			compilerOptions: {paths: {"helder/*": ['$src/helder/*/index.d.ts', '$src/helder/*/index.ts', '$src/helder/*.ts']}}
+		}, "\t") + "\n";
+
+	// the helder a tsconfig.json of the studio's maps (its shape: helder/*
+	// to one helder's three places, nothing else), else null
+	public static function written(text:String):Null<String> {
+		var j:Dynamic = try haxe.Json.parse(text) catch (_:Dynamic) null;
+		if (j == null || Reflect.fields(j).join(",") != "compilerOptions") return null;
+		var o:Dynamic = j.compilerOptions;
+		if (o == null || Reflect.fields(o).join(",") != "paths" || Reflect.fields(o.paths).join(",") != "helder/*") return null;
+		var list:Array<Dynamic> = Reflect.field(o.paths, "helder/*");
+		if (!Std.isOfType(list, Array) || list.length != 3) return null;
+		var first = Std.string(list[0]), end = "/helder/*/index.d.ts";
+		if (!first.endsWith(end)) return null;
+		var src = first.substr(0, first.length - end.length);
+		return Std.string(list[1]) == '$src/helder/*/index.ts' && Std.string(list[2]) == '$src/helder/*.ts' ? src : null;
 	}
 
 	// TypeScript's checker for a project outside any package (found from its

@@ -82,7 +82,7 @@ class Errors {
 		b.add(e.message);
 		var prev:Null<CallStack> = null;
 		for (s in stacks) {
-			var all = [for (i in s) if (!internal(i)) i], n = all.length;
+			var all = [for (i in s) if (!internal(i)) program(i)], n = all.length;
 			if (prev != null) {
 				var m = prev.length;
 				while (n > 0 && m > 0 && Type.enumEq(all[n - 1], prev[m - 1])) {
@@ -126,6 +126,14 @@ class Errors {
 			case _: e;
 		}
 	}
+
+	// (a TypeScript program's frame: its line and column, which its table's line packs)
+	static function program(i:StackItem):StackItem
+		return switch i {
+			case FilePos(m, file, line, _) if (helder.typescript.js.Lines.typescript(file)):
+				FilePos(m, file, helder.typescript.js.Lines.line(line), helder.typescript.js.Lines.column(line));
+			case _: i;
+		}
 
 	static function internal(i:StackItem):Bool
 		return switch i {

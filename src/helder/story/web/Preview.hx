@@ -17,7 +17,7 @@ import hxmc.unsafe.*;
 // worker's messages (src/helder/dev/README.md, JSON-RPC lines), each
 // request about a screen naming it (params.screen):
 //
-//   Host.show {screens, focused, scale}  the screens in view, the one zoomed into (drawn every frame, at scale pixels a point)
+//   Host.show {screens, focused, scale, sharp}  the screens in view, the one zoomed into (drawn every frame, at scale pixels a point), the others at sharp
 //   Studio.screens {}                {screens: [{name, width, height}]}
 //   Ui.getTree {screen}              that screen's tree ({uis: [{root}]}, as a program's)
 //   Ui.nodesAt {screen, file, line, col}

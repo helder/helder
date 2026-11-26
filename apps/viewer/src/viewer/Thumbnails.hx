@@ -59,7 +59,8 @@ class Thumbnails {
 	final owner = 0;
 	#else
 	// (a job gets the cache by ID: the native workers share its mutex and
-	// file handles; the job's argument itself is copied across by Jobs)
+	// file handles; the job's argument itself is copied across by Jobs; the
+	// process's, every screen's)
 	static final owners = new Map<Int, ThumbCache>();
 	static final ownerLock = new Mutex();
 	static var nextOwner = 1;

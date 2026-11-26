@@ -40,7 +40,7 @@ function tests() {
 				// (after a move: the invariant; plays: the shown file's player playing once it loaded)
 				// (waiting for it to play, given up once its player failed)
 				function failed():Bool {
-					var p = MediaView.current?.player;
+					var p = viewer.video?.player;
 					return p != null && p.error() != null;
 				}
 				@:coroutine function step(what:String, plays:Bool) {
@@ -50,8 +50,8 @@ function tests() {
 						Async.delay(0.01);
 						frame();
 					}
-					if (plays && failed()) assert(false, '$what: ${MediaView.current.player.error()}');
-					var on = playing(), v = MediaView.current;
+					if (plays && failed()) assert(false, '$what: ${viewer.video.player.error()}');
+					var on = playing(), v = viewer.video;
 					assert(on.length <= 1, '$what: ${on.length} playing');
 					if (plays) equals(on.length, 1);
 					if (on.length == 1)

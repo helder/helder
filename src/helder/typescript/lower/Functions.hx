@@ -21,6 +21,10 @@ abstract class Functions extends Core {
 	// arrive and leave dynamic, its parameters checked on entry: see lambda)
 	function declareFunction(n:Node, name:String, typed:Bool):FuncInfo {
 		var f = Builder.func(p, name, typed ? ret(n) : TRef(RAny));
+		f.display = frameName(n);
+		// (one that throws keeps its frame in an error's stack: hxmc names an
+		// inlined copy by its caller's, and inlines no function with a try)
+		if (lines && typed && throws(n.body())) f.hasTry = true;
 		var parameters = parametersOf(n);
 		if (n.kind != KindArrowFunction && usesArguments(n.body())) {
 			// (all arguments arrive as one array; parameterSetup binds the parameters from it)
@@ -40,6 +44,16 @@ abstract class Functions extends Core {
 			else f.args.push(new Local(f.args.length, "%parameter" + i, TRef(RAny)));
 		}
 		return f;
+	}
+
+	// whether n throws itself (a throw statement not in a function of its own)
+	static function throws(n:Null<Node>):Bool {
+		if (n == null || n.kind == KindFunctionDeclaration || n.kind == KindFunctionExpression || n.kind == KindArrowFunction || n.kind == KindClassDeclaration
+			|| n.kind == KindClassExpression || n.kind == KindMethodDeclaration)
+			return false;
+		if (n.kind == KindThrowStatement) return true;
+		for (c in n.children()) if (throws(c)) return true;
+		return false;
 	}
 
 	function compileFunction(n:Node, f:FuncInfo) {
@@ -286,6 +300,8 @@ abstract class Functions extends Core {
 		// (called dynamically: the arguments into the target's typed parameters, checked)
 		var sig = p.sig([TRef(RAny)].concat([for (a in target.args) TRef(RAny)]), TRef(RAny));
 		var f = Builder.func(p, "functionValue" + serial++, TRef(RAny));
+		// (the target inlined here is still its frame)
+		f.display = target.display;
 		f.args = [new Local(0, "closure", TRef(RAny)), new Local(1, "this", TRef(RAny))];
 		for (i in 0...target.args.length) f.args.push(new Local(i + 2, target.args[i].name, TRef(RAny)));
 		var li = new LambdaInfo(p.lambdas.length, sig, new Vector(0), f);
@@ -381,6 +397,7 @@ abstract class Functions extends Core {
 			env.set(own, self);
 		}
 		var r = lambda(n, [], arrow, false, f -> {
+			f.display = frameName(n, name);
 			hoist(n.body(), false);
 			parameterSetup(n);
 			if (n.body().kind == KindBlock) statement(n.body()); else b.out.push(SReturn(b.coerce(expr(n.body()), f.ret)));
@@ -412,11 +429,15 @@ abstract class Functions extends Core {
 			env.set(own, self);
 		}
 		sharing = true;
+		var frame = frameName(n, name);
 		var r = lambda(n, [], arrow, false, f -> {
+			// (its frame is the step function's, which runs the body)
+			b.quiet = true;
 			parameterSetup(n);
 			sharing = false;
 			var step = lambda(null, ["%generator", "%sent", "%mode"], true, false, g -> {
-				b.resumable = {count: 0, value: b.local("yielded", TRef(RAny)), gen: g.args[2], sent: g.args[3], mode: g.args[4], async: async, generator: generator, kinds: []};
+				g.display = frame;
+				b.resumable = {count: 0, value: b.local("yielded", TRef(RAny)), gen: g.args[2], sent: g.args[3], mode: g.args[4], async: async, generator: generator, kinds: [], sites: []};
 				var start = b.out.length;
 				hoist(n.body(), false);
 				if (n.body().kind == KindBlock) statement(n.body()); else emitReturn(expr(n.body()));
@@ -433,10 +454,12 @@ abstract class Functions extends Core {
 		if (self != null) set(self, value);
 		return value;
 	}
-	function yieldPoint(value:Ex, modes:Bool, kind = YIELD):Ex {
+	// (at: an await's frame while its function waits, V8's `async f (file:line:column)`)
+	function yieldPoint(value:Ex, modes:Bool, kind = YIELD, ?at:String):Ex {
 		var r = b.resumable;
 		var id = ++r.count;
 		r.kinds.set(id, kind);
+		if (at != null) r.sites.set(id, at);
 		b.out.push(SSet(r.value, any(value)));
 		b.out.push(SPos("%yield", id));
 		if (modes) {
@@ -520,7 +543,7 @@ abstract class Functions extends Core {
 				flush();
 				switch (s) {
 					case SPos(_, id):
-						out.push(SIf(resumeIs0, Vector.fromArrayCopy(save.concat([SExpr(b.runtimeCall("libSuspend", [ELocal(r.gen), EInt(id), EInt(r.kinds.get(id))])), SReturn(ELocal(r.value))])),
+						out.push(SIf(resumeIs0, Vector.fromArrayCopy(save.concat([SExpr(b.runtimeCall("libSuspend", [ELocal(r.gen), EInt(id), EInt(r.kinds.get(id)), EStr(r.sites.get(id) ?? "")])), SReturn(ELocal(r.value))])),
 							Vector.fromArrayCopy([SIf(EBin(Eq, ELocal(resume), EInt(id)), Vector.fromArrayCopy([SSet(resume, EInt(0))]), new Vector(0))])));
 					case SIf(c, a, z):
 						var ra = range(SIf(c, a, new Vector(0)));
@@ -585,6 +608,7 @@ abstract class Functions extends Core {
 		var count = f.args.length - 1;
 		var front = ["closure", "this"].concat(prelude);
 		var w = Builder.func(p, "direct" + serial++, TRef(RAny));
+		w.display = f.display;
 		w.args = [for (i in 0...front.length) new Local(i, front[i], TRef(RAny))].concat([for (i in 0...count) new Local(front.length + i, f.args[i + 1].name, TRef(RAny))]);
 		var li = new LambdaInfo(p.lambdas.length, p.sig([for (a in w.args.slice(1)) a.ty], TRef(RAny)), new Vector(0), w);
 		p.lambdas.push(li);
