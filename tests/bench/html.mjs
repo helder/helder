@@ -11,7 +11,11 @@
 //   node tests/bench/html.mjs bin/bench/HtmlBench bin/bench/HtmlBench.wasm
 import fs from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { parse } from '@lukeed/html';
+// (a stale node_modules, after a rebase: said plainly, not as node's stack)
+const { parse } = await import('@lukeed/html').catch(() => {
+	console.error('@lukeed/html missing: run bun install');
+	process.exit(1);
+});
 
 const [native, wasm] = process.argv.slice(2);
 const RUNS = Number(process.env.RUNS ?? 5);

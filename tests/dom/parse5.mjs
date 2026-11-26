@@ -18,7 +18,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parse } from 'parse5';
+// (a stale node_modules, after a rebase: said plainly, not as node's stack)
+const { parse } = await import('parse5').catch(() => {
+	console.error('parse5 missing: run bun install');
+	process.exit(1);
+});
 
 const [dumper, countArg] = process.argv.slice(2);
 if (!dumper) throw new Error('usage: node tests/dom/parse5.mjs <DomDump> [count]');
