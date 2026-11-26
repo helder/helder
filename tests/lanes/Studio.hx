@@ -14,6 +14,7 @@ class Studio {
 		{name: "studio", about: "helder studio run headless by scripts", run: studioLane},
 		{name: "demos", about: "the showcase demos' stills against goldens", run: demosLane},
 		{name: "studio-web", about: "helder studio in headless Chromium", run: studioWeb},
+		{name: "studio-orphans", about: "helder studio killed (SIGKILL): its studio, host, play window and agent gone with it", run: () -> run(NODE, ["tests/studio/orphans.mjs", helderCli()])},
 		{name: "story-host", about: "helder.story.Host's 50 stories, timed", run: storyHost},
 		{name: "scenarios", about: "pong's scenarios against its stories in the studio, timed", run: scenarios},
 		{name: "headless-run", about: "helder run --headless on scripted examples", run: headlessRun}

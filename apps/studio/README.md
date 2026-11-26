@@ -288,7 +288,16 @@ have: its main written again, built and reloaded at that one. A story, or a
 Haxe project: a window of its own again. The button says Starting… at once (the build's line
 beside it), Stop while it runs, what failed beside it (a link to the line);
 closing the window ends it, another Play replaces it. A headless run says
-what it would open (`play-window`).
+what it would open (`play-window`); `--play <screen|app>` plays one at
+start.
+
+Nothing outlives the studio's launcher, however it ends (SIGKILL too):
+`helder studio` keeps a pipe on the studio's stdin that it never writes
+(`helder.async.Parent`: its end read, the studio stops), `helder dev
+apps/studio` its dev connection (closed: the studio exits). The studio's
+own children end with it: the previews' host with its socket, Play's
+`helder dev` with a pipe of its own (and its window with its dev
+connection), the ACP agent with its stdin (the studio-orphans lane).
 
 In the old shell (`--classic`) the toolbar's Play (`Play.hx`) runs what is
 selected, else the app from its start; the target beside it says where;

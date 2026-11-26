@@ -76,6 +76,17 @@ class Process {
 	}
 	#end
 
+	// this process's own stdin, read on the loop (Parent's: a parent's pipe,
+	// its end read when the parent is gone)
+	public static function input():Source {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		if (!Handle.WINDOWS) hxmc.NativeSys.fileSetBlocking(0, false);
+		return new Pipe(new Handle(null, 0));
+		#else
+		return new Pipe(new Handle(null, -1, Sys.stdin()));
+		#end
+	}
+
 	// a copy of this process's environment, to change and give to a child
 	public static function environment():Map<String, String> {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")

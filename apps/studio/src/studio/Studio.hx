@@ -1195,12 +1195,12 @@ class Studio {
 		told();
 		// (a check's script waits for it to run or fail)
 		hold(() -> l.state != "starting", "Play's window", 300);
-		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
+		// (its stdin a pipe never written: the studio gone, however it ended, helder dev and its window with it, Parent)
+		var p = try new Process(cli, args, {cwd: project.dir, env: Parent.env()}) catch (e:Dynamic) {
 			launched({state: "failed", note: 'helder dev did not start: $e', at: null, playing: null});
 			null;
 		}
 		if (p == null) return;
-		p.closeStdin();
 		targetProcess = p;
 		var seen = 0;
 		function lines(src:Stream.Source)
@@ -1379,7 +1379,7 @@ class Studio {
 		stopPlay();
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
 		var args = ["dev", project.dir].concat(t == "phone" ? ["--target", "android"] : t == "browser" ? ["--target", "web"] : []);
-		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
+		var p = try new Process(cli, args, {cwd: project.dir, env: Parent.env()}) catch (e:Dynamic) {
 			playLog('helder dev did not start: $e');
 			null;
 		}
@@ -1387,7 +1387,6 @@ class Studio {
 		playLog("helder " + args.join(" "));
 		log("play", {kind: "target", target: t, args: args});
 		if (p == null) return;
-		p.closeStdin();
 		targetProcess = p;
 		var opened = false;
 		function lines(src:Stream.Source)

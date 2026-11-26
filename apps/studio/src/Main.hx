@@ -6,7 +6,8 @@ import studio.Studio;
 
 // helder studio (apps/studio/README.md): `helder studio [project]`, or
 // `studio [project] [--classic] [--events <file>] [--mcp-port <n>] [--agent <name>]
-// [--hold-while <file>] [--cover <png>]` (--cover: the project's cover written, then closed;
+// [--hold-while <file>] [--cover <png>] [--play <screen|app>]` (--cover: the project's cover written, then closed;
+// --play: a screen's Play from here at once, or Play app's)
 // apps/studio/web/build.mjs runs it headless for each example)
 @:renderer(helder.ui.view.NodeRenderer)
 class Main implements Markup {
@@ -16,7 +17,7 @@ class Main implements Markup {
 		studio.Studio.processStart = haxe.Timer.stamp();
 		var args = Sys.args(), dir:Null<String> = null, events:Null<String> = null, port:Null<Int> = null, holdWhile:Null<String> = null, agent:Null<String> = null;
 		var classic = #if (hxmc.target == "wasm32-wasi") true #else false #end;
-		var width = 1180, height = 740, exportWeb:Null<String> = null, cover:Null<String> = null;
+		var width = 1180, height = 740, exportWeb:Null<String> = null, cover:Null<String> = null, play:Null<String> = null;
 		var i = 0;
 		while (i < args.length) {
 			var a = args[i++];
@@ -30,6 +31,7 @@ class Main implements Markup {
 				case "--height": height = Std.parseInt(args[i++]) ?? height;
 				case "--export-web": exportWeb = args[i++];
 				case "--cover": cover = args[i++];
+				case "--play": play = args[i++];
 				case _ if (!StringTools.startsWith(a, "--")): dir = a;
 				case _: Sys.println('studio: $a: not an option (studio [project] [--events <file>] [--mcp-port <n>] [--agent <name>] [--hold-while <file>])');
 			}
@@ -68,12 +70,22 @@ class Main implements Markup {
 			s.crashed(e);
 			true;
 		}
+		// (its launcher gone, however it ended: the studio with it. `helder studio`'s: its pipe on
+		// stdin (Parent); `helder dev apps/studio`'s: its dev connection, closed. Its own children
+		// end with it: the previews' host with its socket, Play's helder dev with its pipe, the agent with its stdin)
+		Sys.putEnv("HXMC_DEV_EXIT_WITH_SERVER", "1");
+		if (helder.async.Parent.piped()) helder.async.Async.launch(_ -> helder.async.Parent.watch(() -> helder.async.Async.launch(_ -> {
+			s.stop();
+			Sys.exit(0);
+		})));
 		#end
 		UiWindow.run(<Surface title={s.project == null ? "helder studio" : s.project.name + " · helder studio"} width={width} height={height} titlebar="inset"
 			theme={studio.Theme.sheet} background={studio.Theme.c("bg")} dark={true} ref={w -> {
 				window = w;
 				w.onFrame = () -> s.drawn();
 				s.open();
+				// (--play <screen>: its Play from here at once, "app": Play app; after this owned scope, from the loop)
+				if (play != null) helder.ui.Clock.after(0, () -> s.playWindow(play == "app" ? null : play));
 			}} onDrop={(files, x, y) -> s.dropFiles(files, x, y)} onClose={() -> {
 				helder.async.Async.launch(_ -> s.stop());
 				window.close();
