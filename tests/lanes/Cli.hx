@@ -151,6 +151,8 @@ class Cli {
 		run(NODE, ["tests/cli/dev.mjs", h, "bin/cli/dev-asset", "asset"]);
 		run(NODE, ["tests/cli/dev.mjs", h, "bin/cli/dev-asset-nohost", "asset-nohost"]);
 		run(NODE, ["tests/cli/dev.mjs", h, "bin/cli/dev-asset-web", "asset-web"]);
+		// (a CSS module: an edit swaps its sheet, nothing built)
+		run(NODE, ["tests/cli/dev.mjs", h, "bin/cli/dev-css-module", "css-module"]);
 	}
 
 	static function devtools() {

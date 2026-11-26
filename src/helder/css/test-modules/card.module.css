@@ -1,0 +1,7 @@
+.card { padding: 4px; color: rgb(0 0 200) }
+.card-title { composes: bold; font-size: 20px }
+.bold { font-weight: bold }
+#main .card:hover, :global(.dark) .card { background: rgb(240 240 240) }
+:global(.page) :local(.inner) { margin: 0 }
+.button { composes: base from "./base.module.css"; composes: shadow from global; color: rgb(200 0 0) }
+@media (min-width: 400px) { .wide { width: 50% } }

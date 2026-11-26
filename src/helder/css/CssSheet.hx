@@ -76,6 +76,10 @@ class CssSheet {
 	public static function parse(text:String, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
 		return new Builder(origin, options ?? {}, 0).sheet(Css.sheet(text));
 
+	// Rules read before (CssScope's, scoped) compiled as parse compiles text's.
+	@:allow(helder.css) static function of(rules:Array<CssRule>, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
+		return new Builder(origin, options ?? {}, 0).sheet(rules);
+
 	// A style attribute's declarations (author, compiled).
 	public static function attribute(text:String):Array<CssDeclared>
 		return compile(Css.declarations(text));

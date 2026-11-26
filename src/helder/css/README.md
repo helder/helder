@@ -712,6 +712,82 @@ values and that its symbols hold no Tokenizer, Parser, SelectorParser or
 sheet builder, and the same probe parsing one sheet when it runs, which
 holds them all (2505 and 2695 KB with symbols, on macOS).
 
+### CSS modules
+
+A `*.module.css` file is a CSS module, as in css-loader and Vite. Its
+class names and ids are scoped to the file as `<file>_<name>_<hash>`; the
+hash is of its path from the project (`-D helder.root`, else the working
+directory), so every build scopes alike.
+
+- **`:global(...)`** leaves a selector's names as written, and
+  **`:local(...)`** scopes them again. A bare `:global` is an error.
+- **`composes`** adds classes to a class's name, in a rule of one class:
+  `composes: a b` from the same file, `composes: a from
+  "./other.module.css"`, or `composes: a from global` (as written).
+  Composes declarations are taken out of the sheet.
+- **Errors**, at their file, line and column: a missing name, a missing
+  file, a cycle (across files too), composes outside a rule of one class.
+- **`CssScope.compile(file)`** does the scoping. It is plain Haxe, run by
+  the compiler and by dev builds; `CssScope.sheet(m)` compiles the result
+  through the same path as `CssTheme`.
+- **`CssModule.load("card.module.css")`** is a macro that returns the
+  module's names, typed from the file: `{final card:String, final
+  cardTitle:String}`, so a misspelt name is a type error. Dashed names are
+  camelCased; collisions and names Haxe can't spell are errors. The file
+  is found beside the calling module, else under a class path.
+  - The sheet is compiled when the program is, so a program that only uses
+    modules links no CSS parser.
+  - The module's errors are the build's errors.
+  - Its sheet is registered once, the first time it is loaded, after the
+    sheets it composes from. `CssCascade.styles` takes the registered
+    sheets after a document's own; `CssCascade.themed` takes them after the
+    sheets passed. `CssModule.sheets()` lists them, `version` counts their
+    changes and `watch(f)` hears of them.
+- **Under `helder dev`**, an edited module file is sent to the running
+  program as an asset (helder.asset's `Assets.changed`). The program scopes
+  it again with the build's hash and swaps its sheet, nothing built; only
+  dev builds link the parser for that. The log says what happened: `card.module.css swapped,
+  nothing built`; or, when the names it exports changed, `swapped, but its
+  names changed (+extra): rebuild to use them`; or, on an error, the error
+  at its line and `not swapped: the last sheet stays`.
+
+```haxe
+final card = CssModule.load("card.module.css");
+el.className = card.title;                     // "card_title_1a2b3c"
+var styles = CssCascade.themed(doc, []);       // the modules' sheets alone
+```
+
+TypeScript imports a module (`import card from "./card.module.css"`)
+through `CssScope.typescript(file)`, which helder.typescript's frontend
+calls per imported file. It returns:
+
+- `source`: the module's TypeScript, its names frozen;
+- `declaration`: the same type as a `.d.ts`, `{readonly card: string;
+  readonly "card-title": string}`, with names as written;
+- `haxeType`: the Haxe class `CssModule.define(file)` makes, whose
+  `install()` registers the sheets;
+- `diagnostics`, with file, line, column, offsets and severity;
+- `files`: every CSS file read, for the watcher.
+
+`CssScope.test.hx` covers scoping, `:global` and `:local`, composes from
+the same file, another and global, a cycle across files, each error at
+its line and column, and TypeScript's module and declaration.
+`CssModule.test.hx` covers the typed names, a sheet registered once and
+after the one it composes from, the cascade, and dev's swap: the same
+names, changed names, an error. The css lane checks the following:
+
+- a probe styled through a module alone: its values, and no parser in its
+  symbols (tests/css/ModuleProbe.hx);
+- a misspelt name fails the build (tests/css/modules/Misspelt.hx), and a
+  module's error fails it at `broken.module.css:2: characters 20-27`
+  (Broken.hx);
+- `tsc --strict` accepts a program against the declarations and rejects
+  a misspelt name and a write (tests/css/modules/ts).
+
+The cli lane's `css-module` mode edits a module under a running `helder
+dev` (tests/cli/dev.mjs, tests/cli/cards). helder.ui.box's
+DocumentView.test.hx draws a document styled through a module.
+
 ## Style storage
 
 A computed style (`CssStyle`) is a pointer per group of properties,
