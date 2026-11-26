@@ -255,6 +255,14 @@ function tests() {
 			0;
 		}), "two screens' transactions merged: a node of one store read another's (helder.view.graph.Atoms)");
 	}));
+	test("an effect's error handler runs in its store", () -> two((a, b) -> {
+		var bad = signal(false), seen = [];
+		a.run(() -> root(_ -> effect(() -> bad() ? throw "boom" : 0, (_, _) -> null, e -> seen.push(Atoms.current?.name))));
+		flush();
+		a.run(() -> bad(true));
+		flush();
+		equals(seen, ["a"]);
+	}));
 	test("a signal made in a store: its home there, the default seeing through to it", () -> two((a, b) -> {
 		var local = a.run(() -> signal(1));
 		local(2);

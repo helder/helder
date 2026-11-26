@@ -731,10 +731,15 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// logged and its run skipped, a render effect's halts (the flush throws it))
 	function deliver(e:Dynamic) {
 		if (onFailure != null) {
+			// (in its store, as its apply)
+			var savedAtoms = Atoms.current;
+			Atoms.current = home;
 			try {
 				within(null, null, () -> onFailure(e));
+				Atoms.current = savedAtoms;
 				return;
 			} catch (x:haxe.Exception) {
+				Atoms.current = savedAtoms;
 				e = x.native;
 				thrown = x;
 			}
