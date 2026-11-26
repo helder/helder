@@ -303,6 +303,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				w = runner.world = w == null ? ahead : Tx.merge(w, ahead);
 				if (p != null && t != null && p != w) w = runner.world = Tx.merge(w, p);
 				if (Scheduler.world != null) Scheduler.world = Scheduler.world.find();
+				// (merged: one transaction now, whichever was kept as its root)
+				ahead = ahead.find();
+				if (p != null) p = p.find();
 			}
 			// (a render effect that read a verdict is a verdict reader: served the
 			// screen, shown now; a pending value it reads still holds the change)

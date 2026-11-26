@@ -371,4 +371,39 @@ function tests() {
 		flush();
 		equals([a.run(() -> literal()), b.run(() -> literal()), literal()], [2, 2, 2]);
 	}));
+	// (a run that joins a transaction staged ahead reads its value, whichever
+	// of the two merged was kept as the root; found by AtomsModel's settled
+	// property: a store's memo kept its old sum for good)
+	test("a memo read in a held transaction's world after its async answer sees the store's write", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0), s1 = signal(1);
+		function async()
+			return memo(() -> {
+				var l = new Later<Int>();
+				asks.push({l: l, v: s1()});
+				(l : Dynamic);
+			});
+		var a4 = async();
+		var n12 = memo(() -> s0() + (a4() : Int));
+		var a13 = async();
+		var n24 = memo(() -> (a13() : Int) + s0());
+		effect(_ -> n24(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		renderEffect(_ -> n12(), _ -> {});
+		flush();
+		var st = new Atoms("1");
+		st.run(() -> for (n in [a4, n12, a13, n24]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s0(1));
+		flush();
+		var rounds = 0;
+		while (asks.length > 0 && rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+		}
+		equals([st.run(() -> untrack(() -> n24())), st.run(() -> untrack(() -> n12()))], [11, 11]);
+		equals(shown, [11]);
+		st.dispose();
+	}));
 }
