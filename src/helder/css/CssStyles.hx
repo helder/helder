@@ -15,8 +15,8 @@ using StringTools;
 // rightmost compound, the ancestors' Bloom filter moved to each element
 // matched), each element's cascade made when its style is first asked,
 // and the at-rules' data for the later stages (@page, @font-face,
-// @counter-style). A rule that can never match on a page (:hover's,
-// :visited's) is left out.
+// @counter-style). A rule that can never match (:visited's) is left
+// out; :hover's and the like match the element's state, off on a page.
 class CssStyles {
 	public final document:Document;
 	public final media:CssMediaContext;
@@ -138,7 +138,7 @@ class CssStyles {
 
 	static inline var UNLAYERED = 1 << 20;
 
-	// (a compound with :hover, :visited...: never on a page)
+	// (a compound with :visited and the like: never)
 	static function never(s:CssSelector):Bool {
 		for (c in s.compounds)
 			for (x in c)

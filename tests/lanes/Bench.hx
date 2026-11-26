@@ -12,6 +12,7 @@ class Bench {
 		{name: "bench", about: "the engine's benchmarks and the examples' sizes", run: bench},
 		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
 		{name: "bench css", about: "helder.css's tokenizer and parser against lightningcss", run: cssBench},
+		{name: "bench row", about: "helder.css's restyle of a viewer's rows: made, hovered, unhovered, focused, selected", run: rowBench},
 		{name: "bench match", about: "helder.css's selector matching: each selector against the rule index and Bloom filter", run: matchBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
@@ -73,6 +74,12 @@ class Bench {
 	static function cascadeBench() {
 		exe("bin/bench/CascadeBench", cps(["src", "tests/bench"]).concat(["-main", "CascadeBench"]));
 		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
+	}
+
+	// (natively: the operations' microseconds and marked elements, JSON lines)
+	static function rowBench() {
+		exe("bin/bench/RowBench", cps(["src", "tests/bench"]).concat(["-main", "RowBench"]));
+		run(exePath("bin/bench/RowBench", HOST), []);
 	}
 
 	// (natively; the pages and sheets fetched into bin/bench/html and bin/bench/match)

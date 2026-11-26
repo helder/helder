@@ -88,7 +88,9 @@ class SelectorPrinter {
 			case NthLastOfType(anb): 'nth-last-of-type($anb)';
 			case Lang(ranges): 'lang(${[for (r in ranges) ident(r)].join(", ")})';
 			case Dir(rtl): rtl ? "dir(rtl)" : "dir(ltr)";
-			case Never(name): name;
+			case Never(name) | State(_, name): name;
+			case Valid: "valid";
+			case Invalid: "invalid";
 			case FirstChild: "first-child";
 			case LastChild: "last-child";
 			case OnlyChild: "only-child";

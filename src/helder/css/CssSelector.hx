@@ -150,9 +150,16 @@ enum CssPseudoClass {
 	ReadWrite;
 	PlaceholderShown;
 	Defined;
-	// parsed, never matching: a state of interaction or time a printed page
-	// has not (:hover, :focus, :visited, :target...) or one not evaluated
-	// (:valid, :invalid...); name: lowercase
+	// basic constraint validation: a required control with no value is invalid
+	Valid;
+	Invalid;
+	// the element's dynamic state (helder.dom's ElementState bits: :hover,
+	// :active, :focus, :focus-visible, :focus-within, :target), all off on a
+	// printed page; name: lowercase
+	State(bits:Int, name:String);
+	// parsed, never matching: :visited (every link is unvisited), time's
+	// (:current, :playing...) and those not evaluated (:in-range, :modal...);
+	// name: lowercase
 	Never(name:String);
 }
 

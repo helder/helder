@@ -23,6 +23,9 @@ class Element extends Node {
 	public var nextElementSibling(get, never):Null<Element>;
 	public var innerHTML(get, set):String;
 	public var outerHTML(get, set):String;
+	// its dynamic state (ElementState's bits): an engine's extra, as source
+	// offsets are, set by setState; 0 (all off) on a printed page
+	public var state(default, null):Int = 0;
 
 	// the namespace as a number (HTML, SVG, MATHML, OTHER) and the local name's Tags id
 	var ns:Int;
@@ -395,10 +398,19 @@ class Element extends Node {
 		return old;
 	}
 
+	// the state's bits turned on or off (the document's observer told)
+	public function setState(bits:Int, on:Bool) {
+		var old = state, value = on ? old | bits : old & ~bits;
+		if (value == old) return;
+		state = value;
+		if (doc.observer != null) doc.observer.stateChanged(this, old, value);
+	}
+
 	// handle attribute changes (mutation records will hook in here)
 	function attributeChanged(attr:Attr, old:Null<String>, value:Null<String>) {
 		var d = doc;
 		d.version++;
+		if (d.observer != null) d.observer.attributeChanged(this, attr.namespaceURI, attr.localName, old, value);
 		d.depth++;
 		attributeChangeSteps(attr.localName, old, value, attr.namespaceURI);
 		d.depth--;
