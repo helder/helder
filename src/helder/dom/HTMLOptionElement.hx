@@ -55,6 +55,7 @@ class HTMLOptionElement extends Element {
 		var old = cachedSelect, now = nearestSelect();
 		cachedSelect = now;
 		if (old == now) return [];
+		if (now != null && selectedness) deselectOthers(now);
 		var out = [];
 		for (s in [old, now])
 			if (s != null && (s.selectednessSetting() || selectedness)) out.push(s);
@@ -88,6 +89,7 @@ class HTMLOptionElement extends Element {
 			if (old == null && !selectedness) {
 				selectedness = true;
 				changed = true;
+				if (cachedSelect != null) deselectOthers(cachedSelect);
 			}
 			if (value == null && selectedness) {
 				selectedness = false;
@@ -96,6 +98,12 @@ class HTMLOptionElement extends Element {
 		}
 		if (cachedSelect != null) cachedSelect.resetSelectedness(changed);
 	}
+
+	// (a single select: an option selected, or added selected, leaves the others unselected)
+	function deselectOthers(select:HTMLSelectElement)
+		if (!select.multiple())
+			for (o in select.options())
+				if (o != this) o.selectedness = false;
 
 	override function childrenParsed() {
 		var s = cachedSelect;
