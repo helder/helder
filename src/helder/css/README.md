@@ -226,3 +226,94 @@ itself, every reference it makes is defined (in its context), every
 longhand and alias is in the table; the shapes of a few and the errors;
 and a property: any tree prints to text that parses back to it. The css
 lane checks the same data against the WPT fixtures (tests/css).
+
+## Values
+
+`CssValues` reads a declaration's value against its property's grammar,
+writes it as CSSOM serializes it, and computes it as far as needs no
+layout:
+
+```haxe
+import helder.css.CssValues;
+
+var v = CssValues.parse("margin", "calc(1in + 1px) 1PX");  // null when it doesn't match
+CssValues.serialize("margin", v);                         // "calc(97px) 1px"
+CssValues.compute("margin", v);                           // "97px 1px"
+CssValues.compute("width", CssValues.parse("width", "2em"), {fontSize: 20}); // "40px"
+```
+
+- `parse` gives a `CssSpecified`: `Wide(keyword)` (a CSS-wide keyword
+  alone), `Unresolved(text)` (a var() or env() anywhere: checked once
+  substituted, as Variables 1 says; a custom property's value too), or
+  `Terms(terms)`: the grammar's parts typed (`CssTerm`): `Keyword`
+  (lowercase), `Ident`, `Number`, `Percentage`, `Dimension` (a unitless 0
+  where a length may be: px), `Str`, `Url` (and its modifiers), `Color`,
+  `Calc` (a math function, simplified, with the type and range it stands
+  for), `Func` and `Brackets` (what the grammar spells out), `Delim`,
+  `Raw` (`<declaration-value>`'s tokens).
+- `CssMatch` matches by backtracking: each node offers its matches to
+  what follows, so a repetition or a `||` gives back values a later term
+  needs; `||` and `&&` give their parts in the grammar's order; a comma
+  beside an omitted term is left out (Values 4 §2.6). The primitives are
+  matched by hand: numbers and dimensions within their ranges, math
+  functions wherever a number or dimension may be (a percentage only
+  where the type takes one), strings, identifiers (`<custom-ident>` not a
+  CSS-wide keyword nor one of the property's own), url(), `<color>`.
+  A search over 200,000 steps gives up (no match).
+- `CssCalc`: Values 4's math functions (calc(), min(), max(), clamp(),
+  round(), mod(), rem(), the trigonometric and exponential ones, abs(),
+  sign(), the constants) parsed (whitespace around `+` and `-`), typed
+  (§10.8: exponents of the base types, a percentage resolved against
+  the context's), simplified (§10.10: units of fixed ratios to px, deg,
+  s, hz, dppx; terms of a unit added; a function of values of one unit
+  evaluated; Values 5's clamp() with none as min() or max()) and
+  serialized (§10.12: a lone value in calc(), a sum's numbers, then
+  percentages, then dimensions by unit).
+- `CssColors`: Color 4's colours: hex, the 148 names, transparent,
+  currentcolor, the system colours, rgb(), rgba(), hsl(), hsla() (legacy
+  with commas and modern), hwb(), lab(), lch(), oklab(), oklch(), color()
+  in its spaces; `none`; math functions in components. Serialized as
+  Color 4 §15 and the browsers do: keywords as written (lowercase), the
+  legacy forms as rgb() or rgba() rounded to integers (none kept in their
+  own function; rgb()'s as color(srgb)), the others in their own function
+  with lab()'s L clamped to its range, lch()'s C to at least 0 and a hue
+  in [0, 360); a math function as calc() of its value there, and one to
+  resolve when computed (sign(1em - 10px)) kept, the colour then in the
+  modern syntax. color-mix(), relative colours, light-dark() and the rest
+  of Color 5 match their grammar only.
+- `CssCanonical`: the shortest of equivalent forms where the property's
+  spec says: sides as few as say the same (`{1,4}`, `a b?`), Display 3's
+  short displays, `first baseline` as `baseline`, a counter's default
+  number, background-size's second `auto`, background-repeat's
+  `repeat-x`, a one-value position as two, opacity's percentages as
+  numbers, a feature's default 1 (`off` as 0), counter()'s default style,
+  gradients' defaults (ellipse, farthest-corner, a centre, `from 0deg`),
+  image-set()'s strings as url() and its default 1x, rotate(0) as 0deg,
+  quoted family names of identifiers unquoted, grid areas' cells one
+  space apart. And what a property's prose adds to its grammar (`valid`):
+  feature tags of four ASCII letters, a language of one to four, rows of
+  grid areas of one width, one auto repetition of tracks, a text shadow's
+  three lengths, symbols()' two symbols, a circle's one length.
+- `CssComputed`: lengths in px (the context's font size, root font size
+  and viewport for em, rem and vw; 16px and 800x600 by default), math
+  functions simplified, clamped to their range and rounded when integers
+  (a NaN as 0), positions as percentages (`right 10px` as `calc(100% -
+  10px)`, in gradients too), font-width's and font-size's keywords as
+  theirs, line widths snapped to whole pixels, colours resolved
+  (currentcolor to the context's), shadows' colour and blur filled in,
+  feature settings deduplicated and sorted, `flex-start` as `flow-start`
+  outside flex. What needs the cascade (inherit, bolder) or layout (grid
+  tracks, url() against the document) gives null or stays as specified.
+- `CssNumber.format`: numbers as browsers write them, six significant
+  digits (`0.333333`, `1e+06`), an integer's every digit.
+
+Shorthands match their grammar as a whole and serialize as written in
+the grammar's order; their expansion to longhands (and serialization back
+from them) is the cascade's, still to come.
+
+Tests (`CssValues.test.hx`, natively, as wasm32-wasi and on Eval):
+examples of matching, rejecting, computing and numbers; and a property:
+a value drawn from any property's grammar tree (each alternative, count
+and primitive within its range) parses, and its serialization parses back
+to a value that serializes the same. The css lane's CssValuesCheck runs
+WPT's 19,000 value cases and css-parsing-tests' colours (tests/css).
