@@ -27,8 +27,10 @@ typedef PropertyOptions = {
 	// next run to replay first. HELDER_PROPERTY_SOAK (seconds) runs it that
 	// long, its cases unbounded
 	?limit:Float,
-	// with limit: the most MB the process may grow by in a case (natively,
-	// where the system tells), else the watchdog ends it
+	// with limit: the most MB a case may grow the process by (natively,
+	// where the system tells), against its own start: its peak while it
+	// runs, and what it keeps after a full collection; else the watchdog
+	// ends it
 	?memory:Float
 }
 
@@ -76,7 +78,10 @@ private typedef Result = {
 @:allow(helder.test)
 class Property {
 	// (helder test --out's: HELDER_PROPERTY_STORE)
-	static final STORE = Sys.getEnv("HELDER_PROPERTY_STORE") ?? "bin/test/properties";
+	static final STORE = switch Sys.getEnv("HELDER_PROPERTY_STORE") {
+		case null | "": "bin/test/properties";
+		case s: s;
+	}
 
 	// (the last Rejected or Overran thrown: a TypeScript body's catch takes
 	// it, PropertyScript throws it again)

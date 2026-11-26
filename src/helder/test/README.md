@@ -188,9 +188,12 @@ A robustness property (`limit`: a case's most seconds) is watched
 natively by a thread of its own, since a case that hangs, crashes or eats
 the machine cannot report itself: each case is kept in the store before
 it runs, past `limit` the watchdog prints the case (its notes, its
-replay) and ends the process (exit code 3), as it does when the process
-grows by more than `memory` MB in a case (macOS' and iOS' footprint,
-Linux's and Android's resident set; unchecked on Windows); a native crash
+replay) and ends the process (exit code 3), as it does when a case grows
+the process by more than `memory` MB (macOS' and iOS' footprint, Linux's
+and Android's resident set; unchecked on Windows): against the case's own
+start, a full collection first when the footprint has drifted half the
+budget since the last, the peak while it runs (the watchdog's readings)
+and what it keeps after a full collection once it ends. A native crash
 leaves the case there too. The next run replays the kept case first,
 saying so. Such a case is not shrunk (the process ended): its replay is
 the regression test to write. HELDER_PROPERTY_SOAK (seconds) runs each
