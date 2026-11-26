@@ -392,9 +392,9 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/floats-clear | 38 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
 | CSS2/fonts | 117 | 159 |
-| CSS2/generated-content | 157 | 205 |
+| CSS2/generated-content | 185 | 205 |
 | CSS2/linebox | 48 | 192 |
-| CSS2/lists | 149 | 155 |
+| CSS2/lists | 151 | 155 |
 | CSS2/margin-padding-clear | 509 | 683 |
 | CSS2/media | 17 | 17 |
 | CSS2/normal-flow | 539 | 696 |
@@ -415,9 +415,9 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/visuren | 16 | 26 |
 | CSS2/zindex | 4 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 3657 | 5752 |
+| all | 3687 | 5752 |
 
-Pending by stage: inline 650, positioning 549, floats 369, generated content 243, tables 229, fonts 42, ui 13.
+Pending by stage: inline 650, positioning 549, floats 369, tables 229, generated content 213, fonts 42, ui 13.
 
 ## Report
 

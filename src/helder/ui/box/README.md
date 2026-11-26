@@ -40,13 +40,14 @@ sys.io.File.saveBytes("page.png", canvas.toPng());
   end edges only where it starts and ends (`Box.NO_START`, `NO_END`). Text
   directly in a block is a run with its parent's style (the anonymous
   inline box's).
-- Generated content: `::before` and `::after` with `content`'s strings,
-  `attr()`, `counter()` and `counters()` (Lists 3's counters: reset,
-  increment, set, list items' `list-item`; an instance lasts until its
-  element's parent ends), quotes, `url()` images; `::marker` of list
-  items: its `content`, else `list-style-type`'s symbol or number
-  (`Counters`: decimal, roman, alphabetic, greek, disc, circle, square),
-  inside as an inline box, outside (`Box.OUTSIDE`) in the first line.
+- Generated content: `::before` and `::after` with `content`, and list
+  items' `::marker`, resolved by helder.css's `CssCounters` (entered and
+  left per element and pseudo-element in tree order: Lists 3's counter
+  scoping, `list-item`, HTML's ol start/reversed and li value, quotes'
+  depth, @counter-style through `CssCounterStyles`) into text runs and
+  images; a marker inside as an inline box, outside (`Box.OUTSIDE`) in
+  the first line; a list-style-image that doesn't load falls back to
+  list-style-type.
 - Tables (CSS 2.1 §17.2.1): a table is its wrapper box (`TableWrapper`:
   its margins, its captions) around the table box; a table's parts are
   `Container`s by `BoxStyle.part` (row groups, rows, cells, columns,

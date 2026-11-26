@@ -1,6 +1,7 @@
 package helder.ui.box;
 
 import helder.canvas.Bitmap;
+import helder.css.CssCounters;
 import helder.css.CssStyles;
 import helder.css.CssTerm;
 import helder.dom.Document;
@@ -20,8 +21,9 @@ typedef BoxTreeOptions = {
 
 // The box tree of a document (CSS 2.1 §9.2, Display 3 §2): each element's
 // boxes by its display, none and contents skipped, text runs, replaced
-// elements, ::before, ::after and ::marker with their content (strings,
-// attr(), counters, quotes), and anonymous boxes: inline-level runs beside
+// elements, ::before, ::after and ::marker with their content (helder.css's
+// CssCounters: strings, attr(), counters in their styles, quotes, images),
+// and anonymous boxes: inline-level runs beside
 // blocks wrapped in anonymous blocks (white space alone dropped), an
 // inline box holding a block split around it (§9.2.1.1).
 class BoxTree {
@@ -35,8 +37,7 @@ class BoxTree {
 	final image:Null<String->Null<Bitmap>>;
 	// (one BoxStyle a computed style: helder.css shares styles between like elements)
 	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
-	final counters = new Map<String, Array<Int>>();
-	var quotes = 0;
+	final counters:CssCounters;
 
 	public static function build(doc:Document, styles:CssStyles, ?options:BoxTreeOptions):BoxTree
 		return new BoxTree(doc, styles, options ?? {});
@@ -45,6 +46,7 @@ class BoxTree {
 		this.styles = styles;
 		contexts = options.contexts ?? Contexts.all();
 		image = options.image;
+		counters = new CssCounters(styles);
 		var out = [];
 		var el = doc.documentElement;
 		if (el != null) generate(el, out);
@@ -72,10 +74,16 @@ class BoxTree {
 
 	// ---- elements
 
+	// (its boxes, its counters entered before and left after: helder.css's CssCounters, in tree order)
 	function generate(el:Element, out:Array<Box>) {
 		var s = style(el);
 		if (s.none) return;
-		applyCounters(s, s.listItem);
+		counters.enter(el);
+		boxes(el, s, out);
+		counters.exit(el);
+	}
+
+	function boxes(el:Element, s:BoxStyle, out:Array<Box>) {
 		if (s.contents) {
 			contents(el, s, out);
 			return;
@@ -137,7 +145,6 @@ class BoxTree {
 
 	// el's children's boxes, ::before and ::after around them
 	function contents(el:Element, s:BoxStyle, out:Array<Box>) {
-		var saved = scope();
 		pseudo(el, "before", out);
 		var n = el.firstChild;
 		while (n != null) {
@@ -155,7 +162,6 @@ class BoxTree {
 			n = n.nextSibling;
 		}
 		pseudo(el, "after", out);
-		restore(saved);
 	}
 
 	// An inline box's parts: itself when it holds no block, else one part
@@ -304,13 +310,12 @@ class BoxTree {
 
 	function pseudo(el:Element, which:String, out:Array<Box>) {
 		var css = styles.computed(el, which);
-		var content = css.get("content");
-		if (content.length == 0 || content[0].match(Keyword("none" | "normal"))) return;
+		if (css.generated() == null) return;
 		var s = new BoxStyle(css);
 		if (s.none) return;
-		applyCounters(s, false);
-		var kids = [];
-		for (t in content) generated(el, s, t, which, kids);
+		counters.enter(el, which);
+		var kids = parts(el, s, which, counters.content(el, which));
+		counters.exit(el, which);
 		kids = orphans(kids, s, s.outer == BoxStyle.INLINE);
 		var kind:BoxKind = s.contents ? Inline : kindOf(el, s);
 		if (kind == Break || kind == InlineReplaced || kind == BlockReplaced) kind = s.outer == BoxStyle.INLINE ? Inline : Block;
@@ -331,59 +336,38 @@ class BoxTree {
 		}
 	}
 
-	// (one part of content: text, or an image)
-	function generated(el:Element, s:BoxStyle, t:CssTerm, which:String, out:Array<Box>) {
-		var text:Null<String> = switch t {
-			case Str(v): v;
-			case Func("attr", [Ident(name)]) | Func("attr", [Ident(name), _]): el.getAttribute(name) ?? "";
-			case Func("counter", args): counterText(args, false);
-			case Func("counters", args): counterText(args, true);
-			case Keyword("open-quote"): quotes++ == 0 ? "\u201C" : "\u2018";
-			case Keyword("close-quote"):
-				if (quotes > 0) quotes--;
-				quotes == 0 ? "\u201D" : "\u2019";
-			case Keyword("no-open-quote"):
-				quotes++;
-				"";
-			case Keyword("no-close-quote"):
-				if (quotes > 0) quotes--;
-				"";
-			case Url(url, _):
+	// (generated content's parts, resolved by CssCounters: text runs and images)
+	function parts(el:Element, s:BoxStyle, which:String, list:Null<Array<CssGeneratedPart>>):Array<Box> {
+		var out = [];
+		if (list != null) for (p in list) switch p {
+			case Text(text) if (text != ""):
+				var b = make(Text, s, null, which);
+				b.text = text;
+				out.push(b);
+			case Image(Url(url, _)):
 				var b = make(InlineReplaced, s, el, which);
 				b.image = load(url);
 				out.push(b);
-				null;
-			case _: null;
+			case _:
 		}
-		if (text == null || text == "") return;
-		var b = make(Text, s, null, which);
-		b.text = text;
-		out.push(b);
+		return out;
 	}
 
-	// A list item's ::marker: its content, else its list-style-type's
-	// symbol or number.
+	// A list item's ::marker (CssCounters': its content, else list-style-image, else
+	// list-style-type's text for its list-item counter).
 	function marker(el:Element):Null<Box> {
-		var css = styles.computed(el, "marker");
-		var s = new BoxStyle(css);
-		var text = switch css.get("content") {
-			case [Keyword("normal")] | []: switch css.get("list-style-type") {
-					case [Str(v)]: v;
-					case [Keyword("none")] | [Ident("none")]: null;
-					case [Ident(name)] | [Keyword(name)]: Counters.marker(name, top("list-item"));
-					case _: null;
-				}
-			case [Keyword("none")]: null;
-			case terms:
-				var kids = [];
-				for (t in terms) generated(el, s, t, "marker", kids);
-				[for (k in kids) k.text].join("");
+		var s = new BoxStyle(styles.computed(el, "marker"));
+		counters.enter(el, "marker");
+		var kids = parts(el, s, "marker", counters.marker(el));
+		// (a list-style-image that doesn't load: list-style-type's marker, Lists 3 §3.2)
+		if (kids.length == 1 && kids[0].kind == InlineReplaced && kids[0].image == null) {
+			var type = s.keyword("list-style-type");
+			kids = type == "none" || type == "" ? [] : parts(el, s, "marker", [Text(counters.formats.marker(counters.value("list-item"), type))]);
 		}
-		if (text == null || text == "") return null;
+		counters.exit(el, "marker");
+		if (kids.length == 0) return null;
 		var b = make(Inline, s, el, "marker");
-		var t = make(Text, s, null, "marker");
-		t.text = text;
-		b.append(t);
+		for (k in kids) b.append(k);
 		if (style(el).keyword("list-style-position") != "inside") b.flags |= Box.OUTSIDE;
 		return b;
 	}
@@ -403,82 +387,6 @@ class BoxTree {
 
 	function load(url:Null<String>):Null<Bitmap>
 		return url == null || url == "" || image == null ? null : image(url);
-
-	// ---- counters (Lists 3 §4, simplified: an instance lasts until its parent element ends)
-
-	function scope():Map<String, Int>
-		return [for (k => v in counters) k => v.length];
-
-	function restore(saved:Map<String, Int>)
-		for (k => v in counters) {
-			var n = saved.exists(k) ? saved.get(k) : 0;
-			if (v.length > n) v.resize(n);
-		}
-
-	function applyCounters(s:BoxStyle, listItem:Bool) {
-		var incremented = false;
-		each(s.terms("counter-reset"), 0, (name, v) -> {
-			var c = counters.get(name);
-			if (c == null) counters.set(name, c = []);
-			c.push(v);
-		});
-		each(s.terms("counter-increment"), 1, (name, v) -> {
-			if (name == "list-item") incremented = true;
-			var c = counters.get(name);
-			if (c == null || c.length == 0) counters.set(name, c = [0]);
-			c[c.length - 1] += v;
-		});
-		each(s.terms("counter-set"), 0, (name, v) -> {
-			var c = counters.get(name);
-			if (c == null || c.length == 0) counters.set(name, c = [0]);
-			c[c.length - 1] = v;
-		});
-		if (listItem && !incremented) {
-			var c = counters.get("list-item");
-			if (c == null || c.length == 0) counters.set("list-item", c = [0]);
-			c[c.length - 1]++;
-		}
-	}
-
-	static function each(terms:Array<CssTerm>, by:Int, f:(String, Int) -> Void) {
-		var i = 0;
-		while (i < terms.length) {
-			switch terms[i] {
-				case Ident(name) | Func(_, [Ident(name)]):
-					var v = by;
-					switch terms[i + 1] {
-						case Number(n, _):
-							v = Std.int(n);
-							i++;
-						case _:
-					}
-					f(name, v);
-				case _:
-			}
-			i++;
-		}
-	}
-
-	function top(name:String):Int {
-		var c = counters.get(name);
-		return c == null || c.length == 0 ? 0 : c[c.length - 1];
-	}
-
-	function counterText(args:Array<CssTerm>, all:Bool):String {
-		var name = switch args[0] {
-			case Ident(n): n;
-			case _: return "";
-		}
-		var sep = "", styleName = "decimal";
-		for (a in args.slice(1)) switch a {
-			case Str(v): sep = v;
-			case Ident(v) | Keyword(v): styleName = v;
-			case _:
-		}
-		var c = counters.get(name);
-		if (c == null || c.length == 0) c = [0];
-		return all ? [for (v in c) Counters.text(styleName, v)].join(sep) : Counters.text(styleName, c[c.length - 1]);
-	}
 
 	// The tree, a box a line, indented (tests and the dev tool).
 	public function dump():String {
