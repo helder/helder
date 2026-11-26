@@ -20,8 +20,9 @@
 #   build, an unknown example, region, page or link a failure) and checked
 #   in headless Chromium (site-check: bun run site:check, its demos and
 #   docs pages in two shards, a machine each);
-# - fuzz (pushes to main, nightly): helder.image's decoders and helder.pdf
-#   fuzzed for 30 s each;
+# - fuzz (pushes to main, nightly): the robustness properties (images, PDF,
+#   media containers, fonts, Markdown) soaked for 20 s each from a random
+#   seed, the failing cases kept as an artifact;
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
 #   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
@@ -298,8 +299,12 @@ jobs:
       - id: setup
         uses: ./.github/actions/setup
         with: {node-version: 24}
-      - name: helder.image's decoders fuzzed for 30 s (tests/image/Fuzz.hx), helder.pdf for 30 s (tests/pdf/Fuzz.hx)
-        run: bun run test -k image-fuzz pdf-fuzz
+      - name: the robustness properties soaked for 20 s each (bun run test fuzz)
+        run: bun run test fuzz
+      # (a case that failed, hung, crashed or blew up: replayed first by helder test)
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with: {name: fuzz-cases, path: bin/test/properties, retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 

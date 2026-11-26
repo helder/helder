@@ -134,7 +134,7 @@ ReportLab, pypdf, LibreOffice and by hand: corpus.py; a scanned page,
 CJK text, a 120-page document, form fields among them; against pdf.js's
 in Chromium: pdfjs.mjs, tests/pdf/ref; check.mjs: of the 3x3 blocks either
 inks at most 10% apart, and the text against pdf.js's getTextContent;
-15 of 15; tests/pdf/known.txt lists pages expected to fail, none now), the pdf-fuzz
-lane (the corpus mutated for 30 s, each mutant ending in pixels or a
-PdfError: about 13,000 mutants, none otherwise), Crypto.test.hx (the test
+15 of 15; tests/pdf/known.txt lists pages expected to fail, none now), tests/pdf/Fuzz.test.hx
+(a property: the corpus mutated, each mutant ending in pixels or a
+PdfError within its time and memory; soaked by the fuzz lane), Crypto.test.hx (the test
 lane).

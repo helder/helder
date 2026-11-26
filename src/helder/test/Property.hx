@@ -20,7 +20,16 @@ typedef PropertyOptions = {
 	// a failure's choices, as reported: that case alone
 	?replay:String,
 	// a stateful case's most steps (50)
-	?steps:Int
+	?steps:Int,
+	// a robustness property's: a case's most seconds, past which a
+	// watchdog ends the process as hung (natively); each case kept in the
+	// store before it runs, so that a hang or a crash leaves it for the
+	// next run to replay first. HELDER_PROPERTY_SOAK (seconds) runs it that
+	// long, its cases unbounded
+	?limit:Float,
+	// with limit: the most MB the process may grow by in a case (natively,
+	// where the system tells), else the watchdog ends it
+	?memory:Float
 }
 
 // a stateful property's system: made for each case, then steps drawn
@@ -74,10 +83,25 @@ class Property {
 	// (which property of the running test: its index is its key)
 	static var test:Null<Case>;
 	static var index = 0;
+	// (a robustness property's key, its place and its case running: kept
+	// before each case, reported by the watchdog)
+	static var guarded:Null<String>;
+	static var at:Null<PosInfos>;
+	static var current:Null<Choices>;
 
 	static function check<T>(gen:Gen<T>, body:T->Void, show:Null<T->String>, options:Null<PropertyOptions>, pos:PosInfos) {
 		Runner.check();
-		var r = search(gen, body, options ?? {}, key(pos));
+		var k = key(pos);
+		if (options?.limit != null) {
+			guarded = k;
+			at = pos;
+			Guard.watch(options.limit, options.memory ?? 0, hung);
+		}
+		var r = try search(gen, body, options ?? {}, k) catch (e:haxe.Exception) {
+			unguard();
+			throw helder.async.Errors.kept(e);
+		}
+		unguard();
 		if (r.failed != null) Runner.failure(report(r, show), pos);
 		else if (r.rejected > 0 && r.cases == 0 || r.rejected > 4 * (options?.cases ?? 100))
 			Runner.failure('the generator rejects too much: ${r.rejected} cases rejected, ${r.cases} run', pos);
@@ -101,6 +125,12 @@ class Property {
 
 	static function find<T>(gen:Gen<T>, body:T->Void, options:PropertyOptions, key:String):Result {
 		var cases = options.cases ?? 100, seconds = options.seconds ?? 5.0;
+		var soak = options.limit != null ? Std.parseFloat(Sys.getEnv("HELDER_PROPERTY_SOAK") ?? "") : Math.NaN;
+		if (soak > 0) {
+			// (4 times it still an Int: the rejections' bound)
+			cases = 0x1FFFFFFF;
+			seconds = soak;
+		}
 		var seed = options.seed ?? envSeed();
 		var r:Result = {failed: null, cases: 0, rejected: 0, shrinks: 0, seed: seed, stored: false};
 		if (options.replay != null) {
@@ -110,6 +140,7 @@ class Property {
 			return r;
 		}
 		var stored = load(key);
+		if (stored != null && guarded != null) Sys.println('${Runner.file(at.fileName)}:${at.lineNumber}: the case kept in ${path(key)} replayed first (a failure, a hang or a crash of a run before)');
 		if (stored != null) {
 			var run = once(gen, body, new Choices(stored, false));
 			if (run.outcome.match(Failed(_))) {
@@ -146,6 +177,11 @@ class Property {
 		control = null;
 		try {
 			value = c.draw(gen);
+			if (guarded != null) {
+				save(guarded, c.values);
+				current = c;
+				Guard.enter();
+			}
 			body(value);
 		} catch (e:Rejected) {
 			outcome = Rejected;
@@ -155,7 +191,12 @@ class Property {
 			failures.push(Runner.error(e));
 		}
 		Runner.capture = outer;
+		if (guarded != null) {
+			Guard.leave();
+			current = null;
+		}
 		if (failures.length > 0) outcome = Failed(failures);
+		else if (guarded != null) remove(guarded);
 		return {choices: c, value: value, outcome: outcome};
 	}
 
@@ -306,6 +347,25 @@ class Property {
 		if (a.length != b.length) return a.length < b.length;
 		for (i in 0...a.length) if (a[i] != b[i]) return a[i] < b[i];
 		return false;
+	}
+
+	static function unguard() {
+		if (guarded == null) return;
+		Guard.stop();
+		guarded = null;
+		current = null;
+	}
+
+	// (the watchdog's, on its thread: the case running reported, the
+	// process ended, the case left in the store)
+	static function hung(why:String) {
+		var c = current, k = guarded, pos = at;
+		if (c == null || k == null || pos == null) return;
+		var lines = ['${Runner.file(pos.fileName)}:${pos.lineNumber}: property failed: $why:'];
+		for (n in c.notes) lines.push("  " + n);
+		lines.push('  replay: {replay: "${c.values.join(" ")}"}, kept in ${path(k)}: the next run replays it first');
+		Sys.println(lines.join("\n"));
+		Sys.exit(3);
 	}
 
 	// --- reporting

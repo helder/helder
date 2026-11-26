@@ -150,6 +150,7 @@ function tests() {
 | `array(item, min = 0, max = 100)` | mostly short, sometimes up to max; shrinking to fewer items |
 | `string(?chars, min = 0, max = 2000)`, `char(nul = false)` | char(): ASCII mostly, and whitespace and line ends, right-to-left letters and marks, combining marks, emoji sequences, other scripts; NUL and controls with nul |
 | `recursive(base, extend, depth = 3)` | base, or extend's of a smaller one |
+| `mutated(seeds, most = 8)` | Bytes: one of seeds (a map of names to real files' bytes) with 1 to most mutations (bits flipped, edge values, huge header ints, numbers made nines, runs cut, repeated, cut out, zeroed, spliced from another seed), each noted as the case's value; shrinking to fewer, earlier ones of the first seed |
 | `g.map(f)`, `g.filter(ok)` | filter draws three times, else rejects the case |
 | `c -> ...` | a Gen of your own is a function of the case's Choices: `c -> {x: c.draw(int(0, 9)), y: c.draw(int(0, 9))}`; `c.choice(bound)`, `c.weighted(p)`, `c.note(text)` |
 | `assume(cond)` | the case rejected, not failed; over 4 rejected for each case asked, or none run, fails the property ("the generator rejects too much") |
@@ -174,7 +175,7 @@ src/geom/Vec.test.hx:12: property failed after 4 cases, shrunk 9 times:
 
 Options (the last argument): `cases` (100), `seconds` (5: generating, and
 again shrinking), `seed`, `replay` (a reported sequence: that case alone),
-`steps` (stateful: 50). The seed is 0 unless HELDER_PROPERTY_SEED (a
+`steps` (stateful: 50), `limit` and `memory` (robustness, below). The seed is 0 unless HELDER_PROPERTY_SEED (a
 number, or `random`) or `seed` says, mixed with the property's test and
 place in it, so a run's cases are the same on every run and target (host,
 wasm and interp draw the same: Property.test.hx's snapshot). A failure's
@@ -182,6 +183,25 @@ sequence is kept in bin/test/properties (one file a property, named by its
 file, test and index in it) and replayed first on the next run, shrunk
 further if it still fails, removed once it passes. Bodies are plain
 functions (no `async` inside a property).
+
+A robustness property (`limit`: a case's most seconds) is watched
+natively by a thread of its own, since a case that hangs, crashes or eats
+the machine cannot report itself: each case is kept in the store before
+it runs, past `limit` the watchdog prints the case (its notes, its
+replay) and ends the process (exit code 3), as it does when the process
+grows by more than `memory` MB in a case (macOS' and iOS' footprint,
+Linux's and Android's resident set; unchecked on Windows); a native crash
+leaves the case there too. The next run replays the kept case first,
+saying so. Such a case is not shrunk (the process ended): its replay is
+the regression test to write. HELDER_PROPERTY_SOAK (seconds) runs each
+robustness property that long, its cases unbounded (the fuzz lane: `bun
+run test fuzz`); eval and wasm32-wasi run them without the watchdog.
+
+```haxe
+test("a mutated image: decoded, or an ImageError", () -> property(mutated(seeds), b -> {
+  try Image.decode(b) catch (e:ImageError) {}
+}, {cases: 150, seconds: 3, limit: 10, memory: 256}));
+```
 
 A stateful property draws steps and runs them on a system made for each
 case, its check holding after setup and after each step; a step's draws
@@ -208,8 +228,8 @@ failure. A headless Ui is a system too: src/helder/ui/GridScroll.test.hx
 wheels, resizes, presses and keys a VirtualGrid, its scroll, selection and
 focus checked after each. Tests: Property.test.hx (shrinking's classic
 cases, replays, the store, rejections, stateful),
-src/helder/markdown/Markdown.test.hx's properties, tests/image/Decoders.test.hx
-(tests/image/Fuzz.hx's mutations as a property).
+src/helder/markdown/Markdown.test.hx's properties, the robustness ones
+(tests/image, tests/pdf, tests/media and tests/text's Fuzz.test.hx).
 
 ## Running
 
