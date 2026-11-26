@@ -24,6 +24,7 @@
     "css-break-3": ["break-before", "break-after", "break-inside", "orphans", "widows", "box-decoration-break", "page-break-before", "page-break-after", "page-break-inside"],
     "css-page-3": ["page"],
     "css-transforms-1": ["transform", "transform-origin", "transform-box"],
+    "css-images-3": ["object-fit", "object-position", "image-orientation"],
     "css-flexbox-1": ["flex", "flex-direction", "flex-wrap", "flex-flow", "flex-grow", "flex-shrink", "flex-basis", "order"],
     "css-align-3": ["align-content", "align-items", "align-self", "justify-content", "justify-items", "justify-self", "place-content", "place-items", "place-self", "gap", "row-gap", "column-gap", "grid-gap", "grid-row-gap", "grid-column-gap"],
     "css-grid-1": ["grid", "grid-template", "grid-template-columns", "grid-template-rows", "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow", "grid-area", "grid-row", "grid-column", "grid-row-start", "grid-row-end", "grid-column-start", "grid-column-end"]
@@ -96,8 +97,8 @@
     "css-gcpm-4": "GCPM 4: not in checkpoint 1",
     "css-grid-3": "masonry (Grid 3): not in checkpoint 1",
     "css-image-animation-1": "animation: a page is still",
-    "css-images-3": "replaced content's properties (Images 3, 4): not in checkpoint 1; its types are, through backgrounds and content",
-    "css-images-4": "replaced content's properties (Images 3, 4): not in checkpoint 1; its types are, through backgrounds and content",
+    "css-images-3": "image-rendering and image-resolution: not in checkpoint 1",
+    "css-images-4": "image-rendering and image-resolution: not in checkpoint 1",
     "css-images-5": "Images 5: not in checkpoint 1",
     "css-line-grid-1": "line grids and rhythm: not in checkpoint 1",
     "css-rhythm-1": "line grids and rhythm: not in checkpoint 1",

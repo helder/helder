@@ -50,7 +50,7 @@ class CssCheck {
 			for (t in inScope) {
 				tests++;
 				var refs:Array<Dynamic> = t.refs ?? [];
-				need(Std.isOfType(t.name, String) && (t.type == "crash" ? refs.length == 0 : refs.length > 0), 'reftests.json: $dir/${t.name}');
+				need(Std.isOfType(t.name, String) && (t.type == "crash" || t.type == "noref" ? refs.length == 0 : refs.length > 0), 'reftests.json: $dir/${t.name}');
 			}
 			for (o in outOf) {
 				out++;

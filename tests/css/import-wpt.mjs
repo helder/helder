@@ -191,11 +191,12 @@ for (const d of Object.values(dirs)) {
 }
 writeJson(out + '/reftests.json', {
   source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
-  fields: 'directories (from the WPT root), each with tests in scope: name; type: crash (else a reftest); '
+  fields: 'directories (from the WPT root), each with tests in scope: name; type: crash, or noref (no reference '
+    + 'yet: checked against a golden Chromium draws), else a reftest; '
     + 'refs: [path from the directory, match|mismatch, the reference\'s own refs?]; help: <link rel=help>s; '
     + 'flags: <meta name=flags>; fuzzy: <meta name=fuzzy>s; needs: ahem, script, print (-print: paged), wait '
     + '(reftest-wait), image, svg, xml (each left out when empty); and out: [name, type (reftest, crash, '
-    + 'testharness, manual, visual), why not]',
+    + 'noref, testharness, manual), why not]',
   directories: dirs
 }, 4)
 
@@ -203,16 +204,18 @@ writeJson(out + '/reftests.json', {
 const n = (a, b) => b[1] - a[1]
 const table = (head, rows) => [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n')
 const inScope = tests.filter(t => t.scope === true)
+const count = (ts, ok) => ts.filter(t => t.scope === true && ok(t)).length
 const bySuite = SUITES.map(s => {
   const ts = tests.filter(t => t.path.startsWith(s + '/'))
-  return [s, ts.length, ts.filter(t => t.scope === true).length, ts.filter(t => t.scope === true && t.needs.includes('ahem')).length, ts.filter(t => t.scope === true && t.needs.includes('print')).length]
+  return [s, ts.length, count(ts, () => true), count(ts, t => t.type === 'reftest'), count(ts, t => t.type === 'noref'),
+    count(ts, t => t.type === 'crash'), count(ts, t => t.needs.includes('ahem')), count(ts, t => t.needs.includes('print'))]
 })
 const groups = new Map()
 for (const t of tests) {
   const g = section(t)
-  const e = groups.get(g) ?? [0, 0]
+  const e = groups.get(g) ?? [0, 0, 0]
   e[0]++
-  if (t.scope === true) e[1]++
+  if (t.scope === true) e[t.type === 'noref' ? 2 : 1]++
   groups.set(g, e)
 }
 const reasons = new Map()
@@ -251,15 +254,18 @@ const md = [
   '',
   '### Reftests',
   '',
-  `${tests.length} tests (references and support files left out), ${inScope.length} in scope:`,
+  `${tests.length} tests (references and support files left out), ${inScope.length} in scope: `
+    + `${inScope.filter(t => t.type === 'reftest').length} reftests, ${inScope.filter(t => t.type === 'crash').length} crash tests and `
+    + `${inScope.filter(t => t.type === 'noref').length} noref (no reference yet: checked later against goldens Chromium draws, `
+    + `a tier the reftest runner adds):`,
   '',
-  table(['Suite', 'Tests', 'In scope', 'Of them Ahem', 'Of them print'], bySuite),
+  table(['Suite', 'Tests', 'In scope', 'Reftests', 'Noref', 'Crash', 'Of them Ahem', 'Of them print'], bySuite),
   '',
   table(['Out of scope because', 'Tests'], [...reasons].sort(n)),
   '',
   'By directory (CSS2: its chapters; the others: their sections, from the first `<link rel=help>`):',
   '',
-  table(['Directory or section', 'Tests', 'In scope'], [...groups].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([g, [all, ok]]) => [g, all, ok]))
+  table(['Directory or section', 'Tests', 'In scope: reftests and crash', 'In scope: noref'], [...groups].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([g, e]) => [g, ...e]))
 ].join('\n')
 const readme = fs.readFileSync('tests/css/README.md', 'utf8')
 const [before, rest] = readme.split('<!-- report -->')
@@ -281,7 +287,7 @@ function describe(rel, text) {
   const harness = /testharness\.js/.test(text)
   const name = path.basename(rel)
   const type = refs.length ? 'reftest' : harness ? 'testharness' : /-manual\./.test(name) ? 'manual'
-    : /-crash\.|\/crashtests\//.test(rel) ? 'crash' : 'visual'
+    : /-crash\.|\/crashtests\//.test(rel) ? 'crash' : 'noref'
   const needs = [
     (flags.includes('ahem') || /\bahem\b/i.test(text)) && 'ahem', script && 'script', /-print\./.test(name) && 'print',
     /reftest-wait/.test(text) && 'wait', flags.includes('image') && 'image', (flags.includes('svg') || /\.svg$/.test(rel)) && 'svg',
@@ -301,7 +307,6 @@ function describe(rel, text) {
 function classify(t, text) {
   if (t.type === 'testharness') return 'testharness.js: needs JavaScript'
   if (t.type === 'manual') return 'interact: needs a person'
-  if (t.type === 'visual') return 'visual: no reference (a golden blessed by eye could gate it)'
   for (const f of t.flags) if (FLAGS_OUT[f]) return FLAGS_OUT[f]
   if (t.needs.includes('script')) return 'script: needs JavaScript'
   for (const h of t.help) for (const [re, what] of HELP_DEFERRED) if (re.test(h)) return `deferred: ${what} (its help)`

@@ -20,7 +20,7 @@ var rect = CssGrammars.type("rect()", ["clip"]); // clip's rect( <top>, <right>,
 8.7.10, the CSS specs' definitions as webref scrapes them, cut to
 checkpoint 1's properties:
 
-- `properties`: 219 `CssProperty`s, each with the module it is in scope
+- `properties`: 222 `CssProperty`s, each with the module it is in scope
   for (`module`), its spec's anchor (`href`), its grammar (`syntax`, the
   spec's text), `initial`, `inherited` (null for a shorthand), `appliesTo`,
   `percentages`, `computed` (the computed value's prose), `animation`,
@@ -52,7 +52,7 @@ scope.json lists the properties in scope under their module, and every
 other webref property is out, by its spec (`outSpecs`) or by name (`out`),
 each with why; the generator fails on a property it can't place, a
 longhand or alias out of scope, or a type no definition gives.
-manifest.json has the package's hash and the counts. Out are 604:
+manifest.json has the package's hash and the counts. Out are 601:
 
 | Out | Properties |
 | --- | --- |
@@ -68,7 +68,7 @@ manifest.json has the package's hash and the counts. Out are 604:
 | speech | 19 |
 | Text 4 and 5, Text Decoration 4, Inline 3 past `line-height` and `vertical-align` | 37 |
 | Sizing 4, Transforms 2 (3D, `translate`/`rotate`/`scale`), anchor positioning, motion paths | 33 |
-| replaced content (Images 3 to 5: `object-fit`, `image-orientation`), ruby, MathML, line grids, color schemes, palettes, HDR, page floats past CSS 2.1's, zoom, the rest of the next levels | 40 |
+| `image-rendering`, `image-resolution` and Images 5, ruby, MathML, line grids, color schemes, palettes, HDR, page floats past CSS 2.1's, zoom, the rest of the next levels | 37 |
 
 ## Value grammars
 
