@@ -213,6 +213,8 @@ class Seed {
 	// (the built-ins a program uses: Builtins.install*, chosen by lower.Features)
 	public static function libInstallRegExp():Void Builtins.installRegExp();
 
+	public static function libInstallRegExpProperties():Void Builtins.installRegExpProperties();
+
 	public static function libInstallNormalize():Void Builtins.installNormalize();
 
 	public static function libInstallDate():Void Builtins.installDate();
@@ -486,6 +488,7 @@ class Seed {
 		libInit();
 		if (libReady()) libHole();
 		libInstallRegExp();
+		libInstallRegExpProperties();
 		libInstallNormalize();
 		libInstallDate();
 		libInstallBuffers();

@@ -90,7 +90,11 @@ class Frontend extends ApiCalls {
 		b = outer;
 	}
 
-	public function lower() {
+	// (an internal error at the statement it was lowering)
+	public function lower()
+		try lowerProgram() catch (e:String) throw StringTools.startsWith(e, "TSHX003") ? where() + ": " + e : e;
+
+	function lowerProgram() {
 		var main = Builder.func(p, "main", TVoid);
 		b = new Builder(p, main);
 		b.runtime("libInit", []);
