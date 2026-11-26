@@ -17,7 +17,7 @@ class FrameReader {
 	// passes: where what passes draw as data goes (PassData), each a GPU
 	// texture of the list (PassData.MARK less its index) for the one who
 	// replays it to draw; without, a placeholder's box
-	public static function read(bytes:haxe.io.Bytes, fonts:Array<FontFile>, images:Array<Null<Image>>, ?passes:Array<PassData>):DisplayList {
+	public static function read(bytes:haxe.io.Bytes, fonts:Array<FontFile>, images:Int->Null<Image>, ?passes:Array<PassData>):DisplayList {
 		var list = new DisplayList(), r = new FrameInput(bytes);
 		function box():{x:Float, y:Float, w:Float, h:Float}
 			return {x: r.float(0), y: r.float(1), w: r.float(2), h: r.float(3)};
@@ -87,7 +87,7 @@ class FrameReader {
 				case FrameOp.IMAGE:
 					var k = Std.int(r.uint()), b = box();
 					var u0 = r.float(50), v0 = r.float(51), u1 = r.float(52), v1 = r.float(53), radius = r.float(10), c = corners();
-					var img = k == 0 ? null : images[k - 1];
+					var img = k == 0 ? null : images(k - 1);
 					if (img != null) list.image(img, b.x, b.y, b.w, b.h, u0, v0, u1, v1, radius, c);
 				case FrameOp.TEXT | FrameOp.TEXT_SHADOW:
 					var shadow = r.ops.get(r.at - 1) == FrameOp.TEXT_SHADOW;

@@ -237,6 +237,12 @@ class Host {
 		var loop:Float = s.story.loop ?? 0;
 		if (fps <= 0 || loop <= 0 || s.looped) return w.frame();
 		s.looped = true;
+		// (a pass kept as its picture, a scene with effects: each frame drawn on
+		// the GPU and read back, smaller and fewer, so that it plays from the
+		// file whatever the program's frame costs)
+		var pictured = w.pictures > 0;
+		if (pictured) fps = Std.int(Math.min(fps, PICTURE_FPS));
+		var kp = Math.min(s.scale, PICTURE_SIDE / Math.max(s.width, s.height));
 		w.loop(fps);
 		s.reset();
 		s.mount();
@@ -244,19 +250,24 @@ class Host {
 		if (u == null) return w.frame();
 		for (f in 0...Math.ceil(loop * fps)) {
 			if (f > 0) w.next();
-			w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
 			s.context.run(() -> {
 				if (f > 0) Clock.tick(s.moment + f / fps);
 				u.update();
-				u.paint(w);
 			});
+			if (pictured && captured(s, kp)) w.gpu(renderer);
+			w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
+			s.context.run(() -> u.paint(w));
 		}
+		renderer.scale = u.scale = s.scale;
 		s.reset();
 		return w.frame();
 	}
 
 	// pixels a point of a still's passes' pictures (Host.written)
 	public static inline var CAPTURE = 2.0;
+	// a loop's pictures' frames a second and longest side in pixels (Host.written)
+	public static inline var PICTURE_FPS = 24;
+	public static inline var PICTURE_SIDE = 480.0;
 
 	// (a screen drawn at k pixels a point into the runtime's surface, not handed over: whether it was)
 	function captured(s:HostScreen, k:Float):Bool {

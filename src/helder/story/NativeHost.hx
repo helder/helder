@@ -224,7 +224,9 @@ class SharedFrames implements HostRuntime {
 		var sum = haxe.crypto.Md5.make(f.bytes).toHex();
 		if (stills.get(s.name) == sum) return;
 		stills.set(s.name, sum);
+		var t = haxe.Timer.stamp();
 		if (s.story.loop != null) f = h.written(s, LOOP_FPS) ?? f;
+		var ms = Math.round((haxe.Timer.stamp() - t) * 1000);
 		var a = new helder.ui.draw.FrameArchive();
 		a.add(s.name, "", s.width, s.height, f);
 		var i = h.screens.indexOf(s);
@@ -240,7 +242,8 @@ class SharedFrames implements HostRuntime {
 			screen: i,
 			path: path,
 			loopFrames: loop == null ? 0 : loop.frames.length,
-			loopBytes: loop == null ? 0 : Lambda.fold(loop.frames, (b, n) -> n + b.length, 0)
+			loopBytes: loop == null ? 0 : Lambda.fold(loop.frames, (b, n) -> n + b.length, 0),
+			loopMs: ms
 		});
 		#end
 	}

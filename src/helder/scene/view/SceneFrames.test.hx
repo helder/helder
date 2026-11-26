@@ -113,7 +113,7 @@ function tests() {
 			g.dispose();
 			equals(off, [for (_ in lives) 0]);
 		});
-		test("a host's still: a scene in code its picture at 2x, its loop none", () -> {
+		test("a host's still: a scene in code its picture at 2x, its loop its pictures at 1x", () -> {
 			// (one device a process, as a program has: the last test's gone)
 			SceneRenderer.device = null;
 			var still = new helder.story.Story("Toy/Still", c -> Fixture.toy(0.6, false), 1, null, 240, 160);
@@ -122,14 +122,18 @@ function tests() {
 			host.still(true);
 			host.show(["Toy/Still", "Toy/Spinning"]);
 			host.frame(0);
-			var images = [];
+			var images = [], loops = [];
 			for (s in host.screens) {
 				var f = host.written(s, 60);
-				images.push([for (i in f.images) '${i.width}x${i.height}']);
-				equals(f.loop, null);
+				var sizes = [for (i in f.images) '${i.width}x${i.height}'];
+				images.push(sizes.slice(0, 2));
+				loops.push(f.loop == null ? 0 : f.loop.frames.length);
+				if (f.loop != null) equals(f.loop.fps, helder.story.Host.PICTURE_FPS);
 			}
-			// (the box: 240 by 143 points, the text under it)
-			equals(images, [["480x286"], ["480x286"]]);
+			// (the box: 240 by 143 points, the text under it; a loop's frames
+			// each its picture, at the screen's scale: played from the file)
+			equals(images, [["480x286"], ["480x286", "240x143"]]);
+			equals(loops, [0, 2 * helder.story.Host.PICTURE_FPS]);
 			// (its screens let go: their <Scene>s' worlds with them)
 			for (s in host.screens)
 				s.reset();

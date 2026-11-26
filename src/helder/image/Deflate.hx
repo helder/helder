@@ -9,14 +9,16 @@ import haxe.io.Bytes;
 // them.
 class Deflate {
 	// a zlib stream of data: one deflate block of the fixed codes, its Adler-32
-	public static function zlib(data:Bytes):Bytes
-		return encode(data, true);
+	// (quick: one candidate a match, none inserted inside one, zlib -1's way:
+	// for what is written as a program runs, a loop's pictures)
+	public static function zlib(data:Bytes, quick = false):Bytes
+		return encode(data, true, quick);
 
 	// the raw deflate stream (RFC 1951), no wrapper
 	public static function raw(data:Bytes):Bytes
-		return encode(data, false);
+		return encode(data, false, false);
 
-	static function encode(data:Bytes, zlib:Bool):Bytes {
+	static function encode(data:Bytes, zlib:Bool, quick:Bool):Bytes {
 		var w = new BitWriter(data.length >> 2);
 		if (zlib) {
 			w.bits(0x78, 8);
@@ -39,7 +41,7 @@ class Deflate {
 		while (i < n) {
 			var bestLen = 0, bestDist = 0;
 			if (i + 2 < n) {
-				var cand = head[hash(i)], chain = 16, max = n - i < 258 ? n - i : 258;
+				var cand = head[hash(i)], chain = quick ? 1 : 16, max = n - i < 258 ? n - i : 258;
 				while (cand >= 0 && i - cand <= WINDOW && chain-- > 0) {
 					var l = 0;
 					while (l < max && data.get(cand + l) == data.get(i + l))
@@ -58,7 +60,10 @@ class Deflate {
 				w.length(bestLen);
 				w.distance(bestDist);
 				var end = i + bestLen;
-				while (i < end) {
+				if (quick) {
+					if (i + 2 < n) insert(i);
+					i = end;
+				} else while (i < end) {
 					if (i + 2 < n) insert(i);
 					i++;
 				}
