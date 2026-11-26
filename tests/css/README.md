@@ -362,12 +362,38 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   vertical-align, line-height, white-space and the other line properties,
   ex and ch, which helder.css computes without the font's metrics yet,
   images); a rough guess, kept while it holds.
-- Paged and noref tests are not drawn. The 2,350 `noref` tests (WPT's
-  visual tests, no reference) are for a tier to come: each drawn by
-  Chromium headless at 800 by 600 (Playwright, the same fonts and Ahem)
-  into a golden PNG kept beside the manifest (small: the least size that
-  shows it), compared as a reftest to its golden with a fuzzy tolerance
-  for text antialiasing, BLESS=1 accepting a new golden.
+- Paged tests are not drawn. The `noref` tests (WPT's visual tests, no
+  reference: 2,350) are drawn against goldens Chromium draws
+  (`goldens.mjs`, which the lane runs first): headless Chromium through
+  Playwright (the version CI's setup pins, `bun add --no-save
+  playwright@1.56.1`, `bunx playwright install chromium`), one browser,
+  two pages at a time, each test at 800 by 600 at its WPT URL, its
+  generic families the faces helder takes (`CssReftestCheck --fonts`:
+  Times New Roman, Helvetica Neue and Menlo on macOS), text antialiased
+  in grayscale as helder draws it. A golden is a PNG in
+  `bin/css/goldens/<WPT revision>-chromium-<version>-<platform>-<arch>/`,
+  not committed: drawn where missing, kept after; a new Chromium, WPT
+  revision or platform is a new directory (a cache keyed by it, for CI).
+  A noref test passes within its `<meta name=fuzzy>`, or when it differs
+  from its golden only as two engines' antialiasing does: no pixel off
+  by more than 8 where the golden is flat, and at most 10 at edges (text,
+  curves) unlike every pixel within a pixel of them by more than 96.
+  The manifest gates them as the drawn ones, by stage. Skipped: those
+  that ask for a paged view, a test font installed on the system or an
+  alternate style sheet chosen by hand, and those Chromium draws against
+  their own words (`CHROMIUM` in CssReftestCheck.hx: row-visibility-003,
+  a cell spanning into a collapsed row not clipped).
+
+At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37 on macOS:
+7,922 drawn, 6,002 pass, 491 skipped.
+
+| | Pass | Pending | Skipped |
+| --- | ---: | ---: | ---: |
+| reftests and crash tests | 4,942 | 810 | 311 |
+| noref against goldens | 1,060 | 1,110 | 180 |
+
+The noref tests pending by stage: tables 522, generated 323, inline 109,
+fonts 53, ui 44, positioning 30, floats 29.
 
 At WPT bc5ea7a9006b, the box tree, block flow and tables with the line
 stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
