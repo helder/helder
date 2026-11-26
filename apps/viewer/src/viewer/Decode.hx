@@ -33,7 +33,7 @@ typedef Decoded = {
 	error:Null<String>,
 	errorKind:String,
 	// a PDF's page's text, with its drawing (not a first page alone's)
-	?text:viewer.PageText,
+	?text:helder.pdf.PageText,
 }
 
 class Decode {

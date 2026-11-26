@@ -1,13 +1,13 @@
-package viewer;
+package helder.pdf;
 
 import helder.pdf.PdfRun;
 
-// A PDF page's text for selecting it (helder.pdf's Pdf.runs, sendable from
-// a decode's job): its text (Pdf.text) and each UTF-16 character's box on
-// the page as shown, in points, six numbers each (PdfGlyph's corner, advance
-// and ascent sides; NaN: none, a gap's space, a line's end). A ligature's
-// characters share its glyph's box in equal parts; a glyph with no text has
-// none.
+// A PDF page's text for selecting it (of Pdf.runs; plain data, sendable from
+// a job): its text (Pdf.text) and each UTF-16 character's box on the page as
+// shown, in points, six numbers each (PdfGlyph's corner, advance and ascent
+// sides; NaN: none, a gap's space, a line's end). A ligature's characters
+// share its glyph's box in equal parts; a glyph with no text has none. What
+// helder.pdf.ui's PdfText selects by.
 typedef PageText = {text:String, boxes:Array<Float>};
 
 class PageTexts {

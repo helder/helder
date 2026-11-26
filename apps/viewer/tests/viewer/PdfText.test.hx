@@ -8,7 +8,8 @@ import helder.os.Mods;
 import helder.ui.Node;
 import helder.ui.Ui;
 import helder.view.Render;
-import viewer.PageText;
+import helder.pdf.PageText;
+import helder.pdf.ui.PdfText;
 
 using StringTools;
 

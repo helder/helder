@@ -95,6 +95,16 @@ var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, do
   a space at a gap of a quarter em along it. `Pdf.text` is its lines
   joined by newlines, from the same pass. The ascent and descent are the
   font descriptor's when plausible, else 0.8 and -0.2 em.
+- **Selecting it** (`PageTexts.of(Pdf.runs(page))`: a `PageText`, the
+  page's text and each UTF-16 character's box, a ligature's characters
+  sharing its glyph's; `index`: a point's nearest character, `over`,
+  `caret`, `spans`: a range's highlight, a box a line) and
+  `helder.pdf.ui.PdfText`: a helder.ui node of a page's text over its
+  drawing, selectable by helder.ui's TextSelection (a point to its
+  character, hit only over a glyph, the selection drawn in its colour; its
+  pages' nodes in one selectable parent select across them). A package
+  apart, so a program that only reads PDFs links no helder.ui. The
+  viewer's PDF text is it (apps/viewer's PdfTextLayer).
 - **Images, sized to the page**: a JPEG decoded reduced by its DCT's
   scaling (1/2 to 1/8) to no fewer pixels than it is shown at, a JPEG 2000
   by whole resolution levels (`Jpx`, ported from leanpdf), any other image

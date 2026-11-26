@@ -5,7 +5,7 @@ import helder.pdf.Document;
 import helder.pdf.Pdf;
 import helder.pdf.PdfLimits;
 import helder.pdf.PdfSource;
-import viewer.PageText;
+import helder.pdf.PageText;
 
 // A PDF's pages for the viewer, on the decode jobs' threads: the
 // documents opened last kept (KEEP, the most recent first, each with

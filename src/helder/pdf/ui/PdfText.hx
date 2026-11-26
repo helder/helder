@@ -1,68 +1,32 @@
-package viewer;
+package helder.pdf.ui;
 
+import helder.pdf.PageText;
 import helder.ui.Canvas;
-import helder.ui.Event;
 import helder.ui.Node;
-import helder.view.graph.Graph.renderEffect;
-import viewer.PageText;
 
 // A PDF page's text over its drawing, for helder.ui's text selection: a
-// box as large as the page, its text its PageText's (none until a decode
-// brings it), a point turned to the nearest character by the glyphs' boxes,
-// hit (an I-beam, a press selecting) only over a glyph, so that a press
-// elsewhere is the page's; the selection drawn over the drawing in the
-// selection's colour. The pages' boxes are one selectable layer (layer):
-// one for every page, in their order, so a selection's points are pages
-// and indices in them, the same at any zoom and scroll.
+// node placed and sized as the page is shown, its text a PageText (none
+// until one is given), a point turned to the nearest character by the
+// glyphs' boxes, hit (an I-beam, a press selecting) only over a glyph, so
+// that a press elsewhere is the page's; the selection drawn over the drawing
+// in the selection's colour. Pages' nodes in one selectable parent (in
+// their order) make one selection across them, its points a page and an
+// index in it, the same at any zoom. A package apart from helder.pdf: a
+// program that only reads PDFs links no helder.ui.
 class PdfText extends Node {
 	public var text(default, set):Null<PageText> = null;
+	// the page's width in points (the node's width over it: the scale shown)
+	public final points:Float;
+	// called when a point is turned to a character (a selection begun or moved: the viewer reads the
+	// other pages' text then, for a copy of them all)
+	public var onSelect:Null<() -> Void> = null;
 
-	@:allow(viewer) final points:Float;
-	final doc:PdfDoc;
-
-	function new(doc:PdfDoc, points:Float) {
+	public function new(points:Float) {
 		super("page-text");
-		this.doc = doc;
 		this.points = points;
 		style.position = Absolute;
 		style.pointerEvents = Auto;
 		style.cursor = Text;
-	}
-
-	// the selectable layer of doc's pages, over them in its PdfView's column
-	public static function layer(doc:PdfDoc):Node {
-		var n = new Node("pdf-text");
-		n.selectable = true;
-		n.style.position = Absolute;
-		n.style.left = n.style.top = 0;
-		n.style.zIndex = 1;
-		n.style.pointerEvents = None;
-		var pages = [for (i in 0...doc.pages) new PdfText(doc, doc.layout.sizes[i].width)];
-		for (p in pages)
-			n.append(p);
-		renderEffect(() -> {
-			doc.zoom();
-			doc.laid();
-		}, _ -> {
-			var l = doc.layout;
-			n.style.width = l.width();
-			n.style.height = l.height();
-			for (i => p in pages) {
-				p.style.left = l.left(i);
-				p.style.top = l.top(i);
-				p.style.width = l.pageWidth(i);
-				p.style.height = l.pageHeight(i);
-			}
-		});
-		renderEffect(() -> doc.texted(), _ -> for (i => p in pages) p.text = doc.text(i));
-		return n;
-	}
-
-	// (a right press: the PDF's context menu, Copy the selection's)
-	public static function menu(e:Event) {
-		if (e.button != 3 || e.target.ui == null) return;
-		e.preventDefault();
-		helder.ui.menu.Menus.popup(e.target.ui, ViewerActions.pdf, e.x, e.y, e.target);
 	}
 
 	function set_text(t:Null<PageText>):Null<PageText> {
@@ -86,8 +50,7 @@ class PdfText extends Node {
 		return text == null ? "" : text.text;
 
 	@:noCompletion override public function selectableIndex(px:Float, py:Float, under = false):Int {
-		// (a selection begun: the other pages' text read, for a copy of them all)
-		doc.wantText();
+		if (onSelect != null) onSelect();
 		if (text == null) return 0;
 		var k = scale();
 		return PageTexts.index(text, localX(px, py) / k, localY(px, py) / k, under);
