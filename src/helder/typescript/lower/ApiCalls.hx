@@ -72,7 +72,7 @@ abstract class ApiCalls extends ClassValues {
 						bridge.getMember(m, apiMember(m, n.name().text, true, n), null, where());
 					case FStatic(_, _): null;
 					case null:
-						var c = api.classOf(receiver.tsType);
+						var c = api.classOf(chained(receiver));
 						if (c == null) null else {
 							var m = apiClass(c, n);
 							var member = apiMember(m, n.name().text, false, n);
@@ -105,6 +105,11 @@ abstract class ApiCalls extends ClassValues {
 			expr(a);
 		}];
 	}
+
+	// (a receiver in an optional chain, `a?.field.m()`'s a?.field: present
+	// where what follows it runs, the chain ended before where it is not)
+	function chained(receiver:Node):Null<TsType>
+		return receiver.flags & NodeFlags.OptionalChain != 0 ? types.present(receiver.tsType) : receiver.tsType;
 
 	// a call of helder's: a class's static, an instance's method, a signal (by
 	// its type: a read, a write, an update), Render.render's mounting
@@ -158,7 +163,7 @@ abstract class ApiCalls extends ClassValues {
 						return bridge.callStatic(m, member, apiArguments(actual, member.type), where());
 					case FStatic(_, _): return null;
 					case null:
-						var c = api.classOf(receiver.tsType);
+						var c = api.classOf(chained(receiver));
 						if (c == null) return null;
 						var m = apiClass(c, n);
 						var member = apiMember(m, callee.name().text, false, n);
