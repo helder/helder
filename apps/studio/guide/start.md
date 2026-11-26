@@ -45,9 +45,8 @@ UiWindow.run(
 
 Each `story` in a `*.story.tsx` file is a screen on the canvas, named
 `Flow/Screen` (the part before the last `/` is its row). Its size is the
-frame's (a phone's, 390 by 844, without one). Each story renders on its
-own, with state of its own: make the state inside `render` (or a
-component), not at a module's top level, so screens don't share it.
+frame's (a phone's, 390 by 844, without one). Each screen has state of
+its own, top-level signals too: screens never share a value.
 
 ```tsx file=app.story.tsx
 import { story } from "helder/story";
@@ -71,6 +70,34 @@ rather than running its clock, so the frame is exact and repeatable. A
 story with `loop: 2` plays 2 s from its moment while its frame is hovered:
 only where motion is the point. The app itself (`main.tsx`) is what Play
 runs, in a window of its own, live.
+
+## The app's moments are scenarios
+
+Keep the app's model in exported top-level signals, one per value, not in
+closures or module variables (`let`), which a scenario cannot reach:
+
+```tsx file=game.tsx
+import { signal } from "helder/view";
+
+export const score = signal([0, 0]);
+export const over = signal(false);
+```
+
+A scenario is the real app (`main.tsx`, as it is) at a moment: `boot`
+runs first in its screen, writing the signals or calling the app's own
+functions. Stories stay for components.
+
+```tsx file=game.scenario.tsx
+import { scenario } from "helder/scenario";
+import { score, over } from "./game";
+
+export const won = scenario({ name: "Pong/You win", boot() { score([7, 5]); over(true); } });
+export const moving = scenario({ name: "Pong/In motion", loop: 3 });
+```
+
+Also `time` (`"2026-11-26T09:00"`: its clock's start), `size: [w, h]`,
+`seed`, `dark`, `play` (seconds run to the moment). A scenario's and a
+story's names are one list: name them apart.
 
 ## The loop
 
