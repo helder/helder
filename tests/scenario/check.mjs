@@ -2,8 +2,9 @@
 // a copy of tests/scenario/fixtures/pong, each scenario's still snapped over
 // MCP (run.snap) against the story that poses the same moment, pixel for
 // pixel; then timed: the stills of the stories alone, of the scenarios
-// alone (cold: built; again: from frames.hframes), and the screens'
-// program's memory with 1 and 6 scenarios (bin/scenario/results.md).
+// alone (cold: built; again: from frames.hframes), the cache fresh after a
+// live literal's patch, and the screens' program's memory with 1 and 6
+// scenarios (bin/scenario/results.md).
 //
 //   node tests/scenario/check.mjs <helder> <out>
 import {spawn, execFileSync} from 'node:child_process'
@@ -17,9 +18,11 @@ const pairs = ['Rally', 'Point scored', 'You win', 'You lose', 'Serve']
 fs.rmSync(out, {recursive: true, force: true})
 fs.mkdirSync(out, {recursive: true})
 
-// (a copy of pong, without the files given, a repository of its own)
+// (a copy of pong, without the files given, a repository of its own; its
+// frames none: kept at the package's root, bin/studio/<name>, not the copy's)
 function copy(name, without = []) {
   const dir = path.resolve(out, 'pong-' + name)
+  fs.rmSync(path.resolve('bin/studio', 'pong-' + name), {recursive: true, force: true})
   fs.cpSync(fixture, dir, {recursive: true})
   for (const f of without) fs.rmSync(path.join(dir, f))
   execFileSync('git', ['init', '-q', '-b', 'studio', dir])
@@ -129,7 +132,19 @@ for (const [name, without] of [['stories', ['pong.scenario.tsx']], ['scenarios',
   }
 }
 
-// 3. memory per scenario screen: 1 scenario against 6
+// 3. the frame cache after a live literal's patch: every still fresh when reopened
+const cache = copy('cache')
+await studio(cache, async (call, wait) => {
+  await wait(/In motion's loop kept/)
+  const r = await call('project.patch', {path: 'pong.tsx', edits: [{old: 'fontSize={13} color="#8a93a8">Press P', new: 'fontSize={14} color="#8a93a8">Press P'}]})
+  console.log('literal patch:', r.content.map(c => c.text).join(' ').slice(0, 200))
+  await new Promise(r => setTimeout(r, 5000))
+})
+const reopened = await studio(cache, async (call, wait) => (await wait(/(\d+) stills \((\d+) of files changed since/))[2])
+console.log(`reopened after a literal patch: ${reopened} stale`)
+if (+reopened > 0) failed++
+
+// 4. memory per scenario screen: 1 scenario against 6
 const one = copy('one', ['pong.story.tsx'])
 fs.writeFileSync(path.join(one, 'pong.scenario.tsx'), fs.readFileSync(path.join(one, 'pong.scenario.tsx'), 'utf8').split('\n').filter(l => !l.startsWith('export') || l.includes('"Pong/Rally"')).join('\n'))
 const single = await studio(one, async (call, wait) => {

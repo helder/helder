@@ -632,7 +632,7 @@ class Studio {
 		// (the watched canvas: stills, the hovered frame's loop running; the old shell's frames live)
 		pr.stills = !classic;
 		var h = hovered.peek(), info = h == null || classic || !names.contains(h) ? null : project.screen(h);
-		pr.looping = info?.loop == null ? null : h;
+		pr.looping = info?.loop == null || pr.fileLoops(h) ? null : h;
 		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale);
 	}
 
@@ -2196,26 +2196,53 @@ class Layout {
 		for (f in p.flows())
 			for (i in f.screens)
 				if (i.at != null && i.source.match(Design(_))) y = Math.max(y, i.at.y + size(i).h + Theme.FLOW_GAP);
+		// (each auto-laid frame's row, for the rows' gap once the widest is known)
+		var rows:Array<Int> = [], n = 0, widest = 0.0;
 		for (f in p.flows()) {
-			var x = 0.0, tall = 0.0, row = false, last:Null<{x:Float, y:Float, w:Float, group:Null<String>}> = null;
+			var x = 0.0, tall = 0.0, row = false, last:Null<{x:Float, y:Float, w:Float, group:Null<String>, row:Int}> = null;
 			for (i in f.screens) {
 				if (!shown(i)) continue;
-				var z = size(i), at = i.at;
+				var z = size(i), at = i.at, r = -1;
 				// (a group's frames side by side, closer than frames apart)
-				if (at == null && last != null) at = {x: last.x + last.w + (i.group != null && i.group == last.group ? Theme.GROUP_GAP : Theme.SCREEN_GAP), y: last.y};
+				if (at == null && last != null) {
+					at = {x: last.x + last.w + (i.group != null && i.group == last.group ? Theme.GROUP_GAP : Theme.SCREEN_GAP), y: last.y};
+					r = last.row;
+				}
 				if (at == null) {
 					at = {x: x, y: y};
 					x += z.w + Theme.SCREEN_GAP;
 					tall = Math.max(tall, z.h);
 					row = true;
+					r = n;
 				}
+				if (r >= 0) widest = Math.max(widest, at.x + z.w);
 				out.push({name: i.name, flow: f.name, x: at.x, y: at.y, w: z.w, h: z.h});
-				last = {x: at.x, y: at.y, w: z.w, group: i.group};
+				rows.push(r);
+				last = {x: at.x, y: at.y, w: z.w, group: i.group, row: r};
 			}
-			if (row) y += tall + Theme.FLOW_GAP;
+			if (row) {
+				y += tall + Theme.FLOW_GAP;
+				n++;
+			}
 		}
+		// (rows of wide frames shown small: apart enough for a title and captions at the zoom that fits them)
+		rowsGap = gapOf(widest);
+		var more = rowsGap - Theme.FLOW_GAP;
+		if (more > 0) for (k in 0...out.length)
+			if (rows[k] > 0) out[k] = {name: out[k].name, flow: out[k].flow, x: out[k].x, y: out[k].y + rows[k] * more, w: out[k].w, h: out[k].h};
 		return out;
 	}
+
+	// the rows' gap, the world's points: wider rows, shown smaller, further apart
+	public function gap():Float {
+		screens();
+		return rowsGap;
+	}
+
+	var rowsGap = Theme.FLOW_GAP + 0.0;
+
+	static function gapOf(widest:Float):Float
+		return Math.max(Theme.FLOW_GAP, widest / 12);
 
 	public function rect(name:String):Null<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}>
 		return Lambda.find(screens(), s -> s.name == name);
