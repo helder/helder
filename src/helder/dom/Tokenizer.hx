@@ -240,6 +240,13 @@ using StringTools;
 		else if (c != 0 && c != 9 && c != 10 && c != 12 && c != 13 && (c < 0x20 || c >= 0x7F && c <= 0x9F)) error("control-character-in-input-stream", i);
 	}
 
+	// (a run's input errors, when they are asked for)
+	function checkRun(from:Int, to:Int)
+		for (k in from...to) {
+			var c = s.fastCodeAt(k);
+			if (c < 0x20 || c >= 0x7F) check(c, k);
+		}
+
 	inline function again()
 		reconsume = true;
 
@@ -385,11 +392,7 @@ using StringTools;
 	function textRun(stop1:Int, stop2:Int):Bool {
 		var start = pos;
 		var i = Scan.stop(s, pos, len, stop1, stop2);
-		if (errors != null)
-			for (k in start...i) {
-				var c = s.fastCodeAt(k);
-				if (c < 0x20 || c >= 0x7F) check(c, k);
-			}
+		if (errors != null) checkRun(start, i);
 		if (i == start) return false;
 		pos = i;
 		sink.chars(s.substring(start, i), start, i);
@@ -754,13 +757,8 @@ using StringTools;
 				case ATTR_VALUE_DQ | ATTR_VALUE_SQ:
 					var quote = state == ATTR_VALUE_DQ ? "\"".code : "'".code;
 					if (!reconsume) {
-						var i = pos, start = pos;
-						while (i < len) {
-							var c = s.fastCodeAt(i);
-							if (c == quote || c == "&".code || c == 0 || c == "\r".code) break;
-							if (errors != null && (c < 0x20 || c >= 0x7F)) check(c, i);
-							i++;
-						}
+						var start = pos, i = Scan.stop(s, pos, len, quote, "&".code);
+						if (errors != null) checkRun(start, i);
 						if (i > start) {
 							attrValue.sub(start, i);
 							pos = i;
@@ -911,13 +909,8 @@ using StringTools;
 					}
 				case COMMENT:
 					if (!reconsume) {
-						var i = pos, start = pos;
-						while (i < len) {
-							var c = s.fastCodeAt(i);
-							if (c == "<".code || c == "-".code || c == 0 || c == "\r".code) break;
-							if (errors != null && (c < 0x20 || c >= 0x7F)) check(c, i);
-							i++;
-						}
+						var start = pos, i = Scan.stop(s, pos, len, "<".code, "-".code);
+						if (errors != null) checkRun(start, i);
 						if (i > start) {
 							data.sub(start, i);
 							pos = i;

@@ -484,13 +484,14 @@ using StringTools;
 		e.start = t.start;
 		var a = t.attrs;
 		if (a != null) {
-			var list = [];
+			var list:Array<Attr> = [];
+			list.resize(a.length >> 1);
 			var i = 0;
 			while (i < a.length) {
 				var name = a[i], value = a[i + 1];
 				i += 2;
 				if (namespace == Namespaces.HTML) {
-					list.push(new Attr(e.doc, name, value));
+					list[(i >> 1) - 1] = new Attr(e.doc, name, value);
 					continue;
 				}
 				if (namespace == Namespaces.MATHML && name == "definitionurl") name = "definitionURL";
@@ -503,7 +504,7 @@ using StringTools;
 					case "xmlns:xlink": new Attr(e.doc, "xlink", value, Namespaces.XMLNS, "xmlns");
 					case _: new Attr(e.doc, name, value);
 				}
-				list.push(attr);
+				list[(i >> 1) - 1] = attr;
 			}
 			// (appended at once: no one can observe an element the parser has not inserted yet)
 			for (attr in list)
