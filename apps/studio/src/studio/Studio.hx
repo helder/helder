@@ -1685,54 +1685,82 @@ class Studio {
 		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 	}
 
-	// (natively) the design and story files on disk watched, a second apart:
-	// one changed there (another editor's save, an agent's, git) read into the
-	// studio as an edit of the file's (in the history, undone like any other),
-	// one added or deleted its frames or stories shown or gone (a story's: built)
+	// (natively) the project's files on disk watched, a second apart (every
+	// source, not only its design and story files: an agent's or an editor's
+	// edit of app.tsx): one changed there (another editor's save, an
+	// agent's, git) read into the studio as an edit of the file's (in the
+	// history, undone like any other), one added or deleted its frames or
+	// stories shown or gone (a story's: built; after a failed build, any
+	// source's: an import of it may resolve now)
 	@:coroutine function watch() {
 		#if !(hxmc.target == "wasm32-wasi")
-		var stamps = new Map<String, Float>();
-		function stamp(f:String):Float
-			return try sys.FileSystem.stat(f).mtime.getTime() catch (_:Dynamic) -1;
-		// (each file's text as it was: a change on disk is one from it)
-		for (f in Project.found(project.dir)) {
-			stamps.set(f, stamp(f));
-			try docs.get(f) catch (_:Dynamic) {}
-		}
-		function added(f:String, text:Null<String>) {
-			if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
-			// (a story where there was no program: the project read again, its program started)
-			else if (previews == null) revive();
-			else if (storiesChanged(f, text) && previews != null) {
-				message(text == null ? "a story file removed: building" : "a story file added: building");
-				log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
-				rebuild(f, true);
-			}
-		}
+		scanDisk();
 		while (true) {
 			Async.delay(1);
 			tree?.scan();
-			var now = Project.found(project.dir);
-			for (f in now) {
-				var t = stamp(f);
-				if (stamps.get(f) == t) continue;
-				var known = stamps.exists(f);
-				stamps.set(f, t);
-				var text = try Files.read(f) catch (_:Dynamic) continue;
-				if (!known) {
-					added(f, text);
-					continue;
-				}
-				var d = docs.get(f);
-				if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
-			}
-			for (f in [for (k in stamps.keys()) k])
-				if (!now.contains(f)) {
-					stamps.remove(f);
-					added(f, null);
-				}
+			scanDisk();
 		}
 		#end
+	}
+
+	// (each file's stamp, its mtime and size, as last seen: none yet, the first pass takes them)
+	var stamps:Null<Map<String, String>> = null;
+
+	// a pass over the project's files on disk (the first: each read as it is,
+	// a change on disk is one from it)
+	public function scanDisk() {
+		#if !(hxmc.target == "wasm32-wasi")
+		if (project == null) return;
+		function stamp(f:String):String
+			return try {
+				var s = sys.FileSystem.stat(f);
+				s.mtime.getTime() + " " + s.size;
+			} catch (_:Dynamic) "";
+		var now = project.sources();
+		for (f in Project.found(project.dir))
+			if (!now.contains(f)) now.push(f);
+		var known = stamps;
+		if (known == null) {
+			stamps = [for (f in now) f => stamp(f)];
+			for (f in now)
+				try docs.get(f) catch (_:Dynamic) {}
+			return;
+		}
+		for (f in now) {
+			var t = stamp(f);
+			if (known.get(f) == t) continue;
+			var seen = known.exists(f);
+			known.set(f, t);
+			var text = try Files.read(f) catch (_:Dynamic) continue;
+			if (!seen) {
+				diskAdded(f, text);
+				continue;
+			}
+			var d = docs.get(f);
+			if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
+		}
+		for (f in [for (k in known.keys()) k])
+			if (!now.contains(f)) {
+				known.remove(f);
+				diskAdded(f, null);
+			}
+		#end
+	}
+
+	// (a file added on disk, or gone: text null)
+	function diskAdded(f:String, text:Null<String>) {
+		if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
+		// (a story where there was no program: the project read again, its program started)
+		else if (previews == null) {
+			if (Project.isStory(f)) revive();
+		} else if (storiesChanged(f, text)) {
+			message(text == null ? "a story file removed: building" : "a story file added: building");
+			log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
+			rebuild(f, true);
+		} else if (previews.failed) {
+			log("building", {file: f, why: text == null ? "a source removed after a failed build" : "a source added after a failed build"});
+			rebuild(f, true);
+		}
 	}
 
 	// the program told of a file's text: its live literals patched now (the
