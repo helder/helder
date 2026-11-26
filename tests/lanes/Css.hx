@@ -5,7 +5,7 @@ import lanes.Tools.*;
 class Css {
 	public static final LANES:Array<Lane> = [
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
-		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively (reftest-manifest.json; args: directories or names to run alone)", run: reftests},
+		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively, and its noref tests against goldens Chromium draws (Playwright; reftest-manifest.json; args: directories or names to run alone)", run: reftests},
 		{name: "css-render", about: "a page drawn by helder.ui.box: css-render <page> <out.png> [width height] [--tree]", run: render},
 		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors (parsed, matched on helder.dom) against WPT's fixtures and css-parsing-tests", run: css}
 	];
@@ -108,7 +108,10 @@ class Css {
 	static function reftests() {
 		if (!sys.FileSystem.exists("bin/wpt/fonts/Ahem.ttf")) run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
 		exe("bin/css/CssReftestCheck", cps(["src", "tests/css"]).concat(["-main", "CssReftestCheck"]));
-		run(exePath("bin/css/CssReftestCheck", HOST), laneArgs);
+		if (laneArgs[0] == "--fonts") return run(exePath("bin/css/CssReftestCheck", HOST), laneArgs);
+		// (noref tests against Chromium's goldens: drawn where missing, kept in bin/css/goldens, the directory in its `current`)
+		run(NODE, ["tests/css/goldens.mjs"].concat(laneArgs));
+		run(exePath("bin/css/CssReftestCheck", HOST), laneArgs, ["GOLDENS" => StringTools.trim(sys.io.File.getContent("bin/css/goldens/current"))]);
 	}
 
 	static function render() {

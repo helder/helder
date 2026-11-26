@@ -2,6 +2,7 @@ import haxe.DynamicAccess;
 import haxe.Json;
 import haxe.io.Bytes;
 import helder.canvas.Canvas;
+import helder.image.Image;
 import helder.ui.box.DocumentView;
 import sys.FileSystem;
 import sys.io.File;
@@ -23,8 +24,12 @@ class CssReftestCheck {
 	static inline var W = 800;
 	static inline var H = 600;
 
+	// (noref tests' goldens, goldens.mjs's directory: without it they aren't drawn)
+	static final goldens = Sys.getEnv("GOLDENS");
+
 	static function main() {
 		var filters = Sys.args();
+		if (filters[0] == "--fonts") return fonts();
 		var bless = Sys.getEnv("BLESS") == "1";
 		// (each test's name before it is drawn: which one hangs or crashes)
 		var verbose = Sys.getEnv("VERBOSE") == "1";
@@ -49,7 +54,7 @@ class CssReftestCheck {
 				var name:String = t.name;
 				var id = '$dir/$name';
 				var type:Null<String> = t.type;
-				if (type == "noref") continue;
+				if (type == "noref" && goldens == null) continue;
 				var entry:Dynamic = manifest[id];
 				var wanted = filters.length == 0 || Lambda.exists(filters, f -> id.indexOf(f) >= 0);
 				if (!wanted) {
@@ -108,13 +113,43 @@ class CssReftestCheck {
 		}
 	}
 
+	// (the faces helder takes for the generic families, for goldens.mjs to give Chromium the same)
+	static function fonts() {
+		var system = WptPage.shared().system;
+		var out:DynamicAccess<String> = {};
+		for (g in ["serif", "sans-serif", "monospace"]) {
+			var f = system.match(g);
+			if (f != null) out[g] = f.family;
+		}
+		Sys.println(Json.stringify(out));
+	}
+
 	// (tests this engine is not for: paged media, and what needs a script or SVG)
 	static function skipped(dir:String, t:Dynamic):Null<String> {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
 		if (needs.contains("print") || paged(dir)) return "paged: printed pages, not a screen (stage 7)";
 		if (needs.contains("script") || needs.contains("wait")) return "script: no JavaScript";
+		if (t.type == "noref") return manual(dir, t);
 		return null;
 	}
+
+	// (a noref test whose golden says nothing: a person was to set something up
+	// first, or Chromium itself draws it wrong, seen against its own words)
+	static function manual(dir:String, t:Dynamic):Null<String> {
+		var wrong = CHROMIUM.get('$dir/${t.name}');
+		if (wrong != null) return 'chromium: $wrong';
+		var src = try File.getContent('${WptPage.wpt}/$dir/${t.name}').toLowerCase() catch (_:Dynamic) "";
+		src = ~/<style[\s\S]*?<\/style>/g.replace(src, "");
+		if (~/prerequisite:\s*switch to (paged|print)/.match(src)) return "paged: printed pages, not a screen (stage 7)";
+		if (~/prerequisite:|must be installed/.match(src)) return "manual: a test font installed on the system first";
+		if (~/alternate style ?sheet|select each/.match(src)) return "manual: an alternate style sheet chosen by hand";
+		return null;
+	}
+
+	// (goldens Chromium draws against the test's own words: skipped, why)
+	static final CHROMIUM = [
+		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)"
+	];
 
 	static function paged(dir:String):Bool
 		return dir.startsWith("css/css-page") || dir.startsWith("css/css-break") || dir.startsWith("css/css-gcpm") || dir == "css/CSS2/page-box"
@@ -127,6 +162,7 @@ class CssReftestCheck {
 		try {
 			var test = draw(path);
 			if (t.type == "crash") return {pass: true, why: ""};
+			if (t.type == "noref") return golden(dir, t, test);
 			var refs:Array<Array<Dynamic>> = t.refs != null ? t.refs : [];
 			var fuzzy:Array<String> = t.fuzzy != null ? t.fuzzy : [];
 			for (r in refs) {
@@ -143,6 +179,75 @@ class CssReftestCheck {
 		} catch (e:Dynamic) {
 			return {pass: false, why: 'error: ${Std.string(e).split("\n")[0]}'};
 		}
+	}
+
+	// (a noref test against Chromium's golden: within the test's fuzzy, or
+	// differing only as engines' antialiasing does: no flat pixel off, at
+	// most EDGES at edges beyond their neighbours, unexplained())
+	static function golden(dir:String, t:Dynamic, test:Bytes):{pass:Bool, why:String} {
+		var file = '$goldens/$dir/${t.name}.png';
+		if (!FileSystem.exists(file)) return {pass: false, why: 'no golden (goldens.mjs)'};
+		var image = Image.decode(File.getBytes(file));
+		if (image.width != W || image.height != H) return {pass: false, why: 'golden ${image.width}x${image.height}'};
+		var g = image.pixels;
+		var d = diff(test, g);
+		var fuzzy:Array<String> = t.fuzzy != null ? t.fuzzy : [];
+		var allowed = tolerance(fuzzy, "");
+		if (d.pixels == 0 || d.max >= allowed[0] && d.max <= allowed[1] && d.pixels >= allowed[2] && d.pixels <= allowed[3])
+			return {pass: true, why: ""};
+		var u = unexplained(test, g);
+		if (Sys.getEnv("GOLDEN_DEBUG") == "1") Sys.println('$dir/${t.name}\t${u.flat}\t${u.edges}');
+		if (u.flat == 0 && u.edges <= EDGES) return {pass: true, why: ""};
+		return {pass: false, why: '${u.flat + u.edges} pixels differ from Chromium\'s'};
+	}
+
+	static inline var EDGES = 10;
+
+	// (pixels that differ beyond antialiasing: where the golden is flat, by
+	// more than FLAT; at an edge (text, a curve), unlike any of the other's
+	// pixels within a pixel, both ways, by more than EDGE: an edge's
+	// coverage and a glyph's rasterizing differ between engines)
+	static function unexplained(a:Bytes, b:Bytes):{flat:Int, edges:Int} {
+		var flats = 0, edges = 0;
+		for (y in 0...H) for (x in 0...W) {
+			var i = (y * W + x) * 4;
+			if (a.getInt32(i) == b.getInt32(i)) continue;
+			if (flat(b, x, y)) {
+				if (distance(a, i, b, i) > FLAT) flats++;
+			} else if (!near(a, b, x, y) || !near(b, a, x, y)) edges++;
+		}
+		return {flat: flats, edges: edges};
+	}
+
+	static inline var FLAT = 8;
+	static inline var EDGE = 96;
+
+	static function distance(a:Bytes, i:Int, b:Bytes, j:Int):Int {
+		var m = 0;
+		for (k in 0...3) {
+			var d = a.get(i + k) - b.get(j + k);
+			if (d < 0) d = -d;
+			if (d > m) m = d;
+		}
+		return m;
+	}
+
+	static function flat(a:Bytes, x:Int, y:Int):Bool {
+		var i = (y * W + x) * 4;
+		for (dy in -1...2) for (dx in -1...2) {
+			var u = x + dx, v = y + dy;
+			if (u >= 0 && v >= 0 && u < W && v < H && distance(a, i, a, (v * W + u) * 4) > FLAT) return false;
+		}
+		return true;
+	}
+
+	static function near(a:Bytes, b:Bytes, x:Int, y:Int):Bool {
+		var i = (y * W + x) * 4;
+		for (dy in -1...2) for (dx in -1...2) {
+			var u = x + dx, v = y + dy;
+			if (u >= 0 && v >= 0 && u < W && v < H && distance(a, i, b, (v * W + u) * 4) <= EDGE) return true;
+		}
+		return false;
 	}
 
 	static final drawn = new Map<String, Bytes>();
