@@ -81,7 +81,10 @@ class Scheduler {
 				landingsTaken = ls;
 				for (n in ls) {
 					var tx = n.pendingIn != null ? n.pendingIn.find() : null;
-					if (tx == null || tx.committed) tx = newTx();
+					if (tx == null || tx.committed) {
+						tx = newTx();
+						tx.store = n.home;
+					}
 					n.pendingIn = null;
 					world = tx;
 					n.land();
@@ -96,15 +99,21 @@ class Scheduler {
 			}
 			if (writes.length > 0) {
 				ticks++;
-				world = newTx();
 				var ws = writes;
 				writes = writesTaken;
 				writesTaken = ws;
-				for (n in ws)
-					n.stageWrite(world);
-				ws.resize(0);
-				drain();
-				settle();
+				// (a transaction a store: what one screen waits on never holds
+				// another's commit; the default store's first, then each screen's)
+				while (ws.length > 0) {
+					var store = ws[0].home, rest = 0;
+					var tx = world = newTx();
+					tx.store = store;
+					for (n in ws)
+						if (n.home == store) n.stageWrite(tx) else ws[rest++] = n;
+					ws.resize(rest);
+					drain();
+					settle();
+				}
 			}
 			// (what is stale outside a transaction: verdict readers after a commit)
 			drain();

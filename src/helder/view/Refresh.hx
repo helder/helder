@@ -51,10 +51,7 @@ class Refresh {
 		// (the initial value's source, whitespace aside; @:hot(reset) where it is made)
 		var source = haxe.crypto.Md5.encode(haxe.macro.ExprTools.toString(init)).substr(0, 8);
 		var reset = resets();
-		var kept = macro @:pos(init.pos) helder.view.Refresh.kept($made, $v{key}, $v{type}, $v{source}, $v{reset});
-		// (a data signal bound to a variable: named in its screen, a scenario's to set)
-		var name = type == "" ? null : helder.dev.HotMacro.named(Context.currentPos());
-		return name == null ? kept : macro @:pos(init.pos) helder.view.Named.add($kept, $v{name});
+		return macro @:pos(init.pos) helder.view.Refresh.kept($made, $v{key}, $v{type}, $v{source}, $v{reset});
 	}
 
 	// whether the class or the function being typed is marked @:hot(reset)
@@ -92,6 +89,12 @@ class Refresh {
 		// (set before anything reads it: its value from the start)
 		if (last != null) @:privateAccess s.node().value = last.v;
 		helder.view.graph.Graph.onCleanup(helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save(key, {v: s.peek(), i: init}, type)));
+		// (its other stores' nodes kept too, under its key in the store's scope)
+		@:privateAccess if (!reset) s.node().copied = (n, store) -> helder.dev.Hot.at(store.name, () -> {
+			var last:Null<{v:T, ?i:String}> = helder.dev.Hot.load(key, type);
+			if (last != null && last.i == init) n.value = last.v;
+			helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save(key, {v: n.peek(), i: init}, type));
+		});
 		return s;
 	}
 	#end

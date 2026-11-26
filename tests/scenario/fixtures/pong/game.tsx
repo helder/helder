@@ -78,7 +78,7 @@ export function Game() {
 		if (on && e.key === Key.SPACE && over()) restart();
 	}
 	const state = () => ({ ball: ball(), left: left(), right: right(), score: score(), over: over(), paused: paused() });
-	return <view focusable autofocus onKeyDown={(e: Event) => key(e, true)} onKeyUp={(e: Event) => key(e, false)}>
+	return <view focusable autoFocus onKeyDown={(e: Event) => key(e, true)} onKeyUp={(e: Event) => key(e, false)}>
 		<Court state={state}/>
 	</view>;
 }

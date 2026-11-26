@@ -113,6 +113,14 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// lands (a value or an error); and whether its current run is that frame)
 	var retired:Null<Owner> = null;
 	var shown = false;
+	// its home: the store it was made in (Atoms; null: the default), what a
+	// computation runs in; its value made again in another store (a signal's
+	// initial value, a computed's function): those stores' nodes of it, made
+	// when first read or written there; what each is given when made (fast refresh)
+	final home:Null<Atoms>;
+	final init:Null<T>;
+	var others:Null<Array<Node<T>>> = null;
+	var copied:Null<(Node<Dynamic>, Atoms) -> Void> = null;
 
 	function new(kind:Int, value:Null<T>, fn:Null<Null<T>->Dynamic>, options:Null<NodeOptions<T>>) {
 		// (a signal belongs to no owner: only computations are disposed with theirs)
@@ -124,6 +132,37 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		equals = options != null ? options.equals : null;
 		unobserved = options != null ? options.unobserved : null;
 		ownedWrite = options != null && options.ownedWrite == true;
+		home = Atoms.current;
+		init = value;
+		if (home == null && (kind == EFFECT || kind == RENDER) && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
+	}
+
+	// (read or written in a store not its home: that store's node of it; the
+	// default store sees through to its home)
+	inline function at():Node<T> {
+		var s = Atoms.current;
+		return s == null || s == home ? this : of(s);
+	}
+
+	function of(s:Atoms):Node<T> {
+		var l = others;
+		if (l != null) for (n in l)
+			if (n.home == s) return n;
+		var n = s.make(this);
+		if (l == null) others = [n] else l.push(n);
+		return n;
+	}
+
+	// (its node in store: its initial value, or its function, owned by the store's root)
+	function copy(store:Atoms):Node<T> {
+		var savedOwner = Owner.current, savedAtoms = Atoms.current;
+		Owner.current = kind == SIGNAL ? null : store.root;
+		Atoms.current = store;
+		var n = new Node(kind, init, fn, {equals: equals, unobserved: unobserved, ownedWrite: ownedWrite});
+		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
+		n.writable = writable;
+		return n;
 	}
 
 	public static function signal<T>(value:T, options:Null<NodeOptions<T>>):Node<T> {
@@ -204,12 +243,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	public function read():T {
+		var s = Atoms.current;
+		if (s != null && s != home) return of(s).read();
 		if (kind != SIGNAL) fresh();
 		if (observer != null) observer.track(this);
 		return serve();
 	}
 
 	public function peek():T {
+		var s = Atoms.current;
+		if (s != null && s != home) return of(s).peek();
 		if (kind != SIGNAL) fresh();
 		return serve();
 	}
@@ -287,6 +330,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	public function write(v:T) {
+		var s = Atoms.current;
+		if (s != null && s != home) {
+			of(s).write(v);
+			return;
+		}
 		checkWritable();
 		if (same(latest(), v)) return;
 		pendingValue = v;
@@ -307,7 +355,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// f given the latest value written (pending, else staged, else committed)
 	public function update(f:T->T)
-		write(f(latest()));
+		if (Atoms.current != null && Atoms.current != home) at().update(f) else write(f(latest()));
 
 	inline function latest():Null<T>
 		return hasPending ? pendingValue : stagedIn != null ? staged : value;
@@ -516,8 +564,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		}
 		pendingIn = null;
 		release();
-		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe;
+		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe, savedAtoms = Atoms.current;
 		Owner.current = this;
+		Atoms.current = home;
 		observer = this;
 		runner = this;
 		probe = PROBE_NONE;
@@ -533,6 +582,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			failed = true;
 		}
 		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
 		observer = savedObserver;
 		runner = savedRunner;
 		probe = savedProbe;
@@ -779,8 +829,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var prev = applied;
 		applied = value;
 		// (with no owner, untracked: as within, with no closure made)
-		var savedOwner = Owner.current, savedObserver = observer;
+		var savedOwner = Owner.current, savedObserver = observer, savedAtoms = Atoms.current;
 		Owner.current = null;
+		Atoms.current = home;
 		observer = null;
 		#if hxmc.dev
 		// (hxmc dev: in its compute's scope, what it makes keyed as there: helder.view.Refresh)
@@ -790,10 +841,12 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var c = try apply(value, prev) catch (e:haxe.Exception) {
 		#end
 			Owner.current = savedOwner;
+			Atoms.current = savedAtoms;
 			observer = savedObserver;
 			throw Errors.kept(e);
 		}
 		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
 		observer = savedObserver;
 		if (c != null && !Reflect.isFunction(c))
 			throw new GraphError("effect callback returned an invalid cleanup value: return a cleanup function or nothing");
@@ -802,6 +855,13 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	override function unlink() {
 		release();
+		// (its other stores' nodes with it)
+		if (others != null) {
+			var l = others;
+			others = null;
+			for (n in l)
+				n.dispose();
+		}
 		if (retired != null) {
 			var r = retired;
 			retired = null;

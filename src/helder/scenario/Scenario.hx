@@ -2,29 +2,29 @@ package helder.scenario;
 
 import haxe.PosInfos;
 
-// Scenarios: the real program (its main, unchanged) at a moment, given
-// data. A `Foo.scenario.hx` (`*.scenario.tsx`) file's module-level values
-// made by scenario({...}), each a screen of the studio's preview host
-// (helder.story.Host): its main run once a mount in the screen's context,
-// UiWindow.run and <Surface> handing it the root (helder.ui.Hosting), its
-// named data signals (helder.view.Named) set by name as they are made:
+// Scenarios: the real program (its main, unchanged) at a moment. A
+// `Foo.scenario.hx` (`*.scenario.tsx`) file's module-level values made by
+// scenario({...}), each a screen of the studio's preview host
+// (helder.story.Host) with a store of its own for the program's atoms (its
+// top-level signals and memos: helder.view.graph.Atoms): boot run first in
+// the screen's context (it writes the atoms, calls the app's own
+// functions), then main, UiWindow.run and <Surface> handing it the root
+// (helder.ui.Hosting):
 //
-//   final won = scenario({name: "Pong/You win", set: {"Game.score": [7, 5], "Game.over": true}});
+//   final won = scenario({name: "Pong/You win", boot: () -> { Game.score([7, 5]); Game.over(true); }});
 //   final moving = scenario({name: "Pong/In motion", loop: 3});
 //
 // time: its start instant (an ISO date, "2026-11-26T09:00" local or with
 // its zone, or ms since 1970) on its clock, which stands at the moment
 // (play: seconds of it run to the moment first; loop: run live from it
 // while hovered, as a story's); seed: Math.random's; size: [width, height]
-// in points (else its <Surface>'s); dark. A name set that no signal takes,
-// or a value of another shape than its signal's, fails the screen with
-// why (the nearest name made).
+// in points (else its <Surface>'s); dark.
 function scenario(def:ScenarioDef, ?pos:PosInfos):Scenario
 	return new Scenario(def, pos);
 
 class Scenario {
 	public final name:String;
-	public final set:Map<String, Dynamic>;
+	public final boot:Null<Void->Void>;
 	// ms since 1970 (null: the system's clock)
 	public final time:Null<Float>;
 	public final seed:Int;
@@ -37,7 +37,7 @@ class Scenario {
 
 	public function new(def:ScenarioDef, ?pos:PosInfos) {
 		name = def.name;
-		set = values(def.set);
+		boot = def.boot;
 		time = instant(def.time);
 		seed = def.seed ?? 1;
 		var size:Null<Array<Int>> = def.size;
@@ -47,13 +47,6 @@ class Scenario {
 		loop = def.loop;
 		play = def.play;
 		this.pos = pos;
-	}
-
-	static function values(o:Dynamic):Map<String, Dynamic> {
-		var m = new Map<String, Dynamic>();
-		if (o != null) for (k in Reflect.fields(o))
-			m.set(k, Reflect.field(o, k));
-		return m;
 	}
 
 	// (an ISO date's ms: local without a zone; a number as it is)
@@ -94,8 +87,8 @@ class Scenario {
 // scenario({...})'s fields (TypeScript's helder/scenario the same)
 typedef ScenarioDef = {
 	var name:String;
-	// the named data signals' values (helder.view.Named), by name
-	@:optional @:typescript.type("{[name: string]: unknown}") var set:Dynamic;
+	// run first in its screen (its store current): the atoms written, the app's own functions called
+	@:optional var boot:Void->Void;
 	@:optional @:typescript.type("string | number") var time:Dynamic;
 	@:optional var seed:Int;
 	@:optional var size:Array<Int>;

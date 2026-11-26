@@ -11,6 +11,8 @@ package helder.view.graph;
 @:allow(helder.view.graph)
 class Tx {
 	var into:Null<Tx> = null;
+	// the store whose nodes it stages (Atoms; null: the default): two stores' never merge
+	var store:Null<Atoms> = null;
 	var committed = false;
 	// (pointed at from elsewhere: a node's pending flight or wait, a merge,
 	// a park; such a one is never reused once committed)
@@ -30,6 +32,7 @@ class Tx {
 	// (committed, nothing pointing at it: emptied for the next flush)
 	function reset() {
 		committed = false;
+		store = null;
 		nodes.resize(0);
 		effects.resize(0);
 		blocked.resize(0);
@@ -48,6 +51,7 @@ class Tx {
 		a = a.find();
 		b = b.find();
 		if (a == b) return a;
+		if (a.store != b.store) throw new Owner.GraphError("two screens' transactions merged: a node of one store read another's (helder.view.graph.Atoms)");
 		a.shared = true;
 		b.shared = true;
 		b.into = a;

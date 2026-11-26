@@ -43,12 +43,12 @@ import hxmc.unsafe.*;
 class NativeHost {
 	static inline var STILL = 0.25;
 
-	public static function run(stories:Array<Story>, ?scenarios:Array<helder.scenario.Scenario>, ?program:Void->Void) {
+	public static function run(stories:Array<Story>, ?scenarios:Array<helder.scenario.Scenario>) {
 		#if !hxmc.dev
 		throw "helder.story: the preview host runs in a dev build (helder studio's)";
 		#else
 		var frames = new SharedFrames(Sys.getEnv("HELDER_STUDIO_FRAMES"), Sys.getEnv("HELDER_STUDIO_COPY") == "1");
-		var host = new Host(stories, frames, 1.0, scenarios, program);
+		var host = new Host(stories, frames, 1.0, scenarios);
 		frames.host = host;
 		helder.dev.Agent.route = m -> HostAgent.receive(host, m);
 		HostAgent.onRelease = frames.release;

@@ -192,6 +192,11 @@ class Cli {
 		expect(exePath("bin/dev/RefreshTestChanged", HOST), ["restore", "-"], snapshot("bin/dev/refresh.snapshot"), "main.tuned reset: its initial value changed");
 		interp(views, "RefreshCheck", ["save", "bin/dev/refresh-eval.snapshot"]);
 		interp(views, "RefreshCheck", ["restore", "-"], snapshot("bin/dev/refresh-eval.snapshot"));
+		// (helder.view.Named: data signals named by their variables, each screen's own)
+		var names = cps(["src", "tests/view", "tests/scenario"]).concat(["-D", "hxmc.dev"]);
+		interp(names, "NamesCheck");
+		exe("bin/dev/NamesCheck", names.concat(["-main", "NamesCheck"]));
+		run(exePath("bin/dev/NamesCheck", HOST), []);
 		// (the dev loop's server, @hxmc/cli's dev.mjs, run by node with the compiler)
 		var compiler = "node_modules/.bin/haxe";
 		run(NODE, ["tests/os/dev/dev-web.mjs", compiler, "bin/dev/web"]);

@@ -75,11 +75,11 @@ class Host {
 
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
-	// the program's main (null: none), each scenario's to run (helder.scenario)
-	public final program:Null<Void->Void>;
+	// what the program's main gave UiWindow.run, each scenario's to render (helder.scenario; null: none)
+	public final root:Null<helder.view.RootView>;
 
-	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0, ?scenarios:Array<Scenario>, ?program:Void->Void) {
-		this.program = program;
+	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0, ?scenarios:Array<Scenario>) {
+		root = Hosting.root;
 		this.runtime = runtime;
 		this.scale = scale;
 		// (helder.text's own shaping: a screen looks the same everywhere)
@@ -91,8 +91,9 @@ class Host {
 		for (s in stories)
 			if (s != null) screens.push(new HostScreen(this, s));
 		if (scenarios != null && scenarios.length > 0) {
-			if (program == null) throw "helder.story.Host: scenarios without the program's main";
-			var size = Lambda.exists(scenarios, s -> s.width == null) ? Act.size(program) : null;
+			var main = root;
+			if (main == null) throw "helder.story.Host: scenarios, but the program's main gave UiWindow.run no root";
+			var size = Lambda.exists(scenarios, s -> s.width == null) ? Act.size(main) : null;
 			for (s in scenarios)
 				screens.push(new HostScreen(this, new Story(s.name, _ -> throw "helder.story: a scenario has no view of its own", s.seed, null, s.width ?? size?.width, s.height ?? size?.height, s.loop), s));
 		}
@@ -375,7 +376,8 @@ class HostScreen {
 		name = story.name;
 		width = story.width ?? Stories.WIDTH;
 		height = story.height ?? Stories.HEIGHT;
-		context = new ScreenContext(name);
+		// (its values a store of its own: a scenario's apart from the others')
+		context = new ScreenContext(name, true, null, new helder.view.graph.Atoms(name));
 		var dark = scenario?.dark;
 		if (dark != null) context.dark(dark);
 		scale = host.scale;
@@ -394,7 +396,7 @@ class HostScreen {
 			ui = u;
 			var c = new Controls(story.seed);
 			controls = c;
-			var sc = scenario, main = host.program;
+			var sc = scenario, main = host.root;
 			if (sc != null && main != null) {
 				if (sc.play != null) c.play(sc.play);
 				unrender = Act.mount(sc, main, context, u);
@@ -440,6 +442,8 @@ class HostScreen {
 			if (controls != null) controls.dispose();
 		});
 		unrender = null;
+		// (built again from its start: its values too)
+		context.atoms?.clear();
 		@:privateAccess context.steps.resize(0);
 		@:privateAccess context.timers.resize(0);
 		@:privateAccess context.now = 0;
