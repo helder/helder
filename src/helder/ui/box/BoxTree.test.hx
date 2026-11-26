@@ -77,6 +77,24 @@ function tests() {
 			assert(BoxInline.of(as[0], 100) == BoxInline.of(as[1], 100));
 			assert(BoxInline.of(as[0], 100) != BoxInline.of(as[0], 200));
 		});
+		test("::first-letter: the first letter and the punctuation around it, through inline boxes", () -> {
+			function letters(html:String):Array<String> {
+				var out = [];
+				function walk(b:Box) {
+					if (b.pseudo == "first-letter") out.push(b.kind.toString() + " " + [for (c in b.children()) c.text].join(""));
+					for (c in b.children()) walk(c);
+				}
+				walk(build(html).root);
+				return out;
+			}
+			equals(letters('<style>p::first-letter { color: red }</style><p>  "(T)" est</p>'), ["Inline \"(T)\""]);
+			equals(letters('<style>div::first-letter { color: red }</style><div><span><b>x</b>yz</span></div>'), ["Inline x"]);
+			equals(letters('<style>div::first-letter { float: left }</style><div><p>Hi</p></div>'), ["Block H"]);
+			// (none past an atomic inline or a break that comes first, none without rules)
+			equals(letters('<style>p::first-letter { color: red }</style><p><img>x</p><p><br>y</p>'), []);
+			equals(letters('<p>x</p>'), []);
+			assert(Punctuation.is("(".code) && Punctuation.is(0x201C) && !Punctuation.is("-".code) && !Punctuation.is("a".code));
+		});
 		test("a block container's children are all block-level or all inline-level", () -> property(MARKUP, html -> {
 			var t = build(html);
 			function walk(b:Box) {

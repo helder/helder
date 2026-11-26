@@ -49,6 +49,14 @@ sys.io.File.saveBytes("page.png", canvas.toPng());
   images; a marker inside as an inline box, outside (`Box.OUTSIDE`) in
   the first line; a list-style-image that doesn't load falls back to
   list-style-type.
+- `::first-letter` (CSS 2.1 §5.12.2, Pseudo-Elements 4 §2.3): the first
+  letter of a block container's first formatted line (through inline boxes
+  and first in-flow blocks; none when an atomic inline, a replaced element
+  or a break comes first), with the punctuation before and after it
+  (`Punctuation`: Unicode's Ps, Pe, Pi, Pf and Po, made by generate.mjs)
+  and its combining marks, in a box of the element's ::first-letter style:
+  an inline box, or a float when it floats. Its text run is split from the
+  DOM text's (each part with its offset). `::first-line` is not done yet.
 - Tables (CSS 2.1 §17.2.1): a table is its wrapper box (`TableWrapper`:
   its margins, its captions) around the table box; a table's parts are
   `Container`s by `BoxStyle.part` (row groups, rows, cells, columns,
