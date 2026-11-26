@@ -80,14 +80,25 @@ class Variants {
 		var ct = t == null ? null : Context.toComplexType(t);
 		var lit = switch e.expr {
 			case EConst(CString(s, _)): s;
+			// (a dev build's live literal, helder.dev.Literals: checked as written, never patched)
+			case EMeta({name: ":storedTypedExpr"}, _): live(Context.typeExpr(e));
 			case _: null;
 		}
+		if (lit != null) e = macro $v{lit};
 		if (lit == null) Context.error('$axis: a variant is written as a literal ("primary"), checked against the look', e.pos);
 		var values = valuesOf(t, axis);
 		if (values != null && values.indexOf(lit) < 0)
 			Context.error('"$lit" is no ${axis.split("_").join(" ")} of this look' + (values.length == 0 ? " (it has none)" : ': ${values.join(", ")}'), e.pos);
 		return ct == null ? macro cast $e : macro(cast $e : $ct);
 	}
+
+	// (a dev build's live literal, helder.dev.Literals, typed already: its value as written, checked, never patched)
+	static function live(t:haxe.macro.Type.TypedExpr):Null<String>
+		return switch t.expr {
+			case TCast(t, _) | TParenthesis(t) | TMeta(_, t): live(t);
+			case TCall({expr: TField(_, FStatic(_.get() => {name: "Literals"}, _.get() => {name: "string"}))}, [_, {expr: TConst(TString(s))}, _]): s;
+			case _: null;
+		}
 
 	// (the values the look's structure names for axis, null: any)
 	public static function valuesOf(t:Null<Type>, axis:String):Null<Array<String>> {

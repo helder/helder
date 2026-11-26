@@ -480,9 +480,10 @@ class Project {
 			w = [for (x in w) x.startsWith("helder.typescript=") ? 'helder.typescript=$main' : x];
 		} else if (host) {
 			var k = w.indexOf("-main");
-			var gen = writeHaxeHost(w[k + 1]);
+			var roots = [];
+			var gen = writeHaxeHost(w[k + 1], roots);
 			w[k + 1] = "StudioScreens";
-			w = ["-cp", gen].concat(w);
+			w = ["-cp", gen].concat([for (r in roots) for (x in ["-cp", r]) x]).concat(w);
 		}
 		if (Lambda.exists(screens, s -> isScenario(s.file))) w = w.concat(["-D", "helder.scenarios"]);
 		return w.concat(["-D", "hxmc.dev", "-D", "disable-hxb-cache"])
@@ -490,13 +491,16 @@ class Project {
 			.concat(["-D", 'helder.name=$name', "--custom-target", 'hxmc=$exe']);
 	}
 
-	// (Haxe) the story files linked as modules (Foo.story.hx: Foo_story) and a main over their stories
-	function writeHaxeHost(main:String):String {
+	// (Haxe) the story files linked as modules (Foo.story.hx: Foo_story) and a
+	// main over their stories; roots: the class paths of story files under
+	// none of the project's (tests/viewer's: tests, by their package)
+	function writeHaxeHost(main:String, roots:Array<String>):String {
 		var gen = '$out/gen';
 		var modules = [], acts = [];
 		for (f in storyFiles()) {
-			var cp = Lambda.find(entry.classPaths.map(c -> FileSystem.fullPath(c).split("\\").join("/")), c -> f.startsWith(c + "/"));
-			if (cp == null) throw '$f: not under the project\'s class paths (${entry.classPaths.join(", ")})';
+			var cp = Lambda.find(entry.classPaths.map(c -> FileSystem.fullPath(c).split("\\").join("/")), c -> f.startsWith(c + "/")) ?? rootOf(f);
+			if (cp == null) throw '$f: not under the project\'s class paths (${entry.classPaths.join(", ")}), and its package is not its folder';
+			if (!entry.classPaths.contains(cp) && !roots.contains(cp)) roots.push(cp);
 			var rel = f.substr(cp.length + 1), dirs = Path.directory(rel);
 			var module = Path.withoutDirectory(rel);
 			var scenario = isScenario(f);
@@ -510,9 +514,22 @@ class Project {
 		var all = [for (m in modules) 'helder.story.Stories.of("$m")'].concat([for (m in acts) 'helder.scenario.Scenarios.of("$m")']);
 		var args = '[${all.slice(0, modules.length).join(", ")}].flatten()' + (acts.length == 0 ? "" : ', [${all.slice(modules.length).join(", ")}].flatten()');
 		// (main run once, first: its UiWindow.run keeps its root for the scenarios, -D helder.scenarios)
-		var first = acts.length == 0 ? "" : '\t\t$main.main();\n';
+		var first = acts.length == 0 ? "" : '\t\t@:privateAccess $main.main();\n';
 		save('$gen/StudioScreens.hx', '// helder studio\'s screens: the project\'s stories and scenarios (generated)\nusing Lambda;\n\nclass StudioScreens {\n\tstatic function main() {\n$first\t\thelder.story.Screens.run($args);\n\t}\n}\n');
 		return gen;
+	}
+
+	// (a file's class path by its package line: the folder its package's folders are in; null: they are not its)
+	static function rootOf(f:String):Null<String> {
+		var re = ~/^\s*package\s+([\w.]*)\s*;/m;
+		var pack = re.match(Files.read(f)) ? re.matched(1) : "";
+		var dir = Path.directory(f), parts = pack == "" ? [] : pack.split(".");
+		parts.reverse();
+		for (p in parts) {
+			if (Path.withoutDirectory(dir) != p) return null;
+			dir = Path.directory(dir);
+		}
+		return dir;
 	}
 
 	// (TypeScript) a main importing the stories and the scenarios (each bound
