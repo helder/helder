@@ -443,4 +443,42 @@ function tests() {
 		equals(shown, [0]);
 		st.dispose();
 	}));
+	// (marked pending through a chain from an async memo asked again, whose
+	// answer leaves the chain unchanged: the wait ended by the transaction that
+	// marked each, a store's another; found by AtomsModel's settled property)
+	test("a chain pending through an async memo, its answer changing nothing, waits no more", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0);
+		function async()
+			return memo(() -> {
+				var l = new Later<Int>();
+				asks.push({l: l, v: s0()});
+				(l : Dynamic);
+			});
+		var n2 = async(), n3 = async();
+		var n8 = memo(() -> Std.int(Math.min((n2() : Int), 0)));
+		var n4 = memo(() -> (n2() : Int) == 3 ? throw "three" : (n2() : Int));
+		var n9 = memo(() -> n8() == 3 ? throw "three" : n8());
+		var n10 = memo(() -> (n3() : Int) + n9());
+		var sink = signalOf(0, {ownedWrite: true});
+		effect(_ -> n10(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		// (an effect writing what nothing reads: its write a transaction of its own)
+		effect(_ -> n4(), (v:Int, _) -> sink(x -> x > v ? x : v));
+		flush();
+		var st = new Atoms("1");
+		st.run(() -> for (n in [n2, n3, n4, n8, n9, n10]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s0(5));
+		var rounds = 0;
+		while (rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				if (!x.l.cancelled) x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+			if (!Lambda.exists(asks, x -> !x.l.cancelled)) break;
+		}
+		equals([st.run(() -> untrack(() -> n10())), st.run(() -> untrack(() -> isPending(() -> n10())) ? 1 : 0)], [50, 0]);
+		equals(shown, [0, 50]);
+		st.dispose();
+	}));
 }

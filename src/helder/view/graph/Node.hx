@@ -534,7 +534,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			}
 			switch o.kind {
 				case COMPUTED:
-					if (o.pendingIn != null && o.awaiting == null && o.pendingIn.find() == tx.find()) {
+					// (pending through its sources alone: no longer, once none is, whichever transaction marked it)
+					if (o.pendingIn != null && o.awaiting == null
+						&& (o.pendingIn.find() == tx.find() || !o.sourcePending())) {
 						o.pendingIn = null;
 						o.clearPending(tx);
 					}
@@ -543,6 +545,13 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				case _:
 			}
 		}
+	}
+
+	function sourcePending():Bool {
+		if (sources != null)
+			for (x in sources)
+				if (x.pendingIn != null) return true;
+		return false;
 	}
 
 	function markObservers(s:Int) {
