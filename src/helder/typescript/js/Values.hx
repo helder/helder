@@ -59,6 +59,8 @@ class JsObject {
 	static inline var WATCHED = 4;
 	// (a proxy: Proxies, its traps)
 	public static inline var PROXY = 8;
+	// (an object type's instance whose layout no longer holds its properties: deopt)
+	public static inline var DEOPT = 16;
 
 	public var extensible(get, set):Bool;
 	public var locked(get, set):Bool;
@@ -147,6 +149,11 @@ class JsObject {
 
 	public function setOwn(k:String, v:Dynamic, attribute:Int = 0):Void {
 		if (locked) Seed.diverge("changeable", this, "a typed class's prototype (" + k + ")");
+		if (layout != null && layout.plain && layout.index.exists(k) && (attribute != 0 || Std.isOfType(v, Accessor))) {
+			Layout.deopt(this);
+			setOwn(k, v, attribute);
+			return;
+		}
 		if (layout != null && layout.index.exists(k)) {
 			// (a typed class's field is a plain writable value: what its slot holds)
 			if (attribute & Attr.READONLY != 0 || Std.isOfType(v, Accessor)) Seed.diverge("a writable field", v, "property " + k);
@@ -218,7 +225,10 @@ class JsObject {
 
 	public function removeOwn(k:String):Void {
 		if (locked) Seed.diverge("changeable", this, "a typed class's prototype (" + k + ")");
-		if (layout != null && layout.index.exists(k)) Seed.diverge("deletable", this, "field " + k);
+		if (layout != null && layout.index.exists(k)) {
+			if (!layout.plain) Seed.diverge("deletable", this, "field " + k);
+			Layout.deopt(this);
+		}
 		var i = shape.slotOf(k);
 		if (i < 0) return;
 		// (the last one added: its parent's shape again, as V8 does)
@@ -232,6 +242,33 @@ class JsObject {
 			slots[i] = null;
 			shape.compact(slots);
 		}
+		changed();
+	}
+
+	// (an object type's instance (Layout.plain) given what its layout does not
+	// hold, a value of another type, an accessor, an attribute, a delete: an
+	// ordinary object of the same properties in their order from then on)
+	public function deopt():Void {
+		var l = layout;
+		var keys:Array<Null<String>> = [], attrs:Array<Int> = [], values:Array<Dynamic> = [];
+		for (i in 0...l.names.length) {
+			keys.push(l.names[i]);
+			attrs.push(0);
+			values.push(l.get(this, i));
+		}
+		for (i in 0...shape.size()) if (shape.keys[i] != null) {
+			keys.push(shape.keys[i]);
+			attrs.push(shape.attrs[i]);
+			values.push(slots[i]);
+		}
+		var s = Shapes.replay(Shapes.object, keys, attrs);
+		if (s == null) {
+			s = Shapes.object.dictionary();
+			for (i in 0...keys.length) s.add(keys[i], attrs[i]);
+		}
+		shape = s;
+		slots = values;
+		bits |= DEOPT;
 		changed();
 	}
 
@@ -265,9 +302,20 @@ class Layout {
 	public final root:Shape;
 	public final get:(JsObject, Int) -> Dynamic;
 	public final set:(JsObject, Int, Dynamic) -> Void;
+	// (an object type's, lower.Reps' object layouts: a value its slot does
+	// not take, a delete, an accessor deopt the instance rather than diverge)
+	public final plain:Bool;
+	// (an ordinary object's shape of its names: what a spread of an instance makes)
+	var keys:Null<Shape> = null;
 
-	public function new(names:Array<String>, get:(JsObject, Int) -> Dynamic, set:(JsObject, Int, Dynamic) -> Void) {
+	public function ordinary():Null<Shape> return keys != null ? keys : keys = Shapes.literal(names);
+
+	// (JsObject.deopt, set by the first object type's layout: a program without one links none of it)
+	public static var deopt:JsObject->Void = null;
+
+	public function new(names:Array<String>, get:(JsObject, Int) -> Dynamic, set:(JsObject, Int, Dynamic) -> Void, plain = false) {
 		this.names = names;
+		this.plain = plain;
 		root = Shapes.root(this);
 		for (i in 0...names.length) index.set(names[i], i);
 		this.get = get;

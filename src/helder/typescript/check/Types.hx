@@ -97,6 +97,11 @@ class Types {
 			var result:Array<Dynamic> = tsgo.call("getTypeAtLocations", {snapshot: at.snapshot, project: at.project, locations: [for (i in ids) sf.location(i)]});
 			for (j in 0...ids.length) if (result[j] != null) sf.types.set(ids[j], add(result[j]));
 		}
+		// (an object literal's contextual type: whose values it is, for its layout's sites, lower.Reps)
+		for (i in 1...sf.count) if (sf.kindAt(i) == KindObjectLiteralExpression) {
+			var t:Dynamic = tsgo.call("getContextualType", {snapshot: at.snapshot, project: at.project, location: sf.location(i)});
+			if (t != null) sf.contextual.set(i, add(t));
+		}
 		for (i in 1...sf.count) if (sf.kindAt(i) == KindFunctionDeclaration || sf.kindAt(i) == KindMethodDeclaration) {
 			var signature:Dynamic = tsgo.call("getSignatureFromDeclaration", {snapshot: at.snapshot, project: at.project, location: sf.location(i)});
 			if (signature == null) continue;
@@ -142,6 +147,50 @@ class Types {
 				if (args != null && args.length == 1) t.element = add(args[0]);
 			}
 		}
+	}
+
+	// which object literals' types are assignable to the types their keys
+	// are read through (target id → source ids): the lowering's object
+	// layouts' candidates (lower.Reps), asked while tsgo is up
+	final assignable:Map<Int, Map<Int, Bool>> = [];
+
+	public function relate(files:Array<SourceFile>) {
+		var literals:Map<String, Array<TsType>> = [];
+		var reads:Map<Int, {t:TsType, names:Map<String, Bool>}> = [];
+		for (sf in files) for (i in 1...sf.count) switch sf.kindAt(i) {
+			case KindObjectLiteralExpression:
+				var t = sf.types.get(i);
+				if (t == null) continue;
+				for (prop in sf.node(i).properties() ?? []) {
+					var name = prop.name();
+					if (name == null || name.kind != KindIdentifier && name.kind != KindStringLiteral) continue;
+					var list = literals.get(name.text) ?? [];
+					if (list.indexOf(t) < 0) list.push(t);
+					literals.set(name.text, list);
+				}
+			case KindPropertyAccessExpression:
+				var n = sf.node(i);
+				var t = n.expression().tsType;
+				if (t == null || n.name().kind != KindIdentifier) continue;
+				for (m in t.members ?? [t]) if (m.flags & object != 0 && m.element == null) {
+					var r = reads.get(m.id);
+					if (r == null) reads.set(m.id, r = {t: m, names: []});
+					r.names.set(n.name().text, true);
+				}
+			case _:
+		}
+		for (r in reads) {
+			var to:Map<Int, Bool> = [];
+			for (name in r.names.keys()) for (f in literals.get(name) ?? []) if (!to.exists(f.id))
+				to.set(f.id, f.id == r.t.id || tsgo.call("isTypeAssignableTo", {snapshot: at.snapshot, project: at.project, source: f.id, target: r.t.id}) == true);
+			assignable.set(r.t.id, to);
+		}
+	}
+
+	// whether a literal's type (source) is assignable to a type its keys are read through
+	public function assignableTo(source:Int, target:Int):Bool {
+		var to = assignable.get(target);
+		return to != null && to.get(source) == true;
 	}
 
 	// asks whether a type's values are functions (its call signatures), kept

@@ -9,6 +9,7 @@ import haxe.ds.Vector;
 import helder.typescript.ir.Builder;
 import helder.typescript.check.Types;
 import helder.typescript.lower.Classes.ClassLayout;
+import helder.typescript.lower.Reps.ObjectLayout;
 import helder.typescript.lower.Api;
 import helder.typescript.lower.Core;
 import helder.typescript.lower.Core.*;
@@ -216,7 +217,14 @@ abstract class Expressions extends Statements {
 				var name = n.name().text;
 				chainCheck(n, a);
 				dynamicOperations++;
-				reps.siteGet(b, a, name);
+				var laid = plainAccess(n) ? reps.objectCandidates(n.expression().tsType, name) : [];
+				if (laid.length == 0) reps.siteGet(b, a, name);
+				else if (numberRead == n) {
+					var slot = numberIntoSlot;
+					numberRead = null;
+					reps.objectGet(b, a, name, laid, TF64, g -> slot ? store(g, TF64) : number(g));
+				}
+				else reps.objectGet(b, a, name, laid, TRef(RAny), g -> g);
 			case KindDeleteExpression:
 				var target = n.expression();
 				if (target.kind == KindPropertyAccessExpression) b.runtime("libDelete", [any(expr(target.expression())), EStr(target.name().text)]);
@@ -294,6 +302,11 @@ abstract class Expressions extends Statements {
 		if (n.kind == KindPropertyAccessExpression) {
 			var obj = b.temp(any(expr(n.expression())));
 			var name = n.name().text;
+			var laid = plainAccess(n) ? reps.objectCandidates(n.expression().tsType, name) : [];
+			if (laid.length > 0) return {
+				read: () -> reps.objectGet(b, obj, name, laid, TRef(RAny), g -> g),
+				write: (e) -> reps.objectSet(b, obj, name, laid, e)
+			};
 			return {
 				read: () -> reps.siteGet(b, obj, name),
 				write: (e) -> reps.sitePut(b, obj, name, e)
@@ -362,7 +375,16 @@ abstract class Expressions extends Statements {
 			var divisor = intOf(x.right());
 			return divisor != null ? remainderInt(counter, divisor) : remainderOf(counter, numeric(x.right(), false));
 		}
-		var a = numericOperator(op, n) ? numeric(x.left(), false) : expr(x.left());
+		var relation = op == KindLessThanToken || op == KindLessThanEqualsToken || op == KindGreaterThanToken || op == KindGreaterThanEqualsToken;
+		if (relation && numericOperator(op, n) && (laidNumber(x.left()) || laidNumber(x.right()))) return eitherRelation(op, x.left(), x.right());
+		if (op == KindPlusToken && numericOperator(op, n) && laidSum(n)) {
+			var e = eitherSum(n);
+			var v = b.local("sum", TRef(RAny));
+			b.out.push(SIf(ELocal(e.num), b.block(() -> b.out.push(SSet(v, any(ELocal(e.f))))), b.block(() -> b.out.push(SSet(v, e.any())))));
+			return ELocal(v);
+		}
+		var coerce = op != KindPlusToken && !relation;
+		var a = numericOperator(op, n) ? numeric(x.left(), false, coerce) : expr(x.left());
 		if (op == KindAmpersandAmpersandToken || op == KindBarBarToken || op == KindQuestionQuestionToken) {
 			// (the result, the left or the right value, in a slot of the expression's type)
 			var l = b.local("shortCircuit", loose(n) ? TRef(RAny) : reps.rep(n.tsType));
@@ -373,7 +395,92 @@ abstract class Expressions extends Statements {
 			return ELocal(l);
 		}
 		if (op == KindInstanceOfKeyword) return b.runtime("libInstanceOf", [any(a), any(expr(x.right()))]);
-		return operate(op, a, numericOperator(op, n) ? numeric(x.right(), false) : expr(x.right()), n);
+		return operate(op, a, numericOperator(op, n) ? numeric(x.right(), false, coerce) : expr(x.right()), n);
+	}
+
+	// (a property read whose object layouts' slot is a number: Reps.objectGetEither)
+	function laidNumber(n:Node):Bool {
+		var inner = strip(n);
+		while (inner.kind == KindNonNullExpression) inner = strip(inner.expression());
+		if (inner.kind != KindPropertyAccessExpression || !plainAccess(inner) || inner.name().kind != KindIdentifier || !types.isNumber(inner.tsType)) return false;
+		var name = inner.name().text;
+		return Lambda.exists(reps.objectCandidates(inner.expression().tsType, name), c -> c.tys[c.names.indexOf(name)] == TF64);
+	}
+
+	// (a sum of numbers, + of + ..., one of whose terms is such a read)
+	function laidSum(n:Node):Bool {
+		var inner = strip(n);
+		if (laidNumber(inner)) return true;
+		return inner.kind == KindBinaryExpression && inner.operatorToken().kind == KindPlusToken && numericOperator(KindPlusToken, inner)
+			&& (laidSum(inner.left()) || laidSum(inner.right()));
+	}
+
+	// a sum of numbers computed unboxed while each term is a number (a read
+	// of an object layout's slot, or a value that is one), else as + does:
+	// the sum is boxed once where it is a value, not each term
+	function eitherSum(n:Node):{num:Local, f:Local, any:() -> Ex} {
+		var inner = strip(n);
+		var num = b.local("isNumber", TBool), f = b.local("number", TF64);
+		if (inner.kind == KindBinaryExpression && inner.operatorToken().kind == KindPlusToken && numericOperator(KindPlusToken, inner)) {
+			var a = eitherSum(inner.left()), z = eitherSum(inner.right());
+			b.out.push(SSet(num, bool(false)));
+			b.out.push(SIf(ELocal(a.num), b.block(() -> b.out.push(SIf(ELocal(z.num), b.block(() -> {
+				b.out.push(SSet(f, EBin(FAdd, ELocal(a.f), ELocal(z.f))));
+				b.out.push(SSet(num, bool(true)));
+			}), new Vector(0)))), new Vector(0)));
+			return {num: num, f: f, any: () -> b.runtime("add", [a.any(), z.any()])};
+		}
+		if (laidNumber(inner)) {
+			while (inner.kind == KindNonNullExpression) inner = strip(inner.expression());
+			var o = expr(inner.expression()), name = inner.name().text;
+			var e = reps.objectGetEither(b, o, name, reps.objectCandidates(inner.expression().tsType, name));
+			return {num: e.num, f: e.f, any: () -> {
+				var v = b.local("term", TRef(RAny));
+				b.out.push(SIf(ELocal(e.num), b.block(() -> b.out.push(SSet(v, any(ELocal(e.f))))), b.block(() -> b.out.push(SSet(v, ELocal(e.any))))));
+				return ELocal(v);
+			}};
+		}
+		var e = b.temp(expr(n));
+		if (Ir.typeOf(e) == TF64) {
+			b.out.push(SSet(num, bool(true)));
+			b.out.push(SSet(f, e));
+			return {num: num, f: f, any: () -> any(e)};
+		}
+		var v = b.temp(any(e));
+		b.out.push(SSet(num, b.runtime("libIsNumber", [v])));
+		b.out.push(SIf(ELocal(num), b.block(() -> b.out.push(SSet(f, b.runtime("libNumber", [v])))), new Vector(0)));
+		return {num: num, f: f, any: () -> v};
+	}
+
+	// a relation of numbers one of which is such a read: unboxed where both
+	// are numbers, else the relation of their values (strings compare as strings)
+	function eitherRelation(op:Kind, left:Node, right:Node):Ex {
+		function operand(n:Node):{num:Ex, f:Ex, any:() -> Ex} {
+			if (laidNumber(n)) {
+				var inner = strip(n);
+				while (inner.kind == KindNonNullExpression) inner = strip(inner.expression());
+				var o = expr(inner.expression()), name = inner.name().text;
+				var e = reps.objectGetEither(b, o, name, reps.objectCandidates(inner.expression().tsType, name));
+				return {num: ELocal(e.num), f: ELocal(e.f), any: () -> {
+					var v = b.local("operand", TRef(RAny));
+					b.out.push(SIf(ELocal(e.num), b.block(() -> b.out.push(SSet(v, any(ELocal(e.f))))), b.block(() -> b.out.push(SSet(v, ELocal(e.any))))));
+					return ELocal(v);
+				}};
+			}
+			var e = b.temp(expr(n));
+			return Ir.typeOf(e) == TF64 ? {num: bool(true), f: e, any: () -> any(e)} : {num: bool(false), f: EF64(0), any: () -> any(e)};
+		}
+		var a = operand(left), z = operand(right);
+		var r = b.local("relation", TBool);
+		var bin:BinOp = op == KindLessThanToken ? FLt : op == KindLessThanEqualsToken ? FLe : op == KindGreaterThanToken ? FGt : FGe;
+		var text = op == KindLessThanToken ? "<" : op == KindLessThanEqualsToken ? "<=" : op == KindGreaterThanToken ? ">" : ">=";
+		typedOperations++;
+		var both = b.local("numbers", TBool);
+		b.out.push(SSet(both, bool(false)));
+		b.out.push(SIf(a.num, b.block(() -> b.out.push(SIf(z.num, Vector.fromArrayCopy([SSet(both, bool(true))]), new Vector(0)))), new Vector(0)));
+		b.out.push(SIf(ELocal(both), b.block(() -> b.out.push(SSet(r, EBin(bin, a.f, z.f)))),
+			b.block(() -> b.out.push(SSet(r, b.runtime("libRelation", [a.any(), z.any(), EStr(text)]))))));
+		return ELocal(r);
 	}
 	function assign(n:Node):Ex {
 		var x = n;
@@ -430,7 +537,9 @@ abstract class Expressions extends Statements {
 			return ELocal(l);
 		}
 		var previous = target.read();
-		var e = operate(compound.get(op), previous, arithmetic ? numeric(x.right(), false) : expr(x.right()), n);
+		// (+= into a number's slot: the sum is stored as a number, so a value that is none stops there, as store does)
+		var plus = compound.get(op) == KindPlusToken;
+		var e = operate(compound.get(op), previous, arithmetic ? numeric(x.right(), plus && Ir.typeOf(previous) == TF64, !plus) : expr(x.right()), n);
 		target.write(e);
 		return e;
 	}
@@ -583,10 +692,150 @@ abstract class Expressions extends Statements {
 		case _: EStr(name.text);
 	};
 
+	// ---- object types' layouts (Reps.objectLayout)
+
+	// (a literal's properties when each is a plain one of a static name, its
+	// name distinct, not an index: their names and value nodes; else null)
+	function plainMembers(props:Array<Node>):Null<Array<{name:String, value:Node}>> {
+		var out = [], seen:Map<String, Bool> = [];
+		for (prop in props) {
+			var name = switch prop.kind {
+				case KindShorthandPropertyAssignment: prop.name().text;
+				case KindPropertyAssignment if (prop.name().kind == KindIdentifier || prop.name().kind == KindStringLiteral): prop.name().text;
+				case _: return null;
+			};
+			if (name == "__proto__" || seen.exists(name) || ~/^(0|[1-9][0-9]*)$/.match(name)) return null;
+			seen.set(name, true);
+			out.push({name: name, value: prop.kind == KindPropertyAssignment ? prop.initializer() : prop.name()});
+		}
+		return out.length > 0 && out.length <= 64 ? out : null;
+	}
+
+	// (a property value's slot: as its type says)
+	function slotType(value:Node):Ty return loose(value) ? TRef(RAny) : reps.rep(value.tsType);
+
+	// (the object types a literal's values are: its own, the one it is made for)
+	function made(l:ObjectLayout, n:Node) {
+		var own = n.tsType, ctx = n.contextualType();
+		if (own != null) l.types.set(own.id, true);
+		if (ctx != null) {
+			l.types.set(ctx.id, true);
+			if (ctx.members != null) for (m in ctx.members) l.types.set(m.id, true);
+		}
+	}
+
+	function prepareLayouts() {
+		var spreads:Array<Node> = [];
+		for (sf in src.files) for (i in 1...sf.count) if (sf.kindAt(i) == KindObjectLiteralExpression) {
+			var n = sf.node(i);
+			var props = properties(n);
+			if (props.length > 1 && props[0].kind == KindSpreadAssignment) {
+				spreads.push(n);
+				continue;
+			}
+			var own = plainMembers(props);
+			if (own == null) continue;
+			var tys = [for (m in own) slotType(m.value)];
+			// (nothing typed: nothing a layout would do better than a shape)
+			if (Lambda.foreach(tys, t -> t.match(TRef(RAny)))) continue;
+			var l = reps.objectLayout([for (m in own) m.name], tys);
+			made(l, n);
+			literalLayouts.set(n, l);
+		}
+		// (a spread's of a spread's, in either order: twice)
+		for (round in 0...2) for (n in spreads) if (!spreadLayouts.exists(n)) {
+			var props = properties(n);
+			var own = plainMembers(props.slice(1));
+			var from = own == null ? null : reps.objectOf(props[0].expression().tsType);
+			if (from == null) continue;
+			var names = from.names.copy(), tys = from.tys.copy();
+			for (m in own) {
+				var i = names.indexOf(m.name);
+				if (i >= 0) tys[i] = slotType(m.value);
+				else {
+					names.push(m.name);
+					tys.push(slotType(m.value));
+				}
+			}
+			if (names.length > 64) continue;
+			var to = reps.objectLayout(names, tys);
+			made(to, n);
+			spreadLayouts.set(n, {from: from, to: to});
+		}
+	}
+
+	// (values into a layout's slots: where each fits, then with them; else otherwise)
+	function intoSlots(values:Array<Ex>, tys:Array<Ty>, then:Array<Ex>->Void, otherwise:() -> Void) {
+		// (each fits whatever its value: the instance alone, no join with the other way, so
+		// hxmc's escape analysis may replace one that does not leave its function)
+		if ([for (i in 0...values.length) i].filter(i -> !reps.fitsStatically(values[i], tys[i])).length == 0) {
+			var typed:Array<Ex> = [];
+			for (i in 0...values.length) reps.ifFits(b, values[i], tys[i], x -> typed.push(x), () -> {});
+			then(typed);
+			return;
+		}
+		var ok = b.local("fits", TBool);
+		b.out.push(SSet(ok, bool(true)));
+		var typed = [for (i in 0...values.length) {
+			var l = b.local("slot", tys[i]);
+			reps.ifFits(b, values[i], tys[i], x -> b.out.push(SSet(l, x)), () -> b.out.push(SSet(ok, bool(false))));
+			ELocal(l);
+		}];
+		b.out.push(SIf(ELocal(ok), b.block(() -> then(typed)), b.block(otherwise)));
+	}
+
+	// a literal of a layout: an instance of it where its values fit, else one of its shape
+	function layoutLiteral(props:Array<Node>, l:ObjectLayout):Ex {
+		var own = plainMembers(props);
+		var values = [for (m in own) m.value == null ? null : named(m.value, m.name)];
+		var r = b.local("object", TRef(RAny));
+		intoSlots(values, l.tys, typed -> b.out.push(SSet(r, any(reps.objectNew(b, l, typed)))),
+			() -> b.out.push(SSet(r, b.runtime("libLiteral", [reps.literalShape(l.names), pack(values)]))));
+		return ELocal(r);
+	}
+
+	// `{...x, k: v}` where x's type's values are made by one layout: where x
+	// is exactly an instance of it, a new instance of the spread's layout,
+	// its slots copied; else property by property
+	function spreadLiteral(props:Array<Node>, from:ObjectLayout, to:ObjectLayout):Ex {
+		var source = b.temp(any(expr(props[0].expression())));
+		var exact = b.local("exact", TBool);
+		b.out.push(SSet(exact, bool(false)));
+		var copied = [for (t in from.tys) b.local("copied", t)];
+		reps.exactly(b, source, from, o -> {
+			for (k in 0...from.names.length) b.out.push(SSet(copied[k], EField(from.info, reps.objectSlot(from, from.names[k]), o)));
+			b.out.push(SSet(exact, bool(true)));
+		});
+		var o = b.local("spread", TRef(RAny));
+		function spread() {
+			b.out.push(SSet(o, b.runtime("libObject", [pack([]), pack([])])));
+			b.runtime("libAssignSpread", [ELocal(o), source]);
+		}
+		b.out.push(SIf(ELocal(exact), new Vector(0), b.block(spread)));
+		var own = plainMembers(props.slice(1));
+		var values = [for (m in own) named(m.value, m.name)];
+		var r = b.local("object", TRef(RAny));
+		var slots = [for (k in 0...to.names.length) {
+			var i = Lambda.findIndex(own, m -> m.name == to.names[k]);
+			i >= 0 ? values[i] : ELocal(copied[k]);
+		}];
+		function generic() {
+			b.out.push(SIf(ELocal(exact), b.block(spread), new Vector(0)));
+			for (k in 0...own.length) b.runtime("libDefineField", [ELocal(o), EStr(own[k].name), any(values[k])]);
+			b.out.push(SSet(r, ELocal(o)));
+		}
+		b.out.push(SIf(ELocal(exact), b.block(() -> intoSlots(slots, to.tys, typed -> b.out.push(SSet(r, any(reps.objectNew(b, to, typed)))), generic)), b.block(generic)));
+		return ELocal(r);
+	}
+
 	// Object literals: plain ones in one call; others property by property
 	// (methods and accessors see the object as their home for super).
 	function objectLiteral(n:Node):Ex {
 		var props = properties(n);
+		var laid = literalLayouts.get(n);
+		if (laid != null) return layoutLiteral(props, laid);
+		var spread = spreadLayouts.get(n);
+		if (spread != null) return spreadLiteral(props, spread.from, spread.to);
 		var plain = true;
 		for (prop in props) if (!(prop.kind == KindPropertyAssignment && prop.name().kind != KindComputedPropertyName && prop.name().text != "__proto__" || prop.kind == KindShorthandPropertyAssignment)) plain = false;
 		if (plain) {
@@ -653,9 +902,30 @@ abstract class Expressions extends Statements {
 	// n's value where a number is wanted (slot: a typed slot's, its check
 	// where it is none; else as ToNumber makes one): a number array's element
 	// read unboxed, else the runtime's element made a number
-	function numeric(n:Node, slot:Bool):Ex {
+	// (coerce: the operator makes a number of a value that is none, as
+	// ToNumber does: not + nor a relation, whose operands' value it keeps)
+	function numeric(n:Node, slot:Bool, coerce:Bool = true):Ex {
 		var inner = strip(n);
 		while (inner.kind == KindNonNullExpression) inner = strip(inner.expression());
+		// (numbers' sum into a number's slot, of an object layout's reads: those
+		// read into the slot too, a value that is no number stopping where it is
+		// read rather than at the store; the other terms as + takes them)
+		if (slot && inner.kind == KindBinaryExpression && inner.operatorToken().kind == KindPlusToken && types.isNumber(inner.left().tsType)
+			&& types.isNumber(inner.right().tsType) && laidSum(inner)) {
+			expressions++;
+			function term(t:Node) return laidNumber(t) || laidSum(t) ? numeric(t, true) : numeric(t, false);
+			var a = term(inner.left());
+			return operate(KindPlusToken, a, term(inner.right()), inner);
+		}
+		if (inner.kind == KindPropertyAccessExpression && types.isNumber(inner.tsType) && (slot || coerce)) {
+			var saved = numberRead, savedSlot = numberIntoSlot;
+			numberRead = inner;
+			numberIntoSlot = slot;
+			var e = expr(n);
+			numberRead = saved;
+			numberIntoSlot = savedSlot;
+			return e;
+		}
 		if (!numberElement(inner)) return expr(n);
 		expressions++;
 		typed++;

@@ -286,6 +286,7 @@ class Project {
 		}
 		for (name in sources) load(name, true);
 		while (pending.length > 0) load(pending.shift(), false);
+		types.relate(files);
 		if (file == null) throw path + ": TSHX002: input file not found";
 	}
 

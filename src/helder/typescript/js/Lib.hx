@@ -956,6 +956,13 @@ class Lib {
 				t.slots = s.slots.copy();
 				return;
 			}
+			// (an object type's instance of nothing beyond its slots: its names' shape)
+			if (t.shape == Shapes.object && t.extensible && s.layout != null && s.layout.plain && s.shape == s.layout.root && s.layout.ordinary() != null) {
+				var l = s.layout;
+				t.shape = l.ordinary();
+				t.slots = [for (i in 0...l.names.length) l.get(s, i)];
+				return;
+			}
 		}
 		// (a proxy's, CopyDataProperties': each key's descriptor, then its value)
 		if (Exotics.is(source)) {

@@ -29,6 +29,8 @@ class SourceFile {
 	// (the checker's types of expressions and declared names, and functions' return types, by node index)
 	public final types:Map<Int, TsType> = [];
 	public final returns:Map<Int, TsType> = [];
+	// (an object literal's contextual type: the type it is made for, where one says)
+	public final contextual:Map<Int, TsType> = [];
 	public final tables:Tables;
 	public function new(path:String, bytes:Bytes, tables:Tables) {
 		this.path = path;
@@ -255,6 +257,9 @@ class Node extends Children {
 
 	// a function's return type
 	public inline function returnType():Null<TsType> return file.returns.get(index);
+
+	// an object literal's contextual type
+	public inline function contextualType():Null<TsType> return file.contextual.get(index);
 
 	function get_parent():Node {
 		if (index <= 1) return null;
