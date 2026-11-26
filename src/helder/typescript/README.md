@@ -547,7 +547,8 @@ await's frame is a constant the lowering wrote).
 
 Uncaught, an error prints `Uncaught ` and its stack (the program's last
 catch, an unhandled rejection's report), a value that is no error the value
-and where it was thrown (hxmc's record of the last throw); `helder dev`
+and where it was thrown (kept at its `throw`, whatever catches and throws
+it again on its way out: `Frames.throwing`); `helder dev`
 shows them as the program writes them. `Error.stackTraceLimit` (10, read
 when a stack is written) and `Error.captureStackTrace(o)` (o's stack from
 here; constructorOpt is not honoured) are V8's. A small direct function or

@@ -358,9 +358,9 @@ class Promises {
 		if (!t.live()) return;
 		var was = helder.view.graph.Atoms.current;
 		helder.view.graph.Atoms.current = t.store;
-		try call(t.callback, undef(), t.args) catch (e:Dynamic) {
+		try call(t.callback, undef(), t.args) catch (e:haxe.Exception) {
 			helder.view.graph.Atoms.current = was;
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 		helder.view.graph.Atoms.current = was;
 	}
@@ -383,9 +383,10 @@ class Promises {
 				helder.view.graph.Atoms.current = was;
 				if (r.child != null) resolve(r.child, result);
 			}
-			catch (e:Dynamic) {
+			catch (e:haxe.Exception) {
 				helder.view.graph.Atoms.current = was;
-				if (r.child != null) reject(r.child, e); else throw e;
+				if (r.child == null) throw helder.async.Errors.kept(e);
+				reject(r.child, Frames.value(e));
 			}
 		});
 	}
