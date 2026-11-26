@@ -55,7 +55,7 @@ class Async {
 	// body as a root task on this thread's loop, started when the loop turns
 	// (in a screen's store, Home: there, its continuations too)
 	public static function launch<T>(body:Body<T>, ?context:Context):Task<T> {
-		var s = Home.current;
+		var s = Home.current();
 		var t = new Task<T>(null, context ?? (s != null ? Context.create(s) : Loop.current().context()), body, false);
 		start(t);
 		return t;
