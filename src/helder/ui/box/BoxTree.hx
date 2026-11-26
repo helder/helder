@@ -33,7 +33,8 @@ class BoxTree {
 	final styles:CssStyles;
 	final contexts:Contexts;
 	final image:Null<String->Null<Bitmap>>;
-	final cache = new Map<Element, BoxStyle>();
+	// (one BoxStyle a computed style: helder.css shares styles between like elements)
+	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
 	final counters = new Map<String, Array<Int>>();
 	var quotes = 0;
 
@@ -51,8 +52,9 @@ class BoxTree {
 	}
 
 	function style(el:Element):BoxStyle {
-		var s = cache.get(el);
-		if (s == null) cache.set(el, s = new BoxStyle(styles.computed(el)));
+		var css = styles.computed(el);
+		var s = cache.get(css);
+		if (s == null) cache.set(css, s = new BoxStyle(css));
 		return s;
 	}
 

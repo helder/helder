@@ -35,7 +35,6 @@ class WordFlow {
 	// (the content's atoms, kept between calls)
 	final kinds:Array<Int> = [];
 	final boxes:Array<Box> = [];
-	final texts:Array<String> = [];
 	final starts:Array<Int> = [];
 	final ends:Array<Int> = [];
 	final widths:Array<Float> = [];
@@ -52,6 +51,8 @@ class WordFlow {
 	// ---- the atoms: InlineContent's pieces
 
 	var content:Null<InlineContent> = null;
+	// (the width the content's styles resolve percentages against: theirs, made once)
+	var cbWidth = 0.0;
 	final entries:Array<Int> = [];
 
 	// (atomic inlines are laid out while walking, their own lines with this:
@@ -59,22 +60,29 @@ class WordFlow {
 	function collect(block:Box, space:Space, width:Float, pct:Float, measureOnly:Bool) {
 		var found = [];
 		var frags = space.fragments;
-		var c = new InlineContent(new BoxInline(block, width));
+		var c = new InlineContent(BoxInline.of(block, width));
 		var laid = new Map<Box, Int>();
+		// (a text item's box by its DOM text; generated text's is its style's)
+		var textBoxes = new haxe.ds.ObjectMap<helder.dom.Node, Box>();
+		// (inline boxes and atomic inlines in order: their items come in that order, one piece each;
+		// a style is shared by boxes alike, so it doesn't say which)
+		var opened:Array<Box> = [], atomics:Array<Box> = [];
 		function walk(b:Box) {
 			var k = b.first;
 			while (k != null) {
 				switch k.kind {
 					case Text:
-						c.addText(k.text, new BoxInline(k, width), k.node, k.offset);
+						if (k.node != null) textBoxes.set(k.node, k);
+						c.addText(k.text, BoxInline.of(k, width), k.node, k.offset);
 					case Inline if (k.flags & Box.OUTSIDE != 0):
 						found.push(k);
 					case Inline:
-						c.openBox(new BoxInline(k, width), k.node);
+						opened.push(k);
+						c.openBox(BoxInline.of(k, width), k.node);
 						walk(k);
 						c.closeBox(k.node);
 					case Break:
-						c.addBreak(k.node, new BoxInline(k, width));
+						c.addBreak(k.node, BoxInline.of(k, width));
 					case _:
 						var w = 0.0, h = 0.0, base = Math.NaN;
 						if (measureOnly) {
@@ -87,7 +95,8 @@ class WordFlow {
 							h = frags.height(f);
 							base = frags.baseline(f);
 						}
-						c.addAtomic(w, h, base, new BoxInline(k, width), k.node);
+						atomics.push(k);
+						c.addAtomic(w, h, base, BoxInline.of(k, width), k.node);
 				}
 				k = k.next;
 			}
@@ -96,7 +105,9 @@ class WordFlow {
 		c.finish();
 		content = c;
 		markers = found;
+		cbWidth = width;
 		count = 0;
+		var openOf = new Map<Int, Box>(), nextOpen = 0, nextAtomic = 0;
 		for (p in 0...c.pieces) {
 			var item = c.pieceItem(p);
 			var kind = switch c.pieceKind(p) {
@@ -118,15 +129,25 @@ class WordFlow {
 			}
 			var start = c.pieceStart(p), end = c.pieceEnd(p);
 			kinds[count] = kind;
-			boxes[count] = style.box;
-			texts[count] = kind == WORD || kind == SPACE ? c.text.substring(start, end) : "";
+			var source = c.source(item);
+			var box = switch kind {
+				case OPEN:
+					var b = opened[nextOpen++];
+					openOf.set(item, b);
+					b;
+				case CLOSE: openOf.get(c.match(item)) ?? style.box;
+				case ATOMIC: atomics[nextAtomic++];
+				case WORD | SPACE if (source != null): textBoxes.get(source) ?? style.box;
+				case _: style.box;
+			}
+			boxes[count] = box;
 			starts[count] = start;
 			ends[count] = end;
 			widths[count] = c.pieceWidth(p);
 			breaks[count] = c.pieceBreak(p) & LineBreaks.STATUS == LineBreaks.ALLOWED;
 			kept[count] = keep;
 			entries[count] = c.pieceEntry(p);
-			atomicFragments[count] = kind == ATOMIC ? (laid.get(style.box) ?? -1) : -1;
+			atomicFragments[count] = kind == ATOMIC ? (laid.get(box) ?? -1) : -1;
 			count++;
 		}
 	}
@@ -237,7 +258,7 @@ class WordFlow {
 
 	// (an inline box's metrics: its font's rounded ascent and descent, its line height's leading around them, §10.8.1)
 	function metrics(b:Box, fonts:FontMatch):Metrics {
-		var style = new BoxInline(b, 0);
+		var style = BoxInline.of(b, cbWidth);
 		var f = content.fonts, id = f.idOf(style);
 		var a = f.ascent(id), d = f.descent(id);
 		var lh = style.lineHeight();
@@ -519,8 +540,8 @@ class WordFlow {
 	}
 
 	// (an inline box's horizontal margins, borders and padding on this line)
-	static function edges(s:Span, avail:Float):Float {
-		var st = new BoxInline(s.box, avail);
+	function edges(s:Span, avail:Float):Float {
+		var st = BoxInline.of(s.box, cbWidth);
 		return (s.start ? st.marginStart() + st.borderStart() + st.paddingStart() : 0) + (s.end ? st.marginEnd() + st.borderEnd() + st.paddingEnd() : 0);
 	}
 
@@ -533,6 +554,8 @@ class WordFlow {
 		var top = baseline + spans[si].offset - m.ascent;
 		var run:Null<ShapedRun> = null, runX = 0.0, pen = 0.0, from = starts[k], to = from;
 		var all = c.text.substring(starts[k], ends[e - 1]);
+		var glyphs = 0;
+		for (a in k...e) if (entries[a] >= 0) glyphs += shaper.glyphCount(entries[a]);
 		function flush() {
 			if (run == null || run.count == 0) return;
 			run.text = all;
@@ -553,6 +576,7 @@ class WordFlow {
 					if (run == null || run.face != face) {
 						flush();
 						run = new ShapedRun(face, m.size);
+						sized(run, glyphs);
 						runX = pen;
 						from = starts[a] + shaper.cluster(g);
 					}
@@ -567,6 +591,15 @@ class WordFlow {
 			if (kinds[a] == SPACE) pen += spaceShare;
 		}
 		flush();
+	}
+
+	// (a run's columns made their size at once: grown one glyph at a time, each push copies)
+	static function sized(run:ShapedRun, n:Int) {
+		run.ids.resize(n);
+		run.xs.resize(n);
+		run.ys.resize(n);
+		run.starts.resize(n);
+		run.ends.resize(n);
 	}
 
 	// (outside markers: before the first line's start, on its baseline)
