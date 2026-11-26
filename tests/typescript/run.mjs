@@ -49,7 +49,8 @@ const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'I
 }
 const tsc=['node_modules/typescript/bin/tsc','--target','esnext','--strict','--skipLibCheck'];
 // (maxBuffer: definitions/pbr.ts prints every variant's shader text in four languages, past spawnSync's 1 MB)
-function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024});if(r.error)throw r.error;return r;}
+// (in UTC, node and helder alike: a program's local times are CI's on a Mac too)
+function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024,env:{...process.env,TZ:'UTC'}});if(r.error)throw r.error;return r;}
 // (util.inspect's symbol keys: Node 24 writes Symbol(k): v, earlier ones
 // [Symbol(k)]: v; helder's one way: both outputs written one way, so the
 // oracle's version does not matter)
@@ -147,6 +148,8 @@ console.log('PASS style.d.ts');
 for(const file of fs.readdirSync(`${T}/helder`).filter(f=>/\.tsx?$/.test(f)&&!f.endsWith('.d.ts')).sort())for(const target of targets) {
     if(!mine())continue;
     const stem=file.replace(/\.tsx?$/,''),out=`${dir}/helder-${stem}${target!==HOST?`-${target}.wasm`:''}`;
+    // (helder.os formats with the system's formatters natively on a Mac: locale.out is Linux's, ICU-less)
+    if(stem==='locale'&&target===HOST&&!HOST.startsWith('linux')) {console.log(`SKIP helder ${file} ${target}: its output is Linux's (helder.os's formats are the system's here)`);continue;}
     ok(run(compiler,[`${T}/helder/${file}`,'--cp','tests/view','--cp','tests/ui','--roundtrip-ir','--target',target,'-o',out]),`${file} compile ${target}`);
     const r=target===HOST?run(out,[]):run(process.execPath,[`${T}/run-wasi.cjs`,out]);ok(r,`${file} ${target}`);
     assert.equal(r.stdout,fs.readFileSync(`${T}/helder/${stem}.out`,'utf8'),`${file} stdout ${target}`);
