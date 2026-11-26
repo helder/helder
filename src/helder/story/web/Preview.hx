@@ -26,8 +26,9 @@ import hxmc.unsafe.*;
 // and anything else the program's agent answers (helder.dev.Agent),
 // with that screen's context current. It tells Host.ready {screens} once
 // running, Host.frame {screen, version, width, height} with each frame's
-// bitmap beside it (worker.mjs: the message's bitmap), and Hot.patched
-// after a patch's frame.
+// bitmap beside it (worker.mjs: the message's bitmap), Host.failed
+// {screen, message, at} when a screen throws (the others go on), and
+// Hot.patched after a patch's frame.
 //
 //   // the studio's generated main for the web (apps/studio: Previews)
 //   helder.story.web.Preview.run(helder.story.Stories.of("Todo_story"));
@@ -41,6 +42,8 @@ class Preview {
 		#if hxmc.dev
 		helder.dev.Agent.serve(send);
 		helder.dev.Agent.notify("Host.ready", {screens: helder.story.HostAgent.list(h)});
+		// (a screen that throws: its failure told, the others go on; NativeHost's)
+		h.onFailure = s -> helder.dev.Agent.notify("Host.failed", {screen: h.screens.indexOf(s), message: s.failure?.message, at: s.failure?.at});
 		#end
 		PreviewWeb.start(Callback.addr(turn));
 	}

@@ -367,6 +367,7 @@ class Tools implements Mcp.Target {
 		var s = screenOf(args.screen);
 		#if (hxmc.target == "wasm32-wasi")
 		var img = s.image.peek();
+		if (s.crashed) throw '${s.info.name} crashed: ${s.report.peek()}';
 		if (img == null) throw '${s.info.name} has no frame yet';
 		// (a frame of the preview host's is the browser's: its bitmap, the page's to make a PNG of)
 		if (!img.hasPixels) return {

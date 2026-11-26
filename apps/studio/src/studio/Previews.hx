@@ -574,13 +574,7 @@ class Previews {
 	function threw(p:Dynamic) {
 		var s = order[Std.int(p.screen)];
 		if (s == null) return;
-		var message = ~/^helder\.[a-z.]+: /.replace(p.message ?? "an error", ""), at:Null<String> = p.at;
-		if (at != null && at.startsWith(project.dir + "/")) at = at.substr(project.dir.length + 1);
-		var why = at == null ? message : '$at: $message';
-		s.crashed = true;
-		s.report(why);
-		s.reloading = false;
-		onLog('studio: ${s.info.name} crashed: $why');
+		onLog('studio: ${s.info.name} crashed: ${s.threw(p, project.dir)}');
 		reloaded();
 	}
 
@@ -857,6 +851,18 @@ class Screen {
 	public var shownAt = -1.0;
 	// the last patch's ms to its frame (Hot.patched; -1: waiting)
 	public var patchedMs = -1.0;
+
+	// what its program threw (a host's Host.failed: {message, at}): crashed,
+	// why ("file:line: message", the file the project's), not waited on
+	public function threw(failed:Dynamic, dir:String):String {
+		var message = ~/^helder\.[a-z.]+: /.replace(failed.message ?? "an error", ""), at:Null<String> = failed.at;
+		if (at != null && StringTools.startsWith(at, dir + "/")) at = at.substr(dir.length + 1);
+		var why = at == null ? message : '$at: $message';
+		crashed = true;
+		report(why);
+		reloading = false;
+		return why;
+	}
 
 	public function new(info:ScreenInfo) {
 		this.info = info;
