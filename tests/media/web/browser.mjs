@@ -17,10 +17,10 @@ const pw = require('playwright');
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const wasm = path.resolve(process.argv[2]);
 const browsers = process.argv.length > 3 ? process.argv.slice(3) : ['chromium', 'firefox', 'webkit'];
-const page = (gfx, name, mode = '') => `<!doctype html><body><script type="module">
+const page = (gfx, name, mode = '', copied = false) => `<!doctype html><body><script type="module">
 import { run } from '/src/helder/os/browser.mjs';
 const { host } = await run('/module.wasm', { imports: ['/src/helder/os/imports.mjs', '/src/helder/gfx/imports.mjs', '/src/helder/async/imports.mjs', '/src/helder/media/imports.mjs',
-	'/tests/media/web/check.mjs'], env: { BROWSER: '${name}', MODE: '${mode}' }, ${gfx ? `gfx: '${gfx}', ` : ''}stdout: (l) => console.log(l), stderr: (l) => console.log(l) });
+	'/tests/media/web/check.mjs'], env: { BROWSER: '${name}', MODE: '${mode}' }, ${gfx ? `gfx: '${gfx}', ` : ''}${copied ? 'videoCopied: true, ' : ''}stdout: (l) => console.log(l), stderr: (l) => console.log(l) });
 const wait = () => host.exitCode === null ? setTimeout(wait, 10) : console.log('exit ' + host.exitCode);
 wait();
 </script>`;
@@ -31,7 +31,8 @@ let counting = false, sent = new Map(), whole = 0, current = '';
 const server = createServer(async (req, res) => {
 	const url = new URL(req.url, 'http://x').pathname;
 	try {
-		if (url === '/' || url === '/webgl2' || url === '/autoplay') return res.writeHead(200, { 'content-type': 'text/html' }).end(page(url === '/webgl2' ? 'webgl2' : null, current, url === '/autoplay' ? 'autoplay' : ''));
+		if (url === '/' || url === '/webgl2' || url === '/autoplay' || url === '/copied')
+			return res.writeHead(200, { 'content-type': 'text/html' }).end(page(url === '/webgl2' ? 'webgl2' : null, current, url === '/autoplay' ? 'autoplay' : '', url === '/copied'));
 		if (url.endsWith('.mark')) {
 			counting = url === '/begin.mark';
 			return res.writeHead(200).end();
@@ -56,9 +57,11 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 let failed = 0;
-// (Chromium also on WebGL2, and once with its autoplay policy: no gesture yet)
-for (const [name, route] of browsers.flatMap((b) => (b === 'chromium' ? [[b, '/'], [b, '/webgl2'], [b, '/autoplay']] : [[b, '/']]))) {
-	const what = `${name}${route === '/' ? '' : route === '/webgl2' ? ' (WebGL2)' : ' (autoplay, no gesture)'}`, autoplay = route === '/autoplay';
+// (Chromium also on WebGL2, once with its autoplay policy: no gesture yet,
+// and once with every video frame copied by the CPU, as WebGPU's are where
+// it cannot import them (helder.gfx's videoCopied): their RGB as ffmpeg's)
+for (const [name, route] of browsers.flatMap((b) => (b === 'chromium' ? [[b, '/'], [b, '/webgl2'], [b, '/autoplay'], [b, '/copied']] : [[b, '/']]))) {
+	const what = `${name}${route === '/' ? '' : route === '/webgl2' ? ' (WebGL2)' : route === '/copied' ? ' (video frames copied by the CPU)' : ' (autoplay, no gesture)'}`, autoplay = route === '/autoplay';
 	let browser;
 	try {
 		browser = await pw[name].launch({ args: name === 'chromium' ? [...(autoplay ? [] : ['--autoplay-policy=no-user-gesture-required']), ...CHROMIUM_ARGS] : [],
