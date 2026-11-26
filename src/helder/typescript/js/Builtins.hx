@@ -189,6 +189,16 @@ class Builtins {
 		publish();
 	}
 
+	public static function installProxy() if (once("Proxy")) {
+		Proxies.setup();
+		publish();
+	}
+
+	public static function installReflect() if (once("Reflect")) {
+		Globals.setupReflect();
+		publish();
+	}
+
 	public static function installStructuredClone() if (once("structuredClone")) {
 		globals.set("structuredClone", native("structuredClone", 1, (_, a, _) -> clone(arg(a, 0), new haxe.ds.ObjectMap())));
 		publish();
@@ -209,6 +219,8 @@ class Builtins {
 		installSetMethods();
 		installUri();
 		installStructuredClone();
+		installProxy();
+		installReflect();
 	}
 
 	// an installer's new globals, also as globalThis's properties
@@ -254,10 +266,10 @@ class Builtins {
 			var p = get(t, "prototype");
 			var v = arg(a, 0);
 			if (!isObject(v) || !isObject(p)) return false;
-			var o = (v : JsObject).proto;
+			var o = prototypeOf(v);
 			while (o != null) {
 				if (o == p) return true;
-				o = o.proto;
+				o = prototypeOf(o);
 			}
 			return false;});
 		var c = constructor("Function", 1, p, (_, _, _) -> error("EvalError", "Code generation from strings is not supported"));

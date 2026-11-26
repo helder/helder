@@ -88,7 +88,7 @@ class Arrays {
 		var unscopables = new JsObject(null);
 		for (name in ["at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values"]) unscopables.setOwn(name, true);
 		p.setOwn("\x00@@unscopables", unscopables, Attr.HIDDEN | Attr.READONLY);
-		method(c, "isArray", 1, (_, a, _) -> Std.isOfType(arg(a, 0), JsArray));
+		method(c, "isArray", 1, (_, a, _) -> Exotics.isArray(arg(a, 0)));
 		method(c, "of", 0, (_, a, _) -> array(a.copy()));
 		method(c, "from", 1, (_, a, _) -> {
 			var source = arg(a, 0);

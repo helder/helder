@@ -252,6 +252,10 @@ class Seed {
 
 	public static function libInstallStructuredClone():Void Builtins.installStructuredClone();
 
+	public static function libInstallProxy():Void Builtins.installProxy();
+
+	public static function libInstallReflect():Void Builtins.installReflect();
+
 	public static function libInstallAll():Void Builtins.installAll();
 
 	public static function libTypeofGlobal(name:String):String return Builtins.globals.exists(name) ? typeOf(Builtins.globals.get(name)) : "undefined";
@@ -550,6 +554,8 @@ class Seed {
 		libInstallSetMethods();
 		libInstallUri();
 		libInstallStructuredClone();
+		libInstallProxy();
+		libInstallReflect();
 		libInstallAll();
 		libTypeofGlobal("Object");
 		libTypeofNamespace(libObject([], []), "x");

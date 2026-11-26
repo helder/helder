@@ -135,6 +135,7 @@ class Lib {
 		}
 		else obj = protoOf(o);
 		while (obj != null) {
+			if (obj.bits & JsObject.PROXY != 0) return Exotics.read(obj, name, receiver);
 			var v = ownGet(obj, name, receiver);
 			if (!same(v, absent)) return v;
 			obj = obj.proto;
@@ -203,6 +204,7 @@ class Lib {
 		}
 		if (!isObject(o)) return false;
 		var obj:JsObject = o;
+		if (obj.bits & JsObject.PROXY != 0) return !same(Exotics.own(obj, name), undef());
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (name == "length") return true;
@@ -227,6 +229,7 @@ class Lib {
 		var name = key(k);
 		var obj:JsObject = o;
 		while (obj != null) {
+			if (obj.bits & JsObject.PROXY != 0) return Exotics.contains(obj, name);
 			if (hasOwnKey(obj, name)) return true;
 			obj = obj.proto;
 		}
@@ -267,84 +270,108 @@ class Lib {
 		return v;
 	}
 
-	// (keyed: by a computed name, Shapes.KEYED)
-	static function setKey(o:Dynamic, name:String, v:Dynamic, receiver:Dynamic, keyed = false):Void {
+	// (keyed: by a computed name, Shapes.KEYED; strict: a refused write
+	// throws, else it is false: Reflect.set's, a proxy's target's)
+	static function setKey(o:Dynamic, name:String, v:Dynamic, receiver:Dynamic, keyed = false, strict = true):Bool {
 		if (!isObject(o)) {
 			// (a primitive: only an inherited setter can accept the write)
 			var acc = findAccessor(protoOf(o), name);
 			if (acc != null && acc.setter != null) {
 				call(acc.setter, receiver, [v]);
-				return;
+				return true;
 			}
-			error("TypeError", "Cannot create property '" + name + "' on " + Seed.typeOf(o) + " '" + Seed.text(o) + "'");
-			return;
+			return refuse(strict, "Cannot create property '" + name + "' on " + Seed.typeOf(o) + " '" + Seed.text(o) + "'");
 		}
 		var obj:JsObject = o;
+		if (obj.bits & JsObject.PROXY != 0) return Exotics.write(obj, name, v, receiver) || refuse(strict, null, () -> Exotics.fail("set", name));
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (name == "length") {
 				setLength(a, v);
-				return;
+				return true;
 			}
 			var i = index(name);
 			if (i >= 0 && !obj.hasOwn(name) && inherited(obj.proto, name) == null) {
-				if (!obj.extensible && !hasOwnKey(obj, name)) {
-					error("TypeError", "Cannot add property " + name + ", object is not extensible");
-					return;
-				}
+				if (!obj.extensible && !hasOwnKey(obj, name)) return refuse(strict, "Cannot add property " + name + ", object is not extensible");
 				setIndex(a, i, v);
-				return;
+				return true;
 			}
 		}
 		else if (obj.form == Form.TYPED) {
 			var i = index(name);
 			if (i >= 0) {
 				TypedArrays.elementSet(cast obj, i, v);
-				return;
+				return true;
 			}
 		}
 		if (obj.hasOwn(name)) {
 			var current = obj.getOwn(name);
 			if (Std.isOfType(current, Accessor)) {
 				var acc:Accessor = current;
-				if (acc.setter == null) readOnly(name, obj);
+				if (acc.setter == null) return refuse(strict, readOnlyText(name, obj));
 				call(acc.setter, receiver, [v]);
-				return;
+				return true;
 			}
-			if (obj.attr(name) & Attr.READONLY != 0) {
-				readOnly(name, obj);
-				return;
-			}
+			if (obj.attr(name) & Attr.READONLY != 0) return refuse(strict, readOnlyText(name, obj));
+			if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
 			obj.writeOwn(name, v);
-			return;
+			return true;
 		}
-		if (obj.form == Form.FUNCTION && functionOwn(cast obj, name) != absent && name != "prototype") {
-			readOnly(name, obj);
-			return;
+		if (obj.form == Form.FUNCTION && functionOwn(cast obj, name) != absent && name != "prototype") return refuse(strict, readOnlyText(name, obj));
+		// (a proxy above it before any object that has the property: the proxy's [[Set]])
+		if (Exotics.made) {
+			var p = obj.proto;
+			while (p != null && p.bits & JsObject.PROXY == 0 && !p.hasOwn(name)) p = p.proto;
+			if (p != null && p.bits & JsObject.PROXY != 0) return Exotics.write(p, name, v, receiver) || refuse(strict, null, () -> Exotics.fail("set", name));
 		}
 		var found = inherited(obj.proto, name);
 		if (found != null) {
 			if (Std.isOfType(found, Accessor)) {
 				var acc:Accessor = found;
-				if (acc.setter == null) {
-					readOnly(name, obj);
-					return;
-				}
+				if (acc.setter == null) return refuse(strict, readOnlyText(name, obj));
 				call(acc.setter, receiver, [v]);
-				return;
+				return true;
 			}
-			readOnly(name, obj);
-			return;
+			return refuse(strict, readOnlyText(name, obj));
 		}
-		if (!obj.extensible) {
-			error("TypeError", "Cannot add property " + name + ", object is not extensible");
-			return;
-		}
+		if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
+		if (!obj.extensible) return refuse(strict, "Cannot add property " + name + ", object is not extensible");
 		if (keyed && !obj.locked && !Std.isOfType(obj, JsArray)) obj.add(name, v, Std.isOfType(v, Accessor) ? Attr.ACCESSOR : 0, Shapes.KEYED, true);
 		else obj.setOwn(name, v);
+		return true;
 	}
 
-	static function readOnly(name:String, obj:JsObject):Void error("TypeError", "Cannot assign to read only property '" + name + "' of " + (obj.form == Form.FUNCTION ? "function" : "object") + " '" + describe(obj) + "'");
+	// (a data write for another receiver than the object written through,
+	// OrdinarySetWithOwnDescriptor's: its own property's value, or a new one)
+	static function setOn(receiver:Dynamic, name:String, v:Dynamic, strict:Bool):Bool {
+		if (!isObject(receiver)) return refuse(strict, "Cannot create property '" + name + "' on " + Seed.typeOf(receiver) + " '" + Seed.text(receiver) + "'");
+		var r:JsObject = receiver;
+		var current = Objects.descriptor(r, name);
+		var d = new JsObject(Builtins.ObjectProto);
+		d.setOwn("value", v);
+		if (!same(current, undef())) {
+			if (has(current, "get") || has(current, "set") || !Seed.truth(get(current, "writable"))) return refuse(strict, readOnlyText(name, r));
+		}
+		else {
+			d.setOwn("writable", true);
+			d.setOwn("enumerable", true);
+			d.setOwn("configurable", true);
+		}
+		return Objects.defineResult(r, name, d) || refuse(strict, "Cannot redefine property: " + Symbols.functionName(name));
+	}
+
+	// (a refused write: thrown where strict, else false; text made only when thrown)
+	static function refuse(strict:Bool, text:Null<String>, ?thrown:() -> Dynamic):Bool {
+		if (!strict) return false;
+		if (thrown != null) thrown();
+		error("TypeError", text);
+		return false;
+	}
+
+	// [[Set]] as Reflect.set and a proxy's target take it: whether it was done
+	public static function setResult(o:Dynamic, name:String, v:Dynamic, receiver:Dynamic):Bool return setKey(o, name, v, receiver, false, false);
+
+	static function readOnlyText(name:String, obj:JsObject):String return "Cannot assign to read only property '" + name + "' of " + (obj.form == Form.FUNCTION ? "function" : "object") + " '" + describe(obj) + "'";
 
 	// (an inherited accessor or read-only data property that governs a write; null when a plain write may proceed)
 	public static function inherited(obj:JsObject, name:String):Dynamic {
@@ -411,8 +438,14 @@ class Lib {
 	public static function remove(o:Dynamic, k:Dynamic):Bool {
 		if (o == null || same(o, undef())) return error("TypeError", "Cannot convert undefined or null to object");
 		if (!isObject(o)) return true;
-		var obj:JsObject = o;
-		var name = key(k);
+		return removeKey(o, key(k), true);
+	}
+
+	// [[Delete]] as Reflect.deleteProperty and a proxy's target take it: whether it was done
+	public static function removeResult(o:JsObject, name:String):Bool return removeKey(o, name, false);
+
+	static function removeKey(obj:JsObject, name:String, strict:Bool):Bool {
+		if (obj.bits & JsObject.PROXY != 0) return Exotics.remove(obj, name) || refuse(strict, null, () -> Exotics.fail("deleteProperty", name));
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			var i = index(name);
@@ -420,14 +453,14 @@ class Lib {
 				a.items[Std.int(i)] = hole;
 				return true;
 			}
-			if (name == "length") return error("TypeError", "Cannot delete property 'length' of [object Array]");
+			if (name == "length") return refuse(strict, "Cannot delete property 'length' of [object Array]");
 		}
 		else if (obj.form == Form.TYPED) {
 			var i = index(name);
-			if (i >= 0 && i < (cast obj : TypedArrays.JsTypedArray).length()) return error("TypeError", "Cannot delete property '" + name + "' of " + describe(obj));
+			if (i >= 0 && i < (cast obj : TypedArrays.JsTypedArray).length()) return refuse(strict, "Cannot delete property '" + name + "' of " + describe(obj));
 			if (i >= 0) return true;
 		}
-		if (obj.attr(name) & Attr.LOCKED != 0) return error("TypeError", "Cannot delete property '" + name + "' of " + describe(obj));
+		if (obj.attr(name) & Attr.LOCKED != 0) return refuse(strict, "Cannot delete property '" + name + "' of " + describe(obj));
 		if (obj.form == Form.FUNCTION && (name == "name" || name == "length")) {
 			var f:JsFunction = cast obj;
 			if (f.deletedSpecial == null) f.deletedSpecial = [];
@@ -446,6 +479,10 @@ class Lib {
 		}
 		if (!isObject(o)) return [];
 		var obj:JsObject = o;
+		if (obj.bits & JsObject.PROXY != 0) return [
+			for (k in Exotics.keys(obj))
+				if (!Symbols.isSymbolKey(k) && (!enumerableOnly || enumerableOwn(obj, k))) k
+		];
 		var out:Array<String> = [];
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
@@ -548,6 +585,11 @@ class Lib {
 		var f:Dynamic = newTarget;
 		while (Std.isOfType(f, JsFunction)) {
 			var fn:JsFunction = f;
+			// (a proxy of a class: its target's instances)
+			if (fn.bits & JsObject.PROXY != 0) {
+				f = Exotics.target(fn);
+				continue;
+			}
 			if (fn.alloc != null) {
 				var obj = fn.alloc(proto);
 				obj.setLayout(fn.instanceLayout);
@@ -631,7 +673,32 @@ class Lib {
 	}
 
 	public static function setPrototype(o:Dynamic, proto:Dynamic):Void {
-		if (isObject(o) && (proto == null || isObject(proto))) (o : JsObject).reproto(proto);
+		if (!isObject(o) || proto != null && !isObject(proto)) return;
+		if (!setPrototypeResult(o, proto)) error("TypeError", Exotics.is(o) ? "'setPrototypeOf' on proxy: trap returned falsish" : (o : JsObject).extensible ? "Cyclic __proto__ value" : describe(o) + " is not extensible");
+	}
+
+	// [[SetPrototypeOf]]: whether it was done (not where it is not extensible, or would make a cycle)
+	public static function setPrototypeResult(o:JsObject, proto:Dynamic):Bool {
+		if (o.bits & JsObject.PROXY != 0) return Exotics.setProto(o, proto);
+		if (proto == o.proto) return true;
+		if (!o.extensible) return false;
+		var p:JsObject = proto;
+		while (p != null && p.bits & JsObject.PROXY == 0) {
+			if (p == o) return false;
+			p = p.proto;
+		}
+		o.reproto(proto);
+		return true;
+	}
+
+	// [[GetPrototypeOf]]
+	public static function prototypeOf(o:JsObject):JsObject return o.bits & JsObject.PROXY != 0 ? Exotics.protoOf(o) : o.proto;
+
+	// (an own property enumerable: a proxy's by its descriptor)
+	public static function enumerableOwn(o:JsObject, k:String):Bool {
+		if (o.bits & JsObject.PROXY == 0) return o.attr(k) & Attr.HIDDEN == 0;
+		var d = Exotics.own(o, k);
+		return !same(d, undef()) && Seed.truth(get(d, "enumerable"));
 	}
 
 	// Private class elements: own properties of their brand's key
@@ -721,10 +788,10 @@ class Lib {
 		if (!isObject(v)) return false;
 		var p = get(c, "prototype");
 		if (!isObject(p)) return error("TypeError", "Function has non-object prototype '" + Seed.text(p) + "' in instanceof check");
-		var o:JsObject = (v : JsObject).proto;
+		var o:JsObject = prototypeOf(v);
 		while (o != null) {
 			if (o == p) return true;
-			o = o.proto;
+			o = prototypeOf(o);
 		}
 		return false;
 	}
@@ -856,12 +923,15 @@ class Lib {
 		var seen:Map<String, Bool> = [];
 		var out:Array<Dynamic> = [];
 		while (obj != null) {
-			for (k in Objects.ownPropertyKeys(obj)) {
+			var proxy = obj.bits & JsObject.PROXY != 0;
+			// (a proxy's keys, then its prototype, then which keys are enumerable: V8's order)
+			var keys = Objects.ownPropertyKeys(obj), next = prototypeOf(obj);
+			for (k in keys) {
 				if (Symbols.isSymbolKey(k) || seen.exists(k)) continue;
 				seen.set(k, true);
-				if (obj.attr(k) & Attr.HIDDEN == 0 && hasOwnKey(obj, k) && !(obj.form == Form.ARRAY && k == "length") && !(obj.form == Form.FUNCTION && !obj.hasOwn(k))) out.push(k);
+				if (proxy ? enumerableOwn(obj, k) : obj.attr(k) & Attr.HIDDEN == 0 && hasOwnKey(obj, k) && !(obj.form == Form.ARRAY && k == "length") && !(obj.form == Form.FUNCTION && !obj.hasOwn(k))) out.push(k);
 			}
-			obj = obj.proto;
+			obj = next;
 		}
 		return array(out);
 	}
@@ -886,6 +956,11 @@ class Lib {
 				t.slots = s.slots.copy();
 				return;
 			}
+		}
+		// (a proxy's, CopyDataProperties': each key's descriptor, then its value)
+		if (Exotics.is(source)) {
+			for (k in Exotics.keys(source)) if (enumerableOwn(source, k)) defineOwn(target, k, getKey(source, k, source));
+			return;
 		}
 		for (k in keys(source)) defineOwn(target, k, get(source, k));
 	}

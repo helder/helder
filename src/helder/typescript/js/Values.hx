@@ -57,6 +57,8 @@ class JsObject {
 	static inline var LOCKED = 2;
 	// (a site's record found a property through it: Shapes.epoch)
 	static inline var WATCHED = 4;
+	// (a proxy: Proxies, its traps)
+	public static inline var PROXY = 8;
 
 	public var extensible(get, set):Bool;
 	public var locked(get, set):Bool;

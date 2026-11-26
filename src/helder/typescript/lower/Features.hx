@@ -27,6 +27,8 @@ class Features {
 		add("SetMethods", ["union", "intersection", "difference", "symmetricDifference", "isSubsetOf", "isSupersetOf", "isDisjointFrom"]);
 		add("Uri", ["encodeURI", "decodeURI", "encodeURIComponent", "decodeURIComponent"]);
 		add("StructuredClone", ["structuredClone"]);
+		add("Proxy", ["Proxy"]);
+		add("Reflect", ["Reflect"]);
 		add("All", ["globalThis"]);
 		m;
 	};

@@ -147,7 +147,7 @@ abstract class Core {
 	function validate(n:Node) {
 		if (n == null) return;
 		if (n.kind == KindWithStatement) fail(n, "with is excluded; use explicit property accesses");
-		if (n.kind == KindIdentifier && ["Proxy", "eval", "Intl", "WeakRef", "FinalizationRegistry"].indexOf(n.text) >= 0 && n.parent != null && n.parent.kind != KindPropertyAccessExpression)
+		if (n.kind == KindIdentifier && ["eval", "Intl", "WeakRef", "FinalizationRegistry"].indexOf(n.text) >= 0 && n.parent != null && n.parent.kind != KindPropertyAccessExpression)
 			fail(n, n.text + " is excluded; use explicit code and supported built-ins");
 		if (n.kind == KindCallExpression && n.expression().kind == KindImportKeyword)
 			fail(n, "dynamic import is excluded; use statically linked functions");
