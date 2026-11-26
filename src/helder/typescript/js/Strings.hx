@@ -76,15 +76,16 @@ class Strings {
 		m("charCodeAt", 1, (s, a) -> {
 			var i = toIntegerOrInfinity(arg(a, 0));
 			return i < 0 || i >= s.length ? Math.NaN : StringTools.fastCodeAt(s, Std.int(i));});
+		// (Dynamic returns throughout: a lambda returning undefined and an Int is typed Int, undefined read as 0)
 		m("codePointAt", 1, (s, a) -> {
 			var i = toIntegerOrInfinity(arg(a, 0)), n = s.length;
 			if (i < 0 || i >= n) return undef();
 			var c = StringTools.fastCodeAt(s, Std.int(i));
 			if (c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
 				var d = StringTools.fastCodeAt(s, Std.int(i + 1));
-				if (d >= 0xdc00 && d <= 0xdfff) return (c - 0xd800) * 1024 + (d - 0xdc00) + 65536;
+				if (d >= 0xdc00 && d <= 0xdfff) return ((c - 0xd800) * 1024 + (d - 0xdc00) + 65536 : Dynamic);
 			}
-			return c;});
+			return (c : Dynamic);});
 		m("slice", 2, (s, a) -> {
 			var n = s.length, second = arg(a, 1);
 			var start = relative(arg(a, 0), n), end = second == undef() ? n : relative(second, n);
