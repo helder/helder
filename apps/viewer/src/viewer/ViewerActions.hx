@@ -250,6 +250,9 @@ class ViewerActions {
 		Item("Actual Size", ActualSize), Separator, Item(trashLabel(), Trash)
 	] : [Item("Fit", Fit), Item("Actual Size", ActualSize)];
 
+	// a PDF's context menu: Copy (its selected text), then the image's
+	public static final pdf:Array<MenuItem> = [Role(Copy), Separator].concat(context);
+
 	public static function reveal():String
 		return Sys.systemName() == "Mac" ? "Show in Finder" : Sys.systemName() == "Windows" ? "Show in Explorer" : "Show in Folder";
 

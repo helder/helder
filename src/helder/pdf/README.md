@@ -86,6 +86,15 @@ var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, do
   (`Type1`: eexec, charstrings, subrs, seac, flex), Type 3 (its glyph
   procedures run); a font not embedded from the system by its name
   (Liberation's metric-compatible faces first), fitted to the file's widths.
+- **Text where it is** (`Pdf.runs(page)`): the page's lines (`PdfRun`),
+  each glyph's box on the page as shown (`PdfGlyph`: points from the top
+  left, the page's /Rotate applied; a corner, the advance's side and the
+  side up to the ascent, so turned, slanted and vertical text too), its
+  characters in its line's text; a code that maps to no Unicode a box
+  without text. A new line where the baseline moves off its line or turns,
+  a space at a gap of a quarter em along it. `Pdf.text` is its lines
+  joined by newlines, from the same pass. The ascent and descent are the
+  font descriptor's when plausible, else 0.8 and -0.2 em.
 - **Images, sized to the page**: a JPEG decoded reduced by its DCT's
   scaling (1/2 to 1/8) to no fewer pixels than it is shown at, a JPEG 2000
   by whole resolution levels (`Jpx`, ported from leanpdf), any other image

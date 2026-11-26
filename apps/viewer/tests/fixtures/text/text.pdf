@@ -1,0 +1,61 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [8 0 R 10 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FirstChar 32 /LastChar 126 /Widths [500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500 500] >>
+endobj
+4 0 obj
+<< /Length 34 >>
+stream
+600 0 d0 0 0 500 500 re f
+endstream
+endobj
+5 0 obj
+<< /g1 4 0 R /g2 4 0 R /g3 4 0 R /space 4 0 R /a 4 0 R /d 4 0 R /n 4 0 R >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1000 1000] /FontMatrix [0.001 0 0 0.001 0 0] /CharProcs 5 0 R /Encoding << /Differences [1 /g1 /g2 /g3 32 /space 97 /a 100 /d 110 /n] >> /FirstChar 1 /LastChar 110 /Widths [600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600 600] >>
+endobj
+7 0 obj
+<< /Length 191 >>
+stream
+BT /F1 12 Tf 16.799999999999997 TL 72 700 Td (The quick brown fox) Tj (jumps over the lazy dog.) ' ET
+BT /F1 12 Tf 16.799999999999997 TL 72 600 Td (A second paragraph) Tj (of two lines.) ' ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate 0 /Contents 7 0 R /Resources << /Font << /F1 3 0 R /F2 6 0 R >> >> >>
+endobj
+9 0 obj
+<< /Length 167 >>
+stream
+BT /F1 12 Tf 16.799999999999997 TL 72 500 Td (A turned page) Tj ET
+BT /F1 12 Tf 0 1 -1 0 300 100 Tm (Up the side) Tj ET
+BT /F2 12 Tf 72 400 Td <010203> Tj ( and) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate 90 /Contents 9 0 R /Resources << /Font << /F1 3 0 R /F2 6 0 R >> >> >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000122 00000 n 
+0000000610 00000 n 
+0000000685 00000 n 
+0000000776 00000 n 
+0000001454 00000 n 
+0000001696 00000 n 
+0000001842 00000 n 
+0000002060 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+2208
+%%EOF

@@ -5,6 +5,7 @@ import helder.pdf.Document;
 import helder.pdf.Pdf;
 import helder.pdf.PdfLimits;
 import helder.pdf.PdfSource;
+import viewer.PageText;
 
 // A PDF's pages for the viewer, on the decode jobs' threads: the
 // documents opened last kept (KEEP, the most recent first, each with
@@ -34,6 +35,8 @@ class PdfPages {
 	// pixels a point at 100%, and the largest side a page is drawn at
 	public static inline var NOMINAL = 2.0;
 	public static inline var MAX_SIDE = 4096;
+	// (a side asked for that draws nothing: the page's text alone)
+	public static inline var TEXT = -1;
 
 	// (the viewer's limits: helder.pdf's defaults for untrusted files, the
 	// decoded images and contents a document keeps at 48 MB)
@@ -51,16 +54,18 @@ class PdfPages {
 	// where the page needs it unless the document is open; no path: bytes' or
 	// source's document, not kept), drawn to side pixels on its larger side
 	// (0: its nominal size); first: page 1 alone, not kept (its count all the
-	// same). Throws PdfError (and ImageError's kinds through Decode), and
+	// same); its text too (PageText), but a first page alone's (side TEXT:
+	// that alone, no pixels). Throws PdfError (and ImageError's kinds through Decode), and
 	// through's PdfMissing.
 	public static function render(path:Null<String>, bytes:Null<Bytes>, index:Int, side:Int, first = false, ?source:PdfSource):{
 		width:Int,
 		height:Int,
 		pixelsWidth:Int,
 		pixelsHeight:Int,
-		rgba:Bytes,
+		rgba:Null<Bytes>,
 		pages:Int,
-		fileSize:Int
+		fileSize:Int,
+		text:Null<PageText>
 	} {
 		lock.acquire();
 		var d:Null<{doc:Document, kept:Bool}> = null;
@@ -74,15 +79,18 @@ class PdfPages {
 			var k = side > 0 ? Math.min(side / big, MAX_SIDE / big) : nominal;
 			// (each page its own decompression budget: the document's total counts every page drawn since it opened)
 			doc.decoded = 0;
-			var b = Pdf.render(doc, index, k);
+			var b = side == TEXT ? null : Pdf.render(doc, index, k);
+			// (the text pass a millisecond or two a page: content streams kept inflated, no image decoded)
+			var text = first ? null : try PageTexts.of(Pdf.runs(pg)) catch (_:helder.pdf.PdfError) null;
 			var out = {
 				width: Std.int(Math.ceil(pg.width * nominal)),
 				height: Std.int(Math.ceil(pg.height * nominal)),
-				pixelsWidth: b.width,
-				pixelsHeight: b.height,
-				rgba: b.straight(),
+				pixelsWidth: b == null ? 0 : b.width,
+				pixelsHeight: b == null ? 0 : b.height,
+				rgba: b == null ? null : b.straight(),
 				pages: doc.count,
-				fileSize: doc.size
+				fileSize: doc.size,
+				text: text
 			};
 			if (!d.kept) doc.close();
 			lock.release();

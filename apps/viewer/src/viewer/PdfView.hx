@@ -13,7 +13,8 @@ import helder.view.graph.Graph.*;
 // white sheet with a hairline and a soft shadow, on the light canvas too, its drawing over it as it lands), the
 // wheel and a trackpad scrolling it, Control (or Command) with the wheel
 // and a pinch zooming about the pointer; the page the view is on in a
-// small tag at its top right ("3 / 12").
+// small tag at its top right ("3 / 12"); the pages' text selectable over
+// them (PdfText), Copy in the right click's menu.
 @:renderer(helder.ui.view.NodeRenderer)
 class PdfView implements Markup {
 	public static function make(doc:PdfDoc):View {
@@ -29,7 +30,7 @@ class PdfView implements Markup {
 			if (n.ui != null) doc.density = n.ui.scale;
 			doc.view(n.width, n.height);
 		}
-		return <view tag="pdf" position="absolute" inset={0}>
+		return <view tag="pdf" position="absolute" inset={0} onPointerDown={PdfText.menu}>
 			<scroll tag="pdf-scroll" position="absolute" inset={0} onResize={_ -> sized()} ref={(n:Node) -> {
 				scroller = n;
 				n.onScroll = () -> doc.scrolled(n.scrollX, n.scrollY);
@@ -47,6 +48,7 @@ class PdfView implements Markup {
 					doc.layout.height();
 				}}>
 					<For each={() -> doc.shown()}>{i -> page(doc, i())}</For>
+					{PdfText.layer(doc)}
 				</view>
 			</scroll>
 			<Show when={doc.pages > 1}>

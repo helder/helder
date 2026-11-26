@@ -76,7 +76,11 @@ browser engine and no runtime to install.
 - **PDFs as a browser shows them**: the pages in one column you scroll
   through, fitted to the window's width, each drawn at the size it is
   shown (sharp again after a zoom) as it comes into view, a tag with the
-  page you are on, and straight to a page by its number.
+  page you are on, and straight to a page by its number. Their text is
+  selectable as a browser's: the I-beam over it, a drag across lines and
+  pages, a double click a word, a triple a line, Ctrl+A (Cmd+A) the
+  document once you pressed in it, Ctrl+C (Cmd+C) or the right click's
+  Copy; a press beside the text is the page's.
 - **Markdown documents** (`.md`, `.markdown`, `.mdown`) as a readable
   column: headings, lists and task lists, tables, quotes, code
   highlighted, pictures from the same folder. A link to a heading scrolls
