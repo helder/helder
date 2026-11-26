@@ -11,19 +11,17 @@ import hxmc.simd.U8x16;
 // (@:hxmc.kernel): it reads the string through StrView's spans, each access
 // checked, and touches no GC object; Eval scans a unit at a time.
 @:noCompletion class Scan {
-	// the first index in s[from, to) holding a, b, 0 or 13 (to: none)
-	public static function stop(s:String, from:Int, to:Int, a:Int, b:Int):Int {
-		#if (eval || interp)
+	// the first index in s[from, to) holding a, b, 0 or 13 (to: none): a
+	// short run's end found where it is called, a long one's by the kernel
+	public static inline function stop(s:String, from:Int, to:Int, a:Int, b:Int):Int {
 		var i = from;
-		while (i < to) {
+		var end = #if (eval || interp) to #else from + 16 < to ? from + 16 : to #end;
+		while (i < end) {
 			var c = StringTools.fastCodeAt(s, i);
-			if (c == a || c == b || c == 0 || c == 13) return i;
+			if (c == a || c == b || c == 0 || c == 13) break;
 			i++;
 		}
-		return to;
-		#else
-		return find(s, from, to, a, b);
-		#end
+		return #if (eval || interp) i #else i < end || i == to ? i : find(s, i, to, a, b) #end;
 	}
 
 	#if !(eval || interp)

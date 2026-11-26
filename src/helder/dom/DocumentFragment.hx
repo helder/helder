@@ -10,7 +10,6 @@ class DocumentFragment extends Node {
 	public var childElementCount(get, never):Int;
 
 	var host:Null<Element> = null;
-	var collection:Null<HTMLCollection> = null;
 
 	function new(doc:Document)
 		super(Node.DOCUMENT_FRAGMENT_NODE, doc);
@@ -27,7 +26,7 @@ class DocumentFragment extends Node {
 	}
 
 	function get_children():HTMLCollection
-		return collection ?? (collection = new HTMLCollection(this, true, e -> true));
+		return childElements();
 
 	function get_firstElementChild():Null<Element>
 		return Node.firstElement(firstChild, true);

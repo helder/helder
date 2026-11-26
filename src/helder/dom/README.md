@@ -135,15 +135,30 @@ newline); the round-trip property below keeps to the markup that does.
 
 ## Speed
 
+A parse makes as few objects as the tree needs. Attributes and text are
+kept as the parser's spans of the source until someone reads them, as
+@lukeed/html does: an element's attributes are five ints each (no Attr
+node, no string: `getAttribute`, `id`, `className`, `classList` and the
+serializer read the spans; anything that needs an Attr node, or changes
+one, makes them, once, in order), a Text that is a run of the source, its
+character references included, keeps the run and reads it (references
+decoded) the first time its data is asked for. A document parsed so keeps
+its source string alive, as its nodes point into it. Nodes' views
+(`childNodes`, `children`, `attributes`, `classList`) are made when first
+asked for, and the tokenizer makes no string it throws away: tag tokens
+reused, known tag names interned, an attribute name looked up only when it
+is read.
+
 A parse is linear in its input, but for the scope checks of deeply nested
 markup, which walk the open elements (as every implementation of the
-algorithm does; a tag with no element open is answered from a count). The
-tokenizer's text, attribute values and comments are found by a SIMD kernel
-(`Scan.hx`: hxmc.simd over hxmc.rt.StrView's checked spans of the string),
-tag and attribute names the parser knows are read straight from the input
-(no copy, no hash), the tag tokens reused.
+algorithm does; a tag with no element open is answered from a count). An
+ordinary tag (lower-case names, quoted or plain values) is read in one
+pass, anything else by the tokenizer's states; text, attribute values and
+comments past a few characters are found by a SIMD kernel (`Scan.hx`:
+hxmc.simd over hxmc.rt.StrView's checked spans of the string).
 
 `bun run test bench html` (tests/bench/results/html.md, an Apple M4
-laptop): about 17 to 80 MB/s natively and 14 to 70 as wasm32-wasi, against
-lexbor's 70 to 200 (C, the standard's algorithm) and @lukeed/html's 85 to
-200 (JavaScript, not the standard's recovery).
+laptop): within 2x of lexbor (C, the standard's algorithm) on the HTML
+Standard's page, a Wikipedia article and a generated deep and wide
+document, natively; @lukeed/html (JavaScript, not the standard's
+recovery) is about as fast as lexbor.

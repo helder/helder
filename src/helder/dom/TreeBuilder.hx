@@ -41,6 +41,7 @@ using StringTools;
 	final tokenizer:Tokenizer;
 	final errors:Null<Array<ParseError>>;
 	final length:Int;
+	final source:String;
 
 	var mode = INITIAL;
 	var original = INITIAL;
@@ -73,7 +74,10 @@ using StringTools;
 	// pending text: its location, data and source offsets
 	var textParent:Null<Node> = null;
 	var textRef:Null<Node> = null;
-	var textFirst = "";
+	// (its first piece, s[from, to); the rest in textBuf)
+	var textS = "";
+	var textFrom = 0;
+	var textTo = 0;
 	var textBuf:Null<StringBuf> = null;
 	var textStart = 0;
 	var textEnd = 0;
@@ -88,6 +92,7 @@ using StringTools;
 		this.doc = doc;
 		this.errors = errors;
 		this.length = html.length;
+		this.source = html;
 		tokenizer = new Tokenizer(html, this, errors);
 		locParent = doc;
 	}
@@ -384,17 +389,22 @@ using StringTools;
 			activeTags.splice(earliest, 1);
 		}
 		active.push(e);
-		activeTags.push(t.copy());
+		activeTags.push(t.count == 0 ? bare(t) : t.copy());
+	}
+
+	// (a token without attributes, kept by the list: one for each name, the list only reads it)
+	final bareTags = new Map<String, Tag>();
+
+	function bare(t:Tag):Tag {
+		var b = bareTags.get(t.name);
+		if (b == null) bareTags.set(t.name, b = t.copy());
+		return b;
 	}
 
 	static function sameAttrs(a:Tag, b:Tag):Bool {
-		var x = a.attrs ?? [], y = b.attrs ?? [];
-		if (x.length != y.length) return false;
-		var i = 0;
-		while (i < x.length) {
-			if (b.attr(x[i]) != x[i + 1]) return false;
-			i += 2;
-		}
+		if (a.count != b.count) return false;
+		for (i in 0...a.count)
+			if (b.attr(a.attrName(i)) != a.attrValue(i)) return false;
 		return true;
 	}
 
@@ -409,18 +419,28 @@ using StringTools;
 			if (active.pop() == null) return;
 		}
 
+	// (from the top: an active formatting element open is near it)
+	function isOpen(e:Element):Bool {
+		var i = stack.length - 1;
+		while (i >= 0)
+			if (stack[i--] == e) return true;
+		return false;
+	}
+
 	function reconstruct() {
 		if (active.length == 0) return;
 		var i = active.length - 1;
 		var last = active[i];
-		if (last == null || stack.contains(last)) return;
+		if (last == null || isOpen(last)) return;
 		while (i > 0) {
 			var e = active[i - 1];
-			if (e == null || stack.contains(e)) break;
+			if (e == null || isOpen(e)) break;
 			i--;
 		}
 		while (i < active.length) {
 			var e = insertHtml(activeTags[i]);
+			// (reopened here: its source span starts at the token that reopened it)
+			e.start = here;
 			active[i] = e;
 			i++;
 		}
@@ -482,16 +502,19 @@ using StringTools;
 		var parent = intendedParent == root && root != null ? target : intendedParent;
 		var e = Element.create(parent.doc, t.name, namespace, null, namespace == Namespaces.HTML ? t.id : -1);
 		e.start = t.start;
-		var a = t.attrs;
-		if (a != null) {
+		var n = t.count;
+		// (an HTML element keeps the token's spans: no Attr node, no string, until they are read)
+		if (n > 0 && t.names == null && namespace == Namespaces.HTML) {
+			e.raw = t.raw.slice(0, n * Attrs.SIZE);
+			e.src = t.src;
+			e.attributesSet();
+		} else if (n > 0) {
 			var list:Array<Attr> = [];
-			list.resize(a.length >> 1);
-			var i = 0;
-			while (i < a.length) {
-				var name = a[i], value = a[i + 1];
-				i += 2;
+			list.resize(n);
+			for (i in 0...n) {
+				var name = t.attrName(i), value = t.attrValue(i);
 				if (namespace == Namespaces.HTML) {
-					list[(i >> 1) - 1] = new Attr(e.doc, name, value);
+					list[i] = new Attr(e.doc, name, value);
 					continue;
 				}
 				if (namespace == Namespaces.MATHML && name == "definitionurl") name = "definitionURL";
@@ -504,7 +527,7 @@ using StringTools;
 					case "xmlns:xlink": new Attr(e.doc, "xlink", value, Namespaces.XMLNS, "xmlns");
 					case _: new Attr(e.doc, name, value);
 				}
-				list[(i >> 1) - 1] = attr;
+				list[i] = attr;
 			}
 			// (appended at once: no one can observe an element the parser has not inserted yet)
 			for (attr in list)
@@ -542,47 +565,72 @@ using StringTools;
 	function insertFake(name:String):Element
 		return insertHtml(new Tag(name, false, here));
 
-	function insertChars(text:String, start:Int, end:Int) {
-		if (text == "") return;
+	// insert characters: s[from, to), a slice of the source or a reference's whole text; while every
+	// piece of the pending text is one of those, contiguous, it is kept as the source's span (the
+	// Text's data read from it), and its string made only when a piece is not
+	function insertChars(s:String, from:Int, to:Int, start:Int, end:Int, kind:Int) {
+		if (from == to) return;
 		place();
 		if (textParent != null && (textParent != locParent || textRef != locRef)) flushText();
 		var parent = locParent, ref = locRef;
 		if (parent.nodeType == Node.DOCUMENT_NODE) return;
 		if (ref != null && ref.parentNode != parent) return;
+		var spanFrom = kind == SLICE ? from : start, spanTo = kind == SLICE ? to : end;
 		if (textParent == null) {
 			textParent = parent;
 			textRef = ref;
-			textFirst = text;
+			textS = s;
+			textFrom = from;
+			textTo = to;
 			textBuf = null;
 			textStart = start;
+			textSpan = kind != PRODUCED;
+			textReferences = kind == REFERENCE;
+			spanStart = spanFrom;
+			spanEnd = spanTo;
+		} else if (textSpan && kind != PRODUCED && spanFrom == spanEnd) {
+			spanEnd = spanTo;
+			if (kind == REFERENCE) textReferences = true;
 		} else {
 			if (textBuf == null) {
 				textBuf = new StringBuf();
-				textBuf.add(textFirst);
+				if (textSpan) textBuf.add(spanText()) else textBuf.addSub(textS, textFrom, textTo - textFrom);
 			}
-			textBuf.add(text);
+			textSpan = false;
+			textBuf.addSub(s, from, to - from);
 		}
 		textEnd = end;
 	}
+
+	// (the pending text as a span of the source: whether it still is one, has references, from where to where)
+	var textSpan = false;
+	var textReferences = false;
+	var spanStart = 0;
+	var spanEnd = 0;
+
+	inline function spanText():String
+		return textReferences ? Attrs.decode(source, spanStart, spanEnd, false) : source.substring(spanStart, spanEnd);
 
 	function flushText() {
 		var parent = textParent;
 		if (parent == null) return;
 		textParent = null;
-		var data = textBuf == null ? textFirst : textBuf.toString();
+		var buf = textBuf;
 		textBuf = null;
 		var ref = textRef;
 		var prev = ref != null ? ref.previousSibling : parent.lastChild;
 		if (prev != null && prev.nodeType == Node.TEXT_NODE) {
 			var t:Text = cast prev;
-			t.replaceData(t.value.length, 0, data);
+			t.replaceData(t.length, 0, buf != null ? buf.toString() : textSpan ? spanText() : textS.substring(textFrom, textTo));
 			t.end = textEnd;
 		} else {
-			var t = new Text(parent.doc, data);
+			var t = buf != null ? new Text(parent.doc, buf.toString()) : textSpan ? Text.span(parent.doc, source, spanStart, spanEnd,
+				textReferences) : new Text(parent.doc, textFrom == 0 && textTo == textS.length ? textS : textS.substring(textFrom, textTo));
 			t.start = textStart;
 			t.end = textEnd;
 			Node.insert(t, parent, ref);
 		}
+		textS = "";
 	}
 
 	function insertComment(data:String, start:Int, end:Int, ?parent:Node) {
@@ -605,15 +653,11 @@ using StringTools;
 		Node.insert(pi, p, ref);
 	}
 
-	function addMissingAttrs(e:Element, t:Tag) {
-		var a = t.attrs;
-		if (a == null) return;
-		var i = 0;
-		while (i < a.length) {
-			if (!e.hasAttribute(a[i])) e.appendAttr(new Attr(e.doc, a[i], a[i + 1]));
-			i += 2;
+	function addMissingAttrs(e:Element, t:Tag)
+		for (i in 0...t.count) {
+			var name = t.attrName(i);
+			if (!e.hasAttribute(name)) e.appendAttr(new Attr(e.doc, name, t.attrValue(i)));
 		}
-	}
 
 	// the generic raw text and RCDATA element parsing algorithms
 	function textElement(t:Tag, state:Int) {
@@ -628,12 +672,16 @@ using StringTools;
 	static inline function isWs(c:Int):Bool
 		return c == 0x20 || c == 0x0A || c == 0x09 || c == 0x0C || c == 0x0D;
 
-	static function wsPrefix(s:String):Int {
-		var i = 0;
-		while (i < s.length && isWs(s.fastCodeAt(i)))
+	// the end of s[from, to)'s leading white space
+	static function wsEnd(s:String, from:Int, to:Int):Int {
+		var i = from;
+		while (i < to && isWs(s.fastCodeAt(i)))
 			i++;
 		return i;
 	}
+
+	static inline function isNul(s:String, from:Int, to:Int):Bool
+		return to - from == 1 && s.fastCodeAt(from) == 0;
 
 	static inline function mathmlTextPoint(e:Element):Bool
 		return e.ns == Element.MATHML && switch e.tag {
@@ -652,7 +700,11 @@ using StringTools;
 	}
 
 	// the dispatcher's choice: HTML content's rules (else foreign content's)
-	function htmlRules(t:Null<Tag>, chars:Bool):Bool {
+	// (the common case where it is called: an HTML current node, no fragment's context to stand for it)
+	inline function htmlRules(t:Null<Tag>, chars:Bool):Bool
+		return stack.length > 1 && current().ns == Element.HTML || dispatch(t, chars);
+
+	function dispatch(t:Null<Tag>, chars:Bool):Bool {
 		var a = adjustedCurrent();
 		if (a == null || a.ns == Element.HTML) return true;
 		var start = t != null && !t.end;
@@ -777,21 +829,37 @@ using StringTools;
 			pop();
 	}
 
-	public function chars(text:String, start:Int, end:Int) {
+	public function chars(text:String, start:Int, end:Int)
+		run(text, 0, text.length, start, end, PRODUCED);
+
+	public function slice(start:Int, end:Int)
+		run(source, start, end, start, end, SLICE);
+
+	public function reference(text:String, start:Int, end:Int)
+		run(text, 0, text.length, start, end, REFERENCE);
+
+	// (a run's kind: the tokenizer's own text, the source's, a whole reference's text)
+	static inline var PRODUCED = 0;
+	static inline var SLICE = 1;
+	static inline var REFERENCE = 2;
+
+	var chunkSource = PRODUCED;
+
+	function run(s:String, from:Int, to:Int, start:Int, end:Int, inSource:Int) {
 		if (skipNewline) {
 			skipNewline = false;
-			if (text.fastCodeAt(0) == "\n".code) {
-				if (text.length == 1) return;
-				text = text.substr(1);
+			if (s.fastCodeAt(from) == "\n".code) {
+				from++;
 				start++;
+				if (from == to) return;
 			}
 		}
 		here = start;
 		hereEnd = end;
 		closing = null;
-		var rest:Null<String> = text;
-		while (rest != null && rest != "")
-			rest = htmlRules(null, true) ? charsIn(mode, rest, start, end) : foreignChars(rest, start, end);
+		chunkSource = inSource;
+		while (from < to)
+			from = htmlRules(null, true) ? charsIn(mode, s, from, to, start, end) : foreignChars(s, from, to, start, end);
 	}
 
 	public function tag(t:Tag) {
@@ -808,57 +876,60 @@ using StringTools;
 		}
 	}
 
-	// --- character tokens: each mode's handling of a run, the rest to reprocess (null: none)
+	// --- character tokens: each mode's handling of s[from, to), where the rest to reprocess starts (to: none)
 
-	function charsIn(m:Int, s:String, start:Int, end:Int):Null<String> {
+	function charsIn(m:Int, s:String, from:Int, to:Int, start:Int, end:Int):Int {
+		var src = chunkSource;
+		// (part of a reference's text: not the reference read again)
+		if (src == REFERENCE && (from != 0 || to != s.length)) src = PRODUCED;
 		switch m {
 			case INITIAL:
-				var w = wsPrefix(s);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				if (w == to) return to;
 				error("expected-doctype");
 				doc.mode = Quirks;
 				mode = BEFORE_HTML;
-				return s.substr(w);
+				return w;
 			case BEFORE_HTML:
-				var w = wsPrefix(s);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				if (w == to) return to;
 				beforeHtmlElse();
-				return s.substr(w);
+				return w;
 			case BEFORE_HEAD:
-				var w = wsPrefix(s);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				if (w == to) return to;
 				headElement = insertFake("head");
 				mode = IN_HEAD;
-				return s.substr(w);
+				return w;
 			case IN_HEAD:
-				var w = wsPrefix(s);
-				insertChars(s.substr(0, w), start, end);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				insertChars(s, from, w, start, end, src);
+				if (w == to) return to;
 				pop();
 				mode = AFTER_HEAD;
-				return s.substr(w);
+				return w;
 			case IN_HEAD_NOSCRIPT:
-				var w = wsPrefix(s);
-				insertChars(s.substr(0, w), start, end);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				insertChars(s, from, w, start, end, src);
+				if (w == to) return to;
 				error("unexpected-character");
 				pop();
 				mode = IN_HEAD;
-				return s.substr(w);
+				return w;
 			case AFTER_HEAD:
-				var w = wsPrefix(s);
-				insertChars(s.substr(0, w), start, end);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				insertChars(s, from, w, start, end, src);
+				if (w == to) return to;
 				insertFake("body");
 				framesetOk = true;
 				mode = IN_BODY;
-				return s.substr(w);
+				return w;
 			case IN_BODY | IN_CAPTION | IN_CELL | IN_TEMPLATE:
-				bodyChars(s, start, end);
-				return null;
+				bodyChars(s, from, to, start, end, src);
+				return to;
 			case TEXT:
-				insertChars(s, start, end);
-				return null;
+				insertChars(s, from, to, start, end, src);
+				return to;
 			case IN_TABLE | IN_TABLE_BODY | IN_ROW:
 				if (current().ns == Element.HTML && switch current().tag {
 					case TABLE | TBODY | TEMPLATE | TFOOT | THEAD | TR: true;
@@ -869,72 +940,74 @@ using StringTools;
 					tableTextSpaces = true;
 					original = mode;
 					mode = IN_TABLE_TEXT;
-					return s;
+					return from;
 				}
 				error("unexpected-character-in-table");
 				fosterParenting = true;
-				bodyChars(s, start, end);
+				bodyChars(s, from, to, start, end, src);
 				fosterParenting = false;
-				return null;
+				return to;
 			case IN_TABLE_TEXT:
-				if (s == "\x00") {
+				if (isNul(s, from, to)) {
 					error("unexpected-null-character");
-					return null;
+					return to;
 				}
-				tableText.add(s);
+				tableText.addSub(s, from, to - from);
 				tableTextEnd = end;
-				if (tableTextSpaces && wsPrefix(s) < s.length) tableTextSpaces = false;
-				return null;
+				if (tableTextSpaces && wsEnd(s, from, to) < to) tableTextSpaces = false;
+				return to;
 			case IN_COLUMN_GROUP:
-				var w = wsPrefix(s);
-				insertChars(s.substr(0, w), start, end);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				insertChars(s, from, w, start, end, src);
+				if (w == to) return to;
 				if (!currentIs(COLGROUP)) {
 					// (each character its own token: the white space among them inserted)
 					error("unexpected-character");
-					insertChars(spaces(s.substr(w)), start, end);
-					return null;
+					var sp = spaces(s, w, to);
+					insertChars(sp, 0, sp.length, start, end, PRODUCED);
+					return to;
 				}
 				pop();
 				mode = IN_TABLE;
-				return s.substr(w);
+				return w;
 			case AFTER_BODY | AFTER_AFTER_BODY:
-				var w = wsPrefix(s);
-				if (w > 0) bodyChars(s.substr(0, w), start, end);
-				if (w == s.length) return null;
+				var w = wsEnd(s, from, to);
+				if (w > from) bodyChars(s, from, w, start, end, src);
+				if (w == to) return to;
 				error("unexpected-character-after-body");
 				mode = IN_BODY;
-				return s.substr(w);
+				return w;
 			case IN_FRAMESET | AFTER_FRAMESET:
-				if (wsPrefix(s) < s.length) error("unexpected-character-in-frameset");
-				insertChars(spaces(s), start, end);
-				return null;
+				if (wsEnd(s, from, to) < to) error("unexpected-character-in-frameset");
+				var sp = spaces(s, from, to);
+				insertChars(sp, 0, sp.length, start, end, PRODUCED);
+				return to;
 			case AFTER_AFTER_FRAMESET:
-				if (wsPrefix(s) < s.length) error("unexpected-character-in-frameset");
-				var w = spaces(s);
-				if (w != "") bodyChars(w, start, end);
-				return null;
+				if (wsEnd(s, from, to) < to) error("unexpected-character-in-frameset");
+				var sp = spaces(s, from, to);
+				if (sp != "") bodyChars(sp, 0, sp.length, start, end, PRODUCED);
+				return to;
 			case _:
-				return null;
+				return to;
 		}
 	}
 
-	// the white space characters of s
-	static function spaces(s:String):String {
+	// the white space characters of s[from, to)
+	static function spaces(s:String, from:Int, to:Int):String {
 		var buf = new StringBuf();
-		for (i in 0...s.length)
+		for (i in from...to)
 			if (isWs(s.fastCodeAt(i))) buf.addChar(s.fastCodeAt(i));
 		return buf.toString();
 	}
 
-	function bodyChars(s:String, start:Int, end:Int) {
-		if (s == "\x00") {
+	function bodyChars(s:String, from:Int, to:Int, start:Int, end:Int, src:Int) {
+		if (isNul(s, from, to)) {
 			error("unexpected-null-character");
 			return;
 		}
 		reconstruct();
-		insertChars(s, start, end);
-		if (framesetOk && wsPrefix(s) < s.length) framesetOk = false;
+		insertChars(s, from, to, start, end, src);
+		if (framesetOk && wsEnd(s, from, to) < to) framesetOk = false;
 	}
 
 	// the in table text mode's "anything else": its characters inserted, then the token reprocessed
@@ -944,22 +1017,22 @@ using StringTools;
 		if (!tableTextSpaces) {
 			error("unexpected-character-in-table");
 			fosterParenting = true;
-			bodyChars(text, tableTextStart, tableTextEnd);
+			bodyChars(text, 0, text.length, tableTextStart, tableTextEnd, PRODUCED);
 			fosterParenting = false;
-		} else insertChars(text, tableTextStart, tableTextEnd);
+		} else insertChars(text, 0, text.length, tableTextStart, tableTextEnd, PRODUCED);
 		flushText();
 		mode = original;
 	}
 
-	function foreignChars(s:String, start:Int, end:Int):Null<String> {
-		if (s == "\x00") {
+	function foreignChars(s:String, from:Int, to:Int, start:Int, end:Int):Int {
+		if (isNul(s, from, to)) {
 			error("unexpected-null-character");
-			insertChars("\u{FFFD}", start, end);
-			return null;
+			insertChars("\u{FFFD}", 0, 1, start, end, PRODUCED);
+			return to;
 		}
-		insertChars(s, start, end);
-		if (framesetOk && wsPrefix(s) < s.length) framesetOk = false;
-		return null;
+		insertChars(s, from, to, start, end, chunkSource == REFERENCE && (from != 0 || to != s.length) ? PRODUCED : chunkSource);
+		if (framesetOk && wsEnd(s, from, to) < to) framesetOk = false;
+		return to;
 	}
 
 	// --- end of file: true to reprocess
@@ -2125,8 +2198,13 @@ using StringTools;
 				fb++;
 			if (fb == stack.length) {
 				popUntilElement(formatting);
-				active.splice(fi, 1);
-				activeTags.splice(fi, 1);
+				if (fi == active.length - 1) {
+					active.pop();
+					activeTags.pop();
+				} else {
+					active.splice(fi, 1);
+					activeTags.splice(fi, 1);
+				}
 				return false;
 			}
 			var furthest = stack[fb];

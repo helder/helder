@@ -49,7 +49,7 @@ class Node {
 
 	// the node document
 	var doc:Document;
-	var list:Null<NodeList> = null;
+	var made:Null<Views> = null;
 
 	function new(type:Int, doc:Document) {
 		nodeType = type;
@@ -66,7 +66,7 @@ class Node {
 		return parentNode != null && parentNode.nodeType == ELEMENT_NODE ? cast parentNode : null;
 
 	function get_childNodes():NodeList
-		return list ?? (list = new NodeList(this));
+		return views().childNodes ?? (views().childNodes = new NodeList(this));
 
 	function get_nodeValue():Null<String>
 		return null;
@@ -170,10 +170,17 @@ class Node {
 
 	static var serials = 0;
 
-	var serialNumber = -1;
+	function serial():Int {
+		var v = views();
+		return v.serial >= 0 ? v.serial : (v.serial = serials++);
+	}
 
-	function serial():Int
-		return serialNumber >= 0 ? serialNumber : (serialNumber = serials++);
+	inline function views():Views
+		return made ?? (made = new Views());
+
+	// (children, the ParentNode member: Document's, DocumentFragment's, Element's)
+	function childElements():HTMLCollection
+		return views().children ?? (views().children = new HTMLCollection(this, true, e -> true));
 
 	public function contains(other:Null<Node>):Bool {
 		var n = other;
@@ -477,7 +484,8 @@ class Node {
 			}
 			node.doc.version++;
 		} else {
-			adopt(node, document);
+			// (a node new to the tree, of its document: no removal, no adoption to run)
+			if (node.parentNode != null || node.doc != document) adopt(node, document);
 			link(node, parent, child);
 		}
 		document.version++;

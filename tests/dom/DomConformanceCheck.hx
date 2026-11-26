@@ -146,24 +146,28 @@ class DomConformanceCheck {
 		var double = t.doubleEscaped == true;
 		var input:String = t.input;
 		if (double) input = unescape(input);
-		var sink = new Tokens();
-		var errors = [];
-		var tok = new Tokenizer(input, sink, errors);
-		tok.state = switch state {
-			case "Data state": Tokenizer.DATA;
-			case "PLAINTEXT state": Tokenizer.PLAINTEXT;
-			case "RCDATA state": Tokenizer.RCDATA;
-			case "RAWTEXT state": Tokenizer.RAWTEXT;
-			case "Script data state": Tokenizer.SCRIPT_DATA;
-			case "CDATA section state": Tokenizer.CDATA;
-			case s: throw "state " + s;
-		}
-		tok.lastStartTag = t.lastStartTag;
-		tok.run();
 		var expected:Array<Dynamic> = t.output;
 		var want = haxe.Json.stringify(normalize(expected, double));
-		var got = haxe.Json.stringify(normalize(sink.out, false));
-		if (want != got) return 'tokens $got, not $want';
+		// (twice: with the errors asked for, attributes read as they are met; without, kept as spans and read after)
+		var errors = [];
+		for (asked in [true, false]) {
+			var sink = new Tokens();
+			sink.source = input;
+			var tok = new Tokenizer(input, sink, asked ? errors : null);
+			tok.state = switch state {
+				case "Data state": Tokenizer.DATA;
+				case "PLAINTEXT state": Tokenizer.PLAINTEXT;
+				case "RCDATA state": Tokenizer.RCDATA;
+				case "RAWTEXT state": Tokenizer.RAWTEXT;
+				case "Script data state": Tokenizer.SCRIPT_DATA;
+				case "CDATA section state": Tokenizer.CDATA;
+				case s: throw "state " + s;
+			}
+			tok.lastStartTag = t.lastStartTag;
+			tok.run();
+			var got = haxe.Json.stringify(normalize(sink.out, false));
+			if (want != got) return 'tokens ${asked ? "" : "(spans) "}$got, not $want';
+		}
 		var wantErrors:Array<Dynamic> = t.errors ?? [];
 		var w = [for (e in wantErrors) '${e.code}@${e.line}:${e.col}'].join(" ");
 		var g = [for (e in errors) e.code + "@" + lineCol(input, e.offset)].join(" ");
@@ -267,16 +271,21 @@ class Tokens implements TokenSink {
 			return;
 		}
 		var attrs:DynamicAccess<String> = {};
-		var a = t.attrs ?? [], i = 0;
-		while (i < a.length) {
-			attrs[a[i]] = a[i + 1];
-			i += 2;
-		}
+		for (i in 0...t.count)
+			attrs[t.attrName(i)] = t.attrValue(i);
 		out.push(t.selfClosing ? ["StartTag", t.name, attrs, true] : ["StartTag", t.name, attrs]);
 	}
 
 	public function chars(text:String, start:Int, end:Int)
 		out.push(["Character", text]);
+
+	public var source = "";
+
+	public function reference(text:String, start:Int, end:Int)
+		out.push(["Character", text]);
+
+	public function slice(start:Int, end:Int)
+		out.push(["Character", source.substring(start, end)]);
 
 	public function comment(data:String, start:Int, end:Int)
 		out.push(["Comment", data]);

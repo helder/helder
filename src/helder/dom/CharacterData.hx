@@ -11,11 +11,30 @@ class CharacterData extends Node {
 	public var previousElementSibling(get, never):Null<Element>;
 	public var nextElementSibling(get, never):Null<Element>;
 
-	var value:String;
+	var value(get, set):String;
+	// (the data, or, while lazyFrom is not -1, the parser's source it is v[lazyFrom, lazyTo) of, or, while
+	// lazyTo is negative, v[lazyFrom, -1 - lazyTo) with its references read: made on first read)
+	var v:String;
+	var lazyFrom = -1;
+	var lazyTo = 0;
 
 	function new(type:Int, doc:Document, data:String) {
 		super(type, doc);
-		value = data;
+		v = data;
+	}
+
+	function get_value():String {
+		if (lazyFrom >= 0) {
+			v = lazyTo >= 0 ? v.substring(lazyFrom, lazyTo) : Attrs.decode(v, lazyFrom, -1 - lazyTo, false);
+			lazyFrom = -1;
+		}
+		return v;
+	}
+
+	inline function set_value(x:String):String {
+		v = x;
+		lazyFrom = -1;
+		return x;
 	}
 
 	inline function get_data():String
@@ -27,7 +46,7 @@ class CharacterData extends Node {
 	}
 
 	inline function get_length():Int
-		return value.length;
+		return lazyFrom >= 0 && lazyTo >= 0 ? lazyTo - lazyFrom : get_value().length;
 
 	override function get_nodeValue():Null<String>
 		return value;

@@ -27,7 +27,6 @@ class Document extends Node {
 	// the inert document its templates' contents live in (one made for that: itself)
 	var inert:Null<Document> = null;
 	var isInert = false;
-	var collection:Null<HTMLCollection> = null;
 	// select, option and selectedcontent elements made in it (none: no steps to run)
 	var selects = 0;
 	// the selects whose selectedcontent is to update (HTML's microtask), run when
@@ -117,7 +116,7 @@ class Document extends Node {
 	}
 
 	function get_children():HTMLCollection
-		return collection ?? (collection = new HTMLCollection(this, true, e -> true));
+		return childElements();
 
 	function get_firstElementChild():Null<Element>
 		return Node.firstElement(firstChild, true);

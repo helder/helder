@@ -14,7 +14,7 @@ class HTMLSelectElement extends Element {
 	}
 
 	inline function multiple():Bool
-		return byNamespace(null, "multiple") != null;
+		return valueByNamespace(null, "multiple") != null;
 
 	function displaySize():Int {
 		var size = getAttributeNS(null, "size");
