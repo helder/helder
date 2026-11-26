@@ -17,7 +17,9 @@ import viewer.Decode.Decoded;
 // first page shows in (clipped to its view, above the status line), never
 // over the status line on the way, nothing moving after it lands; opened
 // again after a page, a zoom or a scroll, it is on page 1 as it first
-// opened, the open's picture what lands; no overlay scrollbar in any frame
+// opened, the open's picture what lands; its text's boxes (PdfText) on
+// their pages in every frame, none shown while its page flies; no overlay
+// scrollbar in any frame
 // of an open; its page tag a field of the page's number, anything typed
 // landing on a page or nowhere, the keys the document's after
 function tests() {
@@ -31,6 +33,7 @@ function tests() {
 		}, k -> {
 			var o = new Opened(k.w, k.h, shape(k.shape), k.status, k.before);
 			var boxes = o.open();
+			equals(o.textOff, "", "the text's boxes");
 			var bar = o.rect("status"), landed = o.shows();
 			assert(landed != null, "the page shown");
 			// (its tile out of view: no flight, the file shown at once)
@@ -147,6 +150,8 @@ private class Opened {
 	public final ui:Ui;
 	// (the most an overlay scrollbar of the PDF's showed in the last open's frames)
 	public var barsSeen = 0.0;
+	// (the first frame of the last open whose text was off its pages, or shown in flight: "" none)
+	public var textOff = "";
 	var t = 10.0;
 
 	public function new(w:Int, h:Int, sizes:Array<{width:Float, height:Float}>, status:Bool, before:Int) {
@@ -202,7 +207,22 @@ private class Opened {
 			ui.update();
 			var s = ui.root.find("pdf-scroll");
 			if (s != null && x.full.value) barsSeen = Math.max(barsSeen, @:privateAccess ui.barShown(s));
+			if (textOff == "") textOff = text();
 		}
+
+	// (the text's boxes: each on its page as drawn, none shown while the page flies)
+	function text():String {
+		var layer = ui.root.find("pdf-text"), pages = ui.root.find("pdf-pages"), d = x.viewer.document();
+		if (layer == null || pages == null || d == null) return "";
+		if (x.zoom.flying.peek() != "" && ui.root.find("pdf-scroll").style.opacity > 0) return "shown in flight";
+		var drawn = [for (n in pages.children) if (n.tag == "page") n], shown = d.shown.value;
+		for (k in 0...Std.int(Math.min(drawn.length, shown.length))) {
+			var i = shown[k], p = drawn[k].windowBounds(), b = layer.children[i].windowBounds();
+			if (b.x < p.x - 0.5 || b.y < p.y - 0.5 || b.x + b.width > p.x + p.width + 0.5 || b.y + b.height > p.y + p.height + 0.5)
+				return 'page ${i + 1}: its text at ${str(b)}, the page at ${str(p)}';
+		}
+		return "";
+	}
 
 	public function doc():PdfDoc
 		return x.viewer.document();
@@ -210,6 +230,7 @@ private class Opened {
 	// (opened, its frames run until it lands and a while after: the picture's box in each frame of its flight)
 	public function open():Array<Rect> {
 		barsSeen = 0;
+		textOff = "";
 		x.open("doc.pdf");
 		var boxes = [];
 		for (_ in 0...120) {
