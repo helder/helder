@@ -33,6 +33,8 @@ class InlineContent {
 	public var direction(default, null) = 0;
 	// whether bidi levels were resolved (something right to left, an embedding, an rtl root): else all 0
 	public var bidi(default, null) = false;
+	// (something right to left in it: text, the root, a box's direction)
+	var rtl = false;
 	public var items(default, null) = 0;
 	public var pieces(default, null) = 0;
 	public var finished(default, null) = false;
@@ -647,9 +649,9 @@ class InlineContent {
 		var base = root.direction() == Rtl ? 1 : 0;
 		direction = base;
 		var plaintext = root.unicodeBidi() == Plaintext;
-		var any = base == 1 || plaintext;
+		rtl = base == 1;
 		paragraphs.resize(0);
-		if (!any) {
+		if (!rtl) {
 			var i = 0;
 			while (i < n) {
 				var c = StringTools.fastCodeAt(text, i++);
@@ -657,11 +659,14 @@ class InlineContent {
 				if (c >= 0xD800 && c < 0xDC00 && i < n) c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(text, i++) - 0xDC00);
 				var k = Bidi.classOf(c);
 				if (k == Bidi.R || k == Bidi.AL) {
-					any = true;
+					rtl = true;
 					break;
 				}
 			}
 		}
+		var any = rtl || plaintext;
+		for (k in 1...styles.length)
+			if (styles[k].direction() == Rtl) rtl = true;
 		// (an override or embedding asked for: the algorithm, even on left-to-right text)
 		if (!any)
 			for (k in 1...styles.length)
@@ -969,10 +974,13 @@ class InlineContent {
 
 	// (a Close whose box's unicode-bidi closes a control after a forced break:
 	// the control is text, Blink's, so the box ends on the next line; the
-	// forced break is before it)
+	// forced break is before it. Only in content with something right to
+	// left: HTML's isolate on div, p and the like would otherwise move a
+	// left-to-right box's end, which neither Chromium, whose sheet doesn't
+	// have it, nor Firefox does)
 	function takesBreak(close:Int):Bool {
 		var b = iBox[close], at = iStart[close];
-		if (b < 0 || iFlags[b] & CONTROLS == 0 || at == 0 || breaks.get(at) & LineBreaks.STATUS != LineBreaks.FORCED) return false;
+		if (!rtl || b < 0 || iFlags[b] & CONTROLS == 0 || at == 0 || breaks.get(at) & LineBreaks.STATUS != LineBreaks.FORCED) return false;
 		// (the first such Close there takes it)
 		var j = close - 1;
 		while (j >= 0 && iStart[j] == at && iEnd[j] == at) {

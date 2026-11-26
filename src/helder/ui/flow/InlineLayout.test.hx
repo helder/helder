@@ -104,6 +104,23 @@ function tests() {
 			equals(l.lineWidth(0), 32.0);
 			assert(l.lineForced(0));
 		});
+		test("an isolate's end after a forced break: on that line, unless something is right to left", () -> {
+			function width(dir:InlineDirection) {
+				var l = lay(c -> {
+					c.openBox(ahem(s -> {
+						s.edges(0, 0, 10);
+						s.bidi = Isolate;
+						s.dir = dir;
+					}));
+					c.addText("aa", ahem());
+					c.addBreak();
+					c.closeBox();
+				}, 200);
+				return [for (k in 0...l.lines) l.lineWidth(k)];
+			}
+			equals(width(Ltr), [52.0]);
+			equals(width(Rtl), [42.0, 10.0]);
+		});
 		test("pre-wrap's spaces hang at a line's end", () -> {
 			var pw = ahem(s -> s.collapse = Preserve);
 			var l = lay(c -> c.addText("aa   bb", pw), 60);
