@@ -257,7 +257,10 @@ class SceneBox extends helder.ui.Node {
 		}
 		color = depth = multi = light = null;
 		renderer = null;
-		if (ownsWorld) world.dispose();
+		if (ownsWorld) {
+			SceneRenderer.disposed(root);
+			world.dispose();
+		}
 	}
 
 	// the camera drawn with: camera, the world's first, else a default

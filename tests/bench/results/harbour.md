@@ -45,6 +45,11 @@ instanced.
 - Geometry and material tags of the same props share one value
   (SceneRenderer.keyOf, counted users): their meshes are one primitive,
   one instanced draw.
+- A tag taken out of the scene (unmounted, hidden by a boundary, its
+  <Scene>'s world disposed) lets its share go: the last user of a
+  geometry releases its upload on the device it was made on, of a
+  material its meshes; a mesh's shape is shared the same way; put back,
+  it is made again (SceneParts.test.hx).
 - Shadow casters run by geometry, not primitive (a material's casters
   are one draw to the map).
 - World: a slot's world matrix checked at an epoch (bumped by any
