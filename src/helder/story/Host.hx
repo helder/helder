@@ -108,15 +108,29 @@ class Host {
 	public function screen(name:String):Null<HostScreen>
 		return Lambda.find(screens, s -> s.name == name);
 
-	// the screens in view (the others suspended, their last frames kept where they were shown)
-	public function show(names:Array<String>) {
+	// the screens in view (the others suspended, their last frames kept
+	// where they were shown), at sharp pixels a point (the studio's zoom at
+	// rest: null, as before); one out of view drawn larger is drawn again
+	// at the host's, aside (its large targets let go)
+	public function show(names:Array<String>, ?sharp:Float) {
+		if (sharp != null) this.sharp = sharp;
 		for (s in screens) {
 			var on = names.contains(s.name);
 			if (on && !s.visible) s.redraw = true;
 			s.visible = on;
 			if (on) s.seen = true;
 			s.context.suspended = !on;
+			if (s != focused) rescale(s, on ? this.sharp : scale);
 		}
+	}
+
+	// pixels a point of the screens in view but the focused one
+	public var sharp(default, null) = 1.0;
+
+	function rescale(s:HostScreen, k:Float) {
+		if (k == s.scale) return;
+		s.scale = k;
+		if (s.visible) s.redraw = true;
 	}
 
 	// stills or not (a screen already built: brought to its moment, or run from it)
@@ -148,10 +162,7 @@ class Host {
 	// frames sharp at the canvas' scale; the others at the host's)
 	public function focus(name:Null<String>, ?scale:Float) {
 		var was = focused, next = name == null ? null : screen(name);
-		if (was != null && was != next && was.scale != this.scale) {
-			was.scale = this.scale;
-			was.redraw = true;
-		}
+		if (was != null && was != next) rescale(was, was.visible ? sharp : this.scale);
 		focused = next;
 		if (next == null) return;
 		var k = scale ?? this.scale;
@@ -219,9 +230,10 @@ class Host {
 		return true;
 	}
 
-	// (out of view: never drawn, or a still that changed; not the looping one)
+	// (out of view: never drawn, drawn larger than its scale now, or a still that changed; not the looping one)
 	function aside(s:HostScreen):Bool
-		return !s.parked && !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
+		return !s.parked && !s.visible && s != looping && s.failure == null
+			&& (s.version == 0 || s.drawnScale > s.scale || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
@@ -402,6 +414,7 @@ class Host {
 		device.endFrame();
 		s.version++;
 		s.drawnAt = time;
+		s.drawnScale = scale;
 		frames++;
 		runtime.present(s, changed);
 		if (onFrame != null) onFrame(s);
@@ -428,6 +441,8 @@ class HostScreen {
 	public var failure:Null<HostFailure> = null;
 	// whether it was ever in view (its state kept across a reload: built again before the first frame)
 	public var seen = false;
+	// (its last frame's pixels per point)
+	public var drawnScale = 0.0;
 	// its frames' pixels per point (the host's, or its focus's)
 	public var scale:Float;
 	// frames drawn

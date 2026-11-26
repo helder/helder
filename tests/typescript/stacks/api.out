@@ -1,0 +1,6 @@
+RangeError: too many: 3
+    at <anonymous> (tests/typescript/stacks/api.ts:9:25)
+    at <helder>
+    at bump (tests/typescript/stacks/api.ts:8:2)
+    at <anonymous> (tests/typescript/stacks/api.ts:16:2)
+1

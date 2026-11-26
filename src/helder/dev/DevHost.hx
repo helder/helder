@@ -22,6 +22,7 @@ import hxmc.unsafe.*;
 // (helder.dev.Hot.onDispose: WinWindow, MacWindow, UiWindow), before
 // the host closes it. Built once and cached by `helder dev`
 // (helder.cli.DevCommand; -D hxmc.libc=glibc on Linux).
+@:hxmc.unsafe(gc)
 class DevHost {
 	// the state block: slots of 8 bytes (helder.dev.Hosted's), then the next
 	// build's library, a C string at NEXT

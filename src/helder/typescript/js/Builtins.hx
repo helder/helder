@@ -331,6 +331,10 @@ class Builtins {
 
 	static function setupErrors():Void {
 		var base:JsFunction = null;
+		// (each error's own stack, written when first read: Frames)
+		var stack = new Accessor(native("stack", 0, (t, _, _) -> stackText(t)), native("stack", 1, (t, v, _) -> {
+			(t : JsObject).setOwn("stack", arg(v, 0), Attr.HIDDEN);
+			return undef();}));
 		for (name in ["Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError", "EvalError", "AggregateError", "Test262Error"]) {
 			var p = name == "Error" ? ErrorProto : new JsObject(ErrorProto);
 			p.setOwn("name", name, Attr.HIDDEN);
@@ -339,19 +343,27 @@ class Builtins {
 			var c:JsFunction = null;
 			c = constructor(name, aggregate ? 2 : 1, p, (_, a, nt) -> {
 				var o = new JsError(protoFrom(nt == undef() ? c : nt, p));
+				o.frames = Frames.capture();
+				o.site = Frames.site;
+				o.awaits = Async.awaits();
 				var message = arg(a, aggregate ? 1 : 0);
 				if (message != undef()) o.setOwn("message", Seed.text(message), Attr.HIDDEN);
 				var options = arg(a, aggregate ? 2 : 1);
 				if (isObject(options) && has(options, "cause")) o.setOwn("cause", get(options, "cause"), Attr.HIDDEN);
 				if (aggregate) o.setOwn("errors", array(toList(arg(a, 0))), Attr.HIDDEN);
-				o.setOwn("stack", new Accessor(native("stack", 0, (t, _, _) -> errorText(t) + "\n    at <anonymous>"), native("stack", 1, (t, v, _) -> {
-					(t : JsObject).setOwn("stack", arg(v, 0), Attr.HIDDEN);
-					return undef();})), Attr.HIDDEN);
+				o.setOwn("stack", stack, Attr.HIDDEN);
 				return o;
 			});
 			if (name == "Error") {
 				base = c;
 				method(c, "isError", 1, (_, a, _) -> Std.isOfType(arg(a, 0), JsError));
+				c.setOwn("stackTraceLimit", (Frames.MAX : Float), 0);
+				// (constructorOpt, the frames above a function left out, is not: the stack is from here)
+				method(c, "captureStackTrace", 1, (_, a, _) -> {
+					var o = arg(a, 0);
+					if (!isObject(o)) error("TypeError", "Invalid argument");
+					put(o, "stack", errorText(o) + Frames.text(Frames.capture(), Frames.site, Async.awaits(), stackTraceLimit()));
+					return undef();});
 				method(p, "toString", 0, (t, _, _) -> {
 					if (!isObject(t)) error("TypeError", "Error.prototype.toString called on non-object");
 					return errorText(t);});
@@ -359,6 +371,34 @@ class Builtins {
 			else c.proto = base;
 			errors.set(name, c);
 		}
+	}
+
+	// an error's stack: its text as it is when first read, then where it was made
+	static function stackText(t:Dynamic):Dynamic {
+		if (!Std.isOfType(t, JsError)) return undef();
+		var e:JsError = t;
+		if (e.stack == null) {
+			e.stack = errorText(e) + Frames.text(e.frames, e.site, e.awaits, stackTraceLimit());
+			e.frames = null;
+			e.awaits = null;
+		}
+		return e.stack;
+	}
+
+	// (Error.stackTraceLimit, when the stack is written)
+	static function stackTraceLimit():Int {
+		var v = get(errors.get("Error"), "stackTraceLimit");
+		return Std.isOfType(v, Float) && v > 0 ? (v > 1000 ? 1000 : Std.int(v)) : 0;
+	}
+
+	// what an uncaught error prints: its stack, else (a value thrown that is
+	// no error) the value and where it was thrown
+	public static function uncaughtText(e:Dynamic, ?thrown:haxe.io.Bytes):String {
+		if (Std.isOfType(e, JsError)) {
+			var s = get(e, "stack");
+			return Std.isOfType(s, String) ? s : errorText(e);
+		}
+		return Inspect.inspect(e) + (thrown == null ? "" : Frames.text(thrown, Frames.site, null, stackTraceLimit()));
 	}
 
 	public static function errorText(t:Dynamic):String {

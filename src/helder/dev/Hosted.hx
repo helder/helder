@@ -16,6 +16,7 @@ import hxmc.unsafe.*;
 // made): helder.os's windows and helder.gfx's back ends look here first. Only
 // these handles and the snapshot cross: each build has its own runtime and
 // heap.
+@:hxmc.unsafe(gc)
 class Hosted {
 	// the state block's slots (8 bytes each)
 	public static inline var X11_DISPLAY = 1;
@@ -64,6 +65,10 @@ class Hosted {
 
 	public static inline function set(slot:Int, v:Ptr)
 		Mem.setPtr(state, slot * 8, v);
+
+	// a slot's C string (the app's files' directory, Android's host)
+	public static function text(slot:Int):String
+		return (cast get(slot) : CString).toString();
 
 	public static function hosted():Bool
 		return !state.isNull();

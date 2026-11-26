@@ -10,7 +10,7 @@ import helder.view.Render;
 function tests() {
 	describe("Inspector", () -> {
 		test("search keeps the selected entry's preview", () -> {
-			Kinds.utc = true;
+			Kinds.utc(true);
 			Tiles.forget();
 			var m = Fixtures.files(["tests/fixtures/folder"]), asked = [];
 			var x = new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], (path, done) -> {

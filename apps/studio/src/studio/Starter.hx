@@ -59,18 +59,50 @@ class Starter {
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));
 
 	// a tsconfig.json extending helder's (the editor's options the build's),
-	// when the project has none; where no package resolves helder, the helder
-	// the studio was built with, its modules mapped
+	// when the project has none: where no package resolves helder, the helder
+	// the studio was built with, its modules mapped; one the studio wrote
+	// (written's shape) for another helder (an older checkout's: its modules
+	// not the compiler's, TSHX004) written again
 	public static function config(dir:String) {
 		#if !(hxmc.target == "wasm32-wasi")
-		if (Files.exists('$dir/tsconfig.json')) return;
-		var src = BuildInfo.helderSrc();
-		var config:Dynamic = resolves(dir) ? {"extends": "helder/tsconfig.json"} : {
+		var path = '$dir/tsconfig.json', src = BuildInfo.helderSrc();
+		if (Files.exists(path)) {
+			var was = written(Files.read(path));
+			if (was == null || was == src && Files.read(path) == configText(src)) return;
+			Sys.println('studio: tsconfig.json mapped helder to $was, written again for this studio\'s ($src)');
+		} else if (resolves(dir)) {
+			Files.save(path, '{\n\t"extends": "helder/tsconfig.json"\n}\n');
+			return;
+		}
+		Files.save(path, configText(src));
+		#end
+	}
+
+	public static function configText(src:String):String
+		return haxe.Json.stringify({
 			"extends": '$src/helder/typescript/tsconfig.json',
 			compilerOptions: {paths: {"helder/*": ['$src/helder/*/index.d.ts', '$src/helder/*/index.ts', '$src/helder/*.ts']}}
-		};
-		Files.save('$dir/tsconfig.json', haxe.Json.stringify(config, "\t") + "\n");
-		#end
+		}, "\t") + "\n";
+
+	// the helder a tsconfig.json of the studio's maps (its shape: helder/*
+	// to one helder's three places, extending that helder's tsconfig.json or,
+	// as the studio wrote them before, nothing), else null
+	public static function written(text:String):Null<String> {
+		var j:Dynamic = try haxe.Json.parse(text) catch (_:Dynamic) null;
+		if (j == null) return null;
+		var fields = Reflect.fields(j);
+		fields.sort(Reflect.compare);
+		if (fields.join(",") != "compilerOptions" && fields.join(",") != "compilerOptions,extends") return null;
+		var o:Dynamic = j.compilerOptions;
+		if (o == null || Reflect.fields(o).join(",") != "paths" || Reflect.fields(o.paths).join(",") != "helder/*") return null;
+		var list:Array<Dynamic> = Reflect.field(o.paths, "helder/*");
+		if (!Std.isOfType(list, Array) || list.length != 3) return null;
+		var first = Std.string(list[0]), end = "/helder/*/index.d.ts";
+		if (!first.endsWith(end)) return null;
+		var src = first.substr(0, first.length - end.length);
+		if (Std.string(list[1]) != '$src/helder/*/index.ts' || Std.string(list[2]) != '$src/helder/*.ts') return null;
+		var base:Null<String> = Reflect.field(j, "extends");
+		return base == null || base == '$src/helder/typescript/tsconfig.json' ? src : null;
 	}
 
 	// TypeScript's checker for a project outside any package (found from its

@@ -12,6 +12,7 @@ import hxmc.unsafe.*;
 // (helder.story.NativeHost's frames where the GPU shares no texture:
 // llvmpipe). On Windows, where the GPU always shares (DXGI), it is a plain
 // file written and read.
+@:hxmc.unsafe(gc)
 class FrameFile {
 	public final path:String;
 	public final size:Int;

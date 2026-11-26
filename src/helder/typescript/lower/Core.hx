@@ -10,6 +10,7 @@ import helder.typescript.ir.Builder;
 import helder.typescript.check.Types;
 import helder.typescript.lower.Classes.ClassLayout;
 import helder.typescript.lower.Api;
+import helder.typescript.js.Lines;
 
 // A binding's storage: a global (module scope), a box (captured by a
 // closure), or a plain local; `outer`: an enclosing function's plain local,
@@ -87,6 +88,12 @@ abstract class Core {
 	// (job(f)'s: each job's function on the worker, by its number)
 	var jobs:Array<FuncInfo> = [];
 
+	// (where code comes from, for the frames of an error's stack: positions
+	// where the build has hxmc's table of lines; else, WebAssembly's, the sites
+	// of `new` and `throw` the runtime keeps, Frames.site)
+	final lines:Bool;
+	var paths:Map<String, String> = [];
+
 	public function new(src:Project, p:Program, ?api:Api, dev = false, ?defined:String->Null<String>) {
 		this.src = src;
 		this.p = p;
@@ -94,6 +101,43 @@ abstract class Core {
 		this.dev = dev;
 		definitions = new Definitions(src, defined ?? (_ -> null));
 		platform = new Platform(defined ?? (_ -> null));
+		lines = hxmc.ir.Lower.lines && platform.os != "wasi";
+	}
+
+	// the code that follows from n's position (or the first token from `from`)
+	function at(n:Node, from = -1) {
+		var f = n.file, pos = f.skipTrivia(from < 0 ? n.pos : from);
+		b.mark(path(f), Lines.pack(f.line(pos), f.unitColumn(pos)));
+	}
+
+	// n's position as a frame shows it: file:line:column
+	function location(n:Node):String {
+		var f = n.file, pos = f.skipTrivia(n.pos);
+		return path(f) + ":" + f.line(pos) + ":" + f.unitColumn(pos);
+	}
+
+	// (as the program's diagnostics name it: from the working directory)
+	function path(f:SourceFile):String {
+		var r = paths.get(f.path);
+		if (r == null) paths.set(f.path, r = Project.relative(f.path));
+		return r;
+	}
+
+	// what V8 names a frame of n's function: Box.run, new Box, Object.m, the
+	// name its binding gives an arrow, <anonymous>
+	static function frameName(n:Node, ?inferred:String):String {
+		var name = n.name() != null ? staticName(n.name()) : null;
+		if (name == null && inferred != null && inferred != "") name = inferred;
+		var parent = n.parent;
+		function owner():String
+			return parent.kind == KindObjectLiteralExpression ? "Object" : parent.name() != null ? parent.name().text : "<anonymous>";
+		return switch n.kind {
+			case KindConstructor: "new " + owner();
+			case KindMethodDeclaration | KindGetAccessor | KindSetAccessor:
+				owner() + "." + (n.kind == KindGetAccessor ? "get " : n.kind == KindSetAccessor ? "set " : "") + (name ?? "<anonymous>");
+			case _ if (name != null && n.name() == null && parent != null && parent.kind == KindPropertyAssignment): "Object." + name;
+			case _: name ?? "<anonymous>";
+		}
 	}
 
 	public function coverage():Dynamic return {expressions: expressions, typedSites: typed, dynamicSites: dynamicSites, unsupported: 0, typedOperations: typedOperations, dynamicOperations: dynamicOperations};

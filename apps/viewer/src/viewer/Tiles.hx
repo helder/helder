@@ -39,6 +39,7 @@ class Tiles implements Markup {
 	// the thumbnails asked for and not yet made (Timing's: the visible tiles' made)
 	public static var waiting(default, null) = 0;
 
+	// (by path, size and time: content, so every screen's, a preview host's too)
 	static final kept = new Map<String, Image>();
 	static final order:Array<String> = [];
 	static var serial = 0;

@@ -56,6 +56,11 @@ abstract class ClassValues extends Expressions {
 		var derived = heritage != null;
 		env.set("%home", protoBinding);
 		var ctor = lambda(ctorNode, ["%newTarget"], false, ctorNode == null && derived, f -> {
+			// (an implicit constructor's frame at its class, as V8's)
+			if (ctorNode == null) {
+				f.display = "new " + own;
+				if (lines) at(n);
+			}
 			b.constructorThis = env.get("this");
 			var props:Array<String> = [];
 			if (ctorNode != null) for (param in parametersOf(ctorNode)) if (param.name().kind == KindIdentifier && (hasModifier(param, KindPublicKeyword) || hasModifier(param, KindPrivateKeyword) || hasModifier(param, KindProtectedKeyword) || hasModifier(param, KindReadonlyKeyword) || hasModifier(param, KindOverrideKeyword))) props.push(param.name().text);
@@ -75,6 +80,7 @@ abstract class ClassValues extends Expressions {
 		var fields:Ex = ENull(TRef(RAny));
 		if (instanceFields.length > 0 || privateMethods.filter(m -> !hasModifier(m, KindStaticKeyword)).length > 0) {
 			fields = lambda(null, [], false, false, f -> {
+				f.display = own + ".<instance_members_initializer>";
 				var self = read(env.get("this"));
 				for (m in privateMethods) if (!hasModifier(m, KindStaticKeyword))
 					b.runtime("libPrivateDefine", [self, EStr(brand(m.name())), read(env.get(keyCells.get(m))), EInt(m.kind == KindGetAccessor ? 1 : m.kind == KindSetAccessor ? 2 : 3)]);
@@ -114,7 +120,7 @@ abstract class ClassValues extends Expressions {
 				case _: fail(m, "unsupported class member " + m.kind.toString());
 			}
 		}
-		staticMembers(statics, classBinding, c);
+		staticMembers(statics, classBinding, c, own);
 		privateScopes.pop();
 		env = outer;
 		return c;
@@ -139,6 +145,7 @@ abstract class ClassValues extends Expressions {
 			if (restFunctions.exists(c.parent.init)) restFunctions.set(c.init, true);
 		}
 		else c.init = Builder.func(p, "init_" + c.name, TVoid);
+		if (ctor == null) c.init.display = "new " + c.name;
 		c.init.ret = TVoid;
 		withThis(c.init);
 		for (m in c.node.members()) if (Classes.direct(m)) {
@@ -177,6 +184,8 @@ abstract class ClassValues extends Expressions {
 		env.set("%home", protoBinding);
 		// (the init: field initializers, parameter properties, the constructor's body)
 		compileDirect(c.init, ctor ?? n, arrowsUseThis(instanceFields.concat(ctor == null ? [] : [ctor.body()])), () -> {
+			// (an implicit constructor's frame at its class, as V8's)
+			if (lines && ctor == null) at(n);
 			var self = read(env.get("this"));
 			function fields() {
 				for (m in privateMethods) if (!hasModifier(m, KindStaticKeyword))
@@ -259,7 +268,7 @@ abstract class ClassValues extends Expressions {
 				case _: fail(m, "unsupported class member " + m.kind.toString());
 			}
 		}
-		staticMembers(statics, classBinding, cls);
+		staticMembers(statics, classBinding, cls, own);
 		// (its methods are called directly: the prototype stays as defined)
 		b.runtime("libLock", [read(protoBinding)]);
 		privateScopes.pop();
@@ -268,7 +277,7 @@ abstract class ClassValues extends Expressions {
 	}
 
 	// (static fields and blocks, in order: `this` is the class)
-	function staticMembers(statics:Array<Node>, classBinding:Binding, c:Ex) {
+	function staticMembers(statics:Array<Node>, classBinding:Binding, c:Ex, own:String) {
 		env.set("%home", classBinding);
 		for (m in statics) {
 			var saved = env.get("this");
@@ -276,6 +285,7 @@ abstract class ClassValues extends Expressions {
 			if (m.kind == KindClassStaticBlockDeclaration) {
 				var body = m.body();
 				var block = lambda(null, [], false, false, f -> {
+					f.display = own + ".<static_initializer>";
 					hoist(body, false);
 					statement(body);
 					b.out.push(SReturn(b.runtime("getUndefined", [])));});

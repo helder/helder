@@ -21,7 +21,7 @@ function tests() {
 		function bottom(n:Null<Node>):Float
 			return n == null ? -1 : n.absY + n.height;
 		function big():Explorer {
-			Kinds.utc = true;
+			Kinds.utc(true);
 			Tiles.forget();
 			var m = new MemoryFiles();
 			m.add("/home/");
@@ -150,7 +150,7 @@ function tests() {
 			});
 		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
 			test('a folder read in batches, each sorting above the last, stays at its top (${layout})', () -> {
-				Kinds.utc = true;
+				Kinds.utc(true);
 				Tiles.forget();
 				var m = new Trickle();
 				m.size = 50;
@@ -177,7 +177,7 @@ function tests() {
 				equals(ui.root.find(layout == List ? "rows" : "grid").scrollY, 0.0);
 			});
 		test("the full-size viewer closed: the folder where it was, the last file viewed in view", () -> {
-			Kinds.utc = true;
+			Kinds.utc(true);
 			Tiles.forget();
 			var m = new MemoryFiles();
 			m.add("/home/");
@@ -258,7 +258,7 @@ function tests() {
 						inside(c, c);
 			});
 		test("each grid cell asks for its thumbnail once (a hole's picture made once, not twice)", () -> {
-			Kinds.utc = true;
+			Kinds.utc(true);
 			Tiles.forget();
 			var m = new OnDisk();
 			m.add("tests/fixtures/folder/");

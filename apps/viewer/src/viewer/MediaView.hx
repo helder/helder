@@ -18,14 +18,12 @@ import helder.view.graph.Graph.*;
 // player goes (onTime), not markup: a reactive tree of them cost the
 // program some 30 KB more.
 class MediaView {
-	// the node shown (the shell's actions reach it), null while none
-	public static var current(default, null):Null<VideoNode>;
-
 	public static function make(viewer:Viewer, files:Files):Node {
 		// (the look's colours: light or dark as the window)
 		var t = helder.ui.controls.Look.ref;
 		var root = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
-		var video = current = new VideoNode(), thumbs:Null<Thumbs> = null;
+		var video = new VideoNode(), thumbs:Null<Thumbs> = null;
+		viewer.video = video;
 		video.autoplay = true;
 		video.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		root.append(video);
@@ -40,7 +38,7 @@ class MediaView {
 		bar.tag = "media-bar";
 		var scrub = new Scrub((at, exact) -> {
 			video.seek(at, exact);
-			if (refresh != null) refresh();
+			if (viewer.refreshMedia != null) viewer.refreshMedia();
 		});
 		// (the thumbnail over the scrub bar, within the stage's content: never over the status line under it)
 		var thumb = box({position: Absolute, bottom: 26, padding: 3, borderRadius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
@@ -59,11 +57,11 @@ class MediaView {
 		levels.append(level);
 		volume.append(levels);
 		var row = box({flexDirection: Row, alignItems: Center, columnGap: 10});
-		var playing = button(play, "Play", toggle);
+		var playing = button(play, "Play", () -> toggle(viewer));
 		row.append(playing);
 		row.append(clockText);
 		row.append(box({flexGrow: 1}));
-		row.append(button(mute, "Mute", toggleMute));
+		row.append(button(mute, "Mute", () -> toggleMute(viewer)));
 		row.append(volume);
 		bar.append(scrub.node);
 		bar.append(row);
@@ -83,7 +81,7 @@ class MediaView {
 			mute.kind = video.muted ? "muted" : "sound";
 			level.style.width = video.muted ? 0 : 80 * video.volume;
 		}
-		refresh = shown;
+		viewer.refreshMedia = shown;
 		video.onTime = _ -> shown();
 		video.onLoaded = () -> {
 			var p = video.player, v = p.video, a = p.audio, s = video.picture();
@@ -106,7 +104,10 @@ class MediaView {
 			video.dispose();
 			if (thumbs != null) thumbs.close();
 			thumbs = null;
-			if (current == video) current = null;
+			if (viewer.video == video) {
+				viewer.video = null;
+				viewer.refreshMedia = null;
+			}
 		});
 
 		// (the thumbnail where the pointer is)
@@ -127,14 +128,12 @@ class MediaView {
 		volume.onPointerDown = e -> {
 			volume.capture();
 			dragging = true;
-			setVolume(ratio(e));
+			setVolume(viewer, ratio(e));
 		};
-		volume.onPointerMove = e -> if (dragging) setVolume(ratio(e));
+		volume.onPointerMove = e -> if (dragging) setVolume(viewer, ratio(e));
 		volume.onPointerUp = _ -> dragging = false;
 		return root;
 	}
-
-	static var refresh:Null<Void->Void>;
 
 	static function clock(t:Float):String {
 		var s = Std.int(Math.max(0, t)), m = Std.int(s / 60), h = Std.int(m / 60);
@@ -158,28 +157,28 @@ class MediaView {
 		return b;
 	}
 
-	static function setVolume(v:Float) {
-		var n = current;
+	static function setVolume(viewer:Viewer, v:Float) {
+		var n = viewer.video;
 		if (n == null) return;
 		n.volume = v;
 		n.muted = false;
-		if (refresh != null) refresh();
+		if (viewer.refreshMedia != null) viewer.refreshMedia();
 	}
 
 	// (the media context's actions: the shell's)
-	public static function toggle() {
-		var n = current;
+	public static function toggle(viewer:Viewer) {
+		var n = viewer.video;
 		if (n == null) return;
 		if (n.playing.peek()) n.pause() else n.play();
 	}
 
-	public static function step(k:Int)
-		if (current != null) current.step(k);
+	public static function step(viewer:Viewer, k:Int)
+		if (viewer.video != null) viewer.video.step(k);
 
-	public static function toggleMute() {
-		var n = current;
+	public static function toggleMute(viewer:Viewer) {
+		var n = viewer.video;
 		if (n == null) return;
 		n.muted = !n.muted;
-		if (refresh != null) refresh();
+		if (viewer.refreshMedia != null) viewer.refreshMedia();
 	}
 }

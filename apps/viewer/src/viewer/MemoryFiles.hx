@@ -13,6 +13,8 @@ class MemoryFiles implements Files {
 	// listings held back until release() (a slow disk); what was trashed
 	public var hold = false;
 	public final trashed:Array<String> = [];
+	// folders whose listing is refused (a folder that cannot be read)
+	public final denied:Array<String> = [];
 
 	final items = new Map<String, {entry:Entry, bytes:Bytes}>();
 	final held:Array<Void->Void> = [];
@@ -81,6 +83,10 @@ class MemoryFiles implements Files {
 		function run() {
 			if (stopped) return;
 			var d = items.get(dir);
+			if (denied.contains(dir)) {
+				batch({entries: [], done: true, error: "denied"});
+				return;
+			}
 			if (d == null || d.entry.kind != Folder) {
 				batch({entries: [], done: true, error: d == null ? "missing" : "notfolder"});
 				return;

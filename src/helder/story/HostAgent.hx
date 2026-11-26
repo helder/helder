@@ -9,8 +9,9 @@ import helder.story.Host;
 // web worker (helder.story.web.Preview) and in the native host process
 // (helder.story.NativeHost):
 //
-//   Host.show {screens, focused, scale, stills?, loop?}  the screens in view, the one zoomed into (drawn every frame, at scale
-//                                        pixels a point); stills: each at its moment, not run; loop: the one running its loop (hovered)
+//   Host.show {screens, focused, scale, sharp?, stills?, loop?}  the screens in view, the one zoomed into (drawn every frame,
+//                                        at scale pixels a point), the others in view at sharp; stills: each at its moment,
+//                                        not run; loop: the one running its loop (hovered)
 //   Host.release {screen, buffer}        a frame's target the studio no longer shows (NativeHost: drawn into again)
 //   Studio.screens {}                    {screens: [{name, width, height}]}
 //   Ui.getTree {screen}                  that screen's tree ({uis: [{root}]}, as a program's)
@@ -51,7 +52,7 @@ class HostAgent {
 				var names:Array<String> = p.screens == null ? [] : [for (x in (p.screens : Array<Dynamic>)) Std.string(x)];
 				host.still(p.stills == true);
 				host.loop(p.loop);
-				host.show(names);
+				host.show(names, p.sharp == null ? null : (p.sharp : Float));
 				host.focus(p.focused, p.scale == null ? null : (p.scale : Float));
 				answer({});
 			case "Host.release":

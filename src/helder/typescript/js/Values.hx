@@ -250,6 +250,11 @@ class JsFunction extends JsObject {
 }
 
 class JsError extends JsObject {
+	// (where it was made: its stack written when first read, Frames)
+	public var frames:Null<haxe.io.Bytes> = null;
+	public var site:Null<String> = null;
+	public var awaits:Null<Array<String>> = null;
+	public var stack:Null<String> = null;
 	override public function tag():String return "Error";
 }
 

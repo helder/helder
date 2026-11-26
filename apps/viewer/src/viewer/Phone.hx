@@ -416,6 +416,7 @@ class PhoneState implements Markup {
 	var top = "/";
 	// (the path the stack last landed on: its effect's)
 	var landed = "/";
+	// (the actions' names declared once a process: a type's, every screen's)
 	static var declared = false;
 
 	public function new(x:Explorer) {

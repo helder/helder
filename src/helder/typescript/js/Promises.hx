@@ -15,6 +15,8 @@ class JsPromise extends JsObject implements helder.view.graph.Awaitable<Dynamic>
 	public var handled = false;
 	// (an async function's: stops it)
 	public var canceller:Null<Void->Void> = null;
+	// (the async function awaiting it: an error's async frames, Async.awaits)
+	public var awaiter:Null<JsGenerator> = null;
 	override public function tag():String return "Promise";
 
 	public function onAnswer(ok:Dynamic->Void, fail:Dynamic->Void):Void Promises.observe(this, ok, fail);
@@ -515,6 +517,7 @@ class Promises {
 	public static function async(step:Dynamic):Dynamic {
 		var p = create(PromiseProto);
 		var g:JsGenerator = cast Async.generator(step);
+		g.promise = p;
 		// (the resumption current: an answer for an earlier one is dropped)
 		var turn = 0;
 		var awaited:Null<JsPromise> = null;
@@ -522,10 +525,15 @@ class Promises {
 		function run(sent:Dynamic, mode:Int):Void {
 			var r:Dynamic;
 			awaited = null;
+			// (the first async function of the stack: where its awaiters' frames go on)
+			var outer = Async.running;
+			if (outer == null) Async.running = g;
 			try r = Async.resume(g, sent, mode) catch (e:Dynamic) {
+				Async.running = outer;
 				reject(p, e);
 				return;
 			}
+			Async.running = outer;
 			var v = get(r, "value");
 			if (Seed.truth(get(r, "done"))) {
 				resolve(p, v);
@@ -533,6 +541,7 @@ class Promises {
 			}
 			var q = resolved(v), t = ++turn;
 			awaited = q;
+			q.awaiter = g;
 			then(q, host(x -> if (t == turn) run(x, 0)), host(e -> if (t == turn) run(e, 1)), null);
 		}
 		p.canceller = () -> {
@@ -585,7 +594,7 @@ class Promises {
 		draining = false;
 		if (unhandled.length > 0) {
 			var e = unhandled[0].value;
-			var text = Std.isOfType(e, JsError) ? Builtins.errorText(e) : "[UnhandledPromiseRejection: This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). The promise rejected with the reason \"" + Inspect.inspect(e) + "\".] {\n  code: 'ERR_UNHANDLED_REJECTION'\n}";
+			var text = Std.isOfType(e, JsError) ? Builtins.uncaughtText(e) : "[UnhandledPromiseRejection: This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). The promise rejected with the reason \"" + Inspect.inspect(e) + "\".] {\n  code: 'ERR_UNHANDLED_REJECTION'\n}";
 			Sys.stderr().writeString("Uncaught " + text + "\n");
 			Sys.exit(1);
 		}
