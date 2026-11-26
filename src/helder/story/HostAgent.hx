@@ -39,6 +39,10 @@ class HostAgent {
 		if (m.method == null) return false;
 		var p:Dynamic = m.params ?? {};
 		var s = p.screen == null ? null : host.screen(Std.string(p.screen));
+		// (a screen let go to make room built again for what is asked of it; a
+		// literal's patch: every one let go, what they show may change)
+		if (s != null) host.build(s);
+		if (m.method == "Hot.literals") host.unpark();
 		var ui = s?.ui;
 		inline function answer(r:Dynamic)
 			if (m.id != null) Agent.respond(m.id, r);

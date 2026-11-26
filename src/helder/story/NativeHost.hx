@@ -76,6 +76,14 @@ class NativeHost {
 		// (a still's frames: written once it settled, not each it drew on its way)
 		var due = new Map<String, Float>();
 		host.onFrame = s -> if (host.stills && s != host.looping) due.set(s.name, haxe.Timer.stamp());
+		// (a still let go to make room: written now, not when due)
+		host.onPark = s -> {
+			due.remove(s.name);
+			host.guard(s, () -> {
+				frames.still(s);
+				false;
+			});
+		}
 		while (true) {
 			helder.dev.Hot.poll();
 			var drawn = host.frame(haxe.Timer.stamp());

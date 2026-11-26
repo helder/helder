@@ -72,6 +72,9 @@ class Host {
 	public var onFrame:Null<HostScreen->Void> = null;
 	// told: a screen threw (its failure; the others go on)
 	public var onFailure:Null<HostScreen->Void> = null;
+	// told: a still about to be let go (to make room: MOUNTED), its frame shown
+	// still (NativeHost: its still written first)
+	public var onPark:Null<HostScreen->Void> = null;
 
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
@@ -121,7 +124,7 @@ class Host {
 		if (on == stills) return;
 		stills = on;
 		for (s in screens)
-			if (s.ui != null) s.reset();
+			s.reset();
 	}
 
 	// the screen running its loop from its moment (null, or a story without
@@ -161,11 +164,12 @@ class Host {
 	// always): how many were drawn
 	public function frame(now:Float):Int {
 		var drawn = 0;
+		time = now;
 		for (s in screens)
 			if (s.visible && s.failure == null && guard(s, () -> turn(s, now))) drawn++;
 		if (drawn > 0) return drawn;
 		for (s in screens)
-			if (aside(s)) return guard(s, () -> {
+			if (aside(s)) return (s.ui != null || room()) && guard(s, () -> {
 				s.mount();
 				var ui = s.ui, v = s.version;
 				if (ui != null) s.context.run(() -> ui.update());
@@ -187,6 +191,10 @@ class Host {
 
 	// (a screen in view's turn: whether it drew)
 	function turn(s:HostScreen, now:Float):Bool {
+		var own = s == focused || s == looping;
+		if (s.parked && !own) return false;
+		if (s.ui == null && !own && !room()) return false;
+		s.parked = false;
 		s.mount();
 		// (a loop: its clock from its moment, its loop's seconds, then again)
 		if (s == looping) {
@@ -213,7 +221,7 @@ class Host {
 
 	// (out of view: never drawn, or a still that changed; not the looping one)
 	function aside(s:HostScreen):Bool
-		return !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
+		return !s.parked && !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
@@ -263,6 +271,57 @@ class Host {
 		return w.frame();
 	}
 
+	// Stills built at once at most: each holds its scenes' worlds (16 a
+	// process, helder.scene.World), a canvas zoomed out shows them all. One
+	// more built, the still drawn longest ago and settled for SETTLE seconds
+	// is let go (parked: its frame kept where it is shown, its still taken,
+	// onPark), built again at a reload, a focus, its loop, a literal's patch
+	// (unpark); none settled, the new one waits a turn
+	public static inline var MOUNTED = 8;
+	public static inline var SETTLE = 0.5;
+
+	var time = 0.0;
+
+	// (room for one more screen built: one let go if need be; false: none yet)
+	function room():Bool {
+		if (!stills) return true;
+		var n = 0, oldest:Null<HostScreen> = null;
+		for (s in screens) {
+			var ui = s.ui;
+			if (ui == null) continue;
+			n++;
+			if (s != focused && s != looping && s.version > 0 && !s.redraw && !ui.needsFrame && time - s.drawnAt >= SETTLE
+				&& (oldest == null || s.drawnAt < oldest.drawnAt)) oldest = s;
+		}
+		if (n < MOUNTED) return true;
+		if (oldest == null) return false;
+		park(oldest);
+		return true;
+	}
+
+	function park(s:HostScreen) {
+		if (onPark != null) onPark(s);
+		s.reset();
+		s.parked = true;
+		s.redraw = false;
+	}
+
+	// a screen built (a request about it), parked or not yet
+	public function build(s:HostScreen)
+		if (s.ui == null && s.failure == null) guard(s, () -> {
+			s.parked = false;
+			s.mount();
+			false;
+		});
+
+	// the parked built again (a literal patched: what they show may have changed)
+	public function unpark()
+		for (s in screens)
+			if (s.parked) {
+				s.parked = false;
+				s.redraw = true;
+			}
+
 	// pixels a point of a still's passes' pictures (Host.written)
 	public static inline var CAPTURE = 2.0;
 	// a loop's pictures' frames a second and longest side in pixels (Host.written)
@@ -294,7 +353,7 @@ class Host {
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)
 	public function busy():Bool {
 		for (s in screens)
-			if (s.visible && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating)) || aside(s)) return true;
+			if (s.visible && !s.parked && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating)) || aside(s)) return true;
 		return false;
 	}
 
@@ -342,6 +401,7 @@ class Host {
 		runtime.capture(s, device);
 		device.endFrame();
 		s.version++;
+		s.drawnAt = time;
 		frames++;
 		runtime.present(s, changed);
 		if (onFrame != null) onFrame(s);
@@ -374,6 +434,9 @@ class HostScreen {
 	@:allow(helder.story.Host) public var version(default, null) = 0;
 	// (shown again, focused: a frame due whatever changed)
 	@:allow(helder.story.Host) var redraw = true;
+	// (let go to make room, its frame kept: Host.MOUNTED; when it was drawn last, the host's time)
+	@:allow(helder.story.Host) var parked = false;
+	@:allow(helder.story.Host) var drawnAt = 0.0;
 	// when it was built (haxe.Timer.stamp; -1: not yet)
 	public var mountedAt(default, null) = -1.0;
 	// its clock's time at its moment (a still's), and when its loop began (the host's time; -1: not yet)
@@ -449,6 +512,10 @@ class HostScreen {
 
 	// let go and built again at its next turn (from its clock's start: its moment again)
 	public function reset() {
+		if (parked) {
+			parked = false;
+			redraw = true;
+		}
 		if (ui == null) return;
 		context.run(() -> {
 			if (unrender != null) unrender();

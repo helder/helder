@@ -139,6 +139,36 @@ function tests() {
 				s.reset();
 			host.device.dispose();
 		});
+		test("24 screens each a <Scene>, out of view, reset again and again: never over 16 worlds", () -> {
+			SceneRenderer.device = null;
+			var stories = [for (i in 0...24) new helder.story.Story('Toy/$i', c -> Fixture.toy(0.6, i % 2 == 0), 1, null, 240, 160, i % 3 == 0 ? 1.0 : null)];
+			var host = new helder.story.Host(stories, new helder.story.Host.HeadlessHost());
+			var most = 0, failed = [];
+			host.onFailure = s -> failed.push('${s.name}: ${s.failure.message}');
+			host.still(true);
+			for (round in 0...4) {
+				// (a few in view, the others drawn aside, one at a time; then all in
+				// view, a canvas zoomed out; a loop recorded)
+				host.show(round == 3 ? [for (s in stories) s.name] : [for (i in 0...3) 'Toy/${(round * 5 + i) % 24}']);
+				// (some wait their turn: room made as the ones before settle)
+				for (f in 0...60 * 12) {
+					host.frame(round * 100 + f / 60);
+					most = Std.int(Math.max(most, helder.scene.World.alive()));
+				}
+				for (s in host.screens)
+					if (s.story.loop != null && s.ui != null) host.written(s, 60);
+				most = Std.int(Math.max(most, helder.scene.World.alive()));
+				// (the program's reload: every screen built again)
+				host.still(false);
+				host.still(true);
+			}
+			equals(failed, []);
+			assert(most <= 16, 'at most 16 worlds alive: $most');
+			equals([for (s in host.screens) if (s.version == 0) s.name], []);
+			for (s in host.screens)
+				s.reset();
+			host.device.dispose();
+		});
 		#end
 	});
 }
