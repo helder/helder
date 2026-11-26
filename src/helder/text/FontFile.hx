@@ -185,7 +185,9 @@ class FontFile {
 		bitmapsOnly = tag != "OTTO" && !tables.exists("glyf") && (tables.exists("CBDT") && tables.exists("CBLC") || tables.exists("sbix"));
 		var outlines = tag == "OTTO" ? ["CFF "] : bitmapsOnly ? [] : ["loca", "glyf"];
 		if (tag == "OTTO" && !tables.exists("CFF ") && tables.exists("CFF2")) throw "FontFile: CFF2 outlines are not supported";
-		for (t in ["head", "hhea", "hmtx", "maxp", "cmap"].concat(outlines))
+		// (no cmap at all where no Unicode one is asked for: a PDF's TrueType subsets reach their glyphs by
+		// CIDToGIDMap and often leave it out)
+		for (t in ["head", "hhea", "hmtx", "maxp"].concat(unicode ? ["cmap"] : []).concat(outlines))
 			if (!tables.exists(t)) throw "FontFile: no " + t + " table";
 		hmtx = tables.get("hmtx");
 		var head = tables.get("head");
@@ -1251,6 +1253,11 @@ class FontFile {
 	// --- tables ---
 
 	function chooseCmap(required:Bool) {
+		if (!tables.exists("cmap")) {
+			if (required) throw "FontFile: no cmap table";
+			cmap = -1;
+			return;
+		}
 		var c = tables.get("cmap");
 		var n = u16(data, c + 2);
 		var best = -1, bestScore = -1;
