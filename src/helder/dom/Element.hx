@@ -28,9 +28,9 @@ class Element extends Node {
 	var ns:Int;
 	var tag:Int;
 	var attrs:Null<Array<Attr>> = null;
-	var map:Null<NamedNodeMap> = null;
-	var tokens:Null<DOMTokenList> = null;
-	var collection:Null<HTMLCollection> = null;
+	// the parser's attributes, not yet Attr nodes (Attrs' spans of src; null: none, or made)
+	var raw:Null<Array<Int>> = null;
+	var src:Null<String> = null;
 
 	static inline var HTML = 0;
 	static inline var SVG = 1;
@@ -129,13 +129,13 @@ class Element extends Node {
 	}
 
 	function get_classList():DOMTokenList
-		return tokens ?? (tokens = new DOMTokenList(this, "class"));
+		return views().classList ?? (views().classList = new DOMTokenList(this, "class"));
 
 	function get_attributes():NamedNodeMap
-		return map ?? (map = new NamedNodeMap(this));
+		return views().attributes ?? (views().attributes = new NamedNodeMap(this));
 
 	function get_children():HTMLCollection
-		return collection ?? (collection = new HTMLCollection(this, true, e -> true));
+		return childElements();
 
 	function get_firstElementChild():Null<Element>
 		return Node.firstElement(firstChild, true);
@@ -174,23 +174,62 @@ class Element extends Node {
 		return v;
 	}
 
-	inline function attrList():Array<Attr>
+	// the attribute list as Attr nodes (the parser's made now, in their order)
+	function attrList():Array<Attr> {
+		var r = raw;
+		if (r != null) {
+			raw = null;
+			var n = Std.int(r.length / Attrs.SIZE), list = [];
+			for (i in 0...n) {
+				var a = new Attr(doc, Attrs.name(src, r, i), Attrs.value(src, r, i));
+				a.ownerElement = this;
+				list.push(a);
+			}
+			src = null;
+			attrs = attrs == null ? list : list.concat(attrs);
+		}
 		return attrs ?? NONE;
+	}
 
 	static final NONE:Array<Attr> = [];
 
+	inline function rawCount():Int
+		return raw == null ? 0 : Std.int(raw.length / Attrs.SIZE);
+
 	public function hasAttributes():Bool
-		return attrs != null && attrs.length > 0;
+		return raw != null || attrs != null && attrs.length > 0;
 
-	public function getAttributeNames():Array<String>
+	public function getAttributeNames():Array<String> {
+		if (raw != null && attrs == null) return [for (i in 0...rawCount()) Attrs.name(src, raw, i)];
 		return [for (a in attrList()) a.qualifiedName()];
+	}
 
-	public function getAttribute(qualifiedName:String):Null<String> {
+	public function getAttribute(qualifiedName:String):Null<String>
+		return valueByName(qualifiedName);
+
+	public function getAttributeNS(namespace:Null<String>, localName:String):Null<String>
+		return valueByNamespace(namespace, localName);
+
+	// (the value of get an attribute by name, read from the parser's spans when they are still all there is)
+	function valueByName(qualifiedName:String):Null<String> {
+		if (raw != null && attrs == null) {
+			if (ns == HTML && doc.isHTML) qualifiedName = Names.lower(qualifiedName);
+			for (i in 0...rawCount())
+				if (Attrs.nameIs(src, raw, i, qualifiedName)) return Attrs.value(src, raw, i);
+			return null;
+		}
 		var a = byName(qualifiedName);
 		return a == null ? null : a.data;
 	}
 
-	public function getAttributeNS(namespace:Null<String>, localName:String):Null<String> {
+	// (by namespace and local name: the parser's attributes have none)
+	function valueByNamespace(namespace:Null<String>, localName:String):Null<String> {
+		if (raw != null && attrs == null) {
+			if (namespace != null && namespace != "") return null;
+			for (i in 0...rawCount())
+				if (Attrs.nameIs(src, raw, i, localName)) return Attrs.value(src, raw, i);
+			return null;
+		}
 		var a = byNamespace(namespace, localName);
 		return a == null ? null : a.data;
 	}
@@ -245,10 +284,10 @@ class Element extends Node {
 	}
 
 	public function hasAttribute(qualifiedName:String):Bool
-		return byName(qualifiedName) != null;
+		return valueByName(qualifiedName) != null;
 
 	public function hasAttributeNS(namespace:Null<String>, localName:String):Bool
-		return byNamespace(namespace, localName) != null;
+		return valueByNamespace(namespace, localName) != null;
 
 	public function getAttributeNode(qualifiedName:String):Null<Attr>
 		return byName(qualifiedName);
@@ -263,7 +302,7 @@ class Element extends Node {
 		return setAttr(attr);
 
 	public function removeAttributeNode(attr:Attr):Attr {
-		if (attrs == null || !attrs.contains(attr)) throw new DOMException("not an attribute of this element", "NotFoundError");
+		if (!attrList().contains(attr)) throw new DOMException("not an attribute of this element", "NotFoundError");
 		removeAttr(attr);
 		return attr;
 	}
@@ -319,7 +358,8 @@ class Element extends Node {
 
 	// get an attribute by name
 	function byName(qualifiedName:String):Null<Attr> {
-		if (attrs == null) return null;
+		var attrs = attrList();
+		if (attrs.length == 0) return null;
 		if (ns == HTML && doc.isHTML) qualifiedName = Names.lower(qualifiedName);
 		for (a in attrs)
 			if (a.prefix == null ? a.localName == qualifiedName : a.qualifiedName() == qualifiedName) return a;
@@ -328,7 +368,8 @@ class Element extends Node {
 
 	// get an attribute by namespace and local name
 	function byNamespace(namespace:Null<String>, localName:String):Null<Attr> {
-		if (attrs == null) return null;
+		var attrs = attrList();
+		if (attrs.length == 0) return null;
 		if (namespace == "") namespace = null;
 		for (a in attrs)
 			if (a.localName == localName && a.namespaceURI == namespace) return a;
@@ -336,10 +377,8 @@ class Element extends Node {
 	}
 
 	// get an attribute value (no namespace)
-	inline function attrValue(localName:String):String {
-		var a = byNamespace(null, localName);
-		return a == null ? "" : a.data;
-	}
+	inline function attrValue(localName:String):String
+		return valueByNamespace(null, localName) ?? "";
 
 	// set an attribute value
 	function setAttrValue(localName:String, value:String, ?prefix:String, ?namespace:String) {
@@ -373,6 +412,7 @@ class Element extends Node {
 	}
 
 	function appendAttr(attr:Attr) {
+		attrList();
 		if (attrs == null) attrs = [];
 		attrs.push(attr);
 		attr.ownerElement = this;
@@ -399,7 +439,8 @@ class Element extends Node {
 		var e:Null<Element> = this;
 		while (e != null) {
 			if (e.namespaceURI == namespace && e.prefix != null) return e.prefix;
-			for (a in e.attrList())
+			// (the parser's attributes, not made yet, are in no namespace)
+			for (a in e.attrs ?? NONE)
 				if (a.prefix == "xmlns" && a.data == namespace) return a.localName;
 			e = e.parentElement;
 		}
@@ -413,7 +454,7 @@ class Element extends Node {
 		var e:Null<Element> = this;
 		while (e != null) {
 			if (e.namespaceURI != null && e.prefix == prefix) return e.namespaceURI;
-			for (a in e.attrList())
+			for (a in e.attrs ?? NONE)
 				if (a.namespaceURI == Namespaces.XMLNS && (prefix != null ? a.prefix == "xmlns" && a.localName == prefix : a.prefix == null && a.localName == "xmlns"))
 					return a.data == "" ? null : a.data;
 			e = e.parentElement;
@@ -426,11 +467,17 @@ class Element extends Node {
 
 	// (adopting steps: the attributes', a template's contents')
 	function adopted(old:Document)
-		for (a in attrList())
+		for (a in attrs ?? NONE)
 			a.doc = doc;
 
 	override function cloneOne(document:Document):Node {
 		var copy = create(document, localName, namespaceURI, prefix);
+		if (raw != null && attrs == null) {
+			copy.raw = raw;
+			copy.src = src;
+			copy.attributesSet();
+			return copy;
+		}
 		for (a in attrList())
 			copy.appendAttr(cast a.cloneOne(document));
 		return copy;

@@ -45,13 +45,22 @@ using StringTools;
 					var name = tagName(e);
 					buf.add("<");
 					buf.add(name);
-					for (a in e.attrList()) {
-						buf.add(" ");
-						buf.add(attrName(a));
-						buf.add("=\"");
-						buf.add(escape(a.data, true));
-						buf.add("\"");
-					}
+					if (e.raw != null && e.attrs == null)
+						for (i in 0...e.rawCount()) {
+							buf.add(" ");
+							buf.add(Attrs.name(e.src, e.raw, i));
+							buf.add("=\"");
+							buf.add(escape(Attrs.value(e.src, e.raw, i), true));
+							buf.add("\"");
+						}
+					else
+						for (a in e.attrList()) {
+							buf.add(" ");
+							buf.add(attrName(a));
+							buf.add("=\"");
+							buf.add(escape(a.data, true));
+							buf.add("\"");
+						}
 					buf.add(">");
 					if (!isVoid(e)) {
 						into = first(e);

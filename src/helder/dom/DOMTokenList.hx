@@ -40,8 +40,7 @@ class DOMTokenList {
 		return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0C || c == 0x0D;
 
 	function tokens():Array<String> {
-		var a = element.byNamespace(null, name);
-		var v = a == null ? null : a.data;
+		var v = element.valueByNamespace(null, name);
 		if (v != read) {
 			read = v;
 			set = v == null ? [] : parse(v);
@@ -50,7 +49,7 @@ class DOMTokenList {
 	}
 
 	function update(tokens:Array<String>) {
-		if (element.byNamespace(null, name) == null && tokens.length == 0) return;
+		if (element.valueByNamespace(null, name) == null && tokens.length == 0) return;
 		element.setAttrValue(name, tokens.join(" "));
 	}
 

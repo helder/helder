@@ -162,17 +162,19 @@ package helder.dom;
 	static var table:Null<Array<Int>> = null;
 	static var all:Array<String> = [];
 
-	static inline function mix(h:Int, c:Int):Int
-		return (h * 33) ^ c;
+	// (a name's hash: its length, first two and last units; the comparison settles the rest)
+	static inline function hash(s:String, from:Int, to:Int):Int {
+		var n = to - from;
+		if (n == 0) return 0;
+		return n * 7919 ^ StringTools.fastCodeAt(s, from) * 131 ^ (n > 1 ? StringTools.fastCodeAt(s, from + 1) * 17 : 0) ^ StringTools.fastCodeAt(s, to - 1) * 1031;
+	}
 
 	static function build():Array<Int> {
 		all = NAMES.concat(ATTRS);
 		var t = [for (_ in 0...SLOTS) -1];
 		for (k in 1...all.length) {
-			var n = all[k], h = 5381;
-			for (i in 0...n.length)
-				h = mix(h, StringTools.fastCodeAt(n, i));
-			var slot = h & (SLOTS - 1);
+			var n = all[k];
+			var slot = hash(n, 0, n.length) & (SLOTS - 1);
 			while (t[slot] >= 0)
 				slot = (slot + 1) & (SLOTS - 1);
 			t[slot] = k;
@@ -184,10 +186,7 @@ package helder.dom;
 	public static function find(s:String, from:Int, to:Int):Int {
 		var t = table;
 		if (t == null) t = table = build();
-		var h = 5381;
-		for (i in from...to)
-			h = mix(h, StringTools.fastCodeAt(s, i));
-		var slot = h & (SLOTS - 1), n = to - from;
+		var slot = hash(s, from, to) & (SLOTS - 1), n = to - from;
 		while (true) {
 			var k = t[slot];
 			if (k < 0) return 0;
@@ -201,6 +200,10 @@ package helder.dom;
 			slot = (slot + 1) & (SLOTS - 1);
 		}
 	}
+
+	// the name of an index find gave
+	public static inline function name(k:Int):String
+		return all[k];
 
 	// s[from, to) as its interned string, if it is a known name (null: not one)
 	public static function intern(s:String, from:Int, to:Int):Null<String> {

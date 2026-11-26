@@ -32,7 +32,7 @@ class HTMLOptionElement extends Element {
 	}
 
 	function get_defaultSelected():Bool
-		return byNamespace(null, "selected") != null;
+		return valueByNamespace(null, "selected") != null;
 
 	function set_defaultSelected(v:Bool):Bool {
 		if (v) setAttribute("selected", "") else removeAttribute("selected");
@@ -41,16 +41,16 @@ class HTMLOptionElement extends Element {
 
 	// (when created: selected if it has a selected attribute)
 	override function attributesSet()
-		if (byNamespace(null, "selected") != null) selectedness = true;
+		if (valueByNamespace(null, "selected") != null) selectedness = true;
 
 	// disabled: its own attribute, or its optgroup's
 	function disabled():Bool {
-		if (byNamespace(null, "disabled") != null) return true;
+		if (valueByNamespace(null, "disabled") != null) return true;
 		var a = parentElement;
 		while (a != null) {
 			if (a.ns == Element.HTML) switch a.tag {
 				case Tags.SELECT | Tags.HR | Tags.OPTION: return false;
-				case Tags.OPTGROUP: return a.byNamespace(null, "disabled") != null;
+				case Tags.OPTGROUP: return a.valueByNamespace(null, "disabled") != null;
 				case _: if (a.localName == "datalist") return false;
 			}
 			a = a.parentElement;

@@ -8,6 +8,14 @@ class Text extends CharacterData {
 	function new(doc:Document, data:String, type = Node.TEXT_NODE)
 		super(type, doc, data);
 
+	// (the parser's: a text that is src[from, to) as it is, its string made when read)
+	static function span(doc:Document, src:String, from:Int, to:Int, references:Bool):Text {
+		var t = new Text(doc, src);
+		t.lazyFrom = from;
+		t.lazyTo = references ? -1 - to : to;
+		return t;
+	}
+
 	override function get_nodeName():String
 		return "#text";
 

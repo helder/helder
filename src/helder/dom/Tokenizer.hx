@@ -2,17 +2,23 @@ package helder.dom;
 
 using StringTools;
 
-// A start or end tag token: attributes as name, value pairs in one array
-// (null: none), the source offsets of its "<" and after its ">".
+// A start or end tag token, the source offsets of its "<" and after its
+// ">": its attributes as spans of src (Attrs' layout), or, when parse errors
+// are asked for, as names and values read (their references' errors then
+// reported where they are).
 @:noCompletion class Tag {
 	public var name:String;
 	public var id:Int;
 	public var end:Bool;
 	public var selfClosing = false;
 	public var acknowledged = false;
-	public var attrs:Null<Array<String>> = null;
 	public var start:Int;
 	public var stop:Int;
+	public var count = 0;
+	public var src = "";
+	public var raw:Array<Int> = [];
+	public var names:Null<Array<String>> = null;
+	public var values:Null<Array<String>> = null;
 
 	public function new(name:String, end:Bool, start:Int) {
 		this.name = name;
@@ -22,21 +28,26 @@ using StringTools;
 		this.stop = start;
 	}
 
+	public inline function attrName(i:Int):String
+		return names != null ? names[i] : Attrs.name(src, raw, i);
+
+	public inline function attrValue(i:Int):String
+		return values != null ? values[i] : Attrs.value(src, raw, i);
+
 	public function attr(name:String):Null<String> {
-		if (attrs != null) {
-			var i = 0;
-			while (i < attrs.length) {
-				if (attrs[i] == name) return attrs[i + 1];
-				i += 2;
-			}
-		}
+		for (i in 0...count)
+			if (names != null ? names[i] == name : Attrs.nameIs(src, raw, i, name)) return attrValue(i);
 		return null;
 	}
 
 	public function copy():Tag {
 		var t = new Tag(name, end, start);
 		t.stop = stop;
-		t.attrs = attrs == null ? null : attrs.copy();
+		t.count = count;
+		t.src = src;
+		t.raw = raw.slice(0, count * Attrs.SIZE);
+		t.names = names == null ? null : names.copy();
+		t.values = values == null ? null : values.copy();
 		return t;
 	}
 }
@@ -47,6 +58,10 @@ using StringTools;
 	function tag(t:Tag):Void;
 	// a run of characters; a U+0000 always alone (the tree builder's to drop or replace)
 	function chars(text:String, start:Int, end:Int):Void;
+	// a run of the source's own characters, s[start, end) as they are (no string made for it)
+	function slice(start:Int, end:Int):Void;
+	// a character reference's text in content, s[start, end) the reference
+	function reference(text:String, start:Int, end:Int):Void;
 	function comment(data:String, start:Int, end:Int):Void;
 	function pi(target:String, data:String, start:Int, end:Int):Void;
 	function eof(at:Int):Void;
@@ -155,6 +170,8 @@ using StringTools;
 	final len:Int;
 	final sink:TokenSink;
 	final errors:Null<Array<ParseError>>;
+	// (no errors asked for: attributes kept as spans, their references read when they are)
+	final lazy:Bool;
 	var pos = 0;
 	// the current input character and where it started (EOF: len)
 	var cur = EOF;
@@ -187,6 +204,7 @@ using StringTools;
 		this.len = s.length;
 		this.sink = sink;
 		this.errors = errors;
+		lazy = errors == null;
 		tag = new Tag("", false, 0);
 		tagName = new Run(s);
 		attrName = new Run(s);
@@ -287,7 +305,7 @@ using StringTools;
 		sink.chars(text, start, end);
 
 	inline function emitChar(c:Int) {
-		if (c == 0) sink.chars("\x00", at, pos) else sink.chars(String.fromCharCode(c), at, pos);
+		if (c < 0x80) sink.chars(ASCII[c], at, pos) else sink.chars(String.fromCharCode(c), at, pos);
 	}
 
 	function emitString(t:String)
@@ -297,7 +315,7 @@ using StringTools;
 		var t = tag;
 		t.stop = pos;
 		if (t.end) {
-			if (t.attrs != null) error("end-tag-with-attributes");
+			if (t.count > 0) error("end-tag-with-attributes");
 			if (t.selfClosing) error("end-tag-with-trailing-solidus");
 		} else lastStartTag = t.name;
 		sink.tag(t);
@@ -317,7 +335,9 @@ using StringTools;
 		var t = tag = end ? endTag : startTag;
 		t.start = t.stop = tokenStart;
 		t.selfClosing = t.acknowledged = false;
-		t.attrs = null;
+		t.count = 0;
+		t.src = s;
+		t.names = t.values = null;
 		tagName.reset();
 	}
 
@@ -326,34 +346,81 @@ using StringTools;
 
 	function newAttr() {
 		finishAttr();
-		attrName.reset();
-		attrValue.reset();
+		if (!lazy) {
+			attrName.reset();
+			attrValue.reset();
+		}
 		attrStart = at;
+		nameDirty = valueDirty = false;
+		valueStart = valueEnd = 0;
 		naming = true;
 	}
 
-	var naming = false;
+	// (lazy: the attribute's spans and whether they need reading)
+	var nameEnd = 0;
+	var nameDirty = false;
+	var valueStart = 0;
+	var valueEnd = 0;
+	var valueDirty = false;
+	var nameRef = 0;
 
-	// (on leaving the attribute name state: a duplicate name is dropped, its value too)
+	// (lazy: the attribute being named has attribute j's name)
+	function sameName(j:Int):Bool {
+		var raw = tag.raw, k = j * Attrs.SIZE;
+		var ref = raw[k] & 0xFFFF;
+		if (ref != 0 && nameRef != 0) return ref == nameRef;
+		if (!nameDirty && raw[k] & Attrs.NAME_DIRTY == 0) {
+			if (ref != 0 || nameRef != 0) return false;
+			var from = raw[k + 1], n = raw[k + 2] - from;
+			if (n != nameEnd - attrStart) return false;
+			for (i in 0...n)
+				if (s.fastCodeAt(from + i) != s.fastCodeAt(attrStart + i)) return false;
+			return true;
+		}
+		// (upper case or NUL in either: compared as read)
+		push(0, 0);
+		var same = Attrs.name(s, raw, tag.count) == Attrs.name(s, raw, j);
+		return same;
+	}
+
+	// (the attribute being read, at the tag's next slot: compare or keep)
+	function push(valueFrom:Int, valueTo:Int) {
+		var raw = tag.raw, k = tag.count * Attrs.SIZE;
+		while (raw.length < k + Attrs.SIZE)
+			raw.push(0);
+		raw[k] = nameRef | (nameDirty ? Attrs.NAME_DIRTY : 0) | (valueDirty ? Attrs.VALUE_DIRTY : 0);
+		raw[k + 1] = attrStart;
+		raw[k + 2] = nameEnd;
+		raw[k + 3] = valueFrom;
+		raw[k + 4] = valueTo;
+	}
+
 	function attrNamed() {
 		if (!naming) return;
 		naming = false;
-		pendingName = attrName.name();
-		var attrs = tag.attrs;
-		if (attrs != null) {
-			var i = 0;
-			while (i < attrs.length) {
-				if (attrs[i] == pendingName) {
-					error("duplicate-attribute");
-					pendingName = null;
+		if (lazy) {
+			nameEnd = at;
+			// (a name's table entry looked up when it is read, not here)
+			nameRef = 0;
+			for (j in 0...tag.count)
+				if (sameName(j)) {
+					hasPending = false;
 					return;
 				}
-				i += 2;
-			}
+			hasPending = true;
+			return;
+		}
+		pendingName = attrName.name();
+		var names = tag.names;
+		if (names != null && names.contains(pendingName)) {
+			error("duplicate-attribute");
+			pendingName = null;
+			return;
 		}
 		hasPending = true;
 	}
 
+	var naming = false;
 	var pendingName:Null<String> = null;
 	var hasPending = false;
 
@@ -361,11 +428,19 @@ using StringTools;
 		if (naming) attrNamed();
 		if (!hasPending) return;
 		hasPending = false;
+		if (lazy) {
+			push(valueStart, valueEnd);
+			tag.count++;
+			return;
+		}
 		if (pendingName == null) return;
-		var attrs = tag.attrs;
-		if (attrs == null) tag.attrs = attrs = [];
-		attrs.push(pendingName);
-		attrs.push(attrValue.take());
+		if (tag.names == null) {
+			tag.names = [];
+			tag.values = [];
+		}
+		tag.names.push(pendingName);
+		tag.values.push(attrValue.take());
+		tag.count++;
 		pendingName = null;
 	}
 
@@ -379,11 +454,12 @@ using StringTools;
 	// flush code points consumed as a character reference: the input's own
 	// (no reference read: refStart to end) or a reference's value
 	function flushSlice(end:Int) {
-		if (inAttribute()) attrValue.sub(refStart, end) else sink.chars(s.substring(refStart, end), refStart, end);
+		if (inAttribute()) attrValue.sub(refStart, end) else sink.slice(refStart, end);
 	}
 
 	function flushValue(v:String) {
-		if (inAttribute()) attrValue.add(v) else sink.chars(v, refStart, pos);
+		// (a reference read to its next character, to reconsume: it ends before it)
+		if (inAttribute()) attrValue.add(v) else sink.reference(v, refStart, reconsume ? at : pos);
 	}
 
 	var refStart = 0;
@@ -395,7 +471,7 @@ using StringTools;
 		if (errors != null) checkRun(start, i);
 		if (i == start) return false;
 		pos = i;
-		sink.chars(s.substring(start, i), start, i);
+		sink.slice(start, i);
 		return true;
 	}
 
@@ -411,6 +487,8 @@ using StringTools;
 					} else if (c == "<".code) {
 						tokenStart = at;
 						state = TAG_OPEN;
+						// (fastTag emits it, and leaves the state the tree builder set)
+						if (lazy) fastTag();
 					} else if (c == 0) {
 						error("unexpected-null-character");
 						emitChar(0);
@@ -687,7 +765,7 @@ using StringTools;
 					} else if (c == "=".code) {
 						error("unexpected-equals-sign-before-attribute-name");
 						newAttr();
-						attrName.char(c);
+						if (!lazy) attrName.char(c);
 						state = ATTR_NAME;
 					} else {
 						newAttr();
@@ -704,7 +782,7 @@ using StringTools;
 							i++;
 						}
 						if (i > start) {
-							attrName.sub(start, i);
+							if (!lazy) attrName.sub(start, i);
 							pos = i;
 						}
 					}
@@ -716,6 +794,8 @@ using StringTools;
 					} else if (c == "=".code) {
 						attrNamed();
 						state = BEFORE_ATTR_VALUE;
+					} else if (lazy) {
+						if (isUpper(c) || c == 0) nameDirty = true;
 					} else if (isUpper(c)) attrName.char(c + 32);
 					else if (c == 0) {
 						error("unexpected-null-character");
@@ -743,8 +823,28 @@ using StringTools;
 					}
 				case BEFORE_ATTR_VALUE:
 					var c = next();
-					if (isWs(c)) {} else if (c == "\"".code) state = ATTR_VALUE_DQ;
-					else if (c == "'".code) state = ATTR_VALUE_SQ;
+					if (isWs(c)) {} else if (c == "\"".code || c == "'".code) {
+						state = c == "\"".code ? ATTR_VALUE_DQ : ATTR_VALUE_SQ;
+						valueStart = pos;
+						if (lazy) {
+							// (the value's end: its quote; a reference, CR or NUL in it read later)
+							while (true) {
+								var i = Scan.stop(s, pos, len, c, "&".code);
+								if (i >= len) {
+									pos = len;
+									break;
+								}
+								if (s.fastCodeAt(i) == c) {
+									valueEnd = i;
+									pos = i + 1;
+									state = AFTER_ATTR_VALUE_Q;
+									break;
+								}
+								valueDirty = true;
+								pos = i + 1;
+							}
+						}
+					}
 					else if (c == ">".code) {
 						error("missing-attribute-value");
 						finishAttr();
@@ -752,6 +852,7 @@ using StringTools;
 						emitTag();
 					} else {
 						again();
+						valueStart = at;
 						state = ATTR_VALUE_UQ;
 					}
 				case ATTR_VALUE_DQ | ATTR_VALUE_SQ:
@@ -780,9 +881,16 @@ using StringTools;
 				case ATTR_VALUE_UQ:
 					var c = next();
 					if (isWs(c)) {
+						valueEnd = at;
 						finishAttr();
 						state = BEFORE_ATTR_NAME;
-					} else if (c == "&".code) {
+					} else if (lazy && (c == "&".code || c == 0)) valueDirty = true;
+					else if (lazy && c == ">".code) {
+						valueEnd = at;
+						finishAttr();
+						state = DATA;
+						emitTag();
+					} else if (lazy && c != EOF) {} else if (c == "&".code) {
 						returnState = ATTR_VALUE_UQ;
 						state = CHAR_REF;
 					} else if (c == ">".code) {
@@ -1390,6 +1498,133 @@ using StringTools;
 		}
 	}
 
+	static inline function isTagWs(c:Int):Bool
+		return c == 0x20 || c == 0x0A || c == 0x09 || c == 0x0C || c == 0x0D;
+
+	// an ordinary tag read in one pass, as the states would read it (no
+	// errors asked for: none to report): a lower-case name, attributes with
+	// names in lower case, their values quoted or plain, white space, "/>".
+	// Anything else, and nothing is consumed: false, the states read it.
+	function fastTag():Bool {
+		var p = pos;
+		var c = p < len ? s.fastCodeAt(p) : -1;
+		var end = c == "/".code;
+		if (end) {
+			p++;
+			c = p < len ? s.fastCodeAt(p) : -1;
+		}
+		if (!isLower(c)) return false;
+		var nameStart = p;
+		while (p < len) {
+			c = s.fastCodeAt(p);
+			if (isLower(c) || isDigit(c) || c == "-".code) p++ else break;
+		}
+		if (p >= len) return false;
+		var tagEnd = p;
+		c = s.fastCodeAt(p);
+		if (!(isTagWs(c) || c == "/".code || c == ">".code)) return false;
+		var t = end ? endTag : startTag;
+		tag = t;
+		t.count = 0;
+		t.src = s;
+		t.names = t.values = null;
+		while (true) {
+			while (p < len && isTagWs(s.fastCodeAt(p)))
+				p++;
+			if (p >= len) return false;
+			c = s.fastCodeAt(p);
+			if (c == ">".code) {
+				p++;
+				t.selfClosing = false;
+				break;
+			}
+			if (c == "/".code) {
+				if (p + 1 < len && s.fastCodeAt(p + 1) == ">".code) {
+					p += 2;
+					t.selfClosing = true;
+					break;
+				}
+				return false;
+			}
+			// an attribute's name
+			var an = p;
+			while (p < len) {
+				c = s.fastCodeAt(p);
+				if (isTagWs(c) || c == "/".code || c == ">".code || c == "=".code) break;
+				if (isUpper(c) || c == 0 || c == "\"".code || c == "'".code || c == "<".code) return false;
+				p++;
+			}
+			if (p >= len || p == an) return false;
+			var ae = p, vs = 0, ve = 0, dirty = false;
+			while (p < len && isTagWs(s.fastCodeAt(p)))
+				p++;
+			if (p < len && s.fastCodeAt(p) == "=".code) {
+				p++;
+				while (p < len && isTagWs(s.fastCodeAt(p)))
+					p++;
+				if (p >= len) return false;
+				c = s.fastCodeAt(p);
+				if (c == "\"".code || c == "'".code) {
+					vs = p + 1;
+					var i = vs;
+					while (true) {
+						i = Scan.stop(s, i, len, c, "&".code);
+						if (i >= len) return false;
+						if (s.fastCodeAt(i) == c) break;
+						dirty = true;
+						i++;
+					}
+					ve = i;
+					p = i + 1;
+					// (a quote straight after: the states' error, theirs to read)
+					if (p < len) {
+						var d = s.fastCodeAt(p);
+						if (!(isTagWs(d) || d == "/".code || d == ">".code)) return false;
+					}
+				} else if (c == ">".code) return false;
+				else {
+					vs = p;
+					while (p < len) {
+						c = s.fastCodeAt(p);
+						if (isTagWs(c) || c == ">".code) break;
+						if (c == "\"".code || c == "'".code || c == "<".code || c == "=".code || c == "`".code) return false;
+						if (c == "&".code || c == 0) dirty = true;
+						p++;
+					}
+					if (p >= len) return false;
+					ve = p;
+				}
+			}
+			// (kept as the states keep it: a duplicate dropped)
+			attrStart = an;
+			nameEnd = ae;
+			nameDirty = false;
+			valueDirty = dirty;
+			nameRef = 0;
+			var duplicate = false;
+			for (j in 0...t.count)
+				if (sameName(j)) {
+					duplicate = true;
+					break;
+				}
+			if (!duplicate) {
+				push(vs, ve);
+				t.count++;
+			}
+		}
+		t.start = tokenStart;
+		t.acknowledged = false;
+		t.end = end;
+		var k = Tags.find(s, nameStart, tagEnd);
+		t.name = k != 0 ? Tags.name(k) : s.substring(nameStart, tagEnd);
+		t.id = k != 0 && k <= Tags.DESC ? k : Tags.OTHER;
+		pos = p;
+		at = p - 1;
+		state = DATA;
+		emitTag();
+		return true;
+	}
+
 	// (a code past U+10FFFF is an error whatever its size: kept from overflowing)
 	static inline function grow(n:Int):Int
 		return n > 0x10FFFF ? 0x110000 : n;
@@ -1456,7 +1691,15 @@ using StringTools;
 			error("control-character-reference", after);
 			if (code >= 0x80 && code <= 0x9F && C1[code - 0x80] != 0) code = C1[code - 0x80];
 		}
+		code = referenceCode(code);
 		flushValue(code < 0x80 ? ASCII[code] : String.fromCharCode(code));
+	}
+
+	// a numeric reference's character (the end state's replacements)
+	public static function referenceCode(code:Int):Int {
+		if (code == 0 || code > 0x10FFFF || code >= 0xD800 && code <= 0xDFFF) return 0xFFFD;
+		if (code >= 0x80 && code <= 0x9F && C1[code - 0x80] != 0) return C1[code - 0x80];
+		return code;
 	}
 
 	static final ASCII = [for (c in 0...0x80) String.fromCharCode(c)];
