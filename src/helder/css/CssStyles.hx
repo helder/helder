@@ -1,6 +1,7 @@
 package helder.css;
 
 import helder.css.CssMedia;
+import helder.css.CssRuleIndex;
 import helder.css.CssSelector;
 import helder.css.CssSheet;
 import helder.css.CssStyle;
@@ -10,10 +11,12 @@ import helder.dom.Node;
 
 using StringTools;
 
-// A document's styles: its sheets' rules indexed by their rightmost
-// compound (an id, a class, a type, else any), each element's cascade
-// made when its style is first asked, and the at-rules' data for the
-// later stages (@page, @font-face, @counter-style).
+// A document's styles: its sheets' rules in a CssRuleIndex (by their
+// rightmost compound, the ancestors' Bloom filter moved to each element
+// matched), each element's cascade made when its style is first asked,
+// and the at-rules' data for the later stages (@page, @font-face,
+// @counter-style). A rule that can never match on a page (:hover's,
+// :visited's) is left out.
 class CssStyles {
 	public final document:Document;
 	public final media:CssMediaContext;
@@ -22,11 +25,11 @@ class CssStyles {
 	public final counterStyles:Array<CssCounterStyle> = [];
 
 	final hints:Null<Element->Array<CssDeclared>>;
-	final index = new Index();
-	final pseudos = new Map<String, Index>();
+	final index = new CssRuleIndex<Rule>();
+	final pseudos = new Map<String, CssRuleIndex<Rule>>();
+	final bloom = new CssBloom();
 	final cache = new Map<Element, CssStyle>();
 	final pseudoCache = new Map<Element, Map<String, CssStyle>>();
-	final quirks:Bool;
 	var order = 0;
 	// (layer names in order of first appearance, per origin)
 	final layers = new Map<String, Int>();
@@ -38,7 +41,6 @@ class CssStyles {
 		this.document = document;
 		this.media = media;
 		this.hints = hints;
-		quirks = document.mode == Quirks;
 		// (HTML's hints written as CSS: author rules of specificity zero before the author's own)
 		if (hintSheet != null) {
 			var start = order;
@@ -113,13 +115,14 @@ class CssStyles {
 				for (s in selectors) {
 					var rule = {selector: s, declarations: declarations, origin: origin, layer: l, order: o, zero: zero};
 					switch s.pseudo {
-						case null: index.add(rule, quirks);
+						case _ if (never(s)):
+						case null: index.add(s, rule);
 						case p:
 							var name = pseudoName(p);
 							if (name == null) continue;
 							var i = pseudos.get(name);
-							if (i == null) pseudos.set(name, i = new Index());
-							i.add(rule, quirks);
+							if (i == null) pseudos.set(name, i = new CssRuleIndex());
+							i.add(s, rule);
 					}
 				}
 			case Media(m, inner): if (m.matches(media)) add(inner, origin, layer, zero);
@@ -134,6 +137,14 @@ class CssStyles {
 	}
 
 	static inline var UNLAYERED = 1 << 20;
+
+	// (a compound with :hover, :visited...: never on a page)
+	static function never(s:CssSelector):Bool {
+		for (c in s.compounds)
+			for (x in c)
+				if (x.match(Pseudo(Never(_)))) return true;
+		return false;
+	}
 
 	static function pseudoName(p:CssPseudoElement):Null<String>
 		return switch p {
@@ -152,7 +163,13 @@ class CssStyles {
 	function cascade(el:Element, pseudo:Null<String>):Map<String, Array<CssCandidate>> {
 		var out:Array<CssCandidate> = [];
 		var idx = pseudo == null ? index : pseudos.get(pseudo);
-		if (idx != null) for (rule in idx.candidates(el, quirks)) if (CssMatcher.matches(rule.selector, el)) {
+		var matched:Array<CssIndexed<Rule>> = [];
+		if (idx != null) {
+			bloom.moveTo(el);
+			idx.matching(el, matched, bloom);
+		}
+		for (m in matched) {
+			var rule = m.value;
 			var spec = rule.zero ? 0 : rule.selector.specificity.toInt();
 			var k = 0;
 			for (d in rule.declarations) out.push(candidate(d, rule.origin, false, rule.layer, spec, rule.order * 4096 + k++));
@@ -205,75 +222,3 @@ class CssStyles {
 }
 
 private typedef Rule = {selector:CssSelector, declarations:Array<CssDeclared>, origin:CssOrigin, layer:Int, order:Int, zero:Bool}
-
-// (rules by their rightmost compound's id, else class, else type, else
-// attribute; :is() of types and links by their types, :root apart; a rule
-// that can never match, :hover's or :visited's, left out; the rest any)
-private class Index {
-	final ids = new Map<String, Array<Rule>>();
-	final classes = new Map<String, Array<Rule>>();
-	final types = new Map<String, Array<Rule>>();
-	final attributes = new Map<String, Array<Rule>>();
-	final root:Array<Rule> = [];
-	final any:Array<Rule> = [];
-	var attributed = false;
-
-	public function new() {}
-
-	public function add(rule:Rule, quirks:Bool) {
-		for (c in rule.selector.compounds) for (x in c) if (x.match(Pseudo(Never(_)))) return;
-		var last = rule.selector.compounds[rule.selector.compounds.length - 1];
-		var id = null, cls = null, type = null, attr = null, kinds:Null<Array<String>> = null, isRoot = false;
-		for (s in last) switch s {
-			case Id(n): id = n;
-			case Class(n): if (cls == null) cls = n;
-			case Type(n, _): type = n.toLowerCase();
-			case Attribute(n, _, _, _, _): if (attr == null) attr = n.toLowerCase();
-			case Pseudo(Link | AnyLink): kinds = ["a", "area"];
-			case Pseudo(Root): isRoot = true;
-			case Pseudo(Is(list)) if (kinds == null):
-				var ts = [];
-				for (x in list) switch x.compounds {
-					case [[Type(n, _)]] if (x.pseudo == null): ts.push(n.toLowerCase());
-					case _:
-						ts = null;
-						break;
-				}
-				if (ts != null && ts.length > 0) kinds = ts;
-			case _:
-		}
-		if (id != null) push(ids, quirks ? id.toLowerCase() : id, rule) else if (cls != null) push(classes, quirks ? cls.toLowerCase() : cls,
-			rule) else if (type != null) push(types, type, rule) else if (kinds != null) for (k in kinds) push(types, k, rule) else if (isRoot) root.push(rule) else if (attr != null)
-		{
-			push(attributes, attr, rule);
-			attributed = true;
-		} else any.push(rule);
-	}
-
-	static function push(m:Map<String, Array<Rule>>, k:String, r:Rule) {
-		var l = m.get(k);
-		if (l == null) m.set(k, l = []);
-		l.push(r);
-	}
-
-	public function candidates(el:Element, quirks:Bool):Array<Rule> {
-		var out = any.copy();
-		var id = el.getAttribute("id");
-		if (id != null) for (r in ids.get(quirks ? id.toLowerCase() : id) ?? []) out.push(r);
-		var cls = el.getAttribute("class");
-		if (cls != null) {
-			var seen = new Map<String, Bool>();
-			for (c in ~/[ \t\n\r\x0C]+/g.split(cls)) {
-				if (c == "") continue;
-				var k = quirks ? c.toLowerCase() : c;
-				if (seen.exists(k)) continue;
-				seen.set(k, true);
-				for (r in classes.get(k) ?? []) out.push(r);
-			}
-		}
-		for (r in types.get(el.localName.toLowerCase()) ?? []) out.push(r);
-		if (attributed) for (a in el.attributes) for (r in attributes.get(a.localName.toLowerCase()) ?? []) out.push(r);
-		if (root.length > 0 && el.ownerDocument.documentElement == el) for (r in root) out.push(r);
-		return out;
-	}
-}

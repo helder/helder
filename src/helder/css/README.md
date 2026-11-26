@@ -238,11 +238,49 @@ CssMatcher.matches(list[0], doc.body.firstElementChild);
   `:defined` is any element but an HTML one with a hyphen in its name (no
   custom element is ever defined).
 
+### Fast matching
+
+For a sheet's worth of rules, `CssRuleIndex<T>` holds selectors with a
+value of the caller's (a rule, a declaration block) and matches an
+element against the few that could match it, as browsers do:
+
+```haxe
+var index = new CssRuleIndex<Rule>();
+for (r in rules) for (s in r.selectors) index.add(s, r);
+index.walk(doc, (el, matched) -> cascade(el, matched));   // in tree order, the Bloom filter kept
+index.matching(el, out);                                  // one element, no filter
+```
+
+- **Buckets**: a selector goes into one bucket, by its rightmost
+  compound: its id, else a class, else its type, else an attribute's
+  name (without a namespace), else the universal bucket. An element
+  visits its id's bucket, each of its classes' (each once), its tag's,
+  those of the attributes it has and the universal one. Keys are ASCII
+  lowercased, so quirks mode's classes and IDs and SVG's camel-cased tags
+  find their rules; CssMatcher decides the case. Matches come out in the
+  order added (the cascade's order of appearance).
+- **The ancestor Bloom filter** (`CssBloom`, WebKit's SelectorFilter):
+  a counting filter of 4,096 one-byte counters, two per hash, of the
+  ancestors' tags, ids and classes (`CssHash`: FNV-1a, ASCII lowercased).
+  `walk` pushes an element before its children and pops it after;
+  `CssBloom.of(el)` builds one for a single element. A selector's
+  `hashes` (up to 4: the ids, classes and types of the compounds a child
+  or descendant combinator follows, which are its subject's ancestors; in
+  `div > p + * > li` the div, not the p, a sibling of the li's parent) must
+  all be in it, or the selector cannot match and is skipped. A counter
+  that reaches 255 stays there; the filter may say yes wrongly, never no.
+- `visited`, `rejected` and `matched` count what matching did (the
+  bench's rates).
+
 ### Tests
 
 - `CssSelector.test.hx`: the specificity examples of Selectors 4,
   parses valid and invalid, and properties: a selector printed parses to
   the same print, any text parses or is null.
+- `CssRuleIndex.test.hx`: the buckets, ASCII-lowercased keys, the
+  order across buckets, the filter's hashes and rejections, and a
+  property: on random documents and sheets, a walk matches what each
+  selector matches, in the same order.
 - `CssMatcher.test.hx`: `:has()` with each combinator, `:is()`,
   `:where()`, `:not()` of lists, `:nth-child(of S)`, HTML's case rules
   and quirks mode, SVG's namespace, the form states, `:lang()`

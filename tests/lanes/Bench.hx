@@ -12,6 +12,7 @@ class Bench {
 		{name: "bench", about: "the engine's benchmarks and the examples' sizes", run: bench},
 		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
 		{name: "bench css", about: "helder.css's tokenizer and parser against lightningcss", run: cssBench},
+		{name: "bench match", about: "helder.css's selector matching: each selector against the rule index and Bloom filter", run: matchBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
@@ -72,6 +73,12 @@ class Bench {
 	static function cascadeBench() {
 		exe("bin/bench/CascadeBench", cps(["src", "tests/bench"]).concat(["-main", "CascadeBench"]));
 		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
+	}
+
+	// (natively; the pages and sheets fetched into bin/bench/html and bin/bench/match)
+	static function matchBench() {
+		exe("bin/bench/MatchBench", cps(["src", "tests/bench"]).concat(["-main", "MatchBench"]));
+		run(NODE, ["tests/bench/match.mjs", exePath("bin/bench/MatchBench", HOST)]);
 	}
 
 	// (natively and as wasm32-wasi; the inputs fetched into bin/bench/html, lexbor built there)
