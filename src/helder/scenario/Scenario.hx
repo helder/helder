@@ -79,6 +79,15 @@ class Scenario {
 	public static function define(def:ScenarioDef):Scenario
 		return new Scenario(def);
 
+	// its boot run now, outside the preview host: the studio's Play from
+	// here, a window of the app from the scenario's moment (its main after)
+	//
+	//   import { boot } from "helder/scenario"; import { dusk } from "./app.scenario"; boot(dusk);
+	public static function start(s:Scenario) {
+		if (s == null) throw "helder.scenario.Scenario.start: no scenario";
+		if (s.boot != null) s.boot();
+	}
+
 	// a file name of its name (Pong/You win: Pong-You-win)
 	public function slug():String
 		return ~/[^A-Za-z0-9_-]+/g.replace(name, "-");

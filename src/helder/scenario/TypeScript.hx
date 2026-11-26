@@ -7,6 +7,6 @@ package helder.scenario;
 // screens(stories, scenarios), the studio's preview host)
 @:typescript("helder/scenario")
 @:typescript.types(helder.scenario.Scenario)
-@:typescript.functions(scenario = helder.scenario.Scenario.define)
+@:typescript.functions(scenario = helder.scenario.Scenario.define, boot = helder.scenario.Scenario.start)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}
