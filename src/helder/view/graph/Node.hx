@@ -123,6 +123,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// date; a store's node of it the same, though its store's root owns it)
 	var free:Bool;
 	var copied:Null<(Node<Dynamic>, Atoms) -> Void> = null;
+	// (a node made with state of its own beside it, a boundary: made again by
+	// this in another store, not copied)
+	var remake:Null<Void->Node<Dynamic>> = null;
 
 	function new(kind:Int, value:Null<T>, fn:Null<Null<T>->Dynamic>, options:Null<NodeOptions<T>>) {
 		// (a signal belongs to no owner: only computations are disposed with theirs)
@@ -156,7 +159,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		Owner.current = kind == SIGNAL ? null : store.root;
 		Atoms.current = store;
 		Atoms.homeless = false;
-		var n = new Node(kind, init, fn, {equals: equals, unobserved: unobserved, ownedWrite: ownedWrite});
+		var make = remake;
+		var n:Node<T> = make != null ? cast make() : new Node(kind, init, fn, {equals: equals, unobserved: unobserved, ownedWrite: ownedWrite});
 		Owner.current = savedOwner;
 		Atoms.current = savedAtoms;
 		Atoms.homeless = savedHomeless;
@@ -705,7 +709,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	function failWith(e:Dynamic, tx:Null<Tx>) {
 		if (kind == COMPUTED) {
 			// (the same error again is no change)
-			if (tx != null ? (stagedFailed && stagedError == e) : (hasError && error == e)) return;
+			// (against what it has staged, else what it shows, as a value is: settle)
+			if (stagedIn != null ? (stagedFailed && stagedError == e) : (hasError && error == e)) return;
 			if (tx != null) stageError(e, tx) else {
 				error = e;
 				hasError = true;
@@ -829,7 +834,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (applyCleanup != null) {
 			var c = applyCleanup;
 			applyCleanup = null;
-			c();
+			inHome(c);
 		}
 		var prev = applied;
 		applied = value;
@@ -880,11 +885,22 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			var c = applyCleanup;
 			applyCleanup = null;
 			Owner.disposing++;
-			try c() catch (e:haxe.Exception) {
+			try inHome(c) catch (e:haxe.Exception) {
 				Owner.disposing--;
 				throw Errors.kept(e);
 			}
 			Owner.disposing--;
 		}
+	}
+
+	// (an apply's cleanup in its store, as the apply)
+	function inHome(c:Void->Void) {
+		var saved = Atoms.current;
+		Atoms.current = home;
+		try c() catch (e:haxe.Exception) {
+			Atoms.current = saved;
+			throw Errors.kept(e);
+		}
+		Atoms.current = saved;
 	}
 }

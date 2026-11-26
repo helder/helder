@@ -263,6 +263,29 @@ function tests() {
 		flush();
 		equals(seen, ["a"]);
 	}));
+	test("an effect's cleanup runs in its store, again and as it is let go", () -> two((a, b) -> {
+		var seen = [];
+		var d = a.run(() -> root(dispose -> {
+			effect(() -> count(), (_, _) -> () -> seen.push(Atoms.current?.name));
+			dispose;
+		}));
+		flush();
+		a.run(() -> count(1));
+		flush();
+		d();
+		equals(seen, ["a", "a"]);
+	}));
+	test("boundaries made at the top level: each store's its own, its error its own", () -> two((a, b) -> {
+		var bad = signal(0);
+		var caught = errorBoundary(() -> bad() > 0 ? throw 'bad ${bad()}' : "fine", (error, _) -> 'caught ${error()}');
+		var loaded = loadingBoundary(() -> 'v${slow()}', () -> "loading");
+		a.run(() -> bad(2));
+		flush();
+		equals([a.run(() -> caught()), b.run(() -> caught()), caught()], ["caught bad 2", "fine", "fine"]);
+		equals([a.run(() -> loaded()), b.run(() -> loaded())], ["loading", "loading"]);
+		flush();
+		equals([a.run(() -> loaded()), b.run(() -> loaded())], ["v0", "v0"]);
+	}));
 	test("a signal made in a store: its home there, the default seeing through to it", () -> two((a, b) -> {
 		var local = a.run(() -> signal(1));
 		local(2);

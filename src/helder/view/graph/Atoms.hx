@@ -115,7 +115,7 @@ class Atoms {
 		nodes.set(cast atom, cast n);
 		var f = atom.copied;
 		if (f != null) f(cast n, this);
-		if (n.kind == Node.COMPUTED) n.recompute();
+		if (n.kind == Node.COMPUTED && atom.remake == null) n.recompute();
 		return n;
 	}
 
