@@ -69,6 +69,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	final equals:Null<(T, T) -> Bool>;
 	final unobserved:Null<Void->Void>;
 	final ownedWrite:Bool;
+	// (one node for every store: NodeOptions.shared)
+	final shared:Bool;
 	var state = CLEAN;
 	var error:Dynamic = null;
 	var hasError = false;
@@ -137,8 +139,10 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		equals = options != null ? options.equals : null;
 		unobserved = options != null ? options.unobserved : null;
 		ownedWrite = options != null && options.ownedWrite == true;
+		shared = kind == SIGNAL && options != null && options.shared == true;
 		free = Owner.current == null;
-		home = Atoms.homeless && kind <= COMPUTED && Owner.current == null ? null : Atoms.current;
+		// (a shared signal the default store's, wherever it was first read)
+		home = shared || Atoms.homeless && kind <= COMPUTED && Owner.current == null ? null : Atoms.current;
 		init = value;
 		if (home == null && (kind == EFFECT || kind == RENDER) && Atoms.record && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
 	}
@@ -151,7 +155,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// default store sees through to its home)
 	inline function at():Node<T> {
 		var s = Atoms.current;
-		return s == null || s == home ? this : of(s);
+		return s == null || s == home || shared ? this : of(s);
 	}
 
 	inline function of(s:Atoms):Node<T>
@@ -252,7 +256,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	public function read():T {
 		var s = Atoms.current;
-		if (s != null && s != home) return of(s).read();
+		if (s != null && s != home && !shared) return of(s).read();
 		if (kind != SIGNAL) fresh();
 		if (observer != null) observer.track(this);
 		return serve();
@@ -260,7 +264,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	public function peek():T {
 		var s = Atoms.current;
-		if (s != null && s != home) return of(s).peek();
+		if (s != null && s != home && !shared) return of(s).peek();
 		if (kind != SIGNAL) fresh();
 		return serve();
 	}
@@ -340,7 +344,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	public function write(v:T) {
 		var s = Atoms.current;
-		if (s != null && s != home) {
+		if (s != null && s != home && !shared) {
 			of(s).write(v);
 			return;
 		}
@@ -364,7 +368,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// f given the latest value written (pending, else staged, else committed)
 	public function update(f:T->T)
-		if (Atoms.current != null && Atoms.current != home) at().update(f) else write(f(latest()));
+		if (Atoms.current != null && Atoms.current != home && !shared) at().update(f) else write(f(latest()));
 
 	inline function latest():Null<T>
 		return hasPending ? pendingValue : stagedIn != null ? staged : value;

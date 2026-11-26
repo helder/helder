@@ -192,6 +192,23 @@ function tests() {
 			flush();
 			equals(seen, [1, 2]);
 		});
+		test("a reload reaches the readers in every store (each screen's), one made later too", () -> {
+			var a = new Asset<String>("shared"), seen = [];
+			a.resolve("one");
+			var stores = [for (name in ["a", "b"]) new helder.view.graph.Atoms(name)];
+			for (s in stores)
+				s.run(() -> root(_ -> effect(() -> a.read(), x -> seen.push('${s.name}:$x'))));
+			flush();
+			a.refresh(true);
+			flush();
+			a.resolve("two");
+			flush();
+			var later = new helder.view.graph.Atoms("c");
+			seen.push('c:${later.run(() -> untrack(a.read))}');
+			for (s in stores.concat([later]))
+				s.dispose();
+			equals(seen, ["a:one", "b:one", "a:two", "b:two", "c:two"]);
+		});
 	});
 }
 
