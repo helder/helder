@@ -11,6 +11,25 @@ function tests() {
 		function pixel(c:SoftCanvas, x:Int, y:Int):Int
 			return c.frame.pixels.getInt32((y * c.frame.width + x) * 4);
 
+		test("text past any bitmap's size: drawn at the largest, stretched", () -> {
+			// (25000 px: the glyph's RGBA copy, w * h * 4, past an Int: "Invalid NativeArray length")
+			var box = [[{x: 0.0, y: 0.0, on: true}, {x: 0.0, y: 1000.0, on: true}, {x: 1000.0, y: 1000.0, on: true}, {x: 1000.0, y: 0.0, on: true}]];
+			var fonts = new helder.text.SystemFonts();
+			fonts.add(helder.text.FontEncoder.encode({
+				family: "Huge",
+				postScriptName: "Huge",
+				unitsPerEm: 1000,
+				ascender: 800,
+				descender: -200,
+				glyphs: [{codes: [], advance: 1000, contours: []}, {codes: [97], advance: 1000, contours: box}]
+			}));
+			var p = new helder.ui.draw.DrawText(fonts).layout("a", new helder.ui.Font("Huge", 25000, 400, false, 1.2), Math.NaN);
+			var c = new SoftCanvas();
+			c.begin(64, 64, Color.WHITE);
+			c.text(p, 0, 0, 25000, Left, Color.BLACK);
+			equals(pixel(c, 32, 32), 0xFF000000);
+		});
+
 		test("a rectangle: its fill, its half-covered edge", () -> {
 			var c = new SoftCanvas();
 			c.snap = false;
