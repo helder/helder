@@ -18,6 +18,8 @@ class NativeFiles implements Files {
 	public var copy(default, null):Null<(from:String, to:String)->Void>;
 
 	public function new() {
+		// (the machine's own files, never a scenario's or a monkey's screen's: helder.os.Seal)
+		helder.os.Seal.check("viewer.NativeFiles");
 		trash = helder.os.Trash.available() ? p -> helder.os.Trash.move(p) : null;
 		rename = (from, to) -> {
 			// (never over another: the system's rename would replace a file)
