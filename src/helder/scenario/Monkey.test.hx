@@ -18,11 +18,18 @@ final menu = Graph.signal(false);
 final plain = scenario({name: "People/Plain"});
 final crowded = scenario({name: "People/Crowded", boot: () -> names([for (i in 0...60) 'Person $i'])});
 final broken = scenario({name: "Broken/Plain"});
+final reckless = scenario({name: "Reckless/Plain"});
+
+// (a file a reckless program trashes, and a store's file it opens: neither touched)
+final KEPT = "bin/test/monkey-reckless/kept.txt";
+final STORE = "bin/test/monkey-reckless/store";
 
 // a monkey over a small program booted as its scenarios: one that holds,
 // one with a bug of each kind found, shrunk and written as a scenario file
 function tests() {
 	Hosting.on = true;
+	Reckless.main();
+	var careless = Hosting.root;
 	Broken.main();
 	var wrong = Hosting.root;
 	People.main();
@@ -71,9 +78,32 @@ function tests() {
 			"wait(0.5)"
 		]);
 	});
+	var sealed = test("a program that trashes a file, lists the user's places or opens a store's file: refused, the case failed, nothing touched", () -> {
+		// (first the seal alone, on nothing there: a broken one trashes nothing)
+		var c = new ScreenContext("probe", true);
+		c.seal = new helder.os.Seal("a probe");
+		var held = c.run(() -> try {
+			helder.os.Trash.move("/helder-monkey-test/not-there");
+			false;
+		} catch (e:helder.os.Seal.SealError) true);
+		assert(held, "the seal refuses the trash");
+		if (!held) return;
+		sys.FileSystem.createDirectory(haxe.io.Path.directory(KEPT));
+		sys.io.File.saveContent(KEPT, "kept");
+		var f = Monkey.find({from: Monkey.from(reckless), root: careless, except: ["window"]}, {cases: 100});
+		assert(f != null && f.failure.indexOf("refused: a monkey's case is sealed off the machine") > 0, f?.failure);
+		assert(f != null && f.steps.length == 1, f?.steps.join(", "));
+		// (each of its effects, a scenario of that tap)
+		for (what in ["Clean up", "Places", "Save"]) {
+			var g = Monkey.find({from: [{scenario: scenario({name: what, steps: [Steps.tap(what)]}), path: "reckless"}], root: careless, steps: 0}, {cases: 1});
+			assert(g != null && g.failure.indexOf("refused") > 0, '$what: ${g?.failure}');
+		}
+		equals(sys.FileSystem.exists(KEPT), true);
+		equals(sys.FileSystem.exists(STORE), false);
+	});
 	#if (hxmc.target == "wasm32-wasi")
 	// (a robustness property's watchdog and the store's files: natively)
-	for (t in [right, outside, orphan])
+	for (t in [right, outside, orphan, sealed])
 		t.skip();
 	#end
 }
@@ -124,4 +154,17 @@ class Broken implements helder.view.Markup {
 			<view flexDirection="row"><text flexShrink={0}>{() -> 'Hello, ${names()[0] ?? "nobody"}'}</text></view>
 		</view>;
 	}
+}
+
+// (what a program must not do in a scenario's screen, each caught and ignored: refused all the same)
+class Reckless implements helder.view.Markup {
+	public static function main()
+		UiWindow.run(<Surface title="Reckless" width={320} height={200}><App/></Surface>);
+
+	static function App(_:{}):View
+		return <view flexGrow={1} rowGap={4} padding={8}>
+			<button onPress={() -> try helder.os.Trash.move(KEPT) catch (_:Dynamic) {}}>Clean up</button>
+			<button onPress={() -> try helder.os.Places.user() catch (_:Dynamic) {}}>Places</button>
+			<button onPress={() -> try helder.os.Store.open("reckless", STORE).set("a", "1") catch (_:Dynamic) {}}>Save</button>
+		</view>;
 }

@@ -38,7 +38,9 @@ import helder.scenario.Steps.Step;
 //
 // The invariants (except: their names left out):
 // - throws: nothing a boot, a step or a settle throws; no request its http
-//   fixtures do not answer
+//   fixtures do not answer; nothing done to the machine (each case is
+//   sealed, helder.os.Seal: its trash, places, stores' files, an app's real
+//   files refused, a refusal its failure even when the program catches it)
 // - sizes: no NaN, infinite or negative box, offset or content size
 // - window: what is shown, outside every clipping box, inside the window
 // - settles: after each step its clock comes to rest (no frame asked for,
@@ -147,6 +149,19 @@ class Monkey {
 	// --- a case
 
 	function once(c:Choices) {
+		// (a preview host's, as the studio's is for its whole run: what the
+		// program renders reads it, and makes the files it shows in memory
+		// (the viewer's Sandbox), never the machine's)
+		var hosting = Hosting.on;
+		Hosting.on = true;
+		try run(c) catch (e:haxe.Exception) {
+			Hosting.on = hosting;
+			throw helder.async.Errors.kept(e);
+		}
+		Hosting.on = hosting;
+	}
+
+	function run(c:Choices) {
 		messages.resize(0);
 		var base = c.draw(pick(def.from));
 		var env = c.draw(environment(minW, minH));
@@ -233,6 +248,8 @@ class Monkey {
 
 	// (after a step (null: boot, the end) and settling: whether they all held)
 	function ok(s:Screen, after:Null<{step:Step, before:Snapshot}>):Bool {
+		var seal = s.context.seal;
+		if (seal != null && seal.refused.length > 0) fail('${at(after)}${seal.refused[0]}');
 		if (!s.settled && on("settles")) fail('${at(after)}it never settles: ${s.pending()} after a minute of its clock');
 		if (s.missed != null) fail('${at(after)}${s.missed}');
 		if (failed() > 0) return false;
@@ -631,7 +648,10 @@ private class Screen {
 		this.root = root;
 		context = new ScreenContext("helder.scenario.monkey", true, null, new Atoms("helder.scenario.monkey"));
 		if (sc.dark != null) context.dark(sc.dark);
-		ui = new Ui(text, width, height);
+		// (sealed off the machine: its trash, places, stores' files, an app's real files; helder.os.Seal)
+		context.seal = new helder.os.Seal("a monkey's case");
+		// (made in its context: a Ui claims the screen it is made in, its size class, its clock)
+		ui = context.run(() -> new Ui(text, width, height));
 		ui.dark = context.dark.peek();
 	}
 
