@@ -68,6 +68,7 @@ hosted web releases and store uploads.
 | [scene](src/helder/scene/README.md), [physics](src/helder/physics/README.md), [sprite](src/helder/sprite/README.md) | 3D (glTF, PBR, shadows, post effects), rigid bodies, 2D sprites |
 | [asset](src/helder/asset/README.md) | files checked at compile time, bundled by use, hot reloaded |
 | [async](src/helder/async/README.md), [jobs](src/helder/jobs/README.md) | coroutines, sockets, HTTP and WebSocket; work on other threads |
+| [parallel](src/helder/parallel/README.md) | one body over many items, as SIMD lanes, across threads (and, next, the GPU) |
 | [cli](src/helder/cli/README.md), [pack](src/helder/pack/README.md), [test](src/helder/test/README.md) | the `helder` command, APKs and app bundles without an SDK, tests |
 | [store](src/helder/store/README.md) | in-app purchases on Apple platforms and Android |
 | [story](src/helder/story/README.md), [headless](src/helder/headless/README.md) | screens in isolation, scripted runs and snapshots |

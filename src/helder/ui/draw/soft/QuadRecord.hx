@@ -11,7 +11,7 @@ import hxmc.unsafe.Ptr;
 
 // One of Quads' draws as recorded, outside the collector's heap, and its
 // painting into a band of the frame's rows (paint: rows b0 to b1), so that
-// bands are painted on any thread (Bands, over helder.jobs.Parallel), each
+// bands are painted on any thread (Bands, over helder.jobs.Spread), each
 // its records in order: kind 0 a quad (Quads' fields, its pixels px0, py0
 // to px1, py1 found when recorded), 1 a group's buffer (tex, texW wide, its
 // top left at cx, cy) composited at fa, 2 a rectangle set to word. The

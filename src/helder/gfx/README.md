@@ -579,7 +579,7 @@ A draw runs its vertex stage at once, clips (near, far, and a guard band
 that keeps the fixed point exact), sets triangles up in fixed point (8 bits
 under the pixel, the top-left rule; the planes of depth, 1/w and each
 varying over w: perspective-correct) and bins them into the pass's 32x32
-tiles. The pass's end shades the tiles in parallel (`helder.jobs.Parallel`:
+tiles. The pass's end shades the tiles in parallel (`helder.jobs.Spread`:
 GC-free callbacks on the pool's threads, which spin a while between runs;
 `HELDER_SOFT_THREADS=n` caps them, 1 none), each its triangles in order:
 a row's span from the edges, the depth test before the fragment stage,

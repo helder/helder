@@ -19,7 +19,7 @@ import hxmc.unsafe.Ptr;
 // that keeps their fixed point exact), sets them up (fixed point, 8 bits
 // under the pixel; the planes of their depth, 1/w and varyings) and bins
 // them into the pass's 32x32 tiles; the pass's end shades its tiles in
-// parallel (helder.jobs.Parallel: HELDER_SOFT_THREADS caps the threads,
+// parallel (helder.jobs.Spread: HELDER_SOFT_THREADS caps the threads,
 // 1 none beside the caller's), each in the order its triangles came
 // (Raster), then resolves a multisampled target. Uniform blocks are copied
 // when set and textures bound by their records, so later changes do not
@@ -732,7 +732,7 @@ class SoftBackend {
 	// the pass's tiles shaded, their bins emptied
 	function flush() {
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
-		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
+		helder.jobs.Spread.run(TileCall.address(), pass, n, threads);
 		LibC.memset(bins, 0, n * Raster.BIN);
 		Mem.setI32(pass, Raster.CLEAR, 0);
 		rebase();
@@ -778,7 +778,7 @@ class SoftBackend {
 		if (!inPass) return;
 		inPass = false;
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
-		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
+		helder.jobs.Spread.run(TileCall.address(), pass, n, threads);
 		if (!resolveFrom.isNull() && !resolveTo.isNull()) resolve(resolveFrom, resolveTo);
 		resolveFrom = resolveTo = Ptr.nil();
 		passQueries = 0;

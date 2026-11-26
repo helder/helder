@@ -11,7 +11,7 @@ import hxmc.unsafe.Ptr;
 // by the fragment's own math (UiShapes: the same box, ellipse, dash and
 // blur functions) composited over the target (premultiplied, source over,
 // in the target's 8-bit values as a GPU blends into RGBA8): the frame's
-// bands of rows at once (helder.jobs.Parallel), each band its records in
+// bands of rows at once (helder.jobs.Spread), each band its records in
 // the order drawn. Only the pixels near an edge are shaded: a run of pixels
 // a rectangle covers whole, inside a clip that covers them whole, is its
 // colour. Targets and textures are outside the collector's heap.
@@ -291,7 +291,7 @@ class Bands {
 		return memory.alloc(n);
 
 	public function paint() {
-		if (pending) helder.jobs.Parallel.run(BandCall.address(), bins, count, threads);
+		if (pending) helder.jobs.Spread.run(BandCall.address(), bins, count, threads);
 		pending = false;
 		LibC.memset(bins, 0, size * BIN);
 		memory.reset();

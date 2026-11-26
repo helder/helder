@@ -15,6 +15,7 @@ class Async {
 		{name: "async", about: "helder.async on Eval, natively and as wasm32-wasi", run: async},
 		{name: "header-check", about: "typed C bindings against each POSIX target's headers", run: headerCheck},
 		{name: "jobs", about: "helder.jobs' sendable check's rejections", run: jobsLane},
+		{name: "parallel", about: "helder.parallel's body rules' rejections and HELDER_PARALLEL", run: parallelLane},
 		{name: "jobs-web", about: "helder.jobs on Web Workers in headless Chromium", run: jobsWeb},
 		{name: "async-web", about: "helder.async's browser loop in headless Chromium", run: asyncWeb}
 	];
@@ -69,6 +70,37 @@ class Async {
 			if (b.code == 0 || !b.log.contains(r.want)) throw new Failed('${r.main}: expected the error "${r.want}":\n' + b.log);
 			Sys.println('${r.main}: rejected');
 		}
+	}
+
+	// (a body's rules, helder.parallel.ParallelScan's: a program each rejects,
+	// its message and line expected; then HELDER_PARALLEL's forms, each
+	// site's choice printed. The forms' tests are src/helder/parallel's, the test lane's)
+	static function parallelLane() {
+		var cp = cps(["src", "tests/parallel/reject"]);
+		for (r in [
+			{main: "CaptureAssigned", line: 7, want: "each: total is captured: a body reads what it captures, and assigns its own locals and Items' elements only"},
+			{main: "WritesElsewhere", line: 7, want: "each: a[...] = ...: a body writes at the item's own index only (a[i] = ...)"},
+			{main: "ReadsWritten", line: 8, want: "each: a is written by the body (a[i] = ...), and so read at the item's own index only (a[i])"},
+			{main: "IndexAssigned", line: 8, want: "each: i is the item's index: a body does not assign it"},
+			{main: "Allocates", line: 8, want: "each: arrays are not supported in a shader"},
+			{main: "CapturesString", line: 7, want: "each: names's type is Array<String>: a body captures Int, Float, Bool, vectors, Mat4 and Items"},
+			{main: "PassesItems", line: 7, want: "each: a: an Items in a body is indexed (a[i]) or its length read, not passed on"},
+			{main: "KernelLocal", line: 8, want: "kernel: scale is a local: a kernel reads its parameters (p.x) and statics"},
+			{main: "ElementVec3", line: 6, want: "Items<Vec3>: a Vec3 has no storage layout"},
+			{main: "ReduceString", line: 7, want: "min: a body's value is an Int or a Float, not Bool"}
+		]) {
+			var b = build(cp.concat(["-main", r.main, "--no-output", "--custom-target", 'hxmc=bin/parallel/reject/${r.main}']), 'bin/parallel/reject/${r.main}.log');
+			var at = '${r.main}.hx:${r.line}:';
+			if (b.code == 0 || !b.log.contains(r.want) || !b.log.contains(at)) throw new Failed('${r.main}: expected the error "${r.want}" at $at\n' + b.log);
+			Sys.println('${r.main}: rejected');
+		}
+		exe("bin/parallel/ForcedCheck", cps(["src", "tests/parallel"]).concat(["-main", "ForcedCheck"]));
+		var check = exePath("bin/parallel/ForcedCheck", HOST);
+		for (form in ["scalar", "simd", "jobs"]) {
+			expect(check, [], ["HELDER_PARALLEL" => form], 'ForcedCheck.hx:9 each: $form');
+			expect(check, [], ["HELDER_PARALLEL" => form], 'ForcedCheck.hx:11 sum: $form');
+		}
+		expect(check, [], ["HELDER_PARALLEL" => "gpu"], "On.Gpu is not there yet", 1);
 	}
 
 	static function jobsWeb() {

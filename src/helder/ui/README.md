@@ -1706,7 +1706,7 @@ its fill, an outer shadow under its box is skipped, a blur's terms that
 hold along a row are kept. A frame's draws are recorded outside the
 collector's heap (`Quads`: each quad's fields, a group's clear and
 composite) and painted when the frame is read, in bands of 16 rows at once
-(`helder.jobs.Parallel`, GC-free, as helder.gfx's CPU back end shades its
+(`helder.jobs.Spread`, GC-free, as helder.gfx's CPU back end shades its
 tiles; `HELDER_SOFT_THREADS=n` caps the threads), each band its records in
 the order drawn: the same pixels as one thread. What draws with the GPU (a
 part's shader, a `<Scene>`, a sprite box, fx's boxes) draws in a `-D

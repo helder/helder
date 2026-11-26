@@ -20,9 +20,11 @@ import hxmc.unsafe.Ptr;
 // Between runs the threads spin a while (in their safe regions) before they
 // sleep, so that a frame's many short runs (a pass's tiles each) find them
 // awake. Without threads (WebAssembly, Jobs.workers = 0), or while another
-// run is on its way, the caller makes every call itself.
+// run is on its way, the caller makes every call itself. helder.parallel's
+// Jobs form runs on it. (It was helder.jobs.Parallel: helder.parallel's
+// Parallel took the name.)
 @:hxmc.unsafe(gc)
-class Parallel {
+class Spread {
 	// (the run: its generation and next i in one word, so that a thread late
 	// for a run takes nothing of the next; f, ctx, count, the calls done)
 	static inline var NEXT = 0;
