@@ -40,7 +40,9 @@ function tests() {
 	test("stores: found by the fuzzer", () -> for (r in FOUND)
 		property(modelGen(true), s -> model(s), {replay: r}));
 	test("stores against fresh copies of the graph", () -> property(modelGen(), s -> model(s), {cases: 120, limit: 20, memory: 10}));
-	test("stores with async memos against fresh copies, settled", () -> property(modelGen(true, true), settledModel, {cases: 120, limit: 20, memory: 10}));
+	// (memory 64: a settle reads every node, again while reading asks, at each
+	// Read op; a 283-op case rose 26 MB, its garbage included)
+	test("stores with async memos against fresh copies, settled", () -> property(modelGen(true, true), settledModel, {cases: 120, limit: 20, memory: 64}));
 }
 
 final FOUND = [
