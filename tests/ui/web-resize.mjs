@@ -240,9 +240,21 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		// its begin, which comes before the last frame's observers when late)
 		const by = (t) => ran.find((f) => f > t) ?? Infinity;
 		const odd = drawn.filter((d) => d[0] > t0 && !resizes.some((r) => r[0] <= by(d[0]) && r[1] === d[1] && r[2] === d[2])).length;
-		// (a worker's canvas resized and not drawn within 50 ms: shown cleared)
+		// (a worker's canvas resized and not drawn within 50 ms: shown cleared.
+		// One resize is the sets that follow one another undrawn (its width's,
+		// then its height's), its 50 ms from the end of the last: each clears
+		// and allocates the canvas, on SwiftShader up to 54 ms a set, and the
+		// worker draws as soon as the last returns; from the first's end, the
+		// height's own set was counted as the canvas shown cleared, #217's
+		// and viewer-look's runs: drawn 0.6 and 0.9 ms after the height's set)
 		const sets = trace.filter((e) => e[0] > t0 && e[1].startsWith('canvas.'));
-		const blank = sets.filter((e) => !drawn.some((d) => d[0] > e[0] && d[0] < e[0] + e[3] + 50)).length;
+		const undrawn = (a, b) => !drawn.some((d) => d[0] > a && d[0] < b);
+		const ends = sets.map((e, i) => {
+			let end = e[0] + e[3];
+			for (let j = i + 1; j < sets.length && sets[j][0] <= end + 50 && undrawn(e[0], sets[j][0]); j++) end = Math.max(end, sets[j][0] + sets[j][3]);
+			return end;
+		});
+		const blank = sets.filter((e, i) => undrawn(e[0], ends[i] + 50)).length;
 		const longest = gaps[gaps.length - 1] ?? 0;
 		// (on a GPU: a frame, the page's median (1 ms more: the two threads' clocks), the most a stale one's draw may come late)
 		const soft = /SwiftShader/.test(renderer), frame = times[times.length >> 1] + 1;
