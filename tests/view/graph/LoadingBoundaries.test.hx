@@ -10,6 +10,7 @@ import view.graph.Kit;
 // createLoadingBoundary.test.ts (F-4, F-5, F-12), and spec-async-semantics
 // A15 and A19's boundary cases. Solid's projections are async memos here.
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	describe("createLoadingBoundary", () -> {

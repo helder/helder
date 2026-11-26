@@ -41,6 +41,10 @@ class Reaction {
 	public var onFulfilled:Dynamic;
 	public var onRejected:Dynamic;
 	public var child:JsPromise;
+	// (the store then() was called in: its callbacks run there, helder.view.graph.Atoms;
+	// dropped once it is cleared or let go)
+	public final store = helder.view.graph.Atoms.current;
+	public final generation = helder.view.graph.Atoms.current?.generation ?? 0;
 	public function new(f:Dynamic, r:Dynamic, child:JsPromise) {
 		onFulfilled = f;
 		onRejected = r;
@@ -61,6 +65,12 @@ class Timer {
 	public var callback:Dynamic;
 	public var args:Array<Dynamic>;
 	public var interval:Float;
+	public final store = helder.view.graph.Atoms.current;
+	public final generation = helder.view.graph.Atoms.current?.generation ?? 0;
+
+	// (its store still the one it was set in: else it is let go)
+	public inline function live():Bool
+		return helder.view.graph.Atoms.live(store, generation);
 	public function new() {}
 }
 
@@ -197,8 +207,12 @@ class Promises {
 		var delay = t.interval >= 0 ? t.interval : t.due - now();
 		hostTimers.set(t.id, eventHost.timer(Math.max(0, delay), () -> {
 			if (!hostTimers.exists(t.id)) return;
+			if (!t.live()) {
+				hostTimers.remove(t.id);
+				return;
+			}
 			if (t.interval >= 0) hostTimer(t) else hostTimers.remove(t.id);
-			call(t.callback, undef(), t.args);
+			inStore(t);
 			drain();
 		}));
 	}
@@ -337,9 +351,22 @@ class Promises {
 		return child;
 	}
 
+	// (a timer's callback in the store that set it)
+	static function inStore(t:Timer):Void {
+		if (!t.live()) return;
+		var was = helder.view.graph.Atoms.current;
+		helder.view.graph.Atoms.current = t.store;
+		try call(t.callback, undef(), t.args) catch (e:Dynamic) {
+			helder.view.graph.Atoms.current = was;
+			throw e;
+		}
+		helder.view.graph.Atoms.current = was;
+	}
+
 	static function schedule(p:JsPromise, r:Reaction):Void {
 		var state = p.state, value = p.value;
 		enqueue(() -> {
+			if (!helder.view.graph.Atoms.live(r.store, r.generation)) return;
 			var handler = state == 1 ? r.onFulfilled : r.onRejected;
 			if (handler == null) {
 				if (r.child != null) {
@@ -347,11 +374,15 @@ class Promises {
 				}
 				return;
 			}
+			var was = helder.view.graph.Atoms.current;
+			helder.view.graph.Atoms.current = r.store;
 			try {
 				var result = call(handler, undef(), [value]);
+				helder.view.graph.Atoms.current = was;
 				if (r.child != null) resolve(r.child, result);
 			}
 			catch (e:Dynamic) {
+				helder.view.graph.Atoms.current = was;
 				if (r.child != null) reject(r.child, e); else throw e;
 			}
 		});
@@ -579,19 +610,20 @@ class Promises {
 			for (x in due) {
 				if (timers.indexOf(x) < 0) continue;
 				timers.remove(x);
+				if (!x.live()) continue;
 				if (x.interval >= 0) {
 					x.due = Math.max(now(), x.due) + x.interval;
 					x.seq = ++timerSeq;
 					timers.push(x);
 				}
-				call(x.callback, undef(), x.args);
+				inStore(x);
 				drain();
 			}
 			// (check phase: immediates queued before it started)
 			var batch = immediates;
 			immediates = [];
 			for (x in batch) {
-				call(x.callback, undef(), x.args);
+				inStore(x);
 				drain();
 			}
 			if (immediates.length == 0 && timers.length > 0 && due.length == 0) {

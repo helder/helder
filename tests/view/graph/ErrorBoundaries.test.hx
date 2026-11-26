@@ -19,6 +19,7 @@ private class MyError {
 // (REACTIVITY_HALTED, resetErrorHalt, console logs) are Solid's: only an
 // error surfacing from the flush is ported.
 function tests() {
+	Stores.hooks();
 	afterEach(() -> try flush() catch (e:Dynamic) {});
 
 	// (a boundary's value read to the end: a boundary made inside another's content is read too)

@@ -7,7 +7,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/math";
 
-declare const __haxe: {TestNode: "TestRenderer.TestNode", MathProbe: "MathProbe", __module: "TestTypeScript"};
+declare const __haxe: {TestNode: "TestRenderer.TestNode", MathProbe: "MathProbe", StoreProbe: "StoreProbe", __module: "TestTypeScript"};
 
 export declare class TestNode {
 	// (for programs that render into a tree of their own: helder.typescript's tests)
@@ -46,6 +46,16 @@ export declare class MathProbe {
 	turn: Quat;
 	// moved by d: where it is now
 	moved(d: Vec3): Vec3;
+}
+
+// A store (helder.view.graph.Atoms) for the TypeScript tests
+// (tests/typescript/helder/stores.ts): what runs in it, and what it sets
+// running later (a timer, a promise's continuation), reads its nodes
+export declare class StoreProbe {
+	constructor(name: string);
+	run(f: () => void): void;
+	clear(): void;
+	dispose(): void;
 }
 
 export {};

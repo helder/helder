@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // context.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	// (adapted: helder's setContext takes the value; Solid's defaults to the context's default)

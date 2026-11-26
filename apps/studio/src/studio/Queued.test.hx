@@ -26,7 +26,7 @@ function tests() {
 			assert(!s.waiting());
 			equals([for (r in s.layout.screens()) r.name], ["sketches/a.helder#Home"]);
 			// (the starter's files edited: its story the agent's, shown)
-			s.tools.call("project.patch", {path: "app.tsx", edits: [{old: ">App<", "new": ">Pond<"}]}, "a");
+			s.tools.call("project.patch", {path: "app.tsx", edits: [{old: 'signal("App")', "new": 'signal("Pond")'}]}, "a");
 			equals(s.starterOwn("App/Start"), false);
 			s.stop();
 			Temp.remove(dir);
@@ -37,7 +37,7 @@ function tests() {
 			var s = new Studio(dir, {starter: true});
 			s.presence.arrive("a", "claude-code");
 			function there()
-				return [for (f in ["app.tsx", "app.story.tsx", "main.tsx"]) sys.FileSystem.exists('$dir/$f')];
+				return [for (f in ["app.tsx", "app.scenario.tsx", "main.tsx"]) sys.FileSystem.exists('$dir/$f')];
 			s.tools.call("project.patch", {path: "pond.tsx", text: 'export function Pond() {\n\treturn <view flexGrow={1}/>;\n}\n'}, "a");
 			equals(there(), [true, true, true]);
 			s.tools.call("project.patch", {path: "pond.story.tsx", text: 'import { story } from "helder/story";\nimport { Pond } from "./pond";\n\nexport const start = story({ name: "Pond/Start", width: 200, height: 200, render: () => <Pond/> });\n'}, "a");

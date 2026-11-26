@@ -360,6 +360,15 @@ class Interop {
 			}
 			helder.dev.Hot.save(key, {v: tree, i: init}, type);
 		}));
+		// (its other stores' nodes kept too, under its key in the store's scope)
+		@:privateAccess s.node().copied = (n, store) -> helder.dev.Hot.at(store.name, () -> {
+			var last:Null<{v:Dynamic, i:String}> = helder.dev.Hot.load(key, type);
+			if (last != null && last.i == init) n.value = toHaxe(fromTree(last.v));
+			helder.dev.Hot.onSnapshot(() -> {
+				var tree:Dynamic = try toTree(toJs(n.peek())) catch (_:Dynamic) return;
+				helder.dev.Hot.save(key, {v: tree, i: init}, type);
+			});
+		});
 		#end
 		return f;
 	}

@@ -4,6 +4,7 @@ import helder.test.Test;
 import helder.view.graph.Graph.*;
 
 function tests() {
+	Stores.hooks();
 	test("writes wait for the flush", () -> {
 		var count = signal(1);
 		count(2);

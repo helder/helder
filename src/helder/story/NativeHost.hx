@@ -43,12 +43,12 @@ import hxmc.unsafe.*;
 class NativeHost {
 	static inline var STILL = 0.25;
 
-	public static function run(stories:Array<Story>) {
+	public static function run(stories:Array<Story>, ?scenarios:Array<helder.scenario.Scenario>) {
 		#if !hxmc.dev
 		throw "helder.story: the preview host runs in a dev build (helder studio's)";
 		#else
 		var frames = new SharedFrames(Sys.getEnv("HELDER_STUDIO_FRAMES"), Sys.getEnv("HELDER_STUDIO_COPY") == "1");
-		var host = new Host(stories, frames);
+		var host = new Host(stories, frames, 1.0, scenarios);
 		frames.host = host;
 		helder.dev.Agent.route = m -> HostAgent.receive(host, m);
 		HostAgent.onRelease = frames.release;
@@ -76,6 +76,14 @@ class NativeHost {
 		// (a still's frames: written once it settled, not each it drew on its way)
 		var due = new Map<String, Float>();
 		host.onFrame = s -> if (host.stills && s != host.looping) due.set(s.name, haxe.Timer.stamp());
+		// (a still let go to make room: written now, not when due)
+		host.onPark = s -> {
+			due.remove(s.name);
+			host.guard(s, () -> {
+				frames.still(s);
+				false;
+			});
+		}
 		while (true) {
 			helder.dev.Hot.poll();
 			var drawn = host.frame(haxe.Timer.stamp());
@@ -224,7 +232,9 @@ class SharedFrames implements HostRuntime {
 		var sum = haxe.crypto.Md5.make(f.bytes).toHex();
 		if (stills.get(s.name) == sum) return;
 		stills.set(s.name, sum);
+		var t = haxe.Timer.stamp();
 		if (s.story.loop != null) f = h.written(s, LOOP_FPS) ?? f;
+		var ms = Math.round((haxe.Timer.stamp() - t) * 1000);
 		var a = new helder.ui.draw.FrameArchive();
 		a.add(s.name, "", s.width, s.height, f);
 		var i = h.screens.indexOf(s);
@@ -240,7 +250,8 @@ class SharedFrames implements HostRuntime {
 			screen: i,
 			path: path,
 			loopFrames: loop == null ? 0 : loop.frames.length,
-			loopBytes: loop == null ? 0 : Lambda.fold(loop.frames, (b, n) -> n + b.length, 0)
+			loopBytes: loop == null ? 0 : Lambda.fold(loop.frames, (b, n) -> n + b.length, 0),
+			loopMs: ms
 		});
 		#end
 	}

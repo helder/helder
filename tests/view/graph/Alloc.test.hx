@@ -9,6 +9,7 @@ import helder.view.graph.Graph.*;
 // Int or Float is boxed where it is stored (hxmc's generics), 16 bytes a
 // value, which is the value's, not the graph's.
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	final cells = [for (k in 0...8) new Cell(k)];

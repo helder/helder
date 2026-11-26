@@ -110,7 +110,7 @@ class Board implements Markup {
 			onPointerEnter={_ -> studio.hover(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.shownFailure() == null && !s.crashedSignal() ? 1 : 0.45}/>
-			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
+			<Show when={s.still() != null && (s.image() == null || studio.hovered() == s.info.name && studio.previews.fileLoops(s.info.name))}>{still(studio, s, r)}</Show>
 			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
 	}
@@ -126,7 +126,7 @@ class Board implements Markup {
 		});
 		// (hovered: its loop from the file, played; let go, the still)
 		var name = s.info.name;
-		effect(() -> studio.hovered() == name && s.image() == null, on -> {
+		effect(() -> studio.hovered() == name, on -> {
 			var l = on ? studio.previews.fileLoop(s) : null;
 			if (l == null) n.stop() else n.play(l.fps, l.lists, l.passes, () -> studio.loopShown(name, "file"),
 				(frames, ms) -> studio.log("loop-played", {screen: name, frames: frames, msPerFrame: Math.round(ms * 1000) / 1000}));
@@ -294,7 +294,7 @@ class Board implements Markup {
 	// (a flow's title above its row: the first's always, the others' while the rows are far enough apart to hold it, not over the row before)
 	static function titleShown(studio:Studio, wy:Float):Bool {
 		studio.camera.changed();
-		return studio.focused() == null && (wy <= 0 || Theme.FLOW_GAP * studio.camera.k >= 50);
+		return studio.focused() == null && (wy <= 0 || studio.layout.gap() * studio.camera.k >= 50);
 	}
 
 	static function flows(studio:Studio):Array<{name:String, x:Float, y:Float}> {
