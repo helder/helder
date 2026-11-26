@@ -19,8 +19,9 @@ import hxmc.unsafe.Mem;
 //
 // helder's own catches that pass an error on throw it as kept (in the
 // catch) or carried (later, or on another thread), so that it keeps where
-// it was thrown: hxmc gives a value thrown again the stack of that throw,
-// and reports an uncaught one where it was thrown last.
+// it was thrown. hxmc keeps a caught value's stack when the catch throws it
+// again, and reports an uncaught one from its first throw; kept covers a
+// throw in the catch between, carried a throw elsewhere.
 class Errors {
 	public static var handler:Null<(error:Exception, source:String) -> Bool> = null;
 	static var reporting = false;
@@ -144,16 +145,15 @@ class Errors {
 
 #if (target.name == "hxmc" && !macro && hxmc.target != "wasm32-wasi")
 // hxmc's runtime: its innermost try's handler, its record of the last throw
-// (hxmc.rt.Stacks.rethrowing: what its interpreter sets for a catch that
-// passes an exception on)
 @:hxmc.unsafe(gc) @:access(hxmc.rt.Gc) @:access(hxmc.rt.Stacks) @:access(haxe.Exception)
 private class Native {
 	// whether no try catches what is thrown now
 	public static function uncaught():Bool
 		return hxmc.rt.Gc.hcur.isNull();
 
-	// the next throw's stack going on from e's throw, if that is still the
-	// thread's last and the frame that caught it is live: whether it does
+	// whether the next throw's stack goes on from e's throw: that is still the
+	// thread's last and the frame that caught it is live (hxmc then goes on
+	// from it itself)
 	public static function continues(e:Exception):Bool {
 		var b:Null<haxe.io.Bytes> = e.__nativeStack;
 		var t = Stacks.thrown, n = Stacks.thrownLen, top = Stacks.thrownTop;
@@ -164,9 +164,7 @@ private class Native {
 		var f = Mem.frame();
 		while (!f.isNull() && f.ult(top) && (f.toI64() & 7) == 0 && Stacks.known(Mem.getPtr(f, 8)))
 			f = Stacks.callerOf(f, Mem.getPtr(f, 8));
-		if (f != top) return false;
-		Stacks.rethrowing = true;
-		return true;
+		return f == top;
 	}
 }
 #end
