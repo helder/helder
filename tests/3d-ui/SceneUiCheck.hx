@@ -104,6 +104,7 @@ class SceneUiCheck implements Markup {
 		var range = tree.world.store(helder.scene.render.Lod.RANGE).get(tree);
 		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
 		typed();
+		shared();
 		leaks();
 		Sys.println('SceneUiCheck: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
@@ -151,6 +152,34 @@ class SceneUiCheck implements Markup {
 		check("a make prop (kind): a new light, its set props kept", spot.kind == Spot && spot.intensity == 5 && spot.range == 6 && spot.castShadows);
 		var lens = Camera.of(world.root.find("lens"));
 		check("a camera's fov in place", lens != null && near(lens.fovY, 2.0));
+		world.dispose();
+	}
+
+	// geometry and material tags of the same props: one geometry, one
+	// material (their meshes one instanced draw); a prop changed, its own
+	static function shared() {
+		var world = new World();
+		var tint = signal(0.5);
+		Render.render(<node>
+			<mesh name="a"><cylinderGeometry radiusTop={0.2} height={1}/><lambertMaterial color={new helder.math.Vec4(1, 0, 0, 1)}/></mesh>
+			<mesh name="b"><cylinderGeometry radiusTop={0.2} height={1}/><lambertMaterial color={new helder.math.Vec4(1, 0, 0, 1)}/></mesh>
+			<mesh name="c"><cylinderGeometry radiusTop={0.2000001} height={1}/><lambertMaterial color={new helder.math.Vec4(tint(), 0, 0, 1)}/></mesh>
+		</node>, SceneRenderer.root(world));
+		inline function part(name:String)
+			return SceneRenderer.of(world.root.find(name));
+		var a = part("a"), b = part("b"), c = part("c");
+		check("the same props: one geometry", a.geometryPart.geometry() == b.geometryPart.geometry());
+		check("the same props: one material", a.materialPart.material() == b.materialPart.material());
+		check("a number apart: a geometry of its own", a.geometryPart.geometry() != c.geometryPart.geometry());
+		check("another colour: a material of its own", a.materialPart.material() != c.materialPart.material());
+		var red = a.materialPart.material();
+		tint(1.0);
+		flush();
+		check("a prop changed to another's: its material shared", c.materialPart.material() == red && red.baseColor.y == 0);
+		tint(0.25);
+		flush();
+		check("changed again: its own, the others' kept", c.materialPart.material() != red && a.materialPart.material() == red
+			&& b.materialPart.material() == red && c.materialPart.material().baseColor.x == 0.25);
 		world.dispose();
 	}
 

@@ -434,8 +434,15 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 	// mesh of markup per geometry and material, so that the same ones are
 	// one instanced draw)
 	static final uploads = new haxe.ds.ObjectMap<VertexData, Array<Mesh>>();
+	static var uploadedOn:Null<helder.gfx.Device> = null;
 
 	public static function meshOf(device:helder.gfx.Device, geometry:VertexData, material:Material):Mesh {
+		// (another device: the last one's uploads are not this one's; a shared
+		// geometry outlives the device it was first drawn on)
+		if (device != uploadedOn) {
+			uploads.clear();
+			uploadedOn = device;
+		}
 		var list = uploads.get(geometry);
 		if (list == null) {
 			var m = Shapes.of(device, geometry, material);
@@ -451,10 +458,64 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 		return m;
 	}
 
+	// (a part's tag and props as a key; null when one is not a number, flag,
+	// text or vector: an object made in code is its own)
+	@:allow(helder.scene.view) static function keyOf(tag:String, props:Map<String, Dynamic>):Null<String> {
+		var names = [for (k in props.keys()) k];
+		names.sort((a, b) -> a < b ? -1 : a > b ? 1 : 0);
+		var b = new StringBuf();
+		b.add(tag);
+		// (a number by its bits: a key equal only for the same number)
+		function num(x:Float) {
+			var i = haxe.io.FPHelper.doubleToI64(x);
+			b.add(",");
+			b.add(i.high);
+			b.add(":");
+			b.add(i.low);
+		}
+		for (k in names) {
+			var v:Dynamic = props.get(k);
+			b.add("|");
+			b.add(k);
+			b.add("=");
+			if (v == null) b.add("null");
+			else if (Std.isOfType(v, Bool)) b.add(v ? "true" : "false");
+			else if (Std.isOfType(v, Int)) num((v : Int) * 1.0);
+			else if (Std.isOfType(v, Float)) num(v);
+			else if (Std.isOfType(v, String)) {
+				b.add((v : String).length);
+				b.add(":");
+				b.add(v);
+			} else if (Std.isOfType(v, helder.math.Vec2.Vec2Data)) {
+				var a:helder.math.Vec2 = cast v;
+				num(a.x);
+				num(a.y);
+			} else if (Std.isOfType(v, helder.math.Vec3.Vec3Data)) {
+				var a:Vec3 = cast v;
+				num(a.x);
+				num(a.y);
+				num(a.z);
+			} else if (Std.isOfType(v, helder.math.Vec4.Vec4Data)) {
+				var a:Vec4 = cast v;
+				num(a.x);
+				num(a.y);
+				num(a.z);
+				num(a.w);
+			} else if (Std.isOfType(v, helder.math.Quat.QuatData)) {
+				var a:Quat = cast v;
+				num(a.x);
+				num(a.y);
+				num(a.z);
+				num(a.w);
+			} else return null;
+		}
+		return b.toString();
+	}
+
 	// a geometry's uploads let go (one made by a tag, made again)
 	static function release(device:helder.gfx.Device, geometry:VertexData) {
 		var list = uploads.get(geometry);
-		if (list == null) return;
+		if (list == null || device != uploadedOn) return;
 		list[0].dispose(device);
 		uploads.remove(geometry);
 	}
@@ -501,6 +562,8 @@ class SceneNode {
 	@:allow(helder.scene.view.SceneSet) var castSet = false;
 	// a geometry tag's last upload (let go when made again)
 	var uploaded:Null<VertexData> = null;
+	// (its part's key among the shared ones; null: its own)
+	var shared:Null<String> = null;
 
 	public function new(node:Node, tag:String) {
 		this.node = node;
@@ -565,11 +628,11 @@ class SceneNode {
 	// a geometry tag's geometry, made from its props (Geometry's generator of its name)
 	public function geometry():VertexData {
 		if (made != null) return made;
-		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
-		var g:VertexData = make(this);
-		// (its last upload let go: none else draws it)
-		var device = SceneRenderer.device;
-		if (uploaded != null && device != null) @:privateAccess SceneRenderer.release(device, uploaded);
+		var last = shared;
+		var g:VertexData = share();
+		// (its last upload let go once no other tag draws it)
+		var gone = unshare(last), device = SceneRenderer.device;
+		if (gone && uploaded != null && uploaded != g && device != null) @:privateAccess SceneRenderer.release(device, uploaded);
 		uploaded = g;
 		made = g;
 		return g;
@@ -578,11 +641,38 @@ class SceneNode {
 	// a material tag's material, made from its props (Material's factory of its name)
 	public function material():Material {
 		if (made != null) return made;
-		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
-		var m:Material = make(this);
+		var last = shared;
+		var m:Material = share();
+		unshare(last);
 		made = m;
 		return m;
 	}
+
+	// (a part's value: the one of its tag and props made before, else made;
+	// the same ones one upload and one material, so their meshes are one
+	// instanced draw)
+	function share():Dynamic {
+		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
+		var key = SceneRenderer.keyOf(tag, props);
+		shared = key;
+		if (key == null) return make(this);
+		var e = parts.get(key);
+		if (e == null) parts.set(key, e = {value: make(this), users: 0});
+		e.users++;
+		return e.value;
+	}
+
+	// (a shared part one user less; whether none is left: its own, true)
+	static function unshare(key:Null<String>):Bool {
+		if (key == null) return true;
+		var e = parts.get(key);
+		if (e == null || --e.users > 0) return false;
+		parts.remove(key);
+		return true;
+	}
+
+	// (the parts of plain props, by key: SceneRenderer.keyOf)
+	static final parts = new Map<String, {value:Dynamic, users:Int}>();
 
 	@:allow(helder.scene.view.SceneRenderer) function reinstance() {
 		if (tag == "sprites") {

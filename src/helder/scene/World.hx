@@ -16,7 +16,9 @@ import helder.math.Quat;
 // World matrices are computed when asked and cached: a slot keeps the
 // version of its parent's world matrix it was computed from, so a change
 // high in the tree makes everything below it stale without visiting it,
-// and still parts of a scene cost nothing per frame.
+// and still parts of a scene cost nothing per frame. A slot also keeps the
+// epoch it was last checked at (bumped by any transform or tree change), so
+// asking again before the next change is no walk up to the root.
 //
 // A node's id: the world (4 bits: up to 16 worlds alive), the slot's
 // generation (7 bits, never 0 for a live node, so no node is 0, NONE) and
@@ -42,6 +44,12 @@ class World {
 	final worldValid:Array<Bool> = [];
 	final versions:Array<Int> = [];
 	final parentVersions:Array<Int> = [];
+	final checked:Array<Int> = [];
+	var epoch = 0;
+	// (the tree's shape: bumped when a node is added, moved or let go; a
+	// slot found under the root at it is not walked up again)
+	final rooted:Array<Int> = [];
+	var shape = 0;
 	final parents:Array<Int> = [];
 	final firstChild:Array<Int> = [];
 	final lastChild:Array<Int> = [];
@@ -107,6 +115,8 @@ class World {
 			worldValid.push(false);
 			versions.push(0);
 			parentVersions.push(-1);
+			checked.push(-1);
+			rooted.push(-1);
 			parents.push(-1);
 			firstChild.push(-1);
 			lastChild.push(-1);
@@ -124,6 +134,8 @@ class World {
 		localDirty[s] = true;
 		worldValid[s] = false;
 		parentVersions[s] = -1;
+		epoch++;
+		shape++;
 		parents[s] = firstChild[s] = lastChild[s] = nextSibling[s] = prevSibling[s] = -1;
 		live++;
 		return new Node(index << WORLD_SHIFT | g << GEN_SHIFT | s);
@@ -162,29 +174,36 @@ class World {
 	@:allow(helder.scene) inline function getScale(s:Int):Vec3
 		return new Vec3(trs[10 * s + 7], trs[10 * s + 8], trs[10 * s + 9]);
 
+	// (a value as it was: nothing below made stale, markup setting it each frame)
 	@:allow(helder.scene) function setPosition(s:Int, v:Vec3) {
 		var b = 10 * s;
+		if (trs[b] == v.x && trs[b + 1] == v.y && trs[b + 2] == v.z) return;
 		trs[b] = v.x;
 		trs[b + 1] = v.y;
 		trs[b + 2] = v.z;
 		localDirty[s] = true;
+		epoch++;
 	}
 
 	@:allow(helder.scene) function setRotation(s:Int, q:Quat) {
 		var b = 10 * s + 3;
+		if (trs[b] == q.x && trs[b + 1] == q.y && trs[b + 2] == q.z && trs[b + 3] == q.w) return;
 		trs[b] = q.x;
 		trs[b + 1] = q.y;
 		trs[b + 2] = q.z;
 		trs[b + 3] = q.w;
 		localDirty[s] = true;
+		epoch++;
 	}
 
 	@:allow(helder.scene) function setScale(s:Int, v:Vec3) {
 		var b = 10 * s + 7;
+		if (trs[b] == v.x && trs[b + 1] == v.y && trs[b + 2] == v.z) return;
 		trs[b] = v.x;
 		trs[b + 1] = v.y;
 		trs[b + 2] = v.z;
 		localDirty[s] = true;
+		epoch++;
 	}
 
 	@:allow(helder.scene) function setMatrix(s:Int, m:Mat4) {
@@ -221,6 +240,12 @@ class World {
 	}
 
 	@:allow(helder.scene) function worldMatrix(s:Int):Mat4 {
+		if (checked[s] != epoch) check(s);
+		return read(worlds, 16 * s);
+	}
+
+	// (a slot's world matrix brought up to date, its parents' first)
+	function check(s:Int) {
 		var l = localMatrix(s);
 		var p = parents[s];
 		if (p < 0) {
@@ -229,16 +254,16 @@ class World {
 				worldValid[s] = true;
 				versions[s]++;
 			}
-			return read(worlds, 16 * s);
+		} else {
+			if (checked[p] != epoch) check(p);
+			if (!worldValid[s] || parentVersions[s] != versions[p]) {
+				write(worlds, 16 * s, read(worlds, 16 * p) * l);
+				parentVersions[s] = versions[p];
+				worldValid[s] = true;
+				versions[s]++;
+			}
 		}
-		var pw = worldMatrix(p);
-		if (!worldValid[s] || parentVersions[s] != versions[p]) {
-			write(worlds, 16 * s, pw * l);
-			parentVersions[s] = versions[p];
-			worldValid[s] = true;
-			versions[s]++;
-		}
-		return read(worlds, 16 * s);
+		checked[s] = epoch;
 	}
 
 	// (a slot's world matrix version: tests)
@@ -261,6 +286,8 @@ class World {
 		if (lastChild[p] >= 0) nextSibling[lastChild[p]] = c else firstChild[p] = c;
 		lastChild[p] = c;
 		worldValid[c] = false;
+		epoch++;
+		shape++;
 		return child;
 	}
 
@@ -271,6 +298,8 @@ class World {
 		if (nextSibling[c] >= 0) prevSibling[nextSibling[c]] = prevSibling[c] else lastChild[p] = prevSibling[c];
 		parents[c] = prevSibling[c] = nextSibling[c] = -1;
 		worldValid[c] = false;
+		epoch++;
+		shape++;
 	}
 
 	@:allow(helder.scene) function find(s:Int, name:String):Node {
@@ -305,9 +334,14 @@ class World {
 	// whether a node is in the tree under the root (not detached)
 	public function inTree(n:Node):Bool {
 		var s = slotOf(n), r = slotOf(root);
-		while (s >= 0) {
-			if (s == r) return true;
-			s = parents[s];
+		if (rooted[s] == shape) return true;
+		var a = s;
+		while (a >= 0) {
+			if (a == r) {
+				rooted[s] = shape;
+				return true;
+			}
+			a = parents[a];
 		}
 		return false;
 	}
