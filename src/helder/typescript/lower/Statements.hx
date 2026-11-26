@@ -97,8 +97,9 @@ abstract class Statements extends Functions {
 					if (f.initializer().kind == KindVariableDeclarationList) variableList(f.initializer(), false); else expr(f.initializer());
 				}
 				loop(labels, f.statement(), f.condition() == null ? null : () -> exitUnless(f.condition()), () -> {
-					// (a fresh binding per iteration for closures that captured it)
-					if (counter == null && f.initializer() != null && f.initializer().kind == KindVariableDeclarationList)
+					// (a fresh binding per iteration for closures that captured it; a
+					// var's is the function's one binding)
+					if (counter == null && f.initializer() != null && f.initializer().kind == KindVariableDeclarationList && f.initializer().flags & NodeFlags.BlockScoped != 0)
 						for (d in f.initializer().declarations()) {
 							var binding = get(d.name().text, d);
 							if (binding.local == null) switch (binding.cell) {
