@@ -274,7 +274,8 @@ export class Generator {
     // (of two literals, the second made a number's or a string's: a union of
     // literal types would follow it into arrays, concat refusing a number[])
     const a = side(), b = side()
-    const other = a.lit && b.lit ? {t: b.t, parts: [b.t === 'number' ? 'Number(' : 'String(', b, ')']} : b
+    const literal = n => n.lit || n.literal
+    const other = literal(a) && literal(b) ? {t: b.t, parts: [b.t === 'number' ? 'Number(' : 'String(', b, ')']} : b
     return make`(${this.bool(sc, d + 1)} ? ${a} : ${other})`
   }
 
