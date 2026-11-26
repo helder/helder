@@ -83,6 +83,10 @@ function tests() {
 		equals(error({links: {domains: ["https://example.com"]}}), "helder.json: links.domains: an array of domains (\"example.com\")");
 		equals(error({links: {hosts: []}}).split(" (")[0], "helder.json: links: no member \"hosts\"");
 		equals(error({targets: {ios: {usage: {contacts: "x"}}}}).split(" (")[0], "helder.json: targets: {\"ios\": {\"usage\"}}: no member \"contacts\"");
+		equals(error({id: "my game"}), "helder.json: id: \"my game\" is not an Android application id (a.b.c: letters, digits, _; each part starting with a letter), or give targets: {\"android\": {\"package\"}}");
+		equals(error({id: "org.example.my_game", targets: {android: {"package": "org.example.game"}}}),
+			"helder.json: id: \"org.example.my_game\" is not an iOS bundle id (a.b.c: letters, digits, -), or give targets: {\"ios\": {\"bundleId\"}}");
+		equals(HelderJson.parse(haxe.Json.stringify({id: "org.example.my_game", targets: {ios: {bundleId: "org.example.game"}}})).manifest.helder.id, "org.example.my_game");
 		equals(error({targets: {ios: {usage: {camera: " "}}}}), "helder.json: targets: {\"ios\": {\"usage\": {\"camera\"}}}: why the app asks (a sentence)");
 	});
 	test("helder.json: links and usage strings, as App reads them", () -> {
