@@ -139,8 +139,12 @@ function tests() {
 				s.reset();
 			host.device.dispose();
 		});
-		test("24 screens each a <Scene>, out of view, reset again and again: never over 16 worlds", () -> {
+		test("24 screens each a <Scene>, out of view, reset again and again: never over 16 worlds, their shared parts let go", () -> {
 			SceneRenderer.device = null;
+			// (what the screens' scenes hold: shared parts, nodes, worlds; back to these once all are let go)
+			function held()
+				return [@:privateAccess Lambda.count(SceneRenderer.SceneNode.parts), @:privateAccess Lambda.count(SceneRenderer.nodes), helder.scene.World.alive()];
+			var before = held(), peak = before;
 			var stories = [for (i in 0...24) new helder.story.Story('Toy/$i', c -> Fixture.toy(0.6, i % 2 == 0), 1, null, 240, 160, i % 3 == 0 ? 1.0 : null)];
 			var host = new helder.story.Host(stories, new helder.story.Host.HeadlessHost());
 			var most = 0, failed = [];
@@ -154,6 +158,8 @@ function tests() {
 				for (f in 0...60 * 12) {
 					host.frame(round * 100 + f / 60);
 					most = Std.int(Math.max(most, helder.scene.World.alive()));
+					var h = held();
+					if (h[0] > peak[0]) peak = h;
 				}
 				for (s in host.screens)
 					if (s.story.loop != null && s.ui != null) host.written(s, 60);
@@ -165,8 +171,12 @@ function tests() {
 			equals(failed, []);
 			assert(most <= 16, 'at most 16 worlds alive: $most');
 			equals([for (s in host.screens) if (s.version == 0) s.name], []);
+			// (the screens built held parts and nodes)
+			assert(peak[0] > before[0] && peak[1] > before[1], 'parts held while built: $peak, $before');
+			// (reset: its root unmounted, its <Scene> with it, then its store cleared)
 			for (s in host.screens)
 				s.reset();
+			equals(held(), before);
 			host.device.dispose();
 		});
 		#end
