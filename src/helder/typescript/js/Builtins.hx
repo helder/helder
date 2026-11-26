@@ -115,7 +115,41 @@ class Builtins {
 		setupGlobals();
 		Numbers.setup();
 		Async.setup();
+		freeze();
 		watching = true;
+	}
+
+	// The built-ins' members frozen (Attr.FROZEN), those of Object, Array,
+	// String, Number, Boolean, Symbol, Map, Set, WeakMap, WeakSet, Promise,
+	// RegExp, Date, JSON, Math, Reflect and the typed arrays, their
+	// constructors and prototypes: compiled code calls them as they are
+	// (lower.Expressions' iteration loops), and a write to one throws.
+	// Members a later installer adds are frozen after it.
+	static final frozen = ["Object", "Array", "String", "Number", "Boolean", "Symbol", "Map", "Set", "WeakMap", "WeakSet", "Promise", "RegExp", "Date", "JSON", "Math",
+		"Reflect", "ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array", "Float16Array",
+		"Float32Array", "Float64Array"];
+
+	static function freeze():Void {
+		function members(o:JsObject) {
+			var names = o.ownNames();
+			if (names != null) for (k in names.copy()) {
+				var a = o.attr(k);
+				if (a & Attr.FROZEN == 0) o.setOwn(k, o.getOwn(k), a | Attr.FROZEN | Attr.LOCKED);
+			}
+		}
+		for (name in frozen) {
+			var g:Dynamic = globals.get(name);
+			if (!Std.isOfType(g, JsObject)) continue;
+			var o:JsObject = g;
+			members(o);
+			if (!Std.isOfType(o, JsFunction) || !o.hasOwn("prototype")) continue;
+			var p:JsObject = o.getOwn("prototype");
+			while (p != null && p != ObjectProto) {
+				members(p);
+				p = p.proto;
+			}
+		}
+		members(ObjectProto);
 	}
 
 	// The built-ins a program installs when it uses them (the frontend calls
@@ -133,6 +167,7 @@ class Builtins {
 		Regex.setup();
 		RegexEscapes.setup();
 		createRegExp = Regex.create;
+		freeze();
 		publish();
 	}
 
@@ -146,61 +181,75 @@ class Builtins {
 
 	public static function installDate() if (once("Date")) {
 		Dates.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installBuffers() if (once("buffers")) {
 		Buffers.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installTypedArrays() if (once("typed arrays")) {
 		TypedArrays.install();
+		freeze();
 		publish();
 	}
 
 	public static function installJson() if (once("JSON")) {
 		Json.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installIteratorHelpers() if (once("Iterator")) {
 		Iterators.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installPromise() if (once("Promise")) {
 		Promises.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installFromAsync() if (once("fromAsync")) {
 		installPromise();
 		AsyncArray.setup();
+		freeze();
 	}
 
-	public static function installSetMethods() if (once("Set methods")) Sets.setup();
+	public static function installSetMethods() if (once("Set methods")) {
+		Sets.setup();
+		freeze();
+	}
 
 	public static function installUri() if (once("URI")) {
 		globals.set("encodeURIComponent", native("encodeURIComponent", 1, (_, a, _) -> encodeUri(Seed.text(arg(a, 0)), "-_.!~*'()")));
 		globals.set("encodeURI", native("encodeURI", 1, (_, a, _) -> encodeUri(Seed.text(arg(a, 0)), "-_.!~*'();/?:@&=+$,#")));
 		globals.set("decodeURIComponent", native("decodeURIComponent", 1, (_, a, _) -> decodeUri(Seed.text(arg(a, 0)), "")));
 		globals.set("decodeURI", native("decodeURI", 1, (_, a, _) -> decodeUri(Seed.text(arg(a, 0)), ";/?:@&=+$,#")));
+		freeze();
 		publish();
 	}
 
 	public static function installProxy() if (once("Proxy")) {
 		Proxies.setup();
+		freeze();
 		publish();
 	}
 
 	public static function installReflect() if (once("Reflect")) {
 		Globals.setupReflect();
+		freeze();
 		publish();
 	}
 
 	public static function installStructuredClone() if (once("structuredClone")) {
 		globals.set("structuredClone", native("structuredClone", 1, (_, a, _) -> clone(arg(a, 0), new haxe.ds.ObjectMap())));
+		freeze();
 		publish();
 	}
 

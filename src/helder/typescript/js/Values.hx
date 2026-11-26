@@ -26,6 +26,10 @@ class Attr {
 	// another key the program does not see: JsObject.attr leaves them out)
 	public static inline var ACCESSOR = 8;
 	public static inline var PRIVATE = 16;
+	// (a frozen built-in's member, Builtins.freeze: not written, redefined or
+	// deleted; unlike READONLY it does not stop an object inheriting it from
+	// having one of its own)
+	public static inline var FROZEN = 32;
 }
 
 // What an object is, for the property paths: one field to test where

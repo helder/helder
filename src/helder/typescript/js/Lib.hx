@@ -312,7 +312,7 @@ class Lib {
 				call(acc.setter, receiver, [v]);
 				return true;
 			}
-			if (obj.attr(name) & Attr.READONLY != 0) return refuse(strict, readOnlyText(name, obj));
+			if (obj.attr(name) & (Attr.READONLY | Attr.FROZEN) != 0) return refuse(strict, readOnlyText(name, obj));
 			if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
 			obj.writeOwn(name, v);
 			return true;
@@ -529,14 +529,74 @@ class Lib {
 		return passed;
 	}
 
+	// (a compiled function's impl takes `this` and its parameters, each a
+	// value of the runtime's: at up to four, it is called as what it is, the
+	// arguments it is not given undefined, those beyond it dropped)
 	public static function call(f:Dynamic, thisArg:Dynamic, args:Array<Dynamic>):Dynamic {
 		if (!Std.isOfType(f, JsFunction)) return error("TypeError", describe(f) + " is not a function");
 		var fn:JsFunction = f;
 		if (fn.native != null) return fn.native(thisArg, args, undef());
 		if (fn.kind >= JsFunction.BASE) return error("TypeError", "Class constructor " + fn.name + " cannot be invoked without 'new'");
+		if (!fn.rest) switch fn.arity {
+			case 0: return (fn.impl : Dynamic->Dynamic)(thisArg);
+			case 1: return (fn.impl : (Dynamic, Dynamic) -> Dynamic)(thisArg, arg(args, 0));
+			case 2: return (fn.impl : (Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, arg(args, 0), arg(args, 1));
+			case 3: return (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, arg(args, 0), arg(args, 1), arg(args, 2));
+			case 4: return (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, arg(args, 0), arg(args, 1), arg(args, 2), arg(args, 3));
+			case _:
+		}
 		var passed = positional(fn, args, 1);
 		passed[0] = thisArg;
 		return Reflect.callMethod(null, fn.impl, passed);
+	}
+
+	// a call of up to three arguments: no list where the function is compiled code
+	public static function call0(f:Dynamic, thisArg:Dynamic):Dynamic {
+		var fn:JsFunction = Std.isOfType(f, JsFunction) ? f : null;
+		if (fn == null || fn.native != null || fn.kind >= JsFunction.BASE || fn.rest || fn.arity > 4) return call(f, thisArg, []);
+		return switch fn.arity {
+			case 0: (fn.impl : Dynamic->Dynamic)(thisArg);
+			case 1: (fn.impl : (Dynamic, Dynamic) -> Dynamic)(thisArg, undef());
+			case 2: (fn.impl : (Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, undef(), undef());
+			case 3: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, undef(), undef(), undef());
+			case _: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, undef(), undef(), undef(), undef());
+		}
+	}
+
+	public static function call1(f:Dynamic, thisArg:Dynamic, a:Dynamic):Dynamic {
+		var fn:JsFunction = Std.isOfType(f, JsFunction) ? f : null;
+		if (fn == null || fn.native != null || fn.kind >= JsFunction.BASE || fn.rest || fn.arity > 4) return call(f, thisArg, [a]);
+		return switch fn.arity {
+			case 0: (fn.impl : Dynamic->Dynamic)(thisArg);
+			case 1: (fn.impl : (Dynamic, Dynamic) -> Dynamic)(thisArg, a);
+			case 2: (fn.impl : (Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, undef());
+			case 3: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, undef(), undef());
+			case _: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, undef(), undef(), undef());
+		}
+	}
+
+	public static function call2(f:Dynamic, thisArg:Dynamic, a:Dynamic, b:Dynamic):Dynamic {
+		var fn:JsFunction = Std.isOfType(f, JsFunction) ? f : null;
+		if (fn == null || fn.native != null || fn.kind >= JsFunction.BASE || fn.rest || fn.arity > 4) return call(f, thisArg, [a, b]);
+		return switch fn.arity {
+			case 0: (fn.impl : Dynamic->Dynamic)(thisArg);
+			case 1: (fn.impl : (Dynamic, Dynamic) -> Dynamic)(thisArg, a);
+			case 2: (fn.impl : (Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b);
+			case 3: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b, undef());
+			case _: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b, undef(), undef());
+		}
+	}
+
+	public static function call3(f:Dynamic, thisArg:Dynamic, a:Dynamic, b:Dynamic, c:Dynamic):Dynamic {
+		var fn:JsFunction = Std.isOfType(f, JsFunction) ? f : null;
+		if (fn == null || fn.native != null || fn.kind >= JsFunction.BASE || fn.rest || fn.arity > 4) return call(f, thisArg, [a, b, c]);
+		return switch fn.arity {
+			case 0: (fn.impl : Dynamic->Dynamic)(thisArg);
+			case 1: (fn.impl : (Dynamic, Dynamic) -> Dynamic)(thisArg, a);
+			case 2: (fn.impl : (Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b);
+			case 3: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b, c);
+			case _: (fn.impl : (Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic)(thisArg, a, b, c, undef());
+		}
 	}
 
 	public static function callMethod(o:Dynamic, k:Dynamic, args:Array<Dynamic>):Dynamic {

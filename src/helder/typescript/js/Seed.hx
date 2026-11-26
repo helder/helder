@@ -356,6 +356,25 @@ class Seed {
 
 	public static function libObjectProto():Dynamic return Builtins.ObjectProto;
 
+	// an array's element at i for an iteration method, or the hole where it has none (HasProperty)
+	public static function libElement(o:Dynamic, i:Float):Dynamic return Lib.has(o, i) ? Lib.get(o, i) : Lib.hole;
+
+	// (an inlined iteration method's receiver: an array of Array.prototype's, nothing of its own beyond its elements)
+	public static function libPlainArray(o:Dynamic):Bool return Std.isOfType(o, JsArray) && (o : JsArray).proto == Builtins.ArrayProto && (o : JsArray).shape == Shapes.array;
+
+	// built-ins' methods called directly (Direct): on a plain receiver
+	public static function libPlainMap(o:Dynamic, isSet:Bool):Bool return Direct.plainMap(o, isSet);
+
+	public static function libMapGet(m:Dynamic, k:Dynamic):Dynamic return Direct.mapGet(m, k);
+
+	public static function libMapHas(m:Dynamic, k:Dynamic):Bool return Direct.mapHas(m, k);
+
+	public static function libMapSet(m:Dynamic, k:Dynamic, v:Dynamic):Dynamic return Direct.mapSet(m, k, v);
+
+	public static function libArrayIncludes(a:Dynamic, v:Dynamic):Bool return Direct.arrayIncludes(a, v);
+
+	public static function libArrayIndexOf(a:Dynamic, v:Dynamic):Float return Direct.arrayIndexOf(a, v);
+
 	// (what an object layout's typed slots take)
 	public static function libIsNumber(v:Dynamic):Bool return Lib.isNumber(v);
 
@@ -457,6 +476,23 @@ class Seed {
 	public static function libPutAt(o:Dynamic, site:Site, v:Dynamic):Dynamic return Sites.put(o, site, v);
 
 	public static function libCallAt(o:Dynamic, site:Site, args:Array<Dynamic>):Dynamic return Sites.call(o, site, args);
+
+	// (calls of up to three arguments, given as they are: Lib.call1...)
+	public static function libCallAt0(o:Dynamic, site:Site):Dynamic return Sites.call0(o, site);
+
+	public static function libCallAt1(o:Dynamic, site:Site, a:Dynamic):Dynamic return Sites.call1(o, site, a);
+
+	public static function libCallAt2(o:Dynamic, site:Site, a:Dynamic, b:Dynamic):Dynamic return Sites.call2(o, site, a, b);
+
+	public static function libCallAt3(o:Dynamic, site:Site, a:Dynamic, b:Dynamic, c:Dynamic):Dynamic return Sites.call3(o, site, a, b, c);
+
+	public static function libCall0(f:Dynamic, thisArg:Dynamic):Dynamic return Lib.call0(f, thisArg);
+
+	public static function libCall1(f:Dynamic, thisArg:Dynamic, a:Dynamic):Dynamic return Lib.call1(f, thisArg, a);
+
+	public static function libCall2(f:Dynamic, thisArg:Dynamic, a:Dynamic, b:Dynamic):Dynamic return Lib.call2(f, thisArg, a, b);
+
+	public static function libCall3(f:Dynamic, thisArg:Dynamic, a:Dynamic, b:Dynamic, c:Dynamic):Dynamic return Lib.call3(f, thisArg, a, b, c);
 
 	// an object literal's shape (its static keys, distinct), and a literal of it
 	public static function libShape(keys:Array<String>):Shape return Shapes.literal(keys);
@@ -589,6 +625,8 @@ class Seed {
 		libTypedClass(f, [], (o, i) -> null, (o, i, v) -> {}, p -> p);
 		libSetLayout(o, libLayoutOf(f));
 		libObjectLayout([], (o, i) -> null, (o, i, v) -> {});
+		if (libPlainArray(a)) libElement(a, 0);
+		if (libPlainMap(o, false) && libMapHas(o, null) && libArrayIncludes(a, null)) libMapSet(o, libMapGet(o, null), libArrayIndexOf(a, null));
 		if (libIsNumber(libNumber(0)) && libIsBoolean(true) && libIsString("")) libDeopt(libObjectProto());
 		mathSqrt(mathAbs(mathFloor(mathCeil(mathUnary("sin", mathBinary("atan2", mathMin(0, mathMax(0, 0)), 0))))));
 		libArrayIterable(a);
@@ -628,6 +666,14 @@ class Seed {
 		var site = libSiteOf("x");
 		libPutAt(o, site, libGetAt(o, site));
 		libCallAt(o, site, []);
+		libCallAt0(o, site);
+		libCallAt1(o, site, null);
+		libCallAt2(o, site, null, null);
+		libCallAt3(o, site, null, null, null);
+		libCall0(f, null);
+		libCall1(f, null, null);
+		libCall2(f, null, null, null);
+		libCall3(f, null, null, null, null);
 		libLiteral(libShape(["x"]), [null]);
 		libPut(o, "x", null);
 		libGetNamed(o, "x");

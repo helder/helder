@@ -213,7 +213,7 @@ class Objects {
 		}
 		else {
 			d.setOwn("value", v);
-			d.setOwn("writable", virtual ? (Std.isOfType(o, JsArray) && k == "length" || k == "prototype") : attribute & Attr.READONLY == 0);
+			d.setOwn("writable", virtual ? (Std.isOfType(o, JsArray) && k == "length" || k == "prototype") : attribute & (Attr.READONLY | Attr.FROZEN) == 0);
 		}
 		d.setOwn("enumerable", virtual ? (Std.isOfType(o, JsArray) && k != "length") : attribute & Attr.HIDDEN == 0);
 		d.setOwn("configurable", virtual ? (Std.isOfType(o, JsFunction) && k != "prototype" || Std.isOfType(o, JsArray) && k != "length") : attribute & Attr.LOCKED == 0);
@@ -249,6 +249,7 @@ class Objects {
 		if (!o.hasOwn(k) && Std.isOfType(o, JsFunction) && hasOwnKey(o, k)) o.setOwn(k, get(o, k), k == "prototype" ? Attr.HIDDEN | Attr.LOCKED : Attr.HIDDEN | Attr.READONLY);
 		var exists = o.hasOwn(k);
 		var old = exists ? o.attr(k) : Attr.HIDDEN | Attr.READONLY | Attr.LOCKED;
+		if (old & Attr.FROZEN != 0) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
 		if (exists && old & Attr.LOCKED != 0) {
 			if (has(desc, "value") && !(old & Attr.READONLY != 0 && sameValue(get(desc, "value"), o.getOwn(k))) && old & Attr.READONLY != 0) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
 			if (has(desc, "get") || has(desc, "set") || Seed.truth(get(desc, "configurable"))) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));

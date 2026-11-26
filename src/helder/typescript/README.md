@@ -231,6 +231,35 @@ does not replace an instance that never leaves its function yet: each
 guarded read's other way, the site's stub, takes the object (an escape);
 it would need the instance's never-written `bits` folded first.
 
+A function value is called at its arity: every compiled function's code
+takes `this` and its parameters as the runtime's values, so `Lib.call`
+calls it with up to four as they are (no list, no reflection), and a call
+of up to three arguments in compiled code, or of a callback by the
+runtime's array and collection methods, passes them so too. The built-ins'
+members are frozen (`Builtins.freeze`: those of Object, Array, String,
+Number, Boolean, Symbol, Map, Set, WeakMap, WeakSet, Promise, RegExp,
+Date, JSON, Math, Reflect and the typed arrays, their constructors and
+prototypes): one written, redefined or deleted throws a TypeError (where
+the compiler sees the write, `Array.prototype.includes = ...`, it is
+rejected, TSHX001), its descriptor says it is neither writable nor
+configurable, new members may be added, and an object inheriting one may
+still have its own (`o.toString = ...`; unlike a read-only property, a
+frozen member does not stop that). Node differs: there they are writable
+(standards/frozen-builtins.ts checks helder's). So compiled code calls them
+as they are: `a.filter(x => e)` (filter, map, forEach, some, every, find,
+findIndex; reduce with an initial value) on an array, its arrow's body an
+expression, is a loop over the elements as the method visits them (the
+length at the start, those it has, find and findIndex every index) with e
+lowered in place and the arrow's parameters bound to the element (unboxed
+from a number array), its index and the array (so, as an inlined
+function's, the arrow and the method have no frames of their own in an
+error's stack), where the array is plain
+(Array.prototype's, nothing of its own beyond its elements), else the
+method called with the arrow; `m.get(k)`, `m.set(k, v)`, `m.has(k)` on a
+Map, `s.has(v)`, `s.add(v)` on a Set and `a.includes(v)`, `a.indexOf(v)` on
+an array call their implementation directly where the receiver is plain
+(`js/Direct.hx`).
+
 An array literal of numbers (number[], a branded number's, T extends
 number's; an empty one by the type it is given) is a number array: the
 JsArray's `nums`, its elements unboxed while each is a number and the

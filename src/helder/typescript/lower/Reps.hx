@@ -556,6 +556,34 @@ class Reps {
 
 	// ---- arrays: length, and elements by number
 
+	// (an iteration's element of a plain array at i, a number: whether it
+	// has one; a number from nums (unboxed set), else a value from items or
+	// the runtime's HasProperty and Get)
+	public function elementAt(b:Builder, o:Ex, i:Ex):{present:Local, unboxed:Local, number:Local, value:Local} {
+		var arr = b.temp(ECast(TRef(RObj(arrayClass)), o));
+		var present = b.local("present", TBool), unboxed = b.local("unboxed", TBool), number = b.local("number", TF64), value = b.local("element", TRef(RAny));
+		b.out.push(SSet(present, ECast(TBool, EInt(0))));
+		b.out.push(SSet(unboxed, ECast(TBool, EInt(0))));
+		var nums = b.temp(EField(arrayClass, arrayClass.fieldIndex("nums"), arr));
+		when(b, EBin(RefNe, nums, ENull(Ir.typeOf(nums))), () -> when(b, EBin(FLt, i, EConv(I2F, EArrLen(nums))), () -> {
+			b.out.push(SSet(present, ECast(TBool, EInt(1))));
+			b.out.push(SSet(unboxed, ECast(TBool, EInt(1))));
+			b.out.push(SSet(number, EArrGet(TF64, nums, EConv(F2I, i))));
+		}));
+		when(b, ENot(ELocal(present)), () -> {
+			var items = b.temp(EField(arrayClass, arrayClass.fieldIndex("items"), arr));
+			when(b, EBin(FLt, i, EConv(I2F, EArrLen(items))), () -> {
+				b.out.push(SSet(value, EArrGet(TRef(RAny), items, EConv(F2I, i))));
+				when(b, ENot(EInstOf(holeClass, ELocal(value))), () -> b.out.push(SSet(present, ECast(TBool, EInt(1)))));
+			});
+		});
+		when(b, ENot(ELocal(present)), () -> {
+			b.out.push(SSet(value, b.runtime("libElement", [b.coerce(o, TRef(RAny)), i])));
+			when(b, ENot(EInstOf(holeClass, ELocal(value))), () -> b.out.push(SSet(present, ECast(TBool, EInt(1)))));
+		});
+		return {present: present, unboxed: unboxed, number: number, value: value};
+	}
+
 	public function arrayLength(b:Builder, o:Ex):Ex {
 		var l = b.local("length", TF64);
 		guarded(b, o, arrayClass, () -> b.out.push(SSet(l, EField(arrayClass, arrayClass.fieldIndex("length"), ECast(TRef(RObj(arrayClass)), o)))),
