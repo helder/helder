@@ -88,6 +88,14 @@ class Entry {
 		return e;
 	}
 
+	// the same TypeScript program built from another main (a share's: its
+	// scenarios', helder.cli.Scenes), its name, root and settings kept
+	public function mainAt(file:String) {
+		var was = 'helder.typescript=$typescript';
+		typescript = FileSystem.fullPath(file);
+		defines = [for (d in defines) d == was ? 'helder.typescript=$typescript' : d];
+	}
+
 	// (a package.json's app name: its "helder": {"name"}, else its name, its scope left out)
 	static function packageName(pj:String):Null<String> {
 		var json:Dynamic = try haxe.Json.parse(File.getContent(pj)) catch (_:Dynamic) null;

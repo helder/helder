@@ -81,6 +81,13 @@ class Run {
 			return 1;
 		}
 		Term.out(Style.header(command, ["helder.run", anonymous ? "anonymous" : '$name.helder.run', e.label()]));
+		// (the Board: the studio's frames; a TypeScript project's scenarios each a place its web build starts at, ?scenario=)
+		var frames = o.has("no-board") ? null : framesFile(o, e), scenarios = [];
+		if (frames != null && e.typescript != null) {
+			var at = Path.directory(e.typescript);
+			scenarios = Scenes.find(at);
+			if (scenarios.length > 0) e.mainAt(Scenes.entry(at, Scenes.SHARE, e.typescript, scenarios, null, 'helder $command'));
+		}
 		var dir = Entry.clean('${e.root}/bin/run/${e.name}');
 		try {
 			if (FileSystem.exists(dir)) remove(dir);
@@ -95,6 +102,13 @@ class Run {
 			var icon = new Icons(cfg, e.root).png(["any", "maskable"], 512, 1, null, "helder.run's icon");
 			if (icon != null) File.saveBytes('$dir/_helder/icon.png', icon);
 			var shots = screenshots(o, e, run, dir);
+			var board = frames == null ? null : {
+				var a = helder.ui.draw.FrameArchive.decode(File.getBytes(frames));
+				if (a == null) throw '$frames: not a frames file of this helder (the studio writes it again)';
+				File.saveBytes('$dir/_helder/frames.hframes', a.portable().encode());
+				Term.out(Style.status("board", Info, '${a.names().length} scenes' + Style.dim(Style.sep() + '${scenarios.length} to play from' + Style.sep() + frames)));
+				{frames: "_helder/frames.hframes", scenarios: [for (s in scenarios) s.name]};
+			};
 			var files = list(dir, "");
 			var total = 0;
 			for (f in files) {
@@ -121,6 +135,7 @@ class Run {
 				stores: cfg.stores ?? {},
 				downloads: anonymous ? {} : run?.downloads ?? {},
 				page: page,
+				board: board,
 				helder: helderVersion(e)
 			};
 			Term.out(Style.status("release", Info, '${files.length} files, ${mb(total)}' + Style.dim(Style.sep() + dir)));
@@ -155,6 +170,37 @@ class Run {
 			Term.err(Style.status("error", Fail, Std.string(err)));
 			return 1;
 		}
+	}
+
+	// the frames file a release's Board draws: --frames, else the studio's
+	// (bin/studio/<project>/frames.hframes, at the project's root or its
+	// main's folder: the project's own name first, else the newest), else none
+	static function framesFile(o:Options, e:Entry):Null<String> {
+		var named = o.value("frames");
+		if (named != null) {
+			if (!FileSystem.exists(named)) throw '--frames: $named: no such file';
+			return named;
+		}
+		var dirs = [e.root, e.typescript == null ? e.root : Path.directory(e.typescript)];
+		for (d in dirs) {
+			var own = '$d/bin/studio/${e.name}/frames.hframes';
+			if (FileSystem.exists(own)) return own;
+		}
+		var best:Null<String> = null, at = 0.0;
+		for (d in dirs) {
+			var studio = '$d/bin/studio';
+			if (!FileSystem.exists(studio)) continue;
+			for (n in FileSystem.readDirectory(studio)) {
+				var f = '$studio/$n/frames.hframes';
+				if (!FileSystem.exists(f)) continue;
+				var t = FileSystem.stat(f).mtime.getTime();
+				if (best == null || t > at) {
+					best = f;
+					at = t;
+				}
+			}
+		}
+		return best;
 	}
 
 	// helder.run's page shows at most this many screenshots

@@ -102,6 +102,11 @@ class Watch implements Markup {
 	static function play(studio:Studio):View
 		return <view flexDirection="row" alignItems="center" columnGap={8} minWidth={0} flexShrink={1}>
 			<Show when={studio.launched() != null && (studio.launched().state != "running" || shown(studio) != "")}>{launchNote(studio)}</Show>
+			<Show when={studio.shared() != null}>{shareNote(studio)}</Show>
+			<button tag="share" aria-label="Share" flexDirection="row" alignItems="center" height={28} padding="0 12" borderRadius={8} flexShrink={0}
+				background={c("tab")} color={c("ink")} cursor="pointer" onPress={() -> studio.share()}>
+				<text fontSize={12} fontWeight={Theme.MEDIUM}>{studio.shared()?.state == "sharing" ? "Sharing…" : "Share"}</text>
+			</button>
 			<button tag="play" aria-label={playLabel(studio)} flexDirection="row" alignItems="center" columnGap={6} height={28} padding="0 12" borderRadius={8}
 				flexShrink={0} background={c("ink")} color={c("ground")} cursor="pointer" onPress={() -> pressed(studio)}>
 				<image src={playLabel(studio) == "Play app" ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}/>
@@ -128,6 +133,17 @@ class Watch implements Markup {
 		var l = studio.launched();
 		if (l == null) return "";
 		return l.playing != null ? "Playing: " + l.playing : StringTools.startsWith(l.note, "Playing: ") ? l.note : "";
+	}
+
+	// (beside Share: its build's line, dim; the link once there (a click opens it); what failed, red)
+	static function shareNote(studio:Studio):View {
+		var failed = () -> studio.shared()?.state == "failed", url = () -> studio.shared()?.url;
+		return <button tag="share-note" flexDirection="row" alignItems="center" columnGap={6} height={24} padding="0 10" borderRadius={12} flexShrink={1} minWidth={0}
+			maxWidth={360} background={failed() ? c("error-soft") : null} cursor={url() == null ? "default" : "pointer"}
+			onPress={() -> if (url() != null) helder.os.Links.show(url(), false)}>
+			<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}
+				color={failed() ? c("error") : url() != null ? c("ink") : c("fg3")} textDecoration={url() != null ? 1 : 0}>{url() != null ? "Shared: " + url() : studio.shared()?.note ?? ""}</text>
+		</button>;
 	}
 
 	// (beside Play: its build on its way, dim; what failed, red, its place a link)

@@ -32,10 +32,18 @@ class Player {
 		Atoms.record = true;
 	}
 
-	// the window of one of list, by its name (another of them played later in it)
-	public static function run(list:Array<Scenario>, name:String) {
+	// the window of one of list, by its name (another of them played later
+	// in it); no name: the one the page's ?scenario= names (a share's web
+	// build, helder.run's Play from here), else the app from its start
+	public static function run(list:Array<Scenario>, ?name:String) {
 		var root = Hosting.root;
 		if (root == null) throw "helder.scenario.Player: the program's main gave UiWindow.run no root (hold() before its main)";
+		name = name ?? asked();
+		if (name == null) {
+			Hosting.on = false;
+			UiWindow.run(root);
+			return;
+		}
 		var p = new Player(list, root);
 		var start = name;
 		#if hxmc.dev
@@ -53,6 +61,18 @@ class Player {
 		UiWindow.run();
 	}
 
+	// (the page's ?scenario=, null: none, or not a page)
+	static function asked():Null<String> {
+		var at = helder.os.History.location();
+		var q = at == null ? -1 : at.indexOf("?");
+		if (q < 0) return null;
+		for (kv in at.substr(q + 1).split("&")) {
+			var eq = kv.indexOf("=");
+			if (eq > 0 && kv.substr(0, eq) == "scenario") return StringTools.urlDecode(kv.substr(eq + 1).split("+").join(" "));
+		}
+		return null;
+	}
+
 	public var playing(default, null) = "";
 
 	final list:Array<Scenario>;
@@ -65,8 +85,9 @@ class Player {
 		this.list = list;
 		this.root = root;
 		context = new ScreenContext("helder.scenario.play", false, null, new Atoms("helder.scenario.play"));
-		var size = Act.size(root);
-		window = context.run(() -> new UiWindow({title: size.title ?? "helder", width: size.width ?? 800, height: size.height ?? 600}));
+		// (a page's window its canvas, the page's size, as a <Surface> has it)
+		var size = Act.size(root), web = hxmc.Platform.os() == 3;
+		window = context.run(() -> new UiWindow({title: size.title ?? "helder", width: size.width ?? (web ? 0 : 800), height: size.height ?? (web ? 0 : 600)}));
 		window.screen = context;
 	}
 
