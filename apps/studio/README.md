@@ -272,10 +272,20 @@ pauses and scrubs the loop as recorded in the frames file (the time:
 3D scene draws in, until the frames file keeps those) says so. A window is
 `helder dev` on its entry (a TypeScript story: a main the studio writes,
 `.helder-play.tsx` at the project's root, `play(story)` from helder/story;
-a scenario: `.helder-play.tsx` imports `.helder-play-boot.tsx`, which runs
-`boot(scenario)` from helder/scenario, then the app's main; the app: the
-project), so it rebuilds in place as the project changes, its state kept,
-while the agent works. The button says Starting… at once (the build's line
+a scenario: `.helder-play.tsx` imports `.helder-play-boot.tsx`, whose
+`hold()` keeps the main's root, then every scenario of the project and the
+app's main, then `play(them, name)` from helder/scenario,
+helder.scenario.Player: the root in one ScreenContext with a store of its
+own, as the preview host runs a scenario's screen; the app: the project),
+so it rebuilds in place as the project changes, its state kept, while the
+agent works. Play from here on another scenario with that window open plays
+it there: `Scenario.play {name}` over its helder dev's devtools, the store
+let go (`Atoms.clear`, the top-level effects made again), the scenario's
+boot, the root again; the window, its place, its size and hot reload kept,
+nothing built ("Playing: Dusk sweep" beside the button). An edit not built
+yet: after the build on its way. A scenario the window's main does not
+have: its main written again, built and reloaded at that one. A story, or a
+Haxe project: a window of its own again. The button says Starting… at once (the build's line
 beside it), Stop while it runs, what failed beside it (a link to the line);
 closing the window ends it, another Play replaces it. A headless run says
 what it would open (`play-window`).

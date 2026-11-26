@@ -1141,10 +1141,37 @@ class Studio {
 	// project's files so that helder dev watches them: play(story)); the app
 	// (name null: the header's Play with no frame aimed at, the app's frame),
 	// or a Haxe project's story: the app. Headless (a check's run): told, not opened.
-	public function playWindow(name:Null<String>) {
+	public function playWindow(name:Null<String>, fresh = false) {
 		#if !(hxmc.target == "wasm32-wasi")
 		var info = name == null ? null : project.screen(name);
 		if (name != null && info == null) return;
+		var scenario = info != null && project.typescript && Project.isScenario(info.file);
+		var plan = fresh ? "open" : playPlan(targetProcess != null && launched.peek()?.state != "failed", windowScenarios, name, scenario,
+			launched.peek()?.state == "starting" || editedAt > windowBuiltAt);
+		log("play-plan", {screen: name, plan: plan});
+		switch plan {
+			case "switch":
+				playIn(name);
+				return;
+			case "queue":
+				queued = name;
+				launched({state: launched.peek()?.state ?? "running", note: 'Playing: ${info.label} once its build lands', at: null, playing: null});
+				// (no build lands: played all the same)
+				Async.launch(_ -> {
+					Async.delay(15);
+					if (queued == name) playIn(name);
+				});
+				return;
+			case "rewrite":
+				// (its main written again with every scenario: helder dev builds and reloads it, the window at this one)
+				playEntry(info);
+				queued = null;
+				arriving = info.label;
+				launched({state: "running", note: 'Playing: ${info.label} once its build lands', at: null, playing: null});
+				return;
+			case _:
+		}
+		windowScenarios = null;
 		var entry = info == null ? project.dir : playEntry(info);
 		var label = info?.label ?? project.name;
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
@@ -1159,27 +1186,40 @@ class Studio {
 		}
 		cli = stand;
 		#end
+		var scenarios = windowScenarios;
 		stopWindow();
+		windowScenarios = scenarios;
 		var l = new Launch(project.dir, 'building $label');
-		function told() {
-			launched({state: l.state, note: l.note, at: l.at});
-			log("launch", {state: l.state, note: l.note, at: l.at});
-		}
+		window = l;
+		playingLabel = label;
 		told();
 		// (a check's script waits for it to run or fail)
 		hold(() -> l.state != "starting", "Play's window", 300);
 		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
-			launched({state: "failed", note: 'helder dev did not start: $e', at: null});
+			launched({state: "failed", note: 'helder dev did not start: $e', at: null, playing: null});
 			null;
 		}
 		if (p == null) return;
 		p.closeStdin();
 		targetProcess = p;
+		var seen = 0;
 		function lines(src:Stream.Source)
 			Async.launch(_ -> {
 				var r = new Reader(src), line;
 				try while ((line = r.readLine()) != null) {
-					if (targetProcess == p && l.read(line)) told();
+					if (targetProcess != p) continue;
+					var changed = l.read(line);
+					// (a build landed in the window: what waited for it played now)
+					if (l.builds > seen) {
+						seen = l.builds;
+						windowBuiltAt = haxe.Timer.stamp();
+						if (arriving != null) {
+							playingLabel = arriving;
+							arriving = null;
+						}
+						if (queued != null) playIn(queued);
+					}
+					if (changed) told();
 				} catch (_:haxe.Exception) {}
 			});
 		lines(p.stdout);
@@ -1196,9 +1236,68 @@ class Studio {
 		#end
 	}
 
+	// what Play from here does with a frame (name): "open" a window of its
+	// own (none open, the open one plays no scenarios, or name is none);
+	// "switch" the open one to it (Scenario.play: nothing built); "queue"
+	// the switch after the build on its way (the window's build older than
+	// the edits); "rewrite" its main (a scenario it was not started with:
+	// helder dev builds and reloads it, at that one)
+	public static function playPlan(open:Bool, scenarios:Null<Array<String>>, name:Null<String>, scenario:Bool, stale:Bool):String {
+		if (!open || scenarios == null || name == null || !scenario) return "open";
+		if (!scenarios.contains(name)) return "rewrite";
+		return stale ? "queue" : "switch";
+	}
+
+	#if !(hxmc.target == "wasm32-wasi")
+	// (Play's window's helder dev, read: its devtools, the builds that landed)
+	var window:Null<Launch> = null;
+	#end
+	// (the switch waiting for a build; the scenario a rewritten main opens at; the one shown)
+	var queued:Null<String> = null;
+	var arriving:Null<String> = null;
+	var playingLabel:Null<String> = null;
+	// (the last edit of the project's files, the last build that landed in Play's window: haxe.Timer.stamp)
+	var editedAt = 0.0;
+	var windowBuiltAt = 0.0;
+
+	// (Play's window's state told: Launch's, what it plays once it runs)
+	function told() {
+		#if !(hxmc.target == "wasm32-wasi")
+		var l = window;
+		if (l == null) return;
+		launched({state: l.state, note: l.note, at: l.at, playing: l.state == "running" ? playingLabel : null});
+		log("launch", {state: l.state, note: l.note, at: l.at, playing: l.state == "running" ? playingLabel : null});
+		#end
+	}
+
+	// another scenario played in Play's window (Scenario.play through its
+	// helder dev's devtools: its store let go, its boot, the root again);
+	// refused, or no devtools: a window of its own instead
+	function playIn(name:String) {
+		#if !(hxmc.target == "wasm32-wasi")
+		queued = null;
+		var url = window?.devtools, label = project?.screen(name)?.label ?? name;
+		if (url == null) {
+			playWindow(name, true);
+			return;
+		}
+		Async.launch(_ -> {
+			var r = DevCall.call(url, "Scenario.play", {name: name});
+			if (r == null || r.error != null) {
+				log("play-switch", {screen: name, error: r?.error?.message ?? "no answer"});
+				playWindow(name, true);
+				return;
+			}
+			playingLabel = label;
+			told();
+			log("play-switch", {screen: name, playing: r.result?.playing});
+		});
+		#end
+	}
+
 	// what Play's window is doing (null: none): "starting", "running" or
-	// "failed" (Launch's), the line shown beside Play, where it failed
-	public final launched:Signal<Null<{state:String, note:String, at:Null<String>}>> = signal(null);
+	// "failed" (Launch's), the line shown beside Play, where it failed, what it plays
+	public final launched:Signal<Null<{state:String, note:String, at:Null<String>, ?playing:Null<String>}>> = signal(null);
 
 	// Play's window closed (its helder dev ended), or what failed let go
 	public function stopWindow() {
@@ -1207,13 +1306,17 @@ class Studio {
 		targetProcess = null;
 		if (was != null) was.kill();
 		#end
+		queued = arriving = null;
+		windowScenarios = null;
 		if (launched.peek() != null) launched(null);
 	}
 
 	// what helder dev runs to play a screen (Play from here): a TypeScript
-	// story's main (written: PLAY, play(story)); a scenario's, the app's main
-	// after its boot (PLAY imports BOOT, boot(scenario), then the main: the
-	// imports run in order); else the project (its app)
+	// story's main (written: PLAY, play(story) from helder/story); a
+	// scenario's, the app in a window of its own at that scenario's moment
+	// (helder.scenario.Player: PLAY imports BOOT, hold(), then every
+	// scenario of the project and the app's main, then play(them, its name);
+	// another played in the same window, Scenario.play); else the project (its app)
 	public function playEntry(info:ScreenInfo):String {
 		var main = project.typescript ? project.mainFile() : null;
 		switch info.source {
@@ -1225,15 +1328,36 @@ class Studio {
 					return entry;
 				}
 				if (main == null) return project.dir;
-				Files.save(project.dir + "/" + BOOT, '// helder studio\'s Play from here: ${info.name}\'s boot, before the app\'s main (${PLAY})\n'
-					+ 'import { boot } from "helder/scenario";\nimport { $binding } from "$rel";\n\nboot($binding);\n');
-				Files.save(entry, '// helder studio\'s Play from here: the app from ${info.name}\'s moment (written by the studio, run by helder dev)\n'
-					+ 'import "./${haxe.io.Path.withoutExtension(BOOT)}";\nimport "${module(main)}";\n');
+				var all = scenarios(), imports = [], names = [];
+				for (k => s in all) {
+					imports.push('import { ${s.binding} as s$k } from "${module(s.file)}";');
+					names.push('s$k');
+				}
+				Files.save(project.dir + "/" + BOOT, '// helder studio\'s Play from here: the app\'s root held for its scenarios\' window (${PLAY})\n'
+					+ 'import { hold } from "helder/scenario";\n\nhold();\n');
+				Files.save(entry, '// helder studio\'s Play from here: the app at a scenario\'s moment, in a window of its own (written by the studio, run by helder dev)\n'
+					+ 'import "./${haxe.io.Path.withoutExtension(BOOT)}";\n' + imports.join("\n") + '\nimport "${module(main)}";\nimport { play } from "helder/scenario";\n\n'
+					+ 'play([${names.join(", ")}], ${Json.stringify(info.name)});\n');
+				windowScenarios = [for (s in all) s.name];
 				return entry;
 			case _:
 				return project.dir;
 		}
 	}
+
+	// (the project's scenarios bound to a name, TypeScript's: Play from here's window plays each)
+	function scenarios():Array<{name:String, binding:String, file:String}> {
+		var out = [];
+		for (s in project.screens)
+			switch s.source {
+				case Story(b) if (b != null && Project.isScenario(s.file)): out.push({name: s.name, binding: b, file: s.file});
+				case _:
+			}
+		return out;
+	}
+
+	// (the scenarios Play's window was started with: another of them played in it, nothing built; null: it plays no scenario)
+	var windowScenarios:Null<Array<String>> = null;
 
 	// (a file of the project as a module beside PLAY: "./app.scenario")
 	function module(file:String):String {
@@ -1673,6 +1797,7 @@ class Studio {
 	// a file's text changed (Docs): the selection moved with it, the code view
 	// told, then the program: a live literal patched, else a build
 	function changed(file:String, tx:Transaction, origin:String) {
+		editedAt = haxe.Timer.stamp();
 		var sel = selection.peek();
 		if (sel != null && sel.file == file) {
 			var next:Selection = Reflect.copy(sel);

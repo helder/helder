@@ -101,7 +101,7 @@ class Watch implements Markup {
 	// beside it (a click: its file at the line), until the next Play or its ×
 	static function play(studio:Studio):View
 		return <view flexDirection="row" alignItems="center" columnGap={8} minWidth={0} flexShrink={1}>
-			<Show when={studio.launched() != null && studio.launched().state != "running"}>{launchNote(studio)}</Show>
+			<Show when={studio.launched() != null && (studio.launched().state != "running" || shown(studio) != "")}>{launchNote(studio)}</Show>
 			<button tag="play" aria-label={playLabel(studio)} flexDirection="row" alignItems="center" columnGap={6} height={28} padding="0 12" borderRadius={8}
 				flexShrink={0} background={c("ink")} color={c("ground")} cursor="pointer" onPress={() -> pressed(studio)}>
 				<image src={playLabel(studio) == "Play app" ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}/>
@@ -123,6 +123,13 @@ class Watch implements Markup {
 		if (studio.playing.peek() != null) studio.stopPlay() else if (l != null && l.state != "failed") studio.stopWindow() else studio.play();
 	}
 
+	// (running: what it plays, "Playing: Dusk sweep", or a switch waiting for a build; "": nothing to say)
+	static function shown(studio:Studio):String {
+		var l = studio.launched();
+		if (l == null) return "";
+		return l.playing != null ? "Playing: " + l.playing : StringTools.startsWith(l.note, "Playing: ") ? l.note : "";
+	}
+
 	// (beside Play: its build on its way, dim; what failed, red, its place a link)
 	static function launchNote(studio:Studio):View {
 		var failed = () -> studio.launched()?.state == "failed";
@@ -138,8 +145,8 @@ class Watch implements Markup {
 				<Show when={studio.launched()?.at != null}>
 					<text fontSize={Theme.SMALL} color={c("error")} textDecoration={1} flexShrink={0}>{studio.launched()?.at}</text>
 				</Show>
-				<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}
-					color={failed() ? c("error") : c("fg3")}>{studio.launched()?.note ?? ""}</text>
+				<text tag="launch-text" fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}
+					color={failed() ? c("error") : c("fg3")}>{studio.launched()?.state == "running" ? shown(studio) : studio.launched()?.note ?? ""}</text>
 			</button>
 			<Show when={failed()}>
 				<button tag="launch-close" aria-label="Dismiss" width={18} height={18} alignItems="center" justifyContent="center" flexShrink={0}

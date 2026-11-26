@@ -13,6 +13,10 @@ class Launch {
 	// what is shown beside Play: the last line on its way, or what failed
 	public var note(default, null) = "";
 	public var at(default, null):Null<String> = null;
+	// its devtools' address (the program's methods through helder dev: Scenario.play), null until said
+	public var devtools(default, null):Null<String> = null;
+	// the builds that landed in the window (built, rebuilt, reloaded, patched)
+	public var builds(default, null) = 0;
 
 	final dir:String;
 	// (an [ERROR]'s place, its message the next "| ..." line; the build's first error)
@@ -44,7 +48,11 @@ class Launch {
 		switch verb {
 			case "built" | "rebuilt" | "reloaded" | "patched" | "shown" | "started" | "connected":
 				first = null;
+				if (verb != "shown" && verb != "started" && verb != "connected") builds++;
 				return set("running", line, null);
+			case "devtools" if (~/^wss?:\/\/\S+$/.match(rest)):
+				devtools = rest;
+				return state == "starting" && set("starting", line, null);
 			case "failed":
 				var f = first;
 				first = null;

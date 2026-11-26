@@ -18,6 +18,11 @@ function tests() {
 			var l = read(["   watching /p", "[WARNING] /h/Hot.hx:248: lines 248-252", "248 |  x", "- |  [...]", "     | a warning"]);
 			equals(l.note, "watching /p");
 		});
+		test("its devtools' address, the builds that landed", () -> {
+			var l = read(["   devtools ws://127.0.0.1:4322/__helder/devtools", "      built in 1 s", "    rebuilt in 0.4 s", "   reloaded in 30 ms"]);
+			equals(l.devtools, "ws://127.0.0.1:4322/__helder/devtools");
+			equals(l.builds, 3);
+		});
 		test("built: running", () -> {
 			equals(read(["\x1b[1;32m      built\x1b[0m in 3.2 s · 11 MB"]).state, "running");
 		});
