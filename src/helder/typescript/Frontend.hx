@@ -19,7 +19,8 @@ using StringTools;
 // uses) is lowered and before code generation.
 //
 // Its short form: `<compiler> <entry.ts> [-o out] [--target t]
-// [-D name[=value]] [--cp dir] [--dump-ir file] [--roundtrip-ir] [--coverage]`.
+// [-D name[=value]] [--cp dir] [--dump-ir file] [--roundtrip-ir] [--coverage]`;
+// `<compiler> --declarations ...` the declaration files' generator's (Generator).
 class Frontend implements helder.compiler.Plugin {
 	public static inline var DEFINE = "helder.typescript";
 
@@ -32,6 +33,7 @@ class Frontend implements helder.compiler.Plugin {
 
 	public function beforeTyping(com:context.Common.CommonContext, actx:compiler.ParsedArg.ArgContext) {
 		prepared = null;
+		if (core.Define.rawDefined(com.defines, Generator.DEFINE)) Generator.begin(com);
 		var entry = core.Define.rawDefinedValueSafe(com.defines, DEFINE, "");
 		if (entry != "" && com.platform.match(CustomTarget("hxmc"))) prepared = prepare(com, actx, entry);
 	}
@@ -53,6 +55,9 @@ class Frontend implements helder.compiler.Plugin {
 		phase("start");
 		var project:Null<Project> = null, api:Null<Api> = null, error:Null<String> = null;
 		try {
+			// (helder's declaration files as its Haxe types make them, before tsgo reads them)
+			Generator.ensure(source());
+			phase("declarations");
 			project = Project.check(entry, Path.join([source(), "helder/typescript/globals.d.ts"]), p -> api = new Api(p));
 			phase("check (tsgo)");
 			// (its assets' files bundled: the executable's resources are the build's before it is typed)
@@ -138,6 +143,7 @@ class Frontend implements helder.compiler.Plugin {
 
 	// `<compiler> <entry> ...`: the compiler's short form for a TypeScript program
 	public function direct(args:Array<String>):Null<Array<String>> {
+		if (args[0] == "--declarations") return Generator.direct(args.slice(1), source());
 		if (!~/\.(m|c)?[jt]sx?$/.match(args[0])) return null;
 		args = args.copy();
 		var entry = args.shift(), out = "bin/" + Path.withoutExtension(Path.withoutDirectory(entry)), target:Null<String> = null;

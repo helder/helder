@@ -181,6 +181,10 @@ if(mine()) {
 ok(run(process.execPath,[`${T}/native.mjs`]),'helder/native\'s checks (native.mjs)');
 console.log('PASS native (native.mjs)');
 }
+// helder's declaration files written by a build when stale (stamp.mjs)
+if(mine()) {
+const r=run(process.execPath,[`${T}/stamp.mjs`]);ok(r,'the declarations\' stamp (stamp.mjs)');process.stdout.write(r.stdout);
+}
 // Programs whose values their types do not describe: compiled, then stopped
 // where such a value enters a typed slot (TSHX100, at the line of expect)
 for(const file of fs.readdirSync(`${T}/diverge`).filter(f=>f.endsWith('.ts')).sort())for(const target of targets) {

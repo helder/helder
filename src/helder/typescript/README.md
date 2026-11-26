@@ -446,9 +446,30 @@ types (an event attribute of a neutral element typed by ui's events: its
 untyped parameter is an `Event`).
 
 **The declarations** (`api/Declarations.hx`, `api/dts/`): written from the
-Haxe types by `node src/helder/typescript/api/declarations.mjs` (`--check`
-fails when one differs: the tests run it), with the `//` comment above
-each declaration in its Haxe source. The printer and the type mapping are
+Haxe types by helder's compiler (`Generator.hx`), with the `//` comment
+above each declaration in its Haxe source. Every TypeScript build (the
+CLI's, the short form's, a compilation server's) writes helder's again
+before tsgo reads them when the stamp of the last generation is stale (in
+helder's cache, by the real path of helder's `src`: the Haxe files and
+directories it read, by size and time, and the compiler): a stat per file
+when it is not (8 ms), a generation when it is (2.5 s); never under
+node_modules (a package installed ships them; a link, apps/tables',
+resolves out of it), a file written only when it differs, whole (a
+temporary renamed over it). A compilation server tells tsgo of the files
+written (the program's declaration files are among those it compares).
+The generation is a compile of the modules' declaration classes that types
+signatures only: under `-D helder.declarations` the manifest's macro does
+nothing and a method whose type is written in full (a Void result left
+out, an argument's type its literal default's) is not typed
+(`Signatures.hx`, hxmc's untypedBodyHook), so no shader or material macro
+runs, and the compile ends once the files are written. `node
+src/helder/typescript/api/declarations.mjs [--check] [--cp dir]...
+[pack.Module]...` runs it at once (`<compiler> --declarations`):
+`--check` fails when one differs (CI's declarations lane, the backstop),
+and a program's own modules (tests/view's TestTypeScript) are written so,
+not by its builds. A module's file is the same whichever are written:
+helder's modules are all typed and printed, the typedefs found there of
+theirs only. The printer and the type mapping are
 benmerckx/genes' declaration typing (its TypeEmitter and
 DefinitionEmitter, MIT: `api/dts/LICENSE.genes`), reworked: Haxe's typed
 classes from the module, a type named only where a module declares it (an
@@ -545,7 +566,10 @@ check themselves where node still differs from the specification;
 `reject/` must fail with a diagnostic at the line it names; `diverge/` must
 compile and stop with TSHX100 at the line it names. The declaration
 files must be as the Haxe types make them (`declarations.mjs --check`,
-helder's and tests/view's TestTypeScript's `helder/test-renderer.d.ts`).
+helder's and tests/view's TestTypeScript's `helder/test-renderer.d.ts`),
+and a build writes helder's again when stale (`stamp.mjs`: a copy
+of src edited, built, written; built again, untouched; under node_modules,
+skipped).
 `helder/` programs call helder's API and render TSX headless (tests/view's
 TestRenderer), their output checked against `<name>.out`: `view.tsx`
 (signals, a component, control flow, events), `holes.tsx` (holes and

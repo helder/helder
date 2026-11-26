@@ -10,7 +10,8 @@ import helder.typescript.api.dts.TypeEmitter;
 // helder's TypeScript declaration files, generated from its Haxe types
 // (typescript's README): each module's (Modules: helder/view, helder/ui,
 // helder/web), beside its declaration class (src/helder/view/index.d.ts...).
-// An init macro, run by api/declarations.mjs with helder's compiler:
+// An init macro, run by helder's compiler (helder.typescript.Generator: its
+// `--declarations` form, api/declarations.mjs, every TypeScript build):
 //
 //   write(["helder.view.TypeScript", ...])        // the files written
 //   write([...], true)                            // checked: an error when one differs
@@ -43,12 +44,18 @@ class Declarations {
 		var api = Modules.of(known.concat([for (d in decls) if (known.indexOf(d) < 0) d]));
 		typedefs = new Map();
 		// (the typedefs of the modules' packages their declarations name:
-		// written until no new one turns up)
+		// printed until no new one turns up; the known modules' too, so that
+		// helder's module's are the same whichever are written, each found
+		// there of a known module's package only)
+		var helder = [for (m in api.modules) if (known.indexOf(m.decl) >= 0) m];
 		var found = -1;
 		while (found != Lambda.count(typedefs)) {
 			found = Lambda.count(typedefs);
-			for (m in api.modules)
-				if (decls.indexOf(m.decl) >= 0) module(api, m);
+			for (m in api.modules) {
+				owners = decls.indexOf(m.decl) >= 0 ? null : helder;
+				module(api, m);
+			}
+			owners = null;
 		}
 		var stale = [];
 		for (m in api.modules) {
@@ -57,7 +64,12 @@ class Declarations {
 			var file = haxe.io.Path.join([m.dir, m.file]);
 			var old = sys.FileSystem.exists(file) ? sys.io.File.getContent(file) : null;
 			if (old == text) continue;
-			if (check) stale.push(file) else sys.io.File.saveContent(file, text);
+			if (check) stale.push(file) else {
+				// (whole or not at all: builds write them at once, helder.typescript.Generator)
+				var tmp = file + "." + Std.random(0x7fffffff) + ".tmp";
+				sys.io.File.saveContent(tmp, text);
+				sys.FileSystem.rename(tmp, file);
+			}
 		}
 		if (stale.length > 0)
 			Context.fatalError("helder.typescript: " + stale.join(", ") + " differ from helder's Haxe types: write them again (node src/helder/typescript/api/declarations.mjs)",
@@ -86,10 +98,13 @@ class Declarations {
 	// named where it is (an argument: props) and written out where given.
 	static var typedefs:Map<String, {module:ApiModule, name:String, type:DefType, named:Bool, takenOnly:Bool}> = new Map();
 
+	// (the modules a typedef found may be of: null, any)
+	static var owners:Null<Array<ApiModule>> = null;
+
 	static function owner(api:Api, b:BaseType):Null<ApiModule> {
 		var best:Null<ApiModule> = null, length = -1;
 		var pack = b.pack.join(".");
-		for (m in api.modules) {
+		for (m in owners ?? api.modules) {
 			var parts = m.decl.split(".");
 			parts.pop();
 			var p = parts.join(".");
