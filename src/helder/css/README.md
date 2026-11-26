@@ -60,7 +60,7 @@ cut off by the end) is left out.
 
 - **`CssToken`**: `kind`, a `CssTokenKind`, and `start`, `end`: where
   it was read, in the text's String units (UTF-16 code units natively and
-  as wasm32-wasi, code points on Eval). Kinds: `Ident`, `Function`,
+  as wasm32-wasi). Kinds: `Ident`, `Function`,
   `AtKeyword`, `Hash(value, id)` (`id`: the "id" type flag), `Str`,
   `BadString`, `Url`, `BadUrl`, `Delim` (one code point), `Number`,
   `Percentage` and `Dimension` (value, integer: the type flag, text: the
@@ -448,7 +448,7 @@ manifest.json has the package's hash and the counts. Out are 601:
 A text that is not a grammar throws, with where. `of(syntax)` parses a
 definition once and keeps it.
 
-Tests (`CssGrammars.test.hx`, natively, as wasm32-wasi and on Eval): every property's,
+Tests (`CssGrammars.test.hx`, natively and as wasm32-wasi): every property's,
 type's and descriptor's grammar of the data parses and prints back to
 itself, every reference it makes is defined (in its context), every
 longhand and alias is in the table; the shapes of a few and the errors;
@@ -539,7 +539,7 @@ Shorthands match their grammar as a whole and serialize as written in
 the grammar's order; their expansion to longhands (and serialization back
 from them) is the cascade's, still to come.
 
-Tests (`CssValues.test.hx`, natively, as wasm32-wasi and on Eval):
+Tests (`CssValues.test.hx`, natively and as wasm32-wasi):
 examples of matching, rejecting, computing and numbers; and a property:
 a value drawn from any property's grammar tree (each alternative, count
 and primitive within its range) parses, and its serialization parses back
@@ -549,7 +549,8 @@ WPT's 19,000 value cases and css-parsing-tests' colours (tests/css).
 ## Cascade
 
 `CssCascade.styles(doc, options)` cascades a helder.dom document (Cascade
-5): its computed style per element, asked when needed.
+5): its computed style per element, asked when needed, and shared by the
+elements whose styles come out the same (Style storage, below).
 
 ```haxe
 import helder.css.CssCascade;
@@ -561,89 +562,178 @@ var styles = CssCascade.styles(doc, {
 	hints: true                        // HTML's presentational hints, as WeasyPrint's -p
 });
 var h1 = doc.getElementsByTagName("h1").item(0);
-styles.computed(h1).text("font-size");     // "32px"
-styles.computed(h1).get("margin-top");     // [Dimension(21.44, "px")]
-styles.computed(h1, "before").text("content");  // "normal"
+var s = styles.computed(h1);
+s.spacing.marginTop.value;                 // 21.44 (px)
+s.box.display.outer == Block;
+s.length(Width).resolve(600);              // a percentage of 600, auto's NaN
+s.text("font-size");                       // "32px", as getComputedStyle writes it
+styles.computed(h1, "before").generated(); // null: content none
 styles.pages;                              // @page rules: selectors, declarations, margin boxes
 ```
 
 - **Sheets** (`CssSheet.parse(text, origin, {url, load})`), in cascade
   order: the user agent's (`CssUserAgent`: the HTML Standard's Rendering
   section's CSS, made by `ua.mjs` from whatwg/html at a pinned revision,
-  logical properties as their physical ones in horizontal, left-to-right
-  text, `:heading` as h1 to h6; quirks mode's rules on top in quirks
-  mode; print.css: an A4 page with 75px margins and headings as
-  bookmarks, as WeasyPrint has them), the user's, then the document's
-  `<style>` and `<link rel=stylesheet>` elements (their `media`, a
-  `<base href>`), then `author`'s. A sheet's declarations are compiled
-  once: validated against their grammars (invalid ones dropped),
-  shorthands expanded to their longhands (`all` too), legacy names to
-  their properties, `page-break-*` to `break-*`. @import is loaded through
-  the caller's function (no I/O here), with its media, `supports()` and
-  `layer`; @media is kept and evaluated against the media (`CssMedia`:
-  Media Queries 4, types, `not`, `only`, `and`, `or`, ranges, a printed
-  page's features: no hover, no pointer, no update); @supports is
-  evaluated at once (`CssSupports`); @namespace for selectors; @layer
-  blocks, statements and anonymous layers; @page (selectors, the page's
-  properties, its descriptors as written, its margin boxes), @font-face
-  and @counter-style kept as data for the later stages. Nested style
-  rules (CSS Nesting) are past checkpoint 1: a rule's own declarations
-  apply, its nested rules not.
-- **Cascade** (`CssStyles`): each element's rules found through an index
+  `:heading` as h1 to h6; quirks mode's rules on top in quirks mode;
+  print.css: an A4 page with 75px margins and headings as bookmarks, as
+  WeasyPrint has them), the user's, then the document's `<style>` and
+  `<link rel=stylesheet>` elements (their `media`, a `<base href>`), then
+  `author`'s. A sheet's declarations are compiled once: validated against
+  their grammars (invalid ones dropped), shorthands expanded to their
+  longhands (`all` too), legacy names to their properties,
+  `page-break-*` to `break-*`, each longhand its `CssProperty` id. @import
+  is loaded through the caller's function (no I/O here), with its media,
+  `supports()` and `layer`; @media is kept and evaluated against the
+  media (`CssMedia`: Media Queries 4, types, `not`, `only`, `and`, `or`,
+  ranges, a printed page's features: no hover, no pointer, no update);
+  @supports is evaluated at once (`CssSupports`); @namespace for
+  selectors; @layer blocks, statements and anonymous layers; @page
+  (selectors, the page's properties, its descriptors as written, its
+  margin boxes), @font-face and @counter-style kept as data for the later
+  stages. Nested style rules (CSS Nesting) are past checkpoint 1: a
+  rule's own declarations apply, its nested rules not.
+- **Matching** (`CssStyles`): each element's rules found through an index
   of their rightmost compound (id, class, type, an `:is()` of types,
   links, the root, an attribute: `CssRuleIndex`, with the ancestors' Bloom
-  filter; rules that can never match, `:visited`'s, left out),
-  matched by helder.css's selectors, and their declarations sorted:
-  origin and importance (user agent, user, author; then author, user,
-  user agent `!important`), a style attribute's above every rule's, layer
-  (later layers win for normal declarations, unlayered last; reversed for
-  `!important`), specificity, order of appearance. Presentational hints
+  filter, `CssBloom`, moved to each element; rules that can never match,
+  `:visited`'s, left out), then matched by helder.css's selectors.
+- **Sharing**: an element whose parent's style, matched rules, style
+  attribute, hints and place (the root, a flex or grid item) are an
+  earlier element's gets that element's style. Otherwise its cascade is
+  worked out (`CssResolver`): declarations sorted by origin and
+  importance (user agent, user, author; then author, user, user agent
+  `!important`), a style attribute's above every rule's, layer (later
+  layers win for normal declarations, unlayered last; reversed for
+  `!important`), specificity, order of appearance; presentational hints
   (opt-in): HTML's attributes mapped to properties (`CssHints`: bgcolor,
   width and height, cellspacing and cellpadding, border, font's color,
   face and size, hspace and vspace) and the ones HTML writes as CSS, as
-  author rules of specificity zero before the author's own.
-  `::before`, `::after`, `::marker` (and `::first-line`,
-  `::first-letter`, GCPM's footnote ones) have their own rules, their
-  style inheriting from their element's.
-- **Computed values** (`CssStyle`, each property computed when first
-  asked): `initial`, `inherit`, `unset`, `revert` (the origin below),
-  `revert-layer` (the layer below); inheritance (an element that declares
-  no inherited property shares its parent's values); var() and env()
-  substituted (Variables 1: a missing name without a fallback, or a
-  cycle, makes the value invalid at computed-value time, as `unset`; a
-  fallback's `{}` block is its contents; a CSS-wide keyword substituted
+  author rules of specificity zero before the author's own. `::before`,
+  `::after`, `::marker` (and `::first-line`, `::first-letter`, GCPM's
+  footnote ones) have their own rules, their style inheriting from their
+  element's.
+- **Logical properties** (Logical 1, horizontal-tb): the element's
+  `direction` is worked out first, then each logical declaration takes
+  its physical property's place in the cascade (inline-start is left in
+  ltr, right in rtl; block-start top), so the later or more specific of a
+  logical and a physical declaration wins. The user agent's sheet keeps
+  HTML's logical properties, so an rtl list is indented on the right.
+- **Computed values**: `initial`, `inherit`, `unset`, `revert` (the
+  origin below), `revert-layer` (the layer below); inheritance (a group
+  of inherited properties none of which is set is the parent's); var()
+  and env() substituted (Variables 1: a missing name without a fallback,
+  or a cycle, makes the value invalid at computed-value time, as `unset`;
+  a fallback's `{}` block is its contents; a CSS-wide keyword substituted
   is that keyword where the declaration stands; a shorthand's longhands
   take their part once it is substituted), then the value computed as
   CssComputed does with the element's font size (font properties' em
   their parent's), the root's, the media's size and the colour
-  (currentcolor in color itself the inherited colour); and what needs
-  the tree: `justify-items: legacy`, `text-align: match-parent`,
-  overflow's visible beside a scrolling axis; and what reads another
-  property: a border's or outline's width 0 under a `none` (or
-  `hidden`) style, `float: none` when absolutely positioned, and
-  blockification (CSS 2.1 §9.7, Display 3 §2.7: the root, floats,
-  absolutely positioned boxes, flex and grid items, past `display:
-  contents`), `font-weight: bolder` and `lighter` from the parent's
-  weight (Fonts 4's table), and `content: normal` as `none` on ::before
-  and ::after. `font-size: larger` and `smaller` step along the
-  absolute-size table from the parent's size when it is one of the
-  table's (Fonts 4 §2.5), else by 1.2. lh and rlh are the element's and
-  the root's line height when it is a length or a number (the parent's
-  and the initial value's in font-size and line-height); `normal` needs
-  the first available font's metrics, so they stay as written until
-  fonts give them. rem and rlh on the root are its own. `text(property)` writes it
-  as getComputedStyle does (a shorthand from its longhands).
+  (currentcolor in color itself the inherited colour); and what needs the
+  tree: `justify-items: legacy`, `text-align: match-parent`, overflow's
+  visible beside a scrolling axis; and what reads another property: a
+  border's or outline's width 0 under a `none` (or `hidden`) style,
+  `float: none` when absolutely positioned, and blockification (CSS 2.1
+  §9.7, Display 3 §2.7: the root, floats, absolutely positioned boxes,
+  flex and grid items, past `display: contents`), `font-weight: bolder`
+  and `lighter` from the parent's weight (Fonts 4's table), and
+  `content: normal` as `none` on ::before and ::after. `font-size:
+  larger` and `smaller` step along the absolute-size table from the
+  parent's size when it is one of the table's (Fonts 4 §2.5), else by
+  1.2. lh and rlh are the element's and the root's line height when it
+  is a length or a number (the parent's and the initial value's in
+  font-size and line-height); `normal` needs the first available font's
+  metrics, so they stay as written until fonts give them. rem and rlh on
+  the root are its own.
 
-Tests (`CssCascade.test.hx`, natively, as wasm32-wasi and on Eval):
+## Style storage
+
+A computed style (`CssStyle`) is a pointer per group of properties,
+immutable, shared: `styles.json` says the groups, and `generate.mjs`
+writes from it and the property table:
+
+- **`CssProperty`**: an id per in-scope longhand (an `enum abstract` of
+  Int: `MarginTop`, `Display`...), the logical ones' too. No property
+  names past the parser: declarations, the cascade and the groups go by
+  id. `CssProperties`: each id's name, group, kind, keywords, impact, a
+  logical one's physical ones, each group's members.
+- **Groups** (`CssGroups`): font, inheritedText, list, table, ui (the
+  inherited ones), and box, position, spacing, border, background,
+  outline, decoration, container (flex and grid containers), item (flex
+  and grid items), content (and counters), paged, effects (opacity,
+  transforms, filters, blending, shadows), control (appearance,
+  user-select, scrollbars, transitions). A group is inherited or not as
+  all its properties are, so an element's inherited group is its
+  parent's pointer unless something in it is set, and a reset group the
+  document's initial one unless something in it is set (or its values
+  depend on more: display at the root or in a flex container, ::before's
+  content, justify-items' legacy).
+- **Typed values**: a field per property, typed by its kind as its
+  grammar says (`styles.json` corrects a few): a keyword as an
+  `enum abstract` (`CssKeywords`: `CssPosition.Absolute`, `CssLineStyle`
+  for the four border styles...), a number unboxed (`Float`, a keyword
+  beside it where it has one: z-index's auto), a length, percentage,
+  number or keyword as `CssLength` (kind, value in px or %, the unit of
+  one not resolved here, a math function kept only where it can't be
+  resolved: a percentage mixed with lengths), a colour as `CssRgba`
+  (sRGB floats from any of Color 4's spaces, currentcolor kept as such),
+  display as `CssDisplay` (outer, inner, list item), anything else
+  (lists, shadows, transforms, grid templates, content) as its terms.
+  What a field's type can't hold (a function where keywords go) is kept
+  in the group's others, as terms.
+- **Interning** (`CssIntern`, per document): equal lengths, colours,
+  displays and term lists are one object, so a group compares its fields
+  by identity, and equal groups are one object, and equal styles.
+- **Impact** (`CssProperties.impact`): what a change to a property
+  redoes, for restyling later: `Layout`, `Text` (inherited text that
+  lays text out again: the fonts, spacing, white space), `Paint`,
+  `Composite` (opacity and transforms), `None` (cursor, transitions...).
+
+The typed reads layout will use:
+
+```haxe
+var s = styles.computed(el);
+s.box.position == Absolute;                  // CssKeywords
+s.spacing.marginLeft.kind == Px;             // CssLength
+s.resolve(PaddingTop, containingWidth);      // px, a percentage resolved
+s.px(BorderTopWidth);                        // px (NaN when not a length)
+s.color(BorderTopColor).r;                   // sRGB, currentcolor resolved
+s.number(Opacity); s.position.zIndex;        // numbers
+s.display.inner == Flex;                     // CssDisplay
+s.fontSize(); s.lineHeight(); s.families();  // the font
+s.backgrounds();                             // layers, lists repeated to the images'
+s.generated();                               // content as items (Text, Counter, Quote...)
+s.counters(CounterReset);                    // {name, value, reversed}
+s.terms(GridTemplateColumns);                // anything, as terms
+```
+
+The run time's property data is `CssTable` (generated): the grammars,
+initial values, inheritance, longhands, legacy names; `CssData` (the
+specs' prose and links, for tests and tools) stays out of programs that
+only cascade.
+
+Checkpoint 1b's properties, in scope for helder.ui's port: aspect-ratio,
+field-sizing, transition-* (computed values only), cursor, pointer-events,
+user-select, accent-color, appearance, scrollbar-width, scrollbar-color,
+line-clamp (and max-lines, block-ellipsis, continue), text-overflow,
+text-wrap and text-wrap-style, text-underline-offset, filter,
+backdrop-filter, mix-blend-mode, isolation, translate, rotate, scale, and
+the logical properties (margin-, padding-, inset- and border-block and
+-inline, their starts and ends, the sizes, the corner radii).
+
+Tests (`CssCascade.test.hx`, natively and as wasm32-wasi):
 origins and importance, specificity, order and the style attribute,
 layers, the CSS-wide keywords, inheritance and em, widths without a
-style, blockification, the relative font sizes and weights, lh, rlh
-and rem, var() (fallbacks,
-cycles, shorthands), @media, @supports and @import, pseudo-elements, the
-user agent's sheet and hints, the at-rules' data; and properties: the
-result doesn't depend on the order of the sheets when their
-declarations' cascade order is the same, and an unset inherited property
-is its parent's computed value. The css lane's CssCascadeCheck runs WPT's
-css-cascade and css-variables tests that read statically, and
-CssValuesCheck the computed rows of WPT's value tests in their own pages
-(tests/css). `bun run test bench css` styles the HTML Standard's page.
+style, blockification, the relative font sizes and weights, lh, rlh and
+rem, logical properties (ltr, rtl, inherited, against physical ones),
+the typed values and bundles, styles and groups shared, var()
+(fallbacks, cycles, shorthands), @media, @supports and @import,
+pseudo-elements, the user agent's sheet and hints, the at-rules' data;
+and properties: the result doesn't depend on the order of the sheets
+when their declarations' cascade order is the same, an unset inherited
+property is its parent's computed value, and equal groups of values are
+one object (and one object one set of values). The css lane's
+CssCascadeCheck runs WPT's css-cascade and css-variables tests that read
+statically, CssValuesCheck the computed rows of WPT's value tests in
+their own pages (tests/css); both check every value against #321's
+cascade as it was merged, frozen in tests/css/reference.
+`bun run test bench cascade` styles the HTML Standard's page.

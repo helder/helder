@@ -20,6 +20,34 @@ class CssCanonical {
 		terms = CssShorthands.plain(terms);
 		for (t in terms) if (!symbols(t) || !image(t)) return false;
 		return switch property {
+			// (CSS UI 4 §5.1: a cursor's image-set() of URLs only)
+			case "cursor": !terms.exists(t -> switch t {
+					case Func("image-set", args): args.exists(a -> a.match(Func(_, _)) && !a.match(Func("url" | "src", _)));
+					case _: false;
+				});
+			// (Transitions 1 §2.2: a duration not negative; Easing 1 §2.3: steps() at least 1, 2 for jump-none)
+			case "transition" | "transition-timing-function" | "transition-duration":
+				var ok = true;
+				for (layer in CssText.layers(terms)) {
+					var times = layer.filter(t -> t.match(Dimension(_, "s" | "ms")));
+					if (property != "transition-timing-function" && times.length > 0 && switch times[0] {
+						case Dimension(v, _): v < 0;
+						case _: false;
+					}) ok = false;
+					for (t in layer) switch t {
+						case Func("steps", [Number(n, _), Delim(","), Keyword("jump-none")]) if (n < 2): ok = false;
+						case Func("steps", [Number(n, _)]) | Func("steps", [Number(n, _), Delim(","), _]) if (n < 1): ok = false;
+						case _:
+					}
+				}
+				ok;
+			// (Filter Effects 1 §5.1: no negative amounts, nor a negative blur)
+			case "filter" | "backdrop-filter": terms.foreach(t -> switch t {
+					case Func("drop-shadow", args): !blurNegative(args);
+					case Func("hue-rotate", _): true;
+					case Func(_, [Number(v, _) | Percentage(v) | Dimension(v, _)]): v >= 0;
+					case _: true;
+				});
 			case "font-feature-settings" | "font-variation-settings": terms.foreach(t -> switch t {
 					case Str(s): tag(s);
 					case _: true;
@@ -36,6 +64,31 @@ class CssCanonical {
 				// (a text shadow's lengths: two or three, no spread)
 				CssText.layers(terms).foreach(l -> l.filter(t -> t.match(Dimension(_, _) | Calc(_, _, _))).length <= 3);
 			case _: true;
+		}
+	}
+
+	// (drop-shadow()'s third length, its blur, negative)
+	static function blurNegative(args:Array<CssTerm>):Bool {
+		var lengths = args.filter(a -> a.match(Dimension(_, _)));
+		return lengths.length >= 3 && switch lengths[2] {
+			case Dimension(v, _): v < 0;
+			case _: false;
+		}
+	}
+
+	// (an axis along x, y or z as its name, the angle negated for a negative one; z alone left out)
+	static function rotate(terms:Array<CssTerm>):Array<CssTerm> {
+		inline function neg(a:CssTerm):CssTerm
+			return switch a {
+				case Dimension(v, u): Dimension(-v, u);
+				case _: a;
+			}
+		return switch terms {
+			case [Keyword("z"), a]: [a];
+			case [Number(x, _), Number(y, _), Number(z, _), a]:
+				if (y == 0 && z == 0 && x != 0) [Keyword("x"), x < 0 ? neg(a) : a] else if (x == 0 && z == 0 && y != 0) [Keyword("y"), y < 0 ? neg(a) : a] else
+					if (x == 0 && y == 0 && z != 0) [z < 0 ? neg(a) : a] else terms;
+			case _: terms;
 		}
 	}
 
@@ -69,6 +122,47 @@ class CssCanonical {
 				// (rotate(0) and skew(0): their 0 an angle)
 				[for (t in terms) switch t {
 					case Func(f = "rotate" | "skew" | "skewx" | "skewy", args): Func(f, [for (a in args) a.match(Number(0, _)) ? Dimension(0, "deg") : a]);
+					case _: t;
+				}];
+			// (a ratio's second number, 1 when left out, Values 4 §7.5)
+			case "aspect-ratio":
+				var out = [];
+				for (k in 0...terms.length) {
+					out.push(terms[k]);
+					if (terms[k].match(Number(_, _) | Calc(_, _, _)) && (k + 1 >= terms.length || !terms[k + 1].match(Delim("/"))) && (k == 0 || !terms[k - 1].match(Delim("/"))))
+						for (x in [Delim("/"), Number(1, true)]) out.push(x);
+				}
+				out;
+			// (the shortest of Transforms 2's forms: a z of 0, a y of 0 after it; a z scale of 1, one x and y alike; an axis that is x, y or z)
+			case "translate":
+				var t = terms.copy();
+				// (a 0% stays: it's a percentage of the box)
+				if (t.length == 3 && t[2].match(Dimension(0, _) | Number(0, _))) t.pop();
+				if (t.length == 2 && t[1].match(Dimension(0, _) | Number(0, _))) t.pop();
+				t;
+			case "scale":
+				var t = [for (x in terms) switch x {
+					case Percentage(p): Number(p / 100, false);
+					case _: x;
+				}];
+				if (t.length == 3 && t[2].match(Number(1, _))) t.pop();
+				if (t.length == 2 && CssText.term(t[0]) == CssText.term(t[1])) t.pop();
+				t;
+			case "rotate": rotate(terms);
+			case "filter" | "backdrop-filter":
+				// (grayscale(), invert(), opacity() and sepia() at most 100%; hue-rotate(0) an angle)
+				[for (t in terms) switch t {
+					case Func(f = "grayscale" | "invert" | "opacity" | "sepia", [Number(v, i)]) if (v > 1): Func(f, [Number(1, i)]);
+					case Func(f = "grayscale" | "invert" | "opacity" | "sepia", [Percentage(v)]) if (v > 100): Func(f, [Percentage(100)]);
+					case Func("hue-rotate", [Number(0, _)]): Func("hue-rotate", [Dimension(0, "deg")]);
+					case _: t;
+				}];
+			// (Easing 1 §2.3: step-start and step-end as steps(); end, the default, left out)
+			case "transition-timing-function":
+				[for (t in terms) switch t {
+					case Keyword("step-start"): Func("steps", [Number(1, true), Delim(","), Keyword("start")]);
+					case Keyword("step-end"): Func("steps", [Number(1, true)]);
+					case Func("steps", [n, Delim(","), Keyword("end" | "jump-end")]): Func("steps", [n]);
 					case _: t;
 				}];
 			case "opacity":

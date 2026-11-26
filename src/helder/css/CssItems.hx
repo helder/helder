@@ -1,0 +1,131 @@
+package helder.css;
+
+import helder.css.CssProperty;
+import helder.css.CssTerm;
+
+// A background layer (Backgrounds 3 §2.2): background-image's list says
+// how many there are, the other lists repeat to as many.
+typedef CssBackgroundLayer = {
+	// null: none
+	image:Null<CssTerm>,
+	positionX:Array<CssTerm>,
+	positionY:Array<CssTerm>,
+	size:Array<CssTerm>,
+	// x's and y's keywords
+	repeat:Array<String>,
+	attachment:String,
+	origin:String,
+	clip:String
+}
+
+enum CssContentItem {
+	Text(text:String);
+	Image(image:CssTerm);
+	Counter(name:String, style:String);
+	Counters(name:String, separator:String, style:String);
+	Attribute(name:String);
+	// open-quote, close-quote, no-open-quote, no-close-quote
+	Quote(kind:String);
+	// what the paged stage reads (content(), string(), leader(), target-counter()...)
+	Other(term:CssTerm);
+}
+
+typedef CssCounter = {name:String, value:Int, reversed:Bool}
+
+// Computed values that are lists, read as layout and paint want them.
+class CssItems {
+	public static function backgrounds(s:CssStyle):Array<CssBackgroundLayer> {
+		var images = CssText.layers(s.terms(BackgroundImage));
+		inline function list(p:CssProperty):Array<Array<CssTerm>>
+			return CssText.layers(s.terms(p));
+		var xs = list(BackgroundPositionX), ys = list(BackgroundPositionY), sizes = list(BackgroundSize), repeats = list(BackgroundRepeat),
+			attachments = list(BackgroundAttachment), origins = list(BackgroundOrigin), clips = list(BackgroundClip);
+		inline function at<T>(l:Array<T>, k:Int):T
+			return l[k % l.length];
+		return [for (k in 0...images.length) {
+			image: images[k].length == 1 && images[k][0].match(Keyword("none")) ? null : images[k][0],
+			positionX: at(xs, k),
+			positionY: at(ys, k),
+			size: at(sizes, k),
+			repeat: repeat(at(repeats, k)),
+			attachment: word(at(attachments, k)),
+			origin: word(at(origins, k)),
+			clip: word(at(clips, k))
+		}];
+	}
+
+	// (repeat-x as repeat no-repeat, one keyword as both)
+	static function repeat(t:Array<CssTerm>):Array<String> {
+		var w = [for (x in t) word([x])];
+		return switch w {
+			case ["repeat-x"]: ["repeat", "no-repeat"];
+			case ["repeat-y"]: ["no-repeat", "repeat"];
+			case [a]: [a, a];
+			case _: w;
+		}
+	}
+
+	// null for normal and none.
+	public static function content(t:Array<CssTerm>):Null<Array<CssContentItem>> {
+		if (t.length == 1 && t[0].match(Keyword("normal" | "none"))) return null;
+		var out = [];
+		for (x in t) switch x {
+			// (what follows is the alternative text)
+			case Delim("/"): break;
+			case Str(s): out.push(Text(s));
+			case Url(_, _): out.push(Image(x));
+			case Func("counter", args): out.push(Counter(name(args, 0), name(args, 1) ?? "decimal"));
+			case Func("counters", args): out.push(Counters(name(args, 0), string(args, 1) ?? "", name(args, 2) ?? "decimal"));
+			case Func("attr", args): out.push(Attribute(name(args, 0)));
+			case Keyword(q = "open-quote" | "close-quote" | "no-open-quote" | "no-close-quote"): out.push(Quote(q));
+			case Func("image" | "image-set" | "linear-gradient" | "radial-gradient" | "conic-gradient" | "repeating-linear-gradient" | "repeating-radial-gradient"
+				| "repeating-conic-gradient", _):
+				out.push(Image(x));
+			case _: out.push(Other(x));
+		}
+		return out;
+	}
+
+	// counter-reset's, counter-increment's or counter-set's counters.
+	public static function counters(t:Array<CssTerm>):Array<CssCounter> {
+		var out:Array<CssCounter> = [];
+		for (x in t) switch x {
+			case Ident(n): out.push({name: n, value: 0, reversed: false});
+			case Func("reversed", [Ident(n)]): out.push({name: n, value: 0, reversed: true});
+			case Number(v, _) if (out.length > 0): out[out.length - 1].value = Std.int(v);
+			case _:
+		}
+		return out;
+	}
+
+	// font-family's families: names, and generics as their keywords.
+	public static function families(t:Array<CssTerm>):Array<String>
+		return [for (l in CssText.layers(t)) [for (x in l) switch x {
+			case Str(s): s;
+			case Ident(n) | Keyword(n): n;
+			case _: CssText.term(x);
+		}].join(" ")];
+
+	static function word(t:Array<CssTerm>):String
+		return t.length == 1 ? switch t[0] {
+			case Keyword(k) | Ident(k): k;
+			case x: CssText.term(x);
+		} : CssText.join(t, CssText.term);
+
+	// (a function's k-th argument past its commas: a name)
+	static function name(args:Array<CssTerm>, k:Int):Null<String> {
+		var parts = CssText.layers(args);
+		return k < parts.length && parts[k].length == 1 ? switch parts[k][0] {
+			case Ident(n) | Keyword(n): n;
+			case _: null;
+		} : null;
+	}
+
+	static function string(args:Array<CssTerm>, k:Int):Null<String> {
+		var parts = CssText.layers(args);
+		return k < parts.length && parts[k].length == 1 ? switch parts[k][0] {
+			case Str(s): s;
+			case _: null;
+		} : null;
+	}
+}

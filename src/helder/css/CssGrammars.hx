@@ -1,7 +1,7 @@
 package helder.css;
 
 import haxe.Exception;
-import helder.css.CssData;
+import helder.css.CssTable;
 import helder.css.CssGrammar;
 
 using StringTools;
@@ -10,20 +10,20 @@ using StringTools;
 // generated data looked up: a property's definition, a named type's in its
 // context (webref's `for`: clip's rect() is not a shape's).
 class CssGrammars {
-	static var props:Null<Map<String, CssProperty>>;
-	static var types:Null<Map<String, Array<CssType>>>;
+	static var props:Null<Map<String, CssDefinition>>;
+	static var types:Null<Map<String, Array<CssTypeDefinition>>>;
 	static final parsed = new Map<String, CssGrammar>();
 
-	public static function property(name:String):Null<CssProperty> {
-		if (props == null) props = [for (p in CssData.properties) p.name => p];
+	public static function property(name:String):Null<CssDefinition> {
+		if (props == null) props = [for (p in CssTable.properties) p.name => p];
 		return props.get(name);
 	}
 
 	// (context: the property, then the `<type>`s and `name()`s the reference is inside)
-	public static function type(name:String, ?context:Array<String>):Null<CssType> {
+	public static function type(name:String, ?context:Array<String>):Null<CssTypeDefinition> {
 		if (types == null) {
 			types = new Map();
-			for (t in CssData.types) types.set(t.name, (types.exists(t.name) ? types.get(t.name) : []).concat([t]));
+			for (t in CssTable.types) types.set(t.name, (types.exists(t.name) ? types.get(t.name) : []).concat([t]));
 		}
 		var all = types.get(name);
 		if (all == null) return null;

@@ -147,36 +147,39 @@ pass):
 
 
 <!-- values -->
-17529 of 17787 required (98.5%): checkpoint 1's progress; 258 pending, our gaps; 9672 skipped, not checkpoint 1's.
+19641 of 19941 required (98.5%): checkpoint 1's progress; 300 pending, our gaps; 9737 skipped, not checkpoint 1's.
 
 | Pending, by the stage that clears them | Cases |
 | --- | --- |
-| layout | 234 |
-| values | 24 |
+| layout | 255 |
+| values | 45 |
 
 | Pending because | Cases |
 | --- | --- |
 | layout: grid tracks' sizes | 183 |
-| layout: getComputedStyle's resolved value (the used one) | 28 |
-| layout: percentages of the containing block | 17 |
+| layout: getComputedStyle's resolved value (the used one) | 39 |
+| layout: percentages of the containing block | 27 |
+| values: WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value) | 12 |
 | values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands | 9 |
 | layout: the font's own metrics | 6 |
+| values: WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest) | 6 |
 | values: Align 3's `[ first | last ]? && baseline` takes `baseline last` | 5 |
 | values: Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects | 5 |
+| values: WPT's computed gradients in cursor: its expected texts drop a parenthesis, and cursor's grammar has image-set() of URLs, not <image> | 3 |
 | values: rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed) | 3 |
 | values: WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed) | 1 |
 | values: its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right | 1 |
 
 | Skipped because | Cases |
 | --- | --- |
-| out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5028 |
+| out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5035 |
 | outdated fixture: css-parsing-tests leaves lab() and lch() unclamped (WPT and Color 4: L in its range, C at least 0) | 2760 |
-| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 590 |
+| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 614 |
 | outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept) | 488 |
 | outdated fixture: css-parsing-tests keeps rgb()'s fractions (WPT: rounded) | 468 |
+| out of scope: container query units (@container is deferred) | 85 |
 | out of scope: url()'s request modifiers and param() (Values 5) | 78 |
 | out of scope: Text 4's white-space-trim | 51 |
-| out of scope: container query units (@container is deferred) | 51 |
 | out of scope: Flexbox 2's balance | 38 |
 | out of scope: Transforms 2 (3D functions, percentages in scale()) | 28 |
 | out of scope: a draft's value past checkpoint 1's modules | 28 |
@@ -190,6 +193,7 @@ pass):
 | Module | Required | Pending | Skipped |
 | --- | --- | --- | --- |
 | colors | 4326 | 0 | 3735 |
+| compositing-2 | 43 | 0 | 0 |
 | css-align-3 | 738 | 5 | 18 |
 | css-backgrounds-3 | 1500 | 9 | 269 |
 | css-box-3 | 202 | 6 | 6 |
@@ -200,22 +204,33 @@ pass):
 | css-display-3 | 281 | 0 | 12 |
 | css-flexbox-1 | 251 | 0 | 51 |
 | css-fonts-4 | 803 | 6 | 86 |
+| css-forms-1 | 11 | 0 | 0 |
 | css-grid-1 | 1021 | 183 | 3 |
 | css-images-3 | 123 | 5 | 9 |
 | css-inline-3 | 149 | 3 | 3 |
 | css-lists-3 | 224 | 0 | 9 |
+| css-logical-1 | 582 | 39 | 6 |
 | css-masking-1 | 12 | 0 | 0 |
 | css-overflow-3 | 55 | 0 | 0 |
+| css-overflow-4 | 89 | 0 | 0 |
 | css-page-3 | 21 | 0 | 0 |
 | css-page-floats-3 | 31 | 0 | 0 |
 | css-position-3 | 125 | 0 | 131 |
+| css-scrollbars-1 | 30 | 0 | 0 |
 | css-sizing-3 | 369 | 13 | 218 |
+| css-sizing-4 | 40 | 0 | 0 |
 | css-tables-3 | 45 | 0 | 0 |
 | css-text-3 | 427 | 0 | 55 |
+| css-text-4 | 84 | 0 | 0 |
 | css-text-decor-3 | 281 | 1 | 11 |
+| css-text-decor-4 | 35 | 0 | 0 |
 | css-transforms-1 | 237 | 24 | 28 |
+| css-transforms-2 | 193 | 0 | 12 |
+| css-transitions-1 | 289 | 0 | 5 |
 | css-ui-3 | 114 | 0 | 0 |
+| css-ui-4 | 125 | 3 | 8 |
 | css-writing-modes-3 | 22 | 0 | 0 |
+| filter-effects-1 | 591 | 0 | 34 |
 <!-- /values -->
 
 ## Differential
@@ -262,6 +277,13 @@ natively (`bun run test css`: CssCascadeCheck; BLESS=1:
 cascade-manifest.json and the counts below; SHOW=1: each case that
 doesn't pass):
 
+This check and CssValuesCheck also run every value they read through #321's cascade as it
+was merged (`reference/`, frozen: its CssStyle, CssStyles, CssSheet and
+the rest renamed Ref*, the user agent's sheets with logical properties as
+physical ones, as #321 had them) and require the same text: the row's
+property on every row, every longhand on a page's first. Pages with
+logical properties are left out (#321 had none).
+
 - `fixtures/cascade.json`: every test of those directories with what
   became of it: read (its cases), a reftest (layout's), or out with why
   (a script that changes the page or the CSSOM: no JavaScript here;
@@ -275,11 +297,11 @@ doesn't pass):
   WPT's harness shows it (a screen of 800 by 600); each case required
   unless cascade-manifest.json's `pending` says why; a case that fails on
   a page past checkpoint 1 (revert-rule, @scope, @container, @property,
-  animation, shadow trees, ident(), logical properties) is skipped with
+  animation, shadow trees, ident(), vertical writing modes) is skipped with
   that reason, one that passes is required.
 
 <!-- cascade -->
-70 of 70 cases pass; skipped (their page is past checkpoint 1):
+71 of 71 cases pass; skipped (their page is past checkpoint 1):
 
 | Skipped because | Cases |
 | --- | --- |
@@ -287,7 +309,6 @@ doesn't pass):
 | out of scope: @scope (deferred) | 10 |
 | out of scope: Values 5's ident() | 2 |
 | out of scope: animation (a page is still) | 1 |
-| out of scope: logical properties and writing modes (deferred) | 1 |
 | out of scope: registered custom properties (@property) | 1 |
 
 The tests, by what became of them:
@@ -313,17 +334,18 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 
 ### Values
 
-44341 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 19398 rows for 216 in-scope properties from 738 files (368 duplicates dropped), 17358 calls on 421 properties out of scope (most: position-area 2925, filter 365, clip-path 341, shape-outside 271, backdrop-filter 260, offset-path 208, font-palette 180, will-change 171), and 296 not read statically:
+44341 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21617 rows for 297 in-scope properties from 877 files (432 duplicates dropped), 10472 calls on 340 properties out of scope (most: position-area 2925, clip-path 341, shape-outside 271, offset-path 208, font-palette 180, will-change 171, mask 159, animation-timing-function 125), and 307 not read statically:
 
 | Why not read | Calls |
 | --- | --- |
-| a name not bound to a literal | 262 |
+| a name not bound to a literal | 273 |
 | in a helper | 19 |
 | a loop over what it can't read | 14 |
 | undefined in a template | 1 |
 
 | Module | Properties | Valid | Invalid | Computed | Shorthand | Inherits |
 | --- | --- | --- | --- | --- | --- | --- |
+| compositing-2 | 2 | 18 | 5 | 18 | 0 | 2 |
 | css-align-3 | 15 | 245 | 242 | 240 | 22 | 12 |
 | css-backgrounds-3 | 48 | 489 | 729 | 485 | 43 | 32 |
 | css-box-3 | 10 | 97 | 75 | 26 | 8 | 8 |
@@ -334,22 +356,33 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 | css-display-3 | 2 | 117 | 57 | 117 | 0 | 2 |
 | css-flexbox-1 | 8 | 103 | 77 | 88 | 28 | 6 |
 | css-fonts-4 | 26 | 322 | 321 | 233 | 0 | 19 |
+| css-forms-1 | 1 | 2 | 7 | 2 | 0 | 0 |
 | css-grid-1 | 15 | 375 | 338 | 424 | 60 | 10 |
 | css-images-3 | 3 | 60 | 38 | 36 | 0 | 3 |
 | css-inline-3 | 5 | 59 | 34 | 58 | 0 | 4 |
 | css-lists-3 | 7 | 93 | 59 | 75 | 1 | 5 |
+| css-logical-1 | 52 | 226 | 192 | 168 | 12 | 29 |
 | css-masking-1 | 1 | 3 | 4 | 4 | 0 | 1 |
 | css-overflow-3 | 3 | 15 | 9 | 29 | 0 | 2 |
+| css-overflow-4 | 5 | 42 | 38 | 5 | 0 | 4 |
 | css-page-3 | 1 | 5 | 9 | 6 | 0 | 1 |
 | css-page-floats-3 | 2 | 11 | 5 | 11 | 0 | 4 |
 | css-position-3 | 7 | 97 | 103 | 46 | 4 | 6 |
+| css-scrollbars-1 | 2 | 11 | 17 | 0 | 0 | 2 |
 | css-sizing-3 | 7 | 222 | 282 | 89 | 0 | 7 |
+| css-sizing-4 | 1 | 14 | 11 | 14 | 0 | 1 |
 | css-tables-3 | 5 | 12 | 14 | 14 | 0 | 5 |
 | css-text-3 | 17 | 167 | 151 | 147 | 0 | 17 |
+| css-text-4 | 2 | 36 | 20 | 26 | 0 | 2 |
 | css-text-decor-3 | 11 | 128 | 61 | 95 | 1 | 8 |
+| css-text-decor-4 | 1 | 12 | 8 | 15 | 0 | 0 |
 | css-transforms-1 | 3 | 63 | 192 | 31 | 0 | 3 |
+| css-transforms-2 | 3 | 85 | 37 | 80 | 0 | 3 |
+| css-transitions-1 | 6 | 66 | 162 | 59 | 3 | 4 |
 | css-ui-3 | 5 | 44 | 44 | 23 | 1 | 2 |
+| css-ui-4 | 4 | 62 | 20 | 51 | 0 | 3 |
 | css-writing-modes-3 | 2 | 8 | 4 | 8 | 0 | 2 |
+| filter-effects-1 | 2 | 238 | 183 | 202 | 0 | 2 |
 
 ### Selectors
 
