@@ -41,7 +41,7 @@ class Seed {
 
 	public static function numberText(v:Float):String {
 		if (v == 0) return "0";
-		return Std.string(v);
+		return Numbers.text(v);
 	}
 
 	public static function text(v:Dynamic):String {
