@@ -175,12 +175,19 @@ class WebPreviews {
 			case "Host.ready":
 				var list:Array<Dynamic> = m.params.screens;
 				order = [for (x in list) screen(x.name)];
+				// (the new program's: a screen that throws again says so at once)
+				for (s in screens)
+					if (s.crashed) s.crashed = false;
 				// (a new program, a build's swap: what the last one was asked, never answered now; after
 				// the new one is told what to show, since what waited may ask the new one again)
 				var ask = pending.copy();
 				pending.clear();
 				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, null);
 				answerAll(ask, "the preview started again");
+			case "Host.failed":
+				// (a screen that threw in the worker: crashed, why; the others go on)
+				var s = order[Std.int(m.params.screen)];
+				if (s != null) onLog('studio: ${s.info.name} crashed: ${s.threw(m.params, project.dir)}');
 			case "Hot.patched":
 				for (s in screens)
 					s.patchedMs = m.params.ms;
