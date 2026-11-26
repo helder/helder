@@ -30,7 +30,8 @@ class PdfDoc {
 	public final zoom = new Cell(1.0);
 	// (the layout laid out again: a zoom, a view's new size; what places the pages reads it)
 	public final laid = new Cell(0);
-	public final scroll = new Cell({x: 0.0, y: 0.0});
+	// (quiet: a move out of sight, its overlay scrollbar not shown for it)
+	public final scroll = new Cell({x: 0.0, y: 0.0, quiet: false});
 	public final shown:Cell<Array<Int>> = new Cell([]);
 	public final rendered = new Cell(0);
 	// (a page's text landed: its PdfText's)
@@ -81,6 +82,26 @@ class PdfDoc {
 		laid(laid.value + 1);
 		var s = a == null ? {x: layout.clampX(0), y: layout.clampY(0)} : layout.placed(a, width / 2, 0);
 		moved(s.x, s.y);
+	}
+
+	// as it first opens, again (opened once more: its last page, zoom and
+	// place not kept): auto, at the top, page 1, quietly
+	public function start() {
+		fitted = true;
+		if (!sized) return;
+		layout.setZoom(layout.auto());
+		laid(laid.value + 1);
+		moved(layout.clampX(0), layout.clampY(0), true);
+	}
+
+	// a page typed (from 1): its index, clamped to the pages; null for
+	// anything but digits (a sign, a fraction, letters, nothing)
+	public static function typed(text:String, pages:Int):Null<Int> {
+		var t = StringTools.trim(text);
+		if (pages <= 0 || !~/^[0-9]+$/.match(t)) return null;
+		// (too long for an Int: past the last page)
+		var n = t.length > 9 ? pages : Std.parseInt(t);
+		return (n < 1 ? 1 : n > pages ? pages : n) - 1;
 	}
 
 	// the view scrolled there (its own: the wheel, a trackpad, its bars)
@@ -136,11 +157,11 @@ class PdfDoc {
 	public function lines(n:Float)
 		moved(x, layout.clampY(y + n * LINE));
 
-	function moved(sx:Float, sy:Float) {
+	function moved(sx:Float, sy:Float, quiet = false) {
 		x = sx;
 		y = sy;
 		zoom(layout.zoom);
-		scroll({x: sx, y: sy});
+		scroll({x: sx, y: sy, quiet: quiet});
 		update();
 	}
 

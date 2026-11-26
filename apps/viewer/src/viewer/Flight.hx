@@ -296,10 +296,17 @@ class Flight implements Markup {
 		}
 		if (!opening && clear.target > 0 && p.value < 0.4) clear.animate(t, 0, SHARPEN);
 		clear.sample(t);
-		place();
 		var still = !p.moving() && !moving(small) && !moving(large) && !clear.moving();
-		if (gesture == "" && still && !(opening && held(t))) land();
+		var done = gesture == "" && still && !(opening && held(t));
+		// (its end drawn a frame before it lands: at exactly where the file is, so that
+		// the file shown in its place moves by nothing, not the snapped spring's last pixel)
+		if (done && opening && f != null) set(large, f);
+		place();
+		if (!done) ending = false else if (ending) land() else ending = true;
 	}
+
+	// (its end drawn: it lands on the next frame)
+	var ending = false;
 
 	// (an image still decoding, opened: its thumbnail kept in its place a while)
 	// (a PDF's first page not drawn yet: the thumbnail kept over it a while, no blank page landed on)
@@ -312,6 +319,7 @@ class Flight implements Markup {
 
 	// (the flight over: the tile and the image shown again)
 	function land() {
+		ending = false;
 		image(null);
 		sharp(null);
 		flying("");
@@ -326,7 +334,22 @@ class Flight implements Markup {
 		// (lifted most half way, none at either end)
 		lift(Math.max(0, Math.min(1, 4 * k * (1 - k))));
 		var img = image.peek();
-		if (img != null) crop(cover(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height)), img.width, img.height));
+		if (img != null) {
+			// (the picture's place in the box: at the near end covering the
+			// tile, as its grid shows it (clipped: the whole tile's crop), at
+			// the far end the file's (a document's page clipped to its view:
+			// the whole page, its top where the view's top shows it); between,
+			// the one going to the other, each as the box's share)
+			var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+			function within(box:Rect, all:Null<Rect>, picture:Bool):Rect {
+				var f = all ?? box, c = picture ? cover(f.width, f.height, img.width, img.height) : {x: 0.0, y: 0.0, width: f.width, height: f.height};
+				var sx = w / Math.max(1, box.width), sy = h / Math.max(1, box.height);
+				return {x: (f.x - box.x + c.x) * sx, y: (f.y - box.y + c.y) * sy, width: c.width * sx, height: c.height * sy};
+			}
+			// (neither end clipped: covering the box as it is, uncropped as it takes the picture's shape)
+			crop(tileWhole == null && whole == null ? cover(w, h, img.width, img.height) : lerp(within(a, tileWhole, true), within(b, whole, whole == null),
+				Math.max(0, Math.min(1, k))));
+		}
 		sharpness(clear.value);
 		// (a document's page into its column: it gives way to it)
 		page(1 - Math.max(0, Math.min(1, k)));
@@ -540,9 +563,22 @@ class Flight implements Markup {
 			var b = n.windowBounds(), clip = n.parent;
 			while (clip != null && clip.style.overflow == Visible)
 				clip = clip.parent;
+			tileWhole = null;
 			if (clip == null) return b;
 			var c = clip.windowBounds(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-			return cx >= c.x && cx <= c.x + c.width && cy >= c.y && cy <= c.y + c.height ? b : null;
+			if (!(cx >= c.x && cx <= c.x + c.width && cy >= c.y && cy <= c.y + c.height)) return null;
+			// (the part its grid shows, above where the file's view ends (the
+			// status line's place): the picture leaves from what is seen, never
+			// over the status line; the rest the grid's own as it fades)
+			var s = stage;
+			if (s != null && s.ui != null && s.height > 0) {
+				var e = s.windowBounds();
+				c = clipped(c, {x: c.x, y: c.y, width: c.width, height: e.y + e.height - c.y}) ?? c;
+			}
+			var v = clipped(b, c);
+			if (v == null || near(v, b)) return b;
+			tileWhole = b;
+			return v;
 		}
 		return null;
 	}
@@ -557,6 +593,7 @@ class Flight implements Markup {
 	// a document's column, else the picture fitted to the view)
 	function fileAt(path:String, img:Null<Image>):Null<Rect> {
 		var s = stage;
+		whole = null;
 		if (s == null || s.ui == null || s.width <= 0 || !s.visible()) return null;
 		var b = s.windowBounds(), name = Browser.name(path);
 		if (FolderModel.isMarkdown(name)) {
@@ -565,7 +602,14 @@ class Flight implements Markup {
 		}
 		if (Viewer.isPdf(name)) {
 			var p = pageOf(s.parent, b);
-			if (p != null && x.viewer.folder.current == path) return p;
+			// (the part of the page its view shows: landed, nothing over it, nothing
+			// left to clip; the whole page kept for the picture's place in it)
+			if (p != null && x.viewer.folder.current == path) {
+				var v = s.parent.find("pdf-scroll"), c = v == null ? p : clipped(p, v.windowBounds());
+				if (c == null) return p;
+				whole = p;
+				return c;
+			}
 		} else if (decodedFor(path)) return imageAt(s, b);
 		// (its header's size: fitted, never above 100%)
 		var known = sizes.get(path);
@@ -612,6 +656,20 @@ class Flight implements Markup {
 		var f = Math.min(1, Math.min(b.width * d / c.imageWidth, b.height * d / c.imageHeight));
 		var w = c.imageWidth * f / d, h = c.imageHeight * f / d;
 		return {x: b.x + (b.width - w) / 2, y: b.y + (b.height - h) / 2, width: w, height: h};
+	}
+
+	// (the full page of a document landing clipped to its view, the full
+	// tile of one clipped by its grid, in the window's points; null: none)
+	var whole:Null<Rect> = null;
+	var tileWhole:Null<Rect> = null;
+
+	static function near(a:Rect, b:Rect):Bool
+		return Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01 && Math.abs(a.width - b.width) < 0.01 && Math.abs(a.height - b.height) < 0.01;
+
+	// (r within v; null: none of it)
+	static function clipped(r:Rect, v:Rect):Null<Rect> {
+		var x0 = Math.max(r.x, v.x), y0 = Math.max(r.y, v.y), x1 = Math.min(r.x + r.width, v.x + v.width), y1 = Math.min(r.y + r.height, v.y + v.height);
+		return x1 <= x0 || y1 <= y0 ? null : {x: x0, y: y0, width: x1 - x0, height: y1 - y0};
 	}
 
 	// (a PDF's page across the view's middle, else its first shown)

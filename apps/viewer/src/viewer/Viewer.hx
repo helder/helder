@@ -105,6 +105,10 @@ class Viewer {
 	// a file of a folder shown, the folder's files those (the browser's, in its order)
 	public function view(dir:String, names:Array<String>, name:String) {
 		closed = false;
+		// (the PDF kept since it was closed: as it first opens, on page 1; its
+		// open's picture is page 1, a remembered page jumped to after it)
+		var d = doc;
+		if (d != null && d.path == FolderModel.join(dir, name)) d.start();
 		gotoOpen(false);
 		setPage(0);
 		setPages(1);
@@ -199,10 +203,9 @@ class Viewer {
 
 	// the go-to-page card's number (from 1, clamped to the pages): taken, the card closed
 	public function goToTyped(typed:String):Bool {
-		var n = Std.parseInt(StringTools.trim(typed));
+		var n = PdfDoc.typed(typed, pages);
 		gotoOpen(false);
-		if (n == null) return false;
-		return toPage(Std.int(Math.max(1, Math.min(n, pages))) - 1);
+		return n != null && toPage(n);
 	}
 
 	public static function isPdf(name:String):Bool

@@ -211,6 +211,17 @@ class Ui extends ScrollHost {
 		requestFrame();
 	}
 
+	// n's offsets now where it rests: its overlay scrollbars not shown for
+	// the move to them (one made out of sight, a document put back at its
+	// start before it is shown again), nor still fading from a move before
+	public function rested(n:Node) {
+		var m = barMoved.get(n);
+		if (m == null) return;
+		m[0] = n.scrollX;
+		m[1] = n.scrollY;
+		m[2] = -1e9;
+	}
+
 	// how far n's overlay scrollbars show (0 to 1), its last moves noted; a frame asked for while they fade
 	function barShown(n:Node):Float {
 		var m = barMoved.get(n), t = now();

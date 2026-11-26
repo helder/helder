@@ -122,14 +122,17 @@ class ViewerView implements Markup {
 				return false;
 			});
 		});
-		// (the file over the status line, not under it: the media bar, the PDF's column, the picture all above it)
+		// (the file over the status line, not under it: the media bar, the PDF's column, the picture all above it;
+		// a PDF's page in flight: its column under it not shown, no second page beside it, laid out for
+		// the flight to land on; the status line fading in on the flight's last part, its place held from
+		// the open on (its text as it is known): the file's view one size from the flight's first frame)
 		return <view tag="stage" flexGrow={1} minHeight={0}>
 			<view tag="stage-content" flexGrow={1} minHeight={0}>
 				{image}
 				<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
 				<Show when={viewer.pdf() != null}>{() -> {
 					var d = viewer.pdf();
-					d == null ? null : PdfView.make(d);
+					d == null ? null : PdfView.make(d, () -> x.zoom.flying() != "" && x.zoom.image() != null, () -> if (image.ui != null) image.focus(false));
 				}}</Show>
 				<Show when={viewer.markdown() != null}>{() -> {
 					var d = viewer.markdown();
@@ -143,8 +146,8 @@ class ViewerView implements Markup {
 				</Show>
 				<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
 			</view>
-			<Show when={viewer.statusOn() && viewer.status() != ""}>
-				<view tag="status" flexShrink={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0" borderColor={Look.ref.line} flexDirection="row">
+			<Show when={viewer.statusOn()}>
+				<view tag="status" flexShrink={0} padding="6 12" opacity={Math.max(0, Math.min(1, (x.zoom.shown() - 0.6) / 0.4))} background={Look.ref.raised} borders="1 0 0 0" borderColor={Look.ref.line} flexDirection="row">
 					<text flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis" color={Look.ref.fg2}>{viewer.status}</text>
 				</view>
 			</Show>
