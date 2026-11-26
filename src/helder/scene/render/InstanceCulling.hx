@@ -87,7 +87,7 @@ class InstanceCulling implements RenderFeature implements RenderFeature.CullSour
 			var s = sets[k];
 			if (!takes(s)) continue;
 			var st = state(s);
-			st.prepare(s, device);
+			st.prepare(s, device, gpu);
 			if (gpu) {
 				if (!any) {
 					// (the views' blocks first: they go into the frame's ring as the pass records)
@@ -202,16 +202,19 @@ class CullState {
 	public var sphere = new Vec4(0, 0, 0, 0);
 	public var until = new Vec4(0, 0, 0, 0);
 	var device:Null<Device> = null;
+	var gpu = false;
 
 	public function new() {}
 
 	// its buffers for the set (made or grown to its capacity), its levels',
-	// its draws' arguments reset (the GPU's: before the compute pass)
-	public function prepare(s:InstancedMesh, device:Device) {
-		var gpu = device.has(Compute) && device.has(Indirect) && InstancedMesh.storage;
-		if (capacity < s.capacity || this.device != device) {
+	// its draws' arguments reset (the GPU's: before the compute pass). gpu:
+	// its culling's own, not the device's (a CPU one beside a GPU one culls
+	// into cpu: `bench light`'s OutsideBounds)
+	public function prepare(s:InstancedMesh, device:Device, gpu:Bool) {
+		if (capacity < s.capacity || this.device != device || this.gpu != gpu) {
 			dispose(device);
 			this.device = device;
+			this.gpu = gpu;
 			capacity = s.capacity;
 			var size = InstanceCulling.MAX_LEVELS * capacity * InstancedMesh.STRIDE;
 			out = device.createBuffer({size: size, usage: gpu ? Storage : Vertex});
