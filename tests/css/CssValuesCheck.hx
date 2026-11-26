@@ -1,0 +1,332 @@
+import haxe.DynamicAccess;
+import helder.css.CssGrammars;
+import helder.css.CssTerm;
+import helder.css.CssValues;
+import sys.FileSystem;
+import sys.io.File;
+
+using StringTools;
+
+// helder.css's values against WPT's cases (fixtures/values.json) and
+// css-parsing-tests' colours (fixtures/colors), natively (bun run test css).
+// values-manifest.json sorts the cases that don't pass:
+//
+// - skip: not checkpoint 1's to pass (out of scope: Color 5, drafts; an
+//   outdated fixture: css-parsing-tests where it and WPT disagree), each
+//   group with why; run, not gated;
+// - pending: our gaps, each group tagged with the stage that clears it
+//   (values: this layer; cascade; layout); a pending case that passes
+//   fails the run too, until BLESS=1 requires it;
+// - every other case is required to pass.
+//
+// BLESS=1 writes the manifest from the results and the counts in
+// tests/css/README.md; SHOW=1 prints each case that doesn't pass.
+//
+// valid: the value parses and serializes to the expected text (any of a
+// list; numbers within the row's epsilon); invalid: it doesn't parse;
+// computed: it parses and computes to the expected text (no layout, the
+// default context: 16px fonts, an 800x600 viewport, black text); inherits:
+// the table's inherited flag, the initial value computed; colors: the
+// colour computed, or rejected where the expected is null.
+class CssValuesCheck {
+	static final here = "tests/css";
+	static final rows = new Array<{key:String, module:String, ok:Bool, why:String, want:String, skip:Null<String>}>();
+	static var want = "";
+
+	static function main() {
+		var bless = Sys.getEnv("BLESS") == "1", show = Sys.getEnv("SHOW") == "1";
+		var manifestFile = '$here/values-manifest.json';
+		var manifest:Dynamic = FileSystem.exists(manifestFile) ? haxe.Json.parse(File.getContent(manifestFile)) : {schema: 2, skip: {}, pending: {}};
+		// (the manifest groups its cases by why; a case's own detail is the check's, SHOW=1)
+		var pending = new Map<String, String>();
+		var groups:DynamicAccess<Array<String>> = manifest.pending ?? {};
+		for (why => keys in groups) for (k in keys) pending.set(k, why);
+
+		var values:Dynamic = haxe.Json.parse(File.getContent('$here/fixtures/values.json'));
+		var props:DynamicAccess<DynamicAccess<Array<Array<Dynamic>>>> = values.properties;
+		var names = props.keys();
+		names.sort(Reflect.compare);
+		for (name in names) {
+			var p = CssGrammars.property(name);
+			var module = p == null ? "css-variables-1" : p.module;
+			var kinds = props.get(name);
+			for (r in kinds.get("valid") ?? []) valid(name, module, r);
+			for (r in kinds.get("invalid") ?? []) invalid(name, module, r);
+			for (r in kinds.get("computed") ?? []) computed(name, module, r);
+			for (r in kinds.get("shorthand") ?? [])
+				add('shorthand $name: ${r[0]}', module, false, "cascade: shorthands expand to their longhands; not expanded", scope(name, r[0]));
+			for (r in kinds.get("inherits") ?? []) inherits(name, module, r);
+		}
+		var colorFiles = [for (f in FileSystem.readDirectory('$here/fixtures/colors')) if (f.endsWith(".json")) f];
+		colorFiles.sort(Reflect.compare);
+		for (f in colorFiles) {
+			var pairs:Array<Dynamic> = haxe.Json.parse(File.getContent('$here/fixtures/colors/$f'));
+			var k = 0;
+			while (k + 1 < pairs.length) {
+				color(f, pairs[k], pairs[k + 1]);
+				k += 2;
+			}
+		}
+
+		var failures = [], fixed = [], nextPending = new Map<String, String>(), nextSkip = new Map<String, String>();
+		var counts = new Map<String, {pass:Int, pending:Int, skip:Int}>();
+		for (r in rows) {
+			var c = counts.get(r.module) ?? {pass: 0, pending: 0, skip: 0};
+			counts.set(r.module, c);
+			var skip = r.skip ?? (r.ok ? null : outdated(r.why));
+			if (skip != null) {
+				c.skip++;
+				nextSkip.set(r.key, skip);
+			} else if (r.ok) {
+				c.pass++;
+				if (pending.exists(r.key)) fixed.push(r.key);
+			} else {
+				c.pending++;
+				nextPending.set(r.key, r.why.split("; ")[0]);
+				if (!pending.exists(r.key)) failures.push('${r.key}: ${r.why}');
+			}
+			if (show && !r.ok) Sys.println('  ${r.key}: ${skip ?? r.why}${r.want != "" ? " (want " + r.want + ")" : ""}');
+		}
+		var t = totals(counts);
+		Sys.println('css values: ${t.pass} required pass of ${t.pass + t.pending} (${t.pending} pending, ${t.skip} skipped); ${failures.length} required failing, ${fixed.length} pending passing');
+		if (bless) {
+			File.saveContent(manifestFile, '{\n\t"schema": 2,\n\t"skip": ${groupsText(nextSkip)},\n\t"pending": ${groupsText(nextPending)}\n}\n');
+			report(counts, nextPending, nextSkip);
+			return;
+		}
+		for (f in failures.slice(0, 40)) Sys.println('  required: $f');
+		for (f in fixed.slice(0, 40)) Sys.println('  passes, still pending (BLESS=1): $f');
+		if (failures.length > 0 || fixed.length > 0) Sys.exit(1);
+	}
+
+	static function add(key:String, module:String, ok:Bool, why:String, skip:Null<String>) {
+		var k = key, n = 2;
+		while (seen.exists(k)) k = '$key #${n++}';
+		seen.set(k, true);
+		rows.push({key: k, module: module, ok: ok, why: why, want: want, skip: skip});
+		want = "";
+	}
+
+	static final seen = new Map<String, Bool>();
+
+	static function valid(name:String, module:String, r:Array<Dynamic>) {
+		var custom = name == "--*";
+		var prop:String = custom ? r[0] : name, value:String = r[custom ? 1 : 0], expected:Dynamic = r[custom ? 2 : 1], eps:Null<Float> = r[custom ? 4 : 3];
+		var key = 'valid $prop: $value';
+		var v = CssValues.parse(prop, value);
+		want = haxe.Json.stringify(expected ?? value);
+		if (v == null) return add(key, module, false, reason(prop, value, "rejected"), scope(prop, value));
+		var got = CssValues.serialize(prop, v);
+		var ok = matches(got, expected ?? value, eps);
+		add(key, module, ok, ok ? "" : reason(prop, value, 'serializes as ${haxe.Json.stringify(got)}'), scope(prop, value));
+	}
+
+	static function invalid(name:String, module:String, r:Array<Dynamic>) {
+		var custom = name == "--*";
+		var prop:String = custom ? r[0] : name, value:String = r[custom ? 1 : 0];
+		var v = CssValues.parse(prop, value);
+		add('invalid $prop: $value', module, v == null, v == null ? "" : reason(prop, value, 'accepted as ${haxe.Json.stringify(CssValues.serialize(prop, v))}'),
+			scope(prop, value));
+	}
+
+	static function computed(name:String, module:String, r:Array<Dynamic>) {
+		var custom = name == "--*";
+		var prop:String = custom ? r[0] : name, value:String = r[custom ? 1 : 0], expected:Dynamic = r[custom ? 2 : 1], eps:Null<Float> = r[custom ? 4 : 3];
+		var key = 'computed $prop: $value';
+		var v = CssValues.parse(prop, value);
+		want = haxe.Json.stringify(expected ?? value);
+		if (v == null) return add(key, module, false, reason(prop, value, "rejected"), scope(prop, value));
+		var got = CssValues.compute(prop, v);
+		if (got == null) return add(key, module, false, reason(prop, value, "no computed value", true), scope(prop, value));
+		var ok = matches(got, expected ?? value, eps);
+		add(key, module, ok, ok ? "" : reason(prop, value, 'computes to ${haxe.Json.stringify(got)}', true), scope(prop, value));
+	}
+
+	static function inherits(name:String, module:String, r:Array<Dynamic>) {
+		var p = CssGrammars.property(name);
+		var key = 'inherits $name';
+		if (p == null) return add(key, module, false, "values: not in the table; none", null);
+		if (p.inherited != r[0]) return add(key, module, false, 'values: the table\'s inherited differs; ${p.inherited}', null);
+		var initial:Dynamic = r[1];
+		if (initial == null) return add(key, module, true, "", null);
+		want = haxe.Json.stringify(initial);
+		var got = CssValues.compute(name, Wide("initial"));
+		var ok = got != null && matches(got, initial, null);
+		add(key, module, ok, ok ? "" : got == null ? 'cascade: an initial value in prose (the used value, the user agent\'s); ${haxe.Json.stringify(p.initial)}' : reason(name,
+			p.initial, 'initial computes to ${haxe.Json.stringify(got)}', true), null);
+	}
+
+	static function color(file:String, input:String, expected:Null<String>) {
+		var key = 'colors $file: $input';
+		var v = CssValues.parse("color", input);
+		if (expected == null)
+			return add(key, "colors", v == null, v == null ? "" : reason("color", input, 'accepted as ${haxe.Json.stringify(CssValues.serialize("color", v))}'),
+				scope("color", input));
+		want = expected;
+		if (v == null) return add(key, "colors", false, reason("color", input, "rejected"), scope("color", input));
+		var got = CssValues.compute("color", v) ?? "";
+		var ok = matches(got, expected, 1e-3);
+		// (where css-parsing-tests and WPT disagree, WPT is the gate: it clamps lab()'s L, lch()'s C, rounds rgb(), keeps none)
+		var why = if (ok) "" else if (~/^(ok)?l(ab|ch)\(/.match(expected) && ~/^(ok)?l(ab|ch)\(/.match(got))
+			'outdated fixture: css-parsing-tests leaves lab() and lch() unclamped (WPT and Color 4: L in its range, C at least 0); computes to ${haxe.Json.stringify(got)}'
+		else if (StringTools.startsWith(expected, "rgb") && ~/^(hsl|hwb|color\(srgb)/.match(got) && got.indexOf("none") >= 0)
+			'outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept); computes to ${haxe.Json.stringify(got)}'
+		else if (StringTools.startsWith(expected, "rgb") && near(got, expected, 0.5))
+			'outdated fixture: css-parsing-tests keeps rgb()\'s fractions (WPT: rounded); computes to ${haxe.Json.stringify(got)}'
+		else reason("color", input, 'computes to ${haxe.Json.stringify(got)}', true);
+		add(key, "colors", ok, why, scope("color", input));
+	}
+
+	// (a case out of checkpoint 1's scope, by its value, whether it passes or not)
+	static function scope(prop:String, value:String):Null<String> {
+		var v = value.toLowerCase();
+		if (~/color-mix\(|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(\s*from\b|light-dark\(|contrast-color\(|device-cmyk\(|\balpha\(|color-layers\(|color\(--/.match(v))
+			return "out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4";
+		if (~/\b(sibling-index|sibling-count|random|random-item|progress|if|calc-size|anchor|anchor-size|inherit|paint|ident)\(|--[a-z][\w-]*\(|-webkit-image-set\(/.match(v)
+			|| prop != "content" && ~/\battr\(/.match(v))
+			return "out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set())";
+		if (~/url\([^)]*\b(param|cross-origin|crossorigin|integrity|referrer-policy|referrerpolicy)\(/.match(v))
+			return "out of scope: url()'s request modifiers and param() (Values 5)";
+		if (prop == "transform" && ~/3d\(|[xyz]\(|z\(|perspective\(|scale[xyz]?\([^)]*%/i.match(v) && ~/3d\(|scalez\(|translatez\(|rotate[xyz]\(|perspective\(|%/.match(v))
+			return "out of scope: Transforms 2 (3D functions, percentages in scale())";
+		if (prop == "display" && v.indexOf("grid-lanes") >= 0) return "out of scope: Grid 3's grid-lanes (masonry)";
+		if (prop == "flex-wrap" && v.indexOf("balance") >= 0) return "out of scope: Flexbox 2's balance";
+		if (prop == "object-fit" && v.trim().indexOf(" ") > 0) return "out of scope: Images 5's object-fit pairs";
+		if (DRAFT.exists(prop) && DRAFT[prop].match(v)) return 'out of scope: a draft\'s value past checkpoint 1\'s modules';
+		return null;
+	}
+
+	// (values of drafts past checkpoint 1's levels, by property)
+	static final DRAFT:Map<String, EReg> = [
+		"opacity" => ~/^auto$/, "quotes" => ~/match-parent/, "text-emphasis-position" => ~/^auto$/, "align-items" => ~/(un)?safe normal/,
+		"justify-items" => ~/(un)?safe normal/
+	];
+
+	// (a failing colour of an outdated fixture: skipped)
+	static function outdated(why:String):Null<String>
+		return why.startsWith("outdated fixture:") ? why.split("; ")[0] : null;
+
+	// Why a case fails, tagged with the stage that clears it: cascade (the
+	// test's own context, shorthands' longhands, inheritance), layout, or
+	// values (this layer: a written reason for each group left).
+	static function reason(prop:String, value:String, got:String, computed = false):String {
+		var p = CssGrammars.property(prop);
+		var v = value.toLowerCase();
+		var need = if (p != null && p.longhands.length > 0) "cascade: shorthands serialize from their longhands"
+		else if (computed && ~/^(inherit|unset|revert|revert-layer)$/.match(v.trim())) "cascade: inherit, the parent's value"
+		else if (computed && (prop == "text-shadow" || prop == "box-shadow") && got.indexOf("rgb(0, 0, 0)") >= 0 && !~/rgb|#|[a-z]{3,} \d|\d [a-z]{3,}/.match(v)) "cascade: currentcolor, the element's color"
+		else if (computed && prop == "text-emphasis-style") "cascade: the writing mode's default shape"
+		else if (computed && v.indexOf("from-font") >= 0) "layout: the font's own metrics"
+		else if (computed && prop == "justify-items" || prop == "justify-items" && got.indexOf("legacy") >= 0) "cascade: justify-items' legacy, the parent's"
+		else if (computed && ~/^(width|height)$/.match(prop) && got.indexOf("auto") >= 0) "layout: getComputedStyle's resolved value (the used one)"
+		else if (computed && ~/^grid-template|^grid-auto/.match(prop)) "layout: grid tracks' sizes"
+		else if (computed && ~/^(line-height|transform-origin|perspective-origin)$/.match(prop)) "layout: getComputedStyle's resolved value (the used one)"
+		else if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
+		else if (computed && v.indexOf("url(") >= 0) "cascade: url() made absolute against the document"
+		else if (computed && ~/var\(|env\(/.match(v)) "cascade: var() and env() substituted"
+		else if (computed && ~/currentcolor/.match(v)) "cascade: currentcolor, the element's color"
+		else if (computed && ~/\d(em|ex|ch|ic|cap|lh|rlh|vw|vh|vmin|vmax|cq[a-z]*|%)(?![a-z])/.match(v)) "cascade: the test's own sizes (font size, container)"
+		else if (WRITTEN.exists(prop)) 'values: ${WRITTEN[prop]}'
+		else "values: differs";
+		return '$need; $got';
+	}
+
+	// (what is left in this layer, by property)
+	static final WRITTEN:Map<String, String> = [
+		"align-content" => "Align 3's `[ first | last ]? && baseline` takes `baseline last`; WPT and browsers don't",
+		"align-items" => "Align 3's `[ first | last ]? && baseline` takes `baseline last`; WPT and browsers don't",
+		"align-self" => "Align 3's `[ first | last ]? && baseline` takes `baseline last`; WPT and browsers don't",
+		"justify-items" => "Align 3's `[ first | last ]? && baseline` takes `baseline last`; WPT and browsers don't",
+		"justify-self" => "Align 3's `[ first | last ]? && baseline` takes `baseline last`; WPT and browsers don't",
+		"image-orientation" => "Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects",
+		"box-shadow-offset" => "box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands",
+		"box-shadow-blur" => "box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands",
+		"box-shadow-spread" => "box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands",
+		"box-shadow-color" => "box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands",
+		"transform" => "WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed)",
+		"color" => "rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed)",
+		"text-emphasis-position" => "its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right"
+	];
+
+	// The text against the expected one (or any of a list): numbers within eps when there is one.
+	static function matches(got:String, expected:Dynamic, eps:Null<Float>):Bool {
+		var list:Array<String> = Std.isOfType(expected, Array) ? expected : [expected];
+		for (e in list) if (got == e || eps != null && near(got, e, eps)) return true;
+		return false;
+	}
+
+	static function near(a:String, b:String, eps:Float):Bool {
+		var num = ~/-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/gi;
+		var xs = [], ys = [];
+		var sa = num.map(a, m -> {
+			xs.push(Std.parseFloat(m.matched(0)));
+			"#";
+		}), sb = num.map(b, m -> {
+			ys.push(Std.parseFloat(m.matched(0)));
+			"#";
+		});
+		if (sa != sb || xs.length != ys.length) return false;
+		for (k in 0...xs.length) if (Math.abs(xs[k] - ys[k]) > eps) return false;
+		return true;
+	}
+
+	static function totals(counts:Map<String, {pass:Int, pending:Int, skip:Int}>):{pass:Int, pending:Int, skip:Int} {
+		var t = {pass: 0, pending: 0, skip: 0};
+		for (c in counts) {
+			t.pass += c.pass;
+			t.pending += c.pending;
+			t.skip += c.skip;
+		}
+		return t;
+	}
+
+	static function groupsText(cases:Map<String, String>):String {
+		var by = new Map<String, Array<String>>();
+		for (k => why in cases) {
+			if (!by.exists(why)) by.set(why, []);
+			by[why].push(k);
+		}
+		var whys = [for (w in by.keys()) w];
+		whys.sort(Reflect.compare);
+		var b = new StringBuf();
+		b.add("{\n");
+		for (n in 0...whys.length) {
+			var keys = by[whys[n]];
+			keys.sort(Reflect.compare);
+			b.add('\t\t${haxe.Json.stringify(whys[n])}: [\n');
+			for (j in 0...keys.length) b.add('\t\t\t${haxe.Json.stringify(keys[j])}${j + 1 < keys.length ? "," : ""}\n');
+			b.add('\t\t]${n + 1 < whys.length ? "," : ""}\n');
+		}
+		b.add("\t}");
+		return b.toString();
+	}
+
+	static function tally(cases:Map<String, String>, key:String->String):Array<{name:String, n:Int}> {
+		var m = new Map<String, Int>();
+		for (why in cases) m.set(key(why), (m.get(key(why)) ?? 0) + 1);
+		var out = [for (k => n in m) {name: k, n: n}];
+		out.sort((a, b) -> b.n - a.n != 0 ? b.n - a.n : Reflect.compare(a.name, b.name));
+		return out;
+	}
+
+	static function report(counts:Map<String, {pass:Int, pending:Int, skip:Int}>, pending:Map<String, String>, skip:Map<String, String>) {
+		var t = totals(counts);
+		var b = new StringBuf();
+		b.add('${t.pass} of ${t.pass + t.pending} required (${Math.round(t.pass * 1000 / (t.pass + t.pending)) / 10}%): checkpoint 1\'s progress; ${t.pending} pending, '
+			+ 'our gaps; ${t.skip} skipped, not checkpoint 1\'s.\n\n');
+		b.add("| Pending, by the stage that clears them | Cases |\n| --- | --- |\n");
+		for (s in tally(pending, w -> w.split(":")[0])) b.add('| ${s.name} | ${s.n} |\n');
+		b.add("\n| Pending because | Cases |\n| --- | --- |\n");
+		for (s in tally(pending, w -> w)) b.add('| ${s.name} | ${s.n} |\n');
+		b.add("\n| Skipped because | Cases |\n| --- | --- |\n");
+		for (s in tally(skip, w -> w)) b.add('| ${s.name} | ${s.n} |\n');
+		var modules = [for (m in counts.keys()) m];
+		modules.sort(Reflect.compare);
+		b.add("\n| Module | Required | Pending | Skipped |\n| --- | --- | --- | --- |\n");
+		for (m in modules) b.add('| $m | ${counts[m].pass} | ${counts[m].pending} | ${counts[m].skip} |\n');
+		var readme = File.getContent('$here/README.md');
+		var start = readme.indexOf("<!-- values -->"), end = readme.indexOf("<!-- /values -->");
+		if (start < 0 || end < 0) return;
+		File.saveContent('$here/README.md', readme.substr(0, start) + "<!-- values -->\n" + b.toString() + readme.substr(end));
+	}
+}

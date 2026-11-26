@@ -30,6 +30,11 @@
     "css-grid-1": ["grid", "grid-template", "grid-template-columns", "grid-template-rows", "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow", "grid-area", "grid-row", "grid-column", "grid-row-start", "grid-row-end", "grid-column-start", "grid-column-end"]
   },
   "overrides": {
+    "text-justify": {
+      "syntax": "[ auto | none | inter-word | inter-character | ruby | distribute ] || no-compress",
+      "why": "Text 3 keeps distribute, a legacy value that computes to inter-character, in prose",
+      "href": "https://drafts.csswg.org/css-text-3/#valdef-text-justify-distribute"
+    },
     "string-set": {
       "syntax": "[ <custom-ident> <content-list> ]# | none",
       "why": "webref has CSS Content 3's string-set, strings only; GCPM 3's takes a content list (content(), counter(), attr())",
