@@ -849,17 +849,20 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	function unobserve(o:Node<Dynamic>) {
 		if (observers == null || !observers.remove(o) || observers.length > 0) return;
-		// (a free memo nothing observes lets go of its sources, each told in
-		// turn: read again it computes again, taking them back; Solid 2's)
-		var first:Null<haxe.Exception> = null;
-		if (kind == COMPUTED && free && !writable && !computing && sources != null) {
-			var ss = sources;
-			sources = null;
-			state = DIRTY;
-			try unlinkAll(ss) catch (e:haxe.Exception) first = e;
-		}
+		// (a free memo nothing observes lets go of its sources at the flush's
+		// end, each told in turn (Scheduler.releases): read again it computes
+		// again, taking them back; Solid 2's)
+		if (kind == COMPUTED && free && !writable && sources != null) Scheduler.enqueueRelease(this);
 		if (unobserved != null) unobserved();
-		if (first != null) throw first;
+	}
+
+	// (still unobserved at the flush's end: its sources let go; Scheduler.releases)
+	function unlinkSources() {
+		if (disposed || computing || sources == null || observers != null && observers.length > 0) return;
+		var ss = sources;
+		sources = null;
+		state = DIRTY;
+		unlinkAll(ss);
 	}
 
 	// (applies its second half; its error the nearest boundary's, else the flush's)

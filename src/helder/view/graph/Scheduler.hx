@@ -74,7 +74,7 @@ class Scheduler {
 
 	static function loop() {
 		while (writes.length > 0 || landings.length > 0 || memos.length > 0 || renders.length > 0 || effects.length > 0
-			|| applies.length > 0) {
+			|| applies.length > 0 || releases.length > 0) {
 			if (landings.length > 0) {
 				var ls = landings;
 				landings = landingsTaken;
@@ -133,8 +133,28 @@ class Scheduler {
 				runApplies(batch);
 				giveBatch(batch);
 			}
+			// (free memos nothing read again by the flush's end let go of their
+			// sources: one dropped and read again within a run, a component's
+			// memo made anew, keeps them and its value)
+			if (releases.length > 0 && writes.length == 0 && landings.length == 0 && memos.length == 0 && renders.length == 0
+				&& effects.length == 0 && applies.length == 0) {
+				var rs = releases, first:Null<haxe.Exception> = null;
+				releases = releasesTaken;
+				releasesTaken = rs;
+				for (n in rs)
+					try n.unlinkSources() catch (e:haxe.Exception) if (first == null) first = e;
+				rs.resize(0);
+				if (first != null) throw first;
+			}
 		}
 	}
+
+	// (a free memo that lost its last reader: let go at the flush's end, unless read again)
+	static var releases:Array<Node<Dynamic>> = [];
+	static var releasesTaken:Array<Node<Dynamic>> = [];
+
+	static function enqueueRelease(n:Node<Dynamic>)
+		if (!releases.contains(n)) releases.push(n);
 
 	public static function flushWith<T>(fn:Void->T):T {
 		holding++;
