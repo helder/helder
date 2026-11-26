@@ -18,7 +18,9 @@ fs.rmSync(dir,{recursive:true,force:true});fs.mkdirSync(`${dir}/js`,{recursive:t
 fs.writeFileSync(`${dir}/js/package.json`,'{"type":"module"}');
 // (under a slot of the machine's job limit)
 function run(cmd,args){const release=take();try{const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000});if(r.error)throw r.error;return r;}finally{release?.();}}
-const compiler=run(process.execPath,['src/helder/compiler/build.mjs','--quiet']);
+// (not under run's slot and time limit: build.mjs takes a slot of its own, and
+// waiting for it while holding one could outlast the limit, as run.mjs builds)
+const compiler=spawnSync(process.execPath,['src/helder/compiler/build.mjs','--quiet'],{encoding:'utf8'});
 assert.equal(compiler.status,0,compiler.stderr);
 const helder=compiler.stdout.trim();
 const files=fs.readdirSync(T).filter(f=>f.endsWith('.ts')).sort();
