@@ -5,7 +5,7 @@ import lanes.Tools.*;
 class Css {
 	public static final LANES:Array<Lane> = [
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
-		{name: "css", about: "helder.css's property table, grammars, values and syntax against WPT's fixtures and css-parsing-tests", run: css}
+		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors (parsed, matched on helder.dom) against WPT's fixtures and css-parsing-tests", run: css}
 	];
 
 	static function css() {
@@ -17,6 +17,8 @@ class Css {
 		// (BLESS=1: values-manifest.json's skipped and pending cases from the results)
 		exe("bin/css/CssValuesCheck", cps(["src", "tests/css"]).concat(["-main", "CssValuesCheck"]));
 		run(exePath("bin/css/CssValuesCheck", HOST), []);
+		exe("bin/css/CssSelectorsCheck", cps(["src", "tests/css"]).concat(["-main", "CssSelectorsCheck"]));
+		run(exePath("bin/css/CssSelectorsCheck", HOST), []);
 	}
 
 	// (not headless: it fetches the sheets, tests/css/sheets.mjs)
