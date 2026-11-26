@@ -312,6 +312,21 @@ function tests() {
 		equals(asks, 2);
 		equals(shown, [2]);
 	}));
+	test("a write not flushed when its store is cleared is let go with it", () -> two((a, b) -> {
+		var asks = 0;
+		var async = memo(() -> {
+			asks++;
+			count();
+			(new Later<Int>() : Dynamic);
+		});
+		a.run(() -> count(5));
+		a.clear();
+		a.run(() -> try async() catch (_:Dynamic) null);
+		var made = asks;
+		flush();
+		a.run(() -> try async() catch (_:Dynamic) null);
+		equals([asks - made, a.run(() -> count())], [0, 0]);
+	}));
 	test("a signal made in a store: its home there, the default seeing through to it", () -> two((a, b) -> {
 		var local = a.run(() -> signal(1));
 		local(2);

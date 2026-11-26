@@ -262,6 +262,14 @@ class Scheduler {
 		if (held.remove(b) && !held.contains(a)) held.push(a);
 	}
 
+	// (a store let go or cleared: its writes not flushed yet dropped)
+	static function forget(store:Atoms) {
+		var rest = 0;
+		for (n in writes)
+			if (n.home == store) n.hasPending = false else writes[rest++] = n;
+		writes.resize(rest);
+	}
+
 	static function enqueueWrite(n:Node<Dynamic>) {
 		writes.push(n);
 		ask();

@@ -78,6 +78,9 @@ class Atoms {
 
 	function drop() {
 		generation++;
+		// (what was written in it and not flushed yet is let go with it: flushed
+		// later, it would count as a flush of the store it is now)
+		Scheduler.forget(this);
 		root.dispose();
 		nodes = new haxe.ds.ObjectMap();
 	}
@@ -111,7 +114,9 @@ class Atoms {
 		});
 	}
 
+	public static var debug = false;
 	function make<T>(atom:Node<T>):Node<T> {
+		if (debug && name == "7") trace('DBG make in 7: kind ${atom.kind} ' + haxe.CallStack.toString(haxe.CallStack.callStack()).split("\n").slice(1, 12).join(" | "));
 		if (disposed) throw new Owner.GraphError('a store let go ($name) read or written');
 		var n = atom.copy(this);
 		nodes.set(cast atom, cast n);

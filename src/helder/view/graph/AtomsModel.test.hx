@@ -297,16 +297,30 @@ class Seen {
 
 	public function new() {}
 
-	// a store's log, each flush's entries sorted
+	// a store's log: what each effect showed (its applies, cleanups and
+	// errors, an entry the same as that effect's last of its kind left out),
+	// each flush's entries sorted. (An effect applies each time it computes
+	// again, even to an equal value, and the order the eager computations of
+	// a flush run in is the order their sources' readers subscribed: a store
+	// makes its nodes as they are first read, a fresh graph as written, so
+	// one may compute an effect again where the other does not. What it shows
+	// is the same; how often it re-ran is not the contract)
 	public function log(store:Int):Array<String> {
-		var l = logs[store].copy();
+		var last = new Map<String, String>(), l = [];
+		for (entry in logs[store]) {
+			var at = entry.indexOf(": "), name = entry.substring(5, at), v = entry.substr(at + 2);
+			var key = name + (StringTools.startsWith(v, "cleanup") ? " cleanup" : StringTools.startsWith(v, "error") ? " error" : "");
+			if (last.get(key) == v) continue;
+			last.set(key, v);
+			l.push(entry);
+		}
 		l.sort(Reflect.compare);
 		return l;
 	}
 
 	public function ask(store:Int, memo:Int, of:Int):Later<Int> {
 		var l = new Later<Int>();
-		asks[store].push({later: l, of: of, memo: memo});
+		if (store >= 0) asks[store].push({later: l, of: of, memo: memo});
 		return l;
 	}
 
@@ -342,14 +356,16 @@ function build(spec:ModelSpec, seen:Seen, store:Void->Int, ?owner:Owner):Built {
 	b.nodes.push(() -> sink());
 	runWithOwner(owner, () -> for (k => e in spec.effects) {
 		var n = b.nodes[e.node];
-		var log = (v:Dynamic) -> seen.logs[store()].push(StringTools.lpad('${seen.round}', "0", 4) + ' e$k: $v');
+		var log = (v:Dynamic) -> if (store() >= 0) seen.logs[store()].push(StringTools.lpad('${seen.round}', "0", 4) + ' e$k: $v');
 		var compute = (_ -> read(n, e.how) : Compute<Dynamic>), apply = ((v:Dynamic, _) -> {
 			log(v);
-			if (e.writes && Std.isOfType(v, Int)) sink(v);
+			// (added, not set: effects of one flush run in either order, its sum the same)
+			if (e.writes && Std.isOfType(v, Int)) sink(x -> x + (v : Int));
 			e.cleanup ? () -> log('cleanup $v') : null;
 		} : Apply<Dynamic>);
 		var error = (x:Dynamic) -> log('error $x');
 		if (e.render) renderEffect(compute, apply, error) else effect(compute, apply, error);
+
 	});
 	return b;
 }
@@ -361,29 +377,36 @@ function model(spec:ModelSpec) {
 	var top = build(spec, real, () -> Atoms.current == null ? 0 : Std.parseInt(Atoms.current.name));
 	var stores:Array<Null<Atoms>> = [for (_ in 0...STORES) null];
 	// (the model: a fresh graph a store, made at home in a store of its own
-	// (as a screen's component's), its effects owned by a root of its own;
-	// its writes and answers queued, taken by a flush of its own)
-	var copy:Array<Null<{built:Built, dispose:Void->Void, queued:Array<Void->Void>, store:Atoms}>> = [for (_ in 0...STORES) null];
+	// (as a screen's component's), its effects owned by a root of its own.
+	// Its writes and answers are made as the real's are, and one flush takes
+	// both: each store's are its own transaction anyway (Scheduler). Flushing a
+	// copy apart, after the real's, ran what was queued for it (a read's ask,
+	// its pending's propagation) in a flush before its own writes, where the
+	// real's ran in one: a store's semantics the model did not have)
+	var copy:Array<Null<{built:Built, dispose:Void->Void, store:Atoms}>> = [for (_ in 0...STORES) null];
 	function fresh(k:Int) {
 		// (the real's top-level effects not made again in it: it has its own)
 		var recorded = @:privateAccess Atoms.effects;
 		@:privateAccess Atoms.effects = [];
-		var home = new Atoms('model $k'), d:Void->Void = null;
+		var home = new Atoms('model $k'), d:Void->Void = null, live = true;
 		@:privateAccess Atoms.effects = recorded;
 		var built = home.run(() -> {
 			var owner = root(dispose -> {
 				d = dispose;
 				getOwner();
 			});
-			build(spec, copies, () -> k, owner);
+			// (a copy let go says nothing more: a store let go disposes every node
+			// it made, a fresh graph's unowned memos live on and run as their
+			// owned memos ask, as no store's would)
+			build(spec, copies, () -> live ? k : -1, owner);
 		});
 		copy[k] = {
 			built: built,
 			dispose: () -> {
 				d();
+				live = false;
 				home.dispose();
 			},
-			queued: [],
 			store: home
 		};
 	}
@@ -396,13 +419,6 @@ function model(spec:ModelSpec) {
 		real.round++;
 		copies.round++;
 		flush();
-		for (c in copy)
-			if (c != null && c.queued.length > 0) {
-				c.store.run(() -> for (q in c.queued)
-					q());
-				c.queued.resize(0);
-				flush();
-			}
 	}
 	function inStore<T>(k:Int, f:Void->T):T
 		return k == 0 ? f() : stores[k].run(f);
@@ -415,12 +431,13 @@ function model(spec:ModelSpec) {
 					var add = op.match(Update(_, _, _));
 					inStore(k, () -> add ? top.signals[i](x -> x + v) : top.signals[i](v));
 					var s = copy[k].built.signals[i];
-					copy[k].queued.push(() -> add ? s(x -> x + v) : s(v));
+					copy[k].store.run(() -> add ? s(x -> x + v) : s(v));
 				case WriteDerived(k, n, v) if (copy[k] != null):
 					inStore(k, () -> top.derived.get(n)(v));
 					var s = copy[k].built.derived.get(n);
-					copy[k].queued.push(() -> s(v));
+					copy[k].store.run(() -> s(v));
 				case Flush:
+					var r0 = real.round;
 					flushed();
 				case Answer(k, j, v, fail) if (copy[k] != null):
 					var a = real.open(k, j), b = copies.open(k, j);
@@ -428,10 +445,10 @@ function model(spec:ModelSpec) {
 					if (a != null && b != null)
 						if (fail) {
 							a.later.reject('e$v');
-							copy[k].queued.push(() -> b.later.reject('e$v'));
+							b.later.reject('e$v');
 						} else {
 							a.later.resolve(a.of * 10 + v);
-							copy[k].queued.push(() -> b.later.resolve(b.of * 10 + v));
+							b.later.resolve(b.of * 10 + v);
 						}
 				case Make(k) if (copy[k] == null):
 					stores[k] = new Atoms('$k');
@@ -440,20 +457,20 @@ function model(spec:ModelSpec) {
 					// (its effects' first applies before anything is written in it, on both sides)
 					flushed();
 				case Dispose(k) if (copy[k] != null && k > 0):
+					real.asks[k].resize(0);
+					copies.asks[k].resize(0);
 					stores[k].dispose();
 					stores[k] = null;
 					copy[k].dispose();
 					copy[k] = null;
-					real.asks[k].resize(0);
-					copies.asks[k].resize(0);
 					flushed();
 				case Clear(k) if (copy[k] != null && k > 0):
+					real.asks[k].resize(0);
+					copies.asks[k].resize(0);
 					stores[k].clear();
 					madeIn(k);
 					copy[k].dispose();
 					fresh(k);
-					real.asks[k].resize(0);
-					copies.asks[k].resize(0);
 					flushed();
 				case Read(k, n, how) if (copy[k] != null):
 					equals(inStore(k, () -> attempt(() -> read(top.nodes[n], how))), copy[k].store.run(() -> attempt(() -> read(copy[k].built.nodes[n], how))), 'store $k reads node $n ($how)');
