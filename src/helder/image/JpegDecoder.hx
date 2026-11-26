@@ -8,7 +8,9 @@ import hxmc.simd.*;
 // (libjpeg-turbo's way): baseline and extended sequential (SOF0, SOF1) and
 // progressive (SOF2) Huffman-coded images, 8-bit samples; any sampling
 // factors; restart intervals; greyscale, YCbCr (JFIF), RGB and CMYK or YCCK
-// (Adobe's APP14, inverted as Photoshop writes it); the EXIF orientation
+// (Adobe's APP14, inverted as Photoshop writes it; or, cmyk, its samples as
+// they are, YCCK turned to CMYK, for a PDF's colour space: a PDF's CMYK
+// JPEGs are not inverted, its Decode array says when they are); the EXIF orientation
 // applied. The inverse DCT is libjpeg's accurate integer one (jidctint),
 // chroma is upsampled by its "fancy" triangle filters (h2v1, h2v2, h1v2;
 // other ratios by replication) and converted by its fixed-point tables
@@ -37,6 +39,7 @@ class JpegDecoder {
 	var mcusY = 0;
 	var restartInterval = 0;
 	var adobe = -1; // APP14's transform (-1: none)
+	var cmyk = false; // (four components: C, M, Y, K out as they are, not RGB)
 	var jfif = false;
 	var orientation = 1;
 	var frameRead = false;
@@ -82,13 +85,14 @@ class JpegDecoder {
 	// scale 1, 2, 4 or 8: the image at that fraction of its size, each
 	// block's IDCT reduced to 4x4, 2x2 or its DC, as libjpeg's scale_denom:
 	// a photo decoded at the size it is shown, a fraction of the work)
-	public static function decode(jpg:Bytes, ?mem:ImageMemory, scale = 1):{width:Int, height:Int, rgba:Bytes} {
+	public static function decode(jpg:Bytes, ?mem:ImageMemory, scale = 1, cmyk = false):{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool} {
 		if (scale != 1 && scale != 2 && scale != 4 && scale != 8) throw ImageError.unsupported("JpegDecoder: a scale of 1/" + scale);
 		var r = new ByteReader(jpg);
 		if (r.length < 4 || r.u8(0) != 0xFF || r.u8(1) != 0xD8) throw ImageError.unsupported("JpegDecoder: not a JPEG file");
 		return ImageLimits.guard("JpegDecoder", () -> {
 			var d = new JpegDecoder(jpg, mem ?? ImageMemory.gc);
 			d.bs = 8 >> (scale == 1 ? 0 : scale == 2 ? 1 : scale == 4 ? 2 : 3);
+			d.cmyk = cmyk;
 			d.run();
 		});
 	}
@@ -118,7 +122,7 @@ class JpegDecoder {
 	function u16(p:Int):Int
 		return (data.u8(p) << 8) | data.u8(p + 1);
 
-	function run():{width:Int, height:Int, rgba:Bytes} {
+	function run():{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool} {
 		pos = 2;
 		var done = false;
 		while (!done) {
@@ -649,7 +653,7 @@ class JpegDecoder {
 
 	// --- pixels ---
 
-	function output():{width:Int, height:Int, rgba:Bytes} {
+	function output():{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool} {
 		for (c in components) {
 			// (decoded directly: its samples there already)
 			if (direct) continue;
@@ -747,6 +751,14 @@ class JpegDecoder {
 					c1 = 255 - clamp(y + ((cbG[cb] + crG[cr]) >> 16));
 					c2 = 255 - clamp(y + cbB[cb]);
 				}
+				if (cmyk) {
+					// (the samples as they are: a PDF's colour space and Decode array convert them)
+					rgba.set(4 * i, c0);
+					rgba.set(4 * i + 1, c1);
+					rgba.set(4 * i + 2, c2);
+					rgba.set(4 * i + 3, k);
+					continue;
+				}
 				// (inverted CMYK, as Photoshop writes it: R = C K / 255)
 				r = Std.int(c0 * k / 255);
 				g = Std.int(c1 * k / 255);
@@ -758,7 +770,8 @@ class JpegDecoder {
 			rgba.set(4 * i + 3, 255);
 			}
 		});
-		return orient(rgba);
+		var o = orient(rgba);
+		return {width: o.width, height: o.height, rgba: o.rgba, cmyk: cmyk && n == 4};
 	}
 
 	// the component's samples upsampled to width x height (one byte each)
