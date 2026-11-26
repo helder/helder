@@ -5,8 +5,9 @@ package helder.view.graph;
 // home: the default store, null, during a program's start; a screen's
 // store when made in a screen); read or written in another store it
 // resolves that store's node, made then from its initial value (a memo's,
-// its function, computed from that store's nodes) and owned by the store's
-// root. The current store is the current screen's (helder.ui.ScreenContext:
+// its function, computed from that store's nodes), owned by the store's
+// root and kept in the store's map, by the atom: a store let go drops all
+// of it, an atom keeps nothing of other stores, no weak reference needed. The current store is the current screen's (helder.ui.ScreenContext:
 // a preview host's screen, a scenario's); the default store sees through to
 // a node's home, so a program without stores runs as it always has, and a
 // signal made in a screen (a component's) never grows another node. An
@@ -31,14 +32,16 @@ class Atoms {
 	public static var current:Null<Atoms> = null;
 	// (a screen's context current: what it makes is not a top level's)
 	@:noCompletion public static var screen = false;
-	// (the default store's top-level effects, made again in each store)
-	static final effects:Array<Node<Dynamic>> = [];
+	// (the default store's top-level effects, made again in each store; kept
+	// where stores are made, -D helder.scenarios: else nothing is kept)
+	@:noCompletion public static var record = #if helder.scenarios true #else false #end;
+	static var effects:Array<Node<Dynamic>> = [];
 
 	// its name (a screen's: fast refresh's scope of its values)
 	public final name:String;
-	// (what owns its nodes of other homes' atoms, and those atoms)
+	// (what owns its nodes; its node of each atom read here not at home, by the atom)
 	var root = new Owner(null);
-	final atoms:Array<Node<Dynamic>> = [];
+	var nodes = new haxe.ds.ObjectMap<Node<Dynamic>, Node<Dynamic>>();
 
 	public function new(name:String) {
 		this.name = name;
@@ -47,32 +50,31 @@ class Atoms {
 
 	// its nodes let go: every value as it started (top-level effects made again)
 	public function clear() {
-		drop();
+		dispose();
 		root = new Owner(null);
 		replay();
 	}
 
-	// its nodes let go (a screen's, gone)
-	public function dispose()
-		drop();
-
-	function drop() {
-		for (a in atoms) {
-			var l = a.others;
-			if (l != null) for (n in l.copy())
-				if (n.home == this) l.remove(n);
-		}
-		atoms.resize(0);
+	// its nodes let go (a screen's, gone); nothing of it is left on the atoms
+	public function dispose() {
 		root.dispose();
+		nodes = new haxe.ds.ObjectMap();
+	}
+
+	// (atom's node here)
+	inline function of<T>(atom:Node<T>):Node<T> {
+		var n:Null<Node<T>> = cast nodes.get(cast atom);
+		return n != null ? n : make(atom);
 	}
 
 	function replay() {
+		effects = [for (e in effects) if (!e.disposed) e];
 		if (effects.length == 0) return;
 		run(() -> {
 			var saved = Owner.current;
 			Owner.current = root;
 			for (e in effects)
-				if (!e.disposed) try Node.effect(e.fn, e.apply, e.onFailure, e.kind == Node.RENDER) catch (x:haxe.Exception) {
+				try Node.effect(e.fn, e.apply, e.onFailure, e.kind == Node.RENDER) catch (x:haxe.Exception) {
 					Owner.current = saved;
 					throw helder.async.Errors.kept(x);
 				}
@@ -80,10 +82,9 @@ class Atoms {
 		});
 	}
 
-	// (atom's node here)
 	function make<T>(atom:Node<T>):Node<T> {
 		var n = atom.copy(this);
-		atoms.push(cast atom);
+		nodes.set(cast atom, cast n);
 		var f = atom.copied;
 		if (f != null) f(cast n, this);
 		if (n.kind == Node.COMPUTED) n.recompute();

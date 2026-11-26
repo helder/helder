@@ -68,8 +68,8 @@ export declare function story(def: StoryDef): Story;
 // (in a phone's size, WIDTH x HEIGHT, unless given)
 export declare function tree(s: Story, width?: number, height?: number): string;
 
-// (scenarios: the program's moments, its main run for each: helder.scenario)
-export declare function screens(stories: Story[], scenarios?: Scenario[], program?: () => void): void;
+// (scenarios: the program's moments, each rendering the root its main gave UiWindow.run: helder.scenario)
+export declare function screens(stories: Story[], scenarios?: Scenario[]): void;
 // one story in a window of its own, at its size, live, its input its own:
 // the studio's Play (`helder dev` on a main of it, rebuilt in place)
 //

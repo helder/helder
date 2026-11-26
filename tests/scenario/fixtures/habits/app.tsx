@@ -1,6 +1,6 @@
-import { signal, For, Show } from "helder/view";
+import { signal, For, Show, Signal } from "helder/view";
 import { Event, Key } from "helder/ui";
-import { Habit, dayNames, monthNames, lastDays, isDone, streak, toggle, palette } from "./habits";
+import { Habit, dayNames, monthNames, lastDays, isDone, streak, toggle, palette, sample } from "./habits";
 
 const ink = "#18181b";
 const muted = "#71717a";
@@ -35,17 +35,33 @@ function HabitRow(props: { habit: Habit; today: Date; onToggle: () => void }) {
 	</view>;
 }
 
+// the app's model: its habits and the field's text (a scenario's boot writes them)
+export const model = signal<Habit[]>(sample(new Date()));
+export const draft = signal("");
+
+// (the next id comes from the habits, not a counter)
+function added(list: Signal<Habit[]>, name: string) {
+	const id = list().reduce((m, h) => Math.max(m, h.id + 1), 100);
+	list(l => l.concat([{ id, name, color: palette[l.length % palette.length], done: [] }]));
+}
+
+export function addHabit(name: string) {
+	added(model, name);
+}
+
+// the habit of that name done (or not) on a day
+export function check(name: string, day: Date) {
+	model(l => l.map(h => h.name === name ? toggle(h, day) : h));
+}
+
 export function App(props: { habits?: Habit[]; today?: Date }) {
 	const today = props.today ?? new Date();
-	const habits = signal<Habit[]>(props.habits ?? []);
-	const draft = signal("");
-
-	// (the model is App.habits and App.draft: the next id comes from them, not a counter)
+	// (a story's habits posed, else the app's)
+	const habits = props.habits ? signal(props.habits) : model;
 	function add() {
 		const name = draft().trim();
 		if (name === "") return;
-		const id = habits().reduce((m, h) => Math.max(m, h.id + 1), 100);
-		habits(l => l.concat([{ id, name, color: palette[l.length % palette.length], done: [] }]));
+		added(habits, name);
 		draft("");
 	}
 

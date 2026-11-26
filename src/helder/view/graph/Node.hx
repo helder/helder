@@ -114,12 +114,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	var retired:Null<Owner> = null;
 	var shown = false;
 	// its home: the store it was made in (Atoms; null: the default), what a
-	// computation runs in; its value made again in another store (a signal's
-	// initial value, a computed's function): those stores' nodes of it, made
-	// when first read or written there; what each is given when made (fast refresh)
+	// computation runs in; its initial value, another store's node of it made
+	// from it (or from its function) and kept by that store; what each is given
+	// when made (fast refresh)
 	final home:Null<Atoms>;
 	final init:Null<T>;
-	var others:Null<Array<Node<T>>> = null;
 	var copied:Null<(Node<Dynamic>, Atoms) -> Void> = null;
 
 	function new(kind:Int, value:Null<T>, fn:Null<Null<T>->Dynamic>, options:Null<NodeOptions<T>>) {
@@ -134,7 +133,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		ownedWrite = options != null && options.ownedWrite == true;
 		home = Atoms.current;
 		init = value;
-		if (home == null && (kind == EFFECT || kind == RENDER) && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
+		if (home == null && (kind == EFFECT || kind == RENDER) && Atoms.record && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
 	}
 
 	// (read or written in a store not its home: that store's node of it; the
@@ -144,14 +143,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		return s == null || s == home ? this : of(s);
 	}
 
-	function of(s:Atoms):Node<T> {
-		var l = others;
-		if (l != null) for (n in l)
-			if (n.home == s) return n;
-		var n = s.make(this);
-		if (l == null) others = [n] else l.push(n);
-		return n;
-	}
+	inline function of(s:Atoms):Node<T>
+		return s.of(this);
 
 	// (its node in store: its initial value, or its function, owned by the store's root)
 	function copy(store:Atoms):Node<T> {
@@ -855,13 +848,6 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	override function unlink() {
 		release();
-		// (its other stores' nodes with it)
-		if (others != null) {
-			var l = others;
-			others = null;
-			for (n in l)
-				n.dispose();
-		}
 		if (retired != null) {
 			var r = retired;
 			retired = null;

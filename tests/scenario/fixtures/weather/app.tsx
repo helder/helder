@@ -110,10 +110,12 @@ export function Weather(props: { forecast?: Forecast; error?: string }) {
 	</view>;
 }
 
+// the app's model: the forecast, or why there is none (a scenario's boot writes them)
+export const forecast = signal<Forecast | undefined>(undefined);
+export const error = signal<string | undefined>(undefined);
+
 /** The app: fetches Ghent's forecast from Open-Meteo. */
 export function App() {
-	const forecast = signal<Forecast | undefined>(undefined);
-	const error = signal<string | undefined>(undefined);
 	fetchForecast().then(f => forecast(f), e => error(String(e?.message ?? e)));
 	return <view flexGrow={1}>
 		<Show when={() => forecast() !== undefined}>

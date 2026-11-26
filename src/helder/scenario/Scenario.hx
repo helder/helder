@@ -2,14 +2,14 @@ package helder.scenario;
 
 import haxe.PosInfos;
 
-// Scenarios: the real program (its main, unchanged) at a moment. A
-// `Foo.scenario.hx` (`*.scenario.tsx`) file's module-level values made by
-// scenario({...}), each a screen of the studio's preview host
-// (helder.story.Host) with a store of its own for the program's atoms (its
-// top-level signals and memos: helder.view.graph.Atoms): boot run first in
-// the screen's context (it writes the atoms, calls the app's own
-// functions), then main, UiWindow.run and <Surface> handing it the root
-// (helder.ui.Hosting):
+// Scenarios: the real program at a moment. A `Foo.scenario.hx`
+// (`*.scenario.tsx`) file's module-level values made by scenario({...}),
+// each a screen of the studio's preview host (helder.story.Host). The
+// program's main runs once, as always; in the host UiWindow.run keeps its
+// root (helder.ui.Hosting), and each scenario renders it in a screen with a
+// context and a store of its own (helder.view.graph.Atoms: every signal's
+// and memo's value per store), boot run there first: it writes the app's
+// signals, calls the app's own functions:
 //
 //   final won = scenario({name: "Pong/You win", boot: () -> { Game.score([7, 5]); Game.over(true); }});
 //   final moving = scenario({name: "Pong/In motion", loop: 3});
@@ -87,7 +87,7 @@ class Scenario {
 // scenario({...})'s fields (TypeScript's helder/scenario the same)
 typedef ScenarioDef = {
 	var name:String;
-	// run first in its screen (its store current): the atoms written, the app's own functions called
+	// run first in its screen, its store current: the app's signals written, its own functions called
 	@:optional var boot:Void->Void;
 	@:optional @:typescript.type("string | number") var time:Dynamic;
 	@:optional var seed:Int;

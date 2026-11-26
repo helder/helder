@@ -4,17 +4,18 @@ import { Court, serve, W, H, PADDLE, BALL, WIN } from "./pong";
 
 const PADDLE_SPEED = 320, AI_SPEED = 230, START_SPEED = 240, MAX_SPEED = 560;
 
-// the whole game in named signals (Game.score, Game.ball, ...): a scenario sets them
+// the whole game, its model: a scenario's boot writes these
+const start = serve();
+export const ball = signal(start.ball);
+export const left = signal(start.left);
+export const right = signal(start.right);
+export const score = signal(start.score);
+export const over = signal(false);
+export const paused = signal(false);
+export const velocity = signal({ x: START_SPEED, y: 120 });
+export const keys = signal({ up: false, down: false });
+
 export function Game() {
-	const start = serve();
-	const ball = signal(start.ball);
-	const left = signal(start.left);
-	const right = signal(start.right);
-	const score = signal(start.score);
-	const over = signal(false);
-	const paused = signal(false);
-	const velocity = signal({ x: START_SPEED, y: 120 });
-	const keys = signal({ up: false, down: false });
 
 	function launch(toRight: boolean) {
 		velocity({ x: toRight ? START_SPEED : -START_SPEED, y: (Math.random() * 2 - 1) * 160 });

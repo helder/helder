@@ -484,6 +484,7 @@ class Project {
 			w[k + 1] = "StudioScreens";
 			w = ["-cp", gen].concat(w);
 		}
+		if (Lambda.exists(screens, s -> isScenario(s.file))) w = w.concat(["-D", "helder.scenarios"]);
 		return w.concat(["-D", "hxmc.dev", "-D", "disable-hxb-cache"])
 			.concat(web ? [] : ["-D", "helder.headless"])
 			.concat(["-D", 'helder.name=$name', "--custom-target", 'hxmc=$exe']);
@@ -507,8 +508,10 @@ class Project {
 			(scenario ? acts : modules).push(dirs == "" ? module : dirs.split("/").join(".") + "." + module);
 		}
 		var all = [for (m in modules) 'helder.story.Stories.of("$m")'].concat([for (m in acts) 'helder.scenario.Scenarios.of("$m")']);
-		var args = '[${all.slice(0, modules.length).join(", ")}].flatten()' + (acts.length == 0 ? "" : ', [${all.slice(modules.length).join(", ")}].flatten(), $main.main');
-		save('$gen/StudioScreens.hx', '// helder studio\'s screens: the project\'s stories and scenarios (generated)\nusing Lambda;\n\nclass StudioScreens {\n\tstatic function main()\n\t\thelder.story.Screens.run($args);\n}\n');
+		var args = '[${all.slice(0, modules.length).join(", ")}].flatten()' + (acts.length == 0 ? "" : ', [${all.slice(modules.length).join(", ")}].flatten()');
+		// (main run once, first: its UiWindow.run keeps its root for the scenarios, -D helder.scenarios)
+		var first = acts.length == 0 ? "" : '\t\t$main.main();\n';
+		save('$gen/StudioScreens.hx', '// helder studio\'s screens: the project\'s stories and scenarios (generated)\nusing Lambda;\n\nclass StudioScreens {\n\tstatic function main() {\n$first\t\thelder.story.Screens.run($args);\n\t}\n}\n');
 		return gen;
 	}
 
@@ -535,10 +538,10 @@ class Project {
 		}
 		for (f in order)
 			lines.push('import { ${byFile.get(f).join(", ")} } from "${spec(f)}";');
+		// (main run once, first: its UiWindow.run keeps its root for the scenarios, -D helder.scenarios)
 		if (scenarios.length > 0) {
-			writeProgram('$out/program.tsx');
-			lines.push('import { program } from "./program";');
-			lines.push('screens([${stories.join(", ")}], [${scenarios.join(", ")}], program);');
+			lines.insert(2, 'import "${spec(entry.typescript)}";');
+			lines.push('screens([${stories.join(", ")}], [${scenarios.join(", ")}]);');
 		} else
 			lines.push('screens([${stories.join(", ")}]);');
 		var main = '$out/screens.tsx';
@@ -551,24 +554,6 @@ class Project {
 		var rel = helder.cli.Link.relative(f, out);
 		if (!rel.startsWith(".")) rel = "./" + rel;
 		return ~/\.tsx?$/.replace(rel, "");
-	}
-
-	// (main.tsx as a function: its imports from here, the rest its body, run once a scenario's mount)
-	function writeProgram(path:String) {
-		var main = entry.typescript;
-		var text = Files.read(main), imports = [], body = [];
-		var re = ~/^\s*import\b[^;]*?from\s*["']([^"']+)["'];?|^\s*import\s*["']([^"']+)["'];?/m;
-		while (re.match(text)) {
-			body.push(re.matchedLeft());
-			var whole = re.matched(0), from = re.matched(1) ?? re.matched(2);
-			if (from.startsWith(".")) whole = whole.split(from).join(spec(Path.normalize(Path.directory(main) + "/" + from)));
-			imports.push(StringTools.trim(whole));
-			text = re.matchedRight();
-		}
-		body.push(text);
-		var lines = ['// helder studio\'s copy of ${Path.withoutDirectory(main)}: its top level as a function, run for each scenario (generated)']
-			.concat(imports).concat(["", "export function program(): void {", StringTools.trim(body.join("")), "}"]);
-		save(path, lines.join("\n") + "\n");
 	}
 
 	#end

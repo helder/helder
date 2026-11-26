@@ -18,6 +18,7 @@ final slow = memo(() -> {
 // atoms in stores (Jotai's): each store its own nodes of them, the default
 // the atoms themselves; one graph, a flush's transactions a store each
 function tests() {
+	Atoms.record = true;
 	test("a store's writes, unseen by another and the default", () -> {
 		var a = new Atoms("a"), b = new Atoms("b");
 		a.run(() -> count(3));
@@ -80,5 +81,28 @@ function tests() {
 		flush();
 		equals(seen, [0, 0, 4]);
 		a.dispose();
+	});
+	test("stores made and let go: the atoms keep nothing of them, their effects never run again", () -> {
+		var seen = 0;
+		effect(() -> double(), (_, _) -> {
+			seen++;
+			null;
+		});
+		flush();
+		var node = @:privateAccess count.node(), observers = @:privateAccess node.observers?.length ?? 0;
+		var last = null;
+		for (k in 0...200) {
+			var a = new Atoms("a" + k);
+			a.run(() -> root(_ -> renderEffect(() -> double(), _ -> {})));
+			a.run(() -> count(k));
+			flush();
+			a.dispose();
+			last = a;
+		}
+		equals(@:privateAccess node.observers?.length ?? 0, observers);
+		var runs = seen;
+		last.run(() -> count(1000));
+		flush();
+		equals(seen, runs);
 	});
 }

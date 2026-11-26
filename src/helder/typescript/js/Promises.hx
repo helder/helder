@@ -41,6 +41,8 @@ class Reaction {
 	public var onFulfilled:Dynamic;
 	public var onRejected:Dynamic;
 	public var child:JsPromise;
+	// (the store then() was called in: its callbacks run there, helder.view.graph.Atoms)
+	public final store = helder.view.graph.Atoms.current;
 	public function new(f:Dynamic, r:Dynamic, child:JsPromise) {
 		onFulfilled = f;
 		onRejected = r;
@@ -61,6 +63,7 @@ class Timer {
 	public var callback:Dynamic;
 	public var args:Array<Dynamic>;
 	public var interval:Float;
+	public final store = helder.view.graph.Atoms.current;
 	public function new() {}
 }
 
@@ -198,7 +201,7 @@ class Promises {
 		hostTimers.set(t.id, eventHost.timer(Math.max(0, delay), () -> {
 			if (!hostTimers.exists(t.id)) return;
 			if (t.interval >= 0) hostTimer(t) else hostTimers.remove(t.id);
-			call(t.callback, undef(), t.args);
+			inStore(t);
 			drain();
 		}));
 	}
@@ -337,6 +340,17 @@ class Promises {
 		return child;
 	}
 
+	// (a timer's callback in the store that set it)
+	static function inStore(t:Timer):Void {
+		var was = helder.view.graph.Atoms.current;
+		helder.view.graph.Atoms.current = t.store;
+		try call(t.callback, undef(), t.args) catch (e:Dynamic) {
+			helder.view.graph.Atoms.current = was;
+			throw e;
+		}
+		helder.view.graph.Atoms.current = was;
+	}
+
 	static function schedule(p:JsPromise, r:Reaction):Void {
 		var state = p.state, value = p.value;
 		enqueue(() -> {
@@ -347,11 +361,15 @@ class Promises {
 				}
 				return;
 			}
+			var was = helder.view.graph.Atoms.current;
+			helder.view.graph.Atoms.current = r.store;
 			try {
 				var result = call(handler, undef(), [value]);
+				helder.view.graph.Atoms.current = was;
 				if (r.child != null) resolve(r.child, result);
 			}
 			catch (e:Dynamic) {
+				helder.view.graph.Atoms.current = was;
 				if (r.child != null) reject(r.child, e); else throw e;
 			}
 		});
@@ -584,14 +602,14 @@ class Promises {
 					x.seq = ++timerSeq;
 					timers.push(x);
 				}
-				call(x.callback, undef(), x.args);
+				inStore(x);
 				drain();
 			}
 			// (check phase: immediates queued before it started)
 			var batch = immediates;
 			immediates = [];
 			for (x in batch) {
-				call(x.callback, undef(), x.args);
+				inStore(x);
 				drain();
 			}
 			if (immediates.length == 0 && timers.length > 0 && due.length == 0) {
