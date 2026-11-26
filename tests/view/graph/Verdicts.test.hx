@@ -10,6 +10,7 @@ import view.graph.Kit;
 // and its A8 describe, spec-async-semantics A16 and A19, latest-*.test.ts,
 // isPending-held-sync-memo.test.ts, latest-isPending-consistency.test.ts (#3028)
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	// an async memo over a signal, a render effect keeping it observed

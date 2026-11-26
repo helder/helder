@@ -10,6 +10,7 @@ private function make():Void->Void {
 }
 
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	describe("owned-scope write guard: signal", () -> {

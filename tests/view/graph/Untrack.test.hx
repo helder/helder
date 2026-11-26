@@ -5,9 +5,10 @@ import helder.view.graph.Graph.*;
 
 // untrack.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
-	test("should not create dependency", () -> {
+	Stores.counted(test("should not create dependency", () -> {
 		var effectSpy = new Spy();
 		var memoSpy = new Spy();
 		var x = signal(10);
@@ -29,9 +30,9 @@ function tests() {
 		flush();
 		equals(effectSpy.calls, 1);
 		equals(memoSpy.calls, 1);
-	});
+	}));
 
-	test("should not affect deep dependency being created", () -> {
+	Stores.counted(test("should not affect deep dependency being created", () -> {
 		var effectSpy = new Spy();
 		var memoSpy = new Spy();
 		var x = signal(10);
@@ -65,7 +66,7 @@ function tests() {
 		equals(effectSpy.calls, 1);
 		equals(a(), 70);
 		equals(memoSpy.calls, 4);
-	});
+	}));
 
 	test("should track owner across peeks", () -> {
 		var x = signal(0);

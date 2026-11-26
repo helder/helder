@@ -81,10 +81,7 @@ class Scheduler {
 				landingsTaken = ls;
 				for (n in ls) {
 					var tx = n.pendingIn != null ? n.pendingIn.find() : null;
-					if (tx == null || tx.committed) {
-						tx = newTx();
-						tx.store = n.home;
-					}
+					if (tx == null || tx.committed) tx = newTx(n.home);
 					n.pendingIn = null;
 					world = tx;
 					n.land();
@@ -103,11 +100,16 @@ class Scheduler {
 				writes = writesTaken;
 				writesTaken = ws;
 				// (a transaction a store: what one screen waits on never holds
-				// another's commit; the default store's first, then each screen's)
+				// another's commit; the default store's first, then each screen's
+				// in the order of their first writes)
 				while (ws.length > 0) {
 					var store = ws[0].home, rest = 0;
-					var tx = world = newTx();
-					tx.store = store;
+					if (store != null) for (n in ws)
+						if (n.home == null) {
+							store = null;
+							break;
+						}
+					var tx = world = newTx(store);
 					for (n in ws)
 						if (n.home == store) n.stageWrite(tx) else ws[rest++] = n;
 					ws.resize(rest);
@@ -188,8 +190,12 @@ class Scheduler {
 	}
 
 	// (a transaction: a spare one, else new)
-	static function newTx():Tx
-		return spareTx.length > 0 ? spareTx.pop() : new Tx();
+	// (a transaction of a store's nodes: a spare one, else new)
+	static function newTx(store:Null<Atoms>):Tx {
+		var t = spareTx.length > 0 ? spareTx.pop() : new Tx();
+		t.store = store;
+		return t;
+	}
 
 	// (a list for applies to run: reused, one per nesting)
 	static function takeBatch():Array<Node<Dynamic>> {

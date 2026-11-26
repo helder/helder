@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // getOwner.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should return current owner", () -> {

@@ -12,6 +12,7 @@ in [CONTRIBUTING.md](../CONTRIBUTING.md#tests).
 | Lane | Checks |
 | --- | --- |
 | `view` | helder.view on Eval, natively and as JavaScript: signals, markup, control flow, the programs the macro rejects |
+| `view-stores` | helder.view's graph tests (tests/view/graph) through stores (helder.view.graph.Atoms), by HELDER_GRAPH_STORES (tests/view/graph/Stores.hx): `home`, each test's body run in a fresh store, its nodes at home there; `foreign`, its top-level signals and memos at home in the default store and every read, write and computation in a fresh store, through that store's nodes of them (four tests that count a top-level memo's runs left out: its default node computes once more as it is made) |
 | `ui` | helder.ui on Eval: layout, events and focus, markup, the guide's examples |
 | `layout-conformance` | helder.ui's flexbox and grid against Taffy's fixtures, Chrome's boxes (tests/layout-conformance: manifest.json's required cases pass, its pending ones fail; BLESS=1 writes the manifest) |
 | `web` | helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium |

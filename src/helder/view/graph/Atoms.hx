@@ -32,6 +32,10 @@ class Atoms {
 	public static var current:Null<Atoms> = null;
 	// (a screen's context current: what it makes is not a top level's)
 	@:noCompletion public static var screen = false;
+	// (tests only, tests/view/graph's foreign mode: signals and unowned memos
+	// made at home in the default store whatever store is current, as a top
+	// level's are, so that every read in a store goes through its node of them)
+	@:noCompletion public static var homeless = false;
 	// (the default store's top-level effects, made again in each store; kept
 	// where stores are made, -D helder.scenarios: else nothing is kept)
 	@:noCompletion public static var record = #if helder.scenarios true #else false #end;

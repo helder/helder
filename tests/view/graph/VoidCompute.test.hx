@@ -4,6 +4,7 @@ import helder.test.Test;
 import helder.view.graph.Graph.*;
 
 function tests() {
+	Stores.hooks();
 	test("a compute returning nothing", () -> {
 		var x = signal(1), runs = 0;
 		root(_ -> {

@@ -9,6 +9,7 @@ private function boom(message = "boom"):Void
 	throw message;
 
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	describe("root dispose", () -> {

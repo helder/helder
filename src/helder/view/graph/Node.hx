@@ -119,6 +119,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// when made (fast refresh)
 	final home:Null<Atoms>;
 	final init:Null<T>;
+	// (made with no owner: a memo then computes when read, nothing keeps it up to
+	// date; a store's node of it the same, though its store's root owns it)
+	var free:Bool;
 	var copied:Null<(Node<Dynamic>, Atoms) -> Void> = null;
 
 	function new(kind:Int, value:Null<T>, fn:Null<Null<T>->Dynamic>, options:Null<NodeOptions<T>>) {
@@ -131,7 +134,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		equals = options != null ? options.equals : null;
 		unobserved = options != null ? options.unobserved : null;
 		ownedWrite = options != null && options.ownedWrite == true;
-		home = Atoms.current;
+		free = Owner.current == null;
+		home = Atoms.homeless && kind <= COMPUTED && Owner.current == null ? null : Atoms.current;
 		init = value;
 		if (home == null && (kind == EFFECT || kind == RENDER) && Atoms.record && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
 	}
@@ -148,13 +152,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// (its node in store: its initial value, or its function, owned by the store's root)
 	function copy(store:Atoms):Node<T> {
-		var savedOwner = Owner.current, savedAtoms = Atoms.current;
+		var savedOwner = Owner.current, savedAtoms = Atoms.current, savedHomeless = Atoms.homeless;
 		Owner.current = kind == SIGNAL ? null : store.root;
 		Atoms.current = store;
+		Atoms.homeless = false;
 		var n = new Node(kind, init, fn, {equals: equals, unobserved: unobserved, ownedWrite: ownedWrite});
 		Owner.current = savedOwner;
 		Atoms.current = savedAtoms;
+		Atoms.homeless = savedHomeless;
 		n.writable = writable;
+		n.free = free;
 		return n;
 	}
 
@@ -357,7 +364,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// up to date by the flushes, it computes again when read after one, as
 	// Solid 2 releases it)
 	inline function fresh() {
-		if (kind == COMPUTED && !writable && parent == null && tick != Scheduler.ticks && (observers == null || observers.length == 0)) state = DIRTY;
+		if (kind == COMPUTED && !writable && free && tick != Scheduler.ticks && (observers == null || observers.length == 0)) state = DIRTY;
 		if (state != CLEAN) updateIfNecessary();
 	}
 
@@ -515,7 +522,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		state = s;
 		if (was == CLEAN) {
 			// (an owned memo is eager: brought up to date by the flush, read or not)
-			if (kind >= EFFECT || parent != null) Scheduler.enqueue(this);
+			if (kind >= EFFECT || !free) Scheduler.enqueue(this);
 			if (kind == COMPUTED) markObservers(CHECK);
 		}
 	}
@@ -651,7 +658,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// (async: pending in the transaction that asked, until the answer lands)
 	function ask(a:Awaitable<Dynamic>, w:Null<Tx>) {
-		var tx = w != null ? w : Scheduler.newTx();
+		var tx = w != null ? w : Scheduler.newTx(home);
 		pendingIn = tx.held();
 		awaiting = a;
 		var id = asked;

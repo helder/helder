@@ -19,6 +19,7 @@ private function find(users:Array<User>):Null<User> {
 }
 
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("A4: the first commit never invokes a custom equals with an undefined previous value", () -> {

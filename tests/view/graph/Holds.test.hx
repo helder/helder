@@ -11,6 +11,7 @@ import view.graph.Kit;
 // direction-rule-probe.test.ts, born-held.test.ts. Solid's `action` holding
 // a write is Kit.hold: the write held by an async gate a render effect reads.
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	describe("A15: overlapping transitions settle as one unit", () -> {
