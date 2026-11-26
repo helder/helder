@@ -10,7 +10,6 @@ class View {
 	public static final LANES:Array<Lane> = [
 		{name: "view", about: "helder.view on Eval, natively and as JavaScript", run: view},
 		{name: "view-stores", about: "helder.view's graph tests through stores (atoms)", run: viewStores},
-		{name: "fuzz", about: "helder.view's graph and stores fuzzed for FUZZ_SECONDS (300) each", run: fuzz},
 		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup", run: ui},
 		{name: "layout-conformance", about: "flexbox and grid against Taffy's fixtures", run: layoutConformance},
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
@@ -33,10 +32,6 @@ class View {
 	static function viewStores()
 		for (mode in ["home", "foreign"])
 			run(helderCli(), ["test", "tests/view/graph"], ["HELDER_GRAPH_STORES" => mode]);
-
-	// (random seeds, each failure's printed: src/helder/view/graph/AtomsModel.test.hx)
-	static function fuzz()
-		run(helderCli(), ["test", "src/helder/view/graph/AtomsModel"], ["HELDER_FUZZ_SECONDS" => Sys.getEnv("FUZZ_SECONDS") ?? "300"]);
 
 	static function ui() {
 		var cp = cps(["src", "tests/ui"]);

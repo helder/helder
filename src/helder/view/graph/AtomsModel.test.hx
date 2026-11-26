@@ -23,47 +23,15 @@ import helder.view.graph.Graph.*;
 //   reads (plain, untracked, isPending, latest) and effect logs equal its
 //   copy's.
 //
-// Quick here; HELDER_FUZZ_SECONDS=<n> runs random seeds for n seconds each,
-// printing every failure's seed and its case shrunk (the fuzz lane);
-// HELDER_FUZZ_REPLAY=stores:<choices> (or plain:) replays one.
+// A case's limit and memory make a hang or a leak a failure; the fuzz lane
+// soaks both (HELDER_PROPERTY_SOAK, random seeds).
 function tests() {
-	// (a failure's choices as printed: that case alone, HELDER_FUZZ_REPLAY=plain:... or stores:...)
-	var replay = Sys.getEnv("HELDER_FUZZ_REPLAY") ?? "";
-	if (replay != "") {
-		var at = replay.indexOf(":"), choices = replay.substr(at + 1);
-		test("replay", () -> StringTools.startsWith(replay, "plain") ? property(plainGen(), plain, {replay: choices}) : property(modelGen(), model, {replay: choices}));
-		return;
-	}
-	var budget = Std.parseFloat(Sys.getEnv("HELDER_FUZZ_SECONDS") ?? "");
-	if (budget > 0) {
-		test("fuzz: the graph against plain evaluation", () -> fuzz(plainGen(), plain, budget, "plain"));
-		test("fuzz: stores against fresh copies", () -> fuzz(modelGen(), model, budget, "stores"));
-		return;
-	}
-	test("the graph against plain evaluation", () -> property(plainGen(), plain, {cases: 200}));
+	test("the graph against plain evaluation", () -> property(plainGen(), plain, {cases: 200, limit: 20, memory: 64}));
 	// (cases the fuzzer found, shrunk: a store's node ran in another store's
 	// transaction, a commit's stale frame readers in the next store's drain)
 	test("stores: found by the fuzzer", () -> for (r in FOUND)
 		property(modelGen(), model, {replay: r}));
-	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120}));
-}
-
-// (random seeds until the budget is spent; each failure printed, its seed to replay)
-function fuzz<T>(gen:Gen<T>, body:T->Void, seconds:Float, name:String) {
-	var end = haxe.Timer.stamp() + seconds, cases = 0, runs = 0, failed = 0;
-	while (haxe.Timer.stamp() < end) {
-		var seed = Std.random(0x3FFFFFFF);
-		var r = @:privateAccess helder.test.Property.search(gen, body, {cases: 1000, seconds: Math.min(60, end - haxe.Timer.stamp()), seed: seed}, 'fuzz $name');
-		cases += r.cases;
-		runs++;
-		if (r.failed != null) {
-			failed++;
-			Sys.println('fuzz $name: seed $seed failed\n' + @:privateAccess helder.test.Property.report(r, null));
-			@:privateAccess helder.test.Property.remove('fuzz $name');
-		}
-	}
-	Sys.println('fuzz $name: $cases cases, $runs seeds, $failed failed');
-	equals(failed, 0);
+	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120, limit: 20, memory: 64}));
 }
 
 final FOUND = [
