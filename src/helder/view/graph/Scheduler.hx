@@ -262,12 +262,21 @@ class Scheduler {
 		if (held.remove(b) && !held.contains(a)) held.push(a);
 	}
 
-	// (a store let go or cleared: its writes not flushed yet dropped)
+	// (a store let go or cleared: its writes not flushed yet, its answers not
+	// landed and its transactions parked dropped, nothing of it kept here)
 	static function forget(store:Atoms) {
 		var rest = 0;
 		for (n in writes)
 			if (n.home == store) n.hasPending = false else writes[rest++] = n;
 		writes.resize(rest);
+		rest = 0;
+		for (n in landings)
+			if (n.home != store) landings[rest++] = n;
+		landings.resize(rest);
+		rest = 0;
+		for (t in held)
+			if (t.store != store) held[rest++] = t;
+		held.resize(rest);
 	}
 
 	static function enqueueWrite(n:Node<Dynamic>) {

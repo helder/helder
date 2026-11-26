@@ -327,6 +327,16 @@ function tests() {
 		a.run(() -> try async() catch (_:Dynamic) null);
 		equals([asks - made, a.run(() -> count())], [0, 0]);
 	}));
+	test("a store let go keeps nothing parked in the scheduler", () -> two((a, b) -> {
+		var held = @:privateAccess Scheduler.held.length;
+		a.run(() -> root(_ -> renderEffect(() -> '${count()}:${slow()}', _ -> {})));
+		flush();
+		a.run(() -> count(1));
+		flush();
+		equals(@:privateAccess Scheduler.held.length, held + 1);
+		a.dispose();
+		equals(@:privateAccess Scheduler.held.length, held);
+	}));
 	test("a signal made in a store: its home there, the default seeing through to it", () -> two((a, b) -> {
 		var local = a.run(() -> signal(1));
 		local(2);

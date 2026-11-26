@@ -359,8 +359,10 @@ function build(spec:ModelSpec, seen:Seen, store:Void->Int, ?owner:Owner):Built {
 		var log = (v:Dynamic) -> if (store() >= 0) seen.logs[store()].push(StringTools.lpad('${seen.round}', "0", 4) + ' e$k: $v');
 		var compute = (_ -> read(n, e.how) : Compute<Dynamic>), apply = ((v:Dynamic, _) -> {
 			log(v);
-			// (added, not set: effects of one flush run in either order, its sum the same)
-			if (e.writes && Std.isOfType(v, Int)) sink(x -> x + (v : Int));
+			// (the most, not the last: effects of one flush run in either order;
+			// and settled: an effect run again after each commit that wrote a sum
+			// would write for ever)
+			if (e.writes && Std.isOfType(v, Int)) sink(x -> x > (v : Int) ? x : (v : Int));
 			e.cleanup ? () -> log('cleanup $v') : null;
 		} : Apply<Dynamic>);
 		var error = (x:Dynamic) -> log('error $x');
@@ -493,4 +495,7 @@ function cleanup(stores:Array<Null<Atoms>>, copies:Array<Dynamic>) {
 		if (c != null) c.dispose();
 	Atoms.forget();
 	try flush() catch (_:haxe.Exception) {}
+	// (the case's top-level graph is let go: what it parks in the default
+	// store, an ask never answered, is no program's wait any more)
+	@:privateAccess Scheduler.forget(null);
 }
