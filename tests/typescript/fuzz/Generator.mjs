@@ -537,8 +537,9 @@ const STATEMENTS = [
     const rhs = op === '**=' ? g.smallInt(0, 3) : g.num(sc, 1)
     return [s`${v.name} ${op} ${rhs}`, g.print(N`${v.name}`)]
   }],
-  [(g, sc) => sc.of('string', v => v.mut).length ? 2 : 0, (g, sc) => {
-    const v = g.r.pick(sc.of('string', v => v.mut))
+  // (not a string a for-of iterates: a nested one would iterate it grown, seven times longer each time)
+  [(g, sc) => sc.of('string', v => v.mut && !sc.isFixed(v.name)).length ? 2 : 0, (g, sc) => {
+    const v = g.r.pick(sc.of('string', v => v.mut && !sc.isFixed(v.name)))
     // (in a loop a literal: the string itself appended there doubles it each time)
     return [s`${v.name} ${g.r.pick(['=', '+='])} ${sc.loop ? g.strLit() : g.str(sc, 1)}`, g.print(Str`${v.name}`)]
   }],
