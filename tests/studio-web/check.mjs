@@ -372,7 +372,7 @@ async function recolour(pg, x, y, tap) {
 	check(all && png(signup?.data ?? '')?.width === 420, `a Haxe app from an #import= link built at its open, its screens shown in ${all?.ms} ms, run.snap ${shot.content.at(-1).text}`);
 	// (a screen that throws in the worker's host: its why told the studio, as natively; the other drawn)
 	const two = {
-		'Two.hx': 'import helder.ui.*;\nimport helder.ui.UiWindow;\nimport helder.ui.UiWindow.Surface;\nimport helder.view.*;\n\nclass Two implements Markup {\n\tstatic function main()\n\t\tUiWindow.run(<Surface title="Two" width={200} height={200}>{good()}</Surface>);\n\n\tpublic static function good():View\n\t\treturn <view grow={1} background="#1e3a8a"/>;\n\n\tpublic static function bad():View\n\t\tthrow "the bad screen threw";\n}\n',
+		'Two.hx': 'import helder.ui.*;\nimport helder.ui.UiWindow;\nimport helder.ui.UiWindow.Surface;\nimport helder.view.*;\n\nclass Two implements Markup {\n\tstatic function main()\n\t\tUiWindow.run(<Surface title="Two" width={200} height={200}>{good()}</Surface>);\n\n\tpublic static function good():View\n\t\treturn <view flexGrow={1} background="#1e3a8a"/>;\n\n\tpublic static function bad():View\n\t\tthrow "the bad screen threw";\n}\n',
 		'Two.story.hx': 'import helder.story.Story;\n\nfinal good = story({name: "Two/Good", width: 200, height: 200, render: () -> Two.good()});\n\nfinal bad = story({name: "Two/Bad", width: 200, height: 200, render: () -> Two.bad()});\n'
 	};
 	await pg.goto(base + '#import=' + Buffer.from(JSON.stringify({ name: 'two', files: two })).toString('base64url'));
