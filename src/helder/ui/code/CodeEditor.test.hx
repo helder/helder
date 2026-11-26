@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.os.Edges;
 import helder.os.Mods;
 import helder.gfx.Color;
 import helder.syntax.Transaction;

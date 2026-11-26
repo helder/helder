@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.ComputePipelineDesc;
 import helder.gfx.ShaderCode;

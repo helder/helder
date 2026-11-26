@@ -33,8 +33,6 @@ class Foundry implements Markup {
 			.bind("secondary-1", ZoomActual)
 			.bind("secondary-2", ZoomSelection);
 		var ws = new Workshop();
-		// (the colours given inline follow the appearance chosen, as the sheet's do)
-		Theme.appearance = () -> ws.dark();
 		#if !(hxmc.target == "wasm32-wasi")
 		Mcp.start(ws);
 		#end

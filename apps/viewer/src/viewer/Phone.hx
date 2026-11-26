@@ -262,7 +262,7 @@ class Phone implements Markup {
 	}
 
 	static function square(x:Explorer, e:Entry, side:Float):View {
-		if (e.kind == Folder) return <image src={Glyphs.folder(helder.ui.UiWindow.dark())} width={side * 0.82} height={side * 0.66}/>;
+		if (e.kind == Folder) return <image src={Glyphs.folder(helder.os.Settings.dark())} width={side * 0.82} height={side * 0.66}/>;
 		var t = Tiles.thumbnail(x, e);
 		return <>
 			<Show when={t().image != null}><image src={t().image} width={side} height={side} objectFit="cover"/></Show>
@@ -311,7 +311,7 @@ class Phone implements Markup {
 		var img = Tiles.cached(x, e);
 		return <view flexGrow={1} alignItems="center" justifyContent="center" background={Look.ref.raised}>
 			{img != null ? <image src={img} width="100%" height="100%" objectFit="cover"/> : e.kind == Folder ? <image
-				src={Glyphs.folder(helder.ui.UiWindow.dark())} width={96} height={78}/> : Tiles.large(e)}
+				src={Glyphs.folder(helder.os.Settings.dark())} width={96} height={78}/> : Tiles.large(e)}
 		</view>;
 	}
 

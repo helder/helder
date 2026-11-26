@@ -25,7 +25,7 @@ typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool
 // the window. With a preview (a view at where its node is, lifted: slot
 // touch-menu-preview) the menu goes under it, or above it where there is
 // no room, the preview moved up to fit; blur puts a glass over what is
-// behind (slot touch-menu-backdrop: a dimmed, blurred window). A press
+// behind (slot touch-menu-scrim: a dimmed, blurred window). A press
 // outside, Escape or a choice closes it. The platform's own menu
 // (UIContextMenuInteraction) is not used: helder draws it everywhere.
 class TouchMenu implements Markup {
@@ -127,8 +127,8 @@ class TouchMenu implements Markup {
 	static function Layer(props:{at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
 		var a = props.at;
 		return <view tag="touch-menu-layer" position="absolute" left={0} top={0} right={0} bottom={0} onKeyDown={e -> if (e.key == Key.ESCAPE) props.onClose()}>
-			{props.blur ? <glass slot="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
-				onPress={_ -> props.onClose()}/> : <view tag="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0}
+			{props.blur ? <glass slot="touch-menu-scrim" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
+				onPress={_ -> props.onClose()}/> : <view tag="touch-menu-scrim" position="absolute" left={0} top={0} right={0} bottom={0}
 				onPress={_ -> props.onClose()}/>}
 			{props.preview != null ? <view slot="touch-menu-preview" position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
 				transition="fade scale" onPress={_ -> props.onClose()}>{props.preview}</view> : null}

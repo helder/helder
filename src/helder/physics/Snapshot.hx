@@ -1,7 +1,7 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
-import helder.scene.math.Quat;
+import helder.math.Vec3;
+import helder.math.Quat;
 
 // A world's state at a step (PhysicsWorld.snapshot), put back by
 // PhysicsWorld.restore: its bodies (the list, so bodies added after are

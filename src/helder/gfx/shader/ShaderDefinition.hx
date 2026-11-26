@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import helder.compiler.Kernel;
 import helder.gfx.shader.Ir;
 

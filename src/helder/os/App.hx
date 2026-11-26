@@ -461,7 +461,8 @@ class App {
 		return false;
 	}
 
-	public static function prefersDark():Bool {
+	// (Settings.dark's source: the system's appearance, asked now)
+	@:noCompletion public static function prefersDark():Bool {
 		#if helder.headless
 		return helder.os.headless.Headless.run.dark;
 		#end

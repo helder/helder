@@ -1,5 +1,6 @@
+import helder.math.Quat;
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.*;
 import helder.scene.anim.*;
 import helder.scene.gltf.*;

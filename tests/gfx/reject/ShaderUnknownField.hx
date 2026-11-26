@@ -1,6 +1,7 @@
 // A shader takes the fields it knows.
-// expect: ShaderUnknownField.hx:16: characters 9-66
+// expect: ShaderUnknownField.hx:17: characters 9-66
 // expect: shader: the argument has no field vertx (it has vertex, fragment)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

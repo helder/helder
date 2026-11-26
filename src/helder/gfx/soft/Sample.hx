@@ -1,9 +1,9 @@
 package helder.gfx.soft;
 
 import helder.gfx.shader.TextureCube;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import hxmc.simd.F32x4;
 import hxmc.simd.I32x4;
 import hxmc.unsafe.Mem;

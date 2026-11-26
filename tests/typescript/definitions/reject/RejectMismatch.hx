@@ -1,5 +1,6 @@
 // The fragment stage takes what the vertex stage returns (in TypeScript: mismatch.ts).
 // expect: shader: stage interface mismatch: the fragment function takes Other, but the vertex function returns O
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

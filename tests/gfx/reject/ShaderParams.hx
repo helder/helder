@@ -1,6 +1,7 @@
 // A stage's parameters are one object after its input, not parameters of their own.
-// expect: ShaderParams.hx:17: characters 12-117
+// expect: ShaderParams.hx:18: characters 12-117
 // expect: a stage takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not 2
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

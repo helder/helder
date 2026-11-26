@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
@@ -78,7 +78,7 @@ class DamageCheck {
 	// (a window's frame, multisampled where the GPU has it: drawn with damage
 	// against drawn whole, both into its frame, read back resolved)
 	static function window() {
-		var win = new helder.os.Window("DamageCheck", W, H);
+		var win = new helder.os.Window({title: "DamageCheck", width: W, height: H});
 		var device = Device.create(win.surface, {antialias: true});
 		helder.os.App.run(() -> {
 			var scale = device.width / W;

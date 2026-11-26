@@ -17,7 +17,7 @@ class AndroidTextCheck {
 	static function main() {
 		Sys.println("AndroidTextCheck: start");
 		TextInput.enable();
-		var w = new Window("AndroidTextCheck", 0, 0);
+		var w = new Window({title: "AndroidTextCheck", width: 0, height: 0});
 		Sys.println('AndroidTextCheck: window ${w.width}x${w.height}');
 		w.startTextInput(40, 80, 200, 40);
 		var typed = "", events = [], phase = 0, start = Sys.time(), until = 0.0;

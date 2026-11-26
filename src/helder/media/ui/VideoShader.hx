@@ -1,5 +1,6 @@
 package helder.media.ui;
 
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Settings;
 import helder.os.Rect;
 import helder.async.Async;
 import helder.ui.Node;
@@ -240,7 +241,7 @@ class Shell implements Markup {
 		viewer.openDialog = () -> {
 			if (x.openFolder != null) return x.openFolder();
 			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
-			var picked = helder.os.FileDialog.open(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
+			var picked = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
 			if (picked != null) x.start(picked);
 		};
 		if (path != null) x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path) else {
@@ -268,7 +269,7 @@ class Shell implements Markup {
 		var shows = signal(false);
 		Timing.mark("run");
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(Settings.dark()), 6)}
 			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? helder.os.WindowBackdrop.None : helder.os.WindowBackdrop.Sidebar : null} clickThrough={false}
 			onDrop={(files, px, py) -> if (files.length > 0 && (window == null || !Drops.external(x, window.ui, files, px, py))) x.start(files[0])}
 			onClose={() -> {

@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Settings;
 import helder.ui.Clock;
 import helder.ui.controls.Look;
 import helder.ui.UiWindow;
@@ -75,7 +76,7 @@ class ViewerView implements Markup {
 		image.onWheel = e -> if (x.zoom.fullWheel(e)) e.preventDefault() else if (wheel != null) wheel(e);
 		// (its picture in flight: the image under it not drawn)
 		renderEffect(() -> x.zoom.flying() != "", on -> image.veiled = on);
-		renderEffect(() -> UiWindow.dark(), d -> image.background = canvas(d));
+		renderEffect(() -> Settings.dark(), d -> image.background = canvas(d));
 		image.style.position = Absolute;
 		image.style.left = image.style.top = image.style.right = image.style.bottom = 0;
 		// (to assistive technology an image, named as the window is: the file, its place, its size)

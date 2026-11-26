@@ -1,6 +1,6 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.World;
 import helder.test.Test;

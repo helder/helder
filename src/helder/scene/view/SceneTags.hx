@@ -1,7 +1,7 @@
 package helder.scene.view;
 
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.Node as SceneGraphNode;
 import helder.scene.World;
@@ -154,7 +154,7 @@ class SceneTags {
 		?size:Float,
 		?enabled:Bool,
 		?position:helder.view.graph.Signal<Vec3>,
-		?rotation:helder.view.graph.Signal<helder.scene.math.Quat>,
+		?rotation:helder.view.graph.Signal<helder.math.Quat>,
 		?scale:helder.view.graph.Signal<Vec3>,
 		?onChange:helder.scene.view.TransformGizmo->Void,
 		?ref:helder.scene.view.TransformGizmo->Void

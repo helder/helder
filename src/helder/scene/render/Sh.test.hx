@@ -1,8 +1,8 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.test.Test;
 
 // Spherical harmonics (Sh) against known functions: a uniform sky's

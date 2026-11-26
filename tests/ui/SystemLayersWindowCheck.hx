@@ -179,7 +179,7 @@ class SystemLayersWindowCheck {
 			helder.ui.UiWindow.clock = clock;
 			Ui.now = clock;
 		}
-		var w = new helder.ui.UiWindow("SystemLayersWindowCheck", 400, 300);
+		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck", width: 400, height: 300});
 		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F4});
 		var list = new Node();
 		list.style.set({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF, borderRadius: rounded ? 10 : 0});
@@ -304,7 +304,7 @@ class SystemLayersWindowCheck {
 	// Animation's layers present at once, the switch in a transaction; once
 	// still, the window captured and its frame read back, which must match)
 	static function swap() {
-		var w = new helder.ui.UiWindow("SystemLayersWindowCheck swap", 400, 300);
+		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck swap", width: 400, height: 300});
 		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
 		var side = new Node(), box = new Node();
 		side.style.set({width: 160, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
@@ -407,7 +407,7 @@ class SystemLayersWindowCheck {
 	// then the program busy past the wait for a step, the window's content
 	// kept at its top left meanwhile)
 	static function resize() {
-		var w = new helder.ui.UiWindow("SystemLayersWindowCheck resize", 400, 300);
+		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck resize", width: 400, height: 300});
 		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F5});
 		var list = new Node(), side = new Node(), mark = new Node();
 		list.style.set({overflow: Scroll, width: 160, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
@@ -548,7 +548,7 @@ class SystemLayersWindowCheck {
 	// own, a scroller, a native field and a system layer in it; frames
 	// drawn for a second, Core Animation handed none of its NaN)
 	static function lost() {
-		var w = new helder.ui.UiWindow("SystemLayersWindowCheck NaN", 300, 200);
+		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck NaN", width: 300, height: 200});
 		w.root.style.set({background: 0xFFF4F4F4});
 		var fine = new Node();
 		fine.style.set({overflow: Scroll, height: 150, background: 0xFFFFFFFF});

@@ -1,6 +1,6 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.asset.Asset;
 import helder.asset.Assets;
 import helder.scene.*;
@@ -130,12 +130,12 @@ class Scenes {
 				r.rim = new Vec3(0.6, 0.65, 0.8);
 				var world = new World();
 				var planet = world.node("planet");
-				MeshRenderer.attach(planet, Shapes.sphere(device, new Material("planet", new helder.gfx.shader.Vec4(0.55, 0.32, 0.18, 1), 0, 0.9), 1, 48, 24));
-				var hull = new Material("hull", new helder.gfx.shader.Vec4(0.5, 0.52, 0.56, 1), 0.3, 0.5);
+				MeshRenderer.attach(planet, Shapes.sphere(device, new Material("planet", new helder.math.Vec4(0.55, 0.32, 0.18, 1), 0, 0.9), 1, 48, 24));
+				var hull = new Material("hull", new helder.math.Vec4(0.5, 0.52, 0.56, 1), 0.3, 0.5);
 				hull.ground = 1;
-				hull.air = new helder.gfx.shader.Vec4(0.2, 0.45, 1, 0.3);
+				hull.air = new helder.math.Vec4(0.2, 0.45, 1, 0.3);
 				var block = Shapes.box(device, hull, 0.22, 0.3, 0.22);
-				var gem = new Material("crystal", new helder.gfx.shader.Vec4(0.08, 0.35, 1, 0.7), 0, 0.1, new Vec3(0.05, 0.3, 1.1));
+				var gem = new Material("crystal", new helder.math.Vec4(0.08, 0.35, 1, 0.7), 0, 0.1, new Vec3(0.05, 0.3, 1.1));
 				gem.crystal = 1;
 				gem.ground = 1;
 				gem.blend = Alpha;
@@ -147,7 +147,7 @@ class Scenes {
 					var axis = new Vec3(up.z, 0, -up.x), turn = Math.acos(up.y);
 					var n = world.node();
 					n.position = new Vec3(up.x * 1.05, up.y * 1.05, up.z * 1.05);
-					n.rotation = helder.scene.math.Quat.axisAngle(axis * (1 / Math.sqrt(up.z * up.z + up.x * up.x)), turn) * helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), k * 0.7);
+					n.rotation = helder.math.Quat.axisAngle(axis * (1 / Math.sqrt(up.z * up.z + up.x * up.x)), turn) * helder.math.Quat.axisAngle(new Vec3(0, 1, 0), k * 0.7);
 					MeshRenderer.attach(n, k % 3 == 2 ? crystal : block);
 					if (k % 3 != 2) MeshRenderer.tint(n, k % 2 == 0 ? new Vec3(1.5, 0.8, 0.55) : new Vec3(0.65, 1, 1.5));
 				}
@@ -227,13 +227,13 @@ class Scenes {
 				var r = new Renderer(device);
 				renderer = r;
 				var world = new World();
-				var cube = Shapes.box(device, new Material("cube", new helder.gfx.shader.Vec4(0.9, 0.45, 0.2, 1), 0, 0.45), 0.5, 0.5, 0.5);
-				var ball = Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.25, 0.5, 0.95, 1), 0, 0.3), 0.3, 16, 8);
+				var cube = Shapes.box(device, new Material("cube", new helder.math.Vec4(0.9, 0.45, 0.2, 1), 0, 0.45), 0.5, 0.5, 0.5);
+				var ball = Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.25, 0.5, 0.95, 1), 0, 0.3), 0.3, 16, 8);
 				for (x in 0...13)
 					for (z in 0...13) {
 						var n = world.node();
 						n.position = new Vec3((x - 6) * 0.8, 0, (z - 6) * 0.8);
-						n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), (x * 13 + z) * 0.3);
+						n.rotation = helder.math.Quat.axisAngle(new Vec3(0, 1, 0), (x * 13 + z) * 0.3);
 						MeshRenderer.attach(n, (x + z) % 2 == 0 ? cube : ball);
 					}
 				var eye = world.node("eye");
@@ -263,7 +263,7 @@ class Scenes {
 				animator.play(model.clip(model.animations.bend));
 				animator.update(1.0);
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0.4, 1.4, 4.2);
@@ -283,10 +283,10 @@ class Scenes {
 				} else
 					PackedModel.read(name == "packedbc" ? Asset.embed("bin/3d/textured.bc.hxm3d") : Asset.embed("bin/3d/textured.astc.hxm3d"), device).instantiate(world)
 						.find("crate");
-				crate.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+				crate.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -1.1, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0, 0.8, 3.2);
@@ -304,10 +304,10 @@ class Scenes {
 				// reload does: Model.replace swaps the instance's meshes' primitives
 				// and materials, the old ones released; the same frame)
 				model.replace(Model.of("normals.glb"));
-				tiles.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+				tiles.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -1.1, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0, 0.8, 3.2);
@@ -325,7 +325,7 @@ class Scenes {
 					var tiles = model.instantiate(world, device).find(model.nodes.tiles);
 					tiles.position = new Vec3(-1.2 + 0.8 * k, 0, -0.4 * (k % 2));
 					tiles.scale = new Vec3(0.45, 0.45, 0.45);
-					tiles.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+					tiles.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				}
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
@@ -340,17 +340,17 @@ class Scenes {
 				renderer = r;
 				var world = new World();
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.52, 1), 0, 0.9), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.52, 1), 0, 0.9), 8));
 				var ball = world.node("ball");
 				ball.position = new Vec3(0, 0.6, -1.2);
-				MeshRenderer.attach(ball, Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.9, 0.75, 0.2, 1), 1, 0.3), 0.6, 24, 12));
-				var colors = [new helder.gfx.shader.Vec4(0.2, 0.5, 1, 0.45), new helder.gfx.shader.Vec4(1, 0.3, 0.2, 0.45), new helder.gfx.shader.Vec4(0.3, 1, 0.4, 0.35)];
+				MeshRenderer.attach(ball, Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.9, 0.75, 0.2, 1), 1, 0.3), 0.6, 24, 12));
+				var colors = [new helder.math.Vec4(0.2, 0.5, 1, 0.45), new helder.math.Vec4(1, 0.3, 0.2, 0.45), new helder.math.Vec4(0.3, 1, 0.4, 0.35)];
 				for (k in 0...3) {
 					var glass = new Material("glass" + k, colors[k], 0, 0.1, null, k == 2);
 					glass.blend = Alpha;
 					var pane = world.node("pane" + k);
 					pane.position = new Vec3(-0.7 + 0.7 * k, 0.8, 0.4 - 0.5 * k);
-					pane.rotation = helder.scene.math.Quat.fromEuler(0, -0.5 + 0.5 * k, 0);
+					pane.rotation = helder.math.Quat.fromEuler(0, -0.5 + 0.5 * k, 0);
 					MeshRenderer.attach(pane, Shapes.box(device, glass, 1, 1.2, 0.05));
 				}
 				var eye = world.node("eye");
@@ -371,7 +371,7 @@ class Scenes {
 				animator.play(model.clip("bend"));
 				animator.update(1.0);
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0.4, 1.4, 4.2);
@@ -384,10 +384,10 @@ class Scenes {
 				renderer = r;
 				var world = new World();
 				var tiles = PackedModel.read(Asset.embed("bin/3d/normals.hxm3d"), device).instantiate(world).find("tiles");
-				tiles.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+				tiles.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -1.1, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.45, 0.47, 0.5, 1), 0, 0.9), 8));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0, 0.8, 3.2);
@@ -402,9 +402,9 @@ class Scenes {
 				var world = new World();
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, 0, -18);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.6, 0.6, 0.62, 1), 0, 0.9), 44));
-				var pillar = Shapes.box(device, new Material("pillar", new helder.gfx.shader.Vec4(0.8, 0.55, 0.35, 1), 0, 0.6), 0.4, 2.4, 0.4);
-				var ball = Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.3, 0.55, 0.9, 1), 0, 0.3), 0.35, 16, 8);
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.6, 0.6, 0.62, 1), 0, 0.9), 44));
+				var pillar = Shapes.box(device, new Material("pillar", new helder.math.Vec4(0.8, 0.55, 0.35, 1), 0, 0.6), 0.4, 2.4, 0.4);
+				var ball = Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.3, 0.55, 0.9, 1), 0, 0.3), 0.35, 16, 8);
 				for (k in 0...10) {
 					for (x in [-2.2, 2.2]) {
 						var n = world.node();
@@ -417,7 +417,7 @@ class Scenes {
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.88), 2.6));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.7, 0.9, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.7, 0.9, 0);
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 60));
 				eye.position = new Vec3(0.6, 1.5, 4.5);
@@ -434,8 +434,8 @@ class Scenes {
 					var metal = world.node("metal" + k), plastic = world.node("plastic" + k);
 					metal.position = new Vec3(-2.4 + k * 1.2, 0.65, 0);
 					plastic.position = new Vec3(-2.4 + k * 1.2, -0.65, 0);
-					MeshRenderer.attach(metal, Shapes.sphere(device, new Material("metal", new helder.gfx.shader.Vec4(0.95, 0.93, 0.88, 1), 1, rough), 0.5, 32, 16));
-					MeshRenderer.attach(plastic, Shapes.sphere(device, new Material("plastic", new helder.gfx.shader.Vec4(0.8, 0.2, 0.15, 1), 0, rough), 0.5, 32, 16));
+					MeshRenderer.attach(metal, Shapes.sphere(device, new Material("metal", new helder.math.Vec4(0.95, 0.93, 0.88, 1), 1, rough), 0.5, 32, 16));
+					MeshRenderer.attach(plastic, Shapes.sphere(device, new Material("plastic", new helder.math.Vec4(0.8, 0.2, 0.15, 1), 0, rough), 0.5, 32, 16));
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.85), 2));
@@ -483,7 +483,7 @@ class Scenes {
 				right.position = new Vec3(1.15, 0, 0);
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -0.4, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.52, 1), 0, 0.9), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.52, 1), 0, 0.9), 8));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0, 1.1, 3.3);
@@ -521,8 +521,8 @@ class Scenes {
 				r.ground = new Vec3(0.02, 0.02, 0.02);
 				var world = new World();
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.7, 0.7, 0.72, 1), 0, 0.7), 10));
-				var ball = Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.9, 0.9, 0.9, 1), 0, 0.4), 0.5, 24, 12);
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.7, 0.7, 0.72, 1), 0, 0.7), 10));
+				var ball = Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.9, 0.9, 0.9, 1), 0, 0.4), 0.5, 24, 12);
 				for (x in [-1.6, 0.0, 1.6]) {
 					var n = world.node();
 					n.position = new Vec3(x, 0.5, 0);
@@ -551,7 +551,7 @@ class Scenes {
 				renderer = r;
 				var world = new World();
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.55, 1), 0, 0.9), 6));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0.4, 1.4, 4.2);
@@ -587,23 +587,23 @@ class Scenes {
 				post.saturation = 1.1;
 				if (name == "poststage") {
 					var bytes = haxe.io.Bytes.alloc(SepiaShader.uniforms[0].size);
-					SepiaShader.params.stage.write({size: new helder.gfx.shader.Vec4(device.width, device.height, 8, 0.8)}, bytes);
+					SepiaShader.params.stage.write({size: new helder.math.Vec4(device.width, device.height, 8, 0.8)}, bytes);
 					post.add(SepiaShader, bytes);
 					post.add(ScanShader, bytes).filter = Nearest;
 				}
 				var world = new World();
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -0.6, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.25, 0.25, 0.28, 1), 0, 0.5), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.25, 0.25, 0.28, 1), 0, 0.5), 8));
 				var lights = [new Vec3(8, 2.4, 0.6), new Vec3(0.4, 2.2, 6), new Vec3(1.2, 1.2, 1.2)];
 				for (k in 0...3) {
 					var n = world.node("lamp" + k);
 					n.position = new Vec3(-1.6 + k * 1.6, 0, 0);
-					MeshRenderer.attach(n, Shapes.sphere(device, new Material("lamp" + k, new helder.gfx.shader.Vec4(0.1, 0.1, 0.1, 1), 0, 0.5, lights[k]), 0.4, 32, 16));
+					MeshRenderer.attach(n, Shapes.sphere(device, new Material("lamp" + k, new helder.math.Vec4(0.1, 0.1, 0.1, 1), 0, 0.5, lights[k]), 0.4, 32, 16));
 				}
 				var bar = world.node("bar");
 				bar.position = new Vec3(0, 1, -1);
-				MeshRenderer.attach(bar, Shapes.box(device, new Material("bar", new helder.gfx.shader.Vec4(0, 0, 0, 1), 0, 1, new Vec3(20, 14, 6)), 3.2, 0.06, 0.06));
+				MeshRenderer.attach(bar, Shapes.box(device, new Material("bar", new helder.math.Vec4(0, 0, 0, 1), 0, 1, new Vec3(20, 14, 6)), 3.2, 0.06, 0.06));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
 				eye.position = new Vec3(0, 0.8, 5);
@@ -636,8 +636,8 @@ class Scenes {
 				post.bloom = 0.04;
 				var world = new World();
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.3, 0.3, 0.3, 1), 0, 0.8), 120));
-				var stone = new Material("stone", new helder.gfx.shader.Vec4(0.6, 0.55, 0.5, 1), 0, 0.7);
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.3, 0.3, 0.3, 1), 0, 0.8), 120));
+				var stone = new Material("stone", new helder.math.Vec4(0.6, 0.55, 0.5, 1), 0, 0.7);
 				var pillar = Shapes.box(device, stone, 0.6, 4, 0.6);
 				for (k in 0...12)
 					for (side in [-1, 1]) {
@@ -645,7 +645,7 @@ class Scenes {
 						n.position = new Vec3(side * 2.5, 2, -k * 5);
 						MeshRenderer.attach(n, pillar);
 					}
-				var glow = new Material("sign", new helder.gfx.shader.Vec4(0, 0, 0, 1), 0, 1, new Vec3(6, 2, 0.5));
+				var glow = new Material("sign", new helder.math.Vec4(0, 0, 0, 1), 0, 1, new Vec3(6, 2, 0.5));
 				glow.fog = false;
 				var sign = world.node("sign");
 				sign.position = new Vec3(0, 1.5, -45);
@@ -665,11 +665,11 @@ class Scenes {
 				var r = new Renderer(device).use(new Shadows(device, 1024));
 				renderer = r;
 				var world = new World();
-				var cube = Shapes.box(device, new Material("cube", new helder.gfx.shader.Vec4(1, 1, 1, 1), 0, 0.45), 0.3, 0.3, 0.3);
+				var cube = Shapes.box(device, new Material("cube", new helder.math.Vec4(1, 1, 1, 1), 0, 0.45), 0.3, 0.3, 0.3);
 				var set = new InstancedMesh(cube, 512, 400);
 				for (i in 0...400) {
 					var a = i * 0.25, d = 0.4 + i * 0.012;
-					var q = helder.scene.math.Quat.axisAngle(new Vec3(0.2822, 0.9407, 0.1881), i * 0.37);
+					var q = helder.math.Quat.axisAngle(new Vec3(0.2822, 0.9407, 0.1881), i * 0.37);
 					set.setTransform(i, Math.cos(a) * d, Math.sin(i * 0.05) * 0.4, Math.sin(a) * d, q.x, q.y, q.z, q.w, 0.6 + (i % 5) * 0.12);
 					set.setColor(i, new Vec3(0.5 + 0.5 * Math.cos(a), 0.5 + 0.5 * Math.cos(a + 2.1), 0.5 + 0.5 * Math.cos(a + 4.2)));
 				}
@@ -678,7 +678,7 @@ class Scenes {
 				// (a floor under it, the set's shadows on it; a second set out of the view: culled whole)
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -1, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.5, 0.5, 0.55, 1), 0, 0.8), 16));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.5, 0.5, 0.55, 1), 0, 0.8), 16));
 				var away = new InstancedMesh(cube, 4);
 				away.bounds = new helder.scene.math.Aabb(new Vec3(-0.5, 40, -0.5), new Vec3(0.5, 41, 0.5));
 				for (i in 0...4)
@@ -699,7 +699,7 @@ class Scenes {
 				renderer = r;
 				var world = new World();
 				var floor = world.node("floor");
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.3, 0.3, 0.33, 1), 0, 0.8), 8));
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.3, 0.3, 0.33, 1), 0, 0.8), 8));
 				fx.drag = 1.5;
 				fx.gravity = new Vec3(0, -3, 0);
 				for (k in 0...24) {
@@ -768,11 +768,11 @@ class Scenes {
 					var f = formats[k];
 					var tex = f.name == "" ? Images.mipmapped(device, w, w, rgba) : Images.compressed(device, f.f, w, w, helder.image.BlockCompress.mips(rgba, w, w, f.name));
 					if (tex != null) supported.push(f.name == "" ? "rgba8" : f.name);
-					var m = new Material(f.name, new helder.gfx.shader.Vec4(tex != null ? 1 : 0, tex != null ? 1 : 0, tex != null ? 1 : 0, 1), 0, 1);
+					var m = new Material(f.name, new helder.math.Vec4(tex != null ? 1 : 0, tex != null ? 1 : 0, tex != null ? 1 : 0, 1), 0, 1);
 					m.baseColorTexture = tex;
 					var n = world.node(f.name);
 					n.position = new Vec3(-1.5 + k, 0, 0);
-					n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 0), Math.PI / 2);
+					n.rotation = helder.math.Quat.axisAngle(new Vec3(1, 0, 0), Math.PI / 2);
 					MeshRenderer.attach(n, Shapes.plane(device, m, 1));
 				}
 				Sys.println("Scenes: compressed: the GPU samples " + supported.join(", "));
@@ -790,24 +790,24 @@ class Scenes {
 				var world = new World();
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -0.6, 0);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.55, 0.56, 0.6, 1), 0, 0.85), 14));
-				var box = Shapes.box(device, new Material("box", new helder.gfx.shader.Vec4(0.9, 0.5, 0.25, 1), 0, 0.35));
-				var ball = Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.25, 0.55, 0.95, 1), 0, 0.25), 0.5, 24, 12);
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.55, 0.56, 0.6, 1), 0, 0.85), 14));
+				var box = Shapes.box(device, new Material("box", new helder.math.Vec4(0.9, 0.5, 0.25, 1), 0, 0.35));
+				var ball = Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.25, 0.55, 0.95, 1), 0, 0.25), 0.5, 24, 12);
 				// (each scaled unevenly, turned about a tilted axis: an uneven scale under a turn, and a turn after it from the parent)
 				var scales = [new Vec3(0.3, 1.2, 0.7), new Vec3(1.4, 0.25, 0.5), new Vec3(0.5, 0.6, 1.5), new Vec3(1, 0.4, 0.3)];
 				for (k in 0...16) {
 					var x = (k % 4) - 1.5, z = Std.int(k / 4) - 1.5;
 					var parent = world.node();
 					parent.position = new Vec3(x * 1.6, 0, z * 1.5);
-					parent.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), k * 0.4);
+					parent.rotation = helder.math.Quat.axisAngle(new Vec3(0, 1, 0), k * 0.4);
 					var n = world.node("", parent);
-					n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0.48, 0.8, 0.36), k * 0.9);
+					n.rotation = helder.math.Quat.axisAngle(new Vec3(0.48, 0.8, 0.36), k * 0.9);
 					n.scale = scales[k % 4] * (k % 3 == 0 ? 1.3 : 1);
 					MeshRenderer.attach(n, k % 2 == 0 ? box : ball);
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.88), 2.8));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.6, 0.7, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.6, 0.7, 0);
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 60));
 				eye.position = new Vec3(1.5, 5.5, 6.5);
@@ -830,12 +830,12 @@ class Scenes {
 				var world = new World();
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, 0, -10);
-				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.gfx.shader.Vec4(0.62, 0.62, 0.64, 1), 0, 0.9), 30));
-				var stone = new Material("stone", new helder.gfx.shader.Vec4(0.82, 0.58, 0.38, 1), 0, 0.6);
+				MeshRenderer.attach(floor, Shapes.plane(device, new Material("floor", new helder.math.Vec4(0.62, 0.62, 0.64, 1), 0, 0.9), 30));
+				var stone = new Material("stone", new helder.math.Vec4(0.82, 0.58, 0.38, 1), 0, 0.6);
 				var pillar = Shapes.box(device, stone, 0.3, 2.6, 0.3);
 				var stem = Shapes.box(device, stone, 0.08, 1.6, 0.08);
-				var slab = Shapes.box(device, new Material("slab", new helder.gfx.shader.Vec4(0.35, 0.6, 0.85, 1), 0, 0.5), 1.4, 0.08, 1.0);
-				var ball = Shapes.sphere(device, new Material("ball", new helder.gfx.shader.Vec4(0.9, 0.85, 0.8, 1), 0, 0.3), 0.3, 24, 12);
+				var slab = Shapes.box(device, new Material("slab", new helder.math.Vec4(0.35, 0.6, 0.85, 1), 0, 0.5), 1.4, 0.08, 1.0);
+				var ball = Shapes.sphere(device, new Material("ball", new helder.math.Vec4(0.9, 0.85, 0.8, 1), 0, 0.3), 0.3, 24, 12);
 				for (k in 0...5) {
 					var z = 1 - k * 4.5;
 					var p = world.node();
@@ -853,7 +853,7 @@ class Scenes {
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.88), 2.6));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.75, 1.1, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.75, 1.1, 0);
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 60));
 				eye.position = new Vec3(0.4, 3.2, 4.5);
@@ -867,7 +867,7 @@ class Scenes {
 				renderer = r;
 				var world = new World();
 				var ball = Geometry.sphere({radius: 0.4, widthSegments: 32, heightSegments: 16});
-				var orange = new helder.gfx.shader.Vec4(0.9, 0.25, 0.05, 1);
+				var orange = new helder.math.Vec4(0.9, 0.25, 0.05, 1);
 				var materials = [
 					Material.unlit({color: orange}),
 					Material.matcap({matcap: matcapImage(device)}),
@@ -884,10 +884,10 @@ class Scenes {
 				}
 				var floor = world.node("floor");
 				MeshRenderer.attach(floor,
-					Shapes.of(device, Geometry.plane({width: 9, height: 4}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.gfx.shader.Vec4(0.45, 0.47, 0.5, 1)})));
+					Shapes.of(device, Geometry.plane({width: 9, height: 4}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.math.Vec4(0.45, 0.47, 0.5, 1)})));
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.96, 0.9), 2.4));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.8, 0.6, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.8, 0.6, 0);
 				var lamp = world.node("lamp");
 				lamp.position = new Vec3(2.2, 1.2, 1.0);
 				Light.attach(lamp, Light.pointLight(new Vec3(0.3, 0.55, 1), 4, 4));
@@ -905,8 +905,8 @@ class Scenes {
 				var world = new World();
 				var helix = helder.scene.math.Curve3.catmullRom([for (k in 0...9) new Vec3(Math.cos(k * 1.4) * 0.22, -0.3 + k * 0.075, Math.sin(k * 1.4) * 0.22)]);
 				var vase = [
-					new helder.gfx.shader.Vec2(0.01, -0.3), new helder.gfx.shader.Vec2(0.22, -0.28), new helder.gfx.shader.Vec2(0.3, -0.1),
-					new helder.gfx.shader.Vec2(0.18, 0.12), new helder.gfx.shader.Vec2(0.14, 0.24), new helder.gfx.shader.Vec2(0.22, 0.32)
+					new helder.math.Vec2(0.01, -0.3), new helder.math.Vec2(0.22, -0.28), new helder.math.Vec2(0.3, -0.1),
+					new helder.math.Vec2(0.18, 0.12), new helder.math.Vec2(0.14, 0.24), new helder.math.Vec2(0.22, 0.32)
 				];
 				function shapes(flat:Bool):Array<VertexData>
 					return [
@@ -924,20 +924,20 @@ class Scenes {
 						Geometry.tube(helix, {tubularSegments: flat ? 24 : 64, radius: 0.06, radialSegments: flat ? 5 : 8, flat: flat})
 					];
 				var normals = Material.normals({doubleSided: true});
-				var clay = Material.lambert({color: new helder.gfx.shader.Vec4(0.85, 0.62, 0.4, 1), doubleSided: true});
+				var clay = Material.lambert({color: new helder.math.Vec4(0.85, 0.62, 0.4, 1), doubleSided: true});
 				for (flat in [false, true]) {
 					var all = shapes(flat);
 					for (i in 0...all.length) {
 						var n = world.node();
 						n.position = new Vec3(-2.25 + (i % 6) * 0.9, (flat ? -0.55 : 1.45) - Std.int(i / 6) * 0.95, 0);
 						// (turned a little: the flat shapes' faces and the discs' fronts seen)
-						n.rotation = helder.scene.math.Quat.fromEuler(0.35, i < 7 ? 0.5 : 0.2, 0);
+						n.rotation = helder.math.Quat.fromEuler(0.35, i < 7 ? 0.5 : 0.2, 0);
 						MeshRenderer.attach(n, Shapes.of(device, all[i], flat ? clay : normals));
 					}
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.97, 0.92), 2.6));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.7, 0.5, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.7, 0.5, 0);
 				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.35, 0.4, 0.5), new Vec3(0.12, 0.1, 0.08)));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 50));
@@ -956,10 +956,10 @@ class Scenes {
 				var world = new World();
 				var floor = world.node("floor");
 				MeshRenderer.attach(floor, Shapes.of(device, Geometry.plane({width: 10, height: 10}).rotated(-Math.PI / 2, 0, 0),
-					Material.toon({color: new helder.gfx.shader.Vec4(0.45, 0.75, 0.35, 1), steps: 2, shade: new Vec3(0.22, 0.3, 0.45)})));
-				var red = Material.toon({color: new helder.gfx.shader.Vec4(0.9, 0.2, 0.15, 1), steps: 3, shade: new Vec3(0.12, 0.12, 0.3)});
-				var gold = Material.toon({color: new helder.gfx.shader.Vec4(0.95, 0.7, 0.2, 1), steps: 4, shade: new Vec3(0.15, 0.12, 0.28)});
-				var blue = Material.toon({color: new helder.gfx.shader.Vec4(0.25, 0.45, 0.95, 1), steps: 2, shade: new Vec3(0.15, 0.15, 0.35)});
+					Material.toon({color: new helder.math.Vec4(0.45, 0.75, 0.35, 1), steps: 2, shade: new Vec3(0.22, 0.3, 0.45)})));
+				var red = Material.toon({color: new helder.math.Vec4(0.9, 0.2, 0.15, 1), steps: 3, shade: new Vec3(0.12, 0.12, 0.3)});
+				var gold = Material.toon({color: new helder.math.Vec4(0.95, 0.7, 0.2, 1), steps: 4, shade: new Vec3(0.15, 0.12, 0.28)});
+				var blue = Material.toon({color: new helder.math.Vec4(0.25, 0.45, 0.95, 1), steps: 2, shade: new Vec3(0.15, 0.15, 0.35)});
 				function put(g:VertexData, m:Material, x:Float, y:Float, z:Float) {
 					var n = world.node();
 					n.position = new Vec3(x, y, z);
@@ -967,12 +967,12 @@ class Scenes {
 					return n;
 				}
 				put(Geometry.sphere({radius: 0.6}), red, -1.4, 0.6, 0);
-				put(Geometry.torusKnot({radius: 0.45, tube: 0.16, tubularSegments: 128, radialSegments: 12}), gold, 0.2, 0.85, -0.3).rotation = helder.scene.math.Quat.fromEuler(0.3, 0.4, 0);
+				put(Geometry.torusKnot({radius: 0.45, tube: 0.16, tubularSegments: 128, radialSegments: 12}), gold, 0.2, 0.85, -0.3).rotation = helder.math.Quat.fromEuler(0.3, 0.4, 0);
 				put(Geometry.cylinder({radiusTop: 0.35, radiusBottom: 0.45, height: 1.4}), blue, 1.6, 0.7, 0.2);
-				put(Geometry.box({width: 0.6, height: 0.6, depth: 0.6}), blue, -0.4, 0.3, 1.1).rotation = helder.scene.math.Quat.fromEuler(0, 0.6, 0);
+				put(Geometry.box({width: 0.6, height: 0.6, depth: 0.6}), blue, -0.4, 0.3, 1.1).rotation = helder.math.Quat.fromEuler(0, 0.6, 0);
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.96, 0.88), 3));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.85, 0.9, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.85, 0.9, 0);
 				var lamp = world.node("lamp");
 				lamp.position = new Vec3(0.9, 0.5, 1.4);
 				Light.attach(lamp, Light.pointLight(new Vec3(1, 0.55, 0.2), 3, 2.5));
@@ -991,9 +991,9 @@ class Scenes {
 				var world = new World();
 				var floor = world.node("floor");
 				MeshRenderer.attach(floor,
-					Shapes.of(device, Geometry.plane({width: 14, height: 14}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.gfx.shader.Vec4(0.35, 0.5, 0.3, 1)})));
+					Shapes.of(device, Geometry.plane({width: 14, height: 14}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.math.Vec4(0.35, 0.5, 0.3, 1)})));
 				var trees = new Sprites(device,
-					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 1), texture: treeAtlas(device), alphaCutoff: 0.5, doubleSided: true}), 16,
+					Material.unlit({color: new helder.math.Vec4(1, 1, 1, 1), texture: treeAtlas(device), alphaCutoff: 0.5, doubleSided: true}), 16,
 					{mode: Axis, columns: 2, rows: 1});
 				Sprites.attach(world.node("trees"), trees);
 				trees.count = 9;
@@ -1003,15 +1003,15 @@ class Scenes {
 					trees.setColor(i, new Vec3(0.7 + 0.1 * (i % 3), 0.9, 0.7));
 				}
 				var clouds = new Sprites(device,
-					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: Alpha, fog: false}), 8);
+					Material.unlit({color: new helder.math.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: Alpha, fog: false}), 8);
 				Sprites.attach(world.node("clouds"), clouds);
 				clouds.count = 5;
 				for (i in 0...5)
 					clouds.set(i, -2.6 + i * 1.3, 2.4 + (i % 2) * 0.3, -3 + (i % 3) * 0.6, 1.6, 0.8, (i - 2) * 0.12);
-				var lamps = Material.lambert({color: new helder.gfx.shader.Vec4(0.25, 0.25, 0.28, 1)});
+				var lamps = Material.lambert({color: new helder.math.Vec4(0.25, 0.25, 0.28, 1)});
 				var post = Geometry.cylinder({radiusTop: 0.04, radiusBottom: 0.05, height: 1, radialSegments: 8});
 				var halos = new Sprites(device,
-					Material.unlit({color: new helder.gfx.shader.Vec4(0.9, 0.5, 0.15, 1), texture: softDisc(device), blend: Additive}), 4);
+					Material.unlit({color: new helder.math.Vec4(0.9, 0.5, 0.15, 1), texture: softDisc(device), blend: Additive}), 4);
 				Sprites.attach(world.node("halos"), halos);
 				halos.count = 3;
 				var postMesh = Shapes.of(device, post, lamps);
@@ -1025,7 +1025,7 @@ class Scenes {
 				}
 				var sun = world.node("sun");
 				Light.attach(sun, Light.directional(new Vec3(1, 0.9, 0.8), 1.6));
-				sun.rotation = helder.scene.math.Quat.fromEuler(-0.6, 0.4, 0);
+				sun.rotation = helder.math.Quat.fromEuler(-0.6, 0.4, 0);
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.85, 0.1, 50));
 				eye.position = new Vec3(0, 1.6, 4.6);
@@ -1041,7 +1041,7 @@ class Scenes {
 				r.clearColor = new Vec4(0.08, 0.1, 0.14, 1);
 				var world = new World();
 				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.55, 0.7, 1.0), new Vec3(0.45, 0.28, 0.12), 1.6));
-				var white = new helder.gfx.shader.Vec4(0.9, 0.9, 0.9, 1);
+				var white = new helder.math.Vec4(0.9, 0.9, 0.9, 1);
 				var ms = [Material.lambert({color: white}), Material.standard({color: white, roughness: 0.6}), Material.standard({color: white, metallic: 1, roughness: 0.35})];
 				for (i in 0...3) {
 					var n = world.node();
@@ -1049,7 +1049,7 @@ class Scenes {
 					MeshRenderer.attach(n, Shapes.of(device, Geometry.sphere({radius: 0.5}), ms[i]));
 					var b = world.node();
 					b.position = new Vec3(-1.3 + i * 1.3, -0.45, 0);
-					b.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+					b.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 					MeshRenderer.attach(b, Shapes.of(device, Geometry.box({width: 0.55, height: 0.55, depth: 0.55}), ms[i]));
 				}
 				var eye = world.node("eye");

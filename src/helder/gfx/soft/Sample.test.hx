@@ -1,6 +1,6 @@
 package helder.gfx.soft;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.test.Test;
 import hxmc.unsafe.LibC;
 import hxmc.unsafe.Mem;

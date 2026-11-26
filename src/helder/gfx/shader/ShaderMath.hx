@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import haxe.macro.Expr;
 
 // The builtins of shader code, usable in CPU code as well (import
@@ -37,7 +38,7 @@ import haxe.macro.Expr;
 // variants are shaders (Slots); compute({size, main}), a compute stage
 // (ComputeShader), on the devices that have them (Device.has(Compute)).
 #if !macro
-@:build(helder.gfx.shader.VecBuild.builtins())
+@:build(helder.gfx.shader.ShaderMathBuild.builtins())
 #end
 class ShaderMath {
 	// a pipeline's two stages, compiled at build time (Shader)

@@ -25,7 +25,7 @@ class GlassWindowCheck {
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	static function run(dir:Null<String>) {
-		var w = new helder.ui.UiWindow("GlassWindowCheck", GlassScene.W, GlassScene.H);
+		var w = new helder.ui.UiWindow({title: "GlassWindowCheck", width: GlassScene.W, height: GlassScene.H});
 		var scenes = dir == null ? ["stripes"] : GlassScene.backgrounds, at = 0, step = 0, failed = 0, glass:Array<Glass> = [];
 		inline function check(ok:Bool, what:String) {
 			if (!ok) failed++;

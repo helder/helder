@@ -20,8 +20,8 @@ class ClipboardCheck {
 	}
 
 	static function main() {
-		var a = new Window("ClipboardCheck A", 64, 64);
-		var b = new Window("ClipboardCheck B", 64, 64);
+		var a = new Window({title: "ClipboardCheck A", width: 64, height: 64});
+		var b = new Window({title: "ClipboardCheck B", width: 64, height: 64});
 		var text = "héllo ✓ 𝄞 clipboard";
 		var steps:Array<Void->Void> = [];
 		var waiting = false;

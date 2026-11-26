@@ -1,3 +1,4 @@
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;

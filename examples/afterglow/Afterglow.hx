@@ -17,10 +17,10 @@ import Sdf;
 import WaterShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.gfx.shader.ShaderMath.*;
 import helder.os.*;
 import helder.scene.*;
@@ -734,7 +734,7 @@ class Afterglow {
 		}
 		var det = arg("--detail");
 		if (det != null) DETAIL = Std.parseFloat(det);
-		var window = #if (hxmc.target == "wasm32-wasi") new Window("Afterglow", 0, 0) #else new Window("Afterglow", 405, 720) #end;
+		var window = #if (hxmc.target == "wasm32-wasi") new Window({title: "Afterglow", width: 0, height: 0}) #else new Window({title: "Afterglow", width: 405, height: 720}) #end;
 		var device = Device.create(window.surface);
 		var shell = new Greybox(window, device);
 		shell.log = args.indexOf("--log") >= 0;

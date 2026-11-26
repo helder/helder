@@ -1,7 +1,7 @@
 package helder.ui.draw;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.Device;
 import helder.gfx.PassDesc;
 import helder.image.Image;

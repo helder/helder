@@ -8,8 +8,9 @@
 // PbrShader.hx: what one changes the other does.
 import {
 	slots, position, vec2, vec3, vec4, mat4, sample, sampleLevel, dot, cross, normalize, reflect, mix, clamp, smoothstep, pow, min, max, abs,
-	sqrt, floor, fract, step, discard, length, exp, cos, sin, log, inversesqrt, type Vec2, type Vec3, type Vec4, type Mat4, type Texture2D, type UniformArray,
+	sqrt, floor, fract, step, discard, length, exp, cos, sin, log, inversesqrt, type Texture2D, type UniformArray,
 } from "helder/gfx";
+import { type Vec2, type Vec3, type Vec4, type Mat4 } from "helder/math";
 
 // the combined vertex: a variant's attributes those it reads, in this order
 export type PbrVertex = {

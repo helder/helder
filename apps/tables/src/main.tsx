@@ -1,7 +1,7 @@
 // Tables: drizzle-kit studio's server in a window, written in TypeScript.
 // `tables [url]`, the server at http://127.0.0.1:4983 unless given
-import { UiWindow, Surface, MenuBarView, Theme } from "helder/ui";
-import { actions, handle, item, role, separator, submenu, Keymap } from "helder/ui/actions";
+import { UiWindow, Surface, MenuBarView, Theme, item, role, separator, submenu } from "helder/ui";
+import { actions, handle, Keymap } from "helder/ui/actions";
 import { font } from "helder/asset";
 import { App } from "helder/scene";
 import { platform } from "helder/native/platform";
@@ -48,8 +48,6 @@ Keymap.global.bind("secondary-s", Do.save())
 const given = args().length > 0 && !args()[0].startsWith("--") ? args()[0] : null;
 const app = new Tables(given === null ? "http://127.0.0.1:4983/" : given.startsWith("http") ? given : "http://" + given);
 app.focusFilter = focusFilter;
-// (the colours given inline follow the appearance chosen, as the sheet's do)
-Theme.appearance = () => app.dark();
 // (an error nothing caught: said in the status bar, the app going on)
 App.onError = (e, source) => {
 	console.log(`tables: ${source}: ${e instanceof Error ? e.stack : e}`);
@@ -60,13 +58,13 @@ app.start();
 
 // the menu bar: File, Edit, View (its views, the row panel, the appearance)
 const menus = [
-	{ label: "File", items: [item("Save Changes", Do.save()), item("Discard Changes", Do.discard()), separator, item("Refresh", Do.refresh()), separator, item("Close Window", Do.close()), role("quit")] },
-	{ label: "Edit", items: [item("Undo", Do.undo()), separator, role("cut"), role("copy"), role("paste"), role("select-all")] },
+	{ label: "File", items: [item("Save Changes", Do.save()), item("Discard Changes", Do.discard()), separator(), item("Refresh", Do.refresh()), separator(), item("Close Window", Do.close()), role("quit")] },
+	{ label: "Edit", items: [item("Undo", Do.undo()), separator(), role("cut"), role("copy"), role("paste"), role("select-all")] },
 	{
 		label: "View",
 		items: [
-			item("Data", Do.data()), item("Structure", Do.structure()), item("SQL", Do.query()), separator, item("Row Panel", Do.panel()), item("Back", Do.back()), separator,
-			item("Search Tables", Do.search()), item("Filter Rows", Do.filter()), separator,
+			item("Data", Do.data()), item("Structure", Do.structure()), item("SQL", Do.query()), separator(), item("Row Panel", Do.panel()), item("Back", Do.back()), separator(),
+			item("Search Tables", Do.search()), item("Filter Rows", Do.filter()), separator(),
 			submenu("Appearance", [item("System", Do.appearance("system")), item("Light", Do.appearance("light")), item("Dark", Do.appearance("dark"))])
 		]
 	},

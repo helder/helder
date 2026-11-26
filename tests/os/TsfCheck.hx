@@ -33,7 +33,7 @@ class TsfCheck {
 	static final events:Array<String> = [];
 
 	static function main() {
-		var window = new Window("TsfCheck", 240, 120);
+		var window = new Window({title: "TsfCheck", width: 240, height: 120});
 		var frames = 0;
 		App.run(() -> {
 			frames++;

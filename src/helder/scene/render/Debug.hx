@@ -19,7 +19,7 @@ import haxe.macro.Expr;
 //   Debug.axes(node.worldMatrix(), 0.5);  Debug.grid(centre, 10, 10);
 //   Debug.frustum(camera, aspect);  Debug.light(lamp);  Debug.skeleton(skin);
 //   Debug.path(curve, 64);  Debug.arrow(a, b);  Debug.cross3(p);
-//   Debug.onTop(true);  ...  Debug.onTop(false);   // drawn over everything
+//   Debug.overlay(true);  ...  Debug.overlay(false); // drawn over everything
 //
 // A colour is 0xRRGGBB, as written. TypeScript, which has no such builds,
 // calls DebugDraw's own.
@@ -67,8 +67,8 @@ class Debug {
 		return call("path", [curve].concat(rest));
 
 	// the calls from here on drawn over everything (true) or depth tested
-	public static macro function onTop(on:Expr):Expr
-		return kept() ? macro helder.scene.render.DebugDraw.onTop = $on : macro {};
+	public static macro function overlay(on:Expr):Expr
+		return kept() ? macro helder.scene.render.DebugDraw.overlay = $on : macro {};
 
 	#if macro
 	// (whether the calls are compiled: not in a release, unless asked)

@@ -11,7 +11,7 @@ import helder.ui.UiWindow;
 // as frames show.
 class WebVideoLayers {
 	static function main() {
-		var w = new UiWindow("Video", 400, 300);
+		var w = new UiWindow({title: "Video", width: 400, height: 300});
 		var page = new Node("page");
 		page.style.set({width: 400, height: 300, background: Color.rgb(0x333333)});
 		var v = new VideoNode();

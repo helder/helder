@@ -2,10 +2,11 @@
 // summary: Sheen, a clear coat, a thin film, a specular colour, brushed metal and refracting glass: the glTF material extensions on materials made in code, drawn by Physical, the glass through Transmission
 // tags: 3d, pbr, gltf, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.asset.Asset;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -23,7 +24,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-physical
 class Extensions {
 	static function main() {
-		var window = new Window("glTF material extensions", 640, 400);
+		var window = new Window({title: "glTF material extensions", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		// #region features

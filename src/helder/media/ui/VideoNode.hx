@@ -86,7 +86,7 @@ class VideoNode extends Node {
 		p.volume = volume;
 		p.onLoaded = () -> {
 			if (p != player) return;
-			duration(p.duration);
+			duration(p.duration());
 			p.rate = rate;
 			markDirty();
 			if (onLoaded != null) onLoaded();
@@ -146,8 +146,8 @@ class VideoNode extends Node {
 			if (p == null || ui == null) return ticking = false;
 			advance(p);
 			// (on too while its system layer shows nothing yet: its first frame to render)
-			var going = p.playing || p.shown == null && p.error == null || p.shown != null && Math.abs(p.shown.time - p.time) > 1e-6 && p.time < p.duration
-				|| sample != null && !sample.showing && p.error == null;
+			var going = p.playing() || p.shown == null && p.error() == null || p.shown != null && Math.abs(p.shown.time - p.time()) > 1e-6 && p.time() < p.duration()
+				|| sample != null && !sample.showing && p.error() == null;
 			if (!going) ticking = false;
 			return going;
 		});
@@ -161,12 +161,12 @@ class VideoNode extends Node {
 			ui.requestFrame();
 		}
 		var f = sample != null ? sample.feed(p) : p.update();
-		var t = p.time;
+		var t = p.time();
 		if (time.peek() != t) {
 			time(t);
 			if (onTime != null) onTime(t);
 		}
-		if (playing.peek() != p.playing) playing(p.playing);
+		if (playing.peek() != p.playing()) playing(p.playing());
 		// (the system's layer shows it: nothing of helder's drawn again,
 		// once it does; else a frame asked for: a clock's step alone paints none)
 		var own = sample == null || !sample.showing;
@@ -200,7 +200,7 @@ class VideoNode extends Node {
 	}
 
 	function set_rate(v:Float):Float {
-		if (player != null && player.loaded) player.rate = v;
+		if (player != null && player.loaded()) player.rate = v;
 		return rate = v;
 	}
 

@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.render.PbrShader;
 
 // A physical shader's material data (PhysicalShader's: MaterialShader.layers):

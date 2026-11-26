@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import haxe.io.Bytes;
 
 // A texture a compute stage writes (ShaderMath.textureStore(t, x, y, c)),

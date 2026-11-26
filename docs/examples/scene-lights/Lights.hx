@@ -2,9 +2,10 @@
 // summary: A low sun casting soft shadows (Shadows.soft: sharp where they meet their casters, wider farther away), two coloured point lights circling and a spot light, under a sky
 // tags: 3d, lights, shadows, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -19,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-lights
 class Lights {
 	static function main() {
-		var window = new Window("Lights and shadows", 640, 400);
+		var window = new Window({title: "Lights and shadows", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var shadows = new Shadows(device, 2048).soft(0.25, 16, 0.08);
 		var renderer = new Renderer(device).use(shadows).use(new Sky(device));

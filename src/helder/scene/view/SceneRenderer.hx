@@ -1,11 +1,11 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Geometry;
 import helder.scene.render.InstancedMesh;
 import helder.scene.render.Light;
@@ -153,7 +153,7 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 		return madeBy("planeGeometry", n -> Geometry.plane(SceneOptions.of(PlaneOptions, n.props)));
 
 	public static function element_latheGeometry():SceneNode
-		return madeBy("latheGeometry", n -> Geometry.lathe(n.get("points", [new helder.gfx.shader.Vec2(0, -0.5), new helder.gfx.shader.Vec2(0.5, 0), new helder.gfx.shader.Vec2(0, 0.5)]),
+		return madeBy("latheGeometry", n -> Geometry.lathe(n.get("points", [new helder.math.Vec2(0, -0.5), new helder.math.Vec2(0.5, 0), new helder.math.Vec2(0, 0.5)]),
 			SceneOptions.of(LatheOptions, n.props)));
 
 	public static function element_tubeGeometry():SceneNode
@@ -322,7 +322,7 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 			return helder.typescript.js.Lib.get(v, k);
 		var c = helder.typescript.js.Lib.get(v, "constructor");
 		return switch (helder.typescript.js.Lib.get(c, "name") : Dynamic) {
-			case "Vec2": new helder.gfx.shader.Vec2(f("x"), f("y"));
+			case "Vec2": new helder.math.Vec2(f("x"), f("y"));
 			case "Vec3": new Vec3(f("x"), f("y"), f("z"));
 			case "Vec4": new Vec4(f("x"), f("y"), f("z"), f("w"));
 			case "Quat": new Quat(f("x"), f("y"), f("z"), f("w"));

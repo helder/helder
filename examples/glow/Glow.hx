@@ -2,6 +2,7 @@
 // summary: A material of its own: the standard PBR shader with two of its slots replaced (a pulsing emissive light, a brighter base colour), drawn plain and instanced
 // tags: 3d, shaders, pbr
 // demo: canvas 512x384
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;
@@ -69,7 +70,7 @@ class Glow {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Glow", 640, 480);
+		var window = new Window({title: "Glow", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var glow = new Glow(device);
 		// (the frames' clock: the display's, or a headless run's virtual one, so `helder run --headless --snap` shows the glow at a time)

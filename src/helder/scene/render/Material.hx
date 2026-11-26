@@ -1,9 +1,9 @@
 package helder.scene.render;
 
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // A surface of glTF's metallic-roughness model: base colour (linear,
 // times the texture's sRGB colour when there is one), metallic and

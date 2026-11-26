@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.os.Edges;
 import haxe.io.Bytes;
 import helder.gfx.Color;
 import helder.gfx.Texture;

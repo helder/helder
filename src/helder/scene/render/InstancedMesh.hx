@@ -1,10 +1,10 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import haxe.io.Bytes;
 import helder.gfx.Buffer;
 import helder.gfx.Device;
-import helder.gfx.shader.Mat4;
+import helder.math.Mat4;
 import helder.scene.Node;
 import helder.scene.math.Aabb;
 

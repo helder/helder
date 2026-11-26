@@ -22,14 +22,14 @@ import hxmc.unsafe.*;
 // (window.open), Windows' shell (url.dll's FileProtocolHandler), Linux's
 // xdg-open. false: not opened (not a URL the system takes).
 //
-//   Links.open(cart.checkoutUrl);                // in the app on iOS
-//   Links.open("https://helder.build", false);   // the browser
+//   Links.show(cart.checkoutUrl);                // in the app on iOS
+//   Links.show("https://helder.build", false);   // the browser
 @:hxmc.unsafe(gc)
 class Links {
 	// how many were asked for: for tests
 	@:noCompletion public static var opened(default, null) = 0;
 
-	public static function open(url:String, inApp = true):Bool {
+	public static function show(url:String, inApp = true):Bool {
 		opened++;
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return apple(url, inApp && Platform.apple() >= 1); #end
 		#if (!helder.os || helder.os == "web")

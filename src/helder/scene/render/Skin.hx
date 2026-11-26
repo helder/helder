@@ -2,7 +2,7 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
+import helder.math.Mat4;
 import helder.scene.Node;
 import helder.scene.World;
 import helder.scene.math.MathTools;
@@ -43,10 +43,10 @@ class Skin {
 		var toMesh = MathTools.inverse(node.worldMatrix());
 		for (j in 0...joints.length) {
 			var b = 16 * j, ib = inverseBind;
-			var bind = new Mat4(new helder.gfx.shader.Vec4(ib[b], ib[b + 1], ib[b + 2], ib[b + 3]),
-				new helder.gfx.shader.Vec4(ib[b + 4], ib[b + 5], ib[b + 6], ib[b + 7]),
-				new helder.gfx.shader.Vec4(ib[b + 8], ib[b + 9], ib[b + 10], ib[b + 11]),
-				new helder.gfx.shader.Vec4(ib[b + 12], ib[b + 13], ib[b + 14], ib[b + 15]));
+			var bind = new Mat4(new helder.math.Vec4(ib[b], ib[b + 1], ib[b + 2], ib[b + 3]),
+				new helder.math.Vec4(ib[b + 4], ib[b + 5], ib[b + 6], ib[b + 7]),
+				new helder.math.Vec4(ib[b + 8], ib[b + 9], ib[b + 10], ib[b + 11]),
+				new helder.math.Vec4(ib[b + 12], ib[b + 13], ib[b + 14], ib[b + 15]));
 			var m = joints[j].valid ? toMesh * joints[j].worldMatrix() * bind : Mat4.identity();
 			for (c in 0...4) {
 				var col = MathTools.col(m, c);

@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.os.DragOperation;

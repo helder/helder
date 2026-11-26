@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec4;
 import helder.scene.render.ClusterShader;
 
 // Clustered lighting (Forward+), opted in for scenes of many lights

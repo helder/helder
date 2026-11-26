@@ -8,7 +8,7 @@ import haxe.io.Bytes;
 // leaves the heap small and its collections short, and its pixels move to
 // the caller instead of being copied. A decoder given one allocates its
 // planes, coefficients and pixels through bytes(); the caller keeps the
-// result's buffer (take) and frees the rest (free). Elsewhere (Eval, the
+// result's buffer (take) and frees the rest (dispose). Elsewhere (Eval, the
 // web) offHeap is gc's.
 class ImageMemory {
 	public static final gc = new ImageMemory(false);
@@ -60,7 +60,7 @@ class ImageMemory {
 	#end
 
 	// what it gave and was not kept, freed (its views invalid from here)
-	@:hxmc.unsafe(gc) public function free() {
+	@:hxmc.unsafe(gc) public function dispose() {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		for (b in buffers)
 			b.free();

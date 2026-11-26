@@ -312,7 +312,7 @@ class AvVideo implements VideoDecoder {
 		keys.resize(0);
 		times.resize(0);
 		shows.resize(0);
-		for (f in ready) f.release();
+		for (f in ready) f.dispose();
 		ready.resize(0);
 	}
 

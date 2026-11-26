@@ -27,7 +27,7 @@ class AndroidTouchCheck {
 
 	static function main() {
 		Sys.println("AndroidTouchCheck: start");
-		var w = new UiWindow("AndroidTouchCheck", 0, 0);
+		var w = new UiWindow({title: "AndroidTouchCheck", width: 0, height: 0});
 		var root = w.root;
 		root.style.set({flexDirection: Column});
 		var header = new Node("header");

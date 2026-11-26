@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Mat4;
+import helder.math.Mat4;
 
 // The view's grid of cells (froxels: tiles across the view, slices of
 // depth growing exponentially from the camera) and the lights that reach

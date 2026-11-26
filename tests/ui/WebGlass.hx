@@ -5,7 +5,7 @@ import helder.ui.UiWindow;
 // window, as GlassCheck's golden draws it (its own Inter)
 class WebGlass {
 	static function main() {
-		var w = new UiWindow("Glass", GlassScene.W, GlassScene.H);
+		var w = new UiWindow({title: "Glass", width: GlassScene.W, height: GlassScene.H});
 		GlassScene.build(w.root, "stripes", true, true, true);
 		UiWindow.run();
 	}

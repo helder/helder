@@ -20,8 +20,8 @@ class MeshRenderer {
 	// a node's tint: rgb times its materials' base colour (1, 1, 1 when
 	// none), per node: nodes sharing a mesh and a material in one
 	// instanced draw each their own (a building in its planet's palette)
-	public static final TINT = new StoreKind<helder.gfx.shader.Vec3>("tint");
+	public static final TINT = new StoreKind<helder.math.Vec3>("tint");
 
-	public static inline function tint(node:Node, color:helder.gfx.shader.Vec3)
+	public static inline function tint(node:Node, color:helder.math.Vec3)
 		node.world.store(TINT).set(node, color);
 }

@@ -2,9 +2,10 @@
 // summary: Chains of balls on helder.physics' distance joints hanging from a beam, a heavy ball on a ball joint swinging through them; click to swing it again
 // tags: 3d, physics
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.physics.*;
 import helder.scene.*;
@@ -72,7 +73,7 @@ class Chains {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Chains", 640, 480);
+		var window = new Window({title: "Chains", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var scene = new Chains(device);
 		var stages = new Stages(new FixedStep(1 / 60)), last = Sys.time();

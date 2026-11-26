@@ -6,7 +6,7 @@ package helder.ui;
 // button...) take any attribute, their handlers given ui's events.
 @:typescript("helder/ui")
 @:typescript.classes(helder.ui.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Selection, helder.ui.GridScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
-@:typescript.classes(helder.ui.Edges, helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
+@:typescript.classes(helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
 @:typescript.classes(helder.ui.widgets.Controls, helder.ui.widgets.DataGrid,
 	helder.ui.widgets.EditableText, helder.ui.widgets.GridColumn,
 	helder.ui.widgets.GridTheme, helder.ui.widgets.Icons, helder.ui.widgets.Pager,
@@ -30,6 +30,8 @@ package helder.ui;
 	NavScreen = helder.ui.nav.Bar.NavScreen, NavButton = helder.ui.nav.Bar.NavButton, Sheet = helder.ui.nav.Sheets.Sheet)
 @:typescript.functions(pager = helder.ui.widgets.Pager.create,
 	windowControlsSide = helder.ui.widgets.WindowButtons.side)
+@:typescript.functions(item = helder.ui.menu.Menus.menuItem, separator = helder.ui.menu.Menus.menuSeparator, submenu = helder.ui.menu.Menus.menuSubmenu,
+	role = helder.ui.menu.Menus.menuRole, popup = helder.ui.menu.Menus.popup, resolve = helder.ui.menu.Menus.menuResolve)
 @:typescript.jsx(neutral)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

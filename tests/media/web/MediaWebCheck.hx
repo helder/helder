@@ -111,7 +111,7 @@ class MediaWebCheck {
 		order.sort((a, b) -> frames[a].time < frames[b].time ? -1 : 1);
 		pts.sort((a, b) -> a < b ? -1 : 1);
 		var sorted = [for (i in order) frames[i]], c = [for (i in order) crcs[i]];
-		if (!keep) for (f in sorted) f.release();
+		if (!keep) for (f in sorted) f.dispose();
 		if (!keep) d.close();
 		return {frames: sorted, pts: pts, crcs: c};
 	}
@@ -133,7 +133,7 @@ class MediaWebCheck {
 		check('$f: ${r.frames.length} frames, each packet\'s time', one != null && r.frames.length == crcs.length && times.length == 0, times.length > 0 ? 'differing: $times' : "");
 		if (one != null) given('$f: planes as ffmpeg decodes them, its size', bad.length == 0 && one.width == e.width && one.height == e.height && (!asDecoded || one.bits == e.bits),
 			one == null ? "none" : '${r.frames.length} of ${crcs.length}, ${one.width}x${one.height} ${one.bits} bits ${one.matrix}${one.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}');
-		for (fr in r.frames) fr.release();
+		for (fr in r.frames) fr.dispose();
 		m.close();
 	}
 
@@ -149,7 +149,7 @@ class MediaWebCheck {
 		try audible(m, t, d, buf, left) catch (x:MediaError) {
 			Sys.println('skipped: $key ${t.codec}: ${x.message}');
 			d.close();
-			buf.free();
+			buf.dispose();
 			return m.close();
 		}
 		var samples:Array<Float> = e.samples, worst = 0.0;
@@ -164,7 +164,7 @@ class MediaWebCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && Math.abs(left.length - frames) <= slack
 			&& worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -197,10 +197,10 @@ class MediaWebCheck {
 		vt.record(enc);
 		var blit = Blit.of(device), u = haxe.io.Bytes.alloc(64);
 		VideoShader.params.video.write({
-			r: new helder.gfx.shader.Vec4(1, 0, 0, 0),
-			g: new helder.gfx.shader.Vec4(0, 1, 0, 0),
-			b: new helder.gfx.shader.Vec4(0, 0, 1, 0),
-			turn: new helder.gfx.shader.Vec4(0, 1, 1, 1)
+			r: new helder.math.Vec4(1, 0, 0, 0),
+			g: new helder.math.Vec4(0, 1, 0, 0),
+			b: new helder.math.Vec4(0, 0, 1, 0),
+			turn: new helder.math.Vec4(0, 1, 1, 1)
 		}, u);
 		enc.beginPass({colors: [{load: Clear}]});
 		enc.setPipeline(blit);
@@ -248,7 +248,7 @@ class MediaWebCheck {
 			if (hdr && ok) Sys.println('$f: in RGB, the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst (PQ mapped by the browser: not checked)');
 			else given('$f: frame ${e.frame} in RGB on ${device.backend == WebGPU ? "WebGPU" : "WebGL2"}, ${w}x$h upright, as ffmpeg turns it where flat (${frame.matrix})', ok && w == e.width && h == e.height
 				&& mean < 1 && worst <= 8, 'the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst');
-			for (fr in r.frames) fr.release();
+			for (fr in r.frames) fr.dispose();
 			m.close();
 			vt.dispose();
 			device.dispose();
@@ -325,7 +325,7 @@ class MediaWebCheck {
 			Async.delay(0.004);
 		}
 		check('$f: dragged: the frame at ${pts[k]} first', first == pts[k] && ok, '$first');
-		check('$f: dragged: the time where it was let go', pl.time == pts[k] + dt / 2, '${pl.time}');
+		check('$f: dragged: the time where it was let go', pl.time() == pts[k] + dt / 2, '${pl.time()}');
 		pl.close();
 	}
 
@@ -363,7 +363,7 @@ class MediaWebCheck {
 		var p = Player.open(WebSource.of("tests/media/" + f));
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (p.update() == null && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (p.update() == null && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		var last:Null<VideoFrame> = null;
 		while (!ended && haxe.Timer.stamp() - t0 < 5) {
@@ -371,14 +371,14 @@ class MediaWebCheck {
 			if (fr != null && fr != last) {
 				last = fr;
 				shows.push(fr.time);
-				var off = p.time - fr.time;
+				var off = p.time() - fr.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.004);
 		}
-		var position = p.time, heard = @:privateAccess p.ring.read, outputs = @:privateAccess p.out != null;
+		var position = p.time(), heard = @:privateAccess p.ring.read, outputs = @:privateAccess p.out != null;
 		p.close();
-		check("played: on the page's audio output", outputs, '${p.error}');
+		check("played: on the page's audio output", outputs, '${p.error()}');
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));
 		check("played: each shown within a frame of the clock", late < 0.1 + 0.02, 'at most ${Math.round(late * 1000)} ms after its time');
 		check("played: ended, the clock at the end", ended && Math.abs(position - 1) < 0.1, '$position');
@@ -395,7 +395,7 @@ class MediaWebCheck {
 		if (!ok) return Sys.println('skipped: autoplay: $f not decoded here');
 		var p = Player.open(WebSource.of("tests/media/" + f)), t0 = haxe.Timer.stamp();
 		p.muted = true;
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		var last = 0.0;
 		while (haxe.Timer.stamp() - t0 < 3 && last < 0.5) {
@@ -407,14 +407,14 @@ class MediaWebCheck {
 		p.close();
 		var p = Player.open(WebSource.of("tests/media/" + f));
 		t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		t0 = haxe.Timer.stamp();
 		while (haxe.Timer.stamp() - t0 < 0.6) {
 			p.update();
 			Async.delay(0.01);
 		}
-		check("autoplay: with sound, it waits for a gesture", p.time < 0.1, '${p.time}');
+		check("autoplay: with sound, it waits for a gesture", p.time() < 0.1, '${p.time()}');
 		p.close();
 	}
 
@@ -425,9 +425,9 @@ class MediaWebCheck {
 		var p = Player.open(WebSource.of("tests/media/apple/vp9-yuv.webm"));
 		WebElement.forced = false;
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 3) Async.delay(0.004);
-		if (p.error != null && p.error.indexOf("does not play") >= 0) return Sys.println('skipped: element: ${p.error}');
-		check("element: loaded, its duration", p.loaded && Math.abs(p.duration - 1) < 0.05, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 3) Async.delay(0.004);
+		if (p.error() != null && p.error().indexOf("does not play") >= 0) return Sys.println('skipped: element: ${p.error()}');
+		check("element: loaded, its duration", p.loaded() && Math.abs(p.duration() - 1) < 0.05, '${p.error()} ${p.duration()}');
 		p.muted = true;
 		p.play();
 		var times = [];
@@ -441,9 +441,9 @@ class MediaWebCheck {
 		p.seek(0.25);
 		var fr = null;
 		t0 = haxe.Timer.stamp();
-		while (haxe.Timer.stamp() - t0 < 2 && Math.abs(p.time - 0.25) > 0.06) Async.delay(0.01);
+		while (haxe.Timer.stamp() - t0 < 2 && Math.abs(p.time() - 0.25) > 0.06) Async.delay(0.01);
 		fr = p.update();
-		check("element: seek(0.25)", Math.abs(p.time - 0.25) <= 0.06, '${p.time}');
+		check("element: seek(0.25)", Math.abs(p.time() - 0.25) <= 0.06, '${p.time()}');
 		var device = helder.gfx.Device.create(helder.os.Surface.headless(128, 96)), vt = new VideoTexture(device);
 		var ok = fr != null && vt.prepare(fr, 0), px = ok ? readBack(vt) : haxe.io.Bytes.alloc(0), lit = 0;
 		for (i in 0...px.length >> 2) if (px.get(i * 4) + px.get(i * 4 + 1) + px.get(i * 4 + 2) > 60) lit++;

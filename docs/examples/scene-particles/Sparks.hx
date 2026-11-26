@@ -3,8 +3,8 @@
 // tags: 3d, particles, docs
 // demo: canvas 640x400
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -19,7 +19,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-particles
 class Sparks {
 	static function main() {
-		var window = new Window("GPU particles", 640, 400);
+		var window = new Window({title: "GPU particles", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var fx = new GpuParticles(device, 32768);   // the ring: the oldest written over when full
 		fx.gravity = new Vec3(0, -4, 0);

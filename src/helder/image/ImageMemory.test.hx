@@ -16,7 +16,7 @@ function tests() {
 				equals(d.rgba.toHex(), on.toHex());
 				#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 				var b = mem.take(d.rgba);
-				mem.free();
+				mem.dispose();
 				equals(b.getBytes(0, b.length).toHex(), on.toHex());
 				b.close();
 				#end

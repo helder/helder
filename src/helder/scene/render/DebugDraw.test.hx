@@ -1,15 +1,15 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
+import helder.math.Mat4;
+import helder.math.Vec3;
 import helder.scene.World;
 import helder.scene.math.Aabb;
 import helder.scene.math.Curve3;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.test.Test;
 
 // DebugDraw's calls without a GPU: the segments each writes into the ring
-// (the depth-tested one, or onTop's), a colour as written (0xRRGGBB into
+// (the depth-tested one, or overlay's), a colour as written (0xRRGGBB into
 // linear light), the ring's capacity (calls past it dropped and counted),
 // Lines' records as the renderer uploads them (a polyline's neighbours
 // padded, distances along it), and none of it allocating (natively and as
@@ -28,9 +28,9 @@ function tests() {
 			equals(ringCount(0), 64);
 			DebugDraw.grid(new Vec3(0, 0, 0), 4, 4);
 			equals(ringCount(0), 74);
-			DebugDraw.onTop = true;
+			DebugDraw.overlay = true;
 			DebugDraw.ray(new Vec3(0, 0, 0), new Vec3(0, 1, 0));
-			DebugDraw.onTop = false;
+			DebugDraw.overlay = false;
 			equals(ringCount(1), 5, "a ray and its head's four, over everything");
 		});
 		test("a colour as written: 0xRRGGBB into linear light", () -> {

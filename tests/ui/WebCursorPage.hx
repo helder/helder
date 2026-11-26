@@ -8,7 +8,7 @@ import helder.view.*;
 // save=x,y,w,h off=... link=... field=... plain=...").
 class WebCursorPage implements Markup {
 	static function main() {
-		var w = new UiWindow("Cursor", 400, 100);
+		var w = new UiWindow({title: "Cursor", width: 400, height: 100});
 		w.ui.policy["text-field"] = Host.Drawn;
 		Render.render(<view flexDirection="row" alignItems="center" columnGap={8} padding={8}>
 			<button tag="save" padding={8} onPress={() -> {}}>Save</button>

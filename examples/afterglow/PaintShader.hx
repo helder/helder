@@ -1,3 +1,4 @@
+import helder.math.*;
 import Mood.hash2;
 import Mood.noise2;
 import Mood.fbm2;

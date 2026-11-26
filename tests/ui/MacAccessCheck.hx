@@ -41,7 +41,7 @@ class MacAccessCheck implements Markup {
 	}
 
 	static function main() {
-		var w = new UiWindow("MacAccessCheck", 320, 240);
+		var w = new UiWindow({title: "MacAccessCheck", width: 320, height: 240});
 		var saved = 0, checked = signal(false), volume = signal(0.5), name = signal(""), areaOn = signal(false), notes = signal("");
 		Render.render(<view padding={12} rowGap={8} alignItems="start">
 			<text>Settings</text>

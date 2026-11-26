@@ -24,13 +24,13 @@ import helder.typescript.api.dts.TypeEmitter;
 // events where ui's module says so (jsx(neutral): MarkupMacro.NEUTRAL_EVENTS'
 // handlers typed). What it names from another module is imported.
 class Declarations {
-	// (the math types TypeScript has as helder/gfx's classes: lower/Haxe.hx's MATH)
+	// (the math types TypeScript has as helder/math's classes: lower/Haxe.hx's MATH)
 	static final MATH = [
-		"helder.gfx.shader.Vec2" => "Vec2",
-		"helder.gfx.shader.Vec3" => "Vec3",
-		"helder.gfx.shader.Vec4" => "Vec4",
-		"helder.gfx.shader.Mat4" => "Mat4",
-		"helder.scene.math.Quat" => "Quat"
+		"helder.math.Vec2" => "Vec2",
+		"helder.math.Vec3" => "Vec3",
+		"helder.math.Vec4" => "Vec4",
+		"helder.math.Mat4" => "Mat4",
+		"helder.math.Quat" => "Quat"
 	];
 
 	// (known: modules typed, not written, so that what they declare is named
@@ -142,12 +142,12 @@ class Declarations {
 		var where = index(api);
 		var imports = new Map<String, Array<String>>();
 		function declared(b:BaseType):Null<String> {
-			// (helder.gfx.shader's math types and helder.scene's Quat: helder/gfx's
+			// (helder.math's types: helder/math's
 			// classes, the TypeScript program's, by value: lower/Haxe.hx's MATH)
 			var math = MATH.get(b.pack.concat([b.name]).join("."));
 			if (math != null) {
-				var names = imports.get("helder/gfx");
-				if (names == null) imports.set("helder/gfx", names = []);
+				var names = imports.get("helder/math");
+				if (names == null) imports.set("helder/math", names = []);
 				if (names.indexOf(math) < 0) names.push(math);
 				return math;
 			}

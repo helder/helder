@@ -1,6 +1,7 @@
 // A definition's argument is static: literals, objects, functions, constants.
-// expect: ShaderNotStatic.hx:18: characters 16-22
+// expect: ShaderNotStatic.hx:19: characters 16-22
 // expect: shader: stages is not static
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

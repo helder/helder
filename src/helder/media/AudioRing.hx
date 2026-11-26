@@ -68,7 +68,7 @@ class AudioRing {
 		return n;
 	}
 
-	public function free() {
+	public function dispose() {
 		LibC.free(data);
 		LibC.free(at);
 	}

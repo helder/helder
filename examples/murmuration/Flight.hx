@@ -1,5 +1,5 @@
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // What moves by the clock alone: the roost the flock keeps to (wandering,
 // its size and its wheeling changing), the hawk's passes through it, and

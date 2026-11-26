@@ -1,6 +1,7 @@
 // Dynamic has no shader type.
-// expect: ShaderDynamic.hx:18: characters 3-23
+// expect: ShaderDynamic.hx:19: characters 3-23
 // expect: Dynamic is not a shader type
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

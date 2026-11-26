@@ -20,9 +20,9 @@ class UiFlow {
 	// it in), placed by placement ("below", "above", "right", "left",
 	// "center"; gap pixels away), modal or not; onDismiss when a click
 	// outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
-	// the focus into it); a modal one's backdrop its colour; the popup's
+	// the focus into it); a modal one's scrim its colour; the popup's
 	// slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String,
+	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color, ?slot:String,
 			?onDismiss:Void->Void, ?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any}):Any
 		return new PopoverMount(props);
 
@@ -156,7 +156,7 @@ private class VirtualCells<T> implements Mountable<Node> {
 // the marker's Ui while open is true
 @:renderer(helder.ui.view.NodeRenderer)
 class PopoverMount implements Mountable<Node> {
-	final props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String, ?onDismiss:Void->Void,
+	final props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color, ?slot:String, ?onDismiss:Void->Void,
 		?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any};
 
 	public function new(props)
@@ -171,7 +171,7 @@ class PopoverMount implements Mountable<Node> {
 		if (props.placement != null) p.placement = props.placement;
 		if (props.gap != null) p.gap = props.gap;
 		p.modal = props.modal == true;
-		if (props.backdrop != null) p.style.background = props.backdrop;
+		if (props.scrim != null) p.style.background = props.scrim;
 		if (props.slot != null) p.slot = props.slot;
 		p.onDismiss = props.onDismiss;
 		p.dismissOnOutside = props.dismissOnOutside != false;

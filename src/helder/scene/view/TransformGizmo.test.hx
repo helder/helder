@@ -1,10 +1,10 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.test.Test;
 import helder.ui.Ui;
 

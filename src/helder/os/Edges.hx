@@ -1,7 +1,9 @@
-package helder.ui;
+package helder.os;
 
-// Four lengths in pixels: padding, margin (EdgesValue converts to them).
-// A margin may be AUTO (NaN; "auto" in markup): CSS's auto margin.
+// Four lengths from a box's edges, in the units of what gives them (a
+// window's safe area in pixels, Window.safe; helder.ui's padding and
+// margin in points, EdgesValue converting to them). A margin may be AUTO
+// (NaN; "auto" in markup): CSS's auto margin.
 @:structInit class Edges {
 	public var top:Float;
 	public var right:Float;

@@ -27,7 +27,7 @@ class Screen {
 		mainBytes = hxmc.GcStats.threadBytesAllocated();
 
 	static function main() {
-		var w = new Window("Screen", 0, 0);
+		var w = new Window({title: "Screen", width: 0, height: 0});
 		Sys.println('screen: window ${w.width}x${w.height} scale ${w.scale} safe ${safe(w)}');
 		App.run(() -> {
 			frames++;
@@ -88,7 +88,7 @@ class Screen {
 
 	// top,left,bottom,right in pixels
 	static function safe(w:Window):String
-		return '${w.safeTop},${w.safeLeft},${w.safeBottom},${w.safeRight}';
+		return '${Std.int(w.safe.top)},${Std.int(w.safe.left)},${Std.int(w.safe.bottom)},${Std.int(w.safe.right)}';
 
 	// seconds as ms, to a hundredth
 	static function ms(s:Float):Float

@@ -1,6 +1,7 @@
 // A texture is a parameter, passed on: not a local.
-// expect: ShaderTextureLocal.hx:18: characters 3-17
+// expect: ShaderTextureLocal.hx:19: characters 3-17
 // expect: t: a texture is a parameter, not a local
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

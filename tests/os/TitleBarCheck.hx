@@ -23,7 +23,7 @@ class TitleBarCheck {
 	}
 
 	static function main() {
-		var window = new Window("TitleBarCheck", 400, 300, Inset);
+		var window = new Window({title: "TitleBarCheck", width: 400, height: 300, titlebar: Inset});
 		var k = window.scale;
 		// (the app's: a bar 40 points tall a drag region, its maximise button at the right)
 		window.titlebarAt = (x, y) -> y >= 40 * k ? Content : x >= window.width - 46 * k ? Maximize : Drag;

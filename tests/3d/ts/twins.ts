@@ -5,7 +5,8 @@
 import {
 	World, Camera, Light, Renderer, Material, MeshRenderer, Shapes, Geometry, Curve3, Shadows, type Device, type Encoder, type VertexData,
 } from "helder/scene";
-import { vec2, vec3, vec4, Quat } from "helder/gfx";
+import { vec2, vec3, vec4 } from "helder/gfx";
+import { Quat } from "helder/math";
 
 export function primitives(device: Device): (enc: Encoder) => void {
 	const r = new Renderer(device);

@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Edges;
 import helder.os.Mods;
 import helder.gfx.Color;
 import helder.test.Test;

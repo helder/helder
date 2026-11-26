@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 import helder.image.Image;
 import helder.text.FontFile;

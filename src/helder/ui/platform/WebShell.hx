@@ -93,7 +93,7 @@ class WebShell implements WebViewListener {
 			v.poll();
 		}
 		#else
-		var w = new helder.ui.UiWindow(options.title ?? "", options.width ?? 1024, options.height ?? 768);
+		var w = new helder.ui.UiWindow({title: options.title ?? "", width: options.width ?? 1024, height: options.height ?? 768});
 		var n = new WebView();
 		n.content = options.content;
 		n.inspectable = options.inspectable;

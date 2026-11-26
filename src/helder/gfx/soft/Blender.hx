@@ -228,11 +228,11 @@ class Blender {
 		Mem.setF32(color, 16 * at + 12, a);
 	}
 
-	static inline function mix(blend:Int, r:Float, g:Float, b:Float, a:Float, dr:Float, dg:Float, db:Float, da:Float):helder.gfx.shader.Vec4
+	static inline function mix(blend:Int, r:Float, g:Float, b:Float, a:Float, dr:Float, dg:Float, db:Float, da:Float):helder.math.Vec4
 		return switch blend {
-			case 1: new helder.gfx.shader.Vec4(r * a + dr * (1 - a), g * a + dg * (1 - a), b * a + db * (1 - a), a + da * (1 - a));
-			case 2: new helder.gfx.shader.Vec4(r + dr, g + dg, b + db, a + da);
-			case 3: new helder.gfx.shader.Vec4(r + dr * (1 - a), g + dg * (1 - a), b + db * (1 - a), a + da * (1 - a));
-			case _: new helder.gfx.shader.Vec4(dr * r, dg * g, db * b, da);
+			case 1: new helder.math.Vec4(r * a + dr * (1 - a), g * a + dg * (1 - a), b * a + db * (1 - a), a + da * (1 - a));
+			case 2: new helder.math.Vec4(r + dr, g + dg, b + db, a + da);
+			case 3: new helder.math.Vec4(r + dr * (1 - a), g + dg * (1 - a), b + db * (1 - a), a + da * (1 - a));
+			case _: new helder.math.Vec4(dr * r, dg * g, db * b, da);
 		}
 }

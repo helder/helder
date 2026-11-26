@@ -2,6 +2,7 @@
 // summary: A scene rendered into a texture with its own depth buffer each frame, then shown on the faces of the cube
 // tags: gfx, shaders, 3d, render targets
 // demo: canvas 512x384
+import helder.math.*;
 import TargetsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
@@ -108,7 +109,7 @@ class Targets {
 
 	static function main() {
 		var args = Sys.args(), still = args.indexOf("--time");
-		var window = new Window("Render targets", 640, 480);
+		var window = new Window({title: "Render targets", width: 640, height: 480});
 		var targets = new Targets(Device.create(window.surface));
 		var start = Sys.time();
 		App.run(() -> targets.frame(still >= 0 ? Std.parseFloat(args[still + 1]) : Sys.time() - start), e -> switch e.kind {

@@ -1,3 +1,4 @@
+import helder.math.*;
 import Mood.noise2;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;

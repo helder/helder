@@ -33,7 +33,7 @@ class AndroidCheck {
 		device.endFrame();
 		device.dispose();
 		GfxCheck.compareBytes("cube, android headless", pixels, Embed.file("tests/gfx/cube.png"));
-		var w = new Window("AndroidCheck", 0, 0);
+		var w = new Window({title: "AndroidCheck", width: 0, height: 0});
 		Sys.println('AndroidCheck: window ${w.width}x${w.height}, scale ${w.scale}');
 		var device = Device.create(w.surface);
 		var cube = new Cube(device);

@@ -24,7 +24,7 @@ macOS, nor is it set for a build that names no target: helder keeps its own.)
 ## Windows and the loop
 
 ```haxe
-var window = new Window("Hello", 640, 480);   // its size in points; window.surface for helder.gfx
+var window = new Window({title: "Hello", width: 640, height: 480});   // its size in points; window.surface for helder.gfx
 App.run(() -> {
 	// a frame (paced by the GPU's present)
 }, e -> switch e.kind {
@@ -269,7 +269,7 @@ source's mask and end), `src/helder/ui/DragFiles.test.hx`.
 ### An inset title bar
 
 ```haxe
-var window = new Window("Studio", 1180, 740, Inset);  // helder.os.TitleBar: the content under the title bar
+var window = new Window({title: "Studio", width: 1180, height: 740, titlebar: Inset});  // helder.os.TitleBar: the content under the title bar
 window.titlebarAt = (x, y) -> y < 40 * window.scale ? Drag : Content;  // the app's answer at a press (pixels)
 window.titlebarArea();                      // the bar's area free of the buttons (pixels; null: not inset, full screen)
 window.systemControls();                    // macOS's own buttons over the content (null where the app draws its own)
@@ -317,7 +317,7 @@ compositor's or the window manager's), the maximised state followed on X11
 ### Windows of any shape
 
 ```haxe
-var window = new Window("Clock", 320, 320, Standard, true);  // transparent: what is behind shows through
+var window = new Window({title: "Clock", width: 320, height: 320, titlebar: Standard, transparent: true});  // transparent: what is behind shows through
 window.transparent;   // composed so here (false where the system can't)
 window.shadow = false;  // no system shadow (macOS, Windows)
 ```
@@ -333,8 +333,8 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 
 ```haxe
 window.backdrop = Blur;  // helder.os.WindowBackdrop; None after where the system has none
-window.input([x, y, width, height]);  // where it takes the pointer (pixels); elsewhere what is behind it does
-window.input(null);                   // everywhere (the default)
+window.input = [{x: 0, y: 0, width: 320, height: 40}];  // where it takes the pointer (pixels); elsewhere what is behind it does
+window.input = null;                                     // everywhere (the default)
 ```
 
 A transparent window's pixels are premultiplied, its clear pixels show
@@ -395,7 +395,7 @@ made as KWin does; none where it has none); `tests/ui/shape.sh` on Linux).
 ### A window at the screen's edge
 
 ```haxe
-var w = new Window("Tracker", 120, 600, None, true);  // TitleBar None: no title bar nor frame
+var w = new Window({title: "Tracker", width: 120, height: 600, titlebar: None, transparent: true});  // TitleBar None: no title bar nor frame
 w.onTop = true;     // over every other window
 w.taskbar = false;  // out of the task bar and the window switcher
 var a = w.workArea();  // the screen less the menu bar, a notch, the Dock, the task bar
@@ -427,7 +427,7 @@ system's API (X11's states unread: Xvfb runs no window manager).
 ### Dialogs, file types, the files the system opens
 
 ```haxe
-var path = FileDialog.open(window, "Open an image", [{name: "Images", extensions: ["jpg", "png"]}]); // null: cancelled
+var path = FileDialog.pick(window, "Open an image", [{name: "Images", extensions: ["jpg", "png"]}]); // null: cancelled
 FileTypes.register("helder-viewer", "Viewer", exe, [{mime: "image/jpeg", extensions: ["jpg"]}]);   // "Open with", this user's
 App.onOpen = paths -> open(paths[0]);       // macOS: Finder's Open With, the Dock's icon (application:openURLs:)
 window.raise();                              // to the front (a second launch handing its file over)
@@ -480,8 +480,8 @@ GFX_TARGET=windows-x86_64).
 ### A phone's screen and the display's frames
 
 ```haxe
-var w = new Window("Game", 0, 0);          // a phone's: the whole screen, its size the system's
-w.safeTop; w.safeBottom;                    // the safe area, pixels from each edge (a Resize when it changes)
+var w = new Window({title: "Game", width: 0, height: 0});          // a phone's: the whole screen, its size the system's
+w.safe.top; w.safe.bottom;                  // the safe area, pixels from each edge (a Resize when it changes)
 w.scale;                                    // pixels per point: Android's density / 160, iOS's nativeScale
 w.immersive = true;                         // the system's bars hidden (a game's)
 App.run(() -> {
@@ -489,7 +489,7 @@ App.run(() -> {
 }, e -> {});
 ```
 
-`Window.safeTop`, `safeLeft`, `safeBottom` and `safeRight` are the
+`Window.safe` (`Edges`: `top`, `right`, `bottom`, `left`) are the
 insets, in pixels, that the system's bars, a notch, the island, a
 display cutout or the home indicator leave clear, as CSS's
 `env(safe-area-inset-*)`: iOS's view's `safeAreaInsets` (measured in

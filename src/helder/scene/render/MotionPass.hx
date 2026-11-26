@@ -1,10 +1,10 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
+import helder.math.Mat4;
 import helder.scene.Node;
 import helder.scene.math.MathTools;
 import helder.scene.render.VelocityShaders;
@@ -244,10 +244,10 @@ class MotionStore {
 		var s = @:privateAccess node.slot;
 		if (s >= ids.length || ids[s] != node.id() || frames[s] != frame - 1) return now;
 		var o = s * 16;
-		return new Mat4(new helder.gfx.shader.Vec4(mats[o], mats[o + 1], mats[o + 2], mats[o + 3]),
-			new helder.gfx.shader.Vec4(mats[o + 4], mats[o + 5], mats[o + 6], mats[o + 7]),
-			new helder.gfx.shader.Vec4(mats[o + 8], mats[o + 9], mats[o + 10], mats[o + 11]),
-			new helder.gfx.shader.Vec4(mats[o + 12], mats[o + 13], mats[o + 14], mats[o + 15]));
+		return new Mat4(new helder.math.Vec4(mats[o], mats[o + 1], mats[o + 2], mats[o + 3]),
+			new helder.math.Vec4(mats[o + 4], mats[o + 5], mats[o + 6], mats[o + 7]),
+			new helder.math.Vec4(mats[o + 8], mats[o + 9], mats[o + 10], mats[o + 11]),
+			new helder.math.Vec4(mats[o + 12], mats[o + 13], mats[o + 14], mats[o + 15]));
 	}
 
 	public function record(node:Node, frame:Int, m:Mat4) {

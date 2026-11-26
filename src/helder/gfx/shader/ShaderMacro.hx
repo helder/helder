@@ -1,6 +1,7 @@
 package helder.gfx.shader;
 
 #if macro
+import helder.math.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
@@ -375,11 +376,11 @@ class ShaderMacro {
 			return switch t {
 				case TFloat: macro b.getFloat(o + $v{off});
 				case TInt: macro b.getInt32(o + $v{off});
-				case TVec(2): macro new helder.gfx.shader.Vec2(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}));
-				case TVec(4): macro new helder.gfx.shader.Vec4(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}), b.getFloat(o + $v{off + 8}), b.getFloat(o + $v{off + 12}));
+				case TVec(2): macro new helder.math.Vec2(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}));
+				case TVec(4): macro new helder.math.Vec4(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}), b.getFloat(o + $v{off + 8}), b.getFloat(o + $v{off + 12}));
 				case TMat4:
 					var cols = [for (c in 0...4) load(TVec(4), off + 16 * c)];
-					macro new helder.gfx.shader.Mat4($a{cols});
+					macro new helder.math.Mat4($a{cols});
 				case TStruct(st):
 					var obj:Expr = {
 						expr: EObjectDecl([for (i in 0...st.fields.length) {field: st.fields[i].field, expr: load(st.fields[i].type, s.offsets[i])}]),
@@ -430,9 +431,9 @@ class ShaderMacro {
 		return switch t {
 			case TFloat: macro :Float;
 			case TInt: macro :Int;
-			case TVec(2): macro :helder.gfx.shader.Vec2;
-			case TVec(4): macro :helder.gfx.shader.Vec4;
-			case TMat4: macro :helder.gfx.shader.Mat4;
+			case TVec(2): macro :helder.math.Vec2;
+			case TVec(4): macro :helder.math.Vec4;
+			case TMat4: macro :helder.math.Mat4;
 			case TStruct(s): lower.haxeType(s).toComplexType();
 			case _: throw "storage";
 		}

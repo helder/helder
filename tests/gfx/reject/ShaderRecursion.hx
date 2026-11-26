@@ -1,6 +1,7 @@
 // Shader functions cannot recurse (GLSL, WGSL, MSL and HLSL have no recursion), not even through another function.
-// expect: ShaderRecursion.hx:28: characters 27-38
+// expect: ShaderRecursion.hx:29: characters 27-38
 // expect: recursion: ShaderRecursion.even -> ShaderRecursion.odd -> ShaderRecursion.even (shader functions cannot recurse)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

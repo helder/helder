@@ -1,6 +1,6 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.test.Test;
 
 // Bvh against brute force: random rays at a generated mesh's triangles (a
@@ -76,7 +76,7 @@ function tests() {
 		test("refit: its boxes moved with its vertices", () -> {
 			var g = Geometry.box();
 			var bvh = Bvh.build(g);
-			var moved = g.transformed(helder.gfx.shader.Mat4.translation(5, 0, 0));
+			var moved = g.transformed(helder.math.Mat4.translation(5, 0, 0));
 			assert(!bvh.intersect(new Vec3(5, 0, 3), new Vec3(0, 0, -1), 10, false), "not there yet");
 			bvh.refit(moved.vertices, 32, moved);
 			assert(bvh.intersect(new Vec3(5, 0, 3), new Vec3(0, 0, -1), 10, false), "moved");

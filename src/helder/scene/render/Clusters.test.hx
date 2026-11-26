@@ -1,7 +1,7 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
+import helder.math.Mat4;
+import helder.math.Vec3;
 import helder.scene.math.MathTools;
 import helder.test.Test;
 

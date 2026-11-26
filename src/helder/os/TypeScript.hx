@@ -11,7 +11,7 @@ package helder.os;
 	helder.os.Permissions.Permission, helder.os.Permissions.PermissionStatus, helder.os.Location.GeoPosition, helder.os.Biometrics.BiometricKind,
 	helder.os.DeviceInfo.DeviceKind, helder.os.DeviceInfo.DeviceDetails, helder.os.StatusBar.BarStyle,
 	helder.os.Places.PlaceKind, helder.os.Places.Place, helder.os.Places.Volume, helder.os.Folders.FolderGrant, helder.os.Folders.FolderEntry)
-@:typescript.classes(helder.os.Store, helder.os.Settings, helder.os.Locale, helder.os.Format, helder.os.Plural, helder.os.Network,
+@:typescript.classes(helder.os.Edges, helder.os.Store, helder.os.Settings, helder.os.Locale, helder.os.Format, helder.os.Plural, helder.os.Network,
 	helder.os.Share, helder.os.Permissions, helder.os.Notifications, helder.os.Photos, helder.os.Location, helder.os.Biometrics,
 	helder.os.Paths, helder.os.Places, helder.os.Trash, helder.os.Folders, helder.os.DeviceInfo, helder.os.StatusBar)
 @:typescript.functions(args = Sys.args, env = Sys.getEnv)

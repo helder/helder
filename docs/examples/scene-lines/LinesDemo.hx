@@ -2,9 +2,10 @@
 // summary: Lines with a width: a path marching in dashes, its colour fading along it; zig-zags with mitred, round and bevelled joins; a ribbon as wide in metres as it is long; a ring hidden behind a pillar where it passes, and one drawn over everything
 // tags: 3d, lines, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -21,7 +22,7 @@ import helder.scene.render.Lines;
 //   helder run docs/examples/scene-lines
 class LinesDemo {
 	static function main() {
-		var window = new Window("Lines", 640, 400);
+		var window = new Window({title: "Lines", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.06, 0.07, 0.1, 1);
@@ -49,7 +50,7 @@ class LinesDemo {
 		road.setPoint(1, 0.8, 0.02, -12, 0.3, 0.8, 1);
 		// a ring round the pillar, hidden behind it; a line over everything
 		var ring = Lines.attach(world.node("ring"), new Lines(48, {width: 4, closed: true}));
-		var over = Lines.attach(world.node("over"), new Lines(2, {width: 3, onTop: true}));
+		var over = Lines.attach(world.node("over"), new Lines(2, {width: 3, overlay: true}));
 		// #endregion
 		var pillar = world.node("pillar");
 		pillar.position = new Vec3(1.8, 0.9, -1.2);

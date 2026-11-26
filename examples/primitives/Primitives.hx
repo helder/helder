@@ -2,6 +2,7 @@
 // summary: Geometry's shapes made in code, each row in another shading model: standard, Lambert, Blinn-Phong, toon, unlit, matcap and normals, side by side
 // tags: 3d, geometry, materials, shading
 // demo: canvas 800x560
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;
@@ -134,7 +135,7 @@ class Primitives {
 	}
 
 	static function main() {
-		var window = new Window("Primitives", 800, 560);
+		var window = new Window({title: "Primitives", width: 800, height: 560});
 		var device = Device.create(window.surface);
 		var scene = new Primitives(device);
 		// (the frames' clock: the display's, or a headless run's virtual one)

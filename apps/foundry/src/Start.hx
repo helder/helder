@@ -78,7 +78,7 @@ class Start implements Markup {
 			ws.say("A blank font: trace the grey letter behind each one, or draw your own");
 		}
 		function open() {
-			var path = helder.os.FileDialog.open(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
+			var path = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
 			if (path == null) return;
 			try {
 				var face = Outlines.face(FontFile.parse(sys.io.File.getBytes(path)), "My Font");
@@ -88,7 +88,7 @@ class Start implements Markup {
 				ws.say('Could not read that font ($e)');
 			}
 		}
-		return <Popover open={ws.starting} modal placement="center" backdrop={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
+		return <Popover open={ws.starting} modal placement="center" scrim={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
 			<view tag="start" role="dialog" aria-label="Start a font" width={860} padding={28} rowGap={20} borderRadius={Theme.RADIUS_M + 4} background={c("bg")}
 				borderWidth={1} borderColor={c("edge")} boxShadow={Theme.popover()}>
 				<view rowGap={6}>

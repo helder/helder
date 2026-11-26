@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec4;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.CompositeFxShader;
 import helder.scene.render.PostShader;
@@ -267,7 +267,7 @@ class PostFx implements RenderFeature.PostEffects {
 		if (l != null) l.require(this, renderer);
 		var sr = passOfSsr(), t = passOfTaa(), mb = passOfMotionBlur(), g = passOfGodRays(), sm = passOfSmaa();
 		if (sr != null) sr.require(this, renderer);
-		if (t != null) t.require(this, renderer) else renderer.jitter = new helder.gfx.shader.Vec2(0, 0);
+		if (t != null) t.require(this, renderer) else renderer.jitter = new helder.math.Vec2(0, 0);
 		if (mb != null) mb.require(this, renderer);
 		if (g != null) g.require(this, renderer);
 		if (sm != null) sm.require(this, renderer);

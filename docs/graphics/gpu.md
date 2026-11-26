@@ -8,7 +8,8 @@ A shader is a vertex and a fragment function over vector types. Its uniforms, te
 
 ```ts
 import {shader, position, sample, vec4} from 'helder/gfx'
-import type {Vec2, Vec4, Texture2D} from 'helder/gfx'
+import type {Texture2D} from 'helder/gfx'
+import type {Vec2, Vec4} from 'helder/math'
 
 type Vertex = {pos: Vec2, uv: Vec2}
 type Varyings = {pos: Vec4, uv: Vec2}

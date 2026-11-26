@@ -2,9 +2,10 @@
 // summary: A scene graph: a planet orbiting its sun and a moon orbiting the planet, each a node turned under its parent, the camera a node too
 // tags: 3d, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -20,7 +21,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-nodes
 class Nodes {
 	static function main() {
-		var window = new Window("World and nodes", 640, 400);
+		var window = new Window({title: "World and nodes", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.sky = new Vec3(0.05, 0.06, 0.1);

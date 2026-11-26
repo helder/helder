@@ -1,4 +1,4 @@
-package helder.gfx.shader;
+package helder.math;
 
 // A 4x4 matrix of four columns (c0..c3, read only): mat4 in a shader, an
 // immutable value in CPU code (a @:hxmc.struct value on hxmc's targets, as

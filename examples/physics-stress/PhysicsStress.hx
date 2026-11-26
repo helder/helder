@@ -3,15 +3,15 @@
 // tags: 3d, physics, instancing, performance
 // demo: canvas 640x480
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.physics.*;
 import helder.scene.*;
 import helder.scene.debug.FrameStats;
 import helder.scene.debug.Overlay;
 import helder.scene.math.Aabb;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 
 // A thousand boxes (a 10 x 10 x 10 lattice, a little turned) dropped onto
@@ -143,7 +143,7 @@ class PhysicsStress {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("Physics stress", 640, 480);
+		var window = new Window({title: "Physics stress", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var demo = new PhysicsStress(device);
 		var overlay = new Overlay(device), stats = new FrameStats(120);

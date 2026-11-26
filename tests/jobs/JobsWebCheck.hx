@@ -48,7 +48,7 @@ class JobsWebCheck {
 	}
 
 	static function main() {
-		var window = new Window("JobsWebCheck", 64, 64);
+		var window = new Window({title: "JobsWebCheck", width: 64, height: 64});
 		var frames = 0;
 		Async.launch(_ -> {
 			var b = new Buffer(3);

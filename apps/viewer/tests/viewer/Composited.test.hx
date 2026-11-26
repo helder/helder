@@ -63,7 +63,7 @@ private class Window {
 	static inline var W = 1100;
 	static inline var H = 560;
 	static inline var S = 2;
-	static final pass:helder.gfx.PassDesc = {colors: [{load: Clear, clear: new helder.gfx.shader.Vec4(0, 0, 0, 1)}]};
+	static final pass:helder.gfx.PassDesc = {colors: [{load: Clear, clear: new helder.math.Vec4(0, 0, 0, 1)}]};
 
 	final device = helder.gfx.Device.create(helder.os.Surface.headless(W * S, H * S));
 	final r:helder.ui.draw.Renderer;

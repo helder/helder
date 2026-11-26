@@ -561,7 +561,7 @@ class CartScreen implements Markup {
 					<text fontSize={13} color={MUTED}>Taxes and shipping are calculated at checkout.</text>
 					<Button id="checkout" label="Check out" onPress={() -> {
 						var c = Everbloom.cart.peek();
-						if (c != null && c.checkoutUrl != "") Links.open(Api.absolute(c.checkoutUrl));
+						if (c != null && c.checkoutUrl != "") Links.show(Api.absolute(c.checkoutUrl));
 					}}/>
 				</view>
 			</Show>

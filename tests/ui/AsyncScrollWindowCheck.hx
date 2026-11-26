@@ -27,7 +27,7 @@ class AsyncScrollWindowCheck {
 
 	static function main() {
 		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work"), p = a.indexOf("--pace");
-		var w = new helder.ui.UiWindow("AsyncScrollWindowCheck", 400, 300);
+		var w = new helder.ui.UiWindow({title: "AsyncScrollWindowCheck", width: 400, height: 300});
 		var list = new Node();
 		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...300) {

@@ -1,10 +1,10 @@
-package helder.gfx.shader;
+package helder.math;
 
 // 4 floats: vec4 in a shader, an immutable value in CPU code (a
 // @:hxmc.struct value on hxmc's targets: copied, never allocated; an object
 // elsewhere, such as the macro context). The components and swizzles read
 // only; the operators are VecBuild's.
-@:build(helder.gfx.shader.VecBuild.vector(4))
+@:build(helder.math.VecBuild.vector(4))
 @:forward(x, y, z, w)
 abstract Vec4(Vec4Data) {
 	public inline function new(x:Float, y:Float, z:Float, w:Float)

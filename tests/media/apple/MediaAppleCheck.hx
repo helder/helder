@@ -108,7 +108,7 @@ class MediaAppleCheck {
 			'${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}');
 		if (f == "apple/hevc10.mp4") check("hevc10.mp4: P010, BT.2020", first.bits == 10 && first.matrix == "2020" && !first.full);
 		if (f == "apple/h264-full.mp4") check("h264-full.mp4: full range, BT.709", first.full && first.matrix == "709");
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		d.close();
 		m.close();
 	}
@@ -142,7 +142,7 @@ class MediaAppleCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && left.length == frames
 			&& worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -193,7 +193,7 @@ class MediaAppleCheck {
 			}
 			check('$f: frame ${e.frame} in RGB, ${w}x$h upright, as ffmpeg turns it where flat (${Std.int(pixels.length / 5)} pixels)', ok && w == e.width && h == e.height && mean < 1 && worst <= 3,
 				'the mean difference ${Math.round(mean * 100) / 100} levels, the largest $worst');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			d.close();
 			m.close();
 		}
@@ -229,8 +229,8 @@ class MediaAppleCheck {
 	@:coroutine static function seeks(videos:DynamicAccess<Dynamic>) {
 		var p = Player.open(new FileSource("tests/media/h264-aac.mp4"), {silent: true});
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
-		check("the player loaded", p.loaded && p.duration == 1, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		check("the player loaded", p.loaded() && p.duration() == 1, '${p.error()} ${p.duration()}');
 		var crcs:Array<Int> = videos["h264-aac.mp4"].crcs;
 		function at(what:String, f:Null<VideoFrame>, time:Float, i:Int)
 			check('h264-aac.mp4: $what: the frame at $time', f != null && f.time == time && crc(f) == crcs[i], f == null ? "none" : '${f.time}');
@@ -249,7 +249,7 @@ class MediaAppleCheck {
 		at("step(1) at the end: stays", shown(p, 0.9), 0.9, 9);
 		p.seek(0.75, false);
 		at("seek(0.75) to its keyframe", shown(p, 0), 0, 0);
-		check("time after it: the keyframe's", p.time == 0, '${p.time}');
+		check("time after it: the keyframe's", p.time() == 0, '${p.time()}');
 		p.close();
 		// (an edit list: the frame due at 0 is before the edit, decoded from the keyframe 0.45 s before)
 		var p = Player.open(new FileSource("tests/media/editlist.mov"), {silent: true});
@@ -270,7 +270,7 @@ class MediaAppleCheck {
 			var what = 'h264-aac.mp4: dragged, ${playing ? "playing" : "paused"}';
 			var p = Player.open(new FileSource("tests/media/h264-aac.mp4"), {silent: true});
 			var t0 = haxe.Timer.stamp();
-			while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+			while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
 			if (playing) p.play();
 			for (t in [0.2, 0.4, 0.6]) {
 				p.seek(t, false);
@@ -289,7 +289,7 @@ class MediaAppleCheck {
 				Async.delay(0.002);
 			}
 			check('$what: the frame at 0.6 first', first == 0.6 && pixels == crcs[6], '$first');
-			var at = p.time;
+			var at = p.time();
 			check('$what: the time from 0.65', playing ? at > 0.65 && at < 0.65 + 0.2 + 0.05 : at == 0.65, '$at');
 			p.close();
 		}
@@ -303,7 +303,7 @@ class MediaAppleCheck {
 		var p = Player.open(new FileSource("tests/media/h264-aac.mp4"), {device: 'file:$raw'});
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (!p.loaded && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		while (!p.loaded() && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
 		p.play();
 		var last:Null<VideoFrame> = null;
 		while (!ended && haxe.Timer.stamp() - t0 < 4) {
@@ -311,12 +311,12 @@ class MediaAppleCheck {
 			if (f != null && f != last) {
 				last = f;
 				shows.push(f.time);
-				var off = p.time - f.time;
+				var off = p.time() - f.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.002);
 		}
-		var position = p.time;
+		var position = p.time();
 		p.close();
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));
 		check("played: each shown within a frame of the clock", late < 0.1 + 0.01, 'at most ${Math.round(late * 1000)} ms after its time');

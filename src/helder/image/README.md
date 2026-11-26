@@ -128,7 +128,7 @@ reason (`tests/image/unsafe.mjs`, `unsafe.txt`).
 `PngDecoder.decode` or `WebpDecoder.decode` (lossy), puts a decode's
 planes, coefficients and pixels off the GC heap (IoBuffers, each a
 Bytes view): `take` hands the result to the caller as an `hxmc.Buffer`
-(moved, not copied: a job's result), `free` frees the rest. With `GcPoint.poll()` in
+(moved, not copied: a job's result), `dispose` frees the rest. With `GcPoint.poll()` in
 the decoders' row loops (a GC point, `@:hxmc.collects`: one atomic load
 unless a collection is asked for), a decode run as a GC job no longer
 holds the other threads' collections: helder's viewer prefetching a 24 MP

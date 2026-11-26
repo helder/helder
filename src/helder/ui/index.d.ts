@@ -6,10 +6,10 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Image} from "helder/asset";
-import type {PointerType, Rect} from "helder/os";
+import type {Edges, PointerType, Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Edges: "helder.ui.Edges", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
+declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", item: "helder.ui.menu.Menus.menuItem", separator: "helder.ui.menu.Menus.menuSeparator", submenu: "helder.ui.menu.Menus.menuSubmenu", role: "helder.ui.menu.Menus.menuRole", popup: "helder.ui.menu.Menus.popup", resolve: "helder.ui.menu.Menus.menuResolve", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
 
 // A colour as 0xAARRGGBB (straight alpha), helder's one colour: ui's,
 // canvas' and sprite's (TypeScript's Color: a number or a CSS string).
@@ -216,9 +216,6 @@ export type VirtualGridProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, a
 // In a page's markup (helder.web's DOM or static renderer) a <Surface> is
 // helder.web's: a canvas running a wasm program whose root is this one.
 export declare class UiWindow {
-	// whether the system's appearance is dark (App.prefersDark), asked again
-	// every second while the loop runs; each window's Ui.dark follows it
-	static readonly dark: Signal<boolean>;
 	// the app loop: every UiWindow's frames and events until the last closes
 	// (on the web it returns, the frames going on); content, when given, opened first
 	static run(content?: RootView): void;
@@ -508,24 +505,6 @@ export declare class WebResponse {
 	mime: string;
 	readonly headers: unknown;
 	body: Uint8Array;
-}
-
-// Four lengths in pixels: padding, margin (EdgesValue converts to them).
-// A margin may be AUTO (NaN; "auto" in markup): CSS's auto margin.
-export declare class Edges {
-	constructor(top: number, right: number, bottom: number, left: number);
-	static readonly ZERO: Edges;
-	// an auto margin: the free space along a flex line, the room left across it, in a grid
-	// area or between an absolute box's offsets shared among a box's auto margins
-	static readonly AUTO: number;
-	// Four lengths in pixels: padding, margin (EdgesValue converts to them).
-	// A margin may be AUTO (NaN; "auto" in markup): CSS's auto margin.
-	top: number;
-	right: number;
-	bottom: number;
-	left: number;
-	readonly horizontal: number;
-	readonly vertical: number;
 }
 
 // A node of the UI tree: a box laid out by its parent's flexbox (Layout),
@@ -839,9 +818,9 @@ export declare function VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 // it in), placed by placement ("below", "above", "right", "left",
 // "center"; gap pixels away), modal or not; onDismiss when a click
 // outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
-// the focus into it); a modal one's backdrop its colour; the popup's
+// the focus into it); a modal one's scrim its colour; the popup's
 // slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: Placement; gap?: number; modal?: boolean; backdrop?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
+export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: Placement; gap?: number; modal?: boolean; scrim?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
 // the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
 // drawn here (put it first in the window's content); ref: the bar
 export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
@@ -854,7 +833,7 @@ export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown
 // padding="calc(env(safe-area-inset-top) + 8px) 16px", margin-bottom="max(12px,
 // env(safe-area-inset-bottom))". calc(), max() and min() of pixels fold to
 // one length; a percentage in calc() stays for Dim's. The insets are
-// UiWindow's first window's (a phone has one: Window.safeTop..., over the
+// UiWindow's first window's (a phone has one: Window.safe.top..., over the
 // UI's scale), each frame they changed; Ui.safeArea has each window's own.
 // Code reads insets() (a signal: what reads it in an effect or a reactive
 // attribute follows it). env(titlebar-area-x), -y, -width and -height are an
@@ -1230,7 +1209,8 @@ export declare class TextField extends EditableText {
 // tokens: in light the page is the lightest level and panels sit on a
 // faint grey canvas, the accent a shade deeper to keep its contrast. The
 // sheet's colours follow the window's appearance; c's, which markup reads
-// inline, follow appearance (an app points it at its windows': UiWindow.dark).
+// inline, the screen's (ScreenContext.dark: the system's, or the <Surface
+// dark> given).
 //
 // Its parts by slot (a field's and its input's variant "tall": several
 // lines, as tall as the text): "panel", "section", "section-head", "nav-item"
@@ -1257,9 +1237,6 @@ export declare class Theme {
 	static readonly POPOVER: string;
 	static readonly dark: unknown;
 	static readonly light: unknown;
-	// whether the colours given inline are the dark ones (read by c: a hole
-	// that reads it follows it)
-	static appearance: (() => boolean);
 	static c(name: string): Color;
 	// the one shadow, of what floats
 	static popover(): string;
@@ -1953,6 +1930,19 @@ export declare function NavScreen(props: NavScreenProps): View;
 export declare function NavButton(props: { label: string; icon?: Svg; tag?: string; disabled?: Read<boolean>; variant?: string; onPress: () => void }): View;
 
 export declare function Sheet(props: SheetProps): unknown;
+
+// (TypeScript's builders of the model, helder/ui's item, separator,
+// submenu and role: Haxe has MenuItem's constructors)
+export declare function item(label: string, action: any): MenuItem;
+export declare function separator(): MenuItem;
+export declare function submenu(label: string, items: MenuItem[]): MenuItem;
+// (a standard item: "about", "quit", "copy"..., MenuRole's; its label the platform's unless given)
+export declare function role(role: string, label?: string): MenuItem;
+// a context menu at x, y (window layout pixels) for from (its actions
+// dispatched from there; default: the focus)
+export declare function popup(ui: unknown, items: MenuItem[], x: number, y: number, from?: Node): void;
+// (TypeScript's resolve: the items as the platform's menus take them, from the focus or from)
+export declare function resolve(ui: unknown, items: MenuItem[], from?: Node): PlatformMenuItem[];
 
 // a value, or a function of none that reads it (bound)
 type Value<T> = T | (() => T);

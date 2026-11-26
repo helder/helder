@@ -2,12 +2,12 @@
 // summary: A <Scene>'s post effects in markup, each toggled: ambient occlusion, depth of field (a lens or tilt-shift), outlines around what you click, FXAA, a colour grade
 // tags: 3d, post, scene markup
 // demo: canvas 760x440
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.World;
 import helder.scene.render.Light;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.view.EffectTags.*;
 import helder.scene.view.SceneTags.*;
 import helder.scene.view.SceneView;

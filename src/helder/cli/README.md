@@ -906,11 +906,11 @@ helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, 
   same bytes on every machine with the same fonts; what draws with a
   shader of its own (a part's, a `<Scene>`, a sprite box) draws on
   helder.gfx's CPU back end (helder.gfx's README, On the CPU), a grey box
-  only in a GPU build's fallback. `App.prefersDark` is
+  only in a GPU build's fallback. `Settings.dark` is
   `--theme`'s (light by default); `--reduced-motion` sets helder.ui's
   `Clock.reducedMotion` (Style's transitions of transform and shadow, and
   Motion's transition and spring, jump; fades and colours still ease).
-  `FileDialog.open` takes the script's next `file-dialog` answer.
+  `FileDialog.pick` takes the script's next `file-dialog` answer.
   helder.os's `Store` starts empty and stays in memory (what an earlier
   run or the user's own copy of the app kept changes nothing; the run
   keeps nothing).

@@ -428,8 +428,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   looks (`Look`): "Controls" below. Others (menus, tabs) are still views
   with a role, `focusable` and `onPress`, as in the examples. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
-  (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
-  Windows', GTK's settings).
+  (`helder.os.Settings.dark`: the browser's colour scheme, macOS's,
+  Windows', GTK's settings), or a `<Surface dark={...}>`'s own; `Theme.c`
+  reads the screen's (`ScreenContext.dark`).
 - **`helder.ui.code`**: a code editor. `CodeModel` is its document: a
   rope (`Rope`: chunks of at most 1 KB with their lengths, UTF-8 lengths
   and line breaks; line and offset lookups and UTF-16/UTF-8 mapping by
@@ -460,7 +461,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 - **Popups**: `Popup` nodes are layers over the tree (`Ui.open`, `Ui.close`:
   children of `Ui.overlay`, drawn and hit after the tree, not clipped by
   it), anchored to a node (below, above, beside; flipped and kept in the
-  window), in a corner of the window (notifications), at a point (a context menu) or modal (a backdrop, the focus kept inside); a press outside or
+  window), in a corner of the window (notifications), at a point (a context menu) or modal (a scrim, the focus kept inside); a press outside or
   Escape asks them to close. An anchored popup follows its anchor, placed
   again every layout (the window resized, the anchor scrolled): a
   popover (`UiFlow.Popover`, `Sheet`'s popover on a wide screen). A menu
@@ -737,8 +738,8 @@ Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
 `Viewer.zoomTo(100)` makes a value, `{type: "zoomTo", percent: 100}`; a
 handler is a `switch (a.type)`, narrowed by the checker. The same
 machinery dispatches it (`on(node, ...)`, `onWindow`, `onApp`, a JSON
-keymap's `["viewer::ZoomTo", 100]`, menus' `item(label, action)`,
-`resolve`, `popup`, `MenuBar`); `Standard` is StandardAction's
+keymap's `["viewer::ZoomTo", 100]`, helder/ui's menus, `item(label,
+action)`, `popup`, `<MenuBarView>`); `Standard` is StandardAction's
 (`Standard.quit()`), its values given to a TypeScript handler as the
 program's objects. tests/typescript/definitions/shortcuts.tsx and
 Shortcuts.hx print the same; examples/ts-todo binds its filters.
@@ -954,7 +955,7 @@ indicator leave clear) is CSS's `env()`: a literal attribute naming
 `env(safe-area-inset-top)` (`-right`, `-bottom`, `-left`; a fallback after
 a comma for a name it does not know) is bound to the main window's insets
 in UI pixels (`SafeArea.insets`, a signal; UiWindow sets it from
-`helder.os.Window.safeTop`... over the scale) and set again when they
+`helder.os.Window.safe.top`... over the scale) and set again when they
 change (a rotation, the bars hidden): `padding-top="env(safe-area-inset-top)"`,
 `padding="calc(env(safe-area-inset-top) + 8px) 16px"`,
 `margin-bottom="max(12px, env(safe-area-inset-bottom))"` (`calc()`,

@@ -2,9 +2,10 @@
 // summary: helder.scene's optional renderer features together: an environment map lighting metal and plastic spheres, a normal-mapped crate, a morphing surface, two shadow cascades, see-through glass; drag to turn around
 // tags: 3d, pbr, gltf
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.asset.Asset;
 import helder.asset.Assets;
@@ -26,7 +27,7 @@ import helder.scene.render.*;
 //     -cp examples -main Showroom --custom-target hxmc=showroom -D hxmc.libc=glibc
 class Showroom {
 	static function main() {
-		var window = new Window("Showroom", 640, 480);
+		var window = new Window({title: "Showroom", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		var renderer = new Renderer(device).use(new NormalMaps(device)).use(Shadows.cascaded(device, 1024, 6));

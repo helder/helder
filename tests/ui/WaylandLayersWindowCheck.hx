@@ -47,7 +47,7 @@ class WaylandLayersWindowCheck {
 			Sys.exit(2);
 		}
 		sys.FileSystem.createDirectory(dir);
-		var w = new helder.ui.UiWindow("WaylandLayersWindowCheck", 400, 300);
+		var w = new helder.ui.UiWindow({title: "WaylandLayersWindowCheck", width: 400, height: 300});
 		var root = w.root;
 		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();

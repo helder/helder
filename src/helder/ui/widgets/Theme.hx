@@ -20,7 +20,8 @@ import helder.ui.*;
 // tokens: in light the page is the lightest level and panels sit on a
 // faint grey canvas, the accent a shade deeper to keep its contrast. The
 // sheet's colours follow the window's appearance; c's, which markup reads
-// inline, follow appearance (an app points it at its windows': UiWindow.dark).
+// inline, the screen's (ScreenContext.dark: the system's, or the <Surface
+// dark> given).
 //
 // Its parts by slot (a field's and its input's variant "tall": several
 // lines, as tall as the text): "panel", "section", "section-head", "nav-item"
@@ -118,10 +119,6 @@ class Theme {
 		"deleted" => Color.parse("rgba(220, 50, 50, 0.07)"),
 	]);
 
-	// whether the colours given inline are the dark ones (read by c: a hole
-	// that reads it follows it)
-	public static var appearance:() -> Bool = () -> true;
-
 	// (the grid's and the code view's tokens, from the ones above)
 	static function derived(m:Map<String, Color>):Map<String, Color> {
 		var grid = [
@@ -142,11 +139,11 @@ class Theme {
 	}
 
 	public static function c(name:String):Color
-		return (appearance() ? dark : light).get(name);
+		return (helder.ui.ScreenContext.current.dark() ? dark : light).get(name);
 
 	// the one shadow, of what floats
 	public static function popover():String
-		return appearance() ? POPOVER : "0 10 28 rgba(0,0,0,0.14)";
+		return helder.ui.ScreenContext.current.dark() ? POPOVER : "0 10 28 rgba(0,0,0,0.14)";
 
 	static inline function t(name:String):Color
 		return Color.parse('var(--$name)');

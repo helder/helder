@@ -582,7 +582,7 @@ private class Pressed {
 		equals(ui.overlay.find("touch-menu-layer"), null, "the touch menu");
 		var glass = false;
 		function walk(n:Node) {
-			if (n.slot == "touch-menu-backdrop") glass = true;
+			if (n.slot == "touch-menu-scrim") glass = true;
 			for (c in n.children)
 				walk(c);
 		}

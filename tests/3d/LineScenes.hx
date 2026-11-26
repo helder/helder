@@ -1,8 +1,8 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.*;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 import helder.scene.render.Lines;
 
@@ -79,7 +79,7 @@ class LineScenes {
 					ring.setPoint(i, 1.6 + Math.cos(a) * 1.1, 0.9, -0.6 + Math.sin(a) * 1.1, 1, 0.85, 0.2);
 				}
 				// (over everything: through the pillar)
-				var over = Lines.attach(world.node("over"), new Lines(2, {width: 4, onTop: true, toneMapped: false}));
+				var over = Lines.attach(world.node("over"), new Lines(2, {width: 4, overlay: true, toneMapped: false}));
 				over.count = 2;
 				over.setPoint(0, 0.6, 0.5, -1.6, 1, 0.2, 0.6);
 				over.setPoint(1, 2.8, 1.3, 0.4, 1, 0.2, 0.6);
@@ -119,20 +119,20 @@ class LineScenes {
 					Debug.ray(new Vec3(-1.8, 0.2, -1.4), new Vec3(0.3, 1, 0), 1.2);
 					Debug.arrow(new Vec3(-1.0, 0.1, 0.6), new Vec3(0.2, 0.9, 0.2), 0x40FFC0);
 					Debug.aabb(box);
-					Debug.boxOf(helder.gfx.shader.Mat4.translation(1.9, 0.5, 0.2) * turned, new Vec3(-0.35, -0.35, -0.35), new Vec3(0.35, 0.35, 0.35), 0xFFE040);
+					Debug.boxOf(helder.math.Mat4.translation(1.9, 0.5, 0.2) * turned, new Vec3(-0.35, -0.35, -0.35), new Vec3(0.35, 0.35, 0.35), 0xFFE040);
 					Debug.sphere(new Vec3(0.4, 0.9, 0.9), 0.45);
 					Debug.circle(new Vec3(-2.8, 0.02, 0.4), new Vec3(0, 1, 0), 0.5, 0xFF80FF);
 					Debug.cross3(new Vec3(-2.8, 0.5, 0.4), 0.3);
-					Debug.axes(helder.gfx.shader.Mat4.translation(2.8, 0.02, 1.6) * turned, 0.6);
+					Debug.axes(helder.math.Mat4.translation(2.8, 0.02, 1.6) * turned, 0.6);
 					Debug.frustum(lens, 1.5);
 					Debug.light(sunNode);
 					Debug.light(bulb);
 					Debug.light(spot);
 					Debug.skeleton(skin);
 					Debug.path(curve, 24);
-					Debug.onTop(true);
+					Debug.overlay(true);
 					Debug.line(new Vec3(0.2, 0.4, -1.8), new Vec3(1.4, 0.4, -0.6), 0xFFFFFF);
-					Debug.onTop(false);
+					Debug.overlay(false);
 				};
 				Scenes.probe = () -> {
 					var segments = debug.drawn;

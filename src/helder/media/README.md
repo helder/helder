@@ -130,7 +130,7 @@ decoders here; `Decoders.supported(track)`, awaited: the browser's
 answer; `Decoders.missing()`: what the system lacks, said, Linux's
 libavcodec; the player's error where it decodes nothing). Packets go in in decode order; a `VideoFrame` comes out (its
 time, size, matrix: 601, 709 or 2020, range, 8 or 10 bits, the system's
-image held until `release()`), audio as interleaved 32-bit floats, two
+image held until `dispose()`), audio as interleaved 32-bit floats, two
 channels (mono doubled, more: the first two), at the track's rate; a
 decoder that gives a packet's audio later says which packet it was
 (`decoded`).
@@ -282,7 +282,9 @@ starts in time with the sound; frames late after it are skipped.
 its keyframe; else the keyframe, sooner), `step(±1)` (on: the next frame
 decoded; back: a seek to just before the one shown), `rate` (the output at
 the rate times faster: higher, as tape), `volume`, `muted`, `loop`;
-`onLoaded`, `onEnded`, `onError`. Audio after a seek starts 0.1 s before
+`onLoaded`, `onEnded`, `onError`. Its state is Reads (helder.view.graph,
+as helder's other state: `p.time()`, followed where a hole or effect reads
+it): `duration`, `loaded`, `error`, `ended`, `playing`, `time`. Audio after a seek starts 0.1 s before
 (a lossy codec's first frames overlap the packet before theirs; Opus's
 SeekPreRoll), decoded, not heard; it plays from the packet's time, a
 packet that decodes to fewer frames than it lasts lost them at its start

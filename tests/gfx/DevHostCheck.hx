@@ -17,7 +17,7 @@ class DevHostCheck {
 		var version = haxe.macro.Compiler.getDefine("devhost_version");
 		var state = keep("state", () -> {n: 0});
 		state.n++;
-		var w = new Window("DevHostCheck", 320, 240);
+		var w = new Window({title: "DevHostCheck", width: 320, height: 240});
 		var device = Device.create(w.surface);
 		var cube = new Cube(device);
 		var start = Sys.time(), frames = 0;

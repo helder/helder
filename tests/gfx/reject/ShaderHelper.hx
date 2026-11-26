@@ -1,6 +1,7 @@
 // A function shader code calls is compiled from its source (Sources): what it may not do is an error at its own line.
-// expect: ShaderHelper.hx:27: characters 14-18
+// expect: ShaderHelper.hx:28: characters 14-18
 // expect: a String is not a shader value
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

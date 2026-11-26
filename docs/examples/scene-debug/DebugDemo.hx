@@ -2,9 +2,10 @@
 // summary: Immediate-mode debug lines from anywhere (rays, boxes, spheres, a velocity's arrow, a path) and the helpers on nodes: an infinite grid, axes, bounds, a light's cone, a camera's frustum
 // tags: 3d, debug, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -21,7 +22,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-debug
 class DebugDemo {
 	static function main() {
-		var window = new Window("Debug drawing", 640, 400);
+		var window = new Window({title: "Debug drawing", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.05, 0.06, 0.08, 1);
@@ -67,9 +68,9 @@ class DebugDemo {
 			DebugDraw.sphere(p, 0.35, 0x4080FF);
 			// (a ray from the ball down to the floor, where it lands marked over everything)
 			DebugDraw.ray(p, new Vec3(0, -1, 0), p.y);
-			DebugDraw.onTop = true;
+			DebugDraw.overlay = true;
 			DebugDraw.cross3(new Vec3(p.x, 0, p.z), 0.3, 0xFFFFFF);
-			DebugDraw.onTop = false;
+			DebugDraw.overlay = false;
 			// #endregion
 			var enc = device.beginFrame();
 			if (enc == null) return;

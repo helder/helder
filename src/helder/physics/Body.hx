@@ -1,8 +1,8 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // A rigid body: its shape, position and orientation, linear and angular
 // velocity (world space, radians a second), mass (0: static, never moved)

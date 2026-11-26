@@ -1,6 +1,6 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 
 // What each of post's effects adds to a program (sizes.sh's post table):
@@ -12,7 +12,7 @@ import helder.os.*;
 // shaders, the view buffers it reads, their motion pass).
 class PostSize {
 	static function main() {
-		var window = new Window("PostSize", 320, 240);
+		var window = new Window({title: "PostSize", width: 320, height: 240});
 		var device = Device.create(window.surface);
 		var world = new helder.scene.World();
 		var eye = world.node("eye");

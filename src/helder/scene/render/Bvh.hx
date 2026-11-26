@@ -2,7 +2,7 @@ package helder.scene.render;
 
 import haxe.ds.Vector;
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 
 // A bounding volume hierarchy over one primitive's triangles (three-mesh-bvh's
 // MeshBVH), for casting rays against them (Raycaster, world.raycast): a flat

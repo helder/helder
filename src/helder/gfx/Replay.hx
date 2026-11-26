@@ -1,7 +1,7 @@
 package helder.gfx;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 // Commands executed in order on the back end (Impl): inline on the
 // program's thread (Device's synchronous mode: headless runs, goldens,

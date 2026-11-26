@@ -53,7 +53,7 @@ class MacPatternsCheck {
 	}
 
 	static function main() {
-		var w = new UiWindow("patterns", 400, 640);
+		var w = new UiWindow({title: "patterns", width: 400, height: 640});
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);
 		var view = w.window.surface.handle, step = 0, els:Array<Ptr> = [];

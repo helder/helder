@@ -3,7 +3,7 @@
 // tags: 2d, sprites, performance
 // demo: canvas 640x480 1x
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.image.Image;
@@ -144,7 +144,7 @@ class Bunnymark {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("Bunnymark", 640, 480);
+		var window = new Window({title: "Bunnymark", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		// (an argument: the bunnies to start with, 2000 by default)
 		var start = Std.parseInt(Sys.args()[0] ?? "");

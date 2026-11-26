@@ -272,7 +272,7 @@ class VtDecoder implements VideoDecoder {
 		wait();
 		var dropped = [];
 		take(dropped);
-		for (f in dropped) f.release();
+		for (f in dropped) f.dispose();
 	}
 
 	public function release(f:VideoFrame)

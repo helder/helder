@@ -1,7 +1,7 @@
 package helder.gfx;
 
 #if !macro
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 #end
 
 // A colour as 0xAARRGGBB (straight alpha), helder's one colour: ui's,

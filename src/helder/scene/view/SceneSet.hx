@@ -1,9 +1,9 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Light;
 import helder.scene.view.SceneRenderer.SceneNode;
 

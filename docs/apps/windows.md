@@ -39,7 +39,7 @@ window.moveTo(a.x + a.width - 120, a.y);
 ## What else
 
 - **Backdrops:** set `backdrop='blur'` for macOS vibrancy, Windows 11 Acrylic or KDE blur. Use `'mica'` for Windows 11 Mica or `'glass'` for Liquid Glass on macOS 26. A backdrop makes the window transparent. `window.backdrop` reports what the system applied.
-- **Input:** give drawn decorations `pointer-events='none'` to pass clicks through, or set `clickThrough={false}` on the surface to keep every click. From Haxe, `window.input(rects)` sets the hit regions in pixels.
-- **Haxe windows:** pass `true` for transparency in `new Window(title, width, height, Standard, true)`. Read `window.transparent` to see if it worked. `window.shadow = false` removes the system shadow on macOS and Windows.
+- **Input:** give drawn decorations `pointer-events='none'` to pass clicks through, or set `clickThrough={false}` on the surface to keep every click. From Haxe, `window.input = rects` sets the hit regions in pixels.
+- **Haxe windows:** pass `true` for transparency in `new Window({title, width, height, titlebar: Standard, transparent: true})`. Read `window.transparent` to see if it worked. `window.shadow = false` removes the system shadow on macOS and Windows.
 
 <Reference to="os,ui"/>

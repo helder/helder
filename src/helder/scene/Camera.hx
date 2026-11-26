@@ -1,7 +1,7 @@
 package helder.scene;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
+import helder.math.Mat4;
+import helder.math.Vec3;
 import helder.scene.math.MathTools;
 
 // A camera, a component of a node (Camera.attach(node, camera)): it looks

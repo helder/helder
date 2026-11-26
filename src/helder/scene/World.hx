@@ -1,10 +1,10 @@
 package helder.scene;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.math.MathTools;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // A scene: a scene graph of Nodes (handles) over flat arrays, one slot per
 // node: its local translation, rotation and scale (10 floats), its local

@@ -500,7 +500,7 @@ hidden files, the inspector and the status line are kept between runs
   document's folder: a file the viewer shows opened in its folder, its
   files stepped through, `other.md#usage` at that heading; a folder
   browsed; another file the system's app's); `http`, `https` and `mailto`
-  are helder.os's `Links.open` (the browser; a new tab on the web). Its
+  are helder.os's `Links.show` (the browser; a new tab on the web). Its
   pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
   most 1600 a side), at most the column's width, and laid out at the size
   their headers say (helder.image's `Image.size`, read through Files

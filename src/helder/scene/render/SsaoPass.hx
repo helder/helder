@@ -2,7 +2,7 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.AoShaders;
 import helder.scene.render.PostEffects;
@@ -21,8 +21,8 @@ class SsaoPass implements PostPass {
 	final aoBytes = Bytes.alloc(GtaoShader.uniforms[0].size);
 	final blurBytes = Bytes.alloc(AoBlurShader.uniforms[0].size);
 	// (the blocks as written, kept: nothing allocated per frame)
-	final aoBlock:AoParams = {inverseProjection: helder.gfx.shader.Mat4.identity(), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0), more: new Vec4(0, 0, 0, 0)};
-	final blurBlock:AoBlurParams = {p: new Vec4(0, 0, 0, 0), inverseProjection: helder.gfx.shader.Mat4.identity()};
+	final aoBlock:AoParams = {inverseProjection: helder.math.Mat4.identity(), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0), more: new Vec4(0, 0, 0, 0)};
+	final blurBlock:AoBlurParams = {p: new Vec4(0, 0, 0, 0), inverseProjection: helder.math.Mat4.identity()};
 	final rawPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 	final outPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 	var w = 0;

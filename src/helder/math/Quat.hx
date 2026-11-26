@@ -1,11 +1,7 @@
-package helder.scene.math;
-
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+package helder.math;
 
 // A rotation as a unit quaternion (x, y, z the vector part, w the scalar
-// part), an immutable value as gfx's math types are (a @:hxmc.struct value
+// part), an immutable value as the vectors are (a @:hxmc.struct value
 // on hxmc's targets: copied, never allocated). a * b rotates by b first,
 // then by a, as Mat4's product applies its right side first; angles in
 // radians, rotations counter-clockwise looking down the axis towards the

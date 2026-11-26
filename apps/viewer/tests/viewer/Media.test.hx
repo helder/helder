@@ -36,12 +36,12 @@ function tests() {
 					}
 				}
 				function playing():Array<Player>
-					return [for (p in @:privateAccess Player.live) if (p.playing) p];
+					return [for (p in @:privateAccess Player.live) if (p.playing()) p];
 				// (after a move: the invariant; plays: the shown file's player playing once it loaded)
 				// (waiting for it to play, given up once its player failed)
 				function failed():Bool {
 					var p = MediaView.current?.player;
-					return p != null && p.error != null;
+					return p != null && p.error() != null;
 				}
 				@:coroutine function step(what:String, plays:Bool) {
 					frame();
@@ -50,7 +50,7 @@ function tests() {
 						Async.delay(0.01);
 						frame();
 					}
-					if (plays && failed()) assert(false, '$what: ${MediaView.current.player.error}');
+					if (plays && failed()) assert(false, '$what: ${MediaView.current.player.error()}');
 					var on = playing(), v = MediaView.current;
 					assert(on.length <= 1, '$what: ${on.length} playing');
 					if (plays) equals(on.length, 1);

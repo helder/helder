@@ -1,6 +1,7 @@
 package helder.gfx.shader;
 
 #if macro
+import helder.math.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import helder.gfx.shader.Ir;
@@ -15,7 +16,7 @@ import helder.gfx.shader.Phases;
 // What every lane computes alike stays scalar: a uniform analysis marks
 // the values that do not depend on the stage's input (constants, uniform
 // blocks, the locals assigned only those where every lane runs alike),
-// computed as the scalar CPU code computes them (helder.gfx.shader's types
+// computed as the scalar CPU code computes them (helder.math's types
 // and builtins) and splatted where they meet a lane's value; their ifs and
 // loops are plain. The rest runs under a mask of the lanes it is for: an
 // if on lanes runs each branch its lanes take (skipped when none does), a
@@ -123,10 +124,10 @@ class Soft {
 				case TBool: lanes ? macro helder.gfx.soft.Buffers.i32($b, $i, $v{l.stride}, $v{off}).ne(helder.gfx.soft.LaneInt.splat(0)) : macro helder.gfx.soft.Buffers.i32At($b,
 						$i, $v{l.stride}, $v{off}) != 0;
 				case TVec(n):
-					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: (lanes ? 'Lane' : 'Vec') + n}, [for (k in 0...n) read(TFloat, off + 4 * k)]), pos: pos};
+					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : MATH, name: (lanes ? 'Lane' : 'Vec') + n}, [for (k in 0...n) read(TFloat, off + 4 * k)]), pos: pos};
 				// (std430: four Vec4 columns)
 				case TMat4:
-					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: lanes ? "LaneMat" : "Mat4"}, [for (k in 0...4) read(TVec(4), off + 16 * k)]), pos: pos};
+					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : MATH, name: lanes ? "LaneMat" : "Mat4"}, [for (k in 0...4) read(TVec(4), off + 16 * k)]), pos: pos};
 				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
 			}
 		return switch t {
@@ -231,7 +232,7 @@ class Soft {
 	// ---- types
 
 	static final SOFT = ["helder", "gfx", "soft"];
-	static final SHADER = ["helder", "gfx", "shader"];
+	static final MATH = ["helder", "math"];
 
 	function isBlock(t:SType):Bool
 		return switch t {
@@ -264,8 +265,8 @@ class Soft {
 			case TFloat: macro :Float;
 			case TInt: macro :Int;
 			case TBool: macro :Bool;
-			case TVec(n): TPath({pack: SHADER, name: 'Vec$n'});
-			case TMat4: macro :helder.gfx.shader.Mat4;
+			case TVec(n): TPath({pack: MATH, name: 'Vec$n'});
+			case TMat4: macro :helder.math.Mat4;
 			case t if (isPtr(t)): macro :hxmc.unsafe.Ptr;
 			case TStruct(s): TPath({pack: pack, name: scalarStruct(s)});
 			case TVoid: macro :Void;
@@ -389,9 +390,9 @@ class Soft {
 			case TFloat: macro 0.0;
 			case TInt: macro 0;
 			case TBool: macro false;
-			case TVec(2): macro new helder.gfx.shader.Vec2(0, 0);
-			case TVec(3): macro new helder.gfx.shader.Vec3(0, 0, 0);
-			case TVec(4): macro new helder.gfx.shader.Vec4(0, 0, 0, 0);
+			case TVec(2): macro new helder.math.Vec2(0, 0);
+			case TVec(3): macro new helder.math.Vec3(0, 0, 0);
+			case TVec(4): macro new helder.math.Vec4(0, 0, 0, 0);
 			case TMat4: macro helder.gfx.shader.ShaderMath.mat4(0.0);
 			case t if (isPtr(t)): macro hxmc.unsafe.Ptr.nil();
 			case TStruct(s):
@@ -679,10 +680,10 @@ class Soft {
 				case TInt: lane == null ? macro helder.gfx.soft.LaneInt.of(hxmc.simd.I32x4.loadPtr(input, $v{off})) : macro hxmc.unsafe.Mem.getI32(input, $v{off + 4 * lane});
 				case TVec(n):
 					var cs = [for (k in 0...n) one(off + 16 * k)];
-					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lane == null ? SOFT : SHADER, name: lane == null ? 'Lane$n' : 'Vec$n'}, cs), pos: pos};
+					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lane == null ? SOFT : MATH, name: lane == null ? 'Lane$n' : 'Vec$n'}, cs), pos: pos};
 				case TMat4:
 					var cols = [for (c in 0...4) load(TVec(4), off + 64 * c, lane)];
-					lane == null ? macro new helder.gfx.soft.LaneMat($a{cols}) : macro new helder.gfx.shader.Mat4($a{cols});
+					lane == null ? macro new helder.gfx.soft.LaneMat($a{cols}) : macro new helder.math.Mat4($a{cols});
 				case t: Context.error('soft: an input of ${Names.typeName(t)}', pos);
 			}
 		}
@@ -791,9 +792,9 @@ class Soft {
 			case [TFloat, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getF64($p, $v{off}), store: [macro hxmc.unsafe.Mem.setF64($p, $v{off}, $x)]};
 			case [TInt, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getI32($p, $v{off}), store: [macro hxmc.unsafe.Mem.setI32($p, $v{off}, $x)]};
 			case [TBool, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getI32($p, $v{off}) != 0, store: [macro hxmc.unsafe.Mem.setI32($p, $v{off}, $x ? 1 : 0)]};
-			case [TVec(n), _]: parts(vec(n), xs -> {expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: (lanes ? "Lane" : "Vec") + n}, xs), pos: pos});
+			case [TVec(n), _]: parts(vec(n), xs -> {expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : MATH, name: (lanes ? "Lane" : "Vec") + n}, xs), pos: pos});
 			case [TMat4, _]:
-				parts([for (k in 0...4) {name: "c" + k, type: TVec(4)}], xs -> lanes ? macro new helder.gfx.soft.LaneMat($a{xs}) : macro new helder.gfx.shader.Mat4($a{xs}));
+				parts([for (k in 0...4) {name: "c" + k, type: TVec(4)}], xs -> lanes ? macro new helder.gfx.soft.LaneMat($a{xs}) : macro new helder.math.Mat4($a{xs}));
 			case [TStruct(st), _]:
 				var tp:TypePath = {pack: pack, name: lanes ? laneStruct(st) : scalarStruct(st)};
 				parts([for (f in st.fields) {name: "f_" + f.name, type: f.type}], xs -> {expr: haxe.macro.Expr.ExprDef.ENew(tp, xs), pos: pos});
@@ -856,10 +857,10 @@ class Soft {
 			case TBool: macro hxmc.unsafe.Mem.getI32($p, $at) != 0;
 			case TVec(n):
 				var cs = [for (k in 0...n) macro(hxmc.unsafe.Mem.getF32($p, $at + $v{4 * k}) : Float)];
-				{expr: haxe.macro.Expr.ExprDef.ENew({pack: SHADER, name: 'Vec$n'}, cs), pos: Context.currentPos()};
+				{expr: haxe.macro.Expr.ExprDef.ENew({pack: MATH, name: 'Vec$n'}, cs), pos: Context.currentPos()};
 			case TMat4:
 				var cols = [for (c in 0...4) readAt(TVec(4), p, macro $at + $v{16 * c})];
-				macro new helder.gfx.shader.Mat4($a{cols});
+				macro new helder.math.Mat4($a{cols});
 			case t: Context.error('soft: a uniform of ${Names.typeName(t)}', Context.currentPos());
 		}
 
@@ -1231,7 +1232,7 @@ class Fn {
 		return false;
 	}
 
-	// ---- scalar expressions (helder.gfx.shader's types: the CPU code's)
+	// ---- scalar expressions (helder.math's types: the CPU code's)
 
 	function sx(e:SExpr):Expr
 		return switch e.e {
@@ -1251,7 +1252,7 @@ class Fn {
 				var parts = [for (i in 0...cs.length) Soft.dot(macro $i{t}, cs.charAt(i))];
 				macro {
 					var $t = ${sx(x)};
-					${{expr: haxe.macro.Expr.ExprDef.ENew({pack: ["helder", "gfx", "shader"], name: 'Vec${cs.length}'}, parts), pos: pos}};
+					${{expr: haxe.macro.Expr.ExprDef.ENew({pack: ["helder", "math"], name: 'Vec${cs.length}'}, parts), pos: pos}};
 				};
 			case EColumn(x, i): Soft.dot(sx(x), "c" + i);
 			case EIndex(x, i):
@@ -1330,11 +1331,11 @@ class Fn {
 					pre.push(macro var $s = ${comps[0]});
 					comps = [for (_ in 0...n) macro $i{s}];
 				}
-				var made = {expr: haxe.macro.Expr.ExprDef.ENew({pack: scalarForm ? ["helder", "gfx", "shader"] : ["helder", "gfx", "soft"], name: scalarForm ? 'Vec$n' : 'Lane$n'}, comps), pos: pos};
+				var made = {expr: haxe.macro.Expr.ExprDef.ENew({pack: scalarForm ? ["helder", "math"] : ["helder", "gfx", "soft"], name: scalarForm ? 'Vec$n' : 'Lane$n'}, comps), pos: pos};
 				pre.length == 0 ? made : macro $b{pre.concat([made])};
 			case TMat4:
 				var cols = [for (a in args) conv(a)];
-				scalarForm ? macro new helder.gfx.shader.Mat4($a{cols}) : macro new helder.gfx.soft.LaneMat($a{cols});
+				scalarForm ? macro new helder.math.Mat4($a{cols}) : macro new helder.gfx.soft.LaneMat($a{cols});
 			case TStruct(s):
 				var tp = scalarForm ? soft.scalarStructPath(s) : soft.laneStructPath(s);
 				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (a in args) conv(a)]), pos: pos};

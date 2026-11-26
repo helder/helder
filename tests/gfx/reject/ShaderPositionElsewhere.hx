@@ -1,6 +1,7 @@
 // position(...) marks a varying where the vertex stage builds its varyings, nowhere else.
-// expect: ShaderPositionElsewhere.hx:17: characters 38-53
+// expect: ShaderPositionElsewhere.hx:18: characters 38-53
 // expect: position(...) marks a field of the varyings where the vertex stage builds them
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

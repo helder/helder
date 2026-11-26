@@ -5,7 +5,7 @@
 // where you came from (Back); what the status bar says
 import { signal, Signal } from "helder/view";
 import { CodeEditor, DataGrid, GridColumn, Node, Svg, Theme, UiWindow } from "helder/ui";
-import { Store } from "helder/os";
+import { Store, Settings } from "helder/os";
 import { delay } from "helder/async";
 import { complete } from "./complete";
 import { Drizzle, Setup, VERSION, message } from "./drizzle";
@@ -159,7 +159,7 @@ export class Tables {
 	// dark: the appearance chosen, or the system's
 	dark(): boolean {
 		const a = this.appearance();
-		return a === "system" ? UiWindow.dark() : a === "dark";
+		return a === "system" ? Settings.dark() : a === "dark";
 	}
 
 	appear(kind: string) {

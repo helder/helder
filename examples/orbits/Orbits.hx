@@ -2,9 +2,10 @@
 // summary: A small solar system as a scene graph: planets on turning nodes, a moon on a planet's, a fixed-step clock, the star a point light, a debug overlay of frame times (O)
 // tags: 3d, scene graph, pbr
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -82,7 +83,7 @@ class Orbits {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Orbits", 640, 480);
+		var window = new Window({title: "Orbits", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var orbits = new Orbits(device);
 		// (the debug overlay, drawn with helder.ui: frame times and draws; O toggles it)

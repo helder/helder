@@ -1,6 +1,7 @@
 // The vertex stage's varyings have one position(...) (the clip-space position).
-// expect: ShaderPosition.hx:20: characters 10-68
+// expect: ShaderPosition.hx:21: characters 10-68
 // expect: the vertex function: exactly one field of NoPosition is the clip-space position, marked by position(...) where it is built (it has 0)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

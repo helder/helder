@@ -1,6 +1,7 @@
 // The fragment stage takes what the vertex stage returns.
-// expect: ShaderMismatch.hx:22: characters 12-58
+// expect: ShaderMismatch.hx:23: characters 12-58
 // expect: stage interface mismatch: the fragment function takes Other, but the vertex function returns O
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

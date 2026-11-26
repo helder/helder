@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.canvas.Path;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.test.Test;
 
 // Geometry.extrude and Geometry.text on the CPU: a square's solid (its two

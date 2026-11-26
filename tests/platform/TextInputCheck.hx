@@ -37,7 +37,7 @@ class TextInputCheck implements Markup {
 
 	static function main() {
 		Sys.println("textinput: started");
-		var w = new UiWindow("TextInput", 400, 700);
+		var w = new UiWindow({title: "TextInput", width: 400, height: 700});
 		ui = @:privateAccess w.ui;
 		Render.render(new TextInputCheck().view(), w.root);
 		var steps = script(), at = -1.0, i = 0;

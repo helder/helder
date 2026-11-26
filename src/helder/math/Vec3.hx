@@ -1,10 +1,10 @@
-package helder.gfx.shader;
+package helder.math;
 
 // 3 floats: vec3 in a shader, an immutable value in CPU code (a
 // @:hxmc.struct value on hxmc's targets: copied, never allocated; an object
 // elsewhere, such as the macro context). The components and swizzles read
 // only; the operators are VecBuild's.
-@:build(helder.gfx.shader.VecBuild.vector(3))
+@:build(helder.math.VecBuild.vector(3))
 @:forward(x, y, z)
 abstract Vec3(Vec3Data) {
 	public inline function new(x:Float, y:Float, z:Float)
