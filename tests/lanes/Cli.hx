@@ -24,12 +24,13 @@ class Cli {
 
 	// (the properties with a limit, each run FUZZ_SECONDS (20) natively from
 	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
-	// crashes or blows up is left in bin/test/properties)
+	// crashes or blows up is left in bin/fuzz/properties)
 	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
 		"src/helder/markdown/Markdown.test.hx"];
 
 	static function fuzz()
-		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host"]),
+		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
+		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host", "--out", "bin/fuzz"]),
 			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
 
 	static function helderTest() {

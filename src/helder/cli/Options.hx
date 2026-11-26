@@ -124,7 +124,8 @@ class Options {
 			usage: "[file or name filter...] [options]",
 			about: "build and run the *.test.hx files (helder.test)",
 			entry: false,
-			common: ["target"],
+			// (out: the links, mains, builds and properties' cases, bin/test; two runs at once each their own)
+			common: ["target", "out"],
 			targetAbout: "host (default), wasm, all (host and wasm) or interp (the files with @:test.interp); several: host,interp",
 			own: [
 				{key: "test-name-pattern", names: ["-t", "--test-name-pattern"], value: "<text>", about: "the tests whose name contains it (/text/: a regex)"},
