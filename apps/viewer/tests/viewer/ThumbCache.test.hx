@@ -1,11 +1,28 @@
 package viewer;
 
 import haxe.io.Bytes;
+import helder.test.Gen;
 import helder.test.Test;
 import sys.FileSystem;
 import sys.io.File;
 
+// ThumbCache: its keys, round trips and negative hits, indexes saved,
+// stale or damaged and rebuilt, eviction by segment, promotion, a second
+// instance reading only; and against a model of its segments (a stateful
+// property: puts, hits, flushes and reopens, in a temporary directory)
 function tests() {
+	test("ThumbCache against its segments: the same hits, promotions and evictions", () -> stateful({
+		setup: () -> new Model(),
+		steps: [
+			{name: "put", run: (m, c) -> m.put(c.draw(int(0, 5)), c.draw(int(1, 3)), c.draw(int(1, 3)), c.draw(int(1, 40)))},
+			{name: "put none", run: (m, c) -> m.put(c.draw(int(0, 5)), 0, 0, 0)},
+			{name: "get", run: (m, c) -> m.get(c.draw(int(0, 5)))},
+			{name: "flush", run: (m, c) -> m.flush()},
+			{name: "reopen", run: (m, c) -> m.reopen()}
+		],
+		check: m -> m.check(),
+		teardown: m -> m.dispose()
+	}, {cases: 40, steps: 30}));
 	describe("ThumbCache", () -> {
 		var dir:String = null;
 		var cache:ThumbCache = null;
@@ -126,3 +143,89 @@ function tests() {
 		});
 	});
 }
+
+// (a record: its header and bytes)
+private inline var HEADER = 25;
+
+private typedef Kept = {segment:Int, width:Int, height:Int, bytes:Null<Bytes>};
+
+// (the cache in a directory of its own and its model: segments as ids and
+// sizes, the oldest first, and where each key's newest record is)
+private class Model {
+	final dir = helder.os.Paths.temp() + "/viewer-cache-" + Std.random(0x40000000);
+	final keys = [for (k in 0...6) ThumbCache.key("f" + k, k, k, 256)];
+	var cache:ThumbCache;
+	var segments:Array<{id:Int, size:Int}> = [];
+	final index = new Map<Int, Kept>();
+	var next = 1;
+
+	public function new()
+		cache = new ThumbCache(192, 64, dir);
+
+	public function put(k:Int, width:Int, height:Int, n:Int) {
+		var bytes = n == 0 ? null : Bytes.alloc(n);
+		if (bytes != null) bytes.fill(0, n, k * 16 + n);
+		if (bytes == null) cache.putNone(keys[k]) else cache.put(keys[k], width, height, bytes);
+		// (a record larger than a segment: not kept)
+		if (HEADER + n <= 64) append(k, {segment: 0, width: width, height: height, bytes: bytes});
+	}
+
+	public function get(k:Int) {
+		var e = index.get(k), hit = cache.get(keys[k]);
+		equals(hit, e == null ? null : {width: e.width, height: e.height, bytes: e.bytes}, 'get($k)');
+		if (e == null) return;
+		// (an entry in the oldest quarter of the segments, not the newest: written again)
+		var oldest = (segments.length + 3) >> 2;
+		if (e.segment != segments[segments.length - 1].id && e.segment <= segments[oldest - 1].id) append(k, e);
+	}
+
+	public function flush()
+		cache.flush();
+
+	public function reopen() {
+		cache.close();
+		cache = new ThumbCache(192, 64, dir);
+		assert(!cache.readOnly, "the owner");
+		evict(0);
+	}
+
+	public function check() {
+		var real:Array<{id:Int, size:Int}> = [for (s in @:privateAccess cache.segments) {id: s.id, size: s.size}];
+		equals(real, segments, "segments");
+		equals(@:privateAccess cache.used, 1.0 * used(), "used");
+		var at = @:privateAccess cache.index;
+		for (k in 0...6) {
+			var e = at.get(@:privateAccess ThumbCache.name(keys[k])), m = index.get(k);
+			equals(e == null ? null : e.segment.id, m == null ? null : m.segment, 'key $k\'s segment');
+		}
+	}
+
+	public function dispose() {
+		cache.close();
+		for (f in FileSystem.readDirectory(dir))
+			FileSystem.deleteFile(dir + "/" + f);
+		FileSystem.deleteDirectory(dir);
+	}
+
+	function append(k:Int, e:Kept) {
+		var n = HEADER + (e.bytes == null ? 0 : e.bytes.length);
+		evict(n);
+		if (used() + n > 192) return;
+		var s = segments[segments.length - 1];
+		if (s == null || n > 64 - s.size) segments.push(s = {id: next++, size: 0});
+		s.size += n;
+		index.set(k, {segment: s.id, width: e.width, height: e.height, bytes: e.bytes});
+	}
+
+	// (the oldest segments let go, with their records, until there is room)
+	function evict(reserve:Int)
+		while (used() + reserve > 192 && segments.length > 0) {
+			var s = segments.shift();
+			for (k => e in index)
+				if (e.segment == s.id) index.remove(k);
+		}
+
+	function used():Int
+		return Lambda.fold(segments, (s, n) -> n + s.size, 0);
+}
+

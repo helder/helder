@@ -300,8 +300,9 @@ class Browser {
 
 	// the selection changed by the list's or the grid's own input: its focus the selected
 	public function selectionChanged() {
-		var f = selection.focus;
-		var name = f != null && selection.has(f) ? f : selection.size() > 0 ? selection.keys()[0] : "";
+		var f = selection.focus, keys = selection.keys();
+		// (those selected may all be filtered out: none then)
+		var name = f != null && selection.has(f) ? f : keys.length > 0 ? keys[0] : "";
 		selected(name);
 	}
 
