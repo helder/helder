@@ -1,0 +1,112 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN" "http://www.w3.org/2002/04/xhtml-math-svg/xhtml-math-svg.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+  "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Absolutely positioned inline replaced element, 'auto' specified for 'margin-left', 'margin-right', no intrinsic height and no intrinsic width"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visudet.html#abs-replaced-width"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="absolute-replaced-width-003a-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="nonHTML svg"
+|       name="flags"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="If an absolutely positioned inline replaced element (like the svg element in this test) has no intrinsic width and no intrinsic height, then the used value of 'width' becomes 300px and the used value of 'height' becomes 150px. Then, if both left and right values are 'auto' and the 'direction' property of the element establishing the static-position containing block is 'ltr', then set 'left' to the static position. If 'left' or 'right' are 'auto' (like in this test), then replace any 'auto' on 'margin-left' or 'margin-right' with '0'. If at this point there is an 'auto' left (like in this test: right is 'auto'), solve the equation for that value."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div
+  {
+  height: 225px;
+  width: 450px;
+  }
+
+  svg#overlapped-red {position: absolute;}
+
+  div#overlapping-green
+  {
+  background-color: green;
+  height: 150px;
+  left: auto;
+  position: absolute;
+  top: auto;
+  width: 300px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a filled green rectangle and "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+      "
+|       <svg:svg {http://www.w3.org/2000/svg}>
+|         baseProfile="full"
+|         id="overlapped-red"
+|         version="1.1"
+|         xmlns:svg {http://www.w3.org/2000/xmlns/}="http://www.w3.org/2000/svg"
+|         "
+          "
+|         <svg:rect {http://www.w3.org/2000/svg}>
+|           fill="red"
+|           height="300"
+|           width="600"
+|           x="0"
+|           y="0"
+|         "
+      "
+|       "
+
+      "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="overlapping-green"
+|       "
+  "
+|     "
+
+  "
+|   "
+"

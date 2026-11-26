@@ -1,0 +1,7 @@
+| <!DOCTYPE a "" "">
+| <a>
+|   x="text & more"
+|   "text & more "
+|   <b>
+|     "bold text & more"
+|   " end"

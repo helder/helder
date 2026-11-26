@@ -1,0 +1,65 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Selectors: Attribute selectors: Generic match with the universal selector"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:gabriele.romanato@gmail.com"
+|       rel="author"
+|       title="Gabriele Romanato"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/selector.html#attribute-selectors"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="attribute-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Browsers should apply each rule to the elements with the specified attribute, disregarding its value"
+|       name="assert"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+[id] {color: purple}
+[class] {color: black}
+*[title] {color: blue}
+
+"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       id="foo"
+|       "This text should be purple."
+|     "
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="boo"
+|       "This text should be black."
+|     "
+"
+|     <h4 {http://www.w3.org/1999/xhtml}>
+|       title="Heading"
+|       "This text should be blue."
+|     "
+ "
+|   "
+"

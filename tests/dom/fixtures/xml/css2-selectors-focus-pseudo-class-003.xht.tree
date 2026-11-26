@@ -1,0 +1,100 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: :focus pseudo-class - adjacent sibling selector"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/html4/interact/forms.html#h-17.11"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/selector.html#dynamic-pseudo-classes"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/selector.html#adjacent-selectors"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/2008/NOTE-WCAG20-TECHS-20081211/C15.html#C15-examples"
+|       rel="bookmark"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="interact"
+|       name="flags"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="An HTML 4 radio button must receive focus state when clicking on it or when selecting it with the keyboard. The :focus pseudo-class applies to a radio button while it has the focus (accepts keyboard events or other forms of input)."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  input[type="radio"]
+  {
+  height: 20px;
+  width: 60px;
+  }
+
+  input[type="radio"]:focus + label
+  {
+  background-color: yellow;
+  color: black;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+   "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "With the pointing device (like a mouse left-button click) or with the keyboard (with the tab key or with the "T" accesskey), activate the radio button below. The words "Text sample" on its right-hand side should then have become highlighted in yellow. In order to pass this test, the tester should not have to move the pointing device out of the radio button in order to see the yellow highlighting."
+|     "
+
+   "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+    "
+|       <input {http://www.w3.org/1999/xhtml}>
+|         accesskey="T"
+|         id="test"
+|         type="radio"
+|       " "
+|       <label {http://www.w3.org/1999/xhtml}>
+|         for="test"
+|         "Text sample"
+|       "
+   "
+|     "
+
+ "
+|   "
+"

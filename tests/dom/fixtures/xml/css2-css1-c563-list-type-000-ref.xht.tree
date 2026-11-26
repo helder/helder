@@ -1,0 +1,109 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reftest Reference"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  body {color: navy;}
+
+  div
+  {
+  display: list-item;
+  margin-left: 2.5em;
+  }
+
+  div.circ {list-style-type: circle;}
+
+  div.squa {list-style-type: square;}
+
+  div#first {margin-top: 1em;}
+  ]]>
+|       "
+  "
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Each bullet should look as described, and there should be no red present."
+|     "
+
+  "
+|     <ul {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "disc"
+|       "
+   "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "disc"
+|       "
+   "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "disc"
+|       "
+  "
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="circ"
+|       "circle"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="circ"
+|       "circle"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="circ"
+|       "circle"
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="squa"
+|       id="first"
+|       "square"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="squa"
+|       "square"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="squa"
+|       "square"
+|     "
+
+ "
+|   "
+"

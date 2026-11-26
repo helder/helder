@@ -1,0 +1,160 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: table-layout fixed - columns with percentage width"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#fixed-table-layout"
+|       rel="help"
+|       title="17.5.2.1 Fixed table layout"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="fixed-table-layout-017-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="A column with a percentage width in a 'table-layout: fixed' table can be calculated, predicted, rendered."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  table, div {font: 1.25em/1 Ahem;}
+
+  table
+  {
+  border: white solid;
+  border-width: 0px 6px;
+  border-collapse: separate;
+  border-spacing: 2px 4px;
+  table-layout: fixed;
+  width: 422px;
+  }
+
+  col#test
+  {
+  background-color: orange;
+  width: 40%;
+  }
+
+  td {padding: 1px 30px;}
+
+  td#third-cell {color: orange;}
+
+  div#reference
+  {
+  background-color: blue;
+  color: blue;
+  left: 172px;
+  padding: 1px 0px;
+  position: relative;
+  width: 160px;
+
+  /*
+
+    422px : total width of table
+  -
+     12px : total width of horizontal borders of table
+  -
+     10px : 5 times horizontal border-spacing
+   ========
+    400px
+   mult by
+     40%
+   ========
+    160px
+
+  */
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the orange stripe is exactly as wide as the blue stripe and is horizontally positioned the same."
+|     "
+
+  "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+
+    "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+    "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+    "
+|       <col {http://www.w3.org/1999/xhtml}>
+|         id="test"
+|       "
+    "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+
+    "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+      "
+|         <td {http://www.w3.org/1999/xhtml}>
+|         "
+      "
+|         <td {http://www.w3.org/1999/xhtml}>
+|         "
+      "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="third-cell"
+|           "col"
+|         "
+      "
+|         <td {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|       "
+
+  "
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="reference"
+|       "ref"
+|     "
+
+ "
+|   "
+"

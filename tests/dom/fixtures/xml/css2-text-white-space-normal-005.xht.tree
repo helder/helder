@@ -1,0 +1,136 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: white-space normal: zero width non-breaking space"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-06-29  -->
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.hixie.ch/tests/adhoc/css/text/white-space/normal/005.html"
+|       rel="alternate"
+|       type="text/html"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#white-space-model"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://drafts.csswg.org/css-text-3/#white-space-rules"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="white-space-normal-005-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem"
+|       name="flags"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+   /* setup */
+   td * { white-space: normal; font: inherit; }
+   div { display: block; }
+   span { display: inline; }
+
+   /* test */
+   td { font: 20px/1 Ahem; color: maroon; background: red; padding: 0; }
+   span { background: lime; }
+   div { color: green; }
+  "
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a filled bright green square with a thick green border and if there is "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+  "
+|     <!--  U+00A0 is exactly equivalent to U+200B U+0020 U+200B  -->
+|     "
+  "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           "
+     "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             "XXXXX"
+|           "
+     "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             "X"
+|             <span {http://www.w3.org/1999/xhtml}>
+|               "   "
+|             "X"
+|           "
+     "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             "X"
+|             <span {http://www.w3.org/1999/xhtml}>
+|               "​ ​ ​ ​"
+|             "X"
+|           "
+     "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             "X"
+|             <span {http://www.w3.org/1999/xhtml}>
+|               " ​ ​ "
+|             "X"
+|           "
+     "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             "XXXXX"
+|           "
+    "
+|         "
+   "
+|       "
+  "
+|     "
+ "
+|   "
+"

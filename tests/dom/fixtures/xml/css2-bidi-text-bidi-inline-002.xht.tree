@@ -1,0 +1,91 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+  "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: unicode-bidi: bidi-override on inline - nested"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:public-testsuites@opera.com"
+|       rel="author"
+|       title="Eira Monstad, Opera Software ASA"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-03-14  -->
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-writing-modes-3/#bidi-algo"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#direction"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="bidi-inline-001-ref.xht"
+|       rel="match"
+|     "
+
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Nested bidi-override should be applied to inlines with no interruptions to surrounding text"
+|       name="assert"
+|     "
+    "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+      .rtol {
+      direction: rtl;
+      unicode-bidi: bidi-override;
+      }
+      .ltor {
+      direction: ltr;
+      unicode-bidi: bidi-override;
+      }
+    ]]>
+|     "
+  "
+|   "
+
+  "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 lines are "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "identical"
+|       "."
+|     "
+    "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Readable"
+|     "
+    "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       <span {http://www.w3.org/1999/xhtml}>
+|         class="rtol"
+|         "ba"
+|         <span {http://www.w3.org/1999/xhtml}>
+|           class="ltor"
+|           "ad"
+|         "eR"
+|       "le"
+|     "
+  "
+|   "
+"

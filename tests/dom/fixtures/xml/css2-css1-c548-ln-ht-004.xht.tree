@@ -1,0 +1,111 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: line-height"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem image"
+|       name="flags"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/REC-CSS1#line-height"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/Style/CSS/Test/CSS1/current/tsack.html"
+|       rel="author"
+|       title="CSS1 Test Suite Contributors"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-03-??  -->
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="c548-ln-ht-004-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+   div { font: 20px Ahem; width: 4em; color: green; background: red url(support/css1test548e.png); margin: 1em; border: solid black; }
+   p { margin: 0; }
+   .nine {line-height: 2;}
+  ]]>
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visudet.html#leading"
+|       rel="help"
+|       title="10.8.1 Leading and half-leading"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/cascade.html#inheritance"
+|       rel="help"
+|       title="6.2 Inheritance"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-cascade-3/#inheriting"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-cascade-4/#inheriting"
+|       rel="help"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be no red below:"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="nine"
+|       "
+   x x x x
+   "
+|       <p {http://www.w3.org/1999/xhtml}>
+|         style="font-size: 200%;"
+|         "
+    x x
+   "
+|       "
+   x x x x
+  "
+|     "
+ "
+|   "
+"

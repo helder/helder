@@ -1,0 +1,209 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Auto-imported from Gecko test dynamic-switch-inline-to-cell-3.html"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:bzbarsky@mit.edu"
+|       rel="author"
+|       title="Boris Zbarsky"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#anonymous-boxes"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="reference/no_red_3x3_monospace_table-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="dom"
+|       name="flags"
+|     "
+
+    "
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       <![CDATA[
+      function doTest() {
+        document.getElementById("t").style.display = "table-cell";
+        document.documentElement.className = "";
+      }
+    ]]>
+|     "
+  "
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     onload="doTest()"
+|     style="font-family: monospace"
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be no red below, except for antialiasing issues."
+|     "
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       style="position: relative; font-size: 2em;"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         style="position: relative; z-index: 1; color: red; padding: 1px;"
+|         "
+
+    "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           style="display:table"
+|           "
+      "
+|           <span {http://www.w3.org/1999/xhtml}>
+|             style="display: table-row"
+|             "
+        "
+|             <span {http://www.w3.org/1999/xhtml}>
+|               "Row 1, Col 1"
+|             "
+        "
+|             <span {http://www.w3.org/1999/xhtml}>
+|               id="t"
+|               "Row 1, Col 2"
+|             "
+        "
+|             <span {http://www.w3.org/1999/xhtml}>
+|               "Row 1, Col 3"
+|             "
+      "
+|           "
+      "
+|           <span {http://www.w3.org/1999/xhtml}>
+|             style="display: table-row-group"
+|             "
+        "
+|             <span {http://www.w3.org/1999/xhtml}>
+|               style="display: table-row"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 22, Col 1"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 22, Col 2"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 22, Col 3"
+|               "
+        "
+|             "
+        "
+|             <span {http://www.w3.org/1999/xhtml}>
+|               style="display: table-row"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 333, Col 1"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 333, Col 2"
+|               "
+          "
+|               <span {http://www.w3.org/1999/xhtml}>
+|                 style="display: table-cell"
+|                 "Row 333, Col 3"
+|               "
+        "
+|             "
+      "
+|           "
+    "
+|         "
+  "
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         style="position: absolute; z-index: 2; top: 0; color: green; padding: 1px;"
+|         "
+
+    "
+|         <table {http://www.w3.org/1999/xhtml}>
+|           cellpadding="0"
+|           cellspacing="0"
+|           style="margin: 0; padding: 0; border: none"
+|           "
+      "
+|           <tr {http://www.w3.org/1999/xhtml}>
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 1, Col 1"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 1, Col 2"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 1, Col 3"
+|             "
+      "
+|           "
+      "
+|           <tr {http://www.w3.org/1999/xhtml}>
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 22, Col 1"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 22, Col 2"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 22, Col 3"
+|             "
+      "
+|           "
+      "
+|           <tr {http://www.w3.org/1999/xhtml}>
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 333, Col 1"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 333, Col 2"
+|             "
+        "
+|             <td {http://www.w3.org/1999/xhtml}>
+|               "Row 333, Col 3"
+|             "
+      "
+|           "
+    "
+|         "
+  "
+|       "
+"
+|     "
+"
+|   "
+"

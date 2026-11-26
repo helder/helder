@@ -1,0 +1,64 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Bidi box model test 9"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:bzbarsky@mit.edu"
+|       rel="author"
+|       title="Boris Zbarsky"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#bidi-box-model"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="rtl-linebreak-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="rtl-linebreak-notref1.xht"
+|       rel="mismatch"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="rtl-linebreak-notref2.xht"
+|       rel="mismatch"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+      .r { direction: rtl; }
+      .l { direction: ltr; }
+      div.r { width: 20em; }
+      span { border: 2px solid; padding: 0 10px 0 5px; margin: 0 60px 0 30px; }
+  ]]>
+|     "
+  "
+|   "
+  "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="r"
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "One"
+|         <br {http://www.w3.org/1999/xhtml}>
+|         "Two"
+|       " Some long text that should make sure we line-wrap.  If this didn't line-wrap, it should be longer.  It really should.  And there should be a black border to the left of "Two" above."
+|     "
+  "
+|   "
+"

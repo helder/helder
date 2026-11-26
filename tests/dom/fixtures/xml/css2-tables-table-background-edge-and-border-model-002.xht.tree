@@ -1,0 +1,89 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Table background edge in the separated borders model"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#collapsing-borders"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="image may"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The background edge of a table could start either behind the table's border or at its edge in the separated borders model (non-normative rule)."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            #table
+            {
+                background-image: url("support/blue-orange-rectangle.png");
+                background-repeat: no-repeat;
+                border-collapse: separate;
+                border-left: 100px solid black;
+                border-spacing: 0;
+                display: table;
+                height: 100px;
+                width: 100px;
+            }
+            .tr
+            {
+                display: table-row;
+            }
+            .td
+            {
+                display: table-cell;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if below there is a black square and adjacent to the black square there is either a blue or orange square."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="table"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="tr"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="td"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="td"
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

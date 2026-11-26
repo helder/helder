@@ -1,0 +1,67 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: position:fixed in rtl context"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:public-testsuites@opera.com"
+|       rel="author"
+|       title="Eira Monstad, Opera Software ASA"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visudet.html#abs-non-replaced-width"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#direction"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#alignment-prop"
+|       rel="help"
+|     "
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Default horizontal position of position:fixed block should be right in rtl context, and ancestor direction should still be applied inside the block taken out of normal flow"
+|       name="assert"
+|     "
+    "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+    body {direction:rtl;}
+    .note {direction:ltr;position:fixed;margin-top:2em;}
+  ]]>
+|     "
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+   "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       style="position:fixed;"
+|       "!Right"
+|     "
+
+   "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="note"
+|       "The word above should be right-aligned on the page and end with an exclamation mark."
+|     "
+
+ "
+|   "
+"

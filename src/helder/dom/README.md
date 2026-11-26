@@ -52,6 +52,32 @@ The input is a Haxe String: UTF-16 natively and as wasm32-wasi (offsets in
 code units, a character outside the BMP two), code points on Eval. CR and
 CRLF read as LF where they are met, so the offsets are the source's own.
 
+## XML
+
+`Dom.parseXml(xml)` reads XML 1.0 with Namespaces in XML into the same
+tree, as the HTML Standard's XML parsing section says: an XML document
+(`application/xml`), each element in its namespace with its prefix (the
+`xmlns` attributes kept, in the XMLNS namespace), CDATA sections as
+CDATASection nodes, comments and processing instructions, the doctype, a
+template's children in its contents. References are read: the five XML
+predefines, character references, the internal subset's general
+entities (their text parsed as content, markup included; recursion and
+more than 10 million characters of expansions are errors), and, for the
+XHTML and MathML public identifiers the HTML Standard lists, its named
+character references. No external entity or DTD is fetched, and attribute
+defaults from a DTD are not applied (it does not validate). Line ends read
+as LF, attribute values' white space as spaces. The first well-formedness
+error (a mismatched or unclosed tag, an unbound prefix, a duplicate
+attribute, an undefined entity, `--` in a comment, a character XML does not
+allow, ...) ends the parse: the document is what came before it, and
+`Dom.parseXml(xml, errors)` gets the error's code and offset. The input is
+a decoded string: an encoding declaration is read past, the bytes' decoding
+is the caller's.
+
+Its tree is expat's for WPT's CSS2 tests (a sample of the .xht files and
+every .svg in tests/dom/fixtures/xml, with hand-written cases; all of WPT's
+10,536 CSS2 XML files parse, but the 7 encoded in ISO-8859-1).
+
 ## The DOM
 
 The interfaces and their hierarchy are the standard's, with its names:
@@ -127,6 +153,10 @@ newline); the round-trip property below keeps to the markup that does.
   repository's pages parsed by helder and by parse5 (scripting off), the
   same tree but for parse5's known differences from today's standard
   (tests/dom/parse5-known.json).
+- **XML** (the dom lane): `Dom.parseXml`'s trees against expat's
+  (tests/dom/XmlCheck.hx), its errors where expat refuses; its unit tests
+  and properties (`XmlParser.test.hx`: a generated tree written as XML
+  reads back the same, mutated documents never throw).
 - **Unit tests and properties** (`Dom.test.hx`, natively and as
   wasm32-wasi): the DOM's algorithms and their errors, collections,
   serialization; generated markup parsed, serialized and parsed again is
