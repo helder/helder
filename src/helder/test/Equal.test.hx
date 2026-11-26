@@ -65,6 +65,7 @@ function tests() {
 	describe("show", () -> {
 		test("literals", () -> {
 			equals(Equal.show("a\"b\n"), '"a\\"b\\n"');
+			equals(Equal.show("a\x00\x1B"), '"a\\x00\\x1B"');
 			equals(Equal.show([1, null, "x"]), '[1, null, "x"]');
 			equals(Equal.show({b: 1, a: [true]}), "{a: [true], b: 1}");
 			equals(Equal.show(Rect(1, 2.5)), "Rect(1, 2.5)");

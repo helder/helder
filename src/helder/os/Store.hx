@@ -137,7 +137,9 @@ class Store {
 		var o:haxe.DynamicAccess<String> = {};
 		for (k in keys())
 			o.set(k, values.get(k));
-		return haxe.Json.stringify(o);
+		// (hxmc's Json writes a NUL as it is, which no JSON reader takes, and
+		// the web's store would cut a C string there: one is only in a string)
+		return haxe.Json.stringify(o).split("\x00").join("\\u0000");
 	}
 
 	function write() {

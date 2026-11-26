@@ -163,6 +163,8 @@ class Equal {
 				case '\n'.code: s.add("\\n");
 				case '\r'.code: s.add("\\r");
 				case '\t'.code: s.add("\\t");
+				// (a control shown as an escape: a NUL would end the report's line)
+				case c if (c < 0x20 || c == 0x7F): s.add("\\x" + StringTools.hex(c, 2));
 				case _: s.addChar(c);
 			}
 		}
