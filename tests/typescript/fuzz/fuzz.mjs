@@ -113,6 +113,8 @@ async function found(runner, cases, c, kind, origin) {
   const plain = emit(small.cases, {plain: true}).text
   const {text} = !lies && await runner.runText(plain, `plain-${process.pid}`, {wasm: small.kind.startsWith('wasm')}) ? {text: plain} : emit(small.cases)
   const hash = crypto.createHash('sha1').update(text).digest('hex').slice(0, 8)
+  // (one that did not fail again: the machine's timing, or helder's nondeterminism)
+  if (small.flaky) small.kind = 'flaky ' + small.kind
   const finding = {kind: small.kind, family: c?.family ?? 'program', ...origin, case: c?.id ?? null, hash, lies}
   stats.findings.push(finding)
   const json = JSON.stringify({...finding, cases: small.cases.map(c => ({...c, features: [...c.features]}))}, null, 1)
@@ -148,7 +150,11 @@ function keep(result, why) {
   fs.mkdirSync(dir, {recursive: true})
   fs.copyFileSync(result.file, path.join(dir, path.basename(result.file)))
   const log = [`node: ${result.node.status}`, result.messages ?? '', result.typing ?? '']
-  fs.writeFileSync(path.join(dir, path.basename(result.file, '.ts') + '.log'), log.join('\n'))
+  const stem = path.join(dir, path.basename(result.file, '.ts'))
+  fs.writeFileSync(stem + '.log', log.join('\n'))
+  fs.writeFileSync(stem + '.node', result.node.stdout)
+  if (result.native) fs.writeFileSync(stem + '.native', result.native.stdout)
+  if (result.wasm) fs.writeFileSync(stem + '.wasm.out', result.wasm.stdout)
   clean(result)
 }
 

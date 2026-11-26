@@ -453,29 +453,34 @@ export class Generator {
     return stmts
   }
 
-  // promises against timers and microtasks: the order must be node's
+  // promises against timers and microtasks: the order must be node's.
+  // (every timer 0 ms, so first come first run in both; one nested in
+  // another's callback races a longer one when the machine stalls, as it
+  // would in node. Counted: the case ends once none is pending.)
   asyncOrder(sc) {
     const r = this.r
-    const out = []
+    const pending = this.name('pending'), later = this.name('later')
+    const out = [s`let ${pending}: number = 0`,
+      s`const ${later} = (f: () => void): void => { ${pending}++; setTimeout(() => { ${pending}--; f() }, 0) }`]
     const tag = () => lit('string', JSON.stringify(this.name('t')))
     const steps = r.range(2, 6)
     for (let k = 0; k < steps; k++) {
       out.push(r.weighted([
-        [3, () => s`setTimeout(() => p(${tag()}), ${r.pick(['0', '0', '30'])})`],
+        [3, () => s`${later}(() => p(${tag()}))`],
         [3, () => s`queueMicrotask(() => p(${tag()}))`],
         [3, () => s`Promise.resolve(${this.num(sc, 2)}).then(v => p(v)).then(() => p(${tag()}))`],
         [2, () => s`void (async () => { p(${tag()}); await null; p(${tag()}); await Promise.resolve(); p(${tag()}) })()`],
         [2, () => s`new Promise<number>(res => res(Promise.resolve(${this.smallInt(0, 9)}))).then(v => p(v))`],
         [1, () => s`Promise.reject(new Error('u:r')).catch((e: unknown) => p(String(e))).finally(() => p(${tag()}))`],
-        [1, () => s`setTimeout(() => { p(${tag()}); queueMicrotask(() => p(${tag()})); setTimeout(() => p(${tag()}), 0) }, 0)`],
-        [1, () => s`void Promise.all([Promise.resolve(1), new Promise<number>(res => setTimeout(() => res(2), 0))]).then(v => p(v))`],
-        [1, () => s`void Promise.race([new Promise<string>(res => setTimeout(() => res('slow'), 30)), Promise.resolve('fast')]).then(v => p(v))`],
+        [1, () => s`${later}(() => { p(${tag()}); queueMicrotask(() => p(${tag()})); ${later}(() => p(${tag()})) })`],
+        [1, () => s`void Promise.all([Promise.resolve(1), new Promise<number>(res => ${later}(() => res(2)))]).then(v => p(v))`],
+        [1, () => s`void Promise.race([new Promise<string>(res => ${later}(() => res('slow'))), Promise.resolve('fast')]).then(v => p(v))`],
         [1, () => s`void Promise.allSettled([Promise.reject(new Error('u:x')), Promise.resolve(3)]).then(v => p(v.map(x => x.status)))`],
         [1, () => s`void Promise.any([Promise.reject(new Error('u:y')), Promise.resolve(4)]).then(v => p(v))`],
         [1, () => s`p(${tag()})`]
       ])())
     }
-    out.push(s`await new Promise<void>(res => setTimeout(res, 60))`)
+    out.push(s`do await new Promise<void>(res => setTimeout(res, 0)); while (${pending} > 0)`)
     out.push(this.print(lit('string', '"end"')))
     return out
   }

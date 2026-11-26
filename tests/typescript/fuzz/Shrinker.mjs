@@ -35,7 +35,7 @@ export class Shrinker {
     }
     if (!await holds(cases)) {
       this.log('does not fail again: kept whole')
-      return {cases, kind, whole: true}
+      return {cases, kind, whole: true, flaky: true}
     }
     let context = failing ? [failing] : cases
     if (!failing || !await holds(context)) {

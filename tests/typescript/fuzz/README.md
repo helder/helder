@@ -57,7 +57,8 @@ promises and timers in node's order. eval, Function, Proxy, with,
 nor what the specification leaves to the engine: an inconsistent sort
 comparator (`cmp`, NaN last, is the generator's), transcendental Math,
 `toString(radix)` of a fraction, `parseInt` past 20 digits in radix 36,
-NaN's bits, timers of different delays registered apart.
+NaN's bits, timers of different delays (an async case's are all 0 ms,
+counted: it ends once none is pending).
 
 **Lies** (`--lies`): each case also holds one value its type does not
 describe (`as`, JSON.parse into a typed slot, a missing argument, an
