@@ -11,6 +11,7 @@ class Bench {
 	public static final LANES:Array<Lane> = [
 		{name: "bench", about: "the engine's benchmarks and the examples' sizes", run: bench},
 		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
+		{name: "bench css", about: "helder.css's tokenizer and parser against lightningcss", run: cssBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
@@ -51,6 +52,14 @@ class Bench {
 
 	// (IMAGE_BENCH_JPEG, IMAGE_BENCH_PNG: the files, a photo and a large PNG;
 	// by default examples' comparison.jpg and tests/ui/todo.png)
+	// (natively and as wasm32-wasi, on the real stylesheets tests/css/sheets.mjs fetches into bin/css/sheets)
+	static function cssBench() {
+		var cp = cps(["src", "tests/bench"]).concat(["-main", "CssBench"]);
+		exe("bin/bench/CssBench", cp);
+		wasm("bin/bench/CssBench.wasm", cp);
+		run(NODE, ["tests/bench/css.mjs", exePath("bin/bench/CssBench", HOST), "bin/bench/CssBench.wasm"]);
+	}
+
 	static function imageBench() {
 		exe("bin/bench/ImageBench", cps(["src", "tests/bench"]).concat(["-main", "ImageBench"]));
 		run(NODE, ["tests/bench/image.mjs", exePath("bin/bench/ImageBench", HOST), Sys.getEnv("IMAGE_BENCH_JPEG") ?? "examples/gltf-showcase/comparison.jpg",
