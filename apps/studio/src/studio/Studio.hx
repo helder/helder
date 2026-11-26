@@ -756,10 +756,14 @@ class Studio {
 		framesCame();
 	}
 
+	// (the framing's least scale: a still stays readable; the frames past the view's
+	// end go to the edge's tab)
+	static inline var LEAST = 0.5;
+
 	function frameAll() {
 		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real), i = insets();
 		if (b == null) return;
-		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1);
+		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1, LEAST);
 		camera.fly(v.x, v.y, v.k);
 		log("framed", {k: v.k});
 	}
