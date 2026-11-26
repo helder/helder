@@ -52,6 +52,15 @@ package helder.dom;
 		buf.add(t);
 	}
 
+	// as take, a known tag or attribute name as its interned string (no copy)
+	public function name():String {
+		if (buf == null && a < b) {
+			var n = Tags.intern(s, a, b);
+			if (n != null) return n;
+		}
+		return take();
+	}
+
 	public function take():String
 		return buf != null ? buf.toString() : a == b ? "" : s.substring(a, b);
 }

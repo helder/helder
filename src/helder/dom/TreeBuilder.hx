@@ -117,7 +117,7 @@ using StringTools;
 		}
 		var root = Element.create(temp, "html", Namespaces.HTML);
 		Node.insert(root, temp, null);
-		b.stack.push(root);
+		b.push(root);
 		b.root = root;
 		b.target = fragment;
 		if (context.isHTML(TEMPLATE)) b.templateModes.push(IN_TEMPLATE);
@@ -157,12 +157,24 @@ using StringTools;
 
 	// (an element leaves the stack: its end is after its end tag, else where the token closing it began)
 	function popped(e:Element) {
-		e.end = closing != null && e.ns == Element.HTML && e.localName == closing.name ? hereEnd : here;
+		e.end = closing != null && e.ns == Element.HTML && (closing.id != OTHER ? e.tag == closing.id : e.localName == closing.name) ? hereEnd : here;
 		if (e.tag == OPTION) e.childrenParsed();
+	}
+
+	// (the HTML elements open, a count a tag: a scope check for a tag none is open of is no walk)
+	final open = [for (_ in 0...Tags.DESC + 1) 0];
+
+	inline function opened(e:Element, by:Int)
+		if (e.ns == Element.HTML) open[e.tag] += by;
+
+	function push(e:Element) {
+		stack.push(e);
+		opened(e, 1);
 	}
 
 	function pop():Element {
 		var e = stack.pop();
+		opened(e, -1);
 		popped(e);
 		return e;
 	}
@@ -171,6 +183,7 @@ using StringTools;
 		var i = stack.lastIndexOf(e);
 		if (i >= 0) {
 			stack.splice(i, 1);
+			opened(e, -1);
 			popped(e);
 		}
 	}
@@ -183,11 +196,8 @@ using StringTools;
 		while (stack.length > 0)
 			if (pop() == e) return;
 
-	function hasTemplate():Bool {
-		for (e in stack)
-			if (isHtml(e, TEMPLATE)) return true;
-		return false;
-	}
+	inline function hasTemplate():Bool
+		return open[TEMPLATE] > 0;
 
 	inline function parsingTemplate():Bool
 		return hasTemplate() || context != null && context.isHTML(TEMPLATE);
@@ -219,6 +229,7 @@ using StringTools;
 
 	// the stack has an HTML element of that tag in the scope
 	function inScope(id:Int, kind = SCOPE):Bool {
+		if (open[id] == 0) return false;
 		var i = stack.length - 1;
 		while (i >= 0) {
 			var e = stack[i--];
@@ -239,6 +250,7 @@ using StringTools;
 	}
 
 	function headingInScope():Bool {
+		if (open[H1] + open[H2] + open[H3] + open[H4] + open[H5] + open[H6] == 0) return false;
 		var i = stack.length - 1;
 		while (i >= 0) {
 			var e = stack[i--];
@@ -372,7 +384,7 @@ using StringTools;
 			activeTags.splice(earliest, 1);
 		}
 		active.push(e);
-		activeTags.push(t);
+		activeTags.push(t.copy());
 	}
 
 	static function sameAttrs(a:Tag, b:Tag):Bool {
@@ -468,7 +480,7 @@ using StringTools;
 	// create an element for a token (in namespace, its attributes adjusted for it)
 	function create(t:Tag, namespace:String, intendedParent:Node):Element {
 		var parent = intendedParent == root && root != null ? target : intendedParent;
-		var e = Element.create(parent.doc, t.name, namespace);
+		var e = Element.create(parent.doc, t.name, namespace, null, namespace == Namespaces.HTML ? t.id : -1);
 		e.start = t.start;
 		var a = t.attrs;
 		if (a != null) {
@@ -519,7 +531,7 @@ using StringTools;
 		var e = create(t, namespace, locParent);
 		place();
 		insertAt(e);
-		stack.push(e);
+		push(e);
 		return e;
 	}
 
@@ -1013,7 +1025,7 @@ using StringTools;
 		e.start = here;
 		adjusted(doc, null);
 		insertAt(e);
-		stack.push(e);
+		push(e);
 		mode = BEFORE_HEAD;
 	}
 
@@ -1031,7 +1043,7 @@ using StringTools;
 					var e = create(t, Namespaces.HTML, doc);
 					adjusted(doc, null);
 					insertAt(e);
-					stack.push(e);
+					push(e);
 					mode = BEFORE_HEAD;
 					return false;
 				}
@@ -1077,10 +1089,13 @@ using StringTools;
 					case BASE | BASEFONT | BGSOUND | LINK | META | NOFRAMES | SCRIPT | STYLE | TEMPLATE | TITLE:
 						error("unexpected-start-tag");
 						var head = headElement;
-						stack.push(head);
+						push(head);
 						var again = headStart(t);
 						var i = stack.lastIndexOf(head);
-						if (i >= 0) stack.splice(i, 1);
+						if (i >= 0) {
+							stack.splice(i, 1);
+							opened(head, -1);
+						}
 						return again;
 					case HEAD:
 						error("unexpected-start-tag");
@@ -1255,7 +1270,7 @@ using StringTools;
 				var e = create(t, Namespaces.HTML, locParent);
 				place();
 				insertAt(e);
-				stack.push(e);
+				push(e);
 				tokenizer.state = Tokenizer.SCRIPT_DATA;
 				original = mode;
 				mode = TEXT;
@@ -1280,7 +1295,7 @@ using StringTools;
 		var template:HTMLTemplateElement = cast create(t, Namespaces.HTML, locParent);
 		place();
 		var parent = locParent, ref = locRef;
-		stack.push(template);
+		push(template);
 		var shadow = t.attr("shadowrootmode");
 		if (shadow != null && (Names.lower(shadow) == "open" || Names.lower(shadow) == "closed") || t.attr("for") == null) {
 			insertAt(template);
@@ -2134,6 +2149,7 @@ using StringTools;
 				}
 				if (ai < 0) {
 					stack.splice(nodeIndex, 1);
+					opened(node, -1);
 					popped(node);
 					continue;
 				}
@@ -2168,6 +2184,7 @@ using StringTools;
 			activeTags.splice(k, 1);
 			removeFromStack(formatting);
 			stack.insert(stack.indexOf(furthest) + 1, e);
+			opened(e, 1);
 		}
 		return false;
 	}

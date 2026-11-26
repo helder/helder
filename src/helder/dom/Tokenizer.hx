@@ -302,13 +302,20 @@ using StringTools;
 	function emitDoctype()
 		sink.doctype(dName, dPublic, dSystem, dQuirks, tokenStart, pos);
 
+	// (one start and one end tag, reused: the tree builder copies one it keeps)
+	var startTag = new Tag("", false, 0);
+	var endTag = new Tag("", true, 0);
+
 	function newTag(end:Bool) {
-		tag = new Tag("", end, tokenStart);
+		var t = tag = end ? endTag : startTag;
+		t.start = t.stop = tokenStart;
+		t.selfClosing = t.acknowledged = false;
+		t.attrs = null;
 		tagName.reset();
 	}
 
 	function endTagName()
-		tag.id = Tags.id(tag.name = tagName.take());
+		tag.id = Tags.id(tag.name = tagName.name());
 
 	function newAttr() {
 		finishAttr();
@@ -324,7 +331,7 @@ using StringTools;
 	function attrNamed() {
 		if (!naming) return;
 		naming = false;
-		pendingName = attrName.take();
+		pendingName = attrName.name();
 		var attrs = tag.attrs;
 		if (attrs != null) {
 			var i = 0;
@@ -362,10 +369,17 @@ using StringTools;
 	inline function inAttribute():Bool
 		return returnState == ATTR_VALUE_DQ || returnState == ATTR_VALUE_SQ || returnState == ATTR_VALUE_UQ;
 
-	function flushCharRef() {
-		var t = temp.take();
-		if (inAttribute()) attrValue.add(t) else if (t != "") sink.chars(t, tokenStart, pos);
+	// flush code points consumed as a character reference: the input's own
+	// (no reference read: refStart to end) or a reference's value
+	function flushSlice(end:Int) {
+		if (inAttribute()) attrValue.sub(refStart, end) else sink.chars(s.substring(refStart, end), refStart, end);
 	}
+
+	function flushValue(v:String) {
+		if (inAttribute()) attrValue.add(v) else sink.chars(v, refStart, pos);
+	}
+
+	var refStart = 0;
 
 	// text up to a stop character, emitted as a slice; then the state's own handling
 	function textRun(stop1:Int, stop2:Int):Bool {
@@ -1316,18 +1330,14 @@ using StringTools;
 						state = PI_DATA;
 					}
 				case CHAR_REF:
-					temp.reset();
-					temp.char("&".code);
-					if (!inAttribute()) tokenStart = at;
+					refStart = at;
 					var c = next();
 					if (isAlnum(c)) {
 						again();
 						state = NAMED_REF;
-					} else if (c == "#".code) {
-						temp.char(c);
-						state = NUMERIC_REF;
-					} else {
-						flushCharRef();
+					} else if (c == "#".code) state = NUMERIC_REF;
+					else {
+						flushSlice(refStart + 1);
 						again();
 						state = returnState;
 					}
@@ -1345,15 +1355,13 @@ using StringTools;
 				case NUMERIC_REF:
 					charRefCode = 0;
 					var c = next();
-					if (c == "x".code || c == "X".code) {
-						temp.char(c);
-						state = HEX_REF_START;
-					} else if (isDigit(c)) {
+					if (c == "x".code || c == "X".code) state = HEX_REF_START;
+					else if (isDigit(c)) {
 						again();
 						state = DEC_REF;
 					} else {
 						error("absence-of-digits-in-numeric-character-reference");
-						flushCharRef();
+						flushSlice(refStart + 2);
 						again();
 						state = returnState;
 					}
@@ -1364,7 +1372,7 @@ using StringTools;
 						state = HEX_REF;
 					} else {
 						error("absence-of-digits-in-numeric-character-reference");
-						flushCharRef();
+						flushSlice(refStart + 3);
 						again();
 						state = returnState;
 					}
@@ -1419,24 +1427,21 @@ using StringTools;
 			}
 		}
 		if (value == null) {
-			flushCharRef();
+			flushSlice(refStart + 1);
 			state = AMBIGUOUS_AMP;
 			return;
 		}
 		var semicolon = s.fastCodeAt(matched - 1) == ";".code;
 		var following = matched < len ? s.fastCodeAt(matched) : EOF;
 		if (inAttribute() && !semicolon && (following == "=".code || isAlnum(following))) {
-			temp.sub(start, matched);
 			pos = matched;
-			flushCharRef();
+			flushSlice(matched);
 			state = returnState;
 			return;
 		}
 		pos = matched;
 		if (!semicolon) error("missing-semicolon-after-character-reference", matched);
-		temp.reset();
-		temp.add(value);
-		flushCharRef();
+		flushValue(value);
 		state = returnState;
 	}
 
@@ -1458,10 +1463,10 @@ using StringTools;
 			error("control-character-reference", after);
 			if (code >= 0x80 && code <= 0x9F && C1[code - 0x80] != 0) code = C1[code - 0x80];
 		}
-		temp.reset();
-		temp.char(code);
-		flushCharRef();
+		flushValue(code < 0x80 ? ASCII[code] : String.fromCharCode(code));
 	}
+
+	static final ASCII = [for (c in 0...0x80) String.fromCharCode(c)];
 
 	static final C1 = [
 		0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0, 0, 0x2018, 0x2019, 0x201C, 0x201D,

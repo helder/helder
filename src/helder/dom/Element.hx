@@ -37,7 +37,7 @@ class Element extends Node {
 	static inline var MATHML = 2;
 	static inline var OTHER = 3;
 
-	function new(doc:Document, localName:String, namespace:Null<String>, prefix:Null<String>) {
+	function new(doc:Document, localName:String, namespace:Null<String>, prefix:Null<String>, id = -1) {
 		super(Node.ELEMENT_NODE, doc);
 		this.localName = localName;
 		this.namespaceURI = namespace;
@@ -48,11 +48,11 @@ class Element extends Node {
 			case Namespaces.MATHML: MATHML;
 			case _: OTHER;
 		}
-		tag = ns == OTHER ? Tags.OTHER : Tags.id(localName);
+		tag = ns == OTHER ? Tags.OTHER : id >= 0 ? id : Tags.id(localName);
 	}
 
 	// create an element (no custom elements: the element interface for the name and namespace)
-	static function create(document:Document, localName:String, namespace:Null<String>, ?prefix:String):Element {
+	static function create(document:Document, localName:String, namespace:Null<String>, ?prefix:String, id = -1):Element {
 		if (namespace == Namespaces.HTML) switch localName {
 			case "template": return new HTMLTemplateElement(document, prefix);
 			case "option": return new HTMLOptionElement(document, prefix);
@@ -60,7 +60,7 @@ class Element extends Node {
 			case "selectedcontent": return new HTMLSelectedContentElement(document, prefix);
 			case _:
 		}
-		return new Element(document, localName, namespace, prefix);
+		return new Element(document, localName, namespace, prefix, id);
 	}
 
 	// (the HTML standard's steps for its elements, run by the DOM's algorithms:

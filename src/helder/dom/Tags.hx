@@ -2,7 +2,9 @@ package helder.dom;
 
 // The tag names the parser and serializer test, as numbers: an element's
 // local name is looked up once, when it is made, and compared as an Int
-// after. 0: a name the parser has no rule for.
+// after. 0: a name the parser has no rule for. The tokenizer reads tag and
+// attribute names it knows straight from the input (find, intern): no copy,
+// no hash of a new string.
 @:noCompletion class Tags {
 	public static inline var OTHER = 0;
 	public static inline var A = 1;
@@ -139,15 +141,75 @@ package helder.dom;
 		"mtext", "foreignObject", "desc"
 	];
 
-	static var ids:Null<Map<String, Int>> = null;
+	// (common attribute names: interned as the tag names are, read from the input without a copy)
+	static final ATTRS = [
+		"id", "class", "style", "href", "src", "alt", "title", "type", "name", "value", "rel", "content", "lang", "width", "height", "charset", "action",
+		"method", "for", "target", "role", "tabindex", "dir", "colspan", "rowspan", "align", "valign", "border", "cellpadding", "cellspacing", "hidden",
+		"disabled", "checked", "selected", "readonly", "placeholder", "aria-hidden", "aria-label", "aria-labelledby", "aria-describedby", "aria-expanded",
+		"onclick", "srcset", "sizes", "loading", "decoding", "crossorigin", "integrity", "async", "defer", "media", "property", "itemprop", "itemscope",
+		"itemtype", "http-equiv", "xmlns", "xml:lang", "xlink:href", "viewbox", "d", "fill", "stroke", "transform", "x", "y", "cx", "cy", "r", "points",
+		"stroke-width", "data-mw", "data-id", "data-x", "dfn", "data-lt", "data-dfn-type", "data-export", "data-noexport", "start", "label", "size",
+		"maxlength", "pattern", "required", "autocomplete", "autofocus", "accept", "enctype", "novalidate", "headers", "scope", "datetime", "cite",
+		"download", "ping", "referrerpolicy", "sandbox", "allow", "frameborder", "usemap", "ismap", "shape", "coords", "poster", "preload", "controls",
+		"autoplay", "loop", "muted", "kind", "srclang", "default", "nonce", "translate", "spellcheck", "contenteditable", "draggable", "accesskey", "slot",
+		"is", "part", "inert", "popover", "open", "wrap", "rows", "cols", "span", "summary", "abbr", "axis", "nowrap", "bgcolor", "color", "face",
+		"background", "link", "vlink", "alink", "text", "compact", "noshade", "clear", "encoding", "definitionurl"
+	];
+
+	static inline var SLOTS = 1024;
+
+	// the names (tags, then attributes) by a hash of their units, open addressing (-1: empty)
+	static var table:Null<Array<Int>> = null;
+	static var all:Array<String> = [];
+
+	static inline function mix(h:Int, c:Int):Int
+		return (h * 33) ^ c;
+
+	static function build():Array<Int> {
+		all = NAMES.concat(ATTRS);
+		var t = [for (_ in 0...SLOTS) -1];
+		for (k in 1...all.length) {
+			var n = all[k], h = 5381;
+			for (i in 0...n.length)
+				h = mix(h, StringTools.fastCodeAt(n, i));
+			var slot = h & (SLOTS - 1);
+			while (t[slot] >= 0)
+				slot = (slot + 1) & (SLOTS - 1);
+			t[slot] = k;
+		}
+		return t;
+	}
+
+	// the index of s[from, to) among the names (0: none)
+	public static function find(s:String, from:Int, to:Int):Int {
+		var t = table;
+		if (t == null) t = table = build();
+		var h = 5381;
+		for (i in from...to)
+			h = mix(h, StringTools.fastCodeAt(s, i));
+		var slot = h & (SLOTS - 1), n = to - from;
+		while (true) {
+			var k = t[slot];
+			if (k < 0) return 0;
+			var name = all[k];
+			if (name.length == n) {
+				var i = 0;
+				while (i < n && StringTools.fastCodeAt(name, i) == StringTools.fastCodeAt(s, from + i))
+					i++;
+				if (i == n) return k;
+			}
+			slot = (slot + 1) & (SLOTS - 1);
+		}
+	}
+
+	// s[from, to) as its interned string, if it is a known name (null: not one)
+	public static function intern(s:String, from:Int, to:Int):Null<String> {
+		var k = find(s, from, to);
+		return k == 0 ? null : all[k];
+	}
 
 	public static function id(name:String):Int {
-		var m = ids;
-		if (m == null) {
-			m = ids = new Map();
-			for (k in 1...NAMES.length)
-				m.set(NAMES[k], k);
-		}
-		return m.get(name) ?? OTHER;
+		var k = find(name, 0, name.length);
+		return k < NAMES.length ? k : OTHER;
 	}
 }
