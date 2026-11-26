@@ -75,6 +75,11 @@ class Run {
 			}
 			args.splice(i, n == null ? 1 : 2);
 		}
+		// (css-reftests and css-render take what follows them)
+		for (l in ["css-reftests", "css-render"]) {
+			var at = args.indexOf(l);
+			if (at >= 0) Css.laneArgs = args.splice(at + 1, args.length);
+		}
 		if (args.length == 0) args = ["headless"];
 		args = benches(args);
 		if (args.contains("help")) {

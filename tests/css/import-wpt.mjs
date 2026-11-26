@@ -1,6 +1,7 @@
 // Makes tests/css/fixtures from web-platform-tests at REVISION, read
 // statically (tests/css/README.md); run from the repository's root:
 //   node tests/css/import-wpt.mjs [wpt checkout]   (default bin/wpt, cloned if missing)
+//   node tests/css/import-wpt.mjs --checkout       (the checkout alone, for the css-reftests lane)
 import fs from 'node:fs'
 import path from 'node:path'
 import {spawnSync} from 'node:child_process'
@@ -8,16 +9,22 @@ import {bindings, calls} from './wpt-js.mjs'
 
 const REVISION = 'bc5ea7a9006b77c12118534bf7d2953e530d811f'
 const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm']
-const root = path.resolve(process.argv[2] ?? 'bin/wpt')
+const checkoutOnly = process.argv.includes('--checkout')
+const root = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) ?? 'bin/wpt')
+// (the reftests' resources too: Ahem and the other test fonts, the shared images)
+const SPARSE = ['/css/', '/dom/nodes/', '/LICENSE.md', '/fonts/', '/images/']
 const out = 'tests/css/fixtures'
 
 if (!fs.existsSync(root)) {
   sh('git', ['clone', '--filter=blob:none', '--no-checkout', 'https://github.com/web-platform-tests/wpt.git', root])
-  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', '/css/', '/dom/nodes/', '/LICENSE.md'])
+  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', ...SPARSE])
   sh('git', ['-C', root, 'checkout', '-q', REVISION])
+} else if (!SPARSE.every(p => fs.existsSync(path.join(root, p)))) {
+  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', ...SPARSE])
 }
 const head = sh('git', ['-C', root, 'rev-parse', 'HEAD']).trim()
 if (head !== REVISION) throw Error(`${root} is at ${head}, not ${REVISION} (check it out, or move REVISION)`)
+if (checkoutOnly) process.exit(0)
 fs.mkdirSync(out, {recursive: true})
 fs.copyFileSync(path.join(root, 'LICENSE.md'), 'tests/css/WPT-LICENSE.md')
 

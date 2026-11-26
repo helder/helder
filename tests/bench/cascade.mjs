@@ -1,6 +1,7 @@
 // helder.css's cascade on the HTML Standard as one page (bench cascade): the
 // page (the html bench's input) and its style sheets fetched into
-// bin/bench/html, then CascadeBench run natively on them.
+// bin/bench/html, then CascadeBench run natively on them (bench layout:
+// LayoutBench, the same arguments).
 //
 //   node tests/bench/cascade.mjs bin/bench/CascadeBench
 import fs from 'node:fs'

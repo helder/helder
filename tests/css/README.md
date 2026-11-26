@@ -327,6 +327,98 @@ The tests, by what became of them:
 | out: manual | 1 |
 <!-- /cascade -->
 
+## Reftests
+
+helder.ui.box drawing WPT's reftests, natively (`CssReftestCheck.hx`, the
+css-reftests lane):
+
+```sh
+node tests/css/import-wpt.mjs --checkout     # bin/wpt at REVISION: css/, fonts/ (Ahem), images/
+bun run test css-reftests                    # BLESS=1: reftest-manifest.json from the results
+bun run test css-reftests normal-flow block-in-inline   # those alone (a directory or a name's part)
+VERBOSE=1 bin/css/CssReftestCheck margin-padding-clear  # each name before it is drawn
+bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/css/CSS2/box/x-ref.xht
+```
+
+- Each in-scope test of `fixtures/reftests.json` and each of its
+  references are parsed (`.xht` as XML, `Dom.parseXml`), at their WPT
+  URL (`http://web-platform.test/...`, so `/fonts/ahem.css` is found),
+  their sheets, images and fonts read from bin/wpt (`WptPage.hx`), Ahem
+  registered as WPT's runners have it; drawn by `DocumentView` at 800 by
+  600 on the CPU canvas, white under them. Pixels compare as WPT's runner
+  compares them: a `match` reference alike, a `mismatch` one not, within
+  the test's `<meta name=fuzzy>` (maxDifference and totalPixels, for every
+  reference or a named one). A crash test passes when it draws. A
+  reference's own references are not followed.
+- `reftest-manifest.json` is the gate, like tests/layout-conformance's:
+  every test is required to pass unless `pending` says why (its stage,
+  then how it differs) or `skip` does (`paged`: css-page, css-break,
+  css-gcpm, CSS2's page-box and pagination, print tests; `script`). A
+  pending test that passes fails the run too, until BLESS=1 requires it.
+  The stage is the directory's (floats, positioning, tables, fonts, inline,
+  generated, ui), else what the test's and its references' sources use
+  (a table, a float or clear, absolute or fixed positioning, generated
+  content and lists, first-line and first-letter, inline blocks,
+  vertical-align, line-height, white-space and the other line properties,
+  ex and ch, which helder.css computes without the font's metrics yet,
+  images); a rough guess, kept while it holds.
+- Paged and noref tests are not drawn. The 2,350 `noref` tests (WPT's
+  visual tests, no reference) are for a tier to come: each drawn by
+  Chromium headless at 800 by 600 (Playwright, the same fonts and Ahem)
+  into a golden PNG kept beside the manifest (small: the least size that
+  shows it), compared as a reftest to its golden with a fuzzy tolerance
+  for text antialiasing, BLESS=1 accepting a new golden.
+
+At WPT bc5ea7a9006b, the box tree and block flow with the line
+stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
+311 skipped):
+
+| Chapter | Pass | Drawn |
+| --- | --- | --- |
+| CSS2 | 0 | 5 |
+| CSS2/abspos | 9 | 25 |
+| CSS2/backgrounds | 200 | 333 |
+| CSS2/bidi-text | 9 | 34 |
+| CSS2/borders | 396 | 504 |
+| CSS2/box | 2 | 9 |
+| CSS2/box-display | 57 | 86 |
+| CSS2/cascade | 23 | 31 |
+| CSS2/cascade-import | 0 | 1 |
+| CSS2/colors | 10 | 19 |
+| CSS2/css1 | 113 | 164 |
+| CSS2/css21-errata | 0 | 9 |
+| CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
+| CSS2/floats | 23 | 112 |
+| CSS2/floats-clear | 34 | 203 |
+| CSS2/floats/crashtests | 1 | 1 |
+| CSS2/fonts | 117 | 159 |
+| CSS2/generated-content | 145 | 205 |
+| CSS2/linebox | 44 | 192 |
+| CSS2/lists | 141 | 155 |
+| CSS2/margin-padding-clear | 455 | 683 |
+| CSS2/media | 17 | 17 |
+| CSS2/normal-flow | 508 | 696 |
+| CSS2/positioning | 227 | 513 |
+| CSS2/sec5 | 22 | 23 |
+| CSS2/selectors | 90 | 467 |
+| CSS2/stacking-context | 1 | 3 |
+| CSS2/syntax | 213 | 252 |
+| CSS2/tables | 16 | 250 |
+| CSS2/text | 259 | 376 |
+| CSS2/text/crashtests | 1 | 1 |
+| CSS2/ui | 39 | 52 |
+| CSS2/values | 11 | 25 |
+| CSS2/visudet | 23 | 37 |
+| CSS2/visudet/crashtests | 1 | 1 |
+| CSS2/visufx | 4 | 49 |
+| CSS2/visufx/crashtests | 1 | 1 |
+| CSS2/visuren | 16 | 26 |
+| CSS2/zindex | 4 | 29 |
+| CSS2/zorder | 0 | 1 |
+| all | 3232 | 5752 |
+
+Pending by stage: inline 666, tables 612, positioning 548, floats 376, generated content 263, fonts 42, ui 13.
+
 ## Report
 
 <!-- report -->
