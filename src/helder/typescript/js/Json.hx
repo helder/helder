@@ -1,11 +1,15 @@
 package helder.typescript.js;
 
 import helder.typescript.js.Values;
+import helder.typescript.js.Sites;
 import helder.typescript.js.Symbols.JsSymbol;
 import helder.typescript.js.Lib.*;
 
 // JSON.parse (key order kept, revivers) and JSON.stringify (replacers, indentation, toJSON).
 class Json {
+	// (a site of the runtime's own: toJSON is absent from most objects' shapes)
+	static final toJSONSite = new Site("toJSON");
+
 	public static function setup():Void {
 		var json = new JsObject(Builtins.ObjectProto);
 		json.setOwn(Symbols.toStringTag, "JSON", Attr.HIDDEN | Attr.READONLY);
@@ -236,7 +240,7 @@ class Json {
 		function serialize(holder:Dynamic, k:String, indent:String):Dynamic {
 			var v:Dynamic = get(holder, k);
 			if (isObject(v) || Std.isOfType(v, String) || isNumber(v)) {
-				var toJSON = getKey(v, "toJSON", v);
+				var toJSON = Sites.get(v, toJSONSite);
 				if (isCallable(toJSON)) v = call(toJSON, v, [k]);
 			}
 			if (replacerFn != null) v = call(replacerFn, holder, [k, v]);

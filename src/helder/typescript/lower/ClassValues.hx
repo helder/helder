@@ -39,7 +39,7 @@ abstract class ClassValues extends Expressions {
 		env.set("%class", classBinding);
 		var serialNumber = classSerial++;
 		var scope:Map<String, String> = [];
-		for (m in members(n)) if (m.name() != null && m.name().kind == KindPrivateIdentifier) scope.set(m.name().text, m.name().text + "@" + serialNumber);
+		for (m in members(n)) if (m.name() != null && m.name().kind == KindPrivateIdentifier) scope.set(m.name().text, "\x00" + m.name().text + "@" + serialNumber);
 		privateScopes.push(scope);
 		var instanceFields = [for (m in members(n)) if (m.kind == KindPropertyDeclaration && !hasModifier(m, KindStaticKeyword) && !hasModifier(m, KindDeclareKeyword) && !hasModifier(m, KindAbstractKeyword)) m];
 		var privateMethods = [for (m in members(n)) if ((m.kind == KindMethodDeclaration || m.kind == KindGetAccessor || m.kind == KindSetAccessor) && m.name().kind == KindPrivateIdentifier && m.body() != null) m];
@@ -169,7 +169,7 @@ abstract class ClassValues extends Expressions {
 		env.set("%class", classBinding);
 		var serialNumber = classSerial++;
 		var scope:Map<String, String> = [];
-		for (m in members(n)) if (m.name() != null && m.name().kind == KindPrivateIdentifier) scope.set(m.name().text, m.name().text + "@" + serialNumber);
+		for (m in members(n)) if (m.name() != null && m.name().kind == KindPrivateIdentifier) scope.set(m.name().text, "\x00" + m.name().text + "@" + serialNumber);
 		privateScopes.push(scope);
 		var instanceFields = [for (m in members(n)) if (m.kind == KindPropertyDeclaration && !hasModifier(m, KindStaticKeyword) && !hasModifier(m, KindDeclareKeyword) && !hasModifier(m, KindAbstractKeyword)) m];
 		var privateMethods = [for (m in members(n)) if ((m.kind == KindMethodDeclaration || m.kind == KindGetAccessor || m.kind == KindSetAccessor) && m.name().kind == KindPrivateIdentifier && m.body() != null) m];
@@ -316,7 +316,6 @@ abstract class ClassValues extends Expressions {
 		var l = b.local("made", TRef(RObj(c.info)));
 		var fast = b.block(() -> {
 			var o = reps.allocate(b, c, EGlobal(c.prototype, TRef(RAny)));
-			b.out.push(SSetField(reps.objectBase, reps.objectBase.fieldIndex("layout"), ECast(TRef(RObj(reps.objectBase)), o), ECast(reps.layoutType, EGlobal(c.layout, TRef(RAny)))));
 			b.out.push(SExpr(ECall(c.init, Vector.fromArrayCopy([o].concat(positional(c.init, args, 1))))));
 			b.out.push(SSet(l, o));
 		});

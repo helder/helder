@@ -178,6 +178,31 @@ of it in the loop) is built in a buffer while the loop runs, so the loop is
 linear; `s.charCodeAt(i)` on a string is String.prototype's own (made
 read-only, as Math is frozen).
 
+Every other object is the runtime's JsObject with a shape (`js/Shapes.hx`,
+V8's hidden classes): its own properties' keys in insertion order with
+their attributes, each the slot of its value in the object's `slots`.
+Objects given the same keys in the same order share a shape, made once
+from its parent by a transition; an array's, a function's, a typed
+array's and each typed class's instances' grow from roots of their own,
+so a shape also says which kind of object it is. An object of many keys,
+one given more than 32 by computed names (a map), or one a key other than
+the last was deleted from is a dictionary, its shape its own and changed
+in place. An object literal of static keys is made with its final shape,
+in one allocation. Each `o.name`, `o.name = v` and `o.name(...)` in the
+program is a site with a record (`js/Sites.hx`: Bun's and JSC's inline
+caches, without patched code): compiled code compares the object's shape
+with the record's and reads or writes the slot in place, else calls the
+site's stub, which looks the property up and records what it found for
+that shape (an own property, a typed class's field, a prototype's
+property or accessor, nothing; at most 4 shapes a site). What it found on
+a prototype holds while the receiver's prototype is the one it saw and
+no object it looked through changed its keys or its prototype (those are
+watched: such a change moves `Shapes.epoch`). A dictionary is never a
+site's. A spread of an ordinary object of plain data properties into an
+empty one copies its shape and its values. A key is its string: hxmc's
+strings keep their hash, and `==` compares their addresses and lengths
+first, so no table interns them.
+
 An array literal of numbers (number[], a branded number's, T extends
 number's; an empty one by the type it is given) is a number array: the
 JsArray's `nums`, its elements unboxed while each is a number and the

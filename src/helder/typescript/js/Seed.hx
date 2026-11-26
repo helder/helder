@@ -1,6 +1,8 @@
 package helder.typescript.js;
 
 import helder.typescript.js.Values;
+import helder.typescript.js.Shapes;
+import helder.typescript.js.Sites;
 import helder.typescript.js.Symbols.JsSymbol;
 import helder.typescript.js.Async.JsGenerator;
 
@@ -339,6 +341,9 @@ class Seed {
 
 	public static function libLayoutOf(cls:Dynamic):Dynamic return (cls : JsFunction).instanceLayout;
 
+	// (a typed class's new instance: its layout, and its shapes' root)
+	public static function libSetLayout(o:JsObject, l:Layout):Void o.setLayout(l);
+
 	public static function libLock(o:Dynamic):Void(o : JsObject).locked = true;
 
 	public static function libDefineMethod(target:Dynamic, k:Dynamic, fn:Dynamic, kind:Int, enumerable:Bool):Void Lib.defineMethod(target, k, fn, kind, enumerable);
@@ -407,7 +412,7 @@ class Seed {
 	// `a.push(v)` on a number array with Array.prototype's push: its new
 	// length; -1 where it is not (the call then made as any other)
 	public static function libPushNumber(o:JsArray, v:Float):Float {
-		if (o.nums == null || o.props != null || o.proto != Builtins.ArrayProto || Builtins.arrayMethodsChanged || !o.extensible) return -1;
+		if (o.nums == null || o.shape.size() > 0 || o.proto != Builtins.ArrayProto || Builtins.arrayMethodsChanged || !o.extensible) return -1;
 		o.nums.push(v);
 		return o.length = o.nums.length;
 	}
@@ -419,6 +424,25 @@ class Seed {
 	public static function libGetNamed(o:Dynamic, name:String):Dynamic return Lib.getNamed(o, name);
 
 	public static function libPutNamed(o:Dynamic, name:String, v:Dynamic):Dynamic return Lib.putNamed(o, name, v);
+
+	// a property's site (Sites): its record, made when the program starts
+	public static function libSiteOf(key:String):Site return new Site(key);
+
+	public static function libGetAt(o:Dynamic, site:Site):Dynamic return Sites.get(o, site);
+
+	public static function libPutAt(o:Dynamic, site:Site, v:Dynamic):Dynamic return Sites.put(o, site, v);
+
+	public static function libCallAt(o:Dynamic, site:Site, args:Array<Dynamic>):Dynamic return Sites.call(o, site, args);
+
+	// an object literal's shape (its static keys, distinct), and a literal of it
+	public static function libShape(keys:Array<String>):Shape return Shapes.literal(keys);
+
+	public static function libLiteral(shape:Shape, values:Array<Dynamic>):Dynamic {
+		var o = new JsObject(Builtins.ObjectProto);
+		o.shape = shape;
+		o.slots = values;
+		return o;
+	}
 
 	public static function libPut(o:Dynamic, k:Dynamic, v:Dynamic):Dynamic return Lib.put(o, k, v);
 
@@ -537,6 +561,7 @@ class Seed {
 		libFunction(() -> null, 0, false, 0, "");
 		libClass("", libHole(), () -> null, 0, false, null);
 		libTypedClass(f, [], (o, i) -> null, (o, i, v) -> {}, p -> p);
+		libSetLayout(o, libLayoutOf(f));
 		mathSqrt(mathAbs(mathFloor(mathCeil(mathUnary("sin", mathBinary("atan2", mathMin(0, mathMax(0, 0)), 0))))));
 		libArrayIterable(a);
 		expectNumber(0, "");
@@ -572,6 +597,10 @@ class Seed {
 		libAppend([], null);
 		libAppendAll([], a);
 		libGet(o, "x");
+		var site = libSiteOf("x");
+		libPutAt(o, site, libGetAt(o, site));
+		libCallAt(o, site, []);
+		libLiteral(libShape(["x"]), [null]);
 		libPut(o, "x", null);
 		libGetNamed(o, "x");
 		libPutNamed(o, "x", null);

@@ -88,6 +88,8 @@ class Builtins {
 		FunctionProto = new JsFunction(ObjectProto, JsFunction.METHOD, "", 0);
 		(cast FunctionProto : JsFunction).native = (_, _, _) -> undef();
 		ArrayProto = new JsArray(ObjectProto);
+		// (its own shape: its writes are watched, so no site writes it from a record)
+		ArrayProto.shape = ArrayProto.shape.dictionary();
 		StringProto = new JsObject(ObjectProto);
 		NumberProto = new JsObject(ObjectProto);
 		BooleanProto = new JsObject(ObjectProto);

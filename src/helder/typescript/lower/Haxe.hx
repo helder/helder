@@ -469,8 +469,6 @@ class Haxe {
 		var values = [for (k in 0...n) b.temp(ECallHost("hxmc_unsafe_Mem_getF64", Vector.fromArrayCopy([at, EInt(8 * k)]), TF64))];
 		function make(c:helder.typescript.lower.Classes.ClassLayout, fields:Array<Ex>):Ex {
 			var o = b.temp(f.reps.allocate(b, c, EGlobal(c.prototype, TRef(RAny))));
-			var base = f.reps.objectBase;
-			b.out.push(SSetField(base, base.fieldIndex("layout"), ECast(TRef(RObj(base)), o), ECast(f.reps.layoutType, EGlobal(c.layout, TRef(RAny)))));
 			var names = c.fields();
 			for (k in 0...names.length)
 				b.out.push(SSetField(c.info, f.reps.slot(c, names[k]), o, b.coerce(fields[k], c.info.fields[f.reps.slot(c, names[k])].ty)));
@@ -528,8 +526,6 @@ class Haxe {
 		if (c == null) throw "TSHX004: helder/scene's Node is not in the program (import helder/scene)";
 		var id = b.temp(EConv(I2F, e));
 		var o = b.temp(f.reps.allocate(b, c, EGlobal(c.prototype, TRef(RAny))));
-		var base = f.reps.objectBase;
-		b.out.push(SSetField(base, base.fieldIndex("layout"), ECast(TRef(RObj(base)), o), ECast(f.reps.layoutType, EGlobal(c.layout, TRef(RAny)))));
 		b.out.push(SSetField(c.info, f.reps.slot(c, "id"), o, b.coerce(id, c.info.fields[f.reps.slot(c, "id")].ty)));
 		return o;
 	}

@@ -1,5 +1,7 @@
 package helder.typescript.js;
 
+import helder.typescript.js.Shapes;
+
 // JavaScript values: undefined is Seed.undefinedValue, null is null, numbers
 // are Float, strings String, booleans Bool; everything else is a JsObject.
 class Hole {
@@ -20,18 +22,10 @@ class Attr {
 	public static inline var HIDDEN = 1;
 	public static inline var READONLY = 2;
 	public static inline var LOCKED = 4;
-}
-
-// An object's own properties beyond a typed class's fields, made on first use.
-class Props {
-	// string-keyed properties in insertion order; accessor properties hold an Accessor
-	public final names:Array<String> = [];
-	public final slots:Map<String, Dynamic> = [];
-	public var attrs:Map<String, Int> = null;
-	// class-private elements, keyed by brand ("#name@class")
-	public var privates:Map<String, Dynamic> = null;
-
-	public function new() {}
+	// (in a shape: the value is an Accessor; a class-private element's, or
+	// another key the program does not see: JsObject.attr leaves them out)
+	public static inline var ACCESSOR = 8;
+	public static inline var PRIVATE = 16;
 }
 
 // What an object is, for the property paths: one field to test where
@@ -45,10 +39,13 @@ class Form {
 
 class JsObject {
 	public var proto:JsObject;
-	public var props:Props = null;
+	// its own properties beyond a typed class's fields (Shapes), their
+	// values by slot (null before the first)
+	public var shape:Shape;
+	public var slots:Array<Dynamic> = null;
 	// an instance of a typed class (helder.typescript.lower): its declared
-	// fields in slots of its own, before the others
-	public var layout:Layout = null;
+	// fields in slots of its own, before the others (its shapes' root's)
+	public var layout(get, never):Layout;
 	// (zero for a new object: compiled code makes typed instances without this constructor)
 	public var bits = 0;
 	// (a Form: zero, plain, for compiled code's typed instances too)
@@ -58,15 +55,18 @@ class JsObject {
 	// a typed class's prototype (helder.typescript.lower): compiled code
 	// calls its methods directly, so changing it diverges
 	static inline var LOCKED = 2;
+	// (a site's record found a property through it: Shapes.epoch)
+	static inline var WATCHED = 4;
 
 	public var extensible(get, set):Bool;
 	public var locked(get, set):Bool;
+	public var watched(get, set):Bool;
 	// (null without own properties beyond the layout's)
 	public var names(get, never):Array<String>;
-	public var privates(get, set):Map<String, Dynamic>;
 
 	public function new(proto:JsObject) {
 		this.proto = proto;
+		shape = Shapes.object;
 	}
 
 	inline function get_extensible():Bool return bits & NOT_EXTENSIBLE == 0;
@@ -78,22 +78,32 @@ class JsObject {
 
 	inline function get_locked():Bool return bits & LOCKED != 0;
 
-	inline function set_locked(v:Bool):Bool {
+	function set_locked(v:Bool):Bool {
+		// (its own: a site never writes it from a record)
+		if (v && !shape.dict) shape = shape.dictionary();
 		bits = v ? bits | LOCKED : bits & ~LOCKED;
 		return v;
 	}
 
-	inline function get_names():Array<String> return props == null ? null : props.names;
+	inline function get_watched():Bool return bits & WATCHED != 0;
 
-	inline function get_privates():Map<String, Dynamic> return props == null ? null : props.privates;
-
-	function set_privates(v:Map<String, Dynamic>):Map<String, Dynamic> {
-		if (props == null) props = new Props();
-		return props.privates = v;
+	inline function set_watched(v:Bool):Bool {
+		bits = v ? bits | WATCHED : bits & ~WATCHED;
+		return v;
 	}
 
+	inline function get_names():Array<String> return shape.names();
+
+	inline function get_layout():Layout return shape.layout;
+
+	// a typed class's instance
+	public function setLayout(l:Layout):Void shape = l.root;
+
+	// (its keys or prototype changed: what sites found through it is stale)
+	inline function changed():Void if (bits & WATCHED != 0) Shapes.epoch++;
+
 	public inline function hasOwn(k:String):Bool
-		return layout != null && layout.index.exists(k) || props != null && props.slots.exists(k);
+		return layout != null && layout.index.exists(k) || shape.slotOf(k) >= 0;
 
 	// an own property's value (an Accessor for an accessor property); hasOwn(k) first
 	public function getOwn(k:String):Dynamic {
@@ -101,7 +111,8 @@ class JsObject {
 			var i = layout.index.get(k);
 			if (i != null) return layout.get(this, i);
 		}
-		return props.slots.get(k);
+		var i = shape.slotOf(k);
+		return i < 0 ? null : slots[i];
 	}
 
 	// an own property's value, or absent: one lookup where hasOwn and getOwn take two
@@ -110,29 +121,47 @@ class JsObject {
 			var i = layout.index.get(k);
 			if (i != null) return layout.get(this, i);
 		}
-		if (props == null) return absent;
-		var v = props.slots.get(k);
-		return !Lib.same(v, null) || props.slots.exists(k) ? v : absent;
+		var i = shape.slotOf(k);
+		return i < 0 ? absent : slots[i];
 	}
 
 	// an own property's names, in order
-	public function ownNames():Array<String>
-		return layout == null ? names : names == null ? layout.names : layout.names.concat(names);
+	public function ownNames():Array<String> {
+		var own = shape.names();
+		return layout == null ? own : own == null ? layout.names : layout.names.concat(own);
+	}
 
-	public inline function attr(k:String):Int return props == null || props.attrs == null || !props.attrs.exists(k) ? 0 : props.attrs.get(k);
+	public function attr(k:String):Int {
+		if (layout != null && layout.index.exists(k)) {
+			var i = shape.slotOf(fieldAttr(k));
+			return i < 0 ? 0 : slots[i];
+		}
+		var i = shape.slotOf(k);
+		return i < 0 ? 0 : shape.attrs[i] & ~(Attr.ACCESSOR | Attr.PRIVATE);
+	}
+
+	// (a typed class's field's attributes other than the default: a key of their own)
+	static inline function fieldAttr(k:String):String return "\x00!" + k;
 
 	public function setOwn(k:String, v:Dynamic, attribute:Int = 0):Void {
 		if (locked) Seed.diverge("changeable", this, "a typed class's prototype (" + k + ")");
-		// (a typed class's field is a plain writable value: what its slot holds)
-		if (layout != null && layout.index.exists(k) && (attribute & Attr.READONLY != 0 || Std.isOfType(v, Accessor)))
-			Seed.diverge("a writable field", v, "property " + k);
-		writeOwn(k, v);
-		if (attribute != 0) {
-			if (props == null) props = new Props();
-			if (props.attrs == null) props.attrs = [];
-			props.attrs.set(k, attribute);
+		if (layout != null && layout.index.exists(k)) {
+			// (a typed class's field is a plain writable value: what its slot holds)
+			if (attribute & Attr.READONLY != 0 || Std.isOfType(v, Accessor)) Seed.diverge("a writable field", v, "property " + k);
+			layout.set(this, layout.index.get(k), v);
+			var i = shape.slotOf(fieldAttr(k));
+			if (i >= 0) slots[i] = attribute;
+			else if (attribute != 0) add(fieldAttr(k), attribute, Attr.PRIVATE, Shapes.KEYS, true);
+			return;
 		}
-		else if (props != null && props.attrs != null && props.attrs.exists(k)) props.attrs.remove(k);
+		var a = Std.isOfType(v, Accessor) ? attribute | Attr.ACCESSOR : attribute;
+		var i = shape.slotOf(k);
+		if (i < 0) {
+			add(k, v, a, Shapes.KEYS, true);
+			return;
+		}
+		slots[i] = v;
+		if (shape.attrs[i] != a) reattr(i, a);
 	}
 
 	// an own property's value set, its attributes kept
@@ -144,20 +173,71 @@ class JsObject {
 				layout.set(this, i, v);
 				return;
 			}
-			if (shadowsMethod(k)) Seed.diverge("a field", v, "method " + k + " of a typed class's instance");
 		}
-		if (props == null) props = new Props();
-		if (!props.slots.exists(k)) props.names.push(k);
-		props.slots.set(k, v);
+		var i = shape.slotOf(k);
+		if (i < 0) add(k, v, Std.isOfType(v, Accessor) ? Attr.ACCESSOR : 0, Shapes.KEYS, true);
+		else slots[i] = v;
+	}
+
+	// a new own property (limit: the keys its shapes may have; bounded: its
+	// name not in the program's text, Shape.with)
+	public function add(k:String, v:Dynamic, a:Int, limit:Int, bounded:Bool):Void {
+		if (layout != null && shadowsMethod(k)) Seed.diverge("a field", v, "method " + k + " of a typed class's instance");
+		if (slots == null) slots = [];
+		if (shape.dict) shape.add(k, a);
+		else {
+			var next = shape.with(k, a, limit, bounded);
+			if (next == null) {
+				shape = shape.dictionary();
+				shape.add(k, a);
+			}
+			else shape = next;
+		}
+		slots.push(v);
+		changed();
+	}
+
+	// (a property's attributes changed)
+	function reattr(i:Int, a:Int):Void {
+		if (!shape.dict) {
+			var attrs = shape.attrs.copy();
+			attrs[i] = a;
+			var s = Shapes.replay(shape.root, shape.keys, attrs);
+			if (s != null) {
+				shape = s;
+				changed();
+				return;
+			}
+			shape = shape.dictionary();
+		}
+		shape.attrs[i] = a;
+		changed();
 	}
 
 	public function removeOwn(k:String):Void {
 		if (locked) Seed.diverge("changeable", this, "a typed class's prototype (" + k + ")");
 		if (layout != null && layout.index.exists(k)) Seed.diverge("deletable", this, "field " + k);
-		if (props == null || !props.slots.exists(k)) return;
-		props.slots.remove(k);
-		props.names.remove(k);
-		if (props.attrs != null) props.attrs.remove(k);
+		var i = shape.slotOf(k);
+		if (i < 0) return;
+		// (the last one added: its parent's shape again, as V8 does)
+		if (!shape.dict && i == shape.size() - 1 && shape.parent != null) {
+			shape = shape.parent;
+			slots.pop();
+		}
+		else {
+			if (!shape.dict) shape = shape.dictionary();
+			shape.delete(i);
+			slots[i] = null;
+			shape.compact(slots);
+		}
+		changed();
+	}
+
+	// (its prototype set)
+	public function reproto(p:JsObject):Void {
+		if (locked) Seed.diverge("changeable", this, "a typed class's prototype (its prototype)");
+		proto = p;
+		changed();
 	}
 
 	// (an own property hiding a method of a typed class's locked prototype)
@@ -179,11 +259,14 @@ class JsObject {
 class Layout {
 	public final names:Array<String>;
 	public final index:Map<String, Int> = [];
+	// (its instances' shapes' root: theirs only)
+	public final root:Shape;
 	public final get:(JsObject, Int) -> Dynamic;
 	public final set:(JsObject, Int, Dynamic) -> Void;
 
 	public function new(names:Array<String>, get:(JsObject, Int) -> Dynamic, set:(JsObject, Int, Dynamic) -> Void) {
 		this.names = names;
+		root = Shapes.root(this);
 		for (i in 0...names.length) index.set(names[i], i);
 		this.get = get;
 		this.set = set;
@@ -208,6 +291,7 @@ class JsArray extends JsObject {
 	public function new(proto:JsObject) {
 		super(proto);
 		form = Form.ARRAY;
+		shape = Shapes.array;
 	}
 
 	override public function tag():String return "Array";
@@ -236,6 +320,11 @@ class JsArray extends JsObject {
 	override public function writeOwn(k:String, v:Dynamic):Void {
 		if (this == Builtins.ArrayProto) Builtins.arrayProtoChanged(k);
 		super.writeOwn(k, v);
+	}
+
+	override public function setOwn(k:String, v:Dynamic, attribute:Int = 0):Void {
+		if (this == Builtins.ArrayProto) Builtins.arrayProtoChanged(k);
+		super.setOwn(k, v, attribute);
 	}
 
 	override public function removeOwn(k:String):Void {
@@ -270,6 +359,7 @@ class JsFunction extends JsObject {
 	public function new(proto:JsObject, kind:Int, name:String, arity:Int) {
 		super(proto);
 		form = Form.FUNCTION;
+		shape = Shapes.func;
 		this.kind = kind;
 		this.name = name;
 		this.arity = arity;
