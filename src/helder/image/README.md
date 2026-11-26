@@ -115,10 +115,10 @@ range is `Corrupt`), so a caller catches one type. Tests:
 `ImageLimits.test.hx` (hostile headers per decoder: the largest sides,
 products past an Int, a frame larger than its screen, chunks past the end,
 every test image cut short, each decoder's file cut in mid-structure),
-`bun run test image-fuzz` (tests/image/Fuzz.hx: a time-boxed mutation
-fuzzer over tests/image's files, the limits lowered, every read the
-reader refused surfacing as an ImageError, none swallowed into a decode;
-CI's headless job runs it for 30 s), and the image lane checks every
+tests/image/Fuzz.test.hx (a property over tests/image's files mutated,
+the limits lowered, every read the reader refused surfacing as an
+ImageError, none swallowed into a decode; the test lane's few seconds,
+the fuzz lane's soak: `bun run test fuzz`), and the image lane checks every
 `hxmc.unsafe` of helder.image against a reviewed list, each with its
 reason (`tests/image/unsafe.mjs`, `unsafe.txt`).
 

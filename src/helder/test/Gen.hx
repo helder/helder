@@ -128,6 +128,110 @@ function char(nul = false):Gen<String> {
 function recursive<T>(base:Gen<T>, extend:Gen<T>->Gen<T>, depth = 3):Gen<T>
 	return depth <= 0 ? base : oneOf([base, extend(recursive(base, extend, depth - 1))]);
 
+// bytes made from one of seeds (by name: real files, the robustness
+// properties' corpus) by 1 to most mutations, each noted as the case's
+// value: bits flipped, bytes set to edge values, header ints made huge,
+// digits made nines (a text format's counts, lengths and offsets), runs
+// cut short, repeated, cut out, zeroed or spliced from another seed;
+// shrinking to fewer, earlier mutations of the first seed by name
+function mutated(seeds:Map<String, haxe.io.Bytes>, most = 8):Gen<haxe.io.Bytes> {
+	var names = [for (k in seeds.keys()) k];
+	if (names.length == 0) throw new haxe.Exception("mutated: no seeds");
+	names.sort((a, b) -> a < b ? -1 : a > b ? 1 : 0);
+	var at = int(0, 0x7FFFFFFF);
+	var mutation:Gen<Mutation> = oneOf([
+		c -> Flip(c.draw(at), c.draw(int(0, 7))),
+		c -> Set(c.draw(at), c.draw(pick([0, 0xFF, 0x7F, 0x80, 1]))),
+		c -> Huge(c.draw(int(0, 63)), c.draw(bool())),
+		c -> Nines(c.draw(at)),
+		c -> Cut(c.draw(at)),
+		c -> Repeat(c.draw(at), c.draw(int(1, 64))),
+		c -> Remove(c.draw(at), c.draw(int(1, 64))),
+		c -> Zero(c.draw(at), c.draw(int(1, 32))),
+		c -> Splice(c.draw(at), c.draw(pick(names)), c.draw(at), c.draw(int(1, 256)))
+	]);
+	var list = array(mutation, 1, most);
+	return c -> {
+		var name = c.draw(pick(names));
+		var b = seeds[name].sub(0, seeds[name].length);
+		c.note('$name (${b.length} bytes)');
+		for (m in c.draw(list)) {
+			var len = b.length;
+			b = mutate(b, m, seeds);
+			c.note('  ' + describe(m, len) + ' (${b.length} bytes)');
+		}
+		b;
+	}
+}
+
+private enum Mutation {
+	Flip(at:Int, bit:Int);
+	Set(at:Int, value:Int);
+	Huge(at:Int, wide:Bool);
+	Nines(at:Int);
+	Cut(at:Int);
+	Repeat(at:Int, n:Int);
+	Remove(at:Int, n:Int);
+	Zero(at:Int, n:Int);
+	Splice(at:Int, from:String, start:Int, n:Int);
+}
+
+// (a mutation as applied to len bytes: its places wrapped)
+private function describe(m:Mutation, len:Int):String {
+	inline function p(at:Int)
+		return len == 0 ? 0 : at % len;
+	return switch m {
+		case Flip(at, bit): 'bit $bit flipped at ${p(at)}';
+		case Set(at, v): 'byte at ${p(at)} set to $v';
+		case Huge(at, wide): '${wide ? 4 : 2} bytes at $at set to 255';
+		case Nines(at): 'the number from ${p(at)} made nines';
+		case Cut(at): 'cut at ${p(at)}';
+		case Repeat(at, n): '$n bytes at ${p(at)} repeated';
+		case Remove(at, n): '$n bytes at ${p(at)} cut out';
+		case Zero(at, n): '$n bytes at ${p(at)} zeroed';
+		case Splice(at, from, start, n): '$n bytes of $from from $start spliced in at ${p(at)}';
+	}
+}
+
+// (a place past the end wraps: each mutation lands somewhere)
+private function mutate(b:haxe.io.Bytes, m:Mutation, seeds:Map<String, haxe.io.Bytes>):haxe.io.Bytes {
+	var len = b.length;
+	if (len == 0) return b;
+	inline function digit(p:Int)
+		return p < len && b.get(p) >= "0".code && b.get(p) <= "9".code;
+	switch m {
+		case Flip(at, bit): b.set(at % len, b.get(at % len) ^ (1 << bit));
+		case Set(at, v): b.set(at % len, v);
+		case Huge(at, wide): for (i in 0...(wide ? 4 : 2)) if (at + i < len) b.set(at + i, 0xFF);
+		case Nines(at):
+			// (the next number from there, its digits nines)
+			var p = at % len;
+			while (p < len && !digit(p)) p++;
+			while (digit(p)) b.set(p++, "9".code);
+		case Cut(at): return b.sub(0, at % len);
+		case Repeat(at, n):
+			var p = at % len, n = Std.int(Math.min(n, len - p)), o = new haxe.io.BytesBuffer();
+			o.add(b.sub(0, p + n));
+			o.add(b.sub(p, len - p));
+			return o.getBytes();
+		case Remove(at, n):
+			var p = at % len, n = Std.int(Math.min(n, len - p)), o = new haxe.io.BytesBuffer();
+			o.add(b.sub(0, p));
+			o.add(b.sub(p + n, len - p - n));
+			return o.getBytes();
+		case Zero(at, n):
+			var p = at % len;
+			b.fill(p, Std.int(Math.min(len - p, n)), 0);
+		case Splice(at, from, start, n):
+			var other = seeds[from], p = at % len;
+			if (other.length > 0) {
+				var q = start % other.length;
+				b.blit(p, other, q, Std.int(Math.min(Math.min(len - p, other.length - q), n)));
+			}
+	}
+	return b;
+}
+
 // (char's classes, the simplest first: "a" is char's 0)
 private final CHARS:Array<Array<String>> = [
 	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,:;!?'\"()[]{}<>-_+=*/\\|&^%$#@~`".split(""),

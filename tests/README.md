@@ -35,9 +35,7 @@ in [CONTRIBUTING.md](../CONTRIBUTING.md#tests).
 | Lane | Checks |
 | --- | --- |
 | `image` | helder.image on Eval and natively: PNG, JPEG, GIF and WebP against Chromium's and libwebp's pixels, animations' frames; hxmc.unsafe's uses against the reviewed list (tests/image/unsafe.mjs); its limits and hostile headers are the test lane's (src/helder/image/ImageLimits.test.hx) |
-| `image-fuzz` | helder.image's decoders under a time-boxed mutation fuzzer (tests/image/Fuzz.hx, natively): the test images mutated, each input a decode or an ImageError within its time, the peak memory within budget (FUZZ_SECONDS, FUZZ_SEED) |
 | `pdf` | helder.pdf: page 1 of each corpus PDF (tests/pdf/corpus, made by ReportLab, pypdf, LibreOffice and by hand: tests/pdf/corpus.py: the standard 14 fonts, Type 1, TrueType, Type 3, RC4, AES-128 and AES-256, object streams, a shading, a tiling pattern, an inline image, a damaged xref) drawn natively against pdf.js's (tests/pdf/ref, pdfjs.mjs): of the 3x3 blocks either inks at most 10% off, of the page 2%, and its text (Pdf.text) against pdf.js's getTextContent (check.mjs: bin/pdf/report.md); its crypto and limits are the test lane's (src/helder/pdf/*.test.hx) |
-| `pdf-fuzz` | helder.pdf under a time-boxed mutation fuzzer (tests/pdf/Fuzz.hx, natively): the corpus mutated, each mutant opened and drawn under small limits, ending in pixels or a PdfError (FUZZ_SECONDS, FUZZ_SEED) |
 
 ## Benchmarks (lanes/Bench.hx)
 
@@ -127,6 +125,7 @@ test bench <name> ...` the ones named.
 | Lane | Checks |
 | --- | --- |
 | `test` | `helder test` (src/helder/cli) built natively, then every *.test.hx (helder.test) natively and as wasm32-wasi (node), and on Eval those that opt in (@:test.interp); every *.test.ts(x) (helder/test) natively and as wasm32-wasi, src/'s and examples/ts-todo's; apps/studio's (its canvas' snapping, its MCP server's sessions and routes, the agents' presence, an agent's patch in the history, its ACP client against a scripted agent on node) |
+| `fuzz` | the robustness properties soaked natively (`helder test` with HELDER_PROPERTY_SOAK=FUZZ_SECONDS, 20, and HELDER_PROPERTY_SEED=FUZZ_SEED, random): tests/image, tests/pdf, tests/media and tests/text's Fuzz.test.hx (the test files mutated: Gen.mutated) and Markdown.test.hx's; each case within its time (a watchdog) and memory, kept in bin/test/properties before it runs, so that a hang or a crash leaves it for the next run (CI's fuzz job keeps them as an artifact) |
 | `cli` | `helder build`, `run`, `dev` and `devices` (src/helder/cli): the grammar's errors and help, an example by file and by directory, a project, natively and for web (--target web); helder devices without adb and with a stand-in one; the dev loop natively (with the dev host and without) and for web without a window or a browser, and its exit policy: a crash keeps it up, the program closed ends it (tests/cli/dev.mjs, tests/cli/closer) |
 | `devtools` | the devtools protocol (src/helder/dev): `helder dev` relaying a console and a ui program to a tool on its WebSocket, `helder inspect`, without a window (tests/devtools/devtools.mjs); the Frame domain's cost a frame |
 | `declarations` | the generated TypeScript declarations for helder, the tests, platform and scene |

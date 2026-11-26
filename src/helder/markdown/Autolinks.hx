@@ -92,17 +92,21 @@ class Autolinks {
 	}
 
 	static function trail(t:String, start:Int, end:Int):Int {
+		// (the parentheses counted once, each ")" cut off taken from them:
+		// counted again for each, a run of them was quadratic)
+		var open = 0, close = 0;
+		for (k in start...end) {
+			Scan.tick();
+			var d = t.fastCodeAt(k);
+			if (d == "(".code) open++ else if (d == ")".code) close++;
+		}
 		while (Scan.tick() && end > start) {
 			var c = t.fastCodeAt(end - 1);
 			if ("?!.,:*_~'\"".indexOf(String.fromCharCode(c)) >= 0) end--;
 			else if (c == ")".code) {
-				var open = 0, close = 0;
-				for (k in start...end) {
-					Scan.tick();
-					var d = t.fastCodeAt(k);
-					if (d == "(".code) open++ else if (d == ")".code) close++;
-				}
-				if (close > open) end-- else break;
+				if (close <= open) break;
+				end--;
+				close--;
 			} else if (c == ";".code) {
 				var k = end - 2;
 				while (Scan.tick() && k > start && isAlnum(t.fastCodeAt(k)))

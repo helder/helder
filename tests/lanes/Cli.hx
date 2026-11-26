@@ -10,6 +10,7 @@ using StringTools;
 class Cli {
 	public static final LANES:Array<Lane> = [
 		{name: "test", about: "every *.test.hx and *.test.ts, natively and as wasm32-wasi", run: helderTest},
+		{name: "fuzz", about: "the robustness properties soaked (FUZZ_SECONDS each, FUZZ_SEED)", run: fuzz},
 		{name: "cli", about: "helder build, run, dev and devices", run: cli},
 		{name: "devtools", about: "the devtools protocol without a window", run: devtools},
 		{name: "declarations", about: "the generated TypeScript declarations", run: declarations},
@@ -20,6 +21,16 @@ class Cli {
 		{name: "edit-loop", about: "the edit loop's times, from save to frame", run: editLoop},
 		{name: "dev-host", about: "helder dev's host swapping shared libraries", run: devHost}
 	];
+
+	// (the properties with a limit, each run FUZZ_SECONDS (20) natively from
+	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
+	// crashes or blows up is left in bin/test/properties)
+	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
+		"src/helder/markdown/Markdown.test.hx"];
+
+	static function fuzz()
+		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host"]),
+			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
 
 	static function helderTest() {
 		run(helderCli(), ["test", "--target", "all,interp"]);
