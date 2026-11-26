@@ -327,6 +327,9 @@ class PdfFont {
 			return;
 		}
 		if (face == null) return;
+		// (a substitute for a code of several characters, a ligature's ("ti", "ffi"): each one's glyph side by side,
+		// the run squeezed or widened to the file's width, not the first alone)
+		if (substitute && ligature(code, path, gm)) return;
 		var g = glyphOf(code);
 		if (g <= 0) return;
 		// (font units to glyph space's thousandths; a substitute squeezed or widened to the file's width)
@@ -336,6 +339,28 @@ class PdfFont {
 			if (own > 0) kx = k * Math.max(0.5, Math.min(2, widths.get(code) / own));
 		}
 		face.outline(g, new PathSink(path, gm.clone().scale(kx, k)));
+	}
+
+	// (a substitute's code whose characters are several: their glyphs drawn in a row; false when it is one or none)
+	function ligature(code:Int, path:Path, gm:Matrix):Bool {
+		var u = unicodeOf(code);
+		if (u.length < 2) return false;
+		var glyphs = [], own = 0.0, k = 1000 / unitsPerEm;
+		var it = new haxe.iterators.StringIteratorUnicode(u);
+		for (cp in it) {
+			var g = face.glyph(cp);
+			if (g <= 0) continue;
+			glyphs.push(g);
+			own += face.advance(g) * k;
+		}
+		if (glyphs.length < 2) return false;
+		var file = composite ? (widths.get(cmap.cid(code)) ?? defaultWidth) : widths.get(code);
+		var kx = file != null && own > 0 ? k * Math.max(0.5, Math.min(2, file / own)) : k, x = 0.0;
+		for (g in glyphs) {
+			face.outline(g, new PathSink(path, gm.clone().translate(x, 0).scale(kx, k)));
+			x += face.advance(g) * kx;
+		}
+		return true;
 	}
 }
 
