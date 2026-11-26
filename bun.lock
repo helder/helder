@@ -15,6 +15,7 @@
         "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
         "lightningcss": "1.33.0",
         "parse5": "8.1.1",
+        "reactive-framework-test-suite": "0.2.0",
         "typescript": "7.1.0-dev.20261106.1",
       },
       "peerDependencies": {
@@ -96,6 +97,8 @@
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.33.0", "", { "os": "win32", "cpu": "x64" }, "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA=="],
 
     "parse5": ["parse5@8.1.1", "", { "dependencies": { "entities": "^9.0.0" } }, "sha512-EcR/6WDcU7b2N3vQSxKALCk9lXGtUMQxXio008OEMBE0kavu/7JLfBEeFPzi43nMqVDSbEn3QCK+BMCc9zO//w=="],
+
+    "reactive-framework-test-suite": ["reactive-framework-test-suite@0.2.0", "", {}, "sha512-KvNKdtwVwGkKNDG52HEzy/TuzmttySU/cRLzdcv+XrMmvuZ8sAuev48pvnbEpO85VRFSnTJyBZbHD1WxRmkvcw=="],
 
     "typescript": ["typescript@7.1.0-dev.20261106.1", "", { "optionalDependencies": { "@typescript/typescript-darwin-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-darwin-x64": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-arm": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-x64": "7.1.0-dev.20261106.1", "@typescript/typescript-win32-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-win32-x64": "7.1.0-dev.20261106.1" }, "bin": { "tsc": "bin/tsc" } }, "sha512-iXttMYjtjZlI4xn4ajC1UHsBfGOm+lYlHN1g17wytkYjyxqV9ngrEXJid6IayJhrfw8qTbLwBkn9KoJENLpjaw=="],
 

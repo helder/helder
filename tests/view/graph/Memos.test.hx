@@ -2,6 +2,7 @@ package view.graph;
 
 import helder.test.Test;
 import helder.view.graph.Graph.*;
+import helder.view.graph.Memo;
 
 // createMemo.test.ts (sync)
 function tests() {
@@ -273,5 +274,24 @@ function tests() {
 			flush();
 			equals(observed, 2);
 		});
+	});
+
+	// (helder's: Solid 2.0.4 overflows its stack here; found by
+	// reactive-framework-test-suite's #153 through a store, tests/view/conformance)
+	test("a memo reading itself as it runs: a cycle error it can catch, then recovers", () -> {
+		var a = signal(1), log = [];
+		var c:Null<Memo<Int>> = null;
+		c = memo(() -> if (a() == 0) try c() catch (e:haxe.Exception) {
+			log.push(e.message);
+			-1;
+		} else a());
+		log.push('${untrack(() -> c())}');
+		a(0);
+		flush();
+		log.push('${untrack(() -> c())}');
+		a(2);
+		flush();
+		log.push('${untrack(() -> c())}');
+		equals(log, ["1", "a computation read itself while it ran (a cycle)", "-1", "2"]);
 	});
 }

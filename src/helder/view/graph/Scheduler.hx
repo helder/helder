@@ -74,7 +74,7 @@ class Scheduler {
 
 	static function loop() {
 		while (writes.length > 0 || landings.length > 0 || memos.length > 0 || renders.length > 0 || effects.length > 0
-			|| applies.length > 0) {
+			|| applies.length > 0 || releases.length > 0) {
 			if (landings.length > 0) {
 				var ls = landings;
 				landings = landingsTaken;
@@ -133,8 +133,28 @@ class Scheduler {
 				runApplies(batch);
 				giveBatch(batch);
 			}
+			// (free memos nothing read again by the flush's end let go of their
+			// sources: one dropped and read again within a run, a component's
+			// memo made anew, keeps them and its value)
+			if (releases.length > 0 && writes.length == 0 && landings.length == 0 && memos.length == 0 && renders.length == 0
+				&& effects.length == 0 && applies.length == 0) {
+				var rs = releases, first:Null<haxe.Exception> = null;
+				releases = releasesTaken;
+				releasesTaken = rs;
+				for (n in rs)
+					try n.unlinkSources() catch (e:haxe.Exception) if (first == null) first = e;
+				rs.resize(0);
+				if (first != null) throw first;
+			}
 		}
 	}
+
+	// (a free memo that lost its last reader: let go at the flush's end, unless read again)
+	static var releases:Array<Node<Dynamic>> = [];
+	static var releasesTaken:Array<Node<Dynamic>> = [];
+
+	static function enqueueRelease(n:Node<Dynamic>)
+		if (!releases.contains(n)) releases.push(n);
 
 	public static function flushWith<T>(fn:Void->T):T {
 		holding++;
@@ -154,8 +174,8 @@ class Scheduler {
 	}
 
 	// (parents first: a parent running again disposes its old children before
-	// they run; each batch the queue's nodes so far, sorted in place by depth
-	// (stable: those of one depth in the order they were queued), then run,
+	// they run; each batch the queue's nodes so far, sorted in place by depth,
+	// then height (stable: the rest in the order they were queued), then run,
 	// those it queues the next batch)
 	static function runQueue(q:Array<Node<Dynamic>>) {
 		var start = 0;
@@ -181,15 +201,19 @@ class Scheduler {
 	static function sortByDepth(q:Array<Node<Dynamic>>, start:Int, end:Int) {
 		for (i in start + 1...end) {
 			var n = q[i];
-			if (q[i - 1].depth <= n.depth) continue;
+			if (!before(n, q[i - 1])) continue;
 			var j = i;
-			while (j > start && q[j - 1].depth > n.depth) {
+			while (j > start && before(n, q[j - 1])) {
 				q[j] = q[j - 1];
 				j--;
 			}
 			q[j] = n;
 		}
 	}
+
+	// (owners first; of one depth, the lower in the graph: Solid 2's height order)
+	static inline function before(a:Node<Dynamic>, b:Node<Dynamic>):Bool
+		return a.depth < b.depth || a.depth == b.depth && @:privateAccess a.height < @:privateAccess b.height;
 
 	// (a transaction: a spare one, else new)
 	// (a transaction of a store's nodes: a spare one, else new)

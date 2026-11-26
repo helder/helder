@@ -29,9 +29,13 @@ class View {
 
 	// (tests/view/graph run in a store each test (home), and through a store's
 	// nodes of the default's (foreign): tests/view/graph/Stores.hx)
-	static function viewStores()
+	static function viewStores() {
 		for (mode in ["home", "foreign"])
 			run(helderCli(), ["test", "tests/view/graph"], ["HELDER_GRAPH_STORES" => mode]);
+		// (reactive-framework-test-suite's cases, plain and through stores: tests/view/conformance)
+		js("bin/conformance/framework.js", cps(["src", "tests/view/conformance"]).concat(["-main", "Framework"]));
+		run(NODE, ["tests/view/conformance/conformance.mjs", "bin/conformance/framework.js"]);
+	}
 
 	static function ui() {
 		var cp = cps(["src", "tests/ui"]);

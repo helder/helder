@@ -86,4 +86,48 @@ function tests() {
 		flush();
 		equals(unobserved.calls, 1);
 	});
+
+	// (helder's, Solid 2.0.4's answers: a free memo nothing observes lets go
+	// of its sources, each told though one's callback throws, the first error
+	// after; found by Jotai's tests, src/helder/view/graph/AtomsJotai.test.hx)
+	test("unobserved through a free memo, one callback throwing", () -> {
+		var log = [];
+		var a = signal(0, {unobserved: () -> log.push("a")});
+		var b = signal(0, {
+			unobserved: () -> {
+				log.push("b throws");
+				throw "b";
+			}
+		});
+		var d = memo(() -> {
+			b();
+			a();
+		});
+		var dispose = root(stop -> {
+			effect(_ -> d(), (_, _) -> {});
+			stop;
+		});
+		flush();
+		try {
+			dispose();
+			flush();
+		} catch (e:haxe.Exception) log.push('threw ${e.message}');
+		equals(log, ["b throws", "a", "threw b"]);
+	});
+
+	test("a free memo observed again takes its sources back", () -> {
+		var x = signal(1), d = memo(() -> x() * 2), seen = [];
+		var dispose = root(stop -> {
+			effect(_ -> d(), (v, _) -> seen.push(v));
+			stop;
+		});
+		flush();
+		dispose();
+		flush();
+		root(_ -> effect(_ -> d(), (v, _) -> seen.push(v)));
+		flush();
+		x(2);
+		flush();
+		equals(seen, [2, 2, 4]);
+	});
 }

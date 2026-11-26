@@ -371,4 +371,114 @@ function tests() {
 		flush();
 		equals([a.run(() -> literal()), b.run(() -> literal()), literal()], [2, 2, 2]);
 	}));
+	// (a run that joins a transaction staged ahead reads its value, whichever
+	// of the two merged was kept as the root; found by AtomsModel's settled
+	// property: a store's memo kept its old sum for good)
+	test("a memo read in a held transaction's world after its async answer sees the store's write", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0), s1 = signal(1);
+		function async()
+			return memo(() -> {
+				var l = new Later<Int>();
+				asks.push({l: l, v: s1()});
+				(l : Dynamic);
+			});
+		var a4 = async();
+		var n12 = memo(() -> s0() + (a4() : Int));
+		var a13 = async();
+		var n24 = memo(() -> (a13() : Int) + s0());
+		effect(_ -> n24(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		renderEffect(_ -> n12(), _ -> {});
+		flush();
+		var st = new Atoms("1");
+		st.run(() -> for (n in [a4, n12, a13, n24]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s0(1));
+		flush();
+		var rounds = 0;
+		while (asks.length > 0 && rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+		}
+		equals([st.run(() -> untrack(() -> n24())), st.run(() -> untrack(() -> n12()))], [11, 11]);
+		equals(shown, [11]);
+		st.dispose();
+	}));
+	// (its answer dropped while its source was pending, the source settling
+	// unchanged: the wait ended without a run, nothing shown for good; found by
+	// AtomsModel's settled property, a store's asks landing in their order)
+	test("an async memo whose source settles unchanged after a wait asks again and shows", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0), s2 = signal(2);
+		var n5 = memo(() -> {
+			var l = new Later<Int>();
+			asks.push({l: l, v: s0()});
+			(l : Dynamic);
+		});
+		var n12 = memo(() -> s0() + (n5() : Int));
+		var n31 = memo(() -> s2() % 2 == 0 ? s0() : n12());
+		var n32 = memo(() -> {
+			var v = n31();
+			var l = new Later<Int>();
+			asks.push({l: l, v: v});
+			(l : Dynamic);
+		});
+		effect(_ -> n32(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		flush();
+		var st = new Atoms("4");
+		st.run(() -> for (n in [n31, n32, n5, n12]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s2(1));
+		flush();
+		var rounds = 0;
+		while (asks.length > 0 && rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+		}
+		equals(st.run(() -> attempt(() -> untrack(() -> n32()))), 0);
+		equals(shown, [0]);
+		st.dispose();
+	}));
+	// (marked pending through a chain from an async memo asked again, whose
+	// answer leaves the chain unchanged: the wait ended by the transaction that
+	// marked each, a store's another; found by AtomsModel's settled property)
+	test("a chain pending through an async memo, its answer changing nothing, waits no more", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0);
+		function async()
+			return memo(() -> {
+				var l = new Later<Int>();
+				asks.push({l: l, v: s0()});
+				(l : Dynamic);
+			});
+		var n2 = async(), n3 = async();
+		var n8 = memo(() -> Std.int(Math.min((n2() : Int), 0)));
+		var n4 = memo(() -> (n2() : Int) == 3 ? throw "three" : (n2() : Int));
+		var n9 = memo(() -> n8() == 3 ? throw "three" : n8());
+		var n10 = memo(() -> (n3() : Int) + n9());
+		var sink = signalOf(0, {ownedWrite: true});
+		effect(_ -> n10(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		// (an effect writing what nothing reads: its write a transaction of its own)
+		effect(_ -> n4(), (v:Int, _) -> sink(x -> x > v ? x : v));
+		flush();
+		var st = new Atoms("1");
+		st.run(() -> for (n in [n2, n3, n4, n8, n9, n10]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s0(5));
+		var rounds = 0;
+		while (rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				if (!x.l.cancelled) x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+			if (!Lambda.exists(asks, x -> !x.l.cancelled)) break;
+		}
+		equals([st.run(() -> untrack(() -> n10())), st.run(() -> untrack(() -> isPending(() -> n10())) ? 1 : 0)], [50, 0]);
+		equals(shown, [0, 50]);
+		st.dispose();
+	}));
 }

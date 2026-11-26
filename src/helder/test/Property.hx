@@ -167,6 +167,8 @@ class Property {
 				case Rejected | Overran: r.rejected++;
 			}
 		}
+		// (a soak passed: how many cases, for the lane's report)
+		if (r.failed == null && soak > 0) Sys.println('${Runner.file(at.fileName)}:${at.lineNumber}: soaked ${r.cases} cases in ${Math.round(seconds)} s');
 		if (r.failed == null) return r;
 		var shrunk = shrink(gen, body, r.failed, haxe.Timer.stamp() + seconds);
 		r.failed = shrunk.run;

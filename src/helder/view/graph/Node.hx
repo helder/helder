@@ -79,10 +79,17 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	var thrown:Null<haxe.Exception> = null;
 	var stagedFailed = false;
 	var sources:Null<Array<Node<Dynamic>>> = null;
+	// (one more than its highest source's, a signal's 0: a queue runs the lower
+	// first among those of one owner depth, Solid 2's heap)
+	@:allow(helder.view.graph) var height = 0;
 	var observers:Null<Array<Node<Dynamic>>> = null;
 	// (a run's tracking: the old sources read again in order, then the new ones)
 	var run = 0;
 	var kept = 0;
+	// (the node its last run stopped at, not ready: an equal answer of it still runs it again)
+	var stalledOn:Null<Node<Dynamic>> = null;
+	// (its function running, its sources reconciled after: the run's to settle, not let go under it)
+	var computing = false;
 	var added:Null<Array<Node<Dynamic>>> = null;
 	var trackedBy:Null<Node<Dynamic>> = null;
 	var trackedIn = -1;
@@ -257,6 +264,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	public function read():T {
 		var s = Atoms.current;
 		if (s != null && s != home && !shared) return of(s).read();
+		// (read by its own run: a cycle, an error, not a run started again without end)
+		if (computing) throw new GraphError("a computation read itself while it ran (a cycle)");
 		if (kind != SIGNAL) fresh();
 		if (observer != null) observer.track(this);
 		return serve();
@@ -294,6 +303,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				w = runner.world = w == null ? ahead : Tx.merge(w, ahead);
 				if (p != null && t != null && p != w) w = runner.world = Tx.merge(w, p);
 				if (Scheduler.world != null) Scheduler.world = Scheduler.world.find();
+				// (merged: one transaction now, whichever was kept as its root)
+				ahead = ahead.find();
+				if (p != null) p = p.find();
 			}
 			// (a render effect that read a verdict is a verdict reader: served the
 			// screen, shown now; a pending value it reads still holds the change)
@@ -453,9 +465,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var w = Scheduler.world;
 		var v = answer;
 		answer = null;
-		// (a source pending again: the answer is to a question no longer asked; it waits with that source)
+		// (a source pending again: the answer is to a question no longer asked;
+		// it waits with that source, and runs again once its wait ends)
 		if (sources != null) for (src in sources) if (src.pendingIn != null) {
 			pendingIn = src.pendingIn.held();
+			stalledOn = src;
 			return;
 		}
 		var t = stagedIn != null ? stagedIn.find() : null;
@@ -507,13 +521,22 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (observers == null) return;
 		for (o in observers) {
 			if (o.disposed) continue;
+			// (one whose last run stopped at this node shows nothing yet: it runs
+			// again, whichever transaction it waited in)
+			if (o.stalledOn == this) {
+				if (o.kind == RENDER && (o.blockedIn != null || o.caughtBy != null)) o.release();
+				o.mark(DIRTY);
+				continue;
+			}
 			if (o.catcher || o.verdictRun) {
 				o.mark(DIRTY);
 				continue;
 			}
 			switch o.kind {
 				case COMPUTED:
-					if (o.pendingIn != null && o.awaiting == null && o.pendingIn.find() == tx.find()) {
+					// (pending through its sources alone: no longer, once none is, whichever transaction marked it)
+					if (o.pendingIn != null && o.awaiting == null
+						&& (o.pendingIn.find() == tx.find() || !o.sourcePending())) {
 						o.pendingIn = null;
 						o.clearPending(tx);
 					}
@@ -522,6 +545,13 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				case _:
 			}
 		}
+	}
+
+	function sourcePending():Bool {
+		if (sources != null)
+			for (x in sources)
+				if (x.pendingIn != null) return true;
+		return false;
 	}
 
 	function markObservers(s:Int) {
@@ -576,6 +606,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			awaiting = null;
 			a.cancel();
 		}
+		var wasPending = pendingIn != null ? pendingIn.find() : null;
 		pendingIn = null;
 		release();
 		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe, savedAtoms = Atoms.current;
@@ -592,6 +623,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		kept = 0;
 		added = null;
 		var r:Dynamic = null, failure:Dynamic = null, failed = false, waiting = false;
+		computing = true;
 		try r = call() catch (e:NotReady) waiting = true catch (e:haxe.Exception) {
 			failure = e.native;
 			thrown = e;
@@ -603,13 +635,15 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		runner = savedRunner;
 		probe = savedProbe;
 		reconcile();
+		computing = false;
 		state = CLEAN;
 		var w = world != null ? world.find() : null;
 		var mine = w != null && joined;
+		stalledOn = waiting ? notReadyNode : null;
 		if (waiting) wait(notReadyIn != null ? notReadyIn.find() : null)
 		else if (failed) failWith(failure, mine ? w : null)
 		else if (kind == COMPUTED && Std.isOfType(r, Awaitable)) ask(r, w)
-		else settle(r, mine ? w : null);
+		else if (!settle(r, mine ? w : null) && wasPending != null) clearPending(wasPending);
 	}
 
 	// (its function run, given the previous value; hxmc dev: in a scope of
@@ -693,15 +727,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	// (a value computed: staged in tx when its run joined one, else committed)
-	function settle(v:Null<T>, tx:Null<Tx>) {
+	// (whether it changed; unchanged, a computation pending before it ran ends its dependents' wait)
+	function settle(v:Null<T>, tx:Null<Tx>):Bool {
 		if (kind == COMPUTED) {
 			// (a comparator's error is the computation's)
 			var changed = try uninit || hasError || stagedFailed || !same(stagedIn != null ? staged : value, v) catch (e:haxe.Exception) {
 				thrown = e;
 				failWith(e.native, tx);
-				return;
+				return true;
 			};
-			if (!changed) return;
+			if (!changed) return false;
 			if (tx != null) stage(v, tx) else {
 				value = v;
 				uninit = false;
@@ -711,13 +746,14 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			}
 			// (its observers read it again)
 			if (observers != null) for (o in observers) o.state = DIRTY;
-			return;
+			return true;
 		}
 		value = v;
 		if (tx != null) {
 			if (!tx.effects.contains(this)) tx.effects.push(this);
 		} else
 			Scheduler.enqueueApply(this);
+		return true;
 	}
 
 	function failWith(e:Dynamic, tx:Null<Tx>) {
@@ -796,6 +832,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// (after a run: the new sources subscribed, then those not read again left)
 	function reconcile() {
+		// (disposed during its run: it let go of its sources then, and keeps none)
+		if (disposed) {
+			added = null;
+			return;
+		}
 		var old = sources;
 		if (added != null) {
 			var stale = old != null && kept < old.length ? old.slice(kept) : null;
@@ -807,18 +848,48 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				s.observers.push(this);
 			}
 			added = null;
-			if (stale != null) for (s in stale) s.unobserve(this);
+			raise();
+			if (stale != null) unlinkAll(stale);
 		} else if (old != null && kept < old.length) {
 			var stale = old.slice(kept);
 			old.resize(kept);
-			for (s in stale)
-				s.unobserve(this);
+			raise();
+			unlinkAll(stale);
 		}
 	}
 
+	function raise() {
+		var h = 0;
+		if (sources != null)
+			for (s in sources)
+				if (s.height >= h) h = s.height + 1;
+		height = h;
+	}
+
+	// (each source told it lost this observer, though one's unobserved throws: the first error after)
+	function unlinkAll(ss:Array<Node<Dynamic>>) {
+		var first:Null<haxe.Exception> = null;
+		for (s in ss)
+			try s.unobserve(this) catch (e:haxe.Exception) if (first == null) first = e;
+		if (first != null) throw Errors.kept(first);
+	}
+
 	function unobserve(o:Node<Dynamic>) {
-		if (observers == null || !observers.remove(o)) return;
-		if (observers.length == 0 && unobserved != null) unobserved();
+		if (observers == null || !observers.remove(o) || observers.length > 0) return;
+		// (a free memo nothing observes lets go of its sources at the flush's
+		// end, each told in turn (Scheduler.releases): read again it computes
+		// again, taking them back; Solid 2's)
+		if (kind == COMPUTED && free && !writable && sources != null) Scheduler.enqueueRelease(this);
+		if (unobserved != null) unobserved();
+	}
+
+	// (still unobserved at the flush's end: its sources let go; Scheduler.releases)
+	function unlinkSources() {
+		if (disposed || computing || sources == null || observers != null && observers.length > 0) return;
+		var ss = sources;
+		sources = null;
+		state = DIRTY;
+		unlinkAll(ss);
 	}
 
 	// (applies its second half; its error the nearest boundary's, else the flush's)
@@ -892,8 +963,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (sources != null) {
 			var ss = sources;
 			sources = null;
-			for (s in ss)
-				s.unobserve(this);
+			unlinkAll(ss);
 		}
 		if (applyCleanup != null) {
 			var c = applyCleanup;
