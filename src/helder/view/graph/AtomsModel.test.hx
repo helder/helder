@@ -22,6 +22,12 @@ import helder.view.graph.Graph.*;
 //   own (no copies of another's nodes). Every store's
 //   reads (plain, untracked, isPending, latest) and effect logs equal its
 //   copy's.
+// - the same with async memos, compared settled: every ask answered (by its
+//   input alone: of * 10, or failed when of % 7 == 3) and the flush done,
+//   each store's values and each effect's last view equal its copy's. A
+//   settled state does not depend on the order nodes were made in, where
+//   held transactions do (apps/studio/SCENARIOS.md, open: the per-op
+//   comparison above makes no async memos)
 //
 // A case's limit and memory make a hang or a leak a failure; the fuzz lane
 // soaks both (HELDER_PROPERTY_SOAK, random seeds). (memory 10: about 4
@@ -32,8 +38,9 @@ function tests() {
 	// transaction, a commit's stale frame readers in the next store's drain,
 	// a held change let go before the answer it waited on)
 	test("stores: found by the fuzzer", () -> for (r in FOUND)
-		property(modelGen(true), model, {replay: r}));
-	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120, limit: 20, memory: 10}));
+		property(modelGen(true), s -> model(s), {replay: r}));
+	test("stores against fresh copies of the graph", () -> property(modelGen(), s -> model(s), {cases: 120, limit: 20, memory: 10}));
+	test("stores with async memos against fresh copies, settled", () -> property(modelGen(true), settledModel, {cases: 120, limit: 20, memory: 10}));
 }
 
 final FOUND = [
@@ -260,9 +267,10 @@ typedef ModelSpec = {signals:Int, memos:Array<Made>, boundaries:Array<{node:Int,
 // (store 0 the default, 1 to 7 made by the ops)
 inline var STORES = 8;
 
-// (async: async memos made; the soak makes none: helder's held transactions
-// depend on the order their nodes were made, which a store and a fresh graph
-// make differently: apps/studio/SCENARIOS.md, open)
+// (async: async memos made; the per-op comparison makes none: helder's held
+// transactions depend on the order their nodes were made, which a store and
+// a fresh graph make differently: apps/studio/SCENARIOS.md, open; the
+// settled comparison makes them)
 function modelGen(async = false):Gen<ModelSpec>
 	return c -> {
 		var signals = c.draw(int(1, 20));
@@ -336,6 +344,28 @@ class Seen {
 		return l;
 	}
 
+	// what each effect of a store showed last (an apply or an error, not a cleanup)
+	public function last(store:Int):Map<String, String> {
+		var m = new Map<String, String>();
+		for (entry in logs[store]) {
+			var at = entry.indexOf(": "), name = entry.substring(5, at), v = entry.substr(at + 2);
+			if (!StringTools.startsWith(v, "cleanup")) m.set(name, v);
+		}
+		return m;
+	}
+
+	// (a store's open asks answered by their input alone: whatever order they were asked in)
+	public function answerAll(store:Int):Int {
+		var n = 0;
+		for (a in asks[store])
+			if (!a.later.cancelled) {
+				n++;
+				if (a.of % 7 == 3) a.later.reject('e${a.of}') else a.later.resolve(a.of * 10);
+			}
+		asks[store].resize(0);
+		return n;
+	}
+
 	public function ask(store:Int, memo:Int, of:Int):Later<Int> {
 		var l = new Later<Int>();
 		if (store >= 0) asks[store].push({later: l, of: of, memo: memo});
@@ -390,7 +420,10 @@ function build(spec:ModelSpec, seen:Seen, store:Void->Int, ?owner:Owner):Built {
 	return b;
 }
 
-function model(spec:ModelSpec) {
+function settledModel(spec:ModelSpec)
+	model(spec, true);
+
+function model(spec:ModelSpec, settled = false) {
 	var real = new Seen(), copies = new Seen();
 	// (the real: made at the top level, its effects made again in each store)
 	Atoms.record = true;
@@ -442,6 +475,26 @@ function model(spec:ModelSpec) {
 	}
 	function inStore<T>(k:Int, f:Void->T):T
 		return k == 0 ? f() : stores[k].run(f);
+	// (every ask answered, again while answers ask anew, the flush done: then each
+	// live store's values and its effects' last views against its copy's)
+	function settle() {
+		var rounds = 0;
+		while (true) {
+			var n = 0;
+			for (k in 0...STORES)
+				if (copy[k] != null) n += real.answerAll(k) + copies.answerAll(k);
+			flushed();
+			if (n == 0) break;
+			if (++rounds > 100) throw "never settled: asks after 100 rounds";
+		}
+		for (k in 0...STORES)
+			if (copy[k] != null) {
+				for (n in 0...top.nodes.length)
+					equals(inStore(k, () -> attempt(() -> untrack(top.nodes[n]))), copy[k].store.run(() -> attempt(() -> untrack(copy[k].built.nodes[n]))),
+						'store $k\'s node $n, settled');
+				equals(real.last(k), copies.last(k), 'store $k\'s effects, settled');
+			}
+	}
 	fresh(0);
 	try {
 		flushed();
@@ -459,6 +512,11 @@ function model(spec:ModelSpec) {
 				case Flush:
 					var r0 = real.round;
 					flushed();
+				case Answer(k, _, _, _) if (settled && copy[k] != null):
+					real.answerAll(k);
+					copies.answerAll(k);
+				case Read(_, _, _) if (settled):
+					settle();
 				case Answer(k, j, v, fail) if (copy[k] != null):
 					var a = real.open(k, j), b = copies.open(k, j);
 					equals(a?.of, b?.of, 'store $k\'s ask $j');
@@ -496,9 +554,10 @@ function model(spec:ModelSpec) {
 					equals(inStore(k, () -> attempt(() -> read(top.nodes[n], how))), copy[k].store.run(() -> attempt(() -> read(copy[k].built.nodes[n], how))), 'store $k reads node $n ($how)');
 				case _:
 			}
-			for (k in 0...STORES)
+			if (!settled) for (k in 0...STORES)
 				equals(real.log(k), copies.log(k), 'store $k\'s effects after $op');
 		}
+		if (settled) settle();
 	} catch (e:haxe.Exception) {
 		cleanup(stores, copy);
 		throw e;

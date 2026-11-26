@@ -304,8 +304,12 @@ fixed in helder.
   (`solid-oracle.mjs` case 4: it shows `e3: 4` after `s1 = 1`, helder
   neither). Until the graph's hold rules are ported closer to Solid's
   (a differential fuzz of the graph against the package is the tool), the
-  stores soak makes no async memos; its replayed cases, the Atoms tests,
-  the graph's ported tests and the oracle keep them.
+  stores soak's per-op comparison makes no async memos. A second property
+  keeps them and compares settled states only (every ask answered by its
+  input, the flush done: each store's values and its effects' last views
+  against a fresh copy's), which do not depend on the order nodes were made
+  in (`AtomsModel.test.hx`, "stores with async memos ... settled", in the
+  fuzz lane).
 
 ## Phase 2 notes
 
