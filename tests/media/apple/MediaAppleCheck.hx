@@ -177,8 +177,9 @@ class MediaAppleCheck {
 			while (k < pixels.length) {
 				var x = pixels[k], y = pixels[k + 1];
 				for (c in 0...3) {
-					// (Metal's readPixels swaps a BGRA frame's red and blue: this one is RGBA)
-					var dv = Std.int(Math.abs(px.get((y * w + x) * 4 + 2 - c) - pixels[k + 2 + c]));
+					// (an RGBA8 render target read back as it is: R, G, B; Metal's
+					// readPixels once swapped red and blue for it, as for its BGRA layer)
+					var dv = Std.int(Math.abs(px.get((y * w + x) * 4 + c) - pixels[k + 2 + c]));
 					sum += dv;
 					if (dv > worst) worst = dv;
 				}
@@ -188,7 +189,7 @@ class MediaAppleCheck {
 			if (Sys.getEnv("DUMP") != null) {
 				var ppm = new haxe.io.BytesOutput();
 				ppm.writeString('P6 $w $h 255\n');
-				for (i in 0...w * h) for (c in 0...3) ppm.writeByte(px.get(i * 4 + 2 - c));
+				for (i in 0...w * h) for (c in 0...3) ppm.writeByte(px.get(i * 4 + c));
 				File.saveBytes('$out/' + StringTools.replace(f, "/", "-") + ".ppm", ppm.getBytes());
 			}
 			check('$f: frame ${e.frame} in RGB, ${w}x$h upright, as ffmpeg turns it where flat (${Std.int(pixels.length / 5)} pixels)', ok && w == e.width && h == e.height && mean < 1 && worst <= 3,
