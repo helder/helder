@@ -187,7 +187,7 @@ export class Generator {
       [1, () => N`${a()}.findIndex(x => ${this.boolWith(sc, d, ['x'])})`],
       [1, () => N`(${a()}.find(x => ${this.boolWith(sc, d, ['x'])}) ?? -1)`],
       [1, () => N`Math.${r.pick(['max', 'min'])}(...${a()})`],
-      [1, () => ({...N`(${a()}.includes(${n()}) ? 1 : 0)`, literal: true})]
+      [1, () => N`Number(${a()}.includes(${n()}))`]
     ])()
   }
 
