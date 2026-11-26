@@ -122,12 +122,35 @@ class BoxPainter {
 		var s = b.style, w = f.width(id), h = f.height(id);
 		// (an empty cell's, under empty-cells: hide in the separated borders model: nothing, §17.6.1.1)
 		if (b.flags & (Box.EMPTY | Box.COLLAPSED) == Box.EMPTY && s.keyword("empty-cells") == "hide") return;
+		var part = s.part;
 		Borders.shadows(p, s, x, y, w, h, false);
+		var cells = part == BoxStyle.ROW || part == BoxStyle.ROW_GROUP || part == BoxStyle.COLUMN || part == BoxStyle.COLUMN_GROUP ? gridCells(b, x, y, w, h) : null;
+		if (cells != null) {
+			p.save();
+			p.clip(cells);
+		}
 		if (b != order.canvas) Backgrounds.paint(p, s, x, y, w, h, image);
+		if (cells != null) p.restore();
 		Borders.shadows(p, s, x, y, w, h, true);
 		// (rows, columns and their groups have no borders of their own but collapsed; collapsed ones are the table's)
-		var part = s.part;
 		if (b.flags & Box.COLLAPSED == 0 && (part == 0 || part == BoxStyle.CELL || part == BoxStyle.CAPTION)) Borders.paint(p, s, x, y, w, h);
+	}
+
+	// (a row's, column's or group's background shows in its cells, not in the spacing between them, §17.5.1:
+	// the grid's cells under its rectangle; null where there is no spacing)
+	function gridCells(b:Box, x:Float, y:Float, w:Float, h:Float):Null<Path> {
+		var t = b.parent;
+		while (t != null && !(t.kind == Container && t.style.inner == BoxStyle.TABLE)) t = t.parent;
+		var g = t == null ? null : t.table;
+		if (g == null || g.spacing == 0 || g.fragment < 0) return null;
+		var o = f.absolute(g.fragment);
+		var path = new Path();
+		for (r in 0...g.rows) for (c in 0...g.columns) {
+			var cx = o.x + g.x[c], cy = o.y + g.y[r];
+			if (cx + g.widths[c] <= x || cx >= x + w || cy + g.heights[r] <= y || cy >= y + h) continue;
+			path.rect(Math.round(cx), Math.round(cy), Math.round(cx + g.widths[c]) - Math.round(cx), Math.round(cy + g.heights[r]) - Math.round(cy));
+		}
+		return path;
 	}
 
 	// (a table's collapsed borders, §17.6.2: each line's segments, a horizontal one over the vertical

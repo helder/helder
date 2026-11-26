@@ -56,8 +56,10 @@ sys.io.File.saveBytes("page.png", canvas.toPng());
   of what is not a table's part in a table in a row; parts outside a
   table in an anonymous table (inline-table in an inline). White space
   alone between parts is dropped.
-- Floats and absolutely positioned boxes are kept, laid out in flow for
-  now (`pending`).
+- Floats and absolutely positioned boxes (`Box.floating`, `absolute`:
+  blocks, by blockification) are out of flow: inline content around them
+  stays in one inline formatting context, and an inline box holding one
+  isn't split for it.
 - `BoxStyle` is the one reader of computed values: typed (`Len`,
   colours as ARGB, the box model read once), an anonymous box's style its
   parent's inherited values and the initial ones. A new style storage
@@ -82,6 +84,9 @@ helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
   positive z-index, outlines. Each step has a state: opacity layers,
   2D transforms (`Transforms`: about transform-origin) and overflow clips
   (the padding box).
+- Floats paint after the in-flow blocks' backgrounds and before the
+  inline content, each whole (step 5); a row's, a column's and their
+  groups' backgrounds show in their cells only, not in the spacing.
 - Tables paint in §17.5.1's layers by their fragments' order (the table,
   column groups, columns, row groups, rows, cells); rows, columns and
   their groups have no borders of their own; a collapsing table's borders

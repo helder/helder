@@ -67,8 +67,6 @@ class BoxTree {
 		count++;
 		var b = new Box(kind, s, node, pseudo);
 		if (b.container || kind == TableWrapper) b.context = contexts.of(kind == TableWrapper ? BoxStyle.TABLE : s.inner, note);
-		if (s.floating) note("floats: laid out in flow");
-		if (s.absolute) note("positioning: absolute and fixed laid out in flow");
 		return b;
 	}
 
@@ -171,7 +169,7 @@ class BoxTree {
 		var part = make(Inline, s, el);
 		var parts = [part];
 		for (k in kids) {
-			if (!k.blockLevel) {
+			if (!inFlowBlock(k)) {
 				part.append(k);
 				continue;
 			}
@@ -188,14 +186,17 @@ class BoxTree {
 	// A block container's children: inline-level runs beside blocks in
 	// anonymous blocks, a run of collapsible white space alone dropped.
 	function fill(b:Box, kids:Array<Box>) {
-		if (!Lambda.exists(kids, k -> k.blockLevel)) {
+		if (!Lambda.exists(kids, inFlowBlock)) {
 			for (k in kids) b.append(k);
 			return;
 		}
-		var run:Array<Box> = [];
+		var run = [];
 		function flush() {
 			if (run.length == 0) return;
-			if (!Lambda.foreach(run, blank)) {
+			// (floats and absolutely positioned boxes alone between blocks stay blocks' siblings)
+			if (Lambda.foreach(run, k -> blank(k) || outOfFlow(k))) {
+				for (k in run) if (!blank(k)) b.append(k);
+			} else {
 				var anon = make(Block, b.style.anonymousChild());
 				for (k in run) anon.append(k);
 				b.append(anon);
@@ -203,7 +204,7 @@ class BoxTree {
 			run = [];
 		}
 		for (k in kids) {
-			if (k.blockLevel) {
+			if (inFlowBlock(k)) {
 				flush();
 				b.append(k);
 			} else
@@ -211,6 +212,13 @@ class BoxTree {
 		}
 		flush();
 	}
+
+	static inline function outOfFlow(b:Box):Bool
+		return b.floating || b.absolute;
+
+	// (block-level and in flow: what puts the inline content around it in anonymous blocks)
+	static inline function inFlowBlock(b:Box):Bool
+		return b.blockLevel && !outOfFlow(b);
 
 	// ---- tables (CSS 2.1 §17.2.1: anonymous table objects)
 

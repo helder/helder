@@ -117,6 +117,10 @@ class PaintOrder {
 			state = c.blockState[k];
 			step(c.blockSteps[k], c.blocks[k], c.blockX[k], c.blockY[k]);
 		}
+		for (k in 0...c.floats.length) {
+			state = c.floatState[k];
+			context(c.floats[k], c.floatX[k], c.floatY[k], true);
+		}
 		for (k in 0...c.inlines.length) {
 			state = c.inlineState[k];
 			var fr = c.inlines[k];
@@ -157,7 +161,13 @@ class PaintOrder {
 			switch f.kind(k) {
 				case Fragments.BOX:
 					var b = f.box(k);
-					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else {
+					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else if (b.floating) {
+						// (a float: after the blocks' backgrounds, before the inline content, painted whole, step 5)
+						c.floats.push(k);
+						c.floatX.push(kx);
+						c.floatY.push(ky);
+						c.floatState.push(st);
+					} else {
 						c.block(BACKGROUND, k, kx, ky, st);
 						c.outline(k, kx, ky, st);
 						var saved = state;
@@ -210,6 +220,10 @@ private class Collected {
 	public final blockY:Array<Float> = [];
 	public final blockState:Array<Int> = [];
 	public final blockSteps:Array<Int> = [];
+	public final floats:Array<Int> = [];
+	public final floatX:Array<Float> = [];
+	public final floatY:Array<Float> = [];
+	public final floatState:Array<Int> = [];
 	public final inlines:Array<Int> = [];
 	public final inlineStep:Array<Int> = [];
 	public final inlineX:Array<Float> = [];

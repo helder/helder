@@ -557,6 +557,8 @@ class TableFlow implements FormattingContext {
 			tg.heights.push(rowH[r]);
 		}
 		t.table = tg;
+		tg.fragment = tf;
+		tg.spacing = g.spacingH + g.spacingV;
 		var mark = collapse ? Box.COLLAPSED : 0;
 		t.flags = (t.flags & ~Box.COLLAPSED) | mark;
 		var top = rows > 0 ? rowY[0] : edges[0], bottom = rows > 0 ? rowY[rows] - g.spacingV : edges[0];

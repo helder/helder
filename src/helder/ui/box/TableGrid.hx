@@ -13,6 +13,9 @@ class TableGrid {
 	public final y:Array<Float> = [];
 	public final heights:Array<Float> = [];
 	public var collapse(default, null) = false;
+	// the table box's fragment, and its spacing between cells
+	public var fragment = -1;
+	public var spacing = 0.0;
 	// (the horizontal lines' segments: (rows + 1) * columns, line r above row r; the vertical
 	// ones': rows * (columns + 1), line c left of column c)
 	public final hWidth:Array<Float> = [];

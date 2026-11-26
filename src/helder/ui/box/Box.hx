@@ -38,6 +38,8 @@ class Box {
 	public static inline var COLLAPSED = 8;
 	// a table cell with no content (empty-cells)
 	public static inline var EMPTY = 16;
+	// (its last layout left absolutely positioned boxes for a containing block outside it)
+	public static inline var ESCAPES = 32;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
@@ -83,6 +85,18 @@ class Box {
 			case TableWrapper: style.outer == BoxStyle.BLOCK;
 			case _: false;
 		}
+
+	// out of flow (§9.3): a float, or absolutely positioned (a text run's and an inline box's style is
+	// their element's, never theirs: floats and absolute positioning make blocks)
+	public var floating(get, never):Bool;
+
+	inline function get_floating():Bool
+		return kind != Text && kind != Inline && kind != Break && style.floating;
+
+	public var absolute(get, never):Bool;
+
+	inline function get_absolute():Bool
+		return kind != Text && kind != Inline && kind != Break && style.absolute;
 
 	// a block container (CSS 2.1 §9.2.1): its contents are blocks or lines
 	public var container(get, never):Bool;
