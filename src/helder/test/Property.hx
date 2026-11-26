@@ -75,7 +75,8 @@ private typedef Result = {
 // on the next run, until it passes.
 @:allow(helder.test)
 class Property {
-	static inline var STORE = "bin/test/properties";
+	// (helder test --out's: HELDER_PROPERTY_STORE)
+	static final STORE = Sys.getEnv("HELDER_PROPERTY_STORE") ?? "bin/test/properties";
 
 	// (the last Rejected or Overran thrown: a TypeScript body's catch takes
 	// it, PropertyScript throws it again)

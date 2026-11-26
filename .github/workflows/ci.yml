@@ -304,7 +304,7 @@ jobs:
       # (a case that failed, hung, crashed or blew up: replayed first by helder test)
       - if: failure()
         uses: actions/upload-artifact@v7
-        with: {name: fuzz-cases, path: bin/test/properties, retention-days: 7, if-no-files-found: ignore}
+        with: {name: fuzz-cases, path: bin/fuzz/properties, retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 
