@@ -271,10 +271,11 @@ export class Generator {
   }
 
   ternary(make, sc, d, side) {
+    // (of two literals, the second made a number's or a string's: a union of
+    // literal types would follow it into arrays, concat refusing a number[])
     const a = side(), b = side()
-    const node = make`(${this.bool(sc, d + 1)} ? ${a} : ${b})`
-    if (a.lit && b.lit) node.literal = true
-    return node
+    const other = a.lit && b.lit ? {t: b.t, parts: [b.t === 'number' ? 'Number(' : 'String(', b, ')']} : b
+    return make`(${this.bool(sc, d + 1)} ? ${a} : ${other})`
   }
 
   // a comparison, never of two literals (TypeScript's TS2367 on literal types)
