@@ -1,13 +1,14 @@
 package viewer;
 
 import helder.scenario.Scenario.scenario;
+import helder.scenario.Steps.tap;
 import viewer.Shell.act;
 import viewer.Shell.with;
 
 // The viewer at its moments (the studio's canvas: helder.scenario), in the
 // Sandbox's files: the program's own Window, booted through its actions.
-// Moments that need a scroll or a drag wait for steps (the PDF between two
-// pages, a marquee: Viewer.story.hx keeps them)
+// The search field focused is reached by a tap (steps); a marquee held
+// mid-drag and the PDF between two pages stay Viewer.story.hx's
 final gridDark = scenario({name: "App/Grid, dark", size: [1100, 700], dark: true});
 
 final gridLight = scenario({name: "App/Grid, light", size: [1100, 700], dark: false});
@@ -58,6 +59,10 @@ final noResults = scenario({
 		with(x -> x.browser.search("puffin"));
 	}
 });
+
+final searchDark = scenario({name: "App/Search focused, dark", size: [1100, 700], dark: true, steps: [tap("Search")]});
+
+final searchLight = scenario({name: "App/Search focused, light", size: [1100, 700], dark: false, steps: [tap("Search")]});
 
 final empty = scenario({name: "App/Empty folder", size: [1100, 700], dark: true, boot: () -> act(Go(Sandbox.EMPTY))});
 

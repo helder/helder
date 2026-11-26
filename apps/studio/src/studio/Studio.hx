@@ -1295,6 +1295,67 @@ class Studio {
 		#end
 	}
 
+	// the studio's Share: the project on helder.run for a week (helder share:
+	// its web build and the frames file its Board draws, every scenario a
+	// place Play starts at), the link said once it is there
+	public function share() {
+		#if !(hxmc.target == "wasm32-wasi")
+		if (project == null || shared.peek()?.state == "sharing") return;
+		previews?.saveStills();
+		var frames = '${project.out}/${Stills.FILE}';
+		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
+		var args = ["share", project.dir].concat(Files.exists(frames) ? ["--frames", frames] : []);
+		log("share", {args: args});
+		#if helder.headless
+		var stand = Sys.getEnv("HELDER_STUDIO_PLAY_CLI") ?? "";
+		if (stand == "") {
+			message('would share ${project.name}: helder ${args.join(" ")}');
+			return;
+		}
+		cli = stand;
+		#end
+		function told(state:String, note:String, ?url:String) {
+			shared({state: state, note: note, url: url});
+			log("shared", {state: state, note: note, url: url});
+		}
+		told("sharing", "building");
+		var p = try new Process(cli, args, {cwd: project.dir, env: Parent.env()}) catch (e:Dynamic) {
+			told("failed", 'helder share did not start: $e');
+			null;
+		}
+		if (p == null) return;
+		var done = false;
+		function lines(src:Stream.Source)
+			Async.launch(_ -> {
+				var r = new Reader(src), line;
+				try while ((line = r.readLine()) != null) {
+					var text = new EReg(String.fromCharCode(27) + "\\[[0-9;]*m", "g").replace(line, "").trim();
+					var status = ~/^([a-z ]+?)\s+(\S.*)$/;
+					if (done || !status.match(text)) continue;
+					switch status.matched(1) {
+						case "shared":
+							done = true;
+							told("shared", "", status.matched(2).split(" ")[0]);
+						case "error":
+							done = true;
+							told("failed", status.matched(2));
+						case "release" | "board" | "uploaded" | "built" | "screenshots": told("sharing", text);
+						case _:
+					}
+				} catch (_:haxe.Exception) {}
+			});
+		lines(p.stdout);
+		lines(p.stderr);
+		Async.launch(_ -> {
+			var code = p.wait();
+			if (!done) told("failed", 'helder share ended (exit code $code)');
+		});
+		#end
+	}
+
+	// what Share is doing (null: nothing yet): "sharing" (its last line), "shared" (the link), "failed" (why)
+	public final shared:Signal<Null<{state:String, note:String, url:Null<String>}>> = signal(null);
+
 	// what Play's window is doing (null: none): "starting", "running" or
 	// "failed" (Launch's), the line shown beside Play, where it failed, what it plays
 	public final launched:Signal<Null<{state:String, note:String, at:Null<String>, ?playing:Null<String>}>> = signal(null);
@@ -1328,16 +1389,10 @@ class Studio {
 					return entry;
 				}
 				if (main == null) return project.dir;
-				var all = scenarios(), imports = [], names = [];
-				for (k => s in all) {
-					imports.push('import { ${s.binding} as s$k } from "${module(s.file)}";');
-					names.push('s$k');
-				}
-				Files.save(project.dir + "/" + BOOT, '// helder studio\'s Play from here: the app\'s root held for its scenarios\' window (${PLAY})\n'
-					+ 'import { hold } from "helder/scenario";\n\nhold();\n');
-				Files.save(entry, '// helder studio\'s Play from here: the app at a scenario\'s moment, in a window of its own (written by the studio, run by helder dev)\n'
-					+ 'import "./${haxe.io.Path.withoutExtension(BOOT)}";\n' + imports.join("\n") + '\nimport "${module(main)}";\nimport { play } from "helder/scenario";\n\n'
-					+ 'play([${names.join(", ")}], ${Json.stringify(info.name)});\n');
+				var all = scenarios();
+				#if !(hxmc.target == "wasm32-wasi")
+				entry = helder.cli.Scenes.entry(project.dir, PLAY, main, all, info.name, "helder studio's Play from here");
+				#end
 				windowScenarios = [for (s in all) s.name];
 				return entry;
 			case _:

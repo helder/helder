@@ -235,7 +235,9 @@ export class Generator {
       [2, () => Str`${this.nums(sc, d + 1)}.join(${x()})`],
       [1, () => Str`${this.strs(sc, d + 1)}.join(${x()})`],
       [1, () => Str`String(${this.bool(sc, d + 1)})`],
-      [1, () => Str`JSON.stringify(${this.any(sc, d + 1)})`],
+      // (in an array: a function, undefined or a symbol alone stringifies to
+      // undefined, which TypeScript's lib types string, a lie in a string slot)
+      [1, () => Str`JSON.stringify([${this.any(sc, d + 1)}])`],
       [1, () => this.ternary(Str, sc, d, x)],
       [1, () => Str`${x()}.split('').reverse().join('')`],
       [1, () => Str`[...${x()}].join(',')`],

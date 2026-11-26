@@ -1,0 +1,8 @@
+@import "base.css";
+
+:root { --accent: rgb(0 0 200); --gap: 6px }
+.button { color: var(--accent); padding: var(--gap) calc(var(--gap) * 2) }
+.button:hover { background-color: var(--hover, #eee) }
+.list > .item + .item { border-top: 1px solid #ddd }
+@media (min-width: 600px) { .item { margin-left: 2em } }
+@media (max-width: 300px) { .item { margin-left: 9px } }

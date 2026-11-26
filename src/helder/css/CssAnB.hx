@@ -1,7 +1,7 @@
 package helder.css;
 
 import helder.css.CssToken.CssTokenKind;
-import helder.css.Tokenizer.isDigit;
+import helder.css.CssChars.isDigit;
 
 using StringTools;
 

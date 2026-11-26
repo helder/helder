@@ -3,6 +3,7 @@ package helder.css;
 import helder.css.CssSelector;
 import helder.dom.Document;
 import helder.dom.Element;
+import helder.dom.ElementState;
 import helder.dom.HTMLOptionElement;
 import helder.dom.Node;
 
@@ -19,21 +20,22 @@ class CssMatcher {
 	static inline var XML = "http://www.w3.org/XML/1998/namespace";
 
 	// scope: what :scope is (null: the root element)
-	public static function matches(s:CssSelector, el:Element, ?scope:Element):Bool
-		return complex(s, s.compounds.length - 1, el, null, scope);
+	// cache: :has()'s results kept while the tree does not change (a style pass's)
+	public static function matches(s:CssSelector, el:Element, ?scope:Element, ?cache:CssHasCache):Bool
+		return complex(s, s.compounds.length - 1, el, null, scope, cache);
 
-	public static function matchesAny(list:Array<CssSelector>, el:Element, ?scope:Element):Bool {
+	public static function matchesAny(list:Array<CssSelector>, el:Element, ?scope:Element, ?cache:CssHasCache):Bool {
 		for (s in list)
-			if (matches(s, el, scope)) return true;
+			if (matches(s, el, scope, cache)) return true;
 		return false;
 	}
 
 	// the elements under root (itself not) any of list matches, in document order
-	public static function query(list:Array<CssSelector>, root:Node, ?scope:Element):Array<Element> {
+	public static function query(list:Array<CssSelector>, root:Node, ?scope:Element, ?cache:CssHasCache):Array<Element> {
 		var out = [];
 		var n = root.firstChild;
 		while (n != null) {
-			if (n.nodeType == Node.ELEMENT_NODE && matchesAny(list, cast n, scope)) out.push(cast n);
+			if (n.nodeType == Node.ELEMENT_NODE && matchesAny(list, cast n, scope, cache)) out.push(cast n);
 			n = next(n, root);
 		}
 		return out;
@@ -53,27 +55,27 @@ class CssMatcher {
 	// (compound k matched on el, then the combinators left of it; anchor:
 	// a relative selector's, :has()'s element, which its lead combinator
 	// relates the leftmost compound to)
-	static function complex(s:CssSelector, k:Int, el:Element, anchor:Null<Element>, scope:Null<Element>):Bool {
-		if (!compound(s.compounds[k], el, scope)) return false;
+	static function complex(s:CssSelector, k:Int, el:Element, anchor:Null<Element>, scope:Null<Element>, cache:Null<CssHasCache>):Bool {
+		if (!compound(s.compounds[k], el, scope, cache)) return false;
 		if (k == 0) return anchor == null || related(s.relative ?? Descendant, anchor, el);
 		switch s.combinators[k - 1] {
 			case Child:
 				var p = el.parentElement;
-				return p != null && complex(s, k - 1, p, anchor, scope);
+				return p != null && complex(s, k - 1, p, anchor, scope, cache);
 			case Descendant:
 				var p = el.parentElement;
 				while (p != null) {
-					if (complex(s, k - 1, p, anchor, scope)) return true;
+					if (complex(s, k - 1, p, anchor, scope, cache)) return true;
 					p = p.parentElement;
 				}
 				return false;
 			case NextSibling:
 				var p = el.previousElementSibling;
-				return p != null && complex(s, k - 1, p, anchor, scope);
+				return p != null && complex(s, k - 1, p, anchor, scope, cache);
 			case SubsequentSibling:
 				var p = el.previousElementSibling;
 				while (p != null) {
-					if (complex(s, k - 1, p, anchor, scope)) return true;
+					if (complex(s, k - 1, p, anchor, scope, cache)) return true;
 					p = p.previousElementSibling;
 				}
 				return false;
@@ -97,9 +99,9 @@ class CssMatcher {
 				p == a;
 		}
 
-	static function compound(c:CssCompound, el:Element, scope:Null<Element>):Bool {
+	static function compound(c:CssCompound, el:Element, scope:Null<Element>, cache:Null<CssHasCache>):Bool {
 		for (s in c)
-			if (!simple(s, el, scope)) return false;
+			if (!simple(s, el, scope, cache)) return false;
 		return true;
 	}
 
@@ -124,7 +126,7 @@ class CssMatcher {
 			case Uri(u): uri == u;
 		}
 
-	static function simple(s:CssSimple, el:Element, scope:Null<Element>):Bool
+	static function simple(s:CssSimple, el:Element, scope:Null<Element>, cache:Null<CssHasCache>):Bool
 		return switch s {
 			case Type(name, ns):
 				namespaced(ns, el.namespaceURI) && (htmlNames(el) ? Css.lower(name) == el.localName : name == el.localName);
@@ -139,7 +141,7 @@ class CssMatcher {
 			case Attribute(name, ns, op, value, sensitivity):
 				attribute(el, name, ns, op, value, sensitivity);
 			case Pseudo(p):
-				pseudo(p, el, scope);
+				pseudo(p, el, scope, cache);
 		}
 
 	static function attribute(el:Element, name:String, ns:CssNamespace, op:CssAttributeOp, value:String, sensitivity:CssSensitivity):Bool {
@@ -201,13 +203,13 @@ class CssMatcher {
 		return false;
 	}
 
-	static function pseudo(p:CssPseudoClass, el:Element, scope:Null<Element>):Bool
+	static function pseudo(p:CssPseudoClass, el:Element, scope:Null<Element>, cache:Null<CssHasCache>):Bool
 		return switch p {
-			case Is(l) | Where(l): matchesAny(l, el, scope);
-			case Not(l): !matchesAny(l, el, scope);
-			case Has(l): has(l, el, scope);
-			case NthChild(anb, of): (of == null || matchesAny(of, el, scope)) && anb.matches(position(el, false, e -> of == null || matchesAny(of, e, scope)));
-			case NthLastChild(anb, of): (of == null || matchesAny(of, el, scope)) && anb.matches(position(el, true, e -> of == null || matchesAny(of, e, scope)));
+			case Is(l) | Where(l): matchesAny(l, el, scope, cache);
+			case Not(l): !matchesAny(l, el, scope, cache);
+			case Has(l): has(l, el, scope, cache);
+			case NthChild(anb, of): (of == null || matchesAny(of, el, scope, cache)) && anb.matches(position(el, false, e -> of == null || matchesAny(of, e, scope, cache)));
+			case NthLastChild(anb, of): (of == null || matchesAny(of, el, scope, cache)) && anb.matches(position(el, true, e -> of == null || matchesAny(of, e, scope, cache)));
 			case NthOfType(anb): anb.matches(position(el, false, e -> sameType(e, el)));
 			case NthLastOfType(anb): anb.matches(position(el, true, e -> sameType(e, el)));
 			case FirstChild: el.previousElementSibling == null;
@@ -225,7 +227,7 @@ class CssMatcher {
 			case Enabled: formControl(el) && !disabled(el);
 			case Disabled: formControl(el) && disabled(el);
 			case Checked: checked(el);
-			case Indeterminate: html(el, "progress") && el.getAttributeNS(null, "value") == null;
+			case Indeterminate: (el.state & ElementState.INDETERMINATE) != 0 || (html(el, "progress") && el.getAttributeNS(null, "value") == null);
 			case Default: html(el, "option") ? el.getAttributeNS(null, "selected") != null : checkable(el) && el.getAttributeNS(null, "checked") != null;
 			case Required: requirable(el) && el.getAttributeNS(null, "required") != null;
 			case Optional: requirable(el) && el.getAttributeNS(null, "required") == null;
@@ -233,11 +235,25 @@ class CssMatcher {
 			case ReadOnly: !readWrite(el);
 			case PlaceholderShown: placeholderShown(el);
 			case Defined: el.namespaceURI != HTML || el.localName.indexOf("-") < 0;
+			case Valid: requirable(el) && !invalid(el);
+			case Invalid: requirable(el) && invalid(el);
+			case State(bits, _): (el.state & bits) != 0;
 			case Never(_): false;
 		}
 
 	// (:has(): an element its relative selectors reach from el matches)
-	static function has(list:Array<CssSelector>, el:Element, scope:Null<Element>):Bool {
+	static function has(list:Array<CssSelector>, el:Element, scope:Null<Element>, cache:Null<CssHasCache>):Bool {
+		if (cache != null) {
+			var known = cache.get(el, list);
+			if (known != null) return known;
+			var r = hasOf(list, el, scope, cache);
+			cache.set(el, list, r);
+			return r;
+		}
+		return hasOf(list, el, scope, cache);
+	}
+
+	static function hasOf(list:Array<CssSelector>, el:Element, scope:Null<Element>, cache:Null<CssHasCache>):Bool {
 		for (s in list) {
 			var last = s.compounds.length - 1;
 			// (descendants for > and space, later siblings and theirs for + and ~)
@@ -246,7 +262,7 @@ class CssMatcher {
 			if (root == null) continue;
 			var n = sibling ? el.nextSibling : el.firstChild;
 			while (n != null) {
-				if (n.nodeType == Node.ELEMENT_NODE && complex(s, last, cast n, el, scope)) return true;
+				if (n.nodeType == Node.ELEMENT_NODE && complex(s, last, cast n, el, scope, cache)) return true;
 				n = next(n, root);
 			}
 		}
@@ -369,10 +385,32 @@ class CssMatcher {
 	}
 
 	// (an option's: its selectedness, as its select's algorithm keeps it)
+	// (a checkbox's or radio's checkedness: its state once dirty, else its checked attribute)
 	static function checked(el:Element):Bool {
-		if (checkable(el)) return el.getAttributeNS(null, "checked") != null;
+		if (checkable(el)) return (el.state & ElementState.CHECKED_DIRTY) != 0 ? (el.state & ElementState.CHECKED) != 0 : el.getAttributeNS(null, "checked") != null;
 		if (Std.isOfType(el, HTMLOptionElement)) return (cast el : HTMLOptionElement).selected;
 		return false;
+	}
+
+	// (basic constraint validation: required, not disabled, and no value: an
+	// input's value attribute, a textarea's text, a select's selected
+	// option's value; a checkbox unchecked; types' and patterns' checks are not made)
+	static function invalid(el:Element):Bool {
+		if (el.getAttributeNS(null, "required") == null || disabled(el)) return false;
+		if (checkable(el)) return !checked(el);
+		if (html(el, "textarea")) return (el.textContent ?? "") == "";
+		if (html(el, "select")) {
+			var value:Null<String> = null;
+			var n:Null<Node> = el;
+			while ((n = next(n, el)) != null)
+				if (Std.isOfType(n, HTMLOptionElement) && (cast n : HTMLOptionElement).selected) {
+					var opt:Element = cast n;
+					value = opt.getAttributeNS(null, "value") ?? opt.textContent;
+					break;
+				}
+			return value == null || value == "";
+		}
+		return (el.getAttributeNS(null, "value") ?? "") == "";
 	}
 
 	static function requirable(el:Element):Bool
@@ -418,4 +456,29 @@ class CssMatcher {
 			"text", "type", "valign", "valuetype", "vlink"
 		]) n => true
 	];
+}
+
+// :has()'s results by its element and argument list, kept while the tree
+// and its state do not change (a style pass's: CssStyles clears it in
+// forget), as Blink's style recalc keeps them: an element's :has() asked
+// once, not by each descendant whose selector reads it
+class CssHasCache {
+	final known = new haxe.ds.ObjectMap<Element, Array<{list:Array<CssSelector>, result:Bool}>>();
+
+	public function new() {}
+
+	public function get(el:Element, list:Array<CssSelector>):Null<Bool> {
+		var a = known.get(el);
+		if (a != null) for (x in a) if (x.list == list) return x.result;
+		return null;
+	}
+
+	public function set(el:Element, list:Array<CssSelector>, result:Bool) {
+		var a = known.get(el);
+		if (a == null) known.set(el, a = []);
+		a.push({list: list, result: result});
+	}
+
+	public function clear()
+		known.clear();
 }

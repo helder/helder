@@ -55,6 +55,8 @@ class Format {
 	public static function date(@:typescript.type("Date") d:Date, ?options:DateOptions):String {
 		var milliseconds = d.getTime();
 		if (!Math.isFinite(milliseconds) || Math.abs(milliseconds) > 8640000000000000.0) return "";
+		// (a screen's zone (a scenario's): the instant whose system local time is its local time)
+		if (Now.zone != null) milliseconds += Now.offset(milliseconds) - Now.system(milliseconds);
 		var tag = LocaleTag.normalize(options?.locale) ?? Locale.current.peek();
 		var date = options?.date ?? (options?.time == null ? Medium : null), time = options?.time;
 		var result:Null<String> = null;

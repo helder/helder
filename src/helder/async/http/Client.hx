@@ -12,13 +12,17 @@ import helder.async.Errors;
 // stack where there is one: NSURLSession on macOS and iOS (helder.async.http.apple.Http: its
 // TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
 // mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
-// browser the page's fetch for every url (helder.async.http.web.Http).
+// browser the page's fetch for every url (helder.async.http.web.Http). In a
+// scenario's screen its fixtures answer instead (Fixtures: a scenario's http).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
 //   trace(res.status, res.text());
 class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
+		// (a scenario's screen: its fixtures answer, nothing goes out: Fixtures)
+		var fixtures:Null<Fixtures> = helder.view.graph.Atoms.current?.http;
+		if (fixtures != null) return fixtures.answer((options?.method ?? "GET").toUpperCase(), url);
 		// (the browser: its fetch, for every url: no sockets there)
 		#if (hxmc.target == "wasm32-wasi")
 		return helder.async.http.web.Http.request(url, options);

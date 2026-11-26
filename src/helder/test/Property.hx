@@ -109,7 +109,8 @@ class Property {
 		}
 		unguard();
 		if (r.failed != null) Runner.failure(report(r, show), pos);
-		else if (r.rejected > 0 && r.cases == 0 || r.rejected > 4 * (options?.cases ?? 100))
+		// (a soak's cases unbounded: its rejections against those it ran)
+		else if (r.rejected > 0 && r.cases == 0 || r.rejected > 4 * Math.max(options?.cases ?? 100, r.cases))
 			Runner.failure('the generator rejects too much: ${r.rejected} cases rejected, ${r.cases} run', pos);
 	}
 

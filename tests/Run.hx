@@ -30,7 +30,7 @@ class Run {
 	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "parallel", "test", "os", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft", "gfx-soft", "css", "dom"];
 
 	static final LANES:Array<Lane> = [{name: "headless", about: "the lanes that need no GPU, display or browser", run: () -> for (l in HEADLESS) lane(l)}]
-		.concat(View.LANES).concat(Text.LANES).concat(Css.LANES).concat(Dom.LANES).concat(Image.LANES).concat(Canvas.LANES).concat(Async.LANES).concat(Os.LANES).concat(Viewer.LANES).concat(Pack.LANES).concat(Cli.LANES).concat(Gfx.LANES).concat(Scene.LANES).concat(Studio.LANES).concat(Bench.LANES);
+		.concat(View.LANES).concat(Text.LANES).concat(Css.LANES).concat(Flow.LANES).concat(Dom.LANES).concat(Image.LANES).concat(Canvas.LANES).concat(Async.LANES).concat(Os.LANES).concat(Viewer.LANES).concat(Pack.LANES).concat(Cli.LANES).concat(Gfx.LANES).concat(Scene.LANES).concat(Studio.LANES).concat(Bench.LANES);
 
 	static function main() {
 		// (helder.text's own engine for every lane's program: goldens the same on every OS; system-text's the platform's)
@@ -74,6 +74,11 @@ class Run {
 				Sys.exit(2);
 			}
 			args.splice(i, n == null ? 1 : 2);
+		}
+		// (css-reftests and css-render take what follows them)
+		for (l in ["css-reftests", "css-render"]) {
+			var at = args.indexOf(l);
+			if (at >= 0) Css.laneArgs = args.splice(at + 1, args.length);
 		}
 		if (args.length == 0) args = ["headless"];
 		args = benches(args);

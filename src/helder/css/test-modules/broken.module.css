@@ -1,0 +1,7 @@
+.x { composes: missing }
+p.y { composes: x }
+.z { composes: nope from "./none.module.css" }
+.w { composes: gone from "./base.module.css" }
+.v { composes: u }
+.u { composes: v }
+:global .t { color: red }

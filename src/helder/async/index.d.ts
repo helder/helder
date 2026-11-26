@@ -30,7 +30,8 @@ export declare class Fetch {
 // stack where there is one: NSURLSession on macOS and iOS (helder.async.http.apple.Http: its
 // TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
 // mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
-// browser the page's fetch for every url (helder.async.http.web.Http).
+// browser the page's fetch for every url (helder.async.http.web.Http). In a
+// scenario's screen its fixtures answer instead (Fixtures: a scenario's http).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});

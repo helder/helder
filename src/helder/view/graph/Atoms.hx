@@ -49,6 +49,8 @@ class Atoms {
 	// (helder.async.Home, the dispatcher of the tasks started in it: kept with it, so that
 	// helder.ui and helder.view never link helder.async)
 	@:noCompletion public var tasks:Null<Any> = null;
+	// (helder.async.http.Fixtures, the answers to the requests made in it: a scenario's http)
+	@:noCompletion public var http:Null<Any> = null;
 	// (what owns its nodes; its node of each atom read here not at home, by the atom)
 	var root = new Owner(null);
 	var nodes = new haxe.ds.ObjectMap<Node<Dynamic>, Node<Dynamic>>();

@@ -1,6 +1,7 @@
 // Makes tests/css/fixtures from web-platform-tests at REVISION, read
 // statically (tests/css/README.md); run from the repository's root:
 //   node tests/css/import-wpt.mjs [wpt checkout]   (default bin/wpt, cloned if missing)
+//   node tests/css/import-wpt.mjs --checkout       (the checkout alone, for the css-reftests lane)
 import fs from 'node:fs'
 import path from 'node:path'
 import {spawnSync} from 'node:child_process'
@@ -8,16 +9,22 @@ import {bindings, calls} from './wpt-js.mjs'
 
 const REVISION = 'bc5ea7a9006b77c12118534bf7d2953e530d811f'
 const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm']
-const root = path.resolve(process.argv[2] ?? 'bin/wpt')
+const checkoutOnly = process.argv.includes('--checkout')
+const root = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) ?? 'bin/wpt')
+// (the reftests' resources too: Ahem and the other test fonts, the shared images)
+const SPARSE = ['/css/', '/dom/nodes/', '/LICENSE.md', '/fonts/', '/images/']
 const out = 'tests/css/fixtures'
 
 if (!fs.existsSync(root)) {
   sh('git', ['clone', '--filter=blob:none', '--no-checkout', 'https://github.com/web-platform-tests/wpt.git', root])
-  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', '/css/', '/dom/nodes/', '/LICENSE.md'])
+  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', ...SPARSE])
   sh('git', ['-C', root, 'checkout', '-q', REVISION])
+} else if (!SPARSE.every(p => fs.existsSync(path.join(root, p)))) {
+  sh('git', ['-C', root, 'sparse-checkout', 'set', '--no-cone', ...SPARSE])
 }
 const head = sh('git', ['-C', root, 'rev-parse', 'HEAD']).trim()
 if (head !== REVISION) throw Error(`${root} is at ${head}, not ${REVISION} (check it out, or move REVISION)`)
+if (checkoutOnly) process.exit(0)
 fs.mkdirSync(out, {recursive: true})
 fs.copyFileSync(path.join(root, 'LICENSE.md'), 'tests/css/WPT-LICENSE.md')
 
@@ -345,6 +352,115 @@ const cascadeReport = {}
   cascadeReport.by = by
   cascadeReport.cases = cases.length
   cascadeReport.tests = tests.length
+}
+
+// ---- counters.json: css-counter-styles' and css-lists' reftests whose pages read statically (both
+// pages' text compared by CssCountersCheck), and @counter-style's descriptor syntax calls
+const countersReport = {}
+{
+  const tests = [], pairs = [], syntax = [], sheets = {}
+  const page = (rel, text) => text
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    // (a tag's attributes may hold a >: quoted values read whole)
+    .replace(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, l => /\brel\s*=\s*["']?(help|author|match|mismatch|reviewer)\b/i.test(l) ? '' : l)
+    .replace(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '')
+    // (a linked sheet by its path in WPT, kept once in sheets)
+    .replace(/<link\b[^>]*\brel=["']?stylesheet["']?[^>]*>/gi, l => {
+      const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(l)?.[1]
+      const at = href && resolve(rel, href)
+      if (!at || !fs.existsSync(path.join(root, at))) return ''
+      sheets[at] ??= fs.readFileSync(path.join(root, at), 'utf8')
+      return `<link rel="stylesheet" href="/${at}">`
+    })
+  const SYNTAX = new Set(['test_valid_counter_style_descriptor', 'test_invalid_counter_style_descriptor', 'test_counter_style_name'])
+  for (const dir of ['css/css-counter-styles', 'css/css-lists']) for (const file of walk(path.join(root, dir))) {
+    const rel = path.relative(root, file)
+    if (!isTest(rel) || !/\.html?$/.test(rel) || /-(ref|notref)\.html?$/.test(rel) || /\/(support|animations)\//.test(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const d = describe(rel, text)
+    let status
+    if (d.type === 'testharness') {
+      let n = 0
+      for (const src of scripts(text)) for (const c of calls(src, SYNTAX)) {
+        if (c.args.some(a => a !== undefined && typeof a !== 'string' && typeof a !== 'boolean')) continue
+        syntax.push([c.name.replace(/^test_|_counter_style_descriptor$|_counter_style/g, ''), ...c.args, tests.length])
+        n++
+      }
+      status = n ? `read: ${n}` : 'out: the CSSOM or script (no JavaScript here)'
+    } else if (d.type !== 'reftest') status = 'out: ' + d.type
+    else if (/shadowroot|attachShadow|::part|<slot/i.test(text)) status = 'out of scope: shadow trees'
+    else if (d.needs.includes('script')) status = 'out: its script changes the page (no JavaScript here)'
+    else if (/writing-mode:\s*(vertical|sideways)|direction:\s*rtl|dir=["']?rtl/.test(text)) status = 'out of scope: vertical or rtl markers (a marker\'s place is layout\'s)'
+    else {
+      const match = d.refs.find(r => r[1] === 'match')
+      const reffile = match && path.join(root, match[0])
+      if (!match || !fs.existsSync(reffile)) status = 'out: a mismatch reftest (text equality says nothing)'
+      else if (/<script\b/i.test(fs.readFileSync(reffile, 'utf8'))) status = 'out: its reference\'s script writes it (no JavaScript here)'
+      else {
+        pairs.push({file: tests.length, test: page(rel, text), ref: page(match[0], fs.readFileSync(reffile, 'utf8'))})
+        status = 'read: a reftest (both pages\' text)'
+      }
+    }
+    tests.push([rel, d.type, status])
+  }
+  writeJson(out + '/counters.json', {
+    source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'tests: [path, type, status]; pairs: {file: its index in tests, test, ref: the pages, scripts out}; sheets: the pages\' linked '
+      + 'sheets by their path; syntax: [valid (descriptor, value, expected serialization?) | invalid (descriptor, value) | name (name, valid), test]',
+    tests, pairs, sheets, syntax
+  }, 2)
+  const by = {}
+  for (const t of tests) {
+    const k = t[2].replace(/: \d+$/, '')
+    by[k] = (by[k] ?? 0) + 1
+  }
+  Object.assign(countersReport, {by, pairs: pairs.length, syntax: syntax.length, tests: tests.length})
+}
+
+// ---- interpolation.json: test_interpolation's and its kin's calls (interpolation-testcommon.js) on
+// in-scope properties, read statically, with their pages: what CssTransition's interpolation must give
+const interpolationReport = {}
+{
+  const NAMES = new Set(['test_interpolation', 'test_no_interpolation', 'test_not_animatable'])
+  const pages = [], rows = [], unread = {}
+  const strip = text => text
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, l => /\brel\s*=\s*["']?(help|author|match|mismatch|reviewer)\b/i.test(l) ? '' : l)
+    .replace(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '')
+    .replace(/\n\s*\n+/g, '\n')
+  let files = 0
+  for (const file of walk(path.join(root, 'css'))) {
+    const rel = path.relative(root, file)
+    if (!/\.html?$/.test(rel) || /\/(support|resources)\//.test(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    if (![...NAMES].some(n => text.includes(n + '('))) continue
+    let page = -1
+    for (const src of scripts(text)) for (const c of calls('var neutralKeyframe = "@neutral";\n' + src, NAMES)) {
+      const [options, expectations] = c.args
+      const why = !options || typeof options !== 'object' ? 'options not read statically'
+        : !module.has(options.property) ? 'out of scope: the property'
+        : options.method && options.method !== 'CSS Transitions' ? 'another method than CSS Transitions'
+        : typeof options.from !== 'string' || typeof options.to !== 'string' ? 'from or to not read statically'
+        : c.name === 'test_interpolation' && !Array.isArray(options['CSS Transitions'] ?? expectations) ? 'expectations not read statically'
+        : null
+      if (why) {
+        unread[why] = (unread[why] ?? 0) + 1
+        continue
+      }
+      if (page < 0) page = pages.push(strip(text)) - 1
+      const list = c.name === 'test_interpolation' ? (options['CSS Transitions'] ?? expectations).map(e => [e.at, e.expect]) : null
+      const kind = c.name === 'test_interpolation' ? 'interpolation' : c.name === 'test_no_interpolation' ? 'discrete' : 'not animatable'
+      rows.push([kind, options.property, options.from, options.to, list, options.behavior ?? null, page, files])
+    }
+    if (page >= 0) files++
+  }
+  writeJson(out + '/interpolation.json', {
+    source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'rows: [interpolation | discrete | not animatable, property, from (@neutral: the element\'s own value), to, [[at, expected]] (interpolation\'s), '
+      + 'transition-behavior, page]; pages: the tests\' markup without scripts (a #target-template, .parent and .target rules)',
+    rows, pages
+  }, 2)
+  Object.assign(interpolationReport, {rows: rows.length, pages: pages.length, unread})
 }
 
 // ---- the report, into tests/css/README.md between its markers

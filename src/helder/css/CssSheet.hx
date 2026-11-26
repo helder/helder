@@ -16,8 +16,9 @@ enum CssOrigin {
 // expanded, an alias as its property), its specified value, its
 // importance. values: a custom property's or a value to substitute's
 // component values; shorthand: the shorthand a pending-substitution
-// value came from (the longhand is taken from it once substituted).
-typedef CssDeclared = {property:String, value:CssSpecified, important:Bool, ?values:Array<CssValue>, ?shorthand:String}
+// value came from (the longhand is taken from it once substituted). id:
+// the longhand's CssProperty, -1 for a custom property.
+typedef CssDeclared = {property:String, id:Int, value:CssSpecified, important:Bool, ?values:Array<CssValue>, ?shorthand:String}
 
 // An @page rule: its selectors (a name and :first, :left, :right, :blank),
 // its declarations (the page's properties) and descriptors (size,
@@ -75,6 +76,10 @@ class CssSheet {
 	public static function parse(text:String, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
 		return new Builder(origin, options ?? {}, 0).sheet(Css.sheet(text));
 
+	// Rules read before (CssScope's, scoped) compiled as parse compiles text's.
+	@:allow(helder.css) static function of(rules:Array<CssRule>, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
+		return new Builder(origin, options ?? {}, 0).sheet(rules);
+
 	// A style attribute's declarations (author, compiled).
 	public static function attribute(text:String):Array<CssDeclared>
 		return compile(Css.declarations(text));
@@ -87,7 +92,7 @@ class CssSheet {
 
 	// A declaration as the longhands it sets, none when invalid.
 	public static function declared(d:CssDeclaration):Array<CssDeclared> {
-		if (d.name.startsWith("--")) return [{property: d.name, value: Unresolved(d.text ?? Css.serialize(d.value)), important: d.important, values: d.value}];
+		if (d.name.startsWith("--")) return [{property: d.name, id: -1, value: Unresolved(d.text ?? Css.serialize(d.value)), important: d.important, values: d.value}];
 		var name = Css.lower(d.name);
 		var p = CssGrammars.property(name);
 		if (p == null) return [];
@@ -96,24 +101,30 @@ class CssSheet {
 		// (a legacy name is its property; page-break-* sets break-*, Break 3 §3.4)
 		if (p.alias != null) name = p.alias;
 		if (name.startsWith("page-break-")) return pageBreak(name, value, d.important);
-		if (!CssShorthands.isShorthand(name)) return [{property: name, value: value, important: d.important, values: value.match(Unresolved(_)) ? d.value : null}];
+		if (!CssShorthands.isShorthand(name)) return [{property: name, id: id(name), value: value, important: d.important, values: value.match(Unresolved(_)) ? d.value : null}];
 		var longhands = CssShorthands.longhands(name);
 		return switch value {
-			case Wide(_): [for (l in longhands) {property: l, value: value, important: d.important}];
-			case Unresolved(_): [for (l in longhands) {property: l, value: value, important: d.important, values: d.value, shorthand: name}];
+			case Wide(_): [for (l in longhands) {property: l, id: id(l), value: value, important: d.important}];
+			case Unresolved(_): [for (l in longhands) {property: l, id: id(l), value: value, important: d.important, values: d.value, shorthand: name}];
 			case Terms(terms):
 				var parts = CssShorthands.expand(name, terms);
-				parts == null ? [] : [for (l in longhands) if (parts.exists(l)) {property: l, value: Terms(parts[l]), important: d.important}];
+				parts == null ? [] : [for (l in longhands) if (parts.exists(l)) {property: l, id: id(l), value: Terms(parts[l]), important: d.important}];
 		}
 	}
 
 	static function pageBreak(name:String, value:CssSpecified, important:Bool):Array<CssDeclared> {
 		var to = "break-" + name.substr("page-break-".length);
 		return switch value {
-			case Terms([Keyword("always")]): [{property: to, value: Terms([Keyword("page")]), important: important}];
-			case Terms([Keyword("avoid")]) if (to == "break-inside"): [{property: to, value: Terms([Keyword("avoid")]), important: important}];
-			case _: [{property: to, value: value, important: important}];
+			case Terms([Keyword("always")]): [{property: to, id: id(to), value: Terms([Keyword("page")]), important: important}];
+			case Terms([Keyword("avoid")]) if (to == "break-inside"): [{property: to, id: id(to), value: Terms([Keyword("avoid")]), important: important}];
+			case _: [{property: to, id: id(to), value: value, important: important}];
 		}
+	}
+
+	// (a longhand the cascade doesn't keep, all's page-break-*: -2)
+	static function id(longhand:String):Int {
+		var p = CssProperties.of(longhand);
+		return p == null ? -2 : (p : Int);
 	}
 }
 
@@ -184,7 +195,9 @@ private class Builder {
 			case "counter-style" if (body != null):
 				var items = [for (v in prelude) if (!v.match(Token(_.kind => Whitespace))) v];
 				switch items {
-					case [Token(_.kind => Ident(n))] if (!["none", "decimal", "disc", "circle", "square", "inherit", "initial", "unset"].contains(Css.lower(n))):
+					// (the user agent's sheet defines decimal and the like; no other may, Counter Styles 3 §3)
+					case [Token(_.kind => Ident(n))] if (!["none", "inherit", "initial", "unset", "revert", "revert-layer", "default"].contains(Css.lower(n))
+						&& (origin == UserAgent || !RESERVED.contains(Css.lower(n)))):
 						[CounterStyle({name: n, descriptors: declarations(body)})];
 					case _: [];
 				}
@@ -316,6 +329,8 @@ private class Builder {
 		}
 		return {selectors: selectors, declarations: declared, descriptors: descriptors, margins: margins, origin: origin, order: 0};
 	}
+
+	static final RESERVED = ["decimal", "disc", "square", "circle", "disclosure-open", "disclosure-closed"];
 
 	static final MARGINS = [
 		"top-left-corner", "top-left", "top-center", "top-right", "top-right-corner", "bottom-left-corner", "bottom-left", "bottom-center", "bottom-right",

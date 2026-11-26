@@ -247,7 +247,7 @@ class Tools {
 	// CLI, which takes its own), a browser's or a bench's script)
 	public static function run(cmd:String, args:Array<String>, ?env:Map<String, String>) {
 		var program = cmd.startsWith("bin/") && !cmd.startsWith("bin/cli/");
-		var script = cmd == NODE && args.length > 0 && ~/^tests\/(bench\/.*|playwright|.*(web|browser)[\w-]*)\.mjs$/.match(args[0]);
+		var script = cmd == NODE && args.length > 0 && ~/^tests\/(bench\/.*|playwright|css\/goldens|.*(web|browser)[\w-]*)\.mjs$/.match(args[0]);
 		if (program || script) heavy(cmd, args, env) else exec(cmd, args, env);
 	}
 

@@ -178,6 +178,8 @@ class Options {
 				{key: "pull", names: ["--pull"], about: "the stores' listing text printed as helder.json's listing (--play, --testflight: one; else both), to adopt an app"},
 				{key: "locale", names: ["--locale"], value: "<l>", about: "the listing's language (en-US)"},
 				{key: "no-screenshot", names: ["--no-screenshot"], about: "--listing: the text alone, the stores' screenshots left as they are; --run: no screenshots rendered (the store stories, or one of the program) when helder.json's run.screenshots names none"},
+				{key: "frames", names: ["--frames"], value: "<file>", about: "--run: the frames file its Board draws (default: the studio's, bin/studio/<project>/frames.hframes)"},
+				{key: "no-board", names: ["--no-board"], about: "--run: no frames uploaded: the app alone, no Board"},
 			],
 			notes: [
 				"with no destination, each one helder.json names: helder.run when it has a run block,",
@@ -206,11 +208,13 @@ class Options {
 		{
 			name: "share",
 			usage: "[entry] [options]",
-			about: "the web build on helder.run for a week, without an account: a link to send (unlisted)",
+			about: "the web build on helder.run for a week, without an account: a link to send (unlisted); with the studio's frames, its Board (every scene's still and loop) and Play from any scenario",
 			entry: true,
 			common: [],
 			own: [
 				{key: "no-screenshot", names: ["--no-screenshot"], about: "no screenshots rendered for its page (the store stories, or one of the program)"},
+				{key: "frames", names: ["--frames"], value: "<file>", about: "the frames file its Board draws (default: the studio's, bin/studio/<project>/frames.hframes)"},
+				{key: "no-board", names: ["--no-board"], about: "no frames uploaded: the app alone, no Board"},
 				{key: "dry-run", names: ["--dry-run"], about: "built, what would be uploaded printed; nothing uploaded"},
 			],
 		},

@@ -252,6 +252,9 @@ class WebPreviews {
 		return null;
 	}
 
+	// (natively the frames file written; here there is none)
+	public function saveStills() {}
+
 	// (natively a hovered loop from the frames file; here the host's)
 	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}>
 		return null;

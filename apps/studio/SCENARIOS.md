@@ -19,9 +19,11 @@ host `UiWindow.run` keeps its root (`helder.ui.Hosting`, `-D helder.scenarios`) 
 renders that root in a screen of its own: a ScreenContext and a store of values (section 6).
 `boot` runs there first: it writes the app's signals or calls the app's own functions, checked by
 the ordinary type checker (no key scheme). Fields: `boot`, `time` (its clock's start, an ISO date
-or ms; the clock stands at the moment), `seed`, `size: [w, h]` (else the root's `<Surface>`'s),
-`dark`, `play` (seconds of its clock run to the moment), `loop` (seconds run live from the moment
-while hovered). Phase 2: `steps`, `http`, `zone`, `locale`, `settings`. Stories stay for
+or ms; the clock stands at the moment), `zone` ("UTC" or a fixed offset), `locale`, `settings`,
+`seed`, `size: [w, h]` (else the root's `<Surface>`'s), `dark`, `play` (seconds of its clock run to
+the moment), `loop` (seconds run live from the moment while hovered), `http` (its requests'
+answers, strict), `steps` (what a user does after boot: `tap`, `type`, `press`, `scroll`,
+`drag`, `waitFor`). Stories stay for
 components (controls); a story's and a scenario's names are one list (two of one name: an error).
 
 The model lives in exported top-level signals and memos. Component-local signals stay as they
@@ -283,9 +285,10 @@ screen 27-38 MB (36 in three), a story screen 5-25 MB; mostly a screen's frame (
 in under stories alone).
 
 Moments that wait for phase 2's steps (their stories stay): the PDF between two pages (a scroll),
-the marquee (a drag), the search field focused (focus), the phone's long press, select mode and
+the marquee (a drag held mid-way), the phone's long press, select mode and
 info sheet (PhoneState is the phone shell's own, not bootable), the sidebar's volume card (the
-volumes are the machine's: a Sandbox of volumes, or `settings`).
+volumes are the machine's: a Sandbox of volumes, or `settings`). The search field focused is
+App/Search focused, dark and light: a tap (phase 2c).
 
 Found while porting: the studio could not build the viewer's screens at all (its stories under
 tests/, no class path of the project's: now each story file's root by its package; a main that is
@@ -327,12 +330,160 @@ fixed in helder.
   asking again. Helder's unowned memos are lazy, so this shows where
   Solid's eager ones ask at the write (Jotai's tests port: 'lazy').
 
+## Phase 2a: determinism per screen (done)
+
+A scenario reads nothing of the machine it runs on. A screen with a store (a preview host's)
+carries its environment on its `ScreenContext`, set into `helder.os` while it is current
+(`ScreenContext.environ`, at each enter and leave) and the system's again outside:
+- **Clock**: `helder.os.Now.get` (its `time`, #278); `Now.time()` for Haxe code (Haxe's
+  `Date.now` is hxmc's runtime's and reads the system's: a gap until hxmc takes a hook).
+- **Zone**: `Now.zone`, minutes east of UTC; TypeScript's `Date` local time (`Dates.offsetAt`) and
+  `Format.date` (the OS formatter, given the instant whose system local time is the screen's)
+  read it. Fixed offsets and UTC only: a named zone (Europe/Brussels) has rules helder does not
+  carry, and the machine's tz data would differ. A `time` without a zone is in the scenario's.
+- **Locale**: `Locale.screen` over the device's (`Locale.current`, `preferred()`; `Format`'s
+  numbers and dates).
+- **Settings**: `Settings.screen` (textScale, reducedMotion, reducedTransparency, contrast,
+  orientation: its size's unless given); `context.reducedMotion` too.
+- **Randomness**: each screen its own xoshiro state (`Seed.SeedState`), swapped in on enter and
+  out on leave: screens drawn in turn draw as alone. `seed` starts it.
+- **TypeScript timers**: set in a screen, on its clock (`Now.after`: its `ScreenContext`
+  timers), not the host's loop: `play` runs them, a still's clock stands.
+- **Defaults**: zone UTC, locale en-US, settings at rest, seed 1.
+- The device's `Locale` and `Settings` signals are `shared` (#322's: their watchers write from
+  outside every screen).
+
+Tests: `Scenario.test.hx` (environment per screen, none outside; random side by side as alone;
+a timer on the screen's clock); the `scenarios` lane's clock fixture (its zone's date, its
+locale's formats, `Math.random`, an interval): each place the same pixels built twice, Delhi the
+same beside other neighbours, Brussels and Delhi apart.
+
+## Phase 2b: strict HTTP fixtures (done)
+
+A scenario's requests are answered by its `http`, none going out (MSW's way):
+`helder.async.http.Fixtures` on its screen's store (`Atoms.http`, which helder.ui never names:
+#293's lesson), asked first by `Client.request` (Haxe's and TypeScript's alike: TypeScript has
+no fetch, `Client.request` from helder/async; `Fetch` reads files and the page's assets, not
+hosts). A rule's pattern is a url without its scheme, `*` any run, a method first when it
+matters (`"POST api.example.com/todos"`); its answer a status (an empty body), a `.json` or
+`.txt` file's path read from the project, or any other value's JSON (200). A request none
+matches throws in the program (`no http fixture for GET <url> (... {"host/path*": ...})`) and
+fails its screen at the host's next turn (`HostScreen.missed`: the studio's crash on the frame,
+`project.patch`'s crashed for the agent). A scenario without `http` is strict too. Play runs the
+app outside the host: live.
+
+Found on the way: the screens' host never turned helder.async's loop (hosting, `UiWindow.run`
+returns before it would), so a screen's tasks, a TypeScript `await Client.request` among them,
+never ran: NativeHost turns it each turn now. And the weather fixture's app showed an error that
+came after its first render nowhere (its `<Show>` built once): fixed in the fixture.
+
+Tests: `Scenario.test.hx` (a JSON answer, a POST's status, a 503, a file; a request none
+matches the screen's failure, named); the `scenarios` lane's weather fixture: its request
+answered by a file and by a 503, each the same pixels as the story posing that answer; a request
+none matches crashes its screen, named in the studio's log.
+
+## Phase 2c: semantic steps (done)
+
+`steps: [tap("Add"), type("New habit", "Stretch"), press("Enter"), scroll("Rows", "end"),
+drag(from, to), waitFor("Saved")]` (`helder.scenario.Steps`; TypeScript's from
+`helder/scenario`): run after boot, before the still and before a loop, in the screen's context
+and store (its clock, its zone, its seed). A query is a string, tried in this order: a node with
+a role and that name, that label, that text, that id; or `{role, name, label, text, id}`, each
+given matched. Only what is shown counts (a size, some opacity, its centre inside the screen
+and inside each scroll view round it); the first tier that matches must match one node, more is
+an error (`"Twin" is 2 nodes: button "Twin", button "Twin" (a role, a label or an id tells them
+apart)`). Queries read `UiInspector`'s nodes (the access tree's role and label, a text's text, a
+markup id), not the headless script's locator: theirs is a tag-first match for scripts.
+
+A step acts as a user does: `tap` presses and releases at the node's centre, `type` taps then
+types, `press` a key, `scroll` wheels the node's scroll view (by points, to an end, or until a
+query is shown), `drag` presses, moves in ten frames and releases. After each step the screen's
+clock runs until nothing is pending (frames asked for, animations, timers due within a second,
+helder.async's tasks), a minute of it at most: exact, not a sleep; `waitFor` runs it until its
+query is shown. After the last step the pointer leaves the screen, so no hover shows in the
+still. A step that finds nothing fails its screen as an http miss does (the crash on the frame,
+`project.patch`'s crashed for the agent): `step 2: no "Ad" (near: button "Add")` and a compact
+tree of what is shown (40 lines), the near misses closest first.
+
+Found on the way: `UiInspector` kept a node's source and component only in dev and headless
+builds, and failed to compile outside them; and a step file's module functions shadowed the
+class's statics TypeScript keeps (the functions are the class's alone now). A scenario's
+position is its Haxe file's (`scenario({...})`), none for TypeScript's.
+
+Tests: `Scenario.test.hx` (a tap, typing and Enter; a scroll until a row is shown, then its tap;
+a step that finds nothing and an ambiguous one, their messages); the `scenarios` lane's habits
+fixture: "All done" and "Added" reached by hand (taps and typing after boot) the same pixels as
+boot writing them, and a broken step failing its screen, its near miss named; the viewer's
+search field focused (dark, light) reached by a tap (`viewer-scenarios`, beside its stories).
+Left: `longPress`, `swipe`, `pinch`; a drag held mid-way (the marquee's story stays); the
+phone's select mode and info sheet (PhoneState is the phone shell's own: steps reach them now,
+not yet written).
+
+## The UI monkey (property rollout item 5)
+
+`helder.scenario.Monkey`: a stateful property over the real program, booted as its scenarios,
+many cases in one process and none drawn (no GPU device: a Ui, a ScreenContext and a store a case,
+the root mounted by `Act.mount` as a host's screen is, its frames painted onto nothing).
+
+```haxe
+Hosting.on = true;
+App.main();
+Hosting.on = false;
+test("the app under a monkey", () -> Monkey.check({
+  from: Monkey.from("app.App_scenario"),          // or Monkey.from(plain, crowded)
+  atoms: [Monkey.atom(App.rows), Monkey.atom(App.query)]
+}, {cases: 40, limit: 30}));
+```
+
+- **A case**: one of the scenarios (`from`), its environment drawn over its own (size, a phone's
+  to 2000 x 1400, no smaller than `smallest`, 240 x 180; dark; locale; text scale; start time
+  1970-2100; a fixed zone), the atoms written after its boot (values of their types, derived by
+  `Monkey.atom`'s macro: Int, Float, Bool, String, arrays, Null, structures, enums, enum abstracts;
+  or a Gen given; strings: short words, runs of any characters, right to left, emoji, marks, line
+  breaks, huge one-word names, long texts), then up to `steps` (20) steps drawn from what the
+  screen shows: taps on its nodes (interactive roles mostly), typing into its text fields, keys,
+  scrolls of its overflowing scrollers (to an end, by points), drags, resizes, idle time
+  (`wait`). Each is a `Steps` step, run and waited for exactly as a scenario file runs it.
+- **Invariants**, after boot, each step and the end (the pointer gone): `throws` (nothing thrown,
+  no request its fixtures miss), `sizes` (no NaN, infinite or negative box), `window` (what is
+  shown, outside every clipping box, inside the window), `settles` (its clock rests within a
+  minute), `steady` (a frame after settling nothing moved, no frame asked), `scrolls` (a scroller
+  wheeled to its end is there, its last row shown; to its start at 0), `kept` (idle time moves
+  no scroll position and makes no node again; typing keeps its field's focus and moves no
+  scroller but its own, or one clamped to a shorter end), `popups` (an anchored popup closed with
+  its anchor gone, else at it). `except` leaves some out.
+- **A failure** is shrunk (helder.test's choices: steps taken out, values lowered, the
+  environment back to the scenario's) and written as a scenario file
+  (`bin/test/monkey/<test>.<line>.scenario.hx`; the fuzz lane's `bin/fuzz/monkey`, CI's
+  artifact): the scenario it started from (its boot by its path), the environment that differs,
+  the atoms' values, its steps. Moved beside the scenarios, it opens in the studio.
+  `Monkey.find` returns the smallest case instead of failing the test (its scenario too, built
+  again).
+- **Seeds**: the test lane's fixed (seed 0, 30 cases), the fuzz lane's random (its 20 s soak).
+
+Steps gained `resize(w, h)`, `wait(seconds)` and taps and scrolls at `{x, y}` for it (a node no
+query tells apart, a scroller with no name). A resize step changes the screen's Ui, not the studio
+frame's size (its still is drawn at the scenario's).
+
+Found on the way: each step's wait ran a minute of the screen's clock (only a paint answers
+`Ui.needsFrame`; a frame asked for is now painted onto nothing); a one-line field took a line break
+typed (iOS's Return, an input method's) or given as its value and grew a line each; a soak's
+rejections were bounded by the cases asked, not run.
+
+Tests: `src/helder/scenario/Monkey.test.hx` (a small program that holds: 30 cases, a 20 s soak of
+15,121 cases passed; one with two bugs, each found, shrunk, written and replayed: a huge name past
+the window, to the atom's value alone; a popup left open as a search takes its anchor away, to a
+few steps), in the fuzz lane.
+
+Follow-ups: the viewer (generated folders: huge names, RTL, emoji and combining names, many
+entries, broken files), TypeScript programs (a `helder/scenario` monkey), and the invariants left:
+a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
+idle time and typing, at most one media playing, frames compared (a still built twice the same
+pixels), perf bounds; a resize step as the studio frame's size; `play` scenarios (their clock run
+first).
+
 ## Phase 2 notes
 
-- Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
-  screen's context and store; a step's write is a store write like boot's.
-- Per-context: Haxe's `Date.now`, zone, locale, settings, TS timers' clock (they run in their
-  store now, but on the real clock; Haxe's tasks too: helder.async.Home).
-- Strict `http` fixtures (`async/http/Client.hx` has no hook yet); an async memo's request is
-  each store's already (no node shared), so fixtures can differ per scenario.
+- Per-context, left: Haxe's `Date.now` (hxmc's runtime), Haxe's tasks' clock
+  (helder.async.Home's on the real loop).
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.

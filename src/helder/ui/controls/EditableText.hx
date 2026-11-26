@@ -263,7 +263,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		style.cursor = Text;
 		onKeyDown = key;
 		onTextInput = e -> {
-			edit(e.text, true);
+			edit(pasted(e.text), true);
 		};
 		onComposition = e -> compose(e.text, e.caret);
 		onPointerDown = e -> {
@@ -338,7 +338,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		if (readOnly) return;
 		anchor = clampIndex(start);
 		caret = clampIndex(end);
-		edit(s, true);
+		edit(pasted(s), true);
 	}
 
 	// the composition now (empty: none), the caret in it: shown, not typed
@@ -498,7 +498,8 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	function moreKeys(e:Event, shift:Bool, ctrl:Bool):Bool
 		return false;
 
-	// pasted text as typed (TextField: on one line)
+	// text put in, pasted or typed (an input method's line break, iOS's
+	// Return), as it goes in (TextField: on one line)
 	function pasted(t:String):String
 		return StringTools.replace(StringTools.replace(t, "\r\n", "\n"), "\r", "\n");
 

@@ -4,9 +4,9 @@
   "license": "CC BY 4.0",
   "sha256": "9e8f977f5c049f37ebe68fab4704b93afc3b5c849bf54306d241f422db45e255",
   "blocks": {
-    "base": 15,
+    "base": 16,
     "quirks": 5,
-    "hints": 7
+    "hints": 6
   },
   "skipped": [
     "Bidirectional text",

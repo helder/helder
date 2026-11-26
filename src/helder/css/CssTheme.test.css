@@ -1,0 +1,2 @@
+@import "CssTheme.test.import.css" layer(x);
+p { color: red }

@@ -147,36 +147,39 @@ pass):
 
 
 <!-- values -->
-17529 of 17787 required (98.5%): checkpoint 1's progress; 258 pending, our gaps; 9672 skipped, not checkpoint 1's.
+19641 of 19941 required (98.5%): checkpoint 1's progress; 300 pending, our gaps; 9737 skipped, not checkpoint 1's.
 
 | Pending, by the stage that clears them | Cases |
 | --- | --- |
-| layout | 234 |
-| values | 24 |
+| layout | 255 |
+| values | 45 |
 
 | Pending because | Cases |
 | --- | --- |
 | layout: grid tracks' sizes | 183 |
-| layout: getComputedStyle's resolved value (the used one) | 28 |
-| layout: percentages of the containing block | 17 |
+| layout: getComputedStyle's resolved value (the used one) | 39 |
+| layout: percentages of the containing block | 27 |
+| values: WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value) | 12 |
 | values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands | 9 |
 | layout: the font's own metrics | 6 |
+| values: WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest) | 6 |
 | values: Align 3's `[ first | last ]? && baseline` takes `baseline last` | 5 |
 | values: Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects | 5 |
+| values: WPT's computed gradients in cursor: its expected texts drop a parenthesis, and cursor's grammar has image-set() of URLs, not <image> | 3 |
 | values: rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed) | 3 |
 | values: WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed) | 1 |
 | values: its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right | 1 |
 
 | Skipped because | Cases |
 | --- | --- |
-| out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5028 |
+| out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5035 |
 | outdated fixture: css-parsing-tests leaves lab() and lch() unclamped (WPT and Color 4: L in its range, C at least 0) | 2760 |
-| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 590 |
+| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 614 |
 | outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept) | 488 |
 | outdated fixture: css-parsing-tests keeps rgb()'s fractions (WPT: rounded) | 468 |
+| out of scope: container query units (@container is deferred) | 85 |
 | out of scope: url()'s request modifiers and param() (Values 5) | 78 |
 | out of scope: Text 4's white-space-trim | 51 |
-| out of scope: container query units (@container is deferred) | 51 |
 | out of scope: Flexbox 2's balance | 38 |
 | out of scope: Transforms 2 (3D functions, percentages in scale()) | 28 |
 | out of scope: a draft's value past checkpoint 1's modules | 28 |
@@ -190,6 +193,7 @@ pass):
 | Module | Required | Pending | Skipped |
 | --- | --- | --- | --- |
 | colors | 4326 | 0 | 3735 |
+| compositing-2 | 43 | 0 | 0 |
 | css-align-3 | 738 | 5 | 18 |
 | css-backgrounds-3 | 1500 | 9 | 269 |
 | css-box-3 | 202 | 6 | 6 |
@@ -200,22 +204,33 @@ pass):
 | css-display-3 | 281 | 0 | 12 |
 | css-flexbox-1 | 251 | 0 | 51 |
 | css-fonts-4 | 803 | 6 | 86 |
+| css-forms-1 | 11 | 0 | 0 |
 | css-grid-1 | 1021 | 183 | 3 |
 | css-images-3 | 123 | 5 | 9 |
 | css-inline-3 | 149 | 3 | 3 |
 | css-lists-3 | 224 | 0 | 9 |
+| css-logical-1 | 582 | 39 | 6 |
 | css-masking-1 | 12 | 0 | 0 |
 | css-overflow-3 | 55 | 0 | 0 |
+| css-overflow-4 | 89 | 0 | 0 |
 | css-page-3 | 21 | 0 | 0 |
 | css-page-floats-3 | 31 | 0 | 0 |
 | css-position-3 | 125 | 0 | 131 |
+| css-scrollbars-1 | 30 | 0 | 0 |
 | css-sizing-3 | 369 | 13 | 218 |
+| css-sizing-4 | 40 | 0 | 0 |
 | css-tables-3 | 45 | 0 | 0 |
 | css-text-3 | 427 | 0 | 55 |
+| css-text-4 | 84 | 0 | 0 |
 | css-text-decor-3 | 281 | 1 | 11 |
+| css-text-decor-4 | 35 | 0 | 0 |
 | css-transforms-1 | 237 | 24 | 28 |
+| css-transforms-2 | 193 | 0 | 12 |
+| css-transitions-1 | 289 | 0 | 5 |
 | css-ui-3 | 114 | 0 | 0 |
+| css-ui-4 | 125 | 3 | 8 |
 | css-writing-modes-3 | 22 | 0 | 0 |
+| filter-effects-1 | 591 | 0 | 34 |
 <!-- /values -->
 
 ## Differential
@@ -262,6 +277,13 @@ natively (`bun run test css`: CssCascadeCheck; BLESS=1:
 cascade-manifest.json and the counts below; SHOW=1: each case that
 doesn't pass):
 
+This check and CssValuesCheck also run every value they read through #321's cascade as it
+was merged (`reference/`, frozen: its CssStyle, CssStyles, CssSheet and
+the rest renamed Ref*, the user agent's sheets with logical properties as
+physical ones, as #321 had them) and require the same text: the row's
+property on every row, every longhand on a page's first. Pages with
+logical properties are left out (#321 had none).
+
 - `fixtures/cascade.json`: every test of those directories with what
   became of it: read (its cases), a reftest (layout's), or out with why
   (a script that changes the page or the CSSOM: no JavaScript here;
@@ -275,11 +297,11 @@ doesn't pass):
   WPT's harness shows it (a screen of 800 by 600); each case required
   unless cascade-manifest.json's `pending` says why; a case that fails on
   a page past checkpoint 1 (revert-rule, @scope, @container, @property,
-  animation, shadow trees, ident(), logical properties) is skipped with
+  animation, shadow trees, ident(), vertical writing modes) is skipped with
   that reason, one that passes is required.
 
 <!-- cascade -->
-70 of 70 cases pass; skipped (their page is past checkpoint 1):
+71 of 71 cases pass; skipped (their page is past checkpoint 1):
 
 | Skipped because | Cases |
 | --- | --- |
@@ -287,7 +309,6 @@ doesn't pass):
 | out of scope: @scope (deferred) | 10 |
 | out of scope: Values 5's ident() | 2 |
 | out of scope: animation (a page is still) | 1 |
-| out of scope: logical properties and writing modes (deferred) | 1 |
 | out of scope: registered custom properties (@property) | 1 |
 
 The tests, by what became of them:
@@ -306,6 +327,162 @@ The tests, by what became of them:
 | out: manual | 1 |
 <!-- /cascade -->
 
+## Reftests
+
+helder.ui.box drawing WPT's reftests, natively (`CssReftestCheck.hx`, the
+css-reftests lane):
+
+```sh
+node tests/css/import-wpt.mjs --checkout     # bin/wpt at REVISION: css/, fonts/ (Ahem), images/
+bun run test css-reftests                    # BLESS=1: reftest-manifest.json from the results
+bun run test css-reftests normal-flow block-in-inline   # those alone (a directory or a name's part)
+VERBOSE=1 bin/css/CssReftestCheck margin-padding-clear  # each name before it is drawn
+bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/css/CSS2/box/x-ref.xht
+```
+
+- Each in-scope test of `fixtures/reftests.json` and each of its
+  references are parsed (`.xht` as XML, `Dom.parseXml`), at their WPT
+  URL (`http://web-platform.test/...`, so `/fonts/ahem.css` is found),
+  their sheets, images and fonts read from bin/wpt (`WptPage.hx`), Ahem
+  registered as WPT's runners have it; drawn by `DocumentView` at 800 by
+  600 on the CPU canvas, white under them. Pixels compare as WPT's runner
+  compares them: a `match` reference alike, a `mismatch` one not, within
+  the test's `<meta name=fuzzy>` (maxDifference and totalPixels, for every
+  reference or a named one). A crash test passes when it draws. A
+  reference's own references are not followed.
+- `reftest-manifest.json` is the gate, like tests/layout-conformance's:
+  every test is required to pass unless `pending` says why (its stage,
+  then how it differs) or `skip` does (`paged`: css-page, css-break,
+  css-gcpm, CSS2's page-box and pagination, print tests; `script`). A
+  pending test that passes fails the run too, until BLESS=1 requires it.
+  The stage is the directory's (floats, positioning, tables, fonts, inline,
+  generated, ui), else what the test's and its references' sources use
+  (a table, a float or clear, absolute or fixed positioning, generated
+  content and lists, first-line and first-letter, inline blocks,
+  vertical-align, line-height, white-space and the other line properties,
+  ex and ch, which helder.css computes without the font's metrics yet,
+  images); a rough guess, kept while it holds.
+- Paged tests are not drawn. The `noref` tests (WPT's visual tests, no
+  reference: 2,350) are drawn against goldens Chromium draws
+  (`goldens.mjs`, which the lane runs first): headless Chromium through
+  Playwright (the version CI's setup pins, `bun add --no-save
+  playwright@1.56.1`, `bunx playwright install chromium`), one browser,
+  two pages at a time, each test at 800 by 600 at its WPT URL, its
+  generic families the faces helder takes (`CssReftestCheck --fonts`:
+  Times New Roman, Helvetica Neue and Menlo on macOS), text antialiased
+  in grayscale as helder draws it. A golden is a PNG in
+  `bin/css/goldens/<WPT revision>-chromium-<version>-<platform>-<arch>/`,
+  not committed: drawn where missing, kept after; a new Chromium, WPT
+  revision or platform is a new directory (a cache keyed by it, for CI).
+  A noref test passes within its `<meta name=fuzzy>`, or when it differs
+  from its golden only as two engines' antialiasing does: no pixel off
+  by more than 8 where the golden is flat, and at most 10 at edges (text,
+  curves) unlike every pixel within a pixel of them by more than 96.
+  The manifest gates them as the drawn ones, by stage. Skipped: those
+  that ask for a paged view, a test font installed on the system or an
+  alternate style sheet chosen by hand, and those Chromium draws against
+  their own words (`CHROMIUM` in CssReftestCheck.hx: row-visibility-003,
+  a cell spanning into a collapsed row not clipped).
+
+At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37 on macOS:
+7,922 drawn, 6,002 pass, 491 skipped.
+
+| | Pass | Pending | Skipped |
+| --- | ---: | ---: | ---: |
+| reftests and crash tests | 4,942 | 810 | 311 |
+| noref against goldens | 1,060 | 1,110 | 180 |
+
+The noref tests pending by stage: tables 522, generated 323, inline 109,
+fonts 53, ui 44, positioning 30, floats 29.
+
+At WPT bc5ea7a9006b, the box tree, block flow and tables with the line
+stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
+311 skipped):
+
+| Chapter | Pass | Drawn |
+| --- | --- | --- |
+| CSS2 | 0 | 5 |
+| CSS2/abspos | 13 | 25 |
+| CSS2/backgrounds | 303 | 333 |
+| CSS2/bidi-text | 9 | 34 |
+| CSS2/borders | 483 | 504 |
+| CSS2/box | 2 | 9 |
+| CSS2/box-display | 73 | 86 |
+| CSS2/cascade | 24 | 31 |
+| CSS2/cascade-import | 0 | 1 |
+| CSS2/colors | 10 | 19 |
+| CSS2/css1 | 131 | 164 |
+| CSS2/css21-errata | 4 | 9 |
+| CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
+| CSS2/floats | 78 | 112 |
+| CSS2/floats-clear | 178 | 203 |
+| CSS2/floats/crashtests | 1 | 1 |
+| CSS2/fonts | 118 | 159 |
+| CSS2/generated-content | 189 | 205 |
+| CSS2/linebox | 166 | 192 |
+| CSS2/lists | 154 | 155 |
+| CSS2/margin-padding-clear | 649 | 683 |
+| CSS2/media | 17 | 17 |
+| CSS2/normal-flow | 620 | 696 |
+| CSS2/positioning | 418 | 513 |
+| CSS2/sec5 | 22 | 23 |
+| CSS2/selectors | 448 | 467 |
+| CSS2/stacking-context | 1 | 3 |
+| CSS2/syntax | 213 | 252 |
+| CSS2/tables | 203 | 250 |
+| CSS2/text | 286 | 376 |
+| CSS2/text/crashtests | 1 | 1 |
+| CSS2/ui | 40 | 52 |
+| CSS2/values | 11 | 25 |
+| CSS2/visudet | 23 | 37 |
+| CSS2/visudet/crashtests | 1 | 1 |
+| CSS2/visufx | 4 | 49 |
+| CSS2/visufx/crashtests | 1 | 1 |
+| CSS2/visuren | 23 | 26 |
+| CSS2/zindex | 25 | 29 |
+| CSS2/zorder | 0 | 1 |
+| all | 4942 | 5752 |
+
+Pending by stage: positioning 216, generated content 202, inline 163, tables 98, floats 78, fonts 41, ui 12.
+
+## Interpolation
+
+Interpolation and transitions against WPT's interpolation tests,
+natively (`bun run test css`: CssInterpolationCheck; BLESS=1:
+interpolation-manifest.json and the counts below; SHOW=1: each case that
+doesn't pass):
+
+- `fixtures/interpolation.json` (made by `import-wpt.mjs`): every
+  `test_interpolation`, `test_no_interpolation` and `test_not_animatable`
+  call of css/ with a property in scope, as CSS Transitions runs it (its
+  own expectations when the call gives them), with its page, scripts out.
+- `CssInterpolationCheck.hx`: each case's targets built as
+  interpolation-testcommon.js builds them, the from and to values
+  computed, every longhand interpolated by CssInterpolate (currentcolor
+  resolved as CssTransition resolves it; with allow-discrete, a discrete
+  one flipped as CssTransition flips it), written (a shorthand from its
+  longhands) and required to be the expected value computed on its own
+  target, both normalized as the harness does; a discrete or not
+  animatable case required not to interpolate. A case is required unless
+  interpolation-manifest.json's `pending` says why.
+
+<!-- interpolation -->
+3417 of 4373 cases pass.
+
+| Pending because | Cases |
+| --- | --- |
+| sizes: calc-size() and interpolate-size not yet (Values 5) | 380 |
+| transforms: 3D functions, axes and perspective not yet (2D only) | 262 |
+| grid: track lists not interpolated yet (Grid 1 §7.2.5) | 192 |
+| images: list-style-image is discrete (Lists 3); the test wants it to transition, flipping halfway as Chrome's cross-fade does | 48 |
+| resolved values: getComputedStyle's px are layout's, and this check has none | 37 |
+| math functions: sign(), progress() and random() not resolved in computed values yet | 18 |
+| clip: rect() without commas, CSS 2's form the expected values use, not parsed | 11 |
+| display: expects an animation's flip (none until p > 0); without allow-discrete no transition starts | 6 |
+| colours: one channel off by one, a browser's 8-bit premultiplied rounding | 1 |
+| page: its script sets height: auto before this case, so neutral isn't the page's 10px | 1 |
+<!-- /interpolation -->
+
 ## Report
 
 <!-- report -->
@@ -313,17 +490,18 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 
 ### Values
 
-44341 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 19398 rows for 216 in-scope properties from 738 files (368 duplicates dropped), 17358 calls on 421 properties out of scope (most: position-area 2925, filter 365, clip-path 341, shape-outside 271, backdrop-filter 260, offset-path 208, font-palette 180, will-change 171), and 296 not read statically:
+44341 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21617 rows for 297 in-scope properties from 877 files (432 duplicates dropped), 10472 calls on 340 properties out of scope (most: position-area 2925, clip-path 341, shape-outside 271, offset-path 208, font-palette 180, will-change 171, mask 159, animation-timing-function 125), and 307 not read statically:
 
 | Why not read | Calls |
 | --- | --- |
-| a name not bound to a literal | 262 |
+| a name not bound to a literal | 273 |
 | in a helper | 19 |
 | a loop over what it can't read | 14 |
 | undefined in a template | 1 |
 
 | Module | Properties | Valid | Invalid | Computed | Shorthand | Inherits |
 | --- | --- | --- | --- | --- | --- | --- |
+| compositing-2 | 2 | 18 | 5 | 18 | 0 | 2 |
 | css-align-3 | 15 | 245 | 242 | 240 | 22 | 12 |
 | css-backgrounds-3 | 48 | 489 | 729 | 485 | 43 | 32 |
 | css-box-3 | 10 | 97 | 75 | 26 | 8 | 8 |
@@ -334,22 +512,33 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 | css-display-3 | 2 | 117 | 57 | 117 | 0 | 2 |
 | css-flexbox-1 | 8 | 103 | 77 | 88 | 28 | 6 |
 | css-fonts-4 | 26 | 322 | 321 | 233 | 0 | 19 |
+| css-forms-1 | 1 | 2 | 7 | 2 | 0 | 0 |
 | css-grid-1 | 15 | 375 | 338 | 424 | 60 | 10 |
 | css-images-3 | 3 | 60 | 38 | 36 | 0 | 3 |
 | css-inline-3 | 5 | 59 | 34 | 58 | 0 | 4 |
 | css-lists-3 | 7 | 93 | 59 | 75 | 1 | 5 |
+| css-logical-1 | 52 | 226 | 192 | 168 | 12 | 29 |
 | css-masking-1 | 1 | 3 | 4 | 4 | 0 | 1 |
 | css-overflow-3 | 3 | 15 | 9 | 29 | 0 | 2 |
+| css-overflow-4 | 5 | 42 | 38 | 5 | 0 | 4 |
 | css-page-3 | 1 | 5 | 9 | 6 | 0 | 1 |
 | css-page-floats-3 | 2 | 11 | 5 | 11 | 0 | 4 |
 | css-position-3 | 7 | 97 | 103 | 46 | 4 | 6 |
+| css-scrollbars-1 | 2 | 11 | 17 | 0 | 0 | 2 |
 | css-sizing-3 | 7 | 222 | 282 | 89 | 0 | 7 |
+| css-sizing-4 | 1 | 14 | 11 | 14 | 0 | 1 |
 | css-tables-3 | 5 | 12 | 14 | 14 | 0 | 5 |
 | css-text-3 | 17 | 167 | 151 | 147 | 0 | 17 |
+| css-text-4 | 2 | 36 | 20 | 26 | 0 | 2 |
 | css-text-decor-3 | 11 | 128 | 61 | 95 | 1 | 8 |
+| css-text-decor-4 | 1 | 12 | 8 | 15 | 0 | 0 |
 | css-transforms-1 | 3 | 63 | 192 | 31 | 0 | 3 |
+| css-transforms-2 | 3 | 85 | 37 | 80 | 0 | 3 |
+| css-transitions-1 | 6 | 66 | 162 | 59 | 3 | 4 |
 | css-ui-3 | 5 | 44 | 44 | 23 | 1 | 2 |
+| css-ui-4 | 4 | 62 | 20 | 51 | 0 | 3 |
 | css-writing-modes-3 | 2 | 8 | 4 | 8 | 0 | 2 |
+| filter-effects-1 | 2 | 238 | 183 | 202 | 0 | 2 |
 
 ### Selectors
 

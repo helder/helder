@@ -21,9 +21,10 @@
 #   in headless Chromium (site-check: bun run site:check, its demos and
 #   docs pages in two shards, a machine each);
 # - fuzz (pushes to main, nightly): the robustness properties (images, PDF,
-#   media containers, fonts, Markdown) soaked for 20 s each from a random
-#   seed, then helder's TypeScript against node for 5 minutes
-#   (tests/typescript/fuzz), the failing cases kept as an artifact;
+#   media containers, fonts, Markdown) and the UI monkeys soaked for 20 s
+#   each from a random seed, then helder's TypeScript against node for 5
+#   minutes (tests/typescript/fuzz), the failing cases (and a monkey's
+#   scenario file) kept as an artifact;
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
 #   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
@@ -311,7 +312,7 @@ jobs:
       # (a case that failed, hung, crashed or blew up: replayed first by helder test)
       - if: failure()
         uses: actions/upload-artifact@v7
-        with: {name: fuzz-cases, path: bin/fuzz/properties, retention-days: 7, if-no-files-found: ignore}
+        with: {name: fuzz-cases, path: "bin/fuzz/properties\nbin/fuzz/monkey", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 

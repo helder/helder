@@ -110,7 +110,7 @@ export function Weather(props: { forecast?: Forecast; error?: string }) {
 	</view>;
 }
 
-// the app's model: the forecast, or why there is none (a scenario's boot writes them)
+// the app's model: the forecast, or why there is none (its request's answer writes them)
 export const forecast = signal<Forecast | undefined>(undefined);
 export const error = signal<string | undefined>(undefined);
 
@@ -121,7 +121,10 @@ export function App() {
 		<Show when={() => forecast() != null}>
 			{() => <Weather forecast={forecast()}/>}
 		</Show>
-		<Show when={() => forecast() == null}>
+		<Show when={() => forecast() == null && error() == null}>
+			{() => <Weather/>}
+		</Show>
+		<Show when={() => forecast() == null && error() != null}>
 			{() => <Weather error={error()}/>}
 		</Show>
 	</view>;

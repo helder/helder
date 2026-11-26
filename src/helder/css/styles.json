@@ -1,0 +1,52 @@
+{
+  "about": "Computed styles' storage (generate.mjs writes CssProperty.hx, CssProperties.hx and CssGroups.hx from it): every stored longhand in one group, a group inherited or not as all its properties are, so an element shares its parent's inherited groups and the initial reset ones unless something in them is set. impact: what a change to the property redoes (layout; text: inherited text that lays text out again; paint; composite: opacity and transforms; none: no rendering), the group's unless a property says otherwise. kinds: a property whose typed value isn't what its grammar suggests. Logical properties have ids but no storage: the cascade maps them to their physical ones (horizontal-tb, by direction).",
+  "groups": {
+    "font": {"inherited": true, "impact": "text", "properties": ["font-family", "font-feature-settings", "font-kerning", "font-language-override", "font-optical-sizing", "font-size", "font-size-adjust", "font-style", "font-synthesis-position", "font-synthesis-small-caps", "font-synthesis-style", "font-synthesis-weight", "font-variant-alternates", "font-variant-caps", "font-variant-east-asian", "font-variant-emoji", "font-variant-ligatures", "font-variant-numeric", "font-variant-position", "font-variation-settings", "font-weight", "font-width", "line-height"]},
+    "inheritedText": {"inherited": true, "impact": "text", "properties": ["color", "direction", "letter-spacing", "word-spacing", "text-indent", "text-align-all", "text-align-last", "text-justify", "text-transform", "white-space-collapse", "text-wrap-mode", "text-wrap-style", "word-break", "line-break", "overflow-wrap", "hyphens", "tab-size", "text-emphasis-color", "text-emphasis-position", "text-emphasis-style", "text-shadow", "text-underline-position", "text-underline-offset", "quotes", "block-ellipsis", "orphans", "widows"]},
+    "list": {"inherited": true, "impact": "layout", "properties": ["list-style-image", "list-style-position", "list-style-type", "marker-side"]},
+    "table": {"inherited": true, "impact": "layout", "properties": ["border-collapse", "border-spacing", "caption-side", "empty-cells"]},
+    "ui": {"inherited": true, "impact": "paint", "properties": ["visibility", "cursor", "pointer-events", "accent-color", "scrollbar-color", "image-orientation"]},
+    "box": {"inherited": false, "impact": "layout", "properties": ["display", "float", "clear", "box-sizing", "width", "height", "min-width", "min-height", "max-width", "max-height", "aspect-ratio", "overflow-x", "overflow-y", "alignment-baseline", "baseline-shift", "baseline-source", "unicode-bidi", "table-layout", "clip", "field-sizing", "max-lines", "continue", "text-overflow"]},
+    "position": {"inherited": false, "impact": "layout", "properties": ["position", "top", "right", "bottom", "left", "z-index"]},
+    "spacing": {"inherited": false, "impact": "layout", "properties": ["margin-top", "margin-right", "margin-bottom", "margin-left", "padding-top", "padding-right", "padding-bottom", "padding-left"]},
+    "border": {"inherited": false, "impact": "paint", "properties": ["border-top-width", "border-right-width", "border-bottom-width", "border-left-width", "border-top-style", "border-right-style", "border-bottom-style", "border-left-style", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "border-top-left-radius", "border-top-right-radius", "border-bottom-right-radius", "border-bottom-left-radius", "border-image-source", "border-image-slice", "border-image-width", "border-image-outset", "border-image-repeat"]},
+    "background": {"inherited": false, "impact": "paint", "properties": ["background-color", "background-image", "background-position-x", "background-position-y", "background-size", "background-repeat", "background-attachment", "background-origin", "background-clip"]},
+    "outline": {"inherited": false, "impact": "paint", "properties": ["outline-color", "outline-style", "outline-width", "outline-offset"]},
+    "decoration": {"inherited": false, "impact": "paint", "properties": ["text-decoration-line", "text-decoration-style", "text-decoration-color", "text-decoration-thickness"]},
+    "container": {"inherited": false, "impact": "layout", "properties": ["flex-direction", "flex-wrap", "align-content", "align-items", "justify-content", "justify-items", "row-gap", "column-gap", "grid-template-columns", "grid-template-rows", "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow"]},
+    "item": {"inherited": false, "impact": "layout", "properties": ["flex-grow", "flex-shrink", "flex-basis", "order", "align-self", "justify-self", "grid-row-start", "grid-row-end", "grid-column-start", "grid-column-end"]},
+    "content": {"inherited": false, "impact": "layout", "properties": ["content", "counter-reset", "counter-increment", "counter-set", "string-set", "bookmark-label", "bookmark-level", "bookmark-state"]},
+    "paged": {"inherited": false, "impact": "layout", "properties": ["break-before", "break-after", "break-inside", "box-decoration-break", "page"]},
+    "effects": {"inherited": false, "impact": "paint", "properties": ["opacity", "transform", "transform-origin", "transform-box", "translate", "rotate", "scale", "filter", "backdrop-filter", "mix-blend-mode", "isolation", "box-shadow", "box-shadow-color", "box-shadow-offset", "box-shadow-blur", "box-shadow-spread", "box-shadow-position", "object-fit", "object-position"]},
+    "control": {"inherited": false, "impact": "none", "properties": ["appearance", "user-select", "scrollbar-width", "transition-property", "transition-duration", "transition-timing-function", "transition-delay", "transition-behavior"]}
+  },
+  "impact": {
+    "color": "paint", "text-emphasis-color": "paint", "text-shadow": "paint", "text-underline-position": "paint", "text-underline-offset": "paint",
+    "quotes": "layout", "block-ellipsis": "layout", "orphans": "layout", "widows": "layout",
+    "cursor": "none", "pointer-events": "none", "image-orientation": "layout",
+    "z-index": "paint",
+    "border-top-width": "layout", "border-right-width": "layout", "border-bottom-width": "layout", "border-left-width": "layout",
+    "border-top-style": "layout", "border-right-style": "layout", "border-bottom-style": "layout", "border-left-style": "layout",
+    "bookmark-label": "none", "bookmark-level": "none", "bookmark-state": "none",
+    "opacity": "composite", "transform": "composite", "transform-origin": "composite", "transform-box": "composite", "translate": "composite", "rotate": "composite", "scale": "composite",
+    "appearance": "layout", "scrollbar-width": "layout"
+  },
+  "kinds": {
+    "opacity": "number",
+    "list-style-image": "terms", "border-image-source": "terms", "clip": "terms",
+    "display": "display"
+  },
+  "animations": {
+    "box-shadow": "value", "box-shadow-color": "value", "box-shadow-offset": "value", "box-shadow-blur": "value", "box-shadow-spread": "value", "box-shadow-position": "discrete",
+    "visibility": "value", "font-weight": "value", "counter-increment": "discrete", "counter-reset": "discrete", "counter-set": "discrete"
+  },
+  "enums": {
+    "border-top-style": "CssLineStyle", "border-right-style": "CssLineStyle", "border-bottom-style": "CssLineStyle", "border-left-style": "CssLineStyle",
+    "overflow-x": "CssOverflow", "overflow-y": "CssOverflow", "break-before": "CssBreak", "break-after": "CssBreak",
+    "font-synthesis-position": "CssSynthesis", "font-synthesis-small-caps": "CssSynthesis", "font-synthesis-weight": "CssSynthesis"
+  },
+  "unstored": {
+    "all": "a shorthand of every property, expanded by the cascade",
+    "page-break-before": "legacy: sets break-before", "page-break-after": "legacy: sets break-after", "page-break-inside": "legacy: sets break-inside"
+  }
+}
