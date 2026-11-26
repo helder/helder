@@ -17,7 +17,7 @@ import helder.view.graph.Graph.*;
 // (selected): Enter goes to the page typed (clamped; anything but a
 // number: nowhere), Escape or leaving it goes nowhere, the keys the
 // document's again after (refocus); the pages' text selectable over them
-// (PdfText), Copy in the right click's menu.
+// (PdfTextLayer), Copy in the right click's menu.
 @:renderer(helder.ui.view.NodeRenderer)
 class PdfView implements Markup {
 	// (veiled: its pages not shown, laid out still: a page in flight over them)
@@ -43,7 +43,7 @@ class PdfView implements Markup {
 			if (n.ui != null) doc.density = n.ui.scale;
 			doc.view(n.width, n.height);
 		}
-		return <view tag="pdf" position="absolute" inset={0} onPointerDown={PdfText.menu}>
+		return <view tag="pdf" position="absolute" inset={0} onPointerDown={PdfTextLayer.menu}>
 			<scroll tag="pdf-scroll" position="absolute" inset={0} opacity={veiled != null && veiled() ? 0 : 1} onResize={_ -> sized()} ref={(n:Node) -> {
 				scroller = n;
 				n.onScroll = () -> doc.scrolled(n.scrollX, n.scrollY);
@@ -61,7 +61,7 @@ class PdfView implements Markup {
 					doc.layout.height();
 				}}>
 					<For each={() -> doc.shown()}>{i -> page(doc, i())}</For>
-					{PdfText.layer(doc)}
+					{PdfTextLayer.of(doc)}
 				</view>
 			</scroll>
 			<Show when={doc.pages > 1}>

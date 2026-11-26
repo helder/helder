@@ -1,13 +1,13 @@
-package viewer;
+package helder.pdf;
 
 import helder.pdf.PdfRun;
 
-// A PDF page's text for selecting it (helder.pdf's Pdf.runs, sendable from
-// a decode's job): its text (Pdf.text) and each UTF-16 character's box on
-// the page as shown, in points, six numbers each (PdfGlyph's corner, advance
-// and ascent sides; NaN: none, a gap's space, a line's end). A ligature's
-// characters share its glyph's box in equal parts; a glyph with no text has
-// none.
+// A PDF page's text for selecting it (of Pdf.runs; plain data, sendable from
+// a job): its text (Pdf.text) and each UTF-16 character's box on the page as
+// shown, in points, six numbers each (PdfGlyph's corner, advance and ascent
+// sides; NaN: none, a gap's space, a line's end). A ligature's characters
+// share its glyph's box in equal parts; a glyph with no text has none. What
+// helder.pdf.ui's PdfText selects by.
 typedef PageText = {text:String, boxes:Array<Float>};
 
 class PageTexts {
@@ -102,23 +102,34 @@ class PageTexts {
 		return {x: x + Math.min(0, ux), y: Math.min(y, y + uy), height: Math.max(Math.abs(uy), 1)};
 	}
 
-	// the boxes a range is highlighted with: a box from each line's first
-	// character in it to its last, the first's sides (corner, along, up)
+	// the boxes a range is highlighted with: a box a line, over its
+	// characters in it from the one furthest back along the line to the one
+	// furthest on (a right-to-left line's first character is its right
+	// end), the sides (corner, along, up) of its first with an advance
 	public static function spans(t:PageText, start:Int, end:Int):Array<Array<Float>> {
-		var out = [], b = t.boxes, first = -1, last = -1;
+		var out = [], b = t.boxes, first = -1, lo = 0.0, hi = 0.0;
 		function close() {
 			if (first < 0) return;
 			var k = first * 6, ax = b[k + 2], ay = b[k + 3], len = Math.sqrt(ax * ax + ay * ay);
-			var q = last * 6, ex = b[q] + b[q + 2] - b[k], ey = b[q + 1] + b[q + 3] - b[k + 1];
-			var w = len > 1e-9 ? (ex * ax + ey * ay) / len : 0.0;
-			if (len > 1e-9 && w > 0) out.push([b[k], b[k + 1], ax / len * w, ay / len * w, b[k + 4], b[k + 5]]);
+			if (hi > lo) out.push([b[k] + ax / len * lo, b[k + 1] + ay / len * lo, ax / len * (hi - lo), ay / len * (hi - lo), b[k + 4], b[k + 5]]);
 			first = -1;
 		}
 		for (i in (start < 0 ? 0 : start)...(end > t.text.length ? t.text.length : end)) {
-			if (StringTools.fastCodeAt(t.text, i) == "\n".code) close();
+			if (StringTools.fastCodeAt(t.text, i) == "
+".code) close();
 			if (!has(t, i)) continue;
-			if (first < 0) first = i;
-			last = i;
+			var q = i * 6;
+			if (first < 0) {
+				if (Math.sqrt(b[q + 2] * b[q + 2] + b[q + 3] * b[q + 3]) < 1e-9) continue;
+				first = i;
+				lo = Math.POSITIVE_INFINITY;
+				hi = Math.NEGATIVE_INFINITY;
+			}
+			// (its start and end along the first's advance)
+			var k = first * 6, ax = b[k + 2], ay = b[k + 3], len = Math.sqrt(ax * ax + ay * ay);
+			var s0 = ((b[q] - b[k]) * ax + (b[q + 1] - b[k + 1]) * ay) / len, s1 = s0 + (b[q + 2] * ax + b[q + 3] * ay) / len;
+			lo = Math.min(lo, Math.min(s0, s1));
+			hi = Math.max(hi, Math.max(s0, s1));
 		}
 		close();
 		return out;

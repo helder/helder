@@ -2,7 +2,7 @@ package viewer;
 
 import helder.image.Image;
 import viewer.Decode.Decoded;
-import viewer.PageText;
+import helder.pdf.PageText;
 import viewer.PdfLayout;
 
 // A PDF shown as one continuous column of pages (PdfLayout), without a
