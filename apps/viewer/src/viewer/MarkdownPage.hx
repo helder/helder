@@ -23,6 +23,7 @@ using StringTools;
 // (through Files), at most the column's width, laid out at the size its
 // header says before (MarkdownDoc.sizes: no shift once decoded); a remote
 // one is not fetched (its alt text in its place).
+@:renderer(helder.ui.view.NodeRenderer)
 class MarkdownPage implements Markup {
 	// (an image decoded at most this large a side: the column's width on a 2x screen)
 	static inline var SIDE = 1600;
@@ -51,8 +52,8 @@ class MarkdownPage implements Markup {
 			false;
 		});
 		return <view tag="markdown-page" position="absolute" inset={0}>
-			<view tag="markdown-doc" grow={1} min-height={0} display={d.source() ? "none" : "flex"}>{view}</view>
-			<view tag="markdown-source" grow={1} min-height={0} display={d.source() ? "flex" : "none"}>{code}</view>
+			<view tag="markdown-doc" flexGrow={1} minHeight={0} display={d.source() ? "none" : "flex"}>{view}</view>
+			<view tag="markdown-source" flexGrow={1} minHeight={0} display={d.source() ? "flex" : "none"}>{code}</view>
 		</view>;
 	}
 

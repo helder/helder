@@ -21,10 +21,17 @@ import helder.gfx.shader.Ir;
 // entry point, which builds the ComputeInput from the language's ids and
 // calls the stage's function with its uniform blocks and textures. Storage
 // is read and written in the stage's function only (Lower): an element read
-// is load(b, i), written store(b, i, v), each language's own.
+// is load(b, i), written store(b, i, v), each language's own. Its workgroup
+// memory (SShared) is wg_<index>, globals but in MSL (declared in the
+// entry point and passed on), read and written as arrays; barrier() and
+// the subgroup operations each language's own (or, emulated, made of
+// workgroup memory: Subgroups), the input's subgroup fields its ids or,
+// emulated or unused, 4 lanes' (subgroupIds).
 class Emit {
 	var buf:StringBuf;
 	var indent = "";
+	// the compute stage being emitted (null: a render stage)
+	var c:Null<SCompute> = null;
 	// the stage being emitted is the fragment stage (sample's derivatives)
 	var fragment = false;
 
@@ -33,6 +40,7 @@ class Emit {
 	public function stage(p:SProgram, e:SEntry):String {
 		buf = new StringBuf();
 		fragment = e.stage == Fragment;
+		c = null;
 		header(e);
 		for (s in e.structs)
 			struct(s);
@@ -54,10 +62,14 @@ class Emit {
 				case RImage(m): e.fn.params[i + 1].name = "img_" + m.slot;
 				case _:
 			}
+		for (s in c.shared)
+			s.v.name = "wg_" + s.index;
+		this.c = c;
 		computeHeader(c);
 		for (s in e.structs)
 			struct(s);
 		storage(c);
+		workgroup(c);
 		for (f in e.functions)
 			func(f);
 		computeEntry(c);
@@ -75,9 +87,22 @@ class Emit {
 
 	function computeEntry(c:SCompute) {}
 
+	// its workgroup memory's declarations
+	function workgroup(c:SCompute) {}
+
 	// a storage parameter is a global (GLSL, WGSL, HLSL), not a parameter
 	function global(t:SType):Bool
-		return t.match(TStorage(_, _) | TImage(_));
+		return t.match(TStorage(_, _) | TImage(_) | TWorkgroup(_));
+
+	// whether the stage's subgroups are the language's own
+	function native():Bool
+		return c != null && c.subgroups && !c.emulated;
+
+	// the input's subgroup fields (lane, size, index, count), from the
+	// workgroup's index of the invocation (an Int expression): the native
+	// ones given, else 4 lanes'
+	function subgroupIds(native:Null<Array<String>>, index:String):String
+		return ", " + (native != null ? native : ['$index & 3', "4", '$index >> 2', Std.string((c.invocations + 3) >> 2)]).join(", ");
 
 	// b[i] of a storage buffer, and b[i] = v
 	function load(b:SExpr, i:SExpr):String

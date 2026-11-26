@@ -47,34 +47,34 @@ class JobsFrame {
 		ui.root.style.fontSize = 13;
 		var page = new Node("page");
 		page.style.overflow = Scroll;
-		page.style.grow = 1;
+		page.style.flexGrow = 1;
 		page.style.minHeight = 0;
 		page.style.padding = 12;
 		page.style.rowGap = 12;
 		ui.root.append(page);
 		for (s in 0...20) {
 			var section = new Node("section");
-			section.style.direction = Row;
-			section.style.wrap = true;
+			section.style.flexDirection = Row;
+			section.style.flexWrap = true;
 			section.style.columnGap = 8;
 			section.style.rowGap = 8;
 			page.append(section);
 			for (c in 0...10) {
 				var card = new Node("card");
-				card.style.grow = 1;
-				card.style.basis = 200;
+				card.style.flexGrow = 1;
+				card.style.flexBasis = 200;
 				card.style.padding = 8;
 				card.style.rowGap = 6;
 				card.style.borderWidth = 1;
 				section.append(card);
 				card.append(new TextNode('Card ${s * 10 + c}'));
 				var row = new Node("row");
-				row.style.direction = Row;
+				row.style.flexDirection = Row;
 				row.style.columnGap = 4;
 				card.append(row);
 				for (b in 0...6) {
 					var box = new Node("box");
-					box.style.grow = b % 3;
+					box.style.flexGrow = b % 3;
 					box.style.width = 10 + b * 3;
 					box.style.height = 12 + (b & 1) * 6;
 					row.append(box);

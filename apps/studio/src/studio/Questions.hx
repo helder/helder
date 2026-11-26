@@ -1,5 +1,7 @@
 package studio;
 
+import helder.image.Image;
+
 import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 import studio.Presence.Peer;
@@ -55,6 +57,7 @@ class Questions {
 			text: null,
 			answered: false,
 			turn: studio.talk.list().length - 1,
+			at: here(),
 			waited: false
 		};
 		set(list.concat([q]));
@@ -77,11 +80,18 @@ class Questions {
 			text: null,
 			answered: false,
 			turn: studio.talk.list().length - 1,
+			at: here(),
 			waited: true,
 			reply: reply
 		};
 		set(list.concat([q]));
 		return q;
+	}
+
+	// (how much of the turn's reply there is now: the card's place in it)
+	function here():Int {
+		var l = studio.talk.list();
+		return l.length == 0 ? 0 : l[l.length - 1].text.length;
 	}
 
 	// a question no longer asked (its turn ended, the agent gone): closed, nothing answered
@@ -145,6 +155,7 @@ class Questions {
 
 	function answer(q:Question, picked:Array<String>, text:Null<String>) {
 		var n = update(q, n -> {
+			n.options = n.options.map(keep);
 			n.picked = picked;
 			n.text = text;
 			n.answered = true;
@@ -152,6 +163,18 @@ class Questions {
 		if (answering == q.id) replyTo(null);
 		if (n.reply != null) n.reply(n.picked, n.text) else if (!n.waited) studio.inbox.answer(said(n), n.turn);
 		studio.log("answered", {question: n.question, picked: n.picked, text: n.text});
+		studio.answered();
+	}
+
+	// (an option's picture as it is now, the card's once answered: the sketches
+	// go when the agent is done with them)
+	function keep(o:Offer):Offer {
+		var info = o.screen == null ? null : studio.project?.screen(o.screen);
+		if (info == null) return o;
+		var k:Offer = Reflect.copy(o);
+		if (info.source.match(Design(_))) k.kept = {markup: studio.designs.copy(info.name), width: info.width > 0 ? info.width : 390, height: info.height > 0 ? info.height : 844}
+		else k.still = studio.previews?.screen(info.name)?.image.peek();
+		return k;
 	}
 
 	// (a frame or a screen named as the project names it: <file>#<name>, Flow/Screen)
@@ -198,8 +221,9 @@ typedef Question = {
 	picked:Array<String>,
 	text:Null<String>,
 	answered:Bool,
-	// the chat's turn it was asked in
+	// the chat's turn it was asked in, its place in that turn's reply
 	turn:Int,
+	at:Int,
 	// a call waits for its answer (studio.ask's wait)
 	waited:Bool,
 	// (an ACP agent's permission ask: its answer given here, not the inbox's)
@@ -213,4 +237,8 @@ typedef Offer = {
 	note:Null<String>,
 	screen:Null<String>,
 	image:Null<String>,
+	// (kept when answered, its thumbnail after its frame is gone: a design
+	// frame's markup at its size, a screen's last image)
+	?kept:{markup:Any, width:Float, height:Float},
+	?still:Image,
 }

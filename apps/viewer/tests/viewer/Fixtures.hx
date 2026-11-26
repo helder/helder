@@ -7,6 +7,7 @@ import sys.io.File;
 
 // The tests' folders as MemoryFiles, at their paths on disk (so the
 // decodes, which read the disk, find the same files)
+@:renderer(helder.ui.view.NodeRenderer)
 class Fixtures implements Markup {
 	public static function files(dirs:Array<String>):MemoryFiles {
 		var m = new MemoryFiles();
@@ -73,13 +74,13 @@ class Fixtures implements Markup {
 	// the window's content, dark or light, at a laptop's size (the stories'
 	// trees are taken in a phone's whatever a story's width: Stories.tree)
 	public static function themed(x:Explorer, dark:Bool):View
-		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x, () -> helder.ui.SizeClass.Expanded)}</view>;
+		return <view width={1100} height={700} flexShrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x, () -> helder.ui.SizeClass.Expanded)}</view>;
 
 	// (the browser, dark, with a marquee dragged from under the grid's cells
 	// up over its first row, frame by frame as a mouse would; done once it is)
 	public static function marquee(x:Explorer, done:Void->Void):View {
 		var frames = 0;
-		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> helder.ui.Clock.add(_ -> {
+		return <view width={1100} height={700} flexShrink={0} ref={(n:Node) -> helder.ui.Clock.add(_ -> {
 			var grid = n.ui == null ? null : n.ui.root.find("grid");
 			if (grid == null || grid.height == 0) return true;
 			var bottom = grid.absY + grid.height - 20, right = grid.absX + grid.width - 20;
@@ -103,5 +104,5 @@ class Fixtures implements Markup {
 	public static final DISK:helder.os.Places.Volume = {name: "Macintosh HD", path: "tests", total: 494e9, free: 45.3e9, removable: false, network: false, root: true};
 
 	public static function tile(name:String):View
-		return <view grow={1}>{Tiles.large({name: name, kind: File, size: 0, modified: 0, created: 0})}</view>;
+		return <view flexGrow={1}>{Tiles.large({name: name, kind: File, size: 0, modified: 0, created: 0})}</view>;
 }

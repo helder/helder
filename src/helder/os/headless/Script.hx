@@ -26,8 +26,10 @@ using StringTools;
 // checkbox inside the list, as a CSS descendant selector), and/or its role
 // (ARIA's: "checkbox", "button") and label (its accessible name, else its
 // text): the first that matches all given, or the index'th; at its centre
-// (or at ox, oy points from its top left). Steps are kept in order of time
-// (a stable sort).
+// (or at ox, oy points from its top left). A step with "wait": true (or
+// seconds) waits for its node to be shown, as a hold (120 s, then it runs
+// and fails as any step whose node is not there). Steps are kept in order
+// of time (a stable sort).
 class Script {
 	public final steps:Array<Step> = [];
 	public final marks = new Map<String, Float>();

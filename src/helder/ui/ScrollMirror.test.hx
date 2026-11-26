@@ -16,7 +16,7 @@ function tests() {
 		function list(ui:Ui):{list:Node, content:Node} {
 			var l = new Node("list"), c = new Node();
 			l.style.set({overflow: Scroll, width: 300, height: 200});
-			c.style.set({height: 1000, shrink: 0});
+			c.style.set({height: 1000, flexShrink: 0});
 			// (a wheel of its own: a gate where it has no range)
 			l.onWheel = _ -> {};
 			l.append(c);

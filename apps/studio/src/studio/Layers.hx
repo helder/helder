@@ -16,22 +16,23 @@ import studio.Theme.c;
 // selects its node (shift: with the selection), a row dragged up or down
 // moves its element among its siblings (helder.syntax's Edits.move: one
 // transaction, the markup's order the drawing's), the frame drawn again.
+@:renderer(helder.ui.view.NodeRenderer)
 class Layers implements Markup {
 	public static function view(studio:Studio):View {
 		// (the row dragged and by how far, stage points)
 		var moving:Signal<Null<{key:String, dy:Float}>> = signal(null);
-		return <view tag="layers" slot="section" max-height="45%" shrink={0} padding="4 6 6" row-gap={0}
-			onClick={e -> e.stop()} onPointerDown={e -> e.stop()}>
-			<view:button tag="layers-toggle" slot="section-head" padding="0 8" role="button" label={studio.layersOpen() ? "Hide the layers" : "Show the layers"}
+		return <view tag="layers" slot="section" maxHeight="45%" flexShrink={0} padding="4 6 6" rowGap={0}
+			onPress={e -> e.stop()} onPointerDown={e -> e.stop()}>
+			<button tag="layers-toggle" slot="section-head" padding="0 8" aria-label={studio.layersOpen() ? "Hide the layers" : "Show the layers"}
 				cursor="pointer" onPress={() -> studio.layersOpen(!studio.layersOpen.peek())}>
-				<text grow={1}>Layers</text>
+				<text flexGrow={1}>Layers</text>
 				<image src={studio.layersOpen() ? Icons.chevronDown : Icons.chevronRight} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("fg3")}/>
-			</view:button>
-			<Show when={studio.layersOpen()}><scroll min-height={0}>
+			</button>
+			<Show when={studio.layersOpen()}><scroll minHeight={0}>
 				<For each={rows(studio)} by={(r:Row) -> r.key}>{(r:Read<Row>) ->
-					<view tag={"layer-" + r().key} slot="nav-item" data-layer="true" role="button" label={r().label} padding={'0 8 0 ${8 + r().depth * 12}'}
+					<view tag={"layer-" + r().key} slot="nav-item" data-layer="true" role="button" aria-label={r().label} padding={'0 8 0 ${8 + r().depth * 12}'}
 						data-on={r().on ? "true" : "false"} transform={offset(moving, r().key)} instant
-						onClick={e -> select(studio, r(), e.mods & Mods.SHIFT != 0)}
+						onPress={e -> select(studio, r(), e.mods & Mods.SHIFT != 0)}
 						onPan={g -> {
 							var row = r();
 							if (g.state == Ended || g.state == Cancelled) {
@@ -40,7 +41,7 @@ class Layers implements Markup {
 							} else moving({key: row.key, dy: g.ty});
 						}}>
 						<image src={r().icon} width={Theme.ICON_XS} height={Theme.ICON_XS} color={r().on ? c("accent-ink") : c("fg3")}/>
-						<text max-lines={1} text-overflow="ellipsis">{r().label}</text>
+						<text lineClamp={1} textOverflow="ellipsis">{r().label}</text>
 					</view>
 				}</For>
 			</scroll></Show>

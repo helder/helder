@@ -1,7 +1,6 @@
 import haxe.io.Bytes;
 import helder.asset.Asset;
 import helder.media.MemorySource;
-import helder.media.ui.MediaTags.*;
 import helder.media.ui.VideoNode;
 import helder.os.OsThread;
 import helder.os.windows.User32;
@@ -11,7 +10,7 @@ import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import hxmc.unsafe.*;
 
-// A <Video> on Windows (the window lane on a Windows host): quads.mp4's
+// A <video> on Windows (the window lane on a Windows host): quads.mp4's
 // flat quadrants in a box in a scroller, drawn by helder or (layer) on its
 // system layer (a swap chain in DirectComposition's slot: WinLayer),
 // played until six frames were shown, sought to 0.25 s and paused; the
@@ -90,8 +89,8 @@ class WinVideoStillCheck implements Markup {
 			return true;
 		}
 		UiWindow.run(<Surface title="WinVideoStillCheck" width={400} height={360} background="#333333">
-			<view grow={1} padding-top={40} padding-left={40} overflow="scroll" background={unit ? "#222222" : null}>
-				<Video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
+			<view flexGrow={1} paddingTop={40} paddingLeft={40} overflow="scroll" background={unit ? "#222222" : null}>
+				<video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
 					onError={e -> say('error $e')} ref={v -> {
 						node = v;
 						Clock.addFor(v, step);

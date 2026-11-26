@@ -1,0 +1,50 @@
+#include <metal_stdlib>
+using namespace metal;
+struct ComputeInput {
+	int x;
+	int y;
+	int z;
+	int localX;
+	int localY;
+	int localZ;
+	int localIndex;
+	int groupX;
+	int groupY;
+	int groupZ;
+	int subgroupLane;
+	int subgroupSize;
+	int subgroupIndex;
+	int subgroups;
+};
+struct Count {
+	int n;
+};
+void cs(ComputeInput id, Count count, const device int* sb_1, device atomic_int* sb_2, threadgroup int* wg_0) {
+	int i = id.localIndex;
+	int t0 = (id.x < count.n) ? sb_1[id.x] : 0;
+	wg_0[i] = t0;
+	threadgroup_barrier(mem_flags::mem_threadgroup);
+	int offset = 1;
+	while (offset < 256) {
+		int v = wg_0[i];
+		if (i >= offset) {
+			v += wg_0[i - offset];
+		}
+		threadgroup_barrier(mem_flags::mem_threadgroup);
+		wg_0[i] = v;
+		threadgroup_barrier(mem_flags::mem_threadgroup);
+		offset *= 2;
+	}
+	if (id.x < count.n) {
+		int t1 = id.x;
+		int t2 = wg_0[i];
+		atomic_store_explicit(&sb_2[t1], t2, memory_order_relaxed);
+	}
+}
+struct Count_buffer {
+	int n;
+};
+kernel void main0(uint3 gid [[thread_position_in_grid]], uint3 lid [[thread_position_in_threadgroup]], uint lidx [[thread_index_in_threadgroup]], uint3 grp [[threadgroup_position_in_grid]], constant Count_buffer& u_0 [[buffer(0)]], const device int* sb_1 [[buffer(1)]], device atomic_int* sb_2 [[buffer(2)]]) {
+	threadgroup int wg_0[256];
+	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z), int(lidx) & 3, 4, int(lidx) >> 2, 64}, Count{u_0.n}, sb_1, sb_2, wg_0);
+}

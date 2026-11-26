@@ -37,13 +37,13 @@ class Editor implements Markup {
 		editor.view.onUpdate = () -> status.text = editor.status();
 		decorate(editor);
 		UiWindow.run(<Surface title="Code editor" width={900} height={640}>
-			<view grow={1} font-size={12}>
-				<view tag="toolbar" direction="row" padding="6 12" column-gap={12} background="#f6f8fa">
-					<text tag="file" font-weight={700}>{path}</text>
+			<view flexGrow={1} fontSize={12}>
+				<view tag="toolbar" flexDirection="row" padding="6 12" columnGap={12} background="#f6f8fa">
+					<text tag="file" fontWeight={700}>{path}</text>
 					<text color="#57606a">{editor.model.lineCount + " lines"}</text>
 				</view>
 				{editor}
-				<view tag="statusbar" direction="row" padding="4 12" background="#f6f8fa">{status}</view>
+				<view tag="statusbar" flexDirection="row" padding="4 12" background="#f6f8fa">{status}</view>
 			</view>
 		</Surface>);
 	}
@@ -89,10 +89,10 @@ const re$N = /item-[0-9]+/g;
 export function List$N(props: { title: string; limit?: number }) {
 	const shown = memo(() => items$N().filter((i) => i.title.includes(query$N())).slice(0, props.limit ?? 10));
 	return (
-		<view tag=\"list-$N\" row-gap={6} padding={12} background=\"#ffffff\">
-			<text font-size={16} font-weight={700}>{`${props.title} (${shown().length})`}</text>
+		<view tag=\"list-$N\" rowGap={6} padding={12} background=\"#ffffff\">
+			<text fontSize={16} fontWeight={700}>{`${props.title} (${shown().length})`}</text>
 			<For each={shown()}>{(item) => (
-				<view direction=\"row\" column-gap={8} align-items=\"center\">
+				<view flexDirection=\"row\" columnGap={8} alignItems=\"center\">
 					<text color={item().done ? \"#a1a1aa\" : \"#18181b\"}>{item().title}</text>
 				</view>
 			)}</For>

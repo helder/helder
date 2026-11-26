@@ -44,6 +44,7 @@ enum PhoneAction {
 // stack and the Explorer follow each other: a screen popped is its folder
 // browsed again, a file closed its screen popped.
 @:allow(viewer.PhoneState)
+@:renderer(helder.ui.view.NodeRenderer)
 class Phone implements Markup {
 	public static inline var PAD = 16.0;
 	public static inline var GAP = 10.0;
@@ -59,7 +60,7 @@ class Phone implements Markup {
 	public static function Root(props:{x:Explorer, ?at:PhoneState->Void}):View {
 		var p = new PhoneState(props.x);
 		if (props.at != null) onSettled(() -> props.at(p));
-		return <view tag="phone" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={17}
+		return <view tag="phone" flexGrow={1} background={Look.ref.canvas} color={Look.ref.fg} fontFamily="system-ui" fontSize={17}
 			ref={(n:Node) -> {
 				p.attach(n);
 				props.x.zoom.attach(n);
@@ -83,13 +84,13 @@ class Phone implements Markup {
 	static function Tabs(props:{p:PhoneState}):View {
 		var p = props.p;
 		function tab(name:String, label:String, glyph:String):View
-			return <view:button tag={"tab-" + name} role="tab" label={label} selected={p.tab() == name} focusable grow={1} height={50} align-items="center"
-				justify="center" row-gap={3} font-size={10.5} font-weight={500} color={p.tab() == name ? Look.ref.fg : Look.ref.fg3}
+			return <button tag={"tab-" + name} role="tab" aria-label={label} aria-selected={p.tab() == name} flexGrow={1} height={50} alignItems="center"
+				justifyContent="center" rowGap={3} fontSize={10.5} fontWeight={500} color={p.tab() == name ? Look.ref.fg : Look.ref.fg3}
 				onPress={() -> p.home(name)}>
 				<image src={Glyphs.get(glyph)} width={26} height={26}/>
 				<text>{label}</text>
-			</view:button>;
-		return <view tag="tabs" role="tablist" direction="row" padding="0 60">
+			</button>;
+		return <view tag="tabs" role="tablist" flexDirection="row" padding="0 60">
 			{tab("recents", "Recents", "clock")}
 			{tab("browse", "Browse", "folder")}
 		</view>;
@@ -97,17 +98,17 @@ class Phone implements Markup {
 
 	static function Locations(props:{p:PhoneState}):View {
 		var p = props.p, x = p.x, s = x.sidebar;
-		return <view padding-bottom={24}>
-			<text tag="locations-head" font-size={20} font-weight={700} padding="18 16 8 16">Locations</text>
-			<view tag="locations" margin="0 16" radius={12} background={Look.ref.surface} overflow="hidden">
+		return <view paddingBottom={24}>
+			<text tag="locations-head" fontSize={20} fontWeight={700} padding="18 16 8 16">Locations</text>
+			<view tag="locations" margin="0 16" borderRadius={12} background={Look.ref.surface} overflow="hidden">
 				<For each={() -> s.places()}>{place -> row(place().name, Glyphs.place(place().kind), "", () -> p.browse(place().path))}</For>
 				{[for (v in s.volumes) row(v.name, Glyphs.volume(v), v.root && v.total > 0 ? Kinds.size(v.free) + " free" : "", () -> p.browse(v.path))]}
 				<Show when={x.addFolder != null}>
-					<view:button tag="add-folder" role="button" focusable label="Add a folder" direction="row" align-items="center" column-gap={13} height={50}
+					<button tag="add-folder" aria-label="Add a folder" flexDirection="row" alignItems="center" columnGap={13} height={50}
 						padding="0 14" color={Look.ref.fg2} onPress={() -> if (x.addFolder != null) x.addFolder()}>
 						<image src={Glyphs.get("plus")} width={22} height={22} margin="0 2"/>
 						<text>Add a folder…</text>
-					</view:button>
+					</button>
 				</Show>
 			</view>
 		</view>;
@@ -115,31 +116,31 @@ class Phone implements Markup {
 
 	// (a grouped row: its glyph, its name, a detail, the chevron)
 	static function row(name:String, glyph:String, meta:String, press:Void->Void):View
-		return <view:button tag={"place-" + name} role="button" focusable label={name} direction="row" align-items="center" column-gap={13} height={50}
-			padding="0 14" borders="0 0 1 0" border-color={Look.ref.line} onPress={press}>
+		return <button tag={"place-" + name} aria-label={name} flexDirection="row" alignItems="center" columnGap={13} height={50}
+			padding="0 14" borders="0 0 1 0" borderColor={Look.ref.line} onPress={press}>
 			<image src={Glyphs.get(glyph)} width={22} height={22} margin="0 2" color={Look.ref.fg2}/>
-			<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{name}</text>
-			<Show when={meta != ""}><text font-size={15} color={Look.ref.fg3}>{meta}</text></Show>
+			<text flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{name}</text>
+			<Show when={meta != ""}><text fontSize={15} color={Look.ref.fg3}>{meta}</text></Show>
 			<image src={Glyphs.get("forward")} width={16} height={16} color={Look.ref.fg3}/>
-		</view:button>;
+		</button>;
 
 	static function Recents(props:{p:PhoneState}):View {
 		var p = props.p, x = p.x;
-		return <view padding-bottom={24}>
+		return <view paddingBottom={24}>
 			<Show when={x.recent().length == 0}>
-				<text tag="no-recents" padding="40 32" text-align="center" color={Look.ref.fg3}>The files you open show up here.</text>
+				<text tag="no-recents" padding="40 32" textAlign="center" color={Look.ref.fg3}>The files you open show up here.</text>
 			</Show>
-			<For each={() -> x.recent()}>{path -> <view:button tag={"recent-" + Browser.name(path())} role="button" focusable label={Browser.name(path())}
-				direction="row" align-items="center" column-gap={12} height={ROW} padding="0 16" onPress={() -> p.reopen(path())}>
-				<view width={42} height={42} align-items="center" justify="center" radius={6} background={Look.ref.fill}>
+			<For each={() -> x.recent()}>{path -> <button tag={"recent-" + Browser.name(path())} aria-label={Browser.name(path())}
+				flexDirection="row" alignItems="center" columnGap={12} height={ROW} padding="0 16" onPress={() -> p.reopen(path())}>
+				<view width={42} height={42} alignItems="center" justifyContent="center" borderRadius={6} background={Look.ref.fill}>
 					<image src={Glyphs.get(Glyphs.of(Kinds.glyph({name: Browser.name(path()), kind: File, size: 0, modified: 0, created: 0})))} width={20}
 						height={20} color={Look.ref.fg3}/>
 				</view>
-				<view grow={1} min-width={0} row-gap={2}>
-					<text font-size={16} max-lines={1} text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{Browser.name(path())}</text>
-					<text font-size={13} color={Look.ref.fg3} max-lines={1}>{x.sidebar.title(Browser.parent(path()) ?? path())}</text>
+				<view flexGrow={1} minWidth={0} rowGap={2}>
+					<text fontSize={16} lineClamp={1} textOverflow="ellipsis" direction={helder.ui.Dir.Ltr}>{Browser.name(path())}</text>
+					<text fontSize={13} color={Look.ref.fg3} lineClamp={1}>{x.sidebar.title(Browser.parent(path()) ?? path())}</text>
 				</view>
-			</view:button>}</For>
+			</button>}</For>
 		</view>;
 	}
 
@@ -175,10 +176,10 @@ class Phone implements Markup {
 
 	static function Search(props:{p:PhoneState, path:String}):View {
 		var b = props.p.x.browser;
-		return <view tag="search" direction="row" align-items="center" column-gap={7} height={38} margin="0 16 12" padding="0 10" radius={11}
+		return <view tag="search" flexDirection="row" alignItems="center" columnGap={7} height={38} margin="0 16 12" padding="0 10" borderRadius={11}
 			background={Look.ref.well} color={Look.ref.fg3}>
 			<image src={Glyphs.get("search")} width={17} height={17}/>
-			<field tag="search-field" grow={1} min-width={0} value={() -> b.dir() == props.path ? b.query() : ""} placeholder="Search" label="Search this folder"
+			<field tag="search-field" flexGrow={1} minWidth={0} value={() -> b.dir() == props.path ? b.query() : ""} placeholder="Search" aria-label="Search this folder"
 				color={Look.ref.fg} onInput={e -> b.search(e.text)}/>
 		</view>;
 	}
@@ -208,7 +209,7 @@ class Phone implements Markup {
 			if (!on && list != null && here() && i >= 0) list.scrollToIndex(i);
 		});
 		// (why it shows nothing, last: under the bar and the large title)
-		return <view grow={1} min-height={0}>
+		return <view flexGrow={1} minHeight={0}>
 			<Show when={b.layout() == Grid}>{() -> {
 				// (three columns, four on its side; squares filling the width)
 				var w = ScreenContext.current.width(), h = ScreenContext.current.height();
@@ -241,22 +242,22 @@ class Phone implements Markup {
 			x.browser.selection.version();
 			return x.browser.selection.has(e().name);
 		}
-		return <view tag={"tile-" + e().name} grow={1} align-items="center" row-gap={4} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
-			<view slot="photo" data-selected={on() && p.selecting()} width={side} height={side} shrink={0} align-items="center" justify="center" radius={9}
+		return <view tag={"tile-" + e().name} flexGrow={1} alignItems="center" rowGap={4} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
+			<view slot="photo" data-selected={on() && p.selecting()} width={side} height={side} flexShrink={0} alignItems="center" justifyContent="center" borderRadius={9}
 				background={e().kind == Folder ? helder.gfx.Color.TRANSPARENT : Look.ref.fill} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 				{() -> square(x, e(), side)}
 				<Show when={p.selecting()}>
-					<view tag="pick" position="absolute" right={6} bottom={6} width={24} height={24} radius={12} border-width={1.5} align-items="center"
-						justify="center" border-color={on() ? Look.ref.accent : WHITE} background={on() ? Look.ref.accent : SHADE}
+					<view tag="pick" position="absolute" right={6} bottom={6} width={24} height={24} borderRadius={12} borderWidth={1.5} alignItems="center"
+						justifyContent="center" borderColor={on() ? Look.ref.accent : WHITE} background={on() ? Look.ref.accent : SHADE}
 						color={Look.ref.accentFg}>
 						<Show when={on()}><image src={Glyphs.get("check")} width={15} height={15}/></Show>
 					</view>
 				</Show>
 			</view>
-			<text slot="name-pill" data-selected={on() && p.selecting()} font-size={13} font-weight={500} max-width={side} max-lines={1}
-				text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{e().name}</text>
-			<text font-size={11.5} color={Look.ref.fg3} margin-top={-4} max-lines={1}>{e().kind == Folder ? "Folder" : Kinds.date(e().modified)}</text>
+			<text slot="name-pill" data-selected={on() && p.selecting()} fontSize={13} fontWeight={500} maxWidth={side} lineClamp={1}
+				textOverflow="ellipsis" direction={helder.ui.Dir.Ltr}>{e().name}</text>
+			<text fontSize={11.5} color={Look.ref.fg3} marginTop={-4} lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.date(e().modified)}</text>
 		</view>;
 	}
 
@@ -264,7 +265,7 @@ class Phone implements Markup {
 		if (e.kind == Folder) return <image src={Glyphs.folder(helder.ui.UiWindow.dark())} width={side * 0.82} height={side * 0.66}/>;
 		var t = Tiles.thumbnail(x, e);
 		return <>
-			<Show when={t().image != null}><image src={t().image} width={side} height={side} fit="cover"/></Show>
+			<Show when={t().image != null}><image src={t().image} width={side} height={side} objectFit="cover"/></Show>
 			<Show when={t().image == null}>{Tiles.large(e)}</Show>
 		</>;
 	}
@@ -275,13 +276,13 @@ class Phone implements Markup {
 			x.browser.selection.version();
 			return x.browser.selection.has(e().name);
 		}
-		return <view direction="row" align-items="center" column-gap={12} height={ROW} padding="0 16" grow={1}
+		return <view flexDirection="row" alignItems="center" columnGap={12} height={ROW} padding="0 16" flexGrow={1}
 			background={on() && p.selecting() ? Look.ref.accentSoft : helder.gfx.Color.TRANSPARENT} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
-			<view width={42} height={42} align-items="center" justify="center" radius={6} overflow="hidden"
+			<view width={42} height={42} alignItems="center" justifyContent="center" borderRadius={6} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>{() -> square(x, e(), 42)}</view>
-			<view grow={1} min-width={0} row-gap={2}>
-				<text font-size={16} max-lines={1} text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{e().name}</text>
-				<text font-size={13} color={Look.ref.fg3} max-lines={1}>{Kinds.date(e().modified) + (e().kind == Folder ? "" : " · " + Kinds.size(e().size))}</text>
+			<view flexGrow={1} minWidth={0} rowGap={2}>
+				<text fontSize={16} lineClamp={1} textOverflow="ellipsis" direction={helder.ui.Dir.Ltr}>{e().name}</text>
+				<text fontSize={13} color={Look.ref.fg3} lineClamp={1}>{Kinds.date(e().modified) + (e().kind == Folder ? "" : " · " + Kinds.size(e().size))}</text>
 			</view>
 			<Show when={e().kind == Folder && !p.selecting()}><image src={Glyphs.get("forward")} width={16} height={16} color={Look.ref.fg3}/></Show>
 		</view>;
@@ -290,7 +291,7 @@ class Phone implements Markup {
 	// a file's view with its long press's menu (a phone's, a tablet's): the
 	// entry selected first, its picture lifted
 	public static function pressed(x:Explorer, e:Read<Entry>, content:View, ?p:PhoneState):View
-		return <view grow={1} ref={(n:Node) -> ContextMenu.attach(n, () -> entryMenu(x, e(), p), () -> lifted(x, e()), a -> a == ViewerAction.Trash,
+		return <view flexGrow={1} ref={(n:Node) -> ContextMenu.attach(n, () -> entryMenu(x, e(), p), () -> lifted(x, e()), a -> a == ViewerAction.Trash,
 			() -> {
 				if (p == null || !p.selecting.peek()) x.browser.select(e().name);
 			})}>{content}</view>;
@@ -308,8 +309,8 @@ class Phone implements Markup {
 	// (a long press's preview: the thumbnail, larger, else the file's picture)
 	static function lifted(x:Explorer, e:Entry):View {
 		var img = Tiles.cached(x, e);
-		return <view grow={1} align-items="center" justify="center" background={Look.ref.raised}>
-			{img != null ? <image src={img} width="100%" height="100%" fit="cover"/> : e.kind == Folder ? <image
+		return <view flexGrow={1} alignItems="center" justifyContent="center" background={Look.ref.raised}>
+			{img != null ? <image src={img} width="100%" height="100%" objectFit="cover"/> : e.kind == Folder ? <image
 				src={Glyphs.folder(helder.ui.UiWindow.dark())} width={96} height={78}/> : Tiles.large(e)}
 		</view>;
 	}
@@ -326,13 +327,13 @@ class Phone implements Markup {
 			return !props.full && b.picked().length == 0;
 		}
 		function tool(tag:String, label:String, glyph:String, run:Void->Void, ?danger:Bool):View
-			return <view:button tag={tag} role="button" label={label} focusable={!none()} data-disabled={none()} min-width={60} height={50}
-				align-items="center" justify="center" row-gap={3} font-size={10.5} opacity={none() ? 0.45 : 1}
+			return <button tag={tag} aria-label={label} focusable={!none()} data-disabled={none()} minWidth={60} height={50}
+				alignItems="center" justifyContent="center" rowGap={3} fontSize={10.5} opacity={none() ? 0.45 : 1}
 				color={danger == true ? Look.ref.danger : Look.ref.fg} onPress={() -> if (!none()) run()}>
 				<image src={Glyphs.get(glyph)} width={22} height={22}/>
 				<text>{label}</text>
-			</view:button>;
-		return <view tag="tools" direction="row" justify="space-between" padding="6 12 0 12">
+			</button>;
+		return <view tag="tools" flexDirection="row" justifyContent="space-between" padding="6 12 0 12">
 			{x.share != null ? tool("open-in", "Open in…", "share", () -> p.openIn(props.full)) : null}
 			{!props.full && x.copy != null && ViewerActions.LOCAL && !mobile() ? tool("copy", "Copy", "copy", () -> x.perform(CopyPath)) : null}
 			{tool("info", "Info", "info", () -> p.showInfo(props.full))}
@@ -388,14 +389,14 @@ class Phone implements Markup {
 		}} scrolls={false} bars={p.bars}
 			trailing={<NavButton tag="full-info" label="Get Info" icon={Glyphs.get("info")} onPress={() -> p.showInfo(true)}/>}
 			bottom={<Tools p={p} full={true}/>}>
-			<view tag="full-stage" grow={1} background={Look.ref.canvas} opacity={1 - Math.min(0.6, drop() / 600)} onTap={_ -> p.bars(!p.bars.peek())}
+			<view tag="full-stage" flexGrow={1} background={Look.ref.canvas} opacity={1 - Math.min(0.6, drop() / 600)} onTap={_ -> p.bars(!p.bars.peek())}
 				onPinch={pinch} onPan={swipe} ref={(n:Node) -> {
 					stage = n;
 					// (zoomed in: a drag is the image's own pan, not a swipe)
 					var pan = n.gesture(helder.ui.gesture.Pan);
 					renderEffect(() -> v.version(), _ -> if (pan != null) pan.enabled = v.camera.fitted || v.pdf.peek() != null);
 				}}>
-				<view grow={1} transform={"translate(" + shift() + "px, 0px)"}>{ViewerView.stage(x)}</view>
+				<view flexGrow={1} transform={"translate(" + shift() + "px, 0px)"}>{ViewerView.stage(x)}</view>
 			</view>
 		</NavScreen>;
 	}
@@ -403,6 +404,7 @@ class Phone implements Markup {
 
 // A phone's state beside the Explorer's: its stack, the root's tab, select
 // mode, the info sheet, the full view's bars
+@:renderer(helder.ui.view.NodeRenderer)
 class PhoneState implements Markup {
 	public final x:Explorer;
 	public final nav = new Routes();

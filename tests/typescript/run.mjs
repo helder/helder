@@ -114,9 +114,9 @@ for(const file of standards)for(const target of targets) {
     ok(target==='linux-x86_64'?run(out,[]):run(process.execPath,[`${T}/run-wasi.cjs`,out]),`${file} ${target}`);
     console.log(`PASS standard ${file} ${target}`); passed++;
 }
-for(const file of fs.readdirSync(`${T}/reject`).filter(f=>f.endsWith('.ts')).sort()) {
+for(const file of fs.readdirSync(`${T}/reject`).filter(f=>/\.tsx?$/.test(f)).sort()) {
     if(!mine())continue;
-    const out=`${dir}/reject-${path.basename(file,'.ts')}`; fs.rmSync(out,{force:true});
+    const out=`${dir}/reject-${file.replace(/\.tsx?$/,'')}`; fs.rmSync(out,{force:true});
     const r=run(compiler,[`${T}/reject/${file}`,'-o',out]);
     assert.notEqual(r.status,0,`${file} should be rejected`);
     assert.match(r.stderr,/TS(HX)?[0-9]+:/,`${file} needs a diagnostic code`);

@@ -130,13 +130,14 @@ class Plan<E> {
 	static function clean(cs:Array<PNode>):Array<PNode>
 		return [for (c in cs) if (exprNotEmpty(c)) c];
 
-	// the neutral elements: ui's own, a page's renderer realising them as its
-	// elements; and the prefixes of their namespaced ones (view:button)
-	public static final NEUTRAL = ["view", "text", "scroll", "image", "icon", "field"];
-	public static final NEUTRAL_PREFIXES = ["view", "text", "field"];
-
-	public static function isNeutral(name:String):Bool
-		return NEUTRAL.indexOf(name) >= 0 || (name.indexOf(":") > 0 && NEUTRAL_PREFIXES.indexOf(name.substr(0, name.indexOf(":"))) >= 0);
+	// the neutral elements: ui's own (helder.view.Vocabulary), a page's
+	// renderer realising them as its elements. In ui's literals and
+	// single-source ones (@:neutral) helder's elements and HTML's of the
+	// table (button, p, h2...); in another's helder's own alone, the rest
+	// the renderer's own (a page's button; natively ui's button still,
+	// NodeRenderer making HTML's names as it does)
+	function isNeutral(name:String):Bool
+		return renderer == UI || renderer == null && target.singleSource() ? Vocabulary.isElement(name) : Vocabulary.anywhere(name);
 
 	// a component's tag: dotted, or capitalized
 	public static function isComponent(name:String):Bool {
@@ -166,6 +167,12 @@ class Plan<E> {
 	}
 
 	function made(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
+		// (a tag none of ui's elements is: in ui's literals an error, the one
+		// meant named; a prefix (view:button) in any)
+		if (target.checked()) {
+			var bad = Vocabulary.tag(name, renderer != UI);
+			if (bad != null) target.error(bad, {at: at, length: name.length});
+		}
 		if (renderer != null) {
 			var els = target.elements(renderer);
 			if (els != null && els.indexOf(name) < 0)
@@ -183,6 +190,7 @@ class Plan<E> {
 		imageVar = v;
 		var e = target.ident(v);
 		var neutral = isNeutral(name);
+		if (neutral && target.checked()) words(name, attrs);
 		var out = [
 			target.declare(v, neutral ? target.call(Neutral, "element", [target.string(name)], null) : target.call(Host, "createElement", [target.string(name)], null), null),
 			top ? target.call(Runtime, "put", [parent, e, target.ident("__b"), target.ident("__o")], null) : target.call(Host, "insert", [parent, e, target.nil()], null)
@@ -401,7 +409,7 @@ class Plan<E> {
 				// (states: a function of a part's states, its own style: set once, not bound, as a neutral element's)
 				if (name == "states") return target.call(Host, "setProperty", [e, target.string(name, ap), hole(x)], ap);
 				if (!event && name != "ref" && name != "key") x = reactive(x);
-				if (event) x = target.handler(x, name, renderer, false, ap);
+				if (event) x = target.handler(x, name, renderer, null, ap);
 				var plain = !event && name != "ref" && name != "key" && name != "style" && target.isPlain(x);
 				var h = hole(x);
 				if (event) target.call(Host, "listen", [e, target.string(name, ap), h], ap);
@@ -467,9 +475,30 @@ class Plan<E> {
 	function liveAttr0(value:E, at:LiveAt, name:String):Null<E>
 		return !target.liveOn() || Live.fixed(name) ? null : target.live(value, at);
 
+	// a neutral element's attributes and events against markup's words
+	// (Vocabulary): a name it does not take an error, the one meant named;
+	// React's (htmlFor, className) a warning, set as HTML's
+	function words(tag:String, attrs:Array<PAttr>)
+		for (a in attrs) {
+			var n = a.name, where = {at: a.at, length: n.length};
+			if (a.value.match(ASpread(_, _)) || n == "key" || n == "ref") continue;
+			var bad = isEvent(n) ? Vocabulary.event(tag, n) : Vocabulary.attribute(tag, n);
+			if (bad == null) bad = switch a.value {
+				case AStatic(v): Vocabulary.value(n, v);
+				case _: null;
+			}
+			if (bad != null) target.error(bad, where);
+			var react = Vocabulary.react(n);
+			if (react != null) target.warning(react, where);
+		}
+
+	// (onPress, not one's own word that starts so: "once", "only")
+	static function isEvent(n:String):Bool
+		return StringTools.startsWith(n, "on") && n.length > 2 && n.charAt(2) != n.charAt(2).toLowerCase();
+
 	// a neutral element's attribute: through the renderer's neutral functions where it has them
 	function neutralAttr(e:E, a:PAttr, tag:String, event:Bool, ap:Where):Null<E> {
-		var name = a.name;
+		var name = Vocabulary.canonical(a.name);
 		if (name == "key") return null;
 		return switch a.value {
 			case AStatic(_) | AFlag:
@@ -497,7 +526,9 @@ class Plan<E> {
 				// (states: a function of a part's states, its own style: set once, not bound)
 				if (name == "states") return target.call(Neutral, "property", [e, target.string(tag), target.string(name, ap), hole(x)], ap);
 				if (!event && name != "ref") x = reactive(x);
-				if (event) x = target.handler(x, name, renderer, true, ap);
+				if (event) x = target.handler(x, name, renderer, tag, ap);
+				// (a ref typed by the node it gets: ui's element's, else a Part, any renderer's)
+				if (name == "ref") x = target.ref(x, renderer == UI ? Vocabulary.node(tag) : Vocabulary.PART);
 				var plain = !event && name != "ref" && target.isPlain(x);
 				var h = hole(x);
 				if (event) target.call(Neutral, "listen", [e, target.string(tag), target.string(name, ap), h], ap);
@@ -559,11 +590,12 @@ class Plan<E> {
 		}
 		var kids = clean(children);
 		var content:Null<E> = null;
-		// (a function alone, for a component whose children are one: the children prop itself)
-		if (kids.length == 1 && c.childFunction == true) switch kids[0].kind {
+		// (a function alone, for a component whose children are one: the children
+		// prop itself; Show's, content or a function of one, when it takes one)
+		if (kids.length == 1 && (c.childFunction == true || c.childAccessor == true)) switch kids[0].kind {
 			case PExpr(code, at):
 				var x = target.code(code, at, c.children != null ? c.children : inner(), false);
-				if (x != null && target.isFunction(x)) content = x;
+				if (x != null && target.isFunction(x) && (c.childFunction == true || target.arity(x) == 1)) content = x;
 			case _:
 		}
 		if (content == null && kids.length > 0) content = new Plan(target, c.children != null ? c.children : renderer, at).compile({kind: PFragment(kids)});
@@ -582,6 +614,15 @@ interface Target<E> {
 	// a fact or a check failed: an error at where (null: the literal), in
 	// offsets of the root literal; it throws
 	function error(message:String, where:Null<Where>):Dynamic;
+	// a warning at where, the literal still compiled
+	function warning(message:String, where:Where):Void;
+	// whether the literal is a single-source component's (Haxe's @:neutral):
+	// HTML's names its neutral elements, every renderer realising them
+	function singleSource():Bool;
+	// whether the planner checks a neutral element's names (Vocabulary) when
+	// compiled (the Interpreter's: NodeRenderer's when it runs, each error
+	// marked where it is)
+	function checked():Bool;
 
 	// the elements a renderer lists (null: any name)
 	function elements(renderer:String):Null<Array<String>>;
@@ -612,15 +653,19 @@ interface Target<E> {
 	function typedValue(renderer:String, element:String, name:String, value:E, reads:Bool, where:Where):E;
 	// the statement setting a typed prop of el from its hole: once, or bound
 	function typedSet(renderer:String, element:String, name:String, el:E, held:E, reads:Bool, where:Where):E;
-	// whether e is a function literal
+	// whether e is a function literal; its parameters' count (-1: not one)
 	function isFunction(e:E):Bool;
+	function arity(e:E):Int;
+	// a ref's function typed by the node it gets (a type's path: a neutral
+	// element's node where ui renders it, else helder.ui.Part)
+	function ref(e:E, node:String):E;
 	// a listener named name, of an element of renderer (null: agnostic;
-	// neutral: a neutral element's, whose events are ui's), checked against
+	// tag: a neutral element's, whose events are ui's and its own), checked against
 	// the events its renderer declares (@:events: a function of its event or
 	// of none, an untyped parameter typed as it; another an error at where);
 	// one that takes no event (onPress={() -> ...}) given one
 	// it ignores, where the language needs that
-	function handler(e:E, name:String, renderer:Null<String>, neutral:Bool, where:Where):E;
+	function handler(e:E, name:String, renderer:Null<String>, tag:Null<String>, where:Where):E;
 	// whether components are mounted with fast refresh's keys (hxmc.dev)
 	function devKeys():Bool;
 	// the source map of dev builds and headless runs (helder.view.Source):
@@ -692,8 +737,9 @@ enum LiveAt {
 }
 
 // (reads: the props of a type that reads, Read<T>: bound when their value may read)
-// (childFunction: its children prop is a function, For's row)
-typedef Component<E> = {callee:E, children:Null<String>, ?reads:Array<String>, ?childFunction:Bool};
+// (childFunction: its children prop is a function, For's row; childAccessor:
+// content or a function of one, Show's)
+typedef Component<E> = {callee:E, children:Null<String>, ?reads:Array<String>, ?childFunction:Bool, ?childAccessor:Bool};
 
 typedef Planned<E> = {
 	renderer:Null<String>,

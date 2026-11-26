@@ -22,7 +22,7 @@ import helder.view.graph.Graph.*;
 // screen below, its long press's menu popping several, the large title
 // moving into the bar as the content scrolls); a sheet opened to its
 // detent, dragged to the other and down to dismiss; a long press winning
-// over the click; select mode's taps and its run
+// over the click, the mouse's in a Compact window only; select mode's taps and its run
 function tests() {
 	var t = 0.0;
 	function ui(w:Float, h:Float):Ui {
@@ -65,8 +65,8 @@ function tests() {
 	describe("NavScreen", () -> {
 		function nav():Router
 			return new Router()
-				.route("/", _ -> <NavScreen title="Browse" large><view tag="home" height={2000} shrink={0}/></NavScreen>)
-				.route("/a", _ -> <NavScreen title="Photos" large><view height={2000} shrink={0}/></NavScreen>)
+				.route("/", _ -> <NavScreen title="Browse" large><view tag="home" height={2000} flexShrink={0}/></NavScreen>)
+				.route("/a", _ -> <NavScreen title="Photos" large><view height={2000} flexShrink={0}/></NavScreen>)
 				.route("/b", _ -> <NavScreen title="Trip"><view tag="trip" height={100}/></NavScreen>);
 		function top(u:Ui):Node {
 			var screens = [for (n in u.root.find("stack").children) if (n.tag == "screen" && n.visible()) n];
@@ -117,7 +117,7 @@ function tests() {
 	describe("Sheet", () -> {
 		test("opens to its first detent, drags to large, down to dismiss", () -> {
 			var u = ui(390, 844), open = signal(false), at = signal(Medium);
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<Sheet open={open} detents={[Medium, Large]} detent={at} onDismiss={() -> open(false)} label="Info"><text tag="body">Info</text></Sheet>
 			</view>, u.root);
 			u.update();
@@ -159,7 +159,7 @@ function tests() {
 		});
 		test("a popover from its anchor on a wider screen", () -> {
 			var u = ui(820, 1180), open = signal(false), button:Null<Node> = null;
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<view tag="info" width={44} height={44} ref={n -> button = n}/>
 				<Sheet open={open} anchor={() -> button} onDismiss={() -> open(false)}><text>Info</text></Sheet>
 			</view>, u.root);
@@ -217,14 +217,38 @@ function tests() {
 			equals(log, ["Open"]);
 			equals(u.overlay.children.length, 0);
 		});
+		test("the mouse held still: the touch menu in a Compact window only (a desktop's held click stays a click); a group's line", () -> {
+			for (size in [{w: 390.0, menu: true}, {w: 820.0, menu: false}, {w: 1400.0, menu: false}]) {
+				var u = ui(size.w, 600), clicks = 0;
+				var n = new Node("row");
+				n.style.height = 100;
+				n.onPress = _ -> clicks++;
+				u.root.append(n);
+				helder.ui.menu.ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)]);
+				u.update();
+				u.pointerDown(20, 50, 1);
+				t += 0.8;
+				Clock.tick(Clock.now + 0.8);
+				u.pointerUp(20, 50, 1);
+				Graph.flush();
+				u.update();
+				var layer = u.overlay.find("touch-menu-layer");
+				equals('${size.w}: ${layer != null} ${clicks}', '${size.w}: ${size.menu} ${size.menu ? 0 : 1}');
+				if (layer == null) continue;
+				var items = layer.find("touch-menu").children;
+				equals([for (c in items) c.slot], ["touch-menu-item", "touch-menu-separator", "touch-menu-item"]);
+				var line = items[1];
+				equals([line.height, line.y - items[0].y - items[0].height, items[2].y - line.y - line.height], [1.0, 4.0, 4.0]);
+			}
+		});
 	});
 	describe("select mode", () -> {
 		test("a tap toggles; a drag sideways selects a run", () -> {
 			var u = ui(390, 844), grid:Null<helder.ui.GridScroll> = null;
 			var files = [for (i in 0...12) "f" + i];
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<VirtualGrid each={files} by={f -> f} cellWidth={120} cellHeight={120} gap={0} padding={0} selectMode={true} ref={g -> grid = g}>
-					{(f, i) -> <view grow={1} tag={f()}/>}
+					{(f, i) -> <view flexGrow={1} tag={f()}/>}
 				</VirtualGrid>
 			</view>, u.root);
 			u.update();

@@ -30,8 +30,8 @@ class MotionStress implements Markup {
 			return true;
 		});
 		UiWindow.run(<Surface title="MotionStress" width={1000} height={640}>
-			<view grow={1} motion="default" direction="row" wrap padding={8} gap={4} align-content="start" background="#f4f4f5">
-				<For each={order}>{(i:Read<Int>) -> <view width={20} height={14} radius={3}
+			<view flexGrow={1} motion="default" flexDirection="row" flexWrap padding={8} gap={4} alignContent="start" background="#f4f4f5">
+				<For each={order}>{(i:Read<Int>) -> <view width={20} height={14} borderRadius={3}
 					background={["#f97316", "#22c55e", "#3b82f6", "#a855f7"][i() % 4]}/>}</For>
 			</view>
 		</Surface>);

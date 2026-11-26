@@ -13,6 +13,7 @@ using StringTools;
 // file or a tool by name, what is typed matching the words in order
 // (Command.matches); Enter takes the one marked (the arrows move it), a
 // click any, Escape or a click outside closes it. Later the prompt's too.
+@:renderer(helder.ui.view.NodeRenderer)
 class Command implements Markup {
 	public static function view(studio:Studio):View {
 		var query = signal(""), at = signal(0);
@@ -24,12 +25,12 @@ class Command implements Markup {
 			var q = query();
 			return [for (i in items(studio)) if (matches(i.label + " " + i.detail, q)) i].slice(0, 12);
 		}
-		return <view tag="command-layer" position="absolute" inset={0} onClick={_ -> studio.commandOpen(false)}>
+		return <view tag="command-layer" position="absolute" inset={0} onPress={_ -> studio.commandOpen(false)}>
 			<view tag="command-list" slot="floating" position="absolute" top={Theme.HEADER - 4} left={left(studio)} width={480} padding={4}
-				shadow={Theme.POPOVER} onClick={e -> e.stop()}>
-				<view direction="row" align-items="center" column-gap={8} height={32} padding="0 8" border-width="0 0 1 0" border-color={c("line")}>
+				boxShadow={Theme.POPOVER} onPress={e -> e.stop()}>
+				<view flexDirection="row" alignItems="center" columnGap={8} height={32} padding="0 8" borderWidth="0 0 1 0" borderColor={c("line")}>
 					<image src={Icons.search} width={Theme.ICON_S} height={Theme.ICON_S} color={c("fg3")}/>
-					<field tag="command-input" slot="ask-input" label="Jump to" value={query} placeholder="A frame, a file or a tool…"
+					<field tag="command-input" slot="ask-input" aria-label="Jump to" value={query} placeholder="A frame, a file or a tool…"
 						ref={(n:Node) -> haxe.Timer.delay(() -> n.focus(), 0)} onInput={e -> {
 							query(e.text);
 							at(0);
@@ -40,14 +41,14 @@ class Command implements Markup {
 							if (e.key == Key.ENTER && list.length > 0) pick(list[Std.int(Math.min(at.peek(), list.length - 1))]);
 						}}/>
 				</view>
-				<view padding="4 0 0" row-gap={0}>
+				<view padding="4 0 0" rowGap={0}>
 					<For each={shown()}>{(i:Read<Item>) ->
-						<view:button tag={"command-" + Shell.slug(i().label)} slot="menu-item" role="button" label={i().label}
+						<button tag={"command-" + Shell.slug(i().label)} slot="menu-item" focusable={false} aria-label={i().label}
 							data-on={shown().indexOf(i()) == at() ? "true" : "false"} onPress={() -> pick(i())}>
 							<image src={i().icon} width={Theme.ICON_S} height={Theme.ICON_S} color={c("fg3")}/>
-							<text grow={1} max-lines={1} text-overflow="ellipsis">{i().label}</text>
-							<text font-size={Theme.SMALL} color={c("fg3")} max-lines={1}>{i().detail}</text>
-						</view:button>
+							<text flexGrow={1} lineClamp={1} textOverflow="ellipsis">{i().label}</text>
+							<text fontSize={Theme.SMALL} color={c("fg3")} lineClamp={1}>{i().detail}</text>
+						</button>
 					}</For>
 				</view>
 			</view>

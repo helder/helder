@@ -15,8 +15,9 @@ import hxmc.unsafe.*;
 // written here. What it wrote: paths, or registry keys.
 class FileTypes {
 	public static function register(id:String, name:String, exe:String, types:Array<{mime:String, extensions:Array<String>}>):Array<String>
-		return if (Platform.os() == 2) windows(id, name, exe, types) else if (Platform.os() == 0 && Platform.target() < 9) linux(id, name, exe, types) else [];
+		return if (Platform.os() == 2) #if (!helder.os || helder.os == "windows") windows(id, name, exe, types) #else [] #end else if (Platform.os() == 0 && Platform.target() < 9) linux(id, name, exe, types) else [];
 
+	#if (!helder.os || helder.os == "windows")
 	// (the registry's values under HKEY_CURRENT_USER, REG_SZ)
 	@:hxmc.unsafe(gc) static function windows(id:String, name:String, exe:String, types:Array<{mime:String, extensions:Array<String>}>):Array<String> {
 		var progId = id + ".file", base = "Software\\Classes\\", done = [];
@@ -43,6 +44,7 @@ class FileTypes {
 		Shell32Notify.SHChangeNotify(0x08000000, 0, Ptr.nil(), Ptr.nil()); // (SHCNE_ASSOCCHANGED)
 		return done;
 	}
+	#end
 
 	static function linux(id:String, name:String, exe:String, types:Array<{mime:String, extensions:Array<String>}>):Array<String> {
 		var home = Sys.getEnv("XDG_DATA_HOME") ?? (Sys.getEnv("HOME") + "/.local/share");
@@ -69,6 +71,8 @@ class FileTypes {
 	}
 }
 
+#if (!helder.os || helder.os == "windows")
 @:hxmc.c @:hxmc.lib("shell32") extern class Shell32Notify {
 	static function SHChangeNotify(event:Int, flags:Int, a:Ptr, b:Ptr):Void;
 }
+#end

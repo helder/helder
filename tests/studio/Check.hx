@@ -43,6 +43,8 @@ using StringTools;
 // dragged from the tree onto the Home frame (an <image src> of its path,
 // its size the image's); a file dropped from the system on the assets
 // folder's row copied into it.
+// Then an empty folder in the studio's own shell (studioStart): the starter
+// written, its one screen built and shown once the first prompt is answered.
 // Then a story file changed under the studio (tests/Run.hx's studioStories:
 // a copy of examples/ts-todo driven over MCP): its exports renamed, a story
 // renamed and one added, the screens following them, built, the new one
@@ -87,6 +89,7 @@ class Check {
 		files(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
 		acp(events('$dir/acp.jsonl'));
 		stories(events('$dir/stories.jsonl'));
+		start(events('$dir/start.jsonl'));
 		Sys.println("studio: | | cold start to first frame | open to all screens shown | inspector change to the program's frame |");
 		for (r in rows) Sys.println('studio: | ${r.app} | ${r.first} ms | ${r.shown} ms | ${r.patch} ms (${r.frames} studio frame(s)) |');
 		Sys.println('studio: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
@@ -139,8 +142,8 @@ class Check {
 			for (c in (e.changes : Array<Dynamic>))
 				text = text.substr(0, c.start) + c.text + text.substr(c.end);
 		check('$app: the edits replayed give the file', text == final_);
-		var expected = original.replace('<text font-size={28} font-weight={700} color="#3b82f6">todos',
-			'<text tag="title" font-size={28} font-weight={700} color="#ef4444">todos');
+		var expected = original.replace('<text fontSize={28} fontWeight={700} color="#3b82f6">todos',
+			'<text tag="title" fontSize={28} fontWeight={700} color="#ef4444">todos');
 		check('$app: the file: the original with the colour and the tag alone', final_ == expected);
 		return {app: app, first: ff?.ms, shown: shown?.ms, patch: p?.ms, frames: p?.frames};
 	}
@@ -163,6 +166,16 @@ class Check {
 		check('free: Play runs the selected story in the studio', play != null && play.kind == "story" && play.screen == "Todo/Three items" && play.target == "studio", Json.stringify(play));
 		check('free: a tap in the player is the story\'s (Call Ana removed), Escape stops',
 			stopped != null && (stopped.texts : Array<String>).contains("Buy milk") && !(stopped.texts : Array<String>).contains("Call Ana"), Json.stringify(stopped));
+	}
+
+	static function start(ev:Array<Dynamic>) {
+		function all(name:String):Array<Dynamic>
+			return [for (e in ev) if (e.event == name) e];
+		check('start: an empty folder: the starter written', all("starter").length == 1, Json.stringify(all("starter")));
+		var shown:Dynamic = all("all-shown")[0];
+		check('start: its one screen built and shown', shown != null && shown.screens == 1, Json.stringify(shown));
+		var replied:Dynamic = all("replied")[0];
+		check('start: the first prompt answered (the blank sheet gone)', replied != null && (replied.reply : String).startsWith("run.tree: {"), Json.stringify(replied));
 	}
 
 	static function stories(ev:Array<Dynamic>) {
@@ -257,7 +270,7 @@ class Check {
 		var moved:Dynamic = drags[0];
 		var frameEdits = [for (k in 0...edits.length) if (edits[k].frame <= (moved?.frame ?? -1)) k];
 		var afterMove = frameEdits.length == 0 ? "" : texts[frameEdits[frameEdits.length - 1] + 1];
-		var at = ~/canvas:at="(-?[0-9]+) 0" background="#f8fafc" padding="56 24 24" row-gap/;
+		var at = ~/canvas:at="(-?[0-9]+) 0" background="#f8fafc" padding="56 24 24" rowGap/;
 		check('design: the frame moved by its caption, snapped (canvas:at="x 0")', moved != null && moved.kind == "frame moved" && moved.snapped >= 1
 			&& at.match(afterMove) && Std.parseInt(at.matched(1)) < 0 && afterMove == original.replace('canvas:at="0 0"', 'canvas:at="${at.matched(1)} 0"'),
 			Json.stringify(moved));

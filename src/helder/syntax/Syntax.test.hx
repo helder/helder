@@ -179,17 +179,30 @@ function tests() {
 	});
 
 	describe("speed", () -> {
-		test("a file of 2000 lines read, edited and read again in a few ms", () -> {
-			var b = new StringBuf();
-			b.add("export function App() {\n\treturn <view grow={1} padding={24}>\n");
-			for (k in 0...666)
-				b.add('\t\t<view tag="row$k" direction="row" column-gap={8}>\n\t\t\t<text font-size={14} color="#18181b">{items[$k].title} {`#$${$k}`}</text>\n\t\t</view>\n');
-			b.add("\t</view>;\n}\n");
-			var text = b.toString();
-			assert(text.split("\n").length >= 2000);
-			// (three times: the first cold, the best as an editor's warm loop has it)
+		// (no bound in milliseconds, which a busy runner stretches (Eval's
+		// 600 ms beside the old 1000 ms one): each read against work of the
+		// same run, whatever the target's and the machine's speed (cost: runs
+		// batched over 100 ms, so that a preemption is a share of each, not
+		// all of a 1 ms run; the best of three batches): a file eight times as
+		// long (linear: about eight times the time, not sixty-four; the
+		// collector's share of the larger heap up to sixteen), and a
+		// lexer's pass over the same lines (helder.syntax.Lexer, as an editor
+		// highlights: the reading's scanning without its tree). Not the
+		// process's CPU time: the collector's threads, spinning on a busy
+		// machine, are in it. The single runs' times are printed, the best of five)
+		test("a file of 2000 lines read, edited and read again in a few lexer passes, its reads linear", () -> {
+			var text = rows(666), lines = text.split("\n"), thousand = rows(333), eight = rows(2664);
+			assert(lines.length >= 2000);
+			var tokens = 0;
+			var small = cost(() -> Document.parse(thousand, Tsx)), large = cost(() -> Document.parse(eight, Tsx));
+			var lexer = cost(() -> tokens = lexed(lines));
+			var edited = cost(() -> {
+				var d = Document.parse(text, Tsx);
+				d.apply(Edits.setAttribute(d, d.elementWith("tag", "row333"), "column-gap", ACode("12")));
+			});
+			assert(tokens > lines.length);
 			var best = {read: 1e9, edit: 1e9, all: 1e9}, first = 0.0;
-			for (run in 0...3) {
+			for (run in 0...5) {
 				var t0 = haxe.Timer.stamp();
 				var d = Document.parse(text, Tsx);
 				var t1 = haxe.Timer.stamp();
@@ -202,14 +215,59 @@ function tests() {
 				if (run == 0) first = (t3 - t0) * 1000;
 				best = {read: Math.min(best.read, (t1 - t0) * 1000), edit: Math.min(best.edit, (t2 - t1) * 1000), all: Math.min(best.all, (t3 - t0) * 1000)};
 			}
-			// (natively a few ms; Eval and wasm slower: a bound for all)
-			assert(best.all < 1000, 'read, edited and read again in ${best.all} ms');
 			inline function ms(x:Float)
 				return Math.round(x * 10) / 10;
-			Sys.println('helder.syntax: 2000 lines read ${ms(best.read)} ms, an element found and edited ${ms(best.edit)} ms, read, edited and read again ${ms(best.all)} ms (the first time ${ms(first)} ms)');
+			var passes = ms(edited / Math.max(lexer, 1e-6)), grew = ms(large / Math.max(small, 1e-6));
+			Sys.println('helder.syntax: 2000 lines read ${ms(best.read)} ms, an element found and edited ${ms(best.edit)} ms, read, edited and read again ${ms(best.all)} ms (the first time ${ms(first)} ms); '
+				+ 'batched: read, edited and read again ${ms(edited)} ms, $passes lexer passes of ${ms(lexer)} ms; 1000 lines read ${ms(small)} ms, 8000 ${ms(large)} ms ($grew times)');
+			assert(large < small * GREW, '8000 lines read in ${ms(large)} ms, 1000 in ${ms(small)} ms: $grew times, of at most $GREW (linear: 8)');
+			assert(edited < lexer * PASSES, 'read, edited and read again in ${ms(edited)} ms: $passes lexer passes over its lines (${ms(lexer)} ms), of at most $PASSES');
 		});
 	});
 }
+
+// (f's cost, ms a run: runs batched until 100 ms, the best of three batches)
+private function cost(f:() -> Void):Float {
+	var best = 1e9;
+	for (_ in 0...3) {
+		var runs = 0, t0 = haxe.Timer.stamp(), t = t0;
+		while (runs == 0 || t - t0 < 0.1) {
+			f();
+			runs++;
+			t = haxe.Timer.stamp();
+		}
+		best = Math.min(best, (t - t0) * 1000 / runs);
+	}
+	return best;
+}
+
+// (the speed test's file: a component of k rows of three lines each)
+private function rows(k:Int):String {
+	var b = new StringBuf();
+	b.add("export function App() {\n\treturn <view grow={1} padding={24}>\n");
+	for (i in 0...k)
+		b.add('\t\t<view tag="row$i" direction="row" column-gap={8}>\n\t\t\t<text font-size={14} color="#18181b">{items[$i].title} {`#$${$i}`}</text>\n\t\t</view>\n');
+	b.add("\t</view>;\n}\n");
+	return b.toString();
+}
+
+// (the lines lexed one after another, as an editor highlights them: the tokens)
+private function lexed(lines:Array<String>):Int {
+	var lx = new Lexer(Tsx), st = lx.start(), out = [], n = 0;
+	for (l in lines) {
+		out.resize(0);
+		st = lx.line(l, st, out);
+		n += out.length;
+	}
+	return n;
+}
+
+// (a read, an edit and a read again: at most this many lexer passes; measured
+// on host, wasm32-wasi and Eval)
+private final PASSES = 50;
+
+// (the 8000 lines' read against the 1000's: at most this many times (linear: 8, with the collections of the larger heap measured up to 16; quadratic: 64))
+private final GREW = 32;
 
 // the edit of text by f: the text after exactly, its inverse the text back, only the changes' ranges different
 private function edit(text:String, lang:Lang, f:Document->Transaction, expected:String, ?pos:haxe.PosInfos) {

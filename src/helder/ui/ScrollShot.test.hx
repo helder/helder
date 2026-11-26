@@ -47,9 +47,9 @@ private function isIn(n:Null<Node>, tag:String):Bool {
 private class Fixture implements helder.view.Markup {
 	public static function page(on:helder.view.graph.Read<String>, shown:helder.view.graph.Read<String>)
 		return <view width={300} height={200}>
-			<scroll tag="page" position="absolute" inset={0}><view height={1000} shrink={0}/></scroll>
-			<view tag="closed" position="absolute" inset={0} pointer-events="none" visibility={shown()}>
-				<scroll tag="closed-scroll" position="absolute" inset={0} pointer-events={on()}><view height={1000} shrink={0}/></scroll>
+			<scroll tag="page" position="absolute" inset={0}><view height={1000} flexShrink={0}/></scroll>
+			<view tag="closed" position="absolute" inset={0} pointerEvents="none" visibility={shown()}>
+				<scroll tag="closed-scroll" position="absolute" inset={0} pointerEvents={on()}><view height={1000} flexShrink={0}/></scroll>
 			</view>
 		</view>;
 }

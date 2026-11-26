@@ -9,10 +9,10 @@ Text styles inherit, so set them once on a parent. A `<field>` is a text field; 
 ```tsx
 const draft = signal('')
 
-const editor = <view font-size={14} color='#18181b' row-gap={8}>
-  <text font-weight={700}>New task</text>
+const editor = <view fontSize={14} color='#18181b' rowGap={8}>
+  <text fontWeight={700}>New task</text>
   <field value={draft} placeholder='What needs to be done?'
-    padding='8 12' radius={6} onInput={e => draft(e.text)}
+    padding='8 12' borderRadius={6} onInput={e => draft(e.text)}
     onKeyDown={e => {if (e.key === Key.ENTER) add()}}/>
 </view>
 ```
@@ -20,10 +20,10 @@ const editor = <view font-size={14} color='#18181b' row-gap={8}>
 ```haxe
 var draft = signal('');
 
-<view font-size={14} color='#18181b' row-gap={8}>
-  <text font-weight={700}>New task</text>
+<view fontSize={14} color='#18181b' rowGap={8}>
+  <text fontWeight={700}>New task</text>
   <field value={draft} placeholder='What needs to be done?'
-    padding='8 12' radius={6} onInput={e -> draft(e.text)}
+    padding='8 12' borderRadius={6} onInput={e -> draft(e.text)}
     onKeyDown={e -> if (e.key == Key.ENTER) add()}/>
 </view>
 ```
@@ -31,9 +31,9 @@ var draft = signal('');
 On a phone a field tells the keyboard what it takes, and the layout keeps clear of the keyboard: while it is up the safe area's bottom is its height, so a screen padded with `env(safe-area-inset-bottom)` moves above it, and the focused field scrolls into view.
 
 ```tsx
-<view padding-bottom='env(safe-area-inset-bottom)'>
-  <field keyboard='email' enterkey='next' placeholder='Email'/>
-  <field keyboard='number' enterkey='done' placeholder='Age' onSubmit={e => save(e.text)}/>
+<view paddingBottom='env(safe-area-inset-bottom)'>
+  <field keyboard='email' enterKeyHint='next' placeholder='Email'/>
+  <field keyboard='number' enterKeyHint='done' placeholder='Age' onSubmit={e => save(e.text)}/>
 </view>
 ```
 
@@ -49,7 +49,7 @@ its own.
 
 - **Fonts:** OpenType and TrueType, variable fonts, colour emoji, and the system's fonts with fallback for every script. In the browser a page ships helder's Inter, its `sans-serif`.
 - **Shaping:** kerning, ligatures, Arabic joining, right-to-left and mixed-direction text.
-- **Editors:** `<field:textarea>` edits several lines. Use `type='password'` for a password, `spellcheck` to check spelling, or `host='native'` to request a platform editor.
+- **Editors:** `<textarea>` edits several lines. Use `type='password'` for a password, `spellCheck` to check spelling, or `host='native'` to request a platform editor.
 - **Typography:** line height, letter spacing, alignment and justification, ellipsis and line clamps, decorations and text shadows, OpenType features.
 - **Input:** selection, the clipboard, undo, and input methods for Japanese, Chinese and Korean on every desktop, the web and phones.
 - **Keymaps and actions:** named commands bound to keys in a JSON keymap, shown in menus, dispatched up from the focused view.

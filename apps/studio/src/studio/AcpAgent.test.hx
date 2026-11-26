@@ -19,7 +19,7 @@ function tests() {
 			var w = workspace();
 			var agent = new AcpAgent(fake(), w);
 			var sel = {screen: "Home", file: w.dir + "/app.helder", start: w.docs.get(w.dir + "/app.helder").text.indexOf("<text"), tag: "text"};
-			var events = turn(agent, "edit", {screen: "Home", selection: sel, problems: ["app.tsx:3: oops"]}, true);
+			var events = turn(agent, "edit", {screen: "Home", selection: sel, problems: ["app.tsx:3: oops"], crashes: ["App/Bad: app.tsx:7: boom"]}, true);
 			agent.close();
 			var kinds = [for (e in events) e.getName()];
 			equals(kinds, ["Text", "Thought", "Text", "Steps", "Tool", "Ask", "Tool", "Tool", "Text", "Done"]);
@@ -36,8 +36,12 @@ function tests() {
 			equals(report.line, '\t<text>Hello</text>');
 			equals([report.wrote, report.outside, report.missing], ["ok", "error", -32601]);
 			equals(report.servers, ["http helder-studio http://127.0.0.1:7340/mcp"]);
+			equals(report.denied, AcpAgent.DENIED);
+			equals(report.session, {tools: AcpAgent.TOOLS, allowed: AcpAgent.ALLOWED, strict: true, sources: [], settings: {disableClaudeAiConnectors: true, disableAllHooks: true}});
+			equals(["Bash", "Write", "Agent", "Task", "Workflow", "Monitor"].filter(t -> !AcpAgent.DENIED.contains(t)), []);
 			equals(report.link, "app.helder:2");
 			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");
+			equals(report.crashes, "It builds, but these screens threw when the studio ran them:\n- App/Bad: app.tsx:7: boom");
 			var f = w.dir + "/app.helder";
 			equals(w.docs.get(f).text, "<frame>\n\t<text>Hi</text>\n</frame>\n");
 			var e = w.docs.undo();
@@ -75,6 +79,25 @@ function tests() {
 			var again = turn(agent, "wait", {screen: null, selection: null, problems: []}, false, true);
 			agent.close();
 			equals(again[again.length - 1], Done("cancelled"));
+		})).timeout(20);
+		test("started before the first prompt: it goes straight to the session", async(() -> {
+			var agent = new AcpAgent(fake(), workspace());
+			agent.boot();
+			assert(agent.starting());
+			while (agent.starting())
+				Async.delay(0.01);
+			assert(agent.bootedIn >= 0);
+			var events = turn(agent, "markdown", {screen: null, selection: null, problems: []}, false);
+			agent.close();
+			equals(events[events.length - 1], Done("end_turn"));
+		})).timeout(20);
+		test("a start that fails: told, and the next prompt starts it again", async(() -> {
+			var agent = new AcpAgent({name: "missing", cmd: "node", args: ["/no/such/agent.mjs"]}, workspace());
+			var told:Null<String> = null;
+			agent.boot(m -> told = m);
+			while (agent.starting())
+				Async.delay(0.01);
+			assert(told != null && told.indexOf("missing: closed") == 0, told);
 		})).timeout(20);
 	});
 }

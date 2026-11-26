@@ -10,8 +10,8 @@ import helder.scene.view.SceneTags.*;
 var pos = signal(new Vec3(0, 1, 0));
 var lit = signal(true);
 UiWindow.run(<Surface title="Lamp" width={640} height={400}>
-	<view direction="row" grow={1}>
-		<Scene grow={1} camera={camera}>
+	<view flexDirection="row" flexGrow={1}>
+		<Scene flexGrow={1} camera={camera}>
 			<node name="lamp" position={pos}>
 				<mesh shape="sphere" size={0.4} color={new Vec4(1, 0.8, 0.4, 1)} onClick={() -> lit(on -> !on)}/>
 				<Show when={lit}><light kind="point" intensity={6.0} range={8.0}/></Show>

@@ -19,22 +19,23 @@ using StringTools;
 // the screens' next frame (patched, then saved); another builds. A number's
 // label scrubs it: dragged left or right, a point per two. Paper's way:
 // each value a short field, its label inside, two to a row.
+@:renderer(helder.ui.view.NodeRenderer)
 class Inspector implements Markup {
 	// the desktop's panel at the right (compact: its sheet): what is selected, its sections; else
 	// the frame in focus, else the project
 	// (top: the window's top right; its buttons there where the app draws them, Shell.controlsRight)
 	public static function card(studio:Studio, top = false):View {
 		var controls = () -> top && Shell.controlsRight();
-		return <view tag="inspector" grow={1} min-height={0}>
-			<view tag="inspector-head" direction="row" align-items="center" column-gap={6} height={Theme.HEADER} drag-region={top}
-				padding={'0 ${controls() ? 0 : Theme.PAD} 0 ${Theme.PAD}'} shrink={0}>
-				<image src={headIcon(studio)} width={Theme.ICON_S} height={Theme.ICON_S} color={c("accent-ink")} shrink={0}/>
-				<text tag="inspector-title" font-weight={Theme.MEDIUM} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{title(studio)}</text>
-				<view grow={1}/>
-				<text tag="inspector-source" font-family={studio.selection() != null ? Theme.CODE : Theme.UI} font-size={Theme.SMALL} color={c("fg3")} shrink={0} max-lines={1}>{subtitle(studio)}</text>
+		return <view tag="inspector" flexGrow={1} minHeight={0}>
+			<view tag="inspector-head" flexDirection="row" alignItems="center" columnGap={6} height={Theme.HEADER} dragRegion={top}
+				padding={'0 ${controls() ? 0 : Theme.PAD} 0 ${Theme.PAD}'} flexShrink={0}>
+				<image src={headIcon(studio)} width={Theme.ICON_S} height={Theme.ICON_S} color={c("accent-ink")} flexShrink={0}/>
+				<text tag="inspector-title" fontWeight={Theme.MEDIUM} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{title(studio)}</text>
+				<view flexGrow={1}/>
+				<text tag="inspector-source" fontFamily={studio.selection() != null ? Theme.CODE : Theme.UI} fontSize={Theme.SMALL} color={c("fg3")} flexShrink={0} lineClamp={1}>{subtitle(studio)}</text>
 				{top ? <WindowControls side="end"/> : null}
 			</view>
-			<scroll grow={1} min-height={0}>{fields(studio)}</scroll>
+			<scroll flexGrow={1} minHeight={0}>{fields(studio)}</scroll>
 		</view>;
 	}
 
@@ -83,21 +84,21 @@ class Inspector implements Markup {
 	static function fields(studio:Studio):View {
 		return <view>
 			<Show when={studio.selection() != null} fallback={<view slot="section" padding={Theme.PAD}>
-				<text color={c("fg3")} font-size={Theme.SMALL}>{empty(studio)}</text>
+				<text color={c("fg3")} fontSize={Theme.SMALL}>{empty(studio)}</text>
 			</view>}>
-				{section("section-layout", "Layout", <view row-gap={6}>
+				{section("section-layout", "Layout", <view rowGap={6}>
 					<Show when={!hasText(studio)}>{direction(studio)}</Show>
 					<view slot="fields">{field(studio, "width", "W", true)}{field(studio, "height", "H", true)}</view>
 					<view slot="fields">{field(studio, "padding", "Padding", true)}{field(studio, gapName(studio), "Gap", true)}</view>
 				</view>)}
-				{section("section-style", "Style", <view row-gap={6}>
+				{section("section-style", "Style", <view rowGap={6}>
 					<view slot="fields">{field(studio, "background", "Fill", false)}</view>
 					<view slot="fields">{field(studio, "color", "Color", false)}</view>
-					<view slot="fields">{field(studio, "radius", "Radius", true)}<view grow={1} basis={0}/></view>
+					<view slot="fields">{field(studio, "borderRadius", "Radius", true)}<view flexGrow={1} flexBasis={0}/></view>
 				</view>)}
 				<Show when={hasText(studio)}>
 					{section("section-text", "Text", <view slot="field">
-						<field tag="field-text" slot="field-input" label="Text" value={textValue(studio)} onInput={e -> studio.setText(e.text)}
+						<field tag="field-text" slot="field-input" aria-label="Text" value={textValue(studio)} onInput={e -> studio.setText(e.text)}
 							onBlur={() -> studio.endGesture()}/>
 					</view>)}
 				</Show>
@@ -108,12 +109,12 @@ class Inspector implements Markup {
 	// the layout's direction: a column (helder.ui's default) or a row
 	static function direction(studio:Studio):View {
 		function item(v:String, label:String):View
-			return <view:button tag={"direction-" + v} slot="seg-item" grow={1} role="button" label={label} focusable
-				data-on={(value(studio, "direction") == "row" ? "row" : "column") == v ? "true" : "false"} onPress={() -> {
-					if (value(studio, "direction") == "" && v == "column") return;
-					studio.setAttribute("direction", v);
+			return <button tag={"direction-" + v} slot="seg-item" flexGrow={1} aria-label={label}
+				data-on={(value(studio, "flexDirection") == "row" ? "row" : "column") == v ? "true" : "false"} onPress={() -> {
+					if (value(studio, "flexDirection") == "" && v == "column") return;
+					studio.setAttribute("flexDirection", v);
 					studio.endGesture();
-				}}><text>{label}</text></view:button>;
+				}}><text>{label}</text></button>;
 		return <view tag="field-direction" slot="seg">{item("column", "Column")}{item("row", "Row")}</view>;
 	}
 
@@ -139,7 +140,7 @@ class Inspector implements Markup {
 				}
 			}}>{label}</text>
 			<Show when={!number && value(studio, name) != ""}><view slot="swatch" background={swatch(value(studio, name))}/></Show>
-			<field tag={"input-" + name} slot="field-input" label={label} value={value(studio, name)} placeholder={placeholder(studio, name)}
+			<field tag={"input-" + name} slot="field-input" aria-label={label} value={value(studio, name)} placeholder={placeholder(studio, name)}
 				onInput={e -> if (valid(name, e.text, number)) studio.setAttribute(name, e.text)}
 				onKeyDown={e -> if (e.key == Key.ENTER) studio.endGesture()} onBlur={() -> studio.endGesture()}/>
 		</view>;
@@ -185,7 +186,7 @@ class Inspector implements Markup {
 	static function gapName(studio:Studio):String {
 		var el = studio.element();
 		if (el == null) return "gap";
-		for (n in ["gap", "row-gap", "column-gap", "rowGap", "columnGap"])
+		for (n in ["gap", "rowGap", "columnGap"])
 			if (el.attr(n) != null) return n;
 		return "gap";
 	}

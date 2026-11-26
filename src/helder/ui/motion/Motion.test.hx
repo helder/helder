@@ -328,18 +328,18 @@ function tests() {
 			var t = now();
 			tick(ui, c, t);
 			card.style.opacity = 0.2;
-			card.style.radius = 20;
+			card.style.borderRadius = 20;
 			card.style.transform = Transform.translate(50, 0);
 			tick(ui, c, t += 0.016);
 			tick(ui, c, t += 0.1);
 			assert(card.style.opacity < 1 && card.style.opacity > 0.2, 'opacity moving: ${card.style.opacity}');
-			assert(card.style.radius > 0 && card.style.radius < 20, 'radius moving: ${card.style.radius}');
+			assert(card.style.borderRadius > 0 && card.style.borderRadius < 20, 'radius moving: ${card.style.borderRadius}');
 			var b = card.windowBounds();
 			assert(b.x > 0 && b.x < 50, 'translated part of the way: ${b.x}');
 			ui.update();
 			Clock.finish();
 			equals(card.style.opacity, 0.2);
-			equals(card.style.radius, 20.0);
+			equals(card.style.borderRadius, 20.0);
 			equals(card.windowBounds().x, 50.0);
 		});
 	});
@@ -357,7 +357,7 @@ function tests() {
 			stage.append(grid);
 			var small = box(80, 60);
 			small.matched = "tile";
-			small.style.radius = 12;
+			small.style.borderRadius = 12;
 			grid.append(small);
 			var t = now();
 			tick(ui, c, t);
@@ -373,7 +373,7 @@ function tests() {
 			var b = bounds(big);
 			assert(Math.abs(b.x - 20) < 6 && Math.abs(b.width - 80) < 30, 'from where the small one was: $b');
 			assert(c.drawn(big) > 0, "drawn");
-			equals(big.style.radius, 12.0, "its radius the small one's at first");
+			equals(big.style.borderRadius, 12.0, "its radius the small one's at first");
 			for (i in 0...10)
 				tick(ui, c, t += 0.016);
 			var m = bounds(big);
@@ -383,7 +383,7 @@ function tests() {
 			tick(ui, c, Clock.now + 0.016);
 			var e = bounds(big);
 			equals([e.x, e.y, e.width, e.height], [0.0, 0.0, 400.0, 400.0], "landed");
-			equals(big.style.radius, 0.0, "its own radius");
+			equals(big.style.borderRadius, 0.0, "its own radius");
 		});
 	});
 }

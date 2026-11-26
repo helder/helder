@@ -108,7 +108,7 @@ export default async function (host) {
 		if (host.options.gpu) ({ adapter, device } = host.options.gpu);
 		else {
 			adapter = host.options.gfx !== 'webgl2' && navigator.gpu && (await navigator.gpu.requestAdapter());
-			device = adapter ? await adapter.requestDevice({ requiredFeatures: [...new Set(FEATURES)].filter((f) => adapter.features.has(f)) }) : null;
+			device = adapter ? await adapter.requestDevice({ requiredFeatures: [...new Set([...FEATURES, 'subgroups'])].filter((f) => adapter.features.has(f)) }) : null;
 		}
 	} catch (e) {
 		console.error('helder.gfx: no WebGPU device:', e);
@@ -203,6 +203,43 @@ export default async function (host) {
 		};
 		if (im.bitmap) done(im.bitmap);
 		else (im.decoding ?? decodeImage(im)).then(done);
+	}
+	// a video's frame (helder.media's: a WebCodecs VideoFrame, a <video>)
+	// imported (copyExternalImageToTexture) where WebGPU can: not a
+	// platform decoder's own frame (macOS' IOSurface, Windows' D3D) on a
+	// device that cannot share it (Dawn on SwiftShader: "[Invalid
+	// ExternalTexture]", each frame). Until an import is seen to work, each
+	// frame is copied by the CPU (copyVideo: drawn on a 2D canvas, its pixels
+	// written) and also imported into a texture of its own, its error caught
+	// (the device's, or thrown): one that works, imports from then on; one
+	// that fails, copies for good, said once. An import that fails later
+	// (caught likewise): copies from then on. (run's option videoCopied:
+	// copies from the first frame, as a test asks)
+	let video = host.options.videoCopied ? 'copied' : 'unknown', probing = false, videoCanvas = null;
+	const isVideo = (b) => (typeof VideoFrame !== 'undefined' && b instanceof VideoFrame) || (typeof HTMLVideoElement !== 'undefined' && b instanceof HTMLVideoElement);
+	// (the import's failure, once known: why, else null)
+	function importVideo(source, texture, premultiply, size) {
+		let thrown = null;
+		device.pushErrorScope('validation');
+		try {
+			device.queue.copyExternalImageToTexture({ source }, { texture, premultipliedAlpha: premultiply }, size);
+		} catch (x) {
+			thrown = x;
+		}
+		return device.popErrorScope().then((e) => (thrown ? String(thrown.message ?? thrown) : e ? e.message : null));
+	}
+	function videoFailed(why) {
+		if (video === 'copied') return;
+		video = 'copied';
+		console.warn(`helder.gfx: a video frame WebGPU could not import (${why.split('\n')[0]}): its frames copied by the CPU from now on`);
+	}
+	function copyVideo(source, texture, [w, h]) {
+		if (!videoCanvas || videoCanvas.width !== w || videoCanvas.height !== h) {
+			videoCanvas = new OffscreenCanvas(w, h);
+			videoCanvas.c = videoCanvas.getContext('2d', { willReadFrequently: true });
+		}
+		videoCanvas.c.drawImage(source, 0, 0, w, h);
+		device.queue.writeTexture({ texture }, videoCanvas.c.getImageData(0, 0, w, h).data, { bytesPerRow: w * 4 }, [w, h]);
 	}
 	const helder_image = {
 		decode(fetch, p, length, premultiply) {
@@ -451,6 +488,8 @@ export default async function (host) {
 		write_texture: (h, x, y, w, height, level, layer, data) => write(handles.get(h), x, y, w, height, level, data, layer),
 		// 1: the device samples the TextureFormat (the compressed ones: their features)
 		max_texture: () => (device ? device.limits.maxTextureDimension2D : 8192),
+		// 1: a compute stage's subgroups are WGSL's (the feature asked for with the device; else emulated)
+		subgroups: () => (device && device.features.has('subgroups') ? 1 : 0),
 		supports: (format) => (!compressed(format) || (device && device.features.has(FEATURES[format - BC1])) ? 1 : 0),
 		generate_mips(h) {
 			const t = handles.get(h), { texture } = t;
@@ -489,8 +528,23 @@ export default async function (host) {
 			fill(image, release, (bitmap) => {
 				if (handles.get(h) !== t) return;
 				// (the image's size: helder.media's VideoFrame and <video> have no width and height of their own)
-				const im = images.get(image);
-				device.queue.copyExternalImageToTexture({ source: bitmap }, { texture: t.texture, premultipliedAlpha: im.premultiply }, [im.width, im.height]);
+				const im = images.get(image), size = [im.width, im.height];
+				if (!isVideo(bitmap)) device.queue.copyExternalImageToTexture({ source: bitmap }, { texture: t.texture, premultipliedAlpha: im.premultiply }, size);
+				else if (video === 'imports') importVideo(bitmap, t.texture, im.premultiply, size).then((why) => why && videoFailed(why));
+				else {
+					copyVideo(bitmap, t.texture, size);
+					if (video === 'unknown' && !probing) {
+						// (the same frame imported into a texture of its own: whether imports work here)
+						probing = true;
+						const probe = device.createTexture({ size, format: 'rgba8unorm', usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+						importVideo(bitmap, probe, im.premultiply, size).then((why) => {
+							probing = false;
+							probe.destroy();
+							if (why) videoFailed(why);
+							else if (video === 'unknown') video = 'imports';
+						});
+					}
+				}
 				if (t.texture.mipLevelCount > 1) hxmc_gfx.generate_mips(h);
 			});
 		},

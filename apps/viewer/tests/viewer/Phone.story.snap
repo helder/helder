@@ -82,7 +82,7 @@ Node#root 0,0 390x844
                       Node#tile-About Viewer.pdf 139,184 112x154
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -99,7 +99,7 @@ Node#root 0,0 390x844
                       Node#tile-Dusk panorama.jpg 16,348 113x154
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
@@ -230,7 +230,7 @@ Node#root 0,0 390x844
                       Node#tile-About Viewer.pdf 139,184 112x154
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -247,7 +247,7 @@ Node#root 0,0 390x844
                       Node#tile-Dusk panorama.jpg 16,348 113x154
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
@@ -405,7 +405,7 @@ Node#root 0,0 390x844
                       Node#tile-About Viewer.pdf 139,184 112x154
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -422,7 +422,7 @@ Node#root 0,0 390x844
                       Node#tile-Dusk panorama.jpg 16,348 113x154
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
@@ -735,7 +735,7 @@ Node#root 0,0 390x844
                       Node#tile-About Viewer.pdf 139,184 112x154
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -752,7 +752,7 @@ Node#root 0,0 390x844
                       Node#tile-Dusk panorama.jpg 16,348 113x154
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
@@ -883,7 +883,7 @@ Node#root 0,0 390x844
                       Node#tile-About Viewer.pdf 139,184 112x154
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -900,7 +900,7 @@ Node#root 0,0 390x844
                       Node#tile-Dusk panorama.jpg 16,348 113x154
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
@@ -1069,7 +1069,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                           Node#pick 221,266 24x24
-                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 139,300 112x18 "About Viewer.pdf"
                         TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
@@ -1088,7 +1088,7 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                           Node#pick 98,430 24x24
-                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 16,464 112x18 "Dusk panorama.jpg"
                         TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154

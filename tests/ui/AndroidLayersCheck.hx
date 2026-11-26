@@ -48,23 +48,23 @@ class AndroidLayersCheck {
 		if ((cast v : CString).toString() != "") Props.setenv(Mem.cstr("HELDER_DAMAGE"), v, 1);
 		var w = new helder.ui.UiWindow("AndroidLayersCheck", 0, 0);
 		var root = w.root;
-		root.style.set({direction: Column, background: 0xFFFFFFFF});
+		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();
-		header.style.set({height: 120, shrink: 0, background: 0xFF18181B, padding: 12});
+		header.style.set({height: 120, flexShrink: 0, background: 0xFF18181B, padding: 12});
 		root.append(header);
 		// (a label in the header, changed each frame for a while: what the window's layer draws of it)
 		var title = new TextNode("Header");
 		title.style.set({color: 0xFFFFFFFF, fontSize: 18});
 		header.append(title);
 		var list = new Node();
-		list.style.set({grow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style.set({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		var rows = [];
 		for (i in 0...300) {
 			var row = new Node();
 			rows.push(row);
-			row.style.set({direction: Row, padding: 6, columnGap: 8, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style.set({flexDirection: Row, padding: 6, columnGap: 8, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 16, height: 16, radius: 4, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style.set({width: 16, height: 16, borderRadius: 4, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
@@ -76,15 +76,15 @@ class AndroidLayersCheck {
 		rows[14].style.position = Relative;
 		rows[14].append(slotted);
 		var round = new Node();
-		round.style.set({position: Absolute, right: 16, top: 16, width: 120, height: 88, radius: 16, overflow: Scroll, background: 0xFFFFE08A});
+		round.style.set({position: Absolute, right: 16, top: 16, width: 120, height: 88, borderRadius: 16, overflow: Scroll, background: 0xFFFFE08A});
 		for (i in 0...12) {
 			var r = new Node();
-			r.style.set({height: 24, shrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
+			r.style.set({height: 24, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
 			round.append(r);
 		}
 		header.append(round);
 		var mover = new Node();
-		mover.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, radius: 10, background: 0xFF2A7AE2});
+		mover.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2});
 		mover.style.transform = Transform.parse("translate(0px, 0px)");
 		// (3 s: still running once a slow device's program frames hand it over)
 		mover.style.transition = Transition.parse("transform 3s linear, opacity 3s linear");

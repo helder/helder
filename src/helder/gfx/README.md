@@ -439,21 +439,89 @@ scopes). A frame's uniform ring serves the compute passes' blocks too.
 Recording a compute pass allocates nothing, as a render pass does.
 Limits: 16 resources a stage, 8 of them written (D3D11's UAVs; GL ES
 3.1's devices have 4 storage buffers and 4 images at least), 256
-invocations a workgroup (WebGPU's default); no workgroup memory or
-barriers inside a dispatch yet, no storage in the render stages (GL ES
-3.1 guarantees none there: results reach draws as vertex, index and
-indirect buffers and sampled textures). `compute(...)` is Haxe's: the
+invocations a workgroup (WebGPU's default), 16 KB of workgroup memory
+([below](#workgroup-memory-and-subgroups)); no storage in the render
+stages (GL ES 3.1 guarantees none there: results reach draws as vertex,
+index and indirect buffers and sampled textures). `compute(...)` is Haxe's: the
 TypeScript shader adapter has no Int yet; TypeScript sees `Device.has`
 and `Feature` (helder/scene).
 
+### Workgroup memory and subgroups
+
+A workgroup's invocations share memory and wait for each other: a third
+parameter of the compute function, an object of `Workgroup<T>` arrays (T
+as a storage buffer's elements), each as long as the workgroup or its
+field's `@:length(n)`; `barrier()`, the workgroup waits there, its
+workgroup memory's writes before seen by all of it after. A workgroup
+also runs in subgroups (32 lanes on Apple's GPUs, 4 on the CPU and where
+they are emulated): `subgroupAdd`, `subgroupMin`, `subgroupMax` (of
+Float, Int and the vectors: the subgroup's, in each of its lanes),
+`subgroupBroadcast(x, lane)` (lane a constant of 0 to 3),
+`subgroupShuffle(x, lane)` (each its own), `subgroupAll` and
+`subgroupAny` (Bool), with ComputeInput's `subgroupLane`, `subgroupSize`,
+`subgroupIndex` (`localIndex / subgroupSize`) and `subgroups`:
+
+```haxe
+final Sums = compute({
+	size: [256],
+	main: function(id:ComputeInput, p:{count:Count, values:Storage<Float>, out:RWStorage<Float>}, w:{part:Workgroup<Float>}) {
+		var v = id.x < p.count.n ? p.values[id.x] : 0.0;
+		v = subgroupAdd(v);                                // the subgroup's sum, in each of its lanes
+		if (id.subgroupLane == 0) w.part[id.subgroupIndex] = v;
+		barrier();                                         // the workgroup's writes seen by all of it
+		if (id.localIndex == 0) {
+			var s = 0.0;
+			for (k in 0...id.subgroups) s += w.part[k];
+			p.out[id.groupX] = s;                          // the workgroup's sum
+		}
+	}
+});
+```
+
+`barrier()` and the subgroup operations are where every invocation of
+the workgroup reaches them (WGSL's uniform control flow, which the
+others want too; checked as the stage compiles, an error at the call):
+in the compute function itself, not under an `if` or a loop on values
+that differ between invocations (ComputeInput's fields, `RWStorage` and
+`Workgroup` reads, atomics, subgroup results, and locals assigned any of
+those), nor after a `return` under one (`id.x < count ? ... : 0.0`, not
+an early return), nor in a loop's condition; an `if` or a loop on
+uniform blocks' values and constants may hold them (`while (offset <
+256) { ...; barrier(); ... }`), a loop with a barrier no `break` or
+`continue`. A stage's workgroup memory is 16 KB at most (WebGPU's and GL
+ES 3.1's floor; Direct3D 11's and Metal's are 32 KB), its values
+undefined until written.
+
+| | Workgroup memory, `barrier()` | Subgroups (`Feature.Subgroups`) |
+|---|---|---|
+| WGSL | `var<workgroup>`, `workgroupBarrier()` | the `subgroups` feature, asked for with the device where the adapter has it (Chrome; SwiftShader's 4 lanes) |
+| MSL | `threadgroup` (in `main0`, passed on), `threadgroup_barrier(mem_flags::mem_threadgroup)` | `simd_sum`, `simd_shuffle`, ... on Apple7 (A14) and Mac2 GPUs |
+| GLSL ES 3.10 | `shared`, `memoryBarrierShared(); barrier()` | `GL_KHR_shader_subgroup` (basic, vote, arithmetic, ballot, shuffle) where the context lists it |
+| HLSL (cs_5_0) | `groupshared`, `GroupMemoryBarrierWithGroupSync()` | none (wave intrinsics are D3D12's SM 6.0) |
+| CPU | a block for each workgroup; the function cut at its barriers into phases, each run over the workgroup before the next, the locals that live across a barrier kept for each invocation | a call's 4 lanes |
+
+Where a device has no subgroups, a stage using them takes its second
+form, `code.emulated` (`Device.createShader` picks it; Direct3D 11's
+only form): each operation a scratch array of workgroup memory (one for
+each type, as long as the workgroup, counted in the 16 KB), its value
+written, a barrier, its 4 lanes' values combined, a barrier: subgroups of
+4, slower, the same results wherever they do not depend on the
+subgroup's size. On the CPU, `main` called alone is a subgroup of one and
+`barrier()` does nothing (`ComputeInput.at` gives `subgroupSize` 1).
+
 The tests: `tests/gfx/ComputeCheck.hx` (`bun run test gfx-compute`: GL on
 Mesa, D3D11, Metal; `gfx-compute-web`: WebGPU in Chromium, and WebGL2's
-lack of it) runs a prefix sum of ten dispatches, an indirect dispatch
-that moves particles and counts the kept ones into an indirect draw of
-them, a storage texture sampled into the frame, and checks that a frame
+lack of it; `gfx-soft`: the CPU) runs a prefix sum of ten dispatches, an
+indirect dispatch that moves particles and counts the kept ones into an
+indirect draw of them, a storage texture sampled into the frame, the
+workgroup stages (a reduction, a prefix sum in workgroup memory, the
+other subgroup operations' workgroup results, the subgroups' ids against
+what they broadcast and shuffle) in both forms, the device's and the
+emulated one, against the CPU's results, and checks that a frame
 allocates nothing; `ShaderCheck` the compute stages' text in the four
 languages (`tests/gfx/shader/*.comp.*`), their CPU runs and the programs
-it rejects.
+it rejects (a barrier under an `if`, a subgroup operation after an early
+return, workgroup memory over 16 KB).
 
 ## Occlusion queries
 
@@ -528,7 +596,10 @@ GL_TEXTURE_CUBE_MAP_SEAMLESS), no anisotropy (helder's
 samplers have none). MSAA: 4 samples at the standard positions, the pixel
 shaded once, resolved at the pass's end. Compute stages have the same
 form (`soft_cs`: 4 invocations a call, a lane each, their ids
-ComputeInput's fields), run on the calling thread workgroup by workgroup
+ComputeInput's fields, a subgroup of 4; with barriers the call runs a
+phase and returns the next: `helder.gfx.shader.Phases`), run on the
+calling thread workgroup by workgroup, its workgroup memory zeroed at its
+start
 (so that atomics come in the same order on every machine): storage buffers
 read and written by element (std430), an index past a buffer read as 0 and
 written nowhere, atomics lane by lane, a storage texture's texel written

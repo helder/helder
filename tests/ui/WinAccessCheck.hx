@@ -46,13 +46,13 @@ class WinAccessCheck implements Markup {
 	static function main() {
 		var w = new UiWindow("WinAccessCheck", 320, 240);
 		var saved = 0, checked = signal(false), volume = signal(0.5), name = signal("");
-		Render.render(<view padding={12} row-gap={8} align-items="start">
+		Render.render(<view padding={12} rowGap={8} alignItems="start">
 			<text>Settings</text>
-			<Button tag="save" label="Save" onClick={() -> saved++}/>
+			<Button tag="save" label="Save" onPress={() -> saved++}/>
 			<Checkbox tag="remember" checked={checked} label="Remember"/>
 			<Slider tag="volume" value={volume} step={0.1} label="Volume"/>
-			<field tag="name" host="native" value={name} placeholder="Name" label="Name" onInput={e -> name(e.text)}/>
-			<view live="polite"><text>Ready</text></view>
+			<field tag="name" host="native" value={name} placeholder="Name" aria-label="Name" onInput={e -> name(e.text)}/>
+			<view aria-live="polite"><text>Ready</text></view>
 		</view>, w.root);
 		var step = 0;
 		var out:Ptr<Ptr> = LibC.malloc(8), v:Ptr = LibC.malloc(24), d:Ptr<Float> = LibC.malloc(32), i32:Ptr<Int32> = LibC.malloc(4);

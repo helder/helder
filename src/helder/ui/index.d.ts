@@ -1,7 +1,7 @@
 // helder.ui for TypeScript programs (helder.typescript): windows and their
 // markup (see helder/view), the events handlers are given, the keys. Each
 // class is the Haxe class `__haxe` names. The neutral elements (view, text,
-// view:button...) take any attribute, their handlers given ui's events.
+// button...) take any attribute, their handlers given ui's events.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
@@ -74,7 +74,7 @@ export declare class Svg {
 	private readonly svg: never;
 }
 
-export type VirtualListProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (item: T) => string | number; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<T | string | number | null>; onActivate?: ((arg0: T) => void) | ((arg0: number[]) => void); label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string; selection?: Selection; selectMode?: Read<boolean>; onContextMenu?: (arg0: number, arg1: number, arg2: number) => void; textOf?: (arg0: T) => string };
+export type VirtualListProps<T, K> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (arg0: T) => K; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<K | null>; onActivate?: (arg0: number[]) => void; label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string; selection?: Selection; selectMode?: Read<boolean>; onContextMenu?: (arg0: number, arg1: number, arg2: number) => void; textOf?: (arg0: T) => string };
 
 // (a route's params as its path names them: "/product/:id" gives {id: string})
 export type RouteParams<P> = P extends `${string}:${infer K}/${infer R}` ? {[k in K]: string} & RouteParams<`/${R}`> : P extends `${string}:${infer K}` ? {[k in K]: string} : {};
@@ -577,7 +577,7 @@ export declare class Node {
 	onClick: ((arg0: Event) => void) | null;
 	// a press: a click, or Enter or Space while it has the focus (after onKeyDown, unless it
 	// prevented the default), as a DOM button's click (a link's: Enter, not Space, as a DOM link's)
-	onActivate: ((arg0: Event) => void) | null;
+	onPress: ((arg0: Event) => void) | null;
 	onWheel: ((arg0: Event) => void) | null;
 	onKeyDown: ((arg0: Event) => void) | null;
 	onKeyUp: ((arg0: Event) => void) | null;
@@ -674,6 +674,9 @@ export declare class Node {
 	// game's controls leave it alone): a node drawing a world under the ui
 	// (a <Scene>'s box) says no
 	ownsPointer(): boolean;
+	// the glass inside it drawn together, nearer than this many points
+	// merged (null: not a group; markup's glassSpacing, any view's; GlassGroup.of sets it)
+	readonly glassSpacing: number | null;
 	textColor(): Color;
 	// whether it is seen: its visibility, else its nearest ancestor's (Style.visibility)
 	visible(): boolean;
@@ -815,13 +818,13 @@ declare class UiFlow {
 // listbox of options to assistive technology (label: its name), each
 // with its place among all of them; Up, Down, Page Up and Down, Home
 // and End move the focus to a row (made if need be), selected (the key
-// of the row selected: written as the focus moves, a row pressed) and
-// onActivate (Enter, Space) given its item. Its child function gets a
-// row's item (a Read) and its index when made; ref the VirtualScroll
-// (scrollToIndex, focusIndex, the window). With a Selection the callback
-// takes the selected indices (Enter or double click); by still keys rows;
-// selectMode as VirtualGrid's.
-export declare const VirtualList: <T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown;
+// of the row selected, by's K: written as the focus moves, a row
+// pressed) and onActivate (Enter, Space) given its index ([i]). Its
+// child function gets a row's item (a Read) and its index when made; ref
+// the VirtualScroll (scrollToIndex, focusIndex, the window). With a
+// Selection onActivate takes the selected indices (Enter or double
+// click); by still keys rows; selectMode as VirtualGrid's.
+export declare function VirtualList<T, K>(props: VirtualListProps<T, K>): unknown;
 // VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
 // gap apart and padding in (4, 12), in a GridScroll: only the rows in
 // view made, a cell made again when its row's keys (by) change, else
@@ -847,7 +850,7 @@ export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown
 // attribute naming env(safe-area-inset-top) (right, bottom, left; a
 // fallback after a comma for another name) is bound to it, its value the
 // insets in UI pixels, again whenever they change (a rotation, the bars
-// hidden): <view padding-top="env(safe-area-inset-top)">,
+// hidden): <view paddingTop="env(safe-area-inset-top)">,
 // padding="calc(env(safe-area-inset-top) + 8px) 16px", margin-bottom="max(12px,
 // env(safe-area-inset-bottom))". calc(), max() and min() of pixels fold to
 // one length; a percentage in calc() stays for Dim's. The insets are
@@ -903,7 +906,7 @@ export declare class Router {
 //
 //   <Slider label="Weight" value={weight} min={20} max={200} step={1} onChange={weight}/>
 //   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
-//   <Tip label="Tracing letter" keys="T"><view:button ...><image src={eye}/></view:button></Tip>
+//   <Tip label="Tracing letter" keys="T"><button ...><image src={eye}/></button></Tip>
 declare class Controls {
 }
 
@@ -1257,7 +1260,7 @@ export declare class Theme {
 	// whether the colours given inline are the dark ones (read by c: a hole
 	// that reads it follows it)
 	static appearance: (() => boolean);
-	static c(name: keyof Tokens): Color;
+	static c(name: string): Color;
 	// the one shadow, of what floats
 	static popover(): string;
 	static readonly sheet: StyleSheet;
@@ -1271,13 +1274,13 @@ export declare class Theme {
 // layouts' through WM_NCHITTEST), Linux's round ones. Nothing where the
 // window has the system's title bar, in the browser or on a phone. Its
 // colour is the text's (currentColor).
-//   <view direction="row" drag-region><text>Title</text><view grow={1}/><WindowControls/></view>
+//   <view flexDirection="row" dragRegion><text>Title</text><view flexGrow={1}/><WindowControls/></view>
 // A layout whose top left and top right are different bars (a sidebar's,
 // an inspector's) puts one at each end with its side: only the one where
 // the system puts them is drawn (side(): macOS's at the start, Windows' and
 // Linux's at the end), the other nothing.
-//   <view drag-region><WindowControls side="start"/><text>Project</text></view>
-//   <view drag-region><text>Inspector</text><view grow={1}/><WindowControls side="end"/></view>
+//   <view dragRegion><WindowControls side="start"/><text>Project</text></view>
+//   <view dragRegion><text>Inspector</text><view flexGrow={1}/><WindowControls side="end"/></view>
 declare class WindowButtons {
 }
 
@@ -1359,7 +1362,7 @@ export declare class Look<V> {
 export declare function tone(light: string, dark?: string): Tone;
 
 // The behaviour of what is pressed (WAI-ARIA's button): a click, Enter or
-// Space activates it (Ui's onActivate), none while it is disabled (then
+// Space activates it (Ui's onPress), none while it is disabled (then
 // not focusable either). Its states are signals (hovered: never by touch;
 // pressed: the pointer down on it and still over it, cancelled when it
 // leaves; focusVisible: focused from the keyboard) and eased amounts
@@ -1369,7 +1372,7 @@ export declare function tone(light: string, dark?: string): Tone;
 // data-selected), which a look's recipes read.
 //
 //   final p = Press.of(props, "button");
-//   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
+//   <button ref={p.root}><image ref={p.part("icon")} .../></button>
 declare class Press {
 	constructor(slot: string, disabled?: Read<boolean>, onPress?: () => void);
 	readonly hovered: Signal<boolean>;
@@ -1951,11 +1954,62 @@ export declare function NavButton(props: { label: string; icon?: Svg; tag?: stri
 
 export declare function Sheet(props: SheetProps): unknown;
 
-// a neutral element's attributes: any, its handlers given ui's events (helder.ui.view.NodeEvents)
-export interface NeutralAttributes {
-	[attribute: string]: unknown;
+// a value, or a function of none that reads it (bound)
+type Value<T> = T | (() => T);
+
+// a neutral element's attributes (helder.view.Vocabulary): the style
+// properties (StyleProps, CSS's names in camel), the others HTML's and
+// helder's in camel, ARIA's and data-* as HTML writes them, its handlers
+// given ui's events (helder.ui.view.NodeEvents)
+// a text's content: text, values, its spans (elements), what reads them
+export type TextContent = string | number | boolean | null | undefined | import("helder/view").View | (() => unknown) | TextContent[];
+
+// (a number's also a length as CSS writes one, "12px", "env(safe-area-inset-top)")
+export type StyleAttributes = {[K in keyof import("./style").StyleProps]?: Value<import("./style").StyleProps[K] | (number extends import("./style").StyleProps[K] ? string : never)>};
+
+export interface Attributes extends StyleAttributes {
+	key?: unknown;
+	style?: import("./style").StyleProps | null;
+	id?: Value<string>;
+	class?: Value<string>;
+	role?: Value<string>;
+	hidden?: Value<boolean>;
+	disabled?: Value<boolean>;
+	required?: Value<boolean>;
+	tabIndex?: Value<number | string>;
+	autoFocus?: Value<boolean>;
+	focusable?: Value<boolean>;
+	selectable?: Value<boolean>;
+	slot?: Value<string>;
+	variant?: Value<string>;
+	size?: Value<string>;
+	host?: Value<string>;
+	group?: Value<string>;
+	peer?: Value<string>;
+	tag?: Value<string>;
+	states?: Value<unknown>;
+	keyContext?: Value<string>;
+	actions?: Value<unknown>;
+	trackFocus?: Value<unknown>;
+	dragRegion?: Value<boolean>;
+	dragData?: Value<unknown>;
+	panAxis?: Value<"x" | "y" | "both">;
+	panMinPointers?: Value<number>;
+	motion?: Value<unknown>;
+	motionLayout?: Value<unknown>;
+	motionOpacity?: Value<unknown>;
+	motionColor?: Value<unknown>;
+	motionTransform?: Value<unknown>;
+	motionRadius?: Value<unknown>;
+	motionPresence?: Value<unknown>;
+	lead?: Value<unknown>;
+	trail?: Value<unknown>;
+	instant?: Value<boolean>;
+	matched?: Value<string>;
+	ride?: Value<unknown>;
+	[aria: `aria-${string}`]: unknown;
+	[data: `data-${string}`]: unknown;
 	onPress?: ((event: Event) => void) | null;
-	onClick?: ((event: Event) => void) | null;
 	onPointerDown?: ((event: Event) => void) | null;
 	onPointerUp?: ((event: Event) => void) | null;
 	onPointerMove?: ((event: Event) => void) | null;
@@ -1969,7 +2023,6 @@ export interface NeutralAttributes {
 	onTextInput?: ((event: Event) => void) | null;
 	onComposition?: ((event: Event) => void) | null;
 	onInput?: ((event: Event) => void) | null;
-	onSubmit?: ((event: Event) => void) | null;
 	onFocus?: ((event: Event) => void) | null;
 	onBlur?: ((event: Event) => void) | null;
 	onFocusIn?: ((event: Event) => void) | null;
@@ -1985,6 +2038,82 @@ export interface NeutralAttributes {
 	onPan?: ((event: unknown) => void) | null;
 	onPinch?: ((event: unknown) => void) | null;
 	onScale?: ((event: unknown) => void) | null;
+}
+
+export interface ViewAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: unknown;
+	glassSpacing?: Value<number>;
+}
+
+export interface ScrollAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: unknown;
+	glassSpacing?: Value<number>;
+}
+
+export interface TextAttributes extends Attributes {
+	ref?: ((node: TextNode) => void) | null;
+	children?: TextContent;
+	text?: Value<string>;
+}
+
+export interface ImageAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: never;
+	src?: Value<unknown>;
+	objectFit?: Value<ImageFit>;
+	objectPosition?: Value<string>;
+	mirrored?: Value<boolean>;
+}
+
+export interface IconAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: never;
+	name?: Value<string>;
+	mirrored?: Value<boolean>;
+}
+
+export interface FieldAttributes extends Attributes {
+	ref?: ((node: TextField) => void) | null;
+	children?: never;
+	value?: Value<string>;
+	placeholder?: Value<string>;
+	type?: Value<string>;
+	readOnly?: Value<boolean>;
+	maxLength?: Value<number>;
+	spellCheck?: Value<boolean>;
+	inputMode?: Value<string>;
+	autoComplete?: Value<string>;
+	keyboard?: Value<string>;
+	enterKeyHint?: Value<string>;
+	autoCapitalize?: Value<string>;
+	autoCorrect?: Value<boolean>;
+	onSubmit?: ((event: Event) => void) | null;
+}
+
+export interface TextAreaAttributes extends Omit<FieldAttributes, "ref" | "onSubmit"> {
+	ref?: ((node: TextArea) => void) | null;
+	rows?: Value<number>;
+}
+
+export interface GlassAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: unknown;
+	tint?: Value<Color | string>;
+	interactive?: Value<boolean>;
+}
+
+export interface WebViewAttributes extends Attributes {
+	ref?: ((node: Node) => void) | null;
+	children?: never;
+	src?: Value<unknown>;
+	html?: Value<string>;
+	content?: Value<unknown>;
+	inspectable?: Value<boolean>;
+	zoom?: Value<boolean>;
+	transparent?: Value<boolean>;
+	backGesture?: Value<boolean>;
 	onMessage?: ((event: WebViewEvent) => void) | null;
 	onNavigate?: ((event: WebViewEvent) => void) | null;
 	onUrlChange?: ((event: WebViewEvent) => void) | null;
@@ -1996,19 +2125,55 @@ export interface NeutralAttributes {
 	onCrash?: ((event: WebViewEvent) => void) | null;
 }
 
+export interface LinkAttributes extends Omit<TextAttributes, "ref"> {
+	ref?: ((node: TextNode) => void) | null;
+	href?: Value<string>;
+}
+
+export interface LabelAttributes extends Omit<TextAttributes, "ref"> {
+	ref?: ((node: TextNode) => void) | null;
+	for?: Value<string>;
+}
+
 declare global {
 	namespace JSX {
 		// the neutral elements: ui's, realised by each renderer
 		interface IntrinsicElements {
-			view: NeutralAttributes;
-			text: NeutralAttributes;
-			scroll: NeutralAttributes;
-			image: NeutralAttributes;
-			icon: NeutralAttributes;
-			field: NeutralAttributes;
-			[tag: `view:${string}`]: NeutralAttributes;
-			[tag: `text:${string}`]: NeutralAttributes;
-			[tag: `field:${string}`]: NeutralAttributes;
+			view: ViewAttributes;
+			text: TextAttributes;
+			scroll: ScrollAttributes;
+			image: ImageAttributes;
+			icon: IconAttributes;
+			field: FieldAttributes;
+			glass: GlassAttributes;
+			webview: WebViewAttributes;
+			a: LinkAttributes;
+			article: ViewAttributes;
+			aside: ViewAttributes;
+			button: ViewAttributes;
+			code: TextAttributes;
+			em: TextAttributes;
+			fieldset: ViewAttributes;
+			footer: ViewAttributes;
+			form: ViewAttributes;
+			h1: TextAttributes;
+			h2: TextAttributes;
+			h3: TextAttributes;
+			h4: TextAttributes;
+			h5: TextAttributes;
+			h6: TextAttributes;
+			header: ViewAttributes;
+			label: LabelAttributes;
+			legend: TextAttributes;
+			li: ViewAttributes;
+			main: ViewAttributes;
+			nav: ViewAttributes;
+			ol: ViewAttributes;
+			p: TextAttributes;
+			section: ViewAttributes;
+			strong: TextAttributes;
+			textarea: TextAreaAttributes;
+			ul: ViewAttributes;
 		}
 	}
 }

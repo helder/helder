@@ -24,10 +24,11 @@ using StringTools;
 // Watched (the default shell, not --classic): nothing on it takes input but
 // the camera (pan, zoom), a click (a frame the prompt's focus) and a double
 // click (Play): no selection, no drags, no drops; its ground the dots.
+@:renderer(helder.ui.view.NodeRenderer)
 class Board implements Markup {
 	public static function view(studio:Studio):View {
 		var stage:Null<Node> = null, panned = false, watch = !studio.classic;
-		return <view tag="stage" grow={1} min-width={0} overflow="hidden" cursor={watch ? studio.camera.hand() : (Default : Cursor)} background={c(watch ? "ground" : "canvas")} ref={n -> {
+		return <view tag="stage" flexGrow={1} minWidth={0} overflow="hidden" cursor={watch ? studio.camera.hand() : (Default : Cursor)} background={c(watch ? "ground" : "canvas")} ref={n -> {
 			stage = n;
 			studio.stageNode = n;
 		}}
@@ -42,11 +43,13 @@ class Board implements Markup {
 				e.preventDefault();
 			}} onKeyUp={e -> if (watch && e.key == Key.SPACE) studio.camera.held(false)}
 			onBlur={_ -> studio.camera.held(false)}
-			onClick={e -> if (watch && !panned) studio.aimAt(e.localX, e.localY) else if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
+			onPress={e -> if (e.type != Click) {} else if (watch && !panned) studio.aimAt(e.localX, e.localY) else if (studio.mode() != "stories" && !panned)
+				studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
 			onWheel={e -> {
 				// (a pinch's deltaY is -100 ln of its scale, as browsers make it:
 				// e^(-dy/100) follows the fingers; a wheel's notch, 40 to 120
 				// points at once, capped to a step of about 1.28)
+				studio.camera.taken = true;
 				if (e.mods & (Mods.CONTROL | Mods.META) != 0) studio.camera.zoomAt(e.localX, e.localY, Math.exp(-Math.max(-25, Math.min(25, e.deltaY)) / 100))
 				else studio.camera.panBy(-e.deltaX, -e.deltaY);
 				e.preventDefault();
@@ -58,6 +61,7 @@ class Board implements Markup {
 				// (the mouse's release after a drag is a click too: not the stage's)
 				panned = true;
 				if (watch) {
+					studio.camera.taken = true;
 					studio.camera.panBy(g.dx, g.dy);
 					studio.camera.dragging(g.state != Ended && g.state != Cancelled);
 					return;
@@ -68,13 +72,14 @@ class Board implements Markup {
 			onDragOver={e -> if (!watch && Std.isOfType(e.data, String) && FileTree.kindOf(e.data) == Image) e.preventDefault()}
 			onDrop={e -> if (!watch && Std.isOfType(e.data, String)) studio.dropImage(e.data, e.localX, e.localY)}
 			onPinch={g -> {
+				studio.camera.taken = true;
 				studio.camera.zoomAt(g.x, g.y, g.dscale);
 				if (g.state == Ended) studio.log("pinched", {k: studio.camera.k});
 			}}>
 			{watch ? dots(studio) : null}
-			<Show when={studio.mode() != "stories"}>
-				<view tag="world" position="absolute" left={0} top={0} width={1} height={1} transform-origin="left top" transform={transform(studio)}>
-					<For each={studio.layout.screens()} by={(r:Rect) -> r.name}>{(r:Read<Rect>) -> {
+			<Show when={studio.mode() != "stories" && (studio.classic || !Watch.blank(studio) && !studio.waiting())}>
+				<view tag="world" position="absolute" left={0} top={0} width={1} height={1} transformOrigin="left top" transform={transform(studio)}>
+					<For each={studio.layout.screens()} by={(r:Rect) -> r.name + "@" + studio.revived.peek()}>{(r:Read<Rect>) -> {
 						var info = studio.project.screen(r().name);
 						info.source.match(Design(_)) ? design(studio, r, info) : live(studio, r);
 					}}</For>
@@ -102,16 +107,29 @@ class Board implements Markup {
 		var s = studio.previews.screen(r().name);
 		return <view tag={"screen-" + Shell.slug(s.info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
+			onPointerEnter={_ -> studio.hover(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
-			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
-			<Show when={s.crashedSignal()}>
-				<view tag="crashed" position="absolute" left={8} top={8} right={8} row-gap={2}>
-					<text color={c("fg2")} font-size={Theme.SMALL}>stopped</text>
-					<text color={c("fg3")} font-size={Theme.SMALL} max-lines={8} text-overflow="ellipsis">{s.report()}</text>
-				</view>
-			</Show>
-			<Show when={s.frames() == 0 && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
+			<image src={s.image()} width={r().w} height={r().h} opacity={studio.shownFailure() == null && !s.crashedSignal() ? 1 : 0.45}/>
+			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
+			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
+	}
+
+	// (a screen's still from the frames file until the program draws it: dimmed when its files changed since)
+	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
+		var n = new StillFrame(s.still.peek(), s.stillPasses, s.stillWidth, s.stillHeight);
+		n.tag = "still";
+		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.shownFailure() != null || s.crashedSignal()}, v -> {
+			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
+		});
+		// (hovered: its loop from the file, played; let go, the still)
+		var name = s.info.name;
+		effect(() -> studio.hovered() == name && s.image() == null, on -> {
+			var l = on ? studio.previews.fileLoop(s) : null;
+			if (l == null) n.stop() else n.play(l.fps, l.lists, l.passes, () -> studio.loopShown(name, "file"),
+				(frames, ms) -> studio.log("loop-played", {screen: name, frames: frames, msPerFrame: Math.round(ms * 1000) / 1000}));
+		});
+		return n;
 	}
 
 	// a design's frame: its nodes, interpreted, under a theme of none and
@@ -121,8 +139,8 @@ class Board implements Markup {
 		return <view tag={"screen-" + Shell.slug(info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
 			height={r().h} data-on={studio.focused() == info.name ? "true" : "false"} opacity={Feedback.arrive(studio, info.name).opacity}
 			transform={Feedback.arrive(studio, info.name).transform}>
-			<view tag="design" width={r().w} height={r().h} overflow="hidden" pointer-events="none" background="#ffffff" color="#000000"
-				font-family={helder.ui.Style.DEFAULT_FAMILY} font-size={helder.ui.Style.DEFAULT_SIZE} font-weight={helder.ui.Style.DEFAULT_WEIGHT}
+			<view tag="design" width={r().w} height={r().h} overflow="hidden" pointerEvents="none" background="#ffffff" color="#000000"
+				fontFamily={helder.ui.Style.DEFAULT_FAMILY} fontSize={helder.ui.Style.DEFAULT_SIZE} fontWeight={helder.ui.Style.DEFAULT_WEIGHT}
 				ref={(n:Node) -> n.theme = {rules: []}}>
 				{studio.designs.content(info.name)}
 			</view>
@@ -135,37 +153,41 @@ class Board implements Markup {
 
 	// what is drawn in the stage's points: the flows' titles and lines, the screens' captions, the selection
 	static function overlay(studio:Studio):View {
-		return <view tag="overlay" position="absolute" inset={0} pointer-events="none">
+		return <view tag="overlay" position="absolute" inset={0} pointerEvents="none">
 			<For each={flows(studio)}>{(f:Read<{name:String, x:Float, y:Float}>) ->
-				<text tag="flow-title" position="absolute" left={sx(studio, f().x)} top={sy(studio, f().y) - 50} font-size={Theme.SMALL} font-weight={Theme.MEDIUM}
+				<text tag="flow-title" position="absolute" left={sx(studio, f().x)} top={sy(studio, f().y) - 50} fontSize={Theme.SMALL} fontWeight={Theme.MEDIUM}
 					color={c("fg3")} opacity={titleShown(studio, f().y) ? 1 : 0}>{f().name}</text>
 			}</For>
 			<For each={studio.layout.groups()} by={(g:GroupRect) -> g.file + "#" + g.title}>{(g:Read<GroupRect>) ->
-				<text tag={"group-" + Shell.slug(g().title)} position="absolute" left={sx(studio, g().x)} top={sy(studio, g().y) - 52} font-size={Theme.GROUP_TITLE}
-					font-weight={Theme.MEDIUM} color={c("ink")} max-lines={1} text-wrap="nowrap">{g().title}</text>
+				<text tag={"group-" + Shell.slug(g().title)} position="absolute" left={sx(studio, g().x)} top={sy(studio, g().y) - 52} fontSize={Theme.GROUP_TITLE}
+					fontWeight={Theme.MEDIUM} color={c("ink")} lineClamp={1} textWrap="nowrap">{g().title}</text>
 			}</For>
 			<For each={studio.layout.screens()} by={(r:Rect) -> r.name}>{(r:Read<Rect>) ->
 				<view tag={"caption-" + Shell.slug(r().name)} position="absolute" left={sx(studio, r().x) - 4} top={sy(studio, r().y) - 22} height={18} padding="0 4"
-					direction="row" align-items="center" column-gap={6} max-width={frameWidth(studio, r()) + 8}>
-					<text font-size={Theme.SMALL} max-lines={1} shrink={0} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
+					flexDirection="row" alignItems="center" columnGap={6} maxWidth={frameWidth(studio, r()) + 8}>
+					<text fontSize={Theme.SMALL} lineClamp={1} flexShrink={0} fontWeight={studio.focused() == r().name ? Theme.MEDIUM : 400}
 						color={studio.focused() == r().name ? c("accent-ink") : c("fg3")}>{label(studio, r().name)}</text>
+					<Show when={studio.project?.screen(r().name)?.loop != null}>
+						<image tag={"loop-" + Shell.slug(r().name)} src={Icons.repeat} width={Theme.ICON_XS} height={Theme.ICON_XS} flexShrink={0}
+							color={studio.hovered() == r().name ? c("ink2") : c("fg3")}/>
+					</Show>
 					{Feedback.chip(studio, r().name)}
-					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_)) && Feedback.on(studio, r().name).length == 0}>
-						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
-							shrink={1} min-width={0} background={c("error-soft")}>
-							<view width={6} height={6} radius={3} shrink={0} background={c("error")}/>
-							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" shrink={1} min-width={0} color={c("error")}>{failed(studio)}</text>
+					<Show when={trouble(studio, r().name) != "" && Feedback.on(studio, r().name).length == 0}>
+						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" borderRadius={10} flexDirection="row" alignItems="center" columnGap={5}
+							flexShrink={1} minWidth={0} background={c("error-soft")}>
+							<view width={6} height={6} borderRadius={3} flexShrink={0} background={c("error")}/>
+							<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0} color={c("error")}>{trouble(studio, r().name)}</text>
 						</view>
 					</Show>
 				</view>
 			}</For>
 			<Show when={selected(studio) != null}>{selectionBox(studio)}</Show>
 			<For each={otherBoxes(studio)}>{(b:Read<{x:Float, y:Float, w:Float, h:Float}>) ->
-				<view tag="selection-other" position="absolute" left={b().x} top={b().y} width={b().w} height={b().h} border-width={1} border-color={c("sel")}/>
+				<view tag="selection-other" position="absolute" left={b().x} top={b().y} width={b().w} height={b().h} borderWidth={1} borderColor={c("sel")}/>
 			}</For>
 			<For each={handles(studio)}>{(h:Read<{x:Float, y:Float}>) ->
-				<view tag="handle" position="absolute" left={h().x - Theme.HANDLE / 2} top={h().y - Theme.HANDLE / 2} width={Theme.HANDLE} height={Theme.HANDLE} radius={1}
-					background="#ffffff" border-width={1} border-color={c("sel")}/>
+				<view tag="handle" position="absolute" left={h().x - Theme.HANDLE / 2} top={h().y - Theme.HANDLE / 2} width={Theme.HANDLE} height={Theme.HANDLE} borderRadius={1}
+					background="#ffffff" borderWidth={1} borderColor={c("sel")}/>
 			}</For>
 			<For each={guides(studio)}>{(g:Read<{x:Float, y:Float, w:Float, h:Float}>) ->
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
@@ -174,10 +196,21 @@ class Board implements Markup {
 		</view>;
 	}
 
-	// (a failed build, by each live frame: its first error and where)
-	static function failed(studio:Studio):String {
-		var f = studio.failure();
-		return f == null ? "" : "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}');
+	// (by a live frame: a failed build's first error and where, else what it
+	// threw when run; "": neither. A failed build: one chip a row, by its first frame)
+	static function trouble(studio:Studio, name:String):String {
+		var info = studio.project?.screen(name);
+		if (info == null || info.source.match(Design(_))) return "";
+		var f = studio.shownFailure();
+		if (f != null) return first(studio, name) ? "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}') : "";
+		var s = studio.previews?.screen(name);
+		return s != null && s.crashedSignal() ? "Crashed · " + s.report() : "";
+	}
+
+	// (the first of its row's frames)
+	static function first(studio:Studio, name:String):Bool {
+		var rs = studio.layout.screens(), r = Lambda.find(rs, r -> r.name == name);
+		return r != null && Lambda.find(rs, x -> x.flow == r.flow)?.name == name;
 	}
 
 	// (a frame's width in the stage's points)
@@ -230,7 +263,7 @@ class Board implements Markup {
 			var kk = studio.camera.k;
 			return {x: studio.camera.sx(r.x + s.x), y: studio.camera.sy(r.y + s.y), w: s.width * kk, h: s.height * kk};
 		}
-		return <view tag="selection" position="absolute" left={box().x} top={box().y} width={box().w} height={box().h} border-width={1} border-color={c("sel")}/>;
+		return <view tag="selection" position="absolute" left={box().x} top={box().y} width={box().w} height={box().h} borderWidth={1} borderColor={c("sel")}/>;
 	}
 
 	// (the selection while its screen is the one zoomed into)
@@ -241,17 +274,17 @@ class Board implements Markup {
 
 	static function stories(studio:Studio):View {
 		var p = studio.project;
-		return <scroll tag="stories" position="absolute" inset={0} padding="20 24" row-gap={6}>
+		return <scroll tag="stories" position="absolute" inset={0} padding="20 24" rowGap={6}>
 			<For each={p == null ? [] : [for (f in p.flows()) for (s in f.screens) s]}>{(s:Read<Project.ScreenInfo>) -> {
 				var i = s();
-				<view:button tag={"story-" + Shell.slug(i.name)} slot="nav-item" column-gap={12} role="button" label={i.name} focusable onPress={() -> {
+				<button tag={"story-" + Shell.slug(i.name)} slot="nav-item" columnGap={12} aria-label={i.name} onPress={() -> {
 					studio.setMode("design");
 					studio.focus(i.name);
 				}}>
-					<text grow={1}>{i.name}</text>
-					<text font-family={Theme.CODE} font-size={Theme.SMALL} color={c("fg3")}>{(i.width > 0 ? i.width + " × " + i.height + "  " : "")
+					<text flexGrow={1}>{i.name}</text>
+					<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} color={c("fg3")}>{(i.width > 0 ? i.width + " × " + i.height + "  " : "")
 						+ Shell.fileLabel(studio, i.file)}</text>
-				</view:button>;
+				</button>;
 			}}</For>
 		</scroll>;
 	}

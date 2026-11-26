@@ -15,13 +15,13 @@ import helder.view.graph.Graph.*;
 // layouts' through WM_NCHITTEST), Linux's round ones. Nothing where the
 // window has the system's title bar, in the browser or on a phone. Its
 // colour is the text's (currentColor).
-//   <view direction="row" drag-region><text>Title</text><view grow={1}/><WindowControls/></view>
+//   <view flexDirection="row" dragRegion><text>Title</text><view flexGrow={1}/><WindowControls/></view>
 // A layout whose top left and top right are different bars (a sidebar's,
 // an inspector's) puts one at each end with its side: only the one where
 // the system puts them is drawn (side(): macOS's at the start, Windows' and
 // Linux's at the end), the other nothing.
-//   <view drag-region><WindowControls side="start"/><text>Project</text></view>
-//   <view drag-region><text>Inspector</text><view grow={1}/><WindowControls side="end"/></view>
+//   <view dragRegion><WindowControls side="start"/><text>Project</text></view>
+//   <view dragRegion><text>Inspector</text><view flexGrow={1}/><WindowControls side="end"/></view>
 class WindowButtons implements Markup {
 	// the side of the window the system puts its buttons: "start" (macOS's,
 	// at the left: env(titlebar-area-x) after them), "end" (Windows', Linux's),
@@ -45,8 +45,8 @@ class WindowButtons implements Markup {
 		var kind = signal("none"), size = signal({w: 0.0, h: 0.0}), node:Null<Node> = null;
 		onCleanup(() -> if (node != null && node.ui != null && node.ui.controlsAt == node) node.ui.controlsAt = null);
 		// (its window known once it is laid out in one: its first onResize)
-		return <view tag={tag} direction="row" align-items="center" shrink={0} width={kind() == "system" ? size().w : kind() == "none" ? 0.0 : (null : Null<Float>)}
-			height={kind() == "system" ? size().h : kind() == "none" ? 0.0 : (null : Null<Float>)} ref={(n:Node) -> node = n} onResize={e -> {
+		return <view tag={tag} flexDirection="row" alignItems="center" flexShrink={0} width={kind() == "system" ? size().w : kind() == "none" ? 0.0 : (null : Null<Float>)}
+			height={kind() == "system" ? size().h : kind() == "none" ? 0.0 : (null : Null<Float>)} ref={(p:helder.ui.Part) -> node = cast p} onResize={e -> {
 				var n = node;
 				if (n == null || n.ui == null || kind.peek() != "none") return;
 				var w = n.ui.window;
@@ -66,8 +66,8 @@ class WindowButtons implements Markup {
 	// (a headless run of a macOS build: no system's buttons drawn, circles where they are)
 	static function standIns():View {
 		#if helder.headless
-		return <view direction="row" column-gap={8} padding="2 1">
-			{[for (_ in 0...3) <view width={12} height={12} radius={6} background="#ffffff" opacity={0.16}/>]}
+		return <view flexDirection="row" columnGap={8} padding="2 1">
+			{[for (_ in 0...3) <view width={12} height={12} borderRadius={6} background="#ffffff" opacity={0.16}/>]}
 		</view>;
 		#else
 		return null;
@@ -81,7 +81,7 @@ class WindowButtons implements Markup {
 		// title bar's area changes, which a maximise or a restore resizes)
 		inline function maximized():Bool
 			return SafeArea.titlebar() != null && row != null && row.ui != null && row.ui.window != null && row.ui.window.maximized();
-		return <view direction="row" height={h} ref={(n:Node) -> row = n}>
+		return <view flexDirection="row" height={h} ref={(p:helder.ui.Part) -> row = cast p}>
 			{button("window-minimize", "Minimize", Minimize, w, h, linux, n -> n.ui.window.minimize(), <image src={minimize()} width={10} height={10}/>)}
 			{button("window-maximize", "Maximize", Maximize, w, h, linux, n -> n.ui.window.maximize(!n.ui.window.maximized()),
 				<image src={maximized() ? restore(linux) : maximize(linux)} width={10} height={10}/>)}
@@ -129,13 +129,14 @@ class WindowButtons implements Markup {
 	static function button(tag:String, label:String, hit:TitleHit, w:Int, h:Int, linux:Bool, press:Node->Void, glyph:View):View {
 		var over = signal(false), node:Null<Node> = null;
 		var close = hit == Close;
-		return <view tag={tag} role="button" label={label} width={w} height={h} align-items="center" justify="center"
-			ref={(n:Node) -> {
+		return <view tag={tag} role="button" aria-label={label} width={w} height={h} alignItems="center" justifyContent="center"
+			ref={(p:helder.ui.Part) -> {
+				var n:Node = cast p;
 				node = n;
 				n.titleHit = hit;
 			}} onPointerEnter={() -> over(true)} onPointerLeave={() -> over(false)} onPress={() -> if (node != null && node.ui != null && node.ui.window != null) press(node)}
 			color={close && over() && !linux ? "#ffffff" : null}>
-			<view width={linux ? 24 : w} height={linux ? 24 : h} radius={linux ? 12 : 0} align-items="center" justify="center"
+			<view width={linux ? 24 : w} height={linux ? 24 : h} borderRadius={linux ? 12 : 0} alignItems="center" justifyContent="center"
 				background={over() ? (close && !linux ? "#c42b1c" : "rgba(127,127,127,0.18)") : linux ? "rgba(127,127,127,0.1)" : "transparent"}>{glyph}</view>
 		</view>;
 	}

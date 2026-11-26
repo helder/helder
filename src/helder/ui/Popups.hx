@@ -17,7 +17,7 @@ class Popups {
 			p.style.width = DimValue.Percent(100);
 			p.style.height = DimValue.Percent(100);
 			p.style.alignItems = Center;
-			p.style.justify = Center;
+			p.style.justifyContent = Center;
 		}
 		ui.overlay.append(p);
 		if (p.modal) {

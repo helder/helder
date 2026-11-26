@@ -2,22 +2,22 @@ package helder.ui;
 
 // A style given untyped as StyleProps: a TypeScript program's, its values
 // as markup's attributes write them ("row", "0 12", "#3b82f6", "scale(0.97)",
-// numbers; kebab-case names too), parsed once: a sheet's rules when it is
+// numbers; CSS's names in camel, as markup's: helder.view.Vocabulary), parsed once: a sheet's rules when it is
 // first used (Rules), a look's recipes when it is compiled
 // (helder.ui.controls). A value already of its property's type (Haxe's) is
 // kept as it is.
 class Styles {
 	static final STRINGS = ["fontFamily", "page", "gridArea", "fontFeatureSettings", "fontVariantNumeric"];
 	static final FLOATS = [
-		"grow", "shrink", "aspectRatio", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "marginTop", "marginRight", "marginBottom", "marginLeft",
-		"borderWidth", "rowGap", "columnGap", "letterSpacing", "letterSpacingEm", "wordSpacing", "radius", "opacity", "ringWidth", "ringOffsetWidth",
+		"flexGrow", "flexShrink", "aspectRatio", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "marginTop", "marginRight", "marginBottom", "marginLeft",
+		"borderWidth", "rowGap", "columnGap", "letterSpacing", "letterSpacingEm", "wordSpacing", "borderRadius", "opacity", "ringWidth", "ringOffsetWidth",
 		"outlineWidth", "outlineOffset", "fontSize", "lineHeight", "lineHeightPx", "gap", "flex"
 	];
-	static final DIMS = ["basis", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "left", "top", "right", "bottom", "inset",
+	static final DIMS = ["flexBasis", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "left", "top", "right", "bottom", "inset",
 		"textDecorationThickness", "textUnderlineOffset"];
 	static final EDGES = ["padding", "margin", "borders"];
 	// (objects and lists: a string or a list of numbers and strings parsed)
-	static final OBJECTS = ["textShadow", "shadow", "backgroundImage", "transform", "transition", "corners", "transformOrigin", "gridTemplateColumns",
+	static final OBJECTS = ["textShadow", "boxShadow", "backgroundImage", "transform", "transition", "corners", "transformOrigin", "gridTemplateColumns",
 		"gridTemplateRows", "gridAutoColumns", "gridAutoRows", "gridColumn", "gridRow", "gridTemplateAreas"];
 	// (shorthands not kept as themselves, and the longhands they set)
 	static final SIDES = [
@@ -32,8 +32,9 @@ class Styles {
 		var out:Dynamic = {};
 		var scratch:Null<Style> = null;
 		for (key in Reflect.fields(o)) {
-			var name = camel(key), v:Dynamic = Reflect.field(o, key);
+			var name = key, v:Dynamic = Reflect.field(o, key);
 			if (v == null) continue;
+			if (helder.view.Vocabulary.STYLES.indexOf(name) < 0) throw helder.view.Vocabulary.attribute("view", key) ?? 'helder.ui: no style property $key';
 			if (typed(name, v)) {
 				// (a number as its property stores it: JavaScript's are floats)
 				var number = Std.isOfType(v, Float) || Std.isOfType(v, Int);
@@ -41,7 +42,7 @@ class Styles {
 				continue;
 			}
 			if (scratch == null) scratch = new Node().style;
-			if (!helder.ui.view.StyleAttrs.apply(scratch, name, v)) throw 'helder.ui: no style property $key';
+			if (!helder.ui.view.StyleAttrs.apply(scratch, name, v)) throw helder.view.Vocabulary.attribute("view", key) ?? 'helder.ui: no style property $key';
 			var sides = SIDES.get(name);
 			if (sides != null) {
 				for (s in sides)
@@ -67,11 +68,5 @@ class Styles {
 		}
 		// (a number: an enum's, an integer's, a float's, a colour's bits)
 		return number;
-	}
-
-	static function camel(n:String):String {
-		if (n.indexOf("-") < 0) return n;
-		var parts = n.split("-");
-		return parts[0] + [for (p in parts.slice(1)) p.charAt(0).toUpperCase() + p.substr(1)].join("");
 	}
 }

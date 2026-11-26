@@ -2,9 +2,12 @@
 // newline-delimited JSON-RPC on stdin/stdout, as the Agent Client Protocol's
 // agents speak it. Prompts: "ask" asks a question of several picks over
 // the studio's MCP server (studio.ask, as an MCP agent named claude-code);
+// "note" says what it is about to do (studio.working) and only thinks;
 // "work" streams a plan, a thought, a Markdown
-// reply with chips and five tool calls (the last running), then waits for
-// session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
+// reply with chips and five tool calls (the last running), a message after
+// them, then waits for
+// session/cancel; "think" only thinks, until session/cancel; "pulse" calls a tool every
+// 600 ms, ten times, then waits for session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
 // chunks; "edit" streams text, a thought, a tool call, a
 // plan, asks permission, reads and writes app.helder (and a file outside the
 // project), then reports what the client answered; "wait" streams a chunk,
@@ -13,7 +16,7 @@ import {createInterface} from 'node:readline'
 
 let next = 0
 const waiting = new Map()
-let cwd = '', servers = [], mcp = null, cancelled = null
+let cwd = '', servers = [], mcp = null, cancelled = null, denied = null, options = null
 
 function send(m) {
   process.stdout.write(JSON.stringify({jsonrpc: '2.0', ...m}) + '\n')
@@ -29,6 +32,19 @@ function update(sessionId, update) {
   send({method: 'session/update', params: {sessionId, update}})
 }
 
+// (the studio's MCP server, as an MCP agent of its own, Claude Code's name)
+async function studio() {
+  const headers = {'content-type': 'application/json', accept: 'application/json, text/event-stream'}
+  const call = async (body, session) => {
+    const r = await fetch(mcp, {method: 'POST', headers: session ? {...headers, 'mcp-session-id': session} : headers, body: JSON.stringify({jsonrpc: '2.0', ...body})})
+    await r.text()
+    return r.headers.get('mcp-session-id')
+  }
+  const session = await call({id: 1, method: 'initialize', params: {protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {name: 'claude-code', version: '1'}}})
+  await call({method: 'notifications/initialized'}, session)
+  return {call, session}
+}
+
 async function prompt(id, p) {
   const s = p.sessionId
   const text = p.prompt.filter(b => b.type === 'text').map(b => b.text).join('\n')
@@ -42,19 +58,23 @@ async function prompt(id, p) {
     send({id, result: {stopReason: 'end_turn'}})
     return
   }
+  if (text.startsWith('note') && mcp) {
+    // (what it is about to do, over MCP, then only thinking: no words until session/cancel)
+    const {call, session} = await studio()
+    await call({id: 2, method: 'tools/call', params: {name: 'studio.working', arguments: {note: 'Sketching the court'}}}, session)
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'A court first.'}})
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
+    return
+  }
   if (text.startsWith('ask') && mcp) {
     // (as an MCP agent of its own, Claude Code's name: studio.ask, several picks; the answer comes later)
-    const headers = {'content-type': 'application/json', accept: 'application/json, text/event-stream'}
-    const call = async (body, session) => {
-      const r = await fetch(mcp, {method: 'POST', headers: session ? {...headers, 'mcp-session-id': session} : headers, body: JSON.stringify({jsonrpc: '2.0', ...body})})
-      await r.text()
-      return r.headers.get('mcp-session-id')
-    }
-    const session = await call({id: 1, method: 'initialize', params: {protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {name: 'claude-code', version: '1'}}})
-    await call({method: 'notifications/initialized'}, session)
+    const {call, session} = await studio()
     await call({id: 2, method: 'tools/call', params: {name: 'studio.ask', arguments: {
       question: 'Which rows should glow?',
-      options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}],
+      // ("ask frames": the options the frames of sketches.helder's Done, Open, New)
+      options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}]
+        .map(o => text.startsWith('ask frames') ? {...o, frame: 'sketches.helder#' + o.label.split(' ')[0]} : o),
       multiple: true
     }}}, session)
     update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Asked which rows should glow.'}})
@@ -71,10 +91,13 @@ async function prompt(id, p) {
     const reply = 'The [Home](studio:screen/Home) frame has its title. Now the list, drawn in `app.helder:4`: three rows, the first one done.\n\n- a **checked** row\n- two open ones'
     for (let i = 0; i < reply.length; i += 9)
       update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 9)}})
-    const tools = ['app.helder · the title', 'app.helder · the input row', 'Read app.helder', 'app.helder · the list', 'app.helder · <view row-gap={1}>']
+    const tools = ['app.helder · the title', 'app.helder · the input row', 'Read app.helder', 'app.helder · the list', 'app.helder · <view rowGap={1}>']
     tools.forEach((title, k) => {
       update(s, {sessionUpdate: 'tool_call', toolCallId: 'w' + k, title, kind: 'edit', status: k < tools.length - 1 ? 'completed' : 'in_progress'})
     })
+    // (a message of its own after the tools: a paragraph of its own, after a note sent meanwhile)
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'The list looks right.'}})
     await new Promise(resolve => (cancelled = resolve))
     send({id, result: {stopReason: 'cancelled'}})
     return
@@ -85,6 +108,22 @@ async function prompt(id, p) {
     for (let i = 0; i < reply.length; i += 7)
       update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 7)}})
     send({id, result: {stopReason: 'end_turn'}})
+    return
+  }
+  if (text.startsWith('pulse')) {
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'Working.'}})
+    for (let k = 0; k < 10; k++) {
+      await new Promise(resolve => setTimeout(resolve, 600))
+      update(s, {sessionUpdate: 'tool_call', toolCallId: 'p' + k, title: 'step ' + k, kind: 'edit', status: 'completed'})
+    }
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
+    return
+  }
+  if (text.startsWith('think')) {
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'Thinking about it.'}})
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
     return
   }
   if (text.startsWith('wait')) {
@@ -132,8 +171,11 @@ async function prompt(id, p) {
     outside: outside.error ? 'error' : 'ok',
     missing: missing.error?.code,
     servers,
+    denied,
+    session: options,
     link: link?.name ?? null,
-    problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null
+    problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null,
+    crashes: p.prompt.find(b => b.type === 'text' && b.text.startsWith("It builds, but"))?.text ?? null
   }
   update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: JSON.stringify(report)}})
   send({id, result: {stopReason: 'end_turn'}})
@@ -160,6 +202,9 @@ lines.on('line', line => {
       cwd = m.params.cwd
       servers = m.params.mcpServers.map(s => s.type + ' ' + s.name + ' ' + s.url)
       mcp = m.params.mcpServers[0]?.url ?? null
+      const o = m.params._meta?.claudeCode?.options
+      denied = o?.disallowedTools ?? null
+      options = o && {tools: o.tools, allowed: o.allowedTools, strict: o.strictMcpConfig, sources: o.settingSources, settings: o.settings}
       return send({id: m.id, result: {sessionId: 's1'}})
     case 'session/prompt':
       return void prompt(m.id, m.params)

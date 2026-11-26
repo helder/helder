@@ -117,9 +117,11 @@ class Sendable {
 			case FloatK: macro $r.float();
 			case BoolK: macro $r.bool();
 			case Int64K: macro $r.int64();
-			case StringK: macro $r.string();
-			case BytesK: macro $r.bytes();
-			case BufferK: macro $r.buffer();
+			// (null only when a sender without null safety sent one: the
+			// declared type, as written)
+			case StringK: macro(cast $r.string() : $ct);
+			case BytesK: macro(cast $r.bytes() : $ct);
+			case BufferK: macro(cast $r.buffer() : $ct);
 			case StructK(c):
 				var cls = classExpr(c);
 				macro ($r.struct(hxmc.unsafe.Struct.sizeOf($cls)) : $ct);
@@ -131,13 +133,13 @@ class Sendable {
 				}
 			case Under(i, _): macro(cast ${read(i, r)} : $ct);
 			case List(e):
-				macro({
+				macro(cast {
 					var n = $r.int();
-					n < 0 ? null : [for (_ in 0...n) ${read(e, r)}];
+					n < 0 ? null : ([for (_ in 0...n) ${read(e, r)}] : $ct);
 				} : $ct);
 			case Fields(fs):
 				var obj:Expr = {expr: EObjectDecl([for (f in fs) {field: f.name, expr: read(f.type, r)}]), pos: Context.currentPos()};
-				macro($r.bool() ? $obj : null : $ct);
+				macro(cast($r.bool() ? ($obj : $ct) : null) : $ct);
 			case Bad(_): throw "unreachable";
 		}
 	}

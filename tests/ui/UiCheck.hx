@@ -131,9 +131,9 @@ class UiCheck {
 		var ui = new Ui(new MonoText(), 300, 200);
 		var s = new Node("s"), gap = new Node("gap"), f = new TextField(""), foot = new Node("foot");
 		s.style.set({width: 300, height: 200, overflow: Scroll});
-		gap.style.set({height: 300, shrink: 0});
-		f.style.set({width: 100, height: 20, shrink: 0});
-		foot.style.set({height: 50, shrink: 0});
+		gap.style.set({height: 300, flexShrink: 0});
+		f.style.set({width: 100, height: 20, flexShrink: 0});
+		foot.style.set({height: 50, flexShrink: 0});
 		s.append(gap);
 		s.append(f);
 		s.append(foot);
@@ -396,7 +396,7 @@ class UiCheck {
 		var ui = new Ui(new MonoText(), 200, 100);
 		ui.root.style.alignItems = Start;
 		var n = new Node("card");
-		n.style.set({width: 40, height: 20, radius: 4, background: Color.rgb(0xFFFFFF), borderWidth: 1, borderColor: Color.rgb(0x000000),
+		n.style.set({width: 40, height: 20, borderRadius: 4, background: Color.rgb(0xFFFFFF), borderWidth: 1, borderColor: Color.rgb(0x000000),
 			backgroundImage: Gradient.parse("linear-gradient(to right, red, blue)")});
 		ui.root.append(n);
 		ui.scale = 2;
@@ -584,7 +584,7 @@ class UiCheck {
 		check("stacking: a negative one under", painted() == "33,22,11" && ui.root.hitTest(55, 10) == b, painted());
 		// in the flow: order rearranges them; Tab follows the tree
 		var ui2 = new Ui(new MonoText(), 200, 100);
-		ui2.root.style.direction = Row;
+		ui2.root.style.flexDirection = Row;
 		var x = new Node("x"), y = new Node("y");
 		for (n in [x, y]) {
 			n.style.set({width: 40, height: 40});
@@ -601,7 +601,7 @@ class UiCheck {
 	// nothing of the node, but a visible descendant still is
 	static function visibility() {
 		var ui = new Ui(new MonoText(), 200, 100);
-		ui.root.style.direction = Row;
+		ui.root.style.flexDirection = Row;
 		var a = new Node("a"), b = new Node("b"), inner = new Node("inner");
 		for (n in [a, b]) {
 			n.style.set({width: 60, height: 40, background: Color.rgb(n == a ? 0x110000 : 0x220000)});
@@ -670,13 +670,13 @@ class UiCheck {
 		ui.nativeScroll = true;
 		var outer = new Node("outer"), row = new Node("row"), tall = new Node("tall");
 		outer.style.set({width: 200, height: 100, overflow: Scroll});
-		row.style.set({height: 40, shrink: 0, overflow: Scroll, direction: Row});
+		row.style.set({height: 40, flexShrink: 0, overflow: Scroll, flexDirection: Row});
 		for (i in 0...3) {
 			var c = new Node("c" + i);
-			c.style.set({width: 100, height: 40, shrink: 0});
+			c.style.set({width: 100, height: 40, flexShrink: 0});
 			row.append(c);
 		}
-		tall.style.set({height: 300, shrink: 0});
+		tall.style.set({height: 300, flexShrink: 0});
 		outer.append(row);
 		outer.append(tall);
 		ui.root.append(outer);
@@ -729,7 +729,7 @@ class UiCheck {
 		ui.overlayBars = true;
 		var page = new Node("page"), tall = new Node("tall");
 		page.style.set({width: 200, height: 100, overflow: Scroll});
-		tall.style.set({height: 400, shrink: 0});
+		tall.style.set({height: 400, flexShrink: 0});
 		page.append(tall);
 		ui.root.append(page);
 		ui.update();
@@ -769,13 +769,13 @@ class UiCheck {
 		ui.overlayBars = true;
 		var page = new Node("page"), row = new Node("row"), tall = new Node("tall");
 		page.style.set({width: 200, height: 100, overflow: Scroll});
-		row.style.set({height: 40, shrink: 0, overflow: Scroll, direction: Row});
+		row.style.set({height: 40, flexShrink: 0, overflow: Scroll, flexDirection: Row});
 		for (i in 0...3) {
 			var c = new Node("c" + i);
-			c.style.set({width: 100, height: 40, shrink: 0});
+			c.style.set({width: 100, height: 40, flexShrink: 0});
 			row.append(c);
 		}
-		tall.style.set({height: 300, shrink: 0});
+		tall.style.set({height: 300, flexShrink: 0});
 		page.append(row);
 		page.append(tall);
 		ui.root.append(page);
@@ -947,7 +947,7 @@ class UiCheck {
 		ui.stretch = true;
 		var page = new Node("page"), tall = new Node("tall");
 		page.style.set({width: 200, height: 100, overflow: Scroll});
-		tall.style.set({height: 300, shrink: 0});
+		tall.style.set({height: 300, flexShrink: 0});
 		page.append(tall);
 		ui.root.append(page);
 		ui.update();
@@ -994,7 +994,7 @@ class UiCheck {
 	static function scrollSet() {
 		var ui = new Ui(new MonoText(), 200, 100), list = new Node(), tall = new Node();
 		list.style.set({width: 200, height: 100, overflow: Scroll});
-		tall.style.set({height: 2000, shrink: 0});
+		tall.style.set({height: 2000, flexShrink: 0});
 		list.append(tall);
 		ui.root.append(list);
 		var t = 1.0;
@@ -1019,10 +1019,10 @@ class UiCheck {
 		var ui = new Ui(new MonoText(), 200, 100);
 		ui.scrollDuration = 0;
 		var s = new Node("s");
-		s.style.set({width: 100, height: 50, overflow: Scroll, direction: Row, dir: Rtl});
+		s.style.set({width: 100, height: 50, overflow: Scroll, flexDirection: Row, direction: Rtl});
 		for (i in 0...3) {
 			var c = new Node("c" + i);
-			c.style.set({width: 60, height: 20, shrink: 0});
+			c.style.set({width: 60, height: 20, flexShrink: 0});
 			s.append(c);
 		}
 		ui.root.append(s);
@@ -1036,9 +1036,9 @@ class UiCheck {
 		check("rtl scroll: back to 0 at most", s.scrollX == 0, "" + s.scrollX);
 		// (a column taller than it: its bar on the left)
 		var t = new Node("t");
-		t.style.set({width: 100, height: 50, overflow: Scroll, dir: Rtl});
+		t.style.set({width: 100, height: 50, overflow: Scroll, direction: Rtl});
 		var tall = new Node("tall");
-		tall.style.set({height: 200, shrink: 0});
+		tall.style.set({height: 200, flexShrink: 0});
 		t.append(tall);
 		ui.root.append(t);
 		ui.update();
@@ -1070,7 +1070,7 @@ class UiCheck {
 		check("no wrap: one line, past its box", p.lineCount == 1 && t.width == 40 && whole > 40, p.lineCount + " " + whole);
 		box.style.width = DimValue.Auto;
 		var row = new Node("row");
-		row.style.set({width: 10, direction: Row});
+		row.style.set({width: 10, flexDirection: Row});
 		ui.root.append(row);
 		var u = new TextNode("alpha beta");
 		row.append(u);
@@ -1121,7 +1121,7 @@ class UiCheck {
 		s.style.set({width: 200, height: 100, overflow: Scroll, borderWidth: 2, padding: 4});
 		function block(h:Float):Node {
 			var n = new Node();
-			n.style.set({height: h, shrink: 0});
+			n.style.set({height: h, flexShrink: 0});
 			return n;
 		}
 		var sec = block(120);
@@ -1177,7 +1177,7 @@ class UiCheck {
 		list.style.set({height: 100, overflow: Scroll});
 		for (i in 0...100) {
 			var row = new Node("row" + i);
-			row.style.set({height: 20, shrink: 0, background: Color.rgb(0x010000 * (i + 1))});
+			row.style.set({height: 20, flexShrink: 0, background: Color.rgb(0x010000 * (i + 1))});
 			row.focusable = true;
 			list.append(row);
 		}
@@ -1224,16 +1224,16 @@ class UiCheck {
 					s.borderWidth = rnd(3);
 					s.borderColor = Color.rgba(0x204060, [0.5, 1][rnd(2)]);
 				case 4: s.borders = [rnd(3), 0, rnd(4), 1];
-				case 5: s.radius = rnd(3) * 4;
+				case 5: s.borderRadius = rnd(3) * 4;
 				case 6: s.corners = CornersValue.parse(["4px 0 8px 2px", "10px"][rnd(2)]);
 				case 7: s.borderStyle = [BorderStyle.Solid, BorderStyle.Dashed, BorderStyle.Dotted][rnd(3)];
 				case 8: s.opacity = [1, 0.5, 0][rnd(3)];
-				case 9: s.shadow = rnd(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080", "0 0 0 2px #ff0000"][rnd(3)]);
+				case 9: s.boxShadow = rnd(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080", "0 0 0 2px #ff0000"][rnd(3)]);
 				case 10: s.transform = rnd(2) == 0 ? null : Transform.parse(["translate(30px, 10px)", "scale(1.5)", "rotate(10deg)"][rnd(3)]);
 				case 11: s.overflow = [Overflow.Visible, Overflow.Hidden, Overflow.Scroll][rnd(3)];
 				case 12: s.textShadow = rnd(2) == 0 ? null : Shadow.parse("1px 1px 2px #000000");
 				case 13: s.visibility = [null, Visibility.Hidden, Visibility.Visible][rnd(3)];
-				case 14: s.direction = [Direction.Row, Direction.Column][rnd(2)];
+				case 14: s.flexDirection = [Direction.Row, Direction.Column][rnd(2)];
 				case _: s.padding = rnd(3) * 3;
 			}
 		}
@@ -1311,9 +1311,9 @@ class UiCheck {
 				case 3:
 					s.borderWidth = r(3);
 					s.borderColor = Color.rgba(0x204060, [0.5, 1][r(2)]);
-				case 4: s.radius = r(3) * 4;
+				case 4: s.borderRadius = r(3) * 4;
 				case 5: s.opacity = [1, 0.5, 0][r(3)];
-				case 6: s.shadow = r(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080"][r(2)]);
+				case 6: s.boxShadow = r(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080"][r(2)]);
 				case 7: s.transform = r(2) == 0 ? null : Transform.parse(["translate(30px, 10px)", "scale(1.5)", "rotate(10deg)"][r(3)]);
 				case 8: s.overflow = [Overflow.Visible, Overflow.Hidden, Overflow.Scroll][r(3)];
 				case 9: s.visibility = [null, Visibility.Hidden, Visibility.Visible][r(3)];
@@ -1513,29 +1513,29 @@ class UiCheck {
 			switch k {
 				case 0: s.width = dims[rnd(dims.length)];
 				case 1: s.height = dims[rnd(dims.length)];
-				case 2: s.direction = [Direction.Row, Direction.Column, Direction.RowReverse][rnd(3)];
-				case 3: s.wrap = rnd(2) == 0;
-				case 4: s.grow = rnd(3);
-				case 5: s.shrink = rnd(2);
+				case 2: s.flexDirection = [Direction.Row, Direction.Column, Direction.RowReverse][rnd(3)];
+				case 3: s.flexWrap = rnd(2) == 0;
+				case 4: s.flexGrow = rnd(3);
+				case 5: s.flexShrink = rnd(2);
 				case 6: s.padding = rnd(3) * 3;
 				case 7: s.margin = rnd(3) * 2;
 				case 8: s.alignItems = [Align.Stretch, Align.Start, Align.Center, Align.End, Align.Baseline][rnd(5)];
 				case 9: s.alignSelf = [Align.Auto, Align.Start, Align.Baseline, Align.Stretch][rnd(4)];
-				case 10: s.justify = [Justify.Start, Justify.Center, Justify.SpaceBetween][rnd(3)];
+				case 10: s.justifyContent = [Justify.Start, Justify.Center, Justify.SpaceBetween][rnd(3)];
 				case 11: s.gap = rnd(3) * 4;
 				case 12: s.minWidth = ([DimValue.Auto, 0, 40] : Array<Dim>)[rnd(3)];
 				case 13: s.overflow = [Overflow.Visible, Overflow.Hidden, Overflow.Scroll][rnd(3)];
-				case 14: s.basis = ([DimValue.Auto, 0, 25] : Array<Dim>)[rnd(3)];
+				case 14: s.flexBasis = ([DimValue.Auto, 0, 25] : Array<Dim>)[rnd(3)];
 				case 15: s.display = rnd(5) == 0 ? Display.None : Display.Flex;
 				case 16: s.fontSize = [8, 12, 20][rnd(3)];
 				case 17:
 					s.display = Display.Grid;
 					s.gridTemplateColumns = Grid.tracks(["1fr auto", "40px 1fr", "repeat(3, 1fr)", "auto auto"][rnd(4)]);
 				case 18: s.aspectRatio = [0, 1, 2][rnd(3)];
-				case 19: s.shadow = rnd(2) == 0 ? null : Shadow.parse("0 4px 12px rgba(0,0,0,0.5)");
+				case 19: s.boxShadow = rnd(2) == 0 ? null : Shadow.parse("0 4px 12px rgba(0,0,0,0.5)");
 				case 20: s.transform = rnd(2) == 0 ? null : Transform.parse(["translate(30px, 10px)", "scale(1.5)", "translateX(-40px)"][rnd(3)]);
 				// (inherited: what the texts below keep of them, again)
-				case 21: s.dir = [null, Dir.Ltr, Dir.Rtl][rnd(3)];
+				case 21: s.direction = [null, Dir.Ltr, Dir.Rtl][rnd(3)];
 				case 22: s.textTransform = [null, TextTransform.Uppercase, TextTransform.None][rnd(3)];
 				case 23: s.textWrap = [null, TextWrap.Wrap, TextWrap.NoWrap, TextWrap.Balance][rnd(4)];
 				case 24: s.letterSpacing = [null, 0.0, 2.0][rnd(3)];
@@ -1648,7 +1648,7 @@ class UiCheck {
 		}
 		var baseline = agrees(ui -> {
 			var row = new Node(), box = new Node(), above = new Node(), below = new Node();
-			row.style.direction = Row;
+			row.style.flexDirection = Row;
 			row.style.alignItems = Baseline;
 			box.style.width = 50;
 			box.style.height = 80;
@@ -1667,7 +1667,7 @@ class UiCheck {
 		});
 		var least = agrees(ui -> {
 			var row = new Node(), item = new Node(), text = new TextNode("aaaa");
-			row.style.direction = Row;
+			row.style.flexDirection = Row;
 			row.style.width = 100;
 			item.style.width = 60;
 			item.append(text);
@@ -2061,11 +2061,11 @@ class UiCheck {
 		check("popups: flipped above, kept in the window", p.absY == 160 - 4 - 50 && p.absX == 300 - 80, '${p.absX},${p.absY}');
 		// right to left: the anchor's right edge and the popup's lined up
 		clip.style.set({margin: [0.0, 0, 0, 100]});
-		ui.root.style.dir = Rtl;
+		ui.root.style.direction = Rtl;
 		ui.update();
 		var anchorRight = button.absX + button.width;
 		check("popups: right to left, their right edges lined up", p.absX + p.width == anchorRight, '${p.absX + p.width} ${anchorRight}');
-		ui.root.style.dir = null;
+		ui.root.style.direction = null;
 		// at a point: there, flipped left and up where it does not fit
 		p.placement = Point;
 		p.atX = 20;
@@ -2247,7 +2247,7 @@ class UiCheck {
 			var r = new Node("row" + i);
 			r.style.height = 20;
 			// (as in CSS: an empty box of a fixed height shrinks in a column it overflows)
-			r.style.shrink = 0;
+			r.style.flexShrink = 0;
 			r.focusable = true;
 			box.append(r);
 			r;
@@ -2417,7 +2417,7 @@ class UiCheck {
 		var img = new Image(40, 20);
 		var natural = new ImageNode(img), wide = new ImageNode(img), box = new ImageNode(img);
 		wide.style.width = 100;
-		box.style.set({width: 100, height: 100, radius: 12});
+		box.style.set({width: 100, height: 100, borderRadius: 12});
 		for (n in [natural, wide, box])
 			ui.root.append(n);
 		ui.update();
@@ -2468,7 +2468,7 @@ class UiCheck {
 static function transitions() {
 		// parsed as CSS writes them; CSS's easings
 		var t = Transition.parse("background-color 150ms ease-in-out, opacity 0.2s 50ms, box-shadow 1s cubic-bezier(0.4, 0, 0.2, 1)");
-		check("transitions: parsed", t.properties.join(",") == "background,opacity,shadow" && t.durations.join(",") == "0.15,0.2,1"
+		check("transitions: parsed", t.properties.join(",") == "background,opacity,boxShadow" && t.durations.join(",") == "0.15,0.2,1"
 			&& t.delays.join(",") == "0,0.05,0" && t.easings[0] == Transition.EASE_IN_OUT && t.easings[2].join(",") == "0.4,0,0.2,1"
 			&& t.timing("color") == null && Transition.parse("all 1s").timing("borderColor").duration == 1 && Transition.parse("none") == null,
 			t.properties.join(","));
@@ -2559,7 +2559,7 @@ static function transitions() {
 		ui.theme = {rules: [
 			{slot: "p", style: {padding: [8, 16]}},
 			{slot: "p", when: ["data-dense"], style: {paddingTop: 2}},
-			{slot: "row", style: {direction: Row, width: 100}},
+			{slot: "row", style: {flexDirection: Row, width: 100}},
 			{slot: "end", style: {width: 10, height: 10, marginLeft: Edges.AUTO}}
 		]};
 		var pn = new Node("p"), row = new Node("row"), end = new Node("end");
@@ -2583,14 +2583,14 @@ static function transitions() {
 		var rad = new Node("rad");
 		rad.slot = "rad";
 		ui.root.append(rad);
-		ui.theme = {rules: [{slot: "rad", style: {radius: Length.token("radius", -4), color: Color.rgb(0x112233), borderColor: Color.token("currentcolor")}}], lengths: ["radius" => 10.0]};
+		ui.theme = {rules: [{slot: "rad", style: {borderRadius: Length.token("radius", -4), color: Color.rgb(0x112233), borderColor: Color.token("currentcolor")}}], lengths: ["radius" => 10.0]};
 		ui.update();
-		var first = rad.style.radius;
+		var first = rad.style.borderRadius;
 		check("themes: currentColor beside a resolved length", rad.style.borderColor == Color.rgb(0x112233), "" + rad.style.borderColor);
-		ui.theme = {rules: [{slot: "rad", style: {radius: Length.token("radius", -4)}}], lengths: ["radius" => 2.0]};
+		ui.theme = {rules: [{slot: "rad", style: {borderRadius: Length.token("radius", -4)}}], lengths: ["radius" => 2.0]};
 		ui.update();
-		check("themes: a radius from the sheet's lengths (clamped at 0)", first == 6 && rad.style.radius == 0 && Length.tokenOffset(Length.token("x", -2.5)) == -2.5,
-			first + " " + rad.style.radius);
+		check("themes: a radius from the sheet's lengths (clamped at 0)", first == 6 && rad.style.borderRadius == 0 && Length.tokenOffset(Length.token("x", -2.5)) == -2.5,
+			first + " " + rad.style.borderRadius);
 		ui.root.remove(rad);
 		// (other nodes' states: a group's hover, a named peer's attribute, a descendant's, first and last, not)
 		ui.theme = {
@@ -2667,10 +2667,10 @@ static function transitions() {
 		ui.root.append(th);
 		ui.update();
 		var ltr = th.style.opacity;
-		ui.root.style.dir = Rtl;
+		ui.root.style.direction = Rtl;
 		ui.update();
 		check("themes: rtl rules, again when the direction changes", ltr == 0.5 && th.style.opacity == 0.25, ltr + " " + th.style.opacity);
-		ui.root.style.dir = null;
+		ui.root.style.direction = null;
 		// (kept: the node's own padding over the rules', its default too, the sides as well; another node's the rules')
 		ui.theme = {rules: [{slot: "k", style: {padding: 16, opacity: 0.5}}, {slot: "k", when: ["data-wide"], style: {paddingLeft: 24}}]};
 		var kept = new Node("kept"), other = new Node("other");
@@ -2705,12 +2705,12 @@ static function transitions() {
 		ui.root.style.alignItems = Start;
 		var sheet:StyleSheet = {
 			rules: [
-				{slot: "button", style: {background: Color.parse("var(--primary)"), radius: 6, padding: 8}},
+				{slot: "button", style: {background: Color.parse("var(--primary)"), borderRadius: 6, padding: 8}},
 				{slot: "button", when: ["hover"], style: {background: Color.parse("var(--primary)/50")}},
 				{slot: "button", variant: "outline", style: {background: Color.TRANSPARENT, borderWidth: 1, borderColor: Color.parse("var(--border)")}},
 				{slot: "button", size: "sm", style: {padding: 4}},
-				{slot: "button", when: ["focus-visible"], style: {shadow: Shadow.parse("0 0 0 3px var(--ring)/50")}},
-				{slot: "button", when: ["dark"], style: {radius: 2}},
+				{slot: "button", when: ["focus-visible"], style: {boxShadow: Shadow.parse("0 0 0 3px var(--ring)/50")}},
+				{slot: "button", when: ["dark"], style: {borderRadius: 2}},
 				{slot: "switch", style: {background: Color.parse("var(--input)")}},
 				{slot: "switch", when: ["data-state=checked"], style: {background: Color.parse("var(--primary)")}},
 				{slot: "input", when: ["placeholder"], style: {color: Color.parse("var(--muted-foreground)")}},
@@ -2732,16 +2732,16 @@ static function transitions() {
 		own.style.background = Color.rgb(0xFF0000);
 		sw.slot = "switch";
 		ui.update();
-		check("themes: no sheet, no style", a.style.background == Color.TRANSPARENT && a.style.radius == 0);
+		check("themes: no sheet, no style", a.style.background == Color.TRANSPARENT && a.style.borderRadius == 0);
 		ui.theme = sheet;
 		ui.update();
 		ui.update();
-		check("themes: a slot's rules, tokens resolved", a.style.background == Color.rgb(0x171717) && a.style.radius == 6 && a.style.padding.left == 8);
+		check("themes: a slot's rules, tokens resolved", a.style.background == Color.rgb(0x171717) && a.style.borderRadius == 6 && a.style.padding.left == 8);
 		ui.update();
 		check("themes: a variant's and a size's rules after the slot's", b.style.background == Color.TRANSPARENT && b.style.borderWidth == 1
-			&& b.style.borderColor == Color.rgb(0xE5E5E5) && b.style.padding.left == 4 && b.style.radius == 6);
+			&& b.style.borderColor == Color.rgb(0xE5E5E5) && b.style.padding.left == 4 && b.style.borderRadius == 6);
 		ui.update();
-		check("themes: the node's own style wins", own.style.background == Color.rgb(0xFF0000) && own.style.radius == 6);
+		check("themes: the node's own style wins", own.style.background == Color.rgb(0xFF0000) && own.style.borderRadius == 6);
 		// (hover: on and off again)
 		ui.pointerMove(a.absX + 5, a.absY + 5);
 		ui.update();
@@ -2762,18 +2762,18 @@ static function transitions() {
 		a.focusable = true;
 		ui.keyDown(Key.TAB, 0);
 		ui.update();
-		check("themes: focus-visible", ui.focus == a && a.style.shadow != null && a.style.shadow.spread == 3 && a.style.shadow.color == Color.rgb(0xA1A1A1).fade(0.5));
+		check("themes: focus-visible", ui.focus == a && a.style.boxShadow != null && a.style.boxShadow.spread == 3 && a.style.boxShadow.color == Color.rgb(0xA1A1A1).fade(0.5));
 		ui.pointerDown(190, 90, 1);
 		ui.pointerUp(190, 90, 1);
 		ui.update();
-		check("themes: no ring after a press", a.style.shadow == null);
+		check("themes: no ring after a press", a.style.boxShadow == null);
 		// (dark: the dark colours, the rules for dark)
 		ui.dark = true;
 		ui.update();
-		check("themes: dark", a.style.background == Color.rgb(0xE5E5E5) && a.style.radius == 2 && sw.style.background == Color.rgb(0x333333));
+		check("themes: dark", a.style.background == Color.rgb(0xE5E5E5) && a.style.borderRadius == 2 && sw.style.background == Color.rgb(0x333333));
 		ui.dark = false;
 		ui.update();
-		check("themes: light again", a.style.background == Color.rgb(0x171717) && a.style.radius == 6);
+		check("themes: light again", a.style.background == Color.rgb(0x171717) && a.style.borderRadius == 6);
 		// (a subtree's own sheet)
 		var other:StyleSheet = {rules: [{slot: "button", style: {background: Color.rgb(0x00FF00)}}]};
 		var box = new Node("box"), inner = new Node("inner");
@@ -2782,10 +2782,10 @@ static function transitions() {
 		ui.root.append(box);
 		box.theme = other;
 		ui.update();
-		check("themes: a subtree's sheet", inner.style.background == Color.rgb(0x00FF00) && inner.style.radius == 0);
+		check("themes: a subtree's sheet", inner.style.background == Color.rgb(0x00FF00) && inner.style.borderRadius == 0);
 		box.theme = null;
 		ui.update();
-		check("themes: the window's again", inner.style.background == Color.rgb(0x171717) && inner.style.radius == 6);
+		check("themes: the window's again", inner.style.background == Color.rgb(0x171717) && inner.style.borderRadius == 6);
 		// (a placeholder's colour)
 		var f = new TextField("");
 		f.slot = "input";
@@ -2795,14 +2795,14 @@ static function transitions() {
 		// (no sheet: what the rules wrote taken back, the node's own kept)
 		ui.theme = null;
 		ui.update();
-		check("themes: taken back", a.style.background == Color.TRANSPARENT && a.style.radius == 0 && a.style.padding.left == 0 && b.style.borderWidth == 0
+		check("themes: taken back", a.style.background == Color.TRANSPARENT && a.style.borderRadius == 0 && a.style.padding.left == 0 && b.style.borderWidth == 0
 			&& own.style.background == Color.rgb(0xFF0000) && f.placeholderColor == Color.rgba(0, 0.4) && f.selectionColor == Color.rgba(0x3B82F6, 0.3));
 		// (a change of the node's own after the rules: kept)
 		ui.theme = sheet;
-		a.style.radius = 9;
+		a.style.borderRadius = 9;
 		a.variant = "outline";
 		ui.update();
-		check("themes: a value set over the rules' kept", a.style.radius == 9 && a.style.borderWidth == 1);
+		check("themes: a value set over the rules' kept", a.style.borderRadius == 9 && a.style.borderWidth == 1);
 		// (tokens and oklch() in colours)
 		var t = Color.parse("var(--ring)/50");
 		ui.update();
@@ -2833,9 +2833,9 @@ static function transitions() {
 		check("groups: a node with children a group", calls.indexOf("group 0.5 ") >= 0, calls);
 		check("groups: a lone box its quads' opacity", calls.indexOf("opacity 0.25") >= 0 && calls.indexOf("group 0.25") < 0, calls);
 		check("groups: a dashed border", calls.indexOf("ff000000 dashed") >= 0, calls);
-		helder.ui.view.StyleAttrs.apply(lone.style, "border-style", "dotted");
+		helder.ui.view.StyleAttrs.apply(lone.style, "borderStyle", "dotted");
 		helder.ui.view.StyleAttrs.apply(lone.style, "outline", "1px solid black");
-		helder.ui.view.StyleAttrs.apply(lone.style, "outline-style", "dashed");
+		helder.ui.view.StyleAttrs.apply(lone.style, "outlineStyle", "dashed");
 		ui.update();
 		var d = new Recording();
 		ui.paint(d);
@@ -2847,8 +2847,8 @@ static function transitions() {
 	static function paint() {
 		var ui = new Ui(new MonoText(), 200, 100);
 		var a = new Node();
-		a.style.set({width: 100, height: 50, radius: 8, borderWidth: 2, background: Color.WHITE, borderColor: Color.BLACK,
-			overflow: Hidden, shadow: Shadow.parse("1px 2px 6px 3 #00000080")});
+		a.style.set({width: 100, height: 50, borderRadius: 8, borderWidth: 2, background: Color.WHITE, borderColor: Color.BLACK,
+			overflow: Hidden, boxShadow: Shadow.parse("1px 2px 6px 3 #00000080")});
 		a.style.margin = 10;
 		ui.root.append(a);
 		var b = new Node();
@@ -2885,7 +2885,7 @@ static function transitions() {
 		var ui2 = new Ui(new MonoText(), 200, 100);
 		ui2.root.style.alignItems = Start;
 		var sb = new Node("sb");
-		sb.style.set({width: 40, height: 20, background: Color.rgb(0xFFFFFF), borderWidth: 2, borderColor: Color.rgb(0), shadow: list});
+		sb.style.set({width: 40, height: 20, background: Color.rgb(0xFFFFFF), borderWidth: 2, borderColor: Color.rgb(0), boxShadow: list});
 		ui2.root.append(sb);
 		ui2.update();
 		var rec2 = new Recording();
@@ -2894,10 +2894,10 @@ static function transitions() {
 		check("paint: outer shadows under the background, inset ones over it in the padding box", kinds.join(",") == "shadow,rect,inset"
 			&& rec2.calls[2].indexOf("inset 2 2 36 16 0 ") == 0, rec2.calls.join("|"));
 		// "none": no shadow; as a text shadow, stopping the parent's
-		sb.style.shadow = Shadow.parse(" none ");
+		sb.style.boxShadow = Shadow.parse(" none ");
 		var rec3 = new Recording();
 		ui2.paint(rec3);
-		check("paint: Shadow.parse(\"none\") draws none", sb.style.shadow == Shadow.NONE && rec3.calls.join("|").indexOf("shadow") < 0, rec3.calls.join("|"));
+		check("paint: Shadow.parse(\"none\") draws none", sb.style.boxShadow == Shadow.NONE && rec3.calls.join("|").indexOf("shadow") < 0, rec3.calls.join("|"));
 		// text shadows: inherited, under the text and its underline (the
 		// last first), without a colour the text's; "none" stopping them
 		var ui3 = new Ui(new MonoText(), 200, 100);
@@ -2942,7 +2942,7 @@ static function transitions() {
 		box.style.textUnderlineOffset = "auto";
 		// an outline: around the border box, over the children, the focus ring over it
 		var framed = new Node("framed"), inner = new Node("inner");
-		framed.style.set({width: 20, height: 10, radius: 4, outlineWidth: 2, outlineOffset: 1, color: Color.rgb(0x112233)});
+		framed.style.set({width: 20, height: 10, borderRadius: 4, outlineWidth: 2, outlineOffset: 1, color: Color.rgb(0x112233)});
 		inner.style.set({height: 10, background: Color.rgb(0xFF0000)});
 		framed.append(inner);
 		framed.focusable = true;
@@ -3001,7 +3001,7 @@ static function transitions() {
 		check("cursor: outside", ui.cursor() == Default);
 		// over what is pressed: the arrow, or a browser's hand (pressCursor), Default while disabled
 		var ui = new Ui(new MonoText(), 200, 100);
-		ui.root.style.set({direction: Row});
+		ui.root.style.set({flexDirection: Row});
 		var button = new Node("button"), off = new Node("off"), field = new TextField(""), plain = new TextNode("hi");
 		button.append(new TextNode("OK"));
 		off.semantics = ({role: helder.ui.access.Role.Button, disabled: true} : helder.ui.access.Semantics);
@@ -3084,15 +3084,15 @@ static function transitions() {
 			case "minHeight": s.minHeight = dim(v);
 			case "maxWidth": s.maxWidth = dim(v);
 			case "maxHeight": s.maxHeight = dim(v);
-			case "basis": s.basis = dim(v);
+			case "basis": s.flexBasis = dim(v);
 			case "left": s.left = dim(v);
 			case "top": s.top = dim(v);
 			case "right": s.right = dim(v);
 			case "bottom": s.bottom = dim(v);
-			case "grow": s.grow = v;
-			case "shrink": s.shrink = v;
+			case "grow": s.flexGrow = v;
+			case "shrink": s.flexShrink = v;
 			case "aspectRatio": s.aspectRatio = v;
-			case "wrap": s.wrap = v;
+			case "wrap": s.flexWrap = v;
 			case "rowGap": s.rowGap = v;
 			case "columnGap": s.columnGap = v;
 			case "gap": s.gap = v;
@@ -3103,15 +3103,15 @@ static function transitions() {
 			case "padding": s.padding = Std.isOfType(v, Array) ? (v : Array<Float>) : (v : Float);
 			// ("auto": NaN)
 			case "margin": s.margin = Std.isOfType(v, Array) ? [for (x in (v : Array<Dynamic>)) x == "auto" ? Math.NaN : (x : Float)] : v == "auto" ? Math.NaN : (v : Float);
-			case "dir": s.dir = v == "Rtl" ? Rtl : Ltr;
+			case "dir": s.direction = v == "Rtl" ? Rtl : Ltr;
 			case "order": s.order = v;
-			case "direction": s.direction = switch (v : String) {
+			case "direction": s.flexDirection = switch (v : String) {
 					case "Row": Row;
 					case "RowReverse": RowReverse;
 					case "ColumnReverse": ColumnReverse;
 					case _: Column;
 				}
-			case "justify": s.justify = switch (v : String) {
+			case "justify": s.justifyContent = switch (v : String) {
 					case "End": End;
 					case "Center": Center;
 					case "SpaceBetween": SpaceBetween;
@@ -3180,7 +3180,7 @@ static function transitions() {
 		// (25 characters a line at 8 pixels: three lines)
 		check("text: wrapped to the parent", t.width == 200 && t.height == 48, '$t');
 		var row = new Node();
-		row.style.direction = Row;
+		row.style.flexDirection = Row;
 		row.style.width = 100;
 		row.style.alignItems = Start;
 		var a = new TextNode("aaa bbb");
@@ -3221,7 +3221,7 @@ static function transitions() {
 		var ui = new Ui(new MonoText(), 300, 200);
 		var log = [];
 		var panel = new Node("panel");
-		panel.style.direction = Row;
+		panel.style.flexDirection = Row;
 		panel.style.padding = 10;
 		panel.style.columnGap = 10;
 		var a = new Node("a"), b = new Node("b"), inner = new Node("inner");
@@ -3294,7 +3294,7 @@ static function transitions() {
 		for (i in 0...10) {
 			var item = new Node("item" + i);
 			item.style.height = 30;
-			item.style.shrink = 0;
+			item.style.flexShrink = 0;
 			list.append(item);
 		}
 		ui.root.append(list);

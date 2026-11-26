@@ -14,6 +14,7 @@ import helder.view.graph.Graph.*;
 // wheel and a trackpad scrolling it, Control (or Command) with the wheel
 // and a pinch zooming about the pointer; the page the view is on in a
 // small tag at its top right ("3 / 12").
+@:renderer(helder.ui.view.NodeRenderer)
 class PdfView implements Markup {
 	public static function make(doc:PdfDoc):View {
 		var scroller:Null<Node> = null;
@@ -36,7 +37,7 @@ class PdfView implements Markup {
 					doc.zoomBy(Math.exp(-e.deltaY * Math.log(1.25) / 40), e.localX, e.localY);
 					e.preventDefault();
 				}}>
-				<view tag="pdf-pages" shrink={0} width={() -> {
+				<view tag="pdf-pages" flexShrink={0} width={() -> {
 					doc.zoom();
 			doc.laid();
 					doc.layout.width();
@@ -49,14 +50,14 @@ class PdfView implements Markup {
 				</view>
 			</scroll>
 			<Show when={doc.pages > 1}>
-				<text tag="page-indicator" position="absolute" top={12} right={16} padding="3 9" radius={8} font-size={12} background={Look.ref.raised}
-					color={Look.ref.fg2} border-width={1} border-color={Look.ref.edge} shadow="0 2px 8px rgba(0,0,0,0.15)" pointer-events="none">{() -> '${doc.page() + 1} / ${doc.pages}'}</text>
+				<text tag="page-indicator" position="absolute" top={12} right={16} padding="3 9" borderRadius={8} fontSize={12} background={Look.ref.raised}
+					color={Look.ref.fg2} borderWidth={1} borderColor={Look.ref.edge} boxShadow="0 2px 8px rgba(0,0,0,0.15)" pointerEvents="none">{() -> '${doc.page() + 1} / ${doc.pages}'}</text>
 			</Show>
 		</view>;
 	}
 
 	static function page(doc:PdfDoc, i:Int):View
-		return <view tag="page" position="absolute" background="#ffffff" border-width={1} border-color="rgba(0,0,0,0.08)" shadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
+		return <view tag="page" position="absolute" background="#ffffff" borderWidth={1} borderColor="rgba(0,0,0,0.08)" boxShadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
 			doc.zoom();
 			doc.laid();
 			doc.layout.left(i);

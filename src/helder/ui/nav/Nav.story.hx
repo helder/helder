@@ -28,7 +28,7 @@ final sheet = story({
 	name: "Compact/sheet, medium",
 	width: 390,
 	height: 844,
-	render: c -> <view grow={1}>
+	render: c -> <view flexGrow={1}>
 		{stacked([])}
 		<Sheet open={true} detents={[Medium, Large]} label="Details"><Details/></Sheet>
 	</view>
@@ -44,8 +44,8 @@ final popover = story({
 	height: 1180,
 	render: c -> {
 		var button:Null<Node> = null;
-		<view grow={1}>
-			<NavScreen title="Fruit" trailing={<view ref={n -> button = n}><NavButton label="Info" onPress={() -> {}}/></view>}><Rows/></NavScreen>
+		<view flexGrow={1}>
+			<NavScreen title="Fruit" trailing={<view ref={p -> button = cast p}><NavButton label="Info" onPress={() -> {}}/></view>}><Rows/></NavScreen>
 			<Sheet open={true} anchor={() -> button} label="Details"><Details/></Sheet>
 		</view>;
 	}
@@ -59,7 +59,7 @@ private function stacked(paths:Array<String>, y = 0.0):View {
 		.route("/fruit/:id", p -> {
 			var name = fruits[Std.parseInt(p.id) ?? 0];
 			<NavScreen title={name} trailing={<NavButton label="Share" onPress={() -> {}}/>} bottom={<Toolbar/>}>
-				<view padding={16} row-gap={12}><text font-size={48}>{name.charAt(0)}</text><text>{"A " + name.toLowerCase() + "."}</text></view>
+				<view padding={16} rowGap={12}><text fontSize={48}>{name.charAt(0)}</text><text>{"A " + name.toLowerCase() + "."}</text></view>
 			</NavScreen>;
 		});
 	for (p in paths)
@@ -68,7 +68,7 @@ private function stacked(paths:Array<String>, y = 0.0):View {
 }
 
 private function Search(props:{}):UiView
-	return <view direction="row" align-items="center" column-gap={7} height={38} margin="0 16 12" padding="0 10" radius={11} background="#e9e9eb" color="#6c6c6c">
+	return <view flexDirection="row" alignItems="center" columnGap={7} height={38} margin="0 16 12" padding="0 10" borderRadius={11} background="#e9e9eb" color="#6c6c6c">
 		<text>Search</text>
 	</view>;
 
@@ -77,21 +77,21 @@ private function Rows(props:{?y:Float}):UiView {
 	// (once laid out: a scroller clamps an offset past its content)
 	if (props.y != null && props.y > 0) onSettled(() -> Clock.after(0.01, () -> nav.scrollTo(props.y)));
 	return <view>
-		{[for (f in fruits) <view direction="row" align-items="center" height={50} padding="0 16" shrink={0}><text>{f}</text></view>]}
+		{[for (f in fruits) <view flexDirection="row" alignItems="center" height={50} padding="0 16" flexShrink={0}><text>{f}</text></view>]}
 	</view>;
 }
 
 private function Toolbar(props:{}):UiView
-	return <view direction="row" justify="space-between" padding="6 12">
+	return <view flexDirection="row" justifyContent="space-between" padding="6 12">
 		<NavButton label="Open in…" onPress={() -> {}}/>
 		<NavButton label="Info" onPress={() -> {}}/>
 		<NavButton label="Trash" onPress={() -> {}}/>
 	</view>;
 
 private function Details(props:{}):UiView
-	return <view padding="6 16" row-gap={8}>
-		<text font-size={17} font-weight={600}>Cherry</text>
-		<text font-size={13}>A stone fruit, picked in June.</text>
+	return <view padding="6 16" rowGap={8}>
+		<text fontSize={17} fontWeight={600}>Cherry</text>
+		<text fontSize={13}>A stone fruit, picked in June.</text>
 	</view>;
 
 // (a tile, its menu open over its preview)
@@ -104,11 +104,11 @@ private function Pressed(props:{}):UiView {
 			{label: "Get Info", run: () -> {}},
 			{label: "Select", run: () -> {}},
 			{label: "Move to Trash", destructive: true, separated: true, run: () -> {}}
-		], t.windowBounds(), <view grow={1} background="#e3a64b"/>, true, t.sheet());
+		], t.windowBounds(), <view flexGrow={1} background="#e3a64b"/>, true, t.sheet());
 	}));
 	return <NavScreen title="Fruit" large>
-		<view direction="row" padding="4 16" column-gap={10}>
-			{[for (k in 0...3) <view tag={"tile-" + k} grow={1} basis={0} aspect-ratio={1} radius={9} background={["#c94f4f", "#e3a64b", "#6fa35b"][k]}
+		<view flexDirection="row" padding="4 16" columnGap={10}>
+			{[for (k in 0...3) <view tag={"tile-" + k} flexGrow={1} flexBasis={0} aspectRatio={1} borderRadius={9} background={["#c94f4f", "#e3a64b", "#6fa35b"][k]}
 				ref={n -> if (k == 1) tile = n}/>]}
 		</view>
 	</NavScreen>;
@@ -126,9 +126,9 @@ private function Picked(props:{}):UiView {
 		if (nav != null) nav.scroller(g);
 	}}>{(f, i) -> {
 		var on = () -> grid != null && grid.selection.version() >= 0 && grid.selection.has(f());
-		<view grow={1} padding={4} row-gap={4} align-items="center">
-			<view width="100%" aspect-ratio={1} radius={9} background="#d4d4d4" border-width={on() ? 2.5 : 0} border-color="#1d1d1d"/>
-			<text font-size={13}>{f()}</text>
+		<view flexGrow={1} padding={4} rowGap={4} alignItems="center">
+			<view width="100%" aspectRatio={1} borderRadius={9} background="#d4d4d4" borderWidth={on() ? 2.5 : 0} borderColor="#1d1d1d"/>
+			<text fontSize={13}>{f()}</text>
 		</view>;
 	}}</VirtualGrid>;
 }

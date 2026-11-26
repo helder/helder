@@ -60,7 +60,7 @@ class GridScroll extends VirtualScroll {
 		semantics.role = Role.Table;
 		semantics.multiselectable = true;
 		style.height = 0;
-		style.grow = 1;
+		style.flexGrow = 1;
 		style.minHeight = 0;
 		style.minWidth = 0;
 		marquee.slot = "grid-marquee";
@@ -141,7 +141,7 @@ class GridScroll extends VirtualScroll {
 	function makeCells(row:Int, node:Node):GridRow {
 		var start = row * columns;
 		var end = Std.int(Math.min(start + columns, itemCount()));
-		node.style.direction = Row;
+		node.style.flexDirection = Row;
 		node.style.alignItems = Start;
 		node.style.padding = new Edges(0, padding, 0, padding);
 		node.style.columnGap = gap;
@@ -151,7 +151,7 @@ class GridScroll extends VirtualScroll {
 			cell.slot = "grid-cell";
 			cell.style.width = pitch - gap;
 			cell.style.height = cellHeight;
-			cell.style.shrink = 0;
+			cell.style.flexShrink = 0;
 			cell.style.minWidth = 0;
 			cell.focusable = true;
 			cell.tabIndex = -1;

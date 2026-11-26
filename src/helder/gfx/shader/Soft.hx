@@ -4,6 +4,7 @@ package helder.gfx.shader;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import helder.gfx.shader.Ir;
+import helder.gfx.shader.Phases;
 
 // The CPU back end's form of a shader (helder.gfx.soft), a fifth output of
 // the definition beside the four languages: each stage's IR as Haxe over
@@ -28,6 +29,15 @@ import helder.gfx.shader.Ir;
 // the lanes to shade, the uniform blocks' and textures' addresses by slot.
 // With -D helder.soft.reference the same stages also as scalar code, lane
 // by lane (soft_vs_ref, soft_fs_ref), which SoftShaderCheck compares.
+//
+// A compute stage's call runs 4 invocations of a workgroup, a subgroup of
+// 4 (helder.gfx.soft.Subgroup). Its workgroup memory is a block of the back
+// end's for each workgroup, an array of it a storage buffer's record (read
+// and written as one); with barrier()s its function is cut there into
+// phases (Phases), the back end running each over the whole workgroup
+// before the next: the call takes the phase and returns the next (-1: the
+// end), the locals that live across a barrier kept in a frame of the
+// call's invocations (SoftCode.frame bytes) between them.
 class Soft {
 	static inline var ABI_IN = 0;
 	static inline var ABI_OUT = 8;
@@ -36,6 +46,9 @@ class Soft {
 	static inline var ABI_TEXTURES = 24 + 8 * 16;
 	static inline var ABI_STORAGE = 24 + 16 * 16;
 	static inline var ABI_IMAGES = 24 + 16 * 16 + 8 * 16;
+	static inline var ABI_WORKGROUP = ABI_IMAGES + 8 * 16;
+	static inline var ABI_FRAME = ABI_WORKGROUP + 8;
+	static inline var ABI_PHASE = ABI_FRAME + 8;
 
 	final prog:SProgram;
 	final prefix:String;
@@ -54,6 +67,9 @@ class Soft {
 
 	// (a compute stage's storage layouts: each element type's)
 	final storage:Array<SStorage> = [];
+	// (a compute stage's workgroup memory, and the bytes of its phases' frame)
+	var shared:Array<SShared> = [];
+	public var frame = 0;
 
 	public function new(prog:SProgram, prefix:String, pack:Array<String>, module:String) {
 		this.prog = prog;
@@ -77,9 +93,16 @@ class Soft {
 		var s = new Soft(new SProgram(c.entry, c.entry, c.entry.uniforms, c.entry.textures), prefix, pack, module);
 		for (b in c.storage)
 			s.storage.push(b);
+		// (workgroup memory: laid out as storage)
+		for (w in c.shared)
+			s.storage.push(new SStorage(w.name, -1, w.element, true, w.offsets, w.stride, -1));
+		s.shared = c.shared;
 		var cs = s.entry(c.entry, false);
 		s.flush();
-		return {soft: s, code: macro {entry: $i{cs}(), varyings: 0}};
+		var bytes = 0;
+		for (w in c.shared)
+			bytes += w.bytes;
+		return {soft: s, code: macro {entry: $i{cs}(), varyings: 0, workgroup: $v{bytes}, frame: $v{s.frame}}};
 	}
 
 	// (the std430 layout of a storage buffer of t: any of the stage's of that element)
@@ -221,7 +244,7 @@ class Soft {
 
 	// (values held by address: a uniform block's bytes, a texture's record, a storage buffer's binding, a storage texture's record)
 	function isPtr(t:SType):Bool
-		return isTexture(t) || isBlock(t) || t.match(TStorage(_, _) | TImage(_));
+		return isTexture(t) || isBlock(t) || t.match(TStorage(_, _) | TImage(_) | TWorkgroup(_));
 
 	function laneType(t:SType):ComplexType
 		return switch t {
@@ -480,6 +503,8 @@ class Soft {
 			case ECond(c, a, b): u(c) && u(a) && u(b);
 			case ENew(args): !e.t.match(TStruct(_)) && Lambda.foreach(args, u);
 			case EBuiltin("discard" | "atomicAdd" | "atomicMin" | "atomicMax" | "textureStore", _): false;
+			// (a subgroup's value: computed from its lanes)
+			case EBuiltin(name, _) if (Subgroups.isOp(name)): false;
 			case EBuiltin(_, args): Lambda.foreach(args, u);
 			case ECall(f, args): !mayDiscard(f) && !f.ret.match(TStruct(_)) && Lambda.foreach(args, u);
 		}
@@ -592,11 +617,11 @@ class Soft {
 	}
 
 	// a function's lane form (or, scalar, its scalar form) for a stage: its name
-	function func(f:SFunction, fragment:Bool, scalar:Bool):String {
+	function func(f:SFunction, fragment:Bool, scalar:Bool, phased = false):String {
 		var name = (scalar ? "s_" : "l_") + (fragment ? "f_" : "v_") + f.name;
 		if (made.exists(name)) return name;
 		made.set(name, true);
-		pending.push(() -> fields.push(new Fn(this, f, fragment, scalar).field(name)));
+		pending.push(() -> fields.push(phased ? new Fn(this, f, fragment, scalar).phased(name) : new Fn(this, f, fragment, scalar).field(name)));
 		return name;
 	}
 
@@ -604,7 +629,8 @@ class Soft {
 	function entry(e:SEntry, scalar:Bool):String {
 		var fragment = e.stage == Fragment, compute = e.stage == Compute;
 		var name = "soft_" + (compute ? "cs" : fragment ? "fs" : "vs") + (scalar ? "_ref" : "");
-		var fn = func(e.fn, fragment, scalar);
+		var phased = compute && Phases.barriers(e.fn.body);
+		var fn = func(e.fn, fragment, scalar, phased);
 		var body:Array<Expr> = [
 			(macro var input = hxmc.unsafe.Mem.getPtr(c, $v{ABI_IN})),
 			(macro var output = hxmc.unsafe.Mem.getPtr(c, $v{ABI_OUT})),
@@ -620,6 +646,20 @@ class Soft {
 				case RStorage(b): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_STORAGE + 8 * b.slot});
 				case RImage(m): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_IMAGES + 8 * m.slot});
 			});
+		// (workgroup memory: a storage buffer's record of each array, at its place in the workgroup's block)
+		if (shared.length > 0) {
+			body.push(macro var wr = hxmc.unsafe.Mem.stack($v{16 * shared.length}));
+			body.push(macro var wg = hxmc.unsafe.Mem.getPtr(c, $v{ABI_WORKGROUP}));
+			var at = 0;
+			for (k in 0...shared.length) {
+				// (Buffers.DATA, Buffers.BYTES)
+				body.push(macro hxmc.unsafe.Mem.setPtr(wr, $v{16 * k}, wg.add($v{at})));
+				body.push(macro hxmc.unsafe.Mem.setI32(wr, $v{16 * k + 8}, $v{shared[k].bytes}));
+				resources.push(macro wr.add($v{16 * k}));
+				at += shared[k].bytes;
+			}
+		}
+		if (phased) resources = resources.concat([macro hxmc.unsafe.Mem.getI32(c, $v{ABI_PHASE}), macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_FRAME})]);
 		// the input's fields from its lanes: the vertex's attributes at 64
 		// bytes a location (4 components, 16 bytes each), the varyings' position
 		// then each component in order
@@ -677,9 +717,12 @@ class Soft {
 		if (!scalar) {
 			var args = [macro helder.gfx.soft.LaneBool.ofMask(lanes), inputOf(null)].concat(resources);
 			if (mayDiscard(e.fn)) args.push(macro kill);
-			body.push(compute ? macro $i{fn}($a{args}) : macro var r = $i{fn}($a{args}));
-			body = body.concat(outputs(macro r, null));
-			body.push(macro return lanes & ~hxmc.unsafe.Mem.getI32(kill, 0));
+			// (a compute stage's: the next phase, -1 the end)
+			if (phased) body.push(macro return $i{fn}($a{args})) else {
+				body.push(compute ? macro $i{fn}($a{args}) : macro var r = $i{fn}($a{args}));
+				body = body.concat(outputs(macro r, null));
+				body.push(compute ? macro return -1 : macro return lanes & ~hxmc.unsafe.Mem.getI32(kill, 0));
+			}
 		} else {
 			// (lane by lane, its scalar code)
 			body.push(macro var left = lanes);
@@ -712,6 +755,50 @@ class Soft {
 			pos: pos
 		});
 		return getter;
+	}
+
+	// ---- the phases' frames
+
+	// a value kept in a frame at p + off (lanes, or a scalar): its bytes,
+	// its load and the store of v (8 bytes a scalar, doubles for Floats:
+	// its value as it is in either form of lanes)
+	function spill(t:SType, lanes:Bool, p:Expr, off:Int, v:Null<Expr>):{bytes:Int, load:Expr, store:Array<Expr>} {
+		var x = v ?? macro null;
+		function parts(fields:Array<{name:String, type:SType}>, make:Array<Expr>->Expr):{bytes:Int, load:Expr, store:Array<Expr>} {
+			var at = off, loads = [], stores = [];
+			for (f in fields) {
+				var r = spill(f.type, lanes, p, at, Soft.dot(x, f.name));
+				at += r.bytes;
+				loads.push(r.load);
+				stores = stores.concat(r.store);
+			}
+			return {bytes: at - off, load: make(loads), store: stores};
+		}
+		function vec(n:Int):Array<{name:String, type:SType}>
+			return [for (k in 0...n) {name: "xyzw".charAt(k), type: TFloat}];
+		return switch [t, lanes] {
+			case [TFloat, true]: {
+					bytes: 32,
+					load: macro helder.gfx.soft.Lane.make($a{[for (k in 0...4) macro hxmc.unsafe.Mem.getF64($p, $v{off + 8 * k})]}),
+					store: [for (k in 0...4) macro hxmc.unsafe.Mem.setF64($p, $v{off + 8 * k}, $x.get($v{k}))]
+				};
+			case [TInt, true]: {
+					bytes: 16,
+					load: macro helder.gfx.soft.LaneInt.make($a{[for (k in 0...4) macro hxmc.unsafe.Mem.getI32($p, $v{off + 4 * k})]}),
+					store: [for (k in 0...4) macro hxmc.unsafe.Mem.setI32($p, $v{off + 4 * k}, $x.get($v{k}))]
+				};
+			case [TBool, true]: {bytes: 8, load: macro helder.gfx.soft.LaneBool.ofMask(hxmc.unsafe.Mem.getI32($p, $v{off})), store: [macro hxmc.unsafe.Mem.setI32($p, $v{off}, $x.mask())]};
+			case [TFloat, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getF64($p, $v{off}), store: [macro hxmc.unsafe.Mem.setF64($p, $v{off}, $x)]};
+			case [TInt, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getI32($p, $v{off}), store: [macro hxmc.unsafe.Mem.setI32($p, $v{off}, $x)]};
+			case [TBool, false]: {bytes: 8, load: macro hxmc.unsafe.Mem.getI32($p, $v{off}) != 0, store: [macro hxmc.unsafe.Mem.setI32($p, $v{off}, $x ? 1 : 0)]};
+			case [TVec(n), _]: parts(vec(n), xs -> {expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: (lanes ? "Lane" : "Vec") + n}, xs), pos: pos});
+			case [TMat4, _]:
+				parts([for (k in 0...4) {name: "c" + k, type: TVec(4)}], xs -> lanes ? macro new helder.gfx.soft.LaneMat($a{xs}) : macro new helder.gfx.shader.Mat4($a{xs}));
+			case [TStruct(st), _]:
+				var tp:TypePath = {pack: pack, name: lanes ? laneStruct(st) : scalarStruct(st)};
+				parts([for (f in st.fields) {name: "f_" + f.name, type: f.type}], xs -> {expr: haxe.macro.Expr.ExprDef.ENew(tp, xs), pos: pos});
+			case [t, _]: Context.error('soft: a ${Names.typeName(t)} kept across a barrier', pos);
+		}
 	}
 
 	// ---- reading uniform blocks
@@ -831,6 +918,9 @@ class Soft {
 	@:allow(helder.gfx.shader.Fn) function laneStructPath(s:SStruct):TypePath
 		return {pack: pack, name: laneStruct(s)};
 
+	@:allow(helder.gfx.shader.Fn) function spillOf(t:SType, lanes:Bool, p:Expr, off:Int, v:Null<Expr>):{bytes:Int, load:Expr, store:Array<Expr>}
+		return spill(t, lanes, p, off, v);
+
 	@:allow(helder.gfx.shader.Fn) function scalarStructPath(s:SStruct):TypePath
 		return {pack: pack, name: scalarStruct(s)};
 }
@@ -853,6 +943,10 @@ class Fn {
 	var returned = false;
 	// the loops' masks: the lanes that left it, continued
 	final loops:Array<{exit:String, cont:String, lanes:Bool}> = [];
+	// (a phased compute function: its locals kept in the frame, declared at
+	// the phase's start, so their declarations assign them; a return the end)
+	final kept = new Map<SVar, Bool>();
+	var phasing = false;
 
 	function new(soft:Soft, f:SFunction, fragment:Bool, scalar:Bool) {
 		this.soft = soft;
@@ -900,6 +994,119 @@ class Fn {
 		};
 	}
 
+	// a compute function with barriers (Phases), as the back end calls it:
+	// its parameters, the phase and its invocations' frame; the next phase
+	public function phased(fname:String):Field {
+		var cut = Phases.cut(f.body);
+		if (cut == null) Context.error("soft: a loop with barrier() in it has a break or continue", pos);
+		phasing = true;
+		var args:Array<FunctionArg> = [{name: "m", type: macro :helder.gfx.soft.LaneBool}];
+		for (p in f.params) {
+			args.push({name: name(p), type: isUniform(p) ? soft.scalarOf(p.type) : soft.lanesOf(p.type)});
+			declared.set(p, 0);
+		}
+		args.push({name: "phase", type: macro :Int});
+		args.push({name: "frame", type: macro :hxmc.unsafe.Ptr});
+		// (the locals each phase reads or writes: those of two or more kept)
+		var uses = [for (ph in cut.phases) locals(ph)];
+		var count = new Map<SVar, Int>();
+		for (u in uses)
+			for (v in u)
+				count.set(v, (count.get(v) ?? 0) + 1);
+		var offsets = new Map<SVar, Int>(), at = 0;
+		for (u in uses)
+			for (v in u)
+				if (count.get(v) > 1 && !offsets.exists(v)) {
+					offsets.set(v, at);
+					kept.set(v, true);
+					at += soft.spillOf(v.type, !isUniform(v), macro frame, 0, null).bytes;
+				}
+		soft.frame = at;
+		var cases:Array<Case> = [];
+		for (i in 0...cut.phases.length) {
+			var ph = cut.phases[i], here = [for (v in uses[i]) if (kept.exists(v)) v];
+			var body:Array<Expr> = [];
+			for (v in here) {
+				var u = isUniform(v);
+				declared.set(v, 0);
+				body.push({expr: EVars([{name: name(v), type: u ? soft.scalarOf(v.type) : soft.lanesOf(v.type), expr: soft.spillOf(v.type, !u, macro frame, offsets.get(v), null).load}]), pos: pos});
+			}
+			body = body.concat(block(ph.body));
+			body.push(macro var next = ${switch ph.next {
+				case Next(k): macro $v{k};
+				case End: macro -1;
+				case Branch(c, a, b): macro ${uni(c) ? sx(c) : macro(${lx(c)} & m).any()} ? $v{a} : $v{b};
+			}});
+			for (v in here)
+				for (x in soft.spillOf(v.type, !isUniform(v), macro frame, offsets.get(v), macro $i{name(v)}).store)
+					body.push(x);
+			body.push(macro return next);
+			cases.push({values: [macro $v{i}], expr: macro $b{body}});
+		}
+		var sw = {expr: ESwitch(macro phase, cases, null), pos: pos};
+		return {
+			name: fname,
+			access: [APublic, AStatic],
+			meta: [{name: ":hxmc.unsafe", params: [macro gc], pos: pos}],
+			kind: FFun({args: args, ret: macro :Int, expr: macro {$sw; return -1;}}),
+			pos: pos
+		};
+	}
+
+	// the locals a phase reads or writes (not the function's parameters), in order
+	function locals(ph:Phase):Array<SVar> {
+		var out:Array<SVar> = [];
+		function v(x:SVar)
+			if (!out.contains(x) && !f.params.contains(x)) out.push(x);
+		function ex(e:SExpr)
+			switch e.e {
+				case ELocal(x): v(x);
+				case EField(x, _) | ESwizzle(x, _) | EColumn(x, _) | EUnop(_, x) | EConvert(x): ex(x);
+				case EIndex(x, i):
+					ex(x);
+					ex(i);
+				case EBinop(_, a, b):
+					ex(a);
+					ex(b);
+				case ECond(c, a, b):
+					ex(c);
+					ex(a);
+					ex(b);
+				case ENew(args) | EBuiltin(_, args) | ECall(_, args): for (a in args) ex(a);
+				case EFloat(_) | EInt(_) | EBool(_):
+			}
+		function st(ss:Array<SStmt>)
+			for (s in ss)
+				switch s {
+					case SDecl(x, init):
+						v(x);
+						if (init != null) ex(init);
+					case SAssign(x, _, e):
+						v(x);
+						ex(e);
+					case SEval(e): ex(e);
+					case SReturn(e): if (e != null) ex(e);
+					case SStore(b, i, e):
+						ex(b);
+						ex(i);
+						ex(e);
+					case SIf(c, a, b):
+						ex(c);
+						st(a);
+						if (b != null) st(b);
+					case SWhile(c, b):
+						ex(c);
+						st(b);
+					case SBreak | SContinue:
+				}
+		st(ph.body);
+		switch ph.next {
+			case Branch(c, _, _): ex(c);
+			case _:
+		}
+		return out;
+	}
+
 	static function returns(ss:Array<SStmt>):Int {
 		var n = 0;
 		for (s in ss)
@@ -921,7 +1128,7 @@ class Fn {
 				declared.set(v, depth);
 				var u = isUniform(v);
 				var value = init == null ? (u ? soft.scalarZeroOf(v.type) : soft.zeroOf(v.type)) : u ? sx(init) : lx(init);
-				[{expr: EVars([{name: name(v), type: u ? soft.scalarOf(v.type) : soft.lanesOf(v.type), expr: value}]), pos: pos}];
+				kept.exists(v) ? [macro $i{name(v)} = $value] : [{expr: EVars([{name: name(v), type: u ? soft.scalarOf(v.type) : soft.lanesOf(v.type), expr: value}]), pos: pos}];
 			case SAssign(v, op, e):
 				var whole:SExpr = op == null ? e : {e: EBinop(op, {e: ELocal(v), t: v.type}, e), t: v.type};
 				if (isUniform(v)) [macro $i{name(v)} = ${sx(whole)}] else {
@@ -936,6 +1143,7 @@ class Fn {
 							[macro hxmc.unsafe.Mem.setI32(kill, 0, hxmc.unsafe.Mem.getI32(kill, 0) | m.mask()), macro m = helder.gfx.soft.LaneBool.none()];
 					case _: [uni(e) ? sx(e) : lx(e)];
 				}
+			case SReturn(_) if (phasing && depth == 0): [macro return -1];
 			case SReturn(e):
 				if (scalar || depth == 0) {
 					if (e == null) [macro return] else {
@@ -1006,7 +1214,7 @@ class Fn {
 				l.lanes ? [macro $i{l.cont} = $i{l.cont} | m, macro m = helder.gfx.soft.LaneBool.none()] : [macro continue];
 			case SStore(b, i, v):
 				switch b.t {
-					case TStorage(t, _): [soft.writeStorage(t, sx(b), lane(i), lane(v))];
+					case TStorage(t, _) | TWorkgroup(t): [soft.writeStorage(t, sx(b), lane(i), lane(v))];
 					case _: Context.error("soft: a store into what is not a storage buffer", pos);
 				}
 		}
@@ -1053,9 +1261,9 @@ class Fn {
 							case TStruct(s): soft.blockArray(s, sx(b), n, sx(i), false);
 							case _: throw "soft";
 						}
-					case _ if (x.t.match(TStorage(_, _))):
+					case _ if (x.t.match(TStorage(_, _) | TWorkgroup(_))):
 						switch x.t {
-							case TStorage(t, _): soft.readStorage(t, sx(x), sx(i), false);
+							case TStorage(t, _) | TWorkgroup(t): soft.readStorage(t, sx(x), sx(i), false);
 							case _: throw "soft";
 						}
 					case _: Context.error("soft: an index into what is not a uniform block's array", pos);
@@ -1218,9 +1426,9 @@ class Fn {
 							case TStruct(s): soft.blockArray(s, sx(b), n, lane(i), true);
 							case _: throw "soft";
 						}
-					case _ if (x.t.match(TStorage(_, _))):
+					case _ if (x.t.match(TStorage(_, _) | TWorkgroup(_))):
 						switch x.t {
-							case TStorage(t, _): soft.readStorage(t, sx(x), lane(i), true);
+							case TStorage(t, _) | TWorkgroup(t): soft.readStorage(t, sx(x), lane(i), true);
 							case _: throw "soft";
 						}
 					case _: Context.error("soft: an index into what is not a uniform block's array", pos);
@@ -1294,7 +1502,33 @@ class Fn {
 				var op = name == "atomicAdd" ? 0 : name == "atomicMin" ? 1 : 2;
 				macro helder.gfx.soft.Buffers.atomic(${sx(args[0])}, ${lane(args[1])}, ${lane(args[2])}, m, $v{op});
 			case "textureStore": macro helder.gfx.soft.Buffers.store(${sx(args[0])}, ${lane(args[1])}, ${lane(args[2])}, ${lane(args[3])}, m);
+			case name if (Subgroups.isOp(name)): subgroup(name, args);
 			case _: macro $p{["helder", "gfx", "soft", "Lanes", name]}($a{[for (a in args) lane(a)]});
 		}
+
+	// a subgroup operation over the call's lanes (Subgroup), a vector's componentwise
+	function subgroup(name:String, args:Array<SExpr>):Expr {
+		var op = name.substr(8).toLowerCase();
+		if (op == "all" || op == "any") return macro $p{["helder", "gfx", "soft", "Subgroup", op]}(m, ${lane(args[0])});
+		var x = temp(), k = temp();
+		var pre = [macro var $x = ${lane(args[0])}];
+		if (op == "shuffle") pre.push(macro var $k = ${lane(args[1])});
+		function one(v:Expr, t:SType):Expr {
+			var f = ["helder", "gfx", "soft", "Subgroup", op + (t == TInt ? "Int" : "Float")];
+			return switch op {
+				case "broadcast": macro $p{f}($v, $v{switch args[1].e {
+						case EInt(i): i;
+						case _: Context.error("soft: subgroupBroadcast's lane is a constant", pos);
+					}});
+				case "shuffle": macro $p{f}($v, $i{k});
+				case _: macro $p{f}(m, $v);
+			}
+		}
+		var r = switch args[0].t {
+			case TVec(n): {expr: haxe.macro.Expr.ExprDef.ENew({pack: ["helder", "gfx", "soft"], name: 'Lane$n'}, [for (c in 0...n) one(Soft.dot(macro $i{x}, "xyzw".charAt(c)), TFloat)]), pos: pos};
+			case t: one(macro $i{x}, t);
+		}
+		return macro $b{pre.concat([r])};
+	}
 }
 #end

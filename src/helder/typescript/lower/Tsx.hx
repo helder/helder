@@ -26,7 +26,8 @@ enum TsMarkup {
 	MHandler(e:TsMarkup);
 	MArray(items:Array<TsMarkup>);
 	MDeclare(name:String, e:TsMarkup);
-	MCall(of:Callee, name:String, args:Array<TsMarkup>);
+	// (where: the attribute's or the element's in the literal, for an error there)
+	MCall(of:Callee, name:String, args:Array<TsMarkup>, where:Null<Where>);
 	MHoleDecl(name:String, e:TsMarkup, factory:Bool);
 	MHoleRef(name:String);
 	MCallValue(f:TsMarkup);
@@ -265,7 +266,7 @@ class Tsx {
 			if (pin == Plan.ROOT) fail("helder.view: <" + name + "> is a root: UiWindow.run's or Render.open's content, not " + renderer + "'s markup");
 			if (pin != null && pin != renderer) fail("helder.view: <" + name + "> is " + pin + "'s markup, not " + renderer + "'s");
 		}
-		var reads = [], children:Null<String> = null, childFunction = false;
+		var reads = [], children:Null<String> = null, childFunction = false, childAccessor = false;
 		for (p in props) {
 			if (p.name == "children") {
 				switch HTypes.bare(p.t) {
@@ -273,10 +274,20 @@ class Tsx {
 					case HFn(_, _): childFunction = true;
 					case _:
 				}
+				// (content or a function of one: Show's)
+				var t = p.t;
+				while (t.match(HNull(_))) t = switch t {
+					case HNull(x): x;
+					case _: t;
+				}
+				switch t {
+					case HAbstract("haxe.extern.EitherType", ps, _, _) if (Lambda.exists(ps, t -> HTypes.bare(t).match(HFn(_, _)))): childAccessor = true;
+					case _:
+				}
 			}
 			if (HTypes.bare(p.t).match(HRead(_))) reads.push(p.name);
 		}
-		return {callee: MHaxeComponent(c, m), children: children, reads: reads, childFunction: childFunction};
+		return {callee: MHaxeComponent(c, m), children: children, reads: reads, childFunction: childFunction, childAccessor: childAccessor};
 	}
 
 	function staticOf(path:String, field:String, at:Node):{c:MClass, m:MMember} {
@@ -424,7 +435,7 @@ class Tsx {
 		function walk(m:TsMarkup):TsMarkup return switch m {
 			case MFactory(_, _, _, _, _) | MThunk(_) | MHandler(_) | MView(_): hoist(m, holes);
 			case MCode(n, _) if (!literalCode(n)): hoist(m, holes);
-			case MCall(of, name, args): MCall(of, name, [for (a in args) walk(a)]);
+			case MCall(of, name, args, where): MCall(of, name, [for (a in args) walk(a)], where);
 			case MDeclare(name, e): MDeclare(name, walk(e));
 			case MArray(items): MArray([for (i in items) walk(i)]);
 			case MPartRef(el, ref): MPartRef(walk(el), walk(ref));
@@ -676,7 +687,7 @@ class Tsx {
 		case MCode(n, _) if (n.kind == KindNumericLiteral): b.temp(EBox(TF64, EF64(Std.parseFloat(n.text))));
 		case MCode(n, _) if (n.kind == KindStringLiteral): EStr(n.text);
 		case MArray(items): b.temp(ENewArr(TRef(RAny), Vector.fromArrayCopy([for (i in items) any(mountExpr(i, ctx, refs))])));
-		case MCall(of, name, args): mountCall(of, name, [for (a in args) mountExpr(a, ctx, refs)], args, ctx);
+		case MCall(of, name, args, where): mountCall(of, name, [for (a in args) mountExpr(a, ctx, refs)], args, ctx, where);
 		case MKeyScope(name, key): bridge.call(bridge.interop("keyScope"), [EStr(name), any(mountExpr(key, ctx, refs))]);
 		case MCallValue(fh):
 			var s = f.p.sig([], TRef(RAny));
@@ -699,11 +710,11 @@ class Tsx {
 	// elements' (Neutral), as MarkupMacro.forRenderer makes them: a literal
 	// name's property set by the renderer's setter for it (Renders' setter),
 	// a neutral element by the renderer's neutral functions or as its own
-	function mountCall(of:Callee, name:String, args:Array<Ex>, raw:Array<TsMarkup>, ctx:MountContext):Ex {
+	function mountCall(of:Callee, name:String, args:Array<Ex>, raw:Array<TsMarkup>, ctx:MountContext, where:Null<Where>):Ex {
 		var r = ctx.r;
 		switch of {
 			case Host:
-				if (name == "setProperty" && r.functions.get("setProperty") == "macro") return setProperty(r, args, raw, ctx);
+				if (name == "setProperty" && r.functions.get("setProperty") == "macro") return setProperty(r, args, raw, ctx, where);
 				// (an element of a literal name the renderer makes with a function of its own: Renders' element_<tag>)
 				if (name == "createElement") switch raw[0] {
 					case MString(tag) if (r.functions.get("element_" + tag) == "function"): return hostCall(r, "element_" + tag, [], ctx);
@@ -712,7 +723,9 @@ class Tsx {
 				return hostCall(r, name, args, ctx);
 			case Runtime:
 				if (name == "prop" && r.setters != null) switch raw[1] {
-					case MString(s): return bridge.call(runtime(r, "propWith"), [args[0], args[1], args[2], setter(r, s)]);
+					case MString(s):
+						check(r, s, raw[2], ctx, where);
+						return bridge.call(runtime(r, "propWith"), [args[0], args[1], args[2], setter(r, s)]);
 					case _:
 				}
 				if (name == "ref" && !bridge.hasFn(ident(r.runtime) + "_ref")) return bridge.call(bridge.interop("apply1"), [any(args[1]), any(args[0])]);
@@ -720,7 +733,7 @@ class Tsx {
 				return bridge.call(runtime(r, name), args);
 			case Neutral:
 				if (!r.neutral && !r.native) {
-					var m = "markup: " + r.path + " realises no neutral elements (view, text, view:button...)";
+					var m = "markup: " + r.path + " realises no neutral elements (view, text, button...)";
 					if (ctx.late) return bridge.call(bridge.interop("fail"), [EStr(m)]);
 					throw "TSHX001: " + m;
 				}
@@ -734,10 +747,12 @@ class Tsx {
 				return switch name {
 					case "element": hostCall(r, "createElement", [args[0]], ctx);
 					case "property":
-						r.functions.get("setProperty") == "macro" ? setProperty(r, [args[0], args[2], args[3]], [raw[0], raw[2], raw[3]], ctx) : hostCall(r, "setProperty", [args[0], args[2], args[3]], ctx);
+						r.functions.get("setProperty") == "macro" ? setProperty(r, [args[0], args[2], args[3]], [raw[0], raw[2], raw[3]], ctx, where) : hostCall(r, "setProperty", [args[0], args[2], args[3]], ctx);
 					case "prop":
 						switch raw[2] {
-							case MString(s) if (r.setters != null): bridge.call(runtime(r, "propWith"), [args[0], args[2], args[3], setter(r, s)]);
+							case MString(s) if (r.setters != null):
+								check(r, s, raw[3], ctx, where);
+								bridge.call(runtime(r, "propWith"), [args[0], args[2], args[3], setter(r, s)]);
 							case _: bridge.call(runtime(r, "prop"), [args[0], args[2], args[3]]);
 						}
 					case "listen": hostCall(r, "listen", [args[0], args[2], args[3]], ctx);
@@ -758,11 +773,12 @@ class Tsx {
 	}
 
 	// (setProperty a macro: the renderer's setter for the literal name, Renders' setter)
-	function setProperty(r:MRenderer, args:Array<Ex>, raw:Array<TsMarkup>, ctx:MountContext):Ex {
+	function setProperty(r:MRenderer, args:Array<Ex>, raw:Array<TsMarkup>, ctx:MountContext, where:Null<Where>):Ex {
 		var name = switch raw[1] {
 			case MString(s): s;
 			case _: null;
 		}
+		if (name != null) check(r, name, raw[2], ctx, where);
 		var fn = name == null ? r.setters?.fallback : r.setter(name);
 		if (fn == null) return hostCall(r, "setProperty", args, ctx);
 		// (a literal value naming env(): bound to the safe area, as the macro's setProperty does)
@@ -772,6 +788,36 @@ class Tsx {
 			case _:
 		}
 		return bridge.call(bridge.fn(ident(fn)), args);
+	}
+
+	// (a literal name none of the renderer's setters is, a literal value its enum does not take:
+	// an error now, as Haxe's markup has it, not when the element is made; an agnostic
+	// literal's when every renderer that makes it refuses it, install)
+	function check(r:MRenderer, name:String, raw:Null<TsMarkup>, ctx:MountContext, where:Null<Where>) {
+		function literal(m:Null<TsMarkup>):Null<String>
+			return switch m {
+				// (a live literal's: its value as written, hxmc dev; a hole's: its expression's)
+				case MString(v) | MLive(_, _, MString(v), _): v;
+				case MHoleRef(h): literal(holes.get(h));
+				case MThunk(x): literal(x);
+				case _: null;
+			}
+		var value = literal(raw);
+		var e = r.attributeError(name, value);
+		if (ctx.late) {
+			if (where != null) {
+				var k = where.at + ":" + name + "=" + value, c = lateChecks.get(k);
+				if (c == null) lateChecks.set(k, c = {where: where, message: null, seen: 0, refused: 0});
+				c.seen++;
+				if (e != null) {
+					c.refused++;
+					c.message = e;
+				}
+			}
+		} else if (e != null) {
+			if (where != null) f.fail(nodes[where.at], e);
+			throw "TSHX001: " + e;
+		}
 	}
 
 	function setter(r:MRenderer, name:String):Ex {
@@ -784,10 +830,26 @@ class Tsx {
 
 	// ---- the agnostic literals' code, for each renderer: ViewRuntime's late, set at the start
 
+	// (the holes' expressions by name, as the planner declared them: an attribute's literal value read through its hole)
+	@:allow(helder.typescript.lower.TsTarget) final holes = new Map<String, TsMarkup>();
+
+	// (an agnostic literal's attributes as each renderer that makes its element took them)
+	final lateChecks = new Map<String, {where:Where, message:Null<String>, seen:Int, refused:Int}>();
+
 	public function install():Array<Stmt> {
 		if (agnostic.length == 0) return [];
 		var paths = [for (k in manifest.renderers.keys()) k];
 		paths.sort(Reflect.compare);
+		var out = installLate(paths);
+		// (refused by every renderer that makes it: an error where it is, unless a renderer
+		// whose neutral elements take any attribute is linked, a page's)
+		if (!Lambda.exists([for (r in manifest.renderers) r], r -> r.neutral))
+			for (c in lateChecks)
+				if (c.seen > 0 && c.refused == c.seen && c.message != null) f.fail(nodes[c.where.at], c.message);
+		return out;
+	}
+
+	function installLate(paths:Array<String>):Array<Stmt> {
 		return f.b.block(() -> {
 			for (path in paths) {
 				var r = manifest.renderers.get(path);
@@ -865,6 +927,20 @@ class TsTarget implements Target<TsMarkup> {
 
 	public function error(message:String, where:Null<Where>):Dynamic return @:privateAccess tsx.f.fail(nodeAt(where), message);
 
+	// (as an error is said, on stderr: the program still compiled)
+	public function warning(message:String, where:Where) {
+		var n = nodeAt(where);
+		Sys.stderr().writeString(helder.typescript.check.Project.relative(n.file.path) + ":" + n.file.line(n.file.skipTrivia(n.pos)) + ": warning: " + message + "\n");
+	}
+
+	public function checked():Bool return true;
+
+	// (TypeScript has no @:neutral)
+	public function singleSource():Bool return false;
+
+	// (tsgo checked it against the declarations' JSX types: a function of the element's node)
+	public function ref(e:TsMarkup, node:String):TsMarkup return e;
+
 	public function elements(renderer:String):Null<Array<String>> {
 		var r = @:privateAccess tsx.manifest.renderers.get(renderer);
 		return r == null ? null : r.elements;
@@ -938,8 +1014,16 @@ class TsTarget implements Target<TsMarkup> {
 		case _: false;
 	}
 
+	public function arity(e:TsMarkup):Int return switch e {
+		case MCode(n, _) if (isFunction(e)):
+			var s = n;
+			while (s.kind == KindParenthesizedExpression) s = s.expression();
+			(s.parameters() ?? []).length;
+		case _: -1;
+	}
+
 	// (tsgo checked it against the declarations' JSX types: a function of the event or of none)
-	public function handler(e:TsMarkup, name:String, renderer:Null<String>, neutral:Bool, where:Where):TsMarkup return MHandler(e);
+	public function handler(e:TsMarkup, name:String, renderer:Null<String>, tag:Null<String>, where:Where):TsMarkup return MHandler(e);
 
 	public function devKeys():Bool return tsx.dev;
 
@@ -962,9 +1046,12 @@ class TsTarget implements Target<TsMarkup> {
 
 	public function declare(name:String, e:TsMarkup, where:Null<Where>):TsMarkup return MDeclare(name, e);
 
-	public function call(of:Callee, name:String, args:Array<TsMarkup>, where:Null<Where>):TsMarkup return MCall(of, name, args);
+	public function call(of:Callee, name:String, args:Array<TsMarkup>, where:Null<Where>):TsMarkup return MCall(of, name, args, where);
 
-	public function holeDecl(name:String, e:TsMarkup, factory:Bool):TsMarkup return MHoleDecl(name, e, factory);
+	public function holeDecl(name:String, e:TsMarkup, factory:Bool):TsMarkup {
+		tsx.holes.set(name, e);
+		return MHoleDecl(name, e, factory);
+	}
 
 	public function holeRef(name:String, e:TsMarkup):TsMarkup return MHoleRef(name);
 

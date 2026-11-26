@@ -19,6 +19,10 @@ typedef Turn = {
 	error:Null<String>,
 	// the studio's build failed after it: its first error
 	build:Null<String>,
+	// a tool ran since its last text (the next text a new paragraph)
+	?gap:Bool,
+	// a screen threw when the studio ran it, as it ended ("file:line: why (screen)")
+	?crash:String,
 }
 
 class Turns {
@@ -29,10 +33,13 @@ class Turns {
 		var n:Turn = Reflect.copy(t);
 		switch e {
 			case Text(c):
-				n.text = t.text + c;
+				// (a message after a tool call: the agent's next, its own paragraph)
+				n.text = t.gap == true && t.text != "" && !t.text.endsWith("\n\n") ? t.text + "\n\n" + c : t.text + c;
+				n.gap = false;
 			case Thought(c):
 				n.thought = t.thought + c;
 			case Tool(id, title, kind, status):
+				n.gap = true;
 				var known = Lambda.find(t.tools, x -> x.id == id);
 				n.tools = known == null ? t.tools.concat([{id: id, title: title, kind: kind, status: status}]) : [
 					for (x in t.tools)
@@ -65,11 +72,30 @@ class Turns {
 		return n;
 	}
 
+	// (a screen crashing as it ended: the first's why)
+	public static function crashed(t:Turn, crash:String):Turn {
+		var n:Turn = Reflect.copy(t);
+		n.crash = crash;
+		return n;
+	}
+
 	// (its question answered: gone from the bar)
 	public static function answered(t:Turn):Turn {
 		var n:Turn = Reflect.copy(t);
 		n.ask = null;
 		return n;
+	}
+
+	// (a reply cut at places in it, in order: the chat's notes in its flow)
+	public static function split(text:String, at:Array<Int>):Array<String> {
+		var out = [], from = 0;
+		for (a in at) {
+			var to = Std.int(Math.max(from, Math.min(a, text.length)));
+			out.push(text.substring(from, to));
+			from = to;
+		}
+		out.push(text.substr(from));
+		return out;
 	}
 
 	public static function running(t:Null<Turn>):Bool

@@ -158,6 +158,9 @@ class Cli {
 		interp(os, "HotCheck", ["save", "bin/dev/hot-eval.snapshot"]);
 		interp(os, "HotCheck", ["restore", "-"], snapshot("bin/dev/hot-eval.snapshot"));
 		exe("bin/dev/RefreshCheck", views.concat(["-main", "RefreshCheck"]));
+		// (an effect's thrown value uncaught in a dev build: printed, exit code 1, not a crash: tests/headless/DevThrow.hx)
+		exe("bin/dev/DevThrow", cps(["src", "tests/headless"]).concat(["-D", "hxmc.dev", "-main", "DevThrow"]));
+		expect(exePath("bin/dev/DevThrow", HOST), [], [], "Uncaught exception: helder.ui: <view> has no attribute flex-direction", 1);
 		run(exePath("bin/dev/RefreshCheck", HOST), ["save", "bin/dev/refresh.snapshot"]);
 		run(exePath("bin/dev/RefreshCheck", HOST), ["restore", "-"], snapshot("bin/dev/refresh.snapshot"));
 		exe("bin/dev/RefreshTestChanged", views.concat(["-main", "RefreshCheck", "-D", "refresh_changed"]));
@@ -177,6 +180,7 @@ class Cli {
 
 	// (Linux: under Xvfb, a Windows build's Wine too)
 	static function devHost() {
+		run(NODE, ["tests/os/dev/dev-args.mjs", "node_modules/.bin/haxe", "bin/dev-args"]);
 		var targets = [HOST].concat([for (t in (Sys.getEnv("DEV_HOST_TARGETS") ?? "").split(",")) if (t != "" && t != HOST) t]);
 		for (t in targets) {
 			var args = 'tests/os/dev/dev-host.mjs node_modules/.bin/haxe bin/dev-host/$t $t';

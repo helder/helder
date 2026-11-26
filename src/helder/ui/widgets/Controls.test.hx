@@ -63,7 +63,7 @@ private class Fixture implements helder.view.Markup {
 		</view>;
 
 	public static function segmented(v:Signal<String>)
-		return <view direction="row">
+		return <view flexDirection="row">
 			<Controls.Segmented tag="pick" label="Pick" value={v} onChange={x -> v(x)} options={[
 				{value: "a", label: "A"},
 				{value: "b", label: "B"},

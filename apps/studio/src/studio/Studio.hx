@@ -32,8 +32,60 @@ class Studio {
 	// when the program started (Main's first line): the cold start's measure
 	public static var processStart = haxe.Timer.stamp();
 
-	public final project:Null<Project>;
-	public final previews:Null<Previews>;
+	// the frame under the pointer (its loop played: Host.loop; null: none)
+	public final hovered:Signal<Null<String>> = signal(null);
+	// (when the frame hovered last was, for its loop's first frame: measured)
+	var hoverAt = -1.0;
+	// the project was an empty folder, the starter's now (the blank sheet until the first prompt)
+	public final starter:Bool;
+	// (the blank sheet gone with the first prompt: the canvas fitted again once the chat is beside it)
+	var unveiled = false;
+	// an agent changed the project (an edit, a file made): the canvas has something of its
+	public final touched = signal(false);
+	// the canvas has nothing of the agent's yet (nothing on it, or the starter's
+	// alone): after the first prompt its places held (Watch's queued blocks)
+	// until a frame of the agent's draws (a design's, a story's of its own),
+	// the starter's frame never shown (Starter.own)
+	var touchedNow = false;
+	// (the agent's first frame drawn: the canvas' frames rise into the places the blocks held)
+	var rose = false;
+
+	function touch() {
+		if (touchedNow) return;
+		touchedNow = true;
+		touched(true);
+		rise();
+	}
+
+	function rise() {
+		if (rose || !starter || !touchedNow || waiting()) return;
+		rose = true;
+		marks.rise([for (s in layout.screens()) s.name]);
+	}
+
+	public function waiting():Bool {
+		revived();
+		var p = project;
+		if (p == null) return true;
+		if (!starter) return p.screens.length == 0;
+		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && shows(i));
+	}
+
+	// (a frame the canvas can show: a design's, a story's with a frame, a still, or what it threw)
+	function shows(i:Project.ScreenInfo):Bool {
+		if (i.source.match(Design(_))) return true;
+		var s = previews?.screen(i.name);
+		return s != null && (s.image() != null || s.still() != null || s.crashedSignal());
+	}
+
+	// whether a screen is the starter's own, never shown (Starter.own)
+	public function starterOwn(name:String):Bool
+		return starter && project != null && Starter.own(project.dir, docs, name);
+	// (read again when what the project is changes: revive)
+	public var project(default, null):Null<Project>;
+	public var previews(default, null):Null<Previews>;
+	// bumped when they are (a view of the old program's screens made again)
+	public final revived = signal(0);
 	public final designs:Designs;
 	public final docs = new Docs();
 	public final camera = new Camera();
@@ -121,6 +173,16 @@ class Studio {
 	// why, its first error and the diagnostics (the live frames show it,
 	// Board; the prompt's turn can)
 	public final failure:Signal<Null<Failure>> = signal(null);
+	// the failure as the canvas shows it: the agent's patches settled first (a
+	// multi-file change breaks the build between its files, then mends it),
+	// none at once; the agent's tools read failure, not this
+	public final shownFailure:Signal<Null<Failure>> = signal(null);
+	// (when the agent last patched; 0: settled, its build.check or run.snap,
+	// its turn's end)
+	var patchedAt = 0.0;
+
+	public function settle()
+		patchedAt = 0;
 	// the status line's message
 	public final message = signal("");
 	// the stage's size (points): what fits a view; its node; bumped when it changes
@@ -153,23 +215,31 @@ class Studio {
 	var covering = false;
 	var covered = false;
 
-	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String, ?classic:Bool}) {
+	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String, ?classic:Bool, ?starter:Bool}) {
 		current = this;
 		classic = options.classic ?? false;
 		startedAt = processStart;
 		var p:Null<Project> = null;
 		#if (hxmc.target == "wasm32-wasi")
 		// (the page's project, opened before the module started)
+		starter = false;
 		p = try Project.opened() catch (e:Dynamic) {
 			Sys.println('studio: the project: $e');
 			null;
 		}
 		#else
 		events = options.events == null ? null : sys.io.File.write(options.events, false);
+		// (an empty folder: the starter's project, the agent's start)
+		starter = dir != null && options.starter == true && Starter.write(dir);
+		if (starter) log("starter", {dir: dir});
+		Starter.typescript();
 		if (dir != null) p = try Project.open(dir) catch (e:Dynamic) {
 			Sys.println('studio: $dir: $e');
 			null;
 		}
+		#end
+		#if !(hxmc.target == "wasm32-wasi")
+		if (p != null && p.typescript) Starter.config(p.dir);
 		#end
 		project = p;
 		previews = p == null || p.live().length == 0 ? null : new Previews(p);
@@ -193,6 +263,7 @@ class Studio {
 		editor.view.lineHeight = Theme.CODE_LINE;
 		editor.onChange = codeChanged;
 		docs.onChange = changed;
+		docs.onGone = gone;
 		if (previews != null) {
 			previews.onFrame = framed;
 			previews.onBuilt = built;
@@ -217,6 +288,7 @@ class Studio {
 		agent.close();
 		agent = agentOf(name);
 		agentChanged(v -> v + 1);
+		bootAgent();
 	}
 
 	// bumped when the agent changes (what shows its name reads it)
@@ -261,7 +333,7 @@ class Studio {
 		if (c != null && p != null) {
 			Sys.println('studio: the agent: ${c.name} (${c.cmd} ${c.args.join(" ")})');
 			var self = this;
-			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, snap: screen -> self.snapOf(screen)});
+			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, serving: () -> self.mcp != null, snap: screen -> self.snapOf(screen)});
 		}
 		Sys.println("studio: the agent: local (the studio's tools alone: /tree, /snap, /check, /read)");
 		#end
@@ -295,6 +367,111 @@ class Studio {
 		if (pr != null) Async.launch(task -> pr.start(task));
 		#if (hxmc.target == "wasm32-wasi")
 		Async.launch(_ -> studio.web.WebTools.serve(this));
+		#end
+		// (on the loop: open is the window's making, where no signal is written)
+		var self = this;
+		Async.launch(_ -> self.bootAgent());
+	}
+
+	// the prompt's agent started in the background (an ACP agent: its process,
+	// its session), so the first prompt goes straight to it; a failure a row
+	// of the chat's (the next prompt starts it again)
+	function bootAgent() {
+		#if !(hxmc.target == "wasm32-wasi")
+		if (!Std.isOfType(agent, AcpAgent) || project == null) return;
+		var a:AcpAgent = cast agent, self = this;
+		talk.trouble(null);
+		booting(true);
+		a.boot(message -> {
+			self.talk.trouble(message);
+			self.log("agent-boot", {failed: message});
+		});
+		Async.launch(_ -> {
+			while (a.starting())
+				Async.delay(0.05);
+			if (self.agent != a) return;
+			self.booting(false);
+			self.log("agent-boot", {ms: Math.round(a.bootedIn * 1000)});
+		});
+		// (a headless run's script waits for it: its prompts timed from a started agent)
+		hold(() -> !a.starting(), "the agent's start", 180);
+		#end
+	}
+
+	// (a prompt sent: when, until a frame shows it)
+	var acking = -1.0;
+
+	// an ACP agent starting (its process, its session): the chat's turn says so while its prompt waits
+	public final booting = signal(false);
+
+	public function agentStarting():Bool
+		return booting();
+
+	// a file made (an agent's project.patch of a path not there, an ACP agent's
+	// write): one entry of the history (its undo: gone)
+	public function create(file:String, text:String, ?by:String) {
+		touch();
+		docs.create(file, text, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), "agent", by);
+	}
+
+	// a file deleted (an agent's project.patch {delete}): one entry of the history (its undo: back)
+	public function remove(file:String, ?by:String) {
+		touch();
+		log("removed", {file: file, by: by});
+		docs.remove(file, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), by);
+	}
+
+	// a file gone (a made file's undo, a removal): deleted, its frames or
+	// stories gone, the program built without it
+	function gone(file:String) {
+		previews?.forget(file);
+		Files.remove(file);
+		if (project == null) return;
+		if (file.endsWith(".helder")) framesChanged(file, project.design(file, null));
+		else if (Project.isStory(file)) storiesChanged(file, null);
+		if (shaping(file) && revive()) return;
+		if (previews != null && !file.endsWith(".helder")) rebuild(file, true);
+	}
+
+	// (a file that can change what the project is: a story, its main, a package's or helder's file)
+	static function shaping(file:String):Bool {
+		var n = haxe.io.Path.withoutDirectory(file);
+		return Project.isStory(file) || ~/^(main\.tsx?|Main\.hx|package\.json|helder\.json)$/.match(n);
+	}
+
+	// the project read again when what it is may have changed (its first
+	// story or main made, its kind): when its entry, its kind or whether it
+	// has a program changed, the new project and its program (Previews,
+	// started), the old one stopped; whether it did
+	public function revive():Bool {
+		#if (hxmc.target == "wasm32-wasi")
+		return false;
+		#else
+		var old = project;
+		if (old == null) return false;
+		var p:Null<Project> = try Project.open(old.dir) catch (e:Dynamic) {
+			Sys.println('studio: ${old.dir}: $e');
+			null;
+		}
+		if (p == null) return false;
+		var live = p.live().length > 0;
+		if (p.typescript) Starter.config(p.dir);
+		if (p.typescript == old.typescript && p.entry?.main == old.entry?.main && p.entry?.typescript == old.entry?.typescript && live == (previews != null)) return false;
+		var was = previews;
+		project = p;
+		previews = live ? new Previews(p) : null;
+		if (was != null) Async.launch(_ -> was.stop());
+		var pr = previews;
+		if (pr != null) {
+			pr.onFrame = framed;
+			pr.onBuilt = built;
+			Async.launch(task -> pr.start(task));
+			hold(() -> pr.allShown(), "the screens' first frames", 300);
+		}
+		revived(v -> v + 1);
+		if (marks.saw([for (s in p.screens) s.name])) framesCame();
+		log("revived", {typescript: p.typescript, entry: p.entry?.main, screens: [for (s in p.screens) s.name]});
+		return true;
 		#end
 	}
 
@@ -353,12 +530,18 @@ class Studio {
 	public function drawn() {
 		var stage = stageNode;
 		frames++;
+		if (acking > 0) {
+			log("acked", {ms: Math.round((haxe.Timer.stamp() - acking) * 1000)});
+			acking = -1;
+		}
 		if (!firstFrame) {
 			firstFrame = true;
 			var ms = Math.round((haxe.Timer.stamp() - startedAt) * 1000);
 			Sys.println('studio: first frame $ms ms after start');
 			log("first-frame", {ms: ms});
 		}
+		// (the stills from the frames file: shown with the studio's frame)
+		allShown();
 		var w = Main.window == null ? 0.0 : Main.window.ui.width;
 		if (w > 0 && (w < Theme.COMPACT) != compactNow) {
 			compactNow = w < Theme.COMPACT;
@@ -368,7 +551,8 @@ class Studio {
 		}
 		if (stage != null && (stage.width != stageWidth || stage.height != stageHeight) && stage.width > 0) {
 			// (the canvas stays where it is when the window is resized: fitted at the first size, or a phone's turn)
-			var first = stageWidth <= 0 || compactNow;
+			var first = stageWidth <= 0 || compactNow || unveiled;
+			unveiled = false;
 			stageWidth = stage.width;
 			stageHeight = stage.height;
 			stageSize(v -> v + 1);
@@ -378,6 +562,12 @@ class Studio {
 		var key = r == null ? "" : '${r.x} ${r.y} ${r.width} ${r.height}';
 		if (key != playRect && (playRect = key) != "")
 			log("player", {rect: [r.x, r.y, r.width, r.height], stage: [stageWidth, stageHeight], compact: compactNow});
+		var f = failure.peek();
+		if (f != shownFailure.peek() && (f == null || haxe.Timer.stamp() - patchedAt > SETTLED)) shownFailure(f);
+		if (framing && stageWidth > 0) {
+			framing = false;
+			if (!camera.taken) frameAll();
+		} else if (fitted != "" && !camera.taken && !camera.flying && box() != fitted) frameAll();
 		showVisible();
 		if (marks.anyFresh()) marks.inView(layout.inView());
 		designs.follow(openedAt > 0 ? openedAt : startedAt);
@@ -430,6 +620,8 @@ class Studio {
 		var play = playing.peek();
 		var live = play == null || play.kind == "design" || play.kind == "target" ? null : play.screen;
 		if (live != null) {
+			// (Play runs the program, the screens drawn from the frames file or not)
+			pr.wake();
 			if (!names.contains(live)) names.push(live);
 			// (fitted larger on a phone: its pixels at the size shown)
 			var s = pr.screen(live), k = s == null ? 1.0 : Math.max(1, Play.fit(this, s.width(), s.height(), play.kind == "story"));
@@ -437,6 +629,10 @@ class Studio {
 			pr.show(names, live, Math.min(Math.min(3 * k, most), (Main.window == null ? 1.0 : Main.window.renderer.scale) * k));
 			return;
 		}
+		// (the watched canvas: stills, the hovered frame's loop running; the old shell's frames live)
+		pr.stills = !classic;
+		var h = hovered.peek(), info = h == null || classic || !names.contains(h) ? null : project.screen(h);
+		pr.looping = info?.loop == null ? null : h;
 		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale);
 	}
 
@@ -555,6 +751,63 @@ class Studio {
 		}
 	}
 
+	// (new frames came (the watched shell's): every frame fitted, in the next
+	// frame, at most 1:1, until the user first moves the camera: the studio's
+	// framing, never the agent moving it. After a question is answered, the
+	// project's real frames alone, not the design frames (the options) that
+	// asked it, once there are some)
+	var framing = false;
+	var real = false;
+
+	function framesCame()
+		if (!classic) framing = true;
+
+	// a question answered (Questions): the real frames from now on, framed now
+	public function answered() {
+		real = true;
+		framesCame();
+	}
+
+	// (seconds without a patch before a failed build shows on the canvas)
+	static inline var SETTLED = 1.5;
+
+	// (the framing's least scale: a still stays readable; the frames past the view's
+	// end go to the edge's tab)
+	static inline var LEAST = 0.5;
+
+	// (the box framed last ("": none yet): framed again when it changes, the
+	// frames moved or gone (a sketch file removed, the rows below it moving up))
+	var fitted = "";
+
+	function box():String {
+		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real);
+		return b == null ? "" : '${b.x} ${b.y} ${b.w} ${b.h}';
+	}
+
+	function frameAll() {
+		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real), i = insets();
+		fitted = box();
+		if (b == null) return;
+		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1, LEAST);
+		camera.fly(v.x, v.y, v.k);
+		log("framed", {k: v.k});
+	}
+
+	// the box the framing fits: every frame's, or (real) the program's frames' when there are some, not a design's
+	public static function frameBox(rs:Array<{name:String, x:Float, y:Float, w:Float, h:Float}>, design:String->Bool, real:Bool):Null<{x:Float, y:Float, w:Float, h:Float}> {
+		var live = rs.filter(r -> !design(r.name));
+		if (real && live.length > 0) rs = live;
+		if (rs.length == 0) return null;
+		var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+		for (r in rs) {
+			x0 = Math.min(x0, r.x);
+			y0 = Math.min(y0, r.y);
+			x1 = Math.max(x1, r.x + r.w);
+			y1 = Math.max(y1, r.y + r.h);
+		}
+		return {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
+	}
+
 	// the view for what is in focus (fly: on the spring)
 	public function fitView(fly:Bool, ?m:String)
 		fitTo(focused.peek(), fly, m);
@@ -661,6 +914,7 @@ class Studio {
 	// the camera flown to a frame (a chip's, a marker's: the user's click)
 	public function flyTo(name:String) {
 		if (layout.rect(name) == null) return;
+		camera.taken = true;
 		fitTo(name, true);
 		log("flown", {screen: name});
 	}
@@ -694,9 +948,18 @@ class Studio {
 		}
 	}
 
-	// Play: what is selected, else the app from its start (Play's notes)
+	// Play: what is selected, else the app from its start (Play's notes);
+	// the watched shell's: in a window of its own (playWindow)
 	public function play() {
 		if (project == null) return;
+		// (the watched shell: the frame aimed at, else the app, in a window of its own)
+		if (!classic) {
+			var f = focused.peek(), info = f == null ? null : project.screen(f);
+			if (info == null || !info.source.match(Design(_))) {
+				playWindow(info?.name);
+				return;
+			}
+		}
 		var t = target.peek();
 		if (t != "studio") {
 			launch(t);
@@ -767,6 +1030,73 @@ class Studio {
 		previews.request(s, "Story.set", {name: name, value: value}, _ -> previews.request(s, "Story.controls", {}, r -> playControls(r?.controls ?? [])));
 		log("control", {name: name, value: value});
 	}
+
+	// a screen played in a window of its own, live, its input its own, at its
+	// size (the watched shell's Play, a double click on its frame): `helder
+	// dev` on it, rebuilt in place as the project changes (its state kept),
+	// so the user plays on while the agent works; closing it is closing the
+	// window, a second Play the first one's window replaced. A story of a
+	// TypeScript project: a main of it (.helder-play.tsx, beside the
+	// project's files so that helder dev watches them: play(story)); the app
+	// (name null: the header's Play with no frame aimed at, the app's frame),
+	// or a Haxe project's story: the app. Headless (a check's run): told, not opened.
+	public function playWindow(name:Null<String>) {
+		#if !(hxmc.target == "wasm32-wasi")
+		var info = name == null ? null : project.screen(name);
+		if (name != null && info == null) return;
+		var entry = info == null ? project.dir : playEntry(info);
+		var label = info?.label ?? project.name;
+		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
+		var args = ["dev", entry];
+		log("play-window", {screen: name, args: args});
+		#if helder.headless
+		message('would play $label in a window: helder ${args.join(" ")}');
+		#else
+		var was = targetProcess;
+		targetProcess = null;
+		if (was != null) was.kill();
+		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
+			message('helder dev did not start: $e');
+			null;
+		}
+		if (p == null) return;
+		p.closeStdin();
+		targetProcess = p;
+		message('playing $label in a window');
+		Async.launch(_ -> {
+			var r = new Reader(p.stdout), line;
+			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
+		});
+		Async.launch(_ -> {
+			var r = new Reader(p.stderr), line;
+			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
+		});
+		Async.launch(_ -> {
+			p.wait();
+			if (targetProcess == p) targetProcess = null;
+		});
+		#end
+		#end
+	}
+
+	// what helder dev runs to play a screen: a TypeScript story's main (written:
+	// PLAY, play(story)), else the project (its app)
+	public function playEntry(info:ScreenInfo):String {
+		switch info.source {
+			case Story(binding) if (project.typescript && binding != null):
+				var rel = info.file.substr(project.dir.length + 1);
+				rel = "./" + rel.substr(0, rel.lastIndexOf("."));
+				var entry = project.dir + "/" + PLAY;
+				Files.save(entry, '// helder studio\'s Play: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
+					+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+				return entry;
+			case _:
+				return project.dir;
+		}
+	}
+
+	// (the main a story's window plays, at the project's root: helder dev watches the folder of its entry)
+	public static inline var PLAY = ".helder-play.tsx";
 
 	// another target: `helder dev` on the project (a window; Android's
 	// phone; the web, its page opened in the system's browser), its output
@@ -1036,14 +1366,9 @@ class Studio {
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
 		if (s.version == 1) log("screen-shown", {screen: s.info.name});
-		if (!shownAll && previews.allShown()) {
-			shownAll = true;
-			var ms = Math.round((haxe.Timer.stamp() - openedAt) * 1000);
-			var host = previews.sinceHost();
-			Sys.println('studio: all ${previews.screens.length} screens shown $ms ms after opening ${project.name}' + (host >= 0 ? ', $host ms after the screens\' program started' : ''));
-			log("all-shown", {ms: ms, screens: previews.screens.length, hostMs: host, sharing: previews.sharing});
-			fitView(false);
-		}
+		rise();
+		if (previews.looping == s.info.name) loopShown(s.info.name, "live");
+		allShown();
 		var m = measuring;
 		if (m != null && m.screen == s && s.version > m.version) {
 			measuring = null;
@@ -1053,6 +1378,34 @@ class Studio {
 			log("patch-shown", {ms: ms, frames: frames - m.frame, programMs: s.patchedMs, label: m.label, color: color, version: s.version});
 		}
 		if (focused.peek() == s.info.name && selection.peek() != null) refreshSelection();
+	}
+
+	// a frame the pointer came onto
+	public function hover(name:String) {
+		hoverAt = haxe.Timer.stamp();
+		hovered(name);
+	}
+
+	// a hovered loop's first frame shown (from: "file", or "live": the program's), its time since the hover
+	public function loopShown(name:String, from:String) {
+		if (hoverAt < 0 || hovered.peek() != name) return;
+		var ms = Math.round((haxe.Timer.stamp() - hoverAt) * 10000) / 10;
+		hoverAt = -1;
+		Sys.println('studio: $name\'s loop shown $ms ms after the hover ($from)');
+		log("loop-shown", {screen: name, ms: ms, from: from});
+	}
+
+	// (every screen showing a frame, the program's or its still from the frames file: told once)
+	function allShown() {
+		var pr = previews;
+		if (shownAll || pr == null || openedAt <= 0 || !pr.allShown()) return;
+		shownAll = true;
+		var ms = Math.round((haxe.Timer.stamp() - openedAt) * 1000);
+		var host = pr.sinceHost(), stills = [for (s in pr.screens) if (s.version == 0 && s.still.peek() != null && !s.stale.peek()) s].length;
+		Sys.println('studio: all ${pr.screens.length} screens shown $ms ms after opening ${project.name}' + (host >= 0 ? ', $host ms after the screens\' program started' : '')
+			+ (stills > 0 ? ', $stills from the frames file' : ''));
+		log("all-shown", {ms: ms, screens: pr.screens.length, hostMs: host, sharing: pr.sharing, stills: stills});
+		if (!camera.taken) fitView(false);
 	}
 
 	// the strongest colour in the selection's box of the screen's last frame (a check's: what it shows)
@@ -1178,7 +1531,10 @@ class Studio {
 			selection(next);
 		}
 		if (others.peek().length > 0 && others.peek()[0].file == file) others([for (o in others.peek()) {var n:Selection = Reflect.copy(o); n.start = tx.map(o.start, 1); n;}]);
-		if (file.endsWith(".helder") && project != null) framesChanged(file, project.design(file, docs.get(file).text));
+		if (file.endsWith(".helder") && project != null) {
+			framesChanged(file, project.design(file, docs.get(file).text));
+			rise();
+		}
 		if (origin != "code" && codeFile.peek() == file) {
 			applyingToEditor = true;
 			var changes = [for (c in tx.changes) new helder.syntax.Transaction.Change(c.start, c.end, c.text)];
@@ -1190,12 +1546,28 @@ class Studio {
 		log("edited", {file: file, origin: origin, changes: [for (c in tx.changes) {start: c.start, end: c.end, text: c.text}]});
 		if (origin == "agent") agentEdited(file, tx);
 		if (origin == "code") saveLater(file) else commit(file);
+		if (origin == "agent") tidy();
+	}
+
+	// (an empty folder's starter: its files gone once the agent's project no
+	// longer needs them, each an entry of the history, after an edit of the
+	// agent's (not an undo's); the agent never deletes them)
+	function tidy() {
+		var p = project;
+		if (!starter || p == null) return;
+		var own = Lambda.exists(p.screens, i -> i.source.match(Story(_)) && !starterOwn(i.name));
+		for (f in Starter.unused(p.dir, docs, p.sources(), own, starterOwn("App/Start"))) {
+			log("starter-removed", {file: f});
+			remove(f);
+		}
 	}
 
 	// an agent's edit (an MCP agent's project.patch, an ACP agent's write: its
 	// history entry by its name): the agent there (Presence: its lines, its
 	// frame when it named none), what it made marked (Marks)
 	function agentEdited(file:String, tx:Transaction) {
+		touch();
+		patchedAt = haxe.Timer.stamp();
 		var by = docs.nextUndo()?.by;
 		if (by == null || project == null) return;
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
@@ -1242,7 +1614,7 @@ class Studio {
 		if (renamed.length > 0) others([]);
 		if (f != null && project.screen(f) == null) focus(null);
 		log("frames", {file: file, frames: [for (s in project.screens) if (s.file == file) s.name], renamed: renamed});
-		marks.saw([for (s in project.screens) s.name]);
+		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 	}
 
 	// (natively) the design and story files on disk watched, a second apart:
@@ -1261,6 +1633,8 @@ class Studio {
 		}
 		function added(f:String, text:Null<String>) {
 			if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
+			// (a story where there was no program: the project read again, its program started)
+			else if (previews == null) revive();
 			else if (storiesChanged(f, text) && previews != null) {
 				message(text == null ? "a story file removed: building" : "a story file added: building");
 				log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
@@ -1308,8 +1682,11 @@ class Studio {
 		if (pr == null) {
 			f.save();
 			marks.landed(false);
+			if (shaping(file)) revive();
 			return;
 		}
+		// (a file that may change what the project is: its main, a package's)
+		if (shaping(file) && !Project.isStory(file) && revive()) return;
 		// (a story file's stories changed: the host's screens with them, every source built)
 		if (Project.isStory(file) && storiesChanged(file, f.text)) {
 			pr.write(file, f.text);
@@ -1392,7 +1769,7 @@ class Studio {
 		}
 		if (f != null && project.screen(f) == null) focus(null, false);
 		log("stories", {file: file, screens: [for (s in project.live()) s.name]});
-		marks.saw([for (s in project.screens) s.name]);
+		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 		return true;
 	}
 
@@ -1655,51 +2032,61 @@ class Studio {
 		}
 		// (typed while a turn runs: a direction, the inbox's, not a prompt)
 		if (Turns.running(turnNow)) {
-			inbox.direct(p, talk.list().length - 1);
+			inbox.direct(p, talk.list().length - 1, turnNow.text.length);
 			log("directed", {text: p});
 			return;
 		}
 		var a = LocalAgent.tool(p) != null ? local : agent;
+		if (talk.list().length == 0 && Watch.blank(this)) {
+			unveiled = true;
+			if (project != null) marks.rise([for (s in project.screens) s.name]);
+		}
 		setTurn(Turns.start(said ? p : ""), true);
+		talk.trouble(null);
+		// (timed: the prompt to the frame showing it, to the agent's first text)
+		var sent = haxe.Timer.stamp(), spoke = false;
+		acking = sent;
+		log("asked", {prompt: p, starting: booting.peek()});
 		var answered = false, heard = -1.0, asked:Null<String> = null;
 		function end(e:Agent.AgentEvent) {
+			settle();
 			if (asked != null) questions.close(asked);
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
-			var ps = a == local ? [] : problems();
-			if (ps.length > 0) t = Turns.broken(t, ps[0]);
+			var ps = a == local ? [] : problems(), cs = a == local ? [] : previews?.crashed() ?? [];
+			if (ps.length > 0) t = Turns.broken(t, ps[0]) else if (cs.length > 0) t = Turns.crashed(t, '${cs[0].why} (${cs[0].screen})');
 			setTurn(t);
 			answered = true;
-			// (the ACP agent's turn over: it is done, its marks fade)
+			// (the ACP agent's turn over: it is done, its marks fade; its calls to
+			// the MCP server are its too, a peer of its name)
 			for (x in presence.list())
-				if (x.working && x.id.startsWith("acp:")) presence.done(x.id, t.error ?? null);
+				if (x.working && (x.id.startsWith("acp:") || x.name == agentName())) presence.done(x.id, t.error ?? null);
 			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
 			// (the notes its tools did not carry: the next prompt, at once)
 			var notes = a == local ? [] : inbox.take();
 			if (notes.length > 0) ask(Inbox.text(notes), false);
 		}
-		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems()}, e -> switch e {
+		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
 			case Done(_) | Failed(_):
-				// (not done before the studio's build of its edits is: a failed one shown with the turn)
-				var pr = previews;
-				if (pr == null || !pr.busy()) end(e) else Async.launch(_ -> {
-					var t0 = haxe.Timer.stamp();
-					while (pr.busy() && haxe.Timer.stamp() - t0 < 120)
-						Async.delay(0.05);
-					end(e);
-				});
+				// (done as the agent is: a build still running shows on its frames, not as a held turn)
+				end(e);
 			case _:
 				heard = haxe.Timer.stamp();
+				if (!spoke && e.match(Text(_))) {
+					spoke = true;
+					log("first-text", {ms: Math.round((heard - sent) * 1000)});
+				}
 				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
 				switch e {
-					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
-					// (a permission ask: the chat's card, as studio.ask's; an answer in
+					case Tool(id, title, _, status):
+						log("agent-tool", {id: id, title: title, status: status});
+									// (a permission ask: the chat's card, as studio.ask's; an answer in
 					// the user's words cancels it and goes to the agent as a note)
 					case Ask(question, options, _) if (!classic):
 						if (asked != null) questions.close(asked);
 						asked = questions.permission(asker(), question, options, (picked, text) -> {
 							var i = picked.length == 0 ? -1 : Std.parseInt(picked[0]) ?? -1;
 							answer(i);
-							if (i < 0 && text != null) inbox.direct(text, talk.list().length - 1);
+							if (i < 0 && text != null) inbox.direct(text, talk.list().length - 1, turnNow?.text.length ?? 0);
 						}).id;
 					case _:
 				}
@@ -1711,6 +2098,12 @@ class Studio {
 	}
 
 	// the last build's errors, "file:line: message" (none: it did not fail)
+	// the screens that threw when the studio ran them ("screen: file:line: why"; none after a failed build)
+	public function crashes():Array<String> {
+		var pr = previews;
+		return pr == null || pr.failed ? [] : [for (c in pr.crashed()) '${c.screen}: ${c.why}'];
+	}
+
 	public function problems():Array<String> {
 		var pr = previews;
 		if (pr == null || !pr.failed) return [];
@@ -1787,6 +2180,8 @@ class Layout {
 	// out below the design frames, a row a page
 	public function screens():Array<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}> {
 		var out:Array<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}> = [];
+		// (the project read again: its screens the new one's)
+		studio.revived();
 		var p = studio.project, pr = studio.previews;
 		if (p == null) return out;
 		function size(i:Project.ScreenInfo):{w:Float, h:Float} {
@@ -1794,7 +2189,7 @@ class Layout {
 			return s == null ? {w: i.width + 0.0, h: i.height + 0.0} : {w: s.width() + 0.0, h: s.height() + 0.0};
 		}
 		function shown(i:Project.ScreenInfo):Bool
-			return i.source.match(Design(_)) || pr?.screen(i.name) != null;
+			return (i.source.match(Design(_)) || pr?.screen(i.name) != null) && !studio.starterOwn(i.name);
 		// (below the design frames: a story or the app placed by hand leaves the others where they were)
 		var y = 0.0;
 		for (f in p.flows())

@@ -325,10 +325,10 @@ function fixture() {
 
 private class Fixture implements helder.view.Markup {
 	public static function view(log:Array<String>, handle:FocusHandle)
-		return <view key-context="Viewer" actions={[Actions.handle(TestAction, a -> {
+		return <view keyContext="Viewer" actions={[Actions.handle(TestAction, a -> {
 			log.push(Std.string(a));
 			true;
 		})]}>
-			<view tag="image" track-focus={handle} tab-index={2} width={20} height={20}/>
+			<view tag="image" trackFocus={handle} tabIndex={2} width={20} height={20}/>
 		</view>;
 }

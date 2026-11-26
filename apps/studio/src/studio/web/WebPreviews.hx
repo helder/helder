@@ -49,6 +49,9 @@ class WebPreviews {
 	var shown = "";
 	// (the last show asked: told again to a host once it is ready, a new build's too)
 	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
+	public var stills = false;
+	public var looping:Null<String> = null;
 	// (since when the page draws for a build's reload: -1, not)
 	var drawingSince = -1.0;
 	final pending = new Map<Int, Dynamic->Void>();
@@ -73,11 +76,16 @@ class WebPreviews {
 	public function follow()
 		Screen.follow(screens, project.live());
 
+	// (Previews.crashed's)
+	public function crashed():Array<{screen:String, why:String}>
+		return [for (s in screens) if (s.crashed && s.report.peek() != "") {screen: s.info.name, why: s.report.peek()}];
+
 	public function allShown():Bool
 		return !Lambda.exists(screens, s -> s.version == 0 && !s.crashed) || failed;
 
+	// (screens in view not shown yet: Previews.busy's)
 	public function busy():Bool
-		return !failed && !allShown();
+		return !failed && Lambda.exists(screens, s -> s.version == 0 && !s.crashed && showWanted != null && showWanted.names.contains(s.info.name));
 
 	// (the worker's start is the page's: startMs)
 	public function sinceHost():Float
@@ -167,12 +175,19 @@ class WebPreviews {
 			case "Host.ready":
 				var list:Array<Dynamic> = m.params.screens;
 				order = [for (x in list) screen(x.name)];
+				// (the new program's: a screen that throws again says so at once)
+				for (s in screens)
+					if (s.crashed) s.crashed = false;
 				// (a new program, a build's swap: what the last one was asked, never answered now; after
 				// the new one is told what to show, since what waited may ask the new one again)
 				var ask = pending.copy();
 				pending.clear();
-				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, null);
+				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, null);
 				answerAll(ask, "the preview started again");
+			case "Host.failed":
+				// (a screen that threw in the worker: crashed, why; the others go on)
+				var s = order[Std.int(m.params.screen)];
+				if (s != null) onLog('studio: ${s.info.name} crashed: ${s.threw(m.params, project.dir)}');
 			case "Hot.patched":
 				for (s in screens)
 					s.patchedMs = m.params.ms;
@@ -221,12 +236,19 @@ class WebPreviews {
 	// the screens in view (the others suspended in the host, their last
 	// frames kept) and the one zoomed into, drawn at scale pixels a point
 	// (the canvas' zoom: its frames as sharp as the studio shows them)
+	// (natively the host started when the screens were drawn from the frames file; here it always runs)
+	public function wake() {}
+
+	// (natively a hovered loop from the frames file; here the host's)
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}>
+		return null;
+
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale;
+		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
 		showWanted = {names: names, focused: focused, scale: scale};
-		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale}, null);
+		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, null);
 	}
 
 	function send(method:String, params:Dynamic, done:Null<Dynamic->Void>) {
@@ -239,6 +261,9 @@ class WebPreviews {
 	// a file written (the page keeps it in OPFS)
 	public function write(path:String, text:String)
 		studio.Files.save(path, text);
+
+	// (Previews.forget's: written at once here, nothing held)
+	public function forget(path:String) {}
 
 	// a save from the code view: its live literals patched, else a build's (the compiler's worker)
 	@:coroutine public function saved(task:Node, file:String, ?literalsOnly:Bool):String {

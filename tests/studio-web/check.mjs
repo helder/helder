@@ -328,7 +328,7 @@ async function recolour(pg, x, y, tap) {
 	await ready(pg);
 	check(await event(pg, 'designs-shown'), 'an #import= link opened as a project of OPFS, its frame shown');
 	const names = await pg.waitForFunction(() => document.modelContext.tools.size >= 11 && [...document.modelContext.tools.keys()], null, { timeout: 10000 }).then((h) => h.jsonValue(), () => []);
-	check(names.length === 11 && ['project.read', 'project.patch', 'build.check', 'run.snap', 'run.tree', 'studio.focus', 'studio.working', 'studio.done', 'project.create', 'project.list', 'project.open'].every((n) => names.includes(n)), 'WebMCP: the tools registered: ' + names.join(', '));
+	check(names.length === 14 && ['project.read', 'project.patch', 'build.check', 'run.snap', 'run.tree', 'studio.focus', 'studio.working', 'studio.done', 'studio.ask', 'studio.guide', 'studio.inbox', 'project.create', 'project.list', 'project.open'].every((n) => names.includes(n)), 'WebMCP: the tools registered: ' + names.join(', '));
 	const run = (name, args) => pg.evaluate(([n, a]) => document.modelContext.tools.get(n).execute(a), [name, args]);
 	const read = await run('project.read', { path: 'app.helder' });
 	check(read.content[0].text === design, 'project.read: the file');
@@ -370,6 +370,24 @@ async function recolour(pg, x, y, tap) {
 	const shot = await pg.evaluate(() => window.studioWeb.call('run.snap', { screen: 'Sign up/Light' }));
 	const signup = shot.content.find((c) => c.type === 'image');
 	check(all && png(signup?.data ?? '')?.width === 420, `a Haxe app from an #import= link built at its open, its screens shown in ${all?.ms} ms, run.snap ${shot.content.at(-1).text}`);
+	// (a screen that throws in the worker's host: its why told the studio, as natively; the other drawn)
+	const two = {
+		'Two.hx': 'import helder.ui.*;\nimport helder.ui.UiWindow;\nimport helder.ui.UiWindow.Surface;\nimport helder.view.*;\n\nclass Two implements Markup {\n\tstatic function main()\n\t\tUiWindow.run(<Surface title="Two" width={200} height={200}>{good()}</Surface>);\n\n\tpublic static function good():View\n\t\treturn <view grow={1} background="#1e3a8a"/>;\n\n\tpublic static function bad():View\n\t\tthrow "the bad screen threw";\n}\n',
+		'Two.story.hx': 'import helder.story.Story;\n\nfinal good = story({name: "Two/Good", width: 200, height: 200, render: () -> Two.good()});\n\nfinal bad = story({name: "Two/Bad", width: 200, height: 200, render: () -> Two.bad()});\n'
+	};
+	await pg.goto(base + '#import=' + Buffer.from(JSON.stringify({ name: 'two', files: two })).toString('base64url'));
+	await pg.waitForURL(/project=two/, { timeout: 30000 });
+	await ready(pg);
+	const good = await event(pg, 'screen-shown', (e) => e.screen === 'Two/Good', 240000);
+	let crashed = null;
+	for (let i = 0; i < 50 && !crashed; i++) {
+		const c = JSON.parse((await pg.evaluate(() => window.studioWeb.call('build.check', {}))).content[0].text);
+		if (c.crashed) crashed = c.crashed;
+		else await pg.waitForTimeout(200);
+	}
+	const bad = await pg.evaluate(() => window.studioWeb.call('run.snap', { screen: 'Two/Bad' }));
+	check(good && crashed?.[0] === 'Two/Bad: the bad screen threw' && bad.isError && bad.content[0].text === 'Two/Bad crashed: the bad screen threw',
+		`a screen that throws in the worker: told (build.check ${JSON.stringify(crashed)}, run.snap ${bad.content[0].text}), the other shown`);
 	await ctx.close();
 }
 

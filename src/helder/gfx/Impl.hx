@@ -16,7 +16,8 @@ import helder.gfx.gl.GLBackend as Native;
 // elsewhere; the CPU's (helder.gfx.soft) with -D helder.soft, on any. A
 // build for one system (helder.os: helder.compiler.Os) has its own only,
 // its methods forwarded; the browser's two, and a build that names no
-// system (every back end typed), are told apart below.
+// system (every back end typed), are told apart below, the browser's
+// without the native ones.
 @:forward(backend, width, height, createBuffer, writeBuffer, createTexture, writeTexture, supports, generateMips, destroyBuffer, destroyTexture,
 	createSampler, createShader, createPipeline, beginFrame, beginPass, setPipeline, setVertexBuffer, setIndexBuffer, setUniforms, setTexture, draw,
 	drawIndexed, endPass, createQueries, destroyQueries, queryResult, resetQuery, beginQuery, endQuery, endFrame, readPixels, has, createComputePipeline,
@@ -66,6 +67,212 @@ abstract Impl(Native) {
 	// (whether a frame was presented since asked last: Metal's, which a macOS window shows itself at)
 	public inline function presented():Bool
 		return #if (helder.os == "macos" || helder.os == "ios") this.presented() #else false #end;
+}
+#elseif (helder.os == "web")
+import helder.gfx.gl.GLBackend;
+import helder.gfx.webgpu.WebGPU;
+import helder.gfx.webgpu.WebGPUBackend;
+
+// The browser's two back ends (WebAssembly): WebGPU when the JavaScript side
+// has a device (requested before main: WebGPU.ready), else GL on WebGL2,
+// told apart by the object's class (no field has a back end's type, which
+// would compile all its methods). The native ones are not loaded: a web
+// build types neither Metal's nor Direct3D 11's.
+abstract Impl(Any) {
+	// (antialias: the page's run option antialias, when set, decides)
+	public inline function new(surface:Surface, antialias:Bool)
+		this = WebGPU.ready() != 0 ? new WebGPUBackend(surface, antialias) : new GLBackend(surface, antialias);
+
+	// (WebGL2's)
+	inline function webgl():Bool
+		return Std.isOfType(this, GLBackend);
+
+	inline function gl():GLBackend
+		return cast this;
+
+	inline function wgpu():WebGPUBackend
+		return cast this;
+
+	public var backend(get, never):Backend;
+	public var width(get, never):Int;
+	public var height(get, never):Int;
+
+	inline function get_backend()
+		return webgl() ? gl().backend : wgpu().backend;
+
+	inline function get_width()
+		return webgl() ? gl().width : wgpu().width;
+
+	inline function get_height()
+		return webgl() ? gl().height : wgpu().height;
+
+	public inline function createBuffer(d:BufferDesc):Int
+		return webgl() ? gl().createBuffer(d) : wgpu().createBuffer(d);
+
+	public inline function writeBuffer(id:Int, offset:Int, data:haxe.io.Bytes, dataOffset:Int, size:Int)
+		webgl() ? gl().writeBuffer(id, offset, data, dataOffset, size) : wgpu().writeBuffer(id, offset, data, dataOffset, size);
+
+	public inline function createTexture(d:TextureDesc):Int
+		return webgl() ? gl().createTexture(d) : wgpu().createTexture(d);
+
+	public inline function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int)
+		webgl() ? gl().writeTexture(id, data, x, y, w, h, dataOffset, level, layer) : wgpu().writeTexture(id, data, x, y, w, h, dataOffset, level, layer);
+
+	public inline function writeTextureImage(id:Int, image:Int, release:Bool)
+		webgl() ? gl().writeTextureImage(id, image, release) : wgpu().writeTextureImage(id, image, release);
+
+	public inline function supports(f:TextureFormat):Bool
+		return webgl() ? gl().supports(f) : wgpu().supports(f);
+
+	public inline function maxTextureSize():Int
+		return webgl() ? gl().maxTextureSize() : wgpu().maxTextureSize();
+
+	public inline function generateMips(id:Int)
+		webgl() ? gl().generateMips(id) : wgpu().generateMips(id);
+
+	public inline function destroyBuffer(id:Int)
+		webgl() ? gl().destroyBuffer(id) : wgpu().destroyBuffer(id);
+
+	public inline function destroyTexture(id:Int)
+		webgl() ? gl().destroyTexture(id) : wgpu().destroyTexture(id);
+
+	public inline function createSampler(d:SamplerDesc):Int
+		return webgl() ? gl().createSampler(d) : wgpu().createSampler(d);
+
+	public inline function createShader(d:ShaderDesc):Int
+		return webgl() ? gl().createShader(d) : wgpu().createShader(d);
+
+	public inline function createPipeline(d:PipelineDesc):Int
+		return webgl() ? gl().createPipeline(d) : wgpu().createPipeline(d);
+
+	public inline function beginFrame():Bool
+		return webgl() ? gl().beginFrame() : wgpu().beginFrame();
+
+	public inline function beginPass(p:PassDesc)
+		webgl() ? gl().beginPass(p) : wgpu().beginPass(p);
+
+	public inline function setPipeline(id:Int)
+		webgl() ? gl().setPipeline(id) : wgpu().setPipeline(id);
+
+	public inline function setVertexBuffer(slot:Int, id:Int, offset:Int)
+		webgl() ? gl().setVertexBuffer(slot, id, offset) : wgpu().setVertexBuffer(slot, id, offset);
+
+	public inline function setIndexBuffer(id:Int, format:IndexFormat, offset:Int)
+		webgl() ? gl().setIndexBuffer(id, format, offset) : wgpu().setIndexBuffer(id, format, offset);
+
+	public inline function setUniforms(slot:Int, data:haxe.io.Bytes, offset:Int, size:Int)
+		webgl() ? gl().setUniforms(slot, data, offset, size) : wgpu().setUniforms(slot, data, offset, size);
+
+	public inline function setTexture(slot:Int, texture:Int, sampler:Int)
+		webgl() ? gl().setTexture(slot, texture, sampler) : wgpu().setTexture(slot, texture, sampler);
+
+	public inline function draw(vertices:Int, instances:Int, first:Int)
+		webgl() ? gl().draw(vertices, instances, first) : wgpu().draw(vertices, instances, first);
+
+	public inline function drawIndexed(count:Int, instances:Int, first:Int, baseVertex:Int)
+		webgl() ? gl().drawIndexed(count, instances, first, baseVertex) : wgpu().drawIndexed(count, instances, first, baseVertex);
+
+	public inline function endPass()
+		webgl() ? gl().endPass() : wgpu().endPass();
+
+	public inline function createQueries(count:Int):Int
+		return webgl() ? gl().createQueries(count) : wgpu().createQueries(count);
+
+	public inline function destroyQueries(id:Int)
+		webgl() ? gl().destroyQueries(id) : wgpu().destroyQueries(id);
+
+	public inline function queryResult(id:Int, k:Int):Int
+		return webgl() ? gl().queryResult(id, k) : wgpu().queryResult(id, k);
+
+	public inline function resetQuery(id:Int, k:Int)
+		webgl() ? gl().resetQuery(id, k) : wgpu().resetQuery(id, k);
+
+	public inline function beginQuery(k:Int)
+		webgl() ? gl().beginQuery(k) : wgpu().beginQuery(k);
+
+	public inline function endQuery()
+		webgl() ? gl().endQuery() : wgpu().endQuery();
+
+	public inline function endFrame()
+		webgl() ? gl().endFrame() : wgpu().endFrame();
+
+	public inline function damaged(rects:Null<Array<Int>>) {}
+
+	public inline function waitFrame() {}
+
+	public inline function paces():Bool
+		return false;
+
+	public inline function presentResult():Int
+		return 0;
+
+	public inline function gpuTime():Float
+		return -1;
+
+	public inline function software():Bool
+		return false;
+
+	public inline function readPixels(dst:haxe.io.Bytes)
+		webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);
+
+	// ---- the compute tier (Device.has: WebGL2's GLBackend has none)
+
+	public inline function has(f:Feature):Bool
+		return webgl() ? gl().has(f) : wgpu().has(f);
+
+	public inline function createComputePipeline(shader:Int):Int
+		return webgl() ? gl().createComputePipeline(shader) : wgpu().createComputePipeline(shader);
+
+	public inline function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int)
+		webgl() ? gl().readBuffer(id, offset, dst, dstOffset, size) : wgpu().readBuffer(id, offset, dst, dstOffset, size);
+
+	public inline function beginCompute()
+		webgl() ? gl().beginCompute() : wgpu().beginCompute();
+
+	public inline function setComputePipeline(id:Int)
+		webgl() ? gl().setComputePipeline(id) : wgpu().setComputePipeline(id);
+
+	public inline function setStorage(slot:Int, id:Int)
+		webgl() ? gl().setStorage(slot, id) : wgpu().setStorage(slot, id);
+
+	public inline function setStorageTexture(slot:Int, id:Int)
+		webgl() ? gl().setStorageTexture(slot, id) : wgpu().setStorageTexture(slot, id);
+
+	public inline function dispatch(x:Int, y:Int, z:Int)
+		webgl() ? gl().dispatch(x, y, z) : wgpu().dispatch(x, y, z);
+
+	public inline function dispatchIndirect(id:Int, offset:Int)
+		webgl() ? gl().dispatchIndirect(id, offset) : wgpu().dispatchIndirect(id, offset);
+
+	public inline function endCompute()
+		webgl() ? gl().endCompute() : wgpu().endCompute();
+
+	public inline function drawIndirect(id:Int, offset:Int)
+		webgl() ? gl().drawIndirect(id, offset) : wgpu().drawIndirect(id, offset);
+
+	public inline function drawIndexedIndirect(id:Int, offset:Int)
+		webgl() ? gl().drawIndexedIndirect(id, offset) : wgpu().drawIndexedIndirect(id, offset);
+
+	// (shared textures: none in a browser)
+	public inline function sharing():Null<String>
+		return null;
+
+	public inline function createShared(width:Int, height:Int):Null<{id:Int, handle:String}>
+		return null;
+
+	public inline function openShared(handle:String, width:Int, height:Int):Int
+		return 0;
+
+	public inline function frameInto(id:Int)
+		if (id != 0) throw "helder.gfx: frameInto: not in a browser";
+
+	public inline function detach() {}
+
+	public inline function presented():Bool
+		return false;
+
+	public inline function dispose()
+		webgl() ? gl().dispose() : wgpu().dispose();
 }
 #else
 import helder.gfx.d3d11.D3D11Backend;

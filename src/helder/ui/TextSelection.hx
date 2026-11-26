@@ -87,7 +87,7 @@ class TextSelection {
 		if (ia != null && ib != null && ia != ib) return "\n";
 		// (side by side in a row: inline, as a paragraph's runs around a picture)
 		var p = a.parent;
-		if (p != null && p == b.parent && (p.style.direction == Row || p.style.direction == RowReverse))
+		if (p != null && p == b.parent && (p.style.flexDirection == Row || p.style.flexDirection == RowReverse))
 			return ta == "" || tb == "" || StringTools.isSpace(ta, ta.length - 1) || StringTools.isSpace(tb, 0) ? "" : " ";
 		return "\n\n";
 	}

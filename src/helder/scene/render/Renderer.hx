@@ -761,7 +761,7 @@ class Renderer {
 	var bound:Null<Pipeline> = null;
 
 	function record(enc:Encoder) {
-		pass.colors[0].clear = clearColor;
+		helder.gfx.ColorTarget.ClearValue.set(pass.colors[0], clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 		enc.beginPass(pass);
 		bound = null;
 		for (f in hooks[BeforeOpaque])

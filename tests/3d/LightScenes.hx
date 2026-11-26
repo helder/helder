@@ -254,7 +254,7 @@ class LightScenes {
 	}
 
 	// (a light at p: kind Point or Spot, its colour, intensity, range)
-	static function light(world:World, p:Vec3, color:Vec3, intensity:Float, range:Float, kind = Light.LightKind.Point):Light {
+	static function light(world:World, p:Vec3, color:Vec3, intensity:Float, range:Float, kind = LightKind.Point):Light {
 		var n = world.node();
 		n.position = p;
 		return Light.attach(n, kind == Spot ? Light.spot(color, intensity, range, 0.3, 0.5) : Light.pointLight(color, intensity, range));

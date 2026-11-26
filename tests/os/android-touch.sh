@@ -42,7 +42,7 @@ adb wait-for-device
 adb logcat -c
 adb install -r "$apk"
 check "install AndroidTouchCheck" $?
-adb shell am start -W -n org.helder.androidtouchtest/android.app.NativeActivity
+adb shell am start -W -n org.helder.androidtouchcheck/android.app.NativeActivity
 wait_for "AndroidTouchCheck: ready" 60
 check "the window" $?
 sleep 1

@@ -10,7 +10,20 @@ import helder.ui.draw.TextureCanvas;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 
-// A video in helder.ui (<Video>, MediaTags): its Player's frame shown in
+// A video in helder.ui, <video> in markup (NodeRenderer's element_video):
+//
+//   <video src="clip.mp4" objectFit="cover" autoPlay loop muted flexGrow={1} ref={v -> video = v}/>
+//
+// src a path or a helder.media.ByteSource (a file's bytes: a MemorySource;
+// a signal: another file when it changes); objectFit, autoPlay, loop,
+// muted, volume, playbackRate; layer={true}: the system's
+// AVSampleBufferDisplayLayer where the window has system layers, not
+// helder's drawing; onLoaded, onEnded, onError, onTime (VideoEvents). Its
+// player's controls are the node's (ref): play, pause, seek, step, and its
+// time, duration and playing signals. An audio file plays the same way
+// without a box (helder.media.Player).
+//
+// Its Player's frame shown in
 // the content box as fit says (contain by default), its size the
 // picture's (upright) where the style gives none. Drawn by helder
 // (VideoTexture: the frame turned to RGB in a pass of its own, then drawn
@@ -227,7 +240,7 @@ class VideoNode extends Node {
 
 	// (the system's layer, where the window has them and it is a plain rectangle)
 	@:allow(helder.ui) override function syncNative() {
-		var want = layer && ui != null && ui.layered && style.radius == 0 && style.corners == null && player != null && player.video != null
+		var want = layer && ui != null && ui.layered && style.borderRadius == 0 && style.corners == null && player != null && player.video != null
 			&& player.video.rotation == 0;
 		if (!want && sample != null) {
 			sample.dispose();
@@ -261,8 +274,8 @@ class VideoNode extends Node {
 		if (f == null || g == null || r == null) return;
 		if (texture == null) texture = new VideoTexture(r.device);
 		var t = texture, rotation = p.video == null ? 0 : p.video.rotation;
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			if (!t.prepare(f, rotation)) return;
 			r.beforePass(t.record);
 		}
@@ -277,8 +290,8 @@ class VideoNode extends Node {
 		}
 		var dw = fit == Fill ? width : iw * k, dh = fit == Fill ? height : ih * k;
 		var dx = x + (width - dw) / 2, dy = y + (height - dh) / 2, cut = dw > width + 1e-6 || dh > height + 1e-6;
-		if (cut) canvas.pushClip(x, y, width, height, style.radius);
-		g.gpuTexture(c, id, dx, dy, dw, dh, cut ? 0 : style.radius);
+		if (cut) canvas.pushClip(x, y, width, height, style.borderRadius);
+		g.gpuTexture(c, id, dx, dy, dw, dh, cut ? 0 : style.borderRadius);
 		if (cut) canvas.popClip();
 	}
 
@@ -298,4 +311,38 @@ class VideoNode extends Node {
 		sample = null;
 		systemLayer = null;
 	}
+
+	// (markup's attributes and events, NodeRenderer's: Node.setOwn, listenOwn)
+	@:noCompletion override public function setOwn(name:String, v:Dynamic):Bool {
+		var on = v == true || v == "true" || v == "";
+		switch name {
+			case "src": open(v);
+			case "objectFit": fit = v;
+			case "autoPlay": autoplay = on;
+			case "loop": loop = on;
+			case "muted": muted = on;
+			case "volume": volume = Std.isOfType(v, String) ? Std.parseFloat(v) : v;
+			case "playbackRate": rate = Std.isOfType(v, String) ? Std.parseFloat(v) : v;
+			case "layer": layer = on;
+			case _: return false;
+		}
+		return true;
+	}
+
+	@:noCompletion override public function listenOwn(name:String, h:Dynamic):Bool {
+		switch name {
+			case "onLoaded": onLoaded = h == null ? null : () -> (h : VideoNode->Void)(this);
+			case "onEnded": onEnded = h == null ? null : () -> (h : VideoNode->Void)(this);
+			case "onError": onError = h;
+			case "onTime": onTime = h;
+			case _: return false;
+		}
+		return true;
+	}
+
+	// (registered for a name known only when it runs: a design's, TypeScript's)
+	@:keep static final registered = {
+		helder.ui.view.NodeRenderer.elements.set("video", () -> new VideoNode());
+		true;
+	};
 }

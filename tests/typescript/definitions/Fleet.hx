@@ -21,8 +21,8 @@ final fleet = story({
 });
 
 private function card(title:Signal<String>, ships:Signal<Float>, ?warning:Signal<Bool>):View
-	return View.view(<view grow={1} padding={24} row-gap={12} background="#0b1020" color="#e5e7eb" font-size={16}>
-		<text tag="title" font-size={28}>{title()}</text>
+	return View.view(<view flexGrow={1} padding={24} rowGap={12} background="#0b1020" color="#e5e7eb" fontSize={16}>
+		<text tag="title" fontSize={28}>{title()}</text>
 		<text tag="ships">{Std.int(ships()) + " ships"}</text>
 		<Show when={warning != null && warning()}><text tag="warning" color="#f59e0b">Low fuel</text></Show>
 	</view>);

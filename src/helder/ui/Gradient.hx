@@ -197,6 +197,7 @@ class Gradient {
 	// an app with a gradient keeps no rasterizer for it), straight
 	public function render(w:Int, h:Int, k:Float = 1):Image {
 		var img = new Image(w, h), px = img.pixels, g = shader(w, h, k), row = new haxe.ds.Vector<Float>(w * 4);
+		img.drawing = ({gradient: this, scale: k} : helder.ui.Drawing.ImageDrawing);
 		if (!g.begin(helder.canvas.Matrix.IDENTITY)) return img;
 		for (y in 0...h) {
 			g.shade(0, y, w, row);

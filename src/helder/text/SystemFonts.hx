@@ -165,6 +165,10 @@ class SystemFonts {
 	}
 
 	// (a face of a file the platform named: loaded once; -1: the face of a collection with cp)
+	// a file's face (index: in a collection), read once: the one already read when it was
+	public function file(path:String, index = 0):Null<FontFile>
+		return fileFace(path, index, -1);
+
 	function fileFace(path:String, index:Int, cp:Int):Null<FontFile> {
 		var key = path + "#" + index;
 		if (!loaded.exists(key)) {

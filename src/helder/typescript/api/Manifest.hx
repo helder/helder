@@ -45,7 +45,8 @@ using haxe.macro.TypeTools;
 //   Renderer: {id, node (its nodes' class path), runtime (its ViewRuntime_ class path), runtimeFunctions,
 //     elements ([tag] or null), events ({name: Type} or null), neutral, native, markEnds,
 //     functions (its statics: name -> "function" | "macro" | "const"), setters ({names: {attribute: function path},
-//     prefixes: {prefix: function path}, fallback: function path} or null)}
+//     prefixes: {prefix: function path}, fallback: function path, values: {attribute: {type, keys}}: an enum
+//     attribute's, a literal value checked by its keys, helder.ui.view.AttrNames} or null)}
 //   Type: "Int" | "Float" | "Bool" | "String" | "Void" | "Dynamic" | {null: Type} | {array: Type}
 //     | {bytes: "Uint8Array" | "Uint8ClampedArray" | "Int8Array"} (haxe.io.Bytes)
 //     | {fn: [{name, opt, t}], ret: Type} | {anon: [{name, opt, t}]} | {class: path, params: [Type]}
@@ -451,15 +452,17 @@ class Manifest {
 		// (a setter that is a macro: what it resolves, its table)
 		var setters:Dynamic = null;
 		if (Reflect.field(functions, "setter") == "macro" && Reflect.field(functions, "setterTable") == "macro") {
-			var names:Dynamic = {}, prefixes:Dynamic = {}, fallback:Null<String> = null;
+			var names:Dynamic = {}, prefixes:Dynamic = {}, fallback:Null<String> = null, values:Dynamic = {};
 			for (row in table(macro @:privateAccess $p{hpath}.setterTable())) {
+				// (an enum attribute: the keys a literal value is checked by, Tsx)
+				if (row.type != null && row.keys != null) Reflect.setField(values, row.name, {type: row.type, keys: row.keys});
 				var p = row.fn.split(".");
 				keep.push(macro keep.push(@:privateAccess $p{p}));
 				if (row.name == "*") fallback = row.fn;
 				else if (StringTools.endsWith(row.name, "*")) Reflect.setField(prefixes, row.name.substr(0, row.name.length - 1), row.fn);
 				else Reflect.setField(names, row.name, row.fn);
 			}
-			setters = {names: names, prefixes: prefixes, fallback: fallback};
+			setters = {names: names, prefixes: prefixes, fallback: fallback, values: values};
 		}
 		return {
 			id: info.id,
@@ -477,7 +480,7 @@ class Manifest {
 	}
 
 	// (a macro's table: an array of {name, fn} strings)
-	static function table(e:Expr):Array<{name:String, fn:String}> {
+	static function table(e:Expr):Array<{name:String, fn:String, ?type:String, ?keys:Array<String>}> {
 		var typed = try Context.typeExpr(e) catch (_:Dynamic) return [];
 		function str(x:TypedExpr):Null<String>
 			return switch x.expr {
@@ -488,10 +491,21 @@ class Manifest {
 		return switch typed.expr {
 			case TArrayDecl(items): [for (i in items) switch i.expr {
 					case TObjectDecl(fields):
-						var name = null, fn = null;
-						for (f in fields) if (f.name == "name") name = str(f.expr) else if (f.name == "fn") fn = str(f.expr);
+						var name = null, fn = null, type = null, keys:Null<Array<String>> = null;
+						for (f in fields)
+							switch f.name {
+								case "name": name = str(f.expr);
+								case "fn": fn = str(f.expr);
+								case "type": type = str(f.expr);
+								case "keys":
+									switch f.expr.expr {
+										case TArrayDecl(ks): keys = [for (k in ks) str(k)].filter(k -> k != null);
+										case _:
+									}
+								case _:
+							}
 						if (name == null || fn == null) continue;
-						{name: name, fn: fn};
+						{name: name, fn: fn, type: type, keys: keys};
 					case _: continue;
 				}];
 			case _: [];

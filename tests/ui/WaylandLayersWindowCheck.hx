@@ -49,22 +49,22 @@ class WaylandLayersWindowCheck {
 		sys.FileSystem.createDirectory(dir);
 		var w = new helder.ui.UiWindow("WaylandLayersWindowCheck", 400, 300);
 		var root = w.root;
-		root.style.set({direction: Column, background: 0xFFFFFFFF});
+		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();
-		header.style.set({height: 40, shrink: 0, background: 0xFF18181B, padding: 10});
+		header.style.set({height: 40, flexShrink: 0, background: 0xFF18181B, padding: 10});
 		var title = new TextNode("Header");
 		title.style.set({color: 0xFFFFFFFF, fontSize: 14});
 		header.append(title);
 		root.append(header);
 		var list = new Node();
-		list.style.set({grow: 1, minHeight: 0, width: 240, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style.set({flexGrow: 1, minHeight: 0, width: 240, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		var rows = [];
 		for (i in 0...200) {
 			var row = new Node();
 			rows.push(row);
-			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, radius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style.set({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
@@ -76,10 +76,10 @@ class WaylandLayersWindowCheck {
 		rows[40].style.position = Relative;
 		rows[40].append(slotted);
 		var round = new Node();
-		round.style.set({position: Absolute, left: 260, top: 56, width: 120, height: 100, radius: 14, overflow: Scroll, background: 0xFFFFE08A});
+		round.style.set({position: Absolute, left: 260, top: 56, width: 120, height: 100, borderRadius: 14, overflow: Scroll, background: 0xFFFFE08A});
 		for (i in 0...12) {
 			var r = new Node();
-			r.style.set({height: 20, shrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
+			r.style.set({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
 			round.append(r);
 		}
 		root.append(round);

@@ -23,6 +23,7 @@ import viewer.ViewerActions;
 // folder (the grid of thumbnails, or the list: name, date modified,
 // size, kind) or why it shows nothing (empty, still reading after
 // 300 ms, unreadable, no results), and the path bar with the count.
+@:renderer(helder.ui.view.NodeRenderer)
 class ContentView implements Markup {
 	public static inline var ROW = 30;
 	static inline var EDGE = 6;
@@ -32,8 +33,8 @@ class ContentView implements Markup {
 	// (medium: a tablet's, its sidebar a button's, its inspector a sheet's, no path bar)
 	public static function make(x:Explorer, ?medium:Read<Bool>):View {
 		var tablet:Read<Bool> = medium ?? () -> false;
-		return <view tag="main" slot="panel" grow={1} min-width={0} direction="column" overflow="hidden"
-			borders="0 0 0 1" border-color={Look.ref.line}>
+		return <view tag="main" slot="panel" flexGrow={1} minWidth={0} flexDirection="column" overflow="hidden"
+			borders="0 0 0 1" borderColor={Look.ref.line}>
 			{toolbar(x, tablet)}
 			{content(x, tablet)}
 			<Show when={!tablet()}>{pathBar(x)}</Show>
@@ -45,24 +46,24 @@ class ContentView implements Markup {
 	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser;
 		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear)
-		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={tablet() ? 52 : Shell.BAR} shrink={0} padding="0 8" drag-region
-			padding-left={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
-			borders="0 0 1 0" border-color={Look.ref.line}>
+		return <view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} height={tablet() ? 52 : Shell.BAR} flexShrink={0} padding="0 8" dragRegion
+			paddingLeft={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
+			borders="0 0 1 0" borderColor={Look.ref.line}>
 			<Show when={tablet()}>
 				<Standard.Button tag="sidebar-toggle" variant="ghost" icon={Glyphs.get("sidebar")} label="Sidebar" onPress={() -> x.sidebarOpen(true)}/>
 			</Show>
-			<view direction="row" column-gap={2}>
+			<view flexDirection="row" columnGap={2}>
 				<Standard.Button tag="back" variant="ghost" size="sm" icon={Glyphs.get("back")} label="Back" disabled={() -> !b.canBack()}
 					onPress={() -> b.goBack()}/>
 				<Standard.Button tag="forward" variant="ghost" size="sm" icon={Glyphs.get("forward")} label="Forward" disabled={() -> !b.canForward()}
 					onPress={() -> b.goForward()}/>
 			</view>
-			<view:button tag="folder-title" slot="title-button" role="button" focusable label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
+			<button tag="folder-title" slot="title-button" aria-label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
 				ref={(n:Node) -> Menus.button(n, () -> enclosing(x))}>
-				<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
-				<image src={Glyphs.get("down")} width={14} height={14} shrink={0} color={Look.ref.fg3}/>
-			</view:button>
-			<view grow={1}/>
+				<text lineClamp={1} textOverflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
+				<image src={Glyphs.get("down")} width={14} height={14} flexShrink={0} color={Look.ref.fg3}/>
+			</button>
+			<view flexGrow={1}/>
 			<Show when={x.openFolder != null}>
 				<Standard.Button tag="open-folder" variant="ghost" size="sm" icon={Glyphs.get("folder")} label="Open folder"
 					onPress={() -> if (x.openFolder != null) x.openFolder()}>Open folder</Standard.Button>
@@ -71,10 +72,10 @@ class ContentView implements Markup {
 				<Standard.Button tag="search" variant="ghost" size="sm" icon={Glyphs.get("search")} label="Search" onPress={() -> b.searching(true)}/>
 			</Show>
 			<Show when={b.searching()}>{search(x)}</Show>
-			<view:button tag="view-menu" slot="tool" role="button" focusable label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
+			<button tag="view-menu" slot="tool" aria-label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
 				<image src={() -> Glyphs.get(b.layout() == Grid ? "grid" : "list")} width={16} height={16}/>
 				<image src={Glyphs.get("down")} width={12} height={12}/>
-			</view:button>
+			</button>
 			<Show when={!tablet()}>
 				<Standard.Button tag="inspector-toggle" variant="ghost" size="sm" icon={Glyphs.get("info")} label="Inspector" selected={() -> b.inspector()}
 					onPress={() -> b.inspector(!b.inspector.value)}/>
@@ -91,9 +92,9 @@ class ContentView implements Markup {
 	static function search(x:Explorer):View {
 		var b = x.browser;
 		// (Look's composite field: one ring round the box while the field has the focus)
-		return <view tag="search-box" slot="field-box" width={196} height={30} shrink={0} radius={8} key-context="search">
+		return <view tag="search-box" slot="field-box" width={196} height={30} flexShrink={0} borderRadius={8} keyContext="search">
 			<image src={Glyphs.get("search")} width={14} height={14} color={Look.ref.fg3}/>
-			<field tag="search-field" slot="field-box-input" value={() -> b.query()} placeholder="Search" label="Search this folder" font-size={13}
+			<field tag="search-field" slot="field-box-input" value={() -> b.query()} placeholder="Search" aria-label="Search this folder" fontSize={13}
 				onInput={e -> b.search(e.text)}
 				onKeyDown={e -> if (e.key == helder.ui.Key.ESCAPE) {
 					b.closeSearch();
@@ -103,9 +104,9 @@ class ContentView implements Markup {
 					false;
 				})}/>
 			<Show when={b.query() != ""}>
-				<view:button role="button" label="Clear" onPress={() -> b.search("")}>
+				<button aria-label="Clear" onPress={() -> b.search("")}>
 					<image src={Glyphs.get("x")} width={14} height={14} color={Look.ref.fg3}/>
-				</view:button>
+				</button>
 			</Show>
 		</view>;
 	}
@@ -147,14 +148,14 @@ class ContentView implements Markup {
 			});
 		});
 		// (a picture flying from it: the folder darker behind, depth, the sidebar and the bars still)
-		return <view tag="content" grow={1} min-height={0}>
+		return <view tag="content" flexGrow={1} minHeight={0}>
 			{list(x, tablet)}
 			<Show when={b.error() != ""}>{States.error(x)}</Show>
 			<Show when={b.error() == "" && !b.reading() && b.total() == 0}>{States.empty(x)}</Show>
 			<Show when={b.error() == "" && b.query() != "" && b.items().length == 0 && !b.reading()}>{States.noResults(x)}</Show>
 			<Show when={slow()}>{States.slow(x)}</Show>
 			<Show when={x.zoom.flying() != ""}>
-				<view tag="depth" position="absolute" inset={0} pointer-events="none" background="#000000" opacity={Flight.DEPTH_DIM * x.zoom.shown()}/>
+				<view tag="depth" position="absolute" inset={0} pointerEvents="none" background="#000000" opacity={Flight.DEPTH_DIM * x.zoom.shown()}/>
 			</Show>
 		</view>;
 	}
@@ -223,8 +224,8 @@ class ContentView implements Markup {
 		}
 		// (the folder's own space: what is dropped on it, into the folder shown)
 		// (the last folder's rows, this one slow to read: as they were (a dim would blink), not pressed)
-		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"}
-			pointer-events={b.waiting() ? "none" : "auto"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
+		return <view tag="list" flexGrow={1} minHeight={0} display={b.error() != "" ? "none" : "flex"}
+			pointerEvents={b.waiting() ? "none" : "auto"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
 			<Show when={b.layout() == List}>
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
@@ -247,16 +248,16 @@ class ContentView implements Markup {
 	static function header(x:Explorer):View {
 		var b = x.browser;
 		function column(label:String, key:Listing.SortKey, width:Float, right:Bool):View
-			return <view:button slot="head-cell" role="button" focusable label={"Sort by " + label} width={width > 0 ? width : "auto"} grow={width > 0 ? 0 : 1}
-				shrink={width > 0 ? 0 : 1} justify={right ? "flex-end" : "flex-start"} data-selected={b.order().key == key} onPress={() -> b.sortBy(key)}>
-				<text max-lines={1}>{label}</text>
+			return <button slot="head-cell" aria-label={"Sort by " + label} width={width > 0 ? width : "auto"} flexGrow={width > 0 ? 0 : 1}
+				flexShrink={width > 0 ? 0 : 1} justifyContent={right ? "flex-end" : "flex-start"} data-selected={b.order().key == key} onPress={() -> b.sortBy(key)}>
+				<text lineClamp={1}>{label}</text>
 				<Show when={b.order().key == key}>
 					<image src={() -> Glyphs.get(b.order().ascending ? "up" : "down")} width={12} height={12}/>
 				</Show>
-			</view:button>;
-		return <view tag="list-head" direction="row" align-items="center" column-gap={12} height={30} shrink={0} padding="0 20 0 16"
-			borders="0 0 1 0" border-color={Look.ref.line} font-size={11.5} font-weight={500} color={Look.ref.fg3}>
-			<view grow={1} min-width={0} padding-left={28} direction="row">{column("Name", Name, 0, false)}</view>
+			</button>;
+		return <view tag="list-head" flexDirection="row" alignItems="center" columnGap={12} height={30} flexShrink={0} padding="0 20 0 16"
+			borders="0 0 1 0" borderColor={Look.ref.line} fontSize={11.5} fontWeight={500} color={Look.ref.fg3}>
+			<view flexGrow={1} minWidth={0} paddingLeft={28} flexDirection="row">{column("Name", Name, 0, false)}</view>
 			{column("Date modified", Modified, 156, false)}
 			{column("Size", Size, 84, true)}
 			{column("Kind", Kind, 124, false)}
@@ -273,17 +274,17 @@ class ContentView implements Markup {
 			DragOut.from(x, n, () -> e().name);
 			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
 		}}>
-			<view direction="row" align-items="center" column-gap={8} grow={1} min-width={0}>
+			<view flexDirection="row" alignItems="center" columnGap={8} flexGrow={1} minWidth={0}>
 				{Tiles.mini(x, e)}
 				<Show when={b.renaming() == e().name}>{() -> NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""))}</Show>
 				<Show when={b.renaming() != e().name}>
-					<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="middle" color={on() ? Look.ref.accentFg : Look.ref.fg}
-						dir={helder.ui.Dir.Ltr}>{e().name}</text>
+					<text tag="name" flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="middle" color={on() ? Look.ref.accentFg : Look.ref.fg}
+						direction={helder.ui.Dir.Ltr}>{e().name}</text>
 				</Show>
 			</view>
-			<text width={156} shrink={0} max-lines={1}>{Kinds.date(e().modified)}</text>
-			<text width={84} shrink={0} max-lines={1} text-align="right">{e().kind == Folder ? "—" : Kinds.size(e().size)}</text>
-			<text width={124} shrink={0} max-lines={1} text-overflow="ellipsis">{Kinds.kind(e())}</text>
+			<text width={156} flexShrink={0} lineClamp={1}>{Kinds.date(e().modified)}</text>
+			<text width={84} flexShrink={0} lineClamp={1} textAlign="right">{e().kind == Folder ? "—" : Kinds.size(e().size)}</text>
+			<text width={124} flexShrink={0} lineClamp={1} textOverflow="ellipsis">{Kinds.kind(e())}</text>
 		</view>;
 	}
 
@@ -300,9 +301,9 @@ class ContentView implements Markup {
 		}
 		function segments():Array<PathSegment>
 			return [for (p in folders()) ({label: s.title(p), icon: icon(x, p)} : PathSegment)];
-		return <view tag="pathbar" direction="row" align-items="center" height={FOOT} shrink={0} padding="0 8 0 4" borders="1 0 0 0"
-			border-color={Look.ref.line}>
-			<view grow={1} min-width={0}>
+		return <view tag="pathbar" flexDirection="row" alignItems="center" height={FOOT} flexShrink={0} padding="0 8 0 4" borders="1 0 0 0"
+			borderColor={Look.ref.line}>
+			<view flexGrow={1} minWidth={0}>
 				<Standard.PathBar segments={segments} text={() -> b.dir()} editing={x.editingPath}
 					onNavigate={i -> {
 						var f = folders();
@@ -312,7 +313,7 @@ class ContentView implements Markup {
 					onSubmit={text -> x.start(text)}/>
 			</view>
 			<Show when={b.reading()}><view margin="0 8 0 0" color={Look.ref.fg3}>{States.spinner(12)}</view></Show>
-			<text tag="count" font-size={12} color={Look.ref.fg3} shrink={0} padding="0 6 0 0">{() -> count(x)}</text>
+			<text tag="count" fontSize={12} color={Look.ref.fg3} flexShrink={0} padding="0 6 0 0">{() -> count(x)}</text>
 		</view>;
 	}
 

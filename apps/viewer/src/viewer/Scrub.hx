@@ -24,11 +24,11 @@ class Scrub {
 		this.seek = seek;
 		var t = helder.ui.controls.Look.ref;
 		node = new Node();
-		node.style.set({height: 14, justify: Center});
+		node.style.set({height: 14, justifyContent: Center});
 		var track = new Node();
-		track.style.set({height: 4, radius: 2, background: t.fill});
+		track.style.set({height: 4, borderRadius: 2, background: t.fill});
 		done = new Node();
-		done.style.set({height: 4, radius: 2, background: t.fg, width: 0});
+		done.style.set({height: 4, borderRadius: 2, background: t.fg, width: 0});
 		track.append(done);
 		node.append(track);
 		node.onPointerDown = e -> {

@@ -124,10 +124,12 @@ import './probe.js';
 import { run } from './os/browser.mjs';
 window.log = [];
 window.frames = [];
+window.ran = [];
 window.resizes = [];
 const loop = (t) => {
 	requestAnimationFrame(loop);
 	window.frames.push(performance.timeOrigin + t);
+	window.ran.push(performance.timeOrigin + performance.now());
 };
 requestAnimationFrame(loop);
 window.start = async (gfx, worker) => {
@@ -200,7 +202,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			const r = window.resizes[window.resizes.length - 1], d = window.drawn[window.drawn.length - 1];
 			return r && d && r[1] === d[1] && r[2] === d[2];
 		}, null, { timeout: 5000 }).catch(() => {});
-		const { frames, resizes, drawn, trace } = await p.evaluate(() => ({ frames: window.frames, resizes: window.resizes, drawn: window.drawn, trace: window.trace }));
+		const { frames, ran, resizes, drawn, trace } = await p.evaluate(() => ({ frames: window.frames, ran: window.ran, resizes: window.resizes, drawn: window.drawn, trace: window.trace }));
 		const times = [];
 		for (let i = 0; i < frames.length - 1; i++) if (frames[i] >= t0) times.push(frames[i + 1] - frames[i]);
 		let shown = 0, stale = 0;
@@ -233,12 +235,26 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const last = resizes[resizes.length - 1], end = drawn[drawn.length - 1];
 		const settled = !!end && end[1] === last[1] && end[2] === last[2];
 		// (none drawn at a size the page had not laid out by the end of its frame: on
-		// the page's thread the program draws in its observer, before the test's)
-		const by = (t) => frames.find((f) => f > t) ?? Infinity;
+		// the page's thread the program draws in its observer, before the test's;
+		// the frame ends when the next one's callbacks run, not at its timestamp,
+		// its begin, which comes before the last frame's observers when late)
+		const by = (t) => ran.find((f) => f > t) ?? Infinity;
 		const odd = drawn.filter((d) => d[0] > t0 && !resizes.some((r) => r[0] <= by(d[0]) && r[1] === d[1] && r[2] === d[2])).length;
-		// (a worker's canvas resized and not drawn within 50 ms: shown cleared)
+		// (a worker's canvas resized and not drawn within 50 ms: shown cleared.
+		// One resize is the sets that follow one another undrawn (its width's,
+		// then its height's), its 50 ms from the end of the last: each clears
+		// and allocates the canvas, on SwiftShader up to 54 ms a set, and the
+		// worker draws as soon as the last returns; from the first's end, the
+		// height's own set was counted as the canvas shown cleared, #217's
+		// and viewer-look's runs: drawn 0.6 and 0.9 ms after the height's set)
 		const sets = trace.filter((e) => e[0] > t0 && e[1].startsWith('canvas.'));
-		const blank = sets.filter((e) => !drawn.some((d) => d[0] > e[0] && d[0] < e[0] + e[3] + 50)).length;
+		const undrawn = (a, b) => !drawn.some((d) => d[0] > a && d[0] < b);
+		const ends = sets.map((e, i) => {
+			let end = e[0] + e[3];
+			for (let j = i + 1; j < sets.length && sets[j][0] <= end + 50 && undrawn(e[0], sets[j][0]); j++) end = Math.max(end, sets[j][0] + sets[j][3]);
+			return end;
+		});
+		const blank = sets.filter((e, i) => undrawn(e[0], ends[i] + 50)).length;
 		const longest = gaps[gaps.length - 1] ?? 0;
 		// (on a GPU: a frame, the page's median (1 ms more: the two threads' clocks), the most a stale one's draw may come late)
 		const soft = /SwiftShader/.test(renderer), frame = times[times.length >> 1] + 1;

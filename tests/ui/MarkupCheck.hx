@@ -73,9 +73,9 @@ class MarkupCheck implements Markup {
 
 	static function Counter(props:{start:Int, ?label:String}):View {
 		var count = signal(props.start);
-		return <view direction="row" column-gap={4}>
+		return <view flexDirection="row" columnGap={4}>
 			<text>{props.label ?? "count"}: {count}</text>
-			<view tag="inc" focusable onClick={_ -> count(c -> c + 1)} padding={2}>+</view>
+			<view tag="inc" focusable onPress={_ -> count(c -> c + 1)} padding={2}>+</view>
 		</view>;
 	}
 
@@ -107,8 +107,8 @@ class MarkupCheck implements Markup {
 	static function rightToLeft() {
 		var ui = new Ui(new MonoText(), 300, 200);
 		var dir = signal("rtl"), name = signal("Ada");
-		Render.render(<view dir={dir} padding={10} row-gap={6}>
-			<view tag="row" direction="row" column-gap={4}><view tag="a" width={40} height={20}/><view tag="b" width={30} height={20}/></view>
+		Render.render(<view direction={dir} padding={10} rowGap={6}>
+			<view tag="row" flexDirection="row" columnGap={4}><view tag="a" width={40} height={20}/><view tag="b" width={30} height={20}/></view>
 			<text tag="words">Hello</text>
 			<field tag="name" value={name}/>
 		</view>, ui.root);
@@ -132,7 +132,7 @@ class MarkupCheck implements Markup {
 	static function autoMargins() {
 		var ui = new Ui(new MonoText(), 300, 200);
 		Render.render(<view>
-			<view direction="row" height={30}><view tag="a" width={40} height={20}/><view tag="b" width={40} height={20} margin="0 0 0 auto"/></view>
+			<view flexDirection="row" height={30}><view tag="a" width={40} height={20}/><view tag="b" width={40} height={20} margin="0 0 0 auto"/></view>
 			<view tag="c" width={100} height={20} margin={[0, Edges.AUTO]}/>
 		</view>, ui.root);
 		ui.update();
@@ -152,17 +152,17 @@ class MarkupCheck implements Markup {
 		ui.update();
 		var holder = ui.root.find("holder"), none = ui.root.find("none"), fill = ui.root.find("fill"), abs = ui.root.find("abs");
 		check("shorthands: gap \"4 8\"", holder.style.rowGap == 4 && holder.style.columnGap == 8);
-		check("shorthands: flex none and three values", none.style.grow == 0 && none.style.shrink == 0 && fill.style.grow == 2 && fill.style.shrink == 0
-			&& fill.style.basis.resolve(0) == 40);
+		check("shorthands: flex none and three values", none.style.flexGrow == 0 && none.style.flexShrink == 0 && fill.style.flexGrow == 2 && fill.style.flexShrink == 0
+			&& fill.style.flexBasis.resolve(0) == 40);
 		check("shorthands: inset \"5 10\"", abs.absX == 10 && abs.absY == 5 && abs.width == 280 && abs.height == 190, abs.absX + " " + abs.absY + " " + abs.width + " " + abs.height);
 	}
 
 	// align-items: baseline: texts of two sizes on one baseline (MonoText's: four fifths down a line)
 	static function baselines() {
 		var ui = new Ui(new MonoText(), 300, 200);
-		Render.render(<view direction="row" align-items="baseline" line-height={1}>
-			<text tag="small" font-size={10}>small</text>
-			<text tag="big" font-size={20}>big</text>
+		Render.render(<view flexDirection="row" alignItems="baseline" lineHeight={1}>
+			<text tag="small" fontSize={10}>small</text>
+			<text tag="big" fontSize={20}>big</text>
 			<view tag="box" width={10} height={5}/>
 		</view>, ui.root);
 		ui.update();
@@ -175,9 +175,9 @@ class MarkupCheck implements Markup {
 	static function wordBreaks() {
 		var ui = new Ui(new MonoText(), 300, 200);
 		var wb = signal("break-all");
-		Render.render(<view overflow-wrap="anywhere" word-break={wb}>
+		Render.render(<view overflowWrap="anywhere" wordBreak={wb}>
 			<text tag="t">abc</text>
-			<view overflow-wrap="normal"><text tag="u">def</text></view>
+			<view overflowWrap="normal"><text tag="u">def</text></view>
 		</view>, ui.root);
 		ui.update();
 		var t = ui.root.find("t").font(), u = ui.root.find("u").font();
@@ -193,7 +193,7 @@ class MarkupCheck implements Markup {
 	static function liveRegions() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		var msg = signal("");
-		Render.render(<view padding={10}><view tag="status" live="polite"><text>{msg}</text></view></view>, ui.root);
+		Render.render(<view padding={10}><view tag="status" aria-live="polite"><text>{msg}</text></view></view>, ui.root);
 		ui.update();
 		var t0 = ui.accessTree();
 		msg("Saved");
@@ -217,7 +217,7 @@ class MarkupCheck implements Markup {
 	static function fieldKeyboard() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		var sent = "";
-		Render.render(<view><field tag="f" value="me" keyboard="email" enterkey="send" autocapitalize="words" autocorrect={true} autocomplete="new-password" type="password"
+		Render.render(<view><field tag="f" value="me" keyboard="email" enterKeyHint="send" autoCapitalize="words" autoCorrect={true} autoComplete="new-password" type="password"
 			onSubmit={e -> sent = e.text}/></view>, ui.root);
 		ui.update();
 		var f:TextField = cast ui.root.find("f"), k = f.textKind();
@@ -230,7 +230,7 @@ class MarkupCheck implements Markup {
 	static function password() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		var pw = signal("hunter2");
-		Render.render(<view padding={10}><field tag="pw" value={pw} type="password" label="Password" onInput={e -> pw(e.text)}/></view>, ui.root);
+		Render.render(<view padding={10}><field tag="pw" value={pw} type="password" aria-label="Password" onInput={e -> pw(e.text)}/></view>, ui.root);
 		ui.update();
 		var f:TextField = cast ui.root.find("pw");
 		var clip:helder.ui.ClipboardHost.MemoryClipboard = cast ui.clipboard;
@@ -250,7 +250,7 @@ class MarkupCheck implements Markup {
 	static function focusEvents() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		var log = [];
-		Render.render(<view padding={20} row-gap={10} onFocusIn={e -> log.push("in " + e.target.tag)} onFocusOut={e -> log.push("out " + e.target.tag)}>
+		Render.render(<view padding={20} rowGap={10} onFocusIn={e -> log.push("in " + e.target.tag)} onFocusOut={e -> log.push("out " + e.target.tag)}>
 			<Button tag="first" label="First"/>
 			<view><Button tag="save" label="Save"/></view>
 		</view>, ui.root);
@@ -272,7 +272,7 @@ class MarkupCheck implements Markup {
 	static function popovers() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		var open = signal(false), at = signal(false), dismissed = 0;
-		Render.render(<view padding={10} row-gap={10} align-items="start">
+		Render.render(<view padding={10} rowGap={10} alignItems="start">
 			<view tag="anchor" width={60} height={20}>
 				<Popover open={open} placement="below" onDismiss={() -> {
 					dismissed++;
@@ -311,18 +311,18 @@ class MarkupCheck implements Markup {
 
 	static function neutral() {
 		var ui = new Ui(new MonoText(), 400, 300);
-		// (the neutral elements, as a page's renderer would realise them: view:button a view, text:p a text,
+		// (the neutral elements, as a page's renderer would realise them: button a view, p a text,
 		// onPress a click or Enter or Space unless onKeyDown took it; a ref a Part: the node)
 		var presses = 0, part:Null<Part> = null, keys = 0;
 		var host = new Node("host");
 		ui.root.append(host);
-		Render.render(<view:button tag="nb" slot="neutral" id="page-only" focusable onPress={_ -> presses++} ref={p -> part = p}
+		Render.render(<button tag="nb" slot="neutral" id="page-only" onPress={_ -> presses++} ref={p -> part = p}
 			onKeyDown={e -> if (e.key == Key.SPACE) {
 				keys++;
 				e.preventDefault();
 			}}>
-			<text:p tag="np">Go</text:p>
-		</view:button>, host);
+			<p tag="np">Go</p>
+		</button>, host);
 		ui.update();
 		var nb = ui.root.find("nb"), np = ui.root.find("np");
 		ui.pointerDown(nb.absX + 2, nb.absY + 2, 1);
@@ -330,7 +330,7 @@ class MarkupCheck implements Markup {
 		part.focus();
 		ui.keyDown(Key.ENTER, 0);
 		ui.keyDown(Key.SPACE, 0);
-		check("neutral elements: view:button a view, text:p a text, onPress by a click and Enter, not a Space onKeyDown took",
+		check("neutral elements: button a view, p a text, onPress by a click and Enter, not a Space onKeyDown took",
 			nb != null && !Std.isOfType(nb, TextNode) && Std.isOfType(np, TextNode) && (cast np : TextNode).text == "Go" && nb.slot == "neutral" && presses == 2
 			&& keys == 1 && part == nb && ui.focus == nb, presses + " " + keys + " " + (part == nb));
 		// (an icon: lucide's of that name, an Svg drawn in the node's colour; mirrored right to left)
@@ -368,11 +368,11 @@ class MarkupCheck implements Markup {
 			]
 		};
 		Render.render(<view padding={10}>
-			<view:fieldset tag="set" slot="field-set">
-				<text:legend tag="legend" slot="field-legend" variant="legend">Profile</text:legend>
-				<Show when={first}><text:p tag="d0" slot="field-description">Before</text:p></Show>
-				<text:p tag="d1" slot="field-description">About</text:p>
-			</view:fieldset>
+			<fieldset tag="set" slot="field-set">
+				<legend tag="legend" slot="field-legend" variant="legend">Profile</legend>
+				<Show when={first}><p tag="d0" slot="field-description">Before</p></Show>
+				<p tag="d1" slot="field-description">About</p>
+			</fieldset>
 		</view>, ui.root);
 		ui.update();
 		var legend = ui.root.find("legend"), d0 = ui.root.find("d0"), d1 = ui.root.find("d1");
@@ -390,8 +390,8 @@ class MarkupCheck implements Markup {
 	static function statesStyle() {
 		var ui = new Ui(new MonoText(), 400, 300), ticked = signal(false);
 		ui.theme = {rules: [{slot: "button", style: {background: Color.rgb(0x111111), padding: 4}}]};
-		Render.render(<view align-items="start" padding={10}>
-			<view:button tag="b" slot="button" focusable states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : StyleProps)}>Go</view:button>
+		Render.render(<view alignItems="start" padding={10}>
+			<button tag="b" slot="button" states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : StyleProps)}>Go</button>
 			<view tag="c" data-state={() -> ticked() ? "checked" : "unchecked"} states={(s:States) -> (s.attr("data-state")() == "checked" ? {opacity: 0.5} : {} : StyleProps)}/>
 			<glass tag="g" width={40} height={20} states={(s:States) -> (s.hovered() ? {opacity: 0.5} : {} : StyleProps)}/>
 		</view>, ui.root);
@@ -424,8 +424,8 @@ class MarkupCheck implements Markup {
 	static function documentNames() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		Render.render(<view padding={10}>
-			<text tag="docs" href="https://hxmc.dev/docs" focusable>Docs</text>
-			<view tag="chapter" break-before="page" break-inside="avoid" page="wide" height={20}/>
+			<a tag="docs" href="https://hxmc.dev/docs" focusable>Docs</a>
+			<view tag="chapter" breakBefore="page" breakInside="avoid" page="wide" height={20}/>
 		</view>, ui.root);
 		ui.update();
 		var link = ui.root.find("docs"), t = ui.accessTree();
@@ -634,14 +634,14 @@ class MarkupCheck implements Markup {
 		check("list selection: a keyed row keeps its state when moved", list.rowAt(0).node.attr("data-selected") == "true" && s.focusIndex() == 0);
 		dispose();
 		var picked = "";
-		var legacy = Render.render(<VirtualList each={items} itemHeight={24} height={144} onActivate={item -> picked = item.toUpperCase()}>{(item, i) ->
+		var plain = Render.render(<VirtualList each={items} itemHeight={24} height={144} onActivate={rows -> picked = items()[rows[0]].toUpperCase()}>{(item, i) ->
 			<text>{item()}</text>}</VirtualList>, ui.root);
 		ui.update();
 		ui.pointerDown(10, 12, 1);
 		ui.pointerUp(10, 12, 1);
 		ui.keyDown(Key.ENTER, 0);
-		check("list selection: legacy activation still receives its item", picked == "ELM");
-		legacy();
+		check("list: activation without a selection gives the row's index", picked == "ELM");
+		plain();
 	}
 
 	static function virtual() {
@@ -883,11 +883,11 @@ class MarkupCheck implements Markup {
 		var saved = 0;
 		Render.render(<view>
 			<text>Settings</text>
-			<Button tag="save" label="Save" onClick={() -> saved++}/>
+			<Button tag="save" label="Save" onPress={() -> saved++}/>
 			<Checkbox tag="check" checked={checked} label="Remember"/>
 			<Slider tag="vol" value={vol} step={0.1} label="Volume"/>
-			<field tag="name" value={name} placeholder="Name" label="Name" onInput={e -> name(e.text)}/>
-			<view><text>nested</text><image label="a picture" src={new Image(4, 4)} width={4} height={4}/></view>
+			<field tag="name" value={name} placeholder="Name" aria-label="Name" onInput={e -> name(e.text)}/>
+			<view><text>nested</text><image aria-label="a picture" src={new Image(4, 4)} width={4} height={4}/></view>
 		</view>, ui.root);
 		ui.update();
 		var t = ui.accessTree();
@@ -989,7 +989,7 @@ class MarkupCheck implements Markup {
 		var ui = new Ui(null, 300, 400), canvas = new UiCheck.Recording();
 		var items = signal(["a", "b", "c"]);
 		made = disposed = 0;
-		Render.render(<view tag="list" motion="snappy" motion-opacity="calm" lead="lead" trail="0.5 0.1">
+		Render.render(<view tag="list" motion="snappy" motionOpacity="calm" lead="lead" trail="0.5 0.1">
 			<For each={items}>{(s:Read<String>) -> <TrackRow name={s}/>}</For>
 			<view tag="pinned" ride="trailing" matched="m" instant/>
 		</view>, ui.root);
@@ -1190,7 +1190,7 @@ class MarkupCheck implements Markup {
 		check("Show: made again when chosen again", made == 2, '$made');
 		// Errored: an error while rendering, one later, reset
 		var fail = signal(false);
-		Render.render(<view tag="boundary"><Errored fallback={(e:Dynamic, reset:Void->Void) -> <text tag="fallback" onClick={_ -> reset()}>{"error: " + e}</text>}>
+		Render.render(<view tag="boundary"><Errored fallback={(e:Dynamic, reset:Void->Void) -> <text tag="fallback" onPress={_ -> reset()}>{"error: " + e}</text>}>
 			<Thrower when={fail}/>
 		</Errored></view>, ui.root);
 		var bd = ui.root.find("boundary");
@@ -1225,7 +1225,7 @@ class MarkupCheck implements Markup {
 		var shown = signal(true);
 		var made = 0;
 		var dispose = Render.render(<view padding="4 8" background="#eeeeee">
-			<view tag="row" direction="row" justify="space-between" width={() -> wide() ? 200 : 100}>
+			<view tag="row" flexDirection="row" justifyContent="space-between" width={() -> wide() ? 200 : 100}>
 				Hello {name}!
 			</view>
 			<Counter start={1}/>
@@ -1241,7 +1241,7 @@ class MarkupCheck implements Markup {
 		var top = ui.root.children[0];
 		check("render: a view with its style", top.style.background == Color.rgb(0xEEEEEE) && top.style.padding.left == 8);
 		var row = top.find("row");
-		check("render: style attributes", row.style.direction == Row && row.style.justify == SpaceBetween && row.width == 100, '$row');
+		check("render: style attributes", row.style.flexDirection == Row && row.style.justifyContent == SpaceBetween && row.width == 100, '$row');
 		var hello:TextNode = cast row.children[0];
 		check("render: a text run is one TextNode", row.children.length == 1 && hello.text == "Hello Ann!", [for (c in row.children) c.tag].join(","));
 		name("Bo");
@@ -1287,13 +1287,13 @@ class MarkupCheck implements Markup {
 		check("render: and stops its effects", hello.text == "Hello Bo!");
 		// attributes generated from Style's properties (StyleAttrs)
 		var styled:Null<Node> = null;
-		Render.render(<view ref={n -> styled = n} position="sticky" justify="flex-start" align-content="space-between" cursor="ew-resize" grid-auto-flow="column"
-			font-weight="700" italic aspect-ratio={2} text-align="center" padding="8 12" min-width="50%" border-color="red" shadow="0 2 8 #00000040"
-			text-shadow="1px 1px 2px red" outline="2px solid red" outline-offset={3}/>, ui.root);
+		Render.render(<view ref={n -> styled = n} position="sticky" justifyContent="flex-start" alignContent="space-between" cursor="ew-resize" gridAutoFlow="column"
+			fontWeight="700" fontStyle="italic" aspectRatio={2} textAlign="center" padding="8 12" minWidth="50%" borderColor="red" boxShadow="0 2 8 #00000040"
+			textShadow="1px 1px 2px red" outline="2px solid red" outlineOffset={3}/>, ui.root);
 		var st = styled.style;
-		check("render: Style's properties as attributes", st.position == Position.Sticky && st.justify == Justify.Start && st.alignContent == AlignContent.SpaceBetween && st.cursor == Cursor.ResizeEW
-			&& st.gridAutoFlow == Grid.GridFlow.Column && st.fontWeight == 700 && st.italic == true && st.aspectRatio == 2 && st.textAlign == TextAlign.Center
-			&& st.padding.left == 12 && st.borderColor == Color.parse("red") && st.shadow != null
+		check("render: Style's properties as attributes", st.position == Position.Sticky && st.justifyContent == Justify.Start && st.alignContent == AlignContent.SpaceBetween && st.cursor == Cursor.ResizeEW
+			&& st.gridAutoFlow == Grid.GridFlow.Column && st.fontWeight == 700 && st.fontStyle == FontStyle.Italic && st.aspectRatio == 2 && st.textAlign == TextAlign.Center
+			&& st.padding.left == 12 && st.borderColor == Color.parse("red") && st.boxShadow != null
 			&& st.textShadow != null && st.textShadow.blur == 2 && st.textShadow.color == Color.parse("red") && !st.textShadow.currentColor
 			&& st.outlineWidth == 2 && st.outlineColor == Color.parse("red") && st.outlineOffset == 3);
 		helder.ui.view.StyleAttrs.apply(st, "outline", "none");
@@ -1304,34 +1304,36 @@ class MarkupCheck implements Markup {
 		check("render: outline=\"none\", a style it lacks thrown", st.outlineWidth == 0 && badOutline);
 		// font-feature-settings: inherited into the font, "normal" the default ones, a mistake thrown
 		var featured:Null<Node> = null, inner:Null<Node> = null, plain:Null<Node> = null;
-		Render.render(<view ref={n -> featured = n} font-feature-settings="'tnum', 'liga' 0"><text ref={n -> inner = n}>12</text><view font-feature-settings="normal"><text ref={n -> plain = n}>34</text></view></view>, ui.root);
+		Render.render(<view ref={n -> featured = n} fontFeatureSettings="'tnum', 'liga' 0"><text ref={n -> inner = n}>12</text><view fontFeatureSettings="normal"><text ref={n -> plain = n}>34</text></view></view>, ui.root);
 		var badFeature = try {
 			featured.style.fontFeatureSettings = "tnum";
 			false;
 		} catch (e:Dynamic) true;
 		var numeric:Null<Node> = null;
-		Render.render(<view font-variant-numeric="tabular-nums slashed-zero" font-feature-settings="'zero' 0"><text ref={n -> numeric = n}>10</text></view>, ui.root);
+		Render.render(<view fontVariantNumeric="tabular-nums slashed-zero" fontFeatureSettings="'zero' 0"><text ref={n -> numeric = n}>10</text></view>, ui.root);
 		var badNumeric = try {
 			numeric.style.fontVariantNumeric = "tabular";
 			false;
 		} catch (e:Dynamic) true;
 		var slotted:Null<Node> = null, checkedNow = signal("checked");
-		Render.render(<view ref={n -> slotted = n} slot="button" variant="outline" size="sm" data-state={() -> checkedNow()} data-disabled={true} aria-invalid="true"/>, ui.root);
+		Render.render(<view ref={n -> slotted = n} slot="button" variant="outline" size="sm" data-state={() -> checkedNow()} data-disabled={true} aria-invalid={true}/>, ui.root);
 		var firstState = slotted.attr("data-state");
 		checkedNow("unchecked");
 		flush();
 		check("render: slot, variant, size and data-/aria- attributes (reactive)", slotted.slot == "button" && slotted.variant == "outline" && slotted.size == "sm"
 			&& firstState == "checked" && slotted.attr("data-state") == "unchecked" && slotted.attr("data-disabled") == "" && slotted.attr("aria-invalid") == "true");
 		var pic:Null<Node> = null;
-		Render.render(<image ref={n -> pic = n} src={new Image(4, 4)} width={10} height={10} fit="contain" object-position="right 2px top"/>, ui.root);
+		Render.render(<image ref={n -> pic = n} src={new Image(4, 4)} width={10} height={10} objectFit="contain" objectPosition="right 2px top"/>, ui.root);
 		var pn:ImageNode = cast pic;
 		check("render: an image's object-position", pn.positionX == 1 && pn.offsetX == -2 && pn.positionY == 0 && pn.offsetY == 0);
 		check("render: font-variant-numeric as features, font-feature-settings after them", numeric.font().features == "'tnum', 'zero', 'zero' 0" && badNumeric
 			&& helder.text.FontFeature.key(helder.text.FontFeature.parse(numeric.font().features)) == "tnum=1,zero=0", numeric.font().features);
 		check("render: font-feature-settings, inherited", inner.font().features == "'tnum', 'liga' 0" && plain.font().features == "" && badFeature
 			&& !inner.font().equals(plain.font()));
+		// (a value known at run time: a literal one is refused at compile time)
+		var side = "sideways";
 		var bad = try {
-			Render.render(<view justify="sideways"/>, ui.root);
+			Render.render(<view justifyContent={side}/>, ui.root);
 			"";
 		} catch (e:Dynamic) Std.string(e);
 		check("render: a value not of the property's enum", bad == "helder.ui: sideways is not a Justify", bad);

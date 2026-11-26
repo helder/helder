@@ -312,9 +312,31 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 	public static function holdsText(el:SceneNode):Bool
 		return false;
 
+	#if helder.typescript
+	// (a TypeScript program's markup: helder/gfx's Vec2, Vec3, Vec4 and Quat,
+	// objects of its own classes, as Haxe's values; an attribute's type is
+	// not known where its value is given, as a typed call's is)
+	static function fromScript(v:Dynamic):Dynamic {
+		if (!Std.isOfType(v, helder.typescript.js.Values.JsObject)) return v;
+		inline function f(k:String):Float
+			return helder.typescript.js.Lib.get(v, k);
+		var c = helder.typescript.js.Lib.get(v, "constructor");
+		return switch (helder.typescript.js.Lib.get(c, "name") : Dynamic) {
+			case "Vec2": new helder.gfx.shader.Vec2(f("x"), f("y"));
+			case "Vec3": new Vec3(f("x"), f("y"), f("z"));
+			case "Vec4": new Vec4(f("x"), f("y"), f("z"), f("w"));
+			case "Quat": new Quat(f("x"), f("y"), f("z"), f("w"));
+			case _: v;
+		}
+	}
+	#end
+
 	public static function setProperty(el:SceneNode, name:String, value:Dynamic) {
 		var n = el.node;
 		changed();
+		#if helder.typescript
+		value = fromScript(value);
+		#end
 		switch name {
 			case "name": n.name = value;
 			case "position": n.position = (value : Vec3);

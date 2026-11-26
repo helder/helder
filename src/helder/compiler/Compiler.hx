@@ -67,6 +67,13 @@ class Compiler {
 			os(com, actx);
 			dev(com);
 			nullSafety(actx);
+			// (Haxe's analyzer stays on, without analyzer-optimize, which
+			// nothing defines: its graph and back, ~0.5 s of the viewer's
+			// cold build. Off (@:analyzer(ignore) on every type) saved 0-4 %
+			// of a build, the filters slower after it, and broke hxmc's
+			// kernels: `span[i].field -= v` and `++` on an @:hxmc.struct's
+			// field are lost unless the analyzer rewrote them first,
+			// Inflate's PNG decode failing)
 			views(com, actx);
 			if (typing != null) typing(com, actx);
 			// (a compilation server's parse replaces hxmc's: around it again)

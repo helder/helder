@@ -17,18 +17,18 @@ class WebLayersPage {
 		var page = new Node("page");
 		page.style.set({width: 400, height: 300, background: Color.rgb(0xffffff)});
 		var header = new TextNode("Layers");
-		header.style.set({height: 40, shrink: 0, padding: 10, fontSize: 16, color: Color.rgb(0xffffff), background: Color.rgb(0x1d4ed8)});
+		header.style.set({height: 40, flexShrink: 0, padding: 10, fontSize: 16, color: Color.rgb(0xffffff), background: Color.rgb(0x1d4ed8)});
 		var list = new Node("list");
-		list.style.set({grow: 1, overflow: Scroll, background: Color.rgb(0xffffff)});
+		list.style.set({flexGrow: 1, overflow: Scroll, background: Color.rgb(0xffffff)});
 		for (i in 0...60) {
 			var r = new TextNode('Row $i: the quick brown fox');
-			r.style.set({height: 30, shrink: 0, padding: 6, fontSize: 14, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
+			r.style.set({height: 30, flexShrink: 0, padding: 6, fontSize: 14, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
 			list.append(r);
 		}
 		var fab = new Node("fab");
-		fab.style.set({position: Absolute, right: 20, bottom: 20, width: 44, height: 44, radius: 22, background: Color.rgb(0xdc2626)});
+		fab.style.set({position: Absolute, right: 20, bottom: 20, width: 44, height: 44, borderRadius: 22, background: Color.rgb(0xdc2626)});
 		var box = new Node("box");
-		box.style.set({position: Absolute, left: 120, top: 8, width: 24, height: 24, radius: 4, background: Color.rgb(0xfacc15)});
+		box.style.set({position: Absolute, left: 120, top: 8, width: 24, height: 24, borderRadius: 4, background: Color.rgb(0xfacc15)});
 		box.style.transform = Transform.parse("translate(0px, 0px)");
 		box.style.transition = Transition.parse("transform 1s linear");
 		page.append(header);

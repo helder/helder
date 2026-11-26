@@ -31,9 +31,10 @@ typedef Previews = studio.web.WebPreviews;
 // studio's socket speaking the devtools protocol, src/helder/dev/
 // README.md; HXMC_DEV_SNAPSHOT: its state across a rebuild). Every story
 // is mounted in it as a root of its own with a context of its own
-// (helder.ui.ScreenContext); only the screens in the canvas' view draw (the
-// one zoomed into every frame, at the canvas' scale), the others suspended
-// with their last frames here. Each frame is a GPU texture the host drew
+// (helder.ui.ScreenContext); the screens in the canvas' view draw (the
+// one zoomed into every frame, at the canvas' scale), the others once each
+// when nothing in view draws (a still again when it changes), suspended
+// with their last frames here; only those in view are waited on. Each frame is a GPU texture the host drew
 // and this process opens and composites as an image (helder.gfx's shared
 // textures: an IOSurface, a DXGI texture, a dma-buf; Image.ofShared, the
 // renderer's own texture handling), or where the GPU shares none
@@ -46,7 +47,12 @@ typedef Previews = studio.web.WebPreviews;
 // snapshot written) and started again from it; meanwhile and after a crash
 // the canvas keeps the last frames (a crash's host is started again). A
 // project without stories runs its own main instead (one window,
-// helder.headless's serve mode: its frames through a file).
+// helder.headless's serve mode: its frames through a file). Each still the
+// host settles is kept as data (Stills: <out>/frames.hframes, keyed by its
+// story's files); on open the screens whose keys match are drawn from it
+// and nothing is built or run until an edit, a hovered loop, Play or a
+// request about a screen wakes it (a changed screen's still shown dimmed,
+// the build started at once).
 class Previews {
 	public final project:Project;
 	public final screens:Array<Screen>;
@@ -98,17 +104,108 @@ class Previews {
 	// the screens in view and the one focused, last told; the last asked (told again to a new host)
 	var shown = "";
 	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
+	public var stills = false;
+	public var looping:Null<String> = null;
 	// where the host's copies go (shared memory: /dev/shm), mapped here by path
 	final framesDir:String;
 	final files = new Map<String, FrameFile>();
 	// frames' targets to give back to the host once a newer frame was drawn
 	final releasing:Array<{screen:Int, buffer:Int, img:Image, mark:Int, at:Float}> = [];
+	// the stills kept as data (frames.hframes): the project's files when
+	// opened, those the last good build was made of, those the running
+	// host draws (a patch's: the files after it)
+	final kept:Stills;
+	var opened:Null<Sources> = null;
+	var built:Null<Sources> = null;
+	var running:Null<Sources> = null;
+	var keptAt = 0.0;
+	// every screen drawn from the file: nothing built or run until wake;
+	// woken, its first build on its way
+	var idle = false;
+	var first = false;
 
 	public function new(project:Project) {
 		this.project = project;
 		screens = [for (s in project.live()) new Screen(s)];
 		// (shared memory where there is: each file unlinked once both have it mapped, nothing left behind)
 		framesDir = FileSystem.exists("/dev/shm") ? "/dev/shm" : '${project.out}/frames';
+		var t0 = haxe.Timer.stamp();
+		kept = new Stills(project);
+		var t1 = haxe.Timer.stamp();
+		opened = Sources.of(project);
+		var t2 = haxe.Timer.stamp();
+		var n = 0, stale = 0;
+		for (s in screens)
+			if (still(s)) {
+				n++;
+				if (!kept.fresh(s.info.name, s.info.file, opened)) stale++;
+			}
+		if (n > 0) read = '${Stills.FILE}: $n stills ($stale of files changed since: dimmed), read in ${ms(t1 - t0)} ms, replayable in ${ms(haxe.Timer.stamp() - t2)} ms; the files\' key in ${ms(t2 - t1)} ms';
+	}
+
+	// (the frames file's reading, timed: said at the start)
+	var read = "";
+	// (start called: its compiler, its first build on their way)
+	var started = false;
+
+	static inline function ms(s:Float):Float
+		return Math.round(s * 10000) / 10;
+
+	// (a screen's still from the file, dimmed when its files changed since)
+	function still(s:Screen):Bool {
+		var passes = [], l = kept.list(s.info.name, passes), size = kept.size(s.info.name);
+		s.stillPasses = passes;
+		if (size != null) {
+			s.stillWidth = size.width;
+			s.stillHeight = size.height;
+		}
+		s.still(l);
+		s.stale(l != null && !kept.fresh(s.info.name, s.info.file, opened));
+		return l != null;
+	}
+
+	// whether a screen's loop plays from the file: its still shown, fresh, a loop stored
+	function fileLoops(name:String):Bool {
+		var s = screen(name);
+		return s != null && s.image.peek() == null && s.still.peek() != null && !s.stale.peek() && kept.looped(name);
+	}
+
+	// a hovered screen's loop from the file (null: none, it runs live)
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}> {
+		if (!fileLoops(s.info.name)) return null;
+		var first = !decoded.exists(s.info.name);
+		var l = kept.loop(s.info.name);
+		if (l != null && first) {
+			decoded.set(s.info.name, true);
+			onLog('studio: ${s.info.name}\'s loop from ${Stills.FILE}: ${l.lists.length} frames at ${l.fps} fps, decoded in ${l.ms} ms');
+		}
+		return l;
+	}
+
+	final decoded = new Map<String, Bool>();
+
+	// whether every screen is drawn from the file as its files are now
+	public function fresh():Bool
+		return hosting() && !Lambda.exists(screens, s -> s.still.peek() == null || s.stale.peek());
+
+	// the host built and started (an edit, a hovered loop, Play, a request
+	// about a screen), when the screens were drawn from the file
+	public function wake() {
+		if (!idle) return;
+		idle = false;
+		first = true;
+	}
+
+	// (an edit while the screens were drawn from the file: the first build
+	// waited for; true when it may have read the file before the edit, and
+	// the edit is to be built after it)
+	@:coroutine function woken():Bool {
+		var during = first && building;
+		wake();
+		while (first && !stopping)
+			Async.delay(0.01);
+		return during && !failed;
 	}
 
 	public function screen(name:String):Null<Screen>
@@ -117,23 +214,56 @@ class Previews {
 	// the project's screens changed (a story file read again): those whose
 	// names stay kept (their last frames), the new made, the gone let go;
 	// the next build's host draws them
-	public function follow()
+	public function follow() {
 		Screen.follow(screens, project.live());
+		for (s in screens)
+			if (s.version == 0 && s.still.peek() == null) still(s);
+		kept.keep([for (s in screens) s.info.name]);
+	}
 
-	// whether every screen shows a frame
+	// whether every screen shows a frame (its still from the file counts,
+	// not a dimmed one: the program's on its way)
 	public function allShown():Bool
-		return !Lambda.exists(screens, s -> s.version == 0 && !s.crashed) || failed;
+		return !Lambda.exists(screens, unshown) || failed;
 
-	// whether work is in flight (a build, a reload, screens not shown yet)
+	// whether work is in flight (a build, a reload, screens in view not
+	// shown yet: those out of view come when the host has drawn them, never waited on)
 	public function busy():Bool
-		return building || rebuilding || again || reloading || (!failed && !allShown());
+		return started && status.peek() == "starting" || building || rebuilding || again || reloading || (!failed && Lambda.exists(screens, s -> inView(s) && unshown(s)));
+
+	function unshown(s:Screen):Bool
+		return s.version == 0 && (s.still.peek() == null || s.stale.peek()) && !s.crashed;
+
+	function inView(s:Screen):Bool
+		return showWanted != null && showWanted.names.contains(s.info.name);
+
+	// (the screens in view reloaded: the others' frames come as the host draws them)
+	function reloaded()
+		if (!Lambda.exists(screens, x -> x.reloading && inView(x))) reloading = false;
 
 	// ms since the screens' program started (-1: none)
 	public function sinceHost():Float
 		return process == null ? -1 : Math.round((haxe.Timer.stamp() - startedAt) * 1000);
 
-	// the compiler, the socket, the first build, the host started
+	// the compiler, the socket, the first build, the host started (every
+	// screen drawn from the file: once woken)
 	@:coroutine public function start(task:Node) {
+		started = true;
+		if (read != "") onLog('studio: $read');
+		if (fresh()) {
+			idle = true;
+			setStatus("stills");
+			onLog('studio: ${screens.length} screens drawn from ${Stills.FILE}: nothing built until an edit, a loop or Play');
+			while (idle && !stopping)
+				Async.delay(0.02);
+			if (stopping) return;
+			setStatus("starting");
+		}
+		begin(task);
+		first = false;
+	}
+
+	@:coroutine function begin(task:Node) {
 		if (project.typescript) try helder.cli.Compiler.typescript(project.entry.helder) catch (e:Dynamic) {
 			fail(Std.string(e));
 			return;
@@ -146,9 +276,14 @@ class Previews {
 			if (s == null) break;
 			task.async(_ -> connected(s));
 		});
-		// (the frames' targets given back, when the canvas drew newer ones)
+		// (the frames' targets given back, when the canvas drew newer ones; the stills written a moment after they came)
 		task.async(_ -> while (!stopping) {
 			giveBack();
+			var now = haxe.Timer.stamp();
+			if (now - keptAt > 0.5) {
+				keptAt = now;
+				kept.save();
+			}
 			Async.delay(0.004);
 		});
 		if (build(null)) launch(task, false);
@@ -200,6 +335,10 @@ class Previews {
 		if (building) writes.set(path, text) else sys.io.File.saveContent(path, text);
 	}
 
+	// (a file deleted: not written after the build in progress)
+	public function forget(path:String)
+		writes.remove(path);
+
 	function flushWrites() {
 		for (p => t in writes) sys.io.File.saveContent(p, t);
 		writes.clear();
@@ -217,6 +356,7 @@ class Previews {
 		for (old in ['${project.out}/screens-${builds - 2}', '${project.out}/screens-${builds - 2}.exe'])
 			try if (sys.FileSystem.exists(old) && old != exe) sys.FileSystem.deleteFile(old) catch (_:Dynamic) {}
 		var t0 = haxe.Timer.stamp();
+		var sources = Sources.of(project);
 		var words = try project.words(next) catch (e:Dynamic) {
 			building = false;
 			fail(Std.string(e));
@@ -239,6 +379,7 @@ class Previews {
 			return false;
 		}
 		exe = next;
+		built = sources;
 		incremental = changed != null;
 		crashes = 0;
 		onLog('studio: built ${project.name}\'s screens in $ms ms');
@@ -280,6 +421,7 @@ class Previews {
 		if (p == null) return;
 		p.closeStdin();
 		process = p;
+		running = built;
 		hosted = hosting();
 		said = "";
 		startedAt = haxe.Timer.stamp();
@@ -354,27 +496,34 @@ class Previews {
 				c.answered(m);
 				continue;
 			}
-			switch (m.method : String) {
+			// (a message the studio could not take: said, the host kept, not ended with the connection)
+			try switch (m.method : String) {
 				case "Host.ready":
 					var list:Array<Dynamic> = m.params.screens;
 					order = [for (x in list) screen(x.name)];
+					// (the new program's: a screen that throws again says so at once)
+					for (s in screens)
+						if (s.crashed) s.crashed = false;
 					sharing = m.params.sharing;
 					connection = c;
 					onLog('studio: the screens\' host is running (${order.length} screens, frames: $sharing)');
-					// (what is in view, told again: those draw; the others keep their last frames, suspended)
-					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, _ -> {});
-					for (s in screens)
-						if (s.version > 0 && (showWanted == null || !showWanted.names.contains(s.info.name))) s.reloading = false;
-					if (!Lambda.exists(screens, x -> x.reloading)) reloading = false;
+					// (what is in view, told again: those draw first, the others after, once each)
+					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, _ -> {});
+					reloaded();
 				case "Host.frame":
 					frame(m.params);
+				case "Host.failed":
+					threw(m.params);
 				case "Headless.frame":
 					fileFrame(m.params);
+				case "Host.still":
+					tookStill(m.params);
 				case "Hot.patched":
 					for (s in screens)
 						s.patchedMs = m.params.ms;
 				case _:
-			}
+			} catch (e:haxe.Exception)
+				onLog('studio: the host\'s ${m.method} not taken: ${e.message}\n${e.stack}');
 		} catch (_:haxe.Exception) {}
 		if (connection == c) connection = null;
 		c.closed = true;
@@ -411,12 +560,35 @@ class Previews {
 		} else {
 			var next = Image.ofShared(handle, w, h);
 			if (img == null) s.image(next) else img.replace(next);
-			var shown = s.image.peek();
+			// (a signal's write lands at the event's end: two frames in one, the first not peeked yet)
+			var shown = img ?? next;
 			// (the target shown before: given back once the canvas drew this one twice, the GPU done with the old)
 			if (s.buffer != 0 && s.buffer != buffer) releasing.push({screen: index, buffer: s.buffer, img: shown, mark: shown.drawn, at: haxe.Timer.stamp()});
 			s.buffer = buffer;
 		}
 		shownFrame(s);
+	}
+
+	// a screen that threw in the host: crashed, why (where its markup wrote
+	// it, when the host says), not waited on; the others go on
+	function threw(p:Dynamic) {
+		var s = order[Std.int(p.screen)];
+		if (s == null) return;
+		onLog('studio: ${s.info.name} crashed: ${s.threw(p, project.dir)}');
+		reloaded();
+	}
+
+	// the screens that crashed, the program running: each its why ("file:line: message")
+	public function crashed():Array<{screen:String, why:String}>
+		return [for (s in screens) if (s.crashed && s.report.peek() != "") {screen: s.info.name, why: s.report.peek()}];
+
+	// a still the host settled: kept under the files its program was made of
+	function tookStill(p:Dynamic) {
+		var s = order[Std.int(p.screen)], path:String = p.path;
+		// (a still of a story whose file went since: not kept)
+		if (s != null && running != null && FileSystem.exists(s.info.file)) kept.took(s.info.name, s.info.file, path, running);
+		if (s != null && p.loopFrames > 0) onLog('studio: ${s.info.name}\'s loop kept: ${p.loopFrames} frames, ${p.loopBytes} B before deflate');
+		try FileSystem.deleteFile(path) catch (_:Dynamic) {}
 	}
 
 	function shownFrame(s:Screen) {
@@ -426,7 +598,7 @@ class Previews {
 		s.reloading = false;
 		if (s.crashed) s.crashed = false;
 		if (first) s.shownAt = haxe.Timer.stamp();
-		if (!Lambda.exists(screens, x -> x.reloading)) reloading = false;
+		reloaded();
 		if (onFrame != null) onFrame(s);
 	}
 
@@ -465,6 +637,8 @@ class Previews {
 	// happened: "patched", "unchanged", "built", "failed", or "queued" (a
 	// build in progress: this one after it)
 	@:coroutine public function saved(task:Node, file:String, ?literalsOnly:Bool):String {
+		// (drawn from the file: the first build has the edit)
+		if ((idle || first) && !woken()) return failed ? "failed" : "built";
 		if (service == null || service.sources == null) return "failed";
 		if (building || rebuilding) return rebuild(task, [file]) ? "built" : "failed";
 		// (after a failed build: built again, its failure shown until one is good)
@@ -474,6 +648,7 @@ class Previews {
 		if (patches != null && patches.length == 0) return "unchanged";
 		if (patches != null && patch(patches)) {
 			service.sources.took(patches);
+			running = Sources.of(project);
 			return "patched";
 		}
 		if (literalsOnly == true) return "failed";
@@ -493,7 +668,10 @@ class Previews {
 	// live literals sent to the host (one program: every screen's next frame shows them); false: not connected
 	public function patch(list:Array<{id:String, source:String}>):Bool {
 		var c = connection;
-		if (c == null) return false;
+		if (c == null) {
+			wake();
+			return false;
+		}
 		for (s in screens)
 			s.patchedMs = -1;
 		c.request("Hot.literals", {set: list}, r -> {
@@ -505,6 +683,11 @@ class Previews {
 
 	// a build, then the host reloaded from its snapshot
 	@:coroutine public function rebuild(task:Node, changed:Array<String>):Bool {
+		if ((idle || first) && !woken()) return !failed;
+		// (the compiler still starting: an edit made as the program first starts)
+		while (service == null && status.peek() == "starting" && !stopping)
+			Async.delay(0.01);
+		if (service == null) return false;
 		// (one build at a time: the compiler's service is one; an edit during
 		// a build is built after it, every source told, and waits for it)
 		if (building || rebuilding) {
@@ -557,18 +740,23 @@ class Previews {
 	// frames kept here) and the one zoomed into, drawn every frame at scale
 	// pixels a point (the canvas' zoom: its frames as sharp as the studio shows them)
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale;
+		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
 		showWanted = {names: names, focused: focused, scale: scale};
+		// (a hovered loop runs live: the program; its loop from the file plays without it)
+		if (looping != null && !fileLoops(looping)) wake();
 		var c = connection;
-		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale}, _ -> {});
+		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, _ -> {});
 	}
 
 	// a devtools request about a screen (false: the host is not connected)
 	public function request(s:Screen, method:String, params:Dynamic, done:Dynamic->Void):Bool {
 		var c = connection;
-		if (c == null) return false;
+		if (c == null) {
+			wake();
+			return false;
+		}
 		var p:Dynamic = Reflect.copy(params) ?? {};
 		if (hosting()) p.screen = s.info.name;
 		c.request(method, p, done);
@@ -578,6 +766,13 @@ class Previews {
 	// a screen's last frame's pixels (the image's own; a texture's read back
 	// by the host: Host.snap), or null
 	@:coroutine public function pixels(s:Screen):Null<Image> {
+		// (drawn from the file, out of view, a build's reload on its way: the program's frame waited for)
+		if (s.image.peek() == null || s.reloading) {
+			wake();
+			var t0 = haxe.Timer.stamp();
+			while ((s.image.peek() == null || s.reloading) && !s.crashed && !failed && !stopping && haxe.Timer.stamp() - t0 < 45)
+				Async.delay(0.02);
+		}
 		var img = s.image.peek();
 		if (img == null) return null;
 		if (img.hasPixels) return img;
@@ -594,6 +789,9 @@ class Previews {
 
 	// the program typed, nothing written: its diagnostics
 	@:coroutine public function check():{ok:Bool, diagnostics:Array<Diagnostic>, ms:Int} {
+		if (idle) wake();
+		while (service == null && !failed && !stopping && status.peek() != "failed")
+			Async.delay(0.01);
 		if (service == null) return {ok: false, diagnostics: [], ms: 0};
 		var w = project.words('${project.out}/check');
 		return service.check(w, project.dir, project.sources());
@@ -609,6 +807,7 @@ class Previews {
 		for (f in files)
 			f.close();
 		files.clear();
+		kept.save();
 	}
 }
 
@@ -621,6 +820,15 @@ class Screen {
 	// its last frame (replaced in place: one texture) and the frames' count
 	public final image:Signal<Null<Image>> = signal(null);
 	public final frames = signal(0);
+	// its still from the frames file (Stills: shown until the program draws
+	// it), and whether the files changed since it was made (dimmed)
+	public final still:Signal<Null<helder.ui.draw.DisplayList>> = signal(null);
+	public final stale = signal(false);
+	// (the still's size in points: its story's when it was made)
+	public var stillWidth = 0.0;
+	// (what its still's passes draw as data: a markup <Scene>'s, built again where it is shown)
+	public var stillPasses:Array<helder.ui.draw.PassData> = [];
+	public var stillHeight = 0.0;
 	public var version = 0;
 	// (natively) the host's target its image shows (helder.story.NativeHost's buffer; 0: none)
 	public var buffer = 0;
@@ -643,6 +851,18 @@ class Screen {
 	public var shownAt = -1.0;
 	// the last patch's ms to its frame (Hot.patched; -1: waiting)
 	public var patchedMs = -1.0;
+
+	// what its program threw (a host's Host.failed: {message, at}): crashed,
+	// why ("file:line: message", the file the project's), not waited on
+	public function threw(failed:Dynamic, dir:String):String {
+		var message = ~/^helder\.[a-z.]+: /.replace(failed.message ?? "an error", ""), at:Null<String> = failed.at;
+		if (at != null && StringTools.startsWith(at, dir + "/")) at = at.substr(dir.length + 1);
+		var why = at == null ? message : '$at: $message';
+		crashed = true;
+		report(why);
+		reloading = false;
+		return why;
+	}
 
 	public function new(info:ScreenInfo) {
 		this.info = info;

@@ -32,23 +32,23 @@ export function add(s: Store = main) {
 	s.draft("");
 }
 
-function Button(props: { label: string; onClick: () => void; tag?: string; outline?: Read<boolean>; small?: boolean }) {
-	return <view:button tag={props.tag ?? "button"} role="button" focusable cursor="pointer" direction="row" align-items="center" justify="center"
-		padding={props.small ? "4 8" : "6 12"} radius={6} border-width={props.outline?.() ? 1 : 0} border-color="#e4e4e7"
+function Button(props: { label: string; onPress: () => void; tag?: string; outline?: Read<boolean>; small?: boolean }) {
+	return <button tag={props.tag ?? "button"} cursor="pointer" flexDirection="row" alignItems="center" justifyContent="center"
+		padding={props.small ? "4 8" : "6 12"} borderRadius={6} borderWidth={props.outline?.() ? 1 : 0} borderColor="#e4e4e7"
 		background={props.outline?.() ? "#ffffff" : "#18181b"} color={props.outline?.() ? "#18181b" : "#fafafa"}
-		onPress={() => props.onClick()}>{props.label}</view:button>;
+		onPress={() => props.onPress()}>{props.label}</button>;
 }
 
 // (the label pressed toggles it too)
 function Checkbox(props: { checked: Read<boolean>; label: Read<string>; onToggle: () => void }) {
-	return <view direction="row" align-items="center" column-gap={8}>
-		<view:button role="checkbox" label={props.label()} checked={props.checked()} focusable cursor="pointer" width={16} height={16} radius={4}
-			border-width={1} align-items="center" justify="center" border-color={props.checked() ? "#18181b" : "#a1a1aa"}
+	return <view flexDirection="row" alignItems="center" columnGap={8}>
+		<button role="checkbox" aria-label={props.label()} aria-checked={props.checked()} cursor="pointer" width={16} height={16} borderRadius={4}
+			borderWidth={1} alignItems="center" justifyContent="center" borderColor={props.checked() ? "#18181b" : "#a1a1aa"}
 			background={props.checked() ? "#18181b" : "#ffffff"} onPress={() => props.onToggle()}>
 			<Show when={props.checked}><icon name="check" width={12} height={12} color="#fafafa"/></Show>
-		</view:button>
-		<text hidden cursor="pointer" color={props.checked() ? "#a1a1aa" : "#18181b"}
-			text-decoration={props.checked() ? "line-through" : "none"} onClick={() => props.onToggle()}>{props.label()}</text>
+		</button>
+		<text aria-hidden cursor="pointer" color={props.checked() ? "#a1a1aa" : "#18181b"}
+			textDecoration={props.checked() ? "line-through" : "none"} onPress={() => props.onToggle()}>{props.label()}</text>
 	</view>;
 }
 
@@ -56,7 +56,7 @@ function Checkbox(props: { checked: Read<boolean>; label: Read<string>; onToggle
 export function App(props: { store?: Store }) {
 	const s = props?.store ?? main, remaining = memo(() => left(s.todos()));
 	const visible = () => shown(s.todos(), s.filter());
-	return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-size={14} color="#18181b"
+	return <view flexGrow={1} padding={24} rowGap={14} background="#fafafa" fontSize={14} color="#18181b"
 		actions={handle(Todo, a => {
 			switch (a.type) {
 				case "show":
@@ -64,24 +64,24 @@ export function App(props: { store?: Store }) {
 					return true;
 			}
 		})}>
-		<text font-size={28} font-weight={700} color="#3b82f6">todos</text>
-		<view direction="row" column-gap={8}>
-			<field tag="draft" grow={1} value={s.draft} placeholder="What needs to be done?" label="What needs to be done?" padding="8 12" radius={6}
-				border-width={1} border-color="#e4e4e7" background="#ffffff"
+		<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>
+		<view flexDirection="row" columnGap={8}>
+			<field tag="draft" flexGrow={1} value={s.draft} placeholder="What needs to be done?" aria-label="What needs to be done?" padding="8 12" borderRadius={6}
+				borderWidth={1} borderColor="#e4e4e7" background="#ffffff"
 				onInput={(e: Event) => s.draft(e.text)} onKeyDown={(e: Event) => { if (e.key === Key.ENTER) add(s); }}/>
-			<Button tag="add" label="Add" onClick={() => add(s)}/>
+			<Button tag="add" label="Add" onPress={() => add(s)}/>
 		</view>
-		<scroll tag="list" grow={1} min-height={0} row-gap={6} background="#ffffff" radius={8} border-width={1} border-color="#e4e4e7" padding={8}>
-			<For each={visible} by={i => i.id}>{item => <view direction="row" align-items="center" column-gap={8} padding="4 6" radius={6}>
-				<view grow={1}><Checkbox checked={() => item().done} label={() => item().title} onToggle={() => s.todos(toggled(s.todos(), item().id))}/></view>
-				<Button label="Remove" outline small onClick={() => s.todos(removed(s.todos(), item().id))}/>
+		<scroll tag="list" flexGrow={1} minHeight={0} rowGap={6} background="#ffffff" borderRadius={8} borderWidth={1} borderColor="#e4e4e7" padding={8}>
+			<For each={visible} by={i => i.id}>{item => <view flexDirection="row" alignItems="center" columnGap={8} padding="4 6" borderRadius={6}>
+				<view flexGrow={1}><Checkbox checked={() => item().done} label={() => item().title} onToggle={() => s.todos(toggled(s.todos(), item().id))}/></view>
+				<Button label="Remove" outline small onPress={() => s.todos(removed(s.todos(), item().id))}/>
 			</view>}</For>
 			<Show when={visible().length === 0}><text color="#a1a1aa" padding={6}>Nothing here.</text></Show>
 		</scroll>
-		<view direction="row" align-items="center" justify="space-between">
+		<view flexDirection="row" alignItems="center" justifyContent="space-between">
 			<text tag="left">{remaining()}</text>
-			<view direction="row" column-gap={6}>{["all", "active", "done"].map(f =>
-				<Button tag={"filter-" + f} label={f} outline={s.filter() !== f} small onClick={() => s.filter(f)}/>)}</view>
+			<view flexDirection="row" columnGap={6}>{["all", "active", "done"].map(f =>
+				<Button tag={"filter-" + f} label={f} outline={s.filter() !== f} small onPress={() => s.filter(f)}/>)}</view>
 		</view>
 	</view>;
 }

@@ -20,7 +20,8 @@ typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool
 
 // A menu for touch, iOS's and Android's long press menus: a column of
 // choices 44 points high (slot touch-menu, touch-menu-item: data-selected
-// checked, data-disabled; touch-menu-item-danger), in a modal popup over
+// checked, data-disabled; touch-menu-item-danger), a group's line between
+// them (touch-menu-separator), in a modal popup over
 // the window. With a preview (a view at where its node is, lifted: slot
 // touch-menu-preview) the menu goes under it, or above it where there is
 // no room, the preview moved up to fit; blur puts a glass over what is
@@ -30,6 +31,8 @@ typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool
 class TouchMenu implements Markup {
 	public static inline var ROW = 44.0;
 	public static inline var WIDTH = 250.0;
+	// (a group's line: a hairline with room above and below it)
+	public static inline var LINE = 9.0;
 	// (between the preview and the menu, and the window's edges)
 	static inline var GAP = 12.0;
 	static inline var EDGE = 8.0;
@@ -101,7 +104,7 @@ class TouchMenu implements Markup {
 		var top = safe.top + EDGE, bottom = ui.height - safe.bottom - EDGE;
 		var mh = 0.0;
 		for (c in choices)
-			mh += ROW + (c.separated == true ? 8 : 0);
+			mh += ROW + (c.separated == true ? LINE : 0);
 		var mw = Math.min(WIDTH, ui.width - 2 * EDGE);
 		var ph = lifted ? Math.min(r.height, Math.max(0, bottom - top - mh - GAP)) : 0.0;
 		var pw = lifted && r.height > 0 ? r.width * ph / r.height : 0.0;
@@ -124,11 +127,11 @@ class TouchMenu implements Markup {
 	static function Layer(props:{at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
 		var a = props.at;
 		return <view tag="touch-menu-layer" position="absolute" left={0} top={0} right={0} bottom={0} onKeyDown={e -> if (e.key == Key.ESCAPE) props.onClose()}>
-			{props.blur ? <glass slot="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0} radius={0} tint="#00000040" transition="fade"
-				onClick={_ -> props.onClose()}/> : <view tag="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0}
-				onClick={_ -> props.onClose()}/>}
+			{props.blur ? <glass slot="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
+				onPress={_ -> props.onClose()}/> : <view tag="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0}
+				onPress={_ -> props.onClose()}/>}
 			{props.preview != null ? <view slot="touch-menu-preview" position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
-				transition="fade scale" onClick={_ -> props.onClose()}>{props.preview}</view> : null}
+				transition="fade scale" onPress={_ -> props.onClose()}>{props.preview}</view> : null}
 			<view slot="touch-menu" tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} overflow="hidden" transition="fade scale">
 				{[for (c in props.choices) <Item choice={c} onPick={props.onPick}/>]}
 			</view>
@@ -137,14 +140,17 @@ class TouchMenu implements Markup {
 
 	static function Item(props:{choice:Choice, onPick:Choice->Void}):UiView {
 		var c = props.choice;
-		return <view:button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem"
-			label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
-			data-disabled={c.disabled == true} margin-top={c.separated == true ? 8 : 0}
-			onPress={() -> if (c.disabled != true) props.onPick(c)}>
-			<text grow={1}>{c.label}</text>
-			{c.checked == true ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
-				width={18} height={18}><path d="M20 6 9 17l-5-5"/></svg> : null}
-		</view:button>;
+		return <>
+			{c.separated == true ? <view slot="touch-menu-separator" role="separator" height={1} margin="4 0" flexShrink={0}/> : null}
+			<button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem"
+				aria-label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
+				data-disabled={c.disabled == true}
+				onPress={() -> if (c.disabled != true) props.onPick(c)}>
+				<text flexGrow={1}>{c.label}</text>
+				{c.checked == true ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+					width={18} height={18}><path d="M20 6 9 17l-5-5"/></svg> : null}
+			</button>
+		</>;
 	}
 }
 

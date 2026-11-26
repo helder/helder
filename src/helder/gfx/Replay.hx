@@ -1,6 +1,7 @@
 package helder.gfx;
 
 import haxe.io.Bytes;
+import helder.gfx.shader.Vec4;
 
 // Commands executed in order on the back end (Impl): inline on the
 // program's thread (Device's synchronous mode: headless runs, goldens,
@@ -33,6 +34,9 @@ final class Replay {
 	final depth:DepthTarget = {load: Clear};
 	final pass:PassDesc;
 	final rects:Array<Int> = [];
+	// (the clears made: one target for every pass, a clear a boxed Vec4, so a
+	// frame's passes taking turns between a few reuse them, none allocated)
+	final clears:Array<Null<Vec4>> = [];
 
 	public function new(impl:Impl) {
 		this.impl = impl;
@@ -131,7 +135,7 @@ final class Replay {
 				color.load = cast c.next();
 				if (flags & 1 != 0) {
 					var r = c.nextFloat(), g = c.nextFloat(), b = c.nextFloat();
-					ColorTarget.ClearValue.set(color, r, g, b, c.nextFloat());
+					color.clear = ColorTarget.ClearValue.of(clears, r, g, b, c.nextFloat());
 				} else
 					color.clear = null;
 				var t = c.next(), r = c.next(), layer = c.next();

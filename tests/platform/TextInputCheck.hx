@@ -52,14 +52,14 @@ class TextInputCheck implements Markup {
 	}
 
 	public function view():View
-		return <view width="100%" height="100%" background="#f1f5f9" padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)">
-			<scroll tag="scroll" grow={1} padding={16} gap={12}>
-				<text font-size={20}>Text input</text>
-				<field tag="email" keyboard="email" enterkey="next" onComposition={e -> if (e.text != "") composed.push(e.text)} placeholder="Email" padding={10} background="#fff" radius={8} shrink={0}/>
-				<field tag="number" keyboard="number" enterkey="next" placeholder="Number" padding={10} background="#fff" radius={8} shrink={0}/>
-				<field tag="name" enterkey="done" autocapitalize="words" placeholder="Name" padding={10} background="#fff" radius={8} shrink={0}/>
+		return <view width="100%" height="100%" background="#f1f5f9" paddingTop="env(safe-area-inset-top)" paddingBottom="env(safe-area-inset-bottom)">
+			<scroll tag="scroll" flexGrow={1} padding={16} gap={12}>
+				<text fontSize={20}>Text input</text>
+				<field tag="email" keyboard="email" enterKeyHint="next" onComposition={e -> if (e.text != "") composed.push(e.text)} placeholder="Email" padding={10} background="#fff" borderRadius={8} flexShrink={0}/>
+				<field tag="number" keyboard="number" enterKeyHint="next" placeholder="Number" padding={10} background="#fff" borderRadius={8} flexShrink={0}/>
+				<field tag="name" enterKeyHint="done" autoCapitalize="words" placeholder="Name" padding={10} background="#fff" borderRadius={8} flexShrink={0}/>
 				<view height={900} background="#e2e8f0"/>
-				<field tag="bottom" enterkey="done" placeholder="At the bottom" padding={10} background="#fff" radius={8} shrink={0}/>
+				<field tag="bottom" enterKeyHint="done" placeholder="At the bottom" padding={10} background="#fff" borderRadius={8} flexShrink={0}/>
 			</scroll>
 		</view>;
 

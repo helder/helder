@@ -586,31 +586,43 @@ jobs:
       - name: The simulator's checks (bun run test ios-device, a simulator booting while the apps build)
         run: bun run test ios-device --shard ${{ matrix.index }}/2
       # (the headless job's pack bundles, uploaded long before this point:
-      # the signing lane checks them with Apple's tools, nothing rebuilt)
+      # the signing lane checks them with Apple's tools, nothing rebuilt.
+      # Downloaded by gh run download, from the REST API's list that says
+      # they are there: actions/download-artifact's own lookup lagged that
+      # list, "Artifact not found" a second after it was listed. Each try
+      # from nothing; once the headless job ended (or never ran), two more
+      # tries, then failed at once, saying so; a gh call that fails is a
+      # try, never a success)
       - name: pack's iOS bundles (the headless job's)
         id: ios-pack
         if: ${{ !cancelled() && matrix.index == 1 && steps.setup.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          api="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          for i in $(seq 60); do
-            [ "$(gh api "$api/artifacts?name=ios-pack" --jq .total_count)" = 0 ] || exit 0
-            done=$(gh api "$api/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("headless (lanes")) | .status] | all(. == "completed")')
-            [ "$done" = true ] && { echo "the headless job ended without pack's iOS bundles"; exit 1; }
+          api="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" out="$RUNNER_TEMP/ios-pack" ended=0 state=unknown
+          for i in $(seq 90); do
+            rm -rf "$out"
+            if gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n ios-pack -D "$out" && [ -s "$out/ios-pack.tar" ]; then
+              ls -l "$out"
+              exit 0
+            fi
+            state=$(gh api "$api/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("headless (lanes"))] | if length == 0 then "none" elif all(.status == "completed") then "ended: " + (map(.conclusion) | join(", ")) else "running" end') || state=unknown
+            case "$state" in running|unknown) ended=0 ;; *) ended=$((ended + 1)) ;; esac
+            if [ "$ended" -ge 3 ]; then
+              echo "::error::no ios-pack artifact: the headless job ($state) ended without pack's iOS bundles (its tar or upload step failed, or it did not run)"
+              exit 1
+            fi
             sleep 10
           done
+          echo "::error::no ios-pack artifact after 15 minutes, the headless job $state"
           exit 1
-      - if: steps.ios-pack.outcome == 'success'
-        uses: actions/download-artifact@v7
-        with: {name: ios-pack, path: '${{ runner.temp }}'}
       - name: The bundles and distribution signing checked by Apple's tools (bun run test signing)
         if: steps.ios-pack.outcome == 'success'
         env:
           PACK_PREBUILT: 1
         run: |
           mkdir -p bin/pack
-          tar -C bin/pack -xf "$RUNNER_TEMP/ios-pack.tar"
+          tar -C bin/pack -xf "$RUNNER_TEMP/ios-pack/ios-pack.tar"
           bun run test signing
       - uses: actions/upload-artifact@v7
         if: always()

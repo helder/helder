@@ -30,7 +30,7 @@ class Todo implements Markup {
 
 	public static final sheet:StyleSheet = {
 		rules: [
-			{slot: "button", style: {direction: Row, alignItems: Center, justify: Center, padding: [6, 12], radius: 6, background: Color.rgb(0x18181B),
+			{slot: "button", style: {flexDirection: Row, alignItems: Center, justifyContent: Center, padding: [6, 12], borderRadius: 6, background: Color.rgb(0x18181B),
 				color: Color.rgb(0xFAFAFA), cursor: Pointer}},
 			{slot: "button", when: ["hover"], style: {background: Color.rgb(0x3F3F46)}},
 			{slot: "button", variant: "outline", style: {background: Color.rgb(0xFFFFFF), color: Color.rgb(0x18181B), borderWidth: 1, borderColor: Color.rgb(0xE4E4E7)}},
@@ -38,11 +38,11 @@ class Todo implements Markup {
 			{slot: "button", variant: "ghost", style: {background: Color.TRANSPARENT, color: Color.rgb(0x71717A)}},
 			{slot: "button", variant: "ghost", when: ["hover"], style: {background: Color.rgb(0xF4F4F5), color: Color.rgb(0x18181B)}},
 			{slot: "button", size: "sm", style: {padding: [4, 8]}},
-			{slot: "input", style: {padding: [8, 12], radius: 6, borderWidth: 1, borderColor: Color.rgb(0xE4E4E7), background: Color.rgb(0xFFFFFF)}},
+			{slot: "input", style: {padding: [8, 12], borderRadius: 6, borderWidth: 1, borderColor: Color.rgb(0xE4E4E7), background: Color.rgb(0xFFFFFF)}},
 			{slot: "input", when: ["focus"], style: {borderColor: Color.rgb(0xA1A1AA)}},
 			{slot: "input", when: ["placeholder"], style: {color: Color.rgb(0xA1A1AA)}},
-			{slot: "checkbox", style: {width: 16, height: 16, radius: 4, borderWidth: 1, borderColor: Color.rgb(0xA1A1AA), alignItems: Center,
-				justify: Center, cursor: Pointer}},
+			{slot: "checkbox", style: {width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: Color.rgb(0xA1A1AA), alignItems: Center,
+				justifyContent: Center, cursor: Pointer}},
 			{slot: "checkbox", when: ["data-state=checked"], style: {background: Color.rgb(0x18181B), borderColor: Color.rgb(0x18181B), color: Color.rgb(0xFAFAFA)}}
 		]
 	};
@@ -70,47 +70,47 @@ class Todo implements Markup {
 			case _: true;
 		});
 
-	static function Button(props:{label:String, onClick:Void->Void, ?tag:String, ?variant:Read<Null<String>>, ?size:String}):View
-		return <view:button tag={props.tag ?? "button"} slot="button" variant={props.variant != null ? props.variant() : null} size={props.size} role="button" focusable
-			onPress={props.onClick}>{props.label}</view:button>;
+	static function Button(props:{label:String, onPress:Void->Void, ?tag:String, ?variant:Read<Null<String>>, ?size:String}):View
+		return <button tag={props.tag ?? "button"} slot="button" variant={props.variant != null ? props.variant() : null} size={props.size}
+			onPress={props.onPress}>{props.label}</button>;
 
 	// (the label pressed toggles it too; the box named by it, the text hidden from assistive technology)
 	static function Checkbox(props:{checked:Signal<Bool>, label:String}):View {
 		var toggle = () -> props.checked(c -> !c);
-		return <view direction="row" align-items="center" column-gap={8}>
-			<view:button tag="checkbox" slot="checkbox" role="checkbox" label={props.label} checked={props.checked}
-				data-state={props.checked() ? "checked" : "unchecked"} focusable onPress={toggle}>
+		return <view flexDirection="row" alignItems="center" columnGap={8}>
+			<button tag="checkbox" slot="checkbox" role="checkbox" aria-label={props.label} aria-checked={props.checked}
+				data-state={props.checked() ? "checked" : "unchecked"} onPress={toggle}>
 				<Show when={props.checked}><icon name="check" width={12} height={12}/></Show>
-			</view:button>
-			<text hidden cursor="pointer" color={props.checked() ? "#a1a1aa" : "#18181b"}
-				text-decoration={props.checked() ? "line-through" : "none"} onClick={toggle}>{props.label}</text>
+			</button>
+			<text aria-hidden cursor="pointer" color={props.checked() ? "#a1a1aa" : "#18181b"}
+				textDecoration={props.checked() ? "line-through" : "none"} onPress={toggle}>{props.label}</text>
 		</view>;
 	}
 
 	public function view():View {
 		var left = memo(() -> todos().filter(i -> !i.done()).length);
-		return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-size={14} color="#18181b">
-			<text font-size={28} font-weight={700} color="#3b82f6">todos</text>
-			<view direction="row" column-gap={8}>
-				<field tag="draft" slot="input" grow={1} value={draft} placeholder="What needs to be done?" label="What needs to be done?"
+		return <view flexGrow={1} padding={24} rowGap={14} background="#fafafa" fontSize={14} color="#18181b">
+			<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>
+			<view flexDirection="row" columnGap={8}>
+				<field tag="draft" slot="input" flexGrow={1} value={draft} placeholder="What needs to be done?" aria-label="What needs to be done?"
 					onInput={e -> draft(e.text)} onKeyDown={e -> if (e.key == Key.ENTER) add()}/>
-				<Button tag="add" label="Add" onClick={add}/>
+				<Button tag="add" label="Add" onPress={add}/>
 			</view>
-			<scroll tag="list" grow={1} min-height={0} row-gap={6} background="#ffffff" radius={8} border-width={1} border-color="#e4e4e7" padding={8}>
+			<scroll tag="list" flexGrow={1} minHeight={0} rowGap={6} background="#ffffff" borderRadius={8} borderWidth={1} borderColor="#e4e4e7" padding={8}>
 				<For each={visible()}>{(item:Read<Item>) -> {
 					var i = item();
-					<view direction="row" align-items="center" column-gap={8} padding="4 6" radius={6}>
-						<view grow={1}><Checkbox checked={i.done} label={i.title}/></view>
-						<Button label="Remove" variant="ghost" size="sm" onClick={() -> remove(i)}/>
+					<view flexDirection="row" alignItems="center" columnGap={8} padding="4 6" borderRadius={6}>
+						<view flexGrow={1}><Checkbox checked={i.done} label={i.title}/></view>
+						<Button label="Remove" variant="ghost" size="sm" onPress={() -> remove(i)}/>
 					</view>;
 				}}</For>
 				<Show when={visible().length == 0}><text color="#a1a1aa" padding={6}>Nothing here.</text></Show>
 			</scroll>
-			<view direction="row" align-items="center" justify="space-between">
+			<view flexDirection="row" alignItems="center" justifyContent="space-between">
 				<text tag="left">{left() == 1 ? "1 item left" : left() + " items left"}</text>
-				<view direction="row" column-gap={6}>{() -> [
+				<view flexDirection="row" columnGap={6}>{() -> [
 					for (f in ["all", "active", "done"])
-						<Button tag={"filter-" + f} label={f} variant={filter() == f ? null : "outline"} size="sm" onClick={() -> filter(f)}/>
+						<Button tag={"filter-" + f} label={f} variant={filter() == f ? null : "outline"} size="sm" onPress={() -> filter(f)}/>
 				]}</view>
 			</view>
 		</view>;

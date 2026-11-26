@@ -26,10 +26,31 @@ class Literal {
 			case _: continue;
 		}];
 		var ct = haxe.macro.TypeTools.toComplexType(t);
+		return switch string(e) {
+			case null: Context.error('A ${a.name} is one of its values (' + values.join(", ") + '), not any string', e.pos);
+			case s if (values.contains(s)): macro(cast $e : $ct);
+			case s: Context.error('"$s" is not a ${a.name}: ' + values.join(", "), e.pos);
+		}
+	}
+
+	// (a literal Haxe typed before the cast, a ternary's branch in a
+	// closure: a stored typed expression, a block of the one constant; in a
+	// dev build markup's literal is a live one, Literals.string(id, value, anchor))
+	static function string(e:Expr):Null<String> {
 		return switch e.expr {
-			case EConst(CString(s, _)) if (values.contains(s)): macro(cast $e : $ct);
-			case EConst(CString(s, _)): Context.error('"$s" is not a ${a.name}: ' + values.join(", "), e.pos);
-			case _: Context.error('A ${a.name} is one of its values (' + values.join(", ") + '), not any string', e.pos);
+			case EConst(CString(s, _)): s;
+			case EParenthesis(i): string(i);
+			case EMeta({name: ":storedTypedExpr"}, _): typed(Context.typeExpr(e));
+			case _: null;
+		}
+	}
+
+	static function typed(e:TypedExpr):Null<String> {
+		return switch e.expr {
+			case TConst(TString(s)): s;
+			case TParenthesis(i) | TMeta(_, i) | TCast(i, null) | TBlock([i]): typed(i);
+			case TCall({expr: TField(_, FStatic(_.get() => {pack: ["helder", "dev"], name: "Literals"}, _.get() => {name: "string"}))}, [_, v, _]): typed(v);
+			case _: null;
 		}
 	}
 }

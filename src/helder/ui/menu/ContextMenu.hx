@@ -2,12 +2,16 @@ package helder.ui.menu;
 
 import helder.ui.Node;
 import helder.ui.actions.Actions;
+import helder.os.PointerType;
+import helder.ui.SizeClass;
 import helder.ui.gesture.LongPress;
 import helder.ui.menu.Menu;
 import helder.ui.menu.TouchMenu;
 
 // A node's context menu for touch and the mouse: a long press (half a
-// second, LongPress; the mouse's left button held still too) lifts its preview (a view of the caller's: the
+// second, LongPress; the mouse's left button held still too, in a Compact
+// window only: a phone's layout, where it stands for the finger; on a
+// desktop's a held click stays a click) lifts its preview (a view of the caller's: the
 // node's look again, a larger thumbnail; none: the menu alone) over the
 // blurred window, the menu under it (TouchMenu), with the platform's tap
 // of haptics (helder.os.Haptics: iOS's, Android's, a browser's
@@ -20,9 +24,7 @@ import helder.ui.menu.TouchMenu;
 class ContextMenu {
 	// attaches it (detached when the owner is disposed, or by what it returns)
 	public static function attach(n:Node, items:Void->Array<MenuItem>, ?preview:Void->Any, ?destructive:Action->Bool, ?onOpen:Void->Void):Void->Void {
-		var press = n.addGesture(new LongPress());
-		// (the mouse held still too: a narrow window's, a script's)
-		press.mouse = true;
+		var press = n.addGesture(new MenuPress());
 		var down = n.onPointerDown;
 		var open:Null<Popup> = null;
 		press.onGesture = g -> {
@@ -48,5 +50,21 @@ class ContextMenu {
 		}
 		if (helder.view.graph.Owner.current != null) helder.view.graph.Graph.onCleanup(detach);
 		return detach;
+	}
+}
+
+// (a long press, the mouse's too in a Compact window: on a wider one a
+// click held still over a sidebar's row opened the phone's menu over a
+// window-wide glass)
+private class MenuPress extends LongPress {
+	public function new() {
+		super();
+		mouse = true;
+	}
+
+	override function wants(type:PointerType, button:Int):Bool {
+		if (!super.wants(type, button)) return false;
+		var ui = node?.ui;
+		return type != Mouse || ui != null && SizeClass.of(ui.width) == Compact;
 	}
 }

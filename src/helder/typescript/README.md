@@ -329,7 +329,7 @@ import {UiWindow, Surface} from 'helder/ui'
 
 const count = signal(0)
 UiWindow.run(<Surface title="Counter">
-  <view:button onPress={() => count(c => c + 1)}>{count() * 2}</view:button>
+  <button onPress={() => count(c => c + 1)}>{count() * 2}</button>
 </Surface>)
 ```
 
@@ -462,8 +462,13 @@ parameters substituted (`@:typescript.input`/`output` for one side: a
 function (`@:op(a())`) an interface of its call signatures (Signal, Memo),
 one made from other values (Read) branded, its `ReadFrom<T>` what TSX's
 component props take (`JSX.LibraryManagedAttributes`), and helder/view's
-and helder/ui's part of JSX (the neutral elements' attributes, their
-handlers typed by ui's events).
+and helder/ui's part of JSX (the neutral elements of helder.view.Vocabulary,
+an interface per element: the style properties typed as StyleProps,
+its own attributes and ref typed by its node, `aria-*` and `data-*` any,
+its handlers typed by ui's events and its own; no other name; helder/media's
+`<video>`). What tsgo lets pass the planner checks as Haxe's does, with
+the same diagnostics (a kebab or old name, `onClick`, a tag: the pairs of
+tests/typescript/definitions/reject).
 
 ### Built-ins
 
@@ -502,9 +507,9 @@ BigInt64Array), `process` and node's other globals.
 
 ```tsx
 function Checkbox(props: {checked: Signal<boolean>, label: string}) {
-  return <view:button role="checkbox" checked={props.checked} onPress={() => props.checked(c => !c)}>
+  return <button role="checkbox" aria-checked={props.checked} onPress={() => props.checked(c => !c)}>
     <Show when={props.checked()}><icon name="check"/></Show>
-  </view:button>
+  </button>
 }
 ```
 

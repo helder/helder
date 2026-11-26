@@ -121,20 +121,20 @@ class Threads implements Markup {
 
 	static function Field(props:{t:Read<Float>}):helder.ui.Node {
 		var f = new FlowField(W, H);
-		f.style.grow = 1;
+		f.style.flexGrow = 1;
 		renderEffect(() -> props.t(), t -> f.time = t);
 		return f;
 	}
 
 	public static function view(t:Read<Float>):View {
-		return <view grow={1} background={NIGHT} color={INK} font-family="Inter">
+		return <view flexGrow={1} background={NIGHT} color={INK} fontFamily="Inter">
 			<Field t={t}/>
-			<view position="absolute" left={56} bottom={52} row-gap={10}>
+			<view position="absolute" left={56} bottom={52} rowGap={10}>
 				<Show when={() -> at(t(), 0.8)}>
-					<view row-gap={8} transition="fade slide-up(20)">
-						<text font-size={14} color={MUTED} font-weight={600} letter-spacing={1.6}>HELDER.CANVAS · ON THE CPU</text>
-						<text font-family="Inter Display" font-size={44} font-weight={700} letter-spacing={-1}>Fourteen hundred threads</text>
-						<text font-size={16} color={MUTED}>Paths stroked with the lighter blend, a field of sines, every frame.</text>
+					<view rowGap={8} transition="fade slide-up(20)">
+						<text fontSize={14} color={MUTED} fontWeight={600} letterSpacing={1.6}>HELDER.CANVAS · ON THE CPU</text>
+						<text fontFamily="Inter Display" fontSize={44} fontWeight={700} letterSpacing={-1}>Fourteen hundred threads</text>
+						<text fontSize={16} color={MUTED}>Paths stroked with the lighter blend, a field of sines, every frame.</text>
 					</view>
 				</Show>
 			</view>

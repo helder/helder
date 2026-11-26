@@ -2,12 +2,14 @@ package helder.story;
 
 import helder.compiler.Kernel;
 
-// story({name, render, seed, width, height, store, caption, background, color, feature})'s handler
+// story({name, render, seed, width, height, loop, store, caption, background, color, feature})'s handler
 // (src/helder/compiler/README.md 4), the same for both languages (Haxe's
 // helder.story.Story.story, TypeScript's helder/story): the fields checked
 // at their positions, each a literal but render, a function of the story's
 // controls making its view; width and height its size in points (the
-// studio's screen, helder.story.Screens; a phone's, 390x844, without). A story with store: true is a store
+// studio's screen, helder.story.Screens; a phone's, 390x844, without); loop, seconds of its
+// clock from its moment the studio plays while its frame is hovered (a still
+// otherwise: its moment). A story with store: true is a store
 // screenshot (helder publish --screenshots), its caption over it and the
 // caption band's colours; seed is Controls.random's (1). What each adapter
 // makes of it is the Story; in a release build (-D helder.release) nothing:
@@ -15,7 +17,7 @@ import helder.compiler.Kernel;
 class StoryDefinition implements Definition<Adapter, StoryFields> {
 	public final name = "story";
 
-	static final FIELDS = ["name", "render", "seed", "width", "height", "store", "caption", "background", "color", "feature"];
+	static final FIELDS = ["name", "render", "seed", "width", "height", "loop", "store", "caption", "background", "color", "feature"];
 
 	public function new() {}
 
@@ -51,6 +53,12 @@ class StoryDefinition implements Definition<Adapter, StoryFields> {
 				case _: a.error('$f is a size in points, a whole number above 0, not ${x.describe()}', x.pos);
 			}
 		}
+		var loop = switch r.get("loop") {
+			case null: null;
+			case {value: KInt(i)} if (i > 0 && i <= 30): (i : Float);
+			case {value: KFloat(v)} if (v > 0 && v <= 30): v;
+			case x: a.error('loop is seconds of its clock from its moment, a number above 0 and at most 30, not ${x.describe()}', x.pos);
+		}
 		var feature = switch r.get("feature") {
 			case null: false;
 			case {value: KBool(b)}: b;
@@ -66,6 +74,7 @@ class StoryDefinition implements Definition<Adapter, StoryFields> {
 			seed: int(r, "seed", a) ?? 1,
 			width: int(r, "width", a),
 			height: int(r, "height", a),
+			loop: loop,
 			store: store,
 			caption: caption,
 			background: int(r, "background", a),
@@ -91,6 +100,7 @@ typedef StoryFields = {
 	seed:Int,
 	width:Null<Int>,
 	height:Null<Int>,
+	loop:Null<Float>,
 	store:Bool,
 	caption:Null<String>,
 	background:Null<Int>,

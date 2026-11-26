@@ -10,7 +10,7 @@ import hxmc.unsafe.*;
 // GPUs: it keeps a state block that the builds hand over to each other (the
 // window, the GPU context and surface, the display connection, made by the
 // first build and kept by the host's process), and the libraries loaded.
-//   host <first library>
+//   host <first library> <the program's arguments>
 // A build that hands over names the next library in the state block; the
 // host opens it (before closing the old one, so that the system libraries
 // they share, X11's, EGL's, the GPU driver, stay loaded), closes the old one
@@ -28,11 +28,22 @@ class DevHost {
 	public static inline var NEXT = 512;
 	public static inline var NEXT_BYTES = 1024;
 	public static inline var BYTES = NEXT + NEXT_BYTES;
+	// the slots of the program's argv and its count (helder.dev.Hosted's)
+	public static inline var ARGV = 48;
+	public static inline var ARGC = 49;
 
 	static function main() {
-		var path = Sys.args()[0];
+		var args = Sys.args(), path = args[0];
 		var state = LibC.malloc((BYTES : Int64));
 		LibC.memset(state, 0, (BYTES : Int64));
+		// (each build's Sys.args(): the rest, with argv[0] its runtime skips)
+		var argv = LibC.malloc((args.length + 1 : Int64) * 8);
+		Mem.setPtr(argv, 0, Mem.cstr("app"));
+		for (i in 1...args.length)
+			Mem.setPtr(argv, i * 8, cstring(args[i]));
+		Mem.setPtr(argv, args.length * 8, Ptr.nil());
+		Mem.setPtr(state, ARGV * 8, argv);
+		Mem.setI32(state, ARGC * 8, args.length);
 		var old = Ptr.nil();
 		while (path != null && path != "") {
 			var lib = open(path);
@@ -52,6 +63,14 @@ class DevHost {
 			HostCall.run(run, 0);
 			path = (cast state.add(NEXT) : CString).toString();
 		}
+	}
+
+	static function cstring(s:String):Ptr {
+		var b = haxe.io.Bytes.ofString(s), p = LibC.malloc((b.length + 1 : Int64));
+		for (i in 0...b.length)
+			Mem.setI8(p, i, b.get(i));
+		Mem.setI8(p, b.length, 0);
+		return p;
 	}
 
 	// (Windows: the path as UTF-16, a user's directory not in the ANSI code page too)

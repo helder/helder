@@ -13,9 +13,10 @@ using StringTools;
 
 // The user's own coding agent (Claude Code, Codex, Gemini CLI: Agents) over
 // the Agent Client Protocol (agentclientprotocol.com, version 1): started
-// on the first prompt (initialize, then session/new in the project's
-// directory, the studio's MCP server given to it when it takes one over
-// HTTP), each prompt a session/prompt (the text, the selection's file:line,
+// as the project opens (boot: spawned, initialize, then session/new in the
+// project's directory, the studio's MCP server given to it when it takes
+// one over HTTP; npx resolves its package for seconds, so not on the first
+// prompt, which waits on a boot still running), each prompt a session/prompt (the text, the selection's file:line,
 // the focused screen's PNG), its session/update notifications the turn's
 // events. What it asks the user (session/request_permission) is an Ask;
 // what it reads (fs/read_text_file) is the files as the studio has them,
@@ -33,6 +34,10 @@ class AcpAgent implements Agent {
 	final asks = new Map<Int, Int->Void>();
 	var asked = 0;
 	final log:Array<String> = [];
+	// (the start running: its task, what waits for it awaits it)
+	var booting:Null<Task<Acp>> = null;
+	// when the last start began and ended (seconds; ended -1: running or none)
+	public var bootedIn(default, null) = -1.0;
 
 	public function new(command:AgentCommand, work:Workspace) {
 		this.command = command;
@@ -57,6 +62,25 @@ class AcpAgent implements Agent {
 		if (acp != null) acp.close();
 	}
 
+	// started now, in the background (the project opened): the first prompt
+	// goes straight to session/prompt; failed: told (a start's failure), and
+	// the next prompt starts it again
+	public function boot(?failed:String->Void) {
+		if (booting != null || (acp != null && !acp.closed && session != null)) return;
+		var self = this, t0 = haxe.Timer.stamp();
+		var t = Async.launch(_ -> self.open());
+		booting = t;
+		t.onCompletion((_, e) -> {
+			if (booting == t) booting = null;
+			bootedIn = haxe.Timer.stamp() - t0;
+			if (e != null && failed != null) failed(failure(e));
+		});
+	}
+
+	// whether a start runs
+	public function starting():Bool
+		return booting != null;
+
 	@:coroutine function turn(prompt:String, context:AgentContext, on:AgentEvent->Void) {
 		var r:Dynamic = try {
 			var a = start();
@@ -70,10 +94,20 @@ class AcpAgent implements Agent {
 		on(Done(r?.stopReason ?? "end_turn"));
 	}
 
-	// (the agent running, its session made: lazily, again after it ended)
+	// (the agent running, its session made: the boot's, else one started now, again after it ended)
 	@:coroutine function start():Acp {
-		if (acp != null && !acp.closed) return acp;
+		if (booting == null && acp != null && !acp.closed && session != null) return acp;
+		if (booting == null) boot();
+		return booting.await();
+	}
+
+	@:coroutine function open():Acp {
 		log.resize(0);
+		session = null;
+		// (the studio's MCP server listening first: its URL the session's)
+		var t0 = haxe.Timer.stamp();
+		while (work.mcp() == null && work.serving != null && work.serving() && haxe.Timer.stamp() - t0 < 5)
+			Async.delay(0.02);
 		var a = Acp.spawn(command.cmd, command.args, {cwd: work.dir});
 		acp = a;
 		var self = this;
@@ -97,7 +131,8 @@ class AcpAgent implements Agent {
 			if (url != null && !http) Sys.println('studio: ${command.name} takes no MCP server over HTTP: the studio\'s tools are not its');
 			var s:Dynamic = try a.request("session/new", {
 				cwd: work.dir,
-				mcpServers: url != null && http ? [{type: "http", name: "helder-studio", url: url, headers: []}] : []
+				mcpServers: url != null && http ? [{type: "http", name: "helder-studio", url: url, headers: []}] : [],
+				_meta: SESSION
 			}) catch (e:AcpError) {
 				var methods:Array<Dynamic> = init?.authMethods ?? [];
 				if (e.code != -32000 || methods.length == 0) throw e;
@@ -110,6 +145,40 @@ class AcpAgent implements Agent {
 		}
 		return a;
 	}
+
+	// (Claude Code's session options, claude-agent-acp's: its own shell, file
+	// writes and subagents not its, the project changed through the studio's
+	// tools; another agent ignores them; a name this version lacks is no harm)
+	public static final DENIED = [
+		"Bash", "PowerShell", "BashOutput", "KillShell", "TaskOutput", "TaskStop", "Monitor", "REPL",
+		"Write", "Edit", "NotebookEdit",
+		"Agent", "Task", "Workflow", "TeamCreate", "SendMessage", "RemoteTrigger", "CronCreate", "ScheduleWakeup", "EnterWorktree",
+		"SendToProject", "SendToProjectContext", "Skill"
+	];
+
+	// (the studio's own tools allowed outright: else Claude Code's auto mode,
+	// a session's default, has its classifier judge each call, and it blocked
+	// one of two deletes sent at once)
+	public static final ALLOWED = ["mcp__helder-studio"];
+
+	// (Claude Code's built-ins the session has: reading the project, its plan)
+	public static final TOOLS = ["Read", "Glob", "Grep", "TodoWrite"];
+
+	// (the session apart from the user's own Claude Code: only the studio's MCP
+	// server, no claude.ai connectors, no settings of theirs, so no plugins,
+	// hooks or CLAUDE.md of theirs; DENIED as well, should TOOLS be read otherwise)
+	static final SESSION:Dynamic = {
+		claudeCode: {
+			options: {
+				tools: TOOLS,
+				allowedTools: ALLOWED,
+				disallowedTools: DENIED,
+				strictMcpConfig: true,
+				settingSources: [],
+				settings: {disableClaudeAiConnectors: true, disableAllHooks: true}
+			}
+		}
+	};
 
 	function failure(e:Exception):String {
 		var a = acp;
@@ -131,6 +200,9 @@ class AcpAgent implements Agent {
 			out.push({type: "text", text: 'In helder studio: the screen ${context.screen} is in focus.'});
 		if (context.problems.length > 0)
 			out.push({type: "text", text: "The studio's last build failed:\n" + context.problems.slice(0, 10).map(p -> '- $p').join("\n")});
+		var crashes = context.crashes ?? [];
+		if (crashes.length > 0)
+			out.push({type: "text", text: "It builds, but these screens threw when the studio ran them:\n" + crashes.slice(0, 10).map(p -> '- $p').join("\n")});
 		if (context.screen != null && work.snap != null && caps.promptCapabilities?.image == true) {
 			var png = try work.snap(context.screen) catch (_:Exception) null;
 			if (png != null) out.push({type: "image", mimeType: "image/png", data: png});
@@ -191,11 +263,8 @@ class AcpAgent implements Agent {
 	function write(p:Dynamic):Dynamic {
 		var f = inside(p?.path);
 		var text:String = p.content ?? "";
-		if (!Files.exists(f)) {
-			#if !(hxmc.target == "wasm32-wasi")
-			sys.FileSystem.createDirectory(haxe.io.Path.directory(f));
-			#end
-			Files.save(f, text);
+		if (!work.docs.has(f)) {
+			work.docs.create(f, text, rel(f), "agent", Presence.name(command.name));
 			return null;
 		}
 		var d = work.docs.get(f);
@@ -225,5 +294,7 @@ typedef Workspace = {
 	dir:String,
 	docs:Docs,
 	mcp:Void->Null<String>,
+	// whether an MCP server is to come (its URL not known yet)
+	?serving:Void->Bool,
 	snap:Null<Coroutine<String->Null<String>>>,
 }

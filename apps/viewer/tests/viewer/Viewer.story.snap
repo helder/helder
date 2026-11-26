@@ -51,9 +51,9 @@ Node#root 0,0 390x844
                     Spacer#before 237,40 563x12
                     Spacer#after 237,52 563x12
                 Node#empty 251,84 535x570
-                  ImageNode#image 499,321 40x40
-                  TextNode#state-title 444,375 150x19 "This folder is empty"
-                  TextNode#text 339,402 360x15 "Its images, videos and PDFs show up here as they are added."
+                  ImageNode#image 499,313 40x40
+                  TextNode#state-title 444,367 150x19 "This folder is empty"
+                  TextNode#text 339,394 360x31 "Its images, videos and PDFs show up here as they are added."
               Node#pathbar 237,668 563x32
                 Node#view 241,669 503x32
                   PathBarNode#pathbar 241,669 503x32
@@ -578,8 +578,8 @@ Node#root 0,0 390x844
                             Node#view 423,65 56x72
                               ImageNode#image 439,83 24x24
                               TextNode#text 439,112 24x14 "PDF"
-                          TextNode#text 399,152 104x18 "About Viewer.pdf"
-                          TextNode#text 433,171 35x14 "182 KB"
+                          TextNode#text 399,152 104x33 "About Viewer.pdf"
+                          TextNode#text 433,186 35x15 "182 KB"
                       Node#cell 521,52 131x160
                         Node#view 521,52 131x160
                           Node#view 541,56 90x90
@@ -594,8 +594,8 @@ Node#root 0,0 390x844
                             Node#view 694,65 56x72
                               ImageNode#image 710,83 24x24
                               TextNode#text 710,112 24x14 "JPG"
-                          TextNode#text 670,152 104x18 "Dusk panorama.jpg"
-                          TextNode#text 705,171 34x14 "293 KB"
+                          TextNode#text 670,152 104x33 "Dusk panorama.jpg"
+                          TextNode#text 705,186 34x15 "293 KB"
                     Node#row 237,216 563x164
                       Node#cell 249,216 132x160
                         Node#view 249,216 132x160
@@ -611,8 +611,8 @@ Node#root 0,0 390x844
                             Node#view 423,229 56x72
                               ImageNode#image 439,247 24x24
                               TextNode#text 439,276 24x14 "JPG"
-                          TextNode#text 399,316 104x18 "Murmuration.jpg"
-                          TextNode#text 433,335 35x14 "294 KB"
+                          TextNode#text 399,316 104x33 "Murmuration.jpg"
+                          TextNode#text 433,350 35x15 "294 KB"
                       Node#cell 521,216 131x160
                         Node#view 521,216 131x160
                           Node#view 541,220 90x90
@@ -1579,15 +1579,15 @@ Node#root 0,0 390x844
                   ImageNode#image 769,12 16x16
               Node#content 237,40 563x628
                 Node#error 237,40 563x628
-                  Node#view 497,277 44x44
-                    ImageNode#image 510,290 18x18
-                  TextNode#state-title 425,335 187x19 "There is no folder “gone”"
-                  TextNode#text 339,362 360x15 "It may have been moved, renamed or deleted, or its drive may be disconnected."
-                  Node#view 394,385 249x46
-                    Node#retry 394,395 97x36
-                      TextNode#text 411,404 63x18 "Try again"
-                    Node#button 497,395 146x36
-                      TextNode#text 514,404 112x18 "Enclosing Folder"
+                  Node#view 497,269 44x44
+                    ImageNode#image 510,282 18x18
+                  TextNode#state-title 425,327 187x19 "There is no folder “gone”"
+                  TextNode#text 339,354 360x31 "It may have been moved, renamed or deleted, or its drive may be disconnected."
+                  Node#view 394,393 249x46
+                    Node#retry 394,403 97x36
+                      TextNode#text 411,412 63x18 "Try again"
+                    Node#button 497,403 146x36
+                      TextNode#text 514,412 112x18 "Enclosing Folder"
               Node#pathbar 237,668 563x32
                 Node#view 241,669 503x32
                   PathBarNode#pathbar 241,669 503x32
@@ -2433,16 +2433,16 @@ Node#root 0,0 390x844
                             Node#view 423,65 56x72
                               ImageNode#image 439,83 24x24
                               TextNode#text 439,112 24x14 "PDF"
-                          TextNode#text 399,152 104x18 "About Viewer.pdf"
-                          TextNode#text 433,171 35x14 "182 KB"
+                          TextNode#text 399,152 104x33 "About Viewer.pdf"
+                          TextNode#text 433,186 35x15 "182 KB"
                       Node#cell 521,52 131x160
                         Node#view 521,52 131x160
                           Node#view 541,56 90x90
                             Node#view 558,65 56x72
                               ImageNode#image 574,83 24x24
                               TextNode#text 574,112 25x14 "JPG"
-                          TextNode#text 534,152 104x18 "Dusk panorama.jpg"
-                          TextNode#text 569,171 35x14 "293 KB"
+                          TextNode#text 534,152 104x33 "Dusk panorama.jpg"
+                          TextNode#text 569,186 35x15 "293 KB"
                       Node#cell 656,52 132x160
                         Node#view 656,52 132x160
                           Node#view 677,56 90x90
@@ -2458,8 +2458,8 @@ Node#root 0,0 390x844
                             Node#view 287,229 56x72
                               ImageNode#image 303,247 24x24
                               TextNode#text 303,276 24x14 "JPG"
-                          TextNode#text 263,316 104x18 "Murmuration.jpg"
-                          TextNode#text 298,335 34x14 "294 KB"
+                          TextNode#text 263,316 104x33 "Murmuration.jpg"
+                          TextNode#text 298,350 34x15 "294 KB"
                       Node#cell 385,216 132x160
                         Node#view 385,216 132x160
                           Node#view 406,220 90x90
@@ -2877,16 +2877,16 @@ Node#root 0,0 390x844
                             Node#view 423,65 56x72
                               ImageNode#image 439,83 24x24
                               TextNode#text 439,112 24x14 "PDF"
-                          TextNode#text 399,152 104x18 "About Viewer.pdf"
-                          TextNode#text 433,171 35x14 "182 KB"
+                          TextNode#text 399,152 104x33 "About Viewer.pdf"
+                          TextNode#text 433,186 35x15 "182 KB"
                       Node#cell 521,52 131x160
                         Node#view 521,52 131x160
                           Node#view 541,56 90x90
                             Node#view 558,65 56x72
                               ImageNode#image 574,83 24x24
                               TextNode#text 574,112 25x14 "JPG"
-                          TextNode#text 534,152 104x18 "Dusk panorama.jpg"
-                          TextNode#text 569,171 35x14 "293 KB"
+                          TextNode#text 534,152 104x33 "Dusk panorama.jpg"
+                          TextNode#text 569,186 35x15 "293 KB"
                       Node#cell 656,52 132x160
                         Node#view 656,52 132x160
                           Node#view 677,56 90x90
@@ -2902,8 +2902,8 @@ Node#root 0,0 390x844
                             Node#view 287,229 56x72
                               ImageNode#image 303,247 24x24
                               TextNode#text 303,276 24x14 "JPG"
-                          TextNode#text 263,316 104x18 "Murmuration.jpg"
-                          TextNode#text 298,335 34x14 "294 KB"
+                          TextNode#text 263,316 104x33 "Murmuration.jpg"
+                          TextNode#text 298,350 34x15 "294 KB"
                       Node#cell 385,216 132x160
                         Node#view 385,216 132x160
                           Node#view 406,220 90x90

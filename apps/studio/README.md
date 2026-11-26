@@ -171,7 +171,7 @@ click flies there).
 <Design>
 	<Frame name="Home" width={390} height={844} canvas:at="0 0" background="#f8fafc" padding={24}>
 		<note>For the editor only.</note>
-		<text font-size={28} font-weight={700} color="#3b82f6">todos</text>
+		<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>
 	</Frame>
 </Design>
 ```
@@ -251,8 +251,26 @@ On a design's frame the canvas edits the markup directly
 
 ## Play
 
-The toolbar's Play (`Play.hx`) runs what is selected, else the app from
-its start; the target beside it says where; Stop or Escape ends it.
+**The watched shell's canvas is a storyboard of stills.** Each story's
+frame shows its moment (helder.story.Host's stills: brought there as a
+store screenshot is, its `Controls.play` frame by frame, else its
+transitions for 2 s of its clock, then not run; a live literal, a rebuild
+still draw it again). A story with `loop: <seconds>` (`story({..., loop:
+2})`, at most 30) plays that long from its moment while its frame is
+hovered, then from its moment again, watch-only (no input reaches it), and
+is its still again when the pointer leaves; such frames have a small loop
+mark by their caption. Play opens a window of its own: the header's Play
+the app (the frame aimed at, when one is), a double click on a frame that
+screen, live, its input its own, at its size. It is `helder dev` on it (a
+TypeScript story: a main of it the studio writes, `.helder-play.tsx` at
+the project's root, `play(story)` from helder/story; the app: the
+project), so it rebuilds in place as the project changes, its state kept,
+while the agent works; closing the window ends it, another Play replaces
+it. A headless run says what it would open (`play-window`).
+
+In the old shell (`--classic`) the toolbar's Play (`Play.hx`) runs what is
+selected, else the app from its start; the target beside it says where;
+Stop or Escape ends it.
 
 - **In the studio** (the default; the browser's only target): a story
   full size (fitted when it does not fit) and live: the pointer's, the
@@ -477,8 +495,13 @@ Agent Client Protocol (ACP: JSON-RPC on the agent's stdin and stdout,
 
 `--agent`, else `HELDER_STUDIO_AGENT`, else the first found in that order
 (a headless run: `local` unless one is named); the studio says which at
-start. The agent starts on the first prompt, in the project's directory,
-with the studio's MCP server (below) when it takes one over HTTP, so it
+start. The agent starts as the project opens, in the background (its
+process, `initialize`, its session: npx resolves its package for
+seconds), so the first prompt goes straight to it; a prompt sent before
+it is up waits for it ("Starting Claude…" in the turn), and a start that
+fails is a row of the chat's (the next prompt tries again). The turn shows
+at once: the prompt's bubble and the agent's pulsing mark. It runs in the
+project's directory, with the studio's MCP server (below) when it takes one over HTTP, so it
 has `run.snap`, `run.tree`, `build.check` beside its own tools. A prompt
 carries the screen in focus and the selection's `file:line`, and the
 screen's last frame as an image when the agent takes images.
@@ -520,7 +543,7 @@ initializes again), and `DELETE /mcp` with it ends the session.
 | Tool | Does |
 |---|---|
 | `project.read {path?}` | a file's text as the studio has it (its unsaved state too); without a path, the files and the screens by flow |
-| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other, the agent's name on it): live literals patched in the screens, anything else built; answers what happened and the diagnostics |
+| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other, the agent's name on it): live literals patched in the screens, anything else built; answers what happened and the diagnostics. `{path, text}` on a path not there makes the file (its folders too; its undo deletes it) |
 | `build.check {}` | the program typed (tsgo's check too), nothing written: diagnostics at file and line |
 | `run.snap {screen?, path?}` | a screen's last frame as a PNG (the selected one, else the first); a design's frame drawn offscreen |
 | `run.tree {screen?}` | a screen's node tree: tags, boxes, texts, colours and each node's `file:line` (a design's frame: its interpreted nodes) |
@@ -529,6 +552,24 @@ initializes again), and `DELETE /mcp` with it ends the session.
 | `studio.done {note?}` | the agent finished: its marks fade, the note its status |
 | `studio.ask {question, options: [{id?, label, note?, frame?, screen?, image?}], multiple?, wait?}` | a question in the chat: options pointing at the canvas (`frame`: `<file>#<name>`, `screen`, `image`) or text alone; `{id}` at once (the answer comes with a later result), `wait: true` blocks (10 minutes, then `{pending: true}`), `{id}` alone waits for an earlier one |
 | `studio.inbox {}` | what the user said since (answers, direction typed while the agent works) |
+| `studio.guide {topic?}` | how to build here, fast (`apps/studio/guide/*.md`): `start` (the default: the project's files, screens as stories, sketching, the loop, what builds take), `ui`, `game`, `design`, `assets`; each topic's TypeScript is built by its test (`Guides.test.hx`) |
+
+**A project starts working.** An empty folder opened in the studio (the
+Untitled one, or any) becomes the starter (`Starter`): the smallest
+TypeScript program that builds and shows on the canvas (`main.tsx`,
+`app.tsx`, `app.story.tsx` with one plain screen; a `tsconfig.json`
+mapping helder's modules to the helder the studio was built with when no
+package resolves them, and TypeScript's checker found beside it). Until
+the agent changes the project the canvas waits: the blank sheet is the
+dots and the prompt alone; after the first prompt, three frame-sized
+blocks (radius 12, no caption) hold the places where the first frames
+will land, a shimmer sweeping them (1.6 s, the queued frames' own). The
+agent's first change fades them and the frames rise onto the canvas,
+built (the arrive motion).
+What a project is (TypeScript or Haxe, its main, whether it has a program)
+is read again whenever a story or a main is made or changes (`revive`), so
+a folder that starts empty or changes kind comes alive: its screens shown,
+its program built and checked.
 
 **Questions and the inbox.** A question (`Questions`) is a card in the
 chat (`Asks`): its options as thumbnails of the frames they point at (or

@@ -38,7 +38,7 @@ A component is a function that takes props and returns markup. It runs once when
 import {Read} from 'helder/view'
 
 function Badge(props: {label: string, on: Read<boolean>}) {
-  return <view padding='2 8' radius={9}
+  return <view padding='2 8' borderRadius={9}
     background={props.on() ? '#16a34a' : '#a1a1aa'}>
     <text color='#ffffff'>{props.label}</text>
   </view>

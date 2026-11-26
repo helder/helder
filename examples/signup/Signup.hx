@@ -29,41 +29,41 @@ class Signup implements Markup {
 		var d = signal(dark), root:Null<Node> = null;
 		effect(() -> d(), x -> if (root?.ui != null) root.ui.dark = x);
 		return <Standard.Themed look={look}>
-			<view grow={1} ref={(n:Node) -> {
+			<view flexGrow={1} ref={(__part:helder.ui.Part) -> {var n:Node = cast __part; {
 				root = n;
 				if (n.ui != null) n.ui.dark = d.peek();
-			}}>{view(d)}</view>
+			};}}>{view(d)}</view>
 		</Standard.Themed>;
 	}
 
 	// helder's look, and the card's parts in its tokens
 	public static final look = Look.base.with({
 		parts: {
-			card: t -> {rowGap: 24, padding: 24, radius: t.radiusSurface, borderWidth: 1, borderColor: t.line, background: t.surface},
+			card: t -> {rowGap: 24, padding: 24, borderRadius: t.radiusSurface, borderWidth: 1, borderColor: t.line, background: t.surface},
 			muted: t -> {color: t.fg2},
-			badge: t -> {padding: [2, 8], radius: t.radius - 2, background: t.well, color: t.fg2, fontSize: t.small, fontWeight: t.medium},
-			input: t -> {height: t.control, padding: [0, 12], radius: t.radius, borderWidth: 1, borderColor: t.edge, background: t.surface,
+			badge: t -> {padding: [2, 8], borderRadius: t.radius - 2, background: t.well, color: t.fg2, fontSize: t.small, fontWeight: t.medium},
+			input: t -> {height: t.control, padding: [0, 12], borderRadius: t.radius, borderWidth: 1, borderColor: t.edge, background: t.surface,
 				hover: {borderColor: t.edgeStrong}}
 		}
 	});
 
 	public static function view(dark:Signal<Bool>):View {
 		var email = signal(""), terms = signal(false), sent = signal(false);
-		return <view grow={1} padding={24} background={Look.ref.canvas} color={Look.ref.fg} font-family="Inter" font-size={14}>
+		return <view flexGrow={1} padding={24} background={Look.ref.canvas} color={Look.ref.fg} fontFamily="Inter" fontSize={14}>
 			<view slot="card">
-				<view direction="row" align-items="start">
-					<view grow={1} row-gap={4}>
-						<text font-size={16} font-weight={600}>Create an account</text>
+				<view flexDirection="row" alignItems="start">
+					<view flexGrow={1} rowGap={4}>
+						<text fontSize={16} fontWeight={600}>Create an account</text>
 						<text slot="muted">{() -> sent() ? "Check your inbox" : "Enter your email below"}</text>
 					</view>
 					<text slot="badge">Beta</text>
 				</view>
-				<view row-gap={12}>
-					<field slot="input" value={email} placeholder="m@example.com" label="Email" onInput={e -> email(e.text)}/>
+				<view rowGap={12}>
+					<field slot="input" value={email} placeholder="m@example.com" aria-label="Email" onInput={e -> email(e.text)}/>
 					<Standard.Checkbox label="Accept terms" checked={terms} onChange={v -> terms(v)}/>
 					<Standard.Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
 				</view>
-				<view direction="row" column-gap={8}>
+				<view flexDirection="row" columnGap={8}>
 					<Standard.Button onPress={() -> sent(false)}>Cancel</Standard.Button>
 					<Standard.Button variant="primary" disabled={() -> !terms()} onPress={() -> sent(true)}>Sign up</Standard.Button>
 				</view>

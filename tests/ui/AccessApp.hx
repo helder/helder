@@ -61,11 +61,11 @@ class AccessApp implements Markup {
 				Render.render(m.view(), w.root);
 			case "guide":
 				var text = signal("A draft"), subject = signal("Hi"), body = signal(""), name = signal("Ann");
-				var v:View = @:privateAccess <view padding={12} row-gap={12}>
+				var v:View = @:privateAccess <view padding={12} rowGap={12}>
 					{GuideCheck.Order({})}
 					{GuideCheck.Confirm({onYes: () -> {}})}
 					{GuideCheck.Greeting({name: name, onLink: () -> {}})}
-					{GuideCheck.SearchButton({onClick: () -> {}})}
+					{GuideCheck.SearchButton({onPress: () -> {}})}
 					{GuideCheck.Editor({text: text, onSave: () -> {}})}
 					{GuideCheck.Compose({subject: subject, body: body})}
 				</view>;

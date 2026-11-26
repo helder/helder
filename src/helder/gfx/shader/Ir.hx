@@ -29,6 +29,10 @@ enum SType {
 	// a storage texture, write only (a compute stage's parameter only), of a
 	// TextureFormat (its value: RGBA8, RGBA16F, R32F)
 	TImage(format:Int);
+	// an array of workgroup memory of elements of t (a compute stage's
+	// third parameter's field, Workgroup<T>: SShared), read by index,
+	// written by SStore
+	TWorkgroup(t:SType);
 }
 
 class SStruct {
@@ -138,6 +142,10 @@ class SFunction {
 	// (a stage's: the fields of its object of parameters, as written, one a
 	// parameter after the input each: params[i + 1])
 	public var fields:Array<String> = [];
+	// (a compute stage's: the fields of its object of workgroup memory, its
+	// third parameter, the parameters after those of fields; length 0: the
+	// workgroup's)
+	public var workgroup:Array<{name:String, length:Int}> = [];
 
 	public function new(name, params, ret) {
 		this.name = name;
@@ -283,17 +291,58 @@ class SEntry {
 	}
 }
 
+// an array of a compute stage's workgroup memory: a field of its third
+// parameter (Workgroup<T>), or a subgroup operation's scratch where they are
+// emulated (Subgroups), its parameter in the stage's function (v: after
+// the resources, in order), its elements' type and layout (std430, as WGSL
+// counts its bytes) and its length; emitted wg_<index>
+class SShared {
+	public final name:String;
+	public final v:SVar;
+	public final element:SType;
+	public final length:Int;
+	// (std430: a struct's fields' offsets, an element's bytes)
+	public final offsets:Array<Int>;
+	public final stride:Int;
+	public final index:Int;
+
+	public function new(name, v, element, length, offsets, stride, index) {
+		this.name = name;
+		this.v = v;
+		this.element = element;
+		this.length = length;
+		this.offsets = offsets;
+		this.stride = stride;
+		this.index = index;
+	}
+
+	// the bytes it takes
+	public var bytes(get, never):Int;
+
+	inline function get_bytes()
+		return stride * length;
+}
+
 // a compute stage (compute({size, main})): its entry, its workgroup's size
-// (x, y, z) and its resources by kind
+// (x, y, z), its resources by kind and its workgroup memory; subgroups:
+// it uses them (an operation or one of ComputeInput's subgroup fields);
+// emulated: they are made of workgroup memory and barriers here, in
+// subgroups of 4 (Subgroups.emulate), else the language's own
 class SCompute {
 	public final entry:SEntry;
 	public final size:Array<Int>;
 	public final storage:Array<SStorage>;
 	public final images:Array<SImage>;
+	public final shared:Array<SShared>;
+	public final subgroups:Bool;
+	public final emulated:Bool;
 
-	public function new(entry, size) {
+	public function new(entry, size, shared, subgroups = false, emulated = false) {
 		this.entry = entry;
 		this.size = size;
+		this.shared = shared;
+		this.subgroups = subgroups;
+		this.emulated = emulated;
 		storage = [for (r in entry.resources) switch r {
 			case RStorage(s): s;
 			case _: continue;
@@ -303,6 +352,12 @@ class SCompute {
 			case _: continue;
 		}];
 	}
+
+	// the invocations of a workgroup
+	public var invocations(get, never):Int;
+
+	inline function get_invocations()
+		return size[0] * size[1] * size[2];
 }
 
 class SProgram {

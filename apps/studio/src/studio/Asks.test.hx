@@ -38,6 +38,15 @@ function tests() {
 			equals(next.content[1].text, 'The user answered "Which start screen?": Dusk. (picked: dusk)');
 			equals(s.inbox.pending().length, 0);
 		}));
+		test("answered: its options' frames kept for the card, their size too", () -> {
+			var s = studio("bin/asks-test-4");
+			var q = s.questions.ask(null, "Which start screen?", options(), false);
+			equals([for (o in q.options) o.kept == null], [true, true, true]);
+			s.questions.pick(q.id, "dusk");
+			var a = s.questions.get(q.id);
+			equals([for (o in a.options) o.kept != null && o.kept.markup != ""], [true, true, true]);
+			equals([a.options[0].kept.width, a.options[0].kept.height], [200.0, 300.0]);
+		});
 		test("wait: pending past its time, the answer the inbox's then", async(() -> {
 			var s = studio("bin/asks-test-2");
 			Tools.WAIT = 0.2;

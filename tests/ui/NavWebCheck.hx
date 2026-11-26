@@ -11,7 +11,7 @@ class NavWebCheck implements Markup {
 	static function main() {
 		var w = new UiWindow("NavWebCheck", 200, 120);
 		final nav = new Routes();
-		nav.route("/", _ -> <view tag="home" grow={1}/>).route("/item/:id", p -> <view tag={"item-" + p.id} grow={1}/>);
+		nav.route("/", _ -> <view tag="home" flexGrow={1}/>).route("/item/:id", p -> <view tag={"item-" + p.id} flexGrow={1}/>);
 		Render.render(<Stack router={nav} transition={None}/>, w.root);
 		var n = 0, last = "";
 		w.root.onKeyDown = e -> if (e.key == "n".code) nav.go("/item/" + (++n));

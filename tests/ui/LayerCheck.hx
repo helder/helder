@@ -105,7 +105,7 @@ class LayerCheck {
 			if (x < x0 || x >= x1 || y < y0 || y >= y1) continue;
 			var dx = x - x0 < x1 - 1 - x ? x - x0 : x - x1, dy = y - y0 < y1 - 1 - y ? y - y0 : y - y1;
 			var ty = Std.int(y + sc.scrollY * scale - y0) % Renderer.TILE;
-			near = ' in the clip ${x0},${y0} ${x1},${y1} (r ${sc.style.radius * scale}), $dx, $dy from its nearest corner, row $ty of its tile';
+			near = ' in the clip ${x0},${y0} ${x1},${y1} (r ${sc.style.borderRadius * scale}), $dx, $dy from its nearest corner, row $ty of its tile';
 		}
 		Sys.println('LayerCheck:   $x,$y: ${StringTools.hex(want, 8)} drawn, ${StringTools.hex(got, 8)} from tiles$near');
 	}
@@ -119,20 +119,20 @@ class LayerCheck {
 		}
 		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
-		top.style.set({direction: Row, height: H, padding: 8, columnGap: 8, background: 0xFFF4F4F5, fontSize: 13});
+		top.style.set({flexDirection: Row, height: H, padding: 8, columnGap: 8, background: 0xFFF4F4F5, fontSize: 13});
 		var card = new Node();
-		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, radius: 6, position: Absolute, left: 200, top: 150});
+		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, borderRadius: 6, position: Absolute, left: 200, top: 150});
 		for (k in 0...1 + rnd(2)) {
 			var list = new Node();
-			list.style.set({overflow: Scroll, grow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, radius: [8, 6.5, 12][rnd(3)]});
+			list.style.set({overflow: Scroll, flexGrow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, borderRadius: [8, 6.5, 12][rnd(3)]});
 			if (rnd(2) == 0) list.style.set({borderWidth: 1, borderColor: 0xFFE4E4E7});
 			for (i in 0...30 + rnd(30)) {
 				var row = new Node();
-				row.style.set({direction: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
-				if (rnd(4) == 0) row.style.shadow = Shadow.parse("0 1px 3px rgba(0,0,0,0.3)");
+				row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+				if (rnd(4) == 0) row.style.boxShadow = Shadow.parse("0 1px 3px rgba(0,0,0,0.3)");
 				if (rnd(5) == 0) row.style.set({borderWidth: 1, borderColor: 0xFF71717A});
 				var box = new Node();
-				box.style.set({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), radius: rnd(2) * 5});
+				box.style.set({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), borderRadius: rnd(2) * 5});
 				var text = new TextNode("Row " + i + [" alpha", " beta gamma", " delta"][rnd(3)]);
 				if (rnd(4) == 0) text.style.opacity = 0.5;
 				row.append(box);

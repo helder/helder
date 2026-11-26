@@ -31,16 +31,16 @@ function visible(): Item[] {
 }
 
 function Button(props: { label: string; onClick: () => void; tag?: string; outline?: Read<boolean> }) {
-	return <view:button tag={props.tag ?? "button"} role="button" focusable padding="4 8" border-width={props.outline?.() ? 1 : 0}
-		onPress={() => props.onClick()}>{props.outline?.() ? "(" + props.label + ")" : props.label}</view:button>;
+	return <button tag={props.tag ?? "button"} padding="4 8" borderWidth={props.outline?.() ? 1 : 0}
+		onPress={() => props.onClick()}>{props.outline?.() ? "(" + props.label + ")" : props.label}</button>;
 }
 
 function Checkbox(props: { checked: Signal<boolean>; label: string; tag: string }) {
-	return <view direction="row" column-gap={8}>
-		<view:button tag={props.tag} role="checkbox" checked={props.checked} focusable width={16} height={16}
+	return <view flexDirection="row" columnGap={8}>
+		<button tag={props.tag} role="checkbox" aria-checked={props.checked} width={16} height={16}
 			background={props.checked() ? "#18181b" : "#ffffff"} onPress={() => props.checked(c => !c)}>
 			<Show when={props.checked}><icon name="check" width={12} height={12}/></Show>
-		</view:button>
+		</button>
 		<text color={props.checked() ? "#a1a1aa" : "#18181b"}>{props.label}</text>
 	</view>;
 }
@@ -49,21 +49,21 @@ const left = memo(() => todos().filter(i => !i.done()).length);
 
 const root = UiProbe.root(480, 560);
 render(
-	<view grow={1} padding={24} row-gap={14}>
-		<text font-size={28}>todos</text>
-		<view direction="row" column-gap={8}>
-			<field tag="draft" grow={1} value={draft} placeholder="What needs to be done?"
+	<view flexGrow={1} padding={24} rowGap={14}>
+		<text fontSize={28}>todos</text>
+		<view flexDirection="row" columnGap={8}>
+			<field tag="draft" flexGrow={1} value={draft} placeholder="What needs to be done?"
 				onInput={(e: Event) => draft(e.text)} onKeyDown={e => { if (e.key === Key.ENTER) add(); }}/>
 			<Button tag="add" label="Add" outline onClick={add}/>
 		</view>
-		<scroll tag="list" grow={1} row-gap={6}>
-			<For each={visible}>{item => <view direction="row" column-gap={8}>
+		<scroll tag="list" flexGrow={1} rowGap={6}>
+			<For each={visible}>{item => <view flexDirection="row" columnGap={8}>
 				<Checkbox checked={item().done} label={item().title} tag={"check-" + item().title}/>
 			</view>}</For>
 			<Show when={visible().length === 0}><text>Nothing here.</text></Show>
 		</scroll>
 		<text tag="left">{left() === 1 ? "1 item left" : left() + " items left"}</text>
-		<view direction="row" column-gap={6}>{["all", "active", "done"].map(f =>
+		<view flexDirection="row" columnGap={6}>{["all", "active", "done"].map(f =>
 			<Button tag={"filter-" + f} label={f} outline={filter() !== f} onClick={() => filter(f)}/>)}</view>
 	</view>,
 	root
@@ -81,8 +81,8 @@ console.log(UiProbe.dump());
 // a literal attribute naming env(): bound to the safe area (SafeArea), as Haxe's markup
 const safe = UiProbe.root(390, 844);
 render(
-	<view tag="page" padding-left="calc(env(safe-area-inset-left) + 16px)">
-		<view tag="bar" padding-top="env(safe-area-inset-top)" padding-bottom="max(12px, env(safe-area-inset-bottom))"/>
+	<view tag="page" paddingLeft="calc(env(safe-area-inset-left) + 16px)">
+		<view tag="bar" paddingTop="env(safe-area-inset-top)" paddingBottom="max(12px, env(safe-area-inset-bottom))"/>
 	</view>,
 	safe
 );

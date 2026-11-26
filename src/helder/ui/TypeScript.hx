@@ -3,7 +3,7 @@ package helder.ui;
 // helder.ui for TypeScript programs (helder.typescript): windows and their
 // markup (see helder/view), the events handlers are given, the keys. Each
 // class is the Haxe class `__haxe` names. The neutral elements (view, text,
-// view:button...) take any attribute, their handlers given ui's events.
+// button...) take any attribute, their handlers given ui's events.
 @:typescript("helder/ui")
 @:typescript.classes(helder.ui.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Selection, helder.ui.GridScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
 @:typescript.classes(helder.ui.Edges, helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)

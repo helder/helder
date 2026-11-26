@@ -20,7 +20,18 @@ class Files {
 		#if (hxmc.target == "wasm32-wasi")
 		hxmc.unsafe.Arena.scoped(a -> studio.web.StudioWeb.fs_write(a.cstring(path), a.cstring(text)));
 		#else
+		// (a file made in a folder not there yet: the folder made)
+		helder.cli.TestCommand.mkdirs(haxe.io.Path.directory(path));
 		sys.io.File.saveContent(path, text);
+		#end
+	}
+
+	// (a file an undo takes back: one an edit made)
+	public static function remove(path:String) {
+		#if (hxmc.target == "wasm32-wasi")
+		save(path, "");
+		#else
+		try sys.FileSystem.deleteFile(path) catch (_:Dynamic) {}
 		#end
 	}
 

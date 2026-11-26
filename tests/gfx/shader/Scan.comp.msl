@@ -11,6 +11,10 @@ struct ComputeInput {
 	int groupX;
 	int groupY;
 	int groupZ;
+	int subgroupLane;
+	int subgroupSize;
+	int subgroupIndex;
+	int subgroups;
 };
 struct ScanStep {
 	int offset;
@@ -32,5 +36,5 @@ struct ScanStep_buffer {
 	int count;
 };
 kernel void main0(uint3 gid [[thread_position_in_grid]], uint3 lid [[thread_position_in_threadgroup]], uint lidx [[thread_index_in_threadgroup]], uint3 grp [[threadgroup_position_in_grid]], constant ScanStep_buffer& u_0 [[buffer(0)]], const device int* sb_1 [[buffer(1)]], device atomic_int* sb_2 [[buffer(2)]]) {
-	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)}, ScanStep{u_0.offset, u_0.count}, sb_1, sb_2);
+	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z), int(lidx) & 3, 4, int(lidx) >> 2, 16}, ScanStep{u_0.offset, u_0.count}, sb_1, sb_2);
 }

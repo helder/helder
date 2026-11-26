@@ -8,7 +8,7 @@ import helder.view.graph.Signal;
 // attribute naming env(safe-area-inset-top) (right, bottom, left; a
 // fallback after a comma for another name) is bound to it, its value the
 // insets in UI pixels, again whenever they change (a rotation, the bars
-// hidden): <view padding-top="env(safe-area-inset-top)">,
+// hidden): <view paddingTop="env(safe-area-inset-top)">,
 // padding="calc(env(safe-area-inset-top) + 8px) 16px", margin-bottom="max(12px,
 // env(safe-area-inset-bottom))". calc(), max() and min() of pixels fold to
 // one length; a percentage in calc() stays for Dim's. The insets are

@@ -20,29 +20,29 @@ class Specimen implements Markup {
 	}
 
 	public static function view(t:Read<Float>):View {
-		return <view grow={1} direction="row" padding="44 56" column-gap={56} background={NIGHT} color={INK} font-family="Inter">
-			<view width={430} row-gap={10} justify="center">
-				<text font-size={14} color={MUTED} font-weight={600} letter-spacing={1.6}>INTER · VARIABLE</text>
-				<text font-family="Inter Display" font-size={300} line-height={1.18} letter-spacing={-12} font-weight={weight(t())}>Ag</text>
-				<view direction="row" align-items="center" column-gap={12}>
-					<text font-size={15} color={MUTED} font-variant-numeric="tabular-nums">{"wght " + weight(t())}</text>
-					<view grow={1} height={2} radius={1} background={LINE}>
-						<view height={2} radius={1} background={VIOLET} width={((weight(t()) - 100) / 8) + "%"}/>
+		return <view flexGrow={1} flexDirection="row" padding="44 56" columnGap={56} background={NIGHT} color={INK} fontFamily="Inter">
+			<view width={430} rowGap={10} justifyContent="center">
+				<text fontSize={14} color={MUTED} fontWeight={600} letterSpacing={1.6}>INTER · VARIABLE</text>
+				<text fontFamily="Inter Display" fontSize={300} lineHeight={1.18} letterSpacing={-12} fontWeight={weight(t())}>Ag</text>
+				<view flexDirection="row" alignItems="center" columnGap={12}>
+					<text fontSize={15} color={MUTED} fontVariantNumeric="tabular-nums">{"wght " + weight(t())}</text>
+					<view flexGrow={1} height={2} borderRadius={1} background={LINE}>
+						<view height={2} borderRadius={1} background={VIOLET} width={((weight(t()) - 100) / 8) + "%"}/>
 					</view>
 				</view>
 			</view>
-			<view grow={1} min-width={0} justify="center" row-gap={14}>
+			<view flexGrow={1} minWidth={0} justifyContent="center" rowGap={14}>
 				<Repeat count={6}>{i -> <Show when={() -> at(t(), 0.3 + i * 0.22)}>
-					<view direction="row" align-items="baseline" column-gap={16} transition="fade slide-up(18)">
-						<text width={36} font-size={12} color={MUTED} font-variant-numeric="tabular-nums">{SIZES[i] + "pt"}</text>
-						<text grow={1} min-width={0} font-family={SIZES[i] >= 32 ? "Inter Display" : "Inter"} font-size={SIZES[i]} font-weight={SIZES[i] >= 44 ? 700 : 500}
-							letter-spacing={SIZES[i] >= 32 ? -SIZES[i] * 0.025 : 0} text-wrap="nowrap" text-overflow="ellipsis">Sphinx of black quartz</text>
+					<view flexDirection="row" alignItems="baseline" columnGap={16} transition="fade slide-up(18)">
+						<text width={36} fontSize={12} color={MUTED} fontVariantNumeric="tabular-nums">{SIZES[i] + "pt"}</text>
+						<text flexGrow={1} minWidth={0} fontFamily={SIZES[i] >= 32 ? "Inter Display" : "Inter"} fontSize={SIZES[i]} fontWeight={SIZES[i] >= 44 ? 700 : 500}
+							letterSpacing={SIZES[i] >= 32 ? -SIZES[i] * 0.025 : 0} textWrap="nowrap" textOverflow="ellipsis">Sphinx of black quartz</text>
 					</view>
 				</Show>}</Repeat>
 				<Show when={() -> at(t(), 2.0)}>
-					<view row-gap={10} padding="18 0 0 0" transition="fade slide-up(18)">
+					<view rowGap={10} padding="18 0 0 0" transition="fade slide-up(18)">
 						<view height={1} background={LINE}/>
-						<text font-size={15} line-height={1.6} color={MUTED} text-align="justify">Glyphs are shaped and rasterised by helder.text, the same pixels on every platform, then drawn by the UI in one call with everything else on screen. Figures can be tabular when they line up in columns: 1,204.50 · 98.10 · 31,007.00.</text>
+						<text fontSize={15} lineHeight={1.6} color={MUTED} textAlign="justify">Glyphs are shaped and rasterised by helder.text, the same pixels on every platform, then drawn by the UI in one call with everything else on screen. Figures can be tabular when they line up in columns: 1,204.50 · 98.10 · 31,007.00.</text>
 					</view>
 				</Show>
 			</view>

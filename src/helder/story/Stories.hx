@@ -56,7 +56,7 @@ class Stories {
 	// checked its fields where they are written)
 	public static function define(def:StoryDef):Story
 		return new Story(def.name, def.render, def.seed ?? 1, def.store == true ? {caption: def.caption, background: def.background, color: def.color, feature: def.feature == true} : null, def.width,
-			def.height);
+			def.height, def.loop);
 
 	// a story mounted in a Ui of width x height (points) with a text engine
 	// (helder.text's own shaping and rasters: a story looks the same on every

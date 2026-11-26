@@ -154,15 +154,24 @@ class Marks {
 	}
 
 	// the project's screens now: those new since the last (not the first time) rise into place, a stagger apart
-	public function saw(names:Array<String>) {
+	// (whether any did)
+	public function saw(names:Array<String>):Bool {
 		var was = seen;
 		seen = names.copy();
-		if (was == null) return;
+		if (was == null) return false;
 		var t = Clock.now, k = 0;
 		var fresh = [for (n in names) if (!was.contains(n)) {screen: n, at: t + STAGGER * k++}];
-		if (fresh.length == 0) return;
+		if (fresh.length == 0) return false;
 		arrivals(arrivalList = arrivalList.concat(fresh));
 		this.fresh(freshList = freshList.filter(n -> names.contains(n)).concat([for (a in fresh) a.screen]));
+		wake();
+		return true;
+	}
+
+	// frames shown now that were there before (the blank sheet's, unveiled by the first prompt): risen into place
+	public function rise(names:Array<String>) {
+		var t = Clock.now, k = 0;
+		arrivals(arrivalList = arrivalList.concat([for (n in names) {screen: n, at: t + STAGGER * k++}]));
 		wake();
 	}
 
@@ -259,7 +268,16 @@ class Marks {
 
 	// (what loops while it is on: an agent at work (its halo), a done note
 	// shown, a frame not drawn yet (its shimmer))
+	// the canvas' places held (Watch's queued blocks: their shimmer on this clock, while the canvas waits)
+	public function hold() {
+		holding = true;
+		wake();
+	}
+
+	var holding = false;
+
 	function busy():Bool {
+		if (holding && studio.waiting()) return true;
 		var pr = studio.presence, at = pr.now();
 		if (Lambda.exists(pr.list(), p -> p.working || (p.doneAt > 0 && at - p.doneAt < DONE))) return true;
 		var pv = studio.previews;

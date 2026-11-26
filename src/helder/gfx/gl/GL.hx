@@ -65,6 +65,10 @@ class GL {
 	public static inline var TEXTURE0 = 0x84C0;
 	public static inline var RGBA8 = 0x8058;
 	public static inline var EXTENSIONS = 0x1F03;
+	// (GL_KHR_shader_subgroup)
+	public static inline var SUBGROUP_SUPPORTED_STAGES = 0x9533;
+	public static inline var SUBGROUP_SUPPORTED_FEATURES = 0x9534;
+	public static inline var COMPUTE_SHADER_BIT = 0x20;
 	// EXT_texture_compression_s3tc's (WEBGL_compressed_texture_s3tc), KHR_texture_compression_astc_ldr's
 	public static inline var COMPRESSED_RGBA_S3TC_DXT1 = 0x83F1;
 	public static inline var COMPRESSED_RGBA_S3TC_DXT5 = 0x83F3;

@@ -40,6 +40,7 @@ import helder.view.graph.Graph.*;
 // while its picture is in flight, the image view draws none (no double).
 // No tile (a file opened by its path, one gone from the folder), no
 // picture or reduced motion: the viewer's fade alone (reduced: a short one).
+@:renderer(helder.ui.view.NodeRenderer)
 class Flight implements Markup {
 	// (SwiftUI's response and bounce: quick, 0.06% over; ended within a device pixel, snap)
 	public static final SPRING = Curve.spring(0.25, 0.08);
@@ -548,7 +549,7 @@ class Flight implements Markup {
 
 	function tileRadius(path:String):Float {
 		for (t in tiles)
-			if (t.path == path && t.node.ui != null) return t.node.style.radius;
+			if (t.path == path && t.node.ui != null) return t.node.style.borderRadius;
 		return 0;
 	}
 
@@ -637,11 +638,11 @@ class Flight implements Markup {
 	public static function layer(z:Flight):View
 		return <Show when={z.flying() != ""}>
 			<view tag="zoom" position="absolute" left={Math.floor(z.box().x)} top={Math.floor(z.box().y)} width={Math.max(1, Math.round(z.box().width))}
-				height={Math.max(1, Math.round(z.box().height))} transform-origin="0 0" transform={() -> {
+				height={Math.max(1, Math.round(z.box().height))} transformOrigin="0 0" transform={() -> {
 					var b = z.box(), w = Math.max(1, Math.round(b.width)), h = Math.max(1, Math.round(b.height));
 					'translate(${b.x - Math.floor(b.x)}px, ${b.y - Math.floor(b.y)}px) scale(${b.width / w}, ${b.height / h})';
-				}} radius={z.radius()} overflow="hidden" pointer-events="none"
-				shadow={() -> '0 ${Math.round(14 * z.lift())}px ${Math.round(44 * z.lift())}px rgba(0,0,0,${Math.round(35 * z.lift()) / 100})'}>
+				}} borderRadius={z.radius()} overflow="hidden" pointerEvents="none"
+				boxShadow={() -> '0 ${Math.round(14 * z.lift())}px ${Math.round(44 * z.lift())}px rgba(0,0,0,${Math.round(35 * z.lift()) / 100})'}>
 				<Show when={z.image() != null}>
 					<image tag="zoom-thumb" src={z.image()} position="absolute" left={z.crop().x} top={z.crop().y} width={z.crop().width}
 						height={z.crop().height}/>
@@ -651,7 +652,7 @@ class Flight implements Markup {
 						height={z.crop().height} opacity={z.sharpness()}/>
 				</Show>
 				<Show when={z.image() == null}>
-					<view tag="zoom-page" grow={1} radius={z.radius()} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} opacity={z.page()}/>
+					<view tag="zoom-page" flexGrow={1} borderRadius={z.radius()} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge} opacity={z.page()}/>
 				</Show>
 			</view>
 		</Show>;

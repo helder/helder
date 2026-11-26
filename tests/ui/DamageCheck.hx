@@ -236,7 +236,7 @@ class DamageCheck {
 			r.groups = true;
 			r.tiles = tiles;
 			r.keep = keep;
-			box.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, radius: 10, background: 0xFF2A7AE2});
+			box.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2});
 			box.style.transform = Transform.parse("translate(0px, 0px)");
 			box.style.transition = Transition.parse("transform 0.5s linear, opacity 0.5s linear");
 			ui.root.append(box);
@@ -280,8 +280,8 @@ class DamageCheck {
 			list.style.set({overflow: Scroll, width: 200, height: H, background: 0xFFFFFFFF, rowGap: 2, padding: 4, fontSize: 13});
 			for (i in 0...60) {
 				var row = new Node(), box = new Node();
-				row.style.set({direction: Row, padding: 3, columnGap: 6, alignItems: Center, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
-				box.style.set({width: 12, height: 12, radius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+				row.style.set({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
+				box.style.set({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 				row.append(box);
 				row.append(new TextNode("Row " + i));
 				list.append(row);
@@ -398,36 +398,36 @@ class DamageCheck {
 		}
 		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
-		top.style.set({direction: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
+		top.style.set({flexDirection: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
 		var head = new Node(), title = new TextNode("Header");
-		head.style.set({shrink: 0, background: 0xFF18181B, padding: 4});
+		head.style.set({flexShrink: 0, background: 0xFF18181B, padding: 4});
 		title.style.set({color: 0xFFFFFFFF, fontSize: 14});
 		head.append(title);
 		top.append(head);
 		var field = new TextField("some text to edit");
-		field.style.set({background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFFA1A1AA, padding: 3, width: 180, shrink: 0});
+		field.style.set({background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFFA1A1AA, padding: 3, width: 180, flexShrink: 0});
 		top.append(field);
 		var lists = new Node();
-		lists.style.set({direction: Row, grow: 1, minHeight: 0, columnGap: 8});
+		lists.style.set({flexDirection: Row, flexGrow: 1, minHeight: 0, columnGap: 8});
 		top.append(lists);
 		var card = new Node();
-		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, radius: 6, position: Absolute, left: 230, top: 12});
+		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, borderRadius: 6, position: Absolute, left: 230, top: 12});
 		// (a blurred shadow turned with it: the one quad whose edge is not wholly clear)
-		card.style.shadow = Shadow.parse("0 6px 6px rgba(0,0,0,0.9)");
+		card.style.boxShadow = Shadow.parse("0 6px 6px rgba(0,0,0,0.9)");
 		for (k in 0...1 + rnd(2)) {
 			var list = new Node();
-			list.style.set({overflow: Scroll, grow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, radius: [8, 6.5, 12][rnd(3)]});
+			list.style.set({overflow: Scroll, flexGrow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, borderRadius: [8, 6.5, 12][rnd(3)]});
 			if (rnd(2) == 0) list.style.set({borderWidth: 1, borderColor: 0xFFE4E4E7});
 			for (i in 0...30 + rnd(30)) {
 				var row = new Node();
-				row.style.set({direction: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
-				if (rnd(4) == 0) row.style.shadow = Shadow.parse("0 1px 3px rgba(0,0,0,0.3)");
+				row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+				if (rnd(4) == 0) row.style.boxShadow = Shadow.parse("0 1px 3px rgba(0,0,0,0.3)");
 				if (rnd(5) == 0) row.style.set({borderWidth: 1, borderColor: 0xFF71717A, borderStyle: rnd(2) == 0 ? Solid : Dashed});
 				if (rnd(6) == 0) row.style.opacity = 0.6;
-				if (rnd(7) == 0) row.style.shadow = Shadow.parse("inset 1px 1px 3px rgba(0,0,0,0.4)");
+				if (rnd(7) == 0) row.style.boxShadow = Shadow.parse("inset 1px 1px 3px rgba(0,0,0,0.4)");
 				if (i == 0) row.style.set({position: Sticky, top: 0});
 				var box = new Node();
-				box.style.set({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), radius: rnd(2) * 5});
+				box.style.set({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), borderRadius: rnd(2) * 5});
 				var text = new TextNode("Row " + i + [" alpha", " beta gamma", " delta"][rnd(3)]);
 				if (rnd(4) == 0) text.style.opacity = 0.5;
 				row.append(box);
@@ -442,8 +442,8 @@ class DamageCheck {
 		ui.root.append(card);
 		var popup = new Popup();
 		popup.placement = Manual;
-		popup.style.set({left: 120, top: 60, width: 120, height: 70, background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFF71717A, radius: 6, padding: 6});
-		popup.style.shadow = Shadow.parse("0 4px 12px rgba(0,0,0,0.3)");
+		popup.style.set({left: 120, top: 60, width: 120, height: 70, background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFF71717A, borderRadius: 6, padding: 6});
+		popup.style.boxShadow = Shadow.parse("0 4px 12px rgba(0,0,0,0.3)");
 		popup.append(new TextNode("A popup"));
 		return {ui: ui, scrollers: scrollers, rows: rows, card: card, field: field, popup: popup, title: title};
 	}
@@ -474,10 +474,10 @@ class Sidebar {
 
 	public function new(how:Swap) {
 		this.how = how;
-		ui.root.style.set({direction: Row, background: 0xFFF4F4F5, fontSize: 13});
-		side.style.set({width: 150, shrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
+		ui.root.style.set({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
+		side.style.set({width: 150, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
 		if (how == Scrolled) {
-			outer.style.set({overflow: Scroll, width: 170, shrink: 0, minHeight: 0});
+			outer.style.set({overflow: Scroll, width: 170, flexShrink: 0, minHeight: 0});
 			side.style.set({height: 400});
 			outer.append(side);
 			ui.root.append(outer);
@@ -485,7 +485,7 @@ class Sidebar {
 			ui.root.append(side);
 		if (how == Presence) side.motion = helder.ui.motion.MotionSpec.DEFAULT;
 		var pane = new Node();
-		pane.style.set({grow: 1, background: 0xFFFFFFFF, radius: 10, margin: 8});
+		pane.style.set({flexGrow: 1, background: 0xFFFFFFFF, borderRadius: 10, margin: 8});
 		ui.root.append(pane);
 		show();
 	}
@@ -536,8 +536,8 @@ class Sidebar {
 
 	function row(s:String, selected:Bool):Node {
 		var r = new Node(), icon = new Node();
-		r.style.set({direction: Row, alignItems: Center, columnGap: 6, padding: 4, radius: 5, background: selected ? 0xFFE4E4E7 : 0x00000000});
-		icon.style.set({width: 12, height: 12, radius: 3, borderWidth: 1, borderColor: 0xFF52525B});
+		r.style.set({flexDirection: Row, alignItems: Center, columnGap: 6, padding: 4, borderRadius: 5, background: selected ? 0xFFE4E4E7 : 0x00000000});
+		icon.style.set({width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: 0xFF52525B});
 		r.append(icon);
 		r.append(text(s));
 		rows.push(r);
@@ -548,7 +548,7 @@ class Sidebar {
 		rows = [];
 		button = null;
 		var s = list = new Node();
-		s.style.set({overflow: Scroll, grow: 1, minHeight: 0, rowGap: 1});
+		s.style.set({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
 		s.append(text("Locations", 11, 600));
 		for (i in 0...12)
 			s.append(row(["ben", "Desktop", "Documents", "Downloads", "Pictures", "Movies"][i % 6] + (i < 6 ? "" : " " + i), i == 2));
@@ -558,17 +558,17 @@ class Sidebar {
 	function makeLevel():Node {
 		rows = [];
 		var v = new Node(), back = new Node(), head = new Node(), foot = new Node();
-		v.style.set({grow: 1, minHeight: 0, rowGap: 6});
-		back.style.set({direction: Row, alignItems: Center, justify: SpaceBetween});
+		v.style.set({flexGrow: 1, minHeight: 0, rowGap: 6});
+		back.style.set({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
 		back.append(text("< " + ["ben", "Documents", "a longer folder", "x"][depth]));
 		var b = button = new Node();
-		b.style.set({width: 22, height: 22, radius: 6, background: 0xFFE4E4E7});
+		b.style.set({width: 22, height: 22, borderRadius: 6, background: 0xFFE4E4E7});
 		back.append(b);
-		head.style.set({direction: Row, alignItems: Center, justify: SpaceBetween});
+		head.style.set({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
 		head.append(text(["Documents", "CyFun", "Pictures", "A"][depth], 17, 700));
 		head.append(text('${depth + 1} folders', 10));
 		var s = list = new Node();
-		s.style.set({overflow: Scroll, grow: 1, minHeight: 0, rowGap: 1});
+		s.style.set({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
 		for (i in 0...depth + 1)
 			s.append(row("Folder " + i, i == 0));
 		foot.style.set({borders: [1, 0, 0, 0], borderColor: 0xFFD4D4D8, paddingTop: 6});
@@ -621,16 +621,16 @@ class PlaneStack {
 		r.tiles = true;
 		ui = new Ui(new DrawText(), w / scale, h / scale);
 		ui.scale = scale;
-		ui.root.style.set({direction: Column, background: 0xFFFFFFFF});
-		head.style.set({direction: Row, height: 40, shrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});
+		ui.root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
+		head.style.set({flexDirection: Row, height: 40, flexShrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});
 		title.style.set({color: 0xFFFFFFFF, fontSize: 15});
-		badge.style.set({width: 18, height: 18, radius: 9, background: 0xFFE2462A});
+		badge.style.set({width: 18, height: 18, borderRadius: 9, background: 0xFFE2462A});
 		head.append(title);
 		ui.root.append(head);
-		list.style.set({grow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style.set({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...80) {
 			var row = new Node();
-			row.style.set({direction: Row, padding: 4, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style.set({flexDirection: Row, padding: 4, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			row.append(new TextNode("Row " + i));
 			rows.push(row);
 			list.append(row);

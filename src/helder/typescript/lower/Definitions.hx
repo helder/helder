@@ -357,6 +357,9 @@ class TsAdapter implements ShaderAdapter {
 	var uniformBlock:Null<SStruct>;
 	public final uniformRefs:Array<Node> = [];
 
+	public function posOf(e:SExpr):Null<KPos>
+		return null;
+
 	public function uniforms():Null<SStruct>
 		return uniformBlock;
 	final slotFunctions = new Map<String, SFunction>();
@@ -504,7 +507,11 @@ class TsAdapter implements ShaderAdapter {
 
 	function notStatic(n:Node):Dynamic
 		return error(n.file.slice(n.file.skipTrivia(n.pos), n.end)
-			+ " is not static (a definition takes literals, object and array literals, functions, and module-level constants and definitions)", n);
+			+ " is not static (a definition takes literals, object and array literals, functions, and module-level constants and definitions)"
+			+ (what == "story" ? STORY : ""), n);
+
+	// (what a story wants, said where an agent writing one meets it)
+	public static inline var STORY = "; write each story as a literal story({name, width, height, render}) at the module's top level: no helper, no spread, shared code inside render";
 
 	// --- functions
 

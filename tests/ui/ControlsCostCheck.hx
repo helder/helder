@@ -30,11 +30,11 @@ class ControlsCostCheck implements Markup {
 	static function main() {
 		helder.text.SystemFonts.get().add(sys.io.File.getBytes("src/helder/text/fonts/Inter.ttf"));
 		var device = Device.create(Surface.headless(W, H));
-		var plain = measure(device, <view direction="row" wrap padding={8} gap={4}>
-			{[for (i in 0...N) <view direction="row" align-items="center" height={28} padding="0 10" radius={6} border-width={1}
-				border-color="#d4d4d8" background="#ffffff" font-family="Inter" font-size={13}><text>{'Item $i'}</text></view>]}
+		var plain = measure(device, <view flexDirection="row" flexWrap padding={8} gap={4}>
+			{[for (i in 0...N) <view flexDirection="row" alignItems="center" height={28} padding="0 10" borderRadius={6} borderWidth={1}
+				borderColor="#d4d4d8" background="#ffffff" fontFamily="Inter" fontSize={13}><text>{'Item $i'}</text></view>]}
 		</view>);
-		var buttons = measure(device, <view direction="row" wrap padding={8} gap={4}>
+		var buttons = measure(device, <view flexDirection="row" flexWrap padding={8} gap={4}>
 			{[for (i in 0...N) <Standard.Button size="sm">{'Item $i'}</Standard.Button>]}
 		</view>);
 		check('$N buttons, the plain views\' passes, pipelines and draws', buttons.passes == plain.passes && buttons.pipelines == plain.pipelines

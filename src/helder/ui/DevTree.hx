@@ -78,8 +78,8 @@ class DevTree {
 			height: n.height,
 			style: {
 				display: ["flex", "none", "grid", "block"][cast s.display],
-				direction: ["column", "row", "column-reverse", "row-reverse"][cast s.direction],
-				grow: s.grow,
+				flexDirection: ["column", "row", "column-reverse", "row-reverse"][cast s.flexDirection],
+				flexGrow: s.flexGrow,
 				opacity: s.opacity,
 				background: color(s.background),
 				color: s.color == null ? null : color(s.color),

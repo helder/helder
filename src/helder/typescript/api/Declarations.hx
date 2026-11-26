@@ -228,8 +228,9 @@ class Declarations {
 			e.line();
 			switch j {
 				case "base": jsxBase(e, declared, e.from);
-				case "neutral": jsxNeutral(e, declared);
-				case _: Context.error("helder.typescript: @:typescript.jsx is base or neutral", decl.pos);
+				case "neutral": jsxNeutral(e, declared, false);
+				case "video": jsxNeutral(e, declared, true);
+				case _: Context.error("helder.typescript: @:typescript.jsx is base, neutral or video", decl.pos);
 			}
 		}
 		var head = [for (r in m.references) '/// <reference path="./$r" />'];
@@ -286,33 +287,152 @@ class Declarations {
 		e.line('}');
 	}
 
-	// the neutral elements (helder.view.Plan's: view, text, view:button...),
-	// their handlers typed by ui's events (MarkupMacro.NEUTRAL_EVENTS)
-	static function jsxNeutral(e:DefinitionEmitter, declared:BaseType->Null<String>) {
+	// the neutral elements (helder.view.Vocabulary's: view, text, button,
+	// h2...): each element's attributes, the style properties typed as
+	// StyleProps (CSS's names in camel), a value or a function of none that
+	// reads it; its ref given its node, its handlers ui's events
+	// (MarkupMacro.NEUTRAL_EVENTS) and its own; ARIA's and data-* any;
+	// another name an error. video: helder.media's <video> alone
+	static function jsxNeutral(e:DefinitionEmitter, declared:BaseType->Null<String>, video:Bool) {
 		var writer:TypeWriter = {write: _ -> {}, declared: declared};
-		var fields = switch Context.follow(Context.getType(helder.view.MarkupMacro.NEUTRAL_EVENTS)) {
-			case TAnonymous(a): a.get().fields.copy();
-			case _: [];
+		function events(path:String):Map<String, String> {
+			var out = new Map<String, String>();
+			switch Context.follow(Context.getType(path)) {
+				case TAnonymous(a):
+					for (f in a.get().fields)
+						out.set(f.name, TypeEmitter.toString(writer, f.type));
+				case _:
+			}
+			return out;
 		}
-		fields.sort((a, b) -> Context.getPosInfos(a.pos).min - Context.getPosInfos(b.pos).min);
-		e.line('// a neutral element\'s attributes: any, its handlers given ui\'s events (' + helder.view.MarkupMacro.NEUTRAL_EVENTS + ')');
-		e.line('export interface NeutralAttributes {');
-		e.line('\t[attribute: string]: unknown;');
-		for (f in fields)
-			e.line('\t' + f.name + '?: ((event: ' + TypeEmitter.toString(writer, f.type) + ') => void) | null;');
+		var ui = video ? new Map<String, String>() : events(helder.view.MarkupMacro.NEUTRAL_EVENTS);
+		function handlers(names:Array<String>, types:Map<String, String>)
+			for (n in names)
+				e.line('\t' + n + '?: ((event: ' + (types.get(n) ?? "unknown") + ') => void) | null;');
+		// (helder/ui's types, by name in its own declarations, imported in another's)
+		function attrs(names:Array<String>)
+			for (n in names) {
+				var t = helder.view.Vocabulary.BOOLEANS.indexOf(n) >= 0 ? "boolean" : TYPES.get(n) ?? "unknown";
+				if (video) t = ~/\b(ImageFit|Color)\b/g.replace(t, 'import("helder/ui").$1');
+				e.line('\t' + n + '?: Value<' + t + '>;');
+			}
+		function node(tag:String):String {
+			var path = helder.view.Vocabulary.node(tag);
+			var t = try Context.getType(path) catch (_:Dynamic) null;
+			var name = t == null ? null : switch t {
+				case TInst(c, _): declared(c.get());
+				case _: null;
+			}
+			return name ?? "Node";
+		}
+		if (video) {
+			var own = events(helder.view.Vocabulary.EVENT_TYPES.get("video"));
+			e.line('type Value<T> = T | (() => T);');
+			e.line('type UiAttributes = import("helder/ui").Attributes;');
+			e.line();
+			e.line('// <video> (helder.media.ui.VideoNode): a neutral element\'s attributes and its own');
+			e.line('export interface VideoAttributes extends UiAttributes {');
+			e.line('\tref?: ((node: ' + node("video") + ') => void) | null;');
+			e.line('\tchildren?: never;');
+			attrs(helder.view.Vocabulary.OWN["video"]);
+			handlers(helder.view.Vocabulary.OWN_EVENTS["video"], own);
+			e.line('}');
+			e.line();
+			e.line('declare global {');
+			e.line('\tnamespace JSX {');
+			e.line('\t\tinterface IntrinsicElements {');
+			e.line('\t\t\tvideo: VideoAttributes;');
+			e.line('\t\t}');
+			e.line('\t}');
+			e.line('}');
+			return;
+		}
+		e.line('// a value, or a function of none that reads it (bound)');
+		e.line('type Value<T> = T | (() => T);');
+		e.line();
+		e.line('// a neutral element\'s attributes (helder.view.Vocabulary): the style');
+		e.line('// properties (StyleProps, CSS\'s names in camel), the others HTML\'s and');
+		e.line('// helder\'s in camel, ARIA\'s and data-* as HTML writes them, its handlers');
+		e.line('// given ui\'s events (' + helder.view.MarkupMacro.NEUTRAL_EVENTS + ')');
+		e.line('// a text\'s content: text, values, its spans (elements), what reads them');
+		e.line('export type TextContent = string | number | boolean | null | undefined | import("helder/view").View | (() => unknown) | TextContent[];');
+		e.line();
+		e.line('// (a number\'s also a length as CSS writes one, "12px", "env(safe-area-inset-top)")');
+		e.line('export type StyleAttributes = {[K in keyof import("./style").StyleProps]?: Value<import("./style").StyleProps[K] | (number extends import("./style").StyleProps[K] ? string : never)>};');
+		e.line();
+		e.line('export interface Attributes extends StyleAttributes {');
+		e.line('\tkey?: unknown;');
+		e.line('\tstyle?: import("./style").StyleProps | null;');
+		attrs(helder.view.Vocabulary.COMMON);
+		e.line('\t[aria: `aria-$${string}`]: unknown;');
+		e.line('\t[data: `data-$${string}`]: unknown;');
+		handlers(helder.view.Vocabulary.EVENTS, ui);
 		e.line('}');
+		// (each primitive's, and a tag's own over its primitive's)
+		var kinds = [
+			{name: "View", tag: "view", base: null, own: "view"},
+			{name: "Scroll", tag: "scroll", base: null, own: "view"},
+			{name: "Text", tag: "text", base: null, own: "text"},
+			{name: "Image", tag: "image", base: null, own: "image"},
+			{name: "Icon", tag: "icon", base: null, own: "icon"},
+			{name: "Field", tag: "field", base: null, own: "field"},
+			{name: "TextArea", tag: "textarea", base: "Field", own: "textarea"},
+			{name: "Glass", tag: "glass", base: null, own: "glass"},
+			{name: "WebView", tag: "webview", base: null, own: "webview"},
+			{name: "Link", tag: "a", base: "Text", own: "a"},
+			{name: "Label", tag: "label", base: "Text", own: "label"}
+		];
+		for (k in kinds) {
+			e.line();
+			// (a text area's Enter a new line, no onSubmit)
+			var omit = k.tag == "textarea" ? '"ref" | "onSubmit"' : '"ref"';
+			e.line('export interface ' + k.name + 'Attributes extends ' + (k.base == null ? "Attributes" : "Omit<" + k.base + "Attributes, " + omit + ">") + ' {');
+			e.line('\tref?: ((node: ' + node(k.tag) + ') => void) | null;');
+			// (a box's children any content, a text's its text and spans, a leaf's none)
+			var content = switch k.tag {
+				case "text": "TextContent";
+				case "view" | "scroll" | "glass": "unknown";
+				case _: "never";
+			}
+			if (k.base == null) e.line('\tchildren?: ' + content + ';');
+			if (helder.view.Vocabulary.OWN.exists(k.own)) attrs(helder.view.Vocabulary.OWN[k.own]);
+			var own = helder.view.Vocabulary.OWN_EVENTS.get(k.own);
+			if (own != null) handlers(own, ui);
+			e.line('}');
+		}
 		e.line();
 		e.line('declare global {');
 		e.line('\tnamespace JSX {');
 		e.line('\t\t// the neutral elements: ui\'s, realised by each renderer');
 		e.line('\t\tinterface IntrinsicElements {');
-		for (n in helder.view.Plan.NEUTRAL)
-			e.line('\t\t\t' + n + ': NeutralAttributes;');
-		for (n in helder.view.Plan.NEUTRAL_PREFIXES)
-			e.line('\t\t\t[tag: `' + n + ':$${string}`]: NeutralAttributes;');
+		var tags = helder.view.Vocabulary.PRIMITIVES.filter(t -> t != "video").concat(sortedTags());
+		for (t in tags) {
+			var k = Lambda.find(kinds, k -> k.tag == t);
+			var b = helder.view.Vocabulary.base(t);
+			var name = k != null ? k.name : b == "text" ? "Text" : b == "field" ? "Field" : "View";
+			e.line('\t\t\t' + t + ': ' + name + 'Attributes;');
+		}
 		e.line('\t\t}');
 		e.line('\t}');
 		e.line('}');
 	}
+
+	static function sortedTags():Array<String> {
+		var t = [for (k in helder.view.Vocabulary.TAGS.keys()) k];
+		t.sort(Reflect.compare);
+		return t;
+	}
+
+	// (the attributes' values, as TypeScript has them, the booleans
+	// Vocabulary.BOOLEANS': unknown else)
+	static final TYPES:Map<String, String> = [
+		"id" => "string", "class" => "string", "role" => "string", "tabIndex" => "number | string", "slot" => "string", "variant" => "string",
+		"size" => "string", "host" => "string", "group" => "string", "peer" => "string", "tag" => "string", "keyContext" => "string",
+		"panAxis" => "\"x\" | \"y\" | \"both\"", "panMinPointers" => "number", "matched" => "string", "glassSpacing" => "number", "text" => "string",
+		"objectFit" => "ImageFit", "objectPosition" => "string", "name" => "string", "value" => "string", "placeholder" => "string", "type" => "string",
+		"maxLength" => "number", "inputMode" => "string", "autoComplete" => "string", "keyboard" => "string", "enterKeyHint" => "string",
+		"autoCapitalize" => "string", "rows" => "number", "html" => "string", "tint" => "Color | string", "volume" => "number",
+		"playbackRate" => "number", "href" => "string", "for" => "string"
+	];
 }
 #end

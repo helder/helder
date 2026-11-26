@@ -1,6 +1,8 @@
 package viewer;
 
 import helder.story.StoryText;
+import helder.test.Choices;
+import helder.test.Gen;
 import helder.test.Test;
 import helder.ui.Node;
 import helder.ui.menu.Menu.MenuItem;
@@ -12,7 +14,8 @@ import viewer.ViewerActions.ViewerAction;
 // The window's content within the window at desktop sizes, with a large
 // folder among many: the panels and the path bar end at its bottom, the
 // sidebar's level of 30 folders scrolls (its content's height pushed the
-// window's content 450 points past a 488-point window's bottom once)
+// window's content 450 points past a 488-point window's bottom once); a
+// desktop window under random presses never shows the touch menu's glass
 function tests() {
 	describe("Window", () -> {
 		function bottom(n:Null<Node>):Float
@@ -504,7 +507,97 @@ function tests() {
 			equals(x.browser.dir.value, "/home/folder 3");
 			equals(w.scroll.scrollY, at);
 		});
+		test("a desktop window under random presses, held or not, right clicks, Escape, folders and sizes: never the touch menu's glass", () -> stateful({
+			setup: () -> new Pressed(big()),
+			steps: [
+				{name: "press", run: (f, c) -> f.press(c.draw(int(0, 999)), c.draw(pick([0.0, 0.2, 0.6, 1.2])), c.draw(bool()))},
+				{name: "escape", run: (f, c) -> f.escape()},
+				{name: "go", run: (f, c) -> f.go(c.draw(int(0, 31)))},
+				{name: "resize", run: (f, c) -> f.resize(c.draw(int(600, 1600)), c.draw(int(420, 1000)))}
+			],
+			check: f -> f.check(),
+			teardown: f -> f.dispose()
+		}, {cases: 30, steps: 20}));
 	});
+}
+
+// (the shell at a desktop's size, pressed with the mouse where its rows and tiles are)
+private class Pressed {
+	final x:Explorer;
+	final ui:Ui;
+	final close:Void->Void;
+	var t = 0.0;
+
+	public function new(x:Explorer) {
+		this.x = x;
+		Ui.now = () -> t;
+		ui = new Ui(new StoryText(), 1212, 592);
+		close = Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+		x.start("/home/folder 0");
+		settle();
+	}
+
+	// (a sidebar row or a tile in view, the index modulo them; held hold seconds; right: the right button)
+	public function press(at:Int, hold:Float, right:Bool) {
+		var spots = [];
+		function walk(n:Node) {
+			if (!n.visible()) return;
+			if (n.slot == "side-row" || n.slot == "grid-tile") {
+				var b = n.windowBounds();
+				if (b.width > 4 && b.height > 4 && b.x >= 0 && b.y >= 0 && b.x + b.width / 2 < ui.width && b.y + b.height / 2 < ui.height)
+					spots.push({x: b.x + b.width / 2, y: b.y + b.height / 2});
+			}
+			for (c in n.children)
+				walk(c);
+		}
+		walk(ui.root);
+		if (spots.length == 0) return;
+		var p = spots[at % spots.length], button = right ? 3 : 1;
+		ui.pointerDown(p.x, p.y, button);
+		if (hold > 0) {
+			t += hold;
+			helder.ui.Clock.tick(helder.ui.Clock.now + hold);
+		}
+		ui.pointerUp(p.x, p.y, button);
+		settle();
+	}
+
+	public function escape() {
+		ui.keyDown(helder.ui.Key.ESCAPE, 0);
+		settle();
+	}
+
+	// (a folder of /home's, home itself, or back)
+	public function go(i:Int) {
+		if (i == 31) x.browser.goBack() else x.browser.go(i == 30 ? "/home" : '/home/folder $i');
+		settle();
+	}
+
+	public function resize(w:Int, h:Int) {
+		ui.resize(w, h);
+		settle();
+	}
+
+	public function check() {
+		equals(ui.overlay.find("touch-menu-layer"), null, "the touch menu");
+		var glass = false;
+		function walk(n:Node) {
+			if (n.slot == "touch-menu-backdrop") glass = true;
+			for (c in n.children)
+				walk(c);
+		}
+		walk(ui.overlay);
+		assert(!glass, "a glass over the window");
+	}
+
+	public function dispose()
+		close();
+
+	function settle()
+		for (_ in 0...2) {
+			helder.view.graph.Graph.flush();
+			ui.update();
+		}
 }
 
 // (a folder's batches one a frame, the names from the last: each batch sorts above what came before)

@@ -16,34 +16,34 @@ const palette = memo(() => palettes[selected()]);
 
 function Choice(props: { name: string; index: number }) {
   const active = () => selected() === props.index;
-  return <view:button grow={1} role="radio" checked={active()} focusable cursor="pointer"
-    align-items="center" justify="center" height={38} radius={7}
+  return <button flexGrow={1} role="radio" aria-checked={active()} cursor="pointer"
+    alignItems="center" justifyContent="center" height={38} borderRadius={7}
     background={active() ? "#222127" : "#ebe9ed"}
     color={active() ? "#ffffff" : "#222127"} onPress={() => selected(props.index)}>
     {props.name}
-  </view:button>;
+  </button>;
 }
 
 function Swatch(props: { fill: () => string; ink: string; grow: number }) {
-  return <view grow={props.grow} min-width={0} padding={10} justify="end"
-    radius={9} background={props.fill()}>
-    <text font-size={12} font-weight={700} color={props.ink}>{props.fill()}</text>
+  return <view flexGrow={props.grow} minWidth={0} padding={10} justifyContent="end"
+    borderRadius={9} background={props.fill()}>
+    <text fontSize={12} fontWeight={700} color={props.ink}>{props.fill()}</text>
   </view>;
 }
 
 UiWindow.run(
   <Surface title="Palette study" width={480} height={288}>
-    <view grow={1} padding={24} row-gap={17} background="#faf9fb" color="#222127">
-      <view direction="row" align-items="center" justify="space-between" column-gap={8}>
-        <text font-size={24} font-weight={700}>Palette study</text>
-        <text font-size={14} color="#5d5664">{palette().name}</text>
+    <view flexGrow={1} padding={24} rowGap={17} background="#faf9fb" color="#222127">
+      <view flexDirection="row" alignItems="center" justifyContent="space-between" columnGap={8}>
+        <text fontSize={24} fontWeight={700}>Palette study</text>
+        <text fontSize={14} color="#5d5664">{palette().name}</text>
       </view>
-      <view direction="row" grow={1} column-gap={6}>
+      <view flexDirection="row" flexGrow={1} columnGap={6}>
         <Swatch fill={() => palette().paper} ink="#222127" grow={2} />
         <Swatch fill={() => palette().color} ink="#141219" grow={1} />
         <Swatch fill={() => palette().ink} ink="#ffffff" grow={1} />
       </view>
-      <view direction="row" column-gap={6} role="radiogroup" label="Palette">
+      <view flexDirection="row" columnGap={6} role="radiogroup" aria-label="Palette">
         {palettes.map((item, index) => <Choice name={item.name} index={index} />)}
       </view>
     </view>

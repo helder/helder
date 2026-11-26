@@ -99,8 +99,8 @@ class Picking implements Markup {
 			hint('uv ${Math.round(e.uv.x * 100) / 100}, ${Math.round(e.uv.y * 100) / 100}');
 		}
 		UiWindow.run(<Surface title="Picking" width={640} height={400}>
-			<view direction="row" grow={1}>
-				<Scene world={world} camera={camera} grow={1} pick="triangles" setup={setup}>
+			<view flexDirection="row" flexGrow={1}>
+				<Scene world={world} camera={camera} flexGrow={1} pick="triangles" setup={setup}>
 					<mesh name="knot" geometry={knot} material={paint} rotation={turn} onPointerDown={e -> {
 						painting = true;
 						brush(e);
@@ -111,15 +111,15 @@ class Picking implements Markup {
 					}} onPointerUp={_ -> painting = false} onPointerCancel={_ -> painting = false} onPointerLeave={_ -> cursor.count = 0}/>
 					<lines of={cursor}/>
 				</Scene>
-				<view width={170} padding={14} row-gap={8} background="#18181b" color="#fafafa" font-size={13}>
-					<text font-size={15}>Paint</text>
-					<view direction="row" column-gap={6}>
+				<view width={170} padding={14} rowGap={8} background="#18181b" color="#fafafa" fontSize={13}>
+					<text fontSize={15}>Paint</text>
+					<view flexDirection="row" columnGap={6}>
 						<Swatch k={0} colour={colour}/>
 						<Swatch k={1} colour={colour}/>
 						<Swatch k={2} colour={colour}/>
 						<Swatch k={3} colour={colour}/>
 					</view>
-					<view direction="row" column-gap={6}>
+					<view flexDirection="row" columnGap={6}>
 						<Button label="Turn left" press={() -> turnBy(-0.6)}/>
 						<Button label="Turn right" press={() -> turnBy(0.6)}/>
 					</view>
@@ -135,11 +135,11 @@ class Picking implements Markup {
 	static final CSS = ["#e04020", "#40b030", "#2070e0", "#202020"];
 
 	static function Swatch(props:{k:Int, colour:helder.view.graph.Signal<Int>}):View
-		return <view width={props.colour() == props.k ? 30 : 22} height={props.colour() == props.k ? 30 : 22} radius={15} background={CSS[props.k]}
+		return <view width={props.colour() == props.k ? 30 : 22} height={props.colour() == props.k ? 30 : 22} borderRadius={15} background={CSS[props.k]}
 			onPress={() -> props.colour(props.k)}/>;
 
 	static function Button(props:{label:String, press:Void->Void}):View
-		return <view padding="5 8" radius={4} background="#27272a" onPress={props.press}><text>{props.label}</text></view>;
+		return <view padding="5 8" borderRadius={4} background="#27272a" onPress={props.press}><text>{props.label}</text></view>;
 
 	static inline function cross(a:Vec3, b:Vec3):Vec3
 		return new Vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);

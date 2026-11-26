@@ -105,7 +105,11 @@ class Project {
 		}
 		typescript = entry != null && entry.typescript != null;
 		name = entry?.name ?? Path.withoutDirectory(this.dir);
-		out = (entry == null ? this.dir : FileSystem.fullPath(entry.root).split("\\").join("/")) + '/bin/studio/$name';
+		// (the package's root, when the project is in it; else the project's own folder: an entry
+		// outside any package has the working directory as its root, the CLI's, not the studio's)
+		var root = entry == null ? this.dir : FileSystem.fullPath(entry.root).split("\\").join("/");
+		if (root != this.dir && !this.dir.startsWith(root + "/")) root = this.dir;
+		out = root + '/bin/studio/$name';
 		findScreens(files, entry != null);
 	}
 
@@ -166,6 +170,7 @@ class Project {
 				label: cut < 0 ? name : name.substr(cut + 1),
 				width: num(o, "width", doc) ?? 390,
 				height: num(o, "height", doc) ?? 844,
+				loop: seconds(o, "loop", doc),
 				file: file,
 				source: Story(c.name)
 			});
@@ -195,7 +200,7 @@ class Project {
 	}
 
 	static function key(l:Array<ScreenInfo>):String
-		return [for (s in l) '${s.name}|${s.width}|${s.height}|${s.file}|${s.source}'].join("\n");
+		return [for (s in l) '${s.name}|${s.width}|${s.height}|${s.file}|${s.source}|${s.loop}'].join("\n");
 
 	// whether a file holds stories (by its name)
 	public static function isStory(f:String):Bool
@@ -347,6 +352,14 @@ class Project {
 			var p = '$d/$n';
 			if (Files.isDirectory(p)) walk(p, into) else if (isStory(n) || n.endsWith(".helder")) into.push(p);
 		}
+	}
+
+	// (a number literal's field, or null)
+	static function seconds(o:ObjectLit, key:String, doc:Document):Null<Float> {
+		var f = o.field(key);
+		var l = f == null ? null : f.literal();
+		var v = l == null ? Math.NaN : Std.parseFloat(l.text(doc.text));
+		return Math.isNaN(v) || v <= 0 ? null : v;
 	}
 
 	static function num(o:ObjectLit, key:String, doc:Document):Null<Int> {
@@ -514,6 +527,8 @@ typedef ScreenInfo = {
 	?cover:Bool,
 	// (a design's frame in a <Group>: its title)
 	?group:Null<String>,
+	// (a story's loop: seconds from its moment played while its frame is hovered)
+	?loop:Null<Float>,
 }
 
 // What a screen's content is: a story of the program (the name it is bound

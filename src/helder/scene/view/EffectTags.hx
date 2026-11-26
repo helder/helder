@@ -14,7 +14,7 @@ import helder.view.graph.Read;
 // chain's own values (the box turned hdr), the effects in it are set on the
 // chain while they are there (and unset when they go):
 //
-//   <Scene grow={1}>
+//   <Scene flexGrow={1}>
 //     <Effects bloom={0.05} toneMap={AgX}>
 //       <Ssao radius={0.5} samples={8}/>
 //       <Dof tiltShift band={0.2}/>

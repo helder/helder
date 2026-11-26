@@ -8,7 +8,8 @@ import helder.gfx.shader.Ir;
 // language takes (letters, digits and single underscores, no keyword or
 // builtin of GLSL, WGSL, MSL or HLSL, none of the entry points' own: main,
 // main0, i, r, o, s, gid, lid, lidx, grp, StageIn, StageOut, in_*, v_*,
-// out_*, u_*, make_*, tex_*, smp_*, sb_*, img_*), with _2, _3, ... when taken. The order is what keeps the
+// out_*, u_*, make_*, tex_*, smp_*, sb_*, img_*; and wg_*, sg_*, a compute
+// stage's workgroup memory and subgroups', locals' too), with _2, _3, ... when taken. The order is what keeps the
 // emitted text the same from either language.
 class Names {
 	final globals = new Map<String, Bool>();
@@ -56,6 +57,7 @@ class Names {
 			case [TArray(t, n), TArray(u, m)]: n == m && same(t, u);
 			case [TStorage(t, w), TStorage(u, v)]: w == v && same(t, u);
 			case [TImage(_), TImage(_)]: true;
+			case [TWorkgroup(t), TWorkgroup(u)]: same(t, u);
 			case _: a == b;
 		}
 
@@ -87,9 +89,10 @@ class Names {
 			case TArray(t, n): 'Array<${typeName(t)}> of $n';
 			case TStorage(t, w): (w ? "RWStorage<" : "Storage<") + typeName(t) + ">";
 			case TImage(_): "StorageTexture";
+			case TWorkgroup(t): "Workgroup<" + typeName(t) + ">";
 		}
 
-	static final ENTRY = ~/^(main|main0|i|r|o|s|gid|lid|lidx|grp|StageIn|StageOut|(in|v|out|u|make|tex|smp|sb|img)_.*)$/;
+	static final ENTRY = ~/^(main|main0|i|r|o|s|gid|lid|lidx|grp|StageIn|StageOut|(in|v|out|u|make|tex|smp|sb|img|wg|sg)_.*)$/;
 	static var RESERVED:Map<String, Bool>;
 
 	// the keywords and builtins of GLSL ES 3.00, WGSL, MSL (C++) and HLSL
@@ -110,9 +113,12 @@ class Names {
 				+ "cbuffer tbuffer row_major column_major packoffset nointerpolation linear point line triangle lineadj triangleadj vector matrix string "
 				+ "technique pass compile dword min16float min16int SV_Position SV_Target TEXCOORD bool2 bool3 bool4 float1 groupshared "
 				+ "abs sign floor ceil fract frac sqrt inversesqrt inverseSqrt rsqrt sin cos tan exp log min max pow step mix lerp clamp smoothstep dot "
-				+ "length distance normalize reflect cross mul saturate mod asin acos atan atan2 any all transpose determinant").split(" "))
+				+ "length distance normalize reflect cross mul saturate mod asin acos atan atan2 any all transpose determinant "
+				+ "shared barrier memoryBarrierShared workgroupBarrier threadgroup_barrier mem_flags GroupMemoryBarrierWithGroupSync subgroupAdd subgroupMin "
+				+ "subgroupMax subgroupBroadcast subgroupShuffle subgroupAll subgroupAny simd_sum simd_min simd_max simd_broadcast simd_shuffle simd_all "
+				+ "simd_any").split(" "))
 				RESERVED.set(w, true);
 		}
-		return RESERVED.exists(n) || StringTools.startsWith(n, "gl_");
+		return RESERVED.exists(n) || StringTools.startsWith(n, "gl_") || StringTools.startsWith(n, "wg_") || StringTools.startsWith(n, "sg_");
 	}
 }

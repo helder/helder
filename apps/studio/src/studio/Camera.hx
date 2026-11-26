@@ -19,6 +19,9 @@ class Camera {
 	// hand), a drag panning it (a closed one)
 	public final held = signal(false);
 	public final dragging = signal(false);
+	// the user moved it (a pan, a zoom, a place flown to): framing the canvas
+	// is no longer the studio's
+	public var taken = false;
 
 	// that hand as a cursor: closed while panning, open while Space is held, else the arrow
 	public function hand():helder.ui.Cursor
@@ -88,11 +91,17 @@ class Camera {
 		jump(px - wx * nk, py - wy * nk, nk);
 	}
 
-	// the view fitting a world rectangle into the stage (w x h) with a margin, less insets right, below, above and left (stage points)
-	public static function fit(rx:Float, ry:Float, rw:Float, rh:Float, sw:Float, sh:Float, pad:Float, right:Float, below:Float, above = 0.0, left = 0.0):{x:Float, y:Float, k:Float} {
+	// the view fitting a world rectangle into the stage (w x h) with a margin, less insets right, below, above and left (stage points), scaled at most
+	// so, at least so (then what doesn't fit is past the end and the bottom: its start in view)
+	public static function fit(rx:Float, ry:Float, rw:Float, rh:Float, sw:Float, sh:Float, pad:Float, right:Float, below:Float, above = 0.0, left = 0.0,
+			most = Math.POSITIVE_INFINITY, least = 0.0):{x:Float, y:Float, k:Float} {
 		var aw = Math.max(40, sw - right - left - pad * 2), ah = Math.max(40, sh - below - above - pad * 2);
-		var k = Math.min(aw / Math.max(1, rw), ah / Math.max(1, rh));
-		return {x: left + (sw - right - left - rw * k) / 2 - rx * k, y: above + (sh - below - above - rh * k) / 2 - ry * k, k: k};
+		var k = Math.max(least, Math.min(most, Math.min(aw / Math.max(1, rw), ah / Math.max(1, rh))));
+		return {
+			x: rw * k > aw ? left + pad - rx * k : left + (sw - right - left - rw * k) / 2 - rx * k,
+			y: rh * k > ah ? above + pad - ry * k : above + (sh - below - above - rh * k) / 2 - ry * k,
+			k: k
+		};
 	}
 
 	// a world point in the stage

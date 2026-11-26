@@ -14,7 +14,7 @@
 set -u
 apk=$1
 out=${2:-.}
-pkg=org.helder.androidlayerstest
+pkg=org.helder.androidlayerscheck
 mkdir -p "$out"
 failed=0
 

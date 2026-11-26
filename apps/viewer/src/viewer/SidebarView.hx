@@ -23,6 +23,7 @@ import helder.view.graph.Graph.*;
 // keeps a level until its new one's are read); the one going keeps its
 // own. Reduced motion: a cross-fade. On macOS its top holds the window's
 // buttons (the shell's WindowControls over it).
+@:renderer(helder.ui.view.NodeRenderer)
 class SidebarView implements Markup {
 	public static inline var WIDTH = 236;
 
@@ -101,11 +102,11 @@ class SidebarView implements Markup {
 			ticking = true;
 			helder.ui.Clock.addFor(n, step);
 		});
-		return <view tag="sidebar" width={WIDTH} shrink={0} padding="0 10" row-gap={6} overflow="hidden"
-			padding-top={WindowButtons.side() == "start" ? 0 : 8}>
-			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} shrink={0} drag-region/></Show>
+		return <view tag="sidebar" width={WIDTH} flexShrink={0} padding="0 10" rowGap={6} overflow="hidden"
+			paddingTop={WindowButtons.side() == "start" ? 0 : 8}>
+			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} flexShrink={0} dragRegion/></Show>
 			{bar(x)}
-			<view tag="sidebar-body" grow={1} min-height={0} ref={(n:Node) -> {
+			<view tag="sidebar-body" flexGrow={1} minHeight={0} ref={(n:Node) -> {
 				body = n;
 				// (shown a tenth of a second: levels from now on pushed)
 				var from = -1.0;
@@ -161,18 +162,18 @@ class SidebarView implements Markup {
 				helder.ui.Clock.addFor(node, step);
 			}
 		});
-		return <view tag="level-bar" direction="row" align-items="center" padding="0 2" column-gap={2} shrink={0} ref={(n:Node) -> node = n}>
-			<view:button slot="side-back" tag="level-back" role="button" focusable={!top()} label={() -> "Back to " + s.backLabel()}
-				shrink={1} min-width={0} opacity={shown()} pointer-events={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
-				<image src={Glyphs.get("back")} width={14} height={14} shrink={0}/>
-				<view shrink={1} min-width={0}>
-					<text tag="level-back-label" opacity={crossed()} max-lines={1} text-overflow="ellipsis">{label()}</text>
+		return <view tag="level-bar" flexDirection="row" alignItems="center" padding="0 2" columnGap={2} flexShrink={0} ref={(n:Node) -> node = n}>
+			<button slot="side-back" tag="level-back" focusable={!top()} aria-label={() -> "Back to " + s.backLabel()}
+				flexShrink={1} minWidth={0} opacity={shown()} pointerEvents={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
+				<image src={Glyphs.get("back")} width={14} height={14} flexShrink={0}/>
+				<view flexShrink={1} minWidth={0}>
+					<text tag="level-back-label" opacity={crossed()} lineClamp={1} textOverflow="ellipsis">{label()}</text>
 					<Show when={crossed() < 1}>
-						<text position="absolute" left={0} top={0} opacity={1 - crossed()} max-lines={1}>{last()}</text>
+						<text position="absolute" left={0} top={0} opacity={1 - crossed()} lineClamp={1}>{last()}</text>
 					</Show>
 				</view>
-			</view:button>
-			<view grow={1}/>
+			</button>
+			<view flexGrow={1}/>
 			<Standard.Button tag="level-home" variant="ghost" size="sm" icon={Glyphs.get("home")} label="Overview" onPress={() -> s.show("")}/>
 		</view>;
 	}
@@ -182,20 +183,20 @@ class SidebarView implements Markup {
 	// none of the level sliding in)
 	static function pane(x:Explorer, c:Clicks, p:Pane):View
 		return <view tag="sidebar-pane" position="absolute" inset={0} transform={p.x() == 0 ? "none" : "translateX(" + p.x() + "px)"} opacity={p.shown()}
-			pointer-events={p.level == x.sidebar.level() && p.x() == 0 && p.shown() >= 1 ? "auto" : "none"}>
+			pointerEvents={p.level == x.sidebar.level() && p.x() == 0 && p.shown() >= 1 ? "auto" : "none"}>
 			{p.level == "" ? overview(x, c) : level(x, c, p)}
 		</view>;
 
 	static function overview(x:Explorer, c:Clicks):View {
 		var s = x.sidebar, b = x.browser;
-		return <scroll tag="overview" grow={1} min-height={0} row-gap={12} padding-bottom={10}>
-			<view row-gap={1}>
+		return <scroll tag="overview" flexGrow={1} minHeight={0} rowGap={12} paddingBottom={10}>
+			<view rowGap={1}>
 				<text slot="side-head">Locations</text>
 				<For each={() -> s.places()}>{p -> row(c, p().name, Glyphs.place(p().kind), () -> b.dir() == Browser.normalize(p().path),
 					() -> StringTools.startsWith(b.dir(), Browser.normalize(p().path) + "/"), "", () -> x.choose(p().path))}</For>
 			</view>
 			<Show when={s.volumes.length > 0}>
-				<view row-gap={1}>
+				<view rowGap={1}>
 					<text slot="side-head">Devices</text>
 					{[for (v in s.volumes) row(c, v.name, Glyphs.volume(v), () -> b.dir() == Browser.normalize(v.path), () -> false,
 						v.root && v.total > 0 ? Kinds.size(v.free) + " free" : "", () -> x.choose(v.path))]}
@@ -206,13 +207,13 @@ class SidebarView implements Markup {
 
 	static function level(x:Explorer, c:Clicks, p:Pane):View {
 		var s = x.sidebar, b = x.browser;
-		return <view grow={1} min-height={0} row-gap={6}>
-			<view direction="row" align-items="center" column-gap={8} padding="2 8 0 8">
-				<text tag="level-title" font-size={15} font-weight={600} max-lines={1} text-overflow="ellipsis" shrink={1}>{() -> s.title(p.level)}</text>
-				<view grow={1}/>
-				<text font-size={11.5} color={Look.ref.fg3} shrink={0}>{() -> folders(p.rows().length)}</text>
+		return <view flexGrow={1} minHeight={0} rowGap={6}>
+			<view flexDirection="row" alignItems="center" columnGap={8} padding="2 8 0 8">
+				<text tag="level-title" fontSize={15} fontWeight={600} lineClamp={1} textOverflow="ellipsis" flexShrink={1}>{() -> s.title(p.level)}</text>
+				<view flexGrow={1}/>
+				<text fontSize={11.5} color={Look.ref.fg3} flexShrink={0}>{() -> folders(p.rows().length)}</text>
 			</view>
-			<scroll grow={1} min-height={0} row-gap={1}>
+			<scroll flexGrow={1} minHeight={0} rowGap={1}>
 				<For each={() -> p.rows()}>{r -> folderRow(x, c, r())}</For>
 			</scroll>
 		</view>;
@@ -231,33 +232,37 @@ class SidebarView implements Markup {
 				case _:
 			}
 		// (its context menu: Open, Rename…, Move to Trash, Show in Finder, Copy Path; a folder dropped on: moved into it)
-		return <view:button slot="side-row" role="button" focusable label={r.name} data-selected={b.dir() == r.path} onPress={press}
+		return <button slot="side-row" aria-label={r.name} data-selected={b.dir() == r.path} onPress={press}
 			ref={(n:Node) -> {
 				helder.ui.menu.ContextMenu.attach(n, () -> ViewerActions.sidebarFolder(r.path));
 				Drops.folder(x, n, () -> r.path);
 			}}>
-			<image src={Glyphs.get("folder")} width={16} height={16} shrink={0} color={b.dir() == r.path ? Look.ref.fg : Look.ref.fg3}/>
+			<image src={Glyphs.get("folder")} width={16} height={16} flexShrink={0} color={b.dir() == r.path ? Look.ref.fg : Look.ref.fg3}/>
 			<Show when={x.sidebar.renaming() == r.path}>{() -> NameField.field(r.name, t -> x.renameFolder(r.path, t), () -> x.sidebar.renaming(""))}</Show>
 			<Show when={x.sidebar.renaming() != r.path}>
-				<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{r.name}</text>
+				<text flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{r.name}</text>
 			</Show>
 			<Show when={r.deeper}>
-				<view:button tag="deeper" role="button" label={"Into " + r.name} width={20} height={20} radius={5} align-items="center" justify="center"
-					onPress={() -> x.sidebar.show(r.path)} onClick={e -> e.stop()}>
+				<button tag="deeper" focusable={false} aria-label={"Into " + r.name} width={20} height={20} borderRadius={5} alignItems="center"
+					justifyContent="center" onPress={e -> {
+						// (its press the row's none)
+						e.stop();
+						x.sidebar.show(r.path);
+					}}>
 					<image src={Glyphs.get("forward")} width={14} height={14} color={Look.ref.fg3}/>
-				</view:button>
+				</button>
 			</Show>
-		</view:button>;
+		</button>;
 	}
 
 	// (a row of the overview: on when it is the folder shown, a path when the folder is inside it)
 	static function row(c:Clicks, name:String, icon:String, on:Void->Bool, inside:Void->Bool, meta:String, press:Void->Void):View
-		return <view:button slot="side-row" role="button" focusable label={name} data-selected={on()} data-state={inside() ? "open" : null}
+		return <button slot="side-row" aria-label={name} data-selected={on()} data-state={inside() ? "open" : null}
 			onPress={e -> if (c.of(e, "overview:" + name) == 1) press()}>
-			<image src={Glyphs.get(icon)} width={16} height={16} shrink={0} color={on() || inside() ? Look.ref.fg : Look.ref.fg3}/>
-			<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis">{name}</text>
-			<Show when={meta != ""}><text font-size={11.5} color={Look.ref.fg3} shrink={0}>{meta}</text></Show>
-		</view:button>;
+			<image src={Glyphs.get(icon)} width={16} height={16} flexShrink={0} color={on() || inside() ? Look.ref.fg : Look.ref.fg3}/>
+			<text flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{name}</text>
+			<Show when={meta != ""}><text fontSize={11.5} color={Look.ref.fg3} flexShrink={0}>{meta}</text></Show>
+		</button>;
 
 	// (the level's volume: a card inset from the sidebar's edges, its name
 	// and how full it is, a short bar of what is used, "45.3 GB free of 494
@@ -271,18 +276,18 @@ class SidebarView implements Markup {
 			return v == null || v.total <= 0 ? 0 : Math.max(0, Math.min(1, 1 - v.free / v.total));
 		}
 		return <Show when={vol() != null && vol().total > 0}>
-			<view tag="capacity" shrink={0} margin="0 0 10 0" padding="8 10" row-gap={6} radius={10} background={Look.ref.fill} font-size={12}
+			<view tag="capacity" flexShrink={0} margin="0 0 10 0" padding="8 10" rowGap={6} borderRadius={10} background={Look.ref.fill} fontSize={12}
 				color={Look.ref.fg2}>
-				<view direction="row" align-items="center" column-gap={7}>
+				<view flexDirection="row" alignItems="center" columnGap={7}>
 					<image src={Glyphs.get(vol() == null ? "disk" : Glyphs.volume(vol()))} width={15} height={15} color={Look.ref.fg2}/>
-					<text tag="capacity-name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" font-weight={500} color={Look.ref.fg}>
+					<text tag="capacity-name" flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis" fontWeight={500} color={Look.ref.fg}>
 						{() -> vol() == null ? "" : vol().name}</text>
-					<text tag="capacity-used" color={Look.ref.fg3} shrink={0}>{() -> Math.round(used() * 100) + "%"}</text>
+					<text tag="capacity-used" color={Look.ref.fg3} flexShrink={0}>{() -> Math.round(used() * 100) + "%"}</text>
 				</view>
-				<view tag="capacity-bar" height={4} radius={2} background={Look.ref.line} overflow="hidden">
-					<view height="100%" radius={2} background={used() > 0.9 ? Look.ref.danger : Look.ref.accent} width={() -> Math.round(used() * 1000) / 10 + "%"}/>
+				<view tag="capacity-bar" height={4} borderRadius={2} background={Look.ref.line} overflow="hidden">
+					<view height="100%" borderRadius={2} background={used() > 0.9 ? Look.ref.danger : Look.ref.accent} width={() -> Math.round(used() * 1000) / 10 + "%"}/>
 				</view>
-				<text tag="capacity-free" font-size={11} color={Look.ref.fg3} max-lines={1} text-overflow="ellipsis">
+				<text tag="capacity-free" fontSize={11} color={Look.ref.fg3} lineClamp={1} textOverflow="ellipsis">
 					{() -> vol() == null ? "" : Kinds.size(vol().free) + " free of " + Kinds.size(vol().total)}</text>
 			</view>
 		</Show>;

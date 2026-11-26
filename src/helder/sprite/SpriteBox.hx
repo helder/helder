@@ -86,8 +86,8 @@ class SpriteBox extends helder.ui.Node {
 		}
 		batch.begin(width, height);
 		if (onDraw != null) onDraw(batch, width, height);
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			r.beforePass(record);
 		}
 		g.gpuTexture(color, id, x, y, width, height);

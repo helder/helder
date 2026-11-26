@@ -33,14 +33,14 @@ class StressCheck implements Markup {
 
 	function view():View
 		// (min-height 0: as in CSS, a flex item holding a scroller is otherwise as tall as all its rows)
-		return <view grow={1} min-height={0} padding={12} row-gap={8} font-family="DejaVu Sans" font-size={13} color="#18181b" background="#fafafa">
-			<text font-size={18} font-weight={700}>{() -> list().length + " rows"}</text>
-			<scroll tag="list" grow={1} min-height={0} row-gap={2} background="#ffffff" border-width={1} border-color="#e4e4e7" radius={8} padding={6}>
+		return <view flexGrow={1} minHeight={0} padding={12} rowGap={8} fontFamily="DejaVu Sans" fontSize={13} color="#18181b" background="#fafafa">
+			<text fontSize={18} fontWeight={700}>{() -> list().length + " rows"}</text>
+			<scroll tag="list" flexGrow={1} minHeight={0} rowGap={2} background="#ffffff" borderWidth={1} borderColor="#e4e4e7" borderRadius={8} padding={6}>
 				<For each={list}>{row -> {
 					var r = row();
-					<view direction="row" align-items="center" column-gap={10} padding="3 6" radius={4} background={r.done() ? "#eff6ff" : "#ffffff"}>
+					<view flexDirection="row" alignItems="center" columnGap={10} padding="3 6" borderRadius={4} background={r.done() ? "#eff6ff" : "#ffffff"}>
 						<Checkbox checked={r.done}/>
-						<text grow={1}>{r.label()}</text>
+						<text flexGrow={1}>{r.label()}</text>
 						<text color="#71717a">{"#" + r.id}</text>
 						<Button label="Open"/>
 					</view>;

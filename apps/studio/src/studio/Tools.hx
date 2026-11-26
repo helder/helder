@@ -44,7 +44,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened and the build's diagnostics.",
+			description: "Edit a file of the project: each edit's old text (once in the file; its indentation spaces or left out, never a raw tab: write no tab characters in a call) replaced by its new text (indented as the file is), or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.story.tsx go by themselves once a story of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -53,7 +53,8 @@ class Tools implements Mcp.Target {
 						type: "array",
 						items: {type: "object", properties: {old: {type: "string"}, "new": {type: "string"}}, required: ["old", "new"]}
 					},
-					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"}
+					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"},
+					delete: {type: "boolean", description: "true: the file deleted (nothing else given)"}
 				},
 				required: ["path"]
 			}
@@ -121,6 +122,11 @@ class Tools implements Mcp.Target {
 			}
 		},
 		{
+			name: "studio.guide",
+			description: "How to build here, fast: the project's files, screens as stories, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets, 3d). Call it instead of exploring the repository: start first, then the topic you need.",
+			inputSchema: {type: "object", properties: {topic: {type: "string", description: "start (the default), ui, game, design, assets, 3d"}}}
+		},
+		{
 			name: "studio.inbox",
 			description: "What the user said since you last heard (answers to your questions, direction typed while you work). It also arrives appended to every tool result.",
 			inputSchema: {type: "object", properties: {}}
@@ -154,11 +160,18 @@ class Tools implements Mcp.Target {
 			case "project.read": text(read(args.path));
 			case "project.patch": text(Json.stringify(patch(args, agent), "  "));
 			case "build.check":
+				studio.settle();
 				var pr = studio.previews;
 				if (pr == null) throw "no project open";
 				var r = pr.check();
-				text(Json.stringify({ok: r.ok, ms: r.ms, diagnostics: r.diagnostics}, "  "));
-			case "run.snap": snap(args);
+				var out:Dynamic = {ok: r.ok, ms: r.ms, diagnostics: r.diagnostics};
+				// (it types; what threw when the studio ran it, beside)
+				var crashed = studio.crashes();
+				if (crashed.length > 0) out.crashed = crashed;
+				text(Json.stringify(out, "  "));
+			case "run.snap":
+				studio.settle();
+				snap(args);
 			case "run.tree": text(Json.stringify(tree(args.screen), "  "));
 			case "studio.focus":
 				// (the agent is where the user looks)
@@ -172,6 +185,7 @@ class Tools implements Mcp.Target {
 				if (agent != null) studio.presence.done(agent, args.note);
 				text("ok");
 			case "studio.ask": text(Json.stringify(ask(args, agent), "  "));
+			case "studio.guide": text(Guides.get(args.topic));
 			case "studio.inbox":
 				var notes = studio.inbox.take();
 				text(notes.length == 0 ? "Nothing new from the user." : Inbox.text(notes));
@@ -248,37 +262,60 @@ class Tools implements Mcp.Target {
 
 	@:coroutine function patch(args:Dynamic, agent:Null<String>):Dynamic {
 		var f = path(args.path);
-		var doc = studio.docs.get(f);
-		var base = doc.text, changes = [];
 		// (a whole text sent beside edits is an agent's slip: it once wiped a file)
 		if (args.text != null && args.edits != null) throw "text or edits, not both";
+		var by = agent == null ? null : studio.presence.peer(agent)?.name;
+		if (args.delete == true) {
+			if (args.text != null || args.edits != null) throw "delete, or text or edits, not both";
+			// (gone already: the starter's files go by themselves, two deletes may cross)
+			if (!studio.docs.has(f)) return {result: "gone", message: '${args.path} is not there (deleted already)', diagnostics: []};
+			studio.remove(f, by);
+			return landed();
+		}
+		// (a file not there yet: made by its text, through the history: undone, it is gone)
+		if (!studio.docs.has(f)) {
+			if (args.text == null) throw '${args.path}: no such file; send text to create it';
+			studio.create(f, args.text, by);
+			return landed();
+		}
+		var doc = studio.docs.get(f);
+		var base = doc.text, changes = [];
 		if (args.text != null) changes.push(new helder.syntax.Transaction.Change(0, base.length, args.text));
 		else {
 			var edits:Array<Dynamic> = args.edits ?? [];
 			if (edits.length == 0) throw "no edits (edits: [{old, new}], or text)";
 			for (e in edits) {
-				var old:String = e.old, at = base.indexOf(old);
-				if (old == "" || at < 0) throw 'not in ${args.path}: ${old.substr(0, 60)}';
-				if (base.indexOf(old, at + 1) >= 0) throw 'more than once in ${args.path}: ${old.substr(0, 60)} (give more of it)';
-				changes.push(new helder.syntax.Transaction.Change(at, at + old.length, Reflect.field(e, "new")));
+				var old:String = e.old, next:String = Reflect.field(e, "new") ?? "";
+				var at = old == "" ? null : try Indent.find(base, old) catch (_:String) throw 'more than once in ${args.path}: ${old.substr(0, 60)} (give more of it)';
+				if (at == null) throw 'not in ${args.path}: ${old.substr(0, 60)}';
+				changes.push(new helder.syntax.Transaction.Change(at.start, at.end, at.loose ? Indent.adapt(base, at, old, next) : next));
 			}
 		}
-		var pr = studio.previews;
-		var before = pr == null ? 0 : pr.buildMs.peek();
 		var tx = new Transaction(changes, null, base);
-		var by = agent == null ? null : studio.presence.peer(agent)?.name;
 		// (the agent there and its marks: Studio.agentEdited, by its name)
 		studio.edit(f, tx, rel(f), "agent", null, by);
-		// (its way to the program: a patch at once, a build waited for)
+		return landed();
+	}
+
+	// (an edit's way to the program, waited for: a patch at once, a build;
+	// the program the project's now: a file made may have brought it)
+	@:coroutine function landed():Dynamic {
+		var pr = studio.previews;
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
+		// (a host running: the screens out of view a moment longer, one that throws said here)
+		var t1 = haxe.Timer.stamp();
+		while (pr != null && pr.sinceHost() >= 0 && !pr.failed && !pr.allShown() && haxe.Timer.stamp() - t1 < 3) Async.delay(0.02);
 		var diags = pr == null ? [] : [for (d in pr.latest) d];
-		return {
-			result: pr == null ? "saved" : pr.failed ? "failed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
+		var crashed = pr == null || pr.failed ? [] : studio.crashes();
+		var out:Dynamic = {
+			result: pr == null ? "saved" : pr.failed ? "failed" : crashed.length > 0 ? "crashed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
 			message: studio.message.peek(),
 			diagnostics: diags
 		};
+		if (crashed.length > 0) out.crashed = crashed;
+		return out;
 	}
 
 	function screenOf(name:Null<String>):Screen {
@@ -331,9 +368,10 @@ class Tools implements Mcp.Target {
 			};
 		}
 		var s = screenOf(args.screen);
-		var img = s.image.peek();
-		if (img == null) throw '${s.info.name} has no frame yet';
 		#if (hxmc.target == "wasm32-wasi")
+		var img = s.image.peek();
+		if (s.crashed) throw '${s.info.name} crashed: ${s.report.peek()}';
+		if (img == null) throw '${s.info.name} has no frame yet';
 		// (a frame of the preview host's is the browser's: its bitmap, the page's to make a PNG of)
 		if (!img.hasPixels) return {
 			content: [
@@ -345,9 +383,10 @@ class Tools implements Mcp.Target {
 		var out = "(not written)";
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		#else
-		// (a texture the host shares: read back there)
-		img = studio.previews.pixels(s);
-		if (img == null) throw '${s.info.name}: its frame could not be read';
+		// (a texture the host shares: read back there; a frame on its way, out of view or a build's, waited for)
+		var img = studio.previews.pixels(s);
+		if (s.crashed) throw '${s.info.name} crashed: ${s.report.peek()}';
+		if (img == null) throw '${s.info.name} has no frame yet';
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		var out = written(png, args.path, s.slug);
 		#end

@@ -1,19 +1,19 @@
 # Layout and style
 
-Layout is CSS flexbox and grid, and style names are CSS's: `padding`, `background`, `radius`, `border-color`, `font-size`. If you know CSS, you know where things go. helder lays them out and draws them itself, so a layout is the same on every platform.
+Layout is CSS flexbox and grid, and style names are CSS's, in camel as React Native writes them: `padding`, `background`, `borderRadius`, `borderColor`, `fontSize`. If you know CSS, you know where things go. helder lays them out and draws them itself, so a layout is the same on every platform.
 
 <Example id="signup"/>
 
-Views are columns by default. `direction="row"` puts children side by side, `grow` shares the free space, and gaps space them out. Numbers are points.
+Views are columns by default. `flexDirection="row"` puts children side by side, `flexGrow` shares the free space, and gaps space them out. Numbers are points.
 
 ```tsx
-<view grow={1} padding={24} row-gap={14}>
-  <text font-size={28} font-weight={700}>Inbox</text>
-  <view direction='row' align-items='center' justify='space-between'>
+<view flexGrow={1} padding={24} rowGap={14}>
+  <text fontSize={28} fontWeight={700}>Inbox</text>
+  <view flexDirection='row' alignItems='center' justifyContent='space-between'>
     <text>3 unread</text>
-    <view:button padding='4 10' radius={6} border-width={1} border-color='#e4e4e7'>
+    <button padding='4 10' borderRadius={6} borderWidth={1} borderColor='#e4e4e7'>
       Mark all read
-    </view:button>
+    </button>
   </view>
 </view>
 ```
@@ -23,7 +23,7 @@ For a whole app, a `StyleSheet` styles parts by slot and state (hover, focus, ch
 ```haxe
 static final sheet:StyleSheet = {
   rules: [
-    {slot: 'button', style: {padding: [6, 12], radius: 6,
+    {slot: 'button', style: {padding: [6, 12], borderRadius: 6,
       background: Color.rgb(0x18181B), color: Color.rgb(0xFAFAFA)}},
     {slot: 'button', when: ['hover'], style: {background: Color.rgb(0x3F3F46)}},
     {slot: 'button', variant: 'outline',
@@ -31,7 +31,7 @@ static final sheet:StyleSheet = {
   ]
 };
 
-<view:button slot='button' variant='outline' onPress={save}>Save</view:button>
+<button slot='button' variant='outline' onPress={save}>Save</button>
 ```
 
 ## Liquid Glass
@@ -41,15 +41,15 @@ static final sheet:StyleSheet = {
 <Example id="glass"/>
 
 ```tsx
-const search = <glass direction='row' padding='0 18' height={44} align-items='center' column-gap={8} interactive>
+const search = <glass flexDirection='row' padding='0 18' height={44} alignItems='center' columnGap={8} interactive>
   <icon name='search'/><text>Search</text>
 </glass>
-const buttons = <glass-group spacing={12} direction='row' column-gap={6}>
+const buttons = <view glassSpacing={12} flexDirection='row' columnGap={6}>
   <glass width={44} height={44}/><glass width={44} height={44}/>
-</glass-group>
+</view>
 ```
 
-It is a capsule unless given a `radius`; `variant="clear"` is the clearer glass, `tint` a colour it leans to, and a `<glass-group>` merges glass that comes near.
+It is a capsule unless given a `borderRadius`; `variant="clear"` is the clearer glass, `tint` a colour it leans to, and a view's `glassSpacing` merges the glass in it that comes near.
 
 ## What else
 

@@ -57,7 +57,7 @@ class GridLayout {
 		var colGap = s.columnGap, rowGap = s.rowGap;
 
 		// the columns: at the content box's width, else at their max-content sizes (then the available width, when that is less)
-		var stretchCols = s.justify == Normal, stretchRows = s.alignContent == Normal || s.alignContent == Stretch;
+		var stretchCols = s.justifyContent == Normal, stretchRows = s.alignContent == Normal || s.alignContent == Stretch;
 		// (an item with an aspect ratio and neither size its own: the columns sized again, its contribution its rows'
 		// height through the ratio, then the rows again, as CSS's grid sizing has it; its height its first rows', as
 		// Chromium's)
@@ -116,7 +116,7 @@ class GridLayout {
 			rows = tracks(l, rowTracks, items, false, height, innerH, rowGap, stretchRows, width, innerH, cols);
 
 		// the tracks' places (justify and alignContent: the tracks in the content box)
-		var colPos = positions(cols, colGap, width, s.justify);
+		var colPos = positions(cols, colGap, width, s.justifyContent);
 		var rowPos = positions(rows, rowGap, height, switch s.alignContent {
 			case End: Justify.End;
 			case Center: Justify.Center;

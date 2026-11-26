@@ -53,6 +53,7 @@ class Scene {
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a -s "-screen 0 640x480x24" ' + exePath('bin/3d/$t/SurfaceCheck', t));
 		run("sh", ["tests/3d/check.sh", 'bin/3d/$t']);
 		sceneTs(t);
+		sceneProps();
 		// (Model.of's files in the executable's data, helder.asset's Bundle: it
 		// alone in a directory, run from it, nothing beside it)
 		var exe = Path.withoutDirectory(exePath("bin/3d/alone/RenderCheck", t));
@@ -109,6 +110,58 @@ class Scene {
 		run(compiler, ["tests/3d/ts/frames.ts", "-o", exe].concat(cp).concat(targetArgs(t)));
 		for (s in ["glow", "tsscene", "primitives", "toon"])
 			shell('LIBGL_ALWAYS_SOFTWARE=1 HXMC_GFX_SOFTWARE=1 env -u DISPLAY $exe $s tests/3d/$s.png bin/3d/$t/ts-$s.png');
+	}
+
+	// a <Scene> of TypeScript's markup given helder/gfx's vec3, vec4 and Quat
+	// (tests/3d/ts/props.tsx): run headless (it threw before SceneRenderer
+	// took them as Haxe's values), the sphere a vec3 placed right of the
+	// centre red, its mirror left of it the background
+	static function sceneProps() {
+		var png = "bin/3d/ts-props.png";
+		shell('LIBGL_ALWAYS_SOFTWARE=1 env -u DISPLAY ${helderCli()} run --headless tests/3d/ts/props.tsx --snap $png --at 0.5');
+		var at = pixels(png);
+		var sphere = at(215, 120), left = at(105, 120);
+		if (!(sphere.r > 200 && sphere.g < 60 && sphere.b < 60)) throw new Failed('tests/3d/ts/props.tsx: the sphere at (215, 120) is not red: $sphere');
+		if (!(left.r < 60 && left.g < 60 && left.b < 60)) throw new Failed('tests/3d/ts/props.tsx: (105, 120) is not the background: $left');
+		Sys.println("tests/3d/ts/props.tsx: drawn, the sphere where its vec3 put it");
+	}
+
+	// (a PNG's pixels, 8-bit RGB or RGBA, not interlaced: a reader of (x, y))
+	static function pixels(path:String):(x:Int, y:Int) -> {r:Int, g:Int, b:Int} {
+		var d = File.getBytes(path), i = 8, w = 0, h = 0, bpp = 4;
+		var idat = new haxe.io.BytesBuffer();
+		while (i < d.length) {
+			var n = (d.get(i) << 24) | (d.get(i + 1) << 16) | (d.get(i + 2) << 8) | d.get(i + 3), kind = d.getString(i + 4, 4);
+			if (kind == "IHDR") {
+				w = (d.get(i + 8) << 24) | (d.get(i + 9) << 16) | (d.get(i + 10) << 8) | d.get(i + 11);
+				h = (d.get(i + 12) << 24) | (d.get(i + 13) << 16) | (d.get(i + 14) << 8) | d.get(i + 15);
+				bpp = d.get(i + 17) == 6 ? 4 : 3;
+			} else if (kind == "IDAT") idat.addBytes(d, i + 8, n);
+			i += 12 + n;
+		}
+		var raw = haxe.zip.Uncompress.run(idat.getBytes()), stride = w * bpp;
+		var rows = haxe.io.Bytes.alloc(stride * h), prev = haxe.io.Bytes.alloc(stride), p = 0;
+		for (y in 0...h) {
+			var f = raw.get(p++), line = haxe.io.Bytes.alloc(stride);
+			line.blit(0, raw, p, stride);
+			p += stride;
+			for (x in 0...stride) {
+				var a = x >= bpp ? line.get(x - bpp) : 0, b = prev.get(x), c = x >= bpp ? prev.get(x - bpp) : 0;
+				var v = line.get(x) + switch f {
+					case 1: a;
+					case 2: b;
+					case 3: (a + b) >> 1;
+					case 4:
+						var pa = Std.int(Math.abs(b - c)), pb = Std.int(Math.abs(a - c)), pc = Std.int(Math.abs(a + b - 2 * c));
+						pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+					case _: 0;
+				}
+				line.set(x, v & 255);
+			}
+			rows.blit(y * stride, line, 0, stride);
+			prev = line;
+		}
+		return (x, y) -> {r: rows.get(y * stride + x * bpp), g: rows.get(y * stride + x * bpp + 1), b: rows.get(y * stride + x * bpp + 2)};
 	}
 
 	static function sceneWeb() {
