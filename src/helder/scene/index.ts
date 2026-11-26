@@ -42,6 +42,14 @@ import {
 import { type Mat4, type Quat, type Vec3 } from "helder/math";
 import type { World } from './runtime';
 
+// helder/asset's model(path): helder/scene's Model where the program has
+// helder/scene (helder.asset.Models), so helder/asset names no type of ours
+declare module "helder/asset" {
+	interface Models {
+		model: import("./runtime").Model<any, any, any, any>;
+	}
+}
+
 export {
   Mesh, Encoder, Binding, World, Camera, Light, Renderer, Shadows, Fog,
   Material, UvTransform, Physical, Transmission, MeshRenderer, Shapes,

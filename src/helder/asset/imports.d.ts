@@ -32,7 +32,7 @@ declare module "*.otf" {
 	export default asset;
 }
 declare module "*.glb" {
-	const asset: import("helder/asset").Asset<import("../scene/runtime").Model<any, any, any, any>>;
+	const asset: import("helder/asset").Asset<import("helder/asset").ModelOf>;
 	export default asset;
 }
 declare module "*.wav" {

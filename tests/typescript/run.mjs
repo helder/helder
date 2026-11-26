@@ -199,6 +199,15 @@ console.log('PASS native (native.mjs)');
 if(mine()) {
 const r=run(process.execPath,[`${T}/stamp.mjs`]);ok(r,'the declarations\' stamp (stamp.mjs)');process.stdout.write(r.stdout);
 }
+// helder/asset without helder/scene: model(path)'s type is unknown there
+// (helder.asset.Models), so helder/scene's declaration class is not typed
+if(mine()) {
+fs.writeFileSync(`${dir}/asset-only.ts`,'import {image} from "helder/asset";\nconsole.log("ok");\n');
+const r=spawnSync(compiler,[`${dir}/asset-only.ts`,'-o',`${dir}/asset-only`],{encoding:'utf8',env:{...process.env,HELDER_TS_TIMES:'1'}});ok(r,'asset-only.ts compile');
+assert.match(r.stderr,/manifest helder\/asset:/,'helder/asset typed');
+assert.doesNotMatch(r.stderr,/manifest helder\/scene:/,'helder/scene typed for a program of helder/asset alone');
+console.log('PASS helder/asset alone: helder/scene not typed');
+}
 // Programs whose values their types do not describe: compiled, then stopped
 // where such a value enters a typed slot (TSHX100, at the line of expect)
 for(const file of fs.readdirSync(`${T}/diverge`).filter(f=>f.endsWith('.ts')).sort())for(const target of targets) {
