@@ -93,7 +93,7 @@ class PdfImage {
 			if (jpegDecoder == null) throw PdfError.unsupported("a JPEG image without its decoder linked (PdfImage.useJpeg)");
 			// (a CMYK one's samples, for its colour space and Decode array: a PDF's are not inverted as
 			// Photoshop's own JPEG files are; read as those, a cover's photograph was a negative)
-			jpg = try jpegDecoder(data, scale, cs.components == 4) catch (e:Dynamic) throw PdfError.corrupt("a JPEG image: " + Std.string(e));
+			jpg = try jpegDecoder(data, scale, cs != null && cs.components == 4) catch (e:Dynamic) throw PdfError.corrupt("a JPEG image: " + Std.string(e));
 			// (the image at the decoder's size: the masks below resampled to it)
 			w = jpg.width;
 			h = jpg.height;
