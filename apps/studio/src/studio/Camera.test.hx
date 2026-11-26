@@ -24,6 +24,10 @@ function tests() {
 			equals(Camera.fit(0, 0, 100, 100, 400, 400, 0, 0, 0).k, 4.0);
 			equals(Camera.fit(0, 0, 100, 100, 400, 400, 0, 0, 0, 0, 0, 1), {x: 150.0, y: 150.0, k: 1.0});
 		});
+		test("a fit at least 0.5: a long row's start in view, the rest past the end", () -> {
+			equals(Camera.fit(0, 0, 4000, 400, 400, 400, 10, 0, 0, 0, 0, 1, 0.5), {x: 10.0, y: 100.0, k: 0.5});
+			equals(Camera.fit(0, 0, 400, 400, 400, 400, 0, 0, 0, 0, 0, 1, 0.5).k, 1.0);
+		});
 		test("frameBox: every frame; after an answer the program's alone, not the options' sketches", () -> {
 			var rs = [{name: "s.helder#Dusk", x: 0.0, y: -900.0, w: 300.0, h: 600.0}, {name: "Pong/Serve", x: 0.0, y: 0.0, w: 480.0, h: 320.0},
 				{name: "Pong/Rally", x: 520.0, y: 0.0, w: 480.0, h: 320.0}];
