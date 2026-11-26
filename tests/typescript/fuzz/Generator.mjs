@@ -47,7 +47,8 @@ export class Generator {
     for (const st of family.run(this, sc)) stmts.push(st)
     for (let n = r.range(1, 4); n > 0; n--) stmts.push(...this.stmt(sc))
     if (c.async && r.chance(0.6)) stmts.push(...this.asyncOrder(sc))
-    if (this.lies) {
+    // (a sync case's: after a TSHX100 an async one's scheduled work still prints)
+    if (this.lies && !c.async) {
       const at = r.int(stmts.length + 1)
       // (of no binding in scope: it goes anywhere in the body)
       stmts.splice(at, 0, ...this.lie(new Scope(null, {async: c.async})))
