@@ -457,7 +457,9 @@ abstract class Statements extends Functions {
 		for (d in n.declarations()) {
 			// (a typed number binding's: a number array's element read unboxed)
 			var slot = d.name().kind != KindIdentifier ? null : n.flags & NodeFlags.BlockScoped == 0 ? functionVars.get(d.name().text)?.ty : top || predeclared ? env.get(d.name().text)?.ty : bindingType(d);
-			var e = d.initializer() == null ? b.runtime("getUndefined", []) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
+			// (none given, a typed slot's placeholder: TypeScript's definite
+			// assignment has it written before it is read, as a var's)
+			var e = d.initializer() == null ? (slot != null && d.name().kind == KindIdentifier ? placeholder(slot) : b.runtime("getUndefined", [])) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
 			if (d.name().kind != KindIdentifier) {
 				var scoped = n.flags & NodeFlags.BlockScoped != 0;
 				bindPattern(d.name(), e, !scoped ? (id, v) -> set(functionVars.get(id.text), v) : top || predeclared ? (id, v) -> set(get(id.text, id), v) : declareLocal);
