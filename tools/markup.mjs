@@ -54,7 +54,7 @@ const SKIP = ['tests/web', 'tests/view', 'site', 'src/helder/web', 'node_modules
 const args = process.argv.slice(2);
 const dry = args.includes('--dry');
 const roots = args.filter(a => !a.startsWith('--'));
-const notes = [];
+const notes = [], loud = [];
 let changed = 0;
 
 function camel(n) {
@@ -259,8 +259,9 @@ function scanFile(src, lang) {
 		if (el.newTag !== el.tag) edits.push([ts, ts + el.tag.length, el.newTag]);
 		const button = el.newTag === 'button';
 		let focusable = false;
+		const merged = twice(el);
 		for (const a of el.attrs) {
-			if (a.name === '...') continue;
+			if (a.name === '...' || merged.has(a)) continue;
 			if (button && a.name === 'role' && a.value && a.value.kind === 'static' && a.value.text === 'button') {
 				drop(a);
 				continue;
@@ -307,6 +308,38 @@ function scanFile(src, lang) {
 			if (n === 'style' && a.value && a.value.kind === 'expr') styleKeys(a.value.start + 1, a.value.end - 1);
 		}
 		if (button && !focusable) notes.push(`${file}:${line(el.start)}: <button> takes the focus now (it did not): focusable={false} if it should not`);
+	}
+	// attributes one name once renamed (onClick beside an onPress): handlers
+	// merged into one, e -> {first; second;}; anything else said loudly
+	function twice(el) {
+		const done = new Set(), by = new Map();
+		for (const a of el.attrs) {
+			if (a.name === '...') continue;
+			const n = attrName(a.name, el.newTag, el.tag);
+			by.set(n, [...(by.get(n) ?? []), a]);
+		}
+		for (const [n, as] of by) {
+			if (as.length < 2) continue;
+			const bodies = /^on[A-Z]/.test(n) ? as.map(a => a.value && a.value.kind === 'expr' ? statement(a.value.text) : null) : [];
+			if (bodies.length === 0 || bodies.includes(null)) {
+				loud.push(`${file}:${line(as[1].start)}: ${n} given twice on <${el.newTag}> (${as.map(a => a.name).join(', ')}): merge them by hand`);
+				continue;
+			}
+			const arrow = lang === 'hx' ? '->' : '=>';
+			edits.push([as[0].start, as[0].end, `${n}={e ${arrow} {${bodies.join(' ')}}}`]);
+			for (const a of as.slice(1)) drop(a);
+			for (const a of as) done.add(a);
+		}
+		return done;
+	}
+	// a handler's body as a statement of a handler of e (null: not an arrow)
+	function statement(t) {
+		const m = /^\s*(?:\(\s*\)|\(?\s*(\w+)\s*(?::[^)=]*)?\)?)\s*(?:->|=>)\s*([\s\S]*?)\s*$/.exec(t);
+		if (!m) return null;
+		const v = m[1], body = m[2];
+		const plain = body.startsWith('{') ? body : body + ';';
+		if (!v || v === '_' || v === 'e') return plain;
+		return `{${lang === 'hx' ? 'var' : 'const'} ${v} = e; ${plain}}`;
 	}
 	function drop(a) {
 		let st = a.start;
@@ -461,4 +494,6 @@ function visit(p) {
 
 for (const r of roots.length > 0 ? roots : ['src', 'apps', 'examples', 'tests', 'docs', 'README.md', 'CONTRIBUTING.md']) visit(r);
 for (const n of notes) console.log(n);
+for (const n of loud) console.error('!! ' + n);
+if (loud.length > 0) process.exitCode = 1;
 console.log(`${changed} files ${dry ? 'would change' : 'changed'}`);

@@ -33,6 +33,10 @@ function tests() {
 			equals(interpret('<view><image src="logo.png"/></view>').interpreted.errors.length, 1);
 			equals(interpret('<view><image src="gone.png"/></view>', _ -> throw "no such file").interpreted.errors[0].message, 'src="gone.png": no such file');
 		});
+		test("an attribute given twice: an error, not one of them kept", () -> {
+			var i = interpret('<button onPress={a} onPress={b}><text>x</text></button>');
+			equals([for (e in i.interpreted.errors) e.message], ["markup: onPress is given twice on <button>; one handler: onPress={e -> {a(); b();}}"]);
+		});
 		test("each element's offset", () -> {
 			var i = interpret('<view><text>a</text></view>');
 			var root = i.ui.root.children[0];
