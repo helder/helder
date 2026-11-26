@@ -104,3 +104,13 @@ const effects3 = [{node: 30, latest: true}, {node: 0}, {node: 0}, {node: 6, rend
 await run('3. held, then a write beside it, read with latest', build([0, 1, 2], memos3, effects3, [30]), [
   ['made'], ['the open ask answers 7', g => g.asks.find(a => !a.done && (a.done = true)).resolve(7)],
   ['s0 = 1', g => g.writers[0](1)], ['s1 = 0', g => g.writers[1](0)]])
+
+// 4. a write held on several asks, one fails: what a user effect shows next to it
+const memos4 = [['Sum', 0, 0], ['Sum', 1, 0], ['Sum', 0, 0], ['Inner', 0], ['Sum', 0, 0], ['Sum', 0, 0], ['Async', 0], ['Inner', 0],
+  ['Async', 0], ['Inner', 0], ['Async', 0], ['Inner', 3], ['Cond', 1, 0, 12, 0], ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Sum', 0, 0],
+  ...Array(11).fill(['Inner', 0]), ['Sum', 0, 0], ...Array(6).fill(['Inner', 0]), ['Inner', 14], ['Sum', 0, 37], ['Sum', 0, 0], ['Sum', 0, 0],
+  ['Inner', 0]]
+const effects4 = [{node: 12, render: true}, {node: 0}, {node: 0}, {node: 13}]
+await run('4. held on several asks, one fails', build([0, 1], memos4, effects4, [0, 38]), [
+  ['made'], ['s1 = 0', g => g.writers[1](0)], ['s1 = 1', g => g.writers[1](1)], ['s0 = 1', g => g.writers[0](1)],
+  ['the third open ask fails', g => g.asks.filter(a => !a.done)[2].reject(new Error('e0'))]])

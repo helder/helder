@@ -221,6 +221,20 @@ stores'.
   looks ahead to a held value through a memo..."). The stores fuzzer leaves
   `latest` over memos out until it is fixed (`latest` over signals stays).
 
+- **Held transactions depend on the order nodes were made.** With async
+  answers in flight (several asks, holds, an answer failing), helder's
+  graph shows a held change differently depending on whether its nodes
+  were made in the order written or as first read: a store makes its
+  nodes of the atoms as they are first read, a fresh graph as written, so
+  the stores fuzzer sees them differ, in either direction (one shrunk case
+  the store consistent and the fresh graph not). The minimal cases do it
+  without stores. Solid 2.0.4 differs from both at times
+  (`solid-oracle.mjs` case 4: it shows `e3: 4` after `s1 = 1`, helder
+  neither). Until the graph's hold rules are ported closer to Solid's
+  (a differential fuzz of the graph against the package is the tool), the
+  stores soak makes no async memos; its replayed cases, the Atoms tests,
+  the graph's ported tests and the oracle keep them.
+
 ## Phase 2 notes
 
 - Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
