@@ -40,7 +40,7 @@ function tests() {
 	test("stores: found by the fuzzer", () -> for (r in FOUND)
 		property(modelGen(true), s -> model(s), {replay: r}));
 	test("stores against fresh copies of the graph", () -> property(modelGen(), s -> model(s), {cases: 120, limit: 20, memory: 10}));
-	test("stores with async memos against fresh copies, settled", () -> property(modelGen(true), settledModel, {cases: 120, limit: 20, memory: 10}));
+	test("stores with async memos against fresh copies, settled", () -> property(modelGen(true, true), settledModel, {cases: 120, limit: 20, memory: 10}));
 }
 
 final FOUND = [
@@ -271,7 +271,10 @@ inline var STORES = 8;
 // transactions depend on the order their nodes were made, which a store and
 // a fresh graph make differently: apps/studio/SCENARIOS.md, open; the
 // settled comparison makes them)
-function modelGen(async = false):Gen<ModelSpec>
+// (settled: an effect's untracked read made a tracked one, after the draw:
+// what it shows is what it read first, whenever its first run came, which a
+// store and a fresh graph time differently; nothing settled to compare)
+function modelGen(async = false, settled = false):Gen<ModelSpec>
 	return c -> {
 		var signals = c.draw(int(1, 20));
 		var memos = c.draw(memosGen(signals, 40, 8, async));
@@ -284,8 +287,8 @@ function modelGen(async = false):Gen<ModelSpec>
 			return h == 2 && node >= signals ? 0 : h;
 		}
 		var effects = [for (_ in 0...c.draw(int(1, 6))) {
-			var render = c.draw(bool()), node = c.draw(int(0, nodes - 1));
-			{render: render, node: node, how: how(node), cleanup: c.draw(bool()), writes: c.draw(int(0, 3)) == 0};
+			var render = c.draw(bool()), node = c.draw(int(0, nodes - 1)), h = how(node);
+			{render: render, node: node, how: settled && h == 3 ? 0 : h, cleanup: c.draw(bool()), writes: c.draw(int(0, 3)) == 0};
 		}];
 		var derived = [for (i => m in memos) if (m.match(Derived(_))) signals + i];
 		var ops = [for (_ in 0...c.draw(int(1, 300))) switch c.draw(int(0, 12)) {
