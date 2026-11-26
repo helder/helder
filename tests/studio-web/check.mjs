@@ -41,16 +41,10 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { playwright } from '../playwright.mjs';
 
-const require = createRequire(import.meta.url);
-let pw;
-try {
-	pw = require('playwright');
-} catch {
-	pw = require(path.join(process.execPath, '../../lib/node_modules/playwright'));
-}
+const pw = playwright();
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [site, out] = process.argv.slice(2);
 const BLESS = process.argv.includes('--bless') || !!process.env.BLESS;
