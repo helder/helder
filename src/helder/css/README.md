@@ -194,16 +194,66 @@ list[0].specificity;   // (0, 1, 3): a, b, c; compare() orders two
 - `toString()` prints a selector so it parses back to the same (a
   namespace's URI as `{uri}|`, which does not).
 
-Matching on helder.dom's elements comes with helder.dom.
+### Matching
+
+`CssMatcher.matches(selector, element, ?scope)` matches on helder.dom's
+elements, right to left; `matchesAny(list, element)`, and `query(list,
+root)`: the elements under root any of the list matches, in tree order
+(querySelectorAll's). A selector's pseudo-element is the cascade's to
+handle: matching is its originating element's.
+
+```haxe
+var doc = Dom.parse(html);
+var list = CssSelector.parse("article > p:not(.note)");
+for (p in CssMatcher.query(list, doc)) ...
+CssMatcher.matches(list[0], doc.body.firstElementChild);
+```
+
+- **Case**: in an HTML document an HTML element's type selectors and
+  attribute names match ASCII case-insensitively, and so do the values of
+  HTML's case-insensitive attributes (`type`, `lang`, `dir`, `rel`...:
+  the HTML Standard's list) unless the selector says `s`. In quirks mode
+  classes and IDs match ASCII case-insensitively too (the document's
+  `mode`, from its doctype).
+- **Namespaces**: a type selector's against the element's, an attribute
+  selector's against the attribute's; `*|` any, `|` none.
+- **:has()**: its relative selectors from the element: descendants for
+  `>` and a space, later siblings and their descendants for `+` and `~`.
+- **The tree's**: `:nth-*()` and `of S` count element siblings,
+  `:empty` ignores comments and processing instructions (whitespace is
+  text), `:root` is the document element, `:scope` the scope given (else
+  `:root`).
+- **Links and languages**: `:link` and `:any-link` are HTML's `a` and
+  `area` with an href. `:lang()` uses the nearest `xml:lang`, else an
+  HTML element's `lang`, by RFC 4647's extended filtering (`*-CH`).
+  `:dir()` uses the nearest `dir` of `ltr` or `rtl` (auto reads as ltr).
+- **Forms**: HTML's actually disabled (a disabled fieldset's descendants
+  but its first legend's, an option in a disabled optgroup). `:checked`
+  is a checkbox's or radio's `checked` attribute, an option's
+  selectedness as helder.dom keeps it. `:default` is a `selected` or
+  `checked` attribute (a form's default button is not), `:indeterminate`
+  a `progress` without a value (radio groups are not), `:read-write` text
+  inputs and textareas neither readonly nor disabled and contenteditable
+  elements, `:placeholder-shown` an empty one with a placeholder.
+  `:defined` is any element but an HTML one with a hyphen in its name (no
+  custom element is ever defined).
 
 ### Tests
 
 - `CssSelector.test.hx`: the specificity examples of Selectors 4,
   parses valid and invalid, and properties: a selector printed parses to
   the same print, any text parses or is null.
+- `CssMatcher.test.hx`: `:has()` with each combinator, `:is()`,
+  `:where()`, `:not()` of lists, `:nth-child(of S)`, HTML's case rules
+  and quirks mode, SVG's namespace, the form states, `:lang()`
+  wildcards.
 - `tests/css/CssSelectorsCheck.hx` (the css lane): WPT's
-  dom/nodes/selectors.js selectors, its 34 invalid ones not parsed, its
-  279 valid and scoped ones parsed.
+  dom/nodes/selectors.js. Its 34 invalid selectors don't parse and its
+  279 valid and scoped ones do. Its valid ones are matched as
+  ParentNode-querySelector-All.html runs them in its four contexts on
+  selectors.html parsed by helder.dom: 791 of 793 as expected, the two
+  pending being `:target` (never matched: a printed page has no URL
+  fragment).
 
 ## Properties
 

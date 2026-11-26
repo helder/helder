@@ -5,7 +5,7 @@ import lanes.Tools.*;
 class Css {
 	public static final LANES:Array<Lane> = [
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
-		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors against WPT's fixtures and css-parsing-tests", run: css}
+		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors (parsed, matched on helder.dom) against WPT's fixtures and css-parsing-tests", run: css}
 	];
 
 	static function css() {

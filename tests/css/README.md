@@ -219,9 +219,23 @@ component_value_list #26 says it is not.
 
 `CssSelectorsCheck.hx` reads `fixtures/selectors.json` (WPT's
 dom/nodes/selectors.js, BSD-3-Clause: `WPT-LICENSE.md`; extracted by
-`import-wpt.mjs`): its invalid selectors must not parse, its valid and
-scoped ones must (querySelector's: no @namespace declared). Matching them
-on `selectors.html` comes with helder.dom.
+`import-wpt.mjs`). Its invalid selectors must not parse and its valid and
+scoped ones must (querySelector's: no @namespace declared). Then the
+valid ones run as ParentNode-querySelector-All.html runs them, on
+`selectors.html` parsed by helder.dom:
+
+- setupSpecialElements' elements are added;
+- the contexts are the document, the in-document `#root`, a detached
+  clone and a fragment with a clone, each with the div verifyStaticList
+  appends;
+- the `data-clone` copy is appended to the body before the in-document
+  element's run;
+- querySelectorAll's ids in tree order must be the expected ones.
+
+Its `PENDING` cases (the name and context, and why) must fail, and fail
+the run once they pass: `:target`, which never matches. The scoped
+selectors are Selectors API 2's `find()` and refNodes, gone from the DOM,
+so they are only parsed.
 
 ## Report
 
