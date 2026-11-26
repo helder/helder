@@ -527,13 +527,14 @@ private class Forms {
 	// ---- the class
 
 	public function define(extra:Array<Field>) {
-		var lanes = soft.func(sf, false, false), scalar = soft.func(sf, false, true);
+		var lanes = soft.func(sf, false, false), scalar = soft.func(sf, false, true), full = soft.funcFull(sf);
 		var ps = paramsList();
 		// (the lanes' parameters: the captures splatted once, before the loop)
 		var ls = [for (k in 0...params.length) params[k].type.match(TStorage(_, _)) ? macro $i{"p" + k} : macro $i{"l" + k}];
 		var vars = [for (k in 0...params.length) if (!params[k].type.match(TStorage(_, _))) {name: "l" + k, expr: soft.splat(params[k].type, macro $i{"p" + k})}];
 		var splats:Expr = vars.length == 0 ? macro null : {expr: EVars(vars), pos: pos};
-		var lanesCall = (m:Expr) -> macro $i{lanes}($a{[m, macro helder.gfx.soft.LaneInt.splat(i) + iota].concat(ls)});
+		// (whole groups: the full form, rows written whole; the last few: the masked one)
+		var lanesCall = (m:Expr) -> macro $i{m.expr.match(EConst(CIdent("all"))) ? full : lanes}($a{[m, macro helder.gfx.soft.LaneInt.splat(i) + iota].concat(ls)});
 		var fields:Array<Field> = [];
 		var each = kind == Each;
 		if (each) {
@@ -631,12 +632,16 @@ private class Forms {
 		soft.flush();
 		// (the body's lanes inlined into the range's loop: measured faster, its struct values kept out of calls)
 		for (f in soft.fields)
-			if (f.name == lanes && !f.access.contains(AInline)) f.access.push(AInline);
+			if ((f.name == lanes || f.name == full) && !f.access.contains(AInline)) f.access.push(AInline);
 		fields = fields.concat(soft.fields);
 		var exists = try Context.getType(pack.concat([name]).join(".")) != null catch (_:Dynamic) false;
 		if (exists) return;
 		// (-D helder.parallel.print: each site's class printed)
-		if (Context.defined("helder.parallel.print")) for (f in fields) Sys.println(new haxe.macro.Printer().printField(f));
+		if (Context.defined("helder.parallel.print")) {
+			Sys.println("// " + pack.concat([name]).join("."));
+			for (f in fields)
+				Sys.println(new haxe.macro.Printer().printField(f));
+		}
 		Context.defineType({
 			pack: pack,
 			name: name,

@@ -43,9 +43,16 @@ class Pool {
 // the cores this process may run on (at least one)
 @:noCompletion
 class Cores {
+	// (asked once: GetActiveProcessorCount took 0.8 µs a call, which
+	// helder.parallel's Auto and Jobs form and the CPU back end's passes ask
+	// at each run)
+	static var known = 0;
+
 	public static function count():Int {
+		if (known > 0) return known;
 		var n = hxmc.Platform.os() == 2 ? CoresWin.GetActiveProcessorCount(0xFFFF) : CoresPosix.sysconf(hxmc.Platform.os() == 1 ? 58 : 84).toInt();
-		return n > 0 ? n : 1;
+		known = n > 0 ? n : 1;
+		return known;
 	}
 }
 
