@@ -54,6 +54,7 @@ export declare class MathProbe {
 export declare class StoreProbe {
 	constructor(name: string);
 	run(f: () => void): void;
+	clear(): void;
 	dispose(): void;
 }
 

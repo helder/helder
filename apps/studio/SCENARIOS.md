@@ -191,6 +191,10 @@ stories' stills (`scenarios` lane, over MCP). Numbers (pong, this Mac, `bin/scen
 
 A scenario screen costs about 2.7 MB (1 scenario against 6). Cold builds took 9-14 s on both.
 
+A store cleared or let go (every edit resets screens) drops the TS timers, intervals and promise
+continuations set in it before (`Atoms.generation`; `tests/typescript/helder/store-timers.ts`):
+nothing runs on the old store, what is set after runs.
+
 What turned out different from the first design:
 
 - Named signals (string keys from bindings, a `set` map) were built and dropped for atoms +
@@ -213,5 +217,3 @@ stores'.
 - Strict `http` fixtures (`async/http/Client.hx` has no hook yet); an async memo's request is
   each store's already (no node shared), so fixtures can differ per scenario.
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.
-- A store used after it was let go throws: a TS callback captured by a screen that was reset
-  could hit it; cancel a store's timers and reactions on dispose.

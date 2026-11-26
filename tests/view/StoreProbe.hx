@@ -10,6 +10,9 @@ class StoreProbe {
 	public function run(f:Void->Void)
 		store.run(f);
 
+	public function clear()
+		store.clear();
+
 	public function dispose()
 		store.dispose();
 }
