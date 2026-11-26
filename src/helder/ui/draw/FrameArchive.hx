@@ -99,8 +99,10 @@ class FrameArchive {
 			if (!blobs.exists(f.hash) && from.blobs.exists(f.hash)) blobs.set(f.hash, from.blobs.get(f.hash));
 		for (i in s.images)
 			if (!blobs.exists(i.hash) && from.blobs.exists(i.hash)) blobs.set(i.hash, from.blobs.get(i.hash));
+		// (a still of a build whose loop was recorded with an earlier one: that loop kept)
+		var was = screens.get(name), loop = s.loop ?? (was != null && was.key == key ? was.loop : null);
 		if (!screens.exists(name)) order.push(name);
-		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, loop: s.loop, fonts: s.fonts, images: s.images});
+		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, loop: loop, fonts: s.fonts, images: s.images});
 	}
 
 	public function remove(name:String) {

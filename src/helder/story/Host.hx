@@ -218,8 +218,10 @@ class Host {
 		w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
 		s.context.run(() -> ui.paint(w));
 		renderer.scale = ui.scale = s.scale;
+		// (a loop recorded once a build: its program's frames the same each time, randomness seeded)
 		var loop:Float = s.story.loop ?? 0;
-		if (fps <= 0 || loop <= 0) return w.frame();
+		if (fps <= 0 || loop <= 0 || s.looped) return w.frame();
+		s.looped = true;
 		w.loop(fps);
 		s.reset();
 		s.mount();
@@ -332,6 +334,8 @@ class HostScreen {
 	public var ui(default, null):Null<Ui> = null;
 	public var controls(default, null):Null<Controls> = null;
 	public var visible = false;
+	// (its loop recorded: Host.written's, once a build)
+	public var looped = false;
 	// what it threw (null: fine): passed over until the program starts again
 	public var failure:Null<HostFailure> = null;
 	// whether it was ever in view (its state kept across a reload: built again before the first frame)
@@ -366,6 +370,8 @@ class HostScreen {
 		mountedAt = haxe.Timer.stamp();
 		// (its state's keys in a scope of its name: kept across a reload whichever screens mount first, helder.dev.Hot)
 		context.run(() -> helder.dev.Hot.scope(name, () -> {
+			// (its randomness from its seed: built again, the same still, the same loop)
+			helder.os.Seed.random(story.seed);
 			var u = new Ui(host.text, width, height);
 			u.dark = context.dark.peek();
 			ui = u;
