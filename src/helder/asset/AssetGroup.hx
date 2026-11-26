@@ -39,9 +39,10 @@ class AssetGroup implements helder.view.graph.Read.Reader<Float> {
 
 	public function new(assets:Array<Asset<Dynamic>>) {
 		this.assets = assets;
-		shown = Node.signal(0.0, {ownedWrite: true});
-		complete = Node.signal(false, {ownedWrite: true});
-		broken = Node.signal((null : Null<AssetError>), {ownedWrite: true});
+		// (shared: the files' progress is the program's, the same in every screen's store)
+		shown = Node.signal(0.0, {ownedWrite: true, shared: true});
+		complete = Node.signal(false, {ownedWrite: true, shared: true});
+		broken = Node.signal((null : Null<AssetError>), {ownedWrite: true, shared: true});
 		measure();
 		if (!ready && error == null) unwatch = Assets.watch(measure);
 	}

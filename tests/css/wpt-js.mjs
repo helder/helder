@@ -164,7 +164,7 @@ function evaluate(t, from, to, env) {
     const x = next()
     if (!x) throw new Unreadable('nothing')
     if (x.type === 'string' || x.type === 'number') return x.value
-    if (x.type === 'template') return x.parts.reduce((s, p, k) => s + p + (k < x.subs.length ? String(sub(x.subs[k], env)) : ''), '')
+    if (x.type === 'template') return x.parts.reduce((s, p, k) => s + p + (k < x.subs.length ? text(sub(x.subs[k], env)) : ''), '')
     if (isPunct(x, '(')) {
       const v = conditional()
       expect(')')
@@ -281,6 +281,12 @@ function evaluate(t, from, to, env) {
   const v = conditional()
   if (i < to) throw new Unreadable(`an expression (${t[i].value})`)
   return v
+}
+
+// (a substitution of undefined is a helper's argument left out: not a test's value)
+function text(v) {
+  if (v === undefined) throw new Unreadable('undefined in a template')
+  return String(v)
 }
 
 function sub(src, env) {
@@ -431,7 +437,13 @@ export function calls(src, names) {
     const head = closing(t, k + 2)
     if (!isPunct(t[head + 1], '{')) continue
     const params = spans(t, k + 2, head).map(([a, z]) => t[a].type === 'name' ? {name: t[a].value, init: isPunct(t[a + 1], '=') ? [a + 2, z] : null} : null)
-    helpers.push({name: t[k + 1].value, params, from: head + 1, to: closing(t, head + 1), sites: []})
+    // (`if (arguments.length < n) a = b`: a parameter's default from another)
+    const defaults = []
+    for (let j = head + 1; j + 10 < closing(t, head + 1); j++)
+      if (t[j].value === 'if' && t[j + 2]?.value === 'arguments' && t[j + 4]?.value === 'length' && isPunct(t[j + 5], '<')
+        && t[j + 6].type === 'number' && isPunct(t[j + 7], ')') && t[j + 8].type === 'name' && isPunct(t[j + 9], '=') && t[j + 10].type === 'name')
+        defaults.push({count: t[j + 6].value, name: t[j + 8].value, from: t[j + 10].value})
+    helpers.push({name: t[k + 1].value, params, defaults, from: head + 1, to: closing(t, head + 1), sites: []})
   }
   const isCall = k => t[k].type === 'name' && isPunct(t[k + 1], '(') && !(t[k - 1] && (t[k - 1].value === 'function' || isPunct(t[k - 1], '.')))
   for (let k = 0; k + 1 < t.length; k++) if (isCall(k)) {
@@ -454,6 +466,7 @@ export function calls(src, names) {
             if (v === undefined && p.init) v = evaluate(t, p.init[0], p.init[1], bound)
             bound.set(p.name, v)
           })
+          for (const d of helper.defaults) if (args.length < d.count) bound.set(d.name, bound.get(d.from))
           return {scope: bound}
         } catch (e) {
           if (!(e instanceof Unreadable)) throw e

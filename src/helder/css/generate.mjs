@@ -60,12 +60,21 @@ const chosen = [...module.keys()].sort().map(name => {
   return {
     name, module: module.get(name), href: scope.overrides[name]?.href ?? p.href,
     syntax: syntax(p), initial: p.initial ?? null,
-    inherited: p.inherited === 'yes' ? true : p.inherited === 'no' ? false : null,
+    inherited: /^yes\b/.test(p.inherited ?? '') ? true : /^no\b/.test(p.inherited ?? '') ? false : null,
     appliesTo: p.appliesTo ?? null, percentages: p.percentages ?? null,
     computed: p.computedValue ?? null, animation: p.animationType ?? null,
     longhands: p.longhands ?? [], alias: p.legacyAliasOf ?? null
   }
 })
+// (a legacy name has its property's definition; a shorthand inherits as all its longhands do)
+const byChosen = new Map(chosen.map(p => [p.name, p]))
+for (const p of chosen) if (p.alias)
+  for (const k of ['initial', 'inherited', 'appliesTo', 'percentages', 'computed', 'animation'])
+    if (p[k] == null) p[k] = byChosen.get(p.alias)[k]
+for (const p of chosen) if (p.inherited == null && p.longhands.length) {
+  const flags = new Set(p.longhands.map(l => byChosen.get(l).inherited))
+  if (flags.size === 1) p.inherited = [...flags][0]
+}
 const descriptors = css.atrules.filter(a => at.includes(a.name))
   .flatMap(a => a.descriptors.map(d => ({rule: a.name, name: d.name, syntax: d.syntax ?? null, initial: d.initial ?? null})))
 
