@@ -41,6 +41,10 @@ function tests() {
 		return;
 	}
 	test("the graph against plain evaluation", () -> property(plainGen(), plain, {cases: 200}));
+	// (cases the fuzzer found, shrunk: a store's node ran in another store's
+	// transaction, a commit's stale frame readers in the next store's drain)
+	test("stores: found by the fuzzer", () -> for (r in FOUND)
+		property(modelGen(), model, {replay: r}));
 	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120}));
 }
 
@@ -61,6 +65,11 @@ function fuzz<T>(gen:Gen<T>, body:T->Void, seconds:Float, name:String) {
 	Sys.println('fuzz $name: $cases cases, $runs seeds, $failed failed');
 	equals(failed, 0);
 }
+
+final FOUND = [
+	"0 36 0 0 0 0 0 0 0 6 0 0 0 0 0 0 0 4 0 0 0 0 4 0 4 4 4 0 0 0 0 4 0 4 0 4 0 4 0 0 0 10 0 0 0 4 0 4 0 4 0 4 0 4 0 4 0 4 0 0 0 0 4 0 4 0 0 0 0 4 0 4 0 4 0 4 0 0 0 0 4 0 7 0 7 0 3 17 0 0 0 0 0 1 1 38 3 0 0 0 0 0 0 0 88 0 0 0 0 0 0 0 0 0 0 0 0 4 4 4 0 0 0 4 4 4 0 0 0 4 0 0 0 0 0 0 4 4 4 4 4 0 0 0 4 0 0 0 4 0 0 0 4 4 4 0 0 0 0 0 0 0 0 0 4 8 0 0 0 0 8 0 0 0 0 4 4 0 0 0 4 4 4 0 0 0 0 0 0 0 0 0 4 4 4 0 0 0 4 4 0 0 0 0 0 0 4 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 0 0 0 4 4 4 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 4 4 0 0 0 0 0 0 0 0 0 4 0 0 1 3 1 0 0 4",
+	"2 33 0 0 0 0 0 0 4 0 0 0 0 4 0 4 0 4 0 4 0 4 0 4 0 4 0 4 0 0 0 0 4 0 4 0 4 0 6 0 0 0 0 4 0 4 0 0 0 0 4 0 4 19 0 0 0 0 0 0 4 0 4 0 4 0 4 0 4 0 0 2 19 0 0 0 0 0 0 4 0 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 33 0 0 0 1 25 3 0 0 0 0 0 0 0 36 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 3 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0 0 3 3 3 8 6 0 0 0 0 0 0 0 0 0 0 0 0 3 0 0 0 0 3 3 0 7 0 1 0 0 2 0 3"
+];
 
 // --- graphs
 

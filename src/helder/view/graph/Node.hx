@@ -578,7 +578,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		observer = this;
 		runner = this;
 		probe = PROBE_NONE;
-		world = Scheduler.world != null ? Scheduler.world.find() : null;
+		// (the transaction running, if it is its store's: another store's never takes it in)
+		var running = Scheduler.world != null ? Scheduler.world.find() : null;
+		world = running != null && running.store == home ? running : null;
 		joined = false;
 		run = ++runs;
 		kept = 0;

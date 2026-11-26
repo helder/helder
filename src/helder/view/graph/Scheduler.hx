@@ -115,6 +115,8 @@ class Scheduler {
 					ws.resize(rest);
 					drain();
 					settle();
+					// (what its commit made stale, outside a transaction: never in the next store's)
+					drain();
 				}
 			}
 			// (what is stale outside a transaction: verdict readers after a commit)
