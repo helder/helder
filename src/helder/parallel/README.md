@@ -64,7 +64,9 @@ where the CPU's are newer; from then on a body that writes it runs on the
 GPU under Auto. Values move between the two sides only when the other one
 reads: a dispatch after a CPU write uploads, `items[i]` after a dispatch
 reads back (and waits). On Metal and the CPU back end the bytes are the
-buffer's own (shared memory): nothing is copied. WebGPU reads back
+buffer's own (shared memory): nothing is copied, and a CPU access after a
+dispatch or a draw that uses them waits for it (a write included: the
+GPU may still be reading). WebGPU reads back
 asynchronously only: there `items[i]` after a dispatch throws until
 `read(items)` is awaited in a coroutine (elsewhere `read` reads back at
 once).

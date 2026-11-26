@@ -31,28 +31,29 @@ class GpuRunner {
 	public final device:Device;
 	// (tests: the stages' emulated subgroups where the device has its own)
 	@:noCompletion public static var emulate = false;
+	// whether it dispatches (Device.has(Compute)): without, Items' buffers are vertex buffers, uploaded
+	public final compute:Bool;
 
 	var scratch = Bytes.alloc(64);
 	final none = Bytes.alloc(0);
 	// (buffers of Items collected: destroyed at the next dispatch, on its thread)
 	final dropped:Array<Buffer> = [];
 
-	function new(device:Device)
+	function new(device:Device) {
 		this.device = device;
+		compute = device.has(Compute);
+	}
 
-	// (Parallel.device's setter: a runner where the device has compute)
+	// (Parallel.device's setter: its runner, dispatching where the device has compute)
 	public static function use(d:Null<Device>):Bool {
-		current = d == null || !d.has(Compute) ? null : new GpuRunner(d);
+		current = d == null ? null : new GpuRunner(d);
 		var r = current;
-		Parallel.hooks(r == null ? null : r.dispatch, r == null ? null : r.reduce, r == null ? null : r.fetch, r == null ? null : r.release);
-		return r != null;
+		Parallel.hooks(r == null || !r.compute ? null : r.dispatch, r == null || !r.compute ? null : r.reduce, r == null ? null : r.fetch, r == null ? null : r.release);
+		return r != null && r.compute;
 	}
 
 	static function runner(d:Device):GpuRunner {
-		if (current == null || current.device != d) {
-			Parallel.device = d;
-			if (current == null) throw new haxe.Exception('Items.buffer: ${d.backend} has no compute stages');
-		}
+		if (current == null || current.device != d) Parallel.device = d;
 		return current;
 	}
 
@@ -61,6 +62,7 @@ class GpuRunner {
 		var r = runner(device);
 		r.upload(d);
 		d.drawn = true;
+		if (d.shared) d.busy = true;
 		return cast d.buffer;
 	}
 
@@ -71,7 +73,7 @@ class GpuRunner {
 		if (d.buffer == null) {
 			d.cpu();
 			var b = copy(d);
-			var buf = device.createBuffer({size: d.size == 0 ? 16 : d.size, usage: Storage, data: b});
+			var buf = device.createBuffer({size: d.size == 0 ? 16 : d.size, usage: compute ? Storage : Vertex, data: b});
 			d.buffer = buf;
 			d.device = device;
 			var shared = device.memory(buf);
@@ -96,9 +98,10 @@ class GpuRunner {
 	@:allow(helder.parallel) function fetch(d:ItemsData) {
 		if (d.buffer == null) {
 			d.state |= ItemsData.CPU;
+			d.busy = false;
 			return;
 		}
-		if (device.backend == WebGPU) throw new haxe.Exception("Items: its values are the GPU's, and WebGPU reads back asynchronously: await items.read() in a coroutine first");
+		if (device.backend == WebGPU) throw new haxe.Exception("Items: its values are the GPU's, and WebGPU reads back asynchronously: await read(items) in a coroutine first");
 		var buf:Buffer = cast d.buffer;
 		if (d.shared) device.readBuffer(buf, 0, none, 0, 0) else if (d.size > 0) {
 			if (scratch.length < d.size) scratch = Bytes.alloc(d.size + (d.size >> 2));
@@ -106,6 +109,7 @@ class GpuRunner {
 			hxmc.unsafe.LibC.memcpy(d.bytes(), BytesPtr.of(scratch, 0, d.size), d.size);
 		}
 		d.state |= ItemsData.CPU;
+		d.busy = false;
 	}
 
 	// (an Items disposed: its buffer destroyed, at the next dispatch where it is collected)
@@ -182,11 +186,15 @@ class GpuRunner {
 	}
 
 	function wrote(form:GpuForm, items:Array<ItemsData>)
-		for (k in 0...items.length)
+		for (k in 0...items.length) {
+			var d = items[k];
+			// (shared bytes: read or written by the dispatch until it is done)
+			if (d.shared) d.busy = true;
 			if (form.writes[k]) {
-				items[k].state = ItemsData.GPU;
-				items[k].byGpu = true;
+				d.state = ItemsData.GPU;
+				d.byGpu = true;
 			}
+		}
 
 	// (the partials' buffers, two in turn: grown, never shrunk)
 	final parts:Array<Null<Buffer>> = [null, null];

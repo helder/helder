@@ -50,6 +50,8 @@ class GpuCheck {
 		randomReductions();
 		reductionResidency();
 		largeReduction();
+		writeAfterRead();
+		sceneParticles();
 		Sys.println(failures == 0 ? "GpuCheck: ok" : 'GpuCheck: $failures failed');
 		device.dispose();
 		Sys.exit(failures == 0 ? 0 : 1);
@@ -181,6 +183,68 @@ class GpuCheck {
 		Scale.run(5000, {from: a, to: g, by: 1.5}, Gpu);
 		Scale.run(5000, {from: a, to: c, by: 1.5}, Simd);
 		near("a kernel", g, c);
+	}
+
+	// a CPU write right after a dispatch that reads the Items: the dispatch
+	// sees the values from before it (on Metal and the CPU back end the bytes
+	// are the buffer's own: the write waits for the dispatch)
+	static function writeAfterRead() {
+		var n = 1 << 20, a = new Items<Float>(n), b = new Items<Float>(n);
+		for (i in 0...n)
+			a[i] = 1;
+		each(n, i -> b[i] = a[i] * 2, Gpu);
+		for (i in 0...n)
+			a[i] = 5;
+		var ok = true;
+		for (i in 0...n)
+			if (b[i] != 2) ok = false;
+		check("a CPU write after a dispatch that reads it: not seen by the dispatch", ok, 'b[0] ${b[0]}, b[${n - 1}] ${b[n - 1]}');
+		a.dispose();
+		b.dispose();
+	}
+
+	// helder.scene's simulated particles (Particles: births, a floor, a
+	// sphere) on the GPU against the CPU's lanes in lockstep: each step from
+	// the same particles (the GPU's copied into the CPU's), so that the
+	// bound is a step's. Over many steps the two would part: a particle
+	// within rounding of the floor or the sphere takes the other branch of
+	// its collision on a GPU whose sqrt and fused multiply-adds are its own
+	// (Metal compiles with fast math), and the difference compounds. A step
+	// moves every particle within 1e-4 of the lanes but one in 1000 at most,
+	// which flipped a collision, and that one within a step's travel
+	static function sceneParticles() {
+		function system(on:On) {
+			var ps = new helder.scene.render.Particles(4096, 512);
+			ps.on = on;
+			ps.floor = 0;
+			ps.drag = 0.2;
+			ps.spheres[0] = vec4(0, 1, 0, 0.6);
+			return ps;
+		}
+		var g = system(Gpu), c = system(Simd);
+		var worst = 0.0, flipped = 0, travel = 0.0, steps = 40;
+		for (s in 0...steps) {
+			for (ps in [g, c])
+				for (k in 0...100)
+					ps.emit(Math.sin(k) * 0.4, 2, Math.cos(k) * 0.4, Math.sin(k * 3), 1 + (k % 5) * 0.4, Math.cos(k * 7), 1, 1, 1, 1, 0.05, 0.01, 4);
+			g.step(1 / 60);
+			c.step(1 / 60);
+			for (k in 0...g.capacity) {
+				var a = g.items[k].start, b = c.items[k].start;
+				var d = Math.max(Math.abs(a.x - b.x), Math.max(Math.abs(a.y - b.y), Math.abs(a.z - b.z)));
+				if (d > 1e-4) {
+					flipped++;
+					travel = Math.max(travel, d);
+				} else
+					worst = Math.max(worst, d);
+				// (the next step from the GPU's particles)
+				c.items[k] = g.items[k];
+			}
+		}
+		var ok = flipped * 1000 <= g.capacity * steps && travel <= 0.25;
+		check("helder.scene's Particles, 40 steps in lockstep", ok, 'at most $worst apart; $flipped of ${g.capacity * steps} past 1e-4, at most $travel');
+		g.dispose();
+		c.dispose();
 	}
 
 	// past a row of 65535 workgroups: the index's y

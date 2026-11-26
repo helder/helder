@@ -44,6 +44,12 @@ class ItemsData {
 	// the bodies that write it there
 	public var drawn = false;
 	public var byGpu = false;
+	// (shared bytes a dispatch or a draw may still be reading: the CPU's next
+	// access waits for the GPU first. Without it a write after a dispatch
+	// (Particles' next births) landed in memory the dispatch had not read yet:
+	// Metal's shared buffers, whose dispatches outside a frame run after the
+	// call returns)
+	public var busy = false;
 
 	public function new(length:Int, stride:Int) {
 		if (length < 0) throw new haxe.Exception('Items: a length of $length');
@@ -99,9 +105,10 @@ class ItemsData {
 		shared = true;
 	}
 
-	// (the values the CPU's: read back first where they are the GPU's alone)
+	// (the values the CPU's: read back first where they are the GPU's alone,
+	// waited for where the GPU may still read its shared bytes)
 	public inline function cpu()
-		if (state & CPU == 0) Parallel.fetch(this);
+		if (state & CPU == 0 || busy) Parallel.fetch(this);
 
 	// (written on the CPU: the GPU's copy stale, unless the bytes are its)
 	public inline function cpuWrote() {
