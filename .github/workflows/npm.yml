@@ -32,6 +32,10 @@ concurrency:
   group: npm
   cancel-in-progress: false
 
+env:
+  # (no machine-wide job limit: the runners are single-tenant, src/helder/cli/Slots.hx)
+  HELDER_JOBS: 0
+
 jobs:
   version:
     runs-on: ubuntu-24.04

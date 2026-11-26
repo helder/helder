@@ -4,7 +4,7 @@ import helder.test.Gen;
 import helder.test.Test;
 
 // text/uri-list's file paths (X11's drops: helder.os.linux.x11.X11Window)
-@:test.interp function tests() {
+function tests() {
 	describe("UriList", () -> {
 		test("file URIs, CRLF and LF, comments and other schemes left out", () -> {
 			equals(UriList.paths("file:///home/a/one.jpg\r\nfile:///home/a/two.png\r\n"), ["/home/a/one.jpg", "/home/a/two.png"]);

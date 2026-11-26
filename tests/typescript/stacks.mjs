@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {take} from '../../src/helder/cli/slots.mjs';
 import assert from 'node:assert/strict';
 import {SourceMap} from 'node:module';
 // Errors' stacks (bun run test typescript, its stacks): each program of
@@ -15,7 +16,8 @@ import {SourceMap} from 'node:module';
 const T='tests/typescript/stacks',dir='bin/typescript/stacks';
 fs.rmSync(dir,{recursive:true,force:true});fs.mkdirSync(`${dir}/js`,{recursive:true});
 fs.writeFileSync(`${dir}/js/package.json`,'{"type":"module"}');
-function run(cmd,args){const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000});if(r.error)throw r.error;return r;}
+// (under a slot of the machine's job limit)
+function run(cmd,args){const release=take();try{const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000});if(r.error)throw r.error;return r;}finally{release?.();}}
 const compiler=run(process.execPath,['src/helder/compiler/build.mjs','--quiet']);
 assert.equal(compiler.status,0,compiler.stderr);
 const helder=compiler.stdout.trim();

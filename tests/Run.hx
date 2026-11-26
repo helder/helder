@@ -14,7 +14,8 @@ using StringTools;
 //   bun run test <lane> ...        those lanes (-k: the next one after a failure,
 //                                  headless's too; every failure listed at the end;
 //                                  -x <lane>: not that one, as headless -x typescript;
-//                                  -j <n>: n lanes at once, each its own process)
+//                                  -j <n>: n lanes at once, each its own process;
+//                                  -j alone: the machine's job slots)
 //   bun run test help              the lanes
 //
 // The lanes are in tests/lanes, a file per group; tests/README.md says what
@@ -65,12 +66,14 @@ class Run {
 		var i = args.indexOf("--jobs");
 		if (i < 0) i = args.indexOf("-j");
 		if (i >= 0) {
-			workerCount = jobs = Std.parseInt(args[i + 1] ?? "") ?? cpus();
+			// (-j alone: the machine's job slots, helder.cli.Slots; the cores' with no limit)
+			var n = Std.parseInt(args[i + 1] ?? "");
+			workerCount = jobs = n ?? (slots.count > 0 ? slots.count : cpus());
 			if (jobs < 1) {
 				Sys.stderr().writeString("--jobs must be positive\n");
 				Sys.exit(2);
 			}
-			args.splice(i, 2);
+			args.splice(i, n == null ? 1 : 2);
 		}
 		if (args.length == 0) args = ["headless"];
 		args = benches(args);
@@ -146,7 +149,7 @@ class Run {
 						if (l == null) break;
 						var s = Sys.time();
 						var opts = buildOnly ? ["--build-only"] : usePrebuilt ? ["--prebuilt"] : [];
-						var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l].concat(shardArgs()).concat(opts));
+						var p = new Process(TOOL, ["-cp", "tests", "-cp", "src", "--run", "Run", l].concat(shardArgs()).concat(opts));
 						var r = drain(p);
 						var code = p.exitCode();
 						p.close();

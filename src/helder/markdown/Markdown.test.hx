@@ -18,7 +18,6 @@ using StringTools;
 // properties: any text (Markdown's marks and runs of them, any characters)
 // parses within a bound of steps a character, and plain text's paragraph
 // is that text.
-@:test.interp
 function tests() {
 	describe("Markdown", () -> {
 		test("CommonMark's examples", () -> equals([for (c in SPEC) if (Html.render(Markdown.parse(c[1])) != c[2]) c[0]], []));

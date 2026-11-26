@@ -4,7 +4,6 @@ import helder.test.Gen;
 import helder.test.Test;
 import helder.view.graph.Graph;
 
-@:test.interp
 function tests() {
 	test("selection keys survive a reorder, a filter and new items", () -> {
 		var items = ["a", "b", "c", "d", "e", "f"];

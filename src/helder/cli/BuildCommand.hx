@@ -233,6 +233,16 @@ class BuildCommand {
 	static var warm:Null<BuildServer> = null;
 
 	@:coroutine public static function compile(words:Array<String>, server:Null<Compiler.CompileServer>):{ok:Bool, messages:String} {
+		var tool = Compiler.tool(), slot = Compiler.slot();
+		var r = try compileHeld(tool, words, server) catch (e:haxe.Exception) {
+			slot?.release();
+			throw e;
+		}
+		slot?.release();
+		return r;
+	}
+
+	@:coroutine static function compileHeld(tool:String, words:Array<String>, server:Null<Compiler.CompileServer>):{ok:Bool, messages:String} {
 		if (server != null) return server.request(words, Sys.getCwd());
 		var w = warm;
 		if (w != null) {
@@ -244,7 +254,7 @@ class BuildCommand {
 			// (it did not start or answer: this build and the next ones without it)
 			warm = null;
 		}
-		var p = new Process(Compiler.tool(), words);
+		var p = new Process(tool, words);
 		p.closeStdin();
 		var lines = [];
 		Async.scope(task -> {

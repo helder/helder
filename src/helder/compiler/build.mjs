@@ -16,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import {fileURLToPath} from 'node:url';
+import {take} from '../cli/slots.mjs';
 
 const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const quiet = process.argv.includes('--quiet');
@@ -75,7 +76,10 @@ if (out || !fs.existsSync(exe)) {
 		'-D', 'disable-parallelism', '-D', 'hih_no_generators', '-D', 'hxmc.markup-braces', ...(linux ? ['-D', 'hxmc.libc=glibc'] : []), ...(target ? ['-D', `hxmc.target=${target}`] : []),
 		'-D', `helder.os=${target ? target.split('-')[0] : {darwin: 'macos', win32: 'windows'}[process.platform] ?? 'linux'}`, '--custom-target', `hxmc=${tmp}`];
 	log(`building helder's compiler (hxmc ${version}${target ? `, ${target}` : ''})`);
+	// (under a slot of the machine's job limit: src/helder/cli/slots.mjs)
+	const release = take();
 	const b = spawnSync(process.execPath, [launcher, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+	release?.();
 	if (b.status !== 0) {
 		process.stderr.write(b.stdout + b.stderr);
 		process.exit(1);

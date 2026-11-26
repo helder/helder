@@ -15,7 +15,6 @@ using Lambda;
 // doesn't depend on the order sheets come in when their declarations'
 // cascade order is the same, and an unset inherited property is its
 // parent's computed value.
-@:test.interp
 function tests() {
 	describe("CssCascade", () -> {
 		test("origins and importance", () -> {

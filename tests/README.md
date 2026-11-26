@@ -7,6 +7,17 @@ this is what each one checks. With no lane, `bun run test` runs
 HEADLESS). The conventions (unit tests, checks, fixtures, benches) are
 in [CONTRIBUTING.md](../CONTRIBUTING.md#tests).
 
+The machine's job limit: a lane's compile, test program's run (a program
+under bin/ but the CLI), wasm run, browser run and bench script takes
+one of `HELDER_JOBS` slots shared by every checkout and session on the
+machine (src/helder/cli/Slots.hx; by default a quarter of the cores, at
+least one), or waits for one, saying once `waiting for a build slot (n
+busy)`. A step that runs the CLI takes no slot of its own: the CLI takes
+them. `-j` alone runs as many lanes at once as there are slots. CI sets
+`HELDER_JOBS=0`: no limit on its single-tenant runners. tests/typescript
+(its builds and runs, the fuzzer's servers) takes them through
+src/helder/cli/slots.mjs.
+
 ## View and UI (lanes/View.hx)
 
 | Lane | Checks |
@@ -121,7 +132,7 @@ test bench <name> ...` the ones named.
 
 | Lane | Checks |
 | --- | --- |
-| `viewer` | helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, the web build's sample folder, its stories) natively and on Eval; its build for this machine (its web build: ui-web) |
+| `viewer` | helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, the web build's sample folder, its stories) natively; its build for this machine (its web build: ui-web) |
 | `viewer-window` | the viewer in a real window on the GPU (GFX_TARGET's build: Linux under Xvfb, Windows under Wine from another host): a photo of the fixtures opened, decoded on helder.jobs and shown, closed after 3 s (--exit-after); again with no system font found (HELDER_NO_SYSTEM_FONTS=1: its own fallback font); a 9000x2000 PNG (apps/viewer/tests/bigpng.mjs) shown in tiles; a PDF's first page and a Markdown document (tests/fixtures/markdown) shown; macOS: a video of tests/media played |
 | `viewer-app` | macOS: the viewer as a universal app bundle (helder build --target macos: arm64 and x86_64, Info.plist's CFBundleDocumentTypes from helder.json's fileHandlers), plutil and lipo's checks, then `open -a` with a file: Launch Services' open request reaching App.onOpen |
 | `apps` | build Foundry and Tables, including their source type checks |
@@ -142,7 +153,7 @@ test bench <name> ...` the ones named.
 
 | Lane | Checks |
 | --- | --- |
-| `test` | `helder test` (src/helder/cli) built natively, then every *.test.hx (helder.test) natively and as wasm32-wasi (node), and on Eval those that opt in (@:test.interp); every *.test.ts(x) (helder/test) natively and as wasm32-wasi, src/'s and examples/ts-todo's; apps/studio's (its canvas' snapping, its MCP server's sessions and routes, the agents' presence, an agent's patch in the history, its ACP client against a scripted agent on node) |
+| `test` | `helder test` (src/helder/cli) built natively, then every *.test.hx (helder.test) natively and as wasm32-wasi (node); every *.test.ts(x) (helder/test) natively and as wasm32-wasi, src/'s and examples/ts-todo's; apps/studio's (its canvas' snapping, its MCP server's sessions and routes, the agents' presence, an agent's patch in the history, its ACP client against a scripted agent on node) |
 | `fuzz` | the robustness properties soaked natively (`helder test` with HELDER_PROPERTY_SOAK=FUZZ_SECONDS, 20, and HELDER_PROPERTY_SEED=FUZZ_SEED, random): tests/image, tests/pdf, tests/media and tests/text's Fuzz.test.hx (the test files mutated: Gen.mutated), Markdown.test.hx's, Css.test.hx's, Dom.test.hx's, XmlParser.test.hx's and helder.view's graph and stores (src/helder/view/graph/AtomsModel.test.hx: random graphs against plain evaluation, stores against fresh copies, and with async memos compared settled); each case within its time (a watchdog) and memory, kept in bin/fuzz/properties before it runs, so that a hang or a crash leaves it for the next run (CI's fuzz job keeps them as an artifact); then helder's TypeScript against node for FUZZ_TS_SECONDS (300) from FUZZ_SEED (tests/typescript/fuzz: random well-typed programs, natively and as wasm32-wasi, each finding shrunk and kept there too) |
 | `cli` | `helder build`, `run`, `dev` and `devices` (src/helder/cli): the grammar's errors and help, an example by file and by directory, a project, natively and for web (--target web); helder devices without adb and with a stand-in one; the dev loop natively (with the dev host and without) and for web without a window or a browser, and its exit policy: a crash keeps it up, the program closed ends it (tests/cli/dev.mjs, tests/cli/closer) |
 | `devtools` | the devtools protocol (src/helder/dev): `helder dev` relaying a console and a ui program to a tool on its WebSocket, `helder inspect`, without a window (tests/devtools/devtools.mjs); the Frame domain's cost a frame |

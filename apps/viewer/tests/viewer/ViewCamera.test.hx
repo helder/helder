@@ -5,7 +5,7 @@ import helder.test.Test;
 // ViewCamera: the fit (never above 100%), zooms about a point, their stops
 // at 100% and at the fit, the keys' steps, the double click, pans kept
 // within the image, the glide
-@:test.interp function tests() {
+function tests() {
 	describe("ViewCamera", () -> {
 		function near(a:Float, b:Float, ?what:String)
 			assert(Math.abs(a - b) < 1e-6, '${what ?? ""} $a != $b');

@@ -28,7 +28,7 @@ class Viewer {
 		var here = Sys.getCwd();
 		Sys.setCwd("apps/viewer");
 		// (natively, and on Eval its logic that opts in; its web build: ui-web)
-		try run(h, ["test", "--target", "host,interp"]) catch (e:Failed) {
+		try run(h, ["test", "--target", "host"]) catch (e:Failed) {
 			Sys.setCwd(here);
 			throw e;
 		}

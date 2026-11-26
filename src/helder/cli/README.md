@@ -1129,8 +1129,8 @@ own left alone.
   it ends after `HELDER_BUILD_SERVER_IDLE` seconds without one (300). One
   at a time: one started asks the others (other projects', a GB or more
   each) to end. Its key is the CLI, the compiler, the project's root and
-  the environment the compiler reads (`HAXE*`, `HXMC*`, `HELDER*`,
-  `RT_*`); the project's `.hx` files changed since the last build are
+  the environment the compiler reads (`HAXE*`, `HXMC*`, `HELDER*` but
+  `HELDER_JOBS` and `HELDER_SLOT`, `RT_*`); the project's `.hx` files changed since the last build are
   invalidated first (the server compares a file's time, which two saves in
   one second share). Off with `HELDER_BUILD_SERVER=0`, and in CI (`CI` set)
   unless it is `1`; when it does not start or answer, the build is made
@@ -1142,7 +1142,7 @@ own left alone.
   While it lives, on Windows, the compiler's executable is in use (an npm
   install that replaces it waits for the server to end, or
   `HELDER_BUILD_SERVER=0`).
-- **`helder test` with several targets** (`--target all`, `host,wasm,interp`)
+- **`helder test` with several targets** (`--target all`, `host,wasm`)
   builds them at once, each by a compiler of its own (at most
   `HELDER_TEST_JOBS`, 4; `1`: one after the other), each one's output kept
   and shown in its turn, then runs them one after the other in order: the
@@ -1151,6 +1151,20 @@ own left alone.
   16 s at once). With
   `--watch` they share its compilation server, a request at a time: one
   after the other.
+- **The machine's job limit** (`Slots.hx`): every compile (`helder build`,
+  `run`, `dev`, `test`'s builds, helder's compiler built by
+  src/helder/compiler/build.mjs) and every test program's run takes one of
+  `HELDER_JOBS` slots shared by every checkout and session on the machine
+  (`<helder's cache>/slots`), or waits for one, saying once `waiting for a
+  build slot (n busy)`. By default a quarter of the cores, at least one (2
+  on a 10-core Mac); `HELDER_JOBS=0` is no limit, as CI sets it (its
+  runners are single-tenant). A slot is a directory holding its holder's
+  pid, made by renaming one's own onto it (atomic on macOS, Linux and
+  Windows); one whose process is gone, or whose pid now names a later
+  process, is free again. A holder's children (`HELDER_SLOT=1` in their
+  environment) run under its slot: a test that runs `helder build` does
+  not wait on its own test run. Free when nothing else builds: a rename
+  and a file. node's scripts share it through `slots.mjs`.
 
 ## hxmc
 

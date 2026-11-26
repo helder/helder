@@ -111,6 +111,8 @@ concurrency:
 env:
   # (test windows that never take the focus)
   HELDER_BACKGROUND: 1
+  # (no machine-wide job limit: the runners are single-tenant, src/helder/cli/Slots.hx)
+  HELDER_JOBS: 0
   # (the merged cache whole, not trimmed by a job: the cache job trims it)
   HXMC_CACHE_SIZE: 4G
 

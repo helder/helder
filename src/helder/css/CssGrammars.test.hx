@@ -9,7 +9,6 @@ import helder.test.Test;
 // references only what the data defines (in its context); then the shapes
 // of a few, the errors, and a property: any tree prints to text that parses
 // back to it.
-@:test.interp
 function tests() {
 	describe("CssGrammars", () -> {
 		test("every definition parses and prints back", () -> {

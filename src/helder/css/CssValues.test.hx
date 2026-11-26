@@ -11,7 +11,6 @@ import helder.test.Test;
 // values; then a property over every property's grammar: a value drawn
 // from the grammar's tree parses, and its serialization parses back to a
 // value that serializes the same.
-@:test.interp
 function tests() {
 	describe("CssValues", () -> {
 		test("matches and serializes", () -> {
