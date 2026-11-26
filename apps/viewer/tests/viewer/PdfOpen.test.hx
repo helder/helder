@@ -100,7 +100,7 @@ function tests() {
 			o.frames(5);
 			var before = d.page.value;
 			o.press("page-indicator");
-			var f:helder.ui.widgets.TextField = cast o.ui.root.find("page-field");
+			var f:helder.ui.controls.TextField = cast o.ui.root.find("page-field");
 			assert(f != null, "a field");
 			equals(o.ui.focus, (f : Node));
 			equals([f.selectionStart, f.selectionEnd], [0, Std.string(before + 1).length]);
