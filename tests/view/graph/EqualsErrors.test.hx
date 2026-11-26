@@ -19,6 +19,7 @@ private function find(users:Array<User>):Null<User> {
 }
 
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("A4: the first commit never invokes a custom equals with an undefined previous value", () -> {
@@ -80,5 +81,18 @@ function tests() {
 			flush();
 		});
 		equals(e, "Cannot read properties of undefined (reading 'id')");
+	});
+	test("the same error again in a transaction is no change: what reads it does not run again", () -> {
+		var a = signal(0), k = signal(3), applied = 0;
+		var t = memo(() -> k() == 3 ? throw "three" : k());
+		var sum = memo(() -> a() + t());
+		root(_ -> renderEffect(() -> try {
+			sum();
+			"value";
+		} catch (e:haxe.Exception) "error", _ -> applied++));
+		flush();
+		a(1);
+		flush();
+		equals(applied, 1);
 	});
 }

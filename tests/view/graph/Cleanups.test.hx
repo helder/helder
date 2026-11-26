@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // onCleanup.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should be invoked when computation is disposed", () -> {

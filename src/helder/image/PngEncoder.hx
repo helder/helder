@@ -12,7 +12,9 @@ import haxe.io.Bytes;
 class PngEncoder {
 	// (opaque: written as 8-bit RGB, the alpha dropped: no alpha channel, as
 	// the App Store wants its screenshots)
-	public static function encode(rgba:Bytes, width:Int, height:Int, opaque = false):Bytes {
+	// (quick: each row Up's filter, deflated quickly: a frame's picture, written
+	// as a program runs, a few times the bytes)
+	public static function encode(rgba:Bytes, width:Int, height:Int, opaque = false, quick = false):Bytes {
 		if (rgba.length != width * height * 4) throw 'PngEncoder: ${rgba.length} bytes are not ${width}x$height RGBA';
 		if (opaque) {
 			var rgb = Bytes.alloc(width * height * 3);
@@ -27,7 +29,12 @@ class PngEncoder {
 		var stride = width * bpp;
 		var raw = Bytes.alloc((stride + 1) * height);
 		var trial = [for (_ in 0...5) Bytes.alloc(stride)];
-		for (y in 0...height) {
+		if (quick) for (y in 0...height) {
+			var row = y * stride, at = y * (stride + 1);
+			raw.set(at, y > 0 ? 2 : 0);
+			if (y == 0) raw.blit(at + 1, rgba, row, stride) else for (i in 0...stride)
+				raw.set(at + 1 + i, rgba.get(row + i) - rgba.get(row - stride + i));
+		} else for (y in 0...height) {
 			var row = y * stride, up = (y - 1) * stride;
 			var best = 0, bestSum = -1;
 			for (f in 0...5) {
@@ -72,7 +79,7 @@ class PngEncoder {
 		ihdr.set(8, 8);
 		ihdr.set(9, opaque ? 2 : 6);
 		chunk(o, "IHDR", ihdr);
-		chunk(o, "IDAT", Deflate.zlib(raw));
+		chunk(o, "IDAT", Deflate.zlib(raw, quick));
 		chunk(o, "IEND", Bytes.alloc(0));
 		return o.getBytes();
 	}

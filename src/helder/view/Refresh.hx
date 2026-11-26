@@ -89,6 +89,12 @@ class Refresh {
 		// (set before anything reads it: its value from the start)
 		if (last != null) @:privateAccess s.node().value = last.v;
 		helder.view.graph.Graph.onCleanup(helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save(key, {v: s.peek(), i: init}, type)));
+		// (its other stores' nodes kept too, under its key in the store's scope)
+		@:privateAccess if (!reset) s.node().copied = (n, store) -> helder.dev.Hot.at(store.name, () -> {
+			var last:Null<{v:T, ?i:String}> = helder.dev.Hot.load(key, type);
+			if (last != null && last.i == init) n.value = last.v;
+			helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save(key, {v: n.peek(), i: init}, type));
+		});
 		return s;
 	}
 	#end

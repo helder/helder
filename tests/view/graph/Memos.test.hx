@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // createMemo.test.ts (sync)
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should store and return value on read", () -> {
@@ -49,7 +50,7 @@ function tests() {
 		equals(c(), 30);
 	});
 
-	test("should only re-compute when needed", () -> {
+	Stores.counted(test("should only re-compute when needed", () -> {
 		var computed = new Spy();
 		var x = signal(10);
 		var y = signal(10);
@@ -69,7 +70,7 @@ function tests() {
 		equals(computed.calls, 2);
 		a();
 		equals(computed.calls, 3);
-	});
+	}));
 
 	test("should keep observed ownerless memos subscribed", () -> {
 		var memoA = new Spy();

@@ -11,6 +11,8 @@ package helder.view.graph;
 @:allow(helder.view.graph)
 class Tx {
 	var into:Null<Tx> = null;
+	// the store whose nodes it stages (Atoms; null: the default): two stores' never merge
+	var store:Null<Atoms> = null;
 	var committed = false;
 	// (pointed at from elsewhere: a node's pending flight or wait, a merge,
 	// a park; such a one is never reused once committed)
@@ -24,16 +26,28 @@ class Tx {
 	// the frame readers (render effects, isPending, latest) served the committed
 	// value of what it holds: run again at its commit
 	final readers:Array<Node<Dynamic>> = [];
+	// the async computations that asked in it, and those a render effect
+	// waited on (upstream of what it read): it waits for their answers
+	// (Solid 2's) though nothing reads them any more; one a boundary caught
+	// holds nothing
+	final asks:Array<Node<Dynamic>> = [];
+	// (each awaited: its node and which of its asks, a later one not awaited;
+	// held once the transaction parked on it: a flush that asked and moved
+	// its reader off before it settled never held it)
+	final awaited:Array<{node:Node<Dynamic>, asked:Int, held:Bool}> = [];
 
 	function new() {}
 
 	// (committed, nothing pointing at it: emptied for the next flush)
 	function reset() {
 		committed = false;
+		store = null;
 		nodes.resize(0);
 		effects.resize(0);
 		blocked.resize(0);
 		readers.resize(0);
+		asks.resize(0);
+		awaited.resize(0);
 	}
 
 	function find():Tx {
@@ -48,6 +62,7 @@ class Tx {
 		a = a.find();
 		b = b.find();
 		if (a == b) return a;
+		if (a.store != b.store) throw new Owner.GraphError("two screens' transactions merged: a node of one store read another's (helder.view.graph.Atoms)");
 		a.shared = true;
 		b.shared = true;
 		b.into = a;
@@ -59,6 +74,10 @@ class Tx {
 			if (!a.blocked.contains(n)) a.blocked.push(n);
 		for (n in b.readers)
 			if (!a.readers.contains(n)) a.readers.push(n);
+		for (n in b.asks)
+			if (!a.asks.contains(n)) a.asks.push(n);
+		for (w in b.awaited)
+			a.awaited.push(w);
 		Scheduler.merged(a, b);
 		return a;
 	}
@@ -76,4 +95,29 @@ class Tx {
 
 	function unblock(n:Node<Dynamic>)
 		blocked.remove(n);
+
+	// (a render effect blocked on n, pending in it: the asks upstream of n awaited)
+	function awaits(n:Null<Node<Dynamic>>) {
+		if (n == null) return;
+		if (asks.contains(n)) {
+			if (!Lambda.exists(awaited, w -> w.node == n && w.asked == n.asked)) awaited.push({node: n, asked: n.asked, held: false});
+			return;
+		}
+		if (n.sources != null) for (s in n.sources)
+			if (s.pendingIn != null && s.pendingIn.find() == this) awaits(s);
+	}
+
+	// (parked: what it awaits now holds it)
+	function park()
+		for (w in awaited)
+			w.held = true;
+
+	// (an answer a render effect waited on still to come)
+	function waiting():Bool {
+		for (w in awaited) {
+			var n = w.node;
+			if (w.held && !n.disposed && n.asked == w.asked && n.pendingIn != null && n.pendingIn.find() == this) return true;
+		}
+		return false;
+	}
 }

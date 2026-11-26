@@ -58,7 +58,7 @@ class FileTree {
 	public static function kindOf(name:String):FileKind {
 		var n = name.toLowerCase(), ext = n.lastIndexOf(".") < 0 ? "" : n.substr(n.lastIndexOf(".") + 1);
 		if (ext == "helder") return Design;
-		if (~/\.story\.(hx|tsx|ts)$/.match(n)) return Story;
+		if (~/\.(story|scenario)\.(hx|tsx|ts)$/.match(n)) return Story;
 		return switch ext {
 			case "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "bmp": Image;
 			case "ttf" | "otf": Font;

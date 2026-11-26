@@ -68,6 +68,9 @@
     "./story": {
       "types": "./src/helder/story/index.d.ts"
     },
+    "./scenario": {
+      "types": "./src/helder/scenario/index.d.ts"
+    },
     "./scene": {
       "types": "./src/helder/scene/index.ts"
     },

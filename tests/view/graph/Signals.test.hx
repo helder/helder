@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // createSignal.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should store and return value on read", () -> {

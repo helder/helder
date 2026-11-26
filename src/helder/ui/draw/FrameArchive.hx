@@ -7,6 +7,7 @@ import helder.canvas.Svg;
 import helder.image.Deflate;
 import helder.image.Image;
 import helder.image.Inflate;
+import helder.image.JpegEncoder;
 import helder.image.PngEncoder;
 import helder.text.FontFile;
 import helder.text.SystemFonts;
@@ -47,6 +48,12 @@ class FrameArchive {
 	// a screen's key (what its frame was made from: the studio's sources' hash), null: none
 	public function key(name:String):Null<String>
 		return screens.get(name)?.key;
+
+	// a screen's frame kept under another key (the files changed, not what it draws)
+	public function rekey(name:String, key:String) {
+		var s = screens.get(name);
+		if (s != null) screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, loop: s.loop, fonts: s.fonts, images: s.images});
+	}
 
 	public function size(name:String):Null<{width:Float, height:Float}> {
 		var s = screens.get(name);
@@ -118,7 +125,7 @@ class FrameArchive {
 		if (s == null) return null;
 		var fonts = [for (f in s.fonts) font(f)];
 		if (fonts.contains(null)) return null;
-		return FrameReader.read(s.bytes, cast fonts, [for (i in s.images) image(i)], passes);
+		return FrameReader.read(s.bytes, cast fonts, k -> imageAt(s.images, k), passes);
 	}
 
 	// whether a screen has a loop stored
@@ -133,10 +140,10 @@ class FrameArchive {
 		if (s == null || s.loop == null) return null;
 		var fonts = [for (f in s.fonts) font(f)];
 		if (fonts.contains(null)) return null;
-		var images = [for (i in s.images) image(i)], lists = [], datas = [];
+		var lists = [], datas = [];
 		for (recs in FrameLoop.decode(s.loop.frames)) {
 			var d = passes ? [] : null;
-			lists.push(FrameReader.read(FrameStreams.of(recs), cast fonts, images, d));
+			lists.push(FrameReader.read(FrameStreams.of(recs), cast fonts, k -> imageAt(s.images, k), d));
 			datas.push(d ?? []);
 		}
 		return {fps: s.loop.fps, lists: lists, passes: datas};
@@ -364,14 +371,42 @@ class FrameArchive {
 			{hash: s.hash, kind: SVG, width: img.width, height: img.height, color: d.color ?? 0, data: s.data};
 		} else if (img.source != null) {
 			{hash: Md5.make(img.source.bytes).toHex(), kind: FILE, width: img.width, height: img.height, color: 0, data: img.source.bytes};
-		} else {
-			var px = try img.pixels catch (e:Dynamic) null;
-			if (px == null) {hash: "", kind: PIXELS, width: img.width, height: img.height, color: 0, data: null} else
-				{hash: Md5.make(px).toHex(), kind: PIXELS, width: img.width, height: img.height, color: 0, data: PngEncoder.encode(px, img.width, img.height)};
-		}
+		} else pixelsRef(img);
 		refs.set(id, r);
 		return r;
 	}
+
+	// an image by its pixels, not kept (a picture read back: drawn once);
+	// lossy: a JPEG when opaque (a loop's pictures: a tenth of a PNG's bytes,
+	// a third of its time)
+	public static function pixelsRef(img:Image, lossy = false):ImageRef {
+		var px = try img.pixels catch (e:Dynamic) null;
+		if (px == null) return {hash: "", kind: PIXELS, width: img.width, height: img.height, color: 0, data: null};
+		var jpeg = lossy && opaque(px);
+		return {
+			hash: Md5.make(px).toHex(),
+			kind: PIXELS,
+			width: img.width,
+			height: img.height,
+			color: 0,
+			data: jpeg ? JpegEncoder.encode(px, img.width, img.height, LOOP_QUALITY) : PngEncoder.encode(px, img.width, img.height, false, lossy)
+		};
+	}
+
+	public static inline var LOOP_QUALITY = 88;
+
+	static function opaque(px:haxe.io.Bytes):Bool {
+		var i = 3;
+		while (i < px.length) {
+			if (px.get(i) != 255) return false;
+			i += 4;
+		}
+		return true;
+	}
+
+	// (an image decoded as a list draws it: a still's, not its loop's hundreds)
+	function imageAt(refs:Array<ImageRef>, k:Int):Null<Image>
+		return k < refs.length ? image(refs[k]) : null;
 
 	function image(r:ImageRef):Null<Image> {
 		var key = r.hash + "@" + r.width + "x" + r.height + ":" + r.color;

@@ -156,9 +156,12 @@ class Project {
 	// a story file's stories, read from its text (in the order written)
 	function storiesOf(file:String, text:String):Array<ScreenInfo> {
 		var doc = Document.parse(text, Lang.of(file)), out:Array<ScreenInfo> = [];
-		for (c in doc.calls("story")) {
+		var scenarios = isScenario(file);
+		for (c in doc.calls(scenarios ? "scenario" : "story")) {
 			var o = c.object(0);
 			if (o == null) continue;
+			// (a scenario's size: its own, else its main's <Surface>'s, else a phone's)
+			var size = scenarios ? sizeOf(o, doc) ?? surface() : null;
 			var n = o.field("name");
 			var lit = n == null ? null : n.literal();
 			if (lit == null) continue;
@@ -168,8 +171,8 @@ class Project {
 				name: name,
 				flow: cut < 0 ? "Screens" : name.substr(0, cut),
 				label: cut < 0 ? name : name.substr(cut + 1),
-				width: num(o, "width", doc) ?? 390,
-				height: num(o, "height", doc) ?? 844,
+				width: size?.width ?? num(o, "width", doc) ?? 390,
+				height: size?.height ?? num(o, "height", doc) ?? 844,
 				loop: seconds(o, "loop", doc),
 				file: file,
 				source: Story(c.name)
@@ -204,7 +207,72 @@ class Project {
 
 	// whether a file holds stories (by its name)
 	public static function isStory(f:String):Bool
-		return f.endsWith(".story.hx") || f.endsWith(".story.tsx") || f.endsWith(".story.ts");
+		return f.endsWith(".story.hx") || f.endsWith(".story.tsx") || f.endsWith(".story.ts") || isScenario(f);
+
+	// whether a file holds scenarios (helder.scenario: the program's main at its moments)
+	public static function isScenario(f:String):Bool
+		return f.endsWith(".scenario.hx") || f.endsWith(".scenario.tsx") || f.endsWith(".scenario.ts");
+
+	// (size: [w, h])
+	static function sizeOf(o:ObjectLit, doc:Document):Null<{width:Int, height:Int}> {
+		var f = o.field("size");
+		if (f == null) return null;
+		var re = ~/^\[\s*(\d+)\s*,\s*(\d+)\s*\]$/;
+		return re.match(doc.text.substring(f.first.start, f.last.end)) ? {width: Std.parseInt(re.matched(1)), height: Std.parseInt(re.matched(2))} : null;
+	}
+
+	// main's <Surface>'s width and height, read from its text (a number, or a
+	// constant of one in main or a file it imports: W = 480); null: not said so
+	function surface():Null<{width:Int, height:Int}> {
+		var main = mainFile();
+		if (main == null || !Files.exists(main)) return null;
+		var text = Files.read(main);
+		var tag = ~/<Surface\b([^>]*)>/;
+		if (!tag.match(text)) return null;
+		var attrs = tag.matched(1), texts = [text];
+		var imp = ~/from\s*["'](\.{1,2}\/[^"']+)["']/, rest = text;
+		while (imp.match(rest)) {
+			rest = imp.matchedRight();
+			for (ext in ["", ".ts", ".tsx", ".hx"]) {
+				var f = Path.normalize(Path.directory(main) + "/" + imp.matched(1) + ext);
+				if (Files.exists(f) && !Files.isDirectory(f)) {
+					texts.push(Files.read(f));
+					break;
+				}
+			}
+		}
+		function value(name:String):Null<Int> {
+			var a = new EReg(name + "\\s*=\\s*\\{?\\s*([A-Za-z_0-9.]+)", "");
+			if (!a.match(attrs)) return null;
+			var v = a.matched(1), n = Std.parseInt(v);
+			if (n != null) return n;
+			for (t in texts) {
+				var c = new EReg("\\b" + v + "\\s*(?::\\s*\\w+\\s*)?=\\s*(\\d+)", "");
+				if (c.match(t)) return Std.parseInt(c.matched(1));
+			}
+			return null;
+		}
+		var w = value("width"), h = value("height");
+		return w == null || h == null ? null : {width: w, height: h};
+	}
+
+	// the program's main file (TypeScript's entry; Haxe's main class's file), null: none
+	public function mainFile():Null<String> {
+		#if (hxmc.target == "wasm32-wasi")
+		var m = Lambda.find(Files.list(dir), n -> ~/^main\.tsx?$/.match(n));
+		return m == null ? null : '$dir/$m';
+		#else
+		if (entry == null) return null;
+		if (entry.typescript != null) return entry.typescript;
+		var a = entry.args(), k = a.indexOf("-main");
+		if (k < 0) return null;
+		for (c in entry.classPaths) {
+			var f = c + "/" + a[k + 1].split(".").join("/") + ".hx";
+			if (Files.exists(f)) return FileSystem.fullPath(f).split("\\").join("/");
+		}
+		return null;
+		#end
+	}
 
 	// a design file's frames as screens: each named by the file's path and
 	// its own name (app.helder#Home: no story's name, Flow/Screen, is one),
@@ -411,68 +479,81 @@ class Project {
 			var main = writeTypescriptHost();
 			w = [for (x in w) x.startsWith("helder.typescript=") ? 'helder.typescript=$main' : x];
 		} else if (host) {
-			var gen = writeHaxeHost();
 			var k = w.indexOf("-main");
+			var gen = writeHaxeHost(w[k + 1]);
 			w[k + 1] = "StudioScreens";
 			w = ["-cp", gen].concat(w);
 		}
+		if (Lambda.exists(screens, s -> isScenario(s.file))) w = w.concat(["-D", "helder.scenarios"]);
 		return w.concat(["-D", "hxmc.dev", "-D", "disable-hxb-cache"])
 			.concat(web ? [] : ["-D", "helder.headless"])
 			.concat(["-D", 'helder.name=$name', "--custom-target", 'hxmc=$exe']);
 	}
 
 	// (Haxe) the story files linked as modules (Foo.story.hx: Foo_story) and a main over their stories
-	function writeHaxeHost():String {
+	function writeHaxeHost(main:String):String {
 		var gen = '$out/gen';
-		var modules = [];
+		var modules = [], acts = [];
 		for (f in storyFiles()) {
 			var cp = Lambda.find(entry.classPaths.map(c -> FileSystem.fullPath(c).split("\\").join("/")), c -> f.startsWith(c + "/"));
 			if (cp == null) throw '$f: not under the project\'s class paths (${entry.classPaths.join(", ")})';
 			var rel = f.substr(cp.length + 1), dirs = Path.directory(rel);
 			var module = Path.withoutDirectory(rel);
-			module = module.substr(0, module.length - ".story.hx".length) + "_story";
+			var scenario = isScenario(f);
+			module = module.substr(0, module.length - (scenario ? ".scenario.hx" : ".story.hx").length) + (scenario ? "_scenario" : "_story");
 			var linked = '$gen/' + (dirs == "" ? "" : dirs + "/") + module + ".hx";
 			helder.cli.TestCommand.mkdirs(Path.directory(linked));
 			helder.cli.Link.make(f, linked);
 			links.set(linked, f);
-			modules.push(dirs == "" ? module : dirs.split("/").join(".") + "." + module);
+			(scenario ? acts : modules).push(dirs == "" ? module : dirs.split("/").join(".") + "." + module);
 		}
-		var all = [for (m in modules) 'helder.story.Stories.of("$m")'].join(".concat(") + [for (_ in 1...modules.length) ")"].join("");
-		save('$gen/StudioScreens.hx', '// helder studio\'s screens: the project\'s stories (generated)\nclass StudioScreens {\n\tstatic function main()\n\t\thelder.story.Screens.run($all);\n}\n');
+		var all = [for (m in modules) 'helder.story.Stories.of("$m")'].concat([for (m in acts) 'helder.scenario.Scenarios.of("$m")']);
+		var args = '[${all.slice(0, modules.length).join(", ")}].flatten()' + (acts.length == 0 ? "" : ', [${all.slice(modules.length).join(", ")}].flatten()');
+		// (main run once, first: its UiWindow.run keeps its root for the scenarios, -D helder.scenarios)
+		var first = acts.length == 0 ? "" : '\t\t$main.main();\n';
+		save('$gen/StudioScreens.hx', '// helder studio\'s screens: the project\'s stories and scenarios (generated)\nusing Lambda;\n\nclass StudioScreens {\n\tstatic function main() {\n$first\t\thelder.story.Screens.run($args);\n\t}\n}\n');
 		return gen;
 	}
 
-	// (TypeScript) a main importing the stories (each bound to an exported name)
+	// (TypeScript) a main importing the stories and the scenarios (each bound
+	// to an exported name), and the program's main as a function (program.tsx)
 	function writeTypescriptHost():String {
 		helder.cli.TestCommand.mkdirs(out);
-		var lines = ['// helder studio\'s screens: the project\'s stories (generated)', 'import { screens } from "helder/story";'];
-		var names = [];
+		var lines = ['// helder studio\'s screens: the project\'s stories and scenarios (generated)', 'import { screens } from "helder/story";'];
 		var byFile = new Map<String, Array<String>>();
-		var order = [];
+		var order = [], stories = [], scenarios = [], k = 0;
 		for (s in screens) {
 			var binding = switch s.source {
 				case Story(b): b;
 				case _: continue;
 			}
-			if (binding == null) throw '${s.file}: the story "${s.name}" is not bound to an exported name (export const x = story({...}))';
+			if (binding == null) throw '${s.file}: "${s.name}" is not bound to an exported name (export const x = ${isScenario(s.file) ? "scenario" : "story"}({...}))';
 			if (!byFile.exists(s.file)) {
 				byFile.set(s.file, []);
 				order.push(s.file);
 			}
-			byFile.get(s.file).push(binding);
+			var alias = 's${k++}';
+			byFile.get(s.file).push('$binding as $alias');
+			(isScenario(s.file) ? scenarios : stories).push(alias);
 		}
-		var k = 0;
-		for (f in order) {
-			var as = [for (b in byFile.get(f)) '$b as s${k++}'];
-			var rel = helder.cli.Link.relative(f, out);
-			if (!rel.startsWith(".")) rel = "./" + rel;
-			lines.push('import { ${as.join(", ")} } from "${~/\.tsx?$/.replace(rel, "")}";');
-		}
-		for (i in 0...k) names.push('s$i');
-		lines.push('screens([${names.join(", ")}]);');
+		for (f in order)
+			lines.push('import { ${byFile.get(f).join(", ")} } from "${spec(f)}";');
+		// (main run once, first: its UiWindow.run keeps its root for the scenarios, -D helder.scenarios)
+		if (scenarios.length > 0) {
+			lines.insert(2, 'import "${spec(entry.typescript)}";');
+			lines.push('screens([${stories.join(", ")}], [${scenarios.join(", ")}]);');
+		} else
+			lines.push('screens([${stories.join(", ")}]);');
 		var main = '$out/screens.tsx';
 		save(main, lines.join("\n") + "\n");
 		return main;
+	}
+
+	// (an import's specifier of a project's file from out)
+	function spec(f:String):String {
+		var rel = helder.cli.Link.relative(f, out);
+		if (!rel.startsWith(".")) rel = "./" + rel;
+		return ~/\.tsx?$/.replace(rel, "");
 	}
 
 	#end

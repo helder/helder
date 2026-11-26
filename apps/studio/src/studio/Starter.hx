@@ -5,9 +5,10 @@ using StringTools;
 // The project an empty folder starts as (the studio opened on one, its
 // Untitled one): the smallest TypeScript helder program that builds and
 // shows on the canvas, so that the agent starts from something that works:
-// main.tsx (the app's window), app.tsx (its view, plain: until the agent
-// changes the project the canvas holds its places: Watch's queued blocks), app.story.tsx
-// (one screen, the canvas' frame), tsconfig.json (helder's extended: config).
+// main.tsx (the app's window), app.tsx (its model, a top-level signal, and
+// its view, plain: until the agent changes the project the canvas holds its
+// places: Watch's queued blocks), app.scenario.tsx (one screen, the app at
+// its start: the canvas' frame), tsconfig.json (helder's extended: config).
 // A TypeScript project gets that tsconfig.json too, when it has none (an
 // agent's first main.tsx).
 class Starter {
@@ -19,33 +20,33 @@ class Starter {
 		if (!empty(dir)) return false;
 		Files.save('$dir/main.tsx', MAIN);
 		Files.save('$dir/app.tsx', APP);
-		Files.save('$dir/app.story.tsx', STORY);
+		Files.save('$dir/app.scenario.tsx', SCENARIO);
 		Files.save('$dir/.gitignore', "bin/\n");
 		config(dir);
 		return true;
 		#end
 	}
 
-	// whether a screen is the starter's own: its story, its files as written
+	// whether a screen is the starter's own: its scenario, its files as written
 	// (an agent that makes it its own, editing them, has it shown)
 	public static function own(dir:String, docs:Docs, name:String):Bool {
 		if (name != "App/Start") return false;
 		docs.version();
 		function is(f:String, text:String):Bool
 			return docs.has('$dir/$f') && docs.get('$dir/$f').text == text;
-		return is("app.story.tsx", STORY) && is("app.tsx", APP);
+		return is("app.scenario.tsx", SCENARIO) && is("app.tsx", APP) && is("main.tsx", MAIN);
 	}
 
 	// the starter's files the agent's own project no longer needs: each
-	// (app.story.tsx, then app.tsx) as the starter wrote it, once a story of
-	// the agent's is there, and no other file imports it; its story while
-	// App/Start is the starter's still (its app.tsx edited: the agent's)
+	// (app.scenario.tsx, then app.tsx) as the starter wrote it, once a screen
+	// of the agent's is there, and no other file imports it; its scenario
+	// while App/Start is the starter's still (its app.tsx edited: the agent's)
 	public static function unused(dir:String, docs:Docs, sources:Array<String>, ownStory:Bool, starterStory:Bool):Array<String> {
 		if (!ownStory) return [];
 		var out = [];
-		for (f in [{name: "app.story.tsx", text: STORY, module: "app\\.story"}, {name: "app.tsx", text: APP, module: "app"}]) {
+		for (f in [{name: "app.scenario.tsx", text: SCENARIO, module: "app\\.scenario"}, {name: "app.tsx", text: APP, module: "app"}]) {
 			var path = '$dir/${f.name}';
-			if (f.name == "app.story.tsx" && !starterStory) continue;
+			if (f.name == "app.scenario.tsx" && !starterStory) continue;
 			if (!docs.has(path) || docs.get(path).text != f.text) continue;
 			var imports = new EReg('[\'"]\\./${f.module}(\\.tsx?)?[\'"]', "");
 			if (!Lambda.exists(sources, s -> s != path && !out.contains(s) && docs.has(s) && imports.match(docs.get(s).text))) out.push(path);
@@ -105,7 +106,7 @@ class Starter {
 		return false;
 	}
 
-	static inline var MAIN = '// The app in a window (`helder run .`); its screens are the stories (app.story.tsx)
+	static inline var MAIN = '// The app in a window (`helder run .`); its moments on the canvas are scenarios (app.scenario.tsx)
 import { UiWindow, Surface } from "helder/ui";
 import { App } from "./app";
 
@@ -116,17 +117,21 @@ UiWindow.run(
 );
 ';
 
-	static inline var APP = 'export function App() {
+	static inline var APP = 'import { signal } from "helder/view";
+
+// the app\'s model: exported top-level signals, which a scenario\'s boot sets
+export const title = signal("App");
+
+export function App() {
 	return <view flexGrow={1} alignItems="center" justifyContent="center" background="#ffffff">
-		<text fontSize={14} color="#71717a">App</text>
+		<text fontSize={14} color="#71717a">{title()}</text>
 	</view>;
 }
 ';
 
-	static inline var STORY = '// The canvas\' screens: each story a frame, named Flow/Screen
-import { story } from "helder/story";
-import { App } from "./app";
+	static inline var SCENARIO = '// The canvas\' screens: each scenario the app (main.tsx) at a moment, named Flow/Screen
+import { scenario } from "helder/scenario";
 
-export const start = story({ name: "App/Start", width: 480, height: 640, render: () => <App/> });
+export const start = scenario({ name: "App/Start" });
 ';
 }

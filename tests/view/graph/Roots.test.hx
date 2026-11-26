@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // createRoot.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should dispose of inner computations", () -> {

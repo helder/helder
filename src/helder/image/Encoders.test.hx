@@ -9,12 +9,12 @@ import helder.test.Test;
 // (transparent pixels the background's), each the size it was given.
 function tests() {
 	test("png: any pixels decoded back the same", () -> property(picture, p -> {
-		for (opaque in [false, true]) {
-			var d = PngDecoder.decode(PngEncoder.encode(p.rgba, p.width, p.height, opaque));
+		for (opaque in [false, true]) for (quick in [false, true]) {
+			var d = PngDecoder.decode(PngEncoder.encode(p.rgba, p.width, p.height, opaque, quick));
 			equals([d.width, d.height], [p.width, p.height]);
 			var want = p.rgba.sub(0, p.rgba.length);
 			if (opaque) for (i in 0...p.width * p.height) want.set(i * 4 + 3, 255);
-			if (d.rgba.compare(want) != 0) fail('opaque $opaque: pixels differ');
+			if (d.rgba.compare(want) != 0) fail('opaque $opaque, quick $quick: pixels differ');
 		}
 	}, {cases: 100}));
 	test("jpeg: a smooth image decoded back within a tolerance", () -> property(c -> {

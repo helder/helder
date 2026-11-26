@@ -84,11 +84,35 @@ function tests() {
 		if (a == null || b == null) throw "not written";
 		equals({still: b.bytes.toHex() == a.bytes.toHex(), first: a.loop?.frames.length, again: b.loop}, {still: true, first: 10, again: null});
 	});
+	var parked = test("stills: at most MOUNTED built at once, the settled let go (their stills told), the parked built again after a patch", () -> {
+		var stories = [for (i in 0...12) new Story('S/$i', _ -> View.view(<view/>), 1, null, 100, 100)];
+		var host = new Host(stories, new HeadlessHost()), told = [], most = 0;
+		host.onPark = s -> told.push(s.name);
+		host.still(true);
+		host.show([for (s in stories) s.name]);
+		function run(from:Float)
+			for (f in 0...120) {
+				host.frame(from + f / 10);
+				most = Std.int(Math.max(most, [for (s in host.screens) if (s.ui != null) s].length));
+			}
+		run(0);
+		equals(most, Host.MOUNTED);
+		equals([for (s in host.screens) s.version], [for (_ in stories) 1]);
+		equals(told.length, stories.length - Host.MOUNTED);
+		equals(host.busy(), false);
+		// (the parked built again and drawn; the built drew what changed: nothing)
+		var was = told.copy();
+		host.unpark();
+		run(100);
+		equals(most, Host.MOUNTED);
+		equals([for (s in host.screens) s.version == (was.contains(s.name) ? 2 : 1)], [for (_ in stories) true]);
+	});
 	// (as wasm32-wasi the host's device is the browser's WebGPU or WebGL2, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
 	recorded.skip();
 	stills.skip();
 	outOfView.skip();
 	throws.skip();
+	parked.skip();
 	#end
 }
