@@ -383,13 +383,13 @@ using StringTools;
 
 	// text up to a stop character, emitted as a slice; then the state's own handling
 	function textRun(stop1:Int, stop2:Int):Bool {
-		var i = pos, start = pos;
-		while (i < len) {
-			var c = s.fastCodeAt(i);
-			if (c == stop1 || c == stop2 || c == 0 || c == "\r".code) break;
-			if (errors != null && (c < 0x20 || c >= 0x7F)) check(c, i);
-			i++;
-		}
+		var start = pos;
+		var i = Scan.stop(s, pos, len, stop1, stop2);
+		if (errors != null)
+			for (k in start...i) {
+				var c = s.fastCodeAt(k);
+				if (c < 0x20 || c >= 0x7F) check(c, k);
+			}
 		if (i == start) return false;
 		pos = i;
 		sink.chars(s.substring(start, i), start, i);
