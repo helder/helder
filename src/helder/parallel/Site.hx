@@ -17,8 +17,6 @@ class Site {
 	static inline var MARGIN = 0.8;
 
 	public final name:String;
-	// whether the site has a Gpu form (each, map, a kernel: not a reduction yet)
-	public final hasGpu:Bool;
 	// whether the run picked is timed (took(...) after it)
 	public var timing(default, null) = false;
 
@@ -27,18 +25,16 @@ class Site {
 	var last = On.Auto;
 	var runs = 0;
 
-	public function new(name:String, hasGpu = false) {
+	public function new(name:String)
 		this.name = name;
-		this.hasGpu = hasGpu;
-	}
 
-	// (resident: an Items the body writes is the GPU's alone, or drawn by it;
-	// gpu: the site has a Gpu form and Parallel.device has compute)
+	// (resident: the site's data is the GPU's (ParallelMacro's dispatch says
+	// which); gpu: Parallel.device has compute)
 	public function pick(on:On, n:Int, resident = false, gpu = false):On {
 		var forced = Parallel.forced();
 		var form = forced != On.Auto ? forced : on != On.Auto ? on : resident && gpu ? On.Gpu : auto(n);
 		if (form == On.Gpu && !gpu)
-			throw new haxe.Exception('helder.parallel: $name: On.Gpu: ' + (!hasGpu ? "no Gpu form (a reduction's comes with workgroup memory)" : "no Parallel.device with compute stages"));
+			throw new haxe.Exception('helder.parallel: $name: On.Gpu: no Parallel.device with compute stages');
 		runs++;
 		timing = form != On.Gpu && on == On.Auto && forced == On.Auto && (runs <= 16 || runs % 64 == 0);
 		if (form != last) {

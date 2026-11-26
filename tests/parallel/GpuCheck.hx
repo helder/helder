@@ -1,8 +1,11 @@
 import helder.gfx.Device;
 import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
 import helder.gfx.shader.ShaderMath.*;
 import helder.math.Vec4;
 import helder.os.Surface;
+import helder.parallel.GpuRunner;
 import helder.parallel.Items;
 import helder.parallel.ItemsData;
 import helder.parallel.On;
@@ -16,7 +19,8 @@ import helder.parallel.Parallel;
 // helder.parallel's Gpu form against its Simd form on a headless device
 // (the gfx-compute lane: D3D11, GL on Mesa; gfx-soft: the CPU back end,
 // whose buffers are the Items' own memory), within the GPU's rounding (its
-// fused multiply-adds, its own sin), and Auto's residency rule: a body
+// fused multiply-adds, its own sin; a reduction's tree its own order), and
+// Auto's residency rule: a body
 // whose Items a dispatch wrote last, or the GPU draws, runs there. Exit
 // code 3: no device with compute (skipped).
 class GpuCheck {
@@ -36,6 +40,16 @@ class GpuCheck {
 		residency(device);
 		kernels();
 		large();
+		reductions("");
+		// (the subgroups made of workgroup memory, as D3D11 has them)
+		if (device.has(Subgroups)) {
+			GpuRunner.emulate = true;
+			reductions(" (emulated)");
+			GpuRunner.emulate = false;
+		}
+		randomReductions();
+		reductionResidency();
+		largeReduction();
 		Sys.println(failures == 0 ? "GpuCheck: ok" : 'GpuCheck: $failures failed');
 		device.dispose();
 		Sys.exit(failures == 0 ? 0 : 1);
@@ -177,6 +191,112 @@ class GpuCheck {
 		for (i in [0, 1, 65535 * 64 - 1, 65535 * 64, n - 1])
 			if (a[i] != i * 3) ok = false;
 		check('$n items', ok);
+		a.dispose();
+	}
+
+	// (within float32's rounding of a sum of values as large as scale)
+	static function close(what:String, g:Float, c:Float, scale:Float) {
+		var ok = Math.abs(g - c) <= 1e-5 * Math.max(1, scale) || g == c;
+		check(what, ok, '$g and $c');
+	}
+
+	// sum, min, max and reduce of Floats, Ints and vectors: the Gpu form against Simd, past a workgroup's tails
+	static function reductions(form:String) {
+		for (n in [1, 3, 255, 256, 257, 1003, 65536 + 7, 300001]) {
+			var a = data(n, n + 1), ints = new Items<Int>(n);
+			for (i in 0...n)
+				ints[i] = Std.int(a[i] * 1000);
+			var scale = 0.0;
+			for (i in 0...n)
+				scale += a[i] * a[i];
+			close('sum $n$form', sum(n, i -> a[i] * a[i], Gpu), sum(n, i -> a[i] * a[i], Simd), scale);
+			check('sum of Ints $n$form', sum(n, i -> ints[i] * 3, Gpu) == sum(n, i -> ints[i] * 3, Simd));
+			check('min $n$form', min(n, i -> a[i], Gpu) == min(n, i -> a[i], Simd));
+			check('max $n$form', max(n, i -> a[i], Gpu) == max(n, i -> a[i], Simd));
+			check('min of Ints $n$form', min(n, i -> ints[i], Gpu) == min(n, i -> ints[i], Simd));
+			check('max of Ints $n$form', max(n, i -> ints[i] - i, Gpu) == max(n, i -> ints[i] - i, Simd));
+			var g2 = sum(n, i -> vec2(a[i], 1), Gpu), c2 = sum(n, i -> vec2(a[i], 1), Simd);
+			close('sum of Vec2 $n$form', g2.x, c2.x, 100 * n);
+			check('sum of Vec2 $n$form: the count', g2.y == n);
+			var g3 = sum(n, i -> vec3(1, a[i], -a[i]), Gpu), c3 = sum(n, i -> vec3(1, a[i], -a[i]), Simd);
+			close('sum of Vec3 $n$form', g3.y + g3.x * 1000, c3.y + c3.x * 1000, 1000 * n);
+			check('sum of Vec3 $n$form: negated', g3.z == -g3.y);
+			var g4 = sum(n, i -> vec4(a[i] * a[i]), Gpu);
+			close('sum of Vec4 $n$form', g4.w, sum(n, i -> a[i] * a[i], Simd), scale);
+			function bounds(on:On):Vec2
+				return reduce(n, vec2(1e30, -1e30), i -> {
+					if (a[i] > 99) return vec2(a[i] - 1, a[i] - 1);
+					return vec2(a[i], a[i]);
+				}, (x, y) -> vec2(Math.min(x.x, y.x), Math.max(x.y, y.y)), on);
+			var gb = bounds(Gpu), cb = bounds(Simd);
+			check('reduce $n$form', gb.x == cb.x && gb.y == cb.y, '${gb.x}, ${gb.y} and ${cb.x}, ${cb.y}');
+			function loopy(on:On):Int
+				return reduce(n, 0, i -> {
+					var c = 0;
+					for (j in 0...4) {
+						if (ints[(i + j) % n] > 50000) return j + 10;
+						c += j;
+					}
+					return c;
+				}, (x, y) -> x + y, on);
+			var gl = loopy(Gpu), cl = loopy(Simd);
+			check('reduce, a return in a loop $n$form', gl == cl, '$gl and $cl');
+			a.dispose();
+			ints.dispose();
+		}
+	}
+
+	// random counts, data and bodies' constants: Gpu against Simd
+	static function randomReductions() {
+		var s = 12345, bad = 0;
+		inline function next(m:Int):Int {
+			s = (s * 1103515245 + 12345) & 0x7FFFFFFF;
+			return s % m;
+		}
+		for (c in 0...60) {
+			var n = switch next(3) {
+				case 0: next(10);
+				case 1: next(2000);
+				case _: next(200000);
+			}
+			var a = data(n, next(100000)), k = next(7) - 3.5;
+			var g = sum(n, i -> a[i] * k + 1, Gpu), want = sum(n, i -> a[i] * k + 1, Simd);
+			if (!(Math.abs(g - want) <= 1e-5 * Math.max(1, 100 * Math.abs(k) * n))) {
+				bad++;
+				Sys.println('GpuCheck: random sum $n: $g and $want');
+			}
+			if (min(n, i -> a[i] * k, Gpu) != min(n, i -> a[i] * k, Simd) || max(n, i -> a[i] * k, Gpu) != max(n, i -> a[i] * k, Simd)) {
+				bad++;
+				Sys.println('GpuCheck: random min, max $n');
+			}
+			if (n == 0 && (min(n, i -> a[i], Gpu) != Math.POSITIVE_INFINITY || sum(n, i -> a[i], Gpu) != 0)) bad++;
+			a.dispose();
+		}
+		check("60 random reductions", bad == 0);
+	}
+
+	// Auto: a reduction of Items a dispatch wrote last, on the GPU; of the CPU's, on the CPU
+	static function reductionResidency() {
+		var n = 5000, a = new Items<Float>(n);
+		each(n, i -> a[i] = i % 100, Gpu);
+		var s = sum(n, i -> a[i]);
+		check("Auto: a sum of the GPU's values there", a.data().state == ItemsData.GPU && s == 49.5 * n, '$s');
+		a[0] = 1;
+		var t = sum(n, i -> a[i]);
+		check("Auto: of the CPU's, there", a.data().state & ItemsData.CPU != 0 && t == 49.5 * n + 1, '$t');
+		a.dispose();
+	}
+
+	// past a row of 65535 workgroups of 256: the partials' index's y
+	static function largeReduction() {
+		var n = 65535 * 256 + 300, a = new Items<Int>(n);
+		each(n, i -> a[i] = i % 3 == 0 ? 2 : 1, Gpu);
+		var want = 0;
+		for (i in 0...n)
+			want += i % 3 == 0 ? 2 : 1;
+		var got = sum(n, i -> a[i], Gpu);
+		check('a sum of $n items', got == want, '$got and $want');
+		check('their max', max(n, i -> a[i] + (i == n - 1 ? 5 : 0), Gpu) == max(n, i -> a[i] + (i == n - 1 ? 5 : 0), Simd));
 		a.dispose();
 	}
 }
