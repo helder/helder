@@ -1,0 +1,112 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: border collapse dynamic change to rowgroup border color"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:bmlk@gmx.de"
+|       rel="author"
+|       title="Bernd Mielke"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#collapsing-borders"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="border-collapse-dynamic-rowgroup-001-ref.xht"
+|       rel="match"
+|     "
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="text/javascript"
+|       http-equiv="Content-Script-Type"
+|     "
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="dom"
+|       name="flags"
+|     "
+"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "
+function doTest(){
+ var t1 =document.getElementById('target');
+ t1.style.borderColor="yellow";
+}
+"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+td { border: 10px green solid;}
+table {margin: 30px; border-collapse:collapse}
+tbody#target {border:solid green 11px}
+]]>
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     onload="doTest();"
+|     "
+
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be a continuous solid yellow border around the middle row. All other borders should be a continuous solid green."
+|     "
+
+"
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+
+"
+|       <tbody {http://www.w3.org/1999/xhtml}>
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c11"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c12"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c13"
+|       "
+ "
+|       <tbody {http://www.w3.org/1999/xhtml}>
+|         id="target"
+|         "
+ "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c21"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c22"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c23"
+|         "
+ "
+|       "
+ "
+|       <tbody {http://www.w3.org/1999/xhtml}>
+|         "
+ "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c31"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c32"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c33"
+|         "
+
+ "
+|       "
+"
+|     "
+
+"

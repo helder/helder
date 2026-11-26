@@ -1,0 +1,8 @@
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     <template {http://www.w3.org/1999/xhtml}>
+|       content
+|         <p {http://www.w3.org/1999/xhtml}>
+|           "in"
+|         "text"

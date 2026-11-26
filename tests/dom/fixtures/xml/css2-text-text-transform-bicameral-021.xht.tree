@@ -1,0 +1,353 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: text-transform - Deseret, uppercase"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://rishida.net"
+|       rel="author"
+|       title="Richard Ishida"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://fantasai.inkedblade.net/contact"
+|       rel="reviewer"
+|       title="Elika J. Etemad"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#caps-prop"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://drafts.csswg.org/css-text-3/#text-transform-property"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="text-transform-bicameral-021-ref.xht"
+|       rel="match"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/International/tests/tests-html-css/tests-text-transform/generate?test=21"
+|       rel="alternate"
+|     "
+"
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The UA will uppercase Unicode Deseret characters when text-transform is set to uppercase."
+|       name="assert"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+.test span { text-transform: uppercase; }
+
+/* the CSS below is not part of the test */
+.test { font-size: 130%; line-height: 2.5; color: blue; }
+.test div { white-space: nowrap; text-align: center;
+             width: 5em; display: inline-block; }"
+|     "
+"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "
+//"
+|       <![CDATA[
+function setFontFamily () {var fontName = document.getElementById( 'fontName' ).value;	var divs = document.getElementsByTagName('div');	var i = 0; var div;	while (i < divs.length) {	 	div = divs.item(i);		if (div.className == 'test') { 			div.style.fontFamily = fontName; 			}		i++;		}	}
+//]]>
+|       "
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="instructions"
+|       "Test passes if the right-hand character in each pair matches the left-hand one."
+|     "
+
+
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="test"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐀 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐨"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐁 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐩"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐂 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐪"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐃 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐫"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐄 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐬"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐅 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐭"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐆 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐮"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐇 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐯"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐈 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐰"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐉 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐱"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐊 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐲"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐋 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐳"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐌 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐴"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐍 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐵"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐎 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐶"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐏 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐷"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐐 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐸"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐑 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐹"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐒 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐺"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐓 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐻"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐔 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐼"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐕 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐽"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐖 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐾"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐗 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐐿"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐘 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑀"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐙 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑁"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐚 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑂"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐛 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑃"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐜 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑄"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐝 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑅"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐞 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑆"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐟 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑇"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐠 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑈"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐡 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑉"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐢 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑊"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐣 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑋"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐤 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑌"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐥 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑍"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐦 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑎"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "𐐧 "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "𐑏"
+|       "
+"
+|     "
+
+
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="notes"
+|       id="fontChange"
+|       style="display: none;"
+|       "If you are unable to see font glyphs for certain characters using the browsers default font you can apply a specific font by typing its name in the following box: "
+|       <input {http://www.w3.org/1999/xhtml}>
+|         class="css"
+|         id="fontName"
+|         name="fontName"
+|         type="text"
+|         value=""
+|       " "
+|       <button {http://www.w3.org/1999/xhtml}>
+|         class="notes"
+|         onclick="setFontFamily()"
+|         type="button"
+|         "Apply"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "if (document.getElementById) {document.getElementById('fontChange').style.display = 'block'}"
+|   "
+"

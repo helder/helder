@@ -1,0 +1,88 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Text-decoration application on a table-column element"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#propdef-text-decoration"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#lining-striking-props"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'text-decoration' property does not apply to a table-column element"
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            #table
+            {
+                display: table;
+            }
+            #test
+            {
+                display: table-column;
+                text-decoration: underline;
+            }
+            #row
+            {
+                display: table-row;
+            }
+            #cell
+            {
+                display: table-cell;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the "Filler Text" below does not have a line under it."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="table"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="test"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="row"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           id="cell"
+|           "Filler Text"
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

@@ -1,0 +1,92 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Border-bottom-width using points with a nominal value with a plus sign, +72pt"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-05-22  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#propdef-border-bottom-width"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#border-width-properties"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="border-bottom-width-006-ref.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'border-bottom-width' property supports a nominal length value in points that has a plus sign before it."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                display: inline-block;
+                width: 1in;
+            }
+            #reference
+            {
+                background-color: black;
+                height: 1in;
+                margin-left: 5px;
+            }
+            #test
+            {
+                border-bottom-style: solid;
+                border-bottom-width: +72pt;
+                height: 0;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 filled black squares have the "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "same height"
+|       "."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="test"
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="reference"
+|     "
+    "
+|   "
+"

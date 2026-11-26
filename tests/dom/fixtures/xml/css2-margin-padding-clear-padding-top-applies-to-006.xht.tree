@@ -1,0 +1,124 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Padding-top applied to element with display table-column"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-08-25  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#propdef-padding-top"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#padding-properties"
+|       rel="help"
+|     "
+		"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="margin-top-applies-to-001-ref.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'padding-top' property does not apply to elements with a display of table-column."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            #wrapper
+            {
+                border-top: 10px solid blue;
+            }
+            #test
+            {
+                display: table-column;
+                padding-top: 50px;
+            }
+            #table
+            {
+                display: table;
+            }
+            #row
+            {
+                display: table-row;
+            }
+            #cell
+            {
+                display: table-cell;
+            }
+            #cell div
+            {
+                border-top: 10px solid orange;
+                width: 200px;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no space between"
+|       " the blue and orange lines."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="wrapper"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="table"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           id="test"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           id="row"
+|           "
+                    "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             id="cell"
+|             "
+                        "
+|             <div {http://www.w3.org/1999/xhtml}>
+|             "
+                    "
+|           "
+                "
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

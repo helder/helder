@@ -1,0 +1,65 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: padding-left"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="invalid"
+|       name="flags"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/REC-CSS1#padding-left"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/Style/CSS/Test/CSS1/current/tsack.html"
+|       rel="author"
+|       title="CSS1 Test Suite Contributors"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="c5509-padn-l-002-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+   .five { width: 10em; background: white; border-left: solid 1em green; padding-left: -1em; }
+  ]]>
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#padding-properties"
+|       rel="help"
+|       title="8.4 Padding properties: 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', and 'padding'"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="five"
+|       " There should be a green block to the left of this text. "
+|     "
+ "
+|   "
+"

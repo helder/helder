@@ -1,0 +1,106 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: border conflict resolution - border-style: hidden applied to table-row-group"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://marc.baffl.co.uk/contact.php"
+|       rel="author"
+|       title="Marc Pacheco"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#border-conflict-resolution"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="border-conflict-style-101-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="A table element with the 'border-style' value of 'hidden' should suppress all borders for such element."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  table
+  {
+  border-collapse: collapse;
+  }
+
+  tbody
+  {
+  border-color: red;
+  border-style: hidden;
+  }
+
+  td
+  {
+  border: red solid;
+  height: 200px;
+  padding: 0px;
+  width: 200px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       ", not even thin red lines."
+|     "
+
+  "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+
+   "
+|       <tbody {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           "
+     "
+|           <td {http://www.w3.org/1999/xhtml}>
+|           "
+    "
+|         "
+   "
+|       "
+
+  "
+|     "
+
+ "
+|   "
+"

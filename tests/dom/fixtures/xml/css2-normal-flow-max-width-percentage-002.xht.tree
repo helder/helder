@@ -1,0 +1,96 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Percentage based value for 'max-width' contained by box with a negative 'width'"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-10-30  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visudet.html#min-max-widths"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/ref-if-there-is-no-red.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="If the containing block's width is negative, the used value is zero."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            #div1
+            {
+                position: relative;
+                width: 100px;
+            }
+            #div2
+            {
+                left: 120px;
+                position: absolute;
+                right: 120px;
+                width: auto;
+            }
+            #div3
+            {
+                background-color: red;
+                height: 1in;
+                max-width: 200%;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="div1"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="div2"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           id="div3"
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

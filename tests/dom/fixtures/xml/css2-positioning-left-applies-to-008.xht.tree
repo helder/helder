@@ -1,0 +1,86 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Left applied to element with 'display' set to inline"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+		"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-06-30  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#propdef-left"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#dis-pos-flo"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#position-props"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'left' property applies to elements with a display of inline."
+|       name="assert"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                color: green;
+                font: 1in/1 Ahem;
+                left: 0;
+                display: inline;
+                position: absolute;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a green square on the left side of the page."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "X"
+|     "
+    "
+|   "
+"

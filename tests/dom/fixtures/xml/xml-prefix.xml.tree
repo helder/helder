@@ -1,0 +1,6 @@
+| <a>
+|   xml:lang {http://www.w3.org/XML/1998/namespace}="en"
+|   xmlns:x {http://www.w3.org/2000/xmlns/}="urn:x"
+|   <x:b {urn:x}>
+|     xml:space {http://www.w3.org/XML/1998/namespace}="preserve"
+|     " "

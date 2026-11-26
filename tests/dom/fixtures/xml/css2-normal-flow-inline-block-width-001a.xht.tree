@@ -1,0 +1,54 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Test for 'width: auto' on inline-block"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://dbaron.org/"
+|       rel="author"
+|       title="L. David Baron"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://mozilla.com/"
+|       rel="author"
+|       title="Mozilla Corporation"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visudet.html#inlineblock-width"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="inline-block-width-001-ref.xht"
+|       rel="match"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+body > div { width: 10em; }
+body > div > div { display: inline-block; background: green; color: white; }
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "x "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "This is some text that is wider than 10em but has no words wider than 10em."
+|       " z"
+|     "
+
+
+"

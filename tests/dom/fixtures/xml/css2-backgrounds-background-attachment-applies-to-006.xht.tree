@@ -1,0 +1,117 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Background-attachment applied to elements with 'display' set to 'table-column'"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-04-20  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/colors.html#propdef-background-attachment"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/colors.html#background-properties"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="background-attachment-applies-to-001-ref.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="image"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'background-attachment' property applies to elements with 'display' set to 'table-column'."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            p {font: 1em/1.25 serif;}
+
+            #test
+            {
+                background-color: orange;
+                background-image: url('support/blue96x96.png');
+                background-attachment: fixed;
+                background-repeat: repeat-x;
+                display: table-column;
+            }
+            #table
+            {
+                display: table;
+                table-layout: fixed;
+            }
+            #row
+            {
+                display: table-row;
+            }
+            #cell
+            {
+                display: table-cell;
+                height: 2in;
+                width: 1in;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a short blue stripe"
+|       <br {http://www.w3.org/1999/xhtml}>
+|       "
+        above a tall orange rectangle."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="table"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="test"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="row"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           id="cell"
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

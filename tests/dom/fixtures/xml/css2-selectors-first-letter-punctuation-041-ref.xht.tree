@@ -1,0 +1,41 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reference: Green 'right black lenticular bracket' punctuation character"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            span
+            {
+                color: green;
+                font-size: 36px;
+                line-height: 2;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the "T" and surrounding punctuation below are green."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "】T】"
+|       "est"
+|     "
+    "
+|   "
+"

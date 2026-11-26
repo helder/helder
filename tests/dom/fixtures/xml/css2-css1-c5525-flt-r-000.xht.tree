@@ -1,0 +1,87 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: float"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="image"
+|       name="flags"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/REC-CSS1#float"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/Style/CSS/Test/CSS1/current/tsack.html"
+|       rel="author"
+|       title="CSS1 Test Suite Contributors"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-04-21  -->
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+   p { color: navy; }
+   img { height: 50px; width: 50px; float: right; }
+   span { color: silver; }
+  ]]>
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#float-position"
+|       rel="help"
+|       title="9.5.1 Positioning the float: the 'float' property"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <img {http://www.w3.org/1999/xhtml}>
+|         alt="[FAIL: Image support required]"
+|         src="support/square-teal.png"
+|       "
+   This text should flow around the box on the right. ⇨
+   "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text dummy text dummy text dummy text dummy
+   text dummy text dummy text"
+|       "
+  "
+|     "
+ "
+|   "
+"

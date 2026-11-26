@@ -1,0 +1,82 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Visited selector defined in user stylesheet can be applied"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/cascade.html"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-cascade-3/"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-cascade-4/"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="interact userstyle"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The pseudo-class selector :visited defined in user stylesheet is applied when a link has already been visited."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       id="user-stylesheet"
+|       "PREREQUISITE: The "
+|       <a {http://www.w3.org/1999/xhtml}>
+|         href="support/user-stylesheet.css"
+|         ""user-stylesheet.css""
+|       " file is enabled as the user agent's user style sheet."
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "PREREQUSITE: Navigate to the "Filler Text" link below."
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the "Filler Text" below is green."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+            "
+|       <a {http://www.w3.org/1999/xhtml}>
+|         href="./user-stylesheet-013.htm"
+|         id="user-stylesheet-013"
+|         "Filler Text"
+|       "
+        "
+|     "
+    "
+|   "
+"

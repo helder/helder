@@ -43,6 +43,17 @@ function tests() {
 			var e = caught(() -> try Views.fault(null) catch (e:Exception) throw Errors.kept(e));
 			equals(where(e), Views.at);
 		});
+		test("a value thrown again keeps its throw's line", () -> {
+			var e = caught(() -> try Views.fault(null) catch (e:Exception) throw e);
+			equals(where(e), Views.at);
+		});
+		test("kept: a throw in the catch between, its throw's line kept", () -> {
+			var e = caught(() -> try Views.fault(null) catch (e:Exception) {
+				try throw "other" catch (_:Exception) {}
+				throw Errors.kept(e);
+			});
+			equals(where(e), Views.at);
+		});
 		#end
 		test("a task's unheard error is reported", () -> {
 			var got = [];

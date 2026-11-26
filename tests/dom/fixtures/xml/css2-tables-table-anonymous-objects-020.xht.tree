@@ -1,0 +1,98 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Auto-imported from Gecko test 208305-4.html"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:bzbarsky@mit.edu"
+|       rel="author"
+|       title="Boris Zbarsky"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#anonymous-boxes"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="reference/no_red_antialiasing_a_bc_d-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="dom"
+|       name="flags"
+|     "
+
+    "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       id="s"
+|       type="text/css"
+|       "
+      span { display: table-cell ! important }
+    "
+|     "
+    "
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       <![CDATA[
+      function doTest() {
+        var s = document.getElementById("s");
+        s.disabled = true;
+        document.body.offsetWidth;
+        s.disabled = false;
+        document.documentElement.className = "";
+      }
+    ]]>
+|     "
+  "
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     onload="doTest()"
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be no red below, except for antialiasing issues."
+|     "
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       style="position: relative; font-size: 2em;"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         style="position: absolute; z-index: 2; top: 0; color: green; padding: 1px;"
+|         "
+
+    "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           style="display: block"
+|           "a b"
+|         "
+    "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           style="display: block"
+|           "c d"
+|         "
+  "
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         style="position: relative; z-index: 1; color: red; padding: 1px;"
+|         "
+
+    a bc d
+  "
+|       "
+"
+|     "
+"
+|   "
+"

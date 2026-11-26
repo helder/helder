@@ -1,0 +1,64 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "Control test"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:bzbarsky@mit.edu"
+|       rel="author"
+|       title="Boris Zbarsky"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="reviewer"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/selector.html"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/ref-this-text-should-be-green.xht"
+|       rel="match"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       id="test"
+|       type="text/css"
+|       "
+   p { color: red; }
+  "
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "This text should be green."
+|     "
+  "
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "
+   document.getElementsByTagName("head")[0].removeChild(document.getElementById("test"));
+   var style = document.createElement("style");
+   var text = document.createTextNode("body { color: green; }");
+   style.appendChild(text);
+   document.getElementsByTagName("head")[0].appendChild(style);
+  "
+|     "
+ "
+|   "
+"

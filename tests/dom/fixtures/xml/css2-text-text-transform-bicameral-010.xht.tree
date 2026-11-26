@@ -1,0 +1,155 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: text-transform - Coptic, lowercase"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://rishida.net"
+|       rel="author"
+|       title="Richard Ishida"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://fantasai.inkedblade.net/contact"
+|       rel="reviewer"
+|       title="Elika J. Etemad"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#caps-prop"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://drafts.csswg.org/css-text-3/#text-transform-property"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="text-transform-bicameral-010-ref.xht"
+|       rel="match"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/International/tests/tests-html-css/tests-text-transform/generate?test=10"
+|       rel="alternate"
+|     "
+"
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The UA will lowercase Unicode Coptic when text-transform is set to lowercase."
+|       name="assert"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+.test span { text-transform: lowercase; }
+
+/* the CSS below is not part of the test */
+.test { font-size: 130%; line-height: 2.5; color: blue; }
+.test div { white-space: nowrap; text-align: center;
+             width: 5em; display: inline-block; }"
+|     "
+"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "
+//"
+|       <![CDATA[
+function setFontFamily () {var fontName = document.getElementById( 'fontName' ).value;	var divs = document.getElementsByTagName('div');	var i = 0; var div;	while (i < divs.length) {	 	div = divs.item(i);		if (div.className == 'test') { 			div.style.fontFamily = fontName; 			}		i++;		}	}
+//]]>
+|       "
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="instructions"
+|       "Test passes if the left-hand character in each pair matches the right-hand one."
+|     "
+
+
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="test"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϣ"
+|         " ϣ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϥ"
+|         " ϥ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϧ"
+|         " ϧ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϩ"
+|         " ϩ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϫ"
+|         " ϫ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϭ"
+|         " ϭ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "Ϯ"
+|         " ϯ"
+|       "
+"
+|     "
+
+
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="notes"
+|       id="fontChange"
+|       style="display: none;"
+|       "If you are unable to see font glyphs for certain characters using the browsers default font you can apply a specific font by typing its name in the following box: "
+|       <input {http://www.w3.org/1999/xhtml}>
+|         class="css"
+|         id="fontName"
+|         name="fontName"
+|         type="text"
+|         value=""
+|       " "
+|       <button {http://www.w3.org/1999/xhtml}>
+|         class="notes"
+|         onclick="setFontFamily()"
+|         type="button"
+|         "Apply"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "if (document.getElementById) {document.getElementById('fontChange').style.display = 'block'}"
+|   "
+"

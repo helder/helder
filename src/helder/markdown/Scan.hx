@@ -94,7 +94,8 @@ class Scan {
 		while (Scan.tick() && j < s.length && j - start < 32 && isAlnum(s.fastCodeAt(j)))
 			j++;
 		if (j == start || at(s, j) != ";".code || !isAlpha(s.fastCodeAt(start))) return -1;
-		var text = Entities.named(s.substring(start, j));
+		// (HTML's named references, helder.dom's table: CommonMark reads those with their ";")
+		var text = helder.dom.Entities.get(s.substring(start, j) + ";");
 		if (text == null) return -1;
 		out.add(text);
 		return j + 1;

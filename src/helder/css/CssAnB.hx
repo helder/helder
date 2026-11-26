@@ -103,7 +103,7 @@ class CssAnB {
 	}
 
 	static function signed(text:String):Bool {
-		var c = text.fastCodeAt(0);
+		var c = text.length > 0 ? text.fastCodeAt(0) : -1;
 		return c == "+".code || c == "-".code;
 	}
 

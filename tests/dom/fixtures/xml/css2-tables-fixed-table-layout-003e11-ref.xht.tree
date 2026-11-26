@@ -1,0 +1,75 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reftest Reference"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div
+  {
+  height: 24px;
+  margin-left: 108px;
+  }
+
+  div#blue-stripe
+  {
+  background-color: blue;
+  border-left: orange solid 20px;
+  border-right: orange solid 52px;
+  width: 128px;
+  }
+
+  div#reference
+  {
+  background-color: black;
+  width: 200px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 orange slivers and blue stripe are as a whole "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "exactly as wide as"
+|       " the black stripe."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="blue-stripe"
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="reference"
+|     "
+
+ "
+|   "
+"

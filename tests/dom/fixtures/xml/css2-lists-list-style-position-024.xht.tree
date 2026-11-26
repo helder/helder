@@ -1,0 +1,121 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   dir="rtl"
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Nested inside list markers (rtl)"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-03-06  -->
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.hixie.ch/tests/adhoc/css/box/list/list-style-position/inside/002-demo.html"
+|       rel="alternate"
+|       type="text/html"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/generate.html#list-style"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="list-style-position-024-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+   ol, li { margin: 0; padding: 0; border: 0; }
+   li, div {
+      color: blue;
+      border: solid silver 0.25em;
+      padding: 0.5em 3em 0.5em 0.5em;
+      list-style-position: inside; }
+   span { color: white; }  "
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <ol {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <ol {http://www.w3.org/1999/xhtml}>
+|           "
+     "
+|           <li {http://www.w3.org/1999/xhtml}>
+|             "
+      "
+|             <ol {http://www.w3.org/1999/xhtml}>
+|               "
+       "
+|               <li {http://www.w3.org/1999/xhtml}>
+|                 "
+        "
+|                 <span {http://www.w3.org/1999/xhtml}>
+|                   "List item text."
+|                 "
+       "
+|               "
+      "
+|             "
+     "
+|           "
+    "
+|         "
+   "
+|       "
+  "
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       dir="ltr"
+|       "The above should render like the example below."
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "1.
+   "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "1.
+    "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           "
+     1. "
+|           <span {http://www.w3.org/1999/xhtml}>
+|             "List item text."
+|           "
+    "
+|         "
+   "
+|       "
+  "
+|     "
+ "
+|   "
+"

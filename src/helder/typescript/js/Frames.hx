@@ -2,6 +2,7 @@ package helder.typescript.js;
 
 import haxe.io.Bytes;
 import hxmc.rt.Stacks;
+import helder.typescript.js.Values;
 
 // The frames of an error's stack, as V8 writes them: `at f (file:line:column)`
 // for each frame of the program's own functions, innermost first, then the
@@ -16,13 +17,31 @@ class Frames {
 	// (V8's Error.stackTraceLimit, its default)
 	public static inline var MAX = 10;
 	public static var site:Null<String> = null;
+	// (the last value thrown that is no error, and where: what an uncaught
+	// one prints, whatever catches and throws it again on its way out)
+	static var thrownValue:Dynamic = null;
+	static var thrownStack:Null<Bytes> = null;
 
 	public static function capture():Bytes
 		return haxe.NativeStackTrace.callStack();
 
-	// the last throw's (in the catch that caught it)
-	public static function thrown():Bytes
-		return haxe.NativeStackTrace.exceptionStack();
+	// (a TypeScript throw: v)
+	public static function throwing(v:Dynamic):Dynamic {
+		if (!Std.isOfType(v, JsError)) {
+			thrownValue = v;
+			thrownStack = capture();
+		}
+		return v;
+	}
+
+	// where v was thrown, in the catch that caught it: its TypeScript throw's,
+	// else the last throw's
+	public static function thrown(v:Dynamic):Bytes
+		return thrownStack != null && thrownValue == v ? thrownStack : haxe.NativeStackTrace.exceptionStack();
+
+	// the value of an exception caught as one
+	public static function value(e:haxe.Exception):Dynamic
+		return Std.isOfType(e, haxe.ValueException) ? (cast e : haxe.ValueException).value : e;
 
 	public static function text(raw:Null<Bytes>, at:Null<String>, awaits:Null<Array<String>>, limit:Int):String {
 		var b = new StringBuf(), n = 0;

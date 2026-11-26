@@ -1,0 +1,57 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "border collapse dynamic change to cell style"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+td { border: 10px green outset;}
+table {margin: 30px}
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <table {http://www.w3.org/1999/xhtml}>
+|       style="border-collapse:collapse"
+|       "
+ "
+|       <tbody {http://www.w3.org/1999/xhtml}>
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c11"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c12"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c13"
+|         "
+ "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c21"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             style="border-style:solid"
+|             "c22"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c23"
+|         "
+ "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c31"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c32"
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "c33"
+|         "
+"
+|     "
+
+"

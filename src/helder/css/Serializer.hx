@@ -138,7 +138,7 @@ class Serializer {
 			case Dimension(_, _, text, unit):
 				b.add(text);
 				// (a unit "e5" or "e-5" would read as an exponent)
-				var c = unit.fastCodeAt(0), d = unit.length > 1 ? unit.fastCodeAt(1) : -1;
+				var c = unit.length > 0 ? unit.fastCodeAt(0) : -1, d = unit.length > 1 ? unit.fastCodeAt(1) : -1;
 				if ((c == "e".code || c == "E".code) && (isDigit(d) || (d == "-".code && unit.length > 2 && isDigit(unit.fastCodeAt(2))))) {
 					hexEscape(b, c);
 					name(b, unit.substr(1), 0);

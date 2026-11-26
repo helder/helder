@@ -1,0 +1,79 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+  "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: text-align: left and direction:rtl - unordered list"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:public-testsuites@opera.com"
+|       rel="author"
+|       title="Eira Monstad, Opera Software ASA"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#alignment-prop"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#direction"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/generate.html#list-style"
+|       rel="help"
+|     "
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="text-align:left should be applied to unordered list in rtl context without affecting its rtlness"
+|       name="assert"
+|     "
+    "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+      html {direction: rtl;}
+      li {text-align: left;}
+      ul,li {padding-left:2em;padding-right:2em;}
+    ]]>
+|     "
+  "
+|   "
+
+  "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+    "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "The list should be left-aligned and have a bullet to the right of each item"
+|     "
+
+    "
+|     <ul {http://www.w3.org/1999/xhtml}>
+|       "
+      "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "First"
+|       "
+      "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "Second"
+|       "
+      "
+|       <li {http://www.w3.org/1999/xhtml}>
+|         "Third"
+|       "
+    "
+|     "
+
+  "
+|   "
+"
