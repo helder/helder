@@ -69,11 +69,12 @@ class Compiler {
 			nullSafety(actx);
 			// (Haxe's analyzer stays on, without analyzer-optimize, which
 			// nothing defines: its graph and back, ~0.5 s of the viewer's
-			// cold build. Off (@:analyzer(ignore) on every type) saved 0-4 %
-			// of a build, the filters slower after it, and broke hxmc's
-			// kernels: `span[i].field -= v` and `++` on an @:hxmc.struct's
-			// field are lost unless the analyzer rewrote them first,
-			// Inflate's PNG decode failing)
+			// cold build. Off (@:analyzer(ignore) on every type) saves ~0.15
+			// s of it (2-3 %), but hxmc's lowering then rejects a closure
+			// returning a struct's value, Sh.test.hx's `d -> new Vec3(..)`:
+			// "the struct Vec3Data is never null". Its kernels' compound
+			// assignments to a struct's field are kept without it since
+			// hxmc #212)
 			views(com, actx);
 			if (typing != null) typing(com, actx);
 			// (a compilation server's parse replaces hxmc's: around it again)
