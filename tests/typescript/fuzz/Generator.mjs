@@ -539,7 +539,8 @@ const STATEMENTS = [
   }],
   [(g, sc) => sc.of('string', v => v.mut).length ? 2 : 0, (g, sc) => {
     const v = g.r.pick(sc.of('string', v => v.mut))
-    return [s`${v.name} ${g.r.pick(['=', '+='])} ${g.str(sc, 1)}`, g.print(Str`${v.name}`)]
+    // (in a loop a literal: the string itself appended there doubles it each time)
+    return [s`${v.name} ${g.r.pick(['=', '+='])} ${sc.loop ? g.strLit() : g.str(sc, 1)}`, g.print(Str`${v.name}`)]
   }],
   [3, (g, sc) => [s`if (${g.bool(sc, 1)}) ${g.block(sc)}${g.r.chance(0.5) ? s` else ${g.block(sc)}` : ''}`]],
   [6, (g, sc) => counterLoop(g, sc)],

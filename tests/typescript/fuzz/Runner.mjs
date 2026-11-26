@@ -29,8 +29,8 @@ export class Runner {
       this.server.build(file, exe).then(r => (this.times.compile += Date.now() - t, r))
     ])
     const result = {file, exe, text, ranges, lies, node, built, verdicts: new Map()}
-    if (node.status !== 0 || node.signal) {
-      result.typing = `node: ${node.status ?? node.signal}\n${node.stderr.slice(0, 2000)}`
+    if (node.status !== 0 || node.signal || node.truncated) {
+      result.typing = node.truncated ? 'node: past 4 MB of output' : `node: ${node.status ?? node.signal}\n${node.stderr.slice(0, 2000)}`
       return result
     }
     if (!built.ok) {
@@ -120,11 +120,11 @@ export function traces(stdout) {
 export function execute(cmd, args, timeout) {
   return new Promise(resolve => {
     const child = spawn(cmd, args, {stdio: ['ignore', 'pipe', 'pipe'], env: {...process.env, HELDER_BACKGROUND: '1'}})
-    let stdout = '', stderr = '', hung = false
-    child.stdout.on('data', d => {if (stdout.length < 4e6) stdout += d})
+    let stdout = '', stderr = '', hung = false, truncated = false
+    child.stdout.on('data', d => {if (stdout.length < 4e6) stdout += d; else truncated = true})
     child.stderr.on('data', d => {if (stderr.length < 1e5) stderr += d})
     const timer = setTimeout(() => {hung = true; child.kill('SIGKILL')}, timeout)
     child.on('error', error => {clearTimeout(timer); resolve({status: null, signal: null, stdout, stderr: String(error), hung})})
-    child.on('close', (status, signal) => {clearTimeout(timer); resolve({status, signal, stdout, stderr, hung})})
+    child.on('close', (status, signal) => {clearTimeout(timer); resolve({status, signal, stdout, stderr, hung, truncated})})
   })
 }
