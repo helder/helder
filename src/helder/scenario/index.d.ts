@@ -15,7 +15,7 @@ export declare class Scenario {
 }
 
 // scenario({...})'s fields (TypeScript's helder/scenario the same)
-export type ScenarioDef = { name: string; boot?: () => void; time?: string | number; seed?: number; zone?: string; locale?: string; settings?: SettingsOverride; size?: number[]; dark?: boolean; loop?: number; play?: number };
+export type ScenarioDef = { name: string; boot?: () => void; time?: string | number; seed?: number; zone?: string; locale?: string; settings?: SettingsOverride; http?: Record<string, number | string | object>; size?: number[]; dark?: boolean; loop?: number; play?: number };
 
 // (TypeScript's scenario({...}): helder/scenario)
 export declare function scenario(def: ScenarioDef): Scenario;

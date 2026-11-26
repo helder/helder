@@ -4,7 +4,9 @@
 // pixel; then timed: the stills of the stories alone, of the scenarios
 // alone (cold: built; again: from frames.hframes), the cache fresh after a
 // live literal's patch, the clock fixture's screens deterministic (built
-// twice, the same beside other neighbours, its zones and locales apart), and the
+// twice, the same beside other neighbours, its zones and locales apart), the
+// weather app's request answered by its fixtures (a request none matches
+// failing its screen), and the
 // screens' program's memory with 1 and 6 scenarios (bin/scenario/results.md).
 //
 //   node tests/scenario/check.mjs <helder> <out>
@@ -184,6 +186,35 @@ if (besides > 0) failed++
 const apart = differ(first.Brussels, first.Delhi)
 console.log(`Clock/Brussels against Clock/Delhi: ${apart} pixels differ (their zones and locales)`)
 if (apart === 0) failed++
+
+// 6. http fixtures (phase 2): the weather app's request answered by its
+// scenario's fixture, a file's JSON and a 503, the same pixels as the
+// stories that pose those answers; a request none matches fails its screen,
+// named in the studio's log
+const weather = 'tests/scenario/fixtures/weather'
+const served = await studio(copy('served', [], weather), async (call, wait) => {
+  await wait(/all (\d+) screens shown/)
+  await new Promise(r => setTimeout(r, 2000))
+  const diffs = {}
+  async function saved(name) {
+    const r = await call('run.snap', {screen: name})
+    const png = Buffer.from(r.content.find(c => c.type === 'image').data, 'base64')
+    fs.writeFileSync(path.join(out, `weather-${name.replace('/', '-')}.png`), png)
+    return decode(png)
+  }
+  for (const [scene, story] of [['Weather/Ghent', 'Forecast/Ghent'], ['Weather/Offline', 'Forecast/Offline']])
+    diffs[scene] = differ(await saved(scene), await saved(story))
+  return diffs
+})
+for (const [scene, d] of Object.entries(served)) {
+  console.log(`${scene} (its http fixture) against its story: ${d} pixels differ`)
+  if (d > 0) failed++
+}
+const unmatched = copy('unmatched', [], weather)
+fs.writeFileSync(path.join(unmatched, 'app.scenario.tsx'), fs.readFileSync(path.join(unmatched, 'app.scenario.tsx'), 'utf8').replace('"api.open-meteo.com/v1/forecast*"', '"api.example.com/*"'))
+const named = await studio(unmatched, async (call, wait) => (await wait(/Weather\/Ghent crashed: ([^\n]*)/, 120))[1])
+console.log(`a request no fixture matches: Weather/Ghent crashed: ${named}`)
+if (!/no http fixture for GET https:\/\/api\.open-meteo\.com\/v1\/forecast/.test(named)) failed++
 
 // 4. memory per scenario screen: 1 scenario against 6
 const one = copy('one', ['pong.story.tsx'])

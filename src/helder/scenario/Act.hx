@@ -13,7 +13,9 @@ import helder.view.graph.Graph;
 // wall clock its time, its zone, language and settings its own
 class Act {
 	// mounted: what lets it go
-	public static function mount(sc:Scenario, root:RootView, context:ScreenContext, ui:Ui):Void->Void {
+	public static function mount(sc:Scenario, root:RootView, context:ScreenContext, ui:Ui, ?missed:(method:String, url:String) -> Void):Void->Void {
+		// (its requests its fixtures' to answer, strictly: none goes out, one unanswered its screen's failure)
+		if (context.atoms != null) context.atoms.http = new helder.async.http.Fixtures(sc.http ?? {}, #if sys Sys.getCwd() #else "" #end, missed ?? (_, _) -> {});
 		context.epoch = sc.time == null ? null : sc.time - context.now * 1000;
 		context.zone = sc.zone;
 		context.locale = sc.locale;

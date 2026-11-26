@@ -153,6 +153,39 @@ function tests() {
 		equals(fired, ["Clock"]);
 		s.reset();
 	});
+	var http = test("http: its fixtures answer its requests, none goes out; one none matches fails its screen, named", () -> {
+		var file = haxe.io.Path.join([Sys.getCwd(), "bin/scenario-test-answer.json"]);
+		helder.cli.TestCommand.mkdirs(haxe.io.Path.directory(file));
+		sys.io.File.saveContent(file, '{"from": "file"}');
+		var got = [];
+		function ask(url:String, ?method:String)
+			return () -> helder.async.Async.launch(_ -> {
+				var r = helder.async.http.Client.request(url, {method: method});
+				got.push('${r.status} ${r.text()}');
+			});
+		var h = new Host([], new HeadlessHost(), 1.0, [
+			scenario({
+				name: "Served",
+				http: {"api.test/v1/*": {a: 1}, "POST api.test/form": 201, "api.test/down": 503, "api.test/file": file},
+				boot: () -> {
+					ask("https://api.test/v1/items?x=1")();
+					ask("https://api.test/form", "POST")();
+					ask("http://api.test/down")();
+					ask("https://api.test/file")();
+				}
+			}),
+			scenario({name: "Strict", http: {"api.test/*": 200}, boot: ask("https://elsewhere.test/feed")})
+		]);
+		h.still(true);
+		h.show(["Served", "Strict"]);
+		h.frame(0);
+		turn(0.05);
+		h.frame(1);
+		equals(got, ['200 {"a":1}', "201 ", "503 ", '200 {"from": "file"}']);
+		equals([for (s in h.screens) s.failure?.message], [null, "no http fixture for GET https://elsewhere.test/feed"]);
+		for (s in h.screens)
+			s.reset();
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -160,7 +193,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story, environ, random, timers])
+	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http])
 		t.skip();
 	#end
 }
