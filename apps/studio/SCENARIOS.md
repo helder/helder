@@ -309,7 +309,23 @@ fixed in helder.
   input, the flush done: each store's values and its effects' last views
   against a fresh copy's), which do not depend on the order nodes were made
   in (`AtomsModel.test.hx`, "stores with async memos ... settled", in the
-  fuzz lane).
+  fuzz lane). It found six graph bugs, fixed, each with a regression test
+  (three on main without stores): a computation stopped at an async memo
+  that landed an equal answer never ran again; one whose answer was
+  dropped while its source waited, the source settling unchanged, showed
+  nothing; a chain marked pending through an unchanged answer stayed
+  pending; a read joining a transaction staged ahead read the committed
+  value when the merge kept the other root; a free memo let go of mid-run
+  asked again for ever; a computation reading itself overflowed the stack.
+  Two 550 s soaks then passed (125,270 cases the second). Left out of it:
+  effects reading untracked (what they show is what they read first,
+  timing's), and what the clock gap below makes.
+
+- **Unobserved memos are fresh by the write clock** (Solid 2's, and the
+  conformance suite's 8 cases helder fails as Solid 2.0.4 does): a memo
+  nothing observes, read after any write, computes again, an async one
+  asking again. Helder's unowned memos are lazy, so this shows where
+  Solid's eager ones ask at the write (Jotai's tests port: 'lazy').
 
 ## Phase 2 notes
 
