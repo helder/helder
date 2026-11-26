@@ -465,9 +465,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var w = Scheduler.world;
 		var v = answer;
 		answer = null;
-		// (a source pending again: the answer is to a question no longer asked; it waits with that source)
+		// (a source pending again: the answer is to a question no longer asked;
+		// it waits with that source, and runs again once its wait ends)
 		if (sources != null) for (src in sources) if (src.pendingIn != null) {
 			pendingIn = src.pendingIn.held();
+			stalledOn = src;
 			return;
 		}
 		var t = stagedIn != null ? stagedIn.find() : null;
@@ -595,6 +597,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			awaiting = null;
 			a.cancel();
 		}
+		var wasPending = pendingIn != null ? pendingIn.find() : null;
 		pendingIn = null;
 		release();
 		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe, savedAtoms = Atoms.current;
@@ -631,7 +634,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (waiting) wait(notReadyIn != null ? notReadyIn.find() : null)
 		else if (failed) failWith(failure, mine ? w : null)
 		else if (kind == COMPUTED && Std.isOfType(r, Awaitable)) ask(r, w)
-		else settle(r, mine ? w : null);
+		else if (!settle(r, mine ? w : null) && wasPending != null) clearPending(wasPending);
 	}
 
 	// (its function run, given the previous value; hxmc dev: in a scope of
@@ -715,15 +718,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	// (a value computed: staged in tx when its run joined one, else committed)
-	function settle(v:Null<T>, tx:Null<Tx>) {
+	// (whether it changed; unchanged, a computation pending before it ran ends its dependents' wait)
+	function settle(v:Null<T>, tx:Null<Tx>):Bool {
 		if (kind == COMPUTED) {
 			// (a comparator's error is the computation's)
 			var changed = try uninit || hasError || stagedFailed || !same(stagedIn != null ? staged : value, v) catch (e:haxe.Exception) {
 				thrown = e;
 				failWith(e.native, tx);
-				return;
+				return true;
 			};
-			if (!changed) return;
+			if (!changed) return false;
 			if (tx != null) stage(v, tx) else {
 				value = v;
 				uninit = false;
@@ -733,13 +737,14 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			}
 			// (its observers read it again)
 			if (observers != null) for (o in observers) o.state = DIRTY;
-			return;
+			return true;
 		}
 		value = v;
 		if (tx != null) {
 			if (!tx.effects.contains(this)) tx.effects.push(this);
 		} else
 			Scheduler.enqueueApply(this);
+		return true;
 	}
 
 	function failWith(e:Dynamic, tx:Null<Tx>) {

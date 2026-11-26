@@ -406,4 +406,41 @@ function tests() {
 		equals(shown, [11]);
 		st.dispose();
 	}));
+	// (its answer dropped while its source was pending, the source settling
+	// unchanged: the wait ended without a run, nothing shown for good; found by
+	// AtomsModel's settled property, a store's asks landing in their order)
+	test("an async memo whose source settles unchanged after a wait asks again and shows", () -> recording(() -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0), s2 = signal(2);
+		var n5 = memo(() -> {
+			var l = new Later<Int>();
+			asks.push({l: l, v: s0()});
+			(l : Dynamic);
+		});
+		var n12 = memo(() -> s0() + (n5() : Int));
+		var n31 = memo(() -> s2() % 2 == 0 ? s0() : n12());
+		var n32 = memo(() -> {
+			var v = n31();
+			var l = new Later<Int>();
+			asks.push({l: l, v: v});
+			(l : Dynamic);
+		});
+		effect(_ -> n32(), (v, _) -> if (Atoms.current != null) shown.push(v));
+		flush();
+		var st = new Atoms("4");
+		st.run(() -> for (n in [n31, n32, n5, n12]) attempt(() -> untrack(() -> n())));
+		flush();
+		st.run(() -> s2(1));
+		flush();
+		var rounds = 0;
+		while (asks.length > 0 && rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+		}
+		equals(st.run(() -> attempt(() -> untrack(() -> n32()))), 0);
+		equals(shown, [0]);
+		st.dispose();
+	}));
 }
