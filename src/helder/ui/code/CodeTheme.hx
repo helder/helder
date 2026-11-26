@@ -4,7 +4,9 @@ import helder.gfx.Color;
 import helder.syntax.Lexer.TokenClass;
 
 // A code editor's colours, by theme token: a StyleSheet's light and dark
-// colours of these names (without the dashes) win, else the defaults here
+// colours of these names (without the dashes) win, else a look's token for
+// it (TOKENS: the page's and the gutter's, the selection, the cursor, the
+// diagnostics', the panels'; the syntax's have none), else the defaults here
 // (GitHub's light and dark): "code-background", "code-foreground", the
 // token classes' ("code-keyword", "code-string", "code-number",
 // "code-comment", "code-type", "code-function", "code-tag",
@@ -19,6 +21,11 @@ class CodeTheme {
 		"background", "foreground", "keyword", "string", "number", "comment", "type", "function", "tag", "attribute", "punctuation", "gutter", "line-number",
 		"line-number-active", "current-line", "selection", "cursor", "indent-guide", "whitespace", "error", "warning", "info", "find-match", "find-current",
 		"panel", "panel-border", "tooltip"
+	];
+	// (the look's token each takes when the sheet gives no "code-" colour)
+	static final TOKENS:Array<Null<String>> = [
+		"surface", "fg", null, null, null, null, null, null, null, null, null, "surface", "fg3", "fg2", "well", "focusSoft", "accent", "line", "fg3", "danger",
+		"warning", "info", null, null, "raised", "edge", "raised"
 	];
 	public static inline var BACKGROUND = 0;
 	public static inline var FOREGROUND = 1;
@@ -73,8 +80,10 @@ class CodeTheme {
 		this.dark = dark;
 		var base = dark ? DARK : LIGHT;
 		var tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
+		// (a look's sheet: its palette by name, "surface" among them)
+		var look = tokens != null && tokens.exists("surface");
 		for (k in 0...NAMES.length) {
-			var c = tokens == null ? null : tokens.get("code-" + NAMES[k]);
+			var c = tokens == null ? null : tokens.get("code-" + NAMES[k]) ?? (TOKENS[k] == null || !look ? null : tokens.get(TOKENS[k]));
 			colors[k] = c != null ? c : base[k];
 		}
 	}

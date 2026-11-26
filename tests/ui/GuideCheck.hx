@@ -424,7 +424,7 @@ class GuideCheck implements Markup {
 		ui.update();
 		var area:Node = null;
 		function find(n:Node)
-			if (Std.isOfType(n, helder.ui.widgets.TextArea)) area = n else for (c in n.children) find(c);
+			if (Std.isOfType(n, helder.ui.controls.TextArea)) area = n else for (c in n.children) find(c);
 		find(ui.root);
 		ui.setFocus(area);
 		ui.keyDown("s".code, Mods.CONTROL);
@@ -444,9 +444,9 @@ class GuideCheck implements Markup {
 		var ui = window(), subject = signal("Hi"), body = signal("");
 		Render.render(<Compose subject={subject} body={body}/>, ui.root);
 		ui.update();
-		var fields:Array<helder.ui.widgets.EditableText> = [];
+		var fields:Array<helder.ui.controls.EditableText> = [];
 		function find(n:Node)
-			if (Std.isOfType(n, helder.ui.widgets.EditableText)) fields.push(cast n) else for (c in n.children) find(c);
+			if (Std.isOfType(n, helder.ui.controls.EditableText)) fields.push(cast n) else for (c in n.children) find(c);
 		find(ui.root);
 		check("text fields: three, spellcheck asked, a text area's by default",
 			fields.length == 3 && fields[0].spellcheck && fields[1].spellcheck && !fields[2].spellcheck && fields[2].secret);

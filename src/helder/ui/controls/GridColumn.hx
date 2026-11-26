@@ -1,4 +1,4 @@
-package helder.ui.widgets;
+package helder.ui.controls;
 
 // A data grid's column: its title, a detail drawn quieter beside it (a
 // type), its width (pixels; the user resizes it) and how its cells align.

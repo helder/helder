@@ -44,7 +44,8 @@ const look = Look.base.with({
 	tokens: { accent: tone("#e11d48") },
 	button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk, padding: "0 20" } } } } }),
 	switch: () => ({ knob: { borderRadius: 3 } }),
-	render: { checkbox: Lamp }
+	render: { checkbox: Lamp },
+	parts: { badge: t => ({ background: t.accent, padding: "0 6" }) }
 });
 const porch = signal(false);
 render(
@@ -53,11 +54,13 @@ render(
 			<look.Button tag="go" variant="primary">Go</look.Button>
 			<look.Button tag="soft" variant="soft">Soft</look.Button>
 			<Checkbox label="Porch" checked={porch} onChange={porch}/>
+			<view tag="badge" slot="badge"><text>3</text></view>
 		</view>
 	</Themed>,
 	UiProbe.root(320, 200)
 );
 console.log(UiProbe.background("go"), UiProbe.background("soft"), UiProbe.slot("soft"), UiProbe.padding("soft"));
+console.log(UiProbe.background("badge"), UiProbe.padding("badge"));
 UiProbe.click("lamp");
 console.log(porch());
 console.log(UiProbe.dump());

@@ -191,7 +191,7 @@ function tests() {
 			button.onClick = _ -> pressed++;
 			var label = new TextNode("Press");
 			button.append(label);
-			var field = new helder.ui.widgets.TextField();
+			var field = new helder.ui.controls.TextField();
 			field.style.width = 100;
 			field.text = "typed";
 			d.view.append(button);

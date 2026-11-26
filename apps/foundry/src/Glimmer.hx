@@ -1,6 +1,5 @@
 import helder.gfx.Color;
 import helder.ui.*;
-import helder.ui.widgets.Theme;
 
 // A cell's moment of light after an agent changed its glyph: a soft violet
 // glow that comes up quickly and fades, and a few specks rising from the
@@ -41,10 +40,10 @@ class Glimmer extends Node {
 		// (not yet its turn in a wave: wait for it)
 		if (ui != null) ui.requestFrame();
 		if (age < 0) return;
-		var violet = Theme.c("violet"), t = age / LENGTH;
+		var violet = AppLook.violet(), t = age / LENGTH;
 		var glow = age < 0.15 ? age / 0.15 : Math.pow(1 - (age - 0.15) / (LENGTH - 0.15), 1.6);
-		c.shadow(x, y, w, h, Theme.RADIUS_M, alpha(violet, 0.35 * glow), 14);
-		c.rect(x, y, w, h, Theme.RADIUS_M, alpha(violet, 0.05 * glow), 1, alpha(violet, 0.45 * glow));
+		c.shadow(x, y, w, h, AppLook.tokens.radiusPanel, alpha(violet, 0.35 * glow), 14);
+		c.rect(x, y, w, h, AppLook.tokens.radiusPanel, alpha(violet, 0.05 * glow), 1, alpha(violet, 0.45 * glow));
 		// (the specks: each from a place of its own along the letter, rising and going out)
 		for (k in 0...6) {
 			var start = k * 0.08, life = (age - start) / 0.9;

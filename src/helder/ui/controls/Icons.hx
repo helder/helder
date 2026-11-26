@@ -1,4 +1,4 @@
-package helder.ui.widgets;
+package helder.ui.controls;
 
 // lucide's icons (ISC) by name: what the neutral element icon's name
 // draws (<icon name="check"/>), each the markup inside an <svg> of 24 by

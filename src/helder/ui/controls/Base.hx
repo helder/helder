@@ -61,6 +61,8 @@ class Base {
 		part("touch-menu-item-danger", t -> row(t, true));
 		part("touch-menu-separator", t -> {background: t.line});
 		part("grid-marquee", t -> {background: t.accentSoft, borderWidth: 1, borderColor: t.accent, borderRadius: 3});
+		// (DataGrid's cell editor, over the cell)
+		part("grid-editor", t -> {background: t.surface, color: t.fg, borderRadius: 1, fontFamily: t.mono, fontSize: t.size, selection: {background: t.focusSoft}});
 		// (a composite field, an icon and a text field in a box (a search
 		// field): one ring round the box at its radius while what is in it
 		// has the focus, as macOS rings one, none on the text field)
@@ -78,6 +80,28 @@ class Base {
 		part("em", t -> {fontStyle: Italic});
 		part("code", t -> {fontFamily: "monospace", fontSize: t.size * 0.92});
 		part("field-box-input", t -> {flexGrow: 1, minWidth: 0, outlineStyle: None});
+		// (Standard's Slider: a field filled up to its value, the label
+		// inside; Segmented: options on a well, the chosen one raised;
+		// Tooltip: a small label under a control, its shortcut beside it)
+		part("slider", t -> {
+			flexDirection: Row, alignItems: Center, columnGap: t.gap, flexGrow: 1, minWidth: 0, height: t.control, padding: [0, t.pad], borderRadius: t.radius,
+			background: t.fill, color: t.fg, fontFamily: t.font, fontSize: t.size, overflow: Hidden, cursor: ResizeEW, userSelect: None, ringColor: CLEAR,
+			hover: {background: t.fillHover}, focus: ring(t)
+		});
+		part("slider-fill", t -> {background: t.accentSoft});
+		part("slider-label", t -> {color: t.fg2});
+		part("slider-value", t -> {flexShrink: 0, color: t.fg, fontFamily: t.mono, fontSize: t.small});
+		part("segmented", t -> {flexDirection: Row, padding: 2, columnGap: 2, borderRadius: t.radius + 2, background: t.fill, userSelect: None});
+		part("segmented-item", t -> {
+			flexDirection: Row, alignItems: Center, justifyContent: Center, columnGap: t.gap - 2, height: t.control - 4, padding: [0, t.pad],
+			borderRadius: t.radius, color: t.fg2, fontFamily: t.font, fontSize: t.size, cursor: Pointer, ringColor: CLEAR,
+			hover: {color: t.fg}, selected: {background: t.raised, color: t.fg, boxShadow: resting(0.08)}, focus: ring(t)
+		});
+		part("tooltip", t -> {
+			height: t.controlSm - 4, padding: [0, t.padSm], borderRadius: t.radius, background: t.raised, color: t.fg, fontFamily: t.font,
+			fontSize: t.small, borderWidth: 1, borderColor: t.edge, boxShadow: lifted(0.12)
+		});
+		part("tooltip-keys", t -> {color: t.fg3, fontFamily: t.mono});
 		return parts;
 	}
 

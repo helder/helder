@@ -9,7 +9,7 @@ import type {Image} from "helder/asset";
 import type {Edges, PointerType, Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", item: "helder.ui.menu.Menus.menuItem", separator: "helder.ui.menu.Menus.menuSeparator", submenu: "helder.ui.menu.Menus.menuSubmenu", role: "helder.ui.menu.Menus.menuRole", popup: "helder.ui.menu.Menus.popup", resolve: "helder.ui.menu.Menus.menuResolve", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
+declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", DataGrid: "helder.ui.controls.DataGrid", EditableText: "helder.ui.controls.EditableText", GridColumn: "helder.ui.controls.GridColumn", GridTheme: "helder.ui.controls.GridTheme", Icons: "helder.ui.controls.Icons", Pager: "helder.ui.controls.Pager", TextArea: "helder.ui.controls.TextArea", TextField: "helder.ui.controls.TextField", WindowButtons: "helder.ui.controls.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.controls.Pager.create", windowControlsSide: "helder.ui.controls.WindowButtons.side", item: "helder.ui.menu.Menus.menuItem", separator: "helder.ui.menu.Menus.menuSeparator", submenu: "helder.ui.menu.Menus.menuSubmenu", role: "helder.ui.menu.Menus.menuRole", popup: "helder.ui.menu.Menus.popup", resolve: "helder.ui.menu.Menus.menuResolve", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Pages: "helder.ui.controls.Pager.Pages", WindowControls: "helder.ui.controls.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Slider: "helder.ui.controls.Standard.Slider", Segmented: "helder.ui.controls.Standard.Segmented", Tooltip: "helder.ui.controls.Standard.Tooltip", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
 
 // A colour as 0xAARRGGBB (straight alpha), helder's one colour: ui's,
 // canvas' and sprite's (TypeScript's Color: a number or a CSS string).
@@ -173,12 +173,6 @@ export type StyleSheet = { rules: Rule[]; light?: unknown; dark?: unknown; lengt
 export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<StyleSheet>; background?: Read<Color>; backdrop?: Read<"none" | "blur" | "mica" | "sidebar" | "glass">; clickThrough?: Read<boolean>; shadow?: Read<boolean>; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: "standard" | "inset" | "none"; scrollbars?: string; onTop?: Read<boolean>; taskbar?: Read<boolean>; children?: UiView };
 
 export type SwitchProps<V> = { label: string; checked?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'switch_variant'>; size?: import('./style').Axis<V, 'switch_size'>; tag?: string };
-
-// A look's tokens: its colours (each a Tone, light and dark) and its other
-// values. A recipe reads them as Refs: the colours as token references
-// (Color.token, resolved with the window's light or dark values), the rest
-// as they are. A look's patch gives some of them (Look.with: tokens).
-export type Tokens = { canvas?: Tone; surface?: Tone; raised?: Tone; well?: Tone; hover?: Tone; press?: Tone; fill?: Tone; fillHover?: Tone; fillPress?: Tone; rail?: Tone; railHover?: Tone; line?: Tone; edge?: Tone; edgeStrong?: Tone; fg?: Tone; fg2?: Tone; fg3?: Tone; accent?: Tone; accentStrong?: Tone; accentSoft?: Tone; accentFg?: Tone; accentInk?: Tone; focus?: Tone; focusSoft?: Tone; danger?: Tone; dangerStrong?: Tone; dangerSoft?: Tone; dangerFg?: Tone; success?: Tone; warning?: Tone; info?: Tone; knob?: Tone; scrim?: Tone; shadow?: Tone; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
 
 // A colour token's values in light and dark: Look.tone("oklch(0.56 0.19
 // 258)", "oklch(0.64 0.17 258)"), written as CSS writes a colour (one for
@@ -880,30 +874,6 @@ export declare class Router {
 	open(url: string): void;
 }
 
-// Small controls with their look by slot (Theme's): a slider, a
-// segmented choice, a tooltip.
-//
-//   <Slider label="Weight" value={weight} min={20} max={200} step={1} onChange={weight}/>
-//   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
-//   <Tip label="Tracing letter" keys="T"><button ...><image src={eye}/></button></Tip>
-declare class Controls {
-}
-
-// A number between min and max, shown as a field (its label inside on
-// the left, its value on the right, the part up to it filled): a press
-// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
-// Home and End go to the ends. step 0: any value. Slots: "slider",
-// "slider-fill", "field-label", "slider-value".
-export declare function Slider(props: { label: string; value: Read<number>; min: number; max: number; step?: number; digits?: number; unit?: string; onChange: (arg0: number) => void; tag?: string }): View;
-// One of a few options side by side, the chosen one marked (data-on):
-// a press chooses, the arrow keys move between them. Slots: "seg",
-// "seg-item" (an icon follows its colour).
-export declare function Segmented(props: { label: string; value: Read<string>; options: Array<{ value: string; label: string; icon?: Svg; hint?: string }>; onChange: (arg0: string) => void; tag?: string; compact?: boolean }): View;
-// What a control does, said under it once the pointer rests on it (half
-// a second), with its shortcut beside it: for a button that shows only an
-// icon. A press or the pointer leaving hides it. Slots: "tip", "kbd".
-export declare function Tip(props: { label: string; keys?: string; placement?: Placement; children?: unknown }): View;
-
 // A grid of many rows, drawn (a table browser's, a spreadsheet's): only
 // the cells in view are laid out and drawn, their text cut with an
 // ellipsis and kept laid out by its text and width. A header of columns
@@ -1114,8 +1084,9 @@ export declare class GridColumn {
 }
 
 // A data grid's colours, by theme token: a StyleSheet's light and dark
-// colours named "grid-" and one of NAMES win, else the neutral defaults
-// here. Resolved once per sheet and appearance.
+// colours named "grid-" and one of NAMES win, else a look's token for it
+// (TOKENS: Look's sheet names its colours by the palette's names), else
+// the neutral defaults here. Resolved once per sheet and appearance.
 declare class GridTheme {
 	constructor();
 	// the colours now, by the indices above
@@ -1190,57 +1161,6 @@ export declare class TextArea extends EditableText {
 export declare class TextField extends EditableText {
 	constructor(text?: string);
 	onSubmit: ((arg0: string) => void) | null;
-}
-
-// Superseded by helder.ui.controls' looks (Look.base, look.with: the
-// standard controls' tokens and recipes, README.md's "Controls"); kept
-// while the studio, tables and the widgets move onto them, then gone.
-//
-// helder's default look for the widgets, the studio's (apps/studio's
-// Theme): near neutral darks with a hint of cool, the window's base the
-// darkest, panels a step up, fields and hovers above; text in three
-// greys; one blue accent for what is current or acts (the selection,
-// focus, the primary button), a tint of it for the current row; hairlines
-// between panels, hierarchy by weight and grey rather than boxes; dense
-// (12-point type, 24-point rows, 26-point buttons), radii 4 and 6, no
-// shadow but what floats. State changes at once. The fonts are named, not
-// bundled: Hanken Grotesk for the interface, Geist Mono for values (an app
-// adds them, or the system's stand in). Light and dark from the same
-// tokens: in light the page is the lightest level and panels sit on a
-// faint grey canvas, the accent a shade deeper to keep its contrast. The
-// sheet's colours follow the window's appearance; c's, which markup reads
-// inline, the screen's (ScreenContext.dark: the system's, or the <Surface
-// dark> given).
-//
-// Its parts by slot (a field's and its input's variant "tall": several
-// lines, as tall as the text): "panel", "section", "section-head", "nav-item"
-// (data-on: current), "button" (data-on, data-disabled), "primary", "seg"
-// and "seg-item", "field" with "field-label" and "field-input", "input",
-// "floating", "menu-item", "kbd", "badge", "rule" (a field's data-error:
-// its edge red); DataGrid's colours
-// (grid-*), its editor ("grid-editor") and the code view's (code-*).
-export declare class Theme {
-	static readonly UI: string;
-	static readonly CODE: string;
-	static readonly BODY: number;
-	static readonly SMALL: number;
-	static readonly MEDIUM: number;
-	static readonly RADIUS: number;
-	static readonly RADIUS_M: number;
-	static readonly ICON: number;
-	static readonly ICON_S: number;
-	static readonly HEADER: number;
-	static readonly PAD: number;
-	static readonly ROW: number;
-	static readonly FIELD: number;
-	static readonly BUTTON: number;
-	static readonly POPOVER: string;
-	static readonly dark: unknown;
-	static readonly light: unknown;
-	static c(name: string): Color;
-	// the one shadow, of what floats
-	static popover(): string;
-	static readonly sheet: StyleSheet;
 }
 
 // The window's buttons in an inset title bar (helder.os's TitleBar, a
@@ -1319,12 +1239,14 @@ declare class Eased {
 export declare class Look<V> {
 	static readonly base: Look<BaseVariants>;
 	// the token references, as inline markup takes them (color={Look.ref.fg3}): resolved with the nearest sheet's colours
-	static readonly ref: Refs;
+	// (every one there: TypeScript's Refs, a patch's, has them optional)
+	static readonly ref: Required<Refs>;
 	// the look of the subtree (Themed's)
 	static readonly context: unknown;
 	// a tone (a token's light and dark colours), as CSS writes them (one for both)
 	static tone(light: string, dark?: string): Tone;
-	readonly tokens: Tokens;
+	// (every one there, as a patch's are not)
+	readonly tokens: Required<Tokens>;
 	// this look with a patch over it (TypeScript's; Haxe's: LookOf.with, which checks the patch)
 	with: <P extends import('./style').LookPatch>(patch: P) => Look<V & import('./style').PatchVariants<P>>;
 	// the look's StyleSheet: its rules and colours, made once
@@ -1380,7 +1302,8 @@ declare class Press {
 
 // helder's standard controls, drawn by the nearest look (Themed's, else
 // Look.base), their behaviour Press's and Toggle's: a Button, a Checkbox
-// (indeterminate too) and a Switch. A look that replaces one's rendering
+// (indeterminate too), a Switch, a Slider, a Segmented choice and a
+// Tooltip. A look that replaces one's rendering
 // (render: {switch: Lamp}) is drawn instead, there and inside other
 // widgets. A look's own variants: look.Button's (Look). A control under
 // no look takes Look.base's sheet as its own.
@@ -1388,6 +1311,9 @@ declare class Press {
 //   <Button variant="primary" onPress={save}>Save</Button>
 //   <Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
 //   <Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
+//   <Slider label="Weight" value={weight} min={20} max={200} step={1} onChange={weight}/>
+//   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
+//   <Tooltip label="Tracing letter" keys="T"><Button icon={eye}/></Tooltip>
 // (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
 declare class Standard {
 }
@@ -1396,6 +1322,22 @@ export declare function Button(props: ButtonProps<BaseVariants>): View;
 export declare function PathBar(props: PathBarProps): View;
 export declare function Checkbox(props: CheckboxProps<BaseVariants>): View;
 export declare function Switch(props: SwitchProps<BaseVariants>): View;
+// A number between min and max, shown as a field (its label inside on
+// the left, its value on the right, the part up to it filled): a press
+// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
+// Home and End go to the ends. step 0: any value. Parts: "slider",
+// "slider-fill", "slider-label", "slider-value".
+export declare function Slider(props: { label: string; value: Read<number>; min: number; max: number; step?: number; digits?: number; unit?: string; onChange: (arg0: number) => void; tag?: string }): View;
+// One of a few options side by side, the chosen one selected: a press
+// chooses, the arrow keys move between them (a radio group). compact:
+// an option with an icon shows the icon alone. Parts: "segmented",
+// "segmented-item" (selected: the chosen; an icon follows its colour).
+export declare function Segmented(props: { label: string; value: Read<string>; options: Array<{ value: string; label: string; icon?: Svg; hint?: string }>; onChange: (arg0: string) => void; tag?: string; compact?: boolean }): View;
+// What a control does, said under it once the pointer rests on it (half
+// a second), with its shortcut beside it: for a button that shows only an
+// icon. A press or the pointer leaving hides it. Parts: "tooltip",
+// "tooltip-keys".
+export declare function Tooltip(props: { label: string; keys?: string; placement?: Placement; children?: unknown }): View;
 // a look for what it holds: its sheet, and the look its controls draw with
 export declare function Themed(props: { look: Look<any>; children?: unknown }): View;
 
@@ -1766,7 +1708,9 @@ declare class CodeModel {
 }
 
 // A code editor's colours, by theme token: a StyleSheet's light and dark
-// colours of these names (without the dashes) win, else the defaults here
+// colours of these names (without the dashes) win, else a look's token for
+// it (TOKENS: the page's and the gutter's, the selection, the cursor, the
+// diagnostics', the panels'; the syntax's have none), else the defaults here
 // (GitHub's light and dark): "code-background", "code-foreground", the
 // token classes' ("code-keyword", "code-string", "code-number",
 // "code-comment", "code-type", "code-function", "code-tag",

@@ -11,7 +11,7 @@ import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 import helder.view.graph.Read;
 import helder.ui.access.*;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 import Plain.*;
 import helder.image.Image;
 import fixtures.AccessFixture;
@@ -337,7 +337,7 @@ class MarkupCheck implements Markup {
 		// (an icon: lucide's of that name, an Svg drawn in the node's colour; mirrored right to left)
 		Render.render(<icon tag="ic" name="chevron-right" mirrored width={16} height={16}/>, host);
 		var ic:ImageNode = cast ui.root.find("ic");
-		check("icon: lucide's by name, parsed once", ic.svg != null && ic.svg == helder.ui.widgets.Icons.svg("chevron-right") && ic.mirrored);
+		check("icon: lucide's by name, parsed once", ic.svg != null && ic.svg == helder.ui.controls.Icons.svg("chevron-right") && ic.mirrored);
 	}
 
 	// wrapping makes, at the narrowest width keeping that many

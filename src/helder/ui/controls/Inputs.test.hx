@@ -1,4 +1,4 @@
-package helder.ui.widgets;
+package helder.ui.controls;
 
 import helder.os.Mods;
 import helder.test.Test;
@@ -8,10 +8,10 @@ import helder.view.Render;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 
-// Controls: a slider set by a press, a drag and the keys, in steps and
-// within its range; a segmented choice by a press and the arrows
+// Standard's Slider set by a press, a drag and the keys, in steps and
+// within its range; its Segmented choice by a press and the arrows
 function tests() {
-	describe("Controls", () -> {
+	describe("Inputs", () -> {
 		test("a slider: pressed, dragged, stepped", () -> {
 			var ui = new Ui(new helder.story.StoryText(), 200, 100);
 			var v = Graph.signal(10.0);
@@ -59,12 +59,12 @@ function tests() {
 private class Fixture implements helder.view.Markup {
 	public static function slider(v:Signal<Float>)
 		return <view width={200}>
-			<Controls.Slider tag="slider" label="Size" value={v} min={0} max={100} step={5} onChange={x -> v(x)}/>
+			<Standard.Slider tag="slider" label="Size" value={v} min={0} max={100} step={5} onChange={x -> v(x)}/>
 		</view>;
 
 	public static function segmented(v:Signal<String>)
 		return <view flexDirection="row">
-			<Controls.Segmented tag="pick" label="Pick" value={v} onChange={x -> v(x)} options={[
+			<Standard.Segmented tag="pick" label="Pick" value={v} onChange={x -> v(x)} options={[
 				{value: "a", label: "A"},
 				{value: "b", label: "B"},
 				{value: "c", label: "C"}

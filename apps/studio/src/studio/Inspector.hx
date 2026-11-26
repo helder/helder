@@ -6,7 +6,7 @@ import helder.ui.gesture.Gesture;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
-import helder.ui.widgets.WindowButtons.WindowControls;
+import helder.ui.controls.WindowButtons.WindowControls;
 import studio.Theme.c;
 
 using StringTools;

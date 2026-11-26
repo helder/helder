@@ -120,7 +120,7 @@ class MacAccessCheck implements Markup {
 						step = 4;
 					case 4:
 						check("Tab left to the window: its focus on", w.ui.focus != null && w.ui.focus.tag == "save", w.ui.focus == null ? "none" : w.ui.focus.tag);
-						(cast w.root.find("name") : helder.ui.widgets.EditableText).secret = true;
+						(cast w.root.find("name") : helder.ui.controls.EditableText).secret = true;
 						step = 5;
 					case 5:
 						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;

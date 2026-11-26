@@ -2,7 +2,7 @@ import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
 import helder.ui.platform.WebView;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 import sys.io.File;
 
 // The system's layers in a real window (helder.ui.layers.apple.Layers; macOS,

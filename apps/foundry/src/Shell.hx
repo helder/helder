@@ -1,13 +1,13 @@
 import helder.gfx.Color;
 import Model;
 import helder.ui.*;
-import helder.ui.widgets.Controls.Segmented;
-import helder.ui.widgets.Controls.Slider;
-import helder.ui.widgets.Controls.Tip;
-import helder.ui.widgets.Theme;
-import helder.ui.widgets.Theme.c;
-import helder.ui.widgets.WindowButtons;
-import helder.ui.widgets.WindowButtons.WindowControls;
+import helder.ui.controls.Look;
+import helder.ui.controls.Standard.Button;
+import helder.ui.controls.Standard.Segmented;
+import helder.ui.controls.Standard.Slider;
+import helder.ui.controls.Standard.Tooltip;
+import helder.ui.controls.WindowButtons;
+import helder.ui.controls.WindowButtons.WindowControls;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -30,34 +30,10 @@ class Shell implements Markup {
 		{name: "Nib", pen: {width: 120, contrast: 0.85, angle: 35, cap: Flat}}
 	];
 
-	static function t(name:String):Color
-		return Color.parse('var(--$name)');
-
-	// the theme's parts and Foundry's own (a glyph's cell, a first letter's chip)
-	public static final sheet:StyleSheet = {
-		rules: Theme.sheet.rules.concat([
-			{slot: "cell", style: {height: 56, borderRadius: Theme.RADIUS_M, background: t("well"), borderWidth: 1, borderColor: Color.TRANSPARENT, cursor: Pointer,
-				alignItems: Center, padding: [4, 2, 3, 2]}},
-			{slot: "cell", when: ["hover"], style: {background: t("hover")}},
-			{slot: "cell", when: ["data-on=true"], style: {background: t("on"), borderColor: t("accent")}},
-			{slot: "cell", when: ["focus-visible"], style: {outlineWidth: 1, outlineOffset: 1, outlineColor: t("focus")}},
-			{slot: "chip", style: {width: 28, height: 34, borderRadius: Theme.RADIUS, background: t("bg"), borderWidth: 1, borderColor: Color.TRANSPARENT,
-				cursor: Pointer, alignItems: Center, justifyContent: Center}},
-			{slot: "chip", when: ["hover"], style: {background: t("hover")}},
-			{slot: "chip", when: ["data-on=true"], style: {borderColor: t("accent")}},
-			{slot: "chip", when: ["data-done=true"], style: {background: t("on")}},
-			{slot: "starter", style: {padding: 8, borderRadius: Theme.RADIUS_M + 2, background: t("bg"), borderWidth: 1, borderColor: t("line"), cursor: Pointer}},
-			{slot: "starter", when: ["hover"], style: {background: t("hover"), borderColor: t("edge")}},
-			{slot: "starter", when: ["focus-visible"], style: {outlineWidth: 1, outlineOffset: 1, outlineColor: t("focus")}},
-		]),
-		light: Theme.light,
-		dark: Theme.dark
-	};
-
 	public static function view(ws:Workshop):View
 		return <view slot="body" flexGrow={1} flexDirection="row" minHeight={0}>
 			{sidebar(ws)}
-			<view tag="main" flexGrow={1} minWidth={0} flexDirection="column" background={c("bg")}>
+			<view tag="main" flexGrow={1} minWidth={0} flexDirection="column" background={Look.ref.surface}>
 				{header(ws)}
 				{context(ws)}
 				{board(ws)}
@@ -68,22 +44,22 @@ class Shell implements Markup {
 			{Start.view(ws)}
 		</view>;
 
-	static function icon(src:Svg, size = Theme.ICON_S):View
-		return <image src={src} width={size} height={size} flexShrink={0}/>;
+	static function icon(src:Svg, ?size:Float):View
+		return <image src={src} width={size ?? AppLook.tokens.icon} height={size ?? AppLook.tokens.icon} flexShrink={0}/>;
 
 	// ---- the glyphs
 
 	static function sidebar(ws:Workshop):View
 		return <view tag="sidebar" slot="panel" width={SIDEBAR} flexShrink={0} borderWidth="0 1 0 0">
-			<view flexDirection="row" alignItems="center" columnGap={8} dragRegion height={Theme.HEADER} padding={'0 ${Theme.PAD}'} flexShrink={0}
-				borderWidth="0 0 1 0" borderColor={c("line")}>
+			<view flexDirection="row" alignItems="center" columnGap={8} dragRegion height={AppLook.HEADER} padding={'0 ${AppLook.PAD}'} flexShrink={0}
+				borderWidth="0 0 1 0" borderColor={Look.ref.line}>
 				<Show when={WindowButtons.side() == "start"}><view flexDirection="row" alignItems="center" padding="0 6 0 0"><WindowControls/></view></Show>
-				<view width={20} height={20} borderRadius={5} background={c("accent")} alignItems="center" justifyContent="center">
-					<text color={c("accent-fg")} fontFamily={Draft.FAMILY} fontSize={14} lineHeight="14px">a</text>
+				<view width={20} height={20} borderRadius={5} background={Look.ref.accent} alignItems="center" justifyContent="center">
+					<text color={Look.ref.accentFg} fontFamily={Draft.FAMILY} fontSize={14} lineHeight="14px">a</text>
 				</view>
-				<text fontWeight={Theme.MEDIUM}>Foundry</text>
+				<text fontWeight={AppLook.tokens.medium}>Foundry</text>
 				<view flexGrow={1}/>
-				<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} color={c("fg3")} fontVariantNumeric="tabular-nums">{() -> {
+				<text fontFamily={AppLook.tokens.mono} fontSize={AppLook.tokens.small} color={Look.ref.fg3} fontVariantNumeric="tabular-nums">{() -> {
 					var p = ws.progress();
 					'${p.drawn + p.borrowed} / ${p.total}';
 				}}</text>
@@ -91,7 +67,7 @@ class Shell implements Markup {
 			<view padding="8 10 0" flexShrink={0}>
 				<view slot="field">
 					<text slot="field-label">Find</text>
-					<field tag="search" slot="field-input" fontFamily={Theme.UI} aria-label="Find a glyph" placeholder="a letter, U+0142, a name" value={ws.search}
+					<field tag="search" slot="field-input" fontFamily={AppLook.tokens.font} aria-label="Find a glyph" placeholder="a letter, U+0142, a name" value={ws.search}
 						onInput={e -> ws.search(e.text)}/>
 				</view>
 			</view>
@@ -105,8 +81,8 @@ class Shell implements Markup {
 					});
 					<view rowGap={6}>
 						<view slot="section-head" padding="0 2">
-							<text fontSize={Theme.SMALL} flexGrow={1}>{name}</text>
-							<text fontSize={Theme.SMALL} color={c("fg3")} fontFamily={Theme.CODE}>{() -> {
+							<text fontSize={AppLook.tokens.small} flexGrow={1}>{name}</text>
+							<text fontSize={AppLook.tokens.small} color={Look.ref.fg3} fontFamily={AppLook.tokens.mono}>{() -> {
 								var f = ws.face(), n = 0, all = chars();
 								for (ch in all)
 									if (Workshop.state(f, ch) != "empty") n++;
@@ -138,16 +114,16 @@ class Shell implements Markup {
 		var state = memo(() -> Workshop.state(ws.face(), char));
 		return <button tag={"glyph-" + (Charset.unencoded(char) ? char.substr(1) : Std.string(Charset.code(char)))} slot="cell" role="listitem"
 			aria-label={'${label(char)}, ${state()}'}
-			data-on={ws.current() == char ? "true" : "false"} onPress={() -> ws.open(char)}>
+			data-selected={ws.current() == char ? "" : null} onPress={() -> ws.open(char)}>
 			<view flexGrow={1} alignSelf="stretch" alignItems="center" justifyContent="center">
-				<Show when={state() != "empty"} fallback={<text fontSize={20} color={c("fg3")} opacity={0.45}>{Charset.unencoded(char) ? "" : char}</text>}>
+				<Show when={state() != "empty"} fallback={<text fontSize={20} color={Look.ref.fg3} opacity={0.45}>{Charset.unencoded(char) ? "" : char}</text>}>
 					{thumb(ws, char)}
 				</Show>
 			</view>
 			{glimmer(ws, char)}
 			<view flexDirection="row" alignItems="center" columnGap={3} height={12}>
-				<text fontSize={10} lineHeight="12px" color={c("fg3")} lineClamp={1} textOverflow="ellipsis" maxWidth={44}>{label(char)}</text>
-				<Show when={state() == "borrowed"}><view width={4} height={4} borderRadius={2} background={c("accent-ink")} aria-label="Borrowed"/></Show>
+				<text fontSize={10} lineHeight="12px" color={Look.ref.fg3} lineClamp={1} textOverflow="ellipsis" maxWidth={44}>{label(char)}</text>
+				<Show when={state() == "borrowed"}><view width={4} height={4} borderRadius={2} background={Look.ref.accentInk} aria-label="Borrowed"/></Show>
 			</view>
 		</button>;
 	}
@@ -176,11 +152,11 @@ class Shell implements Markup {
 			return Lambda.find(Charset.start, ch -> !Model.drawn(f, ch));
 		});
 		return <Show when={next() != null}>
-			<view tag="start" rowGap={8} padding="10" borderRadius={Theme.RADIUS_M} background={c("well")}>
+			<view tag="start" rowGap={8} padding="10" borderRadius={AppLook.tokens.radiusPanel} background={Look.ref.well}>
 				<view flexDirection="row" alignItems="center" columnGap={6}>
 					{icon(Icons.sparkles, 12)}
-					<text fontWeight={Theme.MEDIUM} flexGrow={1}>Start with these</text>
-					<text fontSize={Theme.SMALL} color={c("fg3")}>{() -> {
+					<text fontWeight={AppLook.tokens.medium} flexGrow={1}>Start with these</text>
+					<text fontSize={AppLook.tokens.small} color={Look.ref.fg3}>{() -> {
 						var f = ws.face();
 						'${Charset.start.filter(ch -> Model.drawn(f, ch)).length} of ${Charset.start.length}';
 					}}</text>
@@ -189,13 +165,13 @@ class Shell implements Markup {
 					<For each={Charset.start}>{(ch:Read<String>) -> {
 						var char = ch();
 						<button tag={"start-" + char} slot="chip" aria-label={"Draw " + char}
-							data-on={ws.current() == char ? "true" : "false"} data-done={Model.drawn(ws.face(), char) ? "true" : "false"}
+							data-selected={ws.current() == char ? "" : null} data-state={Model.drawn(ws.face(), char) ? "checked" : null}
 							onPress={() -> ws.open(char)}>
-							<text fontSize={16} color={Model.drawn(ws.face(), char) ? c("accent-ink") : c("fg2")}>{char}</text>
+							<text fontSize={16} color={Model.drawn(ws.face(), char) ? Look.ref.accentInk : Look.ref.fg2}>{char}</text>
 						</button>;
 					}}</For>
 				</view>
-				<text fontSize={Theme.SMALL} color={c("fg2")} lineHeight="16px">{() -> {
+				<text fontSize={AppLook.tokens.small} color={Look.ref.fg2} lineHeight="16px">{() -> {
 					var n = next() ?? "";
 					'$n · ${Charset.why.get(n) ?? ""}';
 				}}</text>
@@ -206,22 +182,22 @@ class Shell implements Markup {
 	// ---- the board
 
 	static function header(ws:Workshop):View
-		return <view tag="header" flexDirection="row" alignItems="center" columnGap={8} dragRegion height={Theme.HEADER} flexShrink={0} padding={'0 ${Theme.PAD}'}
-			borderWidth="0 0 1 0" borderColor={c("line")}>
+		return <view tag="header" flexDirection="row" alignItems="center" columnGap={8} dragRegion height={AppLook.HEADER} flexShrink={0} padding={'0 ${AppLook.PAD}'}
+			borderWidth="0 0 1 0" borderColor={Look.ref.line}>
 			<view flexDirection="row" alignItems="baseline" columnGap={8} minWidth={0} flexShrink={1}>
-				<text fontSize={15} fontWeight={Theme.MEDIUM} lineClamp={1}>{() -> label(ws.current())}</text>
-				<text color={c("fg3")} fontFamily={Theme.CODE} fontSize={Theme.SMALL}>{() -> unicode(ws.current())}</text>
+				<text fontSize={15} fontWeight={AppLook.tokens.medium} lineClamp={1}>{() -> label(ws.current())}</text>
+				<text color={Look.ref.fg3} fontFamily={AppLook.tokens.mono} fontSize={AppLook.tokens.small}>{() -> unicode(ws.current())}</text>
 			</view>
-			<Tip label="Letters to see together on the board: press one to open it, the arrows step, Alt and the arrows kern">
+			<Tooltip label="Letters to see together on the board: press one to open it, the arrows step, Alt and the arrows kern">
 				<view slot="field" width={190}>
 					<text slot="field-label">Text</text>
-					<field tag="line" slot="field-input" fontFamily={Theme.UI} aria-label="Text on the board" placeholder="nanbnc HOHAH" value={ws.line}
+					<field tag="line" slot="field-input" fontFamily={AppLook.tokens.font} aria-label="Text on the board" placeholder="nanbnc HOHAH" value={ws.line}
 						onInput={e -> {
 							ws.line(e.text);
 							ws.lineAt(-1);
 						}}/>
 				</view>
-			</Tip>
+			</Tooltip>
 			<view flexGrow={1}/>
 			<Show when={ws.layer() == "pen"}>
 				<Segmented tag="tool" label="Tool" value={ws.tool} onChange={v -> ws.tool(v)} options={[
@@ -235,11 +211,11 @@ class Shell implements Markup {
 				ws.points([]);
 				ws.selected(null);
 			}} options={[{value: "pen", label: "Pen", hint: "Pen lines"}, {value: "outline", label: "Outline", hint: "Outline points"}]}/>
-			<view width={1} height={16} background={c("line")}/>
-			<Tip label={ws.guide() ? "Hide the tracing letter" : "Show the tracing letter"} keys="T">
-				<button tag="guide" slot="button" aria-label="Tracing letter" data-on={ws.guide() ? "true" : "false"}
-					onPress={() -> ws.guide(!ws.guide.peek())}>{icon(Icons.eye)}</button>
-			</Tip>
+			<view width={1} height={16} background={Look.ref.line}/>
+			<Tooltip label={ws.guide() ? "Hide the tracing letter" : "Show the tracing letter"} keys="T">
+				<Button tag="guide" variant="ghost" label="Tracing letter" icon={Icons.eye} selected={() -> ws.guide()}
+					onPress={() -> ws.guide(!ws.guide.peek())}/>
+			</Tooltip>
 		</view>;
 
 	static function unicode(char:String):String
@@ -248,44 +224,36 @@ class Shell implements Markup {
 	// under the header: what this letter is, what can be done with it; on
 	// the right, what an agent did, else how the tool is used
 	static function context(ws:Workshop):View
-		return <view tag="context" flexDirection="row" alignItems="center" columnGap={6} height={34} flexShrink={0} padding={'0 ${Theme.PAD}'}
-			borderWidth="0 0 1 0" borderColor={c("line")}>
+		return <view tag="context" flexDirection="row" alignItems="center" columnGap={6} height={34} flexShrink={0} padding={'0 ${AppLook.PAD}'}
+			borderWidth="0 0 1 0" borderColor={Look.ref.line}>
 			{icon(Icons.component, 12)}
-			<text color={c("fg2")} lineClamp={1} textOverflow="ellipsis" flexShrink={1} minWidth={0} padding="0 4 0 0">{() -> describe(ws)}</text>
+			<text color={Look.ref.fg2} lineClamp={1} textOverflow="ellipsis" flexShrink={1} minWidth={0} padding="0 4 0 0">{() -> describe(ws)}</text>
 			<Switch>
 				<Match when={ws.layer() == "pen" && Model.outlined(Model.glyph(ws.face(), ws.current()))}>
-					<button tag="trace" slot="button" aria-label="Trace into pen lines" onPress={() -> ws.trace(ws.current())}>
-						<text>Trace into pen lines</text>
-					</button>
+					<Button tag="trace" variant="ghost" label="Trace into pen lines" onPress={() -> ws.trace(ws.current())}>Trace into pen lines</Button>
 				</Match>
 				<Match when={ws.layer() == "outline" && !Model.outlined(Model.glyph(ws.face(), ws.current()))
 					&& (Model.glyph(ws.face(), ws.current())?.lines.length ?? 0) > 0}>
-					<button tag="bake" slot="button" aria-label="Edit as outline" onPress={() -> ws.bake(ws.current())}>
-						<text>Edit as outline</text>
-					</button>
+					<Button tag="bake" variant="ghost" label="Edit as outline" onPress={() -> ws.bake(ws.current())}>Edit as outline</Button>
 				</Match>
 				<Match when={Workshop.state(ws.face(), ws.current()) == "borrowed"}>
-					<button tag="adopt" slot="button" aria-label="Make it its own" onPress={() -> ws.adopt(ws.current())}>
-						<text>Make it its own</text>
-					</button>
-					<button tag="own" slot="button" aria-label="Draw it myself" onPress={() -> ws.own(ws.current())}>
-						<text>Draw it myself</text>
-					</button>
+					<Button tag="adopt" variant="ghost" label="Make it its own" onPress={() -> ws.adopt(ws.current())}>Make it its own</Button>
+					<Button tag="own" variant="ghost" label="Draw it myself" onPress={() -> ws.own(ws.current())}>Draw it myself</Button>
 				</Match>
 			</Switch>
 			<view flexGrow={1}/>
-			<Show when={ws.agent() != ""} fallback={<text fontSize={Theme.SMALL} color={c("fg3")} lineClamp={1} flexShrink={1} minWidth={0}>{() -> hint(ws)}</text>}>
+			<Show when={ws.agent() != ""} fallback={<text fontSize={AppLook.tokens.small} color={Look.ref.fg3} lineClamp={1} flexShrink={1} minWidth={0}>{() -> hint(ws)}</text>}>
 				<view tag="agent" flexDirection="row" alignItems="center" columnGap={6} transition="fade">
-					<image src={Icons.sparkles} width={12} height={12} color={c("violet")}/>
-					<text fontSize={Theme.SMALL} color={c("violet")} fontWeight={Theme.MEDIUM}>{ws.agent}</text>
+					<image src={Icons.sparkles} width={12} height={12} color={AppLook.violet()}/>
+					<text fontSize={AppLook.tokens.small} color={AppLook.violet()} fontWeight={AppLook.tokens.medium}>{ws.agent}</text>
 				</view>
 			</Show>
-			<Tip label={ws.view().fitted ? "Zoom: Cmd/Ctrl and the wheel, or a pinch" : "Fit the letter"} keys={Keys.primary("0")} placement="below">
-				<button tag="zoom" slot="button" aria-label="Zoom" data-on={ws.view().fitted ? "false" : "true"} height={22}
+			<Tooltip label={ws.view().fitted ? "Zoom: Cmd/Ctrl and the wheel, or a pinch" : "Fit the letter"} keys={Keys.primary("0")} placement="below">
+				<button tag="zoom" slot="tool" aria-label="Zoom" data-selected={ws.view().fitted ? null : ""} height={22}
 					onPress={() -> ws.board?.fit()}>
-					<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} fontVariantNumeric="tabular-nums">{() -> Math.round(ws.view().scale * 100) + "%"}</text>
+					<text fontFamily={AppLook.tokens.mono} fontSize={AppLook.tokens.small} fontVariantNumeric="tabular-nums">{() -> Math.round(ws.view().scale * 100) + "%"}</text>
 				</button>
-			</Tip>
+			</Tooltip>
 		</view>;
 
 	// what the letter on the board is
@@ -309,10 +277,10 @@ class Shell implements Markup {
 			{boardNode(ws)}
 			{guides(ws, area)}
 			<For each={ws.kerns} keyed={false}>{(l:Read<{x:Float, y:Float, text:String}>) -> <text position="absolute" left={l().x} top={l().y}
-				fontFamily={Theme.CODE} fontSize={10} color={c("rose")} pointerEvents="none">{l().text}</text>}</For>
+				fontFamily={AppLook.tokens.mono} fontSize={10} color={AppLook.rose()} pointerEvents="none">{l().text}</text>}</For>
 			<For each={ws.measure} keyed={false}>{(l:Read<{x:Float, y:Float, text:String}>) -> <view position="absolute" left={l().x} top={l().y}
-				padding="1 5" borderRadius={4} background={c("rose")} pointerEvents="none">
-				<text fontFamily={Theme.CODE} fontSize={10} color={c("bg")}>{l().text}</text>
+				padding="1 5" borderRadius={4} background={AppLook.rose()} pointerEvents="none">
+				<text fontFamily={AppLook.tokens.mono} fontSize={10} color={Look.ref.surface}>{l().text}</text>
 			</view>}</For>
 		</view>;
 	}
@@ -349,7 +317,7 @@ class Shell implements Markup {
 					{name: "Baseline", y: v.base - 16},
 					{name: "Descenders", y: v.base - m.descender * v.scale + 4}
 				];
-			}} keyed={false}>{(g:Read<{name:String, y:Float}>) -> <text position="absolute" left={14} top={g().y} fontSize={10} color={c("fg3")}
+			}} keyed={false}>{(g:Read<{name:String, y:Float}>) -> <text position="absolute" left={14} top={g().y} fontSize={10} color={Look.ref.fg3}
 				opacity={g().y < 0 ? 0 : 1}>{g().name}</text>}</For>
 		</view>;
 
@@ -360,13 +328,13 @@ class Shell implements Markup {
 	static var sampleField:Null<Node> = null;
 
 	static function preview(ws:Workshop):View
-		return <view tag="preview" flexShrink={0} borderWidth="1 0 0 0" borderColor={c("line")} padding={'10 ${Theme.PAD} 12'} rowGap={8}>
+		return <view tag="preview" flexShrink={0} borderWidth="1 0 0 0" borderColor={Look.ref.line} padding={'10 ${AppLook.PAD} 12'} rowGap={8}>
 			<view flexDirection="row" alignItems="center" columnGap={8}>
-				<text slot="section-head" fontSize={Theme.SMALL} flexGrow={1}>Preview</text>
+				<text slot="section-head" fontSize={AppLook.tokens.small} flexGrow={1}>Preview</text>
 				<view flexDirection="row" columnGap={2}>
 					<For each={SAMPLES}>{(s:Read<String>) -> {
 						var text = s();
-						<button slot="button" aria-label={text} data-on={ws.sample() == text ? "true" : "false"} onPress={() -> {
+						<Button variant="ghost" label={text} selected={() -> ws.sample() == text} onPress={() -> {
 							ws.sample(text);
 							// (shown from its start: the field keeps its caret, at the end of what it had)
 							helder.ui.Clock.add(_ -> {
@@ -374,8 +342,8 @@ class Shell implements Markup {
 								return false;
 							});
 						}}>
-							<text fontSize={Theme.SMALL}>{text.substr(0, 3)}</text>
-						</button>;
+							<text fontSize={AppLook.tokens.small}>{text.substr(0, 3)}</text>
+						</Button>;
 					}}</For>
 				</view>
 				<Segmented tag="size" label="Size" value={() -> Std.string(Std.int(ws.size()))} onChange={v -> ws.size(Std.parseFloat(v))} options={[
@@ -387,25 +355,25 @@ class Shell implements Markup {
 			<field tag="sample" slot="input" fontFamily={Draft.FAMILY} fontSize={ws.size} aria-label="Preview text" value={ws.sample} placeholder="Type here"
 				ref={(n:Node) -> sampleField = n}
 				onInput={e -> ws.sample(e.text)}/>
-			<text fontFamily={Draft.FAMILY} fontSize={15} lineHeight="22px" color={c("fg2")} lineClamp={1} textOverflow="ellipsis">
+			<text fontFamily={Draft.FAMILY} fontSize={15} lineHeight="22px" color={Look.ref.fg2} lineClamp={1} textOverflow="ellipsis">
 				Brave little letters, jumping quickly over 1,234 dozen boxes. ÀÉÎÕÜ àéîõü ç ñ ¿? ¡!
 			</text>
 		</view>;
 
 	static function status(ws:Workshop):View
-		return <view tag="status" flexDirection="row" alignItems="center" columnGap={10} height={24} flexShrink={0} padding={'0 ${Theme.PAD}'}
-			borderWidth="1 0 0 0" borderColor={c("line")}>
-			<text fontSize={Theme.SMALL} color={c("fg3")} flexGrow={1} lineClamp={1} textOverflow="ellipsis">{ws.status}</text>
-			<text fontSize={Theme.SMALL} color={c("fg3")} fontVariantNumeric="tabular-nums">{() -> {
+		return <view tag="status" flexDirection="row" alignItems="center" columnGap={10} height={24} flexShrink={0} padding={'0 ${AppLook.PAD}'}
+			borderWidth="1 0 0 0" borderColor={Look.ref.line}>
+			<text fontSize={AppLook.tokens.small} color={Look.ref.fg3} flexGrow={1} lineClamp={1} textOverflow="ellipsis">{ws.status}</text>
+			<text fontSize={AppLook.tokens.small} color={Look.ref.fg3} fontVariantNumeric="tabular-nums">{() -> {
 				var p = ws.progress();
 				'${p.drawn} drawn, ${p.borrowed} borrowed';
 			}}</text>
-			<Tip label={ws.mcp() == "" ? "No agent server here" : "Agents connect at " + ws.mcp()} placement="above">
+			<Tooltip label={ws.mcp() == "" ? "No agent server here" : "Agents connect at " + ws.mcp()} placement="above">
 				<view flexDirection="row" alignItems="center" columnGap={5}>
-					<view width={6} height={6} borderRadius={3} background={ws.mcp() == "" ? c("fg3") : c("green")}/>
-					<text fontSize={Theme.SMALL} color={c("fg3")}>MCP</text>
+					<view width={6} height={6} borderRadius={3} background={ws.mcp() == "" ? Look.ref.fg3 : Look.ref.success}/>
+					<text fontSize={AppLook.tokens.small} color={Look.ref.fg3}>MCP</text>
 				</view>
-			</Tip>
+			</Tooltip>
 		</view>;
 
 	// how the tool on the board is used, in a few words
@@ -420,17 +388,13 @@ class Shell implements Markup {
 
 	static function inspector(ws:Workshop):View
 		return <view tag="inspector" slot="panel" width={INSPECTOR} flexShrink={0} borderWidth="0 0 0 1">
-			<view flexDirection="row" alignItems="center" columnGap={6} dragRegion height={Theme.HEADER}
-				padding={'0 ${WindowButtons.side() == "end" ? 0 : Theme.PAD} 0 ${Theme.PAD}'} flexShrink={0} borderWidth="0 0 1 0" borderColor={c("line")}>
+			<view flexDirection="row" alignItems="center" columnGap={6} dragRegion height={AppLook.HEADER}
+				padding={'0 ${WindowButtons.side() == "end" ? 0 : AppLook.PAD} 0 ${AppLook.PAD}'} flexShrink={0} borderWidth="0 0 1 0" borderColor={Look.ref.line}>
 				<view flexGrow={1}/>
 				<Show when={Workshop.canInstall()}>
-					<button tag="install" slot="button" aria-label="Install the font" onPress={ws.install}>
-						<text>Install</text>
-					</button>
+					<Button tag="install" variant="ghost" label="Install the font" onPress={ws.install}>Install</Button>
 				</Show>
-				<button tag="export" slot="primary" aria-label="Export the font" onPress={ws.export}>
-					{icon(Icons.download)}<text>Export .ttf</text>
-				</button>
+				<Button tag="export" variant="primary" label="Export the font" icon={Icons.download} onPress={ws.export}>Export .ttf</Button>
 				<WindowControls side="end"/>
 			</view>
 			<scroll flexGrow={1} minHeight={0}>
@@ -438,7 +402,7 @@ class Shell implements Markup {
 					<view slot="section-head"><text>Font</text></view>
 					<view slot="field">
 						<text slot="field-label">Name</text>
-						<field tag="name" slot="field-input" fontFamily={Theme.UI} aria-label="Font name" value={() -> ws.face().name} onInput={e -> ws.rename(e.text)}/>
+						<field tag="name" slot="field-input" fontFamily={AppLook.tokens.font} aria-label="Font name" value={() -> ws.face().name} onInput={e -> ws.rename(e.text)}/>
 					</view>
 				</view>
 				{languages(ws)}
@@ -456,23 +420,23 @@ class Shell implements Markup {
 		return <view tag="languages" slot="section">
 			<button slot="section-head" aria-label="Languages" onPress={() -> open(!open.peek())}>
 				<text flexGrow={1}>Languages</text>
-				<text color={c("fg3")} fontWeight={400}>{() -> {
+				<text color={Look.ref.fg3} fontWeight={400}>{() -> {
 					var ok = all().filter(l -> l.missing.length == 0).length;
 					'$ok of ${all().length}';
 				}}</text>
-				<image src={open() ? Icons.down : Icons.right} width={12} height={12} color={c("fg3")}/>
+				<image src={open() ? Icons.down : Icons.right} width={12} height={12} color={Look.ref.fg3}/>
 			</button>
 			<Show when={open()}>
 				<For each={all} keyed={false}>{(l:Read<{name:String, missing:Array<String>}>) -> <view flexDirection="row" alignItems="center" columnGap={6}
 					minHeight={20}>
-					<view width={6} height={6} borderRadius={3} background={l().missing.length == 0 ? c("green") : c("sand")}/>
-					<text color={c("fg2")} flexGrow={1} minWidth={0}>{l().name}</text>
+					<view width={6} height={6} borderRadius={3} background={l().missing.length == 0 ? Look.ref.success : Look.ref.warning}/>
+					<text color={Look.ref.fg2} flexGrow={1} minWidth={0}>{l().name}</text>
 					<view flexDirection="row" columnGap={2} flexWrap="wrap" justifyContent="end" maxWidth={130}>
-						<For each={() -> l().missing.slice(0, 8)} keyed={false}>{(m:Read<String>) -> <button slot="button"
+						<For each={() -> l().missing.slice(0, 8)} keyed={false}>{(m:Read<String>) -> <button slot="tool"
 							aria-label={"Open " + m()} height={18} minWidth={18} padding="0 3" onPress={() -> ws.open(m())}>
-							<text fontSize={Theme.SMALL}>{m()}</text>
+							<text fontSize={AppLook.tokens.small}>{m()}</text>
 						</button>}</For>
-						<Show when={l().missing.length > 8}><text fontSize={Theme.SMALL} color={c("fg3")}>{() -> '+${l().missing.length - 8}'}</text></Show>
+						<Show when={l().missing.length > 8}><text fontSize={AppLook.tokens.small} color={Look.ref.fg3}>{() -> '+${l().missing.length - 8}'}</text></Show>
 					</view>
 				</view>}</For>
 			</Show>
@@ -484,7 +448,7 @@ class Shell implements Markup {
 		function set(next:Pen)
 			ws.setPen(next, "pen");
 		return <view tag="pen" slot="section">
-			<view slot="section-head"><text flexGrow={1}>Pen</text><text color={c("fg3")} fontWeight={400}>{() -> Draft.weightName(p())}</text></view>
+			<view slot="section-head"><text flexGrow={1}>Pen</text><text color={Look.ref.fg3} fontWeight={400}>{() -> Draft.weightName(p())}</text></view>
 			<Segmented tag="preset" label="Pen" value={() -> preset(p())} onChange={name -> {
 				var found = Lambda.find(PRESETS, x -> x.name == name);
 				if (found != null) ws.setPen(found.pen);
@@ -532,16 +496,16 @@ class Shell implements Markup {
 		};
 		return <view tag="glyph" slot="section">
 			<view slot="section-head"><text flexGrow={1}>{() -> 'Glyph ${ws.current()}'}</text></view>
-			<view slot="fields" flexDirection="row" columnGap={6}>
+			<view flexDirection="row" columnGap={6}>
 				<Slider tag="left" label="Left" value={() -> g().left ?? 0} min={-150} max={150} step={1} onChange={v -> ws.setSpacing(ws.current(), v,
 					g().right ?? 0, "space")}/>
 				<Slider tag="right" label="Right" value={() -> g().right ?? 0} min={-150} max={150} step={1} onChange={v -> ws.setSpacing(ws.current(),
 					g().left ?? 0, v, "space")}/>
 			</view>
 			<view flexDirection="row" columnGap={4}>
-				<button tag="clear" slot="button" aria-label="Clear this glyph" onPress={() -> ws.clear(ws.current())}>
+				<Button tag="clear" variant="ghost" label="Clear this glyph" onPress={() -> ws.clear(ws.current())}>
 					{icon(Icons.trash, 12)}<text>Clear</text>
-				</button>
+				</Button>
 			</view>
 		</view>;
 	}
@@ -549,10 +513,10 @@ class Shell implements Markup {
 	static function agents(ws:Workshop):View
 		return <view tag="agents" slot="section">
 			<view slot="section-head">{icon(Icons.sparkles, 12)}<text>Draw with an agent</text></view>
-			<Show when={ws.mcp() != ""} fallback={<text color={c("fg3")} lineHeight="17px">Agents connect to the desktop app over MCP.</text>}>
-				<text color={c("fg2")} lineHeight="17px">Add Foundry to any agent that speaks MCP, as an HTTP server, then ask it for letters. Its strokes are written out here, in violet, and undo like yours.</text>
-				<view padding="6 8" borderRadius={Theme.RADIUS} background={c("well")}>
-					<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} color={c("fg2")} userSelect="text" selectable>{ws.mcp}</text>
+			<Show when={ws.mcp() != ""} fallback={<text color={Look.ref.fg3} lineHeight="17px">Agents connect to the desktop app over MCP.</text>}>
+				<text color={Look.ref.fg2} lineHeight="17px">Add Foundry to any agent that speaks MCP, as an HTTP server, then ask it for letters. Its strokes are written out here, in violet, and undo like yours.</text>
+				<view padding="6 8" borderRadius={AppLook.tokens.radius} background={Look.ref.well}>
+					<text fontFamily={AppLook.tokens.mono} fontSize={AppLook.tokens.small} color={Look.ref.fg2} userSelect="text" selectable>{ws.mcp}</text>
 				</view>
 			</Show>
 		</view>;

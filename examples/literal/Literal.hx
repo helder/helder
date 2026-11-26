@@ -65,7 +65,7 @@ class Literal implements Markup {
 
 	static function icon(markup:String):helder.ui.Svg {
 		var s = svgs.get(markup);
-		if (s == null) svgs.set(markup, s = helder.ui.Svg.parse(helder.ui.widgets.Icons.OPEN + markup + "</svg>"));
+		if (s == null) svgs.set(markup, s = helder.ui.Svg.parse(helder.ui.controls.Icons.OPEN + markup + "</svg>"));
 		return s;
 	}
 

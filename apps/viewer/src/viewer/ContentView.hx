@@ -6,7 +6,7 @@ import helder.ui.VirtualScroll;
 import helder.ui.controls.Look;
 import helder.ui.controls.Props.PathSegment;
 import helder.ui.controls.Standard;
-import helder.ui.widgets.WindowButtons;
+import helder.ui.controls.WindowButtons;
 import helder.ui.menu.Menu.MenuItem;
 import helder.ui.menu.Menus;
 import helder.ui.view.UiFlow.VirtualList;

@@ -3,7 +3,6 @@ import helder.gfx.Color;
 import Model;
 import helder.text.FontEncoder.FontPoint;
 import helder.ui.*;
-import helder.ui.widgets.Theme;
 
 // The glyph being drawn, at a size to draw it: the guides, its
 // neighbours (n either side of a small letter, H of a capital) to judge
@@ -224,10 +223,10 @@ class Board extends Node {
 	override public function paintContent(c:Canvas, x:Float, y:Float, w:Float, h:Float) {
 		frame(w, h);
 		var f = ws.value(), char = ws.current.peek(), m = f.metrics;
-		var fg = Theme.c("fg"), line = Theme.c("line"), edge = Theme.c("edge"), accent = Theme.c("accent");
+		var fg = AppLook.paint(AppLook.tokens.fg), line = AppLook.paint(AppLook.tokens.line), edge = AppLook.paint(AppLook.tokens.edge), accent = AppLook.paint(AppLook.tokens.accent);
 		var sp = span(f, char);
 		// the x-height's band, a grid when zoomed in (every 50 units, then 10), the guides
-		c.rect(x, y + py(m.xHeight), w, (m.xHeight) * scale, 0, alpha(Theme.c("well"), 0.55), 0, 0);
+		c.rect(x, y + py(m.xHeight), w, (m.xHeight) * scale, 0, alpha(AppLook.paint(AppLook.tokens.well), 0.55), 0, 0);
 		for (step in [50, 10]) {
 			var shown = Math.min(1, (scale * step - 24) / 24);
 			if (shown <= 0) continue;
@@ -260,7 +259,7 @@ class Board extends Node {
 			var v = Model.kern(f, seq.keys[i], seq.keys[i + 1]);
 			if (v == 0) continue;
 			var at = px(seq.origins[i + 1]);
-			c.rect(x + at - 1, y + py(0) + 4, 2, 10, 1, Theme.c("rose"), 0, 0);
+			c.rect(x + at - 1, y + py(0) + 4, 2, 10, 1, AppLook.rose(), 0, 0);
 			kerns.push({x: at - 12, y: py(0) + 16, text: (v > 0 ? "+" : "") + Std.string(Math.round(v))});
 		}
 		var told = haxe.Json.stringify(kerns);
@@ -284,7 +283,7 @@ class Board extends Node {
 			var sx = x + Math.round(px(side));
 			c.rect(sx, y, 1, h, 0, alpha(accent, 0.35), 0, 0);
 			var hot = drag != null && drag.kind == (side == sp.start ? "left" : "right");
-			c.rect(sx - 5, y + handleY(), 11, 22, 3, hot ? accent : Theme.c("active"), 1, hot ? accent : edge);
+			c.rect(sx - 5, y + handleY(), 11, 22, 3, hot ? accent : AppLook.paint(AppLook.tokens.press), 1, hot ? accent : edge);
 		}
 		// the ink, or an agent's lines being written out
 		var s = Ink.shape(f, char), own = Model.drawn(f, char), g = ws.glyph(char);
@@ -294,11 +293,11 @@ class Board extends Node {
 		if (a != null && a.char == char && Clock.now - a.at < AFTER + duration(g)) {
 			writeOut(c, x, y, g, f, s, Clock.now - a.at);
 			repaint();
-		} else if (s.contours.length > 0) c.path(path(s.contours, x + px(-s.dx), y + base, "ink"), own ? fg : Theme.c("fg2"));
+		} else if (s.contours.length > 0) c.path(path(s.contours, x + px(-s.dx), y + base, "ink"), own ? fg : AppLook.paint(AppLook.tokens.fg2));
 		// erasing: the line under the pointer
 		if (ws.tool.peek() == "erase" && hoverLine >= 0 && hoverLine < g.lines.length) {
 			var one = Ink.contours([g.lines[hoverLine]], f.pen);
-			c.path(Glyphs.path(one, scale, x + ox, y + base), alpha(Theme.c("red"), 0.85));
+			c.path(Glyphs.path(one, scale, x + ox, y + base), alpha(AppLook.paint(AppLook.tokens.danger), 0.85));
 		}
 		// the outline's points (the outline layer), the lines and knots (adjusting), the line being drawn
 		if (ws.layer.peek() == "outline") paintOutline(c, x, y, g) else if (ws.tool.peek() == "adjust") paintLines(c, x, y, g, f);
@@ -307,15 +306,15 @@ class Board extends Node {
 			for (name in Ink.anchorNames(char)) {
 				var a = Ink.anchor(f, char, name), ax = x + px(a.x), ay = y + py(a.y);
 				var on = drag != null && drag.kind == "anchor" && anchorName == name;
-				c.rect(ax - 5, ay - 5, 10, 10, 5, on ? Theme.c("rose") : alpha(Theme.c("bg"), 0.9), 2, Theme.c("rose"));
+				c.rect(ax - 5, ay - 5, 10, 10, 5, on ? AppLook.rose() : alpha(AppLook.paint(AppLook.tokens.surface), 0.9), 2, AppLook.rose());
 			}
 		// what a dragged point snapped to, what Alt measures
 		var sx = snapX, sy = snapY;
-		if (sx != null) c.rect(x + Math.round(px(sx)), y, 1, h, 0, alpha(Theme.c("rose"), 0.9), 0, 0);
-		if (sy != null) c.rect(x, y + Math.round(py(sy)), w, 1, 0, alpha(Theme.c("rose"), 0.9), 0, 0);
+		if (sx != null) c.rect(x + Math.round(px(sx)), y, 1, h, 0, alpha(AppLook.rose(), 0.9), 0, 0);
+		if (sy != null) c.rect(x, y + Math.round(py(sy)), w, 1, 0, alpha(AppLook.rose(), 0.9), 0, 0);
 		var me = measured;
 		if (me != null) {
-			var rose = Theme.c("rose");
+			var rose = AppLook.rose();
 			if (me.across) {
 				var my = y + Math.round(py(me.at));
 				c.rect(x, my, w, 1, 0, alpha(rose, 0.8), 0, 0);
@@ -358,7 +357,7 @@ class Board extends Node {
 	}
 
 	function writeOut(c:Canvas, x:Float, y:Float, g:Glyph, f:Face, s:Ink.Shape, age:Float) {
-		var violet = Theme.c("violet"), fg = Theme.c("fg"), d = duration(g), total = length(g);
+		var violet = AppLook.violet(), fg = AppLook.paint(AppLook.tokens.fg), d = duration(g), total = length(g);
 		var t = Math.min(1, age / d), eased = t * t * (3 - 2 * t);
 		// (where the pen is after so far along its path, in pixels)
 		function at(along:Float):Null<{x:Float, y:Float}> {
@@ -440,7 +439,7 @@ class Board extends Node {
 	function paintOutline(c:Canvas, x:Float, y:Float, g:Glyph) {
 		var outline = g.outline;
 		if (outline == null) return;
-		var accent = Theme.c("accent"), bg = Theme.c("bg"), chosen = ws.points.peek();
+		var accent = AppLook.paint(AppLook.tokens.accent), bg = AppLook.paint(AppLook.tokens.surface), chosen = ws.points.peek();
 		var p = new Path();
 		for (pts in outline) {
 			var n = pts.length, start = 0;
@@ -487,7 +486,7 @@ class Board extends Node {
 	}
 
 	function paintLines(c:Canvas, x:Float, y:Float, g:Glyph, f:Face) {
-		var accent = Theme.c("accent"), sel = ws.selected.peek();
+		var accent = AppLook.paint(AppLook.tokens.accent), sel = ws.selected.peek();
 		for (i in 0...g.lines.length) {
 			var chosen = sel != null && sel.line == i;
 			for (piece in Ink.centre(g.lines[i])) {
@@ -499,7 +498,7 @@ class Board extends Node {
 				c.path(p, null, {width: chosen && sel.knot < 0 ? 2.5 : 1.5, paint: accent, cap: Round, join: Round});
 			}
 		}
-		var bg = Theme.c("bg");
+		var bg = AppLook.paint(AppLook.tokens.surface);
 		for (i in 0...g.lines.length) {
 			var l = g.lines[i];
 			for (k in 0...l.knots.length) {

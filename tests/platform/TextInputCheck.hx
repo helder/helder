@@ -1,6 +1,6 @@
 import helder.ui.*;
 import helder.ui.UiWindow;
-import helder.ui.widgets.EditableText;
+import helder.ui.controls.EditableText;
 import helder.view.*;
 #if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 import helder.os.android.Jni;

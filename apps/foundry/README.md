@@ -221,8 +221,10 @@ of a swirl, and `glyph.blend` for a letter whose blend looks wrong in
 
 ## What it uses
 
-helder.ui and helder.view for the window: the studio's `Theme`, and its
-`Controls` (`Slider`, `Segmented`, `Tip`), made for this app. helder.text writes
+helder.ui and helder.view for the window: helder.ui.controls' standard
+controls (`Button`, `Slider`, `Segmented`, `Tooltip`) in the app's own look
+(`AppLook`: `Look.base` with Foundry's palette, sizes and parts, installed by
+`Themed`). helder.text writes
 the font (`FontEncoder`) and lays the preview out. helder.canvas draws the
 agents' pictures on the CPU. helder.os provides `Store`, and `Downloads`
 for the export. helder.async serves MCP.

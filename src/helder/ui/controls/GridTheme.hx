@@ -1,14 +1,19 @@
-package helder.ui.widgets;
+package helder.ui.controls;
 
 import helder.gfx.Color;
 
 // A data grid's colours, by theme token: a StyleSheet's light and dark
-// colours named "grid-" and one of NAMES win, else the neutral defaults
-// here. Resolved once per sheet and appearance.
+// colours named "grid-" and one of NAMES win, else a look's token for it
+// (TOKENS: Look's sheet names its colours by the palette's names), else
+// the neutral defaults here. Resolved once per sheet and appearance.
 class GridTheme {
 	public static final NAMES = [
 		"background", "foreground", "muted", "line", "header", "header-foreground", "gutter", "hover", "selection", "cursor", "edited", "added",
 		"deleted", "skeleton", "scrollbar", "resize"
+	];
+	// (the look's token each takes when the sheet gives no "grid-" colour)
+	static final TOKENS:Array<Null<String>> = [
+		"surface", "fg", "fg3", "line", "surface", "fg2", "surface", "hover", "accentSoft", "accent", null, null, null, "hover", "edge", "accent"
 	];
 	public static inline var BACKGROUND = 0;
 	public static inline var FOREGROUND = 1;
@@ -55,8 +60,10 @@ class GridTheme {
 		this.dark = dark;
 		var base = dark ? DARK : LIGHT;
 		var tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
+		// (a look's sheet: its palette by name, "surface" among them)
+		var look = tokens != null && tokens.exists("surface");
 		for (k in 0...NAMES.length) {
-			var c = tokens == null ? null : tokens.get("grid-" + NAMES[k]);
+			var c = tokens == null ? null : tokens.get("grid-" + NAMES[k]) ?? (TOKENS[k] == null || !look ? null : tokens.get(TOKENS[k]));
 			colors[k] = c != null ? c : base[k];
 		}
 		return true;

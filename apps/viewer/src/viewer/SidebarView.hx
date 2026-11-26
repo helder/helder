@@ -4,7 +4,7 @@ import helder.os.Places;
 import helder.ui.Node;
 import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
-import helder.ui.widgets.WindowButtons;
+import helder.ui.controls.WindowButtons;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
