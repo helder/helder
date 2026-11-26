@@ -115,3 +115,64 @@ lose kerning across the spaces between them, as Blink's word cache does.
 point's Line_Break class and the flags its rules read: East Asian width,
 a quotation mark's Pi or Pf, unassigned pictographs) and the sample from
 Unicode 17.0.0's files (manifest.json: their hashes).
+
+## Formatting contexts (the box tree's part)
+
+A `FormattingContext` lays out a box's contents: `layout(box, space)`
+gives the box's fragment (helder.ui.box's `Fragments`) and leaves its
+used margins and collapsing margins on the box; `intrinsic(box, space)`
+its min-content and max-content widths. They are objects a program makes
+(`Contexts`: one per inner display), so one it never makes is not in its
+binary; the box tree gives each block container its context. Flex, grid
+and table have none in this slice: they lay out as flow, noted.
+
+`Space` is LayoutNG's constraint space: the containing block's width,
+the height percentages resolve against (NaN: indefinite), a width the
+box must take (shrink-to-fit's), and the `lineWidth(y, height)` hook
+floats will narrow lines through. A box's last layout is cached on it,
+keyed on its space: the same space, the same fragment.
+
+## Block flow
+
+`BlockFlow` (CSS 2.1 §9.4.1, §10.3, §10.6, §10.7, §8.3.1):
+
+- Widths: §10.3.3's equation (auto margins centre, an over-constrained
+  box gives up its end margin, the start one in right-to-left), min-width
+  and max-width by laying the width out again, box-sizing, percentages of
+  the containing block; inline blocks shrink to fit (§10.3.9), from
+  `intrinsic`.
+- Replaced elements (§10.3.2, §10.6.2): the image's size and ratio, or
+  what width and height say, clamped.
+- Heights: specified (a percentage of an indefinite height is auto), else
+  the content's: the last line box's bottom, or the last child's bottom
+  margin edge where that margin does not collapse through; min-height and
+  max-height.
+- Margin collapsing, whole: siblings; parent and first child (no top
+  border or padding), parent and last child (and an auto height); empty
+  boxes their margins collapse through, with what is before and after
+  them, up to the parent's top when nothing came before; none across a
+  new formatting context's root (flow-root, overflow, inline blocks,
+  floats and absolutely positioned boxes, the root). Each box returns the
+  largest positive and most negative margin of its top's and its
+  bottom's sets, its parent places it from those.
+- Relative positioning (§9.4.3) moves a box's fragment, and an inline
+  box's, after its place is known.
+
+## The line builder's stand-in
+
+`WordFlow` builds a block container's `InlineContent` from the box tree
+(`addText` with each text run's DOM text, `openBox` and `closeBox`
+around inline boxes, `addAtomic` with inline blocks and replaced
+elements laid out first, `addBreak`; each item's style a `BoxInline`, one
+per box, so an item's box is its style's) and, until the inline lane's
+line builder lands, places its pieces in lines itself: filled greedily
+at the content's opportunities, collapsible spaces at a line's ends
+taking no room, line boxes as §10.8 builds them (each inline box's line
+height around its font's rounded ascent and descent, the strut,
+vertical-align's keywords, lengths and percentages, top and bottom),
+text-align with justify, text-indent, inline boxes' edges, a line of
+nothing of no height, outside markers before the first line; in logical
+order (no visual reordering). Min-content and max-content break at every
+opportunity and at forced ones. Its output is what the real builder's
+will be: line, span and text fragments with glyph runs of the shaped
+words.

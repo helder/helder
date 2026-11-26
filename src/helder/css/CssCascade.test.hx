@@ -259,6 +259,11 @@ function tests() {
 			var hinted = styles('<table><tr><td id=t bgcolor=red width=50>x</td></tr></table>', "td { width: 10px }", {hints: true});
 			equals(text(hinted, "t", "background-color"), "rgb(255, 0, 0)");
 			equals(text(hinted, "t", "width"), "10px");
+			// (body's margins: its attributes', else 8px; an author's rule over both)
+			var body = CssCascade.styles(Dom.parse('<!doctype html><body marginheight=3>'), {hints: true});
+			equals(body.computed(body.document.body).text("margin"), "3px 8px");
+			var zero = styles('<p>a</p>', "body { margin-top: 0 }", {hints: true});
+			equals(zero.computed(zero.document.body).text("margin"), "0px 8px 8px");
 		});
 		test("at-rules' data", () -> {
 			var s = styles('<p>a</p>', "@page :first { margin: 1in; size: A5; @top-center { content: 'x' } } @font-face { font-family: X; src: url(x.woff) } @counter-style thumbs { system: cyclic; symbols: '👍' }");
