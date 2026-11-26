@@ -370,7 +370,7 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		regions = d.all ? null : [];
 	}
 
-	public function redraw(i:Int) {
+	@:hxmc.unsafe(gc) public function redraw(i:Int) {
 		var d = damaged, q = quads;
 		if (d == null || i < -1) return;
 		if (i < 0) {
