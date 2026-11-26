@@ -72,11 +72,13 @@ class Parallel {
 
 	// (GpuRunner's, set with the device: calls through them reach helder.gfx only where one was set)
 	static var gpuDispatch:Null<(GpuForm, Int, hxmc.unsafe.Ptr, Array<ItemsData>) -> Void> = null;
+	static var gpuReduce:Null<(GpuForm, Int, hxmc.unsafe.Ptr, Array<ItemsData>) -> Void> = null;
 	static var gpuFetch:Null<ItemsData->Void> = null;
 	static var gpuRelease:Null<(ItemsData, Bool) -> Void> = null;
 
-	@:noCompletion public static function hooks(dispatch, fetch, release) {
+	@:noCompletion public static function hooks(dispatch, reduce, fetch, release) {
 		gpuDispatch = dispatch;
+		gpuReduce = reduce;
 		gpuFetch = fetch;
 		gpuRelease = release;
 	}
@@ -88,6 +90,12 @@ class Parallel {
 	@:noCompletion public static function dispatchGpu(form:GpuForm, n:Int, ctx:hxmc.unsafe.Ptr, items:Array<ItemsData>) {
 		if (gpuDispatch == null) throw new haxe.Exception("helder.parallel: On.Gpu: no Parallel.device with compute stages");
 		gpuDispatch(form, n, ctx, items);
+	}
+
+	// (a reduction's: its value written into ctx where its identity was)
+	@:noCompletion public static function reduceGpu(form:GpuForm, n:Int, ctx:hxmc.unsafe.Ptr, items:Array<ItemsData>) {
+		if (gpuReduce == null) throw new haxe.Exception("helder.parallel: On.Gpu: no Parallel.device with compute stages");
+		gpuReduce(form, n, ctx, items);
 	}
 
 	@:noCompletion public static function fetch(d:ItemsData) {

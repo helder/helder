@@ -118,8 +118,12 @@ class ParallelMacro {
 		var pos = Context.currentPos();
 		var f = lambda(body, what, 1);
 		var iname = f.args[0].name;
-		// (each's value none: an arrow's last value dropped)
-		var fe:Expr = {expr: EFunction(FAnonymous, {args: [{name: iname, type: macro :Int}], ret: kind == Each ? macro :Void : null, expr: f.expr}), pos: body.pos};
+		// (each's value none: an arrow's last value dropped; a reduction's block of returns its own)
+		var fx = switch f.expr.expr {
+			case EMeta({name: ":implicitReturn"}, {expr: EReturn(x = {expr: EBlock(_)})}) if (kind != Each): x;
+			case _: f.expr;
+		}
+		var fe:Expr = {expr: EFunction(FAnonymous, {args: [{name: iname, type: macro :Int}], ret: kind == Each ? macro :Void : null, expr: fx}), pos: body.pos};
 		var te = Context.withOptions({allowInlining: false}, () -> Context.typeExpr(fe));
 		var tf = switch te.expr {
 			case TFunction(tf): tf;
@@ -612,7 +616,7 @@ private class Forms {
 			}).fields);
 		}
 		fields = fields.concat((macro class {
-			static final site = new helder.parallel.Site($v{label}, $v{kind == Each});
+			static final site = new helder.parallel.Site($v{label});
 			static var chunkAt = hxmc.unsafe.Ptr.nil();
 
 			static function chunkAddress():hxmc.unsafe.Ptr {
@@ -620,19 +624,19 @@ private class Forms {
 				return chunkAt;
 			}
 		}).fields);
-		if (kind == Each) {
-			gpu();
-			// (the Gpu form's Items, by its storage slots: refilled each dispatch)
-			fields = fields.concat((macro class {
-				static final gpuItems:Array<helder.parallel.ItemsData> = [];
-			}).fields);
-		}
+		gpu();
+		// (the Gpu form's Items, by its storage slots: refilled each dispatch)
+		fields = fields.concat((macro class {
+			static final gpuItems:Array<helder.parallel.ItemsData> = [];
+		}).fields);
 		fields.push(dispatch());
 		fields = fields.concat(extra);
 		soft.flush();
-		// (the body's lanes inlined into the range's loop: measured faster, its struct values kept out of calls)
+		// (the body's lanes inlined into the range's loop: measured faster, its
+		// struct values kept out of calls; a value returned early can't be)
+		var early = !each && earlyReturn(sf.body);
 		for (f in soft.fields)
-			if ((f.name == lanes || f.name == full) && !f.access.contains(AInline)) f.access.push(AInline);
+			if ((f.name == lanes || f.name == full) && !early && !f.access.contains(AInline)) f.access.push(AInline);
 		fields = fields.concat(soft.fields);
 		var exists = try Context.getType(pack.concat([name]).join(".")) != null catch (_:Dynamic) false;
 		if (exists) return;
@@ -653,14 +657,24 @@ private class Forms {
 	}
 
 	// ---- the Gpu form: the stage again, as a compute stage in the build's
-	// languages (helder.gfx.shader's emitters): its index x + y * 65535 * 64
-	// (65535 workgroups a row of 64), the invocations past n returned, its
-	// captured values the fields of one uniform block (a Bool an Int there,
-	// the count last), its Items storage buffers at slots 1...; as data in a
-	// class of its own beside the site's (<name>_Gpu.form: a GpuForm), with
-	// the stage's CPU back end form under -D helder.soft
+	// languages (helder.gfx.shader's emitters): its index x + y * 65535 *
+	// size (65535 workgroups a row), its captured values the fields of one
+	// uniform block (a Bool an Int there, then the count, then a reduction's
+	// identity), its Items storage buffers at slots 1...; as data in a class
+	// of its own beside the site's (<name>_Gpu.form: a GpuForm), with the
+	// stage's CPU back end form under -D helder.soft. each: workgroups of 64,
+	// the invocations past n returned. A reduction: workgroups of GROUP, each
+	// invocation's EACH values (GROUP apart; the identity past n) combined,
+	// reduced in its subgroup (sum,
+	// min, max: the subgroups' own, emulated where the device has none) or
+	// stored as it is (reduce), then in workgroup memory in halves, a barrier
+	// between, into the workgroup's partial; a second stage (<name>_Gpu2)
+	// reduces partials so, until one is left (GpuRunner.reduce)
 
-	static inline var ROW = 65535 * 64;
+	public static inline var GROUP = 256;
+	// (a reduction's items an invocation: a workgroup's SPAN in a row, GROUP apart)
+	public static inline var EACH = 8;
+	public static inline var SPAN = GROUP * EACH;
 
 	// (the Gpu form's Items: their arguments, by slot)
 	var gpuStorage:Array<Int> = [];
@@ -687,8 +701,17 @@ private class Forms {
 					case _:
 				}
 		names(sf.body);
-		function unique(n:String):String
-			return helder.gfx.shader.Names.unique(n, x -> !taken.exists(x));
+		function svar(n:String, t:SType, assigned = false):SVar {
+			var v = new SVar(helder.gfx.shader.Names.unique(n, x -> !taken.exists(x)), t);
+			taken.set(v.name, true);
+			v.assigned = assigned;
+			return v;
+		}
+		var each = kind == Each;
+		var t = each ? TVoid : rt();
+		var widened = t.match(TVec(3));
+		// (a Vec3's partials a Vec4's: std430 and workgroup memory pad it anyway)
+		var wt = widened ? TVec(4) : t;
 		var fields:Array<SField> = [], scalars = new Map<SVar, SField>(), storage:Array<{v:SVar, k:Int}> = [];
 		for (k in 0...params.length) {
 			var v = sf.params[k + 1];
@@ -702,15 +725,21 @@ private class Forms {
 		}
 		var countField:SField = {name: "count", field: "count", type: TInt, position: false};
 		fields.push(countField);
+		var emptyField:SField = {name: "empty", field: "empty", type: wt, position: false};
+		if (!each) fields.push(emptyField);
 		var cs = new SStruct(lower.names.global("Captures"), "Captures", fields);
-		var id = new SVar(unique("gid_in"), TStruct(ci)), u = new SVar(unique("captured"), TStruct(cs));
+		var id = svar("gid_in", TStruct(ci)), u = svar("captured", TStruct(cs));
 		function local(v:SVar):SExpr
 			return {e: ELocal(v), t: v.type};
+		function int(i:Int):SExpr
+			return {e: EInt(i), t: TInt};
+		function bin(op:SBinop, a:SExpr, b:SExpr, t:SType):SExpr
+			return {e: EBinop(op, a, b), t: t};
 		function ex(e:SExpr):SExpr
 			return switch e.e {
 				case ELocal(v) if (scalars.exists(v)):
 					var f = scalars.get(v), x:SExpr = {e: EField(local(u), f.name), t: f.type};
-					v.type == TBool ? {e: EBinop(Ne, x, {e: EInt(0), t: TInt}), t: TBool} : x;
+					v.type == TBool ? {e: EBinop(Ne, x, int(0)), t: TBool} : x;
 				case EField(a, n): {e: EField(ex(a), n), t: e.t};
 				case ESwizzle(a, c): {e: ESwizzle(ex(a), c), t: e.t};
 				case EColumn(a, c): {e: EColumn(ex(a), c), t: e.t};
@@ -735,16 +764,11 @@ private class Forms {
 				case SStore(b, i, v): SStore(ex(b), ex(i), ex(v));
 				case _: x;
 			}
-		var index = sf.params[0];
-		var x:SExpr = {e: EField(local(id), field(ci, "x").name), t: TInt}, y:SExpr = {e: EField(local(id), field(ci, "y").name), t: TInt};
-		var at:SExpr = {e: EBinop(Add, x, {e: EBinop(Mul, y, {e: EInt(ROW), t: TInt}), t: TInt}), t: TInt};
-		var gf = new SFunction(lower.names.global(sf.name + "_gpu"), [id, u].concat([for (s in storage) s.v]), TVoid);
-		gf.fields = ["captured"].concat([for (s in storage) sf.fields[s.k]]);
-		var body:Array<SStmt> = [
-			SDecl(index, at),
-			SIf({e: EBinop(Ge, local(index), {e: EField(local(u), countField.name), t: TInt}), t: TBool}, [SReturn(null)], null)
-		];
-		gf.body = body.concat([for (s in sf.body) st(s)]);
+		var size = each ? 64 : GROUP;
+		function idField(v:SVar, n:String):SExpr
+			return {e: EField(local(v), field(ci, n).name), t: TInt};
+		function indexOf(v:SVar):SExpr
+			return bin(Add, idField(v, "x"), bin(Mul, idField(v, "y"), int(65535 * size), TInt), TInt);
 		var block:SUniform = @:privateAccess ShaderDefinition.std140(lower, cs, 0, pos);
 		var resources:Array<SResource> = [RUniform(block)];
 		var slot = 1;
@@ -757,19 +781,207 @@ private class Forms {
 			resources.push(RStorage(new SStorage(sf.fields[s.k], slot, e, true, l.offsets, l.stride, slot - 1)));
 			slot++;
 		}
-		if (slot - 1 > 8) Context.error('$what: more than 8 Items for the GPU (D3D11\'s compute stage writes 8 at most)', pos);
-		var c = new SCompute(@:privateAccess ShaderDefinition.entry(Compute, gf, ci, resources), [64, 1, 1], []);
-		var android = StringTools.startsWith(Context.definedValue("hxmc.target") ?? "", "android");
-		var code:Array<ObjectField> = [];
-		for (l in ShaderDefinition.languages(lower, pos)) {
-			var text = switch l {
-				case "glsl": new helder.gfx.shader.Glsl(android).compute(c);
-				case "wgsl": new helder.gfx.shader.Wgsl().compute(c);
-				case "msl": new helder.gfx.shader.Msl().compute(c);
-				case _: new helder.gfx.shader.Hlsl().compute(c);
+		if (slot - (each ? 1 : 0) > 8)
+			Context.error('$what: more than ${each ? 8 : 7} Items for the GPU (D3D11\'s compute stage writes 8 at most' + (each ? ")" : ", a reduction's partials one)"), pos);
+		var kinds = [], from = [], to = [];
+		function kindOf(t:SType):Int
+			return switch t {
+				case TInt: GpuKind.KINT;
+				case TBool: GpuKind.KBOOL;
+				case TFloat: GpuKind.KFLOAT;
+				case TMat4: GpuKind.KMAT;
+				case TVec(n): GpuKind.KVEC + n;
+				case _: throw "parallel";
 			}
-			code.push({field: l, expr: macro $v{text}});
+		for (k in 0...params.length) {
+			var v = sf.params[k + 1], f = scalars.get(v);
+			if (f == null) continue;
+			kinds.push(kindOf(v.type));
+			from.push(params[k].offset);
+			to.push(block.offsets[fields.indexOf(f)]);
 		}
+		// (a reduction's identity: from where dispatch writes it, its value read back there)
+		if (!each) {
+			kinds.push(kindOf(t));
+			from.push(ParallelMacro.C_EMPTY);
+			to.push(block.offsets[fields.indexOf(emptyField)]);
+		}
+		var countAt = block.offsets[fields.indexOf(countField)];
+		var slots = [for (i in 0...storage.length) i + 1];
+		var writes = [for (s in storage) args[params[s.k].arg].written];
+		gpuStorage = [for (s in storage) params[s.k].arg];
+		var index = sf.params[0];
+		// (a reduction's invocation: its EACH items of its workgroup's span, combined into acc, then the tree)
+		function items(id:SVar, acc:SVar, index:SVar, value:SVar, empty:SExpr, count:SExpr, computed:Array<SStmt>, combine:(SExpr, SExpr) -> SExpr):Array<SStmt> {
+			var k = svar("k", TInt, true), base = svar("base", TInt);
+			var group = bin(Add, idField(id, "groupX"), bin(Mul, idField(id, "groupY"), int(65535), TInt), TInt);
+			return [
+				SDecl(acc, empty),
+				SDecl(base, bin(Add, bin(Mul, group, int(SPAN), TInt), idField(id, "localIndex"), TInt)),
+				SDecl(k, int(0)),
+				SWhile(bin(Lt, local(k), int(EACH), TBool), [
+					SDecl(index, bin(Add, local(base), bin(Mul, local(k), int(GROUP), TInt), TInt)),
+					SIf(bin(Lt, local(index), count, TBool), [SDecl(value, empty)].concat(computed).concat([SAssign(acc, null, combine(local(acc), local(value)))]), null),
+					SAssign(k, null, bin(Add, local(k), int(1), TInt))
+				])
+			];
+		}
+		var gf = new SFunction(lower.names.global(sf.name + "_gpu"), [id, u].concat([for (s in storage) s.v]), TVoid);
+		gf.fields = ["captured"].concat([for (s in storage) sf.fields[s.k]]);
+		var gpuName = name + "_Gpu";
+		if (each) {
+			var body:Array<SStmt> = [SDecl(index, indexOf(id)), SIf(bin(Ge, local(index), {e: EField(local(u), countField.name), t: TInt}, TBool), [SReturn(null)], null)];
+			gf.body = body.concat([for (s in sf.body) st(s)]);
+			var c = code(gpuName, gf, ci, resources, [], false, size);
+			stage(gpuName, macro new helder.parallel.GpuForm($c, $v{block.size}, 0, $v{countAt}, $v{kinds}, $v{from}, $v{to}, $v{slots}, $v{writes}));
+			return;
+		}
+		function widen(e:SExpr):SExpr
+			return widened ? {e: ENew([e, {e: EFloat(0), t: TFloat}]), t: wt} : e;
+		function narrow(e:SExpr):SExpr
+			return widened ? {e: ESwizzle(e, "xyz"), t: t} : e;
+		function combine(a:SExpr, b:SExpr):SExpr
+			return switch kind {
+				case Sum: bin(Add, a, b, wt);
+				case Min: {e: EBuiltin("min", [a, b]), t: wt};
+				case Max: {e: EBuiltin("max", [a, b]), t: wt};
+				case _: widen({e: ECall(cf, [narrow(a), narrow(b)]), t: t});
+			}
+		var subgroup = switch kind {
+			case Sum: "subgroupAdd";
+			case Min: "subgroupMin";
+			case Max: "subgroupMax";
+			case _: null;
+		}
+		var barrier = SEval({e: EBuiltin("barrier", []), t: TVoid});
+		// (v reduced over the workgroup, its value out[the workgroup's index])
+		function tree(id:SVar, v:SVar, wg:SVar, out:SExpr):Array<SStmt> {
+			var li = idField(id, "localIndex"), ss:Array<SStmt> = [];
+			var live = int(GROUP);
+			if (subgroup != null) {
+				ss.push(SAssign(v, null, {e: EBuiltin(subgroup, [local(v)]), t: wt}));
+				ss.push(SIf(bin(Eq, idField(id, "subgroupLane"), int(0), TBool), [SStore(local(wg), idField(id, "subgroupIndex"), local(v))], null));
+				live = idField(id, "subgroups");
+			} else ss.push(SStore(local(wg), li, local(v)));
+			ss.push(barrier);
+			var half = svar("half", TInt, true);
+			var other = bin(Add, li, local(half), TInt);
+			ss.push(SDecl(half, int(GROUP >> 1)));
+			ss.push(SWhile(bin(Gt, local(half), int(0), TBool), [
+				SIf(bin(And, bin(Lt, li, local(half), TBool), bin(Lt, other, live, TBool), TBool),
+					[SStore(local(wg), li, combine({e: EIndex(local(wg), li), t: wt}, {e: EIndex(local(wg), other), t: wt}))], null),
+				barrier,
+				SAssign(half, null, bin(Div, local(half), int(2), TInt))
+			]));
+			var group = bin(Add, idField(id, "groupX"), bin(Mul, idField(id, "groupY"), int(65535), TInt), TInt);
+			ss.push(SIf(bin(Eq, li, int(0), TBool), [SStore(out, group, {e: EIndex(local(wg), int(0)), t: wt})], null));
+			return ss;
+		}
+		var l = ShaderDefinition.std430(lower, wt, "a reduction's value", pos);
+		function shared(v:SVar):SShared
+			return new SShared("part", v, wt, GROUP, l.offsets, l.stride, 0);
+		// (the body's returns its value: the last statement's as it is, the others a break out of a loop around)
+		var value = svar("value", wt, true), done = svar("done", TBool, true);
+		var early = earlyReturn(sf.body);
+		function rets(ss:Array<SStmt>):Array<SStmt> {
+			var out = [];
+			for (s in ss)
+				switch s {
+					case SReturn(e) if (!early):
+						out.push(SAssign(value, null, widen(ex(e))));
+					case SReturn(e):
+						out.push(SAssign(value, null, widen(ex(e))));
+						out.push(SAssign(done, null, {e: EBool(true), t: TBool}));
+						out.push(SBreak);
+					case SIf(c, a, b): out.push(SIf(ex(c), rets(a), b == null ? null : rets(b)));
+					case SWhile(c, b):
+						out.push(SWhile(ex(c), rets(b)));
+						if (early) out.push(SIf(local(done), [SBreak], null));
+					case s: out.push(st(s));
+				}
+			return out;
+		}
+		var computed = rets(sf.body);
+		if (early) computed = [SDecl(done, {e: EBool(false), t: TBool}), SWhile({e: EBool(true), t: TBool}, computed.concat([SBreak]))];
+		var parts = svar("parts", TStorage(wt, true)), wg = svar("part", TWorkgroup(wt));
+		var empty:SExpr = {e: EField(local(u), emptyField.name), t: wt};
+		var count:SExpr = {e: EField(local(u), countField.name), t: TInt};
+		gf.params.push(parts);
+		gf.params.push(wg);
+		gf.fields.push("parts");
+		gf.workgroup = [{name: "part", length: 0}];
+		var result = svar("result", wt, true);
+		gf.body = items(id, result, index, value, empty, count, computed, combine);
+		gf.body = gf.body.concat(tree(id, result, wg, local(parts)));
+		var partSlot = storage.length + 1;
+		resources.push(RStorage(new SStorage("parts", partSlot, wt, true, l.offsets, l.stride, partSlot - 1)));
+		// (the partials' stage: from's values (the identity past the count) reduced into to)
+		var id2 = svar("gid_in", TStruct(ci)), u2 = svar("captured", TStruct(cs));
+		var at = svar("index", TInt), v2 = svar("value", wt, true), wg2 = svar("part", TWorkgroup(wt));
+		var src = svar("from", TStorage(wt, true)), dst = svar("to", TStorage(wt, true));
+		var g2 = new SFunction(lower.names.global(sf.name + "_partials"), [id2, u2, src, dst, wg2], TVoid);
+		g2.fields = ["captured", "from", "to"];
+		g2.workgroup = [{name: "part", length: 0}];
+		var empty2:SExpr = {e: EField(local(u2), emptyField.name), t: wt}, r2v = svar("result", wt, true);
+		g2.body = items(id2, r2v, at, v2, empty2, {e: EField(local(u2), countField.name), t: TInt}, [SAssign(v2, null, {e: EIndex(local(src), local(at)), t: wt})], combine);
+		g2.body = g2.body.concat(tree(id2, r2v, wg2, local(dst)));
+		var r2:Array<SResource> = [
+			RUniform(block),
+			RStorage(new SStorage("from", 1, wt, true, l.offsets, l.stride, 0)),
+			RStorage(new SStorage("to", 2, wt, true, l.offsets, l.stride, 1))
+		];
+		var subgroups = subgroup != null;
+		var nextName = name + "_Gpu2";
+		var nextPath = pack.concat([nextName, "form"]);
+		var c2 = code(nextName, g2, ci, r2, [shared(wg2)], subgroups, size);
+		stage(nextName, macro new helder.parallel.GpuForm($c2, $v{block.size}, 0, $v{countAt}, $v{kinds}, $v{from}, $v{to}, [1, 2], [false, true]));
+		var c = code(gpuName, gf, ci, resources, [shared(wg)], subgroups, size);
+		stage(gpuName, macro new helder.parallel.GpuForm($c, $v{block.size}, 0, $v{countAt}, $v{kinds}, $v{from}, $v{to}, $v{slots.concat([partSlot])},
+			$v{writes.concat([true])}, $p{nextPath}, $v{kindOf(t)}, $v{l.stride}));
+	}
+
+	// (whether a return is other than the body's last statement)
+	static function earlyReturn(body:Array<SStmt>):Bool {
+		function scan(ss:Array<SStmt>, top:Bool):Bool {
+			for (k in 0...ss.length)
+				switch ss[k] {
+					case SReturn(_) if (!top || k != body.length - 1): return true;
+					case SIf(_, a, b) if (scan(a, false) || (b != null && scan(b, false))): return true;
+					case SWhile(_, b) if (scan(b, false)): return true;
+					case _:
+				}
+			return false;
+		}
+		return scan(body, true);
+	}
+
+	// (a stage's compute program)
+	function program(gf:SFunction, ci:SStruct, resources:Array<SResource>, shared:Array<SShared>, subgroups:Bool, size:Int):SCompute
+		return new SCompute(@:privateAccess ShaderDefinition.entry(Compute, gf, ci, resources), [size, 1, 1], shared, subgroups);
+
+	// (the last stage's CPU back end form)
+	var softForm:Null<{soft:Soft, code:Expr}> = null;
+
+	// a stage's ShaderCode: its texts in the build's languages (with
+	// subgroups, cs_5_0's only in the emulated form), its bindings, its size
+	function code(gpuName:String, gf:SFunction, ci:SStruct, resources:Array<SResource>, shared:Array<SShared>, subgroups:Bool, size:Int):Expr {
+		var c = program(gf, ci, resources, shared, subgroups, size);
+		var android = StringTools.startsWith(Context.definedValue("hxmc.target") ?? "", "android");
+		function texts(c:SCompute):Array<ObjectField>
+			return [
+				for (l in ShaderDefinition.languages(lower, pos))
+					if (l != "hlsl" || !c.subgroups || c.emulated) {
+						field: l,
+						expr: macro $v{switch l {
+							case "glsl": new helder.gfx.shader.Glsl(android).compute(c);
+							case "wgsl": new helder.gfx.shader.Wgsl().compute(c);
+							case "msl": new helder.gfx.shader.Msl().compute(c);
+							case _: new helder.gfx.shader.Hlsl().compute(c);
+						}}
+					}
+			];
+		var code = texts(c);
+		if (subgroups) code.push({field: "emulated", expr: {expr: EObjectDecl(texts(helder.gfx.shader.Subgroups.emulate(c))), pos: pos}});
 		var bindings:Array<Expr> = [];
 		for (r in resources)
 			switch r {
@@ -796,36 +1008,20 @@ private class Forms {
 				case _:
 			}
 		code.push({field: "bindings", expr: macro [$a{bindings}]});
-		code.push({field: "workgroupSize", expr: macro [64, 1, 1]});
-		var gpuName = name + "_Gpu";
-		var gfields:Array<Field> = [];
+		code.push({field: "workgroupSize", expr: macro [$v{size}, 1, 1]});
+		softForm = null;
 		if (Soft.enabled()) {
-			var form = Soft.compute(c, gpuName, pack, module);
-			code.push({field: "soft", expr: form.code});
-			gfields = gfields.concat(form.soft.fields);
+			softForm = Soft.compute(c, gpuName, pack, module);
+			code.push({field: "soft", expr: softForm.code});
 		}
-		var codeExpr:Expr = {expr: EObjectDecl(code), pos: pos};
-		var kinds = [], from = [], to = [];
-		for (k in 0...params.length) {
-			var v = sf.params[k + 1], f = scalars.get(v);
-			if (f == null) continue;
-			kinds.push(switch v.type {
-				case TInt: GpuKind.KINT;
-				case TBool: GpuKind.KBOOL;
-				case TFloat: GpuKind.KFLOAT;
-				case TMat4: GpuKind.KMAT;
-				case TVec(n): GpuKind.KVEC + n;
-				case _: throw "parallel";
-			});
-			from.push(params[k].offset);
-			to.push(block.offsets[fields.indexOf(f)]);
-		}
-		var slots = [for (i in 0...storage.length) i + 1];
-		var writes = [for (s in storage) args[params[s.k].arg].written];
-		gpuStorage = [for (s in storage) params[s.k].arg];
+		return {expr: EObjectDecl(code), pos: pos};
+	}
+
+	// (a stage's class beside the site's: its form, and the CPU back end's fields of the last code made)
+	function stage(gpuName:String, made:Expr) {
+		var gfields:Array<Field> = softForm == null ? [] : softForm.soft.fields.copy();
 		gfields = gfields.concat((macro class {
-			public static final form = new helder.parallel.GpuForm($codeExpr, $v{block.size}, 0, $v{block.offsets[fields.length - 1]}, $v{kinds}, $v{from}, $v{to},
-				$v{slots}, $v{writes});
+			public static final form = $made;
 		}).fields);
 		var exists = try Context.getType(pack.concat([gpuName]).join(".")) != null catch (_:Dynamic) false;
 		if (!exists) Context.defineType({
@@ -873,29 +1069,30 @@ private class Forms {
 				var x = macro $i{"a" + k}, y = macro $i{"a" + j};
 				body.push(macro if ($x.data() == $y.data()) throw new haxe.Exception($v{'$what: ${a.display} is also ${b.display}: an Items a body writes is passed once'}));
 			}
-		// (Auto's residency: an Items the body writes the GPU's alone, or drawn by it)
+		// (Auto's residency: an Items the body writes the GPU's alone, or drawn
+		// by it; a reduction's, an Items it reads whose values are the GPU's alone)
 		var resident:Expr = macro false;
-		for (k in 0...args.length)
-			if (args[k].written) {
-				var x = macro $i{"a" + k};
-				resident = macro $resident || $x.data().byGpu || $x.data().drawn;
-			}
-		body.push(each ? macro var form = site.pick(on, n, $resident, helder.parallel.Parallel.gpu()) : macro var form = site.pick(on, n));
+		for (k in 0...args.length) {
+			var x = macro $i{"a" + k};
+			if (each && args[k].written) resident = macro $resident || $x.data().byGpu || $x.data().drawn;
+			if (!each && args[k].stype.match(TStorage(_, _))) resident = macro $resident || $x.data().state & helder.parallel.ItemsData.CPU == 0;
+		}
+		body.push(macro var form = site.pick(on, n, $resident, helder.parallel.Parallel.gpu()));
 		body.push(macro if (n <= 0) $none);
 		// (the CPU forms' Items their values on the CPU: read back where a dispatch
 		// wrote them; written, the GPU's copies stale)
 		var toCpu = [for (k in 0...args.length) if (args[k].stype.match(TStorage(_, _))) {var x = macro $i{"a" + k}; macro $x.data().cpu();}];
 		var wrote = [for (k in 0...args.length) if (args[k].written) {var x = macro $i{"a" + k}; macro $x.data().cpuWrote();}];
-		if (!each) body = body.concat(toCpu) else body.push(macro if (form != Gpu) $b{toCpu});
+		body.push(macro if (form != Gpu) $b{toCpu});
 		body.push(macro var ctx = hxmc.unsafe.Mem.stack($v{size}));
 		body.push(macro hxmc.unsafe.Mem.setI32(ctx, $v{ParallelMacro.C_COUNT}, n));
 		for (k in 0...params.length)
 			body.push(write(k));
 		if (hasEmpty) body.push(setScalarAt(macro ctx, macro $v{ParallelMacro.C_EMPTY}, macro empty));
 		body.push(macro var t0 = site.timing ? haxe.Timer.stamp() : 0.0);
+		var fill = [for (j in 0...gpuStorage.length) {var x = macro $i{"a" + gpuStorage[j]}; macro gpuItems[$v{j}] = $x.data();}];
+		var gpuPath = pack.concat([name + "_Gpu", "form"]);
 		if (each) {
-			var fill = [for (j in 0...gpuStorage.length) {var x = macro $i{"a" + gpuStorage[j]}; macro gpuItems[$v{j}] = $x.data();}];
-			var gpuPath = pack.concat([name + "_Gpu", "form"]);
 			body.push(macro switch form {
 				case Gpu:
 					$b{fill};
@@ -912,10 +1109,17 @@ private class Forms {
 			body.push(macro if (form != Gpu) $b{wrote});
 			body.push(macro if (site.timing) site.took(form, n, haxe.Timer.stamp() - t0));
 		} else {
-			body = body.concat(wrote);
+			body.push(macro if (form != Gpu) $b{wrote});
 			var st = scalarOf(rt());
 			body.push(macro var r:$st);
-			body.push(macro if (form == Scalar) r = scalar(ctx, n) else {
+			// (the Gpu form's identity in the context, its value read back there)
+			var empty = hasEmpty ? macro null : setScalarAt(macro ctx, macro $v{ParallelMacro.C_EMPTY}, identity());
+			body.push(macro if (form == Scalar) r = scalar(ctx, n) else if (form == Gpu) {
+				$b{fill};
+				$empty;
+				helder.parallel.Parallel.reduceGpu($p{gpuPath}, n, ctx, gpuItems);
+				r = ${scalarAt(macro ctx, macro $v{ParallelMacro.C_EMPTY})};
+			} else {
 				var chunks = Std.int((n + $v{ParallelMacro.CHUNK - 1}) / $v{ParallelMacro.CHUNK});
 				var partials = hxmc.unsafe.LibC.malloc(chunks * 32);
 				hxmc.unsafe.Mem.setPtr(ctx, $v{ParallelMacro.C_PARTIALS}, partials);

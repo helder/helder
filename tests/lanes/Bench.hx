@@ -24,6 +24,7 @@ class Bench {
 		{name: "bench watch", about: "the watchers' cost a tick on a large tree", run: () -> program("WatchBench", cps(["src"]))},
 		{name: "bench parallel", about: "helder.parallel's forms on a particle step (docs/design/parallel.md)", run: () -> program("ParallelBench", cps(["src", "tests/bench/parallel"]))},
 		{name: "bench cloth", about: "examples/cloth's step in helder.parallel's forms", run: () -> program("ClothBench", cps(["src", "examples/cloth"]))},
+		{name: "bench reduce", about: "helder.parallel's reductions on the GPU against reading back", run: () -> program("ReduceBench", cps(["src"]))},
 		{name: "bench soft", about: "the CPU's canvas against the GPU on the same scenes", run: () -> {
 			program("SoftBench", uiCp());
 			run(exePath("bin/bench/SoftBench", HOST), [], ["HELDER_SOFT" => "1"]);

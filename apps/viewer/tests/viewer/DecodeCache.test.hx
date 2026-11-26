@@ -1,14 +1,27 @@
 package viewer;
 
 import haxe.io.Bytes;
+import helder.test.Gen;
 import helder.test.Test;
 import viewer.Decode.Decoded;
 
 // DecodeCache: the wanted decoded nearest first, a few at a time; over
 // the budget the farthest go (the unwanted first), never the one shown;
 // a budget too small for every neighbour does not decode them again and
-// again; a dropped file decoded again
+// again; a dropped file decoded again; and against a map (a stateful
+// property: wants, decodes landing, drops and budgets)
 function tests() {
+	test("DecodeCache against a map: the same decodes, promotions and evictions", () -> stateful({
+		setup: () -> new Model(),
+		steps: [
+			{name: "want", run: (m, c) -> m.want(c.draw(array(pick(PATHS), 0, 6)))},
+			{name: "land", run: (m, c) -> m.land(c.draw(int(0, 1 << 20))), when: m -> m.pending.length > 0},
+			{name: "drop", run: (m, c) -> m.drop(c.draw(pick(PATHS)))},
+			{name: "budget", run: (m, c) -> m.budget(c.draw(int(1, 16)) * 50)}
+		],
+		check: m -> m.check()
+	}, {cases: 150, steps: 40}));
+
 	describe("DecodeCache", () -> {
 		// (decodes that land when told: each a frame of size bytes)
 		var pending:Array<{path:String, done:Decoded->Void}> = [];
@@ -91,6 +104,14 @@ function tests() {
 			equals(c.refine("a", 0), false);
 			equals(sides, [250, 500, 0]);
 		});
+		test("the one shown alone over the budget: those no longer wanted, not started, forgotten", () -> {
+			var c = new DecodeCache(decode, 50);
+			c.parallel = 1;
+			c.want(["b", "a", "c", "d"]);
+			land("b");
+			c.want(["b"]);
+			equals([c.has("c"), c.has("d")], [false, false]);
+		});
 		test("dropped (changed on disk): decoded again when wanted", () -> {
 			var c = new DecodeCache(decode, 1000);
 			c.want(["a"]);
@@ -108,3 +129,118 @@ private function image(bytes:Int):Decoded
 		width: 1, height: 1, pixelsWidth: 1, pixelsHeight: 1, frames: [{pixels: new hxmc.Buffer(bytes), delay: 0.0}], repetitions: 0,
 		format: "PNG", fileSize: bytes, page: 0, pages: 1, error: null, errorKind: ""
 	};
+
+private final PATHS = ["a", "b", "c", "d", "e", "f", "g"];
+
+// (an entry of the model: waiting to start, running, decoded, or evicted
+// while wanted (not decoded again until the order changes))
+private enum State {
+	Waiting;
+	Running;
+	Decoded;
+	Evicted;
+}
+
+// (the cache and its model: each path's state, the decodes under way in
+// the order they started, every image 100 bytes)
+private class Model {
+	public final pending:Array<{path:String, done:Decoded->Void}> = [];
+	final real:DecodeCache;
+	final states = new Map<String, State>();
+	// (the model's decodes under way: their path, still the entry's)
+	final running:Array<{path:String, live:Bool}> = [];
+	var order:Array<String> = [];
+	var limit = 350.0;
+
+	public function new()
+		real = new DecodeCache((path, side, done) -> pending.push({path: path, done: done}), 350);
+
+	public function want(paths:Array<String>) {
+		var unique = [];
+		for (p in paths)
+			if (!unique.contains(p)) unique.push(p);
+		real.want(unique);
+		order = unique;
+		for (p => s in states)
+			if (s == Evicted) states.remove(p);
+		for (p in order)
+			if (!states.exists(p)) states.set(p, Waiting);
+		evict();
+		pump();
+	}
+
+	public function land(k:Int) {
+		k %= pending.length;
+		var p = pending.splice(k, 1)[0], r = running.splice(k, 1)[0];
+		p.done(image(100));
+		if (r.live) {
+			states.set(r.path, Decoded);
+			evict();
+		}
+		pump();
+	}
+
+	public function drop(path:String) {
+		real.drop(path);
+		states.remove(path);
+		for (r in running)
+			if (r.path == path) r.live = false;
+	}
+
+	public function budget(b:Float) {
+		real.budget = limit = b;
+		want(order);
+	}
+
+	public function check() {
+		equals([for (p in pending) p.path], [for (r in running) r.path], "the decodes started");
+		// (which of the unwanted goes first is the map's order: their count the same, the real's taken)
+		var unwanted = [for (p => s in states) if (s == Decoded && !order.contains(p)) p];
+		var kept = [for (p in PATHS) if (real.get(p) != null && !order.contains(p)) p];
+		equals(kept.length, unwanted.length, "the unwanted decoded kept");
+		for (p in unwanted)
+			states.remove(p);
+		for (p in kept)
+			states.set(p, Decoded);
+		for (p in PATHS) {
+			var s = states.get(p);
+			equals(real.has(p), s != null, '$p kept');
+			equals(real.get(p) != null, s == Decoded, '$p decoded');
+		}
+		equals(real.used, 100.0 * Lambda.count(states, s -> s == Decoded), "used");
+		var shown = order.length > 0 && states.get(order[0]) == Decoded ? 1 : 0;
+		assert(real.used <= limit || real.used == 100 * shown, 'used ${real.used} over ${limit}');
+	}
+
+	// (the farthest decoded over the budget, the unwanted first; the one shown never)
+	function evict() {
+		while (100.0 * Lambda.count(states, s -> s == Decoded) > limit) {
+			var victim:Null<String> = null, rank = -1;
+			for (p => s in states) {
+				if (s != Decoded) continue;
+				var r = order.indexOf(p);
+				if (r == 0) continue;
+				var k = r < 0 ? 1 << 30 : r;
+				if (k > rank) {
+					rank = k;
+					victim = p;
+				}
+			}
+			if (victim == null) break;
+			if (rank < 1 << 30) states.set(victim, Evicted) else states.remove(victim);
+		}
+		for (p => s in states)
+			if (s == Waiting && !order.contains(p)) states.remove(p);
+	}
+
+	// (the next wanted waiting, two at a time)
+	function pump() {
+		for (p in order) {
+			if (running.length >= 2) return;
+			if (states.get(p) != Waiting) continue;
+			states.set(p, Running);
+			running.push({path: p, live: true});
+		}
+	}
+}
+

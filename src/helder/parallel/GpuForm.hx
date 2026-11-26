@@ -2,7 +2,7 @@ package helder.parallel;
 
 #if !macro
 // A call site's GPU form, as data (ParallelMacro writes one beside each
-// each and kernel): the compute stage's code in the build's languages, its
+// site, two for a reduction): the compute stage's code in the build's languages, its
 // uniform block (the captures' values and the count, at their std140
 // offsets) and its storage buffers' slots. GpuRunner dispatches it; data
 // alone, so that a program that never sets Parallel.device compiles none
@@ -23,9 +23,16 @@ class GpuForm {
 	// each Items: its storage slot, whether the stage writes it
 	public final slots:Array<Int>;
 	public final writes:Array<Bool>;
+	// (a reduction's) the stage reducing its partials (the last of them its
+	// value), its value's kind (read back into the context at the identity's
+	// place: the last of kinds), a partial's bytes
+	public final next:Null<GpuForm>;
+	public final value:Int;
+	public final stride:Int;
 	// (GpuRunner's: the pipeline made on a device, the block's bytes)
 	public var pipeline:Any = null;
 	public var device:Any = null;
+	public var emulated = false;
 	public final bytes:haxe.io.Bytes;
 
 	public static inline var KINT = 0;
@@ -34,7 +41,7 @@ class GpuForm {
 	public static inline var KMAT = 3;
 	public static inline var KVEC = 10;
 
-	public function new(code, block, binding, count, kinds, from, to, slots, writes) {
+	public function new(code, block, binding, count, kinds, from, to, slots, writes, ?next, value = 0, stride = 0) {
 		this.code = code;
 		this.block = block;
 		this.binding = binding;
@@ -44,6 +51,9 @@ class GpuForm {
 		this.to = to;
 		this.slots = slots;
 		this.writes = writes;
+		this.next = next;
+		this.value = value;
+		this.stride = stride;
 		bytes = haxe.io.Bytes.alloc(block);
 	}
 }

@@ -10,9 +10,11 @@ import helder.view.graph.Graph;
 
 // A VirtualGrid under random input (a stateful property, headless):
 // wheel scrolls, resizes, presses on cells (Shift, the secondary key),
-// the keyboard's moves. After each step the scroll stays within the
-// content, the selection and the focus are items of the grid, and after
-// a key the focused item's cell is in view.
+// the keyboard's moves, items put in, taken out (the selection pruned, as
+// its owner does) and moved. After each step the scroll stays within the
+// content, the cells made are the items' at their places, the selection
+// and the focus are items of the grid, and after a key the focused item's
+// cell is in view.
 function tests() {
 	test("a VirtualGrid's scroll, selection and focus under random input", () -> stateful({
 		setup: () -> new Fixture(),
@@ -20,7 +22,10 @@ function tests() {
 			{name: "wheel", run: (f, c) -> f.wheel(c.draw(int(-2000, 2000)))},
 			{name: "resize", run: (f, c) -> f.resize(c.draw(int(40, 900)), c.draw(int(40, 900)))},
 			{name: "press", run: (f, c) -> f.press(c.draw(int(0, 999)), c.draw(pick(["", "shift", "meta", "control"])))},
-			{name: "key", run: (f, c) -> f.key(c.draw(pick([for (k in KEYS.keys()) k])), c.draw(bool()))}
+			{name: "key", run: (f, c) -> f.key(c.draw(pick([for (k in KEYS.keys()) k])), c.draw(bool()))},
+			{name: "insert", run: (f, c) -> f.insert(c.draw(int(0, 1 << 20)), c.draw(oneOf([int(1, 3), int(1, 40)])))},
+			{name: "remove", run: (f, c) -> f.remove(c.draw(int(0, 1 << 20)), c.draw(oneOf([int(1, 3), int(1, 40)]))), when: f -> f.items.length > 0},
+			{name: "move", run: (f, c) -> f.move(c.draw(int(0, 1 << 20)), c.draw(int(0, 1 << 20))), when: f -> f.items.length > 1}
 		],
 		check: f -> f.check(),
 		teardown: f -> f.dispose()
@@ -44,7 +49,9 @@ private final MODS = ["shift" => [Key.SHIFT, Mods.SHIFT], "meta" => [Key.META, M
 private class Fixture {
 	final ui:Ui;
 	final grid:GridScroll;
-	final items = [for (i in 0...500) "f" + i];
+	public var items = [for (i in 0...500) "f" + i];
+	final each = Graph.signal([for (i in 0...500) "f" + i]);
+	var next = 500;
 	final close:() -> Void;
 	var keyed = false;
 
@@ -53,7 +60,7 @@ private class Fixture {
 		ui = new Ui(new helder.story.StoryText(), 400, 300);
 		var g:Null<GridScroll> = null;
 		close = Render.render(<view flexGrow={1}>
-			<VirtualGrid each={items} by={f -> f} cellWidth={90} cellHeight={70} ref={r -> g = r}>
+			<VirtualGrid each={each} by={f -> f} cellWidth={90} cellHeight={70} ref={r -> g = r}>
 				{(f, i) -> <view flexGrow={1}/>}
 			</VirtualGrid>
 		</view>, ui.root);
@@ -66,6 +73,26 @@ private class Fixture {
 		var b = grid.windowBounds();
 		ui.wheel(b.x + b.width / 2, b.y + b.height / 2, 0, dy);
 		settle();
+	}
+
+	public function insert(at:Int, n:Int) {
+		at %= items.length + 1;
+		for (k in 0...n)
+			items.insert(at + k, "f" + next++);
+		write();
+	}
+
+	public function remove(at:Int, n:Int) {
+		items.splice(at % items.length, n);
+		write();
+		grid.selection.prune();
+		settle();
+	}
+
+	public function move(from:Int, to:Int) {
+		var f = items.splice(from % items.length, 1)[0];
+		items.insert(to % (items.length + 1), f);
+		write();
 	}
 
 	public function resize(w:Int, h:Int) {
@@ -102,6 +129,11 @@ private class Fixture {
 	public function check() {
 		var max = @:privateAccess Scrolling.maxScroll(grid, false);
 		assert(grid.scrollY >= 0 && grid.scrollY <= max + 0.5, 'scrollY ${grid.scrollY} outside 0 to $max');
+		for (r in grid.rows()) {
+			var g:{keys:Array<String>, cells:Array<Dynamic>} = r.data, start = r.index * grid.columns;
+			equals(g.keys, items.slice(start, start + grid.columns), 'row ${r.index}\'s keys');
+			equals([for (c in g.cells) c.item], items.slice(start, start + grid.columns), 'row ${r.index}\'s items');
+		}
 		var s = grid.selection;
 		for (k in s.keys()) assert(items.contains(k), 'selected $k, not an item');
 		equals(s.size(), s.keys().length, "the selection's size");
@@ -122,6 +154,11 @@ private class Fixture {
 
 	public function dispose()
 		close();
+
+	function write() {
+		each(items.copy());
+		settle();
+	}
 
 	function settle() {
 		Graph.flush();

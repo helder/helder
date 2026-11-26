@@ -3,6 +3,7 @@ package helder.ui.code;
 import helder.syntax.Lexer;
 import helder.syntax.Scanner.Lang;
 import helder.syntax.Transaction;
+import helder.test.Gen;
 import helder.test.Test;
 import helder.ui.code.CodeLanguage;
 import helder.ui.code.CodeModel;
@@ -63,6 +64,17 @@ function tests() {
 	});
 
 	describe("History", () -> {
+		test("edits, typing, undo and redo against a stack of strings", () -> stateful({
+			setup: () -> new History(),
+			steps: [
+				{name: "edit", run: (h, c) -> h.edit([for (_ in 0...c.draw(int(1, 3))) {at: c.draw(int(0, 1 << 20)), n: c.draw(int(0, 40)), text: c.draw(PIECE)}])},
+				{name: "type", run: (h, c) -> h.type(c.draw(pick(["a", "b", " ", "é"])))},
+				{name: "select", run: (h, c) -> h.select(c.draw(int(0, 1 << 20)))},
+				{name: "undo", run: (h, c) -> h.undo()},
+				{name: "redo", run: (h, c) -> h.redo()}
+			],
+			check: h -> h.check()
+		}, {cases: 100, steps: 40}));
 		test("a run of typing undone as one, a space ending it; the selections restored", () -> {
 			var m = new CodeModel("");
 			for (c in "hello world".split("")) m.type(c);
@@ -385,3 +397,109 @@ private function lineClasses(m:CodeModel, l:Int):Array<String> {
 private final TSX_SAMPLE = "import { signal } from \"helder/view\";\n\nconst count = signal(0);\n/* a comment\n over lines */\nexport function App(props: { title: string }) {\n\tconst re = /a[/]b/g, t = `x ${count()} y`;\n\treturn (\n\t\t<view grow={1} align-items=\"center\">\n\t\t\t<text font-size={32}>{count}</text>\n\t\t\t<view:button onPress={() => count((c) => c + 1)}>+1</view:button>\n\t\t\t{props.title}\n\t\t</view>\n\t);\n}\n";
 
 private final HX_SAMPLE = "package a;\n\n@:keep class A implements Markup {\n\tstatic var s = \"multi\nline\";\n\tfunction v() {\n\t\tvar r = ~/[<]/g;\n\t\t#if debug trace('x ${s} $s'); #end\n\t\treturn <view padding={8}>\n\t\t\t{[for (i in 0...3) <text>{'$${i} \"q\"'}</text>]}\n\t\t\t<Show when={x < 3}/>\n\t\t</view>;\n\t}\n}\n";
+
+private final PIECES = ["a", "bc\n", "\n", "é", "😀", "x\ny\nz", "longer line of text ", "\t{\n}\n", ""];
+private final PIECE:helder.test.Gen<String> = c -> c.draw(pick(PIECES)) + (c.draw(int(0, 9)) == 9 ? StringTools.lpad("", "w", 1100) : "");
+
+// (a CodeModel and its model: the text, the caret, the undo groups as the
+// texts and carets before and after, a run of typing open)
+private class History {
+	final m = new CodeModel([for (p in PIECES) p].join(""));
+	var text = [for (p in PIECES) p].join("");
+	var caret = 0;
+	final undos:Array<Group> = [];
+	final redos:Array<Group> = [];
+
+	public function new() {}
+
+	// (changes at places in order, not overlapping, off the middle of a surrogate pair)
+	public function edit(spans:Array<{at:Int, n:Int, text:String}>) {
+		var changes = [], from = 0;
+		for (s in spans) {
+			if (from > text.length) break;
+			var a = off(from + s.at % (text.length - from + 1)), b = off(Std.int(Math.min(a + s.n, text.length)));
+			changes.push(new Change(a, b, s.text));
+			from = b + 1;
+		}
+		var before = text, at = caret;
+		var done = m.apply(changes);
+		var k = changes.length;
+		while (--k >= 0)
+			text = text.substr(0, changes[k].start) + changes[k].text + text.substr(changes[k].end);
+		var delta = 0;
+		for (c in changes) {
+			if (at < c.start || at == c.start && c.end > c.start) break;
+			if (at < c.end) {
+				delta = c.start + delta + c.text.length - at;
+				break;
+			}
+			delta += c.text.length - (c.end - c.start);
+		}
+		caret = at + delta;
+		if (text != before || done) push(before, at, false);
+	}
+
+	public function type(s:String) {
+		var before = text, at = caret;
+		m.type(s);
+		text = text.substr(0, caret) + s + text.substr(caret);
+		caret += s.length;
+		var last = undos[undos.length - 1];
+		if (last != null && last.typing && last.open && last.afterCaret == at) {
+			last.after = text;
+			last.afterCaret = caret;
+			redos.resize(0);
+		} else push(before, at, true);
+		if (s == " ") undos[undos.length - 1].open = false;
+	}
+
+	public function select(p:Int) {
+		caret = off(p % (text.length + 1));
+		m.select(caret, caret);
+	}
+
+	public function undo() {
+		equals(m.undo(), undos.length > 0, "undo");
+		var g = undos.pop();
+		if (g == null) return;
+		g.open = false;
+		text = g.before;
+		caret = g.beforeCaret;
+		redos.push(g);
+	}
+
+	public function redo() {
+		equals(m.redo(), redos.length > 0, "redo");
+		var g = redos.pop();
+		if (g == null) return;
+		text = g.after;
+		caret = g.afterCaret;
+		undos.push(g);
+	}
+
+	public function check() {
+		equals(m.text(), text, "text");
+		equals(m.length, text.length, "length");
+		var lines = text.split("\n");
+		equals(m.lineCount, lines.length, "lines");
+		equals([for (l in 0...m.lineCount) m.line(l)], lines, "lines' texts");
+		equals(m.sels.length, 1, "one selection");
+		equals(m.primary.head, caret, "caret");
+		equals(m.primary.anchor, caret, "caret");
+		equals(m.rope.utf8Length, haxe.io.Bytes.ofString(text).length, "UTF-8 length");
+		for (len in m.rope.chunkLengths())
+			assert(len <= Rope.MAX, 'a chunk of $len');
+	}
+
+	function push(before:String, at:Int, typing:Bool) {
+		if (undos.length > 0) undos[undos.length - 1].open = false;
+		undos.push({before: before, beforeCaret: at, after: text, afterCaret: caret, typing: typing, open: true});
+		redos.resize(0);
+	}
+
+	function off(p:Int):Int
+		return p > 0 && p < text.length && StringTools.fastCodeAt(text, p) >= 0xDC00 && StringTools.fastCodeAt(text, p) < 0xE000 ? p + 1 : p;
+}
+
+private typedef Group = {before:String, beforeCaret:Int, after:String, afterCaret:Int, typing:Bool, open:Bool};
+

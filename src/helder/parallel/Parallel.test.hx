@@ -181,6 +181,23 @@ function tests() {
 			equals([simd.x, simd.y], [scalar.x, scalar.y]);
 			if (c.n > 0) equals(simd.x, min(c.n, i -> a[i]));
 		}));
+		test("a block of returns, one in a loop", () -> property(cases(), c -> {
+			var a = data(c.n, c.seed), n = c.n;
+			function count(on:On):Int
+				return sum(n, i -> {
+					for (j in 0...3)
+						if (a[(i + j) % n] > 90) return j + 1;
+					if (a[i] < 0) return 10;
+					return 100;
+				}, on);
+			var scalar = count(On.Scalar);
+			equals(count(On.Simd), scalar);
+			equals(count(On.Jobs), scalar);
+		}));
+		test("On.Gpu without a device: thrown", () -> {
+			var a = new Items<Float>(4);
+			throws(() -> sum(4, i -> a[i], Gpu));
+		});
 	});
 
 	describe("kernel", () -> {

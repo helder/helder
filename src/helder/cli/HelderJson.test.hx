@@ -1,5 +1,6 @@
 package helder.cli;
 
+import helder.test.Gen;
 import helder.test.Test;
 
 // helder.json (HelderJson): read as the web manifest it stands for (the same
@@ -114,4 +115,58 @@ function tests() {
 		equals([after.theme, after.background], [before.theme, before.background]);
 		equals(after.splash.image, before.splash.image);
 	});
+	test("helder.json to a web manifest and back: the same settings, then the same text", () -> property(settings, j -> {
+		var m = HelderJson.parse(haxe.Json.stringify(j)).manifest;
+		var text = HelderJson.fromManifest(haxe.Json.stringify(m));
+		var back = HelderJson.parse(text).manifest;
+		equals(Manifest.parse(haxe.Json.stringify(back), HelderJson.FILE), Manifest.parse(haxe.Json.stringify(m), HelderJson.FILE), "the settings");
+		equals(HelderJson.fromManifest(haxe.Json.stringify(back)), text, "the text");
+	}, {cases: 200}));
 }
+
+// (a member or none)
+private function maybe<T>(g:Gen<T>):Gen<Null<T>>
+	return oneOf([constant(null), g]);
+
+// (an object of the members drawn, those not left out)
+private function object(c:helder.test.Choices, members:Array<{k:String, g:Gen<Dynamic>}>):Dynamic {
+	var o:Dynamic = {};
+	for (m in members) {
+		var v = c.draw(maybe(m.g));
+		if (v != null) Reflect.setField(o, m.k, v);
+	}
+	return o;
+}
+
+private final color = pick(["#3ED6C3", "#060912", "black", "#fff"]);
+
+private final settings:Gen<Dynamic> = c -> {
+	var o = object(c, [
+		{k: "label", g: pick(["Skies", "Little Skies", ""])},
+		{k: "description", g: pick(["Mini golf", "é ★"])},
+		{k: "id", g: pick(["build.helder.golf", "org.example.ab2"])},
+		{k: "version", g: pick(["1.2", "2.0.1"])},
+		{k: "build", g: int(1, 99)},
+		{k: "icon", g: oneOf([pick(["icon.svg", "icon.png"]), c -> object(c, [
+			{k: "any", g: pick(["icon.svg", "a.png"])},
+			{k: "maskable", g: constant("maskable.png")},
+			{k: "monochrome", g: constant("mono.svg")}
+		])])},
+		{k: "colors", g: c -> object(c, [{k: "theme", g: color}, {k: "background", g: color}])},
+		{k: "splash", g: c -> object(c, [
+			{k: "image", g: constant("splash.png")},
+			{k: "background", g: color},
+			{k: "dark", g: c -> object(c, [{k: "image", g: constant("dark.png")}, {k: "background", g: color}])}
+		])},
+		{k: "display", g: pick(["fullscreen", "standalone", "minimal-ui", "browser"])},
+		{k: "orientation", g: pick(["any", "portrait", "landscape-primary"])},
+		{k: "lang", g: constant("en")},
+		{k: "dir", g: pick(["ltr", "rtl"])},
+		{k: "categories", g: array(pick(["games", "sports"]), 0, 2)},
+		{k: "links", g: c -> object(c, [{k: "schemes", g: constant(["myapp"])}, {k: "domains", g: constant(["example.com"])}])},
+		{k: "targets", g: c -> object(c, [{k: "android", g: c -> object(c, [{k: "minSdk", g: int(29, 36)}])}, {k: "ios", g: c -> object(c, [{k: "bundleId", g: constant("org.example.ios")}])}])}
+	]);
+	o.name = c.draw(pick(["Little Skies", "Expansion", "Café"]));
+	o;
+}
+

@@ -1,12 +1,13 @@
 package helder.ui;
 
+import helder.test.Gen;
 import helder.test.Test;
 
 // HeightIndex against a naive model (an array of heights, NaN for a row
 // not measured): random inserts, removes, measures, forgets and estimate
-// changes, each checked by every row's offset and the rows at offsets
-// (between rows, at their starts, past the ends), seeded; a million rows
-// measured in part, its lookups and an insert in the middle.
+// changes (a stateful property), each checked by every row's offset and
+// the rows at offsets (between rows, at their starts, past the ends); a
+// million rows measured in part, its lookups and an insert in the middle.
 @:test.interp
 function tests() {
 	describe("HeightIndex", () -> {
@@ -43,39 +44,18 @@ function tests() {
 			h.insert(0, 1);
 			equals(h.offsetOf(1), 44.0);
 		});
-		for (seed in [1, 2, 3, 7, 42]) test('random edits against a model (seed $seed)', () -> {
-			var rand = new Rand(seed), model:Array<Float> = [], est = 20.0;
-			var h = new HeightIndex(est);
-			function height():Float
-				return 4 + rand.int(120) * 0.25;
-			for (step in 0...1500) {
-				var r = rand.int(100);
-				if (r < 30 || model.length == 0) {
-					var at = rand.int(model.length + 1), n = rand.int(4) == 0 ? 1 + rand.int(400) : 1 + rand.int(3);
-					for (_ in 0...n)
-						model.insert(at, Math.NaN);
-					h.insert(at, n);
-				} else if (r < 45) {
-					var at = rand.int(model.length), n = rand.int(5) == 0 ? 1 + rand.int(300) : 1;
-					if (at + n > model.length) n = model.length - at;
-					model.splice(at, n);
-					h.remove(at, n);
-				} else if (r < 90) {
-					var at = rand.int(model.length), v = height();
-					model[at] = v;
-					h.set(at, v);
-				} else if (r < 95) {
-					var at = rand.int(model.length);
-					model[at] = Math.NaN;
-					h.forget(at);
-				} else {
-					est = 8 + rand.int(80);
-					h.estimate = est;
-				}
-				if (step % 50 == 49) check(h, model, est, rand);
-			}
-			check(h, model, est, rand);
-		});
+		test("random edits against an array of heights", () -> stateful({
+			setup: () -> new Model(),
+			steps: [
+				{name: "insert", run: (m, c) -> m.insert(c.draw(int(0, 1 << 20)), c.draw(oneOf([int(1, 3), int(1, 300)])))},
+				{name: "remove", run: (m, c) -> m.remove(c.draw(int(0, 1 << 20)), c.draw(oneOf([constant(1), int(1, 300)]))), when: m -> m.rows.length > 0},
+				{name: "set", run: (m, c) -> m.set(c.draw(int(0, 1 << 20)), c.draw(int(0, 120)) * 0.25), when: m -> m.rows.length > 0},
+				{name: "forget", run: (m, c) -> m.forget(c.draw(int(0, 1 << 20))), when: m -> m.rows.length > 0},
+				{name: "estimate", run: (m, c) -> m.estimate(c.draw(int(0, 80)))},
+				{name: "reset", run: (m, c) -> m.reset(c.draw(int(0, 400)))}
+			],
+			check: m -> check(m.h, m.rows, m.h.estimate, new Rand(m.rows.length))
+		}, {cases: 100, steps: 40}));
 		test("a million rows: lookups, measures, an insert and a remove in the middle", () -> {
 			var h = new HeightIndex(44, 1000000);
 			equals(h.total(), 44000000.0);
@@ -100,9 +80,54 @@ function tests() {
 	});
 }
 
+// (the index and its model: a height a row, NaN while not measured)
+private class Model {
+	public final h = new HeightIndex(20);
+	public var rows:Array<Float> = [];
+
+	public function new() {}
+
+	public function insert(at:Int, n:Int) {
+		at %= rows.length + 1;
+		h.insert(at, n);
+		for (_ in 0...n)
+			rows.insert(at, Math.NaN);
+	}
+
+	public function remove(at:Int, n:Int) {
+		at %= rows.length;
+		if (at + n > rows.length) n = rows.length - at;
+		h.remove(at, n);
+		rows.splice(at, n);
+	}
+
+	public function set(at:Int, v:Float) {
+		at %= rows.length;
+		equals(h.set(at, v), Math.isNaN(rows[at]) ? h.estimate : rows[at], "set: the height it had");
+		rows[at] = v;
+	}
+
+	public function forget(at:Int) {
+		at %= rows.length;
+		h.forget(at);
+		rows[at] = Math.NaN;
+	}
+
+	public function estimate(v:Float)
+		h.estimate = v;
+
+	public function reset(n:Int) {
+		h.reset(n);
+		rows = [for (_ in 0...n) Math.NaN];
+	}
+}
+
 // (every row's offset and height, the rows at their starts, inside them and past the ends)
 private function check(h:HeightIndex, model:Array<Float>, est:Float, rand:Rand) {
 	equals(h.length, model.length, "length");
+	var measured = [for (v in model) if (!Math.isNaN(v)) v];
+	equals(h.measuredCount, measured.length, "measuredCount");
+	approx(h.measuredSum, Lambda.fold(measured, (v, sum) -> sum + v, 0.0), 1e-6, "measuredSum");
 	var y = 0.0, starts = [];
 	for (i in 0...model.length) {
 		starts.push(y);

@@ -148,7 +148,7 @@ class DecodeCache {
 					victim = e;
 				}
 			}
-			if (victim == null) return;
+			if (victim == null) break;
 			drop(victim.path);
 			// (still wanted: not decoded again until the order changes, so
 			// that a budget too small for every neighbour does not loop)
