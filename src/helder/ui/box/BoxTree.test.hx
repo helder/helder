@@ -9,7 +9,8 @@ using StringTools;
 
 // The box tree: displays, anonymous blocks around inline runs (white
 // space alone dropped), inline boxes split around blocks, none and
-// contents, generated content and counters, markers, replaced elements.
+// contents, generated content and counters (helder.css's CssCounters),
+// markers, replaced elements.
 // Then properties: a block container's children are all block-level or
 // all inline-level, and the text runs keep the document's text in order.
 function tests() {
@@ -75,12 +76,6 @@ function tests() {
 			assert(as[0].style != as[2].style);
 			assert(BoxInline.of(as[0], 100) == BoxInline.of(as[1], 100));
 			assert(BoxInline.of(as[0], 100) != BoxInline.of(as[0], 200));
-		});
-		test("counter styles", () -> {
-			equals(Counters.text("lower-roman", 14), "xiv");
-			equals(Counters.text("upper-alpha", 28), "AB");
-			equals(Counters.text("decimal-leading-zero", 7), "07");
-			equals(Counters.marker("square", 1), "▪ ");
 		});
 		test("a block container's children are all block-level or all inline-level", () -> property(MARKUP, html -> {
 			var t = build(html);
