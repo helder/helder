@@ -600,6 +600,8 @@ class LineBuilder {
 	static inline var HYPHEN_LEAF = 1;
 	static inline var BOX_LEAF = 2;
 	static inline var REMOVED_LEAF = 3;
+	// (an isolating box's initiator or PDI: nothing, at its own level, parting the runs around the box)
+	static inline var CONTROL_LEAF = 4;
 	var leaves = 0;
 	var vPiece = new Vector<Int>(64);
 	var vKind = new Vector<Int>(64);
@@ -691,6 +693,8 @@ class LineBuilder {
 							sLast = ints(sLast, slots * 2);
 							sLeaves = ints(sLeaves, slots * 2);
 						}
+						var iso = c.isolateLevel(item);
+						if (iso >= 0) leaf(CONTROL_LEAF, -1, 0, 0, iso, 0, cur, false);
 						var b = slot(item, cur, c.styleOf(item), STARTS);
 						sSpan[b] = fragment(BoxSpan, item, x, 0, b);
 						sLeaves[b] = leaves;
@@ -705,6 +709,8 @@ class LineBuilder {
 							closeEmpty(b);
 							cur = sParent[b];
 						}
+						var iso = c.isolateLevel(item);
+						if (iso >= 0) leaf(CONTROL_LEAF, -1, 0, 0, iso, 0, cur, false);
 						if (w > 0) filled = true;
 					case Atomic:
 						if (slots == sLeaves.length) {
@@ -807,7 +813,7 @@ class LineBuilder {
 			}
 			var w = vWidth[v];
 			switch vKind[v] {
-				case BOX_LEAF | REMOVED_LEAF:
+				case BOX_LEAF | REMOVED_LEAF | CONTROL_LEAF:
 				case HYPHEN_LEAF:
 					hyphen(vPiece[v], x, s);
 					textItem = -1;

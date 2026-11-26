@@ -121,6 +121,20 @@ function tests() {
 			equals(width(Ltr), [52.0]);
 			equals(width(Rtl), [42.0, 10.0]);
 		});
+		test("an isolate parts the runs around it: right-to-left text before it stays before it", () -> {
+			var l = lay(c -> {
+				c.openBox(ahem(s -> {
+					s.bidi = BidiOverride;
+					s.dir = Rtl;
+				}));
+				c.addText("aa", ahem());
+				c.closeBox();
+				c.openBox(ahem(s -> s.bidi = Isolate));
+				c.addText("b", ahem());
+				c.closeBox();
+			}, 200);
+			equals([l.x(find(l, TextRun, 0)), l.x(find(l, TextRun, 1))], [0.0, 32.0]);
+		});
 		test("pre-wrap's spaces hang at a line's end", () -> {
 			var pw = ahem(s -> s.collapse = Preserve);
 			var l = lay(c -> c.addText("aa   bb", pw), 60);

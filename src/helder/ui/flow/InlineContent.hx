@@ -64,6 +64,8 @@ class InlineContent {
 	var iWord = new Vector<Float>(16);
 	// (the bidi paragraphs: each one's first unit and base level)
 	final paragraphs:Array<Int> = [];
+	// (each item's isolate initiator's or PDI's level: an Open's or Close's of an isolating box; -1 else)
+	final isolates:Array<Int> = [];
 
 	// --- units: each UTF-16 unit of the text ---
 	var offsets = new Vector<Int>(64);
@@ -179,6 +181,12 @@ class InlineContent {
 	// its bidi level (a text item's units all have it)
 	public inline function level(i:Int):Int
 		return iLevel[i];
+
+	// an isolating box's Open or Close: its initiator's or PDI's level, at
+	// which it parts the runs around it (UAX #9 keeps isolates where X9
+	// removes embeddings); -1: none
+	public inline function isolateLevel(i:Int):Int
+		return i < isolates.length ? isolates[i] : -1;
 
 	// its font (InlineFonts' id: its style's)
 	public inline function font(i:Int):Int
@@ -651,6 +659,7 @@ class InlineContent {
 		var plaintext = root.unicodeBidi() == Plaintext;
 		rtl = base == 1;
 		paragraphs.resize(0);
+		isolates.resize(0);
 		if (!rtl) {
 			var i = 0;
 			while (i < n) {
@@ -679,12 +688,20 @@ class InlineContent {
 		}
 		// (the code points of a paragraph, the controls among them, the unit each is: -1 a control's)
 		var cps:Array<Int> = [], at:Array<Int> = [], open:Array<Int> = [];
+		// (the isolates' levels in item order, and where each one's control is in the paragraph)
+		var marks:Array<Int> = [], pending:Array<Int> = [];
 		var first = 0;
 		function paragraph() {
 			if (cps.length == 0) return;
 			var r = Bidi.levels(cps, plaintext ? -1 : base);
 			paragraphs.push(first);
 			paragraphs.push(r.base);
+			var k = 0;
+			while (k < pending.length) {
+				marks[pending[k]] = r.levels[pending[k + 1]];
+				k += 2;
+			}
+			pending.resize(0);
 			for (k in 0...cps.length) {
 				var u = at[k];
 				if (u < 0) continue;
@@ -702,12 +719,24 @@ class InlineContent {
 			switch kind(i) {
 				case Open:
 					open.push(i);
-					for (c in opening(styles[iStyle[i]]))
+					var cs = opening(styles[iStyle[i]]);
+					if (cs.length > 0 && cs[0] >= 0x2066 && cs[0] <= 0x2068) {
+						pending.push(marks.length);
+						pending.push(cps.length);
+						marks.push(-1);
+					}
+					for (c in cs)
 						control(c);
 				case Close:
 					if (open.length > 0) {
 						var o = open.pop();
-						for (c in closing(styles[iStyle[o]]))
+						var cs = closing(styles[iStyle[o]]);
+						if (cs.length > 0 && cs[cs.length - 1] == 0x2069) {
+							pending.push(marks.length);
+							pending.push(cps.length + cs.length - 1);
+							marks.push(-1);
+						}
+						for (c in cs)
 							control(c);
 					}
 				case Break:
@@ -738,6 +767,23 @@ class InlineContent {
 		// (zero-length items: the level of what is before them)
 		for (j in 0...items)
 			if (iEnd[j] == iStart[j]) iLevel[j] = j > 0 ? iLevel[j - 1] : base;
+		if (marks.length == 0) return;
+		// (the isolating boxes' Opens and Closes, met in the same order)
+		var m = 0, opened:Array<Int> = [];
+		isolates.resize(items);
+		for (j in 0...items) {
+			isolates[j] = -1;
+			switch kind(j) {
+				case Open:
+					var cs = opening(styles[iStyle[j]]);
+					var iso = cs.length > 0 && cs[0] >= 0x2066 && cs[0] <= 0x2068;
+					opened.push(iso ? 1 : 0);
+					if (iso) isolates[j] = marks[m++];
+				case Close:
+					if (opened.length > 0 && opened.pop() == 1) isolates[j] = marks[m++];
+				case _:
+			}
+		}
 	}
 
 	// (the controls an inline box's unicode-bidi opens and closes)
