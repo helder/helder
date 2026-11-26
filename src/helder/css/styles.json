@@ -36,6 +36,10 @@
     "list-style-image": "terms", "border-image-source": "terms", "clip": "terms",
     "display": "display"
   },
+  "animations": {
+    "box-shadow": "value", "box-shadow-color": "value", "box-shadow-offset": "value", "box-shadow-blur": "value", "box-shadow-spread": "value", "box-shadow-position": "discrete",
+    "visibility": "value", "font-weight": "value", "counter-increment": "discrete", "counter-reset": "discrete", "counter-set": "discrete"
+  },
   "enums": {
     "border-top-style": "CssLineStyle", "border-right-style": "CssLineStyle", "border-bottom-style": "CssLineStyle", "border-left-style": "CssLineStyle",
     "overflow-x": "CssOverflow", "overflow-y": "CssOverflow", "break-before": "CssBreak", "break-after": "CssBreak",

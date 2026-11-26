@@ -298,6 +298,18 @@ ${ids.map((p, i) => `\tvar ${pascal(p.name)} = ${i};`).join('\n')}
 fs.writeFileSync(out + '/CssProperty.hx', prop)
 
 const kindCode = {keyword: 0, number: 1, length: 2, color: 3, display: 4, terms: 5}
+// (a property's animation type from webref's prose: discrete, by computed value, not animatable, a repeatable list)
+const ANIMATION = {discrete: 0, value: 1, none: 2, list: 3}
+function animationCode(p) {
+  const given = styles.animations?.[p.name]
+  if (given) return ANIMATION[given]
+  const a = (p.animation ?? '').toLowerCase()
+  if (a.startsWith('not animatable')) return ANIMATION.none
+  if (a === 'discrete' || a.startsWith('see § 2.9')) return ANIMATION.discrete
+  if (a === 'repeatable list' || a.startsWith('as for background-position')) return ANIMATION.list
+  if (/computed value|^number$|^as |see prose|shadow list|transform list|slerp|list lengths match/.test(a)) return ANIMATION.value
+  throw Error(`${p.name}: an animation type to read ("${p.animation}"): styles.json's animations`)
+}
 const impactCode = {layout: 0, text: 1, paint: 2, composite: 3, none: 4}
 let meta = `package helder.css;
 
@@ -326,6 +338,7 @@ class CssProperties {
 \tstatic final names:Array<String> = ${list(ids.map(p => p.name))};
 \tstatic final group:Array<Int> = [${ids.map(p => groupOf.has(p.name) ? groupNames.indexOf(groupOf.get(p.name)) : -1).join(', ')}];
 \tstatic final kind:Array<Int> = [${ids.map(p => info.has(p.name) ? kindCode[info.get(p.name).kind] : -1).join(', ')}];
+\tstatic final animations:Array<Int> = [${ids.map(p => animationCode(info.has(p.name) ? p : byChosen.get(physical(p.name, false)))).join(', ')}];
 \tstatic final impacts:Array<Int> = [${ids.map(p => impactCode[info.has(p.name) ? impactOf(p.name) : impactOf(physical(p.name, false))]).join(', ')}];
 \tstatic final inherited:Array<Bool> = [${ids.map(p => p.inherited === true).join(', ')}];
 \tstatic final ltr:Array<Int> = [${ids.map(p => info.has(p.name) ? idOf.get(p.name) : idOf.get(physical(p.name, false))).join(', ')}];
@@ -349,6 +362,10 @@ class CssProperties {
 
 \tpublic static inline function kindOf(p:CssProperty):Int
 \t\treturn kind[p];
+
+\t// (how it animates: 0 discrete, 1 by computed value, 2 not animatable, 3 a repeatable list)
+\tpublic static inline function animation(p:CssProperty):Int
+\t\treturn animations[p];
 
 \tpublic static inline function impact(p:CssProperty):CssImpact
 \t\treturn cast impacts[p];

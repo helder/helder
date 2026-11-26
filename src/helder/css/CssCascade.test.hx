@@ -94,19 +94,14 @@ function tests() {
 			equals(text(s, "x", "padding-left"), "3px");
 		});
 		test("widths without a style", () -> {
-			var s = styles('<p id=a>a</p><p id=b>b</p><p id=c>c</p>',
-				"p { border-width: 5px; outline-width: 4px } #b { border-top-style: solid; border-left-style: hidden; outline-style: auto } #c { border-style: inherit }");
-			equals(text(s, "a", "border-top-width"), "0px");
-			equals(text(s, "a", "outline-width"), "0px");
-			equals(text(s, "b", "border-top-width"), "5px");
-			equals(text(s, "b", "border-right-width"), "0px");
-			equals(text(s, "b", "border-left-width"), "0px");
-			equals(text(s, "b", "outline-width"), "4px");
-			// (an initial medium too)
-			var t = styles('<p id=a>a</p>', "p { border-bottom-style: dotted; outline-style: solid }");
-			equals(text(t, "a", "border-bottom-width"), "3px");
-			equals(text(t, "a", "border-top-width"), "0px");
-			equals(text(t, "a", "outline-width"), "3px");
+			// (Borders 4: a width under none or hidden is computed as it is; the used one is 0, layout's; inherit takes it)
+			var s = styles('<div style="border-width: 7px"><p id=a>a</p><p id=b>b</p></div>',
+				"p { border-width: 5px; outline-width: 4px } #b { border-top-width: inherit; border-top-style: solid }");
+			equals(text(s, "a", "border-top-width"), "5px");
+			equals(text(s, "a", "outline-width"), "4px");
+			equals(text(s, "b", "border-top-width"), "7px");
+			var t = styles('<p id=a>a</p>', "");
+			equals(text(t, "a", "border-top-width"), "3px");
 		});
 		test("blockification", () -> {
 			var s = styles('<span id=f>a</span><span id=p>b</span><div id=x style="display: inline-flex"><span id=i>c</span><b id=c style="display: contents"><i id=n>d</i></b><em id=t style="display: table-cell">e</em></div><div style="display: grid"><span id=g style="display: inline-table">f</span></div><span id=s style="display: inline list-item; float: left">g</span><span id=r style="position: relative">h</span>',
@@ -225,6 +220,12 @@ function tests() {
 			// (a logical property's: its physical one's)
 			equals(CssProperties.impact(MarginInlineStart) == Layout, true);
 			equals(CssProperties.physical(MarginInlineStart, true) == MarginRight, true);
+		});
+		test("values nested deeply kept apart", () -> {
+			// (CssIntern's keys once were Std.string's, which elides deep nesting)
+			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");
+			equals(text(s, "a", "max-width"), "stretch(calc(0% + 100px))");
+			equals(text(s, "b", "max-width"), "stretch(calc(10% + 50px))");
 		});
 		test("typed reads of values kept as terms", () -> {
 			// (text-indent's grammar keeps it as terms: still a length to read, as the box lane does)

@@ -419,6 +419,44 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 
 Pending by stage: inline 521, positioning 221, generated content 209, tables 101, floats 88, fonts 41, ui 13.
 
+## Interpolation
+
+Interpolation and transitions against WPT's interpolation tests,
+natively (`bun run test css`: CssInterpolationCheck; BLESS=1:
+interpolation-manifest.json and the counts below; SHOW=1: each case that
+doesn't pass):
+
+- `fixtures/interpolation.json` (made by `import-wpt.mjs`): every
+  `test_interpolation`, `test_no_interpolation` and `test_not_animatable`
+  call of css/ with a property in scope, as CSS Transitions runs it (its
+  own expectations when the call gives them), with its page, scripts out.
+- `CssInterpolationCheck.hx`: each case's targets built as
+  interpolation-testcommon.js builds them, the from and to values
+  computed, every longhand interpolated by CssInterpolate (currentcolor
+  resolved as CssTransition resolves it; with allow-discrete, a discrete
+  one flipped as CssTransition flips it), written (a shorthand from its
+  longhands) and required to be the expected value computed on its own
+  target, both normalized as the harness does; a discrete or not
+  animatable case required not to interpolate. A case is required unless
+  interpolation-manifest.json's `pending` says why.
+
+<!-- interpolation -->
+3417 of 4373 cases pass.
+
+| Pending because | Cases |
+| --- | --- |
+| sizes: calc-size() and interpolate-size not yet (Values 5) | 380 |
+| transforms: 3D functions, axes and perspective not yet (2D only) | 262 |
+| grid: track lists not interpolated yet (Grid 1 §7.2.5) | 192 |
+| images: list-style-image is discrete (Lists 3); the test wants it to transition, flipping halfway as Chrome's cross-fade does | 48 |
+| resolved values: getComputedStyle's px are layout's, and this check has none | 37 |
+| math functions: sign(), progress() and random() not resolved in computed values yet | 18 |
+| clip: rect() without commas, CSS 2's form the expected values use, not parsed | 11 |
+| display: expects an animation's flip (none until p > 0); without allow-discrete no transition starts | 6 |
+| colours: one channel off by one, a browser's 8-bit premultiplied rounding | 1 |
+| page: its script sets height: auto before this case, so neutral isn't the page's 10px | 1 |
+<!-- /interpolation -->
+
 ## Report
 
 <!-- report -->

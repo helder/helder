@@ -154,8 +154,8 @@ class CssCascadeCheck {
 		var els = if (el == "@root") [p.doc.documentElement] else if (el == "@body") [p.doc.body] else if (el.startsWith("@all:"))
 			CssMatcher.query(CssSelector.parse(el.substr(5)), p.doc) else [p.doc.getElementById(el)];
 		var out = [for (e in els) if (e != null) p.styles.computed(e).text(ref.property)];
-		// (the same through #321's cascade, frozen; it had no logical properties)
-		if (logical) return out;
+		// (the same through #321's cascade, frozen; it had no logical properties, and zeroed widths under none)
+		if (logical || ~/^(border-(top|right|bottom|left)-width|outline-width)$/.match(ref.property)) return out;
 		var old = reference.RefCascade.styles(p.doc, {media: {type: "screen", width: 800, height: 600}});
 		var k = 0;
 		for (e in els) if (e != null) {

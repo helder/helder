@@ -70,7 +70,7 @@ class CascadeBench {
 		var old = reference.RefCascade.styles(doc, {load: load, url: options.url});
 		// (page-break-* left out: they now map break-*'s values, as Break 3 §3.4 says; #321 gave auto)
 		var longhands = [for (p in CssData.properties) if (p.longhands.length == 0 && p.alias == null && p.name != "all" && !LOGICAL.match(p.name)
-			&& !StringTools.startsWith(p.name, "page-break-")) p.name];
+			&& !StringTools.startsWith(p.name, "page-break-") && !~/^(border-(top|right|bottom|left)-width|outline-width)$/.match(p.name)) p.name];
 		var checked = 0, differ = [], differs = 0;
 		for (k in 0...all.length) {
 			var props = k % 37 == 0 ? longhands : ["display", "margin-top", "color", "font-size"];

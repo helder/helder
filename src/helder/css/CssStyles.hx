@@ -466,7 +466,7 @@ class CssStyles {
 	// (values another property changes: worked out again whenever their group is)
 	static function dependent(p:CssProperty):Bool
 		return switch p {
-			case BorderTopWidth | BorderRightWidth | BorderBottomWidth | BorderLeftWidth | OutlineWidth | Float | Display | Content | JustifyItems | OverflowX |
+			case Float | Display | Content | JustifyItems | OverflowX |
 				OverflowY: true;
 			case _: false;
 		}

@@ -982,3 +982,60 @@ markers count its items as HTML's ordinal values say. The css lane's
 CssCountersCheck renders WPT's css-counter-styles and css-lists reftests
 and their references to text through CssCounters, and reads
 `@counter-style`'s syntax tests.
+
+## Interpolation and transitions
+
+`CssInterpolate.values(property, a, b, p)` interpolates two computed
+values p of the way (Web Animations 1, Values 4 §3), p below 0 or above
+1 extrapolating, by the property's animation type (`CssProperties.
+animation`: by computed value, discrete, repeatable list or not
+animatable, from webref's tables, `styles.json`'s `animations` over
+them). Null when the values don't interpolate.
+
+- Lengths, percentages and their mix (a `calc()` of both), numbers,
+  angles and the like; the same keywords and functions, argument by
+  argument. The result is read back through the property's grammar, so
+  it is clamped to the property's range and an integer's rounded.
+- Colours: two legacy ones (`rgb()`, `hsl()`, `hwb()`, named) in sRGB,
+  others in Oklab, premultiplied, a missing component the other's;
+  system colours as a light page's.
+- Lists by layer; a repeatable one (background-position, background-size,
+  object-position, transform-origin) repeated to a common length.
+- 2D transforms (Transforms 2 §10): none as the other list's identity
+  functions, the shorter list padded with the longer's; the functions of
+  the same primitive (translate, scale, rotate, skew) argument by
+  argument; two matrices, and the rest of the lists from where they
+  differ, as matrices decomposed (§12.2: translation, scale, skew, a
+  quaternion), interpolated and composed again. `translate`, `scale` and
+  `rotate` with none as their identities.
+- Shadows, the shorter list padded with transparent ones; filters, none
+  as each function's identity; `aspect-ratio` by its log; `visibility`
+  visible between visible and hidden; `font-style` normal as `oblique
+  0deg`; `letter-spacing` and `word-spacing` normal as 0.
+- `CssInterpolate.discrete` flips a discrete value halfway (`display`
+  keeps what isn't none until the end, Transitions 2 §3.3).
+
+Not yet: 3D transforms, grid track lists, `calc-size()`, and the counter
+properties, which are discrete as browsers have them.
+
+`CssTransition.starts(before, after)` gives the transitions an element's
+style change starts (Transitions 1 §3, 2 §3): the new style's
+`transition-property` list (`all`: every animatable longhand; a shorthand:
+its longhands; a later name over an earlier one), each with the
+duration, delay, `transition-timing-function` (`CssEasing`: the keywords,
+`cubic-bezier()`, `steps()`, `linear()`) and `transition-behavior` at its
+index, the lists repeated. A property starts when its combined duration
+is above 0, its value changed (currentcolor resolved), and it interpolates,
+or it is discrete and allow-discrete. There is no clock: helder.ui's
+motion asks for the value at a time.
+
+```haxe
+for (t in CssTransition.starts(before, after)) motion.start(t);
+CssTransition.value(t, 0.25);  // the terms a quarter second in, eased
+```
+
+Tests (`CssInterpolate.test.hx`, `CssEasing.test.hx`,
+`CssTransition.test.hx`): each kind of value, the easing functions, what
+starts and its values over time. The css lane's CssInterpolationCheck
+runs WPT's `test_interpolation`, `test_no_interpolation` and
+`test_not_animatable` cases as CSS Transitions does.
