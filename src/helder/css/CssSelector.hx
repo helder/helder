@@ -4,12 +4,19 @@ package helder.css;
 // between each two (combinators[k] between compounds[k] and [k + 1]; a
 // relative selector's leading one is `relative`), the pseudo-element its
 // subject is (null: the element itself), and its specificity.
+// hashes: CssHash's of the ids, classes and types of its compounds that
+// are ancestors of its subject (those a child or descendant combinator follows),
+// at most MAX_HASHES: an element whose ancestors' Bloom filter has not
+// each of them cannot match (CssBloom)
 class CssSelector {
 	public final compounds:Array<CssCompound>;
 	public final combinators:Array<CssCombinator>;
 	public final relative:Null<CssCombinator>;
 	public final pseudo:Null<CssPseudoElement>;
 	public final specificity:CssSpecificity;
+	public final hashes:Array<Int>;
+
+	public static inline var MAX_HASHES = 4;
 
 	public function new(compounds:Array<CssCompound>, combinators:Array<CssCombinator>, relative:Null<CssCombinator>, pseudo:Null<CssPseudoElement>) {
 		this.compounds = compounds;
@@ -22,6 +29,26 @@ class CssSelector {
 				s = s.add(CssSpecificity.of(p));
 		if (pseudo != null) s = s.add(CssSpecificity.make(0, 0, 1));
 		specificity = s;
+		hashes = ancestorHashes(compounds, combinators);
+	}
+
+	// (a compound is an ancestor of the subject when the combinator right
+	// of it is a child or descendant one: in `div > p + * > li` the div,
+	// not the p, a sibling of the li's parent; as WebKit collects them)
+	static function ancestorHashes(compounds:Array<CssCompound>, combinators:Array<CssCombinator>):Array<Int> {
+		var out = [], k = compounds.length - 2;
+		while (k >= 0 && out.length < MAX_HASHES) {
+			if (combinators[k] == Child || combinators[k] == Descendant)
+				for (s in compounds[k])
+					switch s {
+						case Id(n) | Class(n) | Type(n, _):
+							var h = CssHash.of(n);
+							if (out.length < MAX_HASHES && !out.contains(h)) out.push(h);
+						default:
+					}
+			k--;
+		}
+		return out;
 	}
 
 	// a selector list (a rule's prelude), null when any of it is invalid;
