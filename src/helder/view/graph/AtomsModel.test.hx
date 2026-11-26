@@ -18,13 +18,22 @@ import helder.view.graph.Graph.*;
 //   failed, superseded), writable derived signals, effects with cleanups
 //   and writes, loading and error boundaries, made once at the top level;
 //   then ops over up to 8 stores (made, let go, cleared mid-flight). The
-//   model: the graph made afresh for each store, no stores. Every store's
+//   model: the graph made afresh for each store, at home in a store of its
+//   own (no copies of another's nodes). Every store's
 //   reads (plain, untracked, isPending, latest) and effect logs equal its
 //   copy's.
 //
 // Quick here; HELDER_FUZZ_SECONDS=<n> runs random seeds for n seconds each,
-// printing every failure's seed and its case shrunk (the fuzz lane).
+// printing every failure's seed and its case shrunk (the fuzz lane);
+// HELDER_FUZZ_REPLAY=stores:<choices> (or plain:) replays one.
 function tests() {
+	// (a failure's choices as printed: that case alone, HELDER_FUZZ_REPLAY=plain:... or stores:...)
+	var replay = Sys.getEnv("HELDER_FUZZ_REPLAY") ?? "";
+	if (replay != "") {
+		var at = replay.indexOf(":"), choices = replay.substr(at + 1);
+		test("replay", () -> StringTools.startsWith(replay, "plain") ? property(plainGen(), plain, {replay: choices}) : property(modelGen(), model, {replay: choices}));
+		return;
+	}
 	var budget = Std.parseFloat(Sys.getEnv("HELDER_FUZZ_SECONDS") ?? "");
 	if (budget > 0) {
 		test("fuzz: the graph against plain evaluation", () -> fuzz(plainGen(), plain, budget, "plain"));
@@ -371,16 +380,32 @@ function model(spec:ModelSpec) {
 	Atoms.record = true;
 	var top = build(spec, real, () -> Atoms.current == null ? 0 : Std.parseInt(Atoms.current.name));
 	var stores:Array<Null<Atoms>> = [for (_ in 0...STORES) null];
-	// (the model: a fresh graph a store, its effects owned by a root of its own;
+	// (the model: a fresh graph a store, made at home in a store of its own
+	// (as a screen's component's), its effects owned by a root of its own;
 	// its writes and answers queued, taken by a flush of its own)
-	var copy:Array<Null<{built:Built, dispose:Void->Void, queued:Array<Void->Void>}>> = [for (_ in 0...STORES) null];
+	var copy:Array<Null<{built:Built, dispose:Void->Void, queued:Array<Void->Void>, store:Atoms}>> = [for (_ in 0...STORES) null];
 	function fresh(k:Int) {
-		var d:Void->Void = null;
-		var owner = root(dispose -> {
-			d = dispose;
-			getOwner();
+		// (the real's top-level effects not made again in it: it has its own)
+		var recorded = @:privateAccess Atoms.effects;
+		@:privateAccess Atoms.effects = [];
+		var home = new Atoms('model $k'), d:Void->Void = null;
+		@:privateAccess Atoms.effects = recorded;
+		var built = home.run(() -> {
+			var owner = root(dispose -> {
+				d = dispose;
+				getOwner();
+			});
+			build(spec, copies, () -> k, owner);
 		});
-		copy[k] = {built: build(spec, copies, () -> k, owner), dispose: d, queued: []};
+		copy[k] = {
+			built: built,
+			dispose: () -> {
+				d();
+				home.dispose();
+			},
+			queued: [],
+			store: home
+		};
 	}
 	// (a new store's nodes of the memos made at once, as a fresh graph's are
 	// computed as they are made: an ask is a side effect of that computing)
@@ -393,8 +418,8 @@ function model(spec:ModelSpec) {
 		flush();
 		for (c in copy)
 			if (c != null && c.queued.length > 0) {
-				for (q in c.queued)
-					q();
+				c.store.run(() -> for (q in c.queued)
+					q());
 				c.queued.resize(0);
 				flush();
 			}
@@ -451,7 +476,7 @@ function model(spec:ModelSpec) {
 					copies.asks[k].resize(0);
 					flushed();
 				case Read(k, n, how) if (copy[k] != null):
-					equals(inStore(k, () -> attempt(() -> read(top.nodes[n], how))), attempt(() -> read(copy[k].built.nodes[n], how)), 'store $k reads node $n ($how)');
+					equals(inStore(k, () -> attempt(() -> read(top.nodes[n], how))), copy[k].store.run(() -> attempt(() -> read(copy[k].built.nodes[n], how))), 'store $k reads node $n ($how)');
 				case _:
 			}
 			for (k in 0...STORES)

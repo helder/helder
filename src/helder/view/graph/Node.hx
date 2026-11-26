@@ -143,6 +143,10 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (home == null && (kind == EFFECT || kind == RENDER) && Atoms.record && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
 	}
 
+	// (its store's flushes of writes so far: another store's leave its memos alone)
+	inline function ticks():Int
+		return home == null ? Scheduler.ticks : home.ticks;
+
 	// (read or written in a store not its home: that store's node of it; the
 	// default store sees through to its home)
 	inline function at():Node<T> {
@@ -365,10 +369,10 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		return hasPending ? pendingValue : stagedIn != null ? staged : value;
 
 	// (a computed up to date: an unowned memo nothing observes is not kept
-	// up to date by the flushes, it computes again when read after one, as
-	// Solid 2 releases it)
+	// up to date by the flushes, it computes again when read after one of
+	// its store's, as Solid 2 releases it)
 	inline function fresh() {
-		if (kind == COMPUTED && !writable && free && tick != Scheduler.ticks && (observers == null || observers.length == 0)) state = DIRTY;
+		if (kind == COMPUTED && !writable && free && tick != ticks() && (observers == null || observers.length == 0)) state = DIRTY;
 		if (state != CLEAN) updateIfNecessary();
 	}
 
@@ -558,7 +562,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		} else
 			try clean() catch (e:haxe.Exception) Scheduler.report(e);
 		shown = false;
-		tick = Scheduler.ticks;
+		tick = ticks();
 		// (a superseded async run: cancelled, its answer dropped)
 		asked++;
 		if (awaiting != null) {

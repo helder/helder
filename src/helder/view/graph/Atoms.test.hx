@@ -286,6 +286,32 @@ function tests() {
 		flush();
 		equals([a.run(() -> loaded()), b.run(() -> loaded())], ["v0", "v0"]);
 	}));
+	test("a write in one store does not make another's unobserved memo run again", () -> two((a, b) -> {
+		var asks = 0, later:Later<Int> = null;
+		var async = memo(() -> {
+			asks++;
+			later = new Later<Int>();
+			(later : Dynamic);
+		});
+		// (a memo made in each run reads it: for a moment nothing observes it)
+		var reader = memo(() -> {
+			var inner = memo(() -> async() + 1);
+			inner();
+		});
+		var shown = [];
+		b.run(() -> root(_ -> effect(() -> reader(), (v, _) -> {
+			shown.push(v);
+			null;
+		})));
+		flush();
+		a.run(() -> count(5));
+		flush();
+		later.resolve(1);
+		flush();
+		// (once as it was made, in the default store; once in b)
+		equals(asks, 2);
+		equals(shown, [2]);
+	}));
 	test("a signal made in a store: its home there, the default seeing through to it", () -> two((a, b) -> {
 		var local = a.run(() -> signal(1));
 		local(2);

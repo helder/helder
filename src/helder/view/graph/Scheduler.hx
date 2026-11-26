@@ -43,7 +43,7 @@ class Scheduler {
 	static var asked = false;
 	static var failure:Null<haxe.Exception> = null;
 	static var hasFailure = false;
-	// (commits made: an unowned memo's freshness)
+	// (the default store's flushes of writes: an unowned memo's freshness; a store's its own)
 	static var ticks = 0;
 
 	public static function flush()
@@ -95,7 +95,6 @@ class Scheduler {
 				ls.resize(0);
 			}
 			if (writes.length > 0) {
-				ticks++;
 				var ws = writes;
 				writes = writesTaken;
 				writesTaken = ws;
@@ -110,6 +109,7 @@ class Scheduler {
 							break;
 						}
 					var tx = world = newTx(store);
+					if (store == null) ticks++ else store.ticks++;
 					for (n in ws)
 						if (n.home == store) n.stageWrite(tx) else ws[rest++] = n;
 					ws.resize(rest);

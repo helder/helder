@@ -69,6 +69,8 @@ class Atoms {
 	var disposed = false;
 	// (bumped as it is cleared or let go: what was set going before, a timer, is let go too)
 	public var generation(default, null) = 0;
+	// (its flushes of writes: its unowned memos' freshness, Node.fresh)
+	var ticks = 0;
 
 	// whether what was set going in store at generation still runs (the default's always)
 	public static function live(store:Null<Atoms>, generation:Int):Bool
