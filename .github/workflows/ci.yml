@@ -10,7 +10,7 @@
 # - headless: the lanes that need no GPU, display or browser (bun run test -j 3
 #   headless) but typescript and examples, which are jobs of their own; the
 #   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
-#   objects required), its iOS bundles kept for ios-simulator's signing
+#   objects required), its iOS bundles kept for ios-signing's signing
 #   lane; gfx-soft (helder.gfx on the CPU) a job of its own, with no Mesa;
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
 #   two jobs, --shard 0/2 and 1/2, four workers each);
@@ -62,9 +62,9 @@
 #   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
 #   the assets, the screen fixture, the planets example, UIAccessibility,
 #   the cube's drags, fling and background, the whole-screen web view.
-#   gfx's shard then runs the signing lane: the headless job's iOS bundles
-#   checked by codesign --verify, plutil -lint and assetutil, then an
-#   iPhone's app signed for distribution by helder with a throwaway
+# - ios-signing (after headless): the signing lane, the headless job's iOS
+#   bundles checked by codesign --verify, plutil -lint and assetutil, then
+#   an iPhone's app signed for distribution by helder with a throwaway
 #   identity, checked by codesign and assetutil;
 # - desktop-macos, desktop-windows: the window lane (and helder's viewer,
 #   apps/viewer), helder/native from TypeScript (typescript-native:
@@ -77,7 +77,7 @@
 #   to the docs alone skips the others;
 # - the viewer's releases are release.yml's (a tag viewer-v<version>);
 # - the npm packages' nightlies are npm.yml's.
-# gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator,
+# gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing,
 # fuzz and the desktops are not required (continue-on-error) while the
 # stack is unstable (android and ios-simulator were written without an
 # emulator, a simulator or a Mac: CI is where they run).
@@ -590,45 +590,6 @@ jobs:
       - run: node src/helder/compiler/build.mjs > /dev/null
       - name: The simulator's checks (bun run test ios-device, a simulator booting while the apps build)
         run: bun run test ios-device --shard ${{ matrix.index }}/2
-      # (the headless job's pack bundles, uploaded long before this point:
-      # the signing lane checks them with Apple's tools, nothing rebuilt.
-      # Downloaded by gh run download, from the REST API's list that says
-      # they are there: actions/download-artifact's own lookup lagged that
-      # list, "Artifact not found" a second after it was listed. Each try
-      # from nothing; once the headless job ended (or never ran), two more
-      # tries, then failed at once, saying so; a gh call that fails is a
-      # try, never a success)
-      - name: pack's iOS bundles (the headless job's)
-        id: ios-pack
-        if: ${{ !cancelled() && matrix.index == 1 && steps.setup.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          api="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" out="$RUNNER_TEMP/ios-pack" ended=0 state=unknown
-          for i in $(seq 90); do
-            rm -rf "$out"
-            if gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n ios-pack -D "$out" && [ -s "$out/ios-pack.tar" ]; then
-              ls -l "$out"
-              exit 0
-            fi
-            state=$(gh api "$api/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("headless (lanes"))] | if length == 0 then "none" elif all(.status == "completed") then "ended: " + (map(.conclusion) | join(", ")) else "running" end') || state=unknown
-            case "$state" in running|unknown) ended=0 ;; *) ended=$((ended + 1)) ;; esac
-            if [ "$ended" -ge 3 ]; then
-              echo "::error::no ios-pack artifact: the headless job ($state) ended without pack's iOS bundles (its tar or upload step failed, or it did not run)"
-              exit 1
-            fi
-            sleep 10
-          done
-          echo "::error::no ios-pack artifact after 15 minutes, the headless job $state"
-          exit 1
-      - name: The bundles and distribution signing checked by Apple's tools (bun run test signing)
-        if: steps.ios-pack.outcome == 'success'
-        env:
-          PACK_PREBUILT: 1
-        run: |
-          mkdir -p bin/pack
-          tar -C bin/pack -xf "$RUNNER_TEMP/ios-pack/ios-pack.tar"
-          bun run test signing
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -644,6 +605,57 @@ jobs:
             bin/pack/ios-textinput/*.png
           retention-days: 7
           if-no-files-found: ignore
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
+  # pack's iOS bundles, the headless job's, checked by Apple's tools (the
+  # signing lane, nothing rebuilt), then an iPhone's app signed for
+  # distribution. A job of its own, after headless: ios-simulator's gfx
+  # shard once waited for them and gave up at 15 minutes while the headless
+  # job was still queued for a runner. A headless job that failed without
+  # them says why itself: noted here, not failed twice.
+  ios-signing:
+    needs: [changes, headless]
+    if: ${{ !cancelled() && needs.changes.outputs.full == 'true' && needs.headless.result != 'skipped' }}
+    runs-on: macos-15
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+      - name: pack's iOS bundles (the headless job's)
+        id: bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADLESS: ${{ needs.headless.result }}
+        run: |
+          out="$RUNNER_TEMP/ios-pack"
+          listed=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=ios-pack" --jq '.total_count')
+          if [ "$listed" = 0 ]; then
+            if [ "$HEADLESS" != success ]; then
+              echo "::notice::no ios-pack artifact: the headless job ended in $HEADLESS before pack's iOS bundles; its own log says why"
+              exit 0
+            fi
+            echo "::error::no ios-pack artifact, though the headless job passed"
+            exit 1
+          fi
+          # (a gh call that fails is a try; the artifact is listed, its job ended)
+          for i in 1 2 3; do
+            rm -rf "$out"
+            gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n ios-pack -D "$out" && [ -s "$out/ios-pack.tar" ] && break
+            sleep 10
+          done
+          [ -s "$out/ios-pack.tar" ] || { echo "::error::ios-pack listed, not downloaded"; exit 1; }
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: The bundles and distribution signing checked by Apple's tools (bun run test signing)
+        if: steps.bundles.outputs.ready == 'true'
+        env:
+          PACK_PREBUILT: 1
+        run: |
+          mkdir -p bin/pack
+          tar -C bin/pack -xf "$RUNNER_TEMP/ios-pack/ios-pack.tar"
+          bun run test signing
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 
@@ -713,7 +725,7 @@ jobs:
   # removed), saved as the OS's one entry, the older entries deleted (a run
   # that ends after a newer one's: its merge restored first, still warm).
   cache:
-    needs: [changes, headless, typescript, examples, site, site-check, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, desktop-macos, desktop-windows]
+    needs: [changes, headless, typescript, examples, site, site-check, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.changes.outputs.code == 'true' }}
     strategy:
       fail-fast: false
