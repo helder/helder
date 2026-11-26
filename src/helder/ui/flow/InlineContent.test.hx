@@ -61,7 +61,7 @@ function tests() {
 			var n = content(s -> s.addText("aa bb", ahem(s -> s.wrap = NoWrap)));
 			equals([for (p in 0...n.pieces) n.pieceBreak(p) & LineBreaks.STATUS], [0, 0, 0]);
 		});
-		test("nowrap's boundary with its neighbour: the common ancestor decides", () -> {
+		test("nowrap's boundary with its neighbour: the side before it decides, as Blink's", () -> {
 			// (<nobr>aa</nobr> bb: the break before bb is the root's)
 			var c = content(s -> {
 				s.openBox(ahem(s -> s.wrap = NoWrap));
@@ -70,6 +70,14 @@ function tests() {
 				s.addText(" bb", ahem());
 			});
 			equals(c.pieceBreak(c.pieces - 1) & LineBreaks.STATUS, LineBreaks.ALLOWED);
+			// (pre-wrap's spaces, then nowrap: a break after the spaces; nowrap's, then wrapping text: none)
+			var d = content(s -> {
+				s.addText("aa ", ahem(s -> s.wrap = NoWrap));
+				s.openBox(ahem());
+				s.addText("bb", ahem());
+				s.closeBox();
+			});
+			equals([for (p in 0...d.pieces) d.pieceBreak(p) & LineBreaks.STATUS], [0, 0, 0, 0, 0]);
 		});
 		test("a break before an inline box goes before its start, after a close", () -> {
 			var c = content(s -> {

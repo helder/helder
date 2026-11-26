@@ -15,8 +15,8 @@ import helder.ui.flow.InlineValues;
 // text-transform, the bidi levels (UAX #9 over each paragraph, inline
 // boxes as embeddings or isolates per unicode-bidi, a forced break a
 // paragraph's end), the break opportunities (LineBreaks; white-space's
-// wrapping by the nearest common ancestor of the two sides; soft hyphens
-// per hyphens) and the pieces the line builder places: each word, run of
+// wrapping by the item before each, as Blink's line breaker has it; soft
+// hyphens per hyphens) and the pieces the line builder places: each word, run of
 // spaces and tab shaped once (InlineShaper), each item that is not text a
 // piece of its own. Laid out again at another width nothing is shaped again.
 //
@@ -36,6 +36,8 @@ class InlineContent {
 	public var items(default, null) = 0;
 	public var pieces(default, null) = 0;
 	public var finished(default, null) = false;
+	// the block's space advance, tabs' least width's double (Blink's)
+	public var tabSpace(default, null) = 0.0;
 	// the styles of the items (styles[0]: the root's)
 	public final styles:Array<InlineStyle> = [];
 
@@ -282,10 +284,20 @@ class InlineContent {
 		raw.resize(0);
 	}
 
-	// (an item's style's flags)
-	static inline var WRAPS = 1;
-	static inline var BREAK_SPACES = 2;
-	static inline var NO_HYPHENS = 4;
+	// an item's style's flags (flags): wraps (text-wrap-mode), break-spaces,
+	// hyphens: none, collapsible spaces (removed at a line's end), spaces
+	// that hang there (collapsible or pre-wrap's), overflow-wrap's
+	// emergency breaks (break-word, anywhere: also in the min-content size)
+	public static inline var WRAPS = 1;
+	public static inline var BREAK_SPACES = 2;
+	public static inline var NO_HYPHENS = 4;
+	public static inline var COLLAPSIBLE = 8;
+	public static inline var HANGS = 16;
+	public static inline var BREAK_WORD = 32;
+	public static inline var ANYWHERE = 64;
+
+	public inline function flags(i:Int):Int
+		return iFlags[i];
 
 	// (the items in order with their processed text: white space, transforms)
 	function process() {
@@ -349,6 +361,7 @@ class InlineContent {
 					newItem(r.kind, styleStack[styleStack.length - 1], r.source);
 				case Atomic:
 					pending = false;
+					segment = false;
 					lineStart = false;
 					letterBefore = false;
 					before = 0xFFFC;
@@ -363,6 +376,7 @@ class InlineContent {
 					emit(10, 0);
 					iEnd[i] = n;
 					pending = false;
+					segment = false;
 					lineStart = true;
 					letterBefore = false;
 				case Text:
@@ -387,13 +401,19 @@ class InlineContent {
 							if (mode == Discard) continue;
 							if (pending) {
 								if (c == 10) segment = true;
-								continue;
+								// (a nowrap item's space before a wrapping one's: Blink keeps the second, its break the wrapping one's)
+								if (pendingItem == item || pendingItem >= 0 && item < 0 && iSource[pendingItem] == r.source && iStyle[pendingItem] == r.style
+									|| styles[iStyle[pendingItem]].textWrapMode() != NoWrap || st.textWrapMode() == NoWrap)
+									continue;
+								var seg = segment;
+								dropPending();
+								segment = seg;
 							}
 							if (lineStart) continue;
 							if (item < 0) item = newItem(Text, r.style, r.source);
+							if (!segment) segment = c == 10;
 							pending = true;
 							pendingItem = item;
-							segment = c == 10;
 							emit(32, offset);
 							iEnd[item] = n;
 							letterBefore = false;
@@ -403,6 +423,7 @@ class InlineContent {
 							// (a preserved segment break: a forced break; preserve-breaks drops the spaces before it)
 							if (pending && mode == PreserveBreaks) dropPending();
 							pending = false;
+							segment = false;
 							var b = newItem(Break, r.style, r.source);
 							emit(10, offset);
 							iEnd[b] = n;
@@ -459,8 +480,12 @@ class InlineContent {
 			if (iStyle[i] != last) {
 				last = iStyle[i];
 				var st = styles[last];
-				flags = (st.textWrapMode() == Wrap ? WRAPS : 0) | (st.whiteSpaceCollapse() == BreakSpaces ? BREAK_SPACES : 0)
-					| (st.hyphens() == None ? NO_HYPHENS : 0);
+				var ws = st.whiteSpaceCollapse(), wrap = st.textWrapMode() == Wrap;
+				var collapsible = ws == Collapse || ws == PreserveBreaks || ws == Discard;
+				flags = (wrap ? WRAPS : 0) | (ws == BreakSpaces ? BREAK_SPACES : 0) | (st.hyphens() == None ? NO_HYPHENS : 0)
+					| (collapsible ? COLLAPSIBLE | HANGS : 0) | (wrap && (ws == Preserve || ws == PreserveSpaces) ? HANGS : 0)
+					| (st.overflowWrap() == BreakWord ? BREAK_WORD : 0)
+					| (st.overflowWrap() == Anywhere || st.wordBreak() == BreakWord ? BREAK_WORD | ANYWHERE : 0);
 				font = fonts.idOf(st);
 				letter = st.letterSpacing();
 				word = st.wordSpacing();
@@ -792,29 +817,19 @@ class InlineContent {
 			// (break-spaces: after every preserved space)
 			if (status == LineBreaks.NONE && fa & BREAK_SPACES != 0 && (before == 32 || before == 9) && StringTools.fastCodeAt(text, u) != 10)
 				status = LineBreaks.ALLOWED;
+			// (a wrapping item that ends in a space: a break at its end, whatever starts the next, as Blink's line breaker)
+			if (status == LineBreaks.NONE && fa & WRAPS != 0 && iEnd[a] == u && (before == 32 || before == 9) && StringTools.fastCodeAt(text, u) != 10)
+				status = LineBreaks.ALLOWED;
 			if (status != LineBreaks.ALLOWED) {
 				if (status != s & LineBreaks.STATUS) breaks.set(u, s & ~LineBreaks.STATUS | status);
 				continue;
 			}
-			var b = a;
-			while (b < items - 1 && iEnd[b] <= u)
-				b++;
-			if (!(a == b ? fa & WRAPS != 0 : wraps(a, b))) status = LineBreaks.NONE;
+			if (fa & WRAPS == 0) status = LineBreaks.NONE;
 			else if (before == 0xAD) {
 				if (fa & NO_HYPHENS != 0) status = LineBreaks.NONE else s |= HYPHEN;
 			}
 			breaks.set(u, s & ~LineBreaks.STATUS | status);
 		}
-	}
-
-	// whether a boundary between items a and b may wrap: the white-space of
-	// their nearest common ancestor (the innermost box both are in)
-	function wraps(a:Int, b:Int):Bool {
-		var x = iBox[a], y = iBox[b];
-		while (x != y) {
-			if ((x < 0 ? 0 : iDepth[x]) >= (y < 0 ? 0 : iDepth[y])) x = iParent[x] else y = iParent[y];
-		}
-		return x < 0 ? root.textWrapMode() == Wrap : iFlags[x] & WRAPS != 0;
 	}
 
 	// --- pieces ---
@@ -886,11 +901,11 @@ class InlineContent {
 					pEntry[p] = e;
 					pWidth[p] = shaper.width(e);
 				case TAB:
-					// (tab-size: spaces of the font, each with its spacing; or a length)
-					var t = styles[iStyle[i]].tabSize();
+					// (tab-size: spaces of the block container's font, each with its spacing, as Blink measures it; or a length)
+					var t = root.tabSize(), f = fonts.idOf(root);
+					tabSpace = shaper.width(shaper.shape(fonts.set(f), f, " ", 0, 1, 0, 0, 0));
 					if (t > 0) {
-						var f = iFont[i];
-						var e = shaper.shape(fonts.set(f), f, " ", 0, 1, 0, iLetter[i], iWord[i]);
+						var e = shaper.shape(fonts.set(f), f, " ", 0, 1, 0, root.letterSpacing(), root.wordSpacing());
 						pWidth[p] = t * shaper.width(e);
 					} else pWidth[p] = -t;
 				case _:
