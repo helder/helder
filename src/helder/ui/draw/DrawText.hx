@@ -89,6 +89,10 @@ class DrawText implements TextEngine {
 	// since, its glyphs and advances are another font's)
 	var shapedIn = FontFile.generation;
 
+	// (hyphens auto: its language's hyphenator, null when the program added none for it)
+	static function hyphenatorOf(font:Font):Null<Hyphenator>
+		return font.hyphens == helder.ui.Hyphens.Auto ? Hyphenation.get(font.lang) : null;
+
 	public function layout(text:String, font:Font, maxWidth:Float, ?spans:Array<TextSpan>, maxLines:Int = 0, justify:Bool = false, base:Int = -1, cut:Float = -1,
 			?into:Paragraph):Paragraph {
 		if (fallbackFaces == null) {
@@ -97,9 +101,14 @@ class DrawText implements TextEngine {
 			emoji = fonts.emojiFor;
 		}
 		var set = fontSet(font);
+		var hyphenator = hyphenatorOf(font);
 		var runs = spans == null ? null : [
-			for (s in spans)
-				new TextRun(s.start, s.end, fontSet(s.font), s.font.lineHeight, s.font.letterSpacing, s.font.wordSpacing)
+			for (s in spans) {
+				// (a span's own language or hyphens: its own hyphenator, or none)
+				var h = hyphenatorOf(s.font);
+				new TextRun(s.start, s.end, fontSet(s.font), s.font.lineHeight, s.font.letterSpacing, s.font.wordSpacing,
+					h == hyphenator ? null : h == null ? Hyphenator.NONE : h);
+			}
 		];
 		var breaking = (switch font.overflowWrap {
 			case Normal: 0;
@@ -109,7 +118,7 @@ class DrawText implements TextEngine {
 			case Normal: 0;
 			case BreakAll: TextLayout.BREAK_ALL;
 			case KeepAll: TextLayout.KEEP_ALL;
-		});
+		}) + (font.hyphens == helder.ui.Hyphens.None ? TextLayout.NO_HYPHENS : 0);
 		if (shapedIn != FontFile.generation) {
 			shapedIn = FontFile.generation;
 			plain.clear();
@@ -120,7 +129,7 @@ class DrawText implements TextEngine {
 		if (same != null)
 			for (p in same)
 				if (p.fonts == set && p.lineHeight == font.lineHeight && p.letterSpacing == font.letterSpacing && p.wordSpacing == font.wordSpacing
-					&& p.base == base && p.breaking == breaking)
+					&& p.base == base && p.breaking == breaking && p.paragraph.layout.hyphenator == hyphenator)
 					return p.paragraph;
 		// (a paragraph let go, not shared: its layout's buffers again, the
 		// same text and fonts wrapped again, else shaped)
@@ -130,15 +139,16 @@ class DrawText implements TextEngine {
 			var l = again.layout;
 			var rewrap = runs == null && l.runs.length == 0 && l.text == text && l.fonts == set && again.generation == FontFile.generation
 				&& again.lineHeight == font.lineHeight
-				&& again.letterSpacing == font.letterSpacing && again.wordSpacing == font.wordSpacing && again.base == base && again.breaking == breaking;
+				&& again.letterSpacing == font.letterSpacing && again.wordSpacing == font.wordSpacing && again.base == base && again.breaking == breaking
+				&& l.hyphenator == hyphenator;
 			if (rewrap) l.wrap(maxWidth, maxLines, cut) else {
-				l.reset(text, set, font.lineHeight, maxWidth, runs, maxLines, font.letterSpacing, font.wordSpacing, base, cut, breaking);
+				l.reset(text, set, font.lineHeight, maxWidth, runs, maxLines, font.letterSpacing, font.wordSpacing, base, cut, breaking, hyphenator);
 				again.shaped(font.lineHeight, font.letterSpacing, font.wordSpacing, base, breaking);
 			}
 			if (justify) l.justify(maxWidth);
 			return again;
 		}
-		var l = new TextLayout(text, set, font.lineHeight, maxWidth, runs, maxLines, font.letterSpacing, font.wordSpacing, base, cut, breaking);
+		var l = new TextLayout(text, set, font.lineHeight, maxWidth, runs, maxLines, font.letterSpacing, font.wordSpacing, base, cut, breaking, hyphenator);
 		if (justify) l.justify(maxWidth);
 		var p = new DrawParagraph(l);
 		p.shaped(font.lineHeight, font.letterSpacing, font.wordSpacing, base, breaking);

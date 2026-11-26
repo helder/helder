@@ -45,6 +45,7 @@ class MarkupCheck implements Markup {
 		documentNames();
 		rightToLeft();
 		wordBreaks();
+		hyphens();
 		autoMargins();
 		baselines();
 		shorthands();
@@ -189,6 +190,26 @@ class MarkupCheck implements Markup {
 		flush();
 		ui.update();
 		check("breaks: changed, the font follows", ui.root.find("u").font().wordBreak == KeepAll);
+	}
+
+	// hyphens and lang: inherited into the text's font (what DrawText hyphenates by), as CSS's and HTML's are
+	static function hyphens() {
+		var ui = new Ui(new MonoText(), 300, 200);
+		var lang = signal("nl");
+		Render.render(<view hyphens="auto" lang={lang}>
+			<text tag="t">abc</text>
+			<view hyphens="none" lang="en-GB"><text tag="u">def</text></view>
+		</view>, ui.root);
+		ui.update();
+		var t = ui.root.find("t").font(), u = ui.root.find("u").font();
+		check("hyphens: hyphens and lang inherited into the font", t.hyphens == Auto && t.lang == "nl" && u.hyphens == None && u.lang == "en-GB",
+			'${t.lang} ${u.lang}');
+		var root = new Ui(new MonoText(), 10, 10).root.font();
+		check("hyphens: manual and no language at the root", root.hyphens == Manual && root.lang == null);
+		lang("de");
+		flush();
+		ui.update();
+		check("hyphens: lang changed, the font follows", ui.root.find("t").font().lang == "de" && ui.root.find("u").font().lang == "en-GB");
 	}
 
 	static function liveRegions() {

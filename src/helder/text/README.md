@@ -42,7 +42,8 @@ text with, usable on its own.
 - `TextLayout`: text shaped (each character's glyph from the first face
   that has it, kerning between glyphs of the same face) and broken into
   lines (after spaces and hyphens, around CJK, after a soft hyphen, shown
-  as a hyphen where a line breaks; a word wider than a line is cut, or by
+  as a hyphen where a line breaks; with a `Hyphenator`, at its points in
+  words too, below; a word wider than a line is cut, or by
   `breaking` as CSS's `overflow-wrap` and `word-break`: overflowing,
   cut anywhere, between any letters or not around CJK, as Chromium breaks;
   tabs to stops every `TAB_SIZE`, 8, spaces, as CSS's `tab-size`), with
@@ -148,6 +149,96 @@ golden-image tests portable; the platform's engine (below) does the rest.
 
 Tests: `bun run test text` (`tests/text/TextCheck.hx`; the pipeline against
 CoreGraphics' own output: `tests/text/CoreGraphicsCheck.hx`).
+
+## Hyphenation
+
+Words broken where their language breaks them, CSS's `hyphens: auto`:
+Liang's algorithm (TeX's) on the TeX hyphenation patterns and exceptions
+of hyph-utf8. `Hyphenation.add(patterns)` adds a language
+(`helder.text.hyphenation`'s classes, one a language:
+`Hyphenation.add(Nl.patterns())`; `Hyphenation.addAll()` every one), and
+`Hyphenation.get(lang)` gives its `Hyphenator`, matched as BCP 47 looks a
+tag up (`nl-BE` is `nl`'s, `en` American English, `en-AU` and the other
+Commonwealth tags `en-gb`, `de` and `de-CH` `de-1996`, `no` `nb`; then
+any of the primary language's), null for a language not added.
+`hyphenator.points(word)` are the UTF-16 indices a word may break before,
+each at least the patterns' own `left` and `right` from its ends; either
+case matches; a character the patterns do not know matches nothing.
+
+```haxe
+Hyphenation.add(helder.text.hyphenation.EnUs.patterns());
+var h = Hyphenation.get("en");
+h.points("hyphenation"); // [2, 6]: hy-phen-ation
+new TextLayout(text, fonts, 1.25, 300, null, 0, 0, 0, -1, Math.NaN, TextLayout.BREAK_WORD, h);
+```
+
+A build carries the patterns of the languages it adds and none other
+(each a class of string literals, kept by dead code elimination only when
+named; all twelve are 400 KB): a program that never adds one carries
+none, ui's `hyphens: auto` included. A language's patterns are read into
+a trie on its first `get` (en-us in 0.8 ms, de-1996, the largest, in 5.6
+ms natively), then kept.
+
+TextLayout (its `hyphenator`, a `TextRun`'s own for a run in another
+language, `Hyphenator.NONE` for none) breaks at the points as at soft
+hyphens, the same hyphen shown and counted (the min-content width too),
+where CSS's `hyphenate-limit-chars: auto` allows: words of 5 characters
+or more, 2 before and after a break, or the patterns' own limits where
+larger (English: 3 after). As browsers, it leaves alone a word with a
+soft hyphen (its own breaks, as CSS says), words in capitals
+(abbreviations), and the words of a token with a digit, `@`, `/`, `\`,
+`_`, or a `.` or `:` inside it (numbers, URLs, e-mail addresses, file
+names); a capitalised word is hyphenated. A break needs a glyph's edge:
+none inside a ligature (`ffi`). `TextLayout.NO_HYPHENS` (CSS's
+`hyphens: none`) does not break at soft hyphens either. A word cut where
+it must (`BREAK_WORD`) at a point by chance shows no hyphen, which did
+not fit.
+
+Speed (tests/bench/Bench.hx's text.layout.long and .hyphens: a paragraph
+of about 2,300 words in DejaVu Sans at 16 px, 480 px wide, laid out new):
+natively 7.2 ms without, 7.8 to 7.9 with English hyphenation (7 to 10%
+more), as wasm32-wasi 15.7 both (within its noise); 41 KB more a layout
+(the points' buffer, room for the hyphens shown). A ui program that adds
+no language carries the code alone: examples/todo's wasm 19 KB larger.
+
+The languages (`src/helder/text/hyphenation`, written by `generate.mjs`
+from hyph-utf8 at tex-hyphen's CTAN-2024.12.31, `29e003ea`, its files'
+hashes in `manifest.json`; each class keeps its file's copyright and
+licence notice). Those under licences that are not permissive are left
+out: Czech (`cs`, GPL 2 or later).
+
+| tag | language | licence | patterns | exceptions | left, right |
+| --- | --- | --- | ---: | ---: | --- |
+| en-us | English, American | its notice: copying and modification permitted, the notice kept | 4,938 | 14 | 2, 3 |
+| en-gb | English, British | MIT | 8,527 | 8 | 2, 3 |
+| nl | Dutch | MIT | 12,724 | 40 | 2, 2 |
+| de-1996 | German, reformed spelling | MIT | 35,056 | 0 | 2, 2 |
+| fr | French | MIT | 1,216 | 0 | 2, 2 |
+| es | Spanish | MIT | 4,694 | 0 | 2, 2 |
+| it | Italian | MIT (or LPPL 1.3) | 384 | 0 | 2, 2 |
+| pt | Portuguese | BSD 3-clause | 307 | 2 | 2, 3 |
+| sv | Swedish | LPPL 1.2 or later | 4,693 | 0 | 2, 2 |
+| da | Danish | MIT (or LPPL 1.3) | 1,144 | 0 | 2, 2 |
+| nb | Norwegian Bokmål (hyph-no's patterns) | its notice: copying and modification permitted, the notice kept | 27,448 | 2 | 2, 2 |
+| pl | Polish | MIT (or LPPL 1.3) | 4,053 | 20 | 2, 2 |
+
+Others hyph-utf8 has under such licences (MIT, LPPL, the Unlicense, an
+all-permissive notice), to add to generate.mjs's list next: Catalan,
+Galician, Basque, Russian, Ukrainian, Greek (monotonic), Croatian,
+Slovenian, Estonian, Lithuanian, Turkish, Icelandic, Afrikaans, Norwegian
+Nynorsk and German's 1901 spelling. Not these: Slovak (GPL), Hungarian
+(MPL, GPL or LGPL), Latvian (LGPL or GPL), Finnish (its patterns'
+distribution alone allowed), Romanian (no licence stated).
+
+Tests: `Hyphenation.test.hx`: each language's words as the reference
+hyphenates them (`tests/text/fixtures/hyphenation`, written by
+generate.mjs: Liang's algorithm in JavaScript on the files as they are,
+over the exceptions, a hand list, `hand.json`, and words of the patterns'
+own pieces), BCP 47's matching, a property (the points taken out give the
+word back, each within the limits), and TextLayout: narrow justified
+paragraphs in English and Dutch, a run's own language, the words left
+alone, `hyphens: none`, and a property: no line wider than with soft
+hyphens alone (hyphens: manual), every character on its lines once.
 
 ## CoreText's look
 

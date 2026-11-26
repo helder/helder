@@ -105,6 +105,7 @@ export type StyleProps = {
 	flex?: number;
 	overflowWrap?: 'normal' | 'break-word' | 'anywhere';
 	wordBreak?: 'normal' | 'break-all' | 'keep-all';
+	hyphens?: 'none' | 'manual' | 'auto';
 	fontFeatureSettings?: string;
 	fontVariantNumeric?: string;
 	textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';

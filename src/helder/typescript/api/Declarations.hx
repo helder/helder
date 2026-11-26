@@ -443,7 +443,7 @@ class Declarations {
 	static final TYPES:Map<String, String> = [
 		"id" => "string", "class" => "string", "role" => "string", "tabIndex" => "number | string", "slot" => "string", "variant" => "string",
 		"size" => "string", "host" => "string", "group" => "string", "peer" => "string", "tag" => "string", "keyContext" => "string",
-		"panAxis" => "\"x\" | \"y\" | \"both\"", "panMinPointers" => "number", "matched" => "string", "glassSpacing" => "number", "text" => "string",
+		"panAxis" => "\"x\" | \"y\" | \"both\"", "panMinPointers" => "number", "matched" => "string", "lang" => "string", "glassSpacing" => "number", "text" => "string",
 		"objectFit" => "ImageFit", "objectPosition" => "string", "name" => "string", "value" => "string", "placeholder" => "string", "type" => "string",
 		"maxLength" => "number", "inputMode" => "string", "autoComplete" => "string", "keyboard" => "string", "enterKeyHint" => "string",
 		"autoCapitalize" => "string", "rows" => "number", "html" => "string", "tint" => "Color | string", "volume" => "number",

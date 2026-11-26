@@ -100,7 +100,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     by default, where CSS's is `Normal`: a word too wide is cut, not
     overflowing; `Anywhere`: its min-content width too), `wordBreak`
     (`BreakAll`, `KeepAll`; soft hyphens break as in CSS: lines as
-    Chromium breaks them), `textTransform` (`Uppercase`,
+    Chromium breaks them), `hyphens` (`Manual` by default, at soft
+    hyphens; `None` not even there; `Auto` also where the node's language
+    hyphenates its words: `lang`, inherited as HTML's, `lang="nl"`, by the
+    patterns of the languages the program added,
+    `helder.text.Hyphenation.add(Nl.patterns())`: none added, none
+    carried, the words broken as `Manual` breaks them; the text README),
+    `textTransform` (`Uppercase`,
     `Lowercase`, `Capitalize`: letter for letter; a span its own; a text
     field's text as typed), `textOverflow` (`Ellipsis`, not inherited: a
     line too wide for its box ends in one within it). `textDecoration`

@@ -302,6 +302,11 @@ class Style {
 	// KeepAll not between CJK characters
 	public var wordBreak(get, set):Null<WordBreak>;
 
+	// whether words are hyphenated where lines break, inherited (null: the
+	// parent's; Manual at the root; CSS's hyphens): Auto by the patterns of
+	// the node's language (Node.lang), None not at soft hyphens either
+	public var hyphens(get, set):Null<Hyphens>;
+
 	// OpenType features, inherited, as CSS's font-feature-settings writes
 	// them ("'tnum'", "'liga' 0, 'ss01'"; null: the parent's; "normal": the
 	// default ones): their substitutions added, or liga, clig, calt and
@@ -644,6 +649,9 @@ class Style {
 	inline function get_wordBreak():Null<WordBreak>
 		return rare == null ? null : rare.wordBreak;
 
+	inline function get_hyphens():Null<Hyphens>
+		return rare == null ? null : rare.hyphens;
+
 	inline function get_fontFeatureSettings():Null<String>
 		return rare == null ? null : rare.fontFeatureSettings;
 
@@ -950,6 +958,13 @@ class Style {
 	function set_wordBreak(v:Null<WordBreak>):Null<WordBreak> {
 		if (v == wordBreak) return v;
 		more().wordBreak = v;
+		node.styleChanged(true);
+		return v;
+	}
+
+	function set_hyphens(v:Null<Hyphens>):Null<Hyphens> {
+		if (v == hyphens) return v;
+		more().hyphens = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -1669,6 +1684,7 @@ class Style {
 		if (p.flex != null) flex = p.flex;
 		if (p.overflowWrap != null) overflowWrap = p.overflowWrap;
 		if (p.wordBreak != null) wordBreak = p.wordBreak;
+		if (p.hyphens != null) hyphens = p.hyphens;
 		if (p.fontFeatureSettings != null) fontFeatureSettings = p.fontFeatureSettings;
 		if (p.fontVariantNumeric != null) fontVariantNumeric = p.fontVariantNumeric;
 		if (p.textTransform != null) textTransform = p.textTransform;
@@ -1730,6 +1746,7 @@ private class StyleRare {
 	public var scrollbarTrackColor:Null<Color> = null;
 	public var overflowWrap:Null<OverflowWrap> = null;
 	public var wordBreak:Null<WordBreak> = null;
+	public var hyphens:Null<Hyphens> = null;
 	public var fontFeatureSettings:Null<String> = null;
 	public var fontVariantNumeric:Null<String> = null;
 	public var textTransform:Null<TextTransform> = null;

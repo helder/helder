@@ -102,6 +102,7 @@ typedef StyleProps = {
 	?flex:Float,
 	?overflowWrap:OverflowWrap,
 	?wordBreak:WordBreak,
+	?hyphens:Hyphens,
 	?fontFeatureSettings:String,
 	?fontVariantNumeric:String,
 	?textTransform:TextTransform,

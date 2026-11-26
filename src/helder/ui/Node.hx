@@ -130,6 +130,16 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// first, in its order, then 0's in tree order; below 0: focusable by a
 	// click or focus(), passed over by Tab
 	public var tabIndex = 0;
+	// the language of its text, inherited (null: the parent's; as HTML's lang,
+	// a BCP 47 tag: "nl", "en-GB"): its words' hyphenation (Style.hyphens)
+	public var lang(default, set):Null<String> = null;
+
+	function set_lang(v:Null<String>):Null<String> {
+		if (v == lang) return v;
+		lang = v;
+		inheritedChanged();
+		return v;
+	}
 	// motion (helder.ui.motion.Motions): what it declares for itself and its
 	// subtree (markup's motion="snappy"); the id a matched counterpart flies
 	// from or to (matched="tile-3"); its subtree's changes without motion
@@ -968,6 +978,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// (a line height in pixels, made a multiple of this font's size once it is known)
 		var lhPx = Math.NaN;
 		var ow:Null<OverflowWrap> = null, wb:Null<WordBreak> = null, ff:Null<String> = null, fvn:Null<String> = null;
+		var hy:Null<Hyphens> = null, lg:Null<String> = null;
 		var n = this;
 		while (n != null) {
 			var s = n.style;
@@ -984,6 +995,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			if (Math.isNaN(ws) && s.wordSpacing != null) ws = s.wordSpacing;
 			if (ow == null) ow = s.overflowWrap;
 			if (wb == null) wb = s.wordBreak;
+			if (hy == null) hy = s.hyphens;
+			if (lg == null) lg = n.lang;
 			if (ff == null) ff = s.fontFeatureSettings;
 			if (fvn == null) fvn = s.fontVariantNumeric;
 			n = n.inheritsFrom();
@@ -992,7 +1005,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (!Math.isNaN(lhPx)) lh = size > 0 ? lhPx / size : Style.DEFAULT_LINE_HEIGHT;
 		return fontCache = new Font(family == null ? Style.DEFAULT_FAMILY : family, size,
 			weight < 0 ? Style.DEFAULT_WEIGHT : weight, italic == 1, Math.isNaN(lh) ? Style.DEFAULT_LINE_HEIGHT : lh, Math.isNaN(ls) ? 0 : ls,
-			Math.isNaN(ws) ? 0 : ws, ow == null ? BreakWord : ow, wb == null ? WordBreak.Normal : wb, features(fvn, ff));
+			Math.isNaN(ws) ? 0 : ws, ow == null ? BreakWord : ow, wb == null ? WordBreak.Normal : wb, features(fvn, ff), hy == null ? Manual : hy,
+			lg == null || lg == "" ? null : lg);
 	}
 
 	// (the font size here: its own or the nearest ancestor's)
