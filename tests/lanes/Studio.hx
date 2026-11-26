@@ -102,13 +102,30 @@ class Studio {
 		} else Sys.println("headless-run: no ffmpeg: --video not checked");
 	}
 
+	// (HELDER_STUDIO_STEPS: some of its steps, the others' outputs kept in
+	// bin/studio-check: todo, ts-todo, design, free, phone, files, acp (watch.json),
+	// stories, start, check; a run of all of them past a command's time
+	// limit, run in parts, check last)
 	static function studioLane() {
 		var h = helderCli(), b = "bin/studio-check";
-		// (the studio's files first: their links into the copies)
-		rmrf("bin/studio");
-		rmrf(b);
-		run(h, ["studio", "--help"]);
+		var only = (Sys.getEnv("HELDER_STUDIO_STEPS") ?? "").split(",").filter(x -> x != "");
+		function step(name:String):Bool {
+			if (only.length > 0 && !only.contains(name)) return false;
+			// (its copy and the studio's files of it: a run of it as fresh as the whole lane's)
+			rmrf('$b/$name');
+			rmrf('bin/studio/$name');
+			return true;
+		}
+		if (only.length == 0) {
+			// (the studio's files first: their links into the copies)
+			rmrf("bin/studio");
+			rmrf(b);
+			run(h, ["studio", "--help"]);
+		}
+		mkdirs(b);
+		mkdirs("bin/studio");
 		for (app in ["todo", "ts-todo"]) {
+			if (!step(app)) continue;
 			// (a copy, a repository of its own: its branch in the sidebar the same everywhere)
 			copy('examples/$app', '$b/$app');
 			run("git", ["init", "-q", "-b", "studio", '$b/$app']);
@@ -119,46 +136,57 @@ class Studio {
 			]);
 		}
 		// (a project of design files alone: its frames interpreted, nothing built)
-		copy('tests/studio/design', '$b/design');
-		run("git", ["init", "-q", "-b", "studio", '$b/design']);
-		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
-			"mark:selected", "--snap", '$b/design-end.png', "--at", "mark:end", "--", '$b/design', "--classic", "--events", '$b/design.jsonl'
-		]);
+		if (step("design")) {
+			copy('tests/studio/design', '$b/design');
+			run("git", ["init", "-q", "-b", "studio", '$b/design']);
+			run(h, [
+				"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
+				"mark:selected", "--snap", '$b/design-end.png', "--at", "mark:end", "--", '$b/design', "--classic", "--events", '$b/design.jsonl'
+			]);
+		}
 		// (the free canvas: a frame selected, a story moved (its place made in canvas.helder), a frame entered, left, every frame fitted)
-		copy('examples/todo', '$b/free');
-		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/free.json", "--size", "1180x740", "--snap", '$b/free-entered.png', "--at",
-			"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--classic", "--events", '$b/free.jsonl'
-		]);
+		if (step("free")) {
+			copy('examples/todo', '$b/free');
+			run(h, [
+				"run", "--headless", "apps/studio", "--script", "tests/studio/free.json", "--size", "1180x740", "--snap", '$b/free-entered.png', "--at",
+				"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--classic", "--events", '$b/free.jsonl'
+			]);
+		}
 		// (a phone's: the sheets over the canvas, switched by the bar, dragged by the handle)
-		copy('tests/studio/design', '$b/phone');
-		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
-			"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--classic", "--events", '$b/phone.jsonl'
-		]);
+		if (step("phone")) {
+			copy('tests/studio/design', '$b/phone');
+			run(h, [
+				"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
+				"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--classic", "--events", '$b/phone.jsonl'
+			]);
+		}
 		// (the sidebar's file browser: design files, an image, a font, code in folders)
-		copy('tests/studio/design', '$b/files');
-		mkdirs('$b/files/assets');
-		mkdirs('$b/files/fonts');
-		mkdirs('$b/files/src');
-		File.copy("tests/ui/svg/shapes.png", '$b/files/assets/shapes.png');
-		File.copy("apps/studio/fonts/HankenGrotesk-Medium.ttf", '$b/files/fonts/HankenGrotesk-Medium.ttf');
-		File.saveContent('$b/files/src/Main.hx', 'class Main {\n\tstatic function main() trace("hi");\n}\n');
-		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/files.json", "--size", "1180x740", "--snap", '$b/files-image.png', "--at",
-			"mark:image", "--snap", '$b/files-end.png', "--at", "mark:end", "--", '$b/files', "--classic", "--events", '$b/files.jsonl'
-		]);
+		if (step("files")) {
+			copy('tests/studio/design', '$b/files');
+			mkdirs('$b/files/assets');
+			mkdirs('$b/files/fonts');
+			mkdirs('$b/files/src');
+			File.copy("tests/ui/svg/shapes.png", '$b/files/assets/shapes.png');
+			File.copy("apps/studio/fonts/HankenGrotesk-Medium.ttf", '$b/files/fonts/HankenGrotesk-Medium.ttf');
+			File.saveContent('$b/files/src/Main.hx', 'class Main {\n\tstatic function main() trace("hi");\n}\n');
+			run(h, [
+				"run", "--headless", "apps/studio", "--script", "tests/studio/files.json", "--size", "1180x740", "--snap", '$b/files-image.png', "--at",
+				"mark:image", "--snap", '$b/files-end.png', "--at", "mark:end", "--", '$b/files', "--classic", "--events", '$b/files.jsonl'
+			]);
+		}
 		// (the studio's own shell, watched, with an agent over ACP: the scripted one, tests/studio/acp-agent.mjs on node)
-		copy('tests/studio/design', '$b/acp');
-		run("git", ["init", "-q", "-b", "studio", '$b/acp']);
-		run(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/watch.json", "--size", "1180x740", "--snap", '$b/acp-working.png', "--at",
-			"mark:working", "--snap", '$b/acp-question.png', "--at", "mark:question", "--snap", '$b/acp-end.png', "--at", "mark:end", "--", '$b/acp', "--agent",
-			'$NODE ${FileSystem.fullPath("tests/studio/acp-agent.mjs")}', "--events", '$b/acp.jsonl'
-		]);
-		studioStories(h, b);
-		studioStart(h, b);
+		if (step("acp")) {
+			copy('tests/studio/design', '$b/acp');
+			run("git", ["init", "-q", "-b", "studio", '$b/acp']);
+			run(h, [
+				"run", "--headless", "apps/studio", "--script", "tests/studio/watch.json", "--size", "1180x740", "--snap", '$b/acp-working.png', "--at",
+				"mark:working", "--snap", '$b/acp-question.png', "--at", "mark:question", "--snap", '$b/acp-end.png', "--at", "mark:end", "--", '$b/acp', "--agent",
+				'$NODE ${FileSystem.fullPath("tests/studio/acp-agent.mjs")}', "--events", '$b/acp.jsonl'
+			]);
+		}
+		if (step("stories")) studioStories(h, b);
+		if (step("start")) studioStart(h, b);
+		if (only.length > 0 && !only.contains("check")) return;
 		exe('$b/Check', cps(["src", "tests/studio"]).concat(["-main", "Check"]));
 		run(exePath('$b/Check', HOST), [b].concat(BLESS ? ["--bless"] : []));
 	}
