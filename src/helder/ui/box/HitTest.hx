@@ -2,11 +2,13 @@ package helder.ui.box;
 
 import helder.canvas.Matrix;
 import helder.dom.Node;
+import helder.ui.flow.BlockFlow;
 
 // What a point is over: the last thing painted there (PaintOrder backwards),
-// through the transforms and clips around it. A text fragment gives its
-// text node and the offset nearest the point; a box its element (a
-// pseudo-element's, its element's).
+// through the transforms and clips around it. A text fragment gives the
+// DOM position nearest the point, from its block's lines (InlineLayout's
+// hit testing: a glyph's nearer half by its direction, a ligature's
+// parts); a box its element (a pseudo-element's, its element's).
 class HitTest {
 	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float):Null<{node:Node, offset:Int}> {
 		var k = order.count;
@@ -21,7 +23,11 @@ class HitTest {
 			if (p == null) continue;
 			var fx = order.xs[k], fy = order.ys[k];
 			if (p.x < fx || p.y < fy || p.x >= fx + f.width(id) || p.y >= fy + f.height(id)) continue;
-			if (f.kind(id) == Fragments.TEXT && b.node != null) return {node: b.node, offset: offset(f, id, p.x - fx)};
+			if (f.kind(id) == Fragments.TEXT && b.node != null) {
+				// (the lines' answer when it is in this fragment's node: a marker's text, generated text, isn't in them)
+				var at = text(f, id, p.x - fx, p.y - fy);
+				return at != null && at.node == b.node ? at : {node: b.node, offset: offset(f, id, p.x - fx)};
+			}
 			var n = b;
 			while (n != null && n.node == null) n = n.parent;
 			if (n != null) return {node: n.node.nodeType == Node.TEXT_NODE ? n.node.parentNode : n.node, offset: -1};
@@ -57,7 +63,30 @@ class HitTest {
 		return {x: x, y: y};
 	}
 
-	// (the offset in the text node nearest x, from the fragment's glyph run)
+	// (the position in a text fragment's block's lines: the point taken to
+	// the block's fragment, its inline boxes' relative offsets undone, as
+	// the lines have them)
+	static function text(f:Fragments, id:Int, x:Float, y:Float):Null<{node:Node, offset:Int}> {
+		var owner = id;
+		while (owner >= 0 && !(f.kind(owner) == Fragments.BOX && f.box(owner).lines != null && f.box(owner).lines.fragment == owner))
+			owner = f.parent(owner);
+		if (owner < 0) return null;
+		var lines = f.box(owner).lines;
+		var p = id;
+		while (p != owner) {
+			x += f.x(p);
+			y += f.y(p);
+			if (f.kind(p) == Fragments.SPAN) {
+				var off = BlockFlow.offset(f.box(p), lines.width, Math.NaN);
+				x -= off.x;
+				y -= off.y;
+			}
+			p = f.parent(p);
+		}
+		return lines.hit(x, y);
+	}
+
+	// (the offset in the text node nearest x, from the fragment's glyph run: no lines kept for it)
 	static function offset(f:Fragments, id:Int, x:Float):Int {
 		var r = f.run(id), start = f.start(id), end = f.end(id);
 		if (r < 0) return start;

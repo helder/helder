@@ -37,6 +37,7 @@ typedef DocumentViewOptions = {
 //
 //   var view = DocumentView.render(doc, 800, canvas);   // canvas: a Painter, 800 wide
 //   view.hit(10, 20);                                    // {node, offset}
+//   view.selection({node: a, offset: 0}, {node: b, offset: 3});   // its rectangles
 //   File.saveBytes("page.png", DocumentView.png(doc, 800, 600));
 class DocumentView {
 	public final document:Document;
@@ -109,6 +110,62 @@ class DocumentView {
 	// What is at (x, y): a text node and the offset there, or an element (offset -1).
 	public function hit(x:Float, y:Float):Null<{node:Node, offset:Int}>
 		return order == null ? null : HitTest.at(fragments, order, x, y);
+
+	// The caret at a DOM position (a text node and an offset in it) in the
+	// document, its line's height; null: not in any lines. Transforms aside.
+	public function caret(node:Node, offset:Int):Null<{x:Float, y:Float, height:Float}> {
+		for (b in texts()) {
+			var u = b.lines.unitOf(node, offset);
+			if (u < 0) continue;
+			var c = b.lines.caret(u), o = fragments.absolute(b.lines.fragment);
+			return {x: o.x + c.x, y: o.y + c.y, height: c.height};
+		}
+		return null;
+	}
+
+	// The rectangles a selection from one DOM position to another covers in
+	// the document: each line's selected runs, the line's height, block by
+	// block in the box tree's order. Transforms aside.
+	public function selection(from:{node:Node, offset:Int}, to:{node:Node, offset:Int}):Array<{x:Float, y:Float, width:Float, height:Float}> {
+		var blocks = texts();
+		var b0 = -1, u0 = -1, b1 = -1, u1 = -1;
+		for (k in 0...blocks.length) {
+			if (b0 < 0 && (u0 = blocks[k].lines.unitOf(from.node, from.offset)) >= 0) b0 = k;
+			if (b1 < 0 && (u1 = blocks[k].lines.unitOf(to.node, to.offset)) >= 0) b1 = k;
+		}
+		if (b0 < 0 || b1 < 0) return [];
+		if (b1 < b0 || b1 == b0 && u1 < u0) {
+			var t = b0, v = u0;
+			b0 = b1;
+			u0 = u1;
+			b1 = t;
+			u1 = v;
+		}
+		var out = [];
+		for (k in b0...b1 + 1) {
+			var l = blocks[k].lines, o = fragments.absolute(l.fragment);
+			for (r in l.selection(k == b0 ? u0 : 0, k == b1 ? u1 : l.content.text.length))
+				out.push({x: o.x + r.x, y: o.y + r.y, width: r.width, height: r.height});
+		}
+		return out;
+	}
+
+	// (the boxes with lines in this layout, in the tree's order)
+	function texts():Array<Box> {
+		var out = [];
+		if (tree == null || tree.root == null || root < 0) return out;
+		var stack = [tree.root];
+		while (stack.length > 0) {
+			var b = stack.pop();
+			if (b.lines != null && b.lines.fragment < fragments.count && fragments.box(b.lines.fragment) == b) out.push(b);
+			var at = stack.length, c = b.first;
+			while (c != null) {
+				stack.insert(at, c);
+				c = c.next;
+			}
+		}
+		return out;
+	}
 
 	function image(url:String):Null<Bitmap> {
 		if (options.image == null) return null;

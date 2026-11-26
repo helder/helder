@@ -34,8 +34,10 @@ class BlockLines {
 		var frags = space.fragments;
 		if (layouts.length <= depth) layouts.push(new InlineLayout());
 		var l = layouts[depth++];
-		var constraints = new InlineConstraints(width, space.lineWidth == null ? null : (y, h) -> {
-			var lw = space.lineWidth(oy + y, h);
+		// (the function, not the space's field: the lines are laid out again for hit testing, the space gone on)
+		var lineWidth = space.lineWidth;
+		var constraints = new InlineConstraints(width, lineWidth == null ? null : (y, h) -> {
+			var lw = lineWidth(oy + y, h);
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
 		try {
@@ -58,6 +60,7 @@ class BlockLines {
 				for (k in 0...built.absolutes.length) if (k < at.length) space.placeAbsolute(built.absolutes[k], ox + at[k].x, oy + at[k].y);
 			}
 			var r = fragments(l, built, space, frag, ox, oy, constraints);
+			block.lines = new BlockText(c, constraints, frag, ox, oy);
 			depth--;
 			return r;
 		} catch (e:haxe.Exception) {

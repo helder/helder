@@ -429,3 +429,7 @@ node (text runs).
   marker's height.
 - Intrinsic sizes are the engine's (`minContent`, `maxContent`), atomics
   at their own min- and max-content, floats beside the lines at most.
+- Each block keeps its last lines' content and constraints (`BlockText`,
+  `Box.lines`): hit testing, carets and selection lay them out again on
+  the first question, the floats beside them where they were, and answer
+  in DOM positions (`InlineContent.domPosition`, `unitOf`).

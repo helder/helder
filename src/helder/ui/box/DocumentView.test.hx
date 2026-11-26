@@ -65,6 +65,18 @@ function tests() {
 			p.layout(50, 50);
 			equals(top(p, "a"), 200.0);
 		});
+		test("text positions through the lines: hit beside a float, a caret, a selection", () -> {
+			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem }</style><p id=q><span style="float:left;width:30px;height:10px"></span>abc def</p>');
+			var v = new DocumentView(doc, {fonts: ahem()});
+			v.layout(60, 100);
+			var t = (doc.getElementById("q") : Element).lastChild;
+			var h = v.hit(46, 15);
+			equals([h.node == t ? 1 : 0, h.offset], [1, 2]);
+			var c = v.caret(t, 4);
+			equals([c.x, c.y, c.height], [0.0, 20.0, 10.0]);
+			var r = [for (r in v.selection({node: t, offset: 1}, {node: t, offset: 5})) [r.x, r.y, r.width, r.height]];
+			equals(r, [[40.0, 10.0, 20.0, 10.0], [0.0, 20.0, 10.0, 10.0]]);
+		});
 		test("hit testing", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } span { position: relative; left: 100px }</style><body><p id=p>abcd</p><div id=d style="height:20px"></div><div><span id=s>x</span></div>');
 			var v = new DocumentView(doc, {fonts: ahem()});

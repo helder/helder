@@ -19,6 +19,8 @@ var view = DocumentView.render(doc, 800, canvas, {
 	font: url -> fontFiles.get(url)      // @font-face
 });
 view.hit(20, 12);                        // {node: the Text, offset: 1}
+view.caret(text, 1);                     // {x, y, height}
+view.selection({node: a, offset: 0}, {node: b, offset: 3});   // [{x, y, width, height}]
 sys.io.File.saveBytes("page.png", canvas.toPng());
 ```
 
@@ -114,7 +116,12 @@ helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
   dotted, dashed), images, outlines. Boxes are snapped to whole pixels,
   as browsers paint them.
 - `HitTest.at` walks the same order backwards, through the transforms and
-  clips: a text node and the offset nearest the point, or an element.
+  clips: over text, the DOM position nearest the point from its block's
+  lines (InlineLayout's hit testing: a glyph's nearer half by its
+  direction, a ligature's parts; inline boxes' relative offsets undone),
+  else an element. `DocumentView.caret` and `selection` are the lines'
+  carets and selection rectangles in the document (blocks in the box
+  tree's order; transforms aside).
 
 ## Fonts
 
