@@ -157,6 +157,7 @@ class Plan<E> {
 	// an element: made, put in parent (top: before __b, pushed to __o), its
 	// attributes, its children; one its renderer does not list (@:elements) an error
 	function element(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
+		twice(name, attrs);
 		// (<svg>: ui's an image of the drawing, its shapes fixed when
 		// compiled; another renderer's (a page's DOM) SVG's elements; an
 		// agnostic literal's both, each renderer its own: target.choose)
@@ -492,6 +493,22 @@ class Plan<E> {
 			if (react != null) target.warning(react, where);
 		}
 
+	// an attribute given twice an error: the renderer would keep one of them
+	// silently (htmlFor and for, tab-index and tabIndex one name)
+	function twice(tag:String, attrs:Array<PAttr>) {
+		var seen = new Map<String, Bool>();
+		for (a in attrs) {
+			if (a.value.match(ASpread(_, _))) continue;
+			var n = Vocabulary.camel(Vocabulary.canonical(a.name));
+			if (!seen.exists(n)) {
+				seen[n] = true;
+				continue;
+			}
+			var one = isEvent(n) ? "one handler: " + n + "={e -> {a(); b();}}" : "one value";
+			target.error("markup: " + n + " is given twice on <" + tag + ">; " + one, {at: a.at, length: a.name.length});
+		}
+	}
+
 	// (onPress, not one's own word that starts so: "once", "only")
 	static function isEvent(n:String):Bool
 		return StringTools.startsWith(n, "on") && n.length > 2 && n.charAt(2) != n.charAt(2).toLowerCase();
@@ -569,6 +586,7 @@ class Plan<E> {
 	// for it (Pick), a component pinned to another an error; in an agnostic
 	// one chosen when mounted (Pick.call), the factory a hole
 	function factory(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int):E {
+		twice(name, attrs);
 		var c = target.component(name, at, renderer);
 		var props:Array<{name:String, value:E, at:Int}> = [];
 		for (a in attrs) {
