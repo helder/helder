@@ -133,8 +133,13 @@ const colours = a => {
   for (let i = 0; i < a.w * a.h && seen.size < 3; i += 7) seen.add(a.px.readUIntBE(i * a.bpp, 3))
   return seen.size
 }
+// (a screen's still, once it has one: a cold build's are written a moment after they are shown)
 async function snap(call, screen) {
-  const r = await call('run.snap', {screen})
+  let r = await call('run.snap', {screen})
+  for (let i = 0; i < 120 && /has no frame yet/.test(r?.content?.[0]?.text ?? ''); i++) {
+    await new Promise(r => setTimeout(r, 250))
+    r = await call('run.snap', {screen})
+  }
   const img = r?.content?.find(c => c.type === 'image')
   if (!img) throw new Error(`${screen}: no still (${JSON.stringify(r).slice(0, 300)})`)
   const b = Buffer.from(img.data, 'base64')
@@ -161,12 +166,25 @@ await studio(both, async (call, wait) => {
   }
 })
 
+// (until the studio's frames.hframes has stopped changing for 3 s: every still written, a minute at most)
+async function written(dir) {
+  const studio = path.join(dir, 'bin/studio')
+  let last = '', same = 0
+  for (let i = 0; i < 240 && same < 12; i++) {
+    await new Promise(r => setTimeout(r, 250))
+    const f = fs.existsSync(studio) ? fs.readdirSync(studio).map(d => path.join(studio, d, 'frames.hframes')).find(f => fs.existsSync(f)) : null
+    const now = f ? `${fs.statSync(f).size}:${fs.statSync(f).mtimeMs}` : ''
+    same = now !== '' && now === last ? same + 1 : 0
+    last = now
+  }
+}
+
 // 2. the scenarios alone: their stills timed, cold and from the frame cache; their memory
 const alone = copy('scenarios', () => true)
 for (const pass of ['cold', 'cached']) {
   const r = await studio(alone, async (call, wait) => {
     const m = await wait(shown)
-    await new Promise(r => setTimeout(r, 3000))
+    await written(alone)
     return {screens: +m[1], open: +m[2], program: m[3] ? +m[3] : null, rss: rss(alone)}
   })
   results.push({name: 'scenarios', pass, ...r})

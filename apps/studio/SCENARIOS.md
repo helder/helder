@@ -242,6 +242,7 @@ stores'.
   [e0: 2] · s1 = 0 [e0: 1]`), the skipped test in `Holds.test.hx` ("latest
   looks ahead to a held value through a memo..."). The stores fuzzer leaves
   `latest` over memos out until it is fixed (`latest` over signals stays).
+
 ## The viewer (apps/viewer, stacked on #278)
 
 The first Haxe app on scenarios: `src/viewer/Viewer.scenario.hx`, 16 moments.
@@ -274,11 +275,12 @@ The first Haxe app on scenarios: `src/viewer/Viewer.scenario.hx`, 16 moments.
 Numbers (`bun run test viewer-scenarios`, this Mac, bin/scenario-viewer/results.md): every still
 drawn; App/Photo full size, App/Markdown (dark, light) and App/Phone, photo the same pixels as
 Viewer/fit, Viewer/Markdown and Phone/Full size (the first three stories went); the others differ
-where the Sandbox is richer (thumbnails, the sidebar's places, no video or audio). Stills 702-739 ms
-after the screens' program started (16 scenarios, cold), 56-58 ms reopened from frames.hframes.
-Memory a scenario screen about 36.5 MB, a story screen about 25 MB in the same runs: mostly the
-screen's frame (1100x700 at 2x is 12 MB) and its decodes; RSS is noisy here (stories and
-scenarios together came in under stories alone).
+where the Sandbox is richer (thumbnails, the sidebar's places, no video or audio). All 16 stills
+0.7-1.4 s after the screens' program started (cold; 0.7 s on a quiet Mac, the rest under other
+sessions' builds), 56-62 ms reopened from frames.hframes. Memory, RSS over five runs: a scenario
+screen 27-38 MB (36 in three), a story screen 5-25 MB; mostly a screen's frame (1100x700 at 2x is
+12 MB) and its decodes, and too noisy here to say more (stories and scenarios together once came
+in under stories alone).
 
 Moments that wait for phase 2's steps (their stories stay): the PDF between two pages (a scroll),
 the marquee (a drag), the search field focused (focus), the phone's long press, select mode and
@@ -289,8 +291,7 @@ Found while porting: the studio could not build the viewer's screens at all (its
 tests/, no class path of the project's: now each story file's root by its package; a main that is
 private: `@:privateAccess`); dev builds' live literals broke two markup patterns the viewer uses (a
 variant, `size="sm"`, checked as a literal; a ternary's string beside a number, `"auto"`): both
-fixed in helder; `helder.test.Guard`'s getpid and `helder.dev.Hosted`'s clashed in a test build
-that opens a window on macOS (the viewer's own tests).
+fixed in helder.
 
 - **Held transactions depend on the order nodes were made.** With async
   answers in flight (several asks, holds, an answer failing), helder's
