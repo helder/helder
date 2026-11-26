@@ -98,6 +98,61 @@ function tests() {
 		}), [1, 1]);
 		equals(score.peek(), [0, 0]);
 	});
+	var environ = test("a screen's zone, locale and settings its own; none given, none of the machine's", () -> {
+		var got = new Map<String, String>();
+		function look(name:String)
+			return () -> got.set(name, [
+				Std.string(helder.os.Now.offset(0) / 60000),
+				helder.os.Locale.current.peek(),
+				Std.string(helder.os.Settings.textScale.peek()),
+				Std.string(helder.os.Settings.reducedMotion.peek()),
+				Std.string(helder.os.Settings.orientation.peek())
+			].join(" "));
+		var h = new Host([], new HeadlessHost(), 1.0, [
+			scenario({name: "Delhi", zone: "+05:30", locale: "nl-BE", settings: {textScale: 1.5, reducedMotion: true}, boot: look("Delhi")}),
+			scenario({name: "Plain", boot: look("Plain")})
+		]);
+		h.still(true);
+		h.show(["Delhi", "Plain"]);
+		h.frame(0);
+		equals([got.get("Delhi"), got.get("Plain")], ["330 nl-BE 1.5 true landscape", "0 en-US 1 false landscape"]);
+		// (outside the screens: the system's again)
+		equals([helder.os.Now.zone == null, helder.os.Locale.screen == null, helder.os.Settings.screen == null], [true, true, true]);
+		for (s in h.screens)
+			s.reset();
+	});
+	var random = test("Math.random a screen's own: side by side, drawn in turn, as alone", () -> {
+		function draws(names:Array<String>):Map<String, Array<Float>> {
+			var out = [for (n in names) n => []];
+			var h = new Host([], new HeadlessHost(), 1.0, [for (n in names) scenario({name: n, seed: 7})]);
+			h.still(true);
+			h.show(names);
+			h.frame(0);
+			for (_ in 0...3)
+				for (s in h.screens)
+					s.run(() -> out.get(s.name).push(Math.random()));
+			for (s in h.screens)
+				s.reset();
+			return out;
+		}
+		var alone = draws(["R"]).get("R"), both = draws(["R", "S"]);
+		equals([both.get("R"), both.get("S")], [alone, alone]);
+	});
+	var timers = test("a timer set in a screen runs on its clock, not the loop's", () -> {
+		var fired = [];
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Clock"})]);
+		h.still(true);
+		h.show(["Clock"]);
+		h.frame(0);
+		var s = h.screens[0];
+		s.run(() -> helder.os.Now.after(1000, () -> fired.push(ScreenContext.current.name)));
+		// (real time passing runs nothing: its clock stands)
+		turn(0.05);
+		equals(fired, []);
+		s.run(() -> Clock.tick(ScreenContext.current.now + 1.0));
+		equals(fired, ["Clock"]);
+		s.reset();
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -105,7 +160,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story])
+	for (t in [host, boot, apart, time, tasks, story, environ, random, timers])
 		t.skip();
 	#end
 }

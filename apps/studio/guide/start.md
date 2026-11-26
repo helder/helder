@@ -63,10 +63,17 @@ export const welcome = scenario({ name: "App/Welcome", boot() { title("Welcome b
 
 Each scenario is a literal `scenario({...})` at the module's top level,
 read before anything is built. Add one to add a screen; rename or remove
-one and the canvas follows. Also: `loop`, `time` (`"2026-11-26T09:00"`:
-its clock's start), `size: [w, h]` (else main's window's), `seed`, `dark`,
-`play` (seconds run to the moment). Each screen has state of its own:
-screens never share a value.
+one and the canvas follows. Also: `loop`, `size: [w, h]` (else main's
+window's), `dark`, `play` (seconds of its clock run to the moment: its
+timers fire, `setTimeout` and `setInterval` included). Each screen has
+state of its own: screens never share a value.
+
+A scenario sees nothing of the machine: set what the moment depends on.
+`time: "2026-11-26T09:00"` (its clock's start, `new Date()` reads it),
+`zone: "+01:00"` (`"UTC"` or a fixed offset; UTC unless given), `locale:
+"nl-BE"` (dates and numbers formatted so; en-US unless given), `settings:
+{textScale: 1.5, reducedMotion: true}`, `seed` (`Math.random`'s, the
+screen's own). Write one scenario per place or language that matters.
 
 The canvas is a storyboard of stills: a scenario shows its moment, it does
 not run. Write one for each key moment, named for it ("Pong/Serve",

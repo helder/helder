@@ -9,7 +9,8 @@ class JsDate extends JsObject {
 }
 
 // Date: the specification's time arithmetic (exact in UTC); local time uses
-// the host's timezone offset for each instant.
+// the screen's zone (helder.os.Now: a scenario's), else the host's offset
+// for each instant.
 class Dates {
 	public static var DateProto:JsObject;
 	static inline var msPerDay = 86400000.0;
@@ -87,12 +88,9 @@ class Dates {
 
 	static function timeClip(t:Float):Float return !Math.isFinite(t) || Math.abs(t) > 8.64e15 ? Math.NaN : trunc(t) + 0;
 
-	// (local time minus UTC, in ms, at UTC instant t)
-	static function offsetAt(t:Float):Float {
-		if (!Math.isFinite(t)) return 0;
-		var clamped = Math.max(-8.64e15, Math.min(t, 8.64e15));
-		return -Date.fromTime(clamped).getTimezoneOffset() * 60000.0;
-	}
+	// (local time minus UTC, in ms, at UTC instant t: the screen's zone, else the system's)
+	static function offsetAt(t:Float):Float
+		return helder.os.Now.offset(t);
 
 	static function localTime(t:Float):Float return t + offsetAt(t);
 

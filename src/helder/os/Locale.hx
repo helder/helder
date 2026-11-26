@@ -14,14 +14,20 @@ class Locale {
 	@:typescript public static var current(get, never):Read<String>;
 	static var tag:Null<Signal<String>>;
 	static var languages:Array<String>;
+	// (the current screen's language over the device's: helder.ui.ScreenContext sets it, a scenario's locale)
+	@:noCompletion public static var screen:Null<String> = null;
 
 	static function get_current():Read<String> {
+		var s = screen;
+		if (s != null) return (new helder.view.graph.Read.Const(s) : helder.view.graph.Read.Reader<String>);
 		init();
 		return tag;
 	}
 
 	// An ordered list of the user's preferred language tags.
 	@:typescript public static function preferred():Array<String> {
+		var s = screen;
+		if (s != null) return [s];
 		init();
 		return languages.copy();
 	}
@@ -29,7 +35,8 @@ class Locale {
 	static function init() {
 		if (tag != null) return;
 		languages = preferences();
-		tag = Graph.signal(languages[0]);
+		// (shared: the device's, the same in every screen's store, its watcher's writes seen by all)
+		tag = Graph.signalOf(languages[0], {shared: true});
 		#if (target.name == "hxmc")
 		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == Platform.WASI) {
