@@ -44,7 +44,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.story.tsx go by themselves once a story of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
+			description: "Edit a file of the project: each edit's old text (once in the file; its indentation spaces or left out, never a raw tab: write no tab characters in a call) replaced by its new text (indented as the file is), or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.story.tsx go by themselves once a story of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -282,10 +282,10 @@ class Tools implements Mcp.Target {
 			var edits:Array<Dynamic> = args.edits ?? [];
 			if (edits.length == 0) throw "no edits (edits: [{old, new}], or text)";
 			for (e in edits) {
-				var old:String = e.old, at = base.indexOf(old);
-				if (old == "" || at < 0) throw 'not in ${args.path}: ${old.substr(0, 60)}';
-				if (base.indexOf(old, at + 1) >= 0) throw 'more than once in ${args.path}: ${old.substr(0, 60)} (give more of it)';
-				changes.push(new helder.syntax.Transaction.Change(at, at + old.length, Reflect.field(e, "new")));
+				var old:String = e.old, next:String = Reflect.field(e, "new") ?? "";
+				var at = old == "" ? null : try Indent.find(base, old) catch (_:String) throw 'more than once in ${args.path}: ${old.substr(0, 60)} (give more of it)';
+				if (at == null) throw 'not in ${args.path}: ${old.substr(0, 60)}';
+				changes.push(new helder.syntax.Transaction.Change(at.start, at.end, at.loose ? Indent.adapt(base, at, old, next) : next));
 			}
 		}
 		var tx = new Transaction(changes, null, base);

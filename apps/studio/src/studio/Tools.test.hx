@@ -51,6 +51,16 @@ function tests() {
 			equals(missing.isError, true);
 			equals(missing.content[0].text, "app.tsx: no such file; send text to create it");
 		}));
+		test("an edit indented otherwise than the file (spaces for its tabs, or none): found, written in its tabs", async(() -> {
+			var s = empty("bin/tools-indent"), f = s.project.dir + "/a.ts";
+			s.tools.call("project.patch", {path: "a.ts", text: "function f() {\n\tif (a) {\n\t\treturn 1;\n\t}\n}\n"}, "a");
+			var r = s.tools.call("project.patch", {path: "a.ts", edits: [{old: "    if (a) {\n        return 1;\n    }", "new": "    if (a) {\n        return 2;\n    }\n    return 0;"}]}, "a");
+			equals(r.isError, false);
+			equals(sys.io.File.getContent(f), "function f() {\n\tif (a) {\n\t\treturn 2;\n\t}\n\treturn 0;\n}\n");
+			s.tools.call("project.patch", {path: "a.ts", edits: [{old: "if (a) {\nreturn 2;\n}", "new": "if (b) {\nreturn 3;\n}"}]}, "a");
+			equals(sys.io.File.getContent(f), "function f() {\n\tif (b) {\n\t\treturn 3;\n\t}\n\treturn 0;\n}\n");
+			equals(s.tools.call("project.patch", {path: "a.ts", edits: [{old: "return", "new": "x"}]}, "a").isError, true);
+		}));
 		test("a patch deletes a file; undone it is back, redone gone", async(() -> {
 			var s = empty("bin/tools-delete"), f = s.project.dir + "/sketches/a.helder";
 			s.tools.call("project.patch", {path: "sketches/a.helder", text: '<Design>\n\t<Frame name="Home"><text>Hi</text></Frame>\n</Design>\n'}, "a");
