@@ -374,4 +374,22 @@ function tests() {
 			equals(cleanup.calls, 2);
 		});
 	});
+
+	// (helder's, Solid 2.0.4's answer: of one owner depth, the lower in the
+	// graph first, whatever the order they were made or marked in; found by
+	// Jotai's "mounted atom should be recomputed eagerly")
+	test("effects run lowest in the graph first", () -> {
+		var out = [], a = signal(0);
+		var m = memo(() -> a() + 1), m2 = memo(() -> m() + 1);
+		function watch(name:String, read:Void->Int)
+			root(_ -> effect(_ -> read(), (_, _) -> out.push(name)));
+		watch("two memos", () -> m2());
+		watch("direct", () -> a());
+		watch("one memo", () -> m());
+		flush();
+		out.resize(0);
+		a(1);
+		flush();
+		equals(out, ["direct", "one memo", "two memos"]);
+	});
 }

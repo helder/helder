@@ -154,8 +154,8 @@ class Scheduler {
 	}
 
 	// (parents first: a parent running again disposes its old children before
-	// they run; each batch the queue's nodes so far, sorted in place by depth
-	// (stable: those of one depth in the order they were queued), then run,
+	// they run; each batch the queue's nodes so far, sorted in place by depth,
+	// then height (stable: the rest in the order they were queued), then run,
 	// those it queues the next batch)
 	static function runQueue(q:Array<Node<Dynamic>>) {
 		var start = 0;
@@ -181,15 +181,19 @@ class Scheduler {
 	static function sortByDepth(q:Array<Node<Dynamic>>, start:Int, end:Int) {
 		for (i in start + 1...end) {
 			var n = q[i];
-			if (q[i - 1].depth <= n.depth) continue;
+			if (!before(n, q[i - 1])) continue;
 			var j = i;
-			while (j > start && q[j - 1].depth > n.depth) {
+			while (j > start && before(n, q[j - 1])) {
 				q[j] = q[j - 1];
 				j--;
 			}
 			q[j] = n;
 		}
 	}
+
+	// (owners first; of one depth, the lower in the graph: Solid 2's height order)
+	static inline function before(a:Node<Dynamic>, b:Node<Dynamic>):Bool
+		return a.depth < b.depth || a.depth == b.depth && @:privateAccess a.height < @:privateAccess b.height;
 
 	// (a transaction: a spare one, else new)
 	// (a transaction of a store's nodes: a spare one, else new)

@@ -79,10 +79,15 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	var thrown:Null<haxe.Exception> = null;
 	var stagedFailed = false;
 	var sources:Null<Array<Node<Dynamic>>> = null;
+	// (one more than its highest source's, a signal's 0: a queue runs the lower
+	// first among those of one owner depth, Solid 2's heap)
+	@:allow(helder.view.graph) var height = 0;
 	var observers:Null<Array<Node<Dynamic>>> = null;
 	// (a run's tracking: the old sources read again in order, then the new ones)
 	var run = 0;
 	var kept = 0;
+	// (its function running, its sources reconciled after: the run's to settle, not let go under it)
+	var computing = false;
 	var added:Null<Array<Node<Dynamic>>> = null;
 	var trackedBy:Null<Node<Dynamic>> = null;
 	var trackedIn = -1;
@@ -592,6 +597,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		kept = 0;
 		added = null;
 		var r:Dynamic = null, failure:Dynamic = null, failed = false, waiting = false;
+		computing = true;
 		try r = call() catch (e:NotReady) waiting = true catch (e:haxe.Exception) {
 			failure = e.native;
 			thrown = e;
@@ -603,6 +609,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		runner = savedRunner;
 		probe = savedProbe;
 		reconcile();
+		computing = false;
 		state = CLEAN;
 		var w = world != null ? world.find() : null;
 		var mine = w != null && joined;
@@ -796,6 +803,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// (after a run: the new sources subscribed, then those not read again left)
 	function reconcile() {
+		// (disposed during its run: it let go of its sources then, and keeps none)
+		if (disposed) {
+			added = null;
+			return;
+		}
 		var old = sources;
 		if (added != null) {
 			var stale = old != null && kept < old.length ? old.slice(kept) : null;
@@ -807,18 +819,45 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				s.observers.push(this);
 			}
 			added = null;
-			if (stale != null) for (s in stale) s.unobserve(this);
+			raise();
+			if (stale != null) unlinkAll(stale);
 		} else if (old != null && kept < old.length) {
 			var stale = old.slice(kept);
 			old.resize(kept);
-			for (s in stale)
-				s.unobserve(this);
+			raise();
+			unlinkAll(stale);
 		}
 	}
 
+	function raise() {
+		var h = 0;
+		if (sources != null)
+			for (s in sources)
+				if (s.height >= h) h = s.height + 1;
+		height = h;
+	}
+
+	// (each source told it lost this observer, though one's unobserved throws: the first error after)
+	function unlinkAll(ss:Array<Node<Dynamic>>) {
+		var first:Null<haxe.Exception> = null;
+		for (s in ss)
+			try s.unobserve(this) catch (e:haxe.Exception) if (first == null) first = e;
+		if (first != null) throw Errors.kept(first);
+	}
+
 	function unobserve(o:Node<Dynamic>) {
-		if (observers == null || !observers.remove(o)) return;
-		if (observers.length == 0 && unobserved != null) unobserved();
+		if (observers == null || !observers.remove(o) || observers.length > 0) return;
+		// (a free memo nothing observes lets go of its sources, each told in
+		// turn: read again it computes again, taking them back; Solid 2's)
+		var first:Null<haxe.Exception> = null;
+		if (kind == COMPUTED && free && !writable && !computing && sources != null) {
+			var ss = sources;
+			sources = null;
+			state = DIRTY;
+			try unlinkAll(ss) catch (e:haxe.Exception) first = e;
+		}
+		if (unobserved != null) unobserved();
+		if (first != null) throw first;
 	}
 
 	// (applies its second half; its error the nearest boundary's, else the flush's)
@@ -892,8 +931,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (sources != null) {
 			var ss = sources;
 			sources = null;
-			for (s in ss)
-				s.unobserve(this);
+			unlinkAll(ss);
 		}
 		if (applyCleanup != null) {
 			var c = applyCleanup;
