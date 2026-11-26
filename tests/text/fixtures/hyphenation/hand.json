@@ -1,0 +1,14 @@
+{
+	"en-us": ["hy-phen-ation", "con-cate-na-tion", "al-go-rithm", "ta-ble", "dic-tio-nary", "pro-cess-ing", "lay-out", "para-graph", "in-de-pen-dent", "un-der-stand-ing"],
+	"en-gb": ["hy-phen-a-tion", "dic-tion-ary", "lay-out", "para-graph", "in-de-pend-ent", "un-der-stand-ing", "col-our", "pro-gramme"],
+	"nl": ["woor-den-boek", "af-bree-kings-pa-tro-nen", "ge-schie-de-nis", "on-der-zoek", "lief-de", "ont-wik-ke-ling", "ver-ant-woor-de-lijk-heid", "aan-dachts-trek-ker"],
+	"de-1996": ["Sil-ben-tren-nung", "Wör-ter-buch", "Zu-sam-men-ar-beit", "Ge-schich-te", "Ent-wick-lung", "Fern-se-her", "Haus-tür"],
+	"fr": ["dic-tion-naire", "dé-ve-lop-pe-ment", "his-toire", "ty-po-gra-phie", "char-ge-ment", "par-ti-cu-liè-re-ment"],
+	"es": ["dic-cio-na-rio", "pa-la-bra", "de-sa-rro-llo", "his-to-ria", "tra-ba-ja-dor"],
+	"it": ["di-zio-na-rio", "svi-lup-po", "pa-ro-la", "sto-ria", "fi-ne-stra"],
+	"pt": ["di-ci-o-ná-rio", "pa-la-vra", "de-sen-vol-vi-mento", "his-tó-ria"],
+	"sv": ["ord-bok", "ut-veck-ling", "histo-ria", "da-tor"],
+	"da": ["ord-bog", "ud-vik-ling", "hi-sto-rie", "com-pu-ter"],
+	"nb": ["ord-bok", "ut-vik-ling", "his-to-rie", "data-ma-skin"],
+	"pl": ["słow-nik", "roz-wój", "hi-sto-ria", "kom-pu-ter", "Rzecz-po-spo-li-ta"]
+}

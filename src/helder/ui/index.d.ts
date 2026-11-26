@@ -612,6 +612,9 @@ export declare class Node {
 	// first, in its order, then 0's in tree order; below 0: focusable by a
 	// click or focus(), passed over by Tab
 	tabIndex: number;
+	// the language of its text, inherited (null: the parent's; as HTML's lang,
+	// a BCP 47 tag: "nl", "en-GB"): its words' hyphenation (Style.hyphens)
+	lang: string | null;
 	// motion (helder.ui.motion.Motions): what it declares for itself and its
 	// subtree (markup's motion="snappy"); the id a matched counterpart flies
 	// from or to (matched="tile-3"); its subtree's changes without motion
@@ -1945,6 +1948,7 @@ export interface Attributes extends StyleAttributes {
 	instant?: Value<boolean>;
 	matched?: Value<string>;
 	ride?: Value<unknown>;
+	lang?: Value<string>;
 	[aria: `aria-${string}`]: unknown;
 	[data: `data-${string}`]: unknown;
 	onPress?: ((event: Event) => void) | null;

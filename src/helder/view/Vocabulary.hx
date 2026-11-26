@@ -63,7 +63,7 @@ class Vocabulary {
 		"scrollbarColor", "scrollbarTrackColor", "outlineStyle", "ringWidth", "ringColor", "ringOffsetWidth", "ringOffsetColor", "ringInset", "transform",
 		"transformOrigin", "color", "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "lineHeightPx", "letterSpacing", "letterSpacingEm",
 		"wordSpacing", "textAlign", "order", "zIndex", "direction", "visibility", "pointerEvents", "textWrap", "overflowWrap", "wordBreak",
-		"fontFeatureSettings", "fontVariantNumeric", "textTransform", "textOverflow", "lineClamp", "textDecoration", "textDecorationColor",
+		"hyphens", "fontFeatureSettings", "fontVariantNumeric", "textTransform", "textOverflow", "lineClamp", "textDecoration", "textDecorationColor",
 		"textDecorationThickness", "textUnderlineOffset", "textShadow", "transition"
 	];
 
@@ -73,7 +73,7 @@ class Vocabulary {
 		"id", "class", "role", "hidden", "disabled", "required", "tabIndex", "autoFocus", "focusable", "selectable", "slot", "variant", "size",
 		"host", "group", "peer", "tag", "states", "keyContext", "actions", "trackFocus", "dragRegion", "dragData", "panAxis", "panMinPointers",
 		"motion", "motionLayout", "motionOpacity", "motionColor", "motionTransform", "motionRadius", "motionPresence", "lead", "trail", "instant",
-		"matched", "ride"
+		"matched", "ride", "lang"
 	];
 
 	// the attributes of some elements: by primitive (each element made as it

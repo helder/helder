@@ -6,7 +6,8 @@ import haxe.ds.Vector;
 // face of the FontSet that has it, advances from hmtx, kerning (GPOS, kern)
 // between glyphs of the same face) and broken greedily at break
 // opportunities (after spaces and hyphens, around CJK ideographs, kana and
-// hangul, after a soft hyphen, shown as a hyphen where the line breaks)
+// hangul, after a soft hyphen, shown as a hyphen where the line breaks; with
+// a Hyphenator, CSS's hyphens: auto, at its points in words as at soft hyphens)
 // to fit maxWidth (NaN: only at "\n"); a word wider than a line is cut
 // between characters (breaking: as CSS's overflow-wrap and word-break),
 // except at a maxWidth of 0: the min-content layout, every opportunity
@@ -58,7 +59,15 @@ class TextLayout {
 	public static inline var BREAK_ALL = 4;
 	// KEEP_ALL: not between CJK characters
 	public static inline var KEEP_ALL = 8;
+	// NO_HYPHENS: not after a soft hyphen either (CSS's hyphens: none)
+	public static inline var NO_HYPHENS = 16;
+	// a word hyphenated is at least so many characters, as many before and
+	// after a break (CSS's hyphenate-limit-chars: auto), or the patterns' own
+	public static inline var HYPHEN_WORD = 5;
+	public static inline var HYPHEN_BEFORE = 2;
+	public static inline var HYPHEN_AFTER = 2;
 	var breaking = BREAK_WORD;
+	public var hyphenator(default, null):Null<Hyphenator> = null;
 
 	// whether lines were cut (by maxLines: the last one; by cut: each too
 	// wide), ending in an ellipsis
@@ -77,16 +86,19 @@ class TextLayout {
 	// CSS's direction sets it; -1: from its first strong character); cut:
 	// each line wider than it given up at its end until an ellipsis after it
 	// fits (CSS's text-overflow: ellipsis; NaN: none); breaking: BREAK_WORD
-	// and the others above added up (0: CSS's overflow-wrap: normal)
+	// and the others above added up (0: CSS's overflow-wrap: normal);
+	// hyphenator: its language's points in the words a line may break at
+	// (CSS's hyphens: auto; a run's own: TextRun.hyphenator)
 	public function new(text:String, fonts:FontSet, lineHeight:Float, maxWidth:Float, ?runs:Array<TextRun>, maxLines = 0, letterSpacing = 0.0,
-			wordSpacing = 0.0, base = -1, cut = Math.NaN, breaking = BREAK_WORD)
-		reset(text, fonts, lineHeight, maxWidth, runs, maxLines, letterSpacing, wordSpacing, base, cut, breaking);
+			wordSpacing = 0.0, base = -1, cut = Math.NaN, breaking = BREAK_WORD, ?hyphenator:Hyphenator)
+		reset(text, fonts, lineHeight, maxWidth, runs, maxLines, letterSpacing, wordSpacing, base, cut, breaking, hyphenator);
 
 	// another text shaped and laid out into this layout's buffers (as new)
 	public function reset(text:String, fonts:FontSet, lineHeight:Float, maxWidth:Float, ?runs:Array<TextRun>, maxLines = 0, letterSpacing = 0.0,
-			wordSpacing = 0.0, base = -1, cut = Math.NaN, breaking = BREAK_WORD) {
+			wordSpacing = 0.0, base = -1, cut = Math.NaN, breaking = BREAK_WORD, ?hyphenator:Hyphenator) {
 		this.text = text;
 		this.breaking = breaking;
+		this.hyphenator = hyphenator;
 		this.fonts = fonts;
 		this.runs = runs != null ? runs : this.runs != null && this.runs.length == 0 ? this.runs : [];
 		this.lineHeight = fonts.size * lineHeight;
@@ -106,6 +118,7 @@ class TextLayout {
 		}
 		shape(letterSpacing, top);
 		space(letterSpacing, wordSpacing);
+		hyphenate();
 		// (a tab's stops: its advance before bidi's kerning)
 		hasTabs = false;
 		for (i in 0...count)
@@ -129,7 +142,8 @@ class TextLayout {
 		width = 0;
 		height = 0;
 		truncated = false;
-		placedRoom(shaped + 1);
+		// (and a hyphen a line where words are hyphenated, about)
+		placedRoom(shaped + 1 + (hyphenated ? (shaped >> 4) + 16 : 0));
 		if (hasTabs)
 			for (i in 0...shaped)
 				tabPlaced[i] = lAdvance[i];
@@ -243,6 +257,8 @@ class TextLayout {
 	// (a ligature: its parts its characters)
 	static inline var LIGATURE = 0x200;
 	static inline var MARK = 0x400;
+	// (a hyphenation point before it: hyphenate's)
+	static inline var HYPHEN = 0x1000;
 	// (every TextLine made: lines[k] is pool[k])
 	final pool:Array<TextLine> = [];
 	// (the buffers before the first: none allocated with the layout)
@@ -279,9 +295,10 @@ class TextLayout {
 	}
 
 	// (room for n shaped glyphs, the first count kept)
-	function room(n:Int) {
+	// (more: at least n; exact: n, not twice the capacity)
+	function room(n:Int, exact = false) {
 		if (n <= capacity) return;
-		var c = n > 2 * capacity ? n : 2 * capacity;
+		var c = exact || n > 2 * capacity ? n : 2 * capacity;
 		lFace = moreInts(lFace, c, count);
 		lId = moreInts(lId, c, count);
 		lCp = moreInts(lCp, c, count);
@@ -331,7 +348,8 @@ class TextLayout {
 	// (room for n laid out, the first glyphCount kept)
 	function placedRoom(n:Int) {
 		if (n <= placedCapacity) return;
-		var c = n > 2 * placedCapacity ? n : 2 * placedCapacity;
+		// (past the shaped glyphs, wrap's: the hyphens its lines show, an eighth more, not all twice)
+		var c = n > 2 * placedCapacity ? n : n > shaped + 1 ? n + (n >> 3) + 16 : 2 * placedCapacity;
 		oGlyph = moreInts(oGlyph, c, glyphCount);
 		oX = moreFloats(oX, c, glyphCount);
 		oAdvance = moreFloats(oAdvance, c, glyphCount);
@@ -344,7 +362,8 @@ class TextLayout {
 
 	// (a glyph at the end: a copy of from, or blank)
 	function append(from = -1):Int {
-		room(count + 1);
+		// (a wrap's: a hyphen a line, an ellipsis; an eighth more, not all the buffers twice)
+		if (count == capacity) room(count + (count >> 3) + 16, true);
 		var g = count++;
 		if (from >= 0) {
 			lFace[g] = lFace[from];
@@ -1038,6 +1057,92 @@ class TextLayout {
 	var bidiLevels:Null<Array<Int>> = null;
 	var paragraphLevels:Null<Array<{start:Int, end:Int, base:Int}>> = null;
 
+	// --- hyphenation (CSS's hyphens: auto) ---
+
+	// (the points found: their indices in the text, in order; whether there were any)
+	var points = NO_INTS;
+	var hyphenated = false;
+
+	// each word's hyphenation points, by its run's hyphenator or the
+	// layout's, a HYPHEN on the glyph after each (none inside a ligature).
+	// Not hyphenated, as browsers leave them: words shorter than HYPHEN_WORD,
+	// those with a soft hyphen (CSS: its breaks instead), in capitals
+	// (abbreviations), and the words of a token (between spaces) with a
+	// digit, an @, /, \ or _, or a . or : inside it (numbers, URLs, addresses, file names)
+	function hyphenate() {
+		hyphenated = false;
+		if (breaking & NO_HYPHENS != 0) return;
+		var any = hyphenator != null && hyphenator != Hyphenator.NONE;
+		for (r in runs)
+			if (r.hyphenator != null && r.hyphenator != Hyphenator.NONE) any = true;
+		if (!any) return;
+		var s = text, n = s.length, found = 0, run = 0, i = 0;
+		inline function at(k:Int):Int
+			return StringTools.fastCodeAt(s, k);
+		while (i < n) {
+			if (spaceAt(at(i))) {
+				i++;
+				continue;
+			}
+			var t = i, skip = false;
+			while (i < n) {
+				var c = at(i);
+				if (spaceAt(c)) break;
+				if (c >= "0".code && c <= "9".code || c == "@".code || c == "/".code || c == "\\".code || c == "_".code
+					|| (c == ".".code || c == ":".code) && i + 1 < n && letter(at(i + 1))) skip = true;
+				i++;
+			}
+			if (skip) continue;
+			var j = t;
+			while (j < i) {
+				while (j < i && !letter(at(j)))
+					j++;
+				var w = j, shy = false;
+				while (j < i && (letter(at(j)) || at(j) == 0xAD)) {
+					if (at(j) == 0xAD) shy = true;
+					j++;
+				}
+				if (j - w < HYPHEN_WORD || shy) continue;
+				var h = hyphenator;
+				while (run < runs.length && runs[run].end <= w)
+					run++;
+				if (run < runs.length && runs[run].start <= w && runs[run].hyphenator != null) h = runs[run].hyphenator;
+				if (h == null || h == Hyphenator.NONE) continue;
+				var lower = false;
+				for (k in w...j) {
+					var c = at(k);
+					if (c >= "a".code && c <= "z".code || h.knows(c) && !h.upper(c)) lower = true;
+				}
+				if (!lower) continue;
+				var len = h.scan(s, w, j);
+				var lo = h.left > HYPHEN_BEFORE ? h.left : HYPHEN_BEFORE, hi = len - (h.right > HYPHEN_AFTER ? h.right : HYPHEN_AFTER);
+				for (p in lo...hi + 1)
+					if (h.breaks(p)) {
+						if (found == points.length) points = moreInts(points, found * 2 + 16, found);
+						points[found++] = w + p;
+					}
+			}
+		}
+		hyphenated = found > 0;
+		var k = 0;
+		for (g in 0...count) {
+			if (k == found) break;
+			var c = lCluster[g];
+			while (k < found && points[k] < c)
+				k++;
+			if (k < found && points[k] == c && g > 0 && lCluster[g - 1] < c) lFlags[g] |= HYPHEN;
+		}
+	}
+
+	// (between tokens: what a line breaks at, and no-break spaces)
+	static inline function spaceAt(c:Int):Bool
+		return c <= 32 || c == 0xA0 || c == 0x3000 || c >= 0x2000 && c <= 0x200B || c == 0x202F;
+
+	// (a word's character: a letter of the Latin, Greek and Cyrillic blocks, or a combining mark)
+	static inline function letter(c:Int):Bool
+		return c >= "a".code && c <= "z".code || c >= "A".code && c <= "Z".code || c >= 0xC0 && c <= 0x24F && c != 0xD7 && c != 0xF7
+			|| c >= 0x300 && c <= 0x36F || c >= 0x370 && c <= 0x52F && c != 0x37E && c != 0x387 || c >= 0x1E00 && c <= 0x1EFF;
+
 	// --- line breaking ---
 
 	static inline function isSpace(c:Int):Bool
@@ -1052,13 +1157,17 @@ class TextLayout {
 		if (i == 0) return false;
 		var p = lCp[i - 1], c = lCp[i];
 		if (isSpace(c)) return false; // (spaces stay at the end of the line)
-		if (p == 0xAD) return true;
+		if (p == 0xAD && breaking & NO_HYPHENS == 0 || lFlags[i] & HYPHEN != 0) return true;
 		// (most text: letters before letters, the tests below all false)
 		if (p < 0x2010 && c < 0x2E80 && breaking & BREAK_ALL == 0) return p == 32 || p == 9 || p == 0x2D || p == 0x2F;
 		if (isSpace(p) || p == 0x2D || p == 0x2010 || p == 0x2013 || p == 0x2014 || p == 0x2F) return true;
 		if (breaking & BREAK_ALL != 0) return within(i) && !closes(c) && !opens(p);
 		return breaking & KEEP_ALL == 0 && (isCJK(p) || isCJK(c));
 	}
+
+	// (is a hyphen shown where a line breaks before glyph i: after a soft hyphen, at a hyphenation point?)
+	inline function hyphenAt(i:Int):Bool
+		return lCp[i - 1] == 0xAD && breaking & NO_HYPHENS == 0 || lFlags[i] & HYPHEN != 0;
 
 	// may a word be cut before glyph i (not before a mark or what is not shown)?
 	inline function within(i:Int):Bool
@@ -1084,8 +1193,8 @@ class TextLayout {
 		for (i in 0...count) {
 			var c = lCp[i];
 			if (c == 10 || breakBefore(i) || (anywhere && i > 0 && !isSpace(c) && within(i))) {
-				// (a soft hyphen broken at: the hyphen shown)
-				if (i > 0 && lCp[i - 1] == 0xAD) visible = x + hyphenAdvance(i - 1);
+				// (a soft hyphen or hyphenation point broken at: the hyphen shown)
+				if (i > 0 && hyphenAt(i)) visible = x + hyphenAdvance(i - 1);
 				if (visible > widest) widest = visible;
 				x = visible = 0;
 				if (c == 10) continue;
@@ -1096,7 +1205,7 @@ class TextLayout {
 		return visible > widest ? visible : widest;
 	}
 
-	// the hyphen a soft hyphen shows at a line's end: its face's (U+2010, else "-"), its advance
+	// the hyphen a soft hyphen (or the letter before a hyphenation point) shows at a line's end: its face's (U+2010, else "-"), its advance
 	function hyphenId(g:Int):Int {
 		var f = fontOf(g), id = f.glyph(0x2010);
 		return id == 0 ? f.glyph(0x2D) : id;
@@ -1137,8 +1246,8 @@ class TextLayout {
 			var w = 0.0, lastBreak = -1, i = lineStart;
 			while (i < end) {
 				var c = lCp[i];
-				// (after a soft hyphen: only where the hyphen fits too)
-				if (i > lineStart && breakBefore(i) && (lCp[i - 1] != 0xAD || w + hyphenAdvance(i - 1) <= max + 1e-3)) lastBreak = i;
+				// (after a soft hyphen, at a hyphenation point: only where the hyphen fits too)
+				if (i > lineStart && breakBefore(i) && (!hyphenAt(i) || w + hyphenAdvance(i - 1) <= max + 1e-3)) lastBreak = i;
 				// (a tab: to its next stop from the line's start, the next but one if that is
 				// closer than half a space, as CSS has it)
 				if (c == 9) {
@@ -1153,32 +1262,39 @@ class TextLayout {
 				i++;
 			}
 			// (at a width of 0, or not to be cut, a word stays whole: up to the next opportunity)
+			var whole = false;
 			if ((max <= 0 || breaking & (BREAK_WORD | ANYWHERE) == 0) && lastBreak <= lineStart && i < end) {
 				while (i < end && !breakBefore(i))
 					i++;
+				whole = true;
 			}
 			var cut = i >= end ? end : lastBreak > lineStart ? lastBreak : i;
+			// (a word cut where it must lands on a hyphenation point by chance: no hyphen, which did not fit)
+			var chosen = whole || cut == lastBreak;
 			// (a word cut: not before a mark or what is not shown)
 			if (cut < end && cut > lineStart && !breakBefore(cut))
 				while (cut > lineStart + 1 && !within(cut))
 					cut--;
-			// (broken after a soft hyphen: a hyphen shown there, a glyph of its own)
-			var shy = -1, shown = -1;
-			if (cut < end && cut > lineStart && lCp[cut - 1] == 0xAD) {
-				shy = cut - 1;
-				shown = append(shy);
-				lId[shown] = hyphenId(shy);
-				lAdvance[shown] = hyphenAdvance(shy);
-				lFlags[shown] &= ~HIDDEN;
+			// (broken after a soft hyphen: a hyphen shown in its place, a glyph of its own;
+			// at a hyphenation point: after the letter before it)
+			var shy = -1, after = -1, shown = -1;
+			if (cut < end && cut > lineStart && hyphenAt(cut) && (chosen || lCp[cut - 1] == 0xAD)) {
+				if (lCp[cut - 1] == 0xAD) shy = cut - 1 else after = cut - 1;
+				shown = append(cut - 1);
+				lId[shown] = hyphenId(cut - 1);
+				lAdvance[shown] = hyphenAdvance(cut - 1);
+				lCp[shown] = 0xAD;
+				lFlags[shown] &= ~(HIDDEN | LIGATURE | HYPHEN);
 			}
-			addLine(lineStart, cut, -1, shy, shown);
+			addLine(lineStart, cut, -1, shy, shown, after);
 			lineStart = cut;
 		}
 	}
 
 	// (the shaped glyphs start...end as a line; emptyAt: an empty line's
-	// index in the text; shy, shown: a soft hyphen shown as the glyph shown)
-	function addLine(start:Int, end:Int, emptyAt = -1, shy = -1, shown = -1) {
+	// index in the text; shy, shown: a soft hyphen shown as the glyph shown;
+	// after: the glyph shown follows that one)
+	function addLine(start:Int, end:Int, emptyAt = -1, shy = -1, shown = -1, after = -1) {
 		var l = newLine();
 		// (its line box: the paragraph's strut and each run on it, on one baseline)
 		var above = baseline, below = lineHeight - baseline;
@@ -1198,7 +1314,7 @@ class TextLayout {
 		l.top = k == 0 ? 0 : lines[k - 1].top + lines[k - 1].height;
 		var x = 0.0, visible = 0.0, o = glyphCount;
 		l.glyphStart = o;
-		placedRoom(o + end - start);
+		placedRoom(o + end - start + 1);
 		if (hasBidi && end > start) {
 			// in visual order (its paragraph's base level for its trailing spaces)
 			var base = 0;
@@ -1215,6 +1331,13 @@ class TextLayout {
 				if (hasMarks) lPos[i] = o;
 				o++;
 				x += a;
+				if (i == after) {
+					oGlyph[o] = shown;
+					oX[o] = x;
+					oAdvance[o] = lAdvance[shown];
+					o++;
+					x += lAdvance[shown];
+				}
 			}
 			// (without the spaces at the line's logical end)
 			var trailing = 0.0, e = end - 1;
@@ -1237,6 +1360,13 @@ class TextLayout {
 				if (hasMarks) lPos[i] = o;
 				o++;
 				x += a;
+				if (i == after) {
+					oGlyph[o] = shown;
+					oX[o] = x;
+					oAdvance[o] = lAdvance[shown];
+					o++;
+					x += lAdvance[shown];
+				}
 				if (!isSpace(lCp[g])) visible = x;
 			}
 		// (marks: drawn on the glyph they are attached to, logical order putting it first)

@@ -1,0 +1,284 @@
+{
+  "source": "github.com/hyphenation/tex-hyphen 29e003ea905f6740a0d66e114db9f60b26d07516 (CTAN-2024.12.31), hyph-utf8/tex/generic/hyph-utf8/patterns",
+  "languages": {
+    "en-us": {
+      "licence": "all-permissive notice (copying and modification permitted, the notice kept)",
+      "left": 2,
+      "right": 3,
+      "patterns": 4938,
+      "exceptions": 14,
+      "letters": 26,
+      "packed": 19526,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-en-us.tex",
+          "sha256": "f4ffcd96c5cbc886bdad23f95dcae8edc3cd3620eae62f7946eceda97c4e68f8"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-en-us.pat.txt",
+          "sha256": "0f57318b878b132547ae92db39a6e1d1cf2a05d9008874955d6ecb910007a463"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-en-us.hyp.txt",
+          "sha256": "5e785c27e151f878c312991d937b5582615b77737ab30bac413d5967d6aa21da"
+        }
+      }
+    },
+    "en-gb": {
+      "licence": "MIT",
+      "left": 2,
+      "right": 3,
+      "patterns": 8527,
+      "exceptions": 8,
+      "letters": 26,
+      "packed": 32236,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-en-gb.tex",
+          "sha256": "e95bb4ab350f620c41c231c4785d7bdb4f91949d3e631b30e08b3ead3c340a52"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-en-gb.pat.txt",
+          "sha256": "651b89b4a0d4051995db8586e81ab109a4c7395d7706c06483893ebab5af013b"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-en-gb.hyp.txt",
+          "sha256": "947b7b8e76f6a0d8ebe296178ff92ad624e4912ffbaaf59b26f81a395124e366"
+        }
+      }
+    },
+    "nl": {
+      "licence": "MIT",
+      "left": 2,
+      "right": 2,
+      "patterns": 12724,
+      "exceptions": 40,
+      "letters": 38,
+      "packed": 45131,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-nl.tex",
+          "sha256": "d21499bfbee53e4d50e867ef92a41fd28b65725d7c91c980e4f8f02889bf6b2a"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-nl.pat.txt",
+          "sha256": "ac5795c1d6cd7027e6ec3a9e58e173789f999669e40ffd81755a4db7d3214165"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-nl.hyp.txt",
+          "sha256": "5902ba4d760815a51a972b6d05f514dde1842c16fa2859b907e2d299edbb3299"
+        }
+      }
+    },
+    "de-1996": {
+      "licence": "MIT",
+      "left": 2,
+      "right": 2,
+      "patterns": 35056,
+      "exceptions": 0,
+      "letters": 43,
+      "packed": 129407,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-de-1996.tex",
+          "sha256": "162ae879d2e61112bf7ab37b2bf47027e3df409f2641fb9b8cd6e6388c6d547d"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-de-1996.pat.txt",
+          "sha256": "3534fe7edb6cf20e085865b069f22013dc532e93959a49fc1f97567a8be6b3ef"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-de-1996.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "fr": {
+      "licence": "MIT",
+      "left": 2,
+      "right": 2,
+      "patterns": 1216,
+      "exceptions": 0,
+      "letters": 39,
+      "packed": 5810,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-fr.tex",
+          "sha256": "526cad6fe8f52fcd3caa3fcaf667cb1740cfc14bca198680e00dc343a84594de"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-fr.pat.txt",
+          "sha256": "fd40a89e9e8eb0784a0919e50378814843e44afa41c5beaf0a85f6562820f6c2"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-fr.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "es": {
+      "licence": "MIT",
+      "left": 2,
+      "right": 2,
+      "patterns": 4694,
+      "exceptions": 0,
+      "letters": 32,
+      "packed": 16603,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-es.tex",
+          "sha256": "6a2e5f39a991a23d1cd8a23dbd0f6fe96a9f07561a6695f4f3320f47030e236c"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-es.pat.txt",
+          "sha256": "7ae8fa8d6a61ea4111c4a0412d019b62e7c07a62673121d0b711c5bc08d8e00c"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-es.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "it": {
+      "licence": "MIT (or LPPL 1.3)",
+      "left": 2,
+      "right": 2,
+      "patterns": 384,
+      "exceptions": 0,
+      "letters": 28,
+      "packed": 1086,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-it.tex",
+          "sha256": "6ce56ed6ed2ca7c0688838e366e6595e0429f984f4fc6e96ec045cebb1e76a47"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-it.pat.txt",
+          "sha256": "ce650cffad4e81ecaf04591f3274a8ed909e82c587698c55e33b00e2aa7746de"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-it.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "pt": {
+      "licence": "BSD 3-clause",
+      "left": 2,
+      "right": 3,
+      "patterns": 307,
+      "exceptions": 2,
+      "letters": 37,
+      "packed": 832,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-pt.tex",
+          "sha256": "59fe5ef9929d5f82fb6fff2df4119ba30fcbb9c6a119953f8561679193e3c53d"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-pt.pat.txt",
+          "sha256": "6b50256e72d5448cec1801866e9027491f66552c8957f72b6e0ec315159e7931"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-pt.hyp.txt",
+          "sha256": "5c093a9e48dc8f87624693f31b8da7d090ed1e6eeb07fce7bcfd5689d7f941a8"
+        }
+      }
+    },
+    "sv": {
+      "licence": "LPPL 1.2 or later",
+      "left": 2,
+      "right": 2,
+      "patterns": 4693,
+      "exceptions": 0,
+      "letters": 30,
+      "packed": 17563,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-sv.tex",
+          "sha256": "102253382bd91cdb7535de5c20744254c9ac9aaa4ca12ed420eb835e5004c0b3"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-sv.pat.txt",
+          "sha256": "1fbf98f5d316712fd4e86f564643ad7341184f9ce8b30e0e18d06eceb4f52a79"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-sv.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "da": {
+      "licence": "MIT (or LPPL 1.3)",
+      "left": 2,
+      "right": 2,
+      "patterns": 1144,
+      "exceptions": 0,
+      "letters": 29,
+      "packed": 3861,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-da.tex",
+          "sha256": "23e0a50f0c20d632be06f973e700323463961eac737bb14f6c3787675a4f5575"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-da.pat.txt",
+          "sha256": "a093ef99375717fe34d261b05d2fdc8e64f8a9f741578c020204374f4c39a20c"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-da.hyp.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "nb": {
+      "licence": "all-permissive notice (copying and modification permitted, the notice kept)",
+      "left": 2,
+      "right": 2,
+      "patterns": 27448,
+      "exceptions": 2,
+      "letters": 35,
+      "packed": 107675,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-nb.tex",
+          "sha256": "b111264f46d59089d4cf96691c66b637166f5aae5b86719a5b9fe32737cc0169"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-nb.pat.txt",
+          "sha256": "e080c77da3d0f8de7e464f69082f5e2485e43ed349a2a7018b84e0adef785806"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-nb.hyp.txt",
+          "sha256": "6484bbd793e20a206a2f0d7abfc499a5f8688c54ea7e91ee7af87fba53959d00"
+        }
+      }
+    },
+    "pl": {
+      "licence": "MIT (or LPPL 1.3)",
+      "left": 2,
+      "right": 2,
+      "patterns": 4053,
+      "exceptions": 20,
+      "letters": 34,
+      "packed": 14386,
+      "files": {
+        "tex": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/tex/hyph-pl.tex",
+          "sha256": "83ddbbd21bc06a44bc4f4a4c49c38782e809cff5f026b764c044daa29e818843"
+        },
+        "pat": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-pl.pat.txt",
+          "sha256": "4b9c3583f176efb76dccee7e630ac7516567abd96dcbc3ebaa2388e795774b48"
+        },
+        "hyp": {
+          "url": "https://raw.githubusercontent.com/hyphenation/tex-hyphen/29e003ea905f6740a0d66e114db9f60b26d07516/hyph-utf8/tex/generic/hyph-utf8/patterns/txt/hyph-pl.hyp.txt",
+          "sha256": "0e3fd28ea45ec144f5f1438a7bbfb5b55c14dd0cccfefe4ddfbe95fee14d82cf"
+        }
+      }
+    }
+  },
+  "excluded": {
+    "cs": "GPL 2 or later"
+  }
+}

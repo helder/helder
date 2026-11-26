@@ -8,7 +8,8 @@ import helder.ui.Font;
 
 // DrawText's kept paragraphs: a font replaced in place (FontFile.replace:
 // a font asset reloaded, an app's own font redrawn) shapes the same text
-// again, with the new font's glyphs and advances
+// again, with the new font's glyphs and advances; a font's hyphens and
+// language (Style.hyphens, Node.lang) given to TextLayout
 function tests() {
 	describe("DrawText", () -> {
 		test("a font replaced: the same text shaped again", () -> {
@@ -29,6 +30,30 @@ function tests() {
 			])));
 			equals(text.layout("ab", f, Math.NaN).width, 11.0);
 			equals(text.layout("ab", f, 100).width, 11.0);
+		});
+		test("hyphens: auto by the font's language, a paragraph kept laid out again when they change", () -> {
+			helder.text.Hyphenation.add(helder.text.hyphenation.Nl.patterns());
+			var fonts = new SystemFonts();
+			fonts.add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+			var text = new DrawText(fonts);
+			function font(hyphens:Hyphens, ?lang:String)
+				return new Font("Inter", 16, 400, false, 1.25, 0, 0, Normal, null, "", hyphens, lang);
+			function lines(p:helder.ui.Paragraph):Array<String> {
+				var l = (cast p : DrawText.DrawParagraph).layout;
+				return [
+					for (line in l.lines)
+						l.text.substring(line.start, line.end) + (l.glyphChar(line.glyphEnd - 1) == 0xAD && !l.glyphHidden(line.glyphEnd - 1) ? "-" : "")
+				];
+			}
+			var manual = text.layout("woordenboek", font(Manual, "nl"), 50);
+			equals(lines(manual), ["woordenboek"]);
+			// (the same paragraph let go and laid out again: hyphenated now)
+			var auto = text.layout("woordenboek", font(Auto, "nl"), 50, null, 0, false, -1, -1, manual);
+			equals(lines(auto), ["woor-", "den-", "boek"]);
+			equals(lines(text.layout("woordenboek", font(Auto, "ja"), 50)), ["woordenboek"]);
+			equals(lines(text.layout("woordenboek", font(Auto), 50)), ["woordenboek"]);
+			equals(lines(text.layout("woor\u00ADdenboek", font(None, "nl"), 50)), ["woor\u00ADdenboek"]);
+			equals(lines(text.layout("woor\u00ADdenboek", font(Manual, "nl"), 50)), ["woor\u00AD-", "denboek"]);
 		});
 	});
 }

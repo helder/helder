@@ -14,7 +14,8 @@ import helder.ui.*;
 import helder.ui.draw.DrawText;
 
 // The engine's workloads timed, with the collector's counters (GcStats):
-// text (shaping and layout, the atlas cold and warm), ui (a tree of 10k
+// text (shaping and layout, a long paragraph hyphenated or not, a
+// language's hyphenation trie built, the atlas cold and warm), ui (a tree of 10k
 // nodes laid out, laid out again after a change, hit tests and pointer
 // moves), scene (world matrices of 10k and 100k nodes, a frame's culling
 // and draw list) and physics (stacks, chains, a pile, jointed links,
@@ -38,6 +39,10 @@ class Bench {
 			// text
 			{name: "text.layout.latin", runs: 200, run: () -> layoutAll(LATIN)},
 			{name: "text.layout.mixed", runs: 200, run: () -> layoutAll(MIXED)},
+			{name: "text.layout.long", runs: 60, run: () -> layoutLong(null)},
+			{name: "text.layout.long.hyphens", runs: 60, setup: hyphensSetup, run: () -> layoutLong(Hyphenation.get("en"))},
+			{name: "text.hyphenator.en-us", runs: 40, run: () -> check += new Hyphenator(helder.text.hyphenation.EnUs.patterns()).left},
+			{name: "text.hyphenator.de-1996", runs: 20, run: () -> check += new Hyphenator(helder.text.hyphenation.De1996.patterns()).left},
 			{name: "text.atlas.cold", runs: 60, run: atlasCold},
 			{name: "text.atlas.warm", runs: 400, setup: atlasWarmSetup, run: atlasWarm},
 			// ui
@@ -138,6 +143,17 @@ class Bench {
 		"עברית: שלום עולם, זהו טקסט לבדיקה — mixed with English words and (brackets) and עוד קצת עברית בסוף השורה.",
 		"Combining marks: é à ö ñ ç û; Vietnamese: Tiếng Việt có dấu; and ligatures fi fl ffi ffl in office.",
 	];
+
+	// (a long paragraph, about 2,300 words, in lines of 480 px: hyphens manual, or auto in English)
+	static final LONG = [for (_ in 0...25) LATIN[0] + " " + LATIN[1] + " " + LATIN[2] + " "].join("");
+
+	static function hyphensSetup()
+		Hyphenation.add(helder.text.hyphenation.EnUs.patterns());
+
+	static function layoutLong(h:Null<Hyphenator>) {
+		var l = new TextLayout(LONG, new FontSet(font, [], 16), 1.25, 480, null, 0, 0, 0, -1, Math.NaN, TextLayout.BREAK_WORD, h);
+		check += l.lines.length + l.width;
+	}
 
 	static function layoutAll(texts:Array<String>) {
 		var set = new FontSet(font, [], 16);

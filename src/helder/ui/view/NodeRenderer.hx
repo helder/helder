@@ -295,6 +295,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function selectable(n:Node, name:String, v:Dynamic)
 		n.selectable = v == true || v == "true";
 
+	// its text's language (Node.lang: hyphens auto's patterns)
+	@:attribute static function lang(n:Node, name:String, v:Dynamic)
+		n.lang = v == null || v == "" ? null : Std.string(v);
+
 	@:attribute static function dragData(n:Node, name:String, v:Dynamic)
 		n.dragData = v;
 
