@@ -100,8 +100,9 @@ abstract class Expressions extends Statements {
 				}
 				else x = u.unaryOperator() == KindMinusToken || u.unaryOperator() == KindPlusToken ? numeric(u.operand(), false) : expr(u.operand());
 				switch (u.unaryOperator()) {
-					case KindMinusToken: EConv(FNeg, b.coerce(x, TF64));
-					case KindPlusToken: b.coerce(x, TF64);
+					// (a string's number by ToNumber, not its reference unboxed)
+					case KindMinusToken: EConv(FNeg, number(x));
+					case KindPlusToken: number(x);
 					case KindExclamationToken: ENot(truth(x));
 					case KindPlusPlusToken | KindMinusMinusToken: x;
 					case KindTildeToken: EConv(I2F, EBin(Xor, b.runtime("libInt", [any(x)]), EInt(-1)));
@@ -665,7 +666,8 @@ abstract class Expressions extends Statements {
 		var key = intOf(n.argumentExpression()) ?? b.temp(number(expr(n.argumentExpression())));
 		return {
 			read: () -> reps.arrayGetNumber(b, obj, key, g -> number(g)),
-			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, key, e)
+			// (a value that is no number into the boxed path, which takes the key as a double: a counter's is an Int64)
+			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, Ir.typeOf(key) == TI64 ? EConv(L2F, key) : key, e)
 		};
 	}
 

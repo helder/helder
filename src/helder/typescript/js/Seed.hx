@@ -41,7 +41,7 @@ class Seed {
 
 	public static function numberText(v:Float):String {
 		if (v == 0) return "0";
-		return Std.string(v);
+		return Numbers.text(v);
 	}
 
 	public static function text(v:Dynamic):String {
@@ -412,6 +412,8 @@ class Seed {
 
 	public static function libFinished(v:Dynamic):Bool return v == Lib.finished;
 
+	public static function libIteratorClose(it:Dynamic, threw:Bool):Void Lib.close(it, threw);
+
 	public static function libInstanceOf(v:Dynamic, ctor:Dynamic):Bool return Lib.instanceOf(v, ctor);
 
 	public static function libRelation(a:Dynamic, b:Dynamic, op:String):Bool return Lib.relation(a, b, op);
@@ -539,6 +541,7 @@ class Seed {
 		libPrivateHas(o, "#x");
 		libStep(libIterator(a));
 		libRestArray(libIterator(a));
+		libIteratorClose(libIterator(a), false);
 		libRequireObject(o);
 		libObjectRest(o, []);
 		libAssignSpread(o, null);

@@ -152,21 +152,50 @@ abstract class Functions extends Core {
 					bindPattern(e.name(), withDefault(b.runtime("libGet", [v, key]), e.initializer()), declare);
 				}
 			case KindArrayBindingPattern:
-				var it = b.runtime("libIterator", [any(value)]);
+				var it = arrayPattern(value);
 				for (e in pattern.elements()) {
 					// (a hole: an omitted expression, or an element without a name)
 					if (e.kind == KindOmittedExpression || e.name() == null) {
-						b.runtime("libStep", [it]);
+						it.step();
 						continue;
 					}
 					if (e.dotDotDotToken() != null) {
-						bindPattern(e.name(), b.runtime("libRestArray", [it]), declare);
+						bindPattern(e.name(), it.rest(), declare);
 						continue;
 					}
-					bindPattern(e.name(), withDefault(b.runtime("libStep", [it]), e.initializer()), declare);
+					bindPattern(e.name(), withDefault(it.step(), e.initializer()), declare);
 				}
+				it.close();
 			case _: fail(pattern, "unsupported binding pattern");
 		}
+	}
+
+	// An array pattern's iterator: a step for each element, none past its
+	// end, and closed (its return called) when the pattern is done with it
+	// before its end.
+	function arrayPattern(value:Ex):{step:() -> Ex, rest:() -> Ex, close:() -> Void} {
+		var it = b.runtime("libIterator", [any(value)]);
+		var done = b.local("done", TBool);
+		b.out.push(SSet(done, bool(false)));
+		return {
+			step: () -> {
+				var v = b.local("element", TRef(RAny));
+				b.out.push(SSet(v, b.runtime("getUndefined", [])));
+				b.out.push(SIf(ENot(ELocal(done)), b.block(() -> {
+					var x = b.runtime("libIterate", [it]);
+					b.out.push(SIf(b.runtime("libFinished", [x]), Vector.fromArrayCopy([SSet(done, bool(true))]), Vector.fromArrayCopy([SSet(v, x)])));
+				}), new Vector(0)));
+				ELocal(v);
+			},
+			rest: () -> {
+				var r = b.local("rest", TRef(RAny));
+				b.out.push(SIf(ELocal(done), b.block(() -> b.out.push(SSet(r, b.runtime("libArray", [pack([])])))),
+					b.block(() -> b.out.push(SSet(r, b.runtime("libRestArray", [it]))))));
+				b.out.push(SSet(done, bool(true)));
+				ELocal(r);
+			},
+			close: () -> b.out.push(SIf(ENot(ELocal(done)), b.block(() -> b.runtime("libIteratorClose", [it, bool(false)])), new Vector(0)))
+		};
 	}
 
 	// Destructuring assignment: the targets are references (or nested patterns).
@@ -174,15 +203,16 @@ abstract class Functions extends Core {
 		while (target.kind == KindParenthesizedExpression) target = target.expression();
 		switch (target.kind) {
 			case KindArrayLiteralExpression:
-				var it = b.runtime("libIterator", [any(value)]);
+				var it = arrayPattern(value);
 				for (e in elements(target)) switch (e.kind) {
-					case KindOmittedExpression: b.runtime("libStep", [it]);
-					case KindSpreadElement: assignPattern(e.expression(), b.runtime("libRestArray", [it]));
+					case KindOmittedExpression: it.step();
+					case KindSpreadElement: assignPattern(e.expression(), it.rest());
 					case KindBinaryExpression if (e.operatorToken().kind == KindEqualsToken):
 						var x = e;
-						assignTarget(x.left(), () -> withDefault(b.runtime("libStep", [it]), x.right()));
-					case _: assignTarget(e, () -> b.runtime("libStep", [it]));
+						assignTarget(x.left(), () -> withDefault(it.step(), x.right()));
+					case _: assignTarget(e, () -> it.step());
 				}
+				it.close();
 			case KindObjectLiteralExpression:
 				var v = b.temp(any(value));
 				b.runtime("libRequireObject", [v]);
