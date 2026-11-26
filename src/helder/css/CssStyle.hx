@@ -42,13 +42,22 @@ class CssStyle extends CssStyleGroups {
 	inline function physical(p:CssProperty):CssProperty
 		return CssProperties.logical(p) ? CssProperties.physical(p, inheritedText.direction == Rtl) : p;
 
-	// The typed reads below return what the group holds: no allocation.
+	// The typed reads below return what the group holds, no allocation, for
+	// a property of their kind (a length's, a colour's...); one kept as terms
+	// (text-indent) is read from its terms.
 
 	// A length, percentage, number or keyword property's value (a margin, a
 	// size, line-height...); OTHER (kind Other) for anything else.
 	public function length(p:CssProperty):CssLength {
 		p = physical(p);
-		return group(CssProperties.groupOf(p)).lengthOf(p) ?? CssLength.OTHER;
+		var g = group(CssProperties.groupOf(p));
+		var l = g.lengthOf(p);
+		if (l != null) return l;
+		// (a value kept as terms, text-indent's: its one term read, interned)
+		return switch g.terms(p) {
+			case [t]: styles.intern.length([t]) ?? CssLength.OTHER;
+			case _: CssLength.OTHER;
+		}
 	}
 
 	// The length in px against what a percentage refers to (NaN for a keyword).
@@ -64,7 +73,11 @@ class CssStyle extends CssStyleGroups {
 	// A colour property's value, currentcolor as the element's color.
 	public function color(p:CssProperty):CssRgba {
 		p = physical(p);
-		var c = group(CssProperties.groupOf(p)).rgbaOf(p) ?? CssRgba.OTHER;
+		var g = group(CssProperties.groupOf(p));
+		var c = g.rgbaOf(p) ?? switch g.terms(p) {
+			case [t]: styles.intern.rgba([t]) ?? CssRgba.OTHER;
+			case _: CssRgba.OTHER;
+		}
 		return c.resolve(inheritedText.color);
 	}
 
@@ -75,7 +88,11 @@ class CssStyle extends CssStyleGroups {
 		var n = g.numberOf(p);
 		if (n == n) return n;
 		var l = g.lengthOf(p);
-		return l != null && l.kind == Plain ? l.value : Math.NaN;
+		if (l != null) return l.kind == Plain ? l.value : Math.NaN;
+		return switch g.terms(p) {
+			case [Number(v, _)]: v;
+			case _: Math.NaN;
+		}
 	}
 
 	// A value that is one keyword: it; else null.
