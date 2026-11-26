@@ -62,6 +62,8 @@ class Manifest {
 	// own: its renderers', the lowering's helpers; a class of its own per
 	// class of the module, Keep: added to a build that names that class)
 	public static function build():Array<Field> {
+		// (the declarations' generator reads the declaration classes, not their manifest: helder.typescript.Generator)
+		if (Context.defined("helder.declarations")) return null;
 		var t0 = haxe.Timer.stamp();
 		var fields = Context.getBuildFields();
 		var local = Context.getLocalClass();

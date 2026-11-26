@@ -301,7 +301,7 @@ which an app using only the core never pulls in.
   numbers; Haxe reads `bytes`), WebP from `toBuffer`.
 
 TypeScript programs import it as `helder/canvas` (`index.d.ts`, made from
-these classes: `node src/helder/typescript/api/declarations.mjs`):
+these classes, written again by a TypeScript build when they change):
 
 ```ts
 import {Canvas, FontLibrary} from 'helder/canvas'

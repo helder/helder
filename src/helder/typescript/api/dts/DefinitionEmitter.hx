@@ -71,8 +71,9 @@ class DefinitionEmitter {
 		}
 		line((exported ? 'export ' : '') + 'declare ' + (cl.isInterface ? 'interface' : 'class') + ' ' + name + params(cl.params) + (sup == null ? '' : ' extends ' + sup) + ' {');
 		indent = "\t";
+		// (its type typed when asked for: a constructor's whose arguments' defaults give their types)
 		if (ctor != null)
-			switch ctor.type {
+			switch unlazy(ctor.type) {
 				case TFun(args, _):
 					comment(Docs.of(ctor.pos));
 					line('constructor(' + args_(args, argMetas(ctor)) + ');');

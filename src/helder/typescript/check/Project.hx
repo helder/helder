@@ -104,8 +104,17 @@ class Project {
 		var options = Config.options(tsgo, absolute, relative, f -> config = f);
 		var key = absolute + "\n" + haxe.Json.stringify(options);
 		var at = snapshot(tsgo, key, [absolute, globals], options);
-		// (kept for the next build, a failed one's too: its files are watched)
-		function keep() last = {key: key, snapshot: at.snapshot, project: at.project, stamps: [for (f in read) f => stamp(f)], unresolved: unresolved};
+		// (kept for the next build, a failed one's too: its files are watched;
+		// its declaration files' too, those on disk: helder's are written
+		// again by a build, Generator)
+		function keep() {
+			var stamps = [for (f in read) f => stamp(f)];
+			for (f in declared) {
+				var s = stamp(f);
+				if (s != "") stamps.set(f, s);
+			}
+			last = {key: key, snapshot: at.snapshot, project: at.project, stamps: stamps, unresolved: unresolved};
+		}
 		try load(tsgo, tables, at, absolute, globals) catch (e:Dynamic) {
 			keep();
 			throw e;
@@ -114,12 +123,15 @@ class Project {
 	}
 
 	var config:Null<String> = null;
+	// (the program's declaration files, the libraries' among them)
+	var declared:Array<String> = [];
 	// (a module not found: TS2307, TS2792)
 	var unresolved = false;
 
 	function load(tsgo:Tsgo, tables:Tables, at:{snapshot:Int, project:Dynamic}, absolute:String, globals:String) {
 		var names:Array<String> = tsgo.call("getSourceFileNames", at);
 		var sources = [for (n in names) if (!StringTools.endsWith(n, ".d.ts") && n != globals) n];
+		declared = [for (n in names) if (StringTools.endsWith(n, ".d.ts")) n];
 		read = sources.copy();
 		if (config != null) read.push(config);
 		var errors:Array<String> = [];
