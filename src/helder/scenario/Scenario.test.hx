@@ -207,6 +207,12 @@ function tests() {
 		equals(s.run(() -> [Std.string(taps.peek()), items.peek().join(","), draft.peek()]), ["1", "Stretch", ""]);
 		s.reset();
 	});
+	var rests = test("steps: each waited for until the screen rests, not a minute of its clock", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.tap("Add")]);
+		equals(s.failure?.message, null);
+		assert(s.context.now < 2, 'its clock at ${s.context.now} s');
+		s.reset();
+	});
 	var scrolled = test("steps: a scroll until a row is shown, then a tap on it", () -> {
 		var s = stepped([Steps.scroll("Rows", {text: "Row 30"}), Steps.tap({text: "Row 30"})]);
 		equals(s.failure?.message, null);
@@ -230,7 +236,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http, steps, scrolled, missing])
+	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing])
 		t.skip();
 	#end
 }
