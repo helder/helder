@@ -226,6 +226,15 @@ function tests() {
 			equals(CssProperties.impact(MarginInlineStart) == Layout, true);
 			equals(CssProperties.physical(MarginInlineStart, true) == MarginRight, true);
 		});
+		test("typed reads of values kept as terms", () -> {
+			// (text-indent's grammar keeps it as terms: still a length to read, as the box lane does)
+			var s = styles('<p id=p>a</p>', "p { text-indent: 2em; font-size: 10px; box-shadow-color: red }");
+			var p = s.computed(s.document.getElementById("p"));
+			equals(p.length(TextIndent).kind == Px, true);
+			equals(p.length(TextIndent).value, 20.0);
+			equals(p.resolve(TextIndent, 100), 20.0);
+			equals(p.color(BoxShadowColor).r, 1.0);
+		});
 		test("typed reads by id don't allocate", () -> {
 			var s = styles('<p id=p>a</p>', "p { width: 50%; position: absolute; color: red; opacity: 0.5; border-top: 2px solid; float: left }");
 			var p = s.computed(s.document.getElementById("p"));
