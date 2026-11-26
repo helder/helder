@@ -141,7 +141,7 @@ tokenizer's text, attribute values and comments are found by a SIMD kernel
 tag and attribute names the parser knows are read straight from the input
 (no copy, no hash), the tag tokens reused.
 
-`bun run test bench html` (tests/bench/results/html.md, an Apple M-series
-laptop): about 25 to 60 MB/s natively and 10 to 55 as wasm32-wasi, against
-lexbor's 40 to 260 (C, the standard's algorithm) and @lukeed/html's 90 to
-230 (JavaScript, not the standard's recovery).
+`bun run test bench html` (tests/bench/results/html.md, an Apple M4
+laptop): about 17 to 80 MB/s natively and 14 to 70 as wasm32-wasi, against
+lexbor's 70 to 200 (C, the standard's algorithm) and @lukeed/html's 85 to
+200 (JavaScript, not the standard's recovery).

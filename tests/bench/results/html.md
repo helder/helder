@@ -10,10 +10,10 @@ attributes, references and inline markup).
 
 | parser | html-spec (16.0 MB) | wikipedia (2.1 MB) | generated (6.5 MB) |
 |---|---|---|---|
-| helder (native) | 636 ms, 25.2 MB/s | 36 ms, 58.2 MB/s | 364 ms, 17.9 MB/s |
-| helder (wasm32-wasi, node) | 848 ms, 18.9 MB/s | 37 ms, 56.2 MB/s | 603 ms, 10.8 MB/s |
-| @lukeed/html (node) | 147 ms, 108.9 MB/s | 9 ms, 233.2 MB/s | 72 ms, 90.7 MB/s |
-| lexbor (C, -O2) | 145 ms, 110.2 MB/s | 8 ms, 262.5 MB/s | 153 ms, 42.3 MB/s |
+| helder (native) | 474 ms, 33.8 MB/s | 25 ms, 82.7 MB/s | 388 ms, 16.7 MB/s |
+| helder (wasm32-wasi, node) | 527 ms, 30.4 MB/s | 30 ms, 69.3 MB/s | 474 ms, 13.7 MB/s |
+| @lukeed/html (node) | 142 ms, 113.3 MB/s | 10 ms, 205.3 MB/s | 76 ms, 85.2 MB/s |
+| lexbor (C, -O2) | 134 ms, 119.5 MB/s | 10 ms, 206.5 MB/s | 94 ms, 68.8 MB/s |
 
 @lukeed/html is the fastest JavaScript parser but not a conformant one:
 it recovers from bad markup its own way (as htmlparser2 does: no implied
