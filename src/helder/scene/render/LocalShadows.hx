@@ -278,11 +278,11 @@ class LocalShadows implements RenderFeature.LocalShadowSource {
 				sig += (n.id() + 1) * 0.6180339 + sh.casterPrims[i].id * 0.3711 + m.c3.x * 1.3107 + m.c3.y * 1.7321 + m.c3.z * 2.1131 + m.c0.x * 0.5301
 					+ m.c0.y * 0.4113 + m.c0.z * 0.2903 + m.c1.x * 0.6007 + m.c1.y * 0.7103 + m.c1.z * 0.3301 + m.c2.x * 0.4307 + m.c2.y * 0.5507 + m.c2.z * 0.9703;
 			}
-		// (runs of one primitive: the casters are sorted by it)
+		// (runs of one geometry: the casters are sorted by it)
 		var i = 0;
 		while (i < seenCount) {
 			var j = i + 1;
-			while (j < seenCount && sh.casterPrims[seen[j]] == sh.casterPrims[seen[i]])
+			while (j < seenCount && @:privateAccess Shadows.same(sh.casterPrims[seen[j]], sh.casterPrims[seen[i]]))
 				j++;
 			if (runCount == runPrim.length) {
 				runPrim.push(null);

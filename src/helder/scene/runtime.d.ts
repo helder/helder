@@ -284,7 +284,9 @@ export type TubeOptions = { flat?: boolean; tangents?: boolean; tubularSegments?
 // World matrices are computed when asked and cached: a slot keeps the
 // version of its parent's world matrix it was computed from, so a change
 // high in the tree makes everything below it stale without visiting it,
-// and still parts of a scene cost nothing per frame.
+// and still parts of a scene cost nothing per frame. A slot also keeps the
+// epoch it was last checked at (bumped by any transform or tree change), so
+// asking again before the next change is no walk up to the root.
 //
 // A node's id: the world (4 bits: up to 16 worlds alive), the slot's
 // generation (7 bits, never 0 for a live node, so no node is 0, NONE) and

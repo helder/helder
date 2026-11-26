@@ -27,6 +27,21 @@ function tests() {
 		check: f -> f.check(),
 		teardown: f -> f.teardown()
 	}, {cases: 100, steps: 40}));
+	// (world matrices kept by epoch and inTree by the tree's shape: after
+	// any steps, each node's as a walk up to the root makes it)
+	test("world matrices and inTree: as walked, after any moves and reparenting", () -> stateful({
+		setup: () -> new Tree(),
+		steps: [
+			{name: "a node", run: (t, c) -> t.add(c.draw(int(0, 99)))},
+			{name: "moved", run: (t, c) -> t.move(c.draw(int(0, 99)), c.draw(int(0, 3)), c.draw(float(-2, 2))), when: t -> t.nodes.length > 0},
+			{name: "under another", run: (t, c) -> t.reparent(c.draw(int(0, 99)), c.draw(int(0, 99))), when: t -> t.nodes.length > 1},
+			{name: "detached", run: (t, c) -> t.detach(c.draw(int(0, 99))), when: t -> t.nodes.length > 0},
+			{name: "disposed", run: (t, c) -> t.dispose(c.draw(int(0, 99))), when: t -> t.nodes.length > 0},
+			{name: "asked", run: (t, c) -> t.ask(c.draw(int(0, 99))), when: t -> t.nodes.length > 0}
+		],
+		check: t -> t.check(),
+		teardown: t -> t.world.dispose()
+	}, {cases: 60, steps: 40}));
 	test("the 17th world alive refused; one let go, its slot taken again", () -> {
 		var base = World.alive(), made = [for (_ in base...16) new World()];
 		equals(World.alive(), 16);
@@ -105,4 +120,63 @@ private class Markup implements helder.view.Markup {
 		return <view width={100} height={100}>
 			<Scene world={world} ref={ref} flexGrow={1}/>
 		</view>;
+}
+
+private class Tree {
+	public final world = new World();
+	public final nodes:Array<Node> = [];
+
+	public function new() {}
+
+	inline function at(i:Int):Node
+		return nodes[i % nodes.length];
+
+	public function add(i:Int)
+		nodes.push(world.node("", nodes.length == 0 || i % 3 == 0 ? null : at(i)));
+
+	// (one of position, rotation, scale, or the same position again)
+	public function move(i:Int, what:Int, v:Float) {
+		var n = at(i);
+		switch what {
+			case 0: n.position = new helder.math.Vec3(v, v * 0.5, -v);
+			case 1: n.rotation = helder.math.Quat.axisAngle(new helder.math.Vec3(0, 1, 0), v);
+			case 2: n.scale = new helder.math.Vec3(1 + v * 0.1, 1, 1);
+			case _: n.position = n.position;
+		}
+	}
+
+	public function reparent(i:Int, j:Int) {
+		var c = at(i), p = at(j), a = p;
+		while (!a.isNone) {
+			if (a == c) return;
+			a = a.parent;
+		}
+		p.add(c);
+	}
+
+	public function detach(i:Int)
+		at(i).detach();
+
+	public function dispose(i:Int) {
+		at(i).dispose();
+		var left = [for (n in nodes) if (n.valid) n];
+		nodes.resize(0);
+		for (n in left)
+			nodes.push(n);
+	}
+
+	public function ask(i:Int)
+		at(i).worldMatrix();
+
+	public function check()
+		for (n in nodes) {
+			var m = n.localMatrix(), p = n.parent, rooted = false;
+			while (!p.isNone) {
+				m = p.localMatrix() * m;
+				if (p == world.root) rooted = true;
+				p = p.parent;
+			}
+			equals(helder.scene.math.MathTools.near(n.worldMatrix(), m, 1e-9), true, "a world matrix as walked");
+			equals(world.inTree(n), rooted, "inTree as walked");
+		}
 }

@@ -451,6 +451,12 @@ class Renderer {
 		frames++;
 	}
 
+	final sorting:Array<DrawItem> = [];
+
+	static function drawAfter(a:DrawItem, d:DrawItem):Bool
+		return a.key > d.key || a.key == d.key && (a.primitive.id > d.primitive.id || a.primitive == d.primitive && (a.group > d.group
+			|| a.group == d.group && a.lightKey > d.lightKey));
+
 	// (the frame before's unjittered view-projection, and its world)
 	var lastViewProj:Mat4 = Mat4.identity();
 	var lastWorld:Null<World> = null;
@@ -482,7 +488,8 @@ class Renderer {
 		extractEye = eye;
 		var meshes = world.store(MeshRenderer.KIND), tints = world.store(MeshRenderer.TINT);
 		var levels = Lod.pick;
-		var listed = clusterSource == null;
+		// (no local light in the frame: every draw's list empty, none looked for)
+		var listed = clusterSource == null && frameLights.count > 0;
 		for (k in 0...meshes.length) {
 			var node = meshes.nodeAt(k), mesh = meshes.valueAt(k);
 			if (!node.shown() || !world.inTree(node)) continue;
@@ -559,16 +566,7 @@ class Renderer {
 			if (setCount == sets.length) sets.push(s) else sets[setCount] = s;
 			setCount++;
 		}
-		// (insertion sort: a scene's order changes little from frame to frame)
-		for (i in 1...count) {
-			var d = list[i], j = i - 1;
-			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && (list[j].primitive.id > d.primitive.id || list[j].primitive == d.primitive && (list[j].group > d.group
-				|| list[j].group == d.group && list[j].lightKey > d.lightKey)))) {
-				list[j + 1] = list[j];
-				j--;
-			}
-			list[j + 1] = d;
-		}
+		Sorted.sort(list, count, sorting, drawAfter);
 		// (the see-through draws, last in the list: farthest first)
 		var first = count;
 		while (first > 0 && list[first - 1].primitive.material.blended)
