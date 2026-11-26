@@ -101,13 +101,24 @@ class Compiler {
 	}
 
 	// (helder's compiler, built by build.mjs from helder's sources; hxmc's
-	// native compiler's environment set first: its std)
+	// native compiler's environment set first: its std). One that does not
+	// build is the build's failure: its errors, and exit code 1 (not hxmc's
+	// compiler in its place, which would build the program another way);
+	// node not there to run build.mjs, a thrown error: find's warning and hxmc's
 	static function own(helder:String):String {
 		var node = Sys.getEnv("HELDER_NODE") ?? "node";
 		var p = new sys.io.Process(node, ['$helder/helder/compiler/build.mjs']);
-		var exe = StringTools.trim(p.stdout.readAll().toString()), err = p.stderr.readAll().toString(), code = p.exitCode();
+		// (stderr read beside stdout: a failed build's errors fill its pipe
+		// before build.mjs ends, which would wait for stdout's reader forever)
+		var errs = new sys.thread.Deque<String>();
+		sys.thread.Thread.create(() -> errs.add(try p.stderr.readAll().toString() catch (_:Dynamic) ""));
+		var exe = StringTools.trim(p.stdout.readAll().toString()), err = errs.pop(true), code = p.exitCode();
 		p.close();
-		if (code != 0 || !FileSystem.exists(exe)) throw 'helder\'s compiler does not build:\n$err';
+		if (code != 0 || !FileSystem.exists(exe)) {
+			if (err.trim() != "") Term.err(err.trim());
+			Term.err(Style.status("error", Fail, 'helder\'s compiler does not build (src/helder/compiler/build.mjs exited with $code)'));
+			Sys.exit(1);
+		}
 		// (its first build in this cache: what it fetched and built)
 		for (line in err.split("\n")) if (line != "") Term.err(Style.status("compiler", Info, line));
 		helders = exe;
