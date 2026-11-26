@@ -3,18 +3,21 @@
 // NSGlassEffectContainerView, in a borderless window kept behind every
 // other (never activated, never key: the system's glass as in a window that
 // is not the key one), the window captured by the window server
-// (screencapture -l: Screen Recording's permission), in sRGB.
+// (screencapture -l: Screen Recording's permission), in sRGB. With key:
+// the app activated and the window key in front (it takes the focus for a
+// second: a person's run, tests/ui/glass-key.sh, never an agent's).
 //   swiftc -O tests/ui/glass-kinds.swift -o bin/glass-kinds
-//   glass-kinds <bands.png> <kinds.txt> <scale> <out.png>
+//   glass-kinds <bands.png> <kinds.txt> <scale> <out.png> [key]
 import AppKit
 
 let a = CommandLine.arguments
+let key = a.count > 5 && a[5] == "key"
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+app.setActivationPolicy(key ? .regular : .accessory)
 app.appearance = NSAppearance(named: .aqua)
 class Behind: NSWindow {
-	override var canBecomeKey: Bool { false }
-	override var canBecomeMain: Bool { false }
+	override var canBecomeKey: Bool { key }
+	override var canBecomeMain: Bool { key }
 }
 let bg = NSImage(contentsOfFile: a[1])!
 let k = Double(a[3])!
@@ -61,9 +64,20 @@ for l in try! String(contentsOfFile: a[2], encoding: .utf8).split(separator: "\n
 	}
 }
 win.contentView = root
-// (behind every window: shown, never in front of anyone's)
-win.order(.below, relativeTo: 0)
-RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+if key {
+	// (in front, key: the system's glass as in the window being used)
+	app.activate(ignoringOtherApps: true)
+	win.makeKeyAndOrderFront(nil)
+	RunLoop.main.run(until: Date().addingTimeInterval(1.5))
+	if !win.isKeyWindow {
+		FileHandle.standardError.write("glass-kinds: the window did not become key (another app took the focus): run it again\n".data(using: .utf8)!)
+		exit(1)
+	}
+} else {
+	// (behind every window: shown, never in front of anyone's)
+	win.order(.below, relativeTo: 0)
+	RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+}
 let p = Process()
 p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
 p.arguments = ["-x", "-o", "-l\(win.windowNumber)", a[4]]
