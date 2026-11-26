@@ -68,7 +68,9 @@ class Studio {
 		var p = project;
 		if (p == null) return true;
 		if (!starter) return p.screens.length == 0;
-		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && shows(i));
+		// (a failed build: no frame of the agent's comes, its failure shown on the canvas instead)
+		var failed = shownFailure() != null;
+		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && (failed || shows(i)));
 	}
 
 	// (a frame the canvas can show: a design's, a story's with a frame, a still, or what it threw)
@@ -1084,34 +1086,64 @@ class Studio {
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
 		var args = ["dev", entry];
 		log("play-window", {screen: name, args: args});
+		// (headless: told, not opened, unless a check names a program standing in for helder)
 		#if helder.headless
-		message('would play $label in a window: helder ${args.join(" ")}');
-		#else
-		var was = targetProcess;
-		targetProcess = null;
-		if (was != null) was.kill();
+		var stand = Sys.getEnv("HELDER_STUDIO_PLAY_CLI") ?? "";
+		if (stand == "") {
+			message('would play $label in a window: helder ${args.join(" ")}');
+			return;
+		}
+		cli = stand;
+		#end
+		stopWindow();
+		var l = new Launch(project.dir, 'building $label');
+		function told() {
+			launched({state: l.state, note: l.note, at: l.at});
+			log("launch", {state: l.state, note: l.note, at: l.at});
+		}
+		told();
+		// (a check's script waits for it to run or fail)
+		hold(() -> l.state != "starting", "Play's window", 300);
 		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
-			message('helder dev did not start: $e');
+			launched({state: "failed", note: 'helder dev did not start: $e', at: null});
 			null;
 		}
 		if (p == null) return;
 		p.closeStdin();
 		targetProcess = p;
-		message('playing $label in a window');
+		function lines(src:Stream.Source)
+			Async.launch(_ -> {
+				var r = new Reader(src), line;
+				try while ((line = r.readLine()) != null) {
+					if (targetProcess == p && l.read(line)) told();
+				} catch (_:haxe.Exception) {}
+			});
+		lines(p.stdout);
+		lines(p.stderr);
 		Async.launch(_ -> {
-			var r = new Reader(p.stdout), line;
-			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
-		});
-		Async.launch(_ -> {
-			var r = new Reader(p.stderr), line;
-			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
-		});
-		Async.launch(_ -> {
-			p.wait();
-			if (targetProcess == p) targetProcess = null;
+			var code = p.wait();
+			if (targetProcess != p) return;
+			targetProcess = null;
+			l.exited(code);
+			told();
+			// (closed: Play again; what failed stays shown until the next Play)
+			if (l.state == "ended") launched(null);
 		});
 		#end
+	}
+
+	// what Play's window is doing (null: none): "starting", "running" or
+	// "failed" (Launch's), the line shown beside Play, where it failed
+	public final launched:Signal<Null<{state:String, note:String, at:Null<String>}>> = signal(null);
+
+	// Play's window closed (its helder dev ended), or what failed let go
+	public function stopWindow() {
+		#if !(hxmc.target == "wasm32-wasi")
+		var was = targetProcess;
+		targetProcess = null;
+		if (was != null) was.kill();
 		#end
+		if (launched.peek() != null) launched(null);
 	}
 
 	// what helder dev runs to play a screen: a TypeScript story's main (written:
@@ -2172,6 +2204,7 @@ class Studio {
 	@:coroutine public function stop() {
 		agent.close();
 		stopPlay();
+		stopWindow();
 		if (previews != null) previews.stop();
 		#if !(hxmc.target == "wasm32-wasi")
 		if (events != null) events.close();

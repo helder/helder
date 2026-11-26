@@ -87,8 +87,10 @@ class Feedback implements Markup {
 	// a frame not drawn yet (its build running): its place held by a shimmer, 1.6 s a sweep
 	public static function skeleton(studio:Studio, w:Float):View
 		return <view tag="skeleton" position="absolute" inset={0} overflow="hidden" background={c("skeleton")}>
-			<view position="absolute" top={0} bottom={0} width={260} left={((studio.marks.time() / 1.6) % 1) * (w + 260) - 260}
-				background={SHIMMER}/>
+			<Show when={studio.shownFailure() == null}>
+				<view position="absolute" top={0} bottom={0} width={260} left={((studio.marks.time() / 1.6) % 1) * (w + 260) - 260}
+					background={SHIMMER}/>
+			</Show>
 		</view>;
 
 	static inline var SHIMMER = "linear-gradient(90deg, rgba(37, 37, 43, 0), #25252b, rgba(37, 37, 43, 0))";

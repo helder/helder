@@ -198,8 +198,35 @@ class Board implements Markup {
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
 			}</For>
 			{Feedback.canvas(studio)}
+			{failed(studio)}
 		</view>;
 	}
+
+	// a failed build on the canvas, whatever its zoom (its frames' chips are
+	// a frame wide): its first error, where (a link: the file at its line,
+	// as an agent's reply's), how many more; its frames not drawn shimmer no more
+	static function failed(studio:Studio):View
+		return <For each={studio.shownFailure() == null ? [] : [studio.shownFailure()]}>{(f:Read<Studio.Failure>) ->
+			<view tag="build-failed" position="absolute" left={0} right={0} bottom={20} alignItems="center">
+				<view flexDirection="row" alignItems="center" columnGap={8} maxWidth={560} padding="8 14" borderRadius={10} background={c("skeleton")}
+					borderWidth={1} borderColor={c("error-soft")} pointerEvents="auto">
+					<view width={6} height={6} borderRadius={3} flexShrink={0} background={c("error")}/>
+					<text fontSize={Theme.SMALL} fontWeight={Theme.MEDIUM} color={c("error")} flexShrink={0}>Build failed</text>
+					<Show when={f().at != null}>
+						<button tag="build-failed-at" flexShrink={0} cursor="pointer" onPress={() -> studio.follow(f().at)}>
+							<text fontSize={Theme.SMALL} color={c("ink2")} textDecoration={1}>{f().at}</text>
+						</button>
+					</Show>
+					<text fontSize={Theme.SMALL} color={c("ink2")} lineClamp={2} flexShrink={1} minWidth={0}>{f().message}</text>
+					<Show when={more(f()) > 0}>
+						<text fontSize={Theme.SMALL} color={c("fg3")} flexShrink={0} textWrap="nowrap">{'+${more(f())} more'}</text>
+					</Show>
+				</view>
+			</view>
+		}</For>;
+
+	static function more(f:Studio.Failure):Int
+		return Std.int(Math.max(0, f.diagnostics.filter(d -> d.severity == "error").length - 1));
 
 	// (by a live frame: a failed build's first error and where, else what it
 	// threw when run; "": neither. A failed build: one chip a row, by its first frame)

@@ -94,14 +94,61 @@ class Watch implements Markup {
 	static function playable(studio:Studio):Bool
 		return studio.layout.screens().length > 0 && !blank(studio) && !studio.waiting();
 
-	// Play: the frame aimed at, else the app (Studio.play), in the canvas' place
+	// Play: the frame aimed at, else the app (Studio.play), in a window of
+	// its own: "Starting…" at once (its build's last line beside it), "Stop"
+	// while it runs, Play again when it closes; what failed beside it (a
+	// click: its file at the line), until the next Play or its ×
 	static function play(studio:Studio):View
-		return <button tag="play" aria-label={studio.playing() == null ? "Play" : "Stop"} flexDirection="row" alignItems="center"
-				columnGap={6} height={28} padding="0 12" borderRadius={8} background={c("ink")} color={c("ground")} cursor="pointer"
-				onPress={() -> if (studio.playing.peek() != null) studio.stopPlay() else studio.play()}>
-				<image src={studio.playing() == null ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}/>
-				<text fontSize={12} fontWeight={Theme.MEDIUM}>{studio.playing() == null ? "Play" : "Stop"}</text>
-			</button>;
+		return <view flexDirection="row" alignItems="center" columnGap={8} minWidth={0} flexShrink={1}>
+			<Show when={studio.launched() != null && studio.launched().state != "running"}>{launchNote(studio)}</Show>
+			<button tag="play" aria-label={playLabel(studio)} flexDirection="row" alignItems="center" columnGap={6} height={28} padding="0 12" borderRadius={8}
+				flexShrink={0} background={c("ink")} color={c("ground")} cursor="pointer" onPress={() -> pressed(studio)}>
+				<image src={playLabel(studio) == "Play" ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}
+					ref={(n:Node) -> pulse(n, () -> studio.launched()?.state == "starting")}/>
+				<text fontSize={12} fontWeight={Theme.MEDIUM}>{playLabel(studio)}</text>
+			</button>
+		</view>;
+
+	static function playLabel(studio:Studio):String {
+		if (studio.playing() != null) return "Stop";
+		return switch studio.launched()?.state {
+			case "starting": "Starting…";
+			case "running": "Stop";
+			case _: "Play";
+		}
+	}
+
+	static function pressed(studio:Studio) {
+		var l = studio.launched.peek();
+		if (studio.playing.peek() != null) studio.stopPlay() else if (l != null && l.state != "failed") studio.stopWindow() else studio.play();
+	}
+
+	// (beside Play: its build on its way, dim; what failed, red, its place a link)
+	static function launchNote(studio:Studio):View {
+		var failed = () -> studio.launched()?.state == "failed";
+		return <view tag="launch-note" flexDirection="row" alignItems="center" columnGap={6} height={24} padding="0 4 0 10" borderRadius={12} flexShrink={1}
+			minWidth={0} maxWidth={420} background={failed() ? c("error-soft") : null}>
+			<Show when={failed()}><view width={6} height={6} borderRadius={3} flexShrink={0} background={c("error")}/></Show>
+			<button tag="launch-at" flexDirection="row" columnGap={6} flexShrink={1} minWidth={0} cursor={studio.launched()?.at == null ? "default" : "pointer"}
+				onPress={() -> {
+					var at = studio.launched.peek()?.at;
+					if (at != null) studio.follow(at);
+				}}>
+				<Show when={failed()}><text fontSize={Theme.SMALL} fontWeight={Theme.MEDIUM} color={c("error")} flexShrink={0}>Play failed</text></Show>
+				<Show when={studio.launched()?.at != null}>
+					<text fontSize={Theme.SMALL} color={c("error")} textDecoration={1} flexShrink={0}>{studio.launched()?.at}</text>
+				</Show>
+				<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}
+					color={failed() ? c("error") : c("fg3")}>{studio.launched()?.note ?? ""}</text>
+			</button>
+			<Show when={failed()}>
+				<button tag="launch-close" aria-label="Dismiss" width={18} height={18} alignItems="center" justifyContent="center" flexShrink={0}
+					cursor="pointer" onPress={() -> studio.stopWindow()}>
+					<image src={Icons.close} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("error")}/>
+				</button>
+			</Show>
+		</view>;
+	}
 
 	// (an agent works: the prompt's turn runs, or one over MCP says it does;
 	// a question for the user holds the dot still, ringed)
