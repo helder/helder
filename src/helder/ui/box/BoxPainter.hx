@@ -49,6 +49,8 @@ class BoxPainter {
 					if (f.kind(id) == Fragments.SPAN) span(p, id, x, y) else box(p, id, b, x, y);
 				case PaintOrder.TEXT:
 					if (s.visible) text(p, id, b, x, y);
+				case PaintOrder.BORDERS:
+					if (s.visible) collapsed(p, id, b, x, y);
 				case PaintOrder.REPLACED:
 					if (s.visible && b.image != null) replaced(p, id, b, x, y);
 				case PaintOrder.OUTLINE:
@@ -116,11 +118,54 @@ class BoxPainter {
 	}
 
 	function box(p:Painter, id:Int, b:Box, x:Float, y:Float) {
+		if (b.kind == TableWrapper) return;
 		var s = b.style, w = f.width(id), h = f.height(id);
+		// (an empty cell's, under empty-cells: hide in the separated borders model: nothing, §17.6.1.1)
+		if (b.flags & (Box.EMPTY | Box.COLLAPSED) == Box.EMPTY && s.keyword("empty-cells") == "hide") return;
 		Borders.shadows(p, s, x, y, w, h, false);
 		if (b != order.canvas) Backgrounds.paint(p, s, x, y, w, h, image);
 		Borders.shadows(p, s, x, y, w, h, true);
-		Borders.paint(p, s, x, y, w, h);
+		// (rows, columns and their groups have no borders of their own but collapsed; collapsed ones are the table's)
+		var part = s.part;
+		if (b.flags & Box.COLLAPSED == 0 && (part == 0 || part == BoxStyle.CELL || part == BoxStyle.CAPTION)) Borders.paint(p, s, x, y, w, h);
+	}
+
+	// (a table's collapsed borders, §17.6.2: each line's segments, a horizontal one over the vertical
+	// lines' half widths at its ends; double, dotted and the rest drawn solid)
+	function collapsed(p:Painter, id:Int, b:Box, x:Float, y:Float) {
+		var g = b.table;
+		if (g == null || !g.collapse) return;
+		var rows = g.rows, cols = g.columns;
+		inline function colLeft(c:Int):Float
+			return c < cols ? g.x[c] : g.x[cols - 1] + g.widths[cols - 1];
+		inline function rowTop(r:Int):Float
+			return r < rows ? g.y[r] : g.y[rows - 1] + g.heights[rows - 1];
+		var path = new Path();
+		for (r in 0...rows) for (c in 0...cols + 1) {
+			var k = g.v(r, c), w = g.vPainted(k);
+			if (w <= 0) continue;
+			var lx = Math.round(x + colLeft(c) - Math.floor(w / 2)), ty = Math.round(y + rowTop(r)), by = Math.round(y + rowTop(r + 1));
+			fillRect(p, path, lx, ty, w, by - ty, g.vColor[k]);
+		}
+		for (r in 0...rows + 1) for (c in 0...cols) {
+			var k = g.h(r, c), w = g.hPainted(k);
+			if (w <= 0) continue;
+			var left = 0.0, right = 0.0;
+			for (rr in [r - 1, r]) if (rr >= 0 && rr < rows) {
+				left = Math.max(left, Math.floor(g.vPainted(g.v(rr, c)) / 2));
+				right = Math.max(right, Math.ceil(g.vPainted(g.v(rr, c + 1)) / 2));
+			}
+			var lx = Math.round(x + colLeft(c) - left), rx = Math.round(x + colLeft(c + 1) + right);
+			var ty = Math.round(y + rowTop(r) - Math.floor(w / 2));
+			fillRect(p, path, lx, ty, rx - lx, w, g.hColor[k]);
+		}
+	}
+
+	static function fillRect(p:Painter, path:Path, x:Float, y:Float, w:Float, h:Float, color:Int) {
+		if (w <= 0 || h <= 0 || color >>> 24 == 0) return;
+		path.clear();
+		path.rect(x, y, w, h);
+		p.fill(path, Paint.solid(color));
 	}
 
 	// (the canvas's background, the root's or body's, CSS 2.1 §14.2: under everything, over the whole canvas)

@@ -44,7 +44,9 @@ class BlockFlow implements FormattingContext {
 		var s = box.style.model();
 		var cb = space.width;
 		var pl = res(s.padding[3], cb), pr = res(s.padding[1], cb), pt = res(s.padding[0], cb), pb = res(s.padding[2], cb);
-		var bl = s.border[3], br = s.border[1], bt = s.border[0], bb = s.border[2];
+		var ov = space.borders;
+		var bl = ov != null ? ov[3] : s.border[3], br = ov != null ? ov[1] : s.border[1];
+		var bt = ov != null ? ov[0] : s.border[0], bb = ov != null ? ov[2] : s.border[2];
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var mt = res(s.margin[0], cb), mb = res(s.margin[2], cb);
 		var w = width(box, s, space, bpx);
@@ -149,7 +151,8 @@ class BlockFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = size(s.width, cb, s.borderBox, bpx);
-		if (box.blockLevel && box.kind != InlineBlock) {
+		// (a table's caption is laid out as a block in its table's width)
+		if (box.blockLevel && box.kind != InlineBlock || box.style.part == BoxStyle.CAPTION) {
 			var rtl = box.parent != null && box.parent.style.rtl;
 			w = solve(box, spec, ml, mr, cb, bpx, rtl);
 			if (!Math.isNaN(maxW) && w > maxW) w = solve(box, maxW, ml, mr, cb, bpx, rtl);
@@ -170,7 +173,7 @@ class BlockFlow implements FormattingContext {
 	}
 
 	// (CSS 2.1 §10.3.3's equation for a width, NaN: auto, and the margins, NaN: auto)
-	static function solve(box:Box, w:Float, ml:Float, mr:Float, cb:Float, bpx:Float, rtl:Bool):Float {
+	public static function solve(box:Box, w:Float, ml:Float, mr:Float, cb:Float, bpx:Float, rtl:Bool):Float {
 		if (!Math.isNaN(w) && w + bpx + (Math.isNaN(ml) ? 0 : ml) + (Math.isNaN(mr) ? 0 : mr) > cb) {
 			if (Math.isNaN(ml)) ml = 0;
 			if (Math.isNaN(mr)) mr = 0;
@@ -298,25 +301,43 @@ class BlockFlow implements FormattingContext {
 	// ---- lengths
 
 	// (a percentage of an indefinite base, and auto: 0)
-	static inline function res(l:Len, base:Float):Float {
+	public static inline function res(l:Len, base:Float):Float {
 		var v = Lens.resolve(l, base, 0);
 		return Math.isNaN(v) ? 0 : v;
 	}
 
 	// (auto: NaN)
-	static inline function auto(l:Len, base:Float):Float
+	public static inline function auto(l:Len, base:Float):Float
 		return Lens.resolve(l, base, Math.NaN);
 
-	static function fixed(l:Len):Float
+	public static function fixed(l:Len):Float
 		return switch l {
 			case Px(v): v;
 			case _: 0;
 		}
 
 	// (a size as a content size: border-box's less padding and border; auto or indefinite: NaN)
-	static function size(l:Len, base:Float, borderBox:Bool, bp:Float):Float {
+	public static function size(l:Len, base:Float, borderBox:Bool, bp:Float):Float {
 		var v = Lens.resolve(l, base, Math.NaN);
 		return Math.isNaN(v) || !borderBox ? v : Math.max(0, v - bp);
+	}
+
+	// A fragment's first baseline from its top (its first line's, through its first boxes; NaN: none):
+	// a table cell's and a table's, where CSS 2.1 §17.5.3 aligns rows.
+	public static function firstBaseline(f:Fragments, id:Int):Float {
+		var c = f.first(id);
+		while (c >= 0) {
+			switch f.kind(c) {
+				case Fragments.LINE:
+					return f.y(c) + f.baseline(c);
+				case Fragments.BOX:
+					var b = firstBaseline(f, c);
+					if (!Math.isNaN(b)) return f.y(c) + b;
+				case _:
+			}
+			c = f.next(c);
+		}
+		return Math.NaN;
 	}
 
 	// A relatively positioned box's offset (§9.4.3): left over right (right in

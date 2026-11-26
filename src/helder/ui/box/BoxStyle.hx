@@ -34,6 +34,16 @@ class BoxStyle {
 	public function anonymousChild():BoxStyle
 		return new BoxStyle(css, true);
 
+	// An anonymous box of a table's display (CSS 2.1 §17.2.1): its parent's inherited values.
+	public function anonymousTable(inner:Int, part:Int, outer = BLOCK):BoxStyle {
+		var s = new BoxStyle(css, true);
+		s.displayRead = true;
+		s.displayInner = inner;
+		s.displayPart = part;
+		s.displayOuter = outer;
+		return s;
+	}
+
 	public function terms(p:String):Array<CssTerm> {
 		var id = idOf(p);
 		if (id < 0) return [];
@@ -100,6 +110,11 @@ class BoxStyle {
 		return switch l.kind {
 			case Px | Plain: l.value;
 			case Relative: relative(l);
+			// (a property its group keeps as terms: text-indent's)
+			case Other: switch termLen(terms(p)) {
+					case Px(v): v;
+					case _: 0;
+				}
 			case _: 0;
 		}
 	}
@@ -134,11 +149,27 @@ class BoxStyle {
 			case _: css.length(cast id);
 		}
 
+	// (a length from terms, a font-relative unit resolved)
+	function termLen(t:Array<CssTerm>):Len
+		return switch toLen(t) {
+			case Px(v):
+				var unit = "px";
+				for (x in t) switch x {
+					case Dimension(_, u): unit = u;
+					case _:
+				}
+				unit == "px" ? Px(v) : Px(unitPx(v, unit));
+			case l: l;
+		}
+
 	// (a length in a font's unit helder.css leaves to layout: ex and ch as half an em, cap and ic
 	// as 0.7 and 1, until the fonts' own metrics come here)
-	function relative(l:CssLength):Float {
+	function relative(l:CssLength):Float
+		return unitPx(l.value, l.unit);
+
+	function unitPx(value:Float, unit:String):Float {
 		var em = css.fontSize();
-		return l.value * switch l.unit {
+		return value * switch unit {
 			case "ex" | "ch": em / 2;
 			case "cap": em * 0.7;
 			case "ic" | "em": em;
@@ -155,6 +186,7 @@ class BoxStyle {
 		return switch l.kind {
 			case Px | Plain: Px(l.value);
 			case Relative: Px(relative(l));
+			case Other: termLen(terms(p));
 			case Percent: Percent(l.value);
 			case Mixed if (l.calc != null): Calc(l.calc);
 			case _: Auto;
@@ -168,6 +200,14 @@ class BoxStyle {
 			case [Calc(n, _, _)]: Calc(n);
 			case [Number(v, _)]: Px(v);
 			case [Part(_, inner)]: toLen(inner);
+			// (a length among keywords: text-indent's with hanging or each-line)
+			case _ if (t.length > 1): {
+					for (x in t) switch x {
+						case Dimension(_, _) | Percentage(_) | Calc(_, _, _): return toLen([x]);
+						case _:
+					}
+					Auto;
+				}
 			case _: Auto;
 		}
 
@@ -233,8 +273,17 @@ class BoxStyle {
 	public static inline var TABLE = 2;
 	public static inline var FLEX = 3;
 	public static inline var GRID = 4;
-	// (table-row, table-cell and the other internal displays)
+	// (table-row, table-cell and the other internal displays: which one, `part`)
 	public static inline var TABLE_PART = 5;
+
+	public static inline var ROW_GROUP = 1;
+	public static inline var HEADER_GROUP = 2;
+	public static inline var FOOTER_GROUP = 3;
+	public static inline var ROW = 4;
+	public static inline var CELL = 5;
+	public static inline var COLUMN_GROUP = 6;
+	public static inline var COLUMN = 7;
+	public static inline var CAPTION = 8;
 
 	var displayRead = false;
 	var displayNone = false;
@@ -242,12 +291,20 @@ class BoxStyle {
 	var displayList = false;
 	var displayOuter = 0;
 	var displayInner = 0;
+	var displayPart = 0;
 
 	public var none(get, never):Bool;
 	public var contents(get, never):Bool;
 	public var listItem(get, never):Bool;
 	public var outer(get, never):Int;
 	public var inner(get, never):Int;
+	// a table part's display (ROW, CELL...), else 0
+	public var part(get, never):Int;
+
+	function get_part():Int {
+		display();
+		return displayPart;
+	}
 
 	function get_none():Bool {
 		display();
@@ -294,7 +351,17 @@ class BoxStyle {
 			case TableRowGroup | TableHeaderGroup | TableFooterGroup | TableRow | TableCell | TableColumnGroup | TableColumn | TableCaption: TABLE_PART;
 			case _: FLOW;
 		}
-		// (a table's part with no table around it: CSS 2.1 §17.2.1's anonymous table, not in the slice yet)
+		displayPart = switch d.inner {
+			case TableRowGroup: ROW_GROUP;
+			case TableHeaderGroup: HEADER_GROUP;
+			case TableFooterGroup: FOOTER_GROUP;
+			case TableRow: ROW;
+			case TableCell: CELL;
+			case TableColumnGroup: COLUMN_GROUP;
+			case TableColumn: COLUMN;
+			case TableCaption: CAPTION;
+			case _: 0;
+		}
 		if (d.outer == Internal && displayInner != TABLE_PART) displayOuter = BLOCK;
 	}
 

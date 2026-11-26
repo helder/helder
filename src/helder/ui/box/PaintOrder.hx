@@ -15,6 +15,8 @@ class PaintOrder {
 	public static inline var TEXT = 1;
 	public static inline var REPLACED = 2;
 	public static inline var OUTLINE = 3;
+	// a table's collapsed borders, over its cells' backgrounds
+	public static inline var BORDERS = 4;
 
 	// state kinds
 	public static inline var ROOT = 0;
@@ -113,7 +115,7 @@ class PaintOrder {
 		for (k in order) if (c.z[k] < 0) deferred(c, k);
 		for (k in 0...c.blocks.length) {
 			state = c.blockState[k];
-			step(BACKGROUND, c.blocks[k], c.blockX[k], c.blockY[k]);
+			step(c.blockSteps[k], c.blocks[k], c.blockX[k], c.blockY[k]);
 		}
 		for (k in 0...c.inlines.length) {
 			state = c.inlineState[k];
@@ -156,10 +158,7 @@ class PaintOrder {
 				case Fragments.BOX:
 					var b = f.box(k);
 					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else {
-						c.blocks.push(k);
-						c.blockX.push(kx);
-						c.blockY.push(ky);
-						c.blockState.push(st);
+						c.block(BACKGROUND, k, kx, ky, st);
 						c.outline(k, kx, ky, st);
 						var saved = state;
 						state = st;
@@ -167,6 +166,7 @@ class PaintOrder {
 						state = saved;
 						if (b.kind == BlockReplaced) c.atom(REPLACED, k, kx, ky, st);
 						walk(k, kx, ky, c, inner);
+						if (b.table != null && b.table.collapse) c.block(BORDERS, k, kx, ky, st);
 					}
 				case Fragments.LINE:
 					line(k, kx, ky, c, st);
@@ -209,6 +209,7 @@ private class Collected {
 	public final blockX:Array<Float> = [];
 	public final blockY:Array<Float> = [];
 	public final blockState:Array<Int> = [];
+	public final blockSteps:Array<Int> = [];
 	public final inlines:Array<Int> = [];
 	public final inlineStep:Array<Int> = [];
 	public final inlineX:Array<Float> = [];
@@ -231,6 +232,14 @@ private class Collected {
 		outlineX.push(x);
 		outlineY.push(y);
 		outlineState.push(st);
+	}
+
+	public function block(kind:Int, k:Int, x:Float, y:Float, st:Int) {
+		blocks.push(k);
+		blockSteps.push(kind);
+		blockX.push(x);
+		blockY.push(y);
+		blockState.push(st);
 	}
 
 	public function defer(k:Int, x:Float, y:Float, z:Int, st:Int) {

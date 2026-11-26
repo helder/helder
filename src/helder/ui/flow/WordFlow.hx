@@ -53,7 +53,9 @@ class WordFlow {
 	var content:Null<InlineContent> = null;
 	// (the width the content's styles resolve percentages against: theirs, made once)
 	var cbWidth = 0.0;
-	final entries:Array<Int> = [];
+	// (each atom's piece of the content: its shaped word read when its fragment is made, the
+	// shaper's cache being emptied past its size, and the content shaped again, in between)
+	final pieces:Array<Int> = [];
 
 	// (atomic inlines are laid out while walking, their own lines with this:
 	// the atoms are filled after)
@@ -146,7 +148,7 @@ class WordFlow {
 			widths[count] = c.pieceWidth(p);
 			breaks[count] = c.pieceBreak(p) & LineBreaks.STATUS == LineBreaks.ALLOWED;
 			kept[count] = keep;
-			entries[count] = c.pieceEntry(p);
+			pieces[count] = p;
 			atomicFragments[count] = kind == ATOMIC ? (laid.get(box) ?? -1) : -1;
 			count++;
 		}
@@ -555,7 +557,10 @@ class WordFlow {
 		var run:Null<ShapedRun> = null, runX = 0.0, pen = 0.0, from = starts[k], to = from;
 		var all = c.text.substring(starts[k], ends[e - 1]);
 		var glyphs = 0;
-		for (a in k...e) if (entries[a] >= 0) glyphs += shaper.glyphCount(entries[a]);
+		for (a in k...e) {
+			var en = c.pieceEntry(pieces[a]);
+			if (en >= 0) glyphs += shaper.glyphCount(en);
+		}
 		function flush() {
 			if (run == null || run.count == 0) return;
 			run.text = all;
@@ -568,7 +573,7 @@ class WordFlow {
 			run = null;
 		}
 		for (a in k...e) {
-			var en = entries[a];
+			var en = c.pieceEntry(pieces[a]);
 			if (en >= 0) {
 				var g0 = shaper.glyphStart(en);
 				for (g in g0...g0 + shaper.glyphCount(en)) {

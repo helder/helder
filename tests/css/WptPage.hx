@@ -24,6 +24,8 @@ class WptPage {
 
 	public static function shared():FontMatch {
 		if (fonts != null) return fonts;
+		// (helder's own shaping, as the lanes run it: the same pixels however the runner is started, on every OS)
+		helder.text.Shaping.engine = helder.text.Shaping.HELDER;
 		fonts = new FontMatch();
 		var ahem = '$wpt/fonts/Ahem.ttf';
 		if (FileSystem.exists(ahem)) fonts.register(File.getBytes(ahem), "Ahem");

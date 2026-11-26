@@ -64,7 +64,7 @@ class BoxTree {
 	function make(kind:BoxKind, s:BoxStyle, ?node:Node, ?pseudo:String):Box {
 		count++;
 		var b = new Box(kind, s, node, pseudo);
-		if (b.container) b.context = contexts.of(s.inner, note);
+		if (b.container || kind == TableWrapper) b.context = contexts.of(kind == TableWrapper ? BoxStyle.TABLE : s.inner, note);
 		if (s.floating) note("floats: laid out in flow");
 		if (s.absolute) note("positioning: absolute and fixed laid out in flow");
 		return b;
@@ -95,14 +95,24 @@ class BoxTree {
 			case Inline:
 				var kids = [];
 				contents(el, s, kids);
-				split(el, s, kids, out);
+				split(el, s, orphans(kids, s, true), out);
+			case Container if (s.inner == BoxStyle.TABLE):
+				var kids = [];
+				contents(el, s, kids);
+				out.push(table(s, el, kids));
+			case Container if (s.inner == BoxStyle.TABLE_PART):
+				var b = make(Container, s, el);
+				var kids = [];
+				contents(el, s, kids);
+				part(b, kids);
+				out.push(b);
 			case _:
 				var b = make(kind, s, el);
 				var kids = [];
 				var marker = s.listItem ? marker(el) : null;
 				if (marker != null && marker.flags & Box.OUTSIDE == 0) kids.push(marker);
 				contents(el, s, kids);
-				fill(b, kids);
+				fill(b, orphans(kids, s, false));
 				if (marker != null && marker.flags & Box.OUTSIDE != 0) placeOutside(b, marker);
 				out.push(b);
 		}
@@ -196,6 +206,97 @@ class BoxTree {
 		flush();
 	}
 
+	// ---- tables (CSS 2.1 §17.2.1: anonymous table objects)
+
+	static inline function isPart(b:Box):Bool
+		return b.kind == Container && b.style.inner == BoxStyle.TABLE_PART;
+
+	static inline function partOf(b:Box):Int
+		return isPart(b) ? b.style.part : 0;
+
+	// A table: its wrapper box (its captions above or below, CSS 2.1 §17.4) around the table box.
+	function table(s:BoxStyle, el:Null<Element>, kids:Array<Box>, ?pseudo:String):Box {
+		var wrapper = make(TableWrapper, s, el, pseudo);
+		var t = make(Container, s, el, pseudo);
+		var above = [], below = [], rest = [];
+		for (k in kids)
+			if (partOf(k) == BoxStyle.CAPTION) (k.style.keyword("caption-side") == "bottom" ? below : above).push(k) else rest.push(k);
+		runs(t, rest, k -> switch partOf(k) {
+			case BoxStyle.ROW_GROUP | BoxStyle.HEADER_GROUP | BoxStyle.FOOTER_GROUP | BoxStyle.ROW | BoxStyle.COLUMN_GROUP | BoxStyle.COLUMN: true;
+			case _: false;
+		}, run -> row(t.style, run));
+		for (c in above) wrapper.append(c);
+		wrapper.append(t);
+		for (c in below) wrapper.append(c);
+		return wrapper;
+	}
+
+	// A table part's children: a row group's rows, a row's cells, a column group's columns,
+	// anonymous ones around what else is there; a cell's and a caption's as a block's.
+	function part(b:Box, kids:Array<Box>)
+		switch b.style.part {
+			case BoxStyle.ROW_GROUP | BoxStyle.HEADER_GROUP | BoxStyle.FOOTER_GROUP:
+				runs(b, kids, k -> partOf(k) == BoxStyle.ROW, run -> row(b.style, run));
+			case BoxStyle.ROW:
+				runs(b, kids, k -> partOf(k) == BoxStyle.CELL, run -> cell(b.style, run));
+			case BoxStyle.COLUMN_GROUP:
+				for (k in kids) if (partOf(k) == BoxStyle.COLUMN) b.append(k);
+			case BoxStyle.COLUMN:
+			case _:
+				fill(b, orphans(kids, b.style, false));
+		}
+
+	function row(parent:BoxStyle, kids:Array<Box>):Box {
+		var r = make(Container, parent.anonymousTable(BoxStyle.TABLE_PART, BoxStyle.ROW));
+		part(r, kids);
+		return r;
+	}
+
+	function cell(parent:BoxStyle, kids:Array<Box>):Box {
+		var c = make(Container, parent.anonymousTable(BoxStyle.TABLE_PART, BoxStyle.CELL));
+		fill(c, orphans(kids, c.style, false));
+		return c;
+	}
+
+	// (a part's proper children kept, each run of others in one made by wrap; white space alone dropped)
+	static function runs(b:Box, kids:Array<Box>, proper:Box->Bool, wrap:Array<Box>->Box) {
+		var run = [];
+		function flush() {
+			if (run.length > 0 && !Lambda.foreach(run, blank)) b.append(wrap(run));
+			run = [];
+		}
+		for (k in kids) {
+			if (proper(k)) {
+				flush();
+				b.append(k);
+			} else
+				run.push(k);
+		}
+		flush();
+	}
+
+	// (runs of table parts out of a table: an anonymous table around each, §17.2.1's third rule;
+	// white space between them in it, around them not)
+	function orphans(kids:Array<Box>, s:BoxStyle, inlineParent:Bool):Array<Box> {
+		if (!Lambda.exists(kids, isPart)) return kids;
+		var out = [], run:Array<Box> = [];
+		function flush() {
+			var tail = [];
+			while (run.length > 0 && !isPart(run[run.length - 1])) tail.unshift(run.pop());
+			if (run.length > 0) out.push(table(s.anonymousTable(BoxStyle.TABLE, 0, inlineParent ? BoxStyle.INLINE : BoxStyle.BLOCK), null, run));
+			for (t in tail) out.push(t);
+			run = [];
+		}
+		for (k in kids) {
+			if (isPart(k) || run.length > 0 && blank(k)) run.push(k) else {
+				flush();
+				out.push(k);
+			}
+		}
+		flush();
+		return out;
+	}
+
 	static function blank(b:Box):Bool
 		return b.kind == Text && b.style.collapse && ~/^[ \t\n\r\x0C]*$/.match(b.text);
 
@@ -210,11 +311,18 @@ class BoxTree {
 		applyCounters(s, false);
 		var kids = [];
 		for (t in content) generated(el, s, t, which, kids);
+		kids = orphans(kids, s, s.outer == BoxStyle.INLINE);
 		var kind:BoxKind = s.contents ? Inline : kindOf(el, s);
 		if (kind == Break || kind == InlineReplaced || kind == BlockReplaced) kind = s.outer == BoxStyle.INLINE ? Inline : Block;
 		if (kind == Inline) {
 			var b = make(Inline, s, el, which);
 			for (k in kids) b.append(k);
+			out.push(b);
+		} else if (kind == Container && s.inner == BoxStyle.TABLE) {
+			out.push(table(s, el, kids, which));
+		} else if (kind == Container && s.inner == BoxStyle.TABLE_PART) {
+			var b = make(Container, s, el, which);
+			part(b, kids);
 			out.push(b);
 		} else {
 			var b = make(kind, s, el, which);
@@ -230,8 +338,10 @@ class BoxTree {
 			case Func("attr", [Ident(name)]) | Func("attr", [Ident(name), _]): el.getAttribute(name) ?? "";
 			case Func("counter", args): counterText(args, false);
 			case Func("counters", args): counterText(args, true);
-			case Keyword("open-quote"): quotes++ < 1 ? "“" : "‘";
-			case Keyword("close-quote"): --quotes < 1 ? (quotes = quotes < 0 ? 0 : quotes) == 0 ? "”" : "’" : "’";
+			case Keyword("open-quote"): quotes++ == 0 ? "\u201C" : "\u2018";
+			case Keyword("close-quote"):
+				if (quotes > 0) quotes--;
+				quotes == 0 ? "\u201D" : "\u2019";
 			case Keyword("no-open-quote"):
 				quotes++;
 				"";
