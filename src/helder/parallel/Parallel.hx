@@ -42,14 +42,61 @@ import haxe.macro.Expr;
 @:definition macro function reduce(n:Expr, empty:Expr, body:Expr, combine:Expr, ?on:Expr):Expr
 	return ParallelMacro.reduction("reduce", n, body, on, empty, combine);
 
+// (in a coroutine) items' values the CPU's: where a dispatch wrote them
+// last, read back, awaited (WebGPU reads back asynchronously only; elsewhere
+// items[i] reads back at once, waiting); a macro, so that a program that
+// never awaits one has none of helder.async
+macro function read(items:Expr):Expr
+	return macro @:pos(items.pos) helder.parallel.ItemsRead.read($items.data());
+
 // a named body of its own parameters: K.run(n, {...}, ?on)
 @:definition macro function kernel(f:Expr):Expr
 	return ParallelMacro.kernel(f);
 
 #if !macro
+@:hxmc.unsafe(gc)
 class Parallel {
 	// each site's choice printed when it changes
 	public static var log = false;
+
+	// the device the Gpu form dispatches on (a UiWindow's, where it has
+	// compute: set when the window makes its device; or set it); null: none,
+	// Auto stays on the CPU and Gpu throws. Items are each one device's.
+	public static var device(default, set):Null<helder.gfx.Device> = null;
+
+	static function set_device(d:Null<helder.gfx.Device>):Null<helder.gfx.Device> {
+		device = d;
+		GpuRunner.use(d);
+		return d;
+	}
+
+	// (GpuRunner's, set with the device: calls through them reach helder.gfx only where one was set)
+	static var gpuDispatch:Null<(GpuForm, Int, hxmc.unsafe.Ptr, Array<ItemsData>) -> Void> = null;
+	static var gpuFetch:Null<ItemsData->Void> = null;
+	static var gpuRelease:Null<(ItemsData, Bool) -> Void> = null;
+
+	@:noCompletion public static function hooks(dispatch, fetch, release) {
+		gpuDispatch = dispatch;
+		gpuFetch = fetch;
+		gpuRelease = release;
+	}
+
+	// whether a device with compute is set
+	@:noCompletion public static inline function gpu():Bool
+		return gpuDispatch != null;
+
+	@:noCompletion public static function dispatchGpu(form:GpuForm, n:Int, ctx:hxmc.unsafe.Ptr, items:Array<ItemsData>) {
+		if (gpuDispatch == null) throw new haxe.Exception("helder.parallel: On.Gpu: no Parallel.device with compute stages");
+		gpuDispatch(form, n, ctx, items);
+	}
+
+	@:noCompletion public static function fetch(d:ItemsData) {
+		if (gpuFetch == null) throw new haxe.Exception("Items: its values are a GPU's, and Parallel.device is gone");
+		gpuFetch(d);
+	}
+
+	@:noCompletion public static function release(d:ItemsData, now:Bool)
+		if (gpuRelease != null) gpuRelease(d, now);
 
 	static var forcedForm:Null<On> = null;
 	static var jobsFixed = -1.0;

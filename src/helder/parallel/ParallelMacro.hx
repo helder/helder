@@ -289,6 +289,15 @@ class ParallelMacro {
 	}
 }
 
+// (GpuForm's kinds of a captured value)
+class GpuKind {
+	public static inline var KINT = 0;
+	public static inline var KBOOL = 1;
+	public static inline var KFLOAT = 2;
+	public static inline var KMAT = 3;
+	public static inline var KVEC = 10;
+}
+
 enum Kind {
 	Each;
 	Sum;
@@ -324,6 +333,7 @@ private class Forms {
 	final args:Array<Arg>;
 	final hasEmpty:Bool;
 	final soft:Soft;
+	final lower:ParallelLower;
 	final pos:Position;
 	final module:String;
 	// the stage's parameters after the index: their argument (and whether its length), their offset in the context
@@ -340,6 +350,7 @@ private class Forms {
 		this.reduced = reduced;
 		this.args = args;
 		this.hasEmpty = hasEmpty;
+		this.lower = lower;
 		pos = Context.currentPos();
 		module = Context.getLocalModule();
 		pack = module.split(".");
@@ -600,7 +611,7 @@ private class Forms {
 			}).fields);
 		}
 		fields = fields.concat((macro class {
-			static final site = new helder.parallel.Site($v{label});
+			static final site = new helder.parallel.Site($v{label}, $v{kind == Each});
 			static var chunkAt = hxmc.unsafe.Ptr.nil();
 
 			static function chunkAddress():hxmc.unsafe.Ptr {
@@ -608,6 +619,13 @@ private class Forms {
 				return chunkAt;
 			}
 		}).fields);
+		if (kind == Each) {
+			gpu();
+			// (the Gpu form's Items, by its storage slots: refilled each dispatch)
+			fields = fields.concat((macro class {
+				static final gpuItems:Array<helder.parallel.ItemsData> = [];
+			}).fields);
+		}
 		fields.push(dispatch());
 		fields = fields.concat(extra);
 		soft.flush();
@@ -629,13 +647,199 @@ private class Forms {
 		}, module);
 	}
 
+	// ---- the Gpu form: the stage again, as a compute stage in the build's
+	// languages (helder.gfx.shader's emitters): its index x + y * 65535 * 64
+	// (65535 workgroups a row of 64), the invocations past n returned, its
+	// captured values the fields of one uniform block (a Bool an Int there,
+	// the count last), its Items storage buffers at slots 1...; as data in a
+	// class of its own beside the site's (<name>_Gpu.form: a GpuForm), with
+	// the stage's CPU back end form under -D helder.soft
+
+	static inline var ROW = 65535 * 64;
+
+	// (the Gpu form's Items: their arguments, by slot)
+	var gpuStorage:Array<Int> = [];
+
+	function gpu() {
+		var ci = switch lower.typeOf(Context.getType("helder.gfx.shader.ComputeInput"), pos) {
+			case TStruct(s): s;
+			case _: throw "parallel";
+		}
+		function field(s:SStruct, name:String):SField
+			return Lambda.find(s.fields, f -> f.field == name);
+		// (the names the stage has: the new parameters' kept apart)
+		var taken = new Map<String, Bool>();
+		for (v in sf.params)
+			taken.set(v.name, true);
+		function names(ss:Array<SStmt>)
+			for (st in ss)
+				switch st {
+					case SDecl(v, _): taken.set(v.name, true);
+					case SIf(_, a, b):
+						names(a);
+						if (b != null) names(b);
+					case SWhile(_, b): names(b);
+					case _:
+				}
+		names(sf.body);
+		function unique(n:String):String
+			return helder.gfx.shader.Names.unique(n, x -> !taken.exists(x));
+		var fields:Array<SField> = [], scalars = new Map<SVar, SField>(), storage:Array<{v:SVar, k:Int}> = [];
+		for (k in 0...params.length) {
+			var v = sf.params[k + 1];
+			switch v.type {
+				case TStorage(_, _): storage.push({v: v, k: k});
+				case t:
+					var f:SField = {name: "c" + k, field: "c" + k, type: t == TBool ? TInt : t, position: false};
+					fields.push(f);
+					scalars.set(v, f);
+			}
+		}
+		var countField:SField = {name: "count", field: "count", type: TInt, position: false};
+		fields.push(countField);
+		var cs = new SStruct(lower.names.global("Captures"), "Captures", fields);
+		var id = new SVar(unique("gid_in"), TStruct(ci)), u = new SVar(unique("captured"), TStruct(cs));
+		function local(v:SVar):SExpr
+			return {e: ELocal(v), t: v.type};
+		function ex(e:SExpr):SExpr
+			return switch e.e {
+				case ELocal(v) if (scalars.exists(v)):
+					var f = scalars.get(v), x:SExpr = {e: EField(local(u), f.name), t: f.type};
+					v.type == TBool ? {e: EBinop(Ne, x, {e: EInt(0), t: TInt}), t: TBool} : x;
+				case EField(a, n): {e: EField(ex(a), n), t: e.t};
+				case ESwizzle(a, c): {e: ESwizzle(ex(a), c), t: e.t};
+				case EColumn(a, c): {e: EColumn(ex(a), c), t: e.t};
+				case EIndex(a, i): {e: EIndex(ex(a), ex(i)), t: e.t};
+				case EUnop(o, a): {e: EUnop(o, ex(a)), t: e.t};
+				case EBinop(o, a, b): {e: EBinop(o, ex(a), ex(b)), t: e.t};
+				case ECond(c, a, b): {e: ECond(ex(c), ex(a), ex(b)), t: e.t};
+				case ENew(xs): {e: ENew([for (x in xs) ex(x)]), t: e.t};
+				case EBuiltin(n, xs): {e: EBuiltin(n, [for (x in xs) ex(x)]), t: e.t};
+				case ECall(g, xs): {e: ECall(g, [for (x in xs) ex(x)]), t: e.t};
+				case EConvert(a): {e: EConvert(ex(a)), t: e.t};
+				case _: e;
+			}
+		function st(x:SStmt):SStmt
+			return switch x {
+				case SDecl(v, i): SDecl(v, i == null ? null : ex(i));
+				case SAssign(v, o, e): SAssign(v, o, ex(e));
+				case SEval(e): SEval(ex(e));
+				case SIf(c, a, b): SIf(ex(c), [for (y in a) st(y)], b == null ? null : [for (y in b) st(y)]);
+				case SWhile(c, b): SWhile(ex(c), [for (y in b) st(y)]);
+				case SReturn(e): SReturn(e == null ? null : ex(e));
+				case SStore(b, i, v): SStore(ex(b), ex(i), ex(v));
+				case _: x;
+			}
+		var index = sf.params[0];
+		var x:SExpr = {e: EField(local(id), field(ci, "x").name), t: TInt}, y:SExpr = {e: EField(local(id), field(ci, "y").name), t: TInt};
+		var at:SExpr = {e: EBinop(Add, x, {e: EBinop(Mul, y, {e: EInt(ROW), t: TInt}), t: TInt}), t: TInt};
+		var gf = new SFunction(lower.names.global(sf.name + "_gpu"), [id, u].concat([for (s in storage) s.v]), TVoid);
+		gf.fields = ["captured"].concat([for (s in storage) sf.fields[s.k]]);
+		var body:Array<SStmt> = [
+			SDecl(index, at),
+			SIf({e: EBinop(Ge, local(index), {e: EField(local(u), countField.name), t: TInt}), t: TBool}, [SReturn(null)], null)
+		];
+		gf.body = body.concat([for (s in sf.body) st(s)]);
+		var block:SUniform = @:privateAccess ShaderDefinition.std140(lower, cs, 0, pos);
+		var resources:Array<SResource> = [RUniform(block)];
+		var slot = 1;
+		for (s in storage) {
+			var e = switch s.v.type {
+				case TStorage(e, _): e;
+				case _: throw "parallel";
+			}
+			var l = ShaderDefinition.std430(lower, e, args[params[s.k].arg].display, pos);
+			resources.push(RStorage(new SStorage(sf.fields[s.k], slot, e, true, l.offsets, l.stride, slot - 1)));
+			slot++;
+		}
+		if (slot - 1 > 8) Context.error('$what: more than 8 Items for the GPU (D3D11\'s compute stage writes 8 at most)', pos);
+		var c = new SCompute(@:privateAccess ShaderDefinition.entry(Compute, gf, ci, resources), [64, 1, 1], []);
+		var android = StringTools.startsWith(Context.definedValue("hxmc.target") ?? "", "android");
+		var code:Array<ObjectField> = [];
+		for (l in ShaderDefinition.languages(lower, pos)) {
+			var text = switch l {
+				case "glsl": new helder.gfx.shader.Glsl(android).compute(c);
+				case "wgsl": new helder.gfx.shader.Wgsl().compute(c);
+				case "msl": new helder.gfx.shader.Msl().compute(c);
+				case _: new helder.gfx.shader.Hlsl().compute(c);
+			}
+			code.push({field: l, expr: macro $v{text}});
+		}
+		var bindings:Array<Expr> = [];
+		for (r in resources)
+			switch r {
+				case RUniform(b):
+					bindings.push(macro {
+						name: $v{b.struct.name + "_block"},
+						slot: $v{b.binding},
+						kind: (cast 0 : helder.gfx.ShaderBinding.BindingKind),
+						size: $v{b.size},
+						index: $v{b.binding},
+						format: 0,
+						dimension: 0
+					});
+				case RStorage(b):
+					bindings.push(macro {
+						name: $v{"sb_" + b.slot},
+						slot: $v{b.slot},
+						kind: (cast 3 : helder.gfx.ShaderBinding.BindingKind),
+						size: $v{b.stride},
+						index: $v{b.index},
+						format: 0,
+						dimension: 0
+					});
+				case _:
+			}
+		code.push({field: "bindings", expr: macro [$a{bindings}]});
+		code.push({field: "workgroupSize", expr: macro [64, 1, 1]});
+		var gpuName = name + "_Gpu";
+		var gfields:Array<Field> = [];
+		if (Soft.enabled()) {
+			var form = Soft.compute(c, gpuName, pack, module);
+			code.push({field: "soft", expr: form.code});
+			gfields = gfields.concat(form.soft.fields);
+		}
+		var codeExpr:Expr = {expr: EObjectDecl(code), pos: pos};
+		var kinds = [], from = [], to = [];
+		for (k in 0...params.length) {
+			var v = sf.params[k + 1], f = scalars.get(v);
+			if (f == null) continue;
+			kinds.push(switch v.type {
+				case TInt: GpuKind.KINT;
+				case TBool: GpuKind.KBOOL;
+				case TFloat: GpuKind.KFLOAT;
+				case TMat4: GpuKind.KMAT;
+				case TVec(n): GpuKind.KVEC + n;
+				case _: throw "parallel";
+			});
+			from.push(params[k].offset);
+			to.push(block.offsets[fields.indexOf(f)]);
+		}
+		var slots = [for (i in 0...storage.length) i + 1];
+		var writes = [for (s in storage) args[params[s.k].arg].written];
+		gpuStorage = [for (s in storage) params[s.k].arg];
+		gfields = gfields.concat((macro class {
+			public static final form = new helder.parallel.GpuForm($codeExpr, $v{block.size}, 0, $v{block.offsets[fields.length - 1]}, $v{kinds}, $v{from}, $v{to},
+				$v{slots}, $v{writes});
+		}).fields);
+		var exists = try Context.getType(pack.concat([gpuName]).join(".")) != null catch (_:Dynamic) false;
+		if (!exists) Context.defineType({
+			pack: pack,
+			name: gpuName,
+			pos: pos,
+			meta: [{name: ":noCompletion", pos: pos}, {name: ":hxmc.unsafe", params: [macro gc], pos: pos}],
+			kind: TDClass(null, [], false, true),
+			fields: gfields
+		}, module);
+	}
+
 	// dispatch(n, on, a0, a1, ...): the checks, the form picked, the context written, the form run
 	function dispatch():Field {
 		var fargs:Array<FunctionArg> = [{name: "n", type: macro :Int}, {name: "on", type: macro :helder.parallel.On}];
 		for (k in 0...args.length)
 			fargs.push({name: "a" + k, type: args[k].type});
 		if (hasEmpty) fargs.push({name: "empty", type: reduced.toComplexType()});
-		var body:Array<Expr> = [macro var form = site.pick(on, n)];
+		var body:Array<Expr> = [];
 		var each = kind == Each;
 		var none = each ? macro return : macro return ${hasEmpty ? macro empty : identity()};
 		// (the identity of min, max and sum needs no context: written here for none)
@@ -649,7 +853,6 @@ private class Forms {
 			case [Max, TFloat]: macro return Math.NEGATIVE_INFINITY;
 			case _: throw "parallel";
 		}
-		body.push(macro if (n <= 0) $none);
 		// (the Items: not disposed, as long as n where read at the item's index; one written is no other's)
 		for (k in 0...args.length) {
 			var a = args[k];
@@ -665,6 +868,20 @@ private class Forms {
 				var x = macro $i{"a" + k}, y = macro $i{"a" + j};
 				body.push(macro if ($x.data() == $y.data()) throw new haxe.Exception($v{'$what: ${a.display} is also ${b.display}: an Items a body writes is passed once'}));
 			}
+		// (Auto's residency: an Items the body writes the GPU's alone, or drawn by it)
+		var resident:Expr = macro false;
+		for (k in 0...args.length)
+			if (args[k].written) {
+				var x = macro $i{"a" + k};
+				resident = macro $resident || $x.data().byGpu || $x.data().drawn;
+			}
+		body.push(each ? macro var form = site.pick(on, n, $resident, helder.parallel.Parallel.gpu()) : macro var form = site.pick(on, n));
+		body.push(macro if (n <= 0) $none);
+		// (the CPU forms' Items their values on the CPU: read back where a dispatch
+		// wrote them; written, the GPU's copies stale)
+		var toCpu = [for (k in 0...args.length) if (args[k].stype.match(TStorage(_, _))) {var x = macro $i{"a" + k}; macro $x.data().cpu();}];
+		var wrote = [for (k in 0...args.length) if (args[k].written) {var x = macro $i{"a" + k}; macro $x.data().cpuWrote();}];
+		if (!each) body = body.concat(toCpu) else body.push(macro if (form != Gpu) $b{toCpu});
 		body.push(macro var ctx = hxmc.unsafe.Mem.stack($v{size}));
 		body.push(macro hxmc.unsafe.Mem.setI32(ctx, $v{ParallelMacro.C_COUNT}, n));
 		for (k in 0...params.length)
@@ -672,7 +889,12 @@ private class Forms {
 		if (hasEmpty) body.push(setScalarAt(macro ctx, macro $v{ParallelMacro.C_EMPTY}, macro empty));
 		body.push(macro var t0 = site.timing ? haxe.Timer.stamp() : 0.0);
 		if (each) {
+			var fill = [for (j in 0...gpuStorage.length) {var x = macro $i{"a" + gpuStorage[j]}; macro gpuItems[$v{j}] = $x.data();}];
+			var gpuPath = pack.concat([name + "_Gpu", "form"]);
 			body.push(macro switch form {
+				case Gpu:
+					$b{fill};
+					helder.parallel.Parallel.dispatchGpu($p{gpuPath}, n, ctx, gpuItems);
 				case Scalar: scalar(ctx, n);
 				case Jobs:
 					// (4 chunks a thread, each a multiple of 4 items)
@@ -682,8 +904,10 @@ private class Forms {
 					helder.jobs.Spread.run(chunkAddress(), ctx, Std.int((n + c - 1) / c));
 				case _: lanes(ctx, 0, n);
 			});
+			body.push(macro if (form != Gpu) $b{wrote});
 			body.push(macro if (site.timing) site.took(form, n, haxe.Timer.stamp() - t0));
 		} else {
+			body = body.concat(wrote);
 			var st = scalarOf(rt());
 			body.push(macro var r:$st);
 			body.push(macro if (form == Scalar) r = scalar(ctx, n) else {

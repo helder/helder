@@ -507,6 +507,24 @@ final class Device {
 		return new ComputePipeline(id == 0 ? replay.made : id);
 	}
 
+	// the encoder for a compute pass outside a frame, or between a frame's
+	// passes: its dispatches run before the next frame's passes (Metal and
+	// WebGPU: a command buffer of their own, submitted at endCompute; D3D11,
+	// GL and the CPU back end: at once, in order); readBuffer then waits for
+	// them (helder.parallel's Gpu form)
+	public function computeEncoder():Encoder
+		return encoder;
+
+	// a buffer's bytes where the CPU shares them with the GPU (Metal's
+	// shared storage, the CPU back end's memory), written and read there in
+	// place (after readBuffer of none has waited for the work recorded
+	// before); null elsewhere (D3D11, GL, WebGPU: copies)
+	@:noCompletion public function memory(b:Buffer):hxmc.unsafe.Ptr {
+		var id = b.id(), at = hxmc.unsafe.Ptr.nil();
+		answer(r -> at = r.impl.memory(Replay.at(r.buffers, id)));
+		return at;
+	}
+
 	// size bytes (default: the rest of dst from dstOffset) of a buffer at
 	// offset into dst: what the GPU wrote there (a compute stage's storage),
 	// after the work recorded before it, which it waits for (tests, a

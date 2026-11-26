@@ -168,6 +168,10 @@ class SoftBackend {
 		copy(p.add(offset), data, dataOffset, size);
 	}
 
+	// (a buffer's memory: the CPU's own)
+	public function bufferMemory(id:Int):Ptr
+		return buffer(id);
+
 	public function readBuffer(id:Int, offset:Int, dst:Bytes, dstOffset:Int, size:Int) {
 		var p = buffer(id);
 		if (p.isNull()) throw "helder.gfx: readBuffer: no buffer " + id;

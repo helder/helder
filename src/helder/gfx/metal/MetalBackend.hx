@@ -562,6 +562,10 @@ class MetalBackend {
 		Msg.vIntIntPtrIntPtrInt(enc, S.drawIndexedPrimitivesIndirect, pipeline.topology, itype, ibuf, ioffset, buffers[id - 1], offset);
 
 	// the work so far committed and waited for (a frame's: it goes on in a new command buffer), then the shared memory read
+	// (a buffer's contents: shared storage, the CPU's and the GPU's)
+	public function bufferMemory(id:Int):Ptr
+		return Msg.id(buffers[id - 1], ObjC.sel("contents"));
+
 	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
 		var b = buffers[id - 1];
 		if (offset + size > Msg.i(b, ObjC.sel("length")).toInt()) throw "helder.gfx: readBuffer: past the buffer's end";

@@ -8,13 +8,17 @@ package helder.parallel;
 // win, one on the threads, and from then on the one predicted faster for
 // the call's n (a nanoseconds-an-item estimate of each, kept up to date by
 // a timed run now and then), changing only for a clear gain, so that a
-// site does not flip from frame to frame. Gpu is the next part's.
+// site does not flip from frame to frame. Gpu only from where the data is:
+// an Items the body writes last written by a dispatch, or drawn by the GPU
+// (Items.buffer), where Parallel.device has compute; never from timings.
 @:noCompletion
 class Site {
 	// (a change of form needs this much predicted gain)
 	static inline var MARGIN = 0.8;
 
 	public final name:String;
+	// whether the site has a Gpu form (each, map, a kernel: not a reduction yet)
+	public final hasGpu:Bool;
 	// whether the run picked is timed (took(...) after it)
 	public var timing(default, null) = false;
 
@@ -23,16 +27,20 @@ class Site {
 	var last = On.Auto;
 	var runs = 0;
 
-	public function new(name:String) {
+	public function new(name:String, hasGpu = false) {
 		this.name = name;
+		this.hasGpu = hasGpu;
 	}
 
-	public function pick(on:On, n:Int):On {
+	// (resident: an Items the body writes is the GPU's alone, or drawn by it;
+	// gpu: the site has a Gpu form and Parallel.device has compute)
+	public function pick(on:On, n:Int, resident = false, gpu = false):On {
 		var forced = Parallel.forced();
-		var form = forced != On.Auto ? forced : on != On.Auto ? on : auto(n);
-		if (form == On.Gpu) throw new haxe.Exception('helder.parallel: $name: On.Gpu is not there yet (Scalar, Simd, Jobs or Auto)');
+		var form = forced != On.Auto ? forced : on != On.Auto ? on : resident && gpu ? On.Gpu : auto(n);
+		if (form == On.Gpu && !gpu)
+			throw new haxe.Exception('helder.parallel: $name: On.Gpu: ' + (!hasGpu ? "no Gpu form (a reduction's comes with workgroup memory)" : "no Parallel.device with compute stages"));
 		runs++;
-		timing = on == On.Auto && forced == On.Auto && (runs <= 16 || runs % 64 == 0);
+		timing = form != On.Gpu && on == On.Auto && forced == On.Auto && (runs <= 16 || runs % 64 == 0);
 		if (form != last) {
 			if (Parallel.log) Sys.println('helder.parallel: $name: ${form.toString()} (n $n' + (simd < 0 ? "" : ', simd ${ns(simd)} ns an item') + (jobs < 0 ? "" : ', jobs ${ns(jobs)}') + ")");
 			last = form;

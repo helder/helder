@@ -471,6 +471,29 @@ export default async function (host) {
 			return handles.add(b);
 		},
 		write_buffer: (b, offset, data, size) => device.queue.writeBuffer(handles.get(b), offset, host.bytes(data, size)),
+		read_start(b, size) {
+			const r = { state: 0, data: null }, h = handles.add(r), n = Math.ceil(size / 4) * 4 || 4;
+			const read = device.createBuffer({ size: n, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+			const enc = device.createCommandEncoder();
+			enc.copyBufferToBuffer(handles.get(b), 0, read, 0, n);
+			device.queue.submit([enc.finish()]);
+			read.mapAsync(GPUMapMode.READ).then(() => {
+				r.data = new Uint8Array(read.getMappedRange()).slice(0, size);
+				read.destroy();
+				r.state = 1;
+				host.wake?.(0);
+			}, () => {
+				r.state = -1;
+				host.wake?.(0);
+			});
+			return h;
+		},
+		read_state: (h) => handles.get(h).state,
+		read_take(h, data, size) {
+			const r = handles.get(h);
+			if (r.data) host.bytes(data, size).set(r.data.subarray(0, size));
+			handles.remove(h);
+		},
 		texture(width, height, format, levels, target, samples, storage, layers, dimension, data) {
 			// (a mip chain's levels are drawn by generate_mips; a multisampled one is only drawn into, then resolved)
 			// (RGBA8's a render attachment too: copyExternalImageToTexture's, texture_image)

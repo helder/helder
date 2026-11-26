@@ -5,7 +5,8 @@ across jobs and GPU compute, picked per call. Workgroup memory and subgroups
 in `compute()`, with particles, cloth and soft bodies first._
 
 Approved (November 2026, the decisions at the end), and being built in
-parts (Plan): the first, `Items` and the CPU forms, is `helder.parallel`
+parts (Plan): the first two, `Items` with the CPU forms and the Gpu form
+with Auto's residency rule, are `helder.parallel`
 (src/helder/parallel/README.md). The prototype (draft PR #214,
 `parallel-proto`) held the smallest end to end slice: one particle step
 written once as a compute stage (`tests/bench/parallel/ParallelShaders.hx`),
@@ -598,7 +599,11 @@ when CI is no worse than main's.
    (captures, writes at another index, allocation, types), and `bench
    parallel` kept. Also: the Simd form for `soft_cs` itself where it reads
    at `id.x` (the CPU back end's compute gets faster for free).
-2. **`Gpu` and `Auto`**, residency. `Items.buffer(device)`, `Parallel.device`,
+2. **`Gpu` and `Auto`**, residency (built: a dispatch outside a frame
+   needed only `Device.computeEncoder`, every back end opening its own
+   command buffer or encoder there already; shared memory through
+   `Device.memory` on Metal and the CPU back end; WebGPU's read back
+   awaited, `read(items)`). `Items.buffer(device)`, `Parallel.device`,
    the dispatch outside a frame (a small `helder.gfx` addition: a compute
    pass recorded before the next frame's, or submitted and waited for),
    the readback and upload rules, the per-site calibration and
