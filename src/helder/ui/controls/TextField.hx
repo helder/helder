@@ -26,6 +26,10 @@ class TextField extends EditableText {
 		return true;
 	}
 
+	// (a value from outside on one line too, as a browser's input's)
+	override public function setText(s:String)
+		super.setText(pasted(s));
+
 	override function pasted(t:String):String
 		return StringTools.replace(StringTools.replace(StringTools.replace(t, "\r\n", " "), "\n", " "), "\r", " ");
 
