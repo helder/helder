@@ -51,7 +51,10 @@ class Refresh {
 		// (the initial value's source, whitespace aside; @:hot(reset) where it is made)
 		var source = haxe.crypto.Md5.encode(haxe.macro.ExprTools.toString(init)).substr(0, 8);
 		var reset = resets();
-		return macro @:pos(init.pos) helder.view.Refresh.kept($made, $v{key}, $v{type}, $v{source}, $v{reset});
+		var kept = macro @:pos(init.pos) helder.view.Refresh.kept($made, $v{key}, $v{type}, $v{source}, $v{reset});
+		// (a data signal bound to a variable: named in its screen, a scenario's to set)
+		var name = type == "" ? null : helder.dev.HotMacro.named(Context.currentPos());
+		return name == null ? kept : macro @:pos(init.pos) helder.view.Named.add($kept, $v{name});
 	}
 
 	// whether the class or the function being typed is marked @:hot(reset)

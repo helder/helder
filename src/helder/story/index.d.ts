@@ -11,6 +11,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import "helder/ui";
+import type {Scenario} from "helder/scenario";
 import type {Signal, View} from "helder/view";
 
 declare const __haxe: {Controls: "helder.story.Story.Controls", story: "helder.story.Stories.define", tree: "helder.story.Stories.tree", screens: "helder.story.Screens.run", play: "helder.story.Screens.play", shots: "helder.story.StoreShots.run", __module: "helder.story.TypeScript"};
@@ -67,7 +68,8 @@ export declare function story(def: StoryDef): Story;
 // (in a phone's size, WIDTH x HEIGHT, unless given)
 export declare function tree(s: Story, width?: number, height?: number): string;
 
-export declare function screens(stories: Story[]): void;
+// (scenarios: the program's moments, its main run for each: helder.scenario)
+export declare function screens(stories: Story[], scenarios?: Scenario[], program?: () => void): void;
 // one story in a window of its own, at its size, live, its input its own:
 // the studio's Play (`helder dev` on a main of it, rebuilt in place)
 //

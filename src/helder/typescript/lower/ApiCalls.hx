@@ -200,6 +200,8 @@ abstract class ApiCalls extends ClassValues {
 			outer = outer.parent;
 		}
 		var scope = parts.join(".");
+		// (its name in a screen, helder.view.Named: Game.score; a module's own, game.score)
+		var named = name == null ? "" : (parts.length > 1 ? parts[1] : haxe.io.Path.withoutDirectory(parts[0])) + "." + name;
 		if (name == null) {
 			var seen = hotUnnamed.get(scope) ?? 0;
 			hotUnnamed.set(scope, seen + 1);
@@ -209,7 +211,7 @@ abstract class ApiCalls extends ClassValues {
 		function source(x:Node):String return text.substring(n.file.skipTrivia(x.pos), x.end);
 		var type = "ts:" + [for (t in n.typeArguments() ?? []) source(t)].join(",");
 		var init = haxe.crypto.Md5.encode(source(n.arguments()[0])).substr(0, 8);
-		return bridge.call(bridge.interop("hotSignal"), [any(made), EStr(scope + "." + name), EStr(type), EStr(init)]);
+		return bridge.call(bridge.interop("hotSignal"), [any(made), EStr(scope + "." + name), EStr(type), EStr(init), EStr(named)]);
 	}
 
 	// Render.render(content, parent) and insert(content, parent, before): the

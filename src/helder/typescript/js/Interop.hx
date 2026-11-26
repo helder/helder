@@ -344,7 +344,7 @@ class Interop {
 	// saved on each snapshot when it is data (helder.view.Refresh's, for a
 	// program's values: undefined, numbers, strings, booleans, null, arrays
 	// and plain objects of them)
-	public static function hotSignal(f:Dynamic, key:String, type:String, init:String):Dynamic {
+	public static function hotSignal(f:Dynamic, key:String, type:String, init:String, named:String):Dynamic {
 		#if hxmc.dev
 		var s:helder.view.graph.Signal<Dynamic> = cast unwrap(f);
 		var last:Null<{v:Dynamic, i:String}> = helder.dev.Hot.load(key, type);
@@ -360,6 +360,7 @@ class Interop {
 			}
 			helder.dev.Hot.save(key, {v: tree, i: init}, type);
 		}));
+		if (named != "") helder.view.Named.add(s, named);
 		#end
 		return f;
 	}

@@ -1083,7 +1083,8 @@ class Studio {
 	// PLAY, play(story)), else the project (its app)
 	public function playEntry(info:ScreenInfo):String {
 		switch info.source {
-			case Story(binding) if (project.typescript && binding != null):
+			// (a scenario's Play: the app itself, from its start; its moment is phase 2's, a saved state)
+			case Story(binding) if (project.typescript && binding != null && !Project.isScenario(info.file)):
 				var rel = info.file.substr(project.dir.length + 1);
 				rel = "./" + rel.substr(0, rel.lastIndexOf("."));
 				var entry = project.dir + "/" + PLAY;

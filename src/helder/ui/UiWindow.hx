@@ -951,6 +951,12 @@ class UiWindow {
 	// the app loop: every UiWindow's frames and events until the last closes
 	// (on the web it returns, the frames going on); content, when given, opened first
 	@:typescript public static function run(?content:RootView) {
+		// (a preview host's scenario: the content its own, no window, no loop)
+		var hosting = Hosting.current;
+		if (hosting != null) {
+			if (content != null) hosting.run(content);
+			return;
+		}
 		// (what was launched before the windows started now (a folder's listing
 		// handed to the jobs' pool), not at the loop's first turn: it is done
 		// while the system makes the window (on a Mac 100 ms), there for the
@@ -1006,6 +1012,11 @@ class UiWindow {
 	// was 0: transparent black)
 	// <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
 	@:typescript public static function Surface(props:SurfaceProps):RootView {
+		var hosting = Hosting.current;
+		if (hosting != null) {
+			hosting.surface(props);
+			return null;
+		}
 		var web = Platform.os() == 3;
 		var width:Null<Int> = Render.read(props.width), height:Null<Int> = Render.read(props.height);
 		var title:Null<String> = Render.read(props.title);

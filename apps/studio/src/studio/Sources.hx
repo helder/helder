@@ -18,9 +18,13 @@ class Sources {
 	final imports = new Map<String, Array<String>>();
 
 	public static function of(project:Project):Sources
-		return new Sources(project.dir, project.entry?.classPaths ?? []);
+		return new Sources(project.dir, project.entry?.classPaths ?? [], project.mainFile());
 
-	public function new(root:String, classPaths:Array<String>) {
+	// (the program's main: what a scenario runs, in its key with its file)
+	final main:Null<String>;
+
+	public function new(root:String, classPaths:Array<String>, ?main:String) {
+		this.main = main == null ? null : norm(main);
 		var parts = ['format ${helder.ui.draw.FrameArchive.VERSION}', 'helder ${tools()}'];
 		var dir = norm(root), roots = [dir].concat([for (c in classPaths) norm(c)]);
 		function go(d:String)
@@ -53,6 +57,7 @@ class Sources {
 	// a screen's key: the shared part, its story file and its imports', its name
 	public function key(file:String, name:String):String {
 		var story = norm(file), seen = new Map<String, Bool>(), todo = [story], out = [];
+		if (Project.isScenario(story) && main != null) todo.push(main);
 		// (a story file not read: every source)
 		if (!hashes.exists(story)) return all(name);
 		while (todo.length > 0) {

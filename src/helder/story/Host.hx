@@ -5,6 +5,8 @@ import helder.math.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.Surface;
+import helder.scenario.Act;
+import helder.scenario.Scenario;
 import helder.story.Story;
 import helder.ui.*;
 import helder.ui.draw.*;
@@ -73,7 +75,11 @@ class Host {
 
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
-	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0) {
+	// the program's main (null: none), each scenario's to run (helder.scenario)
+	public final program:Null<Void->Void>;
+
+	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0, ?scenarios:Array<Scenario>, ?program:Void->Void) {
+		this.program = program;
 		this.runtime = runtime;
 		this.scale = scale;
 		// (helder.text's own shaping: a screen looks the same everywhere)
@@ -84,6 +90,12 @@ class Host {
 		renderer.groups = true;
 		for (s in stories)
 			if (s != null) screens.push(new HostScreen(this, s));
+		if (scenarios != null && scenarios.length > 0) {
+			if (program == null) throw "helder.story.Host: scenarios without the program's main";
+			var size = Lambda.exists(scenarios, s -> s.width == null) ? Act.size(program) : null;
+			for (s in scenarios)
+				screens.push(new HostScreen(this, new Story(s.name, _ -> throw "helder.story: a scenario has no view of its own", s.seed, null, s.width ?? size?.width, s.height ?? size?.height, s.loop), s));
+		}
 		if (screens.length == 0) throw "helder.story.Host: no stories (a release build has none)";
 	}
 
@@ -333,6 +345,8 @@ class HostScreen {
 	public final height:Int;
 	public var ui(default, null):Null<Ui> = null;
 	public var controls(default, null):Null<Controls> = null;
+	// what it shows when it is a scenario's (the program's main, its data), else its story's view
+	public final scenario:Null<Scenario>;
 	public var visible = false;
 	// (its loop recorded: Host.written's, once a build)
 	public var looped = false;
@@ -354,13 +368,16 @@ class HostScreen {
 	// (its view's owner let go: reset)
 	var unrender:Null<Void->Void> = null;
 
-	public function new(host:Host, story:Story) {
+	public function new(host:Host, story:Story, ?scenario:Scenario) {
 		this.host = host;
 		this.story = story;
+		this.scenario = scenario;
 		name = story.name;
 		width = story.width ?? Stories.WIDTH;
 		height = story.height ?? Stories.HEIGHT;
 		context = new ScreenContext(name);
+		var dark = scenario?.dark;
+		if (dark != null) context.dark(dark);
 		scale = host.scale;
 	}
 
@@ -377,9 +394,15 @@ class HostScreen {
 			ui = u;
 			var c = new Controls(story.seed);
 			controls = c;
-			unrender = Render.render(story.build(c), u.root);
-			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got)
-			if (host.stills) bring(u, c);
+			var sc = scenario, main = host.program;
+			if (sc != null && main != null) {
+				if (sc.play != null) c.play(sc.play);
+				unrender = Act.mount(sc, main, context, u);
+			} else
+				unrender = Render.render(story.build(c), u.root);
+			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got;
+			// a scenario's clock stands at its moment unless it plays to it)
+			if (host.stills && (sc == null || !c.settled())) bring(u, c);
 			moment = Clock.now;
 			true;
 		}));

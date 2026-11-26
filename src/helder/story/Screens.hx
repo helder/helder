@@ -16,13 +16,15 @@ import helder.story.Story;
 //   helder.story.Screens.run(helder.story.Stories.of("Todo_story"));
 //   import { screens } from "helder/story"; screens([empty, items]);
 class Screens {
-	public static function run(stories:Array<Story>) {
+	// (scenarios: the program's moments, its main run for each: helder.scenario)
+	public static function run(stories:Array<Story>, ?scenarios:Array<helder.scenario.Scenario>, ?program:Void->Void) {
 		var list = [for (s in stories) if (s != null) s];
-		if (list.length == 0) throw "helder.story.Screens: no stories (a release build has none)";
+		var acts = [for (s in scenarios ?? []) if (s != null) s];
+		if (list.length == 0 && acts.length == 0) throw "helder.story.Screens: no stories (a release build has none)";
 		#if (hxmc.target == "wasm32-wasi")
-		helder.story.web.Preview.run(list);
+		helder.story.web.Preview.run(list, acts, program);
 		#else
-		helder.story.NativeHost.run(list);
+		helder.story.NativeHost.run(list, acts, program);
 		#end
 	}
 

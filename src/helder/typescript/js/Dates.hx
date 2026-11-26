@@ -102,7 +102,10 @@ class Dates {
 		return local - offsetAt(guess);
 	}
 
-	public static function now():Float return Math.ffloor(Date.now().getTime());
+	public static function now():Float {
+		var at = helder.os.Now.get;
+		return Math.ffloor(at != null ? at() : Date.now().getTime());
+	}
 
 	static function pad(v:Float, n:Int):String {
 		var s = Std.string(Std.int(Math.abs(v)));

@@ -75,6 +75,24 @@ class HotMacro {
 		return parts.join(".");
 	}
 
+	// a signal's name in a screen (helder.view.Named): its type's own name,
+	// its function (not a constructor's), the variable it is assigned to;
+	// null when it is assigned to none
+	public static function named(pos:Position):Null<String> {
+		var name = assigned(pos);
+		if (name == null) return null;
+		var parts = [];
+		var cls = Context.getLocalClass();
+		if (cls != null) parts.push(switch cls.get().kind {
+			case KModuleFields(m): m.split(".").pop();
+			case _: cls.get().name;
+		});
+		var method = Context.getLocalMethod();
+		if (method != null && method != "new" && method != name) parts.push(method);
+		parts.push(name);
+		return parts.join(".");
+	}
+
 	// the name the expression starting at pos is assigned to (`var x =`,
 	// `final x:T =`, `x =`, `this.x =`), read from the source before it
 	static function assigned(pos:Position):Null<String> {
