@@ -60,6 +60,8 @@ class SceneTags {
 		?children:SceneView
 	}):helder.ui.Node {
 		var box = new SceneBox(props.world ?? new World("scene"), props.camera);
+		// (a world of its own: disposed with it, below, as it is unmounted)
+		box.ownsWorld = props.world == null;
 		if (props.animate != null) box.animate = props.animate;
 		if (props.antialias != null) box.antialias = props.antialias;
 		if (props.hdr != null) box.hdr = props.hdr;

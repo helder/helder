@@ -22,6 +22,9 @@ import helder.ui.Event;
 // animate is set.
 class SceneBox extends helder.ui.Node {
 	public final world:World;
+	// whether its world is its own, disposed with it (a <Scene> not given
+	// one, a scene built from data): a world's slot is one of 16
+	public var ownsWorld = false;
 	public final root:SceneNode;
 	public var camera:Null<Camera>;
 	// a frame each tick (an animation outside the markup's signals)
@@ -250,10 +253,11 @@ class SceneBox extends helder.ui.Node {
 				device.destroyTexture(t);
 			retired.resize(0);
 			retiredAt.resize(0);
-			renderer.dispose();
+			if (renderer != null) renderer.dispose();
 		}
 		color = depth = multi = light = null;
 		renderer = null;
+		if (ownsWorld) world.dispose();
 	}
 
 	// the camera drawn with: camera, the world's first, else a default

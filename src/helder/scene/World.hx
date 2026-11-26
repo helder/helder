@@ -62,9 +62,18 @@ class World {
 		root = make(name);
 	}
 
-	// the world's slot freed for another (its nodes' handles stale)
+	// the world's slot freed for another (its nodes' handles stale); again,
+	// nothing (its slot may be another's by then)
 	public function dispose() {
-		all[index] = null;
+		if (all[index] == this) all[index] = null;
+	}
+
+	// (the worlds alive: of 16, a node's id's 4 bits)
+	@:allow(helder.scene) static function alive():Int {
+		var n = 0;
+		for (w in all)
+			if (w != null) n++;
+		return n;
 	}
 
 	// the number of live nodes, the root included

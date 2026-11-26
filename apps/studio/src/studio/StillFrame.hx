@@ -68,6 +68,18 @@ class StillFrame extends Node {
 
 	var stopped:Null<(frames:Int, ms:Float) -> Void> = null;
 
+	// let go (its owner's cleanup): its loop stopped, its scenes' boxes and
+	// worlds (one of 16 a process each: a board of scenes' stills)
+	public function dispose() {
+		playing++;
+		stopped = null;
+		#if !(hxmc.target == "wasm32-wasi")
+		for (s in scenes)
+			s.dispose();
+		scenes.resize(0);
+		#end
+	}
+
 	public function stop() {
 		if (list == still && stopped == null) return;
 		playing++;
