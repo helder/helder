@@ -136,6 +136,12 @@ class Builtins {
 
 	public static function installNormalize() if (once("normalize")) normalizeString = Normalization.normalize;
 
+	// (\p{...}'s tables: a program whose patterns name a property)
+	public static function installRegExpProperties() if (once("RegExp properties")) {
+		installRegExp();
+		Regex.properties = UnicodeProperties.lookup;
+	}
+
 	public static function installDate() if (once("Date")) {
 		Dates.setup();
 		publish();
@@ -189,6 +195,7 @@ class Builtins {
 	// everything, for a program the frontend cannot see through (globalThis by a computed name)
 	public static function installAll() {
 		installRegExp();
+		installRegExpProperties();
 		installNormalize();
 		installDate();
 		installBuffers();

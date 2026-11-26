@@ -9,12 +9,16 @@ function tests() {
 			equals(Starter.written('{"compilerOptions": {"paths": {"helder/*": ["/a/helder/*/index.d.ts"]}}}'), null);
 			equals(Starter.written('{"compilerOptions": {"strict": true, "paths": {}}}'), null);
 			equals(Starter.written("not json"), null);
+			// (the studio's before it extended helder's: its paths alone)
+			equals(Starter.written('{"compilerOptions": {"paths": {"helder/*": ["/old/src/helder/*/index.d.ts", "/old/src/helder/*/index.ts", "/old/src/helder/*.ts"]}}}'), "/old/src");
+			equals(Starter.written('{"extends": "/other/src/helder/typescript/tsconfig.json", "compilerOptions": {"paths": {"helder/*": ["/old/src/helder/*/index.d.ts", "/old/src/helder/*/index.ts", "/old/src/helder/*.ts"]}}}'), null);
 		});
 		#if !(hxmc.target == "wasm32-wasi")
 		test("another helder's, written again; the user's own kept", () -> Temp.within("helder-starter", dir -> {
 			Files.save('$dir/tsconfig.json', Starter.configText("/old/src"));
 			Starter.config(dir);
 			equals(Starter.written(Files.read('$dir/tsconfig.json')), BuildInfo.helderSrc());
+			equals(Files.read('$dir/tsconfig.json'), Starter.configText(BuildInfo.helderSrc()));
 			var own = '{"compilerOptions": {"strict": true}}\n';
 			Files.save('$dir/tsconfig.json', own);
 			Starter.config(dir);

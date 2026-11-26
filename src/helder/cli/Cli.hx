@@ -61,6 +61,8 @@ class Cli {
 				Sys.exit(Run.logout());
 			case "migrate":
 				Sys.exit(Run.migrate(o.positionals[0] ?? "."));
+			case "new":
+				Sys.exit(New.run(o.positionals[0] ?? "."));
 			case "studio":
 				Async.main(_ -> Sys.exit(StudioCommand.run(o)));
 			case "devices":

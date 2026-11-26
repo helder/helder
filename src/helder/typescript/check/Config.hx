@@ -13,28 +13,27 @@ using StringTools;
 // compiled program cannot have (DOM, node's types), must be helder's values
 // or absent, else the build stops at their line.
 class Config {
-	// what helder compiles: ES modules resolved as a bundler does, strict,
-	// ESNext's library and globals.d.ts, no ambient @types
-	static final defaults:Dynamic = {
-		target: 99,
-		module: 99,
-		moduleResolution: 100,
-		strict: true,
-		allowJs: true,
-		checkJs: false,
-		skipLibCheck: true,
-		types: [],
-		lib: ["lib.esnext.d.ts"],
-		// (TSX compiled by helder: to helder.view's markup)
-		jsx: 1
-	};
+	// what helder compiles: its own tsconfig.json (beside globals.d.ts, the
+	// package's `helder/tsconfig.json`, which a project extends), as tsgo parses it
+	static final defaults:Map<String, Dynamic> = [];
+
+	static function base(tsgo:Tsgo, file:String):Dynamic {
+		if (!defaults.exists(file)) {
+			var parsed:Dynamic = tsgo.call("parseConfigFile", {file: file});
+			var options:Dynamic = parsed.options;
+			if (options == null) throw file + ": TSHX004: helder's tsconfig.json was not read";
+			for (f in ["configFilePath", "pathsBasePath"]) Reflect.deleteField(options, f);
+			defaults.set(file, options);
+		}
+		return Reflect.copy(defaults.get(file));
+	}
 
 	static inline var TARGET_ES2022 = 9;
 
-	// the options for a program's entry; its tsconfig.json's path is given to
-	// `used` (a watcher follows it)
-	public static function options(tsgo:Tsgo, entry:String, relative:String->String, ?used:String->Void):Dynamic {
-		var options = Reflect.copy(defaults);
+	// the options for a program's entry, helder's tsconfig.json under them; its
+	// tsconfig.json's path is given to `used` (a watcher follows it)
+	public static function options(tsgo:Tsgo, entry:String, helder:String, relative:String->String, ?used:String->Void):Dynamic {
+		var options = base(tsgo, helder);
 		var file = find(Path.directory(entry));
 		if (file == null) return withNoEmit(options);
 		if (used != null) used(file);

@@ -100,6 +100,9 @@ for(const name of programs) {
     if(!mine())continue;
     const out=`${dir}/modules/${name}`;fs.mkdirSync(out,{recursive:true});
     fs.writeFileSync(`${out}/package.json`,'{"type":"module"}');
+    // (its packages, which node finds beside the JavaScript tsc writes)
+    const packages=`${T}/modules/${name}/node_modules`;
+    if(fs.existsSync(packages)&&!fs.existsSync(`${out}/node_modules`))fs.symlinkSync(path.resolve(packages),`${out}/node_modules`,process.platform==='win32'?'junction':'dir');
     const reference=run(process.execPath,[...tsc,'--module','esnext','--moduleResolution','bundler','--outDir',out,`${T}/modules/${name}/main.ts`]); ok(reference,'reference tsc');
     const oracle=run(process.execPath,[...oracleFlags,`${out}/main.js`]); ok(oracle,'reference node');
     for(const target of targets) {
@@ -330,6 +333,27 @@ for(const entry of ['examples/ts-hello/main.ts','examples/ts-hello']) {
     assert.ok(Number(after[1])>=3,`helder dev examples/ts-ticker: the count started over (TOCK ${after[1]} after tick 3)\n${out}`);
     assert.match(out,/build 1\n[^]*build 2\n/,`helder dev examples/ts-ticker: keep's count of builds not kept\n${out}`);
     console.log(`PASS helder dev examples/ts-ticker (tick 3 ... TOCK ${after[1]}, build 1 ... build 2)`);
+}
+// One tsconfig for the editor and the build (helder/tsconfig.json): the
+// package's tsc finds no error in the examples, apps/tables and a program of
+// helder's globals and TSX, and refuses what the build does (document); helder
+// new's project checks and builds (its package.json set aside: this checkout's
+// helder resolved, as its own node_modules' would be)
+{
+    const tsc=p=>run(process.execPath,['node_modules/typescript/bin/tsc','--noEmit','-p',p]);
+    if(!fs.existsSync('apps/tables/node_modules/helder'))ok(run('bun',['install','--frozen-lockfile','--cwd','apps/tables']),'apps/tables: bun install');
+    const fresh=`${dir}/new-app`;fs.rmSync(fresh,{recursive:true,force:true});
+    ok(run(process.execPath,['src/helder/cli/run.mjs','new',fresh]),'helder new');
+    assert.notEqual(run(process.execPath,['src/helder/cli/run.mjs','new',fresh]).status,0,'helder new: a directory not empty is refused');
+    fs.rmSync(`${fresh}/package.json`);
+    const projects=[...fs.readdirSync('examples').filter(d=>d.startsWith('ts-')).sort().map(d=>`examples/${d}`),'apps/tables',`${T}/editor/ok`,fresh];
+    for(const p of projects) {
+        const r=tsc(p);assert.equal(r.status,0,`tsc -p ${p}: the editor finds errors\n${r.stdout}${r.stderr}`);
+    }
+    assert.match(tsc(`${T}/editor/dom`).stdout,/main\.ts\(2,1\): error TS2584: Cannot find name 'document'/,'tsc -p editor/dom: document is no helder global');
+    // (a window's program: on Linux the dynamic glibc mode, as helder build's; the default static musl links no X11)
+    ok(run(compiler,[`${fresh}/src/main.tsx`,...(process.platform==='linux'?['-D','hxmc.libc=glibc']:[]),'-o',`${fresh}/bin/app`]),'helder new\'s main.tsx compile');
+    console.log(`PASS editor: tsc -p of ${projects.length} projects, document refused, helder new's built`);
 }
 }
 const total=(files.length+programs.length+standards.length)*targets.length;

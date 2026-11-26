@@ -100,7 +100,7 @@ abstract class Expressions extends Statements {
 				}
 				else x = u.unaryOperator() == KindMinusToken || u.unaryOperator() == KindPlusToken ? numeric(u.operand(), false) : expr(u.operand());
 				switch (u.unaryOperator()) {
-					// (a string's number by ToNumber, not its reference unboxed)
+					// (ToNumber: a boolean's or a string's value, not its reference unboxed)
 					case KindMinusToken: EConv(FNeg, number(x));
 					case KindPlusToken: number(x);
 					case KindExclamationToken: ENot(truth(x));
@@ -139,6 +139,9 @@ abstract class Expressions extends Statements {
 			case KindRegularExpressionLiteral:
 				var text = n.text;
 				var slash = text.lastIndexOf("/");
+				// (one tsgo accepts and the runtime would not: refused here, not thrown when it runs)
+				var problem = helder.typescript.js.Regex.check(text.substring(1, slash), text.substr(slash + 1));
+				if (problem != null) fail(n, "Invalid regular expression: " + text + ": " + problem + " (helder's RegExp does not support it)");
 				b.runtime("libRegExp", [EStr(text.substring(1, slash)), EStr(text.substr(slash + 1))]);
 			case KindYieldExpression:
 				if (b.resumable == null || !b.resumable.generator) fail(n, "yield outside a generator");
