@@ -119,6 +119,7 @@ class BoxTree {
 				if (marker != null && marker.flags & Box.OUTSIDE == 0) kids.push(marker);
 				contents(el, s, kids);
 				fill(b, orphans(kids, s, false));
+				firstLetter(el, b);
 				if (marker != null && marker.flags & Box.OUTSIDE != 0) placeOutside(b, marker);
 				out.push(b);
 		}
@@ -220,6 +221,126 @@ class BoxTree {
 	static inline function inFlowBlock(b:Box):Bool
 		return b.blockLevel && !outOfFlow(b);
 
+	// ---- ::first-letter (CSS 2.1 §5.12.2, Pseudo-Elements 4 §2.3)
+
+	// (whether a ::first-letter rule matches the element: helder.css has no public query for a
+	// pseudo-element's rules yet, so its index is asked as its cascade asks it)
+	function firstLetterRules(el:Element):Bool
+		return @:privateAccess {
+			var idx = styles.pseudos.get("first-letter");
+			if (idx == null) return false;
+			var found = [];
+			styles.bloom.moveTo(el);
+			idx.matching(el, found, styles.bloom, null, styles.hasCache);
+			found.length > 0;
+		}
+
+	// The first letter of a block container's first formatted line, with the punctuation before and
+	// after it, in a box of the element's ::first-letter style (an inline box, or a float when it floats).
+	function firstLetter(el:Element, b:Box) {
+		if (!firstLetterRules(el)) return;
+		var t = firstText(b);
+		if (t == null) return;
+		var text = t.text, n = text.length, i = 0;
+		while (i < n && white(StringTools.fastCodeAt(text, i))) i++;
+		var start = i;
+		while (i < n && Punctuation.is(code(text, i))) i += width(text, i);
+		if (i >= n || white(StringTools.fastCodeAt(text, i))) return;
+		i += width(text, i);
+		// (its combining marks: a letter is its grapheme cluster)
+		while (i < n && mark(code(text, i))) i += width(text, i);
+		while (i < n && Punctuation.is(code(text, i))) i += width(text, i);
+		var s = new BoxStyle(styles.computed(el, "first-letter"));
+		var box = make(s.floating ? Block : Inline, s, el, "first-letter");
+		var letter = make(Text, s, t.node);
+		letter.text = text.substring(start, i);
+		letter.offset = t.offset + start;
+		box.append(letter);
+		var parts = [];
+		if (start > 0) {
+			var before = make(Text, t.style, t.node);
+			before.text = text.substring(0, start);
+			before.offset = t.offset;
+			parts.push(before);
+		}
+		parts.push(box);
+		if (i < n) {
+			var after = make(Text, t.style, t.node);
+			after.text = text.substring(i);
+			after.offset = t.offset + i;
+			parts.push(after);
+		}
+		replace(t, parts);
+	}
+
+	// (the text run the first line starts with: through inline boxes and first in-flow blocks;
+	// none past an atomic inline, a replaced element or a forced break, which come first)
+	static function firstText(b:Box):Null<Box> {
+		var c = b.first;
+		while (c != null) {
+			switch c.kind {
+				case Text:
+					if (!~/^[ \t\n\r\x0C]*$/.match(c.text)) return c;
+				case Inline if (c.flags & Box.OUTSIDE != 0 || c.pseudo == "first-letter"):
+					if (c.pseudo == "first-letter") return null;
+				case Inline:
+					var t = firstText(c);
+					if (t != null) return t;
+					if (c.first != null && !allBlank(c)) return null;
+				case Block | Container if (c.floating || c.absolute):
+				case Block if (c.blockLevel):
+					return firstText(c);
+				case _:
+					return null;
+			}
+			c = c.next;
+		}
+		return null;
+	}
+
+	static function allBlank(b:Box):Bool {
+		var c = b.first;
+		while (c != null) {
+			if (c.kind != Text || !~/^[ \t\n\r\x0C]*$/.match(c.text)) return false;
+			c = c.next;
+		}
+		return true;
+	}
+
+	// (a box in its parent's children replaced by others)
+	static function replace(old:Box, with:Array<Box>)
+		@:privateAccess {
+			var p = old.parent;
+			var prev:Null<Box> = null, k = p.first;
+			while (k != null && k != old) {
+				prev = k;
+				k = k.next;
+			}
+			var next = old.next;
+			for (w in with) w.parent = p;
+			for (j in 0...with.length - 1) with[j].next = with[j + 1];
+			with[with.length - 1].next = next;
+			if (prev == null) p.first = with[0] else prev.next = with[0];
+			if (p.last == old) p.last = with[with.length - 1];
+		}
+
+	static inline function white(c:Int):Bool
+		return c == 32 || c == 9 || c == 10 || c == 13 || c == 12;
+
+	static function code(s:String, i:Int):Int {
+		var c = StringTools.fastCodeAt(s, i);
+		if (c < 0xD800 || c >= 0xDC00 || i + 1 >= s.length) return c;
+		var d = StringTools.fastCodeAt(s, i + 1);
+		return d >= 0xDC00 && d < 0xE000 ? ((c - 0xD800) << 10) + (d - 0xDC00) + 0x10000 : c;
+	}
+
+	static inline function width(s:String, i:Int):Int
+		return code(s, i) > 0xFFFF ? 2 : 1;
+
+	// (combining marks: the common blocks)
+	static inline function mark(c:Int):Bool
+		return c >= 0x300 && c <= 0x36F || c >= 0x1AB0 && c <= 0x1AFF || c >= 0x1DC0 && c <= 0x1DFF || c >= 0x20D0 && c <= 0x20FF || c >= 0xFE20 && c <= 0xFE2F;
+
 	// ---- tables (CSS 2.1 §17.2.1: anonymous table objects)
 
 	static inline function isPart(b:Box):Bool
@@ -258,6 +379,7 @@ class BoxTree {
 			case BoxStyle.COLUMN:
 			case _:
 				fill(b, orphans(kids, b.style, false));
+				if (b.node != null && b.pseudo == null) firstLetter(cast b.node, b);
 		}
 
 	function row(parent:BoxStyle, kids:Array<Box>):Box {

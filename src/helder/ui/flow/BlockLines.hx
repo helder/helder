@@ -109,14 +109,18 @@ class BlockLines {
 			floats: [],
 			absolutes: [],
 			markers: [],
-			texts: new haxe.ds.ObjectMap<Node, Box>()
+			texts: new haxe.ds.ObjectMap<Node, Array<Box>>()
 		};
 		function walk(b:Box) {
 			var k = b.first;
 			while (k != null) {
 				switch k.kind {
 					case Text:
-						if (k.node != null) out.texts.set(k.node, k);
+						if (k.node != null) {
+							var list = out.texts.get(k.node);
+							if (list == null) out.texts.set(k.node, list = []);
+							list.push(k);
+						}
 						c.addText(k.text, BoxInline.of(k, width), k.node, k.offset);
 					case Inline if (k.flags & Box.OUTSIDE != 0):
 						out.markers.push(k);
@@ -179,8 +183,15 @@ class BlockLines {
 		}
 		function textBox(i:Int):Box {
 			var source = c.source(i);
-			var b = source != null ? built.texts.get(source) : null;
-			return b ?? (cast c.style(i) : BoxInline).box;
+			var list = source != null ? built.texts.get(source) : null;
+			if (list != null) {
+				if (list.length == 1) return list[0];
+				// (the run whose part of the DOM text the item's first unit is from)
+				var at = c.end(i) > c.start(i) ? c.domOffset(c.start(i)) : -1;
+				for (b in list) if (at >= b.offset && at < b.offset + b.text.length) return b;
+				return list[0];
+			}
+			return (cast c.style(i) : BoxInline).box;
 		}
 		var lines = 0, baseline = Math.NaN;
 		for (k in 0...l.lines) {
@@ -345,5 +356,6 @@ private typedef Built = {
 	floats:Array<Box>,
 	absolutes:Array<Box>,
 	markers:Array<Box>,
-	texts:haxe.ds.ObjectMap<Node, Box>
+	// (a DOM text's runs: one, or its ::first-letter's and the rest)
+	texts:haxe.ds.ObjectMap<Node, Array<Box>>
 }

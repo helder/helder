@@ -382,7 +382,7 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/borders | 483 | 504 |
 | CSS2/box | 2 | 9 |
 | CSS2/box-display | 73 | 86 |
-| CSS2/cascade | 23 | 31 |
+| CSS2/cascade | 24 | 31 |
 | CSS2/cascade-import | 0 | 1 |
 | CSS2/colors | 10 | 19 |
 | CSS2/css1 | 131 | 164 |
@@ -400,7 +400,7 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/normal-flow | 620 | 696 |
 | CSS2/positioning | 418 | 513 |
 | CSS2/sec5 | 22 | 23 |
-| CSS2/selectors | 92 | 467 |
+| CSS2/selectors | 448 | 467 |
 | CSS2/stacking-context | 1 | 3 |
 | CSS2/syntax | 213 | 252 |
 | CSS2/tables | 203 | 250 |
@@ -415,9 +415,9 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 4585 | 5752 |
+| all | 4942 | 5752 |
 
-Pending by stage: inline 517, positioning 217, generated content 202, tables 99, floats 79, fonts 41, ui 12.
+Pending by stage: positioning 216, generated content 202, inline 163, tables 98, floats 78, fonts 41, ui 12.
 
 ## Interpolation
 
