@@ -109,7 +109,14 @@ class Soft {
 		var bytes = 0;
 		for (w in c.shared)
 			bytes += w.bytes;
-		return {soft: s, code: macro {entry: $i{cs}(), varyings: 0, workgroup: $v{bytes}, frame: $v{s.frame}}};
+		var atomics = false;
+		function ex(e:SExpr) {
+			if (e.e.match(EBuiltin("atomicAdd" | "atomicMin" | "atomicMax", _))) atomics = true;
+			Subgroups.children(e, ex);
+		}
+		for (f in [c.entry.fn].concat(c.entry.functions))
+			Subgroups.statements(f.body, ex);
+		return {soft: s, code: macro {entry: $i{cs}(), varyings: 0, workgroup: $v{bytes}, frame: $v{s.frame}, atomics: $v{atomics}}};
 	}
 
 	// (the std430 layout of a storage buffer of t: any of the stage's of that element)

@@ -227,13 +227,13 @@ class Subgroups {
 			case EFloat(_) | EInt(_) | EBool(_) | ELocal(_): d;
 		}
 
-	static function children(e:SExpr, f:SExpr->Void)
+	public static function children(e:SExpr, f:SExpr->Void)
 		rebuild(e.e, x -> {
 			f(x);
 			x;
 		});
 
-	static function statements(ss:Array<SStmt>, ex:SExpr->Void)
+	public static function statements(ss:Array<SStmt>, ex:SExpr->Void)
 		for (s in ss)
 			switch s {
 				case SDecl(_, x) | SReturn(x) if (x != null): ex(x);

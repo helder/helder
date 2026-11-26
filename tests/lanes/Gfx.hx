@@ -50,10 +50,15 @@ class Gfx {
 		run(NODE, ["tests/gfx/web.mjs", "bin/gfx/WebCheck.wasm", "bin/gfx"]);
 	}
 
-	// (ComputeCheck, then helder.parallel's Gpu form: tests/parallel/GpuCheck)
+	// (ComputeCheck, then helder.parallel's Gpu form: tests/parallel/GpuCheck,
+	// and examples/cloth's against its CPU forms: ClothCheck)
 	static function gfxCompute() {
-		for (c in [{main: "ComputeCheck", dir: "tests/gfx"}, {main: "GpuCheck", dir: "tests/parallel"}]) {
-			native('bin/gfx-compute/$GFX_TARGET/${c.main}', cps(["src", c.dir]).concat(["-main", c.main]), GFX_TARGET);
+		for (c in [
+			{main: "ComputeCheck", dirs: ["tests/gfx"]},
+			{main: "GpuCheck", dirs: ["tests/parallel"]},
+			{main: "ClothCheck", dirs: ["tests/parallel", "examples/cloth"]}
+		]) {
+			native('bin/gfx-compute/$GFX_TARGET/${c.main}', cps(["src"].concat(c.dirs)).concat(["-main", c.main]), GFX_TARGET);
 			var exe = exePath('bin/gfx-compute/$GFX_TARGET/${c.main}', GFX_TARGET);
 			// (Mesa's llvmpipe and WARP: software; no Metal device on a Mac VM: exit 3, skipped)
 			Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
@@ -85,6 +90,7 @@ class Gfx {
 			{out: exePath('$b/GfxCheck', HOST), args: gfxCp().concat(["-main", "GfxCheck", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/ComputeCheck', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/GpuCheck', HOST), args: cps(["src", "tests/parallel"]).concat(["-main", "GpuCheck", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/ClothCheck', HOST), args: cps(["src", "tests/parallel", "examples/cloth"]).concat(["-main", "ClothCheck", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/RenderCheck', HOST), args: sceneCp().concat(["-main", "RenderCheck"]).concat(soft)}
 		];
 		prebuild(builds);
@@ -93,6 +99,7 @@ class Gfx {
 		run(exePath('$b/SoftShaderCheck', HOST), []);
 		run(exePath('$b/ComputeCheck', HOST), []);
 		run(exePath('$b/GpuCheck', HOST), []);
+		run(exePath('$b/ClothCheck', HOST), []);
 		for (s in ["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"])
 			run(exePath('$b/GfxCheck', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
 		run("sh", ["tests/3d/check.sh", b], ["SOFT" => "1"]);
