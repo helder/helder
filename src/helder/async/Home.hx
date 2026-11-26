@@ -6,14 +6,21 @@ import haxe.coro.schedulers.IScheduler;
 import helder.view.graph.Atoms;
 
 // A task's home, its dispatcher: a preview host's screen (helder.ui.ScreenContext)
-// with a store of values of its own (helder.view.graph.Atoms). A task
-// started while it is current takes it, and so do the task's children: its
+// with a store of values of its own (helder.view.graph.Atoms, its enter the
+// screen's: helder.ui never links this). A task started while that store is
+// current takes it, and so do the task's children: its
 // body, every continuation, timer and job's result run in that store and
 // context, as TypeScript's timers and promises do. Once the store is
 // cleared or let go, what is still pending there is dropped.
 class Home extends Dispatcher {
-	// the screen running now (ScreenContext sets it while one with a store is current)
-	@:noCompletion public static var current:Null<Home> = null;
+	// the current store's, when it is a screen's (null: none, the loop's own)
+	@:noCompletion public static function current():Null<Home> {
+		var store = Atoms.current, enter = store?.enter;
+		if (store == null || enter == null) return null;
+		var h:Null<Home> = cast store.tasks;
+		if (h == null || !h.live()) store.tasks = h = new Home(store, enter);
+		return h;
+	}
 
 	final loop:Loop;
 	final store:Atoms;
