@@ -52,6 +52,19 @@ function tests() {
 			equals(at(e, 25, 10), 0x0000FFFF);
 			equals(at(e, 5, 5), 0xFFFFFFFF);
 		});
+		test("sticky positioning against the viewport and a scrolling ancestor", () -> {
+			// (a: below the viewport, stuck to its bottom; b: in a scroller, above its top, stuck 5px under it)
+			var doc = Dom.parse('<!doctype html><style>body { margin: 0 }</style><div style="height:300px"><div style="height:200px"></div><div id=a style="position:sticky;bottom:0;height:10px"></div></div>'
+				+ '<div style="position:absolute;top:0;left:0;width:50px;overflow:hidden;height:40px"><div style="height:100px;padding-top:30px"><div id=b style="position:sticky;top:35px;height:10px"></div></div></div>');
+			var v = new DocumentView(doc);
+			v.layout(50, 50);
+			equals(top(v, "a"), 40.0);
+			equals(top(v, "b"), 35.0);
+			// (on a printed page: where flow put it)
+			var p = new DocumentView(doc, {media: {type: "print", width: 50, height: 50}});
+			p.layout(50, 50);
+			equals(top(p, "a"), 200.0);
+		});
 		test("hit testing", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } span { position: relative; left: 100px }</style><body><p id=p>abcd</p><div id=d style="height:20px"></div><div><span id=s>x</span></div>');
 			var v = new DocumentView(doc, {fonts: ahem()});
@@ -67,6 +80,14 @@ function tests() {
 			equals(v.hit(5, 55).node.nodeName, "DIV");
 		});
 	});
+}
+
+// (an element's box's top on the canvas)
+private function top(v:DocumentView, id:String):Float {
+	var el = v.document.getElementById(id);
+	var f = v.fragments;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return f.absolute(k).y;
+	return Math.NaN;
 }
 
 private function ahem():FontMatch {
