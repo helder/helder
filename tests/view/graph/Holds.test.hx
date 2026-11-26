@@ -351,6 +351,40 @@ function tests() {
 		});
 	});
 
+	// (found by the stores fuzzer; Solid 2.0.4 as the judge: tests/view/graph/solid-oracle.mjs)
+	test("held on an answer, the change waits for it though the render effect reads it no more", () -> {
+		var log = [];
+		var s0 = signal(0), s2 = signal(2);
+		var asked = memo(() -> {
+			s0();
+			(new Later<Int>() : Dynamic);
+		});
+		var d9 = signalOf((_ -> s2() + 1 : Null<Int>->Int));
+		var d11 = signalOf((_ -> d9() + 1 : Null<Int>->Int));
+		var c14 = memo(() -> d11() % 2 == 0 ? (asked() : Int) : s0());
+		var c25 = memo(() -> s0() % 2 == 0 ? d9() : c14());
+		var sum = memo(() -> s0() + s2());
+		root(_ -> {
+			renderEffect(() -> c25(), v -> log.push('e1 $v'));
+			renderEffect(() -> sum(), v -> log.push('e4 $v'));
+			effect(() -> s0(), (v, _) -> {
+				log.push('e0 $v');
+				null;
+			});
+		});
+		flush();
+		equals(log.splice(0, log.length), ["e1 3", "e4 2", "e0 0"]);
+		s0(1);
+		flush();
+		s2(0);
+		flush();
+		// (c25 reads asked no more: the held change still waits for its answer)
+		d9(0);
+		flush();
+		equals(log, []);
+		@:privateAccess helder.view.graph.Scheduler.forget(null);
+	});
+
 	// born-held.test.ts (A29, creation-time form; F-2, F-7)
 	describe("A29 born held: nodes created mainline during a hold", () -> {
 		function heldSignal() {

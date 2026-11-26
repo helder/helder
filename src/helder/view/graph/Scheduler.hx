@@ -222,7 +222,7 @@ class Scheduler {
 	static function settle() {
 		var t = world.find();
 		world = null;
-		if (t.blocked.length > 0) {
+		if (t.blocked.length > 0 || t.waiting()) {
 			if (!held.contains(t)) held.push(t);
 			// (its readers, served the screen, see it held now: isPending)
 			for (n in t.readers)

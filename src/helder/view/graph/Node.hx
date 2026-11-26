@@ -297,6 +297,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			if (screen && p != null) {
 				runner.blockedIn = p;
 				p.block(runner);
+				p.awaits(this);
 			}
 			if (!screen && (ahead == w || (p != null && p == w))) {
 				if (runner != null) runner.joined = true;
@@ -490,6 +491,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 					} else {
 						o.blockedIn = tx;
 						tx.block(o);
+						tx.awaits(this);
 					}
 				case _:
 			}
@@ -647,6 +649,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				} else if (tx != null) {
 					blockedIn = tx;
 					tx.block(this);
+					tx.awaits(notReadyNode);
 				}
 			case _:
 				// (a user effect holds nothing: it runs again when the value lands)
@@ -670,6 +673,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	function ask(a:Awaitable<Dynamic>, w:Null<Tx>) {
 		var tx = w != null ? w : Scheduler.newTx(home);
 		pendingIn = tx.held();
+		if (!tx.asks.contains(this)) tx.asks.push(this);
 		awaiting = a;
 		var id = asked;
 		propagatePending(tx);
