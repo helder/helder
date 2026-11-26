@@ -86,7 +86,7 @@ token.
 helder <command> [entry] [options]      entry: a .hx file, a directory or a project (default: .)
 helder <entry>                          shorthand for: helder dev <entry>
 
-commands: dev, run, build, test, inspect, publish, setup, share, login, logout, migrate, studio, devices, help
+commands: dev, run, build, test, inspect, publish, setup, share, login, logout, migrate, new, studio, devices, help
 
   --target <t>       host (default), web, android, ios, ios-sim, macos (a universal app bundle), or an exact hxmc target (windows-x86_64, android-x86_64, ...)
   -d, --device <d>   which phone, emulator or simulator (android, ios); `helder devices` lists them
@@ -122,6 +122,13 @@ there is (Android's ready one, iOS's booted simulator), and with several,
 or none, say so and name them (`Devices.pick`); `-d` takes an id (a
 simulator's name too: `-d "iPhone 16"`), and a simulator not booted is
 booted.
+
+`helder new [dir]` (default: .) starts a TypeScript project in an empty
+directory, refusing one with anything in it: package.json (helder at this
+CLI's version, TypeScript's checker in the range helder asks for),
+tsconfig.json extending `helder/tsconfig.json` (helder's options: the
+editor checks what the build does), src/main.tsx (a window, a signal, a
+button) and a .gitignore (bin/, node_modules/).
 
 ## Conventions
 
@@ -1237,4 +1244,4 @@ Not yet: the devtools' agent on the web (the page relaying it), the page
 held back while the module is generated (dev.mjs's `hxmc dev:
 generating`), native watchers, iOS devices
 (signing), Android's release signing, icons in the APK and the bundle,
-booting an emulator, `helder new`, `helder doctor`.
+booting an emulator, `helder doctor`.

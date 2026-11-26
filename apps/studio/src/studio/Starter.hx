@@ -7,9 +7,9 @@ using StringTools;
 // shows on the canvas, so that the agent starts from something that works:
 // main.tsx (the app's window), app.tsx (its view, plain: until the agent
 // changes the project the canvas holds its places: Watch's queued blocks), app.story.tsx
-// (one screen, the canvas' frame), tsconfig.json (helder's modules where they
-// are: config). A TypeScript project outside a package with helder in it
-// gets that tsconfig.json too, when it has none (an agent's first main.tsx).
+// (one screen, the canvas' frame), tsconfig.json (helder's extended: config).
+// A TypeScript project gets that tsconfig.json too, when it has none (an
+// agent's first main.tsx).
 class Starter {
 	// whether dir was empty and is the starter now
 	public static function write(dir:String):Bool {
@@ -57,15 +57,18 @@ class Starter {
 	public static function empty(dir:String):Bool
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));
 
-	// a tsconfig.json mapping helder's modules to the helder the studio was
-	// built with, when the project has none and no package resolves them
+	// a tsconfig.json extending helder's (the editor's options the build's),
+	// when the project has none; where no package resolves helder, the helder
+	// the studio was built with, its modules mapped
 	public static function config(dir:String) {
 		#if !(hxmc.target == "wasm32-wasi")
-		if (Files.exists('$dir/tsconfig.json') || resolves(dir)) return;
+		if (Files.exists('$dir/tsconfig.json')) return;
 		var src = BuildInfo.helderSrc();
-		Files.save('$dir/tsconfig.json', haxe.Json.stringify({
+		var config:Dynamic = resolves(dir) ? {"extends": "helder/tsconfig.json"} : {
+			"extends": '$src/helder/typescript/tsconfig.json',
 			compilerOptions: {paths: {"helder/*": ['$src/helder/*/index.d.ts', '$src/helder/*/index.ts', '$src/helder/*.ts']}}
-		}, "\t") + "\n");
+		};
+		Files.save('$dir/tsconfig.json', haxe.Json.stringify(config, "\t") + "\n");
 		#end
 	}
 

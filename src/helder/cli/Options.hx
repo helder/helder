@@ -239,6 +239,14 @@ class Options {
 			own: [],
 		},
 		{
+			name: "new",
+			usage: "[dir]",
+			about: "a TypeScript project in an empty directory: package.json, tsconfig.json (helder's), src/main.tsx, .gitignore",
+			entry: false,
+			common: [],
+			own: [],
+		},
+		{
 			name: "studio",
 			usage: "[project] [options]",
 			about: "helder studio on a project: its screens (stories) on a canvas, its code, an inspector, an agent's tools over MCP",
@@ -388,7 +396,7 @@ class Options {
 			if (positionals.length > 1) throw usage('one entry, not ${positionals.join(" and ")}');
 			var p = positionals[0];
 			if (p != null && isTarget(p) && !exists(p)) throw usage('`$p` is a target: use --target $p');
-		} else if (command == "inspect" || command == "migrate") {
+		} else if (command == "inspect" || command == "migrate" || command == "new") {
 			if (positionals.length > 1) throw usage('one directory, not ${positionals.join(" and ")}');
 		} else if (command != "test" && positionals.length > 0) {
 			throw usage('unexpected argument ${positionals[0]}', true);

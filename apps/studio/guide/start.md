@@ -14,7 +14,7 @@ A new project is the starter: a TypeScript helder program.
 | `main.tsx` | the app in a window (`helder run .`) |
 | `app.tsx` | its view |
 | `app.story.tsx` | its screens: each story a frame on the canvas |
-| `tsconfig.json` | where helder's modules are (leave it) |
+| `tsconfig.json` | helder's TypeScript options, extended (leave it) |
 | `*.helder` | design files: frames and groups the studio draws itself |
 
 `app.tsx` is a plain placeholder: replace it with the app (keep `App` as

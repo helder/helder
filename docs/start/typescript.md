@@ -42,6 +42,11 @@ Your project's own TypeScript compiler (7.1 or later) checks the program. helder
 - **TypeScript has:** `helder/view`, `helder/ui`, `helder/os`, `helder/gfx`, `helder/scene`, `helder/canvas`, `helder/async`, `helder/asset`, `helder/web` and `helder/test`, plus native calls into Objective-C, Java and COM through `helder/native`.
 - **Haxe has, besides:** physics, 2D sprites, sound, image codecs and PDF rendering.
 - **Not in TypeScript:** browser globals such as `document`, Node built-ins such as `node:fs`, `eval` and `Proxy`. A dependency works when its source compiles without them.
-- Strict mode, ES2022 or later, ESM with bundler resolution and `"jsx": "preserve"`: the defaults when there is no `tsconfig.json`.
+- **npm packages** written as ES modules compile from their JavaScript, typed by their declarations; a CommonJS package is refused at its import.
+- Strict mode, ES2022 or later, ESM with bundler resolution and `"jsx": "preserve"`: helder's options. Extend them so your editor checks what the build does, with helder's globals and without the DOM:
+
+```json
+{"extends": "helder/tsconfig.json"}
+```
 
 <Reference to="typescript,view"/>

@@ -91,6 +91,12 @@ class Cli {
 			// (~105 KB of errors, more than a pipe holds: the last of them, then the failure)
 			expect(linux ? "timeout" : h, counter, broken, "line 999 of a compiler that does not build\n    error helder's compiler does not build", 1);
 		}
+		// (helder new: a project in an empty directory, a full one refused; the
+		// typescript lane checks and builds what it writes)
+		rmrf("bin/cli/new-app");
+		expect(h, ["new", "bin/cli/new-app"], none, "created");
+		if (!FileSystem.exists("bin/cli/new-app/src/main.tsx")) throw new Failed("helder new: no src/main.tsx");
+		expect(h, ["new", "bin/cli/new-app"], none, "helder new: bin/cli/new-app is not empty", 2);
 		run(h, ["build", "examples/counter/Counter.hx"]);
 		// (outside the checkout, no node_modules above it, a fresh cache, no
 		// HXMC_RT_DIR from the launcher this runs under: helder's compiler,

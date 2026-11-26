@@ -558,8 +558,9 @@ initializes again), and `DELETE /mcp` with it ends the session.
 Untitled one, or any) becomes the starter (`Starter`): the smallest
 TypeScript program that builds and shows on the canvas (`main.tsx`,
 `app.tsx`, `app.story.tsx` with one plain screen; a `tsconfig.json`
-mapping helder's modules to the helder the studio was built with when no
-package resolves them, and TypeScript's checker found beside it). Until
+extending helder's, mapping helder's modules to the helder the studio was
+built with when no package resolves them, and TypeScript's checker found
+beside it). Until
 the agent changes the project the canvas waits: the blank sheet is the
 dots and the prompt alone; after the first prompt, three frame-sized
 blocks (radius 12, no caption) hold the places where the first frames
