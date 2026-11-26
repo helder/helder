@@ -31,6 +31,9 @@ class Features {
 		m;
 	};
 
+	// (a property escape, \p{...} or \P{...}: its tables)
+	static final properties = ~/\\[pP]\{/;
+
 	public static function of(project:Project):Array<String> {
 		var groups = new Map<String, Bool>();
 		for (sf in project.files) for (i in 1...sf.count) switch sf.kindAt(i) {
@@ -39,6 +42,10 @@ class Features {
 				if (g != null) for (x in g) groups.set(x, true);
 			case KindRegularExpressionLiteral:
 				groups.set("RegExp", true);
+				if (properties.match(sf.node(i).text)) groups.set("RegExpProperties", true);
+			// (a pattern made from a string: new RegExp("\\p{L}", "u"))
+			case KindStringLiteral | KindNoSubstitutionTemplateLiteral | KindTemplateHead | KindTemplateMiddle | KindTemplateTail:
+				if (properties.match(sf.node(i).text)) groups.set("RegExpProperties", true);
 			case KindAwaitExpression | KindAsyncKeyword | KindAwaitKeyword:
 				groups.set("Promise", true);
 			case KindCallExpression:

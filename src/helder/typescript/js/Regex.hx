@@ -20,6 +20,14 @@ enum RxNode {
 	RAlt(options:Array<RxNode>);
 }
 
+// (a pattern's syntax error: a SyntaxError at run time, a diagnostic when
+// the frontend checks a literal: check)
+class RegexSyntax {
+	public final message:String;
+
+	public function new(message:String) this.message = message;
+}
+
 class JsRegExp extends JsObject {
 	public var source:String;
 	public var flags:String;
@@ -47,7 +55,7 @@ class Regex {
 		this.unicode = unicode;
 	}
 
-	function fail(message:String):Dynamic return error("SyntaxError", "Invalid regular expression: /" + p + "/: " + message);
+	function fail(message:String):Dynamic throw new RegexSyntax(message);
 
 	function peek():Int return i < p.length ? code(i) : -1;
 
@@ -269,25 +277,13 @@ class Regex {
 		}
 	}
 
+	// the code points of \p{name}: UnicodeProperties.lookup, which a program
+	// whose patterns name properties installs (lower.Features)
+	public static var properties:Null<String->Null<Array<Int>>> = null;
+
 	function property(name:String):Array<Int> {
-		var eq = name.indexOf("=");
-		if (eq >= 0) name = name.substr(eq + 1);
-		return switch (name) {
-			case "L" | "Letter" | "Alphabetic" | "Alpha": [65, 90, 97, 122, 170, 170, 181, 181, 186, 186, 192, 214, 216, 246, 248, 0x2c1, 0x370, 0x3ff, 0x400, 0x52f, 0x531, 0x587, 0x5d0, 0x5ea, 0x620, 0x64a, 0x904, 0x939, 0x3040, 0x30ff, 0x4e00, 0x9fff, 0xac00, 0xd7a3];
-			case "Lu" | "Uppercase_Letter" | "Uppercase": [65, 90, 192, 214, 216, 222, 0x391, 0x3a9, 0x410, 0x42f];
-			case "Ll" | "Lowercase_Letter" | "Lowercase": [97, 122, 223, 246, 248, 255, 0x3b1, 0x3c9, 0x430, 0x44f];
-			case "N" | "Number" | "Nd" | "Decimal_Number" | "digit": [48, 57, 0x660, 0x669, 0x6f0, 0x6f9, 0x966, 0x96f, 0xff10, 0xff19];
-			case "P" | "Punctuation": [33, 35, 37, 42, 44, 47, 58, 59, 63, 64, 91, 93, 95, 95, 123, 123, 125, 125, 161, 161, 167, 167, 171, 171, 182, 183, 187, 187, 191, 191, 0x2010, 0x2027, 0x3001, 0x3003];
-			case "Emoji" | "Emoji_Presentation" | "Extended_Pictographic": [0x2600, 0x27bf, 0x1f300, 0x1faff];
-			case "Latin": [65, 90, 97, 122, 170, 170, 186, 186, 192, 214, 216, 246, 248, 0x24f];
-			case "Greek": [0x370, 0x3ff];
-			case "Cyrillic": [0x400, 0x52f];
-			case "Han": [0x2e80, 0x2fdf, 0x3005, 0x3007, 0x3021, 0x3029, 0x3400, 0x4dbf, 0x4e00, 0x9fff, 0xf900, 0xfaff, 0x20000, 0x2fa1f];
-			case "White_Space" | "space": spaceRanges;
-			case "Any": [0, 0x10ffff];
-			case "ASCII": [0, 127];
-			case _: fail("Invalid property name");
-		};
+		var ranges = properties == null ? null : properties(name);
+		return ranges ?? fail("Invalid property name");
 	}
 
 	function characterEscape():Int {
@@ -386,7 +382,7 @@ class Regex {
 				ranges.push(lo);
 			}
 		}
-		return RSet(ranges, negated);
+		return RSet(UnicodeProperties.normalize(ranges), negated);
 	}
 
 	// (a class member: a character, or -1 after adding an escape set's ranges)
@@ -432,7 +428,7 @@ class Regex {
 		return switch (n) {
 			case RNamedBackref(name):
 				var k = names.indexOf(name);
-				if (k < 0) error("SyntaxError", "Invalid named capture referenced");
+				if (k < 0) throw new RegexSyntax("Invalid named capture referenced");
 				RBackref(k + 1);
 			case RBackref(k) if (k > groups): RBackref(-k);
 			case RGroup(i, x): RGroup(i, resolveNames(x, names, groups));
@@ -443,6 +439,23 @@ class Regex {
 			case _: n;
 		};
 	}
+	static function parse(source:String, flags:String):{program:RxNode, groups:Int, names:Array<String>} {
+		var parser = new Regex(source, flags.indexOf("u") >= 0 || flags.indexOf("v") >= 0);
+		var program = parser.disjunction();
+		if (parser.i < source.length) parser.fail("Unmatched ')'");
+		return {program: resolveNames(program, parser.names, parser.groups), groups: parser.groups, names: parser.names};
+	}
+
+	// A literal's pattern as the runtime would parse it: its syntax error, else
+	// null (helder's compiler, for a diagnostic at the literal's line)
+	public static function check(source:String, flags:String):Null<String> {
+		if (properties == null) properties = UnicodeProperties.lookup;
+		return try {
+			parse(source, flags);
+			null;
+		} catch (e:RegexSyntax) e.message;
+	}
+
 	// (patterns are parsed once per source and flags)
 	static var cache:Map<String, {program:RxNode, groups:Int, names:Array<String>}> = [];
 	public static function compile(source:String, flags:String):JsRegExp {
@@ -453,10 +466,7 @@ class Regex {
 		var key = flags + "/" + source;
 		var compiled = cache.get(key);
 		if (compiled == null) {
-			var parser = new Regex(source, flags.indexOf("u") >= 0 || flags.indexOf("v") >= 0);
-			var program = parser.disjunction();
-			if (parser.i < source.length) parser.fail("Unmatched ')'");
-			compiled = {program: resolveNames(program, parser.names, parser.groups), groups: parser.groups, names: parser.names};
+			compiled = try parse(source, flags) catch (e:RegexSyntax) error("SyntaxError", "Invalid regular expression: /" + source + "/" + flags + ": " + e.message);
 			cache.set(key, compiled);
 		}
 		var r = new JsRegExp(RegExpProto);
@@ -503,23 +513,25 @@ class Regex {
 	}
 
 	function inSet(c:Int, ranges:Array<Int>):Bool {
-		var k = 0;
-		while (k < ranges.length) {
-			if (c >= ranges[k] && c <= ranges[k + 1]) return true;
-			k += 2;
-		}
+		if (contains(c, ranges)) return true;
 		if (ignoreCase) {
 			var alternatives = [String.fromCharCode(c).toLowerCase(), String.fromCharCode(c).toUpperCase()];
 			for (a in alternatives) if (a.length == 1) {
 				var x = a.charCodeAt(0);
-				if (x != c) {
-					k = 0;
-					while (k < ranges.length) {
-						if (x >= ranges[k] && x <= ranges[k + 1]) return true;
-						k += 2;
-					}
-				}
+				if (x != c && contains(x, ranges)) return true;
 			}
+		}
+		return false;
+	}
+
+	// (ranges sorted and disjoint: a property's run to thousands)
+	static function contains(c:Int, ranges:Array<Int>):Bool {
+		var lo = 0, hi = (ranges.length >> 1) - 1;
+		while (lo <= hi) {
+			var mid = (lo + hi) >> 1;
+			if (c < ranges[2 * mid]) hi = mid - 1;
+			else if (c > ranges[2 * mid + 1]) lo = mid + 1;
+			else return true;
 		}
 		return false;
 	}
@@ -666,6 +678,11 @@ class Regex {
 			return null;
 		}
 		var k = Std.int(lastIndex);
+		// (unicode: an index inside a surrogate pair is the pair's, the code point holding it)
+		if (unicode && k > 0 && k < s.length) {
+			var c = s.charCodeAt(k), before = s.charCodeAt(k - 1);
+			if (c >= 0xdc00 && c <= 0xdfff && before >= 0xd800 && before <= 0xdbff) k--;
+		}
 		var caps:Array<Int> = null;
 		while (k <= s.length) {
 			caps = matchAt(r, s, k);

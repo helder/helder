@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"lib": ["esnext"],
+		"types": [],
+		"strict": true,
+		"jsx": "preserve",
+		"useDefineForClassFields": true,
+		"allowJs": true,
+		"checkJs": false,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"files": ["./globals.d.ts"],
+	"include": ["${configDir}/**/*"],
+	"exclude": ["${configDir}/node_modules", "${configDir}/bin"]
+}

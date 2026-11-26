@@ -98,8 +98,9 @@ abstract class Statements extends Functions {
 					if (f.initializer().kind == KindVariableDeclarationList) variableList(f.initializer(), false); else expr(f.initializer());
 				}
 				loop(labels, f.statement(), f.condition() == null ? null : () -> exitUnless(f.condition()), () -> {
-					// (a fresh binding per iteration for closures that captured it)
-					if (counter == null && f.initializer() != null && f.initializer().kind == KindVariableDeclarationList)
+					// (a fresh binding per iteration for closures that captured it; a
+					// var's is the function's one binding)
+					if (counter == null && f.initializer() != null && f.initializer().kind == KindVariableDeclarationList && f.initializer().flags & NodeFlags.BlockScoped != 0)
 						for (d in f.initializer().declarations()) {
 							var binding = get(d.name().text, d);
 							if (binding.local == null) switch (binding.cell) {
@@ -130,6 +131,12 @@ abstract class Statements extends Functions {
 					b.out.push(SSet(index, EConv(I2L, EInt(0))));
 				}
 				var iterator = b.local("iterator", TRef(RAny));
+				// (IteratorClose: an iterator the loop leaves before its end, by a
+				// break, a return or a throw, told by its return method; not an
+				// array's, whose built-in iterator has none)
+				var closing = n.kind == KindForOfStatement && !awaiting && !indexed;
+				var inside = closing ? b.local("inside", TBool) : null;
+				if (closing) b.out.push(SSet(inside, bool(false)));
 				var open = b.block(() -> b.out.push(SSet(iterator, b.runtime(awaiting ? "libAsyncIterator" : "libIterator", [any(input)]))));
 				if (indexed) {
 					b.out.push(SSet(iterator, b.runtime("getUndefined", [])));
@@ -140,7 +147,7 @@ abstract class Statements extends Functions {
 				// (`const x of xs` over numbers: x a number, read unboxed from a number array)
 				var numbers = indexed && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0 && init.declarations()[0].name().kind == KindIdentifier
 					&& types.isNumber(loopNode.expression().tsType.element) && reps.rep(init.declarations()[0].name().tsType) == TF64;
-				loop(labels, loopNode.statement(), () -> {
+				function iterate() loop(labels, loopNode.statement(), () -> {
 					var value:Ex;
 					// (each step at the binding, as V8 names it)
 					if (lines) at(init.kind == KindVariableDeclarationList ? init.declarations()[0].name() : init);
@@ -164,8 +171,11 @@ abstract class Statements extends Functions {
 						value = b.runtime("libGet", [result, EStr("value")]);
 					}
 					else {
+						// (not inside while next runs: an iterator that throws there is not closed)
+						if (closing) b.out.push(SSet(inside, bool(false)));
 						value = b.runtime("libIterate", [ELocal(iterator)]);
 						b.out.push(SIf(b.runtime("libFinished", [value]), Vector.fromArrayCopy([SBreak]), new Vector(0)));
+						if (closing) b.out.push(SSet(inside, bool(true)));
 					}
 					if (init.kind != KindVariableDeclarationList) assignTarget(init, () -> value);
 					else {
@@ -178,12 +188,15 @@ abstract class Statements extends Functions {
 						else bindPattern(declaration.name(), value, declareLocal);
 					}
 				}, null, null);
+				if (closing) protect(iterate, threw -> b.out.push(SIf(ELocal(inside), b.block(() -> b.runtime("libIteratorClose", [ELocal(iterator), ELocal(threw)])), new Vector(0))));
+				else iterate();
 				env = oldEnv;
 			case KindSwitchStatement: switchStatement(n, labels);
 			case KindThrowStatement:
 				var v = any(expr(n.expression()));
 				if (!lines) b.runtime("libSite", [EStr(location(n))]);
-				b.out.push(SThrow(v));
+				// (a value that is no error keeps where it was thrown: Frames.throwing)
+				b.out.push(SThrow(lines ? b.runtime("libThrow", [v]) : v));
 			case KindTryStatement: tryStatement(n);
 			case KindBreakStatement: jump(n, true);
 			case KindContinueStatement: jump(n, false);
@@ -433,9 +446,13 @@ abstract class Statements extends Functions {
 			guarded();
 			return;
 		}
-		// try/finally: the guarded part runs in an IR loop that jumps leave, an
-		// exception is held while the finally block runs, then rethrown or the
-		// pending jump continues.
+		protect(guarded, _ -> statement(t.finallyBlock()));
+	}
+
+	// try/finally: the guarded part runs in an IR loop that jumps leave, an
+	// exception is held while the final part runs (told whether one was
+	// thrown), then rethrown or the pending jump continues.
+	function protect(guarded:() -> Void, finish:Local->Void) {
 		var fin = target([], JFinally);
 		var before = b.flagged;
 		var threw = b.local("threw", TBool), held = b.local("held", TRef(RAny)), caught = b.local("caught", TRef(RAny));
@@ -449,7 +466,7 @@ abstract class Statements extends Functions {
 			b.out.push(SBreak);
 		}, fin);
 		var jumped = b.flagged > before;
-		statement(t.finallyBlock());
+		finish(threw);
 		b.out.push(SIf(ELocal(threw), Vector.fromArrayCopy([SThrow(ELocal(held))]), new Vector(0)));
 		if (jumped) {
 			var j = ELocal(jumpCode());
@@ -463,7 +480,9 @@ abstract class Statements extends Functions {
 		for (d in n.declarations()) {
 			// (a typed number binding's: a number array's element read unboxed)
 			var slot = d.name().kind != KindIdentifier ? null : n.flags & NodeFlags.BlockScoped == 0 ? functionVars.get(d.name().text)?.ty : top || predeclared ? env.get(d.name().text)?.ty : bindingType(d);
-			var e = d.initializer() == null ? b.runtime("getUndefined", []) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
+			// (none given, a typed slot's placeholder: TypeScript's definite
+			// assignment has it written before it is read, as a var's)
+			var e = d.initializer() == null ? (slot != null && d.name().kind == KindIdentifier ? placeholder(slot) : b.runtime("getUndefined", [])) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
 			if (d.name().kind != KindIdentifier) {
 				var scoped = n.flags & NodeFlags.BlockScoped != 0;
 				bindPattern(d.name(), e, !scoped ? (id, v) -> set(functionVars.get(id.text), v) : top || predeclared ? (id, v) -> set(get(id.text, id), v) : declareLocal);

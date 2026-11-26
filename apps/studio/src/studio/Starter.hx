@@ -8,9 +8,9 @@ using StringTools;
 // main.tsx (the app's window), app.tsx (its model, a top-level signal, and
 // its view, plain: until the agent changes the project the canvas holds its
 // places: Watch's queued blocks), app.scenario.tsx (one screen, the app at
-// its start: the canvas' frame), tsconfig.json (helder's modules where they
-// are: config). A TypeScript project outside a package with helder in it
-// gets that tsconfig.json too, when it has none (an agent's first main.tsx).
+// its start: the canvas' frame), tsconfig.json (helder's extended: config).
+// A TypeScript project gets that tsconfig.json too, when it has none (an
+// agent's first main.tsx).
 class Starter {
 	// whether dir was empty and is the starter now
 	public static function write(dir:String):Bool {
@@ -58,32 +58,41 @@ class Starter {
 	public static function empty(dir:String):Bool
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));
 
-	// a tsconfig.json mapping helder's modules to the helder the studio was
-	// built with, when the project has none and no package resolves them;
-	// one the studio wrote (written's shape) for another helder (an older
-	// checkout's: its modules not the compiler's, TSHX004) written again
+	// a tsconfig.json extending helder's (the editor's options the build's),
+	// when the project has none: where no package resolves helder, the helder
+	// the studio was built with, its modules mapped; one the studio wrote
+	// (written's shape) for another helder (an older checkout's: its modules
+	// not the compiler's, TSHX004) written again
 	public static function config(dir:String) {
 		#if !(hxmc.target == "wasm32-wasi")
 		var path = '$dir/tsconfig.json', src = BuildInfo.helderSrc();
 		if (Files.exists(path)) {
 			var was = written(Files.read(path));
-			if (was == null || was == src) return;
+			if (was == null || was == src && Files.read(path) == configText(src)) return;
 			Sys.println('studio: tsconfig.json mapped helder to $was, written again for this studio\'s ($src)');
-		} else if (resolves(dir)) return;
+		} else if (resolves(dir)) {
+			Files.save(path, '{\n\t"extends": "helder/tsconfig.json"\n}\n');
+			return;
+		}
 		Files.save(path, configText(src));
 		#end
 	}
 
 	public static function configText(src:String):String
 		return haxe.Json.stringify({
+			"extends": '$src/helder/typescript/tsconfig.json',
 			compilerOptions: {paths: {"helder/*": ['$src/helder/*/index.d.ts', '$src/helder/*/index.ts', '$src/helder/*.ts']}}
 		}, "\t") + "\n";
 
 	// the helder a tsconfig.json of the studio's maps (its shape: helder/*
-	// to one helder's three places, nothing else), else null
+	// to one helder's three places, extending that helder's tsconfig.json or,
+	// as the studio wrote them before, nothing), else null
 	public static function written(text:String):Null<String> {
 		var j:Dynamic = try haxe.Json.parse(text) catch (_:Dynamic) null;
-		if (j == null || Reflect.fields(j).join(",") != "compilerOptions") return null;
+		if (j == null) return null;
+		var fields = Reflect.fields(j);
+		fields.sort(Reflect.compare);
+		if (fields.join(",") != "compilerOptions" && fields.join(",") != "compilerOptions,extends") return null;
 		var o:Dynamic = j.compilerOptions;
 		if (o == null || Reflect.fields(o).join(",") != "paths" || Reflect.fields(o.paths).join(",") != "helder/*") return null;
 		var list:Array<Dynamic> = Reflect.field(o.paths, "helder/*");
@@ -91,7 +100,9 @@ class Starter {
 		var first = Std.string(list[0]), end = "/helder/*/index.d.ts";
 		if (!first.endsWith(end)) return null;
 		var src = first.substr(0, first.length - end.length);
-		return Std.string(list[1]) == '$src/helder/*/index.ts' && Std.string(list[2]) == '$src/helder/*.ts' ? src : null;
+		if (Std.string(list[1]) != '$src/helder/*/index.ts' || Std.string(list[2]) != '$src/helder/*.ts') return null;
+		var base:Null<String> = Reflect.field(j, "extends");
+		return base == null || base == '$src/helder/typescript/tsconfig.json' ? src : null;
 	}
 
 	// TypeScript's checker for a project outside any package (found from its

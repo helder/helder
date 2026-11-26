@@ -41,7 +41,7 @@ class Seed {
 
 	public static function numberText(v:Float):String {
 		if (v == 0) return "0";
-		return Std.string(v);
+		return Numbers.text(v);
 	}
 
 	public static function text(v:Dynamic):String {
@@ -199,7 +199,7 @@ class Seed {
 	public static function consoleLine(values:Array<Dynamic>):String return Inspect.format(values);
 
 	public static function uncaught(e:Dynamic):Void {
-		var thrown = Frames.thrown();
+		var thrown = Frames.thrown(e);
 		var text = try "Uncaught " + Builtins.uncaughtText(e, thrown) catch (_:Dynamic) "Uncaught exception";
 		Sys.stderr().writeString(text + "\n");
 		Sys.exit(1);
@@ -213,6 +213,8 @@ class Seed {
 
 	// (the built-ins a program uses: Builtins.install*, chosen by lower.Features)
 	public static function libInstallRegExp():Void Builtins.installRegExp();
+
+	public static function libInstallRegExpProperties():Void Builtins.installRegExpProperties();
 
 	public static function libInstallNormalize():Void Builtins.installNormalize();
 
@@ -412,6 +414,8 @@ class Seed {
 
 	public static function libFinished(v:Dynamic):Bool return v == Lib.finished;
 
+	public static function libIteratorClose(it:Dynamic, threw:Bool):Void Lib.close(it, threw);
+
 	public static function libInstanceOf(v:Dynamic, ctor:Dynamic):Bool return Lib.instanceOf(v, ctor);
 
 	public static function libRelation(a:Dynamic, b:Dynamic, op:String):Bool return Lib.relation(a, b, op);
@@ -457,6 +461,8 @@ class Seed {
 	// (no table of lines: where a `new` or a `throw` runs, "" after a `new`)
 	public static function libSite(at:String):Void Frames.site = at == "" ? null : at;
 
+	public static function libThrow(v:Dynamic):Dynamic return Frames.throwing(v);
+
 	public static function libAsyncGenerator(step:Dynamic):Dynamic return Promises.asyncGenerator(step);
 
 	public static function libAsyncIterator(v:Dynamic):Dynamic return Promises.asyncIterator(v);
@@ -490,6 +496,7 @@ class Seed {
 		libInit();
 		if (libReady()) libHole();
 		libInstallRegExp();
+		libInstallRegExpProperties();
 		libInstallNormalize();
 		libInstallDate();
 		libInstallBuffers();
@@ -539,6 +546,7 @@ class Seed {
 		libPrivateHas(o, "#x");
 		libStep(libIterator(a));
 		libRestArray(libIterator(a));
+		libIteratorClose(libIterator(a), false);
 		libRequireObject(o);
 		libObjectRest(o, []);
 		libAssignSpread(o, null);
@@ -557,6 +565,7 @@ class Seed {
 		var g = libGenerator(f);
 		libSuspend(g, 1, 0, "");
 		libSite("");
+		libThrow(null);
 		libAsyncGenerator(f);
 		libAsyncIterator(a);
 		libResumePoint(g);

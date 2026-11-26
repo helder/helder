@@ -58,7 +58,7 @@ npx helder build --target android   # an APK to install; ios: an IPA
 ## What else
 
 - `npx helder devices` lists the phones, emulators and simulators to run on.
-- A `tsconfig.json` is optional; helder uses the project's TypeScript 7.1 or later to check your code.
+- `npx helder new my-app` starts a project: package.json, a `tsconfig.json` extending `helder/tsconfig.json` (your editor then checks what the build does) and `src/main.tsx`. helder uses the project's TypeScript 7.1 or later to check your code.
 - Want to try without installing? The [examples](https://helder.build/examples/) play in your browser.
 
 <Reference to="cli,ui"/>

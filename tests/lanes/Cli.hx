@@ -10,7 +10,7 @@ using StringTools;
 class Cli {
 	public static final LANES:Array<Lane> = [
 		{name: "test", about: "every *.test.hx and *.test.ts, natively and as wasm32-wasi", run: helderTest},
-		{name: "fuzz", about: "the robustness properties soaked (FUZZ_SECONDS each, FUZZ_SEED)", run: fuzz},
+		{name: "fuzz", about: "the robustness properties soaked (FUZZ_SECONDS each, FUZZ_SEED), then helder's TypeScript against node (FUZZ_TS_SECONDS)", run: fuzz},
 		{name: "cli", about: "helder build, run, dev and devices", run: cli},
 		{name: "devtools", about: "the devtools protocol without a window", run: devtools},
 		{name: "declarations", about: "the generated TypeScript declarations", run: declarations},
@@ -26,12 +26,17 @@ class Cli {
 	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
 	// crashes or blows up is left in bin/fuzz/properties)
 	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
-		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx"];
+		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx", "src/helder/dom/Dom.test.hx"];
 
-	static function fuzz()
+	static function fuzz() {
 		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
 		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host", "--out", "bin/fuzz"]),
 			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
+		// (helder's TypeScript against node: FUZZ_TS_SECONDS (300) of random
+		// programs, its findings shrunk and kept with the properties')
+		run(NODE, ["tests/typescript/fuzz/fuzz.mjs", "--seconds", Sys.getEnv("FUZZ_TS_SECONDS") ?? "300", "--out", "bin/fuzz/typescript",
+			"--store", "bin/fuzz/properties"], ["HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
+	}
 
 	static function helderTest() {
 		run(helderCli(), ["test", "--target", "all,interp"]);
@@ -91,6 +96,12 @@ class Cli {
 			// (~105 KB of errors, more than a pipe holds: the last of them, then the failure)
 			expect(linux ? "timeout" : h, counter, broken, "line 999 of a compiler that does not build\n    error helder's compiler does not build", 1);
 		}
+		// (helder new: a project in an empty directory, a full one refused; the
+		// typescript lane checks and builds what it writes)
+		rmrf("bin/cli/new-app");
+		expect(h, ["new", "bin/cli/new-app"], none, "created");
+		if (!FileSystem.exists("bin/cli/new-app/src/main.tsx")) throw new Failed("helder new: no src/main.tsx");
+		expect(h, ["new", "bin/cli/new-app"], none, "helder new: bin/cli/new-app is not empty", 2);
 		run(h, ["build", "examples/counter/Counter.hx"]);
 		// (outside the checkout, no node_modules above it, a fresh cache, no
 		// HXMC_RT_DIR from the launcher this runs under: helder's compiler,

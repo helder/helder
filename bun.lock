@@ -11,8 +11,10 @@
         "@csstools/css-parser-algorithms": "4.0.3",
         "@csstools/css-tokenizer": "4.0.3",
         "@hxmc/source": "0.1.0-nightly.20261126.b0f4f9c",
+        "@lukeed/html": "1.0.2",
         "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
         "lightningcss": "1.33.0",
+        "parse5": "8.1.1",
         "typescript": "7.1.0-dev.20261106.1",
       },
       "peerDependencies": {
@@ -47,6 +49,8 @@
 
     "@hxmc/win32-x64": ["@hxmc/win32-x64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "win32", "cpu": "x64" }, "sha512-x6xj6PSNxCoWXasgByeJeV9J/K3rPUahSFumIO8PzCDUAugxe2UB5R3aZrIvH6mzBuKaTlI2cUhDHiIxIJHcpQ=="],
 
+    "@lukeed/html": ["@lukeed/html@1.0.2", "", { "dependencies": { "entities": "^8.1.0" } }, "sha512-WjYr6icU/YuTzjrMsF0mejoxM3BeJxbj433cGySiOn6YM6vgZG21PfJQn1zO4G4L8kgF54ddDgfKtCZfFZQ7ag=="],
+
     "@typescript/typescript-darwin-arm64": ["@typescript/typescript-darwin-arm64@7.1.0-dev.20261106.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Rr7/4UP4xfSesZjcDI1oxuJTEbYRgVsli0afgBL5UlmBFHRjWr4UdfsXIGEann/VEXDXzba0kwFEIy657XIDXA=="],
 
     "@typescript/typescript-darwin-x64": ["@typescript/typescript-darwin-x64@7.1.0-dev.20261106.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-Rx8lXsfx12O6LgDBiRSOS6+UQ2m76uKiGCDmb9yv5uEZD+/7Y3lZ7YU0l3yRhPb7RMIlr1hFuJ0RGcl2xlr6vw=="],
@@ -64,6 +68,8 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.1.0-dev.20261106.1", "", { "os": "win32", "cpu": "x64" }, "sha512-yzzV1ABX0s87XSiS3mMjvwGPJClIxUOjO7XyYR0e5HCY16t9chPT0jH1jKPsWc9EyaFA+7HDCCLnm9ZkBoz64Q=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
+
+    "entities": ["entities@8.1.0", "", {}, "sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA=="],
 
     "lightningcss": ["lightningcss@1.33.0", "", { "dependencies": { "detect-libc": "^2.0.3" }, "optionalDependencies": { "lightningcss-android-arm64": "1.33.0", "lightningcss-darwin-arm64": "1.33.0", "lightningcss-darwin-x64": "1.33.0", "lightningcss-freebsd-x64": "1.33.0", "lightningcss-linux-arm-gnueabihf": "1.33.0", "lightningcss-linux-arm64-gnu": "1.33.0", "lightningcss-linux-arm64-musl": "1.33.0", "lightningcss-linux-x64-gnu": "1.33.0", "lightningcss-linux-x64-musl": "1.33.0", "lightningcss-win32-arm64-msvc": "1.33.0", "lightningcss-win32-x64-msvc": "1.33.0" } }, "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA=="],
 
@@ -89,6 +95,10 @@
 
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.33.0", "", { "os": "win32", "cpu": "x64" }, "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA=="],
 
+    "parse5": ["parse5@8.1.1", "", { "dependencies": { "entities": "^9.0.0" } }, "sha512-EcR/6WDcU7b2N3vQSxKALCk9lXGtUMQxXio008OEMBE0kavu/7JLfBEeFPzi43nMqVDSbEn3QCK+BMCc9zO//w=="],
+
     "typescript": ["typescript@7.1.0-dev.20261106.1", "", { "optionalDependencies": { "@typescript/typescript-darwin-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-darwin-x64": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-arm": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-linux-x64": "7.1.0-dev.20261106.1", "@typescript/typescript-win32-arm64": "7.1.0-dev.20261106.1", "@typescript/typescript-win32-x64": "7.1.0-dev.20261106.1" }, "bin": { "tsc": "bin/tsc" } }, "sha512-iXttMYjtjZlI4xn4ajC1UHsBfGOm+lYlHN1g17wytkYjyxqV9ngrEXJid6IayJhrfw8qTbLwBkn9KoJENLpjaw=="],
+
+    "parse5/entities": ["entities@9.0.0", "", {}, "sha512-oJFNDJg3kTPwAD1cNn2+WmUq4wFoo09npc3Ydf1D7ED4smRiWrsKnaLxykrTWgyGEcusc87P5dxlAleol9kpkg=="],
   }
 }

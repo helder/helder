@@ -122,27 +122,36 @@ class Compiler {
 		}];
 	}
 
-	// a position in a file, as Haxe's: byte offsets; from a line (1-based) and
-	// UTF-16 columns (-1: the whole line)
+	// a position in a file, as Haxe's: offsets in code points (its lexer's,
+	// which its messages' lines and columns are counted back from: bytes put
+	// a message after non-ASCII text late); from a line (1-based) and UTF-16
+	// columns (-1: the whole line)
 	static function position(file:String, line:Int, from:Int, to:Int):core.Globals.Pos {
 		var bytes = try sys.io.File.getBytes(file) catch (_:Dynamic) return core.Globals.nullPos;
-		var start = 0;
-		for (_ in 1...line) {
-			while (start < bytes.length && bytes.get(start) != "\n".code) start++;
-			start++;
+		var p = 0, points = 0;
+		function step() {
+			var c = bytes.get(p);
+			p += c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+			points++;
+			return c;
 		}
-		var end = start;
-		while (end < bytes.length && bytes.get(end) != "\n".code) end++;
+		for (_ in 1...line) {
+			while (p < bytes.length && bytes.get(p) != "\n".code) step();
+			if (p < bytes.length) step();
+		}
+		var start = points, lineStart = p;
+		while (p < bytes.length && bytes.get(p) != "\n".code) step();
+		var end = points;
 		if (from < 0) return new core.Globals.Pos(FileSystem.fullPath(file), start, end);
-		// (UTF-16 columns to bytes)
+		// (UTF-16 columns to code points: one outside the basic plane is two units)
 		function at(column:Int):Int {
-			var p = start, units = 0;
-			while (p < end && units < column) {
-				var c = bytes.get(p);
-				p += c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
-				units += c >= 0xF0 ? 2 : 1;
+			p = lineStart;
+			var units = 0, at = start;
+			while (p < bytes.length && bytes.get(p) != "\n".code && units < column) {
+				units += step() >= 0xF0 ? 2 : 1;
+				at++;
 			}
-			return p;
+			return at;
 		}
 		return new core.Globals.Pos(FileSystem.fullPath(file), at(from), at(to));
 	}

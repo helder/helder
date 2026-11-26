@@ -88,6 +88,7 @@
     "./test": {
       "types": "./src/helder/test/index.ts"
     },
+    "./tsconfig.json": "./src/helder/typescript/tsconfig.json",
     "./package.json": "./package.json"
   },
   "haxe": {
@@ -113,8 +114,10 @@
     "@csstools/css-parser-algorithms": "4.0.3",
     "@csstools/css-tokenizer": "4.0.3",
     "@hxmc/source": "0.1.0-nightly.20261126.b0f4f9c",
+    "@lukeed/html": "1.0.2",
     "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
     "lightningcss": "1.33.0",
+    "parse5": "8.1.1",
     "typescript": "7.1.0-dev.20261106.1"
   },
   "trustedDependencies": [
