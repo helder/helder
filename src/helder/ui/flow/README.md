@@ -299,9 +299,15 @@ keyed on its space: the same space, the same fragment.
   (negative vertical ones too), top and bottom with an auto height
   stretch it. A layout that leaves such boxes outside itself isn't reused
   from the cache (`Box.ESCAPES`), nor one beside floats.
+- `Sticky` (Positioned Layout 3 §3.4) runs after layout, at a scroll of
+  0: a sticky box's border box moves as far as its insets ask from its
+  scrollport (the nearest ancestor that clips, its padding box, else the
+  viewport), its margin box kept within its containing block; outer
+  sticky boxes first. Printed pages have no scrollport: there a sticky box
+  stays put, positioned as a relative one would be.
 - Not yet: the static position of a box that was block-level before
   blockification is taken where it is met in a line, not below it;
-  sticky positioning (as relative); floats' intrinsic contribution beyond
+  floats' intrinsic contribution beyond
   their min- and max-content.
 
 ## Tables

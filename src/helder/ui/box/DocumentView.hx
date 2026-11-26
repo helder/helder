@@ -94,6 +94,8 @@ class DocumentView {
 		var f = (r.context ?? Contexts.all().flow).layout(r, space);
 		var off = helder.ui.flow.BlockFlow.offset(r, width, height);
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
+		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
+		if (options.media == null || options.media.type != "print") helder.ui.flow.Sticky.apply(fragments, f, width, height);
 		order = new PaintOrder(fragments, f);
 		return root = f;
 	}
