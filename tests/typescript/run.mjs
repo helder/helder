@@ -259,6 +259,20 @@ for(const file of fs.readdirSync(`${D}/reject`).filter(f=>/\.tsx?$/.test(f)).sor
     assert.ok((b.stdout+b.stderr).includes(want),`${main}.hx should report ${want}, got ${b.stdout}${b.stderr}`);
     console.log(`PASS definition rejected: ${file}, ${main}.hx`);
 }
+// tsgo's error through a compilation server (helder dev's, the fuzzer's):
+// at its line and column after non-ASCII text (Haxe's positions count code
+// points, not bytes)
+if(mine()) {
+    const {Server}=await import('./fuzz/Server.mjs');
+    const file=`${dir}/positions.ts`;
+    fs.writeFileSync(file,'const a: string = "😀é"\nconst b: string = "ﬀ"\nconst n: number = "oops"\nconsole.log(a, b, n)\n');
+    const server=await Server.start(compiler,process.cwd());
+    try {
+        const r=await server.build(file,`${dir}/positions`);
+        assert.match(r.messages,/positions\.ts:3: characters 7-8/,`a compilation server's position of tsgo's error\n${r.messages}`);
+    } finally {server.stop();}
+    console.log('PASS a compilation server\'s position of tsgo\'s error');
+}
 // The fuzzer's short run (tests/typescript/fuzz): random programs of a
 // fixed seed against node, natively and a sample as wasm32-wasi, in a
 // directory of this run's (its findings kept there, not shrunk)
