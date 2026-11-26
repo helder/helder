@@ -118,10 +118,10 @@ export const error = signal<string | undefined>(undefined);
 export function App() {
 	fetchForecast().then(f => forecast(f), e => error(String(e?.message ?? e)));
 	return <view flexGrow={1}>
-		<Show when={() => forecast() !== undefined}>
+		<Show when={() => forecast() != null}>
 			{() => <Weather forecast={forecast()}/>}
 		</Show>
-		<Show when={() => forecast() === undefined}>
+		<Show when={() => forecast() == null}>
 			{() => <Weather error={error()}/>}
 		</Show>
 	</view>;

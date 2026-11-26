@@ -98,6 +98,8 @@ class Host {
 				screens.push(new HostScreen(this, new Story(s.name, _ -> throw "helder.story: a scenario has no view of its own", s.seed, null, s.width ?? size?.width, s.height ?? size?.height, s.loop), s));
 		}
 		if (screens.length == 0) throw "helder.story.Host: no stories (a release build has none)";
+		for (k => s in screens)
+			if (Lambda.exists(screens.slice(0, k), o -> o.name == s.name)) throw 'helder.story.Host: two screens named "${s.name}" (a story\'s and a scenario\'s names are one list)';
 	}
 
 	public function screen(name:String):Null<HostScreen>
