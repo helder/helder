@@ -13,7 +13,7 @@ class HitTest {
 		var inv = new Matrix();
 		while (k-- > 0) {
 			var step = order.steps[k];
-			if (step == PaintOrder.OUTLINE) continue;
+			if (step == PaintOrder.OUTLINE || step == PaintOrder.BORDERS) continue;
 			var id = order.fragments[k];
 			var b = f.box(id);
 			if (!b.style.visible || b.style.keyword("pointer-events") == "none") continue;

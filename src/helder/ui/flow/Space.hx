@@ -13,6 +13,9 @@ class Space {
 	public var height:Float;
 	// a width the box takes as its own (shrink-to-fit's, a flex item's); NaN: its own rules
 	public var fixedWidth = Math.NaN;
+	// the box's border widths instead of its style's (top, right, bottom, left): a cell's in
+	// the collapsing border model, half of what won on each side
+	public var borders:Null<Array<Float>> = null;
 	// where a line at y of height h may go: floats narrow it (null: the whole width)
 	public var lineWidth:Null<(y:Float, h:Float) -> {offset:Float, width:Float}> = null;
 

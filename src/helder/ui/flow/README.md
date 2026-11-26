@@ -228,8 +228,8 @@ gives the box's fragment (helder.ui.box's `Fragments`) and leaves its
 used margins and collapsing margins on the box; `intrinsic(box, space)`
 its min-content and max-content widths. They are objects a program makes
 (`Contexts`: one per inner display), so one it never makes is not in its
-binary; the box tree gives each block container its context. Flex, grid
-and table have none in this slice: they lay out as flow, noted.
+binary; the box tree gives each block container its context. Flex and
+grid have none in this slice: they lay out as flow, noted.
 
 `Space` is LayoutNG's constraint space: the containing block's width,
 the height percentages resolve against (NaN: indefinite), a width the
@@ -262,6 +262,47 @@ keyed on its space: the same space, the same fragment.
   bottom's sets, its parent places it from those.
 - Relative positioning (§9.4.3) moves a box's fragment, and an inline
   box's, after its place is known.
+
+## Tables
+
+`TableFlow` (CSS 2.1 §17, with CSS Tables 3 where they agree) lays out a
+table's wrapper box: its captions above and below (caption-side), each a
+block in the table's width, around the table box.
+
+- The grid: row groups in order (the first header group first, the first
+  footer group last, lone rows as groups of their own), each row's cells
+  in the slots that rowspans above leave, HTML's colspan and rowspan
+  (rowspan 0: to the group's end), columns and column groups with their
+  span.
+- Widths: `table-layout: fixed` with a width (§17.5.2.1: the columns'
+  widths, else the first row's cells', the rest shared equally; content
+  ignored), else the auto algorithm: each column's min-content and
+  max-content from its single-column cells (a set width its max, a
+  percentage kept), spanning cells' surplus spread over their columns by
+  max-content, then Tables 3's guesses (min-content, percentages, set
+  widths, max-content), a width between two of them shared linearly,
+  past the last given to auto columns first (`distribute`). The table's
+  width is its border box's under `box-sizing: border-box` (HTML's sheet
+  gives `<table>` that), at least its min-content.
+- border-spacing in the separated model; in the collapsing one (§17.6.2)
+  each grid line's segment takes what wins of the cells', rows', row
+  groups', columns', column groups' and table's borders (hidden, then
+  none, width, style, origin: `TableGrid.wins`), split in whole pixels
+  (floor(w/2) above and to the left), cells laid out with their parts
+  (`Space.borders`), the table's own being the outer lines' other parts.
+- Cells are laid out by flow at their columns' width (their fragment
+  that width even where padding is wider); rows as tall as their own
+  height, their cells and their baseline alignment need, a rowspan's
+  surplus to its last row, a table's height's surplus shared by height;
+  `visibility: collapse` rows of no height. Cells align by vertical-align
+  (baseline: the first line's, top, middle, bottom).
+- Fragments in the order their backgrounds paint (§17.5.1): the table box,
+  column groups, columns, row groups, rows, cells; the grid
+  (`Box.table`) for paint's collapsed borders.
+
+Not yet: percentages in heights inside cells, `visibility: collapse`
+columns, a table's header and footer repeated across pages (the paged
+host's).
 
 ## The line builder's stand-in
 

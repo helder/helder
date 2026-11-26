@@ -16,6 +16,9 @@ enum abstract BoxKind(Int) {
 	var BlockReplaced;
 	// <br>: a forced line break
 	var Break;
+	// a table's wrapper box (CSS 2.1 §17.4): its captions and the table box; block- or
+	// inline-level by the table's display, its margins the table's
+	var TableWrapper;
 
 	public function toString():String
 		return switch (cast this : BoxKind) {
@@ -27,5 +30,6 @@ enum abstract BoxKind(Int) {
 			case InlineReplaced: "InlineReplaced";
 			case BlockReplaced: "BlockReplaced";
 			case Break: "Break";
+			case TableWrapper: "TableWrapper";
 		}
 }

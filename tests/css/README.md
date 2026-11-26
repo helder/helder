@@ -369,7 +369,7 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   shows it), compared as a reftest to its golden with a fuzzy tolerance
   for text antialiasing, BLESS=1 accepting a new golden.
 
-At WPT bc5ea7a9006b, the box tree and block flow with the line
+At WPT bc5ea7a9006b, the box tree, block flow and tables with the line
 stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 311 skipped):
 
@@ -377,34 +377,34 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | --- | --- | --- |
 | CSS2 | 0 | 5 |
 | CSS2/abspos | 9 | 25 |
-| CSS2/backgrounds | 200 | 333 |
+| CSS2/backgrounds | 301 | 333 |
 | CSS2/bidi-text | 9 | 34 |
-| CSS2/borders | 396 | 504 |
+| CSS2/borders | 472 | 504 |
 | CSS2/box | 2 | 9 |
-| CSS2/box-display | 57 | 86 |
+| CSS2/box-display | 61 | 86 |
 | CSS2/cascade | 23 | 31 |
 | CSS2/cascade-import | 0 | 1 |
 | CSS2/colors | 10 | 19 |
-| CSS2/css1 | 113 | 164 |
-| CSS2/css21-errata | 0 | 9 |
+| CSS2/css1 | 118 | 164 |
+| CSS2/css21-errata | 3 | 9 |
 | CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
-| CSS2/floats | 23 | 112 |
-| CSS2/floats-clear | 34 | 203 |
+| CSS2/floats | 26 | 112 |
+| CSS2/floats-clear | 38 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
 | CSS2/fonts | 117 | 159 |
-| CSS2/generated-content | 145 | 205 |
-| CSS2/linebox | 44 | 192 |
-| CSS2/lists | 141 | 155 |
-| CSS2/margin-padding-clear | 455 | 683 |
+| CSS2/generated-content | 157 | 205 |
+| CSS2/linebox | 48 | 192 |
+| CSS2/lists | 149 | 155 |
+| CSS2/margin-padding-clear | 509 | 683 |
 | CSS2/media | 17 | 17 |
-| CSS2/normal-flow | 508 | 696 |
-| CSS2/positioning | 227 | 513 |
+| CSS2/normal-flow | 539 | 696 |
+| CSS2/positioning | 226 | 513 |
 | CSS2/sec5 | 22 | 23 |
-| CSS2/selectors | 90 | 467 |
+| CSS2/selectors | 92 | 467 |
 | CSS2/stacking-context | 1 | 3 |
 | CSS2/syntax | 213 | 252 |
-| CSS2/tables | 16 | 250 |
-| CSS2/text | 259 | 376 |
+| CSS2/tables | 123 | 250 |
+| CSS2/text | 271 | 376 |
 | CSS2/text/crashtests | 1 | 1 |
 | CSS2/ui | 39 | 52 |
 | CSS2/values | 11 | 25 |
@@ -415,58 +415,9 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/visuren | 16 | 26 |
 | CSS2/zindex | 4 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 3232 | 5752 |
+| all | 3657 | 5752 |
 
-Pending by stage: inline 666, tables 612, positioning 548, floats 376, generated content 263, fonts 42, ui 13.
-
-## Counters
-
-Counters, counter styles and generated content against WPT's
-css-counter-styles and css-lists tests, natively (`bun run test css`:
-CssCountersCheck; BLESS=1: counters-manifest.json and the counts below;
-SHOW=1: each case that doesn't pass):
-
-- `fixtures/counters.json` (made by `import-wpt.mjs`): every test of
-  those directories with what became of it. A reftest whose pages read
-  statically (no script, no shadow tree, horizontal ltr) is kept with its
-  reference, scripts out, linked sheets kept once; @counter-style's
-  descriptor syntax calls (`test_valid_counter_style_descriptor` and the
-  like) are read as rows.
-- `CssCountersCheck.hx`: both pages of a reftest cascaded and walked as
-  the box tree walks them (CssCounters: each element, its ::marker,
-  ::before, children, ::after), each block a line of its text, and the
-  lines required the same; the syntax rows' descriptors written as WPT
-  expects, the invalid ones rejected. A case is required unless
-  counters-manifest.json's `pending` says why.
-
-<!-- counters -->
-433 of 472 cases pass.
-
-| Pending because | Cases |
-| --- | --- |
-| values: Counter Styles 3 §7.1.2's optional extended CJK forms past 9999 (万, 億...), and values past 32 bits: counters here are 32-bit, as browsers' are | 19 |
-| counters: a reversed() start where a nested reversed list's scope takes the outer list's later items: WPT's numbers are neither Lists 3 §4.4.2's algorithm as written (followed) nor HTML's ordinal values | 8 |
-| layout: lines are layout's (inline list items and their markers, a block inside an inline, where a marker paints) | 7 |
-| box tree: ::before and ::after that are list items, with markers of their own (CSS Pseudo 4's nested pseudo-elements) | 3 |
-| layout: an rtl marker's suffix, placed by the bidi algorithm | 1 |
-| paint: the test is about the room a marker's line gives it; its reference draws the other triangle | 1 |
-
-The tests, by what became of them:
-
-| Status | Tests |
-| --- | --- |
-| read: a reftest (both pages' text) | 372 |
-| out: its script changes the page (no JavaScript here) | 60 |
-| out: the CSSOM or script (no JavaScript here) | 40 |
-| out of scope: vertical or rtl markers (a marker's place is layout's) | 18 |
-| out: crash | 17 |
-| read | 9 |
-| out of scope: shadow trees | 7 |
-| out: noref | 3 |
-| out: a mismatch reftest (text equality says nothing) | 2 |
-| out: its reference's script writes it (no JavaScript here) | 2 |
-| out: manual | 1 |
-<!-- /counters -->
+Pending by stage: inline 650, positioning 549, floats 369, generated content 243, tables 229, fonts 42, ui 13.
 
 ## Report
 

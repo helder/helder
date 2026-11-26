@@ -25,6 +25,8 @@ class Box {
 	// the formatting context it establishes for its contents, if any
 	public var context:Null<FormattingContext> = null;
 	public var image:Null<Bitmap> = null;
+	// a table box's grid as laid out (its columns, rows, collapsed borders)
+	public var table:Null<TableGrid> = null;
 	public var flags = 0;
 
 	// an inline box split around a block: no start edge here (a later part), or no end edge
@@ -32,6 +34,10 @@ class Box {
 	public static inline var NO_END = 2;
 	// a list item's marker, outside its principal box
 	public static inline var OUTSIDE = 4;
+	// a table's box or part in the collapsing border model: its borders are the table's to paint
+	public static inline var COLLAPSED = 8;
+	// a table cell with no content (empty-cells)
+	public static inline var EMPTY = 16;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
@@ -73,7 +79,8 @@ class Box {
 	function get_blockLevel():Bool
 		return switch kind {
 			case Block | BlockReplaced: true;
-			case Container: style.outer == BoxStyle.BLOCK;
+			case Container: style.outer == BoxStyle.BLOCK && style.inner != BoxStyle.TABLE_PART;
+			case TableWrapper: style.outer == BoxStyle.BLOCK;
 			case _: false;
 		}
 
