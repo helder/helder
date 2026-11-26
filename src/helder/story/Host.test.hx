@@ -71,8 +71,22 @@ function tests() {
 		equals(host.frame(2), 0);
 		equals(host.busy(), false);
 	});
+	var recorded = test("a loop recorded once a build; a story's randomness seeded: built again, the same still", () -> {
+		var s = new Story("Random/loop", _ -> View.view(<view width={10 + Math.random() * 80} height={10} background="#000000"/>), 1, null, 100, 100, 1.0);
+		var host = new Host([s], new HeadlessHost());
+		host.still(true);
+		host.show(["Random/loop"]);
+		host.frame(0);
+		var a = host.written(host.screens[0], 10);
+		// (its loop's recording built it again: built a third time, its still the same)
+		host.frame(1);
+		var b = host.written(host.screens[0], 10);
+		if (a == null || b == null) throw "not written";
+		equals({still: b.bytes.toHex() == a.bytes.toHex(), first: a.loop?.frames.length, again: b.loop}, {still: true, first: 10, again: null});
+	});
 	// (as wasm32-wasi the host's device is the browser's WebGPU or WebGL2, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
+	recorded.skip();
 	stills.skip();
 	outOfView.skip();
 	throws.skip();

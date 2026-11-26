@@ -35,6 +35,24 @@ function tests() {
 			bytes.set(4, 99);
 			equals(FrameArchive.decode(bytes), null);
 		});
+		test("a still of the same build keeps the loop an earlier one was recorded with", () -> {
+			function one(loop:Bool):FrameArchive {
+				var w = new FrameWriter(), a = new FrameArchive();
+				w.rect(0, 0, 10, 10, 0, 0xFF000000, 0, 0);
+				if (loop) {
+					w.loop(30);
+					w.rect(1, 0, 10, 10, 0, 0xFF000000, 0, 0);
+				}
+				a.add("s", "", 10, 10, w.frame());
+				return a;
+			}
+			var a = new FrameArchive();
+			a.take(one(true), "s", "k1");
+			a.take(one(false), "s", "k1");
+			var kept = a.looped("s");
+			a.take(one(false), "s", "k2");
+			equals([kept, a.looped("s")], [true, false]);
+		});
 		test("a pass's box read back as a placeholder", () -> {
 			var w = new FrameWriter(), a = new FrameArchive();
 			w.gpuTexture(cast 0, 1, 10, 20, 200, 100);
