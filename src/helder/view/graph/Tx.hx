@@ -31,7 +31,10 @@ class Tx {
 	// (Solid 2's) though nothing reads them any more; one a boundary caught
 	// holds nothing
 	final asks:Array<Node<Dynamic>> = [];
-	final awaited:Array<Node<Dynamic>> = [];
+	// (each awaited: its node and which of its asks, a later one not awaited;
+	// held once the transaction parked on it: a flush that asked and moved
+	// its reader off before it settled never held it)
+	final awaited:Array<{node:Node<Dynamic>, asked:Int, held:Bool}> = [];
 
 	function new() {}
 
@@ -73,8 +76,8 @@ class Tx {
 			if (!a.readers.contains(n)) a.readers.push(n);
 		for (n in b.asks)
 			if (!a.asks.contains(n)) a.asks.push(n);
-		for (n in b.awaited)
-			if (!a.awaited.contains(n)) a.awaited.push(n);
+		for (w in b.awaited)
+			a.awaited.push(w);
 		Scheduler.merged(a, b);
 		return a;
 	}
@@ -95,19 +98,26 @@ class Tx {
 
 	// (a render effect blocked on n, pending in it: the asks upstream of n awaited)
 	function awaits(n:Null<Node<Dynamic>>) {
-		if (n == null || awaited.contains(n)) return;
+		if (n == null) return;
 		if (asks.contains(n)) {
-			awaited.push(n);
+			if (!Lambda.exists(awaited, w -> w.node == n && w.asked == n.asked)) awaited.push({node: n, asked: n.asked, held: false});
 			return;
 		}
 		if (n.sources != null) for (s in n.sources)
 			if (s.pendingIn != null && s.pendingIn.find() == this) awaits(s);
 	}
 
+	// (parked: what it awaits now holds it)
+	function park()
+		for (w in awaited)
+			w.held = true;
+
 	// (an answer a render effect waited on still to come)
 	function waiting():Bool {
-		for (n in awaited)
-			if (!n.disposed && n.pendingIn != null && n.pendingIn.find() == this) return true;
+		for (w in awaited) {
+			var n = w.node;
+			if (w.held && !n.disposed && n.asked == w.asked && n.pendingIn != null && n.pendingIn.find() == this) return true;
+		}
 		return false;
 	}
 }

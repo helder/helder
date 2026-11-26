@@ -155,11 +155,13 @@ staged, no apply runs. A computation that reads a node another parked
 transaction holds joins it, so the two land as one; transactions over
 disjoint nodes stay independent. Once nothing it renders waits, the
 transaction commits: every staging becomes the committed value and the
-applies run in one frame, render effects first. Once a render effect
-waited on an answer in it, the transaction waits for that answer even
-if nothing reads it any more (a render effect moved off it; an answer a
-boundary caught holds nothing), as Solid 2.0.4 does
-(tests/view/graph/solid-oracle.mjs runs a case against the package).
+applies run in one frame, render effects first. Once it parked on an
+answer a render effect waited on, the transaction waits for that answer
+even if nothing reads it any more (the render effect moved off it in a
+later flush); one asked and moved off in the same flush, a later ask of
+the same computation and one a boundary caught hold nothing, as Solid
+2.0.4 does (tests/view/graph/solid-oracle.mjs runs these cases against
+the package).
 
 ### Async work
 

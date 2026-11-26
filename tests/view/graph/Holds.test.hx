@@ -385,6 +385,32 @@ function tests() {
 		@:privateAccess helder.view.graph.Scheduler.forget(null);
 	});
 
+	test("an answer asked and moved off in one flush holds nothing", () -> {
+		var log = [], asks:Array<Later<Int>> = [];
+		var s0 = signal(0);
+		var asked = memo(() -> {
+			s0();
+			var l = new Later<Int>();
+			asks.push(l);
+			(l : Dynamic);
+		});
+		var cond = memo(() -> s0() % 2 == 0 ? s0() : (asked() : Int));
+		var shown = memo(() -> {
+			var inner = memo(() -> cond() + 1);
+			inner() * 2;
+		});
+		root(_ -> renderEffect(() -> shown(), v -> log.push('$v'), e -> log.push('error $e')));
+		flush();
+		s0(1);
+		flush();
+		[for (a in asks) if (!a.cancelled) a][0].reject("e0");
+		flush();
+		s0(2);
+		flush();
+		equals(log, ["2", "error e0", "6"]);
+		@:privateAccess helder.view.graph.Scheduler.forget(null);
+	});
+
 	// born-held.test.ts (A29, creation-time form; F-2, F-7)
 	describe("A29 born held: nodes created mainline during a hold", () -> {
 		function heldSignal() {
