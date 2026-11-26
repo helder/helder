@@ -1,0 +1,13 @@
+{
+	"about": "tests/dom/parse5.mjs's generated documents where parse5 8.1.1 differs from the HTML standard (and helder.dom follows it): each with what differs and its smallest form, checked by hand against the standard's text",
+	"documents": {
+		"gen-277": "cdata: <math><mn/f><![CDATA[ (a CDATA section where the adjusted current node is not HTML, a MathML text integration point here; parse5: a bogus comment; WPT html5test-com.dat)",
+		"gen-2272": "cdata: <svg><title><![CDATA[ (SVG's title, an HTML integration point, is not an HTML element: a CDATA section; parse5: a bogus comment)",
+		"gen-2493": "table scope: <table><template><th></table>! (a template bounds the table scope: </table> in its cell is ignored and ! stays in the th; parse5 closes the cell)",
+		"gen-2562": "form in a template's table: <template><table><form> (inserted while parsing template contents, the form pointer null; parse5 keeps the old rule that ignored it; WPT template.dat)",
+		"gen-2831": "cdata: <math><mn/h><![CDATA[ (as gen-277)",
+		"gen-2966": "frameset-ok: <!><template></template><e><frameset> (the body implied after the head sets frameset-ok back to ok, so the frameset replaces it; parse5 keeps the body; WPT template.dat)",
+		"gen-4671": "cdata: <math><ms\n><![CDATA[ (as gen-277)",
+		"gen-4741": "search: <a><search ><a> (search is special: the furthest block of the adoption agency; parse5 does not list it; WPT search-element.dat)"
+	}
+}

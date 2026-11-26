@@ -331,7 +331,7 @@ function tests() {
 			Dom.serialize(doc);
 			var ms = (haxe.Timer.stamp() - t0) * 1000;
 			assert(ms < 1000, '${Math.round(ms)} ms for ${html.length} characters');
-		}, {cases: 100, seconds: 5}));
+		}, {cases: 100, seconds: 5, limit: 10, memory: 256}));
 	});
 }
 

@@ -26,7 +26,7 @@ class Cli {
 	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
 	// crashes or blows up is left in bin/fuzz/properties)
 	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
-		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx"];
+		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx", "src/helder/dom/Dom.test.hx"];
 
 	static function fuzz() {
 		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
