@@ -25,6 +25,13 @@ class Reps {
 	// (the runtime's Layout, as JsObject's field holds it)
 	public final layoutType:Ty;
 	var link:Null<FuncInfo> = null;
+	// (property sites: js.Sites' records, and object literals' shapes, each
+	// a global made by startup, run when the program starts)
+	final siteClass:ClassInfo;
+	final shapeClass:ClassInfo;
+	public final startup:FuncInfo;
+	final records:Array<{global:Int, key:String, ?keys:Array<String>}> = [];
+	final literals:Map<String, Int> = [];
 
 	public function new(p:Program, types:Types, classes:Classes) {
 		this.p = p;
@@ -33,7 +40,10 @@ class Reps {
 		arrayClass = runtimeClass("helder.typescript.js.JsArray");
 		holeClass = runtimeClass("helder.typescript.js.Hole");
 		objectBase = runtimeClass("helder.typescript.js.JsObject");
-		layoutType = objectBase.fields[objectBase.fieldIndex("layout")].ty;
+		layoutType = TRef(RObj(runtimeClass("helder.typescript.js.Layout")));
+		siteClass = runtimeClass("helder.typescript.js.Site");
+		shapeClass = runtimeClass("helder.typescript.js.Shape");
+		startup = Builder.func(p, "sites", TVoid);
 		if (classes.all.length == 0) return;
 		for (fn in p.funcs) if (fn.name == "helder_typescript_js_Seed_libTypedClass") link = fn;
 		if (link == null) throw "TSHX004: runtime helper not linked: libTypedClass";
@@ -159,14 +169,23 @@ class Reps {
 		b.runtime("libTypedClass", [cls, ENewArr(elem, Vector.fromArrayCopy([for (f in names) b.coerce(EStr(f), elem)])), get, set, alloc]);
 	}
 
-	// a new instance of a class with a layout, with its prototype (its fields
+	// a new instance of a class with a layout, with its prototype and layout (its fields
 	// not yet initialized: dynamic ones undefined, typed ones set before they are read)
 	public function allocate(b:Builder, c:ClassLayout, proto:Ex):Ex {
 		var ci = c.info;
 		// (zeroed: an extensible object without own properties; JsObject's constructor would set only its prototype)
 		var o = b.temp(ENewObj(ci));
+		var base = ECast(TRef(RObj(objectBase)), o);
 		var p = objectBase.fieldIndex("proto");
-		b.out.push(SSetField(objectBase, p, ECast(TRef(RObj(objectBase)), o), b.coerce(proto, objectBase.fields[p].ty)));
+		b.out.push(SSetField(objectBase, p, base, b.coerce(proto, objectBase.fields[p].ty)));
+		// (its shapes' root: its layout's, once the class is made)
+		var layout = b.temp(ECast(layoutType, EGlobal(c.layout, TRef(RAny))));
+		var lc = switch layoutType {
+			case TRef(RObj(l)): l;
+			case t: throw "TSHX004: not a class type: " + t;
+		};
+		when(b, EBin(RefNe, layout, ENull(layoutType)),
+			() -> b.out.push(SSetField(objectBase, objectBase.fieldIndex("shape"), base, EField(lc, lc.fieldIndex("root"), layout))));
 		for (f in c.fields()) {
 			var i = slot(c, f);
 			if (ci.fields[i].ty.match(TRef(RAny))) b.out.push(SSetField(ci, i, o, b.runtime("getUndefined", [])));
@@ -191,6 +210,94 @@ class Reps {
 		case TRef(RClos(s)): s;
 		case _: throw "TSHX004: not a function type: " + t;
 	}
+
+	// ---- property sites (js.Sites): `o.name`, `o.name = v`, `o.name(...)`
+
+	function runtimeFn(name:String):FuncInfo {
+		for (fn in p.funcs) if (fn.name == "helder_typescript_js_Seed_" + name) return fn;
+		throw "TSHX004: runtime helper not linked: " + name;
+	}
+
+	// a new site's record
+	public function site(key:String):Ex {
+		var g = p.globals.length;
+		p.globals.push({ty: TRef(RObj(siteClass)), init: null, name: "ts_site" + g});
+		records.push({global: g, key: key});
+		return EGlobal(g, TRef(RObj(siteClass)));
+	}
+
+	// an object literal's shape: its keys (distinct), in order
+	public function literalShape(keys:Array<String>):Ex {
+		var tag = keys.join("\x00");
+		if (!literals.exists(tag)) {
+			var g = p.globals.length;
+			p.globals.push({ty: TRef(RObj(shapeClass)), init: null, name: "ts_shape" + g});
+			records.push({global: g, key: null, keys: keys});
+			literals.set(tag, g);
+		}
+		return EGlobal(literals.get(tag), TRef(RObj(shapeClass)));
+	}
+
+	// (the records made, once the program is lowered)
+	public function finishSites() {
+		var b = new Builder(p, startup);
+		for (r in records) {
+			if (r.keys == null) {
+				b.out.push(SSetGlobal(r.global, b.runtime("libSiteOf", [EStr(r.key)])));
+				continue;
+			}
+			var elem = switch runtimeFn("libShape").args[0].ty {
+				case TRef(RArr(t)): t;
+				case t: throw "TSHX004: not an array type: " + t;
+			};
+			b.out.push(SSetGlobal(r.global, b.runtime("libShape", [b.temp(ENewArr(elem, Vector.fromArrayCopy([for (k in r.keys) b.coerce(EStr(k), elem)])))])));
+		}
+		b.out.push(SReturn(null));
+		b.finish();
+	}
+
+	// (o an ordinary object whose shape is the site's: then with it and the site)
+	function sameShape(b:Builder, o:Ex, site:Ex, hit:(Ex, Ex) -> Void) {
+		when(b, EInstOf(objectBase, o), () -> {
+			var obj = b.temp(ECast(TRef(RObj(objectBase)), o));
+			var s = b.temp(site);
+			when(b, EBin(RefEq, EField(objectBase, objectBase.fieldIndex("shape"), obj), EField(siteClass, siteClass.fieldIndex("shape"), s)), () -> hit(obj, s));
+		});
+	}
+
+	// `o.name`: an own data property by the site's shape, else the site's stub
+	public function siteGet(b:Builder, o:Ex, key:String):Ex {
+		var site = this.site(key);
+		var obj = b.temp(b.coerce(o, TRef(RAny)));
+		var l = b.local("property", TRef(RAny)), hit = b.local("hit", TBool);
+		b.out.push(SSet(hit, ECast(TBool, EInt(0))));
+		sameShape(b, obj, site, (jo, s) -> {
+			b.out.push(SSet(l, EArrGet(TRef(RAny), EField(objectBase, objectBase.fieldIndex("slots"), jo), EField(siteClass, siteClass.fieldIndex("slot"), s))));
+			b.out.push(SSet(hit, ECast(TBool, EInt(1))));
+		});
+		when(b, ENot(ELocal(hit)), () -> b.out.push(SSet(l, b.runtime("libGetAt", [obj, site]))));
+		return ELocal(l);
+	}
+
+	// `o.name = v`: a writable own data property by the site's shape, else the site's stub
+	public function sitePut(b:Builder, o:Ex, key:String, v:Ex) {
+		var site = this.site(key);
+		var obj = b.temp(b.coerce(o, TRef(RAny)));
+		var value = b.temp(b.coerce(v, TRef(RAny)));
+		var hit = b.local("hit", TBool);
+		b.out.push(SSet(hit, ECast(TBool, EInt(0))));
+		sameShape(b, obj, site, (jo, s) -> {
+			var values = b.local("values", objectBase.fields[objectBase.fieldIndex("slots")].ty);
+			b.out.push(SSet(values, EField(objectBase, objectBase.fieldIndex("slots"), jo)));
+			b.out.push(SArrSet(TRef(RAny), values, EField(siteClass, siteClass.fieldIndex("slot"), s), value));
+			b.out.push(SSet(hit, ECast(TBool, EInt(1))));
+		});
+		when(b, ENot(ELocal(hit)), () -> b.runtime("libPutAt", [obj, site, value]));
+	}
+
+	// `o.name(...)`: the site's stub, then the call
+	public function siteCall(b:Builder, o:Ex, key:String, args:Ex):Ex
+		return b.runtime("libCallAt", [b.coerce(o, TRef(RAny)), site(key), args]);
 
 	// ---- arrays: length, and elements by number
 

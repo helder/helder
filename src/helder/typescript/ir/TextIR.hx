@@ -49,7 +49,25 @@ class TextIR {
 	public static function dump(p:Program):String {
 		var fs = [];
 		for (f in p.funcs) if (f.module == "helder.typescript.program") fs.push({name: f.name, ret: encode(f.ret), args: [for (a in f.args) {id: a.id, name: a.name, ty: encode(a.ty)}], locals: [for (a in f.locals) {id: a.id, name: a.name, ty: encode(a.ty)}], body: encode(f.body)});
-		return haxe.Json.stringify({format: "helder-typescript-ir-1", functions: fs}, null, "  ") + "\n";
+		return controls(haxe.Json.stringify({format: "helder-typescript-ir-1", functions: fs}, null, "  ")) + "\n";
+	}
+
+	// (hxmc's JSON printer writes a string's control characters other than
+	// \n, \r, \t, \b and \f as they are, a private name's \x00 among them;
+	// the indentation has none of them)
+	static function controls(text:String):String {
+		var out:Null<StringBuf> = null, from = 0;
+		for (i in 0...text.length) {
+			var c = StringTools.fastCodeAt(text, i);
+			if (c >= 0x20 || c == 10) continue;
+			if (out == null) out = new StringBuf();
+			out.addSub(text, from, i - from);
+			out.add("\\u" + StringTools.hex(c, 4));
+			from = i + 1;
+		}
+		if (out == null) return text;
+		out.addSub(text, from);
+		return out.toString();
 	}
 
 	static function decode(x:Dynamic, p:Program, locals:Map<Int, Local>):Dynamic {

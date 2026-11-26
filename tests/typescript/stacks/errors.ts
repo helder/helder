@@ -1,7 +1,7 @@
 // errors the runtime throws: a property read of null, an element of
 // undefined. (A direct function small enough to be inlined into its caller
-// has no frame of its own: hxmc names the copy's code by the call's place.
-// inlined: last)
+// has no frame of its own: hxmc names the copy's code by the call's place;
+// `last`, its property read a site's check and the site's stub, is not.)
 function show(f: () => unknown) {
 	try {
 		f();

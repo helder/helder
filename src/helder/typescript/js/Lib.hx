@@ -1,6 +1,7 @@
 package helder.typescript.js;
 
 import helder.typescript.js.Values;
+import helder.typescript.js.Shapes;
 import helder.typescript.js.Symbols.JsSymbol;
 
 // The JavaScript object model: property access through prototype chains,
@@ -142,6 +143,18 @@ class Lib {
 	}
 
 	static function ownGet(obj:JsObject, name:String, receiver:Dynamic):Dynamic {
+		// (a property of its shape: never an element, an array's length, a function's own until written)
+		var s = obj.shape.slotOf(name);
+		if (s >= 0) {
+			var v = obj.slots[s];
+			if (obj.shape.attrs[s] & Attr.ACCESSOR == 0) return v;
+			var acc:Accessor = v;
+			return acc.getter == null ? undef() : call(acc.getter, receiver, []);
+		}
+		if (obj.layout != null) {
+			var i = obj.layout.index.get(name);
+			if (i != null) return obj.layout.get(obj, i);
+		}
 		switch (obj.form) {
 			case Form.ARRAY:
 				var a:JsArray = cast obj;
@@ -160,15 +173,11 @@ class Lib {
 					var t:TypedArrays.JsTypedArray = cast obj;
 					return TypedArrays.elementGet(t, i);
 				}
+			case Form.FUNCTION:
+				return functionOwn(cast obj, name);
 			case _:
 		}
-		var v = obj.lookup(name, absent);
-		if (same(v, absent)) return obj.form == Form.FUNCTION ? functionOwn(cast obj, name) : absent;
-		if (Std.isOfType(v, Accessor)) {
-			var acc:Accessor = v;
-			return acc.getter == null ? undef() : call(acc.getter, receiver, []);
-		}
-		return v;
+		return absent;
 	}
 
 	// (a function's name, length and lazily created prototype)
@@ -247,7 +256,7 @@ class Lib {
 				return v;
 			}
 		}
-		setKey(o, key(k), v, o);
+		setKey(o, key(k), v, o, true);
 		return v;
 	}
 
@@ -258,7 +267,8 @@ class Lib {
 		return v;
 	}
 
-	static function setKey(o:Dynamic, name:String, v:Dynamic, receiver:Dynamic):Void {
+	// (keyed: by a computed name, Shapes.KEYED)
+	static function setKey(o:Dynamic, name:String, v:Dynamic, receiver:Dynamic, keyed = false):Void {
 		if (!isObject(o)) {
 			// (a primitive: only an inherited setter can accept the write)
 			var acc = findAccessor(protoOf(o), name);
@@ -330,13 +340,14 @@ class Lib {
 			error("TypeError", "Cannot add property " + name + ", object is not extensible");
 			return;
 		}
-		obj.setOwn(name, v);
+		if (keyed && !obj.locked && !Std.isOfType(obj, JsArray)) obj.add(name, v, Std.isOfType(v, Accessor) ? Attr.ACCESSOR : 0, Shapes.KEYED, true);
+		else obj.setOwn(name, v);
 	}
 
 	static function readOnly(name:String, obj:JsObject):Void error("TypeError", "Cannot assign to read only property '" + name + "' of " + (obj.form == Form.FUNCTION ? "function" : "object") + " '" + describe(obj) + "'");
 
 	// (an inherited accessor or read-only data property that governs a write; null when a plain write may proceed)
-	static function inherited(obj:JsObject, name:String):Dynamic {
+	public static function inherited(obj:JsObject, name:String):Dynamic {
 		while (obj != null) {
 			if (obj.hasOwn(name)) {
 				var v = obj.getOwn(name);
@@ -374,7 +385,7 @@ class Lib {
 		}
 		else if (i < n * 2 + 64 && i < 16777216) {
 			// (an element kept as a property before: only with properties beyond the elements)
-			if (a.props != null) {
+			if (a.shape.size() > 0) {
 				var name = Seed.numberText(i);
 				if (a.hasOwn(name)) a.removeOwn(name);
 			}
@@ -539,7 +550,7 @@ class Lib {
 			var fn:JsFunction = f;
 			if (fn.alloc != null) {
 				var obj = fn.alloc(proto);
-				obj.layout = fn.instanceLayout;
+				obj.setLayout(fn.instanceLayout);
 				return obj;
 			}
 			f = fn.parent;
@@ -620,59 +631,66 @@ class Lib {
 	}
 
 	public static function setPrototype(o:Dynamic, proto:Dynamic):Void {
-		if (isObject(o) && (proto == null || isObject(proto))) (o : JsObject).proto = proto;
+		if (isObject(o) && (proto == null || isObject(proto))) (o : JsObject).reproto(proto);
 	}
 
-	// Private class elements, keyed by brand.
+	// Private class elements: own properties of their brand's key
+	// ("\x00#name@class"), never listed (Attr.PRIVATE).
+	static function privateName(brand:String):String return brand.substr(1).split("@")[0];
+
+	static function privateSlot(o:Dynamic, brand:String):Int {
+		if (!isObject(o)) return -1;
+		var s = (o : JsObject).shape, i = s.slotOf(brand);
+		return i >= 0 && s.attrs[i] & Attr.PRIVATE != 0 ? i : -1;
+	}
+
 	public static function privateGet(o:Dynamic, brand:String):Dynamic {
-		var obj:JsObject = isObject(o) ? o : null;
-		if (obj == null || obj.privates == null || !obj.privates.exists(brand)) return error("TypeError", "Cannot read private member " + brand.split("@")[0] + " from an object whose class did not declare it");
-		var v = obj.privates.get(brand);
-		if (Std.isOfType(v, Accessor)) {
+		var i = privateSlot(o, brand);
+		if (i < 0) return error("TypeError", "Cannot read private member " + privateName(brand) + " from an object whose class did not declare it");
+		var obj:JsObject = o;
+		var v = obj.slots[i];
+		if (obj.shape.attrs[i] & Attr.ACCESSOR != 0) {
 			var acc:Accessor = v;
-			return acc.getter == null ? error("TypeError", "'" + brand.split("@")[0] + "' was defined without a getter") : call(acc.getter, o, []);
+			return acc.getter == null ? error("TypeError", "'" + privateName(brand) + "' was defined without a getter") : call(acc.getter, o, []);
 		}
 		return v;
 	}
 
 	public static function privateSet(o:Dynamic, brand:String, v:Dynamic):Dynamic {
-		var obj:JsObject = isObject(o) ? o : null;
-		if (obj == null || obj.privates == null || !obj.privates.exists(brand)) return error("TypeError", "Cannot write private member " + brand.split("@")[0] + " to an object whose class did not declare it");
-		var current = obj.privates.get(brand);
-		if (Std.isOfType(current, Accessor)) {
-			var acc:Accessor = current;
-			if (acc.setter == null) return error("TypeError", "'" + brand.split("@")[0] + "' was defined without a setter");
+		var i = privateSlot(o, brand);
+		if (i < 0) return error("TypeError", "Cannot write private member " + privateName(brand) + " to an object whose class did not declare it");
+		var obj:JsObject = o;
+		var a = obj.shape.attrs[i];
+		if (a & Attr.ACCESSOR != 0) {
+			var acc:Accessor = obj.slots[i];
+			if (acc.setter == null) return error("TypeError", "'" + privateName(brand) + "' was defined without a setter");
 			call(acc.setter, o, [v]);
 			return v;
 		}
-		if (Std.isOfType(current, JsFunction) && obj.privates.exists(brand + "@method")) return error("TypeError", "Private method is not writable");
-		obj.privates.set(brand, v);
+		if (a & Attr.READONLY != 0) return error("TypeError", "Private method is not writable");
+		obj.slots[i] = v;
 		return v;
 	}
 
 	public static function privateDefine(o:Dynamic, brand:String, v:Dynamic, kind:Int):Void {
 		var obj:JsObject = o;
-		if (obj.privates == null) obj.privates = [];
-		if (kind == 0) {
-			if (obj.privates.exists(brand)) error("TypeError", "Cannot initialize " + brand.split("@")[0] + " twice on the same object");
-			obj.privates.set(brand, v);
+		var i = privateSlot(o, brand);
+		if (kind == 0 || kind == 3) {
+			if (i >= 0 && kind == 0) error("TypeError", "Cannot initialize " + privateName(brand) + " twice on the same object");
+			if (i >= 0) obj.slots[i] = v;
+			else obj.add(brand, v, kind == 3 ? Attr.PRIVATE | Attr.READONLY : Attr.PRIVATE, Shapes.KEYS, false);
 			return;
 		}
-		if (kind == 3) {
-			obj.privates.set(brand, v);
-			obj.privates.set(brand + "@method", true);
-			return;
-		}
-		var current = obj.privates.get(brand);
+		var current = i >= 0 ? obj.slots[i] : null;
 		var acc = Std.isOfType(current, Accessor) ? (current : Accessor) : new Accessor(null, null);
 		if (kind == 1) acc.getter = v; else acc.setter = v;
-		obj.privates.set(brand, acc);
+		if (i < 0) obj.add(brand, acc, Attr.PRIVATE | Attr.ACCESSOR, Shapes.KEYS, false);
+		else obj.slots[i] = acc;
 	}
 
 	public static function privateHas(o:Dynamic, brand:String):Bool {
-		if (!isObject(o)) return error("TypeError", "Cannot use 'in' operator to search for '" + brand.split("@")[0] + "' in " + Seed.text(o));
-		var obj:JsObject = o;
-		return obj.privates != null && obj.privates.exists(brand);
+		if (!isObject(o)) return error("TypeError", "Cannot use 'in' operator to search for '" + privateName(brand) + "' in " + Seed.text(o));
+		return privateSlot(o, brand) >= 0;
 	}
 
 	// super.x and super.m(...): lookups start above the method's home object.
@@ -860,6 +878,15 @@ class Lib {
 	// (object spread: own enumerable properties; null and undefined add nothing)
 	public static function assignSpread(target:Dynamic, source:Dynamic):Void {
 		if (source == null || same(source, undef())) return;
+		// (an empty object given an ordinary one's plain properties: its shape and their values)
+		if (Std.isOfType(target, JsObject) && Std.isOfType(source, JsObject)) {
+			var t:JsObject = target, s:JsObject = source;
+			if (t.shape == Shapes.object && t.extensible && s.layout == null && s.shape.root == Shapes.object && s.shape.plain && s.slots != null) {
+				t.shape = s.shape;
+				t.slots = s.slots.copy();
+				return;
+			}
+		}
 		for (k in keys(source)) defineOwn(target, k, get(source, k));
 	}
 

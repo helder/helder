@@ -214,7 +214,7 @@ abstract class Expressions extends Statements {
 				var name = n.name().text;
 				chainCheck(n, a);
 				dynamicOperations++;
-				b.runtime("libGetNamed", [any(a), EStr(name)]);
+				reps.siteGet(b, a, name);
 			case KindDeleteExpression:
 				var target = n.expression();
 				if (target.kind == KindPropertyAccessExpression) b.runtime("libDelete", [any(expr(target.expression())), EStr(target.name().text)]);
@@ -289,17 +289,16 @@ abstract class Expressions extends Statements {
 				write: (e) -> reps.fieldSet(b, field, obj, name, e, where())
 			};
 		}
-		if (n.kind == KindPropertyAccessExpression || n.kind == KindElementAccessExpression) {
+		if (n.kind == KindPropertyAccessExpression) {
+			var obj = b.temp(any(expr(n.expression())));
+			var name = n.name().text;
+			return {
+				read: () -> reps.siteGet(b, obj, name),
+				write: (e) -> reps.sitePut(b, obj, name, e)
+			};
+		}
+		if (n.kind == KindElementAccessExpression) {
 			var obj = expr(n.expression());
-			if (n.kind == KindPropertyAccessExpression) {
-				var name = EStr(n.name().text);
-				return {
-					read: () -> b.runtime("libGetNamed", [any(obj), name]),
-					write: (e) -> {
-						b.runtime("libPutNamed", [any(obj), name, any(e)]);
-					}
-				};
-			}
 			var key = expr(n.argumentExpression());
 			return {
 				read: () -> b.runtime("libGet", [any(obj), any(key)]),
@@ -608,12 +607,16 @@ abstract class Expressions extends Statements {
 		var plain = true;
 		for (prop in props) if (!(prop.kind == KindPropertyAssignment && prop.name().kind != KindComputedPropertyName && prop.name().text != "__proto__" || prop.kind == KindShorthandPropertyAssignment)) plain = false;
 		if (plain) {
-			var ks:Array<Ex> = [], vs:Array<Ex> = [];
+			var ks:Array<String> = [], vs:Array<Ex> = [];
 			for (prop in props) {
-				ks.push(EStr(prop.kind == KindPropertyAssignment ? staticName(prop.name()) : prop.name().text));
+				ks.push(prop.kind == KindPropertyAssignment ? staticName(prop.name()) : prop.name().text);
 				vs.push(prop.kind == KindPropertyAssignment ? named(prop.initializer(), staticName(prop.name())) : expr(prop.name()));
 			}
-			return b.runtime("libObject", [pack(ks), pack(vs)]);
+			// (distinct keys: the literal's shape, made once)
+			var distinct = [for (k in ks) k => true];
+			if (Lambda.count(distinct) == ks.length && ks.length <= 64)
+				return b.runtime("libLiteral", [reps.literalShape(ks), pack(vs)]);
+			return b.runtime("libObject", [pack([for (k in ks) EStr(k)]), pack(vs)]);
 		}
 		var o = b.temp(b.runtime("libObject", [pack([]), pack([])]));
 		var outer = env;
@@ -850,6 +853,7 @@ abstract class Expressions extends Statements {
 		var start = b.block(() -> {
 			b.runtime("libInit", []);
 			for (feature in Features.of(src)) b.runtime("libInstall" + feature, []);
+			b.out.push(SExpr(ECall(reps.startup, new Vector(0))));
 		});
 		b.out.push(SIf(ready, Vector.fromArrayCopy([]), start));
 		if (definitions.define("hxmc.target") == "wasm32-wasi")
@@ -997,12 +1001,14 @@ abstract class Expressions extends Statements {
 			var obj = b.temp(any(expr(inner.expression())));
 			chainCheck(inner, obj);
 			var key:Ex = inner.kind == KindElementAccessExpression ? b.temp(any(expr(inner.argumentExpression()))) : inner.name().kind == KindPrivateIdentifier ? null : EStr(inner.name().text);
+			var named = inner.kind == KindPropertyAccessExpression && key != null;
 			if (key == null || n.questionDotToken() != null) {
-				var fn = key == null ? b.runtime("libPrivateGet", [obj, EStr(brand(inner.name()))]) : b.runtime("libGet", [obj, key]);
+				var fn = key == null ? b.runtime("libPrivateGet", [obj, EStr(brand(inner.name()))]) : named ? reps.siteGet(b, obj, inner.name().text) : b.runtime("libGet", [obj, key]);
 				chainCheck(n, fn);
 				return b.runtime("libCall", [fn, obj, argumentList(actual)]);
 			}
-			return b.runtime(inner.kind == KindPropertyAccessExpression ? "libCallNamed" : "libCallMethod", [obj, key, argumentList(actual)]);
+			if (named) return reps.siteCall(b, obj, inner.name().text, argumentList(actual));
+			return b.runtime("libCallMethod", [obj, key, argumentList(actual)]);
 		}
 		var fn = expr(callee);
 		chainCheck(n, fn);

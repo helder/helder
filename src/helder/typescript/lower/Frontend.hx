@@ -105,6 +105,7 @@ class Frontend extends ApiCalls {
 		types = src.types;
 		classes = new Classes(src);
 		reps = new Reps(p, types, classes);
+		b.out.push(SExpr(ECall(reps.startup, new Vector(0))));
 		captures = new Captures(src);
 		if (api != null && api.manifest != null) {
 			bridge = new Haxe(this, p, api.manifest);
@@ -175,6 +176,8 @@ class Frontend extends ApiCalls {
 			compileFunction(c.n, c.f);
 			types.numberParams = saved;
 		}
+		// (every site made: their records' startup)
+		reps.finishSites();
 		var caught = b.local("uncaught", TRef(RAny));
 		b.f.hasTry = true;
 		b.out.push(STry(body, Vector.fromArrayCopy([{test: null, l: caught, body: b.block(() -> b.runtime("uncaught", [ELocal(caught)]))}])));
