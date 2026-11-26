@@ -143,6 +143,68 @@ values' layer.
   fixtures) parse within a time and memory limit (soaked by the `fuzz`
   lane).
 
+## Selectors
+
+`CssSelector.list(prelude, ?namespaces)` reads a rule's prelude as a
+selector list (Selectors 4's grammar: Level 3's, and `:is()`,
+`:where()`, `:not()` of a list, `:has()`, `:nth-child(An+B of S)`); null
+when any of it is invalid, as a rule with an invalid selector is
+dropped. `CssSelector.parse(text)` on text, `relativeList` for relative
+selectors (`> a, + b`).
+
+```haxe
+var list = CssSelector.parse("article > p:not(.note)::first-line");
+list[0].compounds;     // [[Type("article", AnyNamespace)], [Type("p", AnyNamespace), Pseudo(Not([...]))]]
+list[0].combinators;   // [Child]
+list[0].pseudo;        // FirstLine
+list[0].specificity;   // (0, 1, 3): a, b, c; compare() orders two
+```
+
+- A complex selector is its compounds left to right with a combinator
+  between each two (`Descendant`, `Child`, `NextSibling`,
+  `SubsequentSibling`), and the pseudo-element its subject is, apart
+  (`Before`, `After`, `Marker`, `FirstLine`, `FirstLetter`,
+  `Placeholder`, `Selection`, `Backdrop`, `FileSelectorButton`, GCPM's
+  `FootnoteCall` and `FootnoteMarker`; `Slotted` and `Part` never
+  match); `:before`, `:after`, `:first-line` and `:first-letter` with
+  one colon too. After a pseudo-element only the user-action
+  pseudo-classes may follow.
+- Simple selectors: `Type` (as written), `Universal`, `Id`, `Class`,
+  `Attribute(name, ns, op, value, sensitivity)` (`=`, `~=`, `|=`, `^=`,
+  `$=`, `*=`, and the `i` and `s` flags), `Pseudo`.
+- Namespaces: a prefix must be declared (`namespaces.prefixes`, as
+  @namespace does), else the selector is invalid; a type selector
+  without one is in the default namespace if declared, else any; an
+  attribute without one in none.
+- Pseudo-classes: the tree's (`:root`, `:empty`, `:first-child`...,
+  `:nth-*()`, `:scope`), `:link` and `:any-link`, `:lang()`, `:dir()`,
+  the input states (`:enabled`, `:disabled`, `:checked`,
+  `:indeterminate`, `:default`, `:required`, `:optional`, `:read-only`,
+  `:read-write`, `:placeholder-shown`), `:defined`. Those of interaction
+  or time a page has not (`:hover`, `:focus`, `:active`, `:visited`,
+  `:target`...) and validity's (`:valid`, `:invalid`...) parse as
+  `Never(name)`: they never match. Any other name is invalid.
+- `:is()` and `:where()` take forgiving lists (an invalid argument
+  dropped); `:not()`, `:has()` and `of S` do not. Pseudo-elements are
+  invalid inside them, and `:has()` inside `:has()`.
+- Specificity (§17): IDs; classes, attributes and pseudo-classes; types
+  and pseudo-elements. `:is()`, `:not()` and `:has()` count their most
+  specific argument, `:where()` nothing, `:nth-child(An+B of S)` a
+  pseudo-class and S's most specific. One Int, 10 bits a part.
+- `toString()` prints a selector so it parses back to the same (a
+  namespace's URI as `{uri}|`, which does not).
+
+Matching on helder.dom's elements comes with helder.dom.
+
+### Tests
+
+- `CssSelector.test.hx`: the specificity examples of Selectors 4,
+  parses valid and invalid, and properties: a selector printed parses to
+  the same print, any text parses or is null.
+- `tests/css/CssSelectorsCheck.hx` (the css lane): WPT's
+  dom/nodes/selectors.js selectors, its 34 invalid ones not parsed, its
+  279 valid and scoped ones parsed.
+
 ## Properties
 
 `CssData` (generated: `node src/helder/css/generate.mjs`) is

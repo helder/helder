@@ -215,6 +215,14 @@ the text, as Syntax 3 §3.3 filters it: @csstools reads a NUL in an
 unquoted url as non-printable (a bad url), which css-parsing-tests'
 component_value_list #26 says it is not.
 
+## Selectors
+
+`CssSelectorsCheck.hx` reads `fixtures/selectors.json` (WPT's
+dom/nodes/selectors.js, BSD-3-Clause: `WPT-LICENSE.md`; extracted by
+`import-wpt.mjs`): its invalid selectors must not parse, its valid and
+scoped ones must (querySelector's: no @namespace declared). Matching them
+on `selectors.html` comes with helder.dom.
+
 ## Report
 
 <!-- report -->
