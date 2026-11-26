@@ -86,6 +86,22 @@ export const offline = scenario({ name: "Weather/Offline", http: { "api.open-met
 export const ghent = scenario({ name: "Weather/Ghent", http: { "api.open-meteo.com/v1/forecast*": "fixtures/forecast.json" } });
 ```
 
+A moment boot can't write (a field focused, a list scrolled, a
+component's own state) is reached by `steps`, after boot, as a user
+would: `tap`, `type`, `press`, `scroll`, `drag`, `waitFor`, from
+`helder/scenario`. A step finds what the user sees: a role and its name
+(a button "Add"), else a label, a text, an id; or `{role, name, label,
+text, id}`. Each step waits until nothing is pending. Prefer boot where
+it can write the moment; steps for the rest.
+
+```tsx
+export const typed = scenario({ name: "Habits/Typed", steps: [type("New habit", "Read"), tap("Add")] });
+```
+
+A step that finds nothing, or more than one, fails its screen:
+`step 2: no "Ad" (near: button "Add")` and what is shown. Fix the query
+from its near misses, or tell two apart by a role, a label or an id.
+
 The canvas is a storyboard of stills: a scenario shows its moment, it does
 not run. Write one for each key moment, named for it ("Pong/Serve",
 "Pong/Game over"), so the frame is exact and repeatable. `loop: 2` records

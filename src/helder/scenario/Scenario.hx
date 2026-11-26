@@ -22,7 +22,9 @@ import haxe.PosInfos;
 // system's settings it sees (textScale, reducedMotion,
 // reducedTransparency, contrast, orientation); seed: Math.random's, its
 // own; http: its requests' answers, strict (helder.async.http.Fixtures: a
-// request none matches fails its screen, none goes out); size: [width,
+// request none matches fails its screen, none goes out); steps: what a user
+// does after boot, before the still (tap, type, press, scroll, drag,
+// waitFor: helder.scenario.Steps); size: [width,
 // height] in points (else its <Surface>'s); dark.
 // Nothing of the machine it runs on: zone UTC, locale en-US and settings
 // at rest unless given, TypeScript's timers on its clock.
@@ -41,6 +43,8 @@ class Scenario {
 	public final settings:helder.os.Settings.SettingsOverride;
 	// its requests' answers by url pattern (helder.async.http.Fixtures)
 	public final http:Null<haxe.DynamicAccess<Dynamic>>;
+	// what a user does after boot, before the still (helder.scenario.Steps)
+	public final steps:Array<Steps.Step>;
 	public final width:Null<Int>;
 	public final height:Null<Int>;
 	public final dark:Null<Bool>;
@@ -66,6 +70,7 @@ class Scenario {
 		};
 		seed = def.seed ?? 1;
 		http = def.http;
+		steps = def.steps ?? [];
 		var size:Null<Array<Int>> = def.size;
 		width = size == null ? null : size[0];
 		height = size == null ? null : size[1];
@@ -101,9 +106,9 @@ class Scenario {
 		return era * 146097.0 + doe - 719468;
 	}
 
-	// (TypeScript's scenario({...}): helder/scenario)
+	// (TypeScript's scenario({...}): helder/scenario; its position this file's, none)
 	public static function define(def:ScenarioDef):Scenario
-		return new Scenario(def);
+		return new Scenario(def, null);
 
 
 	// a file name of its name (Pong/You win: Pong-You-win)
@@ -127,6 +132,8 @@ typedef ScenarioDef = {
 	// url pattern ("api.example.com/v1/*", "POST host/path") to a status, a
 	// JSON value or a file's path ("fixtures/forecast.json")
 	@:optional @:typescript.type("Record<string, number | string | object>") var http:haxe.DynamicAccess<Dynamic>;
+	// what a user does after boot, before the still: tap, type, press, scroll, drag, waitFor (helder.scenario.Steps)
+	@:optional var steps:Array<Steps.Step>;
 	@:optional var size:Array<Int>;
 	@:optional var dark:Bool;
 	@:optional var loop:Float;

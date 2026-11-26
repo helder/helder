@@ -2,6 +2,8 @@ package helder.scenario;
 
 import helder.scenario.Scenario;
 import helder.story.Host;
+import helder.story.Host.HostScreen;
+import helder.view.Flow.*;
 import helder.story.Story;
 import helder.test.Test;
 import helder.ui.*;
@@ -15,6 +17,11 @@ final over = Graph.signal(false);
 final total = Graph.memo(() -> score()[0] + score()[1]);
 // (what each screen's render read, by its screen)
 final seen = new Map<String, Array<Int>>();
+// (what steps do: taps of Add, the field's draft, the items added, the row picked)
+final taps = Graph.signal(0);
+final draft = Graph.signal("");
+final items = Graph.signal(([] : Array<String>));
+final picked = Graph.signal(-1);
 
 // (the loop turned for that long, outside every screen)
 function turn(seconds:Float) {
@@ -186,6 +193,36 @@ function tests() {
 		for (s in h.screens)
 			s.reset();
 	});
+	// (one scenario of steps built and shown: its screen, after them)
+	function stepped(steps:Array<Steps.Step>):HostScreen {
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Steps", size: [300, 400], steps: steps})]);
+		h.still(true);
+		h.show(["Steps"]);
+		h.frame(0);
+		return h.screens[0];
+	}
+	var steps = test("steps: tap, type, press, as a user would, after boot and before the still", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.type("Item", "Stretch"), Steps.press("Enter")]);
+		equals(s.failure?.message, null);
+		equals(s.run(() -> [Std.string(taps.peek()), items.peek().join(","), draft.peek()]), ["1", "Stretch", ""]);
+		s.reset();
+	});
+	var scrolled = test("steps: a scroll until a row is shown, then a tap on it", () -> {
+		var s = stepped([Steps.scroll("Rows", {text: "Row 30"}), Steps.tap({text: "Row 30"})]);
+		equals(s.failure?.message, null);
+		equals(s.run(() -> picked.peek()), 30);
+		s.reset();
+	});
+	var missing = test("a step that finds nothing fails its screen: its number, the near miss, what is shown", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.tap("Ad")]);
+		var m = s.failure?.message ?? "";
+		equals(m.split("\n")[0], 'step 2: no "Ad" (near: button "Add")');
+		assert(m.indexOf('textbox "Item"') > 0, 'the tree in it: $m');
+		s.reset();
+		var t = stepped([Steps.tap("Twin")]);
+		equals((t.failure?.message ?? "").split("\n")[0], 'step 1: "Twin" is 2 nodes: button "Twin", button "Twin" (a role, a label or an id tells them apart)');
+		t.reset();
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -193,7 +230,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http])
+	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http, steps, scrolled, missing])
 		t.skip();
 	#end
 }
@@ -204,6 +241,19 @@ class Game implements helder.view.Markup {
 
 	static function Court(_:{}):View {
 		Graph.renderEffect(() -> score(), v -> seen.set(ScreenContext.current.name, v));
-		return <view/>;
+		function add() {
+			if (draft() == "") return;
+			items(l -> l.concat([draft()]));
+			draft("");
+		}
+		return <view flexGrow={1} rowGap={4}>
+			<button onPress={() -> taps(t -> t + 1)}>Add</button>
+			<field value={draft} aria-label="Item" onInput={e -> draft(e.text)} onKeyDown={e -> if (e.key == helder.ui.Key.ENTER) add()}/>
+			<button>Twin</button>
+			<button>Twin</button>
+			<scroll role="list" aria-label="Rows" height={120} flexShrink={0}>
+				<For each={[for (i in 0...40) i]}>{i -> <button height={20} flexShrink={0} onPress={() -> picked(i())}>{'Row ${i()}'}</button>}</For>
+			</scroll>
+		</view>;
 	}
 }

@@ -80,10 +80,13 @@ class UiInspector implements Inspector {
 			hover: n.hovered,
 			press: n.pressed,
 			focus: n.focused,
-			transitioning: themed != null && themed.moving != null || pr != null && pr.active,
-			source: n.source,
-			component: n.sourceComponent
+			transitioning: themed != null && themed.moving != null || pr != null && pr.active
 		};
+		// (where markup wrote it: dev and headless builds only, which keep it; a scenario's steps read the rest anywhere)
+		#if ((hxmc.dev || helder.headless) && !macro)
+		node.source = n.source;
+		node.component = n.sourceComponent;
+		#end
 		out.push(node);
 		for (c in n.children)
 			visit(c, node.id, depth + 1, path, op, access, out);

@@ -37,7 +37,15 @@ class Act {
 			// (what it wrote committed: the root reads it as it renders)
 			Graph.flush();
 		}
-		return opened(root, props -> Render.insert(props.children, ui.root, null));
+		var d = opened(root, props -> Render.insert(props.children, ui.root, null));
+		if (sc.steps.length == 0) return d;
+		// (its steps after boot, before the still; one going wrong lets the root go and fails the screen)
+		var p = sc.pos, at = p == null ? null : new helder.view.Source(p.fileName, 0, 0, p.lineNumber, 1, p.lineNumber, 1);
+		try Steps.run(sc.steps, ui, context, at) catch (e:haxe.Exception) {
+			d();
+			throw Errors.kept(e);
+		}
+		return d;
 	}
 
 	// the size and title the root's <Surface> gives (its window's), rendered once with nothing in it
