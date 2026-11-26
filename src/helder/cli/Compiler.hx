@@ -4,6 +4,7 @@ import helder.cli.Style.Tone;
 import haxe.io.Bytes;
 import haxe.io.Path;
 import helder.async.*;
+import helder.cli.Slots;
 import sys.FileSystem;
 
 using StringTools;
@@ -29,6 +30,29 @@ class Compiler {
 	public static function tool():String {
 		if (found == null) found = find();
 		return found;
+	}
+
+	// a slot of the machine's job limit (Slots), waited for, told once; null:
+	// no limit. Taken after tool(): building helder's compiler takes its own
+	@:coroutine public static function slot():Null<Slot> {
+		var s = Slots.shared();
+		if (s.off()) return null;
+		var delay = 0.05, said = false;
+		while (true) {
+			var t = s.tryTake();
+			if (t != null) return t;
+			if (!said) Term.err(Style.status("waiting", Info, 'for a build slot (${s.busy()} busy)'));
+			said = true;
+			Async.delay(delay);
+			delay = Math.min(delay * 2, 1);
+		}
+	}
+
+	// (a slot holder's child's environment: under its slot, not waiting for another)
+	public static function held():Map<String, String> {
+		var env = Process.environment();
+		env.set(Slots.HELD, "1");
+		return env;
 	}
 
 	// (the compiler another process chose: helder build's server, BuildServer)

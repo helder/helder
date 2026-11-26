@@ -4,18 +4,21 @@ import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import { takeShard } from '../shard.mjs';
+import { take, jobs as slots, HELD } from '../../src/helder/cli/slots.mjs';
 // The TypeScript frontend's checks (bun run test typescript): every program
 // of cases/ and modules/ compiled by tsc and run on node, then compiled by
 // helder's compiler natively and as wasm32-wasi, their outputs compared; standards/
 // throw on a mismatch themselves; reject/ must fail with a diagnostic.
-// --shard i/n selects this machine's work. --jobs sets its local worker count.
+// --shard i/n selects this machine's work. --jobs sets its local worker count
+// (by default the machine's job slots', at most 4: src/helder/cli/slots.mjs);
+// each build and run takes a slot.
 // (UTC, as CI's machines: node, the oracle, writes local times in the
 // machine's zone, a WASI program in UTC)
 process.env.TZ='UTC';
 const T='tests/typescript';
 const args=process.argv.slice(2);
 const [partI,partN]=takeShard(args);
-const jobs=args[0]==='--jobs' ? Number(args[1]) : Math.max(1,Math.min(4,os.availableParallelism()));
+const jobs=args[0]==='--jobs' ? Number(args[1]) : Math.max(1,Math.min(4,slots()||os.availableParallelism()));
 if((args.length && (args[0]!=='--jobs' || args.length!==2)) || !Number.isSafeInteger(jobs) || jobs<1) {
     throw new Error('usage: run.mjs [--shard i/n] [--jobs n]');
 }
@@ -49,7 +52,8 @@ const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'I
 }
 const tsc=['node_modules/typescript/bin/tsc','--target','esnext','--strict','--skipLibCheck'];
 // (maxBuffer: definitions/pbr.ts prints every variant's shader text in four languages, past spawnSync's 1 MB)
-function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024});if(r.error)throw r.error;return r;}
+// (under a slot, its children under it too)
+function run(cmd,args,env) {const release=take();try {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024,env:{...process.env,...env,[HELD]:'1'}});if(r.error)throw r.error;return r;} finally {release?.();}}
 // (util.inspect's symbol keys: Node 24 writes Symbol(k): v, earlier ones
 // [Symbol(k)]: v; helder's one way: both outputs written one way, so the
 // oracle's version does not matter)
@@ -210,7 +214,7 @@ const r=run(process.execPath,[`${T}/stamp.mjs`]);ok(r,'the declarations\' stamp 
 // (helder.asset.Models), so helder/scene's declaration class is not typed
 if(mine()) {
 fs.writeFileSync(`${dir}/asset-only.ts`,'import {image} from "helder/asset";\nconsole.log("ok");\n');
-const r=spawnSync(compiler,[`${dir}/asset-only.ts`,'-o',`${dir}/asset-only`],{encoding:'utf8',env:{...process.env,HELDER_TS_TIMES:'1'}});ok(r,'asset-only.ts compile');
+const r=run(compiler,[`${dir}/asset-only.ts`,'-o',`${dir}/asset-only`],{HELDER_TS_TIMES:'1'});ok(r,'asset-only.ts compile');
 assert.match(r.stderr,/manifest helder\/asset:/,'helder/asset typed');
 assert.doesNotMatch(r.stderr,/manifest helder\/scene:/,'helder/scene typed for a program of helder/asset alone');
 console.log('PASS helder/asset alone: helder/scene not typed');

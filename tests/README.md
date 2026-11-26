@@ -7,6 +7,17 @@ this is what each one checks. With no lane, `bun run test` runs
 HEADLESS). The conventions (unit tests, checks, fixtures, benches) are
 in [CONTRIBUTING.md](../CONTRIBUTING.md#tests).
 
+The machine's job limit: a lane's compile, test program's run (a program
+under bin/ but the CLI), wasm run, browser run and bench script takes
+one of `HELDER_JOBS` slots shared by every checkout and session on the
+machine (src/helder/cli/Slots.hx; by default a quarter of the cores, at
+least one), or waits for one, saying once `waiting for a build slot (n
+busy)`. A step that runs the CLI takes no slot of its own: the CLI takes
+them. `-j` alone runs as many lanes at once as there are slots. CI sets
+`HELDER_JOBS=0`: no limit on its single-tenant runners. tests/typescript
+(its builds and runs, the fuzzer's servers) takes them through
+src/helder/cli/slots.mjs.
+
 ## View and UI (lanes/View.hx)
 
 | Lane | Checks |

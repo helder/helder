@@ -1,6 +1,7 @@
 package lanes;
 
 import haxe.io.Path;
+import helder.cli.Slots;
 import sys.FileSystem;
 import sys.io.File;
 import sys.io.Process;
@@ -22,6 +23,11 @@ class Tools {
 	// xvfb-run, returning once its X server is gone (tests/xvfb-run.sh: the
 	// next one's display is not the last one's still letting go)
 	public static final XVFB = "sh " + FileSystem.fullPath("tests/xvfb-run.sh");
+
+	// the machine's job limit (helder.cli.Slots): HELDER_JOBS slots, shared
+	// by every worktree and session; a lane's compile, test program's run,
+	// browser run and bench takes one
+	public static final slots = Slots.shared();
 
 	public static var shardIndex = 0;
 	public static var shardTotal = 1;
@@ -133,11 +139,11 @@ class Tools {
 
 	// the compiler on Eval: `--run main args`
 	public static function interp(cp:Array<String>, main:String, ?args:Array<String>, ?env:Map<String, String>)
-		run(TOOL, MARKUP.concat(cp).concat(["--run", main]).concat(args ?? []), env);
+		heavy(TOOL, MARKUP.concat(cp).concat(["--run", main]).concat(args ?? []), env);
 
 	public static function js(out:String, args:Array<String>) {
 		mkdirs(Path.directory(out));
-		run(TOOL, MARKUP.concat(args).concat(["-js", out]));
+		heavy(TOOL, MARKUP.concat(args).concat(["-js", out]));
 	}
 
 	// a program for this machine, for wasm32-wasi, for a target (Linux: the
@@ -202,10 +208,17 @@ class Tools {
 
 	public static function build(args:Array<String>, log:String, ?tool:String):{code:Int, log:String, seconds:Float} {
 		var t0 = Sys.time();
-		var p = new Process(tool ?? TOOL, tool == null ? MARKUP.concat(args) : args);
-		var r = drain(p), out = r.out, err = r.err;
-		var code = p.exitCode();
-		p.close();
+		var out = "", err = "", code = 0;
+		function go() {
+			var p = new Process(tool ?? TOOL, tool == null ? MARKUP.concat(args) : args);
+			var r = drain(p);
+			out = r.out;
+			err = r.err;
+			code = p.exitCode();
+			p.close();
+		}
+		// (the compiler under a slot; another tool, the CLI, takes its own)
+		if (tool == null) slots.hold(go) else go();
 		mkdirs(Path.directory(log));
 		File.saveContent(log, out + err);
 		return {code: code, log: out + err, seconds: Sys.time() - t0};
@@ -222,7 +235,7 @@ class Tools {
 	}
 
 	public static function wasi(module:String)
-		run(NODE, ["--stack-size=65500", "tests/wasi.mjs", module]);
+		heavy(NODE, ["--stack-size=65500", "tests/wasi.mjs", module]);
 
 	// node's fast API calls off: WASI's fd_write is one, and a V8 collection
 	// started inside it segfaults once a module's memory is large (node 22;
@@ -230,7 +243,22 @@ class Tools {
 	public static function nodeArgs(cmd:String, args:Array<String>):Array<String>
 		return cmd == NODE && args.indexOf("--no-turbo-fast-api-calls") < 0 ? ["--no-turbo-fast-api-calls"].concat(args) : args;
 
+	// (a heavy step under a slot: a program of the lanes' (bin/, not the
+	// CLI, which takes its own), a browser's or a bench's script)
 	public static function run(cmd:String, args:Array<String>, ?env:Map<String, String>) {
+		var program = cmd.startsWith("bin/") && !cmd.startsWith("bin/cli/");
+		var script = cmd == NODE && args.length > 0 && ~/^tests\/(bench\/.*|playwright|.*(web|browser)[\w-]*)\.mjs$/.match(args[0]);
+		if (program || script) heavy(cmd, args, env) else exec(cmd, args, env);
+	}
+
+	// cmd under a slot (waiting for one), its children under it too (HELDER_SLOT)
+	public static function heavy(cmd:String, args:Array<String>, ?env:Map<String, String>) {
+		var e = env == null ? new Map() : env.copy();
+		e.set(Slots.HELD, "1");
+		slots.hold(() -> exec(cmd, args, e));
+	}
+
+	static function exec(cmd:String, args:Array<String>, ?env:Map<String, String>) {
 		args = nodeArgs(cmd, args);
 		var saved = new Map<String, Null<String>>();
 		if (env != null) for (k => v in env) {
@@ -267,7 +295,7 @@ class Tools {
 
 	// each item in a thread, half the cores' worth at once (each build is parallel itself)
 	public static function parallel<T>(items:Array<T>, f:T->Void) {
-		var jobs = workerCount ?? Std.int(Math.max(1, cpus() / 2));
+		var jobs = workerCount ?? (slots.count > 0 ? slots.count : Std.int(Math.max(1, cpus() / 2)));
 		var queue = items.copy();
 		var mutex = new sys.thread.Mutex();
 		var done = new sys.thread.Lock();

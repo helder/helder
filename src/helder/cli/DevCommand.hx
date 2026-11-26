@@ -847,6 +847,7 @@ class DevCommand {
 			// (a cache not writable: the build fails, the program runs without the host)
 			try TestCommand.mkdirs(dir) catch (_:Dynamic) {};
 			var tmp = Path.withoutExtension(exe) + "." + Std.random(1 << 30) + (win ? ".exe" : "");
+			var slot = Compiler.slot();
 			var p = new Process(tool, ["-cp", e.helder, "-main", "helder.dev.DevHost"].concat(Compiler.markup(e.defines)).concat(Os.define(Compiler.hostTarget())).concat(e.target.startsWith("linux-") ? ["-D", "hxmc.libc=glibc"] : [])
 				.concat(["--custom-target", 'hxmc=$tmp']));
 			p.closeStdin();
@@ -858,6 +859,7 @@ class DevCommand {
 			});
 			var code = p.wait();
 			p.close();
+			slot?.release();
 			if (code != 0 || !FileSystem.exists(tmp)) {
 				Term.err(Style.status("warning", Warn, "the dev host does not build:"));
 				Term.write(Diagnostics.format(lines.join("\n")), true);

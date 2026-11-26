@@ -44,6 +44,8 @@ concurrency:
 
 env:
   APP: apps/viewer
+  # (no machine-wide job limit: the runners are single-tenant, src/helder/cli/Slots.hx)
+  HELDER_JOBS: 0
 
 jobs:
   version:

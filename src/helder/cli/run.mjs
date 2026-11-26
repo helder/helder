@@ -14,6 +14,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { take } from './slots.mjs';
 
 // (fileURLToPath: a URL's pathname is /C:/... on Windows)
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -69,7 +70,10 @@ if (!fs.existsSync(exe) || fs.statSync(exe).mtimeMs < sources) {
 	const tmp = exe.replace(/(\.exe)?$/, `.${process.pid}$1`);
 	// (null safety for the packages that keep it, as helder's compiler checks them: src/helder/compiler/NullSafety.hx)
 	const safe = [...fs.readFileSync(path.join(root, 'src/helder/compiler/NullSafety.hx'), 'utf8').matchAll(/"([\w.]+)" => "(\w+)"/g)].flatMap((m) => ['--macro', `nullSafety("${m[1]}", ${m[2]})`]);
+	// (under a slot of the machine's job limit: slots.mjs)
+	const release = take();
 	const b = spawnSync(haxe[0], [...haxe.slice(1), '-D', 'hxmc.markup-braces', '-cp', 'src', '-main', 'helder.cli.Cli', '-D', `helder.os=${{darwin: 'macos', win32: 'windows'}[process.platform] ?? 'linux'}`, ...safe, '--custom-target', `hxmc=${tmp}`], { cwd: root, encoding: 'utf8' });
+	release?.();
 	if (b.status === 0) fs.renameSync(tmp, exe);
 	if (b.status !== 0) {
 		process.stderr.write((b.stdout ?? '') + (b.stderr ?? '') + (b.error ? String(b.error) + '\n' : ''));

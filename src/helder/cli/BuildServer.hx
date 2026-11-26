@@ -55,7 +55,7 @@ class BuildServer {
 		var env = Process.environment(), seen = [];
 		for (k => x in env) {
 			var u = k.toUpperCase();
-			if (u.startsWith("HAXE") || u.startsWith("HXMC") || (u.startsWith("HELDER") && !u.startsWith("HELDER_BUILD_SERVER")) || u.startsWith("RT_")) seen.push('$u=$x');
+			if (u.startsWith("HAXE") || u.startsWith("HXMC") || (u.startsWith("HELDER") && !u.startsWith("HELDER_BUILD_SERVER") && u != "HELDER_JOBS" && u != Slots.HELD) || u.startsWith("RT_")) seen.push('$u=$x');
 		}
 		seen.sort(Reflect.compare);
 		var self = Sys.programPath();

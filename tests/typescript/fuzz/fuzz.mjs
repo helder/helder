@@ -8,6 +8,7 @@ import {Server} from './Server.mjs'
 import {Runner} from './Runner.mjs'
 import {Shrinker} from './Shrinker.mjs'
 import {emit} from './Program.mjs'
+import {wait} from '../../../src/helder/cli/slots.mjs'
 
 // A differential fuzzer of helder's TypeScript (tests/typescript/fuzz,
 // README.md there): random well-typed programs run by node and by helder's
@@ -51,10 +52,12 @@ fs.mkdirSync(store, {recursive: true})
 
 const t0 = Date.now()
 const stats = {programs: 0, cases: 0, wasm: 0, typing: 0, findings: [], replayed: 0}
+// (each server under a slot of the machine's job limit while it runs)
 const workers = await Promise.all(Array.from({length: jobs}, async (_, k) => {
+  const release = await wait()
   const server = await Server.start(compiler, root)
   const runner = new Runner(server, path.join(out, `w${k}`), {lies})
-  return {server, runner}
+  return {server, runner, release}
 }))
 let next = only != null ? Number(only) : 0
 const last = only != null ? Number(only) + 1 : programs
@@ -65,7 +68,10 @@ await replay(workers[0])
 try {
   await Promise.all(workers.map(w => work(w)))
 } finally {
-  for (const w of workers) w.server.stop()
+  for (const w of workers) {
+    w.server.stop()
+    w.release?.()
+  }
 }
 report()
 process.exit(stats.findings.length ? 1 : 0)

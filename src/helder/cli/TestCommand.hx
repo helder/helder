@@ -513,9 +513,20 @@ class Output {
 
 	// (spin: the spinner's text while it runs, the compiler's messages
 	// readable; hold: nothing printed, the lines kept for replay)
+	// (a build or a tests' run: under a slot of the machine's job limit, Slots)
 	@:coroutine public static function of(cmd:String, args:Array<String>, map:Mapper, ?spin:String, hold = false):Output {
+		var slot = Compiler.slot();
+		var o = try run(cmd, args, map, spin, hold, slot != null) catch (e:haxe.Exception) {
+			slot?.release();
+			throw e;
+		}
+		slot?.release();
+		return o;
+	}
+
+	@:coroutine static function run(cmd:String, args:Array<String>, map:Mapper, spin:Null<String>, hold:Bool, held:Bool):Output {
 		var o = new Output();
-		var p = try new Process(cmd, args) catch (e:haxe.Exception) {
+		var p = try new Process(cmd, args, held ? {env: Compiler.held()} : null) catch (e:haxe.Exception) {
 			Term.err(Style.usage('helder test: $cmd: ${e.message}'));
 			o.code = 127;
 			return o;
