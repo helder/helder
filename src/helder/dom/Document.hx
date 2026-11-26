@@ -24,6 +24,8 @@ class Document extends Node {
 	var isHTML = false;
 	// bumped by every change to a child list or an attribute in the document: live collections' key
 	var version = 0;
+	// an engine's hooks on this document's changes (null: none)
+	public var observer:Null<DomObserver> = null;
 	// the inert document its templates' contents live in (one made for that: itself)
 	var inert:Null<Document> = null;
 	var isInert = false;

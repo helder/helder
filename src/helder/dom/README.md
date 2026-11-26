@@ -123,6 +123,15 @@ selectedcontent showing a copy of its selected option, kept up as options
 and attributes change). Every other
 element is an `Element`; HTML's other element classes come later.
 
+Two extras for an engine, outside the standards, as the source offsets
+are: `Element.state` and `setState(bits, on)`, the dynamic state's bits
+(`ElementState`: hover, active, focus, focus-visible, focus-within,
+target, a dirty checkedness, indeterminate), which helder.css's
+`:hover` and the like match; and `Document.observer`, a `DomObserver`
+told synchronously of every insert, remove, attribute change, data
+change and state change (helder.css's restyle tracker). With no
+observer, each step pays a null check.
+
 The tree is linked siblings, no arrays per node; the collections are views
 over it, read again after any change to the document's child lists or
 attributes (a counter of its changes: a live collection's cache key).

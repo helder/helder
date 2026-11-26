@@ -90,6 +90,7 @@ class CharacterData extends Node {
 		if (offset < 0 || offset > length) throw new DOMException("offset out of range", "IndexSizeError");
 		if (count < 0 || offset + count > length) count = length - offset;
 		value = value.substr(0, offset) + data + value.substr(offset + count);
+		if (doc.observer != null) doc.observer.dataChanged(this);
 		changed();
 	}
 

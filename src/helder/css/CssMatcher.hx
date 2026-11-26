@@ -3,6 +3,7 @@ package helder.css;
 import helder.css.CssSelector;
 import helder.dom.Document;
 import helder.dom.Element;
+import helder.dom.ElementState;
 import helder.dom.HTMLOptionElement;
 import helder.dom.Node;
 
@@ -225,7 +226,7 @@ class CssMatcher {
 			case Enabled: formControl(el) && !disabled(el);
 			case Disabled: formControl(el) && disabled(el);
 			case Checked: checked(el);
-			case Indeterminate: html(el, "progress") && el.getAttributeNS(null, "value") == null;
+			case Indeterminate: (el.state & ElementState.INDETERMINATE) != 0 || (html(el, "progress") && el.getAttributeNS(null, "value") == null);
 			case Default: html(el, "option") ? el.getAttributeNS(null, "selected") != null : checkable(el) && el.getAttributeNS(null, "checked") != null;
 			case Required: requirable(el) && el.getAttributeNS(null, "required") != null;
 			case Optional: requirable(el) && el.getAttributeNS(null, "required") == null;
@@ -233,6 +234,9 @@ class CssMatcher {
 			case ReadOnly: !readWrite(el);
 			case PlaceholderShown: placeholderShown(el);
 			case Defined: el.namespaceURI != HTML || el.localName.indexOf("-") < 0;
+			case Valid: requirable(el) && !invalid(el);
+			case Invalid: requirable(el) && invalid(el);
+			case State(bits, _): (el.state & bits) != 0;
 			case Never(_): false;
 		}
 
@@ -369,10 +373,32 @@ class CssMatcher {
 	}
 
 	// (an option's: its selectedness, as its select's algorithm keeps it)
+	// (a checkbox's or radio's checkedness: its state once dirty, else its checked attribute)
 	static function checked(el:Element):Bool {
-		if (checkable(el)) return el.getAttributeNS(null, "checked") != null;
+		if (checkable(el)) return (el.state & ElementState.CHECKED_DIRTY) != 0 ? (el.state & ElementState.CHECKED) != 0 : el.getAttributeNS(null, "checked") != null;
 		if (Std.isOfType(el, HTMLOptionElement)) return (cast el : HTMLOptionElement).selected;
 		return false;
+	}
+
+	// (basic constraint validation: required, not disabled, and no value: an
+	// input's value attribute, a textarea's text, a select's selected
+	// option's value; a checkbox unchecked; types' and patterns' checks are not made)
+	static function invalid(el:Element):Bool {
+		if (el.getAttributeNS(null, "required") == null || disabled(el)) return false;
+		if (checkable(el)) return !checked(el);
+		if (html(el, "textarea")) return (el.textContent ?? "") == "";
+		if (html(el, "select")) {
+			var value:Null<String> = null;
+			var n:Null<Node> = el;
+			while ((n = next(n, el)) != null)
+				if (Std.isOfType(n, HTMLOptionElement) && (cast n : HTMLOptionElement).selected) {
+					var opt:Element = cast n;
+					value = opt.getAttributeNS(null, "value") ?? opt.textContent;
+					break;
+				}
+			return value == null || value == "";
+		}
+		return (el.getAttributeNS(null, "value") ?? "") == "";
 	}
 
 	static function requirable(el:Element):Bool

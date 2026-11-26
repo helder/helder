@@ -180,9 +180,13 @@ list[0].specificity;   // (0, 1, 3): a, b, c; compare() orders two
   `:nth-*()`, `:scope`), `:link` and `:any-link`, `:lang()`, `:dir()`,
   the input states (`:enabled`, `:disabled`, `:checked`,
   `:indeterminate`, `:default`, `:required`, `:optional`, `:read-only`,
-  `:read-write`, `:placeholder-shown`), `:defined`. Those of interaction
-  or time a page has not (`:hover`, `:focus`, `:active`, `:visited`,
-  `:target`...) and validity's (`:valid`, `:invalid`...) parse as
+  `:read-write`, `:placeholder-shown`), `:valid` and `:invalid` (basic: a
+  required control with no value is invalid), `:defined`. The dynamic ones
+  (`:hover`, `:active`, `:focus`, `:focus-visible`, `:focus-within`,
+  `:target`) parse as `State(bits, name)` and match the element's state
+  (helder.dom's `Element.state`, below), all off on a printed page.
+  `:visited` (every link is unvisited), time's (`:current`, `:playing`...)
+  and those not evaluated (`:in-range`, `:modal`...) parse as
   `Never(name)`: they never match. Any other name is invalid.
 - `:is()` and `:where()` take forgiving lists (an invalid argument
   dropped); `:not()`, `:has()` and `of S` do not. Pseudo-elements are
@@ -285,6 +289,16 @@ index.matching(el, out);                                  // one element, no fil
   `:where()`, `:not()` of lists, `:nth-child(of S)`, HTML's case rules
   and quirks mode, SVG's namespace, the form states, `:lang()`
   wildcards.
+- `CssRestyle.test.hx`: the marks of a hover, a class in the subject, a
+  class before `~`, a class no selector reads, `:has()`, an insertion with
+  and without sibling-counting selectors; `:hover`, `:focus-within`,
+  dirty `:checked`, `:valid`; and a property over 1,000 cases: on random
+  documents, sheets and 2 to 6 changes (classes, ids, attributes, state
+  bits, inserts, removals, texts, form attributes), every element whose
+  matched selectors changed, by matching everything again, is marked.
+  Breaking `~`'s, `:has()`'s or `:is()`'s flags on purpose makes it fail
+  within 300 cases; the guards' reading of the old class has a test of
+  its own.
 - `tests/css/CssSelectorsCheck.hx` (the css lane): WPT's
   dom/nodes/selectors.js. Its 34 invalid selectors don't parse and its
   279 valid and scoped ones do. Its valid ones are matched as
@@ -292,6 +306,70 @@ index.matching(el, out);                                  // one element, no fil
   selectors.html parsed by helder.dom: 791 of 793 as expected, the two
   pending being `:target` (never matched: a printed page has no URL
   fragment).
+
+## Dynamic state and invalidation
+
+A live document changes: a class toggled, a row hovered, a child
+inserted. Restyling only what may have changed takes two parts, as
+Blink's invalidation sets do:
+
+```haxe
+var sets = CssInvalidation.of(selectors);          // the sheets' selectors
+var restyle = CssRestyle.attach(doc, sets);        // doc.observer: told of each change
+row.setState(ElementState.HOVER, true);            // :hover's rules may now match
+for (el in restyle.marked()) restyleOf(el);        // at least every element whose matches changed
+restyle.clear();
+```
+
+- **State**: helder.dom's `Element.state` holds `ElementState` bits.
+  `HOVER`, `ACTIVE`, `FOCUS`, `FOCUS_VISIBLE`, `FOCUS_WITHIN` (the engine
+  sets it on the focused element and its ancestors) and `TARGET` are
+  matched by their pseudo-classes. `CHECKED` with `CHECKED_DIRTY` is a
+  checkbox's or radio's checkedness once clicked (HTML's dirty flag: the
+  checked attribute counts until then), and `INDETERMINATE` is a
+  checkbox's flag. `setState(bits, on)` tells the document's observer. An
+  engine's extra, as the source offsets are: a printed page leaves every
+  bit off.
+- **`CssInvalidation`**: for each class, id, attribute name and state bit
+  the selectors depend on, what to restyle when it changes on an element
+  E:
+  - E itself (`SELF`: the subject compound);
+  - E's subtree (`SUBTREE`: a compound a child or descendant combinator
+    follows);
+  - E's next sibling (`NEXT`) or all its later siblings (`LATER`, each
+    with its subtree: a compound a sibling combinator follows);
+  - all its siblings (`SIBLINGS`: `:nth-child(of S)`'s counts);
+  - the document (`DOCUMENT`).
+
+  A feature of a top-level compound keeps a guard, the compound's other
+  ids, classes and tag, as Blink's sets do. A change on an element
+  without them invalidates nothing, so `:focus-within` set on `<body>`
+  skips `.row:focus-within .actions` (the element's old class and id count
+  too). `:is()`, `:where()` and `:not()` pass on where they sit, without a
+  guard. Pseudo-classes
+  read from attributes (`:checked`, `:disabled`, `:link`, `:lang()`...)
+  depend on those, and the ones read from ancestors (`:lang()`, `:dir()`,
+  a fieldset's `:disabled`, contenteditable's `:read-write`) restyle the
+  subtree.
+- **`CssRestyle`**: the tracker, a `DomObserver` on the document.
+  helder.dom tells it of each insert, remove, attribute change, text
+  change and state change. It marks elements, or a whole subtree as one
+  mark, and `marked()`, `isMarked(el)`, `dirty()` and `clear()` read them
+  out. An inserted subtree is marked whole, since it has no style yet. A
+  class change marks by the classes that came or went, an id change by
+  the old and the new id. With no tracker attached, each of the DOM's
+  steps pays a null check.
+- **Conservative, and what that costs**:
+  - anything inside `:has()` restyles the document;
+  - a child inserted or removed restyles its parent's subtree when a
+    selector counts siblings (`:nth-*`, `:first-child`..., `+` and `~`)
+    or reads `:empty`;
+  - any attribute change restyles its element (presentational hints, the
+    style attribute);
+  - `:nth-child(of S)` with combinators in S restyles the document.
+
+  `CssRestyle.test.hx`'s property checks that the marks are a superset of
+  what changed.
 
 ## Properties
 
@@ -513,7 +591,8 @@ styles.pages;                              // @page rules: selectors, declaratio
   apply, its nested rules not.
 - **Cascade** (`CssStyles`): each element's rules found through an index
   of their rightmost compound (id, class, type, an `:is()` of types,
-  links, the root, an attribute; rules of `:hover` and the like left out),
+  links, the root, an attribute: `CssRuleIndex`, with the ancestors' Bloom
+  filter; rules that can never match, `:visited`'s, left out),
   matched by helder.css's selectors, and their declarations sorted:
   origin and importance (user agent, user, author; then author, user,
   user agent `!important`), a style attribute's above every rule's, layer

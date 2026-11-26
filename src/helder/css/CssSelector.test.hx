@@ -47,7 +47,8 @@ function tests() {
 		test("pseudo-classes and elements", () -> {
 			equals(simple(":nth-child(2n+1 of .a)").match(Pseudo(NthChild(_, [_]))), true);
 			equals(simple(":LANG(en, '*-CH')"), Pseudo(Lang(["en", "*-CH"])));
-			equals(simple(":hover"), Pseudo(Never("hover")));
+			equals(simple(":hover"), Pseudo(State(helder.dom.ElementState.HOVER, "hover")));
+			equals(simple(":visited"), Pseudo(Never("visited")));
 			equals(require(CssSelector.parse("p::before:hover"))[0].pseudo, Before);
 			equals(require(CssSelector.parse("p:first-line"))[0].pseudo, FirstLine);
 			equals(require(CssSelector.parse("::footnote-call"))[0].pseudo, FootnoteCall);
