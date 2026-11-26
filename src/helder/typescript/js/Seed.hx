@@ -55,11 +55,11 @@ class Seed {
 	}
 
 	public static function text(v:Dynamic):String {
+		if (Std.isOfType(v, String)) return v;
 		if (Lib.same(v, undefinedValue)) return "undefined";
 		if (v == null) return "null";
 		if (Std.isOfType(v, Bool)) return v ? "true" : "false";
 		if (Std.isOfType(v, Float)) return numberText(v);
-		if (Std.isOfType(v, String)) return v;
 		if (Std.isOfType(v, Symbols.JsSymbol)) return Lib.error("TypeError", "Cannot convert a Symbol value to a string");
 		if (Lib.isObject(v)) return text(Lib.toPrimitive(v, "string"));
 		return Std.string(v);
@@ -114,6 +114,7 @@ class Seed {
 	}
 
 	public static function numeric(v:Dynamic):Float {
+		if (Std.isOfType(v, Float)) return v;
 		if (Lib.same(v, undefinedValue)) return Math.NaN;
 		if (v == null) return 0;
 		if (Std.isOfType(v, Bool)) return v ? 1 : 0;

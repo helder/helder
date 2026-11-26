@@ -471,11 +471,13 @@ class Lib {
 	}
 
 	// Calls and construction.
-	static function positional(f:JsFunction, args:Array<Dynamic>):Array<Dynamic> {
+	// (the arguments after `lead` slots the caller fills: one array, sized once)
+	static function positional(f:JsFunction, args:Array<Dynamic>, lead:Int):Array<Dynamic> {
 		var fixed = f.rest ? f.arity - 1 : f.arity;
-		var passed = args.length == fixed ? args.copy() : args.slice(0, fixed);
-		while (passed.length < fixed) passed.push(undef());
-		if (f.rest) passed.push(array(args.slice(fixed)));
+		var passed:Array<Dynamic> = [];
+		passed.resize(lead + fixed + (f.rest ? 1 : 0));
+		for (i in 0...fixed) passed[lead + i] = i < args.length ? args[i] : undef();
+		if (f.rest) passed[lead + fixed] = array(args.slice(fixed));
 		return passed;
 	}
 
@@ -484,8 +486,8 @@ class Lib {
 		var fn:JsFunction = f;
 		if (fn.native != null) return fn.native(thisArg, args, undef());
 		if (fn.kind >= JsFunction.BASE) return error("TypeError", "Class constructor " + fn.name + " cannot be invoked without 'new'");
-		var passed = positional(fn, args);
-		passed.unshift(thisArg);
+		var passed = positional(fn, args, 1);
+		passed[0] = thisArg;
 		return Reflect.callMethod(null, fn.impl, passed);
 	}
 
@@ -506,23 +508,23 @@ class Lib {
 		if (!isConstructor(newTarget)) return error("TypeError", "newTarget is not a constructor");
 		var fn:JsFunction = f;
 		if (fn.native != null) return fn.native(undef(), args, newTarget);
-		var passed = positional(fn, args);
+		var passed = positional(fn, args, fn.kind == JsFunction.PLAIN ? 1 : 2);
 		switch (fn.kind) {
 			case JsFunction.PLAIN:
 				var obj = new JsObject(protoFrom(newTarget, Builtins.ObjectProto));
-				passed.unshift(obj);
+				passed[0] = obj;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				return isObject(r) ? r : obj;
 			case JsFunction.BASE:
 				var obj = allocate(newTarget, protoFrom(newTarget, Builtins.ObjectProto));
 				initFields(fn, obj);
-				passed.unshift(newTarget);
-				passed.unshift(obj);
+				passed[0] = obj;
+				passed[1] = newTarget;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				return isObject(r) ? r : obj;
 			case _:
-				passed.unshift(newTarget);
-				passed.unshift(undef());
+				passed[0] = undef();
+				passed[1] = newTarget;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				if (!isObject(r)) return error("ReferenceError", "Must call super constructor in derived class before accessing 'this' or returning from derived constructor");
 				return r;
