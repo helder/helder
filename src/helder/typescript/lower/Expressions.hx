@@ -630,7 +630,8 @@ abstract class Expressions extends Statements {
 		var key = intOf(n.argumentExpression()) ?? b.temp(number(expr(n.argumentExpression())));
 		return {
 			read: () -> reps.arrayGetNumber(b, obj, key, g -> number(g)),
-			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, key, e)
+			// (a value that is no number into the boxed path, which takes the key as a double: a counter's is an Int64)
+			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, Ir.typeOf(key) == TI64 ? EConv(L2F, key) : key, e)
 		};
 	}
 
