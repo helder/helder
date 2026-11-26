@@ -22,6 +22,7 @@ abstract class Statements extends Functions {
 		if (labels == null) labels = [];
 		if (hasModifier(n, KindDeclareKeyword)) return;
 		here = n;
+		if (lines && n.kind != KindBlock) at(n);
 		if (buffered(n, labels)) return;
 		switch (n.kind) {
 			case KindImportDeclaration if (TsAssets.imported(n) != null): assetImport(n);
@@ -141,6 +142,8 @@ abstract class Statements extends Functions {
 					&& types.isNumber(loopNode.expression().tsType.element) && reps.rep(init.declarations()[0].name().tsType) == TF64;
 				loop(labels, loopNode.statement(), () -> {
 					var value:Ex;
+					// (each step at the binding, as V8 names it)
+					if (lines) at(init.kind == KindVariableDeclarationList ? init.declarations()[0].name() : init);
 					if (indexed) {
 						var l = b.local("element", numbers ? TF64 : TRef(RAny));
 						b.out.push(SIf(ELocal(fast), b.block(() -> {
@@ -177,7 +180,10 @@ abstract class Statements extends Functions {
 				}, null, null);
 				env = oldEnv;
 			case KindSwitchStatement: switchStatement(n, labels);
-			case KindThrowStatement: b.out.push(SThrow(any(expr(n.expression()))));
+			case KindThrowStatement:
+				var v = any(expr(n.expression()));
+				if (!lines) b.runtime("libSite", [EStr(location(n))]);
+				b.out.push(SThrow(v));
 			case KindTryStatement: tryStatement(n);
 			case KindBreakStatement: jump(n, true);
 			case KindContinueStatement: jump(n, false);

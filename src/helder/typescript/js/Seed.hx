@@ -199,7 +199,8 @@ class Seed {
 	public static function consoleLine(values:Array<Dynamic>):String return Inspect.format(values);
 
 	public static function uncaught(e:Dynamic):Void {
-		var text = try (Lib.isObject(e) && Std.isOfType(e, JsError) ? "Uncaught " + Builtins.errorText(e) : "Uncaught " + Inspect.inspect(e)) catch (_:Dynamic) "Uncaught exception";
+		var thrown = Frames.thrown();
+		var text = try "Uncaught " + Builtins.uncaughtText(e, thrown) catch (_:Dynamic) "Uncaught exception";
 		Sys.stderr().writeString(text + "\n");
 		Sys.exit(1);
 	}
@@ -451,7 +452,10 @@ class Seed {
 
 	public static function libAsync(step:Dynamic):Dynamic return Promises.async(step);
 
-	public static function libSuspend(g:Dynamic, id:Int, kind:Int):Void Async.suspend(g, id, kind);
+	public static function libSuspend(g:Dynamic, id:Int, kind:Int, at:String):Void Async.suspend(g, id, kind, at);
+
+	// (no table of lines: where a `new` or a `throw` runs, "" after a `new`)
+	public static function libSite(at:String):Void Frames.site = at == "" ? null : at;
 
 	public static function libAsyncGenerator(step:Dynamic):Dynamic return Promises.asyncGenerator(step);
 
@@ -551,7 +555,8 @@ class Seed {
 		libList(a);
 		libIsObject(a);
 		var g = libGenerator(f);
-		libSuspend(g, 1, 0);
+		libSuspend(g, 1, 0, "");
+		libSite("");
 		libAsyncGenerator(f);
 		libAsyncIterator(a);
 		libResumePoint(g);

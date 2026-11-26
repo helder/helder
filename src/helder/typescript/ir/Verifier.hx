@@ -122,6 +122,7 @@ class Verifier {
 					expression(e, true);
 					expect(e, l.ty);
 				case SExpr(e): expression(e, true);
+				case SPos(_, _):
 				case SBoxSet(t, a, v):
 					expression(a);
 					expression(v);

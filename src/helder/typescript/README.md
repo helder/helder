@@ -509,6 +509,51 @@ Excluded, with a diagnostic: `eval`, `Function`, `Proxy`, `with`,
 `__proto__`/`setPrototypeOf`, dynamic `import()`. Not yet: BigInt (and so
 BigInt64Array), `process` and node's other globals.
 
+### Errors' stacks
+
+```
+RangeError: too few sides: 2
+    at new Shape (src/shape.ts:3:19)
+    at Shape.of (src/shape.ts:9:13)
+    at async main (src/main.ts:4:9)
+```
+
+An error's stack is V8's, in the program's terms: the frames of the
+program's own functions innermost first, their files
+from the working directory of the build (as its diagnostics name them),
+their lines and UTF-16 columns tsgo's, a frame's name as V8 makes it (a
+function's, `Class.method`, `Class.get x`, `new Class`, `Object.m`, an
+arrow's binding's or `<anonymous>`, the module's code `<anonymous>`). The
+lowering gives each statement, call, construction, property and element
+read and `await` its position (`Stmt.SPos`, its line and column in one
+number: `js/Lines.hx`, as hxmc's table of lines has no columns) and each
+function its name (`FuncInfo.display`), and hxmc's table of the program's
+functions and lines (hxmc.StackTable, the one Haxe's stacks are named by)
+names the frames. An error keeps its native stack when made (`new Error`,
+and every error the runtime throws: a TypeError of a read of null, a
+TSHX100 divergence) and writes its stack when first read (`js/Frames.hx`):
+the runtime's frames left out, a run of helder's API between two of the
+program's one `at <helder>` (a callback helder called). An error thrown
+again keeps its stack, across awaits too. An async function waiting adds
+its frame, `at async f (file:line:column)`, as V8's async stack traces do:
+each awaits the one before (the promise it awaits knows it, its pending
+await's frame is a constant the lowering wrote).
+
+Uncaught, an error prints `Uncaught ` and its stack (the program's last
+catch, an unhandled rejection's report), a value that is no error the value
+and where it was thrown (hxmc's record of the last throw); `helder dev`
+shows them as the program writes them. `Error.stackTraceLimit` (10, read
+when a stack is written) and `Error.captureStackTrace(o)` (o's stack from
+here; constructorOpt is not honoured) are V8's. A small direct function or
+method that hxmc inlines into its caller has no frame of its own (the copy
+is named by the call's place in the caller): one with a `throw` of its own
+is not inlined (marked as a try function, which hxmc never inlines), so the
+frame making an error is kept. WebAssembly has no table of lines: there an
+error's one frame is where its `new` ran (`Frames.site`, which `new` and
+`throw` set) and then the async functions awaiting; an error the runtime
+throws has only those. `console.log(error)` writes its text without the
+stack (node writes the stack).
+
 ## What is built
 
 - **TSX through the shared markup planner**: helder.markup's `Plan<E>`
@@ -570,6 +615,11 @@ helder's and tests/view's TestTypeScript's `helder/test-renderer.d.ts`),
 and a build writes helder's again when stale (`stamp.mjs`: a copy
 of src edited, built, written; built again, untouched; under node_modules,
 skipped).
+`stacks/` (stacks.mjs) checks errors' stacks: each program compiled by tsc
+with source maps and run by node, its frames in the program's files (name,
+file, line, column) and the rest of its output the same as helder's, natively
+(WebAssembly: where the `new` ran); `api.ts`, a callback helder's API calls,
+against its output beside it.
 `helder/` programs call helder's API and render TSX headless (tests/view's
 TestRenderer), their output checked against `<name>.out`: `view.tsx`
 (signals, a component, control flow, events), `holes.tsx` (holes and
