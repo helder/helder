@@ -1,0 +1,3 @@
+div, p { display: block }
+span { display: inline }
+.item { font-size: 14px; margin: 0 }

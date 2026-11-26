@@ -36,6 +36,8 @@ class CssStyles {
 	@:allow(helder.css) final intern = new CssIntern();
 
 	final hints:Null<Element->Array<CssDeclared>>;
+	// (a style attribute's declarations; null: style attributes not read, no parser linked)
+	final declarations:Null<String->Array<CssDeclared>>;
 	final index = new CssRuleIndex<Rule>();
 	final pseudos = new Map<String, CssRuleIndex<Rule>>();
 	final bloom = new CssBloom();
@@ -75,10 +77,11 @@ class CssStyles {
 	public var distinct(default, null) = 0;
 
 	@:allow(helder.css.CssCascade)
-	function new(document:Document, sheets:Array<{sheet:CssSheet, media:Null<CssMedia>}>, media:CssMediaContext, hints:Null<Element->Array<CssDeclared>>,
-			?hintSheet:CssSheet) {
+	function new(document:Document, sheets:Array<{sheet:CssSheet, media:Null<CssMedia>}>, media:CssMediaContext, declarations:Null<String->Array<CssDeclared>>,
+			hints:Null<Element->Array<CssDeclared>>, ?hintSheet:CssSheet) {
 		this.document = document;
 		this.media = media;
+		this.declarations = declarations;
 		this.hints = hints;
 		// (HTML's hints written as CSS: author rules of specificity zero before the author's own)
 		if (hintSheet != null) {
@@ -148,7 +151,7 @@ class CssStyles {
 	// ---- an element's style
 
 	function style(el:Element, pseudo:Null<String>, parent:Null<CssStyle>, isRoot:Bool):CssStyle {
-		var attribute = pseudo == null ? el.getAttribute("style") : null;
+		var attribute = pseudo == null && declarations != null ? el.getAttribute("style") : null;
 		var hinted = pseudo == null && hints != null ? hints(el) : null;
 		var lists = pseudo == null ? CssHints.lists(el) : null;
 		if (lists != null) hinted = hinted == null ? lists : hinted.concat(lists);
@@ -381,7 +384,7 @@ class CssStyles {
 		}
 		if (attribute != null) {
 			var k = 0;
-			for (d in CssSheet.attribute(attribute)) out.push(candidate(d, Author, true, UNLAYERED, 0, k++));
+			for (d in declarations(attribute)) out.push(candidate(d, Author, true, UNLAYERED, 0, k++));
 		}
 		return cascaded(out, parent, pseudo, isRoot, item);
 	}

@@ -70,7 +70,7 @@ class CssValues {
 		return switch v {
 			// (initial is the initial value; unset that where the property doesn't inherit)
 			case Wide("initial") | Wide("unset") if (p != null && p.initial != null && (v.match(Wide("initial")) || p.inherited == false)):
-				var initial = parse(name, p.initial);
+				var initial = #if macro parse(name, p.initial) #else CssInitial.specified(name) #end;
 				initial == null || initial.match(Wide(_)) ? null : compute(name, initial, c);
 			case Wide(_) | Unresolved(_): null;
 			case Terms(terms) if (CssShorthands.isShorthand(name)):

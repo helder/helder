@@ -409,5 +409,5 @@ class CssResolver {
 
 	// (a page's environment: no insets)
 	static function env(name:String):Null<Array<CssValue>>
-		return StringTools.startsWith(name, "safe-area-") ? Css.values("0px") : null;
+		return StringTools.startsWith(name, "safe-area-") ? [Token(new CssToken(Dimension(0, true, "0", "px"), 0, 3))] : null;
 }

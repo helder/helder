@@ -592,22 +592,37 @@ class CssShorthands {
 	static function template_(rows:String, cols:String, areas:String):String {
 		if (areas == "none") return rows == "none" && cols == "none" ? "none" : '$rows / $cols';
 		// (the areas' form: each string beside its row's size and names; a row track list of repeat() can't be)
-		var strings = [for (v in Css.values(areas)) switch v {
-			case Token(_.kind => Str(s)): CssText.string(s);
-			case _: null;
-		}].filter(s -> s != null);
-		var items = [for (v in Css.values(rows)) if (!v.match(Token(_.kind => Whitespace))) v];
-		var out = [], row = 0, pendingNames:Null<String> = null;
-		for (v in items) switch v {
-			case Block(_, _, _): out.push(Css.serialize([v]));
-			case Function(f, _, _, _) if (Css.lower(f) == "repeat"): return "";
-			case _:
+		var strings = [for (a in spaced(areas)) if (a.fastCodeAt(0) == '"'.code) a];
+		var out = [], row = 0;
+		for (v in spaced(rows))
+			if (v.fastCodeAt(0) == "[".code) out.push(v) else if (Css.lower(v).startsWith("repeat(")) return "" else {
 				if (row >= strings.length) return "";
-				var size = Css.serialize([v]);
-				out.push(strings[row++] + (size == "auto" ? "" : " " + size));
-		}
+				out.push(strings[row++] + (v == "auto" ? "" : " " + v));
+			}
 		if (row != strings.length) return "";
 		return out.join(" ") + (cols == "none" ? "" : ' / $cols');
+	}
+
+	// (a serialized value's items at its top level: split at white space
+	// outside strings, brackets and functions, with no tokenizer)
+	static function spaced(text:String):Array<String> {
+		var out = [], depth = 0, quote = 0, start = -1, k = 0;
+		while (k < text.length) {
+			var c = text.fastCodeAt(k);
+			if (quote != 0) {
+				if (c == "\\".code) k++ else if (c == quote) quote = 0;
+			} else if (c == '"'.code || c == "'".code) quote = c else if (c == "(".code || c == "[".code) depth++ else if (c == ")".code
+				|| c == "]".code) depth-- else if (depth == 0 && (c == " ".code || c == "\t".code || c == "\n".code)) {
+				if (start >= 0) out.push(text.substring(start, k));
+				start = -1;
+				k++;
+				continue;
+			}
+			if (start < 0) start = k;
+			k++;
+		}
+		if (start >= 0) out.push(text.substring(start));
+		return out;
 	}
 
 	// ---- parts
@@ -675,11 +690,26 @@ class CssShorthands {
 
 	// (a line's text that is a name alone: not a number, auto, or span with one)
 	static function isIdent(text:String):Bool {
-		var vs = [for (v in Css.values(text)) if (!v.match(Token(_.kind => Whitespace))) v];
-		return vs.length == 1 && switch vs[0] {
-			case Token(_.kind => Ident(w)): Css.lower(w) != "auto" && Css.lower(w) != "span";
-			case _: false;
+		var l = Css.lower(text);
+		if (text == "" || l == "auto" || l == "span") return false;
+		var k = text.fastCodeAt(0) == "-".code ? 1 : 0;
+		if (k == text.length) return false;
+		var c = text.fastCodeAt(k);
+		if (!(c == "_".code || c == "\\".code || c >= 0x80 || (c | 32) >= "a".code && (c | 32) <= "z".code || k == 1 && c == "-".code)) return false;
+		var i = k;
+		while (i < text.length) {
+			var c = text.fastCodeAt(i++);
+			// (an escape: up to six hex digits and the space after them, or one code point)
+			if (c == "\\".code) {
+				var n = 0;
+				while (n < 6 && i < text.length && CssChars.isHex(text.fastCodeAt(i))) {
+					i++;
+					n++;
+				}
+				if (n == 0) i++ else if (i < text.length && text.fastCodeAt(i) == " ".code) i++;
+			} else if (c == " ".code || c == "/".code || c == "(".code || c == "[".code || c == ",".code || c == '"'.code) return false;
 		}
+		return true;
 	}
 
 	// a position's horizontal and vertical parts (one value: the other centre)
@@ -760,9 +790,13 @@ class CssShorthands {
 	// A longhand's initial value as terms (null when its spec says it in prose).
 	public static function initialTerms(longhand:String):Null<Array<CssTerm>> {
 		if (initials.exists(longhand)) return initials[longhand];
+		#if macro
 		var p = CssGrammars.property(longhand);
 		var text = INITIAL.get(longhand) ?? (p == null ? null : p.initial);
 		var v = text == null ? null : CssValues.parse(longhand, text);
+		#else
+		var v = CssInitial.of(longhand);
+		#end
 		var t = switch v {
 			case Terms(t): t;
 			case _: null;
