@@ -1,0 +1,95 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Margin affects left floated elements"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-07-02  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#floats"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="floats-026-ref.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Right outer edge of left-floating box cannot be to the right of the left outer edge of any right-floating box that is to the right of it."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                border: solid 5px black;
+                height: 2in;
+                width: 2in;
+            }
+            span
+            {
+                height: 1in;
+                width: 1in;
+            }
+            #span1
+            {
+                background: blue;
+                float: left;
+                margin-right: 10px;
+            }
+            #span2
+            {
+                background-color: orange;
+                float: right;
+                margin-left: 10px;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the blue square is aligned on the left side of the hollow black square and is above the orange, right aligned, square."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+            "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         id="span1"
+|       "
+            "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         id="span2"
+|       "
+        "
+|     "
+    "
+|   "
+"

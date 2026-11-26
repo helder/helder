@@ -1,0 +1,84 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Absolutely positioned elements must shrink wrap tables"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-09-11  -->
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.hixie.ch/tests/adhoc/css/box/table/positioning/003.html"
+|       rel="alternate"
+|       type="text/html"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#dis-pos-flo"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/ref-if-there-is-no-red.xht"
+|       rel="match"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+  body {margin-top: 1em; }
+
+   .test { position: absolute; background: red; }
+   table { background: white; color: black; margin: auto; border-spacing: 0px; }
+   td { padding: 0px; }
+  "
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="test"
+|       "
+   "
+|       <table {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           "
+     "
+|           <td {http://www.w3.org/1999/xhtml}>
+|             "Test passes if there is "
+|             <strong {http://www.w3.org/1999/xhtml}>
+|               "no red"
+|             "."
+|           "
+    "
+|         "
+   "
+|       "
+  "
+|     "
+ "
+|   "
+"

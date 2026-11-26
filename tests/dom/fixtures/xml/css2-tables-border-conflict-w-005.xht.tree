@@ -1,0 +1,101 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Border Conflict Resolution (width) - hidden/ridge"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://lachy.id.au/about/contact"
+|       rel="author"
+|       title="Lachlan Hunt"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+   table { border-collapse: collapse; }
+   td {  border: 5px ridge lime; height: 3em; }
+   .c5 { border: 10px hidden red; }
+   .c2 { border-bottom-color: red; }
+   .c6 { border-left-color: red; }
+   .c8 { border-top-color: red; }
+   .c4 { border-right-color: red; }
+  ]]>
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#border-conflict-resolution"
+|       rel="help"
+|       title="17.6.2.1 Border conflict resolution"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There should be no red borders on the table below"
+|     "
+  "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c1"
+|           "ridge"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c2"
+|           "ridge"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c3"
+|           "ridge"
+|         "
+   "
+|       "
+   "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c4"
+|           "ridge"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c5"
+|           "hidden"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c6"
+|           "ridge"
+|         "
+   "
+|       "
+   "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c7"
+|           "ridge"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c8"
+|           "ridge"
+|         <td {http://www.w3.org/1999/xhtml}>
+|           class="c9"
+|           "ridge"
+|         "
+   "
+|       "
+  "
+|     "
+ "
+|   "
+"

@@ -1,0 +1,98 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Word-spacing using pixels with a positive zero value, +0px"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#propdef-word-spacing"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#spacing-props"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://drafts.csswg.org/css-text-3/#word-spacing-property"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="word-spacing-004-ref.xht"
+|       rel="match"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'word-spacing' property sets a positive zero length value in pixels."
+|       name="assert"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                font: 16px/1em Ahem;
+            }
+            #test
+            {
+                word-spacing: +0px;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there are only two boxes below (with no jagged edges)."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "
+                "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "x x"
+|         "
+            "
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="test"
+|         "x x"
+|       "
+        "
+|     "
+    "
+|   "
+"

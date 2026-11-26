@@ -65,4 +65,53 @@ class Dump {
 		}
 		return out.join("\n");
 	}
+
+	// an XML tree: as tree, each name qualified and its namespace in braces, CDATA sections kept
+	public static function xml(root:Node):String {
+		var out = [];
+		function walk(n:Node, depth:Int) {
+			var pad = "| " + "".lpad(" ", depth * 2);
+			switch n.nodeType {
+				case Node.ELEMENT_NODE:
+					var e:Element = cast n;
+					out.push(pad + "<" + e.tagName + (e.namespaceURI != null ? " {" + e.namespaceURI + "}" : "") + ">");
+					var attrs = [for (a in e.attributes) a.name + (a.namespaceURI != null ? " {" + a.namespaceURI + "}" : "") + "=\"" + a.value + "\""];
+					attrs.sort(Reflect.compare);
+					for (a in attrs)
+						out.push(pad + "  " + a);
+					if (e is HTMLTemplateElement) {
+						out.push(pad + "  content");
+						var c = (cast e : HTMLTemplateElement).content.firstChild;
+						while (c != null) {
+							walk(c, depth + 2);
+							c = c.nextSibling;
+						}
+					}
+				case Node.TEXT_NODE:
+					out.push(pad + "\"" + (cast n : Text).data + "\"");
+				case Node.CDATA_SECTION_NODE:
+					out.push(pad + "<![CDATA[" + (cast n : Text).data + "]]>");
+				case Node.COMMENT_NODE:
+					out.push(pad + "<!-- " + (cast n : Comment).data + " -->");
+				case Node.PROCESSING_INSTRUCTION_NODE:
+					var pi:ProcessingInstruction = cast n;
+					out.push(pad + "<?" + pi.target + " " + pi.data + "?>");
+				case Node.DOCUMENT_TYPE_NODE:
+					var d:DocumentType = cast n;
+					out.push(pad + '<!DOCTYPE ${d.name} "${d.publicId}" "${d.systemId}">');
+				case _:
+			}
+			var c = n.firstChild;
+			while (c != null) {
+				walk(c, depth + 1);
+				c = c.nextSibling;
+			}
+		}
+		var c = root.firstChild;
+		while (c != null) {
+			walk(c, 0);
+			c = c.nextSibling;
+		}
+		return out.join("\n") + "\n";
+	}
 }

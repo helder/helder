@@ -1,0 +1,458 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: text-transform - Latin1 uppercase"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://rishida.net"
+|       rel="author"
+|       title="Richard Ishida"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://fantasai.inkedblade.net/contact"
+|       rel="reviewer"
+|       title="Elika J. Etemad"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/text.html#caps-prop"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://drafts.csswg.org/css-text-3/#text-transform-property"
+|       rel="help"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="text-transform-bicameral-001-ref.xht"
+|       rel="match"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/International/tests/tests-html-css/tests-text-transform/generate?test=1"
+|       rel="alternate"
+|     "
+"
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The UA will uppercase all letters in the Latin 1 set when text-transform is set to uppercase."
+|       name="assert"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+.test span { text-transform: uppercase; }
+
+/* the CSS below is not part of the test */
+.test { font-size: 130%; line-height: 2.5; color: blue; }
+.test div { white-space: nowrap; text-align: center;
+             width: 5em; display: inline-block; }"
+|     "
+"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "
+//"
+|       <![CDATA[
+function setFontFamily () {var fontName = document.getElementById( 'fontName' ).value;	var divs = document.getElementsByTagName('div');	var i = 0; var div;	while (i < divs.length) {	 	div = divs.item(i);		if (div.className == 'test') { 			div.style.fontFamily = fontName; 			}		i++;		}	}
+//]]>
+|       "
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="instructions"
+|       "Test passes if the right-hand character in each pair matches the left-hand one."
+|     "
+
+
+"
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="test"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "A "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "a"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "B "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "b"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "C "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "c"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "D "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "d"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "E "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "e"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "F "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "f"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "G "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "g"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "H "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "h"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "I "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "i"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "J "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "j"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "K "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "k"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "L "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "l"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "M "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "m"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "N "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "n"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "O "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "o"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "P "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "p"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Q "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "q"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "R "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "r"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "S "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "s"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "T "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "t"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "U "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "u"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "V "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "v"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "W "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "w"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "X "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "x"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Y "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "y"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Z "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "z"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "À "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "à"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Á "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "á"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Â "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "â"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ã "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ã"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ä "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ä"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Å "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "å"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Æ "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "æ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ç "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ç"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "È "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "è"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "É "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "é"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ê "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ê"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ë "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ë"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ì "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ì"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Í "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "í"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Î "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "î"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ï "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ï"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ð "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ð"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ñ "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ñ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ò "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ò"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ó "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ó"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ô "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ô"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Õ "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "õ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ö "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ö"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ø "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ø"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ù "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ù"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ú "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ú"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Û "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "û"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ü "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ü"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ý "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ý"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Þ "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "þ"
+|       "
+"
+|       <div {http://www.w3.org/1999/xhtml}>
+|         "Ÿ "
+|         <span {http://www.w3.org/1999/xhtml}>
+|           "ÿ"
+|       "
+"
+|     "
+
+
+"
+|     <!-- p class="notes">Notes: <br />The <a href='http://www.w3.org/TR/REC-CSS2/text.html#propdef-text-transform'>CSS2 specification</a> only requires that text-transform work for 'the Latin1 repertoire'. It is not clear what characters the term 'Latin1' covers. This test assumes that it means the Basic Latin and Latin-1 Supplement blocks of the Unicode Standard (equivalent to ISO-8859-1). There is one character in this set, ÿ, that only occurs in the lower-case form.</p -->
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       class="notes"
+|       id="fontChange"
+|       style="display: none;"
+|       "If you are unable to see font glyphs for certain characters using the browsers default font you can apply a specific font by typing its name in the following box: "
+|       <input {http://www.w3.org/1999/xhtml}>
+|         class="css"
+|         id="fontName"
+|         name="fontName"
+|         type="text"
+|         value=""
+|       " "
+|       <button {http://www.w3.org/1999/xhtml}>
+|         class="notes"
+|         onclick="setFontFamily()"
+|         type="button"
+|         "Apply"
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       "if (document.getElementById) {document.getElementById('fontChange').style.display = 'block'}"
+|   "
+"

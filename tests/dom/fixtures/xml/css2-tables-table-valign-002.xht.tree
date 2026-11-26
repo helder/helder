@@ -1,0 +1,137 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Table Cell Vertical Alignment with Specified Height"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://dbaron.org/"
+|       rel="author"
+|       title="L. David Baron"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="https://dbaron.org/css/test/2007/height-of-cell-box"
+|       rel="alternate"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://fantasai.inkedblade.net/contact"
+|       rel="author"
+|       title="Elika J. Etemad"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.brunildo.org/test/td_height1.html"
+|       rel="alternate"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#height-layout"
+|       rel="help"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Vertical alignment in table cells works whether     or not that cell has a specified height."
+|       name="assert"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+    .control {
+       width: 20px;
+       height: 30px;
+       border: solid blue 35px;
+       border-style: solid none;
+       background: yellow;
+    }
+    table, .control {
+      float: left;
+      border-spacing: 0;
+    }
+    td {
+      background: blue;
+      padding: 0;
+    }
+    .content {
+      width: 20px;
+      height: 30px;
+      background: yellow;
+      color: yellow;
+    }
+    .one { height: 100px; }
+
+    .middle td { vertical-align: middle; }
+    .baseline td { vertical-align: baseline; }
+    .baseline .two .content { margin-top: 35px; }
+  ]]>
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "There must be a single yellow stripe across the blue box."
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="container"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="control"
+|       "
+    "
+|       <table {http://www.w3.org/1999/xhtml}>
+|         class="middle"
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           "
+       "
+|           <td {http://www.w3.org/1999/xhtml}>
+|             class="one"
+|             <div {http://www.w3.org/1999/xhtml}>
+|               class="content"
+|           "
+       "
+|           <td {http://www.w3.org/1999/xhtml}>
+|             class="two"
+|             <div {http://www.w3.org/1999/xhtml}>
+|               class="content"
+|           "
+    "
+|       "
+    "
+|       <table {http://www.w3.org/1999/xhtml}>
+|         class="baseline"
+|         <tr {http://www.w3.org/1999/xhtml}>
+|           "
+       "
+|           <td {http://www.w3.org/1999/xhtml}>
+|             class="one"
+|             <div {http://www.w3.org/1999/xhtml}>
+|               class="content"
+|               "A"
+|           "
+       "
+|           <td {http://www.w3.org/1999/xhtml}>
+|             class="two"
+|             <div {http://www.w3.org/1999/xhtml}>
+|               class="content"
+|               "B"
+|           "
+    "
+|       "
+  "
+|     "
+ "
+|   "
+"

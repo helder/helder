@@ -1,0 +1,82 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: margin-right"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem"
+|       name="flags"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/REC-CSS1#margin-right"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/Style/CSS/Test/CSS1/current/tsack.html"
+|       rel="author"
+|       title="CSS1 Test Suite Contributors"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:ian@hixie.ch"
+|       rel="author"
+|       title="Ian Hickson"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="c5502-imrgn-r-003-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+   div { font: 15px/1 Ahem; margin: 1em; background: yellow; }
+   .four { width: 11em; color: white; background: navy; }
+   .four span { margin-right: 3em; }
+  ]]>
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#margin-properties"
+|       rel="help"
+|       title="8.3 Margin properties: 'margin-top',  'margin-right',  'margin-bottom', 'margin-left', and 'margin'"
+|     "
+ "
+|   "
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "It should say "HI" below:"
+|     "
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="four"
+|       "
+   xx xx xx "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "xx xx xx xx xx xx"
+|       " xx xx xx xx xx xx xx xx xx xx
+  "
+|     "
+ "
+|   "
+"

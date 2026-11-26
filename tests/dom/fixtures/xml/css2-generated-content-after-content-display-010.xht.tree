@@ -1,0 +1,76 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: :after generated content - display table-footer-group"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/generate.html#before-after-content"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#display-prop"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="after-content-display-002-ref.xht"
+|       rel="match"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Generated content can have their own display value explicitly set in which case they behave as if they were real elements inserted just inside their associated element."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div:after
+  {
+  content: "Filler text";
+  display: table-footer-group;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there are "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "2 lines of "Filler text""
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "Filler text"
+|     "
+
+ "
+|   "
+"

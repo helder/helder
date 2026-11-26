@@ -1,0 +1,39 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+"
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reftest Reference"
+|     "
+"
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:Ms2ger@gmail.com"
+|       rel="author"
+|       title="Ms2ger"
+|     "
+"
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+p {
+  color: green;
+  text-decoration: underline;
+}
+"
+|     "
+"
+|   "
+"
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+"
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "This sentence should be green and underlined."
+|     "
+"
+|   "
+"

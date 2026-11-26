@@ -1,0 +1,70 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Cursor set to 'progress'"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.hixie.ch/tests/adhoc/css/ui/cursor/001.html"
+|       rel="alternate"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/ui.html#propdef-cursor"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/ui.html#cursor-props"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="interact"
+|       name="flags"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Cursor 'progress' results in a cursor that indicates something is in progression."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                border: solid 2px blue;
+                cursor: progress;
+                height: 200px;
+                width: 500px;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if a progress cursor appears when the mouse cursor is inside the blue box. (Such progess cursor often resembles a spinning beach ball, an arrow with a watch or an arrow with an hourglass.)"
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|   "
+"

@@ -1,0 +1,138 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: table-layout: fixed - cell in the first row with specified width"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#fixed-table-layout"
+|       rel="help"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://lists.w3.org/Archives/Public/www-style/2011Oct/0502.html"
+|       rel="bookmark"
+|       title="[css21] Section 17.5.2.1 should be clarified"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="fixed-table-layout-003a01-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="A cell in the first row with specified non-auto 'width' sets the width for its column in the absence of a column element with specified non-auto width. This test checks the 'border-collapse: separate' model with one non-zero horizontal cell padding and with zero horizontal cell border."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div, table {font: 1.25em/1.2 serif;}
+
+  table
+  {
+  border-spacing: 0px;
+  border-collapse: separate;
+  table-layout: fixed;
+  width: 400px;
+  }
+
+  td
+  {
+  border: none;
+  padding: 0px 120px 0px 0px;
+  }
+
+  td#tested-cell
+  {
+  background-color: blue;
+  color: blue;
+  width: 80px;
+  }
+
+  div#reference
+  {
+  background-color: black;
+  color: black;
+  margin-left: 100px;
+  width: 200px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the blue and black stripes are the "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "same width"
+|       "."
+|     "
+
+  "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+
+   "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <col {http://www.w3.org/1999/xhtml}>
+|       "
+
+   "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="tested-cell"
+|           "A03"
+|         "
+    "
+|         <td {http://www.w3.org/1999/xhtml}>
+|         "
+   "
+|       "
+
+  "
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="reference"
+|       "200px wide"
+|     "
+
+ "
+|   "
+"

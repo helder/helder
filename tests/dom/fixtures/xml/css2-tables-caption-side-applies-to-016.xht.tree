@@ -1,0 +1,65 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Caption-side and 'display: none' elements"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#propdef-caption-side"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#caption-position"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/no-red-on-blank-page-ref.xht"
+|       rel="match"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Caption-side does not apply to 'display: none' elements."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                background: red;
+                caption-side: bottom;
+                display: none;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is no red visible on the page."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "Filler Text"
+|     "
+    "
+|   "
+"

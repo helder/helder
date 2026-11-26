@@ -1,0 +1,105 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: height and width of element set to 'display: inline-table'"
+|     "
+
+  "
+|     <!-- 
+  Inspired by
+  http://test.csswg.org/suites/css2.1/20101210/html4/empty-cells-applies-to-007.htm
+   -->
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#height-layout"
+|       rel="help"
+|       title="17.5.3 Table height algorithms"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://lists.w3.org/Archives/Public/www-style/2011Jan/0178.html"
+|       rel="bookmark"
+|       title="[CSS21] Question on section 17.6.1 The separated borders model and width of inline-table"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/ref-filled-green-100px-square.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The content-box height and width of an empty element styled with display set to 'inline-table' is given by its height and width properties when specified."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div#overlapped-red-reference
+  {
+  background-color: red;
+  height: 100px;
+  position: absolute;
+  width: 100px;
+  z-index: -1;
+  }
+
+  div#overlapping-green-test
+  {
+  background-color: green;
+  border: green solid 15px;
+  border-collapse: separate;
+  display: inline-table;
+  height: 50px;
+  padding: 10px;
+  width: 50px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a filled green square and "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="overlapped-red-reference"
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="overlapping-green-test"
+|     "
+
+ "
+|   "
+"

@@ -1,0 +1,107 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+  "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: bidirection box model - padding-right on bidi-override block"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="mailto:public-testsuites@opera.com"
+|       rel="author"
+|       title="Eira Monstad, Opera Software ASA"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-03-12  -->
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-writing-modes-3/#bidi-box-model"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/box.html#bidi-box-model"
+|       rel="help"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="bidi-box-model-043-ref.xht"
+|       rel="match"
+|     "
+
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem"
+|       name="flags"
+|     "
+    "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="Side padding should be unaffected by directionality"
+|       name="assert"
+|     "
+    "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+    "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+      div {
+      width: 20em;
+      text-align: right;
+      padding-right: 5em;
+      margin-bottom: 1em;
+      background: navy;
+      font: 1.25em/1 Ahem;
+      color: orange;
+      }
+
+      .rtol {
+      direction: rtl;
+      unicode-bidi: bidi-override;
+      }
+
+    ]]>
+|     "
+  "
+|   "
+
+  "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 bicolored stripes are "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "identical"
+|       "."
+|     "
+    "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "
+      Text
+    "
+|     "
+    "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="rtol"
+|       "
+      txeT
+    "
+|     "
+  "
+|   "
+"

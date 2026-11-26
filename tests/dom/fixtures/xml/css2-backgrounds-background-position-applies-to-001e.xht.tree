@@ -1,0 +1,131 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Background-position applied to elements with 'display' set to 'table-row-group'"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/colors.html#background-properties"
+|       rel="help"
+|       title="14.2.1 Background properties: 'background-color', 'background-image', 'background-repeat', 'background-attachment', 'background-position', and 'background'"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="background-position-applies-to-001e-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="image"
+|       name="flags"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'background-position' property applies to elements with 'display' set to 'table-row-group'."
+|       name="assert"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div#table {display: table;}
+
+  div#tbody
+  {
+  background-image: url("/css/support/60x60-red.png");
+  background-position: bottom right;
+  background-repeat: no-repeat;
+  display: table-row-group;
+  }
+
+  div.tr {display: table-row;}
+
+  div.td
+  {
+  display: table-cell;
+  height: 60px;
+  width: 60px;
+  }
+
+  div#overlapping-green
+  {
+  border-bottom: green solid 60px;
+  display: table-cell;
+  height: 60px;
+  width: 60px;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is a filled green square and "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="table"
+|       "
+      "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         id="tbody"
+|         "
+          "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="tr"
+|           "
+              "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             class="td"
+|           <div {http://www.w3.org/1999/xhtml}>
+|             class="td"
+|           "
+          "
+|         "
+          "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="tr"
+|           "
+              "
+|           <div {http://www.w3.org/1999/xhtml}>
+|             class="td"
+|           <div {http://www.w3.org/1999/xhtml}>
+|             id="overlapping-green"
+|           "
+          "
+|         "
+      "
+|       "
+  "
+|     "
+
+ "
+|   "
+"

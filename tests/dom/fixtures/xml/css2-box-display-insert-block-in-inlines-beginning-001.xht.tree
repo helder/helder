@@ -1,0 +1,139 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   class="reftest-wait"
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Insert a block-level element into a block of inlines at its beginning"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visuren.html#anonymous-block-level"
+|       rel="help"
+|       title="9.2.1.1 Anonymous block boxes"
+|     "
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="insert-block-in-inlines-beginning-001-ref.xht"
+|       rel="match"
+|     "
+
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="text/javascript"
+|       http-equiv="Content-Script-Type"
+|     "
+  "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="ahem dom"
+|       name="flags"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="/fonts/ahem.css"
+|       rel="stylesheet"
+|       type="text/css"
+|     "
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div.container
+  {
+  background-color: fuchsia;
+  color: black;
+  font: 20px/1 Ahem;
+  margin: 1em;
+  }
+
+  div.inserted
+  {
+  border-left: yellow solid 0.5em;
+  border-right: yellow solid 0.5em;
+  margin: 1em 0em;
+  }
+  ]]>
+|     "
+
+  "
+|     <script {http://www.w3.org/1999/xhtml}>
+|       type="text/javascript"
+|       <![CDATA[
+  function insertABlockAtBeginning()
+  {
+  document.body.offsetHeight;
+
+  var newBlockNode = document.createElement("div");
+
+  newBlockNode.appendChild(document.createTextNode("Inserted new block"));
+
+  newBlockNode.className = "inserted";
+
+  document.getElementsByClassName("container")[0].insertBefore(newBlockNode, document.getElementById("insertion-point"));
+
+  document.documentElement.className = "";
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     onload="insertABlockAtBeginning();"
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 colorized rectangles are "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "identical"
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="container"
+|       <span {http://www.w3.org/1999/xhtml}>
+|         id="insertion-point"
+|         "Several"
+|       " "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "inline elements"
+|       " are "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "in this"
+|       " sentence."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="container"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="inserted"
+|         "Inserted new block"
+|       "
+  Several inline elements are in this sentence.
+  "
+|     "
+
+ "
+|   "
+"

@@ -15,6 +15,11 @@ class Dom {
 	public static function parseFragment(html:String, context:Element, ?errors:Array<ParseError>):DocumentFragment
 		return TreeBuilder.fragment(html, context, errors);
 
+	// an XML document from its text (XML 1.0 and its namespaces; never throws:
+	// the first well-formedness error ends the tree there, and is in errors when given)
+	public static function parseXml(xml:String, ?errors:Array<ParseError>):Document
+		return XmlParser.document(xml, errors);
+
 	// a node as markup: an element with its tags, a document or fragment its children
 	public static function serialize(node:Node):String
 		return Serializer.node(node);

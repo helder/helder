@@ -1,0 +1,59 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reftest Reference"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  span
+  {
+  border-color: black black black black;
+  border-style: solid solid solid solid;
+  border-width: medium medium medium thin;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "
+   "
+|       <span {http://www.w3.org/1999/xhtml}>
+|         "This box should have a thin left border."
+|       "
+  "
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       "There should be no red on this line."
+|     "
+
+ "
+|   "
+"

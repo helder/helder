@@ -1,0 +1,141 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Border Conflict Resolution (by border width): 'dashed' vs. 'inset' - border style with largest width is the dominant border"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3c.org/"
+|       rel="author"
+|       title="W3C"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/tables.html#border-conflict-resolution"
+|       rel="help"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The widest border is dominant when two cell borders collapse."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            table
+            {
+                border-collapse: collapse;
+            }
+            td
+            {
+                border: 5px dashed black;
+                height: 3em;
+            }
+            #cell3
+            {
+                border: 10px inset black;
+            }
+            #cell1
+            {
+            border-bottom-color: red;
+            }
+            #cell4
+            {
+                border-left-color: red;
+            }
+            #cell5
+            {
+                border-top-color: red;
+            }
+            #cell2
+            {
+                border-right-color: red;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is no red visible on the page."
+|     "
+        "
+|     <table {http://www.w3.org/1999/xhtml}>
+|       "
+            "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           "dashed"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="cell1"
+|           "dashed"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           "dashed"
+|         "
+            "
+|       "
+            "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="cell2"
+|           "dashed"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="cell3"
+|           "inset"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="cell4"
+|           "dashed"
+|         "
+            "
+|       "
+            "
+|       <tr {http://www.w3.org/1999/xhtml}>
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           "dashed"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           id="cell5"
+|           "dashed"
+|         "
+                "
+|         <td {http://www.w3.org/1999/xhtml}>
+|           "dashed"
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"

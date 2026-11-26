@@ -1,0 +1,92 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+
+ "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Reftest Reference"
+|     "
+
+  "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="author"
+|       title="Gérard Talbot"
+|     "
+
+  "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       <![CDATA[
+  div.control {padding: 1em;}
+
+  div.control > div
+  {
+  background: navy;
+  color: yellow;
+  width: 10em;
+  }
+
+  div.control > div.right
+  {
+  margin-left: 5em;
+  text-align: right;
+  }
+  ]]>
+|     "
+
+ "
+|   "
+
+ "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+
+  "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test pass if the 2 patterns are identical with "
+|       <strong {http://www.w3.org/1999/xhtml}>
+|         "no red"
+|       "."
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="control"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         " ☮"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="right"
+|         "☮ "
+|       "
+  "
+|     "
+
+  "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       class="control"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         " ☮"
+|       "
+    "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="right"
+|         "☮ "
+|       "
+  "
+|     "
+
+ "
+|   "
+"

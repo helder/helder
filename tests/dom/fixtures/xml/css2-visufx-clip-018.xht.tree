@@ -1,0 +1,66 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Clip using points with a zero value, +0pt"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visufx.html#propdef-clip"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/visufx.html#clipping"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="../reference/no-red-on-blank-page-ref.xht"
+|       rel="match"
+|     "
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'clip' property sets a zero value, in points, for all sides of the clipping rectangle."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            div
+            {
+                background: red;
+                clip: rect(+0pt, +0pt, +0pt, +0pt);
+                height: 1in;
+                position: absolute;
+                width: 1in;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if there is no red visible on the page."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|     "
+    "
+|   "
+"

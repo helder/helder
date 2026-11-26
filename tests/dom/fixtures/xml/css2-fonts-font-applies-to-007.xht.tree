@@ -1,0 +1,118 @@
+| <!DOCTYPE html "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+| <html {http://www.w3.org/1999/xhtml}>
+|   xmlns {http://www.w3.org/2000/xmlns/}="http://www.w3.org/1999/xhtml"
+|   "
+    "
+|   <head {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <title {http://www.w3.org/1999/xhtml}>
+|       "CSS Test: Font and 'display: inline-table' elements"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.microsoft.com/"
+|       rel="author"
+|       title="Microsoft"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.gtalbot.org/BrowserBugsSection/css21testsuite/"
+|       rel="reviewer"
+|       title="Gérard Talbot"
+|     " "
+|     <!--  2012-12-15  -->
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/fonts.html#propdef-font"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/CSS21/fonts.html#font-shorthand"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="http://www.w3.org/TR/css-fonts-3/#font-prop"
+|       rel="help"
+|     "
+        "
+|     <link {http://www.w3.org/1999/xhtml}>
+|       href="font-applies-to-001-ref.xht"
+|       rel="match"
+|     "
+
+        "
+|     <meta {http://www.w3.org/1999/xhtml}>
+|       content="The 'font' property applies to 'display: inline-table' elements."
+|       name="assert"
+|     "
+        "
+|     <style {http://www.w3.org/1999/xhtml}>
+|       type="text/css"
+|       "
+            #reference, #table
+            {
+                font: italic small-caps bold 16px sans-serif;
+            }
+            #table
+            {
+                display: inline-table;
+            }
+            .row
+            {
+                display: table-row;
+            }
+            .cell
+            {
+                display: table-cell;
+            }
+        "
+|     "
+    "
+|   "
+    "
+|   <body {http://www.w3.org/1999/xhtml}>
+|     "
+        "
+|     <p {http://www.w3.org/1999/xhtml}>
+|       "Test passes if the 2 lines of "Filler Text" match."
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="reference"
+|       "Filler Text"
+|     "
+        "
+|     <div {http://www.w3.org/1999/xhtml}>
+|       id="table"
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="row"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="cell"
+|           "Filler Text"
+|         "
+            "
+|       "
+            "
+|       <div {http://www.w3.org/1999/xhtml}>
+|         class="row"
+|         "
+                "
+|         <div {http://www.w3.org/1999/xhtml}>
+|           class="cell"
+|           " "
+|         "
+            "
+|       "
+        "
+|     "
+    "
+|   "
+"
