@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import helder.test.Gen;
 import helder.test.Test;
 import viewer.Files;
+import viewer.Listing;
 
 // The browser without a window, on MemoryFiles: navigation and its
 // history, the sidebar's level for a folder, the order, the filter and
@@ -12,9 +13,36 @@ import viewer.Files;
 // a new folder, a rename, files moved and copied into a folder; between
 // folders (random goes, backs and forwards, on a disk slow or not) never
 // a list gone empty but a folder's read empty or failed, a folder seen
-// lately shown as it was at once
+// lately shown as it was at once; and against a list (a stateful
+// property: sorts, filters, selections, the trash and its undo)
 function tests() {
 	describe("Browser", () -> {
+		test("the selection all hidden, the focus toggled off: none selected", () -> {
+			var b = new Browser(new MemoryFiles().add("/f/.h.png", Bytes.alloc(1)).add("/f/a.png", Bytes.alloc(1)));
+			b.go("/f");
+			b.showHidden(true);
+			b.select(".h.png");
+			b.selection.toggle(b.indexOf("a.png"));
+			b.selectionChanged();
+			b.showHidden(false);
+			b.selection.toggle(b.indexOf("a.png"));
+			b.selectionChanged();
+			equals(b.selected.value, "");
+		});
+		test("against a list: sorts, filters, the selection, the trash and undo", () -> stateful({
+			setup: () -> new Model(),
+			steps: [
+				{name: "sort", run: (m, c) -> m.sort(c.draw(pick([Name, Kind, Modified, Size])), c.draw(bool()), c.draw(bool()))},
+				{name: "hidden", run: (m, c) -> m.hidden(c.draw(bool()))},
+				{name: "search", run: (m, c) -> m.search(c.draw(pick(["", "a", "e", "png", "x"])))},
+				{name: "select", run: (m, c) -> m.select(c.draw(pick(NAMES)))},
+				{name: "toggle", run: (m, c) -> m.toggle(c.draw(int(0, 9)))},
+				{name: "trash", run: (m, c) -> m.trash()},
+				{name: "undo", run: (m, c) -> m.undo()},
+				{name: "watch", run: (m, c) -> m.watch()}
+			],
+			check: m -> m.check()
+		}, {cases: 100, steps: 30}));
 		test("between folders: never a list gone blank but for a folder read empty", () -> stateful({
 			setup: () -> {
 				var files = new MemoryFiles().add("/a/1.png", Bytes.alloc(1)).add("/a/2.png", Bytes.alloc(2)).add("/b/x.mjs", Bytes.alloc(3)).add("/c/")
@@ -279,3 +307,139 @@ private function blank(s:{files:MemoryFiles, b:Browser}, step:Void->Void) {
 	step();
 	if (had && b.items.value.length == 0) assert(b.error.value != "" || b.dir.value == "/c", 'blank at ${b.dir.value}, reading ${b.reading.value}');
 }
+
+private final NAMES = ["apple.png", "bird.jpg", "cat.txt", "dune", "echo.mjs", ".hidden.png", "fig", "grape.jpg", "kiwi"];
+
+// (a Browser on a folder of MemoryFiles, read in batches of two, and its
+// model: the entries, the order, the filter, the selection and its focus,
+// the trash's groups)
+private class Model {
+	final files = new MemoryFiles();
+	final b:Browser;
+	var all:Array<Entry> = [];
+	var order:Order = {key: Name, ascending: true, foldersFirst: true};
+	var showHidden = false;
+	var query = "";
+	var sel:Array<String> = [];
+	var focus:Null<String> = null;
+	var selected = "";
+	final undos:Array<Array<Entry>> = [];
+
+	public function new() {
+		files.size = 2;
+		for (k in 0...NAMES.length) {
+			var n = NAMES[k];
+			if (n.indexOf(".") < 0) files.add('/f/$n/') else files.add('/f/$n', Bytes.alloc(k * 37 % 11 + 1), k * 5 % 9);
+		}
+		b = new Browser(files);
+		b.go("/f");
+		all = [for (n in NAMES) files.stat('/f/$n')];
+	}
+
+	public function sort(key:SortKey, ascending:Bool, foldersFirst:Bool) {
+		b.setOrder(order = {key: key, ascending: ascending, foldersFirst: foldersFirst});
+	}
+
+	public function hidden(on:Bool) {
+		b.showHidden(showHidden = on);
+	}
+
+	public function search(q:String) {
+		b.search(query = q);
+		prune();
+		var s = shown();
+		if (s.length > 0 && s.indexOf(selected) < 0) choose(s[0]);
+	}
+
+	public function select(name:String) {
+		b.select(name);
+		choose(name);
+	}
+
+	// (the model's select)
+	function choose(name:String) {
+		selected = name;
+		var on = shown().contains(name);
+		sel = on ? [name] : [];
+		focus = on ? name : null;
+	}
+
+	// (the list's own input: a key toggled, the browser told)
+	public function toggle(i:Int) {
+		b.selection.toggle(i);
+		b.selectionChanged();
+		var s = shown();
+		if (i < s.length) {
+			if (!sel.remove(s[i])) sel.push(s[i]);
+			focus = s[i];
+		}
+		var keys = [for (n in s) if (sel.contains(n)) n];
+		selected = focus != null && sel.contains(focus) ? focus : keys.length > 0 ? keys[0] : "";
+	}
+
+	public function trash() {
+		var s = shown();
+		var picked = sel.length > 0 ? [for (n in s) if (sel.contains(n)) n] : selected != "" && s.contains(selected) ? [selected] : [];
+		equals(b.trash(b.picked()), picked.length, "trashed");
+		if (picked.length == 0) return;
+		undos.push([for (n in picked) Lambda.find(all, e -> e.name == n)]);
+		rescan([for (e in all) if (!picked.contains(e.name)) e]);
+	}
+
+	public function undo() {
+		var group = undos.pop();
+		equals(b.undo(), group != null, "undone");
+		if (group == null) return;
+		var names = [for (e in group) e.name];
+		rescan([for (e in all) if (!names.contains(e.name)) e].concat(group));
+		choose(names[0]);
+		if (names.length > 1) sel = names.copy();
+	}
+
+	public function watch() {
+		files.poll();
+		rescan(all);
+	}
+
+	public function check() {
+		equals([for (e in b.items.value) e.name], shown(), "shown");
+		equals(b.total.value, all.length, "total");
+		var s = shown();
+		equals(b.selection.keys(), [for (n in s) if (sel.contains(n)) n], "selection");
+		equals(b.selection.size(), sel.length, "selection size");
+		equals(b.selected.value, selected, "selected");
+		equals(b.canUndo.value, undos.length > 0, "canUndo");
+	}
+
+	// (the folder as it is now: the selection pruned, the selected gone: the one now in its place)
+	function rescan(entries:Array<Entry>) {
+		var at = shown().indexOf(selected);
+		all = entries;
+		prune();
+		var s = shown();
+		if (selected != "" && !s.contains(selected)) choose(s.length == 0 ? "" : s[Std.int(Math.min(Math.max(at, 0), s.length - 1))]);
+	}
+
+	function prune() {
+		var s = shown();
+		sel = sel.filter(n -> s.contains(n));
+		if (focus != null && !s.contains(focus)) focus = null;
+	}
+
+	function shown():Array<String> {
+		var out = [for (e in all) if ((showHidden || !StringTools.startsWith(e.name, ".")) && (query == "" || e.name.indexOf(query) >= 0)) e];
+		var dir = order.ascending ? 1 : -1;
+		out.sort((a, b) -> {
+			if (order.foldersFirst && (a.kind == Folder) != (b.kind == Folder)) return a.kind == Folder ? -1 : 1;
+			var c = switch order.key {
+				case Kind: Reflect.compare(Kinds.kind(a), Kinds.kind(b));
+				case Modified: Reflect.compare(a.modified, b.modified);
+				case Size: Reflect.compare(a.size, b.size);
+				case Name: 0;
+			}
+			return dir * (c != 0 ? c : Reflect.compare(a.name, b.name));
+		});
+		return [for (e in out) e.name];
+	}
+}
+
