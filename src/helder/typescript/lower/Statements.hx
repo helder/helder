@@ -130,6 +130,12 @@ abstract class Statements extends Functions {
 					b.out.push(SSet(index, EConv(I2L, EInt(0))));
 				}
 				var iterator = b.local("iterator", TRef(RAny));
+				// (IteratorClose: an iterator the loop leaves before its end, by a
+				// break, a return or a throw, told by its return method; not an
+				// array's, whose built-in iterator has none)
+				var closing = n.kind == KindForOfStatement && !awaiting && !indexed;
+				var inside = closing ? b.local("inside", TBool) : null;
+				if (closing) b.out.push(SSet(inside, bool(false)));
 				var open = b.block(() -> b.out.push(SSet(iterator, b.runtime(awaiting ? "libAsyncIterator" : "libIterator", [any(input)]))));
 				if (indexed) {
 					b.out.push(SSet(iterator, b.runtime("getUndefined", [])));
@@ -140,7 +146,7 @@ abstract class Statements extends Functions {
 				// (`const x of xs` over numbers: x a number, read unboxed from a number array)
 				var numbers = indexed && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0 && init.declarations()[0].name().kind == KindIdentifier
 					&& types.isNumber(loopNode.expression().tsType.element) && reps.rep(init.declarations()[0].name().tsType) == TF64;
-				loop(labels, loopNode.statement(), () -> {
+				function iterate() loop(labels, loopNode.statement(), () -> {
 					var value:Ex;
 					if (indexed) {
 						var l = b.local("element", numbers ? TF64 : TRef(RAny));
@@ -162,8 +168,11 @@ abstract class Statements extends Functions {
 						value = b.runtime("libGet", [result, EStr("value")]);
 					}
 					else {
+						// (not inside while next runs: an iterator that throws there is not closed)
+						if (closing) b.out.push(SSet(inside, bool(false)));
 						value = b.runtime("libIterate", [ELocal(iterator)]);
 						b.out.push(SIf(b.runtime("libFinished", [value]), Vector.fromArrayCopy([SBreak]), new Vector(0)));
+						if (closing) b.out.push(SSet(inside, bool(true)));
 					}
 					if (init.kind != KindVariableDeclarationList) assignTarget(init, () -> value);
 					else {
@@ -176,6 +185,8 @@ abstract class Statements extends Functions {
 						else bindPattern(declaration.name(), value, declareLocal);
 					}
 				}, null, null);
+				if (closing) protect(iterate, threw -> b.out.push(SIf(ELocal(inside), b.block(() -> b.runtime("libIteratorClose", [ELocal(iterator), ELocal(threw)])), new Vector(0))));
+				else iterate();
 				env = oldEnv;
 			case KindSwitchStatement: switchStatement(n, labels);
 			case KindThrowStatement: b.out.push(SThrow(any(expr(n.expression()))));
@@ -428,9 +439,13 @@ abstract class Statements extends Functions {
 			guarded();
 			return;
 		}
-		// try/finally: the guarded part runs in an IR loop that jumps leave, an
-		// exception is held while the finally block runs, then rethrown or the
-		// pending jump continues.
+		protect(guarded, _ -> statement(t.finallyBlock()));
+	}
+
+	// try/finally: the guarded part runs in an IR loop that jumps leave, an
+	// exception is held while the final part runs (told whether one was
+	// thrown), then rethrown or the pending jump continues.
+	function protect(guarded:() -> Void, finish:Local->Void) {
 		var fin = target([], JFinally);
 		var before = b.flagged;
 		var threw = b.local("threw", TBool), held = b.local("held", TRef(RAny)), caught = b.local("caught", TRef(RAny));
@@ -444,7 +459,7 @@ abstract class Statements extends Functions {
 			b.out.push(SBreak);
 		}, fin);
 		var jumped = b.flagged > before;
-		statement(t.finallyBlock());
+		finish(threw);
 		b.out.push(SIf(ELocal(threw), Vector.fromArrayCopy([SThrow(ELocal(held))]), new Vector(0)));
 		if (jumped) {
 			var j = ELocal(jumpCode());
