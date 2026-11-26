@@ -64,7 +64,10 @@ sys.io.File.saveBytes("out.png", c.toPng());
 - Text: `Glyphs.fill(canvas, layout, x, y, paint)` (and `stroke`): a
   helder.text `TextLayout`'s glyphs (shaped by helder's engine or the
   platform's) as their outlines, through the transform; a synthetic
-  oblique slants them as Skia does.
+  oblique slants them as Skia does. A painter that keeps text as text
+  (`GlyphText`: a recording, for a PDF) is offered each run of one face
+  instead (`ShapedRun`: the glyphs, their pens, the characters each
+  shows), the outlines drawn where it does not take one.
 - Pixels: `bitmap` (RGBA8, premultiplied), `readPixels` and `writePixels`
   (straight RGBA, as getImageData and putImageData), `toPng()`
   (helder.image's PNG encoder), `toJpeg(quality, background)`
@@ -119,17 +122,49 @@ images shaded by UiShader's own functions, into a `Bitmap`.
 ## Extras
 
 - **Documents** (`helder.canvas.doc`): `Recorder`, a Painter that keeps
-  every call (its path, paint and stroke copied), `Document`, pages of
-  them; `PdfWriter.write(doc)`: a multi-page PDF 1.7, paths as PDF's,
-  colours with their opacity and blend mode in ExtGStates, linear and
-  radial gradients as shadings (stops as stitching functions, their alpha
-  a luminosity soft mask), images as image XObjects with soft masks,
-  layers as transparency groups, streams Flate-compressed;
+  every call (its path, paint and stroke copied; text as text, below),
+  `Document`, pages of them; `PdfWriter.write(doc)`: a multi-page PDF 1.7,
+  paths as PDF's, colours with their opacity and blend mode in ExtGStates,
+  linear and radial gradients as shadings (stops as stitching functions,
+  their alpha a luminosity soft mask), images as image XObjects with soft
+  masks, layers as transparency groups, streams Flate-compressed;
   `SvgWriter.write(page)`: an SVG (gradients userSpaceOnUse, clipPaths,
-  groups, mix-blend-mode, images as PNG data). What neither can say
-  (conic gradients, patterns, unbounded operators, erasing) is drawn on
-  the CPU into an image of its own. `replay(painter)` draws a recording on
-  any back end. Not written yet: shadows and filters.
+  groups, mix-blend-mode, images as PNG data, text as outlines). What
+  neither can say (conic gradients, patterns, unbounded operators,
+  erasing) is drawn on the CPU into an image of its own. `replay(painter)`
+  draws a recording on any back end. Not written yet: shadows and filters.
+- **PDF text**: text drawn through `Glyphs` or the DOM facade's
+  `fillText`/`strokeText` into a recording is the PDF's text, so it can be
+  selected, searched and copied. Each face (and variable instance) is one
+  embedded subset font for the whole document (`PdfFonts`): TrueType as
+  CIDFontType2, its glyphs written again by FontEncoder (an instance's
+  outlines, composites made simple); CFF as CIDFontType0 with its table
+  subset in place (`Cff.subset`: the charstrings and subroutines shown kept
+  byte for byte, the others emptied, so nothing is re-encoded; a CID-keyed
+  font's codes its CIDs); widths (W), Identity-H, a ToUnicode map. Glyphs
+  are placed where the layout put them (Tm, TJ). Filled text is text
+  (Tr 0, a colour or a linear or radial gradient as a pattern), and so is
+  stroked text (Tr 1, the pen in the painter's units). A paint text cannot
+  have (a pattern, a conic gradient, an unbounded operator) is drawn as
+  outlines, and colour glyphs as COLR's layers or CBDT's and sbix's
+  bitmaps. Their text is then invisible (Tr 3), so it is still found. A
+  layer with a filter (a shadow's copy) is outlines alone, so each
+  character is found once. Characters a glyph cannot say through ToUnicode
+  are an ActualText span in logical order: a cluster of several glyphs, a
+  glyph shown before for others, a right-to-left run in visual order, or
+  joiners and selectors no glyph shows. helder.pdf reads those spans
+  (`Pdf.runs`), with each character over its own glyph's box where the
+  glyphs' characters line up. A text-heavy document is about 190 times
+  smaller than its outlines (20 pages: 43 KB against 8.2 MB).
+- **Links and the document's information** (`Document`): `link(page, x,
+  y, w, h, uri)`, `linkTo(page, x, y, w, h, name)` and `anchor(name, page,
+  x, y)` give link annotations to a URI or a named destination.
+  `bookmark(title, level, page, y)` builds the outline, a deeper level
+  being the child of the last shallower one. `label(page, style, prefix,
+  start)` sets page labels (CSS's counter style names). `title`,
+  `author`, `subject`, `keywords`, `creator`, `producer`, `lang`,
+  `created` and `modified` go into the Info dictionary and XMP metadata.
+  Places are in a page's units, from its top left.
 - **Text to outlines**: `Glyphs.add` (the DOM's `ctx.outlineText(text)`: a
   Path2D).
 - **Boolean operations** (`PathOps`): `union`, `intersect`, `difference`,
@@ -156,7 +191,16 @@ last), `saveAs("out.pdf")`; Path2D's `union`, `intersect`, `difference`,
 `xor`, `complement`, `simplify`, `round`, `trim`, `jitter`, `dash`,
 `offset`, `transform`.
 
-Tests: the canvas-doc lane (the scenes as one PDF drawn by poppler and as
+Tests: PdfWriter.test.hx (a property: a line of Latin, ligatures,
+combining marks, Hebrew, Arabic, both mixed, Japanese or emoji drawn
+into a page and read back by helder.pdf's `Pdf.runs`, the same
+characters, each glyph's box where it was drawn; text against outlines
+in pixels for TrueType, CFF, CID-keyed CFF and a variable instance,
+strokes and gradients; colour glyphs; the document's links, outline,
+labels and information read back); the pdf lane's written files (also
+read by pdf.js in node: their text, links, destinations, outline and
+information; `qpdf --check` where installed). The canvas-doc lane (the
+scenes as one PDF drawn by poppler and as
 SVGs drawn by Chromium, against the CPU's pixels: all 27 within tolerance,
 the ones that need a raster fallback looser, composite's unbounded
 operators, the dots of zero-length subpaths, shadows and filters not

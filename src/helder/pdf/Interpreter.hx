@@ -52,6 +52,8 @@ class Interpreter {
 	// decoded: the text alone)
 	public var text:Null<TextRuns> = null;
 	public var textOnly = false;
+	// (the marked-content sequences open: whether each is an ActualText span)
+	final marked:Array<Bool> = [];
 	// (collect: the images a page draws, by their cache key and size shown, and nothing drawn: PdfWeb.prepare)
 	public var collect:Null<Array<{key:String, dict:PdfDict, value:PdfValue, width:Int, height:Int}>> = null;
 
@@ -231,9 +233,53 @@ class Interpreter {
 								if (gs.font != null && gs.font.vertical) tm.translate(0, k / 1000 * gs.fontSize) else tm.translate(adv, 0);
 							case _:
 						}
+			// marked content: an ActualText span's characters are its glyphs'
+			case "BMC":
+				marked.push(false);
+			case "BDC":
+				var p = operands.length > 1 ? operands[1] : PNull;
+				var props = switch p {
+					case PName(n):
+						var all = res == null ? null : Values.dict(doc.resolve(res.get("Properties")));
+						all == null ? null : Values.dict(doc.resolve(all.get(n)));
+					case _: Values.dict(doc.resolve(p));
+				}
+				var actual = props == null ? null : Values.str(doc.resolve(props.get("ActualText")));
+				var spans = actual != null && text != null;
+				marked.push(spans);
+				if (spans) text.begin(textString(actual));
+			case "EMC":
+				if (marked.length > 0 && marked.pop() && text != null) text.end();
 			case "d0" | "d1":
 			case _:
 		}
+	}
+
+	// a text string's characters: UTF-16BE after its byte order mark, UTF-8 after its (PDF 2.0), else PDFDocEncoding
+	// (as Latin-1)
+	static function textString(b:haxe.io.Bytes):String {
+		var s = new StringBuf();
+		if (b.length >= 2 && b.get(0) == 0xFE && b.get(1) == 0xFF) {
+			var i = 2;
+			while (i + 1 < b.length) {
+				var c = (b.get(i) << 8) | b.get(i + 1);
+				i += 2;
+				// (a surrogate pair: one character)
+				if (c >= 0xD800 && c < 0xDC00 && i + 1 < b.length) {
+					var d = (b.get(i) << 8) | b.get(i + 1);
+					if (d >= 0xDC00 && d < 0xE000) {
+						c = 0x10000 + ((c - 0xD800) << 10) + (d - 0xDC00);
+						i += 2;
+					}
+				}
+				s.addChar(c);
+			}
+			return s.toString();
+		}
+		if (b.length >= 3 && b.get(0) == 0xEF && b.get(1) == 0xBB && b.get(2) == 0xBF) return b.getString(3, b.length - 3, UTF8);
+		for (i in 0...b.length)
+			s.addChar(b.get(i));
+		return s.toString();
 	}
 
 	// the path painted, clipped by when W came first, then cleared

@@ -8,8 +8,10 @@ import helder.canvas.Blend.Blender;
 // Document, written out as vectors (PdfWriter, SvgWriter) or replayed on
 // any other Painter (replay: the CPU's, the GPU's). Each call's path,
 // paint and stroke are copied (a recording outlives the caller's values);
-// pixels written in (writePixels) are kept as an image.
-class Recorder implements Painter {
+// pixels written in (writePixels) are kept as an image; text offered as
+// text (GlyphText: Glyphs, the DOM facade's fillText) as its run of glyphs
+// and characters, written as a PDF's text (PdfWriter), else its outlines.
+class Recorder implements Painter implements GlyphText {
 	public var width(default, null):Int;
 	public var height(default, null):Int;
 	public var matrix(get, never):Matrix;
@@ -98,6 +100,14 @@ class Recorder implements Painter {
 		o.stroke = new Stroke().copyFrom(style);
 	}
 
+	public function glyphText(run:ShapedRun, paint:Paint, ?stroke:Stroke):Bool {
+		var o = push(Text);
+		o.run = run.copy();
+		o.paint = new Paint().copyFrom(paint);
+		if (stroke != null) o.stroke = new Stroke().copyFrom(stroke);
+		return true;
+	}
+
 	public function clearRect(x:Float, y:Float, w:Float, h:Float) {
 		var o = push(ClearRect);
 		o.rect = [x, y, w, h];
@@ -160,6 +170,12 @@ class Recorder implements Painter {
 				case StrokePath:
 					p.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
 					p.stroke(o.path, o.stroke, o.paint);
+				case Text:
+					p.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+					if (!Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(o.run, o.paint, o.stroke)) {
+						var t = o.outlined();
+						if (t.kind == Fill) p.fill(t.path, t.paint) else p.stroke(t.path, t.stroke, t.paint);
+					}
 				case ClearRect:
 					p.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
 					p.clearRect(o.rect[0], o.rect[1], o.rect[2], o.rect[3]);
@@ -188,6 +204,7 @@ enum abstract OpKind(Int) {
 	var Clear;
 	var Image;
 	var Pixels;
+	var Text;
 }
 
 // One recorded call: its transform and what it was given
@@ -206,10 +223,23 @@ class Op {
 	public var rect:Null<Array<Float>> = null;
 	public var smooth = true;
 	public var color = 0;
+	public var run:Null<ShapedRun> = null;
 
 	public function new(kind, matrix) {
 		this.kind = kind;
 		this.matrix = matrix;
+	}
+
+	// a Text op as the Fill (or StrokePath) of its glyphs' outlines
+	public function outlined():Op {
+		if (kind != Text) return this;
+		var o = new Op(stroke == null ? Fill : StrokePath, matrix);
+		var g = new Glyphs();
+		g.addRun(run);
+		o.path = g.path;
+		o.paint = paint;
+		o.stroke = stroke;
+		return o;
 	}
 }
 

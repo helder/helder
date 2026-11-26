@@ -20,5 +20,9 @@ class Image {
 		exe("bin/pdf/PdfRender", cps(["src", "tests/pdf"]).concat(["-main", "PdfRender"]).concat(targetArgs(HOST)));
 		run(exePath("bin/pdf/PdfRender", HOST), []);
 		run(NODE, ["tests/pdf/check.mjs", "bin/pdf/ours", "tests/pdf/ref", "bin/pdf/report"]);
+		// (helder.canvas's PdfWriter: its files read back by helder.pdf, then by pdf.js and qpdf where they are)
+		exe("bin/pdf/WriteCheck", cps(["src", "tests/pdf"]).concat(["-main", "WriteCheck"]).concat(targetArgs(HOST)));
+		run(exePath("bin/pdf/WriteCheck", HOST), []);
+		run(NODE, ["tests/pdf/written.mjs", "bin/pdf/written"]);
 	}
 }

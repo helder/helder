@@ -48,6 +48,9 @@ class SvgWriter {
 					open.push(0);
 				case Fill | StrokePath:
 					shape(r, o, body);
+				case Text:
+					// (as its outlines)
+					shape(r, o.outlined(), body);
 				case Clear:
 					if (((o.color >>> 24) & 255) > 0) body.add('<rect width="${r.width}" height="${r.height}" fill="${color(o.color)}" fill-opacity="${num(((o.color >>> 24) & 255) / 255)}"/>');
 				case ClearRect | Pixels:

@@ -794,11 +794,10 @@ class CanvasRenderingContext2D {
 		if (maxWidth != null && w > maxWidth) k = maxWidth / w;
 		var ox = t.alignOffset(s) * k, oy = t.baselineOffset(s);
 		var glyphs = t.glyphs;
-		glyphs.path.clear();
-		glyphs.add(t.lines, x + ox, y + oy, k);
+		// (as text where the painter keeps it: a recorded page's PDF; else the outlines)
 		effects(() -> if (fill) {
-			if (ready(s.fill)) core.fill(glyphs.path, paint);
-		} else if (ready(s.stroke)) core.stroke(glyphs.path, s.line, paint));
+			if (ready(s.fill)) glyphs.draw(core, t.lines, x + ox, y + oy, k, paint, null);
+		} else if (ready(s.stroke)) glyphs.draw(core, t.lines, x + ox, y + oy, k, paint, s.line));
 	}
 
 	// the text's glyphs as a path, laid out as fillText would draw it at (x, y) (skia-canvas's outlineText)

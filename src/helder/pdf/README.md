@@ -92,8 +92,14 @@ var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, do
   side up to the ascent, so turned, slanted and vertical text too), its
   characters in its line's text; a code that maps to no Unicode a box
   without text. A new line where the baseline moves off its line or turns,
-  a space at a gap of a quarter em along it. `Pdf.text` is its lines
-  joined by newlines, from the same pass. The ascent and descent are the
+  a space at a gap of a quarter em along it (the pen never moving back
+  along a line: a mark over its base adds none). An ActualText span
+  (`/Span << /ActualText ... >> BDC`) gives its characters in place of its
+  glyphs'. Each character goes over its own glyph's box when the glyphs'
+  own characters, read forwards or backwards, make the span's (a
+  right-to-left run in visual order); otherwise they share one box from
+  the first glyph to the last. `Pdf.text` is its lines joined by
+  newlines, from the same pass. The ascent and descent are the
   font descriptor's when plausible, else 0.8 and -0.2 em.
 - **Images, sized to the page**: a JPEG decoded reduced by its DCT's
   scaling (1/2 to 1/8) to no fewer pixels than it is shown at, a JPEG 2000
