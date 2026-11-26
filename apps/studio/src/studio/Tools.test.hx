@@ -105,6 +105,39 @@ function tests() {
 			}
 			Temp.remove(dir);
 		})).timeout(180);
+		test("a screen that throws when run: why, where, in the answers; the others drawn", async(() -> {
+			if ((Sys.getEnv("HELDER_SRC") ?? "") == "") Sys.putEnv("HELDER_SRC", BuildInfo.helderSrc());
+			var dir = Temp.dir("helder-studio-crash"), s = empty(dir), done = false;
+			try {
+				helder.async.Async.launch(_ -> while (!done) {
+					if (s.previews != null) s.previews.show(["App/Good", "App/Bad"], null);
+					helder.async.Async.delay(0.1);
+				});
+				s.tools.call("project.patch", {path: "app.tsx", text: 'export function Good() {\n\treturn <view grow={1}/>;\n}\n\nexport function Bad() {\n\treturn <view grow={1}>\n\t\t<text text-align="end">Bad</text>\n\t</view>;\n}\n'}, "a");
+				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { Good } from "./app";\n\nUiWindow.run(<Surface title="Two" width={200} height={200}><Good/></Surface>);\n'}, "a");
+				var r = s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { Good, Bad } from "./app";\n\nexport const good = story({ name: "App/Good", width: 200, height: 200, render: () => <Good/> });\nexport const bad = story({ name: "App/Bad", width: 200, height: 200, render: () => <Bad/> });\n'}, "a");
+				var a:Dynamic = haxe.Json.parse(r.content[0].text);
+				var why = "app.tsx:7: text-align: end is not a TextAlign";
+				equals(a.result, "crashed");
+				equals(a.crashed, ['App/Bad: $why']);
+				equals([s.previews.screen("App/Good").version > 0, s.previews.screen("App/Bad").crashed], [true, true]);
+				var snap = s.tools.call("run.snap", {screen: "App/Bad"}, "a");
+				equals(snap.isError, true);
+				equals(snap.content[0].text, 'App/Bad crashed: $why');
+				var c:Dynamic = haxe.Json.parse(s.tools.call("build.check", {}, "a").content[0].text);
+				equals(c.ok, true);
+				equals(c.crashed, ['App/Bad: $why']);
+				equals(s.crashes(), ['App/Bad: $why']);
+				done = true;
+				s.stop();
+			} catch (e:haxe.Exception) {
+				done = true;
+				s.stop();
+				Temp.remove(dir);
+				throw e;
+			}
+			Temp.remove(dir);
+		})).timeout(180);
 		#end
 	});
 }

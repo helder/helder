@@ -21,6 +21,8 @@ typedef Turn = {
 	build:Null<String>,
 	// a tool ran since its last text (the next text a new paragraph)
 	?gap:Bool,
+	// a screen threw when the studio ran it, as it ended ("file:line: why (screen)")
+	?crash:String,
 }
 
 class Turns {
@@ -67,6 +69,13 @@ class Turns {
 	public static function broken(t:Turn, problem:String):Turn {
 		var n:Turn = Reflect.copy(t);
 		n.build = problem;
+		return n;
+	}
+
+	// (a screen crashing as it ended: the first's why)
+	public static function crashed(t:Turn, crash:String):Turn {
+		var n:Turn = Reflect.copy(t);
+		n.crash = crash;
 		return n;
 	}
 

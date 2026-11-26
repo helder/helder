@@ -71,11 +71,11 @@ class Studio {
 		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && shows(i));
 	}
 
-	// (a frame the canvas can show: a design's, a story's with a frame or a still)
+	// (a frame the canvas can show: a design's, a story's with a frame, a still, or what it threw)
 	function shows(i:Project.ScreenInfo):Bool {
 		if (i.source.match(Design(_))) return true;
 		var s = previews?.screen(i.name);
-		return s != null && (s.image() != null || s.still() != null);
+		return s != null && (s.image() != null || s.still() != null || s.crashedSignal());
 	}
 
 	// whether a screen is the starter's own, never shown (Starter.own)
@@ -2007,8 +2007,8 @@ class Studio {
 		function end(e:Agent.AgentEvent) {
 			if (asked != null) questions.close(asked);
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
-			var ps = a == local ? [] : problems();
-			if (ps.length > 0) t = Turns.broken(t, ps[0]);
+			var ps = a == local ? [] : problems(), cs = a == local ? [] : previews?.crashed() ?? [];
+			if (ps.length > 0) t = Turns.broken(t, ps[0]) else if (cs.length > 0) t = Turns.crashed(t, '${cs[0].why} (${cs[0].screen})');
 			setTurn(t);
 			answered = true;
 			// (the ACP agent's turn over: it is done, its marks fade; its calls to
@@ -2020,7 +2020,7 @@ class Studio {
 			var notes = a == local ? [] : inbox.take();
 			if (notes.length > 0) ask(Inbox.text(notes), false);
 		}
-		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems()}, e -> switch e {
+		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
 			case Done(_) | Failed(_):
 				// (done as the agent is: a build still running shows on its frames, not as a held turn)
 				end(e);
@@ -2053,6 +2053,12 @@ class Studio {
 	}
 
 	// the last build's errors, "file:line: message" (none: it did not fail)
+	// the screens that threw when the studio ran them ("screen: file:line: why"; none after a failed build)
+	public function crashes():Array<String> {
+		var pr = previews;
+		return pr == null || pr.failed ? [] : [for (c in pr.crashed()) '${c.screen}: ${c.why}'];
+	}
+
 	public function problems():Array<String> {
 		var pr = previews;
 		if (pr == null || !pr.failed) return [];

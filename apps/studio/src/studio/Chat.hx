@@ -137,7 +137,7 @@ class Chat implements Markup {
 					<text tag="chat-status" color={c("dim")} font-size={12} max-lines={1} text-overflow="ellipsis">{status(studio, t())}</text>
 				</view>
 			</Show>
-			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
+			<Show when={t().build != null || t().crash != null || t().error != null}>{failure(studio, t)}</Show>
 			<Show when={Replies.fold(changes(studio, i), changed()).folded > 0}>
 				<text tag="chat-changes-folded" font-size={12} color={c("ink3")} cursor="pointer" onClick={_ -> changed(true)}>{
 					'Made ${changes(studio, i).length} changes ▸'
@@ -203,10 +203,11 @@ class Chat implements Markup {
 		return v;
 	}
 
-	// a failed build (its first error, where: a file's chip) or the turn's own failure
+	// a failed build (its first error, where: a file's chip), a screen that
+	// crashed when run, or the turn's own failure
 	static function failure(studio:Studio, t:Void->Turn):View {
 		function where():Null<String> {
-			var b = t().build;
+			var b = t().build ?? t().crash;
 			var m = b == null ? null : ~/^([^\s:]+:\d+):/;
 			return m != null && m.match(b) ? m.matched(1) : null;
 		}
@@ -216,10 +217,14 @@ class Chat implements Markup {
 				<text tag="chat-failed-file" slot="chip-file" shrink={0} cursor="pointer" onClick={_ -> studio.follow(where())}>{where() ?? ""}</text>
 			</Show>
 			<text grow={1} min-width={0} color={c("error")} font-size={12} max-lines={4} text-overflow="ellipsis">{
-				t().build != null ? "Build failed · " + (where() == null ? t().build : t().build.substr(where().length + 1).trim()) : (t().error ?? "")
+				t().build != null ? "Build failed · " + rest(t().build, where()) : t().crash != null ? "Crashed · " + rest(t().crash, where()) : (t().error ?? "")
 			}</text>
 		</view>;
 	}
+
+	// (a failure's text after its file:line, when it starts with one)
+	static function rest(s:String, where:Null<String>):String
+		return where == null ? s : s.substr(where.length + 1).trim();
 
 	// the input: the prompt (blank: the sheet's first, bigger), the agent's
 	// chip (its menu: the agents found, a popup above it), send; Enter sends

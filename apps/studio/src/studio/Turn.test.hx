@@ -36,6 +36,7 @@ function tests() {
 			assert(!Turns.running(t));
 			equals(Turns.add(Turns.start("x"), Failed("gone")).error, "gone");
 			equals(Turns.broken(t, "app.tsx:3: oops").build, "app.tsx:3: oops");
+			equals(Turns.crashed(t, "app.tsx:7: boom (App/Bad)").crash, "app.tsx:7: boom (App/Bad)");
 		});
 	});
 }

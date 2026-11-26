@@ -345,14 +345,30 @@ class ViewRuntime {
 
 	// a property's value, bound when reactive
 	public static function prop(n:HostNode, name:String, v:Null<Dynamic>) {
-		if (helder.view.Render.isReactive(v)) helder.view.graph.Graph.renderEffect(() -> helder.view.Render.read(v), (x:Dynamic) -> Host.setProperty(n, name, x));
-		else Host.setProperty(n, name, constant(v));
+		if (helder.view.Render.isReactive(v)) helder.view.graph.Graph.renderEffect(() -> helder.view.Render.read(v), (x:Dynamic) -> setAt(n, name, x, (n, name, x) -> Host.setProperty(n, name, x)));
+		else setAt(n, name, constant(v), (n, name, x) -> Host.setProperty(n, name, x));
 	}
 
 	// (the same with the renderer's function for the name: Renders' setter)
 	public static function propWith(n:HostNode, name:String, v:Null<Dynamic>, set:(HostNode, String, Null<Dynamic>) -> Void) {
-		if (helder.view.Render.isReactive(v)) helder.view.graph.Graph.renderEffect(() -> helder.view.Render.read(v), (x:Dynamic) -> set(n, name, x));
-		else set(n, name, constant(v));
+		if (helder.view.Render.isReactive(v)) helder.view.graph.Graph.renderEffect(() -> helder.view.Render.read(v), (x:Dynamic) -> setAt(n, name, x, set));
+		else setAt(n, name, constant(v), set);
+	}
+
+	// (a setter's error, in dev builds and headless runs: told where markup
+	// wrote the element, MarkupError, when its node keeps that)
+	static inline function setAt(n:HostNode, name:String, v:Null<Dynamic>, set:(HostNode, String, Null<Dynamic>) -> Void) {
+		#if ((hxmc.dev || helder.headless) && !macro)
+		try set(n, name, v) catch (e:haxe.Exception) throw located(n, name, e);
+		#else
+		set(n, name, v);
+		#end
+	}
+
+	static function located(n:HostNode, name:String, e:haxe.Exception):haxe.Exception {
+		var at = Std.isOfType(n, helder.view.Source.Located) ? (cast n : helder.view.Source.Located).source : null;
+		if (at == null || Std.isOfType(e, helder.view.MarkupError)) return helder.async.Errors.kept(e);
+		return new helder.view.MarkupError('$name: ' + ~/^helder\.[a-z.]+: /.replace(e.message, ""), at);
 	}
 
 	public static function style(n:HostNode, v:Dynamic) {

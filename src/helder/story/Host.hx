@@ -35,6 +35,11 @@ import helder.view.Render;
 // text engine (their glyph atlas and image pages shared), each frame into
 // the runtime's target at the screen's size, handed over as it is drawn.
 //
+// A screen that throws (built, in its turn, drawn) is let go and passed
+// over until the program starts again: its failure (HostFailure: the
+// message, where its markup wrote what threw) told (onFailure); the others
+// go on.
+//
 // The runtime is the host's way to pixels (HostRuntime): headless natively
 // (HeadlessHost: an offscreen surface, each frame read back), an
 // OffscreenCanvas in a web worker (helder.story.web.WorkerHost: each frame
@@ -63,6 +68,8 @@ class Host {
 	public var frames(default, null) = 0;
 	// told: a screen's frame drawn and handed over
 	public var onFrame:Null<HostScreen->Void> = null;
+	// told: a screen threw (its failure; the others go on)
+	public var onFailure:Null<HostScreen->Void> = null;
 
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
@@ -139,47 +146,59 @@ class Host {
 	// always): how many were drawn
 	public function frame(now:Float):Int {
 		var drawn = 0;
-		for (s in screens) {
-			if (!s.visible) continue;
-			s.mount();
-			// (a loop: its clock from its moment, its loop's seconds, then again)
-			if (s == looping) {
-				var loop:Float = s.story.loop ?? 0;
-				if (s.loopFrom < 0) s.loopFrom = now;
-				if (now - s.loopFrom > loop) {
-					s.reset();
-					s.mount();
-					s.loopFrom = now;
-				}
-			}
-			var ui = s.ui;
-			if (ui == null) continue;
-			var running = runs(s);
-			var changed = s.context.run(() -> {
-				if (running) Clock.tick(s == looping ? s.moment + now - s.loopFrom : now);
-				ui.update();
-				ui.needsFrame || running && s.context.animating;
-			});
-			if (changed || s.redraw || (s == focused && running)) {
-				draw(s, changed || s.redraw);
-				drawn++;
-			}
-		}
+		for (s in screens)
+			if (s.visible && s.failure == null && guard(s, () -> turn(s, now))) drawn++;
 		if (drawn > 0) return drawn;
 		for (s in screens)
-			if (aside(s)) {
+			if (aside(s)) return guard(s, () -> {
 				s.mount();
 				var ui = s.ui, v = s.version;
 				if (ui != null) s.context.run(() -> ui.update());
 				draw(s, true);
-				return s.version > v ? 1 : 0;
-			}
+				s.version > v;
+			}) ? 1 : 0;
 		return 0;
+	}
+
+	// (a screen's error: its failure, the screen let go and passed over until
+	// the program starts again; the others go on)
+	public function guard(s:HostScreen, f:Void->Bool):Bool
+		return try f() catch (e:haxe.Exception) {
+			s.failure = HostFailure.of(e);
+			try s.reset() catch (_:haxe.Exception) {}
+			if (onFailure != null) onFailure(s);
+			false;
+		}
+
+	// (a screen in view's turn: whether it drew)
+	function turn(s:HostScreen, now:Float):Bool {
+		s.mount();
+		// (a loop: its clock from its moment, its loop's seconds, then again)
+		if (s == looping) {
+			var loop:Float = s.story.loop ?? 0;
+			if (s.loopFrom < 0) s.loopFrom = now;
+			if (now - s.loopFrom > loop) {
+				s.reset();
+				s.mount();
+				s.loopFrom = now;
+			}
+		}
+		var ui = s.ui;
+		if (ui == null) return false;
+		var running = runs(s);
+		var changed = s.context.run(() -> {
+			if (running) Clock.tick(s == looping ? s.moment + now - s.loopFrom : now);
+			ui.update();
+			ui.needsFrame || running && s.context.animating;
+		});
+		if (!(changed || s.redraw || (s == focused && running))) return false;
+		draw(s, changed || s.redraw);
+		return true;
 	}
 
 	// (out of view: never drawn, or a still that changed; not the looping one)
 	function aside(s:HostScreen):Bool
-		return !s.visible && s != looping && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
+		return !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
@@ -281,11 +300,14 @@ class Host {
 		if (c != null) helder.gfx.ColorTarget.ClearValue.set(t, background.r / 255, background.g / 255, background.b / 255, c.w);
 		renderer.scale = scale;
 		ui.scale = scale;
-		s.context.run(() -> {
+		try s.context.run(() -> {
 			renderer.begin(device.width, device.height);
 			ui.paint(renderer);
 			renderer.prepare(enc);
-		});
+		}) catch (e:haxe.Exception) {
+			device.endFrame();
+			throw helder.async.Errors.kept(e);
+		}
 		enc.beginPass(pass);
 		renderer.end(enc);
 		enc.endPass();
@@ -310,6 +332,8 @@ class HostScreen {
 	public var ui(default, null):Null<Ui> = null;
 	public var controls(default, null):Null<Controls> = null;
 	public var visible = false;
+	// what it threw (null: fine): passed over until the program starts again
+	public var failure:Null<HostFailure> = null;
 	// whether it was ever in view (its state kept across a reload: built again before the first frame)
 	public var seen = false;
 	// its frames' pixels per point (the host's, or its focus's)
@@ -444,5 +468,17 @@ class HeadlessHost implements HostRuntime {
 	public function present(s:HostScreen, changed:Bool) {
 		var f = framed, b = pixels.get(s.name);
 		if (f != null && b != null) f(s, b);
+	}
+}
+
+// A screen's error: its message, and where its markup wrote what threw
+// ("file:line", when it says: helder.view.MarkupError)
+@:structInit class HostFailure {
+	public final message:String;
+	public final at:Null<String>;
+
+	public static function of(e:haxe.Exception):HostFailure {
+		var m = Std.downcast(e, helder.view.MarkupError), at = m?.at;
+		return {message: e.message, at: at == null ? null : '${at.file}:${at.line}'};
 	}
 }

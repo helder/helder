@@ -76,6 +76,10 @@ class WebPreviews {
 	public function follow()
 		Screen.follow(screens, project.live());
 
+	// (Previews.crashed's)
+	public function crashed():Array<{screen:String, why:String}>
+		return [for (s in screens) if (s.crashed && s.report.peek() != "") {screen: s.info.name, why: s.report.peek()}];
+
 	public function allShown():Bool
 		return !Lambda.exists(screens, s -> s.version == 0 && !s.crashed) || failed;
 

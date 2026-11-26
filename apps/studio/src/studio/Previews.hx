@@ -501,6 +501,9 @@ class Previews {
 				case "Host.ready":
 					var list:Array<Dynamic> = m.params.screens;
 					order = [for (x in list) screen(x.name)];
+					// (the new program's: a screen that throws again says so at once)
+					for (s in screens)
+						if (s.crashed) s.crashed = false;
 					sharing = m.params.sharing;
 					connection = c;
 					onLog('studio: the screens\' host is running (${order.length} screens, frames: $sharing)');
@@ -509,6 +512,8 @@ class Previews {
 					reloaded();
 				case "Host.frame":
 					frame(m.params);
+				case "Host.failed":
+					threw(m.params);
 				case "Headless.frame":
 					fileFrame(m.params);
 				case "Host.still":
@@ -563,6 +568,25 @@ class Previews {
 		}
 		shownFrame(s);
 	}
+
+	// a screen that threw in the host: crashed, why (where its markup wrote
+	// it, when the host says), not waited on; the others go on
+	function threw(p:Dynamic) {
+		var s = order[Std.int(p.screen)];
+		if (s == null) return;
+		var message = ~/^helder\.[a-z.]+: /.replace(p.message ?? "an error", ""), at:Null<String> = p.at;
+		if (at != null && at.startsWith(project.dir + "/")) at = at.substr(project.dir.length + 1);
+		var why = at == null ? message : '$at: $message';
+		s.crashed = true;
+		s.report(why);
+		s.reloading = false;
+		onLog('studio: ${s.info.name} crashed: $why');
+		reloaded();
+	}
+
+	// the screens that crashed, the program running: each its why ("file:line: message")
+	public function crashed():Array<{screen:String, why:String}>
+		return [for (s in screens) if (s.crashed && s.report.peek() != "") {screen: s.info.name, why: s.report.peek()}];
 
 	// a still the host settled: kept under the files its program was made of
 	function tookStill(p:Dynamic) {

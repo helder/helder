@@ -194,6 +194,9 @@ class AcpAgent implements Agent {
 			out.push({type: "text", text: 'In helder studio: the screen ${context.screen} is in focus.'});
 		if (context.problems.length > 0)
 			out.push({type: "text", text: "The studio's last build failed:\n" + context.problems.slice(0, 10).map(p -> '- $p').join("\n")});
+		var crashes = context.crashes ?? [];
+		if (crashes.length > 0)
+			out.push({type: "text", text: "It builds, but these screens threw when the studio ran them:\n" + crashes.slice(0, 10).map(p -> '- $p').join("\n")});
 		if (context.screen != null && work.snap != null && caps.promptCapabilities?.image == true) {
 			var png = try work.snap(context.screen) catch (_:Exception) null;
 			if (png != null) out.push({type: "image", mimeType: "image/png", data: png});

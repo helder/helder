@@ -107,14 +107,8 @@ class Board implements Markup {
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
 			onPointerEnter={_ -> studio.hover(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
-			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
+			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null && !s.crashedSignal() ? 1 : 0.45}/>
 			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
-			<Show when={s.crashedSignal()}>
-				<view tag="crashed" position="absolute" left={8} top={8} right={8} row-gap={2}>
-					<text color={c("fg2")} font-size={Theme.SMALL}>stopped</text>
-					<text color={c("fg3")} font-size={Theme.SMALL} max-lines={8} text-overflow="ellipsis">{s.report()}</text>
-				</view>
-			</Show>
 			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
 	}
@@ -123,7 +117,7 @@ class Board implements Markup {
 	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
 		var n = new StillFrame(s.still.peek(), s.stillPasses, s.stillWidth, s.stillHeight);
 		n.tag = "still";
-		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null}, v -> {
+		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null || s.crashedSignal()}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
 		});
 		// (hovered: its loop from the file, played; let go, the still)
@@ -176,11 +170,11 @@ class Board implements Markup {
 							color={studio.hovered() == r().name ? c("ink2") : c("fg3")}/>
 					</Show>
 					{Feedback.chip(studio, r().name)}
-					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_)) && Feedback.on(studio, r().name).length == 0}>
+					<Show when={trouble(studio, r().name) != "" && Feedback.on(studio, r().name).length == 0}>
 						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
 							shrink={1} min-width={0} background={c("error-soft")}>
 							<view width={6} height={6} radius={3} shrink={0} background={c("error")}/>
-							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" shrink={1} min-width={0} color={c("error")}>{failed(studio)}</text>
+							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" shrink={1} min-width={0} color={c("error")}>{trouble(studio, r().name)}</text>
 						</view>
 					</Show>
 				</view>
@@ -200,10 +194,15 @@ class Board implements Markup {
 		</view>;
 	}
 
-	// (a failed build, by each live frame: its first error and where)
-	static function failed(studio:Studio):String {
+	// (by a live frame: a failed build's first error and where, else what it
+	// threw when run; "": neither)
+	static function trouble(studio:Studio, name:String):String {
+		var info = studio.project?.screen(name);
+		if (info == null || info.source.match(Design(_))) return "";
 		var f = studio.failure();
-		return f == null ? "" : "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}');
+		if (f != null) return "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}');
+		var s = studio.previews?.screen(name);
+		return s != null && s.crashedSignal() ? "Crashed · " + s.report() : "";
 	}
 
 	// (a frame's width in the stage's points)

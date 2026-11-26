@@ -784,7 +784,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		observer = null;
 		#if hxmc.dev
 		// (hxmc dev: in its compute's scope, what it makes keyed as there: helder.view.Refresh)
-		var c = try (hotPath == null ? apply(value, prev) : helder.dev.Hot.at(hotPath, () -> apply(value, prev))) catch (e:Dynamic) {
+		// (an Exception caught, a thrown string wrapped: Errors.kept reads its stack)
+		var c = try (hotPath == null ? apply(value, prev) : helder.dev.Hot.at(hotPath, () -> apply(value, prev))) catch (e:haxe.Exception) {
 		#else
 		var c = try apply(value, prev) catch (e:haxe.Exception) {
 		#end
