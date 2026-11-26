@@ -87,7 +87,7 @@ export declare class View {
 export type ForProps<T> = { each: Read<T[]>; keyed?: boolean; by?: (item: T) => string | number; children: (arg0: Read<T>) => unknown };
 
 // options of a signal and a memo
-export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserved?: () => void; ownedWrite?: boolean };
+export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserved?: () => void; ownedWrite?: boolean; shared?: boolean };
 
 // a root's content (Root): a literal expected as one holds components only,
 // a component returning one is a root (<Surface>), no renderer's markup
