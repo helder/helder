@@ -91,6 +91,22 @@ class Fragments {
 		lasts[parent] = child;
 	}
 
+	// a child taken out of its parent's children again
+	public function remove(child:Int) {
+		var p = parents[child];
+		if (p < 0) return;
+		var prev = -1, k = firsts[p];
+		while (k >= 0 && k != child) {
+			prev = k;
+			k = nexts[k];
+		}
+		if (k < 0) return;
+		if (prev < 0) firsts[p] = nexts[child] else nexts[prev] = nexts[child];
+		if (lasts[p] == child) lasts[p] = prev;
+		parents[child] = -1;
+		nexts[child] = -1;
+	}
+
 	// (a fragment made again: its children dropped)
 	public function empty(id:Int) {
 		firsts[id] = -1;

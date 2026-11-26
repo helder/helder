@@ -283,10 +283,12 @@ keyed on its space: the same space, the same fragment.
   before it; a formatting context's root (overflow, flow-root, a table)
   goes beside the floats in the room they leave, or down past them when
   its margins, set width or a table's min-content don't fit.
-- In a line (`WordFlow`): a float met is placed by the block at the line's
-  top (`Space.placeFloat`), the line's room taken again; `lineWidth` gives
-  each line its room and how far down it widens, a line whose first word
-  doesn't fit goes there.
+- In lines (`BlockLines`): a float met is placed by the block at its
+  line's top (`Space.placeFloat`; `Space.unplace` takes it out again when
+  the lines are laid out anew around it); `lineWidth` gives each line its
+  room. A line whose first piece doesn't fit beside floats overflows for
+  now: the engine has no way yet to move it down to where the room widens
+  (CSS 2.1 §9.5).
 - Absolutely positioned boxes wait in their containing block's list
   (`Positioned`: the nearest positioned box's, else the root's; fixed ones
   the root's), with their static place in the fragment they were met in
@@ -343,21 +345,28 @@ Not yet: percentages in heights inside cells, `visibility: collapse`
 columns, a table's header and footer repeated across pages (the paged
 host's).
 
-## The line builder's stand-in
+## A block container's lines
 
-`WordFlow` builds a block container's `InlineContent` from the box tree
-(`addText` with each text run's DOM text, `openBox` and `closeBox`
-around inline boxes, `addAtomic` with inline blocks and replaced
-elements laid out first, `addBreak`; each item's style a `BoxInline`, one
-per box, so an item's box is its style's) and, until the inline lane's
-line builder lands, places its pieces in lines itself: filled greedily
-at the content's opportunities, collapsible spaces at a line's ends
-taking no room, line boxes as §10.8 builds them (each inline box's line
-height around its font's rounded ascent and descent, the strut,
-vertical-align's keywords, lengths and percentages, top and bottom),
-text-align with justify, text-indent, inline boxes' edges, a line of
-nothing of no height, outside markers before the first line; in logical
-order (no visual reordering). Min-content and max-content break at every
-opportunity and at forced ones. Its output is what the real builder's
-will be: line, span and text fragments with glyph runs of the shaped
-words.
+`BlockLines` is the box tree's side of the inline formatting context: it
+builds a block container's `InlineContent` (`addText` with each text
+run's DOM text, `openBox` and `closeBox` around inline boxes, `addAtomic`
+with inline blocks, replaced elements and inline tables laid out first,
+`addBreak`, `addFloat`, `addAbspos`; each item's style a `BoxInline`, one
+per box style, edges and width, so the engine's caches hit), lays it out
+with the engine (`InlineLayout`, `InlineConstraints.lineWidth` from the
+block's floats) and makes its output fragments: a line each, the inline
+boxes' spans nested as the boxes are (by their Open items' depth), text
+runs with glyph runs (one a face), atomics, hyphens and ellipses. The
+items map back to boxes by order (inline boxes, atomics) and by DOM text
+node (text runs).
+
+- Floats met in the lines are placed at the top of the line the engine put
+  them on, and the lines laid out again around them until they stay (four
+  rounds at most); absolutely positioned boxes get the place the engine
+  gave them as their static position.
+- Outside list markers are laid out by the engine alone (their own
+  content, start aligned, unspaced) and sit before the first line's start,
+  at the floats' edge; a list item with nothing else gets a line of the
+  marker's height.
+- Intrinsic sizes are the engine's (`minContent`, `maxContent`), atomics
+  at their own min- and max-content, floats beside the lines at most.

@@ -61,6 +61,18 @@ class Exclusions {
 		lastTop = y;
 	}
 
+	// The last n floats taken out again (a line's floats placed anew).
+	public function drop(n:Int) {
+		var k = lefts.length - n;
+		if (k < 0) k = 0;
+		lefts.resize(k);
+		x0s.resize(k);
+		x1s.resize(k);
+		y0s.resize(k);
+		y1s.resize(k);
+		lastTop = k > 0 ? y0s[k - 1] : Math.NEGATIVE_INFINITY;
+	}
+
 	// The bottom of the floats on a side ("left", "right", "both"): where clearance puts a box's top.
 	public function clear(side:String):Float {
 		var bottom = Math.NEGATIVE_INFINITY;

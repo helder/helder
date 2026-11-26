@@ -148,7 +148,7 @@ private final FLOATS:Gen<Array<{left:Bool, w:Float, h:Float, y:Float}>> = array(
 	y: c.draw(int(0, 100)) * 1.0
 }, 1, 8);
 
-// (the first line box of an element's box: its x and y)
+// (the first line box of an element's box: where its content starts)
 private function lineOf(v:Laid, id:String):Array<Float> {
 	var el:Element = v.document.getElementById(id);
 	var f = v.fragments;
@@ -157,8 +157,9 @@ private function lineOf(v:Laid, id:String):Array<Float> {
 		if (f.kind(k) == Fragments.BOX && f.box(k).node == el && f.parent(k) >= 0) {
 			var c = f.first(k);
 			while (c >= 0 && f.kind(c) != Fragments.LINE) c = f.next(c);
-			if (c < 0) return [];
-			var at = f.absolute(c);
+			if (c < 0 || f.first(c) < 0) return [];
+			// (where its content starts: its first fragment's place)
+			var at = f.absolute(f.first(c));
 			return [at.x, at.y];
 		}
 	return [];

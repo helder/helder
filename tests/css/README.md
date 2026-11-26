@@ -376,48 +376,48 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | Chapter | Pass | Drawn |
 | --- | --- | --- |
 | CSS2 | 0 | 5 |
-| CSS2/abspos | 12 | 25 |
+| CSS2/abspos | 13 | 25 |
 | CSS2/backgrounds | 303 | 333 |
 | CSS2/bidi-text | 9 | 34 |
-| CSS2/borders | 473 | 504 |
+| CSS2/borders | 483 | 504 |
 | CSS2/box | 2 | 9 |
-| CSS2/box-display | 72 | 86 |
+| CSS2/box-display | 73 | 86 |
 | CSS2/cascade | 23 | 31 |
 | CSS2/cascade-import | 0 | 1 |
 | CSS2/colors | 10 | 19 |
-| CSS2/css1 | 128 | 164 |
+| CSS2/css1 | 131 | 164 |
 | CSS2/css21-errata | 4 | 9 |
 | CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
-| CSS2/floats | 81 | 112 |
-| CSS2/floats-clear | 172 | 203 |
+| CSS2/floats | 78 | 112 |
+| CSS2/floats-clear | 178 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
 | CSS2/fonts | 118 | 159 |
-| CSS2/generated-content | 186 | 205 |
-| CSS2/linebox | 165 | 192 |
+| CSS2/generated-content | 189 | 205 |
+| CSS2/linebox | 166 | 192 |
 | CSS2/lists | 154 | 155 |
-| CSS2/margin-padding-clear | 650 | 683 |
+| CSS2/margin-padding-clear | 649 | 683 |
 | CSS2/media | 17 | 17 |
-| CSS2/normal-flow | 622 | 696 |
-| CSS2/positioning | 416 | 513 |
+| CSS2/normal-flow | 620 | 696 |
+| CSS2/positioning | 418 | 513 |
 | CSS2/sec5 | 22 | 23 |
 | CSS2/selectors | 92 | 467 |
 | CSS2/stacking-context | 1 | 3 |
 | CSS2/syntax | 213 | 252 |
 | CSS2/tables | 203 | 250 |
-| CSS2/text | 283 | 376 |
+| CSS2/text | 286 | 376 |
 | CSS2/text/crashtests | 1 | 1 |
-| CSS2/ui | 39 | 52 |
+| CSS2/ui | 40 | 52 |
 | CSS2/values | 11 | 25 |
-| CSS2/visudet | 22 | 37 |
+| CSS2/visudet | 23 | 37 |
 | CSS2/visudet/crashtests | 1 | 1 |
 | CSS2/visufx | 4 | 49 |
 | CSS2/visufx/crashtests | 1 | 1 |
-| CSS2/visuren | 22 | 26 |
+| CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 4558 | 5752 |
+| all | 4585 | 5752 |
 
-Pending by stage: inline 521, positioning 221, generated content 209, tables 101, floats 88, fonts 41, ui 13.
+Pending by stage: inline 517, positioning 217, generated content 202, tables 99, floats 79, fonts 41, ui 12.
 
 ## Interpolation
 
