@@ -226,6 +226,24 @@ function tests() {
 			equals(CssProperties.impact(MarginInlineStart) == Layout, true);
 			equals(CssProperties.physical(MarginInlineStart, true) == MarginRight, true);
 		});
+		test("typed reads by id don't allocate", () -> {
+			var s = styles('<p id=p>a</p>', "p { width: 50%; position: absolute; color: red; opacity: 0.5; border-top: 2px solid; float: left }");
+			var p = s.computed(s.document.getElementById("p"));
+			var n = 0.0;
+			// (once first: what a first read makes, lazily, isn't counted)
+			function read() {
+				n += p.length(Width).value + p.px(BorderTopWidth) + p.number(Opacity) + p.color(BorderTopColor).r;
+				if (p.keyword(Position) == "absolute") n++;
+				if (p.terms(Float).length == 1) n++;
+				if (p.length(MarginInlineStart).kind == Px) n++;
+			}
+			read();
+			var before = hxmc.GcStats.bytesAllocated();
+			for (_ in 0...1000) read();
+			var after = hxmc.GcStats.bytesAllocated();
+			equals(after - before, 0.0, 'allocated ${after - before} bytes in 7,000 reads');
+			equals(n > 0, true);
+		});
 		test("styles and groups shared", () -> {
 			var s = styles('<div id=d><p id=a class=x>a</p><p id=b class=x>b</p><p id=c class=y>c</p></div>', ".x { margin-top: 1px } .y { margin-top: 2px } .y { color: red }");
 			var a = s.computed(s.document.getElementById("a")), b = s.computed(s.document.getElementById("b")), c = s.computed(s.document.getElementById("c"));

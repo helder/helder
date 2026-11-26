@@ -354,6 +354,69 @@ const cascadeReport = {}
   cascadeReport.tests = tests.length
 }
 
+// ---- counters.json: css-counter-styles' and css-lists' reftests whose pages read statically (both
+// pages' text compared by CssCountersCheck), and @counter-style's descriptor syntax calls
+const countersReport = {}
+{
+  const tests = [], pairs = [], syntax = [], sheets = {}
+  const page = (rel, text) => text
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    // (a tag's attributes may hold a >: quoted values read whole)
+    .replace(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, l => /\brel\s*=\s*["']?(help|author|match|mismatch|reviewer)\b/i.test(l) ? '' : l)
+    .replace(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '')
+    // (a linked sheet by its path in WPT, kept once in sheets)
+    .replace(/<link\b[^>]*\brel=["']?stylesheet["']?[^>]*>/gi, l => {
+      const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(l)?.[1]
+      const at = href && resolve(rel, href)
+      if (!at || !fs.existsSync(path.join(root, at))) return ''
+      sheets[at] ??= fs.readFileSync(path.join(root, at), 'utf8')
+      return `<link rel="stylesheet" href="/${at}">`
+    })
+  const SYNTAX = new Set(['test_valid_counter_style_descriptor', 'test_invalid_counter_style_descriptor', 'test_counter_style_name'])
+  for (const dir of ['css/css-counter-styles', 'css/css-lists']) for (const file of walk(path.join(root, dir))) {
+    const rel = path.relative(root, file)
+    if (!isTest(rel) || !/\.html?$/.test(rel) || /-(ref|notref)\.html?$/.test(rel) || /\/(support|animations)\//.test(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const d = describe(rel, text)
+    let status
+    if (d.type === 'testharness') {
+      let n = 0
+      for (const src of scripts(text)) for (const c of calls(src, SYNTAX)) {
+        if (c.args.some(a => a !== undefined && typeof a !== 'string' && typeof a !== 'boolean')) continue
+        syntax.push([c.name.replace(/^test_|_counter_style_descriptor$|_counter_style/g, ''), ...c.args, tests.length])
+        n++
+      }
+      status = n ? `read: ${n}` : 'out: the CSSOM or script (no JavaScript here)'
+    } else if (d.type !== 'reftest') status = 'out: ' + d.type
+    else if (/shadowroot|attachShadow|::part|<slot/i.test(text)) status = 'out of scope: shadow trees'
+    else if (d.needs.includes('script')) status = 'out: its script changes the page (no JavaScript here)'
+    else if (/writing-mode:\s*(vertical|sideways)|direction:\s*rtl|dir=["']?rtl/.test(text)) status = 'out of scope: vertical or rtl markers (a marker\'s place is layout\'s)'
+    else {
+      const match = d.refs.find(r => r[1] === 'match')
+      const reffile = match && path.join(root, match[0])
+      if (!match || !fs.existsSync(reffile)) status = 'out: a mismatch reftest (text equality says nothing)'
+      else if (/<script\b/i.test(fs.readFileSync(reffile, 'utf8'))) status = 'out: its reference\'s script writes it (no JavaScript here)'
+      else {
+        pairs.push({file: tests.length, test: page(rel, text), ref: page(match[0], fs.readFileSync(reffile, 'utf8'))})
+        status = 'read: a reftest (both pages\' text)'
+      }
+    }
+    tests.push([rel, d.type, status])
+  }
+  writeJson(out + '/counters.json', {
+    source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'tests: [path, type, status]; pairs: {file: its index in tests, test, ref: the pages, scripts out}; sheets: the pages\' linked '
+      + 'sheets by their path; syntax: [valid (descriptor, value, expected serialization?) | invalid (descriptor, value) | name (name, valid), test]',
+    tests, pairs, sheets, syntax
+  }, 2)
+  const by = {}
+  for (const t of tests) {
+    const k = t[2].replace(/: \d+$/, '')
+    by[k] = (by[k] ?? 0) + 1
+  }
+  Object.assign(countersReport, {by, pairs: pairs.length, syntax: syntax.length, tests: tests.length})
+}
+
 // ---- the report, into tests/css/README.md between its markers
 const n = (a, b) => b[1] - a[1]
 const table = (head, rows) => [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n')

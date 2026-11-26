@@ -236,7 +236,9 @@ class CssMatch {
 				return w != null && k(i + 1, [Ident(w)]);
 			case "custom-ident":
 				var w = ident(i);
-				return w != null && !WIDE.contains(Css.lower(w)) && !excluded.exists(Css.lower(w)) && k(i + 1, [Ident(w)]);
+				// (a counter style's name is any but none, Counter Styles 3 §3: decimal and disc too)
+				var names = ctx.contains("<counter-style-name>");
+				return w != null && !WIDE.contains(Css.lower(w)) && (names ? Css.lower(w) != "none" : !excluded.exists(Css.lower(w))) && k(i + 1, [Ident(w)]);
 			case "dashed-ident":
 				var w = ident(i);
 				return w != null && StringTools.startsWith(w, "--") && k(i + 1, [Ident(w)]);

@@ -35,7 +35,8 @@ for (const m of section.matchAll(/<pre><code class="css">([\s\S]*?)<\/code><\/pr
     skipped.push(heading.trim())
     continue
   }
-  const kind = /presentational hints/.test(tail) ? 'hints' : /quirks mode/.test(tail) ? 'quirks' : 'base'
+  // (the lists' type attributes always apply: a list numbers wrongly without them, as without ol's start)
+  const kind = /presentational hints/.test(tail) && heading.trim() !== 'Lists' ? 'hints' : /quirks mode/.test(tail) ? 'quirks' : 'base'
   kinds[kind].push(`/* ${heading.trim()} */\n${headings(css).trim()}`)
 }
 const print = fs.readFileSync('src/helder/css/print.css', 'utf8')

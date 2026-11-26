@@ -419,6 +419,55 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 
 Pending by stage: inline 666, tables 612, positioning 548, floats 376, generated content 263, fonts 42, ui 13.
 
+## Counters
+
+Counters, counter styles and generated content against WPT's
+css-counter-styles and css-lists tests, natively (`bun run test css`:
+CssCountersCheck; BLESS=1: counters-manifest.json and the counts below;
+SHOW=1: each case that doesn't pass):
+
+- `fixtures/counters.json` (made by `import-wpt.mjs`): every test of
+  those directories with what became of it. A reftest whose pages read
+  statically (no script, no shadow tree, horizontal ltr) is kept with its
+  reference, scripts out, linked sheets kept once; @counter-style's
+  descriptor syntax calls (`test_valid_counter_style_descriptor` and the
+  like) are read as rows.
+- `CssCountersCheck.hx`: both pages of a reftest cascaded and walked as
+  the box tree walks them (CssCounters: each element, its ::marker,
+  ::before, children, ::after), each block a line of its text, and the
+  lines required the same; the syntax rows' descriptors written as WPT
+  expects, the invalid ones rejected. A case is required unless
+  counters-manifest.json's `pending` says why.
+
+<!-- counters -->
+433 of 472 cases pass.
+
+| Pending because | Cases |
+| --- | --- |
+| values: Counter Styles 3 §7.1.2's optional extended CJK forms past 9999 (万, 億...), and values past 32 bits: counters here are 32-bit, as browsers' are | 19 |
+| counters: a reversed() start where a nested reversed list's scope takes the outer list's later items: WPT's numbers are neither Lists 3 §4.4.2's algorithm as written (followed) nor HTML's ordinal values | 8 |
+| layout: lines are layout's (inline list items and their markers, a block inside an inline, where a marker paints) | 7 |
+| box tree: ::before and ::after that are list items, with markers of their own (CSS Pseudo 4's nested pseudo-elements) | 3 |
+| layout: an rtl marker's suffix, placed by the bidi algorithm | 1 |
+| paint: the test is about the room a marker's line gives it; its reference draws the other triangle | 1 |
+
+The tests, by what became of them:
+
+| Status | Tests |
+| --- | --- |
+| read: a reftest (both pages' text) | 372 |
+| out: its script changes the page (no JavaScript here) | 60 |
+| out: the CSSOM or script (no JavaScript here) | 40 |
+| out of scope: vertical or rtl markers (a marker's place is layout's) | 18 |
+| out: crash | 17 |
+| read | 9 |
+| out of scope: shadow trees | 7 |
+| out: noref | 3 |
+| out: a mismatch reftest (text equality says nothing) | 2 |
+| out: its reference's script writes it (no JavaScript here) | 2 |
+| out: manual | 1 |
+<!-- /counters -->
+
 ## Report
 
 <!-- report -->

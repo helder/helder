@@ -35,17 +35,21 @@ class CssStyle extends CssStyleGroups {
 
 	// The property's computed value as terms (a logical one's physical one's).
 	public function terms(p:CssProperty):Array<CssTerm> {
-		if (CssProperties.logical(p)) p = CssProperties.physical(p, inheritedText.direction == Rtl);
+		p = physical(p);
 		return group(CssProperties.groupOf(p)).terms(p);
 	}
 
+	inline function physical(p:CssProperty):CssProperty
+		return CssProperties.logical(p) ? CssProperties.physical(p, inheritedText.direction == Rtl) : p;
+
+	// The typed reads below return what the group holds: no allocation.
+
 	// A length, percentage, number or keyword property's value (a margin, a
 	// size, line-height...); OTHER (kind Other) for anything else.
-	public function length(p:CssProperty):CssLength
-		return switch terms(p) {
-			case [t]: styles.intern.length([t]) ?? CssLength.OTHER;
-			case _: CssLength.OTHER;
-		}
+	public function length(p:CssProperty):CssLength {
+		p = physical(p);
+		return group(CssProperties.groupOf(p)).lengthOf(p) ?? CssLength.OTHER;
+	}
 
 	// The length in px against what a percentage refers to (NaN for a keyword).
 	public inline function resolve(p:CssProperty, basis:Float):Float
@@ -59,26 +63,38 @@ class CssStyle extends CssStyleGroups {
 
 	// A colour property's value, currentcolor as the element's color.
 	public function color(p:CssProperty):CssRgba {
-		var c = switch terms(p) {
-			case [t]: styles.intern.rgba([t]) ?? CssRgba.OTHER;
-			case _: CssRgba.OTHER;
-		}
+		p = physical(p);
+		var c = group(CssProperties.groupOf(p)).rgbaOf(p) ?? CssRgba.OTHER;
 		return c.resolve(inheritedText.color);
 	}
 
 	// A number property's value (opacity, z-index, flex-grow...); NaN for a keyword.
-	public function number(p:CssProperty):Float
-		return switch terms(p) {
-			case [Number(v, _)]: v;
-			case _: Math.NaN;
-		}
+	public function number(p:CssProperty):Float {
+		p = physical(p);
+		var g = group(CssProperties.groupOf(p));
+		var n = g.numberOf(p);
+		if (n == n) return n;
+		var l = g.lengthOf(p);
+		return l != null && l.kind == Plain ? l.value : Math.NaN;
+	}
 
 	// A value that is one keyword: it; else null.
-	public function keyword(p:CssProperty):Null<String>
-		return switch terms(p) {
-			case [Keyword(k)]: k;
+	public function keyword(p:CssProperty):Null<String> {
+		p = physical(p);
+		var g = group(CssProperties.groupOf(p));
+		var k = g.keywordOf(p);
+		if (k >= 0) return CssProperties.keywords(p)[k];
+		var l = g.lengthOf(p);
+		if (l != null) return l.keyword;
+		var c = g.rgbaOf(p);
+		if (c != null) return c.keyword;
+		// (a keyword the field can't hold, or a value kept as terms: read there)
+		if (k != -2 && CssProperties.kindOf(p) != 5 && CssProperties.kindOf(p) != 4) return null;
+		return switch g.terms(p) {
+			case [Keyword(w)]: w;
 			case _: null;
 		}
+	}
 
 	// The background layers, each list repeated to background-image's length.
 	public inline function backgrounds():Array<CssItems.CssBackgroundLayer>

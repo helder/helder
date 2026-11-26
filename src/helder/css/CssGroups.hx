@@ -103,28 +103,63 @@ class CssFontGroup extends CssGroup {
 		return switch (p : Int) {
 			case 97: fontFamily;
 			case 98: fontFeatureSettings;
-			case 99: (fontKerning : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontKerning])] : others.get(p);
+			case 99: (fontKerning : Int) >= 0 ? CssProperties.keywordTerms(p, fontKerning) : others.get(p);
 			case 100: fontLanguageOverride;
-			case 101: (fontOpticalSizing : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontOpticalSizing])] : others.get(p);
+			case 101: (fontOpticalSizing : Int) >= 0 ? CssProperties.keywordTerms(p, fontOpticalSizing) : others.get(p);
 			case 102: fontSize.id < 0 ? others.get(p) : fontSize.terms;
 			case 103: fontSizeAdjust;
 			case 104: fontStyle;
-			case 105: (fontSynthesisPosition : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontSynthesisPosition])] : others.get(p);
-			case 106: (fontSynthesisSmallCaps : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontSynthesisSmallCaps])] : others.get(p);
-			case 107: (fontSynthesisStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontSynthesisStyle])] : others.get(p);
-			case 108: (fontSynthesisWeight : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontSynthesisWeight])] : others.get(p);
+			case 105: (fontSynthesisPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisPosition) : others.get(p);
+			case 106: (fontSynthesisSmallCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisSmallCaps) : others.get(p);
+			case 107: (fontSynthesisStyle : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisStyle) : others.get(p);
+			case 108: (fontSynthesisWeight : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisWeight) : others.get(p);
 			case 109: fontVariantAlternates;
-			case 110: (fontVariantCaps : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontVariantCaps])] : others.get(p);
+			case 110: (fontVariantCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantCaps) : others.get(p);
 			case 111: fontVariantEastAsian;
-			case 112: (fontVariantEmoji : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontVariantEmoji])] : others.get(p);
+			case 112: (fontVariantEmoji : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantEmoji) : others.get(p);
 			case 113: fontVariantLigatures;
 			case 114: fontVariantNumeric;
-			case 115: (fontVariantPosition : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fontVariantPosition])] : others.get(p);
+			case 115: (fontVariantPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantPosition) : others.get(p);
 			case 116: fontVariationSettings;
-			case 117: fontWeightKeyword >= 0 ? [Keyword(CssProperties.keywords(p)[fontWeightKeyword])] : fontWeightKeyword == -2 ? others.get(p) : [Number(fontWeight, false)];
+			case 117: fontWeightKeyword >= 0 ? CssProperties.keywordTerms(p, fontWeightKeyword) : fontWeightKeyword == -2 ? others.get(p) : [Number(fontWeight, false)];
 			case 118: fontWidth.id < 0 ? others.get(p) : fontWidth.terms;
 			case 144: lineHeight.id < 0 ? others.get(p) : lineHeight.terms;
 			case _: throw 'not in font: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 102: fontSize;
+			case 118: fontWidth;
+			case 144: lineHeight;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 99: fontKerning;
+			case 101: fontOpticalSizing;
+			case 105: fontSynthesisPosition;
+			case 106: fontSynthesisSmallCaps;
+			case 107: fontSynthesisStyle;
+			case 108: fontSynthesisWeight;
+			case 110: fontVariantCaps;
+			case 112: fontVariantEmoji;
+			case 115: fontVariantPosition;
+			case 117: fontWeightKeyword;
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 117: fontWeight;
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -286,21 +321,21 @@ class CssInheritedTextGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 78: color.id < 0 ? others.get(p) : color.terms;
-			case 86: (direction : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[direction])] : others.get(p);
+			case 86: (direction : Int) >= 0 ? CssProperties.keywordTerms(p, direction) : others.get(p);
 			case 142: letterSpacing.id < 0 ? others.get(p) : letterSpacing.terms;
 			case 235: wordSpacing.id < 0 ? others.get(p) : wordSpacing.terms;
 			case 209: textIndent;
 			case 200: textAlignAll;
-			case 201: (textAlignLast : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[textAlignLast])] : others.get(p);
+			case 201: (textAlignLast : Int) >= 0 ? CssProperties.keywordTerms(p, textAlignLast) : others.get(p);
 			case 210: textJustify;
 			case 213: textTransform;
-			case 231: (whiteSpaceCollapse : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[whiteSpaceCollapse])] : others.get(p);
-			case 216: (textWrapMode : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[textWrapMode])] : others.get(p);
-			case 217: (textWrapStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[textWrapStyle])] : others.get(p);
-			case 234: (wordBreak : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[wordBreak])] : others.get(p);
-			case 143: (lineBreak : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[lineBreak])] : others.get(p);
-			case 176: (overflowWrap : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[overflowWrap])] : others.get(p);
-			case 130: (hyphens : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[hyphens])] : others.get(p);
+			case 231: (whiteSpaceCollapse : Int) >= 0 ? CssProperties.keywordTerms(p, whiteSpaceCollapse) : others.get(p);
+			case 216: (textWrapMode : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapMode) : others.get(p);
+			case 217: (textWrapStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapStyle) : others.get(p);
+			case 234: (wordBreak : Int) >= 0 ? CssProperties.keywordTerms(p, wordBreak) : others.get(p);
+			case 143: (lineBreak : Int) >= 0 ? CssProperties.keywordTerms(p, lineBreak) : others.get(p);
+			case 176: (overflowWrap : Int) >= 0 ? CssProperties.keywordTerms(p, overflowWrap) : others.get(p);
+			case 130: (hyphens : Int) >= 0 ? CssProperties.keywordTerms(p, hyphens) : others.get(p);
 			case 198: tabSize.id < 0 ? others.get(p) : tabSize.terms;
 			case 206: textEmphasisColor.id < 0 ? others.get(p) : textEmphasisColor.terms;
 			case 207: textEmphasisPosition;
@@ -313,6 +348,44 @@ class CssInheritedTextGroup extends CssGroup {
 			case 171: others != null && others.exists(p) ? others.get(p) : [Number(orphans, true)];
 			case 232: others != null && others.exists(p) ? others.get(p) : [Number(widows, true)];
 			case _: throw 'not in inheritedText: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 142: letterSpacing;
+			case 235: wordSpacing;
+			case 198: tabSize;
+			case 214: textUnderlineOffset;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 78: color;
+			case 206: textEmphasisColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 86: direction;
+			case 201: textAlignLast;
+			case 231: whiteSpaceCollapse;
+			case 216: textWrapMode;
+			case 217: textWrapStyle;
+			case 234: wordBreak;
+			case 143: lineBreak;
+			case 176: overflowWrap;
+			case 130: hyphens;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 171: orphans;
+			case 232: widows;
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -413,10 +486,36 @@ class CssListGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 145: listStyleImage;
-			case 146: (listStylePosition : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[listStylePosition])] : others.get(p);
+			case 146: (listStylePosition : Int) >= 0 ? CssProperties.keywordTerms(p, listStylePosition) : others.get(p);
 			case 147: listStyleType;
-			case 156: (markerSide : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[markerSide])] : others.get(p);
+			case 156: (markerSide : Int) >= 0 ? CssProperties.keywordTerms(p, markerSide) : others.get(p);
 			case _: throw 'not in list: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 146: listStylePosition;
+			case 156: markerSide;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -470,11 +569,38 @@ class CssTableGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 35: (borderCollapse : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[borderCollapse])] : others.get(p);
+			case 35: (borderCollapse : Int) >= 0 ? CssProperties.keywordTerms(p, borderCollapse) : others.get(p);
 			case 55: borderSpacing;
-			case 75: (captionSide : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[captionSide])] : others.get(p);
-			case 88: (emptyCells : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[emptyCells])] : others.get(p);
+			case 75: (captionSide : Int) >= 0 ? CssProperties.keywordTerms(p, captionSide) : others.get(p);
+			case 88: (emptyCells : Int) >= 0 ? CssProperties.keywordTerms(p, emptyCells) : others.get(p);
 			case _: throw 'not in table: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 35: borderCollapse;
+			case 75: captionSide;
+			case 88: emptyCells;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -534,13 +660,39 @@ class CssUiGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 230: (visibility : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[visibility])] : others.get(p);
+			case 230: (visibility : Int) >= 0 ? CssProperties.keywordTerms(p, visibility) : others.get(p);
 			case 85: cursor;
-			case 188: (pointerEvents : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[pointerEvents])] : others.get(p);
+			case 188: (pointerEvents : Int) >= 0 ? CssProperties.keywordTerms(p, pointerEvents) : others.get(p);
 			case 0: accentColor.id < 0 ? others.get(p) : accentColor.terms;
 			case 195: scrollbarColor;
 			case 131: imageOrientation;
 			case _: throw 'not in ui: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 0: accentColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 230: visibility;
+			case 188: pointerEvents;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -656,9 +808,9 @@ class CssBoxGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 87: display.terms;
-			case 96: (float : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[float])] : others.get(p);
-			case 76: (clear : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[clear])] : others.get(p);
-			case 71: (boxSizing : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[boxSizing])] : others.get(p);
+			case 96: (float : Int) >= 0 ? CssProperties.keywordTerms(p, float) : others.get(p);
+			case 76: (clear : Int) >= 0 ? CssProperties.keywordTerms(p, clear) : others.get(p);
+			case 71: (boxSizing : Int) >= 0 ? CssProperties.keywordTerms(p, boxSizing) : others.get(p);
 			case 233: width.id < 0 ? others.get(p) : width.terms;
 			case 129: height.id < 0 ? others.get(p) : height.terms;
 			case 165: minWidth.id < 0 ? others.get(p) : minWidth.terms;
@@ -666,19 +818,59 @@ class CssBoxGroup extends CssGroup {
 			case 161: maxWidth.id < 0 ? others.get(p) : maxWidth.terms;
 			case 158: maxHeight.id < 0 ? others.get(p) : maxHeight.terms;
 			case 6: aspectRatio;
-			case 177: (overflowX : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[overflowX])] : others.get(p);
-			case 178: (overflowY : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[overflowY])] : others.get(p);
-			case 4: (alignmentBaseline : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[alignmentBaseline])] : others.get(p);
+			case 177: (overflowX : Int) >= 0 ? CssProperties.keywordTerms(p, overflowX) : others.get(p);
+			case 178: (overflowY : Int) >= 0 ? CssProperties.keywordTerms(p, overflowY) : others.get(p);
+			case 4: (alignmentBaseline : Int) >= 0 ? CssProperties.keywordTerms(p, alignmentBaseline) : others.get(p);
 			case 17: baselineShift.id < 0 ? others.get(p) : baselineShift.terms;
-			case 18: (baselineSource : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[baselineSource])] : others.get(p);
-			case 228: (unicodeBidi : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[unicodeBidi])] : others.get(p);
-			case 199: (tableLayout : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[tableLayout])] : others.get(p);
+			case 18: (baselineSource : Int) >= 0 ? CssProperties.keywordTerms(p, baselineSource) : others.get(p);
+			case 228: (unicodeBidi : Int) >= 0 ? CssProperties.keywordTerms(p, unicodeBidi) : others.get(p);
+			case 199: (tableLayout : Int) >= 0 ? CssProperties.keywordTerms(p, tableLayout) : others.get(p);
 			case 77: clip;
-			case 89: (fieldSizing : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[fieldSizing])] : others.get(p);
+			case 89: (fieldSizing : Int) >= 0 ? CssProperties.keywordTerms(p, fieldSizing) : others.get(p);
 			case 160: maxLines;
 			case 81: continues;
 			case 211: textOverflow;
 			case _: throw 'not in box: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 233: width;
+			case 129: height;
+			case 165: minWidth;
+			case 163: minHeight;
+			case 161: maxWidth;
+			case 158: maxHeight;
+			case 17: baselineShift;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 96: float;
+			case 76: clear;
+			case 71: boxSizing;
+			case 177: overflowX;
+			case 178: overflowY;
+			case 4: alignmentBaseline;
+			case 18: baselineSource;
+			case 228: unicodeBidi;
+			case 199: tableLayout;
+			case 89: fieldSizing;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -777,13 +969,41 @@ class CssPositionGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 189: (position : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[position])] : others.get(p);
+			case 189: (position : Int) >= 0 ? CssProperties.keywordTerms(p, position) : others.get(p);
 			case 218: top.id < 0 ? others.get(p) : top.terms;
 			case 191: right.id < 0 ? others.get(p) : right.terms;
 			case 63: bottom.id < 0 ? others.get(p) : bottom.terms;
 			case 141: left.id < 0 ? others.get(p) : left.terms;
-			case 236: zIndexKeyword >= 0 ? [Keyword(CssProperties.keywords(p)[zIndexKeyword])] : zIndexKeyword == -2 ? others.get(p) : [Number(zIndex, true)];
+			case 236: zIndexKeyword >= 0 ? CssProperties.keywordTerms(p, zIndexKeyword) : zIndexKeyword == -2 ? others.get(p) : [Number(zIndex, true)];
 			case _: throw 'not in position: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 218: top;
+			case 191: right;
+			case 63: bottom;
+			case 141: left;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 189: position;
+			case 236: zIndexKeyword;
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 236: zIndex;
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -862,6 +1082,38 @@ class CssSpacingGroup extends CssGroup {
 			case 181: paddingBottom.id < 0 ? others.get(p) : paddingBottom.terms;
 			case 184: paddingLeft.id < 0 ? others.get(p) : paddingLeft.terms;
 			case _: throw 'not in spacing: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 155: marginTop;
+			case 154: marginRight;
+			case 150: marginBottom;
+			case 153: marginLeft;
+			case 186: paddingTop;
+			case 185: paddingRight;
+			case 181: paddingBottom;
+			case 184: paddingLeft;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -978,10 +1230,10 @@ class CssBorderGroup extends CssGroup {
 			case 54: borderRightWidth.id < 0 ? others.get(p) : borderRightWidth.terms;
 			case 34: borderBottomWidth.id < 0 ? others.get(p) : borderBottomWidth.terms;
 			case 51: borderLeftWidth.id < 0 ? others.get(p) : borderLeftWidth.terms;
-			case 61: (borderTopStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[borderTopStyle])] : others.get(p);
-			case 53: (borderRightStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[borderRightStyle])] : others.get(p);
-			case 33: (borderBottomStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[borderBottomStyle])] : others.get(p);
-			case 50: (borderLeftStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[borderLeftStyle])] : others.get(p);
+			case 61: (borderTopStyle : Int) >= 0 ? CssProperties.keywordTerms(p, borderTopStyle) : others.get(p);
+			case 53: (borderRightStyle : Int) >= 0 ? CssProperties.keywordTerms(p, borderRightStyle) : others.get(p);
+			case 33: (borderBottomStyle : Int) >= 0 ? CssProperties.keywordTerms(p, borderBottomStyle) : others.get(p);
+			case 50: (borderLeftStyle : Int) >= 0 ? CssProperties.keywordTerms(p, borderLeftStyle) : others.get(p);
 			case 58: borderTopColor.id < 0 ? others.get(p) : borderTopColor.terms;
 			case 52: borderRightColor.id < 0 ? others.get(p) : borderRightColor.terms;
 			case 30: borderBottomColor.id < 0 ? others.get(p) : borderBottomColor.terms;
@@ -996,6 +1248,40 @@ class CssBorderGroup extends CssGroup {
 			case 38: borderImageOutset;
 			case 39: borderImageRepeat;
 			case _: throw 'not in border: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 62: borderTopWidth;
+			case 54: borderRightWidth;
+			case 34: borderBottomWidth;
+			case 51: borderLeftWidth;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 58: borderTopColor;
+			case 52: borderRightColor;
+			case 30: borderBottomColor;
+			case 49: borderLeftColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 61: borderTopStyle;
+			case 53: borderRightStyle;
+			case 33: borderBottomStyle;
+			case 50: borderLeftStyle;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1110,6 +1396,31 @@ class CssBackgroundGroup extends CssGroup {
 			case _: throw 'not in background: ' + CssProperties.name(p);
 		}
 
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 10: backgroundColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
+		}
+
 	override function same(o:CssGroup):Bool {
 		var g:CssBackgroundGroup = cast o;
 		return backgroundColor == g.backgroundColor
@@ -1172,10 +1483,36 @@ class CssOutlineGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 172: outlineColor.id < 0 ? others.get(p) : outlineColor.terms;
-			case 174: (outlineStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[outlineStyle])] : others.get(p);
+			case 174: (outlineStyle : Int) >= 0 ? CssProperties.keywordTerms(p, outlineStyle) : others.get(p);
 			case 175: outlineWidth.id < 0 ? others.get(p) : outlineWidth.terms;
 			case 173: outlineOffset.id < 0 ? others.get(p) : outlineOffset.terms;
 			case _: throw 'not in outline: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 175: outlineWidth;
+			case 173: outlineOffset;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 172: outlineColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 174: outlineStyle;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1230,10 +1567,35 @@ class CssDecorationGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 203: textDecorationLine;
-			case 204: (textDecorationStyle : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[textDecorationStyle])] : others.get(p);
+			case 204: (textDecorationStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textDecorationStyle) : others.get(p);
 			case 202: textDecorationColor.id < 0 ? others.get(p) : textDecorationColor.terms;
 			case 205: textDecorationThickness.id < 0 ? others.get(p) : textDecorationThickness.terms;
 			case _: throw 'not in decoration: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 205: textDecorationThickness;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 202: textDecorationColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 204: textDecorationStyle;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1317,7 +1679,7 @@ class CssContainerGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 92: (flexDirection : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[flexDirection])] : others.get(p);
+			case 92: (flexDirection : Int) >= 0 ? CssProperties.keywordTerms(p, flexDirection) : others.get(p);
 			case 95: flexWrap;
 			case 1: alignContent;
 			case 2: alignItems;
@@ -1332,6 +1694,32 @@ class CssContainerGroup extends CssGroup {
 			case 121: gridAutoRows;
 			case 120: gridAutoFlow;
 			case _: throw 'not in container: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 193: rowGap;
+			case 79: columnGap;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 92: flexDirection;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1436,6 +1824,33 @@ class CssItemGroup extends CssGroup {
 			case _: throw 'not in item: ' + CssProperties.name(p);
 		}
 
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 91: flexBasis;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 93: flexGrow;
+			case 94: flexShrink;
+			case 170: order;
+			case _: Math.NaN;
+		}
+
 	override function same(o:CssGroup):Bool {
 		var g:CssItemGroup = cast o;
 		return (flexGrow == g.flexGrow || flexGrow != flexGrow && g.flexGrow != g.flexGrow)
@@ -1518,9 +1933,34 @@ class CssContentGroup extends CssGroup {
 			case 84: counterSet;
 			case 197: stringSet;
 			case 21: bookmarkLabel;
-			case 22: bookmarkLevelKeyword >= 0 ? [Keyword(CssProperties.keywords(p)[bookmarkLevelKeyword])] : bookmarkLevelKeyword == -2 ? others.get(p) : [Number(bookmarkLevel, true)];
-			case 23: (bookmarkState : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[bookmarkState])] : others.get(p);
+			case 22: bookmarkLevelKeyword >= 0 ? CssProperties.keywordTerms(p, bookmarkLevelKeyword) : bookmarkLevelKeyword == -2 ? others.get(p) : [Number(bookmarkLevel, true)];
+			case 23: (bookmarkState : Int) >= 0 ? CssProperties.keywordTerms(p, bookmarkState) : others.get(p);
 			case _: throw 'not in content: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 23: bookmarkState;
+			case 22: bookmarkLevelKeyword;
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 22: bookmarkLevel;
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1585,12 +2025,40 @@ class CssPagedGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 73: (breakBefore : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[breakBefore])] : others.get(p);
-			case 72: (breakAfter : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[breakAfter])] : others.get(p);
-			case 74: (breakInside : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[breakInside])] : others.get(p);
-			case 64: (boxDecorationBreak : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[boxDecorationBreak])] : others.get(p);
+			case 73: (breakBefore : Int) >= 0 ? CssProperties.keywordTerms(p, breakBefore) : others.get(p);
+			case 72: (breakAfter : Int) >= 0 ? CssProperties.keywordTerms(p, breakAfter) : others.get(p);
+			case 74: (breakInside : Int) >= 0 ? CssProperties.keywordTerms(p, breakInside) : others.get(p);
+			case 64: (boxDecorationBreak : Int) >= 0 ? CssProperties.keywordTerms(p, boxDecorationBreak) : others.get(p);
 			case 187: page;
 			case _: throw 'not in paged: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 73: breakBefore;
+			case 72: breakAfter;
+			case 74: breakInside;
+			case 64: boxDecorationBreak;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1694,14 +2162,14 @@ class CssEffectsGroup extends CssGroup {
 			case 169: others != null && others.exists(p) ? others.get(p) : [Number(opacity, false)];
 			case 219: transform;
 			case 221: transformOrigin;
-			case 220: (transformBox : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[transformBox])] : others.get(p);
+			case 220: (transformBox : Int) >= 0 ? CssProperties.keywordTerms(p, transformBox) : others.get(p);
 			case 227: translate;
 			case 192: rotate;
 			case 194: scale;
 			case 90: filter;
 			case 7: backdropFilter;
-			case 166: (mixBlendMode : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[mixBlendMode])] : others.get(p);
-			case 137: (isolation : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[isolation])] : others.get(p);
+			case 166: (mixBlendMode : Int) >= 0 ? CssProperties.keywordTerms(p, mixBlendMode) : others.get(p);
+			case 137: (isolation : Int) >= 0 ? CssProperties.keywordTerms(p, isolation) : others.get(p);
 			case 65: boxShadow;
 			case 67: boxShadowColor;
 			case 68: boxShadowOffset;
@@ -1711,6 +2179,33 @@ class CssEffectsGroup extends CssGroup {
 			case 167: objectFit;
 			case 168: objectPosition;
 			case _: throw 'not in effects: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 220: transformBox;
+			case 166: mixBlendMode;
+			case 137: isolation;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 169: opacity;
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {
@@ -1806,15 +2301,42 @@ class CssControlGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 5: (appearance : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[appearance])] : others.get(p);
-			case 229: (userSelect : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[userSelect])] : others.get(p);
-			case 196: (scrollbarWidth : Int) >= 0 ? [Keyword(CssProperties.keywords(p)[scrollbarWidth])] : others.get(p);
+			case 5: (appearance : Int) >= 0 ? CssProperties.keywordTerms(p, appearance) : others.get(p);
+			case 229: (userSelect : Int) >= 0 ? CssProperties.keywordTerms(p, userSelect) : others.get(p);
+			case 196: (scrollbarWidth : Int) >= 0 ? CssProperties.keywordTerms(p, scrollbarWidth) : others.get(p);
 			case 225: transitionProperty;
 			case 224: transitionDuration;
 			case 226: transitionTimingFunction;
 			case 223: transitionDelay;
 			case 222: transitionBehavior;
 			case _: throw 'not in control: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 5: appearance;
+			case 229: userSelect;
+			case 196: scrollbarWidth;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
 		}
 
 	override function same(o:CssGroup):Bool {

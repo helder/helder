@@ -30,7 +30,8 @@ enum CssContentItem {
 	Other(term:CssTerm);
 }
 
-typedef CssCounter = {name:String, value:Int, reversed:Bool}
+// (value: null for reversed() without one, its start worked out by CssCounters)
+typedef CssCounter = {name:String, value:Null<Int>, reversed:Bool}
 
 // Computed values that are lists, read as layout and paint want them.
 class CssItems {
@@ -90,8 +91,8 @@ class CssItems {
 	public static function counters(t:Array<CssTerm>):Array<CssCounter> {
 		var out:Array<CssCounter> = [];
 		for (x in t) switch x {
-			case Ident(n): out.push({name: n, value: 0, reversed: false});
-			case Func("reversed", [Ident(n)]): out.push({name: n, value: 0, reversed: true});
+			case Ident(n): out.push({name: n, value: null, reversed: false});
+			case Func("reversed", [Ident(n)]): out.push({name: n, value: null, reversed: true});
 			case Number(v, _) if (out.length > 0): out[out.length - 1].value = Std.int(v);
 			case _:
 		}
@@ -113,10 +114,12 @@ class CssItems {
 		} : CssText.join(t, CssText.term);
 
 	// (a function's k-th argument past its commas: a name)
+	// (symbols(): its text, for CssCounters to read)
 	static function name(args:Array<CssTerm>, k:Int):Null<String> {
 		var parts = CssText.layers(args);
 		return k < parts.length && parts[k].length == 1 ? switch parts[k][0] {
 			case Ident(n) | Keyword(n): n;
+			case t = Func("symbols", _): CssText.term(t);
 			case _: null;
 		} : null;
 	}
