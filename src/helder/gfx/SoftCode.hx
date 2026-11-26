@@ -10,5 +10,8 @@ typedef SoftCode = {
 	// (a compute stage's) its workgroup memory's bytes, and its phases'
 	// frame's for each call (4 invocations; 0: no barrier)
 	?workgroup:Int,
-	?frame:Int
+	?frame:Int,
+	// (a compute stage's) whether it calls atomicAdd, atomicMin or atomicMax:
+	// its workgroups then in order on one thread
+	?atomics:Bool
 }
