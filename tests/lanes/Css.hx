@@ -19,6 +19,9 @@ class Css {
 		run(exePath("bin/css/CssValuesCheck", HOST), []);
 		exe("bin/css/CssSelectorsCheck", cps(["src", "tests/css"]).concat(["-main", "CssSelectorsCheck"]));
 		run(exePath("bin/css/CssSelectorsCheck", HOST), []);
+		// (BLESS=1: cascade-manifest.json's pending cases)
+		exe("bin/css/CssCascadeCheck", cps(["src", "tests/css"]).concat(["-main", "CssCascadeCheck"]));
+		run(exePath("bin/css/CssCascadeCheck", HOST), []);
 	}
 
 	// (not headless: it fetches the sheets, tests/css/sheets.mjs)

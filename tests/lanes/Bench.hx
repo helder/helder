@@ -13,6 +13,7 @@ class Bench {
 		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
 		{name: "bench css", about: "helder.css's tokenizer and parser against lightningcss", run: cssBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
+		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
@@ -65,6 +66,12 @@ class Bench {
 		exe("bin/bench/ImageBench", cps(["src", "tests/bench"]).concat(["-main", "ImageBench"]));
 		run(NODE, ["tests/bench/image.mjs", exePath("bin/bench/ImageBench", HOST), Sys.getEnv("IMAGE_BENCH_JPEG") ?? "examples/gltf-showcase/comparison.jpg",
 			Sys.getEnv("IMAGE_BENCH_PNG") ?? "tests/ui/todo.png"]);
+	}
+
+	// (natively; the page and its sheets fetched into bin/bench/html)
+	static function cascadeBench() {
+		exe("bin/bench/CascadeBench", cps(["src", "tests/bench"]).concat(["-main", "CascadeBench"]));
+		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
 	}
 
 	// (natively and as wasm32-wasi; the inputs fetched into bin/bench/html, lexbor built there)

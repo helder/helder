@@ -1,0 +1,22 @@
+{
+  "source": "https://github.com/whatwg/html (source, the Rendering section)",
+  "revision": "0162cee0c42a82267354d38fbc6a2503ee295b77",
+  "license": "CC BY 4.0",
+  "sha256": "9e8f977f5c049f37ebe68fab4704b93afc3b5c849bf54306d241f422db45e255",
+  "blocks": {
+    "base": 15,
+    "quirks": 5,
+    "hints": 7
+  },
+  "skipped": [
+    "Bidirectional text",
+    "The details and summary elements",
+    "The select element",
+    "The select element",
+    "The select element",
+    "The select element",
+    "The select element",
+    "The select element",
+    "The select element"
+  ]
+}
