@@ -1,0 +1,56 @@
+{
+	"schema": 2,
+	"pending": {
+		"box tree: ::before and ::after that are list items, with markers of their own (CSS Pseudo 4's nested pseudo-elements)": [
+			"reftest css/css-lists/list-item-definition.html",
+			"reftest css/css-lists/nested-marker-styling.html",
+			"reftest css/css-lists/nested-marker.html"
+		],
+		"counters: a reversed() start where a nested reversed list's scope takes the outer list's later items: WPT's numbers are neither Lists 3 §4.4.2's algorithm as written (followed) nor HTML's ordinal values": [
+			"reftest css/css-lists/foo-counter-reversed-007a.html",
+			"reftest css/css-lists/foo-counter-reversed-007b.html",
+			"reftest css/css-lists/foo-counter-reversed-009a.html",
+			"reftest css/css-lists/foo-counter-reversed-009b.html",
+			"reftest css/css-lists/li-value-reversed-007a.html",
+			"reftest css/css-lists/li-value-reversed-007b.html",
+			"reftest css/css-lists/li-value-reversed-009a.html",
+			"reftest css/css-lists/li-value-reversed-009b.html"
+		],
+		"layout: an rtl marker's suffix, placed by the bidi algorithm": [
+			"reftest css/css-counter-styles/persian/css3-counter-styles-105.html"
+		],
+		"layout: lines are layout's (inline list items and their markers, a block inside an inline, where a marker paints)": [
+			"reftest css/css-lists/inline-block-list-marker.html",
+			"reftest css/css-lists/inline-block-list.html",
+			"reftest css/css-lists/inline-list-with-table-child.html",
+			"reftest css/css-lists/inline-list.html",
+			"reftest css/css-lists/list-and-block-in-inline.html",
+			"reftest css/css-lists/list-marker-alignment.html",
+			"reftest css/css-lists/list-marker-paint-order.html"
+		],
+		"paint: the test is about the room a marker's line gives it; its reference draws the other triangle": [
+			"reftest css/css-counter-styles/counter-style-at-rule/disclosure-line-height.html"
+		],
+		"values: Counter Styles 3 §7.1.2's optional extended CJK forms past 9999 (万, 億...), and values past 32 bits: counters here are 32-bit, as browsers' are": [
+			"reftest css/css-counter-styles/cjk-ideographic/counter-cjk-ideographic-extended-range.optional.html",
+			"reftest css/css-counter-styles/japanese-formal/counter-japanese-formal-extended-range.optional.html",
+			"reftest css/css-counter-styles/japanese-formal/counter-japanese-formal-extended.html",
+			"reftest css/css-counter-styles/japanese-informal/counter-japanese-informal-extended-range.optional.html",
+			"reftest css/css-counter-styles/japanese-informal/counter-japanese-informal-extended.html",
+			"reftest css/css-counter-styles/korean-hangul-formal/counter-korean-hangul-formal-extended-range.optional.html",
+			"reftest css/css-counter-styles/korean-hangul-formal/counter-korean-hangul-formal-extended.html",
+			"reftest css/css-counter-styles/korean-hanja-formal/counter-korean-hanja-formal-extended-range.optional.html",
+			"reftest css/css-counter-styles/korean-hanja-formal/counter-korean-hanja-formal-extended.html",
+			"reftest css/css-counter-styles/korean-hanja-informal/counter-korean-hanja-informal-extended-range.optional.html",
+			"reftest css/css-counter-styles/korean-hanja-informal/counter-korean-hanja-informal-extended.html",
+			"reftest css/css-counter-styles/simp-chinese-formal/counter-simp-chinese-formal-extended-range.optional.html",
+			"reftest css/css-counter-styles/simp-chinese-formal/counter-simp-chinese-formal.html",
+			"reftest css/css-counter-styles/simp-chinese-informal/counter-simp-chinese-informal-extended-range.optional.html",
+			"reftest css/css-counter-styles/simp-chinese-informal/counter-simp-chinese-informal.html",
+			"reftest css/css-counter-styles/trad-chinese-formal/counter-trad-chinese-formal-extended-range.optional.html",
+			"reftest css/css-counter-styles/trad-chinese-formal/counter-trad-chinese-formal.html",
+			"reftest css/css-counter-styles/trad-chinese-informal/counter-trad-chinese-informal-extended-range.optional.html",
+			"reftest css/css-counter-styles/trad-chinese-informal/counter-trad-chinese-informal.html"
+		]
+	}
+}

@@ -176,6 +176,13 @@ class Host {
 	public function frame(now:Float):Int {
 		var drawn = 0;
 		time = now;
+		// (a request no fixture answered, in a screen's task: the screen's failure, as a throw's)
+		for (s in screens)
+			if (s.missed != null && s.failure == null) {
+				var m = s.missed;
+				s.missed = null;
+				guard(s, () -> throw new haxe.Exception(m));
+			}
 		for (s in screens)
 			if (s.visible && s.failure == null && guard(s, () -> turn(s, now))) drawn++;
 		if (drawn > 0) return drawn;
@@ -449,6 +456,8 @@ class HostScreen {
 	@:allow(helder.story.Host) public var version(default, null) = 0;
 	// (shown again, focused: a frame due whatever changed)
 	@:allow(helder.story.Host) var redraw = true;
+	// (a request its scenario's fixtures did not answer: its failure at the next turn)
+	@:allow(helder.story.Host) var missed:Null<String> = null;
 	// (let go to make room, its frame kept: Host.MOUNTED; when it was drawn last, the host's time)
 	@:allow(helder.story.Host) var parked = false;
 	@:allow(helder.story.Host) var drawnAt = 0.0;
@@ -490,7 +499,7 @@ class HostScreen {
 			var sc = scenario, main = host.root;
 			if (sc != null && main != null) {
 				if (sc.play != null) c.play(sc.play);
-				unrender = Act.mount(sc, main, context, u);
+				unrender = Act.mount(sc, main, context, u, (method, url) -> missed ??= 'no http fixture for $method $url');
 			} else
 				unrender = Render.render(story.build(c), u.root);
 			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got;

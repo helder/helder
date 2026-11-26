@@ -480,6 +480,7 @@ class Node {
 				n.parentNode = n.previousSibling = n.nextSibling = null;
 				adoptInto(n, document);
 				link(n, parent, child);
+				if (document.observer != null) document.observer.inserted(parent, n);
 				n = next;
 			}
 			node.doc.version++;
@@ -487,6 +488,7 @@ class Node {
 			// (a node new to the tree, of its document: no removal, no adoption to run)
 			if (node.parentNode != null || node.doc != document) adopt(node, document);
 			link(node, parent, child);
+			if (document.observer != null) document.observer.inserted(parent, node);
 		}
 		document.version++;
 		if (document.selects > 0) steps(first, last, document);
@@ -564,6 +566,7 @@ class Node {
 		node.parentNode = node.previousSibling = node.nextSibling = null;
 		var d = parent.doc;
 		d.version++;
+		if (d.observer != null) d.observer.removed(parent, node, prev, next);
 		if (node.doc.selects > 0) {
 			d.depth++;
 			eachElement(node, e -> e.removingSteps());

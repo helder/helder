@@ -13,12 +13,22 @@ using StringTools;
 class CssShorthands {
 	static final SIDES = ["top", "right", "bottom", "left"];
 	static final CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"];
+	static final TRANSITION = ["transition-property", "transition-duration", "transition-timing-function", "transition-delay", "transition-behavior"];
+
+	// (a logical border shorthand's sides: the longhands' prefixes)
+	static function borders(shorthand:String):Array<String>
+		return switch shorthand {
+			case "border-block": ["border-block-start", "border-block-end"];
+			case "border-inline": ["border-inline-start", "border-inline-end"];
+			case _: [shorthand];
+		}
+
 	static final LINE_STYLES = ["none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset"];
 
 	// Every longhand a shorthand sets, reset-only ones included.
 	public static function longhands(shorthand:String):Array<String> {
 		return switch shorthand {
-			case "all": [for (p in CssData.properties) if (p.longhands.length == 0 && p.alias == null && p.name != "all" && p.name != "direction" && p.name != "unicode-bidi") p.name];
+			case "all": [for (p in CssTable.properties) if (p.longhands.length == 0 && p.alias == null && p.name != "all" && p.name != "direction" && p.name != "unicode-bidi") p.name];
 			case "border": [for (s in SIDES) for (k in ["width", "style", "color"]) 'border-$s-$k'].concat(CssGrammars.property("border-image").longhands);
 			case "border-width" | "border-style" | "border-color": [for (s in SIDES) 'border-$s-${shorthand.substr(7)}'];
 			case "font":
@@ -279,6 +289,60 @@ class CssShorthands {
 					for (x in t) groups[variant(x)].push(x);
 					for (k => v in groups) if (v.length > 0) set(k, v);
 				}
+			// (a start and an end: one value is both, Logical 1 §4)
+			case "margin-block" | "margin-inline" | "padding-block" | "padding-inline" | "inset-block" | "inset-inline" | "border-block-width" | "border-block-style"
+				| "border-block-color" | "border-inline-width" | "border-inline-style" | "border-inline-color":
+				var names = CssGrammars.property(shorthand).longhands;
+				var items = values(terms);
+				set(names[0], items[0]);
+				set(names[1], items.length > 1 ? items[1] : items[0]);
+			case "border-block" | "border-inline" | "border-block-start" | "border-block-end" | "border-inline-start" | "border-inline-end":
+				var width = null, style = null, color = null;
+				for (t in plain(terms)) switch t {
+					case Keyword(k) if (LINE_STYLES.contains(k)): style = t;
+					case Color(_): color = t;
+					case _: width = t;
+				}
+				for (b in borders(shorthand)) {
+					if (width != null) set('$b-width', [width]);
+					if (style != null) set('$b-style', [style]);
+					if (color != null) set('$b-color', [color]);
+				}
+			case "transition":
+				var layers = [for (_ in TRANSITION) []];
+				for (layer in CssText.layers(terms)) {
+					var property = null, duration = null, easing = null, delay = null, behavior = null;
+					for (t in layer) switch t {
+						case Part("<single-transition>", inner): for (x in inner) switch x {
+								case Part("<single-transition-property>", p): property = plain(p);
+								case Part("<easing-function>", e): easing = plain(e);
+								case Part("<transition-behavior-value>", b): behavior = plain(b);
+								case Keyword("none"): property = [x];
+								case _ if (duration == null): duration = plain([x]);
+								case _: delay = plain([x]);
+							}
+						case _:
+					}
+					var parts = [property ?? [Keyword("all")], duration ?? [Dimension(0, "s")], easing ?? [Keyword("ease")], delay ?? [Dimension(0, "s")], behavior ?? [Keyword("normal")]];
+					for (k in 0...TRANSITION.length) layers[k].push(parts[k]);
+				}
+				for (k in 0...TRANSITION.length) set(TRANSITION[k], CssText.unlayers(layers[k]));
+			// (Overflow 4 §4.1: none, or the lines and ellipsis, continue collapse, -webkit-legacy's)
+			case "line-clamp":
+				var lines:Array<CssTerm> = [], ellipsis = null, legacy = false, none = false;
+				for (t in terms) switch t {
+					case Part("block-ellipsis", e): ellipsis = plain(e);
+					case Keyword("none"): none = true;
+					case Keyword("-webkit-legacy"): legacy = true;
+					case Number(_, _) | Calc(_, _, _): lines.unshift(t);
+					case Keyword("auto"): lines.push(t);
+					case _:
+				}
+				if (!none) {
+					set("max-lines", lines.length == 0 ? [Keyword("auto")] : lines);
+					set("block-ellipsis", ellipsis ?? [Keyword("ellipsis")]);
+					set("continue", [Keyword(legacy ? "-webkit-legacy" : "collapse")]);
+				}
 			default:
 				// (`a || b || c` of the longhands themselves: each its part)
 				for (k => v in parts) if (CssGrammars.property(shorthand).longhands.contains(k)) set(k, v);
@@ -449,6 +513,34 @@ class CssShorthands {
 				if (s != null) parts.push(s);
 				if (!isInitial("border-image-repeat")) parts.push(repeat);
 				parts.length == 0 ? "none" : parts.join(" ");
+			case "margin-block" | "margin-inline" | "padding-block" | "padding-inline" | "inset-block" | "inset-inline" | "border-block-width" | "border-block-style"
+				| "border-block-color" | "border-inline-width" | "border-inline-style" | "border-inline-color":
+				var names = CssGrammars.property(shorthand).longhands;
+				v(names[0]) == v(names[1]) ? v(names[0]) : '${v(names[0])} ${v(names[1])}';
+			case "border-block" | "border-inline" | "border-block-start" | "border-block-end" | "border-inline-start" | "border-inline-end":
+				var bs = borders(shorthand);
+				if (!same([for (b in bs) v('$b-width')]) || !same([for (b in bs) v('$b-style')]) || !same([for (b in bs) v('$b-color')])) return "";
+				omitting(['${bs[0]}-width', '${bs[0]}-style', '${bs[0]}-color'], '${bs[0]}-style');
+			// (each transition: what isn't initial, the duration where a delay follows; all when nothing is)
+			case "transition":
+				layered(TRANSITION, texts, l -> {
+					var out = [];
+					if (l[0] != "all") out.push(l[0]);
+					if (l[1] != "0s" || l[3] != "0s") out.push(l[1]);
+					if (l[2] != "ease") out.push(l[2]);
+					if (l[3] != "0s") out.push(l[3]);
+					if (l[4] != "normal") out.push(l[4]);
+					out.length == 0 ? "all" : out.join(" ");
+				});
+			case "line-clamp":
+				var c = v("continue"), lines = v("max-lines"), e = v("block-ellipsis");
+				if (c == "normal") return lines == "auto" && e == "no-ellipsis" ? "none" : "";
+				if (c != "collapse" && c != "-webkit-legacy") return "";
+				var legacy = c == "-webkit-legacy", out = [];
+				if (lines != "auto" || e == "ellipsis" || !legacy) out.push(lines);
+				if (e != "ellipsis") out.push(e);
+				if (legacy) out.push(c);
+				out.join(" ");
 			case "all": "";
 			case _:
 				var names = CssGrammars.property(shorthand).longhands;
@@ -500,22 +592,37 @@ class CssShorthands {
 	static function template_(rows:String, cols:String, areas:String):String {
 		if (areas == "none") return rows == "none" && cols == "none" ? "none" : '$rows / $cols';
 		// (the areas' form: each string beside its row's size and names; a row track list of repeat() can't be)
-		var strings = [for (v in Css.values(areas)) switch v {
-			case Token(_.kind => Str(s)): CssText.string(s);
-			case _: null;
-		}].filter(s -> s != null);
-		var items = [for (v in Css.values(rows)) if (!v.match(Token(_.kind => Whitespace))) v];
-		var out = [], row = 0, pendingNames:Null<String> = null;
-		for (v in items) switch v {
-			case Block(_, _, _): out.push(Css.serialize([v]));
-			case Function(f, _, _, _) if (Css.lower(f) == "repeat"): return "";
-			case _:
+		var strings = [for (a in spaced(areas)) if (a.fastCodeAt(0) == '"'.code) a];
+		var out = [], row = 0;
+		for (v in spaced(rows))
+			if (v.fastCodeAt(0) == "[".code) out.push(v) else if (Css.lower(v).startsWith("repeat(")) return "" else {
 				if (row >= strings.length) return "";
-				var size = Css.serialize([v]);
-				out.push(strings[row++] + (size == "auto" ? "" : " " + size));
-		}
+				out.push(strings[row++] + (v == "auto" ? "" : " " + v));
+			}
 		if (row != strings.length) return "";
 		return out.join(" ") + (cols == "none" ? "" : ' / $cols');
+	}
+
+	// (a serialized value's items at its top level: split at white space
+	// outside strings, brackets and functions, with no tokenizer)
+	static function spaced(text:String):Array<String> {
+		var out = [], depth = 0, quote = 0, start = -1, k = 0;
+		while (k < text.length) {
+			var c = text.fastCodeAt(k);
+			if (quote != 0) {
+				if (c == "\\".code) k++ else if (c == quote) quote = 0;
+			} else if (c == '"'.code || c == "'".code) quote = c else if (c == "(".code || c == "[".code) depth++ else if (c == ")".code
+				|| c == "]".code) depth-- else if (depth == 0 && (c == " ".code || c == "\t".code || c == "\n".code)) {
+				if (start >= 0) out.push(text.substring(start, k));
+				start = -1;
+				k++;
+				continue;
+			}
+			if (start < 0) start = k;
+			k++;
+		}
+		if (start >= 0) out.push(text.substring(start));
+		return out;
 	}
 
 	// ---- parts
@@ -583,11 +690,26 @@ class CssShorthands {
 
 	// (a line's text that is a name alone: not a number, auto, or span with one)
 	static function isIdent(text:String):Bool {
-		var vs = [for (v in Css.values(text)) if (!v.match(Token(_.kind => Whitespace))) v];
-		return vs.length == 1 && switch vs[0] {
-			case Token(_.kind => Ident(w)): Css.lower(w) != "auto" && Css.lower(w) != "span";
-			case _: false;
+		var l = Css.lower(text);
+		if (text == "" || l == "auto" || l == "span") return false;
+		var k = text.fastCodeAt(0) == "-".code ? 1 : 0;
+		if (k == text.length) return false;
+		var c = text.fastCodeAt(k);
+		if (!(c == "_".code || c == "\\".code || c >= 0x80 || (c | 32) >= "a".code && (c | 32) <= "z".code || k == 1 && c == "-".code)) return false;
+		var i = k;
+		while (i < text.length) {
+			var c = text.fastCodeAt(i++);
+			// (an escape: up to six hex digits and the space after them, or one code point)
+			if (c == "\\".code) {
+				var n = 0;
+				while (n < 6 && i < text.length && CssChars.isHex(text.fastCodeAt(i))) {
+					i++;
+					n++;
+				}
+				if (n == 0) i++ else if (i < text.length && text.fastCodeAt(i) == " ".code) i++;
+			} else if (c == " ".code || c == "/".code || c == "(".code || c == "[".code || c == ",".code || c == '"'.code) return false;
 		}
+		return true;
 	}
 
 	// a position's horizontal and vertical parts (one value: the other centre)
@@ -668,9 +790,13 @@ class CssShorthands {
 	// A longhand's initial value as terms (null when its spec says it in prose).
 	public static function initialTerms(longhand:String):Null<Array<CssTerm>> {
 		if (initials.exists(longhand)) return initials[longhand];
+		#if macro
 		var p = CssGrammars.property(longhand);
 		var text = INITIAL.get(longhand) ?? (p == null ? null : p.initial);
 		var v = text == null ? null : CssValues.parse(longhand, text);
+		#else
+		var v = CssInitial.of(longhand);
+		#end
 		var t = switch v {
 			case Terms(t): t;
 			case _: null;

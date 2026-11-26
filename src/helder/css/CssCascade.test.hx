@@ -1,5 +1,9 @@
 package helder.css;
 
+import helder.css.CssDisplay;
+import helder.css.CssKeywords;
+import helder.css.CssLength;
+import helder.css.CssProperty;
 import helder.css.CssSheet;
 import helder.dom.Dom;
 import helder.dom.Element;
@@ -11,10 +15,11 @@ using Lambda;
 // The cascade (Cascade 5) on helder.dom's documents: origins and
 // importance, the style attribute, layers, specificity and order, the
 // CSS-wide keywords, inheritance, var(), @media, @supports, @import,
-// pseudo-elements, hints, the at-rules' data. Then properties: the result
-// doesn't depend on the order sheets come in when their declarations'
-// cascade order is the same, and an unset inherited property is its
-// parent's computed value.
+// pseudo-elements, hints, the at-rules' data, logical properties, the
+// typed values and their sharing. Then properties: the result doesn't
+// depend on the order sheets come in when their declarations' cascade
+// order is the same, an unset inherited property is its parent's
+// computed value, and equal groups of values are one object.
 function tests() {
 	describe("CssCascade", () -> {
 		test("origins and importance", () -> {
@@ -89,19 +94,14 @@ function tests() {
 			equals(text(s, "x", "padding-left"), "3px");
 		});
 		test("widths without a style", () -> {
-			var s = styles('<p id=a>a</p><p id=b>b</p><p id=c>c</p>',
-				"p { border-width: 5px; outline-width: 4px } #b { border-top-style: solid; border-left-style: hidden; outline-style: auto } #c { border-style: inherit }");
-			equals(text(s, "a", "border-top-width"), "0px");
-			equals(text(s, "a", "outline-width"), "0px");
-			equals(text(s, "b", "border-top-width"), "5px");
-			equals(text(s, "b", "border-right-width"), "0px");
-			equals(text(s, "b", "border-left-width"), "0px");
-			equals(text(s, "b", "outline-width"), "4px");
-			// (an initial medium too)
-			var t = styles('<p id=a>a</p>', "p { border-bottom-style: dotted; outline-style: solid }");
-			equals(text(t, "a", "border-bottom-width"), "3px");
-			equals(text(t, "a", "border-top-width"), "0px");
-			equals(text(t, "a", "outline-width"), "3px");
+			// (Borders 4: a width under none or hidden is computed as it is; the used one is 0, layout's; inherit takes it)
+			var s = styles('<div style="border-width: 7px"><p id=a>a</p><p id=b>b</p></div>',
+				"p { border-width: 5px; outline-width: 4px } #b { border-top-width: inherit; border-top-style: solid }");
+			equals(text(s, "a", "border-top-width"), "5px");
+			equals(text(s, "a", "outline-width"), "4px");
+			equals(text(s, "b", "border-top-width"), "7px");
+			var t = styles('<p id=a>a</p>', "");
+			equals(text(t, "a", "border-top-width"), "3px");
 		});
 		test("blockification", () -> {
 			var s = styles('<span id=f>a</span><span id=p>b</span><div id=x style="display: inline-flex"><span id=i>c</span><b id=c style="display: contents"><i id=n>d</i></b><em id=t style="display: table-cell">e</em></div><div style="display: grid"><span id=g style="display: inline-table">f</span></div><span id=s style="display: inline list-item; float: left">g</span><span id=r style="position: relative">h</span>',
@@ -161,6 +161,112 @@ function tests() {
 			equals(t.computed(t.document.documentElement).text("font-size"), "32px");
 			equals(t.computed(t.document.documentElement).text("line-height"), "2rlh");
 		});
+		test("logical properties", () -> {
+			var s = styles('<div id=l><p id=a>a</p></div><div id=r dir=rtl><p id=b>b</p><p id=c style="direction: var(--d)">c</p></div>',
+				"p { margin-inline-start: 5px; padding-inline: 1px 2px; inset-block-start: 3px; inline-size: 50%; border-inline-end: 2px solid red; --d: ltr } #a { margin-left: 7px } #b { margin-right: 9px; margin-inline-start: 4px }");
+			// (ltr: start is left; a physical declaration after it, more specific, wins)
+			equals(text(s, "a", "margin-left"), "7px");
+			equals(text(s, "a", "padding-left"), "1px");
+			equals(text(s, "a", "padding-right"), "2px");
+			equals(text(s, "a", "top"), "3px");
+			equals(text(s, "a", "width"), "50%");
+			equals(text(s, "a", "border-right-width"), "2px");
+			equals(text(s, "a", "margin-inline-start"), "7px");
+			// (rtl, inherited: start is right; the logical one after the physical one in a rule wins)
+			equals(text(s, "b", "margin-right"), "4px");
+			equals(text(s, "b", "padding-right"), "1px");
+			equals(text(s, "b", "border-left-width"), "2px");
+			equals(text(s, "b", "margin-inline"), "4px 0px");
+			// (direction from var(), then the mapping)
+			equals(text(s, "c", "margin-left"), "5px");
+		});
+		test("typed values", () -> {
+			var s = styles('<div id=d style="color: rgb(255, 0, 0); font: bold 20px/1.5 Georgia, serif"><p id=p>a</p><span id=s>b</span></div>',
+				"p { position: absolute; width: 50%; margin-top: 2em; border-top: 3px solid; opacity: 0.5; z-index: 2; background: url(a.png) no-repeat, linear-gradient(red, blue); counter-reset: x 3 y; display: flex } p::before { content: 'a' counter(x, roman) attr(id) open-quote }");
+			var p = s.computed(s.document.getElementById("p"));
+			equals(p.position.position == Absolute, true);
+			equals(p.length(Width).kind == Percent, true);
+			equals(p.resolve(Width, 300), 150.0);
+			equals(p.spacing.marginTop.value, 40.0);
+			equals(p.px(BorderTopWidth), 3.0);
+			equals(p.color(BorderTopColor).r, 1.0);
+			equals(p.color(BorderTopColor).g, 0.0);
+			equals(p.number(Opacity), 0.5);
+			equals(p.position.zIndex, 2.0);
+			equals(p.box.display.inner == Flex, true);
+			equals(p.box.display.outer == Block, true);
+			equals(p.font.fontWeight, 700.0);
+			equals(p.fontSize(), 20.0);
+			equals(p.lineHeight(), 30.0);
+			equals(p.families().join(", "), "Georgia, serif");
+			var layers = p.backgrounds();
+			equals(layers.length, 2);
+			equals(layers[0].repeat.join(" "), "no-repeat no-repeat");
+			equals(layers[1].repeat.join(" "), "repeat repeat");
+			equals([for (c in p.counters(CounterReset)) '${c.name} ${c.value}'].join(", "), "x 3, y 0");
+			equals(Std.string(s.computed(s.document.getElementById("p"), "before").generated()), "[Text(a),Counter(x,roman),Attribute(id),Quote(open-quote)]");
+			equals(s.computed(s.document.getElementById("s")).generated(), null);
+		});
+		test("impact", () -> {
+			equals(CssProperties.impact(Width) == Layout, true);
+			equals(CssProperties.impact(FontSize) == Text, true);
+			equals(CssProperties.impact(LetterSpacing) == Text, true);
+			equals(CssProperties.impact(Color) == Paint, true);
+			equals(CssProperties.impact(BorderTopWidth) == Layout, true);
+			equals(CssProperties.impact(BorderTopColor) == Paint, true);
+			equals(CssProperties.impact(Opacity) == Composite, true);
+			equals(CssProperties.impact(Translate) == Composite, true);
+			equals(CssProperties.impact(Cursor) == None, true);
+			// (a logical property's: its physical one's)
+			equals(CssProperties.impact(MarginInlineStart) == Layout, true);
+			equals(CssProperties.physical(MarginInlineStart, true) == MarginRight, true);
+		});
+		test("values nested deeply kept apart", () -> {
+			// (CssIntern's keys once were Std.string's, which elides deep nesting)
+			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");
+			equals(text(s, "a", "max-width"), "stretch(calc(0% + 100px))");
+			equals(text(s, "b", "max-width"), "stretch(calc(10% + 50px))");
+		});
+		test("typed reads of values kept as terms", () -> {
+			// (text-indent's grammar keeps it as terms: still a length to read, as the box lane does)
+			var s = styles('<p id=p>a</p>', "p { text-indent: 2em; font-size: 10px; box-shadow-color: red }");
+			var p = s.computed(s.document.getElementById("p"));
+			equals(p.length(TextIndent).kind == Px, true);
+			equals(p.length(TextIndent).value, 20.0);
+			equals(p.resolve(TextIndent, 100), 20.0);
+			equals(p.color(BoxShadowColor).r, 1.0);
+		});
+		test("typed reads by id don't allocate", () -> {
+			var s = styles('<p id=p>a</p>', "p { width: 50%; position: absolute; color: red; opacity: 0.5; border-top: 2px solid; float: left }");
+			var p = s.computed(s.document.getElementById("p"));
+			var n = 0.0;
+			// (once first: what a first read makes, lazily, isn't counted)
+			function read() {
+				n += p.length(Width).value + p.px(BorderTopWidth) + p.number(Opacity) + p.color(BorderTopColor).r;
+				if (p.keyword(Position) == "absolute") n++;
+				if (p.terms(Float).length == 1) n++;
+				if (p.length(MarginInlineStart).kind == Px) n++;
+			}
+			read();
+			var before = hxmc.GcStats.bytesAllocated();
+			for (_ in 0...1000) read();
+			var after = hxmc.GcStats.bytesAllocated();
+			equals(after - before, 0.0, 'allocated ${after - before} bytes in 7,000 reads');
+			equals(n > 0, true);
+		});
+		test("styles and groups shared", () -> {
+			var s = styles('<div id=d><p id=a class=x>a</p><p id=b class=x>b</p><p id=c class=y>c</p></div>', ".x { margin-top: 1px } .y { margin-top: 2px } .y { color: red }");
+			var a = s.computed(s.document.getElementById("a")), b = s.computed(s.document.getElementById("b")), c = s.computed(s.document.getElementById("c"));
+			var d = s.computed(s.document.getElementById("d"));
+			// (the same parent and cascade: one style; nothing inherited set: the parent's groups)
+			equals(a == b, true);
+			equals(a.font == d.font, true);
+			equals(a.inheritedText == d.inheritedText, true);
+			equals(c.inheritedText == d.inheritedText, false);
+			equals(a.spacing == c.spacing, false);
+			equals(a.border == c.border, true);
+			equals(s.hits + s.shares >= 1, true);
+		});
 		test("pseudo-elements", () -> {
 			var s = styles('<ul><li id=x>a</li></ul>', 'li::before { content: "> "; color: red } li::marker { color: blue } li { color: green }');
 			var li = s.document.getElementById("x");
@@ -181,6 +287,11 @@ function tests() {
 			var hinted = styles('<table><tr><td id=t bgcolor=red width=50>x</td></tr></table>', "td { width: 10px }", {hints: true});
 			equals(text(hinted, "t", "background-color"), "rgb(255, 0, 0)");
 			equals(text(hinted, "t", "width"), "10px");
+			// (body's margins: its attributes', else 8px; an author's rule over both)
+			var body = CssCascade.styles(Dom.parse('<!doctype html><body marginheight=3>'), {hints: true});
+			equals(body.computed(body.document.body).text("margin"), "3px 8px");
+			var zero = styles('<p>a</p>', "body { margin-top: 0 }", {hints: true});
+			equals(zero.computed(zero.document.body).text("margin"), "0px 8px 8px");
 		});
 		test("at-rules' data", () -> {
 			var s = styles('<p>a</p>', "@page :first { margin: 1in; size: A5; @top-center { content: 'x' } } @font-face { font-family: X; src: url(x.woff) } @counter-style thumbs { system: cyclic; symbols: '👍' }");
@@ -201,6 +312,22 @@ function tests() {
 			var b = CssCascade.styles(doc, {author: [for (r in shuffled) CssSheet.parse(r, Author)]});
 			for (el in all(doc.documentElement)) for (p in PROPS) equals(b.computed(el).text(p), a.computed(el).text(p), '${el.localName} $p');
 		}, {cases: 60}));
+		test("equal groups of values are one object, and one object one set of values", () -> property(RULES, rules -> {
+			var doc = Dom.parse(DOC);
+			var s = CssCascade.styles(doc, {author: [for (r in rules) CssSheet.parse(r, Author)]});
+			for (g in 0...CssGroups.COUNT) {
+				var byValues = new Map<String, CssGroup>(), byObject = new Map<Int, String>();
+				for (el in all(doc.documentElement)) for (pseudo in [null, "before"]) {
+					var style = s.computed(el, pseudo);
+					var group = @:privateAccess style.group(g);
+					var key = [for (p in CssProperties.members[g]) CssIntern.key(group.terms(cast p))].join("|");
+					if (byValues.exists(key)) equals(byValues[key] == group, true, '${CssProperties.groups[g]} made twice');
+					byValues.set(key, group);
+					if (byObject.exists(group.id)) equals(byObject[group.id], key, '${CssProperties.groups[g]} changed');
+					byObject.set(group.id, key);
+				}
+			}
+		}, {cases: 40}));
 		test("an unset inherited property is its parent's computed value", () -> property(RULES, rules -> {
 			var doc = Dom.parse(DOC);
 			// (no user agent's sheet: what sets a property is the rules drawn)

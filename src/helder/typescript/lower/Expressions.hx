@@ -160,14 +160,12 @@ abstract class Expressions extends Statements {
 				if (b.resumable == null || !b.resumable.async) fail(n, "await outside an async function");
 				yieldPoint(any(expr(n.expression())), true, AWAIT, "async " + b.f.display + " (" + location(n) + ")");
 			case KindTemplateExpression:
-				var t = n;
-				var result:Ex = EStr(t.head().text);
-				for (span in t.templateSpans()) {
-					var piece = span;
-					result = b.runtime("concat", [result, b.runtime("text", [any(expr(piece.expression()))])]);
-					result = b.runtime("concat", [result, EStr(piece.literal().text)]);
+				var pieces = [EStr(n.head().text)];
+				for (span in n.templateSpans()) {
+					pieces.push(piece(text(expr(span.expression()))));
+					pieces.push(EStr(span.literal().text));
 				}
-				result;
+				join(pieces);
 			case KindTypeOfExpression:
 				var value = n.expression();
 				while (value.kind == KindParenthesizedExpression) value = value.expression();
@@ -383,6 +381,10 @@ abstract class Expressions extends Statements {
 			b.out.push(SIf(ELocal(e.num), b.block(() -> b.out.push(SSet(v, any(ELocal(e.f))))), b.block(() -> b.out.push(SSet(v, e.any())))));
 			return ELocal(v);
 		}
+		if (op == KindPlusToken && !numericOperator(op, n)) {
+			var pieces = plusPieces(n);
+			return pieces.length == 1 ? pieces[0] : join(pieces);
+		}
 		var coerce = op != KindPlusToken && !relation;
 		var a = numericOperator(op, n) ? numeric(x.left(), false, coerce) : expr(x.left());
 		if (op == KindAmpersandAmpersandToken || op == KindBarBarToken || op == KindQuestionQuestionToken) {
@@ -482,13 +484,28 @@ abstract class Expressions extends Statements {
 			b.block(() -> b.out.push(SSet(r, b.runtime("libRelation", [a.any(), z.any(), EStr(text)]))))));
 		return ELocal(r);
 	}
+	// a chain of + making a string: its operands' text in order, joined once
+	// rather than a concat each; the first two made text after both are
+	// evaluated, the others right after their own (as each + does)
+	function plusPieces(n:Node):Array<Ex> {
+		var l = n.left();
+		while (l.kind == KindParenthesizedExpression) l = l.expression();
+		var chain = l.kind == KindBinaryExpression && l.operatorToken().kind == KindPlusToken && !numericOperator(KindPlusToken, l);
+		var left = chain ? plusPieces(l) : [expr(l)];
+		var z = expr(n.right());
+		if (left.length > 1) return left.concat([piece(plusText(z))]);
+		var a = left[0];
+		if (!Ir.typeOf(a).match(TRef(RStr)) && !Ir.typeOf(z).match(TRef(RStr))) return [operate(KindPlusToken, a, z, n)];
+		return [piece(plusText(a)), piece(plusText(z))];
+	}
+
 	function assign(n:Node):Ex {
 		var x = n;
 		var op = x.operatorToken().kind;
 		var left = x.left();
 		while (left.kind == KindParenthesizedExpression) left = left.expression();
 		if (op == KindPlusEqualsToken && left.kind == KindIdentifier && env.exists(left.text) && env.get(left.text).buffer != null) {
-			b.runtime("libBufferAdd", [ELocal(env.get(left.text).buffer), text(expr(x.right()))]);
+			b.runtime("libBufferAdd", [ELocal(env.get(left.text).buffer), plusText(expr(x.right()))]);
 			return b.runtime("getUndefined", []);
 		}
 		if (op == KindEqualsToken && (left.kind == KindArrayLiteralExpression || left.kind == KindObjectLiteralExpression)) {
@@ -552,7 +569,7 @@ abstract class Expressions extends Statements {
 			var e = literal != null ? isNullish(nullish(n.left()) != null ? z : a, strict ? literal : null) : equals(a, z, strict);
 			return op == KindExclamationEqualsEqualsToken || op == KindExclamationEqualsToken ? ENot(e) : e;
 		}
-		if (op == KindPlusToken && (Ir.typeOf(a).match(TRef(RStr)) || Ir.typeOf(z).match(TRef(RStr)))) return b.runtime("concat", [text(a), text(z)]);
+		if (op == KindPlusToken && (Ir.typeOf(a).match(TRef(RStr)) || Ir.typeOf(z).match(TRef(RStr)))) return b.runtime("concat", [plusText(a), plusText(z)]);
 		if (op == KindPlusToken && (Ir.typeOf(a).match(TRef(RAny)) || Ir.typeOf(z).match(TRef(RAny)))) return b.runtime("add", [any(a), any(z)]);
 		var relation = op == KindLessThanToken || op == KindLessThanEqualsToken || op == KindGreaterThanToken || op == KindGreaterThanEqualsToken;
 		if (relation && !(Ir.typeOf(a) == TF64 && Ir.typeOf(z) == TF64)) {

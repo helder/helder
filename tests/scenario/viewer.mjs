@@ -29,6 +29,8 @@ const pairs = {
   'App/Markdown, light': null,
   'App/Inspector, photo': 'Browser/inspector, photo',
   'App/No results': 'Browser/no results',
+  'App/Search focused, dark': 'Browser/search focused, dark',
+  'App/Search focused, light': 'Browser/search focused, light',
   'App/Empty folder': 'Browser/empty',
   'App/Folder that cannot be read': 'Browser/missing folder',
   'App/Phone, folder': 'Phone/Folder',

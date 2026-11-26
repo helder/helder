@@ -230,7 +230,9 @@ test("a stack against an array", () -> stateful({
 reported as its steps: `push(0)` `push(0)` `push(0)` `push(0)`, then the
 failure. A headless Ui is a system too: src/helder/ui/GridScroll.test.hx
 wheels, resizes, presses and keys a VirtualGrid, its scroll, selection and
-focus checked after each. Tests: Property.test.hx (shrinking's classic
+focus checked after each; helder.scenario.Monkey runs a whole program
+that way, booted as its scenarios (apps/studio/SCENARIOS.md, the UI
+monkey). Tests: Property.test.hx (shrinking's classic
 cases, replays, the store, rejections, stateful),
 src/helder/markdown/Markdown.test.hx's properties, the robustness ones
 (tests/image, tests/pdf, tests/media and tests/text's Fuzz.test.hx).

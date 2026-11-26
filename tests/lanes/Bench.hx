@@ -12,8 +12,12 @@ class Bench {
 		{name: "bench", about: "the engine's benchmarks and the examples' sizes", run: bench},
 		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
 		{name: "bench css", about: "helder.css's tokenizer and parser against lightningcss", run: cssBench},
+		{name: "bench row", about: "helder.css's restyle of a viewer's rows: made, hovered, unhovered, focused, selected", run: rowBench},
+		{name: "bench match", about: "helder.css's selector matching: each selector against the rule index and Bloom filter", run: matchBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
+		{name: "bench layout", about: "helder.ui.box on the HTML Standard's page: box tree, layout, paint, memory per box and fragment", run: layoutBench},
+		{name: "bench inline", about: "helder.ui.flow's inline layout on the HTML Standard's paragraphs, against TextLayout", run: inlineBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
@@ -69,9 +73,32 @@ class Bench {
 	}
 
 	// (natively; the page and its sheets fetched into bin/bench/html)
+	static function inlineBench() {
+		exe("bin/bench/InlineBench", cps(["src", "tests/bench"]).concat(["-main", "InlineBench"]));
+		run(NODE, ["tests/bench/inline.mjs", exePath("bin/bench/InlineBench", HOST)]);
+	}
+
 	static function cascadeBench() {
-		exe("bin/bench/CascadeBench", cps(["src", "tests/bench"]).concat(["-main", "CascadeBench"]));
+		exe("bin/bench/CascadeBench", cps(["src", "tests/bench", "tests/css"]).concat(["-main", "CascadeBench"]));
 		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
+	}
+
+	// (natively: the operations' microseconds and marked elements, JSON lines)
+	static function rowBench() {
+		exe("bin/bench/RowBench", cps(["src", "tests/bench"]).concat(["-main", "RowBench"]));
+		run(exePath("bin/bench/RowBench", HOST), []);
+	}
+
+	// (natively; the page and its sheets fetched as bench cascade's)
+	static function layoutBench() {
+		exe("bin/bench/LayoutBench", cps(["src", "tests/bench"]).concat(["-main", "LayoutBench"]));
+		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/LayoutBench", HOST)]);
+	}
+
+	// (natively; the pages and sheets fetched into bin/bench/html and bin/bench/match)
+	static function matchBench() {
+		exe("bin/bench/MatchBench", cps(["src", "tests/bench"]).concat(["-main", "MatchBench"]));
+		run(NODE, ["tests/bench/match.mjs", exePath("bin/bench/MatchBench", HOST)]);
 	}
 
 	// (natively and as wasm32-wasi; the inputs fetched into bin/bench/html, lexbor built there)

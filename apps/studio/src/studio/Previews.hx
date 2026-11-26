@@ -815,6 +815,10 @@ class Previews {
 	// (how long a tool waits for the program: a cold build and its start)
 	public static inline var LIVE = 180.0;
 
+	// the stills written now (the file is written a moment after each comes: helder share reads it)
+	public function saveStills()
+		kept.save();
+
 	// a screen's last frame's pixels (the image's own; a texture's read back
 	// by the host: Host.snap), or null
 	@:coroutine public function pixels(s:Screen):Null<Image> {

@@ -86,6 +86,11 @@ class NativeHost {
 		}
 		while (true) {
 			helder.dev.Hot.poll();
+			// (the program's tasks, a screen's request among them: helder.async's
+			// loop turned without waiting, as UiWindow.run's would; hosting, it
+			// returned without one)
+			var l = helder.async.Driven.MainLoop.main;
+			if (l != null && !l.turning) l.turn(0);
 			var drawn = host.frame(haxe.Timer.stamp());
 			if (drawn > 0) helder.dev.Hot.framed();
 			var now = haxe.Timer.stamp();

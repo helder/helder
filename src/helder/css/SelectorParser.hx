@@ -2,6 +2,7 @@ package helder.css;
 
 import helder.css.CssSelector;
 import helder.css.CssToken.CssTokenKind;
+import helder.dom.ElementState;
 
 using StringTools;
 
@@ -63,7 +64,7 @@ class SelectorParser {
 			if (c.end()) return null;
 			combinators.push(k);
 		}
-		return new CssSelector(compounds, combinators, lead, pseudo);
+		return CssSelector.of(compounds, combinators, lead, pseudo);
 	}
 
 	function compound(c:Cursor):Null<{simple:CssCompound, pseudo:Null<CssPseudoElement>}> {
@@ -81,9 +82,9 @@ class SelectorParser {
 					case Token({kind: Ident(n)}): Css.lower(n);
 					default: return null;
 				}
-				if (!USER_ACTIONS.contains(name)) return null;
+				if (!STATES.exists(name) || name == "target") return null;
 				c.skip(2);
-				simple.push(Pseudo(Never(name)));
+				simple.push(Pseudo(State(STATES.get(name), name)));
 				continue;
 			}
 			switch c.peek() {
@@ -237,6 +238,8 @@ class SelectorParser {
 				var name = Css.lower(n);
 				var p = PLAIN.get(name);
 				if (p != null) return p;
+				var bits = STATES.get(name);
+				if (bits != null) return State(bits, name);
 				if (NEVER.contains(name)) return Never(name);
 				return null;
 			case Function(n, args, _, _):
@@ -339,16 +342,21 @@ class SelectorParser {
 		"first-child" => FirstChild, "last-child" => LastChild, "only-child" => OnlyChild, "first-of-type" => FirstOfType, "last-of-type" => LastOfType,
 		"only-of-type" => OnlyOfType, "root" => Root, "empty" => Empty, "scope" => Scope, "link" => Link, "any-link" => AnyLink, "enabled" => Enabled,
 		"disabled" => Disabled, "checked" => Checked, "indeterminate" => Indeterminate, "default" => Default, "required" => Required,
-		"optional" => Optional, "read-only" => ReadOnly, "read-write" => ReadWrite, "placeholder-shown" => PlaceholderShown, "defined" => Defined
+		"optional" => Optional, "read-only" => ReadOnly, "read-write" => ReadWrite, "placeholder-shown" => PlaceholderShown, "defined" => Defined,
+		"valid" => Valid, "invalid" => Invalid
 	];
 
-	static final USER_ACTIONS = ["hover", "active", "focus", "focus-visible", "focus-within"];
+	// (the element's state bits; after a pseudo-element, these but :target)
+	static final STATES:Map<String, Int> = [
+		"hover" => ElementState.HOVER, "active" => ElementState.ACTIVE, "focus" => ElementState.FOCUS, "focus-visible" => ElementState.FOCUS_VISIBLE,
+		"focus-within" => ElementState.FOCUS_WITHIN, "target" => ElementState.TARGET
+	];
 
-	static final NEVER = USER_ACTIONS.concat([
-		"visited", "local-link", "target", "target-within", "current", "past", "future", "playing", "paused", "seeking", "buffering", "stalled",
-		"muted", "volume-locked", "autofill", "valid", "invalid", "in-range", "out-of-range", "user-valid", "user-invalid", "blank", "modal",
-		"popover-open", "fullscreen", "picture-in-picture", "open", "closed", "host"
-	]);
+	static final NEVER = [
+		"visited", "local-link", "target-within", "current", "past", "future", "playing", "paused", "seeking", "buffering", "stalled", "muted",
+		"volume-locked", "autofill", "in-range", "out-of-range", "user-valid", "user-invalid", "blank", "modal", "popover-open", "fullscreen",
+		"picture-in-picture", "open", "closed", "host"
+	];
 
 	static final LEGACY:Map<String, CssPseudoElement> = ["before" => Before, "after" => After, "first-line" => FirstLine, "first-letter" => FirstLetter];
 

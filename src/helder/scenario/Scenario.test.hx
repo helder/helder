@@ -2,6 +2,8 @@ package helder.scenario;
 
 import helder.scenario.Scenario;
 import helder.story.Host;
+import helder.story.Host.HostScreen;
+import helder.view.Flow.*;
 import helder.story.Story;
 import helder.test.Test;
 import helder.ui.*;
@@ -15,6 +17,11 @@ final over = Graph.signal(false);
 final total = Graph.memo(() -> score()[0] + score()[1]);
 // (what each screen's render read, by its screen)
 final seen = new Map<String, Array<Int>>();
+// (what steps do: taps of Add, the field's draft, the items added, the row picked)
+final taps = Graph.signal(0);
+final draft = Graph.signal("");
+final items = Graph.signal(([] : Array<String>));
+final picked = Graph.signal(-1);
 
 // (the loop turned for that long, outside every screen)
 function turn(seconds:Float) {
@@ -98,6 +105,130 @@ function tests() {
 		}), [1, 1]);
 		equals(score.peek(), [0, 0]);
 	});
+	var environ = test("a screen's zone, locale and settings its own; none given, none of the machine's", () -> {
+		var got = new Map<String, String>();
+		function look(name:String)
+			return () -> got.set(name, [
+				Std.string(helder.os.Now.offset(0) / 60000),
+				helder.os.Locale.current.peek(),
+				Std.string(helder.os.Settings.textScale.peek()),
+				Std.string(helder.os.Settings.reducedMotion.peek()),
+				Std.string(helder.os.Settings.orientation.peek())
+			].join(" "));
+		var h = new Host([], new HeadlessHost(), 1.0, [
+			scenario({name: "Delhi", zone: "+05:30", locale: "nl-BE", settings: {textScale: 1.5, reducedMotion: true}, boot: look("Delhi")}),
+			scenario({name: "Plain", boot: look("Plain")})
+		]);
+		h.still(true);
+		h.show(["Delhi", "Plain"]);
+		h.frame(0);
+		equals([got.get("Delhi"), got.get("Plain")], ["330 nl-BE 1.5 true landscape", "0 en-US 1 false landscape"]);
+		// (outside the screens: the system's again)
+		equals([helder.os.Now.zone == null, helder.os.Locale.screen == null, helder.os.Settings.screen == null], [true, true, true]);
+		for (s in h.screens)
+			s.reset();
+	});
+	var random = test("Math.random a screen's own: side by side, drawn in turn, as alone", () -> {
+		function draws(names:Array<String>):Map<String, Array<Float>> {
+			var out = [for (n in names) n => []];
+			var h = new Host([], new HeadlessHost(), 1.0, [for (n in names) scenario({name: n, seed: 7})]);
+			h.still(true);
+			h.show(names);
+			h.frame(0);
+			for (_ in 0...3)
+				for (s in h.screens)
+					s.run(() -> out.get(s.name).push(Math.random()));
+			for (s in h.screens)
+				s.reset();
+			return out;
+		}
+		var alone = draws(["R"]).get("R"), both = draws(["R", "S"]);
+		equals([both.get("R"), both.get("S")], [alone, alone]);
+	});
+	var timers = test("a timer set in a screen runs on its clock, not the loop's", () -> {
+		var fired = [];
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Clock"})]);
+		h.still(true);
+		h.show(["Clock"]);
+		h.frame(0);
+		var s = h.screens[0];
+		s.run(() -> helder.os.Now.after(1000, () -> fired.push(ScreenContext.current.name)));
+		// (real time passing runs nothing: its clock stands)
+		turn(0.05);
+		equals(fired, []);
+		s.run(() -> Clock.tick(ScreenContext.current.now + 1.0));
+		equals(fired, ["Clock"]);
+		s.reset();
+	});
+	var http = test("http: its fixtures answer its requests, none goes out; one none matches fails its screen, named", () -> {
+		var file = haxe.io.Path.join([Sys.getCwd(), "bin/scenario-test-answer.json"]);
+		helder.cli.TestCommand.mkdirs(haxe.io.Path.directory(file));
+		sys.io.File.saveContent(file, '{"from": "file"}');
+		var got = [];
+		function ask(url:String, ?method:String)
+			return () -> helder.async.Async.launch(_ -> {
+				var r = helder.async.http.Client.request(url, {method: method});
+				got.push('${r.status} ${r.text()}');
+			});
+		var h = new Host([], new HeadlessHost(), 1.0, [
+			scenario({
+				name: "Served",
+				http: {"api.test/v1/*": {a: 1}, "POST api.test/form": 201, "api.test/down": 503, "api.test/file": file},
+				boot: () -> {
+					ask("https://api.test/v1/items?x=1")();
+					ask("https://api.test/form", "POST")();
+					ask("http://api.test/down")();
+					ask("https://api.test/file")();
+				}
+			}),
+			scenario({name: "Strict", http: {"api.test/*": 200}, boot: ask("https://elsewhere.test/feed")})
+		]);
+		h.still(true);
+		h.show(["Served", "Strict"]);
+		h.frame(0);
+		turn(0.05);
+		h.frame(1);
+		equals(got, ['200 {"a":1}', "201 ", "503 ", '200 {"from": "file"}']);
+		equals([for (s in h.screens) s.failure?.message], [null, "no http fixture for GET https://elsewhere.test/feed"]);
+		for (s in h.screens)
+			s.reset();
+	});
+	// (one scenario of steps built and shown: its screen, after them)
+	function stepped(steps:Array<Steps.Step>):HostScreen {
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Steps", size: [300, 400], steps: steps})]);
+		h.still(true);
+		h.show(["Steps"]);
+		h.frame(0);
+		return h.screens[0];
+	}
+	var steps = test("steps: tap, type, press, as a user would, after boot and before the still", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.type("Item", "Stretch"), Steps.press("Enter")]);
+		equals(s.failure?.message, null);
+		equals(s.run(() -> [Std.string(taps.peek()), items.peek().join(","), draft.peek()]), ["1", "Stretch", ""]);
+		s.reset();
+	});
+	var rests = test("steps: each waited for until the screen rests, not a minute of its clock", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.tap("Add")]);
+		equals(s.failure?.message, null);
+		assert(s.context.now < 2, 'its clock at ${s.context.now} s');
+		s.reset();
+	});
+	var scrolled = test("steps: a scroll until a row is shown, then a tap on it", () -> {
+		var s = stepped([Steps.scroll("Rows", {text: "Row 30"}), Steps.tap({text: "Row 30"})]);
+		equals(s.failure?.message, null);
+		equals(s.run(() -> picked.peek()), 30);
+		s.reset();
+	});
+	var missing = test("a step that finds nothing fails its screen: its number, the near miss, what is shown", () -> {
+		var s = stepped([Steps.tap("Add"), Steps.tap("Ad")]);
+		var m = s.failure?.message ?? "";
+		equals(m.split("\n")[0], 'step 2: no "Ad" (near: button "Add")');
+		assert(m.indexOf('textbox "Item"') > 0, 'the tree in it: $m');
+		s.reset();
+		var t = stepped([Steps.tap("Twin")]);
+		equals((t.failure?.message ?? "").split("\n")[0], 'step 1: "Twin" is 2 nodes: button "Twin", button "Twin" (a role, a label or an id tells them apart)');
+		t.reset();
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -105,7 +236,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story])
+	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing])
 		t.skip();
 	#end
 }
@@ -116,6 +247,19 @@ class Game implements helder.view.Markup {
 
 	static function Court(_:{}):View {
 		Graph.renderEffect(() -> score(), v -> seen.set(ScreenContext.current.name, v));
-		return <view/>;
+		function add() {
+			if (draft() == "") return;
+			items(l -> l.concat([draft()]));
+			draft("");
+		}
+		return <view flexGrow={1} rowGap={4}>
+			<button onPress={() -> taps(t -> t + 1)}>Add</button>
+			<field value={draft} aria-label="Item" onInput={e -> draft(e.text)} onKeyDown={e -> if (e.key == helder.ui.Key.ENTER) add()}/>
+			<button>Twin</button>
+			<button>Twin</button>
+			<scroll role="list" aria-label="Rows" height={120} flexShrink={0}>
+				<For each={[for (i in 0...40) i]}>{i -> <button height={20} flexShrink={0} onPress={() -> picked(i())}>{'Row ${i()}'}</button>}</For>
+			</scroll>
+		</view>;
 	}
 }

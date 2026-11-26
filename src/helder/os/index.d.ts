@@ -73,6 +73,9 @@ export type FolderEntry = { name: string; folder: boolean; size: number; modifie
 // gesture's code that asks every move fills one it keeps (Node.rectInto)
 export type Rect = { x: number; y: number; width: number; height: number };
 
+// a screen's settings over the system's (a scenario's settings), each given one
+export type SettingsOverride = { textScale?: number; reducedMotion?: boolean; reducedTransparency?: boolean; contrast?: Contrast; orientation?: Orientation };
+
 // what a Window is made with: its title; its size in points (0 and 0: the
 // whole screen, on phones and the web); its title bar (TitleBar: the
 // system's, the default; inset; none); whether it is transparent (its

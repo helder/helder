@@ -15,6 +15,10 @@
 //   path (helder.asset): a new PNG written over the image is sent, nothing
 //   built, the same Image object then has its size and pixels; a new text
 //   runs its reader again; an edit to the source still builds;
+// - css-module: tests/cli/cards, an element styled through a CSS module
+//   (helder.css's CssModule): an edit to the module's file swaps its sheet,
+//   nothing built; one that adds a name says a rebuild is needed; one with
+//   an error keeps the last sheet.
 // - asset-web: Swatch for web: a new PNG sent to the page ({"type":
 //   "asset"}), the dev server serving the new bytes at /__hxmc/assets/.
 // The times from a save to the reload (native: the program's first frame,
@@ -36,8 +40,8 @@ const check = (what, ok, detail = '') => {
 
 fs.rmSync(work, { recursive: true, force: true });
 fs.mkdirSync(path.join(work, 'app'), { recursive: true });
-const assets = mode.startsWith('asset'), web = mode === 'web' || mode === 'asset-web', exit = mode === 'exit';
-const fixture = assets ? 'tests/cli/swatch/Swatch.hx' : web ? 'examples/counter/Counter.hx' : exit ? 'tests/cli/closer/Closer.hx' : 'tests/cli/tally/Tally.hx';
+const assets = mode.startsWith('asset'), web = mode === 'web' || mode === 'asset-web', exit = mode === 'exit', cards = mode === 'css-module';
+const fixture = cards ? 'tests/cli/cards/Cards.hx' : assets ? 'tests/cli/swatch/Swatch.hx' : web ? 'examples/counter/Counter.hx' : exit ? 'tests/cli/closer/Closer.hx' : 'tests/cli/tally/Tally.hx';
 const file = path.join(work, 'app', path.basename(fixture));
 fs.copyFileSync(path.join(repo, fixture), file);
 // (an RGBA8 PNG of w x h pixels, each rgba: what Swatch loads)
@@ -69,6 +73,7 @@ const write = (name, data) => {
 	fs.renameSync(f + '.tmp', f);
 	return performance.now();
 };
+if (cards) write('cards.module.css', '.card { width: 40px }\n');
 if (assets) {
 	write('swatch.png', png(2, 2, 0xff0000ff));
 	write('note.txt', 'first note\n');
@@ -194,6 +199,30 @@ async function asset() {
 	check('helder dev runs on', dev.exitCode === null && !lines.some(closed));
 }
 
+// a CSS module's file edited: its sheet swapped, nothing built
+async function cssModule() {
+	check('the first build: the module\'s width', !!(await line(/^cards: width 40px$/, 240000, true)));
+	await sleep(300);
+	let said = line(/helder\.css: cards\.module\.css swapped, nothing built/), seen = line(/^cards: width 30px$/);
+	let t0 = write('cards.module.css', '.card { width: 30px }\n');
+	check('an edit: swapped, nothing built', !!(await said));
+	check('an edit: the element restyled', !!(await seen));
+	times.push(performance.now() - t0);
+	await sleep(300);
+	said = line(/helder\.css: cards\.module\.css swapped, but its names changed \(\+extra\): rebuild to use them/), seen = line(/^cards: width 20px$/);
+	write('cards.module.css', '.card { width: 20px }\n.extra { color: red }\n');
+	check('a name added: swapped, a rebuild asked for', !!(await said));
+	check('a name added: the element restyled', !!(await seen));
+	await sleep(300);
+	said = line(/helder\.css: cards\.module\.css not swapped: the last sheet stays/);
+	const error = line(/cards\.module\.css:1:19: composes: no class \.nope in this file/);
+	write('cards.module.css', '.card { composes: nope; width: 10px }\n');
+	check('an error: said at its line and column', !!(await error));
+	check('an error: the last sheet stays', !!(await said));
+	check('no build for a module\'s edit', !lines.some((l) => /^\s*rebuilt in/.test(l)), lines.filter((l) => /rebuilt/.test(l)).join(' '));
+	check('helder dev runs on', dev.exitCode === null && !lines.some(closed));
+}
+
 // the page told of an asset (asset-web): nothing built, the bytes served
 async function assetPage() {
 	const port = Number(/http:\/\/127\.0\.0\.1:(\d+)\//.exec(await line(/^\s*serving http:/, 30000, true))[1]);
@@ -281,7 +310,7 @@ async function page() {
 }
 
 try {
-	await (mode === 'asset-web' ? assetPage() : assets ? asset() : web ? page() : exit ? exitPolicy() : native());
+	await (cards ? cssModule() : mode === 'asset-web' ? assetPage() : assets ? asset() : web ? page() : exit ? exitPolicy() : native());
 } catch (e) {
 	console.log('FAIL ' + e.message);
 	failures++;

@@ -204,6 +204,14 @@ class Seed {
 
 	public static function concat(a:String, b:String):String return a + b;
 
+	// (a template's or a chain of +'s pieces: one string, hxmc's concat3 and concat4)
+	public static function concat3(a:String, b:String, c:String):String return a + b + c;
+
+	public static function concat4(a:String, b:String, c:String, d:String):String return a + b + c + d;
+
+	// +'s operand as text: an object by its primitive with the default hint, as add
+	public static function plusText(v:Dynamic):String return text(Lib.isObject(v) ? Lib.toPrimitive(v, "default") : v);
+
 	public static function stringEq(a:String, b:String):Bool return a == b;
 
 	public static function stringLength(a:String):Float return a.length;
@@ -676,6 +684,9 @@ class Seed {
 		print(text(numeric(null)));
 		print(text(add(1, "a")));
 		print(concat("", ""));
+		print(concat3("", "", ""));
+		print(concat4("", "", "", ""));
+		print(plusText(null));
 		print(text(stringEq("", "")));
 		print(text(stringLength("")));
 	}

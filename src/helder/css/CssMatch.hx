@@ -13,7 +13,7 @@ import helder.css.CssToken;
 // only separates (calc() reads its own). The primitive types (Values 4's
 // numbers and dimensions, strings, identifiers, url(), `<color>`, the
 // math functions wherever a number or dimension may be) are matched here,
-// the rest by their definitions in CssData.
+// the rest by their definitions in CssTable.
 class CssMatch {
 	static final WIDE = ["initial", "inherit", "unset", "revert", "revert-layer", "revert-rule", "default"];
 	static final excludedCache = new Map<String, Map<String, Bool>>();
@@ -236,7 +236,9 @@ class CssMatch {
 				return w != null && k(i + 1, [Ident(w)]);
 			case "custom-ident":
 				var w = ident(i);
-				return w != null && !WIDE.contains(Css.lower(w)) && !excluded.exists(Css.lower(w)) && k(i + 1, [Ident(w)]);
+				// (a counter style's name is any but none, Counter Styles 3 §3: decimal and disc too)
+				var names = ctx.contains("<counter-style-name>");
+				return w != null && !WIDE.contains(Css.lower(w)) && (names ? Css.lower(w) != "none" : !excluded.exists(Css.lower(w))) && k(i + 1, [Ident(w)]);
 			case "dashed-ident":
 				var w = ident(i);
 				return w != null && StringTools.startsWith(w, "--") && k(i + 1, [Ident(w)]);

@@ -32,6 +32,11 @@ using StringTools;
 // the table's inherited flag, the initial value computed; colors: the
 // colour computed, or rejected where the expected is null.
 class CssValuesCheck {
+	// (each property's module, CssData's: the run time's table has none)
+	static final MODULES = [for (p in helder.css.CssData.properties) p.name => p.module];
+	// (and each one's initial value as webref writes it, prose too)
+	static final INITIALS = [for (p in helder.css.CssData.properties) p.name => p.initial];
+
 	static final here = "tests/css";
 	static final rows = new Array<{key:String, module:String, ok:Bool, why:String, want:String, skip:Null<String>}>();
 	static var want = "";
@@ -51,8 +56,7 @@ class CssValuesCheck {
 		var names = props.keys();
 		names.sort(Reflect.compare);
 		for (name in names) {
-			var p = CssGrammars.property(name);
-			var module = p == null ? "css-variables-1" : p.module;
+			var module = MODULES.get(name) ?? "css-variables-1";
 			var kinds = props.get(name);
 			for (r in kinds.get("valid") ?? []) valid(name, module, r);
 			for (r in kinds.get("invalid") ?? []) invalid(name, module, r);
@@ -97,9 +101,11 @@ class CssValuesCheck {
 			report(counts, nextPending, nextSkip);
 			return;
 		}
-		for (f in failures.slice(0, 40)) Sys.println('  required: $f');
+		Sys.println('css values: parity with #321\'s cascade: ${parityChecks} values on ${Lambda.count(parityPages)} pages, ${parity.length} differ');
+		for (p in parity.slice(0, Std.parseInt(Sys.getEnv("LIMIT") ?? "40"))) Sys.println('  differs from #321: $p');
+		for (f in failures.slice(0, Std.parseInt(Sys.getEnv("LIMIT") ?? "40"))) Sys.println('  required: $f');
 		for (f in fixed.slice(0, 40)) Sys.println('  passes, still pending (BLESS=1): $f');
-		if (failures.length > 0 || fixed.length > 0) Sys.exit(1);
+		if (failures.length > 0 || fixed.length > 0 || parity.length > 0) Sys.exit(1);
 	}
 
 	static function add(key:String, module:String, ok:Bool, why:String, skip:Null<String>) {
@@ -129,8 +135,31 @@ class CssValuesCheck {
 		var target = doc.getElementById("target") ?? doc.body;
 		if (target == null) return null;
 		target.setAttribute("style", (target.getAttribute("style") ?? "") + ";" + prop + ": " + value);
-		return CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}}).computed(target).text(prop);
+		var media:helder.css.CssMedia.CssMediaContext = {type: "screen", width: 800, height: 600};
+		var style = CssCascade.styles(doc, {media: media}).computed(target);
+		var got = style.text(prop);
+		// (the same through #321's cascade, frozen: the row's property, and every longhand on a page's first row)
+		if (!LOGICAL.match(html + " " + prop + " " + value)) {
+			var old = reference.RefCascade.styles(doc, {media: media}).computed(target);
+			var props = (parityPages.exists(file) ? [prop] : LONGHANDS.concat([prop])).filter(p -> !ZEROED.match(p));
+			parityPages.set(file, true);
+			for (p in props) {
+				parityChecks++;
+				var a = style.text(p), b = old.text(p);
+				if (a != b) parity.push('$prop: $value, page $file: $p is ${haxe.Json.stringify(a)}, #321 gave ${haxe.Json.stringify(b)}');
+			}
+		}
+		return got;
 	}
+
+	// (#321 had no logical properties: pages with them are left out)
+	static final LOGICAL = ~/(margin|padding|inset|border)-(block|inline)|(min-|max-|\b)(inline|block)-size|border-(start|end)-(start|end)-radius/;
+	static final LONGHANDS = [for (p in helder.css.CssData.properties) if (p.longhands.length == 0 && p.alias == null && !LOGICAL.match(p.name) && p.name != "all") p.name];
+	// (#321 zeroed a border's or outline's computed width under a none style; Borders 4 zeroes the used one)
+	static final ZEROED = ~/^(border-(top|right|bottom|left)-width|outline-width)$/;
+	static final parityPages = new Map<Int, Bool>();
+	static final parity:Array<String> = [];
+	static var parityChecks = 0;
 
 	static function valid(name:String, module:String, r:Array<Dynamic>) {
 		var custom = name == "--*";
@@ -206,8 +235,9 @@ class CssValuesCheck {
 		want = haxe.Json.stringify(initial);
 		var got = inPage(r[3], name, "initial") ?? CssValues.compute(name, Wide("initial"));
 		var ok = got != null && matches(got, initial, null);
-		add(key, module, ok, ok ? "" : got == null ? 'cascade: an initial value in prose (the used value, the user agent\'s); ${haxe.Json.stringify(p.initial)}' : reason(name,
-			p.initial, 'initial computes to ${haxe.Json.stringify(got)}', true), null);
+		var initialText = INITIALS.get(name) ?? "";
+		add(key, module, ok, ok ? "" : got == null ? 'cascade: an initial value in prose (the used value, the user agent\'s); ${haxe.Json.stringify(initialText)}' : reason(name,
+			initialText, 'initial computes to ${haxe.Json.stringify(got)}', true), null);
 	}
 
 	static function color(file:String, input:String, expected:Null<String>) {
@@ -280,17 +310,18 @@ class CssValuesCheck {
 	static function reason(prop:String, value:String, got:String, computed = false):String {
 		var p = CssGrammars.property(prop);
 		var v = value.toLowerCase();
-		var need = if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
+		var need = if (~/^(inset-|cursor$)/.match(prop) && WRITTEN.exists(prop)) 'values: ${WRITTEN[prop]}'
+		else if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent|inline-size|block-size)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
 		else if (p != null && p.longhands.length > 0) "cascade: shorthands serialize from their longhands"
 		else if (computed && ~/^(inherit|unset|revert|revert-layer)$/.match(v.trim())) "cascade: inherit, the parent's value"
 		else if (computed && (prop == "text-shadow" || prop == "box-shadow") && got.indexOf("rgb(0, 0, 0)") >= 0 && !~/rgb|#|[a-z]{3,} \d|\d [a-z]{3,}/.match(v)) "cascade: currentcolor, the element's color"
 		else if (computed && prop == "text-emphasis-style") "cascade: the writing mode's default shape"
 		else if (computed && (v.indexOf("from-font") >= 0 || ~/\d(lh|rlh|ex|ch|ic|cap)\b/.match(v))) "layout: the font's own metrics"
 		else if (computed && prop == "justify-items" || prop == "justify-items" && got.indexOf("legacy") >= 0) "cascade: justify-items' legacy, the parent's"
-		else if (computed && ~/^(width|height)$/.match(prop) && got.indexOf("auto") >= 0) "layout: getComputedStyle's resolved value (the used one)"
+		else if (computed && ~/^(width|height|inline-size|block-size|min-inline-size|min-block-size)$/.match(prop) && ~/auto|-content/.match(got)) "layout: getComputedStyle's resolved value (the used one)"
 		else if (computed && ~/^grid-template|^grid-auto/.match(prop)) "layout: grid tracks' sizes"
 		else if (computed && ~/^(line-height|transform-origin|perspective-origin)$/.match(prop)) "layout: getComputedStyle's resolved value (the used one)"
-		else if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
+		else if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent|inline-size|block-size)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
 		else if (computed && v.indexOf("url(") >= 0) "cascade: url() made absolute against the document"
 		else if (computed && ~/var\(|env\(/.match(v)) "cascade: var() and env() substituted"
 		else if (computed && ~/currentcolor/.match(v)) "cascade: currentcolor, the element's color"
@@ -314,7 +345,14 @@ class CssValuesCheck {
 		"box-shadow-color" => "box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands",
 		"transform" => "WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed)",
 		"color" => "rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed)",
-		"text-emphasis-position" => "its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right"
+		"text-emphasis-position" => "its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right",
+		"cursor" => "WPT's computed gradients in cursor: its expected texts drop a parenthesis, and cursor's grammar has image-set() of URLs, not <image>",
+		"inset-block" => "WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest)",
+		"inset-inline" => "WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest)",
+		"inset-block-start" => "WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value)",
+		"inset-block-end" => "WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value)",
+		"inset-inline-start" => "WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value)",
+		"inset-inline-end" => "WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value)"
 	];
 
 	// The text against the expected one (or any of a list): numbers within eps when there is one.

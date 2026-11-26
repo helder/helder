@@ -112,6 +112,35 @@ class FrameArchive {
 		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, loop: loop, fonts: s.fonts, images: s.images});
 	}
 
+	// the archive as another machine reads it (a share's: helder.run's Board):
+	// each font it refers to by its file stored with it (at most maxFont
+	// bytes each; a larger one, an emoji font's, left to the reader's match);
+	// the keys let go (they name this machine's files)
+	public function portable(maxFont = 16 * 1024 * 1024):FrameArchive {
+		var out = new FrameArchive();
+		for (name in order) {
+			var s = screens.get(name);
+			for (f in s.fonts) {
+				if (out.blobs.exists(f.hash)) continue;
+				var b = blobs.get(f.hash) ?? (f.path == null ? null : try sys.io.File.getBytes(f.path) catch (_:Dynamic) null);
+				if (b != null && b.length <= maxFont) out.blobs.set(f.hash, b);
+			}
+			for (i in s.images)
+				if (blobs.exists(i.hash)) out.blobs.set(i.hash, blobs.get(i.hash));
+			out.order.push(name);
+			out.screens.set(name, {
+				key: "",
+				width: s.width,
+				height: s.height,
+				bytes: s.bytes,
+				loop: s.loop,
+				fonts: [for (f in s.fonts) {hash: f.hash, family: f.family, weight: f.weight, italic: f.italic, path: null, index: f.index, engine: f.engine, coords: f.coords, data: null}],
+				images: s.images
+			});
+		}
+		return out;
+	}
+
 	public function remove(name:String) {
 		screens.remove(name);
 		order.remove(name);

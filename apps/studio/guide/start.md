@@ -63,10 +63,44 @@ export const welcome = scenario({ name: "App/Welcome", boot() { title("Welcome b
 
 Each scenario is a literal `scenario({...})` at the module's top level,
 read before anything is built. Add one to add a screen; rename or remove
-one and the canvas follows. Also: `loop`, `time` (`"2026-11-26T09:00"`:
-its clock's start), `size: [w, h]` (else main's window's), `seed`, `dark`,
-`play` (seconds run to the moment). Each screen has state of its own:
-screens never share a value.
+one and the canvas follows. Also: `loop`, `size: [w, h]` (else main's
+window's), `dark`, `play` (seconds of its clock run to the moment: its
+timers fire, `setTimeout` and `setInterval` included). Each screen has
+state of its own: screens never share a value.
+
+A scenario sees nothing of the machine: set what the moment depends on.
+`time: "2026-11-26T09:00"` (its clock's start, `new Date()` reads it),
+`zone: "+01:00"` (`"UTC"` or a fixed offset; UTC unless given), `locale:
+"nl-BE"` (dates and numbers formatted so; en-US unless given), `settings:
+{textScale: 1.5, reducedMotion: true}`, `seed` (`Math.random`'s, the
+screen's own). Write one scenario per place or language that matters.
+
+A scenario makes no live request: give it `http`, the answers by url
+(no scheme; `*` any run; a method first when it matters), each a status,
+a JSON value or a file's path in the project. A request none answers
+fails its screen, naming its method and url: add the fixture it asks for.
+Play stays live.
+
+```tsx
+export const offline = scenario({ name: "Weather/Offline", http: { "api.open-meteo.com/*": 503 } });
+export const ghent = scenario({ name: "Weather/Ghent", http: { "api.open-meteo.com/v1/forecast*": "fixtures/forecast.json" } });
+```
+
+A moment boot can't write (a field focused, a list scrolled, a
+component's own state) is reached by `steps`, after boot, as a user
+would: `tap`, `type`, `press`, `scroll`, `drag`, `waitFor`, from
+`helder/scenario`. A step finds what the user sees: a role and its name
+(a button "Add"), else a label, a text, an id; or `{role, name, label,
+text, id}`. Each step waits until nothing is pending. Prefer boot where
+it can write the moment; steps for the rest.
+
+```tsx
+export const typed = scenario({ name: "Habits/Typed", steps: [type("New habit", "Read"), tap("Add")] });
+```
+
+A step that finds nothing, or more than one, fails its screen:
+`step 2: no "Ad" (near: button "Add")` and what is shown. Fix the query
+from its near misses, or tell two apart by a role, a label or an id.
 
 The canvas is a storyboard of stills: a scenario shows its moment, it does
 not run. Write one for each key moment, named for it ("Pong/Serve",

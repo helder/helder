@@ -91,6 +91,14 @@ class CssComputed {
 					case _: t;
 				}];
 			case "font-feature-settings" | "font-variation-settings": features(out);
+			case "filter" | "backdrop-filter": [for (t in out) filter(t)];
+			// (a number of steps at least 1, 2 for jump-none, Easing 1 §2.3)
+			case "transition-timing-function":
+				[for (t in out) switch t {
+					case Func("steps", [Number(n, i), Delim(","), Keyword(p)]): Func("steps", [Number(Math.max(p == "jump-none" ? 2 : 1, n), i), Delim(","), Keyword(p)]);
+					case Func("steps", [Number(n, i)]): Func("steps", [Number(Math.max(1, n), i)]);
+					case _: t;
+				}];
 			case "grid-row-start" | "grid-row-end" | "grid-column-start" | "grid-column-end":
 				// (span 1 with a name is span and the name)
 				switch out {
@@ -104,6 +112,33 @@ class CssComputed {
 			case _: out;
 		}
 	}
+
+	// (Filter Effects 1 §5.1: an amount as a number, 1 when left out, at
+	// least 0, at most 1 for the ones that can't go past; blur() 0px;
+	// hue-rotate() 0deg; drop-shadow()'s colour first, currentcolor when
+	// left out, and its blur 0px)
+	static function filter(t:CssTerm):CssTerm
+		return switch t {
+			case Func("blur", []): Func("blur", [Dimension(0, "px")]);
+			case Func("hue-rotate", []) | Func("hue-rotate", [Number(0, _)]): Func("hue-rotate", [Dimension(0, "deg")]);
+			case Func("drop-shadow", args):
+				var color = args.find(a -> a.match(Color(_))) ?? Color(CssColors.keyword("currentcolor"));
+				var lengths = args.filter(a -> !a.match(Color(_)));
+				if (lengths.length == 2) lengths.push(Dimension(0, "px"));
+				Func("drop-shadow", [color].concat(lengths));
+			case Func(f = "brightness" | "contrast" | "grayscale" | "invert" | "opacity" | "saturate" | "sepia", args):
+				var v:Null<Float> = switch args {
+					case []: 1;
+					case [Number(n, _)]: n;
+					case [Percentage(p)]: p / 100;
+					case _: null;
+				}
+				if (v == null) return t;
+				if (v < 0) v = 0;
+				if (v > 1 && f != "brightness" && f != "contrast" && f != "saturate") v = 1;
+				Func(f, [Number(v, false)]);
+			case _: t;
+		}
 
 	static final SIZES = [
 		"xx-small" => 9.0, "x-small" => 10.0, "small" => 13.0, "medium" => 16.0, "large" => 18.0, "x-large" => 24.0, "xx-large" => 32.0, "xxx-large" => 48.0

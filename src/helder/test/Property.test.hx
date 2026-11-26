@@ -91,6 +91,14 @@ function tests() {
 			equals(f.length, 2);
 			for (s in f) assert(s.contains("the generator rejects too much"), s);
 		});
+		// (a soak's watchdog and its environment: natively)
+		#if (hxmc.target != "wasm32-wasi")
+		test("some rejected in a soak, past four for each case asked but not for each run: passes", () -> {
+			Sys.putEnv("HELDER_PROPERTY_SOAK", "0.2");
+			property(int(0, 9), x -> assume(x != 0), {cases: 2, limit: 5});
+			Sys.putEnv("HELDER_PROPERTY_SOAK", "");
+		});
+		#end
 		test("some rejected: passes", () -> {
 			property(int(0, 9), x -> {
 				assume(x % 2 == 0);

@@ -55,6 +55,33 @@ function tests() {
 			equals(SelectionBar.place(high, [high, next], 200, 40, 1000, 700), {x: 60.0, y: 240.0});
 			equals(SelectionBar.place(high, [high, {x0: 0.0, y0: 150.0, x1: 1000.0, y1: 700.0}], 200, 40, 1000, 700), {x: 60.0, y: 650.0});
 		});
+		test("Share: helder share run on the project, its frames named, the link once it is there", async(() -> {
+			var dir = Temp.dir("helder-share");
+			Files.save('$dir/app.helder', sys.io.File.getContent("../../tests/studio/design/app.helder"));
+			// (a stand-in for helder: its lines as helder share prints them, its arguments kept)
+			var cli = '$dir/helder.sh';
+			sys.io.File.saveContent(cli, '#!/bin/sh\necho "$@" > "$dir/args"\necho "\033[1m    release\033[0m 3 files, 1.2 MB"\necho "     shared https://quiet-otter-12.helder.run/ · v1"\n');
+			Sys.command("chmod", ["+x", cli]);
+			var was = Sys.getEnv("HELDER_CLI");
+			Sys.putEnv("HELDER_CLI", cli);
+			try {
+				var s = new Studio(dir, {});
+				s.share();
+				var t0 = haxe.Timer.stamp();
+				while (s.shared.peek()?.state != "shared" && s.shared.peek()?.state != "failed" && haxe.Timer.stamp() - t0 < 10) {
+					helder.async.Async.delay(0.02);
+					helder.view.graph.Graph.flush();
+				}
+				equals([s.shared.peek()?.state, s.shared.peek()?.url], ["shared", "https://quiet-otter-12.helder.run/"]);
+				equals(StringTools.startsWith(sys.io.File.getContent('$dir/args'), 'share ${s.project.dir}'), true);
+			} catch (e:haxe.Exception) {
+				Sys.putEnv("HELDER_CLI", was);
+				Temp.remove(dir);
+				throw e;
+			}
+			Sys.putEnv("HELDER_CLI", was);
+			Temp.remove(dir);
+		}));
 		test("Play from here with a window open: switched (a scenario it has), queued (an edit not built), its main written again (one it has not), else a window of its own", () -> {
 			equals(Studio.playPlan(true, ["A/One", "A/Two"], "A/Two", true, false), "switch");
 			equals(Studio.playPlan(true, ["A/One", "A/Two"], "A/Two", true, true), "queue");

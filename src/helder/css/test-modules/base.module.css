@@ -1,0 +1,2 @@
+.base { composes: reset; border: 1px solid }
+.reset { margin: 0; padding: 0 }
