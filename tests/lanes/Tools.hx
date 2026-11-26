@@ -357,8 +357,21 @@ class Tools {
 	}
 
 	public static function removeTree(path:String) {
-		if (!FileSystem.exists(path)) return;
-		var abs = FileSystem.absolutePath(path);
+		var abs = FileSystem.absolutePath(path), dir = Path.directory(abs), name = Path.withoutDirectory(abs);
+		if (!FileSystem.exists(dir)) return;
+		var listed = FileSystem.readDirectory(dir);
+		if (!listed.contains(name)) {
+			// (a case-insensitive disk's match, macOS's: bin/studio/todo found as bin/studio/Todo, the
+			// entry its parent lists, not a link to it)
+			var own = Lambda.find(listed, n -> n.toLowerCase() == name.toLowerCase());
+			if (own != null) removeTree(Path.join([dir, own]));
+			return;
+		}
+		// (a link whose target is gone: listed, yet not there to exists)
+		if (!FileSystem.exists(abs)) {
+			FileSystem.deleteFile(abs);
+			return;
+		}
 		var real = FileSystem.fullPath(abs);
 		var parent = FileSystem.fullPath(Path.directory(abs));
 		// (compared normalised: Windows' slashes and its drive letter's case may differ)
