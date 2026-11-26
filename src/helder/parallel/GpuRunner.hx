@@ -29,6 +29,8 @@ class GpuRunner {
 	public static var current(default, null):Null<GpuRunner> = null;
 
 	public final device:Device;
+	// (tests: the stages' emulated subgroups where the device has its own)
+	@:noCompletion public static var emulate = false;
 
 	var scratch = Bytes.alloc(64);
 	final none = Bytes.alloc(0);
@@ -42,7 +44,7 @@ class GpuRunner {
 	public static function use(d:Null<Device>):Bool {
 		current = d == null || !d.has(Compute) ? null : new GpuRunner(d);
 		var r = current;
-		Parallel.hooks(r == null ? null : r.dispatch, r == null ? null : r.fetch, r == null ? null : r.release);
+		Parallel.hooks(r == null ? null : r.dispatch, r == null ? null : r.reduce, r == null ? null : r.fetch, r == null ? null : r.release);
 		return r != null;
 	}
 
@@ -117,13 +119,18 @@ class GpuRunner {
 		while (dropped.length > 0)
 			device.destroyBuffer(dropped.pop());
 
-	// a site's Gpu form over n items: the context's captured values into its
-	// uniform block, the Items' buffers bound, the workgroups dispatched
-	function dispatch(form:GpuForm, n:Int, ctx:Ptr, items:Array<ItemsData>) {
-		if (form.device != device) {
-			form.pipeline = device.createComputePipeline({program: form.code});
+	// (the form's pipeline on this device, made once)
+	function pipeline(form:GpuForm):Any {
+		if (form.device != device || form.emulated != emulate) {
+			form.pipeline = device.createComputePipeline({program: emulate ? helder.gfx.ShaderCode.emulatedForm(form.code) : form.code});
 			form.device = device;
+			form.emulated = emulate;
 		}
+		return form.pipeline;
+	}
+
+	// (the context's captured values into the form's uniform block, the count n)
+	function block(form:GpuForm, n:Int, ctx:Ptr):Bytes {
 		var b = form.bytes;
 		for (k in 0...form.kinds.length) {
 			var o = form.to[k], c = form.from[k];
@@ -140,22 +147,106 @@ class GpuRunner {
 			}
 		}
 		b.setInt32(form.count, n);
+		return b;
+	}
+
+	// (groups workgroups of form, 65535 a row, over buffers by its slots, in the pass begun)
+	function run(enc:helder.gfx.Encoder, form:GpuForm, b:Bytes, groups:Int, buffers:Array<Buffer>) {
+		enc.setComputePipeline(cast pipeline(form));
+		enc.setUniforms(form.binding, b);
+		for (k in 0...buffers.length)
+			enc.setStorage(form.slots[k], buffers[k]);
+		enc.dispatch(groups > 65535 ? 65535 : groups, Std.int((groups + 65534) / 65535));
+	}
+
+	final bound:Array<Buffer> = [];
+
+	// a site's Gpu form over n items: the context's captured values into its
+	// uniform block, the Items' buffers bound, the workgroups dispatched
+	function dispatch(form:GpuForm, n:Int, ctx:Ptr, items:Array<ItemsData>) {
+		var b = block(form, n, ctx);
 		for (d in items)
 			upload(d);
 		var enc = device.computeEncoder();
 		enc.beginCompute();
-		enc.setComputePipeline(cast form.pipeline);
-		enc.setUniforms(form.binding, b);
-		for (k in 0...items.length)
-			enc.setStorage(form.slots[k], cast items[k].buffer);
-		var groups = Std.int((n + 63) / 64);
-		enc.dispatch(groups > 65535 ? 65535 : groups, Std.int((groups + 65534) / 65535));
+		run(enc, form, b, Std.int((n + 63) / 64), buffers(items));
 		enc.endCompute();
+		wrote(form, items);
+	}
+
+	function buffers(items:Array<ItemsData>):Array<Buffer> {
+		bound.resize(0);
+		for (d in items)
+			bound.push(cast d.buffer);
+		return bound;
+	}
+
+	function wrote(form:GpuForm, items:Array<ItemsData>)
 		for (k in 0...items.length)
 			if (form.writes[k]) {
 				items[k].state = ItemsData.GPU;
 				items[k].byGpu = true;
 			}
+
+	// (the partials' buffers, two in turn: grown, never shrunk)
+	final parts:Array<Null<Buffer>> = [null, null];
+	final sizes = [0, 0];
+	final value = Bytes.alloc(16);
+
+	function part(k:Int, bytes:Int):Buffer {
+		if (sizes[k] < bytes) {
+			if (parts[k] != null) device.destroyBuffer(parts[k]);
+			sizes[k] = bytes + (bytes >> 2);
+			parts[k] = device.createBuffer({size: sizes[k], usage: Storage});
+		}
+		return parts[k];
 	}
+
+	// a reduction's Gpu form over n items: each workgroup's partial (of
+	// SPAN items), those reduced by form.next until one is left, in one
+	// compute pass (a dispatch sees what the ones before wrote), read back
+	// (waited for) into the context where its identity was
+	function reduce(form:GpuForm, n:Int, ctx:Ptr, items:Array<ItemsData>) {
+		if (device.backend == WebGPU) throw new haxe.Exception("helder.parallel: a reduction's Gpu form reads its value back, and WebGPU reads back asynchronously: await read(items) in a coroutine and reduce on the CPU");
+		var b = block(form, n, ctx);
+		for (d in items)
+			upload(d);
+		inline function groups(n:Int):Int
+			return Std.int((n + SPAN - 1) / SPAN);
+		// (a row's last workgroups past the count write partials too: room for them)
+		inline function room(g:Int):Int
+			return (g > 65535 ? Std.int((g + 65534) / 65535) * 65535 : g) * form.stride;
+		var m = groups(n), at = 0;
+		var bs = buffers(items);
+		bs.push(part(0, room(m)));
+		var enc = device.computeEncoder();
+		enc.beginCompute();
+		run(enc, form, b, m, bs);
+		var next = form.next;
+		while (m > 1) {
+			var g = groups(m);
+			var src = parts[at], dst = part(1 - at, room(g));
+			b.setInt32(form.count, m);
+			bound.resize(0);
+			bound.push(src);
+			bound.push(dst);
+			run(enc, next, b, g, bound);
+			at = 1 - at;
+			m = g;
+		}
+		enc.endCompute();
+		wrote(form, items);
+		device.readBuffer(parts[at], 0, value, 0, form.stride);
+		var o = form.from[form.from.length - 1];
+		switch form.value {
+			case GpuForm.KINT: Mem.setI32(ctx, o, value.getInt32(0));
+			case kind:
+				for (j in 0...(kind == GpuForm.KFLOAT ? 1 : kind - GpuForm.KVEC))
+					Mem.setF64(ctx, o + 8 * j, value.getFloat(4 * j));
+		}
+	}
+
+	// (a reduction workgroup's items: ParallelMacro's SPAN)
+	static inline var SPAN = 2048;
 }
 #end

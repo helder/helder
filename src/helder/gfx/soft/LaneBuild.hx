@@ -68,6 +68,8 @@ class LaneBuild {
 			generic(f, ["x"], lanes(f, ["x"]));
 		generic("min", ["x", "y"], "x.min(y)");
 		generic("max", ["x", "y"], "x.max(y)");
+		add("min", [["x", "LaneInt"], ["y", "LaneInt"]], "LaneInt", "x.min(y)");
+		add("max", [["x", "LaneInt"], ["y", "LaneInt"]], "LaneInt", "x.max(y)");
 		generic("pow", ["x", "y"], "x.pow(y)");
 		generic("atan2", ["y", "x"], lanes("atan2", ["y", "x"]));
 		generic("step", ["edge", "x"], "Lane.select(x.lt(edge), Lane.zero(), Lane.constant(0x3F800000, 1))");

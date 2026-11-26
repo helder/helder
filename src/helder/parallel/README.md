@@ -93,8 +93,15 @@ call (tests, bisecting a difference):
   compute pass of its own outside a frame (or between a frame's passes:
   not inside one), before the next frame's passes. Approximate: the GPU's
   rounding, fused multiply-adds and functions are its own (within 3e-6 of
-  Simd on the particle step). Not for reductions yet (they need workgroup
-  memory in compute()); GLSL leaves `%` of negative Ints undefined.
+  Simd on the particle step); GLSL leaves `%` of negative Ints undefined.
+  A reduction is a tree: workgroups of 256 invocations, each combining 8
+  items, then its subgroup's (sum, min and max: the device's subgroup
+  operations, or the emulated ones of workgroup memory on D3D11 and
+  where there are none) and the workgroup's in workgroup memory, in
+  halves with a barrier between, into one partial a workgroup; the
+  partials reduced so until one is left, all in one compute pass, its
+  value read back (waited for). Not on WebGPU (it reads back
+  asynchronously only): there it throws.
 - `Auto`: **Gpu from residency alone**: where an Items the body writes
   was last written by a dispatch, or is drawn by the GPU
   (`items.buffer(device)`), and `Parallel.device` has compute, the body
@@ -102,7 +109,9 @@ call (tests, bisecting a difference):
   uploaded each frame. **Otherwise Simd or Jobs, by the site's own
   timings**: its first run on one thread, one on the threads where those
   might win, then the one predicted faster for the call's n, changed only
-  for a clear gain. Simd and Jobs give the same bits, so a CPU result is
+  for a clear gain. A reduction runs on the GPU where an Items it reads
+  has its values there alone (a dispatch wrote it last, not read back
+  since). Simd and Jobs give the same bits, so a CPU result is
   deterministic whatever Auto picks.
 
 `Parallel.log = true` prints each site's choice when it changes
@@ -114,7 +123,9 @@ count (no fused multiply-adds; fixed chunks). A reduction cuts the items
 into chunks of 1024, each reduced in its 4 lanes and the lanes in pairs,
 the chunks' results combined in order: the same bits on one thread or
 twelve. Scalar differs by rounding (within 4e-6 on the particle step after
-64 steps). The GPU form will be close, not the same: anything replayed
+64 steps). The GPU form is close, not the same (a reduction's tree adds in
+its own order: a sum within 1e-5 of Simd's, relative to the sum of its
+magnitudes; min and max exact): anything replayed
 (snapshots, rewinds, lockstep) runs on the CPU forms.
 
 ## A kernel
@@ -250,12 +261,34 @@ memory traffic remains in the loop. Jobs is under the hand lanes from
   gfx-soft: the CPU back end's shared memory): the Gpu form against Simd
   (tails, loops, gathers, Ints, captured vectors, matrices, Bools, a
   kernel, 4M items past a row of workgroups, 64 particle steps resident),
-  the residency rule and read backs; GpuWebCheck.hx (gfx-compute-web,
+  the reductions (sum, min, max and reduce of Ints, Floats and vectors,
+  past a workgroup's tails, returns in loops, 60 random cases, 16M items
+  past a row of workgroups; where the device has subgroups, once more in
+  their emulated form), the residency rule and read backs; GpuWebCheck.hx (gfx-compute-web,
   WebGPU on SwiftShader): `read(items)` awaited.
+
+A reduction's GPU form (`bun run test bench reduce`,
+tests/bench/ReduceBench.hx): the sum of squares of N floats a dispatch
+wrote, µs a sum, the least of its runs; `read+` the values read back, then
+summed on the CPU (what Auto did before). An M-series Mac (Metal; its
+memory shared, so that a read back is the wait alone), 0-10% load:
+
+| N | gpu | read+simd | read+jobs | simd | jobs |
+|---:|---:|---:|---:|---:|---:|
+| 1,000 | 211 | 30.3 | 30.6 | 0.3 | 0.4 |
+| 10,000 | 214 | 31.4 | 32 | 3 | 2.8 |
+| 100,000 | 274 | 56.6 | 42.9 | 25.7 | 16.9 |
+| 1,000,000 | 350 | 291 | 204 | 259 | 169 |
+| 10,000,000 | 910 | 2624 | 2186 | 2723 | 1729 |
+
+About 200 µs of it is the submission and the wait, whatever N; past that
+the GPU reads about 55 GB/s. Where a read back copies (D3D11, GL: the GT 710's
+14 GB/s, a PCIe bus between) the CPU's side costs the copy too, so the GPU
+form should win from fewer items (not measured here).
 
 ## Not yet
 
-Reductions on the GPU (with compute()'s workgroup memory), TypeScript
+TypeScript
 (`helder/parallel`), struct values in reductions and captures, an Items
 passed to a function, graph-coloured writes, and uploads straight from an
 Items' memory (one copy through a scratch block now, where the device
