@@ -311,7 +311,7 @@ class StackState {
 			case Ios: Curve.spring(0.35, 0);
 			case Android: Curve.tween(0.3, [0.05, 0.7, 0.1, 1.0]);
 			case Fading: Curve.tween(0.15, Transition.EASE_OUT);
-			// (as long as a picture's zoom from its tile, the viewer's)
+			// (short: the app's own motion carries the change, a viewer's picture flown from its tile)
 			case InPlace: Curve.tween(0.16, [0.2, 0.8, 0.2, 1]);
 			case _: Curve.tween(0.15, Transition.LINEAR);
 		}

@@ -61,9 +61,12 @@ browser engine and no runtime to install.
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
   libavif and libraw), full size in the same window, with a pill back to
-  the folder. A file grows out of its thumbnail into place, as Quick Look
-  does, and shrinks back into it when you go back (a short fade instead
-  with reduced motion). The neighbours of the file shown are decoded
+  the folder. A file grows out of its thumbnail into place, as iOS Photos
+  and Quick Look do, uncropping as it grows, and shrinks back into it when
+  you go back; it follows your fingers too: pinch out on a thumbnail to
+  open it, pinch in or swipe down on the file to close it (on a phone,
+  swipe down), and let go to finish or change your mind (a short fade
+  instead with reduced motion). The neighbours of the file shown are decoded
   ahead, so the next is already there.
 - **Sharp at any size.** Images are filtered in linear light when they
   are scaled down. JPEGs are decoded at the size they are shown, and very

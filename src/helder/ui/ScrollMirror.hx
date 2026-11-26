@@ -144,11 +144,12 @@ class ScrollMirror extends ScrollHost {
 		for (i in 0...shot.count) {
 			var e = shot.entries[i], n = e.node;
 			if (n == null) continue;
-			var m = byNode.get(n), fresh = m == null;
+			// (a scroller again, or for the first time: the program's offsets taken)
+			var m = byNode.get(n), fresh = m == null || e.kind == ScrollShot.SCROLLER && m.kind != ScrollShot.SCROLLER;
 			if (m == null) {
 				m = new MirrorNode(n);
 				byNode.set(n, m);
-			}
+			} else if (m.kind == ScrollShot.SCROLLER && e.kind != ScrollShot.SCROLLER) letGo(m);
 			m.alive = adopted;
 			m.kind = e.kind;
 			m.async = e.async;
@@ -185,13 +186,28 @@ class ScrollMirror extends ScrollHost {
 		for (n in gone) {
 			var m = byNode.get(n);
 			byNode.remove(n);
-			halt(m);
+			if (m.kind == ScrollShot.SCROLLER) letGo(m) else halt(m);
 			if (wheelLatch == m) wheelLatch = null;
 			if (drag == m) drag = null;
 		}
 		focus = shot.focus >= 0 ? order[shot.focus] : null;
 		focusNone = shot.focus == -2;
 	}
+
+	// (a scroller no more (gone, or a range gone: a gate or a cover, which
+	// the shot gives no offsets): its motion stopped, the program told it is
+	// let go if it was held or moving (Ui.mirrored: back within its range),
+	// its offsets the program's from then on. Its last offsets kept, a
+	// folder that fits after one scrolled was drawn at that one's by the
+	// compositor's frames, not the program's)
+	function letGo(m:MirrorNode) {
+		halt(m);
+		if (m.sentHeld || m.sentMoving) released.push(m);
+		m.sentHeld = m.sentMoving = false;
+	}
+
+	// (the scrollers let go while held or moving, for the next drain)
+	final released:Array<MirrorNode> = [];
 
 	// (n's own motion stopped: the program moved it, or it left)
 	function halt(m:MirrorNode) {
@@ -506,6 +522,10 @@ class ScrollMirror extends ScrollHost {
 	// the offsets moved since the last drain, each to f (the program's node,
 	// its offsets, whether a gesture holds it past its ends, whether it still moves)
 	public function drain(f:(n:Node, x:Float, y:Float, held:Bool, moving:Bool) -> Void) {
+		// (let go: held no more, where the program has it)
+		for (m in released)
+			f(m.real, m.real.scrollX, m.real.scrollY, false, false);
+		released.resize(0);
 		for (m in order) {
 			if (m.kind != ScrollShot.SCROLLER) continue;
 			var moves = trackpad.holds(m) || glides.exists(m) && glides.get(m).gliding || touch.gliding && wheelNode == m;
@@ -513,7 +533,8 @@ class ScrollMirror extends ScrollHost {
 			m.sentX = m.scrollX;
 			m.sentY = m.scrollY;
 			m.sentMoving = moves;
-			f(m.real, m.scrollX, m.scrollY, trackpad.holds(m), moves);
+			m.sentHeld = trackpad.holds(m);
+			f(m.real, m.scrollX, m.scrollY, m.sentHeld, moves);
 		}
 	}
 
@@ -526,10 +547,10 @@ class ScrollMirror extends ScrollHost {
 		m.scrollY = m.sentY = y;
 	}
 
-	// the mirror's offsets of the program's node n (null: none)
+	// the mirror's offsets of the program's node n (null: none, or no scroller of its)
 	public function offsets(n:Node):Null<{x:Float, y:Float}> {
 		var m = byNode.get(n);
-		return m == null ? null : {x: m.scrollX, y: m.scrollY};
+		return m == null || m.kind != ScrollShot.SCROLLER ? null : {x: m.scrollX, y: m.scrollY};
 	}
 
 	// the scrollers, in paint order, with their offsets now (the compositor's frame)
@@ -566,6 +587,7 @@ private class MirrorNode extends Node {
 	public var sentX = 0.0;
 	public var sentY = 0.0;
 	public var sentMoving = false;
+	public var sentHeld = false;
 	var rtlNow = false;
 
 	public function new(real:Node) {

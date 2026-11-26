@@ -358,17 +358,21 @@ class Phone implements Markup {
 						shift(g.tx);
 						drop(0);
 					} else {
+						// (down: the picture shrinking toward its tile with the finger, Flight)
 						shift(0);
 						drop(Math.max(0, g.ty));
+						x.zoom.drag(drop.peek(), h, closed -> if (closed) p.nav.back());
 					}
 				case Ended:
 					var dx = shift.peek(), dy = drop.peek();
 					shift(0);
 					drop(0);
-					if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
+					// (let go: on to the tile or back, with the finger's speed; no picture to fly: by how far, as fast)
+					if (dy > 0 && x.zoom.holding()) x.zoom.release() else if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
 						|| dx > 0 && g.vx > 500) v.previous();
 				case _:
 					shift(0);
+					if (drop.peek() > 0) x.zoom.release();
 					drop(0);
 			}
 		}
@@ -392,7 +396,7 @@ class Phone implements Markup {
 					var pan = n.gesture(helder.ui.gesture.Pan);
 					renderEffect(() -> v.version(), _ -> if (pan != null) pan.enabled = v.camera.fitted || v.pdf.peek() != null);
 				}}>
-				<view flexGrow={1} transform={"translate(" + shift() + "px, " + drop() + "px)"}>{ViewerView.stage(x)}</view>
+				<view flexGrow={1} transform={"translate(" + shift() + "px, 0px)"}>{ViewerView.stage(x)}</view>
 			</view>
 		</NavScreen>;
 	}

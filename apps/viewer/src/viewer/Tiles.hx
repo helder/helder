@@ -115,10 +115,11 @@ class Tiles implements Markup {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
+		// (a trackpad's pinch out on it: the file opened following the fingers, Flight)
 		return <view slot="grid-tile" flexGrow={1} alignItems="center" rowGap={6} padding="4 4 8 4" ref={(n:Node) -> {
 			DragOut.from(x, n, () -> e().name);
 			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
-		}}>
+		}} onWheel={ev -> if (x.zoom.tileWheel(e().name, ev)) ev.preventDefault()}>
 			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} flexShrink={0} alignItems="center" justifyContent="center"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
 				{() -> picture(x, e(), on, k)}

@@ -147,12 +147,16 @@ class ContentView implements Markup {
 				return false;
 			});
 		});
+		// (a picture flying from it: the folder darker behind, depth, the sidebar and the bars still)
 		return <view tag="content" flexGrow={1} minHeight={0}>
 			{list(x, tablet)}
 			<Show when={b.error() != ""}>{States.error(x)}</Show>
 			<Show when={b.error() == "" && !b.reading() && b.total() == 0}>{States.empty(x)}</Show>
 			<Show when={b.error() == "" && b.query() != "" && b.items().length == 0 && !b.reading()}>{States.noResults(x)}</Show>
 			<Show when={slow()}>{States.slow(x)}</Show>
+			<Show when={x.zoom.flying() != ""}>
+				<view tag="depth" position="absolute" inset={0} pointerEvents="none" background="#000000" opacity={Flight.DEPTH_DIM * x.zoom.shown()}/>
+			</Show>
 		</view>;
 	}
 
@@ -219,7 +223,9 @@ class ContentView implements Markup {
 			if (s != null && s.ui != null) Menus.popup(s.ui, i < 0 ? ViewerActions.background() : ViewerActions.entry, px, py, s);
 		}
 		// (the folder's own space: what is dropped on it, into the folder shown)
-		return <view tag="list" flexGrow={1} minHeight={0} display={b.error() != "" ? "none" : "flex"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
+		// (the last folder's rows, this one slow to read: as they were (a dim would blink), not pressed)
+		return <view tag="list" flexGrow={1} minHeight={0} display={b.error() != "" ? "none" : "flex"}
+			pointerEvents={b.waiting() ? "none" : "auto"} ref={(n:Node) -> Drops.folder(x, n, () -> b.dir())}>
 			<Show when={b.layout() == List}>
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
