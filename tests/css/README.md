@@ -1,8 +1,8 @@
 # CSS tests
 
-helder.css's checks, against cases of
+helder.css's checks, natively: its tables and grammars against cases of
 [web-platform-tests](https://github.com/web-platform-tests/wpt) read
-statically, natively:
+statically, its syntax against css-parsing-tests (below):
 
 ```sh
 bun run test css
@@ -32,7 +32,7 @@ bun run test css
   `history`, `userstyle`, `http`, `scroll`), and those of deferred features
   (multicol, writing modes, footnotes, `@layer`, `@container`, shapes,
   regions, forms, 3D transforms), by their help links or their CSS.
-- `CssCheck.hx`: the lane. values.json's properties are the table's, every
+- `CssCheck.hx`: the lane's first check. values.json's properties are the table's, every
   row has its shape and file, the other fixtures their fields, and every
   grammar of the table parses.
 
@@ -50,6 +50,45 @@ node tests/css/import-wpt.mjs [wpt checkout]
 ```
 
 The fixtures are WPT's, BSD-3-Clause licensed (`WPT-LICENSE.md`).
+
+## css-parsing-tests
+
+helder.css's syntax against
+[css-parsing-tests](https://github.com/SimonSapin/css-parsing-tests), the
+css lane's second check (BLESS=1: manifest.json's pending cases from the
+results):
+
+- `fixtures/css-parsing-tests/*.json`: its files as they are, a JSON
+  array of input and expected result pairs for each of the spec's entry
+  points (`component_value_list`, `one_component_value`,
+  `declaration_list`, `one_declaration`, `blocks_contents`, `one_rule`,
+  `rule_list`, `stylesheet`, `stylesheet_bytes`, `An+B`), CC0 (`LICENSE`).
+- `manifest.json`: the coverage gate, a case a line (file, index, its
+  input). Every case is run and required to pass unless `pending` gives
+  its reason; a pending case that passes fails the run too, until BLESS=1
+  requires it. A file in `files` with a `skip` (and why) is neither
+  copied nor run: the colour files, CSS Color's `<color>`.
+- `CssConformanceCheck.hx`: the runner. Each input goes through its
+  file's entry point, the result in the fixtures' JSON form against the
+  expected one: upstream's, less the parse errors it lists in lists (this
+  parser reports none and returns nothing for an invalid construct), or
+  the case's own `expected` where the current Editor's Draft reads it
+  otherwise than the 2021 draft the fixtures follow, with `why`;
+  `ranges`: the case tokenized with unicode ranges allowed. A rule's
+  block is its parsed contents in order, runs of declarations among the
+  rules. SHOW=1 prints each result that differs, DUMP=1 every result.
+
+`import-css-parsing-tests.mjs` copies the fixtures again from a checkout
+at its pinned revision (none given: cloned into bin/css), keeping the
+manifest's cases; new ones come in pending:
+
+```sh
+node tests/css/import-css-parsing-tests.mjs [checkout]
+BLESS=1 bun run test css
+```
+
+`make-encodings.mjs` makes src/helder/css/EncodingData.hx from WHATWG
+Encoding's encodings.json and indexes.json.
 
 ## Report
 
