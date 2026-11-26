@@ -199,7 +199,7 @@ class Seed {
 	public static function consoleLine(values:Array<Dynamic>):String return Inspect.format(values);
 
 	public static function uncaught(e:Dynamic):Void {
-		var thrown = Frames.thrown();
+		var thrown = Frames.thrown(e);
 		var text = try "Uncaught " + Builtins.uncaughtText(e, thrown) catch (_:Dynamic) "Uncaught exception";
 		Sys.stderr().writeString(text + "\n");
 		Sys.exit(1);
@@ -457,6 +457,8 @@ class Seed {
 	// (no table of lines: where a `new` or a `throw` runs, "" after a `new`)
 	public static function libSite(at:String):Void Frames.site = at == "" ? null : at;
 
+	public static function libThrow(v:Dynamic):Dynamic return Frames.throwing(v);
+
 	public static function libAsyncGenerator(step:Dynamic):Dynamic return Promises.asyncGenerator(step);
 
 	public static function libAsyncIterator(v:Dynamic):Dynamic return Promises.asyncIterator(v);
@@ -557,6 +559,7 @@ class Seed {
 		var g = libGenerator(f);
 		libSuspend(g, 1, 0, "");
 		libSite("");
+		libThrow(null);
 		libAsyncGenerator(f);
 		libAsyncIterator(a);
 		libResumePoint(g);

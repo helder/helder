@@ -183,7 +183,8 @@ abstract class Statements extends Functions {
 			case KindThrowStatement:
 				var v = any(expr(n.expression()));
 				if (!lines) b.runtime("libSite", [EStr(location(n))]);
-				b.out.push(SThrow(v));
+				// (a value that is no error keeps where it was thrown: Frames.throwing)
+				b.out.push(SThrow(lines ? b.runtime("libThrow", [v]) : v));
 			case KindTryStatement: tryStatement(n);
 			case KindBreakStatement: jump(n, true);
 			case KindContinueStatement: jump(n, false);
