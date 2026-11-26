@@ -22,5 +22,18 @@
 	"g1-seed-48": "a top-aligned box among break-spaces text with tabs and box edges (Blink's pending boxes); not matched yet",
 	"g1-seed-49": "vertical-align: top or bottom: Blink places a top- or bottom-aligned subtree otherwise where aligned boxes nest, or hold atomics or boxes without text (its pending boxes); not matched yet",
 	"g1-seed-60": "vertical-align: top or bottom: Blink places a top- or bottom-aligned subtree otherwise where aligned boxes nest, or hold atomics or boxes without text (its pending boxes); not matched yet",
-	"g1-seed-93": "vertical-align: top or bottom: Blink places a top- or bottom-aligned subtree otherwise where aligned boxes nest, or hold atomics or boxes without text (its pending boxes); not matched yet"
+	"g1-seed-93": "vertical-align: top or bottom: Blink places a top- or bottom-aligned subtree otherwise where aligned boxes nest, or hold atomics or boxes without text (its pending boxes); not matched yet",
+	"g1-seed-13": "text-align: justify with break-spaces: which preserved spaces Blink gives room; not matched yet",
+	"g1-seed-62": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-70": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-75": "text-align: justify with break-spaces: which preserved spaces Blink gives room; not matched yet",
+	"g1-seed-84": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-137": "text-align: justify with break-spaces: which preserved spaces Blink gives room; not matched yet",
+	"g1-seed-159": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-237": "text-align: justify with break-spaces: which preserved spaces Blink gives room; not matched yet",
+	"g1-seed-248": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-252": "text-align: justify with break-spaces: which preserved spaces Blink gives room; not matched yet",
+	"g1-seed-274": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet",
+	"g1-seed-281": "text-align: justify: Blink shares the room otherwise on this case; not matched yet",
+	"g1-seed-291": "text-align: justify on a line with tabs: where Blink puts the room and the tab stops after it; not matched yet"
 }

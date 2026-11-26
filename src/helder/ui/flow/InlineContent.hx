@@ -209,6 +209,36 @@ class InlineContent {
 
 	// --- units ---
 
+	// a position in the text (a unit, a caret's place before it) as a DOM
+	// position: the node of the item it is in and the offset in it (its
+	// Text node's offset, an element's 0 or 1: before or after it)
+	public function domPosition(u:Int):{node:Null<Node>, offset:Int} {
+		if (items == 0) return {node: null, offset: 0};
+		if (u >= text.length) {
+			var i = items - 1;
+			while (i > 0 && iSource[i] == null)
+				i--;
+			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? offsets[iEnd[i] - 1] + 1 : 0} : {node: iSource[i], offset: 1};
+		}
+		var i = itemAt(u);
+		return kind(i) == Text ? {node: iSource[i], offset: offsets[u]} : {node: iSource[i], offset: 0};
+	}
+
+	// the unit of a DOM position (a node of the content and an offset in it):
+	// in a Text node, the first unit from that offset on (a collapsed space's
+	// the next one kept); an element's place before it; -1: not in the content
+	public function unitOf(node:Node, offset:Int):Int {
+		var found = -1;
+		for (i in 0...items) {
+			if (iSource[i] != node) continue;
+			if (kind(i) != Text) return offset > 0 ? iEnd[i] : iStart[i];
+			for (u in iStart[i]...iEnd[i])
+				if (offsets[u] >= offset) return u;
+			found = iEnd[i];
+		}
+		return found;
+	}
+
 	// a unit's offset in its item's source
 	public inline function domOffset(u:Int):Int
 		return offsets[u];
@@ -832,6 +862,64 @@ class InlineContent {
 				if (fa & NO_HYPHENS != 0) status = LineBreaks.NONE else s |= HYPHEN;
 			}
 			breaks.set(u, s & ~LineBreaks.STATUS | status);
+		}
+		hyphenate();
+	}
+
+	// hyphens: auto: each word's hyphenation points (helder.text's
+	// Hyphenation, its language's by the item's lang) as opportunities that
+	// show a hyphen. As TextLayout and browsers leave them: words shorter than
+	// HYPHEN_WORD letters, with a soft hyphen, in capitals, and the words of a
+	// token (between spaces) with a digit, an @, /, \ or _, or a . or : inside
+	// it; at least HYPHEN_SIDE letters on each side of a point
+	public static inline var HYPHEN_WORD = 5;
+	public static inline var HYPHEN_SIDE = 2;
+
+	function hyphenate() {
+		for (i in 0...items) {
+			if (kind(i) != Text || iFlags[i] & WRAPS == 0) continue;
+			var st = styles[iStyle[i]];
+			if (st.hyphens() != Auto) continue;
+			var h = helder.text.Hyphenation.get(st.lang());
+			if (h == null) continue;
+			var u = iStart[i], e = iEnd[i];
+			inline function at(k:Int):Int
+				return StringTools.fastCodeAt(text, k);
+			while (u < e) {
+				if (at(u) == 32 || at(u) == 9 || at(u) == 10) {
+					u++;
+					continue;
+				}
+				// (a token: up to a space)
+				var t = u, skip = false;
+				while (u < e && at(u) != 32 && at(u) != 9 && at(u) != 10) {
+					var c = at(u);
+					if (c >= "0".code && c <= "9".code || c == "@".code || c == "/".code || c == "\\".code || c == "_".code
+						|| (c == ".".code || c == ":".code) && u + 1 < e && isLetter(at(u + 1)))
+						skip = true;
+					u++;
+				}
+				if (skip) continue;
+				var j = t;
+				while (j < u) {
+					while (j < u && !isLetter(at(j)))
+						j++;
+					var w = j, shy = false, lower = false;
+					while (j < u && (isLetter(at(j)) || at(j) == 0xAD)) {
+						var c = at(j);
+						if (c == 0xAD) shy = true;
+						else if (String.fromCharCode(c).toUpperCase() != String.fromCharCode(c)) lower = true;
+						j++;
+					}
+					if (j - w < HYPHEN_WORD || shy || !lower) continue;
+					for (p in h.points(text.substring(w, j))) {
+						if (p < HYPHEN_SIDE || p > j - w - HYPHEN_SIDE) continue;
+						var b = breaks.get(w + p);
+						// (not inside a cluster: a mark, a joiner)
+						if (b & LineBreaks.STATUS == LineBreaks.NONE && b & LineBreaks.CLUSTER != 0) breaks.set(w + p, b | LineBreaks.ALLOWED | HYPHEN);
+					}
+				}
+			}
 		}
 	}
 

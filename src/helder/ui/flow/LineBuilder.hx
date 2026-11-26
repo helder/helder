@@ -38,6 +38,8 @@ class LineBuilder {
 	var endUsed = 0.0;
 	// (min-content: overflow-wrap: break-word's cuts not taken)
 	var minimum = false;
+	// (the line being built is line-clamp's last, more after it)
+	var clamped = false;
 
 	function new() {}
 
@@ -59,6 +61,8 @@ class LineBuilder {
 		dir = cons.direction < 0 ? c.direction : cons.direction;
 		var indent = root.textIndent(), eachLine = root.textIndentEachLine(), hanging = root.textIndentHanging();
 		var strut = strutHeight();
+		var clamp = root.lineClamp();
+		clamped = false;
 		var p = 0, u = startOf(0), y = 0.0, first = true, afterForced = false;
 		while (p < c.pieces) {
 			var indented = first || eachLine && afterForced;
@@ -70,6 +74,8 @@ class LineBuilder {
 				avail = r.width;
 			}
 			breakLine(p, u, x0, avail);
+			// (line-clamp: its last line, more after it, ends in an ellipsis)
+			clamped = clamp > 0 && out.lines == clamp - 1 && endP < c.pieces;
 			var h = build(p, u, y, x0, avail, off);
 			if (cons.lineWidth != null && h > strut + EPSILON) {
 				// (taller than the strut: the floats beside its whole height)
@@ -77,10 +83,15 @@ class LineBuilder {
 				if (r.width < avail - EPSILON || r.offset != off) {
 					undo();
 					breakLine(p, u, x0, r.width);
+					clamped = clamp > 0 && out.lines == clamp - 1 && endP < c.pieces;
 					h = build(p, u, y, x0, r.width, r.offset);
 				}
 			}
 			y += h;
+			if (clamped) {
+				clamped = false;
+				break;
+			}
 			first = false;
 			afterForced = endFlags & FORCED != 0;
 			p = endP;
@@ -159,7 +170,7 @@ class LineBuilder {
 					// (what is before it fits, else the last fit, else a cut)
 					if (x - trailing <= avail + EPSILON) end(i, startOf(i), FORCED, x - trailing);
 					else if (fitP >= 0) end(fitP, startOf(fitP), fitFlags, fitUsed);
-					else if (overP >= 0) end(overP, startOf(overP), HYPHENATED, overUsed);
+					else if (overP >= 0 && overUsed < x - trailing) end(overP, startOf(overP), HYPHENATED, overUsed);
 					else cut(p, u, x0, avail, i);
 					return;
 				}
@@ -176,7 +187,7 @@ class LineBuilder {
 					} else if (fitP >= 0) {
 						end(fitP, startOf(fitP), fitFlags, fitUsed);
 						return;
-					} else if (overP >= 0) {
+					} else if (overP >= 0 && overUsed < x - trailing) {
 						end(overP, startOf(overP), HYPHENATED, overUsed);
 						return;
 					} else {
@@ -186,7 +197,7 @@ class LineBuilder {
 				}
 			}
 			var w = leading(i, content) ? 0 : advance(i, i == p ? u : c.pieceStart(i), c.pieceEnd(i), x);
-			if (!content && (solid(i) || c.pieceKind(i) == InlineContent.SPACE && !leading(i, false))) content = true;
+			if (!content && (solid(i) || c.pieceKind(i) != InlineContent.ITEM && !leading(i, false))) content = true;
 			trailing = trail(i, w, trailing);
 			x += w;
 			i++;
@@ -194,7 +205,7 @@ class LineBuilder {
 		var used = x - trailing;
 		if (used <= avail + EPSILON) end(n, c.text.length, 0, used);
 		else if (fitP >= 0) end(fitP, startOf(fitP), fitFlags, fitUsed);
-		else if (overP >= 0) end(overP, startOf(overP), HYPHENATED, overUsed);
+		else if (overP >= 0 && overUsed < used) end(overP, startOf(overP), HYPHENATED, overUsed);
 		else cut(p, u, x0, avail, n);
 	}
 
@@ -227,7 +238,7 @@ class LineBuilder {
 		for (i in p...limit) {
 			var from = i == p ? u : c.pieceStart(i), to = c.pieceEnd(i);
 			var w = leading(i, content) ? 0 : advance(i, from, to, x);
-			if (!content && (solid(i) || c.pieceKind(i) == InlineContent.SPACE && !leading(i, false))) content = true;
+			if (!content && (solid(i) || c.pieceKind(i) != InlineContent.ITEM && !leading(i, false))) content = true;
 			var f = c.flags(c.pieceItem(i));
 			var cuts = f & InlineContent.WRAPS != 0 && f & (minimum ? InlineContent.ANYWHERE : InlineContent.BREAK_WORD) != 0;
 			// (a tab or a space that does not hang, overflowing: before it)
@@ -1075,6 +1086,11 @@ class LineBuilder {
 					o.fHeight[f] = o.fAscent[f] + o.fDescent[f];
 			}
 		}
+		// (text-overflow: ellipsis on a line that overflows; line-clamp's last line)
+		if (clamped || used > avail + EPSILON && root.textOverflow() == Ellipsis) {
+			var end = ellipsis(k, top + baseline, offset, avail, rtl);
+			if (!rtl && end - offset > used) used = end - offset;
+		}
 		o.lTop[k] = top;
 		o.lHeight[k] = height;
 		o.lBaseline[k] = baseline;
@@ -1087,6 +1103,86 @@ class LineBuilder {
 		o.lFlags[k] = endFlags;
 		if (offset + shift + used > o.width) o.width = offset + shift + used;
 		return height;
+	}
+
+	// --- ellipsis ---
+
+	// the line k's end side (its right, or left in a right-to-left
+	// paragraph) given up at whole glyphs until an ellipsis in the block's
+	// font fits within offset to offset + avail, after what is left (atomics
+	// past it hidden, as Blink hides them); the ellipsis' far edge
+	function ellipsis(k:Int, baseline:Float, offset:Float, avail:Float, rtl:Bool):Float {
+		var o = out, sh = c.shaper, f = c.fonts.idOf(c.root), set = c.fonts.set(f);
+		var e = sh.shape(set, f, set.primary.glyph(0x2026) != 0 ? "\u2026" : "...", 0, set.primary.glyph(0x2026) != 0 ? 1 : 3, 0, 0, 0);
+		var ew = sh.width(e), limit = rtl ? offset + ew : offset + avail - ew;
+		// (what is left: its far edge)
+		var edge = rtl ? Math.POSITIVE_INFINITY : Math.NEGATIVE_INFINITY;
+		for (fr in o.lFirst[k]...o.fragments) {
+			var kind = o.fKind[fr];
+			var x0 = o.fX[fr], x1 = x0 + o.fWidth[fr];
+			switch kind {
+				case TextRun | Hyphen:
+					var r = o.fRun[fr], g = o.glyphs;
+					if (r < 0) continue;
+					var lo = Math.POSITIVE_INFINITY, hi = Math.NEGATIVE_INFINITY;
+					var start = Math.POSITIVE_INFINITY, stop = Math.NEGATIVE_INFINITY;
+					for (i in g.runStart(r)...g.runStart(r) + g.runCount(r)) {
+						var a = x0 + g.x(i), b = a + g.advance(i);
+						if (rtl ? a < limit - EPSILON : b > limit + EPSILON) g.hide(i) else {
+							if (a < lo) lo = a;
+							if (b > hi) hi = b;
+							if (g.cluster(i) < start) start = g.cluster(i);
+							if (g.cluster(i) > stop) stop = g.cluster(i);
+						}
+					}
+					if (hi < lo) {
+						o.fWidth[fr] = 0;
+						o.fEnd[fr] = o.fStart[fr];
+						continue;
+					}
+					// (the fragment trimmed to its glyphs left, its text to their clusters)
+					if (rtl) {
+						o.fWidth[fr] = x1 - Math.max(x0, lo);
+						o.fX[fr] = Math.max(x0, lo);
+					} else o.fWidth[fr] = Math.min(x1, hi) - x0;
+					if (o.fStart[fr] < start && rtl == (o.fLevel[fr] & 1 == 0)) o.fStart[fr] = Std.int(start);
+					if (o.fEnd[fr] > stop + 1 && rtl != (o.fLevel[fr] & 1 == 0)) o.fEnd[fr] = Std.int(stop) + 1;
+					if (rtl) edge = Math.min(edge, o.fX[fr]) else edge = Math.max(edge, o.fX[fr] + o.fWidth[fr]);
+				case Atomic:
+					if (rtl ? x0 < limit - EPSILON : x1 > limit + EPSILON) {
+						o.fWidth[fr] = 0;
+						o.fHeight[fr] = 0;
+					} else if (rtl) edge = Math.min(edge, x0) else edge = Math.max(edge, x1);
+				case BoxEnd | BoxStart:
+					if (rtl ? x0 < limit - EPSILON : x1 > limit + EPSILON) o.fWidth[fr] = 0;
+				case _:
+			}
+		}
+		if (rtl ? edge == Math.POSITIVE_INFINITY : edge == Math.NEGATIVE_INFINITY) edge = rtl ? offset + avail : offset;
+		// (the boxes' spans no further than what is left)
+		for (fr in o.lFirst[k]...o.fragments)
+			if (o.fKind[fr] == BoxSpan) {
+				var x0 = o.fX[fr], x1 = x0 + o.fWidth[fr];
+				if (rtl && x0 < edge) {
+					o.fX[fr] = Math.min(edge, x1);
+					o.fWidth[fr] = x1 - o.fX[fr];
+				} else if (!rtl && x1 > edge) o.fWidth[fr] = Math.max(0, edge - x0);
+			}
+		var x = rtl ? edge - ew : edge;
+		var h = fragment(Ellipsis, -1, x, ew, -1);
+		var a = c.fonts.ascent(f);
+		o.fY[h] = baseline - a;
+		o.fHeight[h] = a + c.fonts.descent(f);
+		o.fAscent[h] = a;
+		o.fDescent[h] = c.fonts.descent(f);
+		o.fStart[h] = o.fEnd[h] = o.lFirst[k] < h ? o.fEnd[h - 1] : 0;
+		o.fRun[h] = o.glyphs.begin(set);
+		var gx = 0.0;
+		for (g in sh.glyphStart(e)...sh.glyphStart(e) + sh.glyphCount(e)) {
+			o.glyphs.add(sh.face(g), sh.id(g), gx + sh.dx(g), sh.dy(g), sh.advance(g), o.fStart[h]);
+			gx += sh.advance(g);
+		}
+		return rtl ? x : x + ew;
 	}
 
 	// (piece p's glyphs from...to into the current run, from x in it)

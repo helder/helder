@@ -87,6 +87,165 @@ class InlineLayout {
 		return builder.intrinsic(content, Math.POSITIVE_INFINITY);
 	}
 
+	// --- hit testing, carets, selection ---
+
+	// the text position nearest (x, y): its unit in the content's text (a
+	// caret's place: before that unit) and the item it is in. Over a glyph,
+	// the boundary nearer by its half and direction (a ligature's by its
+	// characters' equal parts); beside the line's content, its nearer end
+	public function hitTest(x:Float, y:Float):{item:Int, offset:Int} {
+		var c = content;
+		if (c == null || lines == 0) return {item: -1, offset: 0};
+		var k = 0;
+		while (k < lines - 1 && y >= lTop[k] + lHeight[k])
+			k++;
+		// (the fragment under x, else the nearest)
+		var best = -1, distance = Math.POSITIVE_INFINITY;
+		for (f in lFirst[k]...lLast[k]) {
+			var kind = fKind[f];
+			if (kind != TextRun && kind != Atomic) continue;
+			var d = x < fX[f] ? fX[f] - x : x > fX[f] + fWidth[f] ? x - fX[f] - fWidth[f] : 0;
+			if (d < distance) {
+				best = f;
+				distance = d;
+			}
+		}
+		if (best < 0) {
+			var u = lStart[k];
+			return {item: u < c.text.length ? c.itemAt(u) : c.items - 1, offset: u};
+		}
+		var rtl = fLevel[best] & 1 == 1, item = fItem[best];
+		if (fKind[best] == Atomic) {
+			var left = x < fX[best] + fWidth[best] / 2;
+			return {item: item, offset: left != rtl ? c.start(item) : c.end(item)};
+		}
+		var r = fRun[best];
+		if (r < 0 || glyphs.runCount(r) == 0) return {item: item, offset: fStart[best]};
+		var g0 = glyphs.runStart(r), n = glyphs.runCount(r), rx = x - fX[best];
+		for (i in g0...g0 + n) {
+			var gx = glyphs.x(i), a = glyphs.advance(i);
+			if (rx < gx + a || i == g0 + n - 1) {
+				var s = glyphs.cluster(i), e = clusterEnd(best, i);
+				var frac = a > 0 ? Math.max(0, Math.min(1, (rx - gx) / a)) : 0;
+				if (rtl) frac = 1 - frac;
+				// (a ligature: the nearest of its characters' boundaries)
+				var parts = e - s;
+				var at = parts > 1 && ligature(best, i) ? s + Math.round(frac * parts) : frac < 0.5 ? s : e;
+				return {item: c.itemAt(at < c.text.length ? at : c.text.length - 1), offset: at};
+			}
+		}
+		return {item: item, offset: fEnd[best]};
+	}
+
+	// the caret before a unit of the content's text: its x, its line's top and
+	// height (a right-to-left glyph's leading edge its right)
+	public function caret(offset:Int):{x:Float, y:Float, height:Float, line:Int} {
+		if (lines == 0) return {x: 0, y: 0, height: 0, line: -1};
+		var k = 0;
+		while (k < lines - 1 && offset >= lEnd[k] && !(offset == lEnd[k] && lStart[k + 1] > offset))
+			k++;
+		var x = lLeft[k];
+		var rtlLine = false, found = false;
+		for (f in lFirst[k]...lLast[k]) {
+			var kind = fKind[f], rtl = fLevel[f] & 1 == 1;
+			if (kind == TextRun && offset >= fStart[f] && offset < fEnd[f] && fRun[f] >= 0) {
+				var r = fRun[f], g0 = glyphs.runStart(r);
+				for (i in g0...g0 + glyphs.runCount(r)) {
+					var s = glyphs.cluster(i), e = clusterEnd(f, i);
+					if (offset >= s && offset < e) {
+						var frac = e - s > 1 && ligature(f, i) ? (offset - s) / (e - s) : 0.0;
+						var a = glyphs.advance(i), gx = fX[f] + glyphs.x(i);
+						return {x: rtl ? gx + a * (1 - frac) : gx + a * frac, y: lTop[k], height: lHeight[k], line: k};
+					}
+				}
+			}
+			if (kind == Atomic && offset == fStart[f]) return {x: rtl ? fX[f] + fWidth[f] : fX[f], y: lTop[k], height: lHeight[k], line: k};
+			if ((kind == TextRun || kind == Atomic) && offset == fEnd[f] && fEnd[f] > fStart[f]) {
+				x = rtl ? fX[f] : fX[f] + fWidth[f];
+				found = true;
+			}
+			if (kind == TextRun && rtl) rtlLine = true;
+		}
+		if (!found && rtlLine && offset <= lStart[k]) x = lLeft[k] + lWidth[k];
+		return {x: x, y: lTop[k], height: lHeight[k], line: k};
+	}
+
+	// the rectangles a selection of the content's text from start to end
+	// covers: on each line, each run of selected glyphs and atomics in visual
+	// order as one (a ligature partly selected by its characters' parts),
+	// the line's height
+	public function selection(start:Int, end:Int):Array<{x:Float, y:Float, width:Float, height:Float}> {
+		var out = [];
+		if (end <= start) return out;
+		for (k in 0...lines) {
+			if (lEnd[k] <= start || lStart[k] >= end) continue;
+			// (each selected piece's interval, then those that touch as one)
+			var spans:Array<Float> = [];
+			for (f in lFirst[k]...lLast[k]) {
+				var kind = fKind[f], rtl = fLevel[f] & 1 == 1;
+				if (kind == Atomic) {
+					if (fStart[f] >= start && fEnd[f] <= end) {
+						spans.push(fX[f]);
+						spans.push(fX[f] + fWidth[f]);
+					}
+					continue;
+				}
+				if (kind != TextRun || fRun[f] < 0 || fEnd[f] <= start || fStart[f] >= end) continue;
+				var r = fRun[f], g0 = glyphs.runStart(r);
+				for (i in g0...g0 + glyphs.runCount(r)) {
+					var s = glyphs.cluster(i), e = clusterEnd(f, i);
+					if (e <= start || s >= end) continue;
+					var gx = fX[f] + glyphs.x(i), a = glyphs.advance(i);
+					var f0 = 0.0, f1 = 1.0;
+					if ((s < start || e > end) && e - s > 1) {
+						f0 = (Math.max(start, s) - s) / (e - s);
+						f1 = (Math.min(end, e) - s) / (e - s);
+					}
+					spans.push(rtl ? gx + a * (1 - f1) : gx + a * f0);
+					spans.push(rtl ? gx + a * (1 - f0) : gx + a * f1);
+				}
+			}
+			var order = [for (i in 0...spans.length >> 1) i];
+			order.sort((a, b) -> spans[2 * a] < spans[2 * b] ? -1 : spans[2 * a] > spans[2 * b] ? 1 : 0);
+			var open = false, x0 = 0.0, x1 = 0.0;
+			for (i in order) {
+				var a = spans[2 * i], b = spans[2 * i + 1];
+				if (open && a <= x1 + 1e-6) {
+					if (b > x1) x1 = b;
+				} else {
+					if (open) out.push({x: x0, y: lTop[k], width: x1 - x0, height: lHeight[k]});
+					x0 = a;
+					x1 = b;
+					open = true;
+				}
+			}
+			if (open) out.push({x: x0, y: lTop[k], width: x1 - x0, height: lHeight[k]});
+		}
+		return out;
+	}
+
+	// (where glyph i's cluster ends: the next cluster above it in its fragment's run, or the fragment's end)
+	function clusterEnd(f:Int, i:Int):Int {
+		var r = fRun[f], c = glyphs.cluster(i), e = fEnd[f];
+		for (j in glyphs.runStart(r)...glyphs.runStart(r) + glyphs.runCount(r)) {
+			var d = glyphs.cluster(j);
+			if (d > c && d < e) e = d;
+		}
+		return e;
+	}
+
+	// (whether glyph i is one glyph for several characters: no other glyph in its cluster)
+	function ligature(f:Int, i:Int):Bool {
+		var r = fRun[f], c = glyphs.cluster(i);
+		for (j in glyphs.runStart(r)...glyphs.runStart(r) + glyphs.runCount(r))
+			if (j != i && glyphs.cluster(j) == c) return false;
+		var e = clusterEnd(f, i);
+		// (one grapheme: a base and its marks; several: a ligature)
+		for (u in c + 1...e)
+			if (content.breakAt(u) & LineBreaks.CLUSTER != 0) return true;
+		return false;
+	}
+
 	// --- lines ---
 
 	public inline function lineTop(k:Int):Float

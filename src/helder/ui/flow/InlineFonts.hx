@@ -19,6 +19,7 @@ class InlineFonts {
 
 	final fonts:SystemFonts;
 	final byKey = new Map<String, Int>();
+	final byStyle = new haxe.ds.ObjectMap<InlineStyle, Int>();
 	final sets:Array<FontSet> = [];
 	final ascents:Array<Float> = [];
 	final descents:Array<Float> = [];
@@ -36,6 +37,12 @@ class InlineFonts {
 	public function idOf(style:InlineStyle):Int {
 		if (generation != FontFile.generation) clear();
 		if (style == lastStyle) return lastId;
+		// (each style object once: styles are interned, so most are seen again; the key only for a style not seen)
+		var known = byStyle.get(style);
+		if (known != null) {
+			lastStyle = style;
+			return lastId = known;
+		}
 		var families = style.fontFamilies(), size = style.fontSize(), weight = style.fontWeight(), slant = style.fontStyle() != Normal;
 		var features = featuresOf(style), variations = style.fontVariations();
 		var key = families.join(",") + "|" + size + "|" + weight + "|" + slant + "|" + (features == null ? "" : FontFeature.key(features)) + "|"
@@ -46,6 +53,7 @@ class InlineFonts {
 			byKey.set(key, id);
 			add(make(families, size, weight, slant, features, variations));
 		}
+		byStyle.set(style, id);
 		lastStyle = style;
 		return lastId = id;
 	}
@@ -74,6 +82,7 @@ class InlineFonts {
 	// (a font replaced since: every set made again)
 	function clear() {
 		byKey.clear();
+		byStyle.clear();
 		sets.resize(0);
 		ascents.resize(0);
 		descents.resize(0);
