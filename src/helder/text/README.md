@@ -190,10 +190,12 @@ none inside a ligature (`ffi`). `TextLayout.NO_HYPHENS` (CSS's
 it must (`BREAK_WORD`) at a point by chance shows no hyphen, which did
 not fit.
 
-Speed, natively (tests/bench/Bench.hx: a paragraph of about 2,300 words
-in DejaVu Sans at 16 px, 480 px wide, laid out new): 7.25 ms without,
-7.80 ms with English hyphenation (+7%), 41 KB more a layout (the points'
-buffer and room for the hyphens shown).
+Speed (tests/bench/Bench.hx's text.layout.long and .hyphens: a paragraph
+of about 2,300 words in DejaVu Sans at 16 px, 480 px wide, laid out new):
+natively 7.2 ms without, 7.8 to 7.9 with English hyphenation (7 to 10%
+more), as wasm32-wasi 15.7 both (within its noise); 41 KB more a layout
+(the points' buffer, room for the hyphens shown). A ui program that adds
+no language carries the code alone: examples/todo's wasm 19 KB larger.
 
 The languages (`src/helder/text/hyphenation`, written by `generate.mjs`
 from hyph-utf8 at tex-hyphen's CTAN-2024.12.31, `29e003ea`, its files'
