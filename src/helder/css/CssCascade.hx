@@ -28,7 +28,8 @@ typedef CssCascadeOptions = {
 
 // A document's computed style: its sheets (the user agent's, the user's,
 // then its <style> and <link rel=stylesheet> elements', in tree order,
-// and `author`'s), its style attributes, cascaded per element.
+// the CSS modules' loaded (CssModule), and `author`'s), its style
+// attributes, cascaded per element.
 //
 //   var styles = CssCascade.styles(doc, {load: url -> files.get(url)});
 //   styles.computed(el).text("margin-top");        // "16px"
@@ -40,6 +41,7 @@ class CssCascade {
 		sheets.push({sheet: o.userAgent ?? CssUserAgent.sheet(doc.mode == Quirks), media: null});
 		for (s in o.user ?? []) sheets.push({sheet: s, media: null});
 		for (s in documentSheets(doc, o)) sheets.push(s);
+		for (s in CssModule.sheets()) sheets.push({sheet: s, media: null});
 		for (s in o.author ?? []) sheets.push({sheet: s, media: null});
 		var hints = o.hints == true;
 		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, hints ? CssHints.declarations : null,
@@ -49,11 +51,13 @@ class CssCascade {
 	}
 
 	// A document's styles from these sheets alone (CssTheme's, compiled at
-	// build time): no user agent's sheet but one passed, no <style> or
-	// <link>, no style attribute, nothing parsed, so a program styled only
-	// so links no CSS tokenizer or parser. var() is substituted as ever.
+	// build time), then the CSS modules' (CssModule): no user agent's sheet
+	// but one passed, no <style> or <link>, no style attribute, nothing
+	// parsed, so a program styled only so links no CSS tokenizer or parser.
+	// var() is substituted as ever.
 	public static function themed(doc:Document, sheets:Array<CssSheet>, ?options:{?media:CssMediaContext, ?share:Bool}):CssStyles {
-		var styles = @:privateAccess new CssStyles(doc, [for (s in sheets) {sheet: s, media: null}], options?.media ?? CssMedia.PRINT, null, null);
+		var all = [for (s in sheets.concat(CssModule.sheets())) {sheet: s, media: null}];
+		var styles = @:privateAccess new CssStyles(doc, all, options?.media ?? CssMedia.PRINT, null, null);
 		@:privateAccess styles.sharing = options?.share != false;
 		return styles;
 	}

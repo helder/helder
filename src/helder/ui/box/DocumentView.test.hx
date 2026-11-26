@@ -22,6 +22,12 @@ function tests() {
 			equals(at(d, 3, 2), 0x00FF00FF);
 			equals(at(d, 3, 7), 0x000000FF);
 		});
+		test("a document styled through a CSS module", () -> {
+			final view = helder.css.CssModule.load("helder/css/test-modules/view.module.css");
+			var c = draw('<div class="${view.box}"></div><div class="${view.wide}"></div>');
+			// (the first 20 by 10, the second its composed box's and 40 wide)
+			equals([at(c, 5, 5), at(c, 25, 5), at(c, 5, 15), at(c, 35, 15), at(c, 45, 15)], [0x008000ff, 0xffffffff, 0x008000ff, 0x008000ff, 0xffffffff]);
+		});
 		test("the canvas takes the root's background, else body's", () -> {
 			equals(at(draw('<style>html { background: #0f0 }</style>', false), 30, 30), 0x00FF00FF);
 			equals(at(draw('<style>body { background: #00f; height: 1px }</style>', false), 30, 30), 0x0000FFFF);
