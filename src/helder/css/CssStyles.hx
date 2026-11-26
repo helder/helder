@@ -437,6 +437,7 @@ class CssStyles {
 				var p:CssProperty = cast i;
 				if (r.declares(p) || dependent(p)) @:privateAccess copy.set(p, r.get(p), intern);
 			}
+			if (g == BOX && r.unblockified != null) @:privateAccess (cast copy : CssGroups.CssBoxGroup).display = intern.display(r.get(Display), r.unblockified);
 			groups.push(intern.group(g, copy));
 		}
 		return made(groups, r.allCustoms());

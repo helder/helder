@@ -113,11 +113,14 @@ class CssIntern {
 		return v;
 	}
 
-	public function display(t:Array<CssTerm>):CssDisplay {
-		var k = key(t);
+	// (blockified from original: a display of its own, so that groups and
+	// styles with it are apart from those with the same display declared)
+	public function display(t:Array<CssTerm>, ?original:Array<CssTerm>):CssDisplay {
+		var k = original == null ? key(t) : key(t) + "<" + key(original);
 		var v = displays.get(k);
 		if (v != null) return v;
 		v = CssDisplay.of(t);
+		if (original != null) @:privateAccess v.original = display(original);
 		v.id = values++;
 		displays.set(k, v);
 		return v;
