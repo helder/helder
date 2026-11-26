@@ -67,7 +67,8 @@ class Asset<T> #if !macro implements helder.view.graph.Read.Reader<T> #end {
 
 	@:noCompletion public function new(key:String) {
 		this.key = key;
-		asked = Node.signal(0, {ownedWrite: true});
+		// (shared: a reload is the program's, every screen's store told)
+		asked = Node.signal(0, {ownedWrite: true, shared: true});
 	}
 
 	function node():Node<T> {

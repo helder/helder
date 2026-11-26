@@ -784,6 +784,26 @@ class Lib {
 		return same(v, finished) ? undef() : v;
 	}
 
+	// IteratorClose: an iterator left before its end (a for-of left by a
+	// break, return or throw; a pattern that took what it needed) told by its
+	// return method; after a throw that error stands, not return's
+	public static function close(it:Dynamic, threw:Bool):Void {
+		// (the built-in iterators have no return)
+		if (it == null || same(it, undef()) || Std.isOfType(it, JsIterator)) return;
+		if (!threw) {
+			closeNow(it);
+			return;
+		}
+		try closeNow(it) catch (_:Dynamic) {}
+	}
+
+	static function closeNow(it:Dynamic):Void {
+		var method = get(it, "return");
+		if (method == null || same(method, undef())) return;
+		var r = call(method, it, []);
+		if (!isObject(r)) error("TypeError", "Iterator result " + Seed.text(r) + " is not an object");
+	}
+
 	public static function restArray(it:Dynamic):Dynamic {
 		var values = [];
 		while (true) {

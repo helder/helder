@@ -11,7 +11,8 @@ package helder.dev;
 //   Literals.string(id, "#3b82f6", anchor)     Literals.int(id, 24, anchor)
 //   Literals.float(id, 1.5, anchor)            Literals.bool(id, true, anchor)
 //
-// A slot is a signal (helder.view.graph): a literal in a reactive position
+// A slot is a signal (helder.view.graph), shared by every store (each
+// screen's, helder.view.graph.Atoms): a literal in a reactive position
 // (an attribute, a text, a prop that reads) is bound as any read is, so a
 // patch re-runs only what reads it; a read outside a computation (a
 // component's prop of no Read type, read once) cannot follow a patch: the
@@ -183,7 +184,9 @@ private class Slot {
 		this.anchor = anchor;
 		this.base = value;
 		kind = id.substr(id.lastIndexOf(":") + 1);
-		node = @:privateAccess helder.view.graph.Node.signal(value, null);
+		// (shared: a literal is code, not state: every store reads the one slot,
+		// a patch seen by every screen at once, a screen made later too)
+		node = @:privateAccess helder.view.graph.Node.signal(value, {shared: true});
 	}
 
 	// a patch: {value} of the slot's type, or {source} as written

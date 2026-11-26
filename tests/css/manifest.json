@@ -5,43 +5,43 @@
 	"license": "CC0-1.0",
 	"files": {
 		"color_function_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_functions_5.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_hexadecimal_3.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_hexadecimal_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_hsl_3.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_hsl_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_hwb_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_keywords_3.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_keywords_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_lab_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_lch_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_oklab_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		},
 		"color_oklch_4.json": {
-			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the values above helder.css"
+			"skip": "<color> is CSS Color 4's grammar, not Syntax 3's: the css lane's values check runs it (fixtures/colors)"
 		}
 	},
 	"cases": [

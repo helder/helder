@@ -3,6 +3,8 @@ package helder.typescript;
 import helder.test.Test;
 
 function tests() {
+	// (WASI has no /tmp: the folder these need is the host's alone)
+	#if !(hxmc.target == "wasm32-wasi")
 	// (the compiler's helder: a folder with helder/math in it)
 	var src = haxe.io.Path.normalize((Sys.getEnv("TMPDIR") ?? "/tmp") + "/helder-mixed-" + Std.random(1000000));
 	sys.FileSystem.createDirectory('$src/helder/math');
@@ -21,4 +23,5 @@ function tests() {
 		sys.FileSystem.deleteDirectory('$src/helder');
 		sys.FileSystem.deleteDirectory(src);
 	});
+	#end
 }

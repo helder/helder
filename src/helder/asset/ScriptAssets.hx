@@ -20,6 +20,7 @@ class ScriptAssets {
 		return FontAsset.load(Assets.key(path), file);
 
 	// a glTF model (helder.scene.render.Model; its names are Haxe's alone)
+	@:typescript.returns("Asset<ModelOf>")
 	public static function model(path:String, ?file:String):Asset<helder.scene.render.Model<Dynamic, Dynamic, Dynamic, Dynamic>>
 		return helder.scene.render.Model.asset(Assets.key(path), file, null, null, null, null);
 

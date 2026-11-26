@@ -240,6 +240,18 @@ class WebPreviews {
 	// (natively the host started when the screens were drawn from the frames file; here it always runs)
 	public function wake() {}
 
+	// (natively the program woken and waited for; here it always runs: the screen's first frame waited for)
+	@:coroutine public function live(s:Screen, seconds = 180.0):Null<String> {
+		var t0 = haxe.Timer.stamp();
+		while (order.length == 0 || s.version == 0) {
+			if (failed) return "the build failed";
+			if (s.crashed) return '${s.info.name} crashed: ${s.report.peek()}';
+			if (haxe.Timer.stamp() - t0 > seconds) return '${s.info.name} is not running: the preview did not start within ${Math.round(seconds)} s; try again';
+			helder.async.Async.delay(0.02);
+		}
+		return null;
+	}
+
 	// (natively a hovered loop from the frames file; here the host's)
 	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}>
 		return null;

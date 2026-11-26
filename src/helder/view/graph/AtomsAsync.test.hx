@@ -43,7 +43,7 @@ function tests() {
 		flush();
 		equals(where, ["a"]);
 		equals([s.store.run(() -> landed.peek()), landed.peek()], [5, 0]);
-		equals(helder.async.Home.current, null);
+		equals(helder.async.Home.current(), null);
 		s.store.dispose();
 	});
 	test("its children and two screens apart", () -> {

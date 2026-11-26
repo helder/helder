@@ -16,7 +16,16 @@ import {createInterface} from 'node:readline'
 
 let next = 0
 const waiting = new Map()
-let cwd = '', servers = [], mcp = null, cancelled = null, denied = null, options = null
+let cwd = '', servers = [], mcp = null, denied = null, options = null
+// (the turn's session/cancel, whenever it comes in the turn: what it waits on, its pauses cut short)
+let cancel = null, cancelled = Promise.resolve()
+function untilCancelled() {
+  return cancelled
+}
+// (true: its time ran out; false: the turn was cancelled meanwhile)
+function pause(ms) {
+  return Promise.race([new Promise(resolve => setTimeout(() => resolve(true), ms)), cancelled.then(() => false)])
+}
 
 function send(m) {
   process.stdout.write(JSON.stringify({jsonrpc: '2.0', ...m}) + '\n')
@@ -63,7 +72,7 @@ async function prompt(id, p) {
     const {call, session} = await studio()
     await call({id: 2, method: 'tools/call', params: {name: 'studio.working', arguments: {note: 'Sketching the court'}}}, session)
     update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'A court first.'}})
-    await new Promise(resolve => (cancelled = resolve))
+    await untilCancelled()
     send({id, result: {stopReason: 'cancelled'}})
     return
   }
@@ -96,9 +105,8 @@ async function prompt(id, p) {
       update(s, {sessionUpdate: 'tool_call', toolCallId: 'w' + k, title, kind: 'edit', status: k < tools.length - 1 ? 'completed' : 'in_progress'})
     })
     // (a message of its own after the tools: a paragraph of its own, after a note sent meanwhile)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'The list looks right.'}})
-    await new Promise(resolve => (cancelled = resolve))
+    if (await pause(1500)) update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'The list looks right.'}})
+    await untilCancelled()
     send({id, result: {stopReason: 'cancelled'}})
     return
   }
@@ -112,17 +120,15 @@ async function prompt(id, p) {
   }
   if (text.startsWith('pulse')) {
     update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'Working.'}})
-    for (let k = 0; k < 10; k++) {
-      await new Promise(resolve => setTimeout(resolve, 600))
+    for (let k = 0; k < 10 && await pause(600); k++)
       update(s, {sessionUpdate: 'tool_call', toolCallId: 'p' + k, title: 'step ' + k, kind: 'edit', status: 'completed'})
-    }
-    await new Promise(resolve => (cancelled = resolve))
+    await untilCancelled()
     send({id, result: {stopReason: 'cancelled'}})
     return
   }
   if (text.startsWith('think')) {
     update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'Thinking about it.'}})
-    await new Promise(resolve => (cancelled = resolve))
+    await untilCancelled()
     send({id, result: {stopReason: 'cancelled'}})
     return
   }
@@ -133,7 +139,7 @@ async function prompt(id, p) {
       toolCall: {toolCallId: 't2', title: 'Run it'},
       options: [{optionId: 'yes', name: 'Allow', kind: 'allow_once'}]
     })
-    await new Promise(resolve => (cancelled = resolve))
+    await untilCancelled()
     const a = await asked
     update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: a.result.outcome.outcome}})
     send({id, result: {stopReason: 'cancelled'}})
@@ -207,9 +213,10 @@ lines.on('line', line => {
       options = o && {tools: o.tools, allowed: o.allowedTools, strict: o.strictMcpConfig, sources: o.settingSources, settings: o.settings}
       return send({id: m.id, result: {sessionId: 's1'}})
     case 'session/prompt':
+      cancelled = new Promise(resolve => (cancel = resolve))
       return void prompt(m.id, m.params)
     case 'session/cancel':
-      return void cancelled?.()
+      return void cancel?.()
     default:
       if (m.id !== undefined) send({id: m.id, error: {code: -32601, message: 'no ' + m.method}})
   }

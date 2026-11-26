@@ -51,7 +51,8 @@ class Seed {
 			var low = Std.string(Std.int(a - high * 1e9));
 			return (v < 0 ? "-" : "") + Std.string(Std.int(high)) + "000000000".substr(low.length) + low;
 		}
-		return Std.string(v);
+		// (the rest: the shortest digits, powers of two too)
+		return Numbers.text(v);
 	}
 
 	public static function text(v:Dynamic):String {
@@ -431,6 +432,8 @@ class Seed {
 
 	public static function libFinished(v:Dynamic):Bool return v == Lib.finished;
 
+	public static function libIteratorClose(it:Dynamic, threw:Bool):Void Lib.close(it, threw);
+
 	public static function libInstanceOf(v:Dynamic, ctor:Dynamic):Bool return Lib.instanceOf(v, ctor);
 
 	public static function libRelation(a:Dynamic, b:Dynamic, op:String):Bool return Lib.relation(a, b, op);
@@ -560,6 +563,7 @@ class Seed {
 		libPrivateHas(o, "#x");
 		libStep(libIterator(a));
 		libRestArray(libIterator(a));
+		libIteratorClose(libIterator(a), false);
 		libRequireObject(o);
 		libObjectRest(o, []);
 		libAssignSpread(o, null);

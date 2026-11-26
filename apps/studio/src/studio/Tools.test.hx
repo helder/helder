@@ -178,6 +178,57 @@ function tests() {
 			}
 			Temp.remove(dir);
 		})).timeout(180);
+		test("drawn from the frames file: run.tree wakes the program and waits for the screen; its time out said", async(() -> {
+			if ((Sys.getEnv("HELDER_SRC") ?? "") == "") Sys.putEnv("HELDER_SRC", BuildInfo.helderSrc());
+			var dir = Temp.dir("helder-studio-wake"), done = false, open:Array<Studio> = [];
+			Files.save('$dir/app.tsx', 'export function App() {\n\treturn <view flexGrow={1}><text>Pond</text></view>;\n}\n');
+			Files.save('$dir/main.tsx', 'import { UiWindow, Surface } from "helder/ui";\nimport { App } from "./app";\n\nUiWindow.run(<Surface title="Pond" width={200} height={200}><App/></Surface>);\n');
+			Files.save('$dir/app.story.tsx', 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const start = story({ name: "Pond/Start", width: 200, height: 200, render: () => <App/> });\n');
+			Starter.config(dir);
+			// (a studio as the canvas runs it: its screen in view, its program started)
+			function studio():Studio {
+				var s = new Studio(dir, {});
+				open.push(s);
+				s.previews.stills = true;
+				helder.async.Async.launch(task -> s.previews.start(task));
+				helder.async.Async.launch(_ -> while (!done) {
+					s.previews.show(["Pond/Start"], null);
+					helder.async.Async.delay(0.1);
+				});
+				return s;
+			}
+			try {
+				// (built and drawn once: its still kept in the frames file)
+				var a = studio(), frames = '${a.project.out}/${Stills.FILE}', t0 = haxe.Timer.stamp();
+				while (!sys.FileSystem.exists(frames) && haxe.Timer.stamp() - t0 < 150)
+					helder.async.Async.delay(0.1);
+				equals(sys.FileSystem.exists(frames), true);
+				a.stop();
+				// (opened again: drawn from the file, nothing running)
+				var b = studio();
+				helder.async.Async.delay(0.5);
+				equals(b.previews.status.peek(), "stills");
+				equals([b.previews.screen("Pond/Start").still.peek() != null, b.previews.sinceHost() < 0], [true, true]);
+				var r = b.tools.call("run.tree", {screen: "Pond/Start"}, "a");
+				equals(r.isError, false);
+				equals(r.content[0].text.indexOf('"text": "Pond"') > 0, true);
+				b.stop();
+				// (a program that cannot start in time: why, said)
+				var c = studio();
+				helder.async.Async.delay(0.5);
+				var why = c.previews.live(c.previews.screen("Pond/Start"), 0.05);
+				equals(StringTools.startsWith(why, "Pond/Start is not running: the program did not start within 0 s ("), true);
+				done = true;
+				c.stop();
+			} catch (e:haxe.Exception) {
+				done = true;
+				for (s in open)
+					s.stop();
+				Temp.remove(dir);
+				throw e;
+			}
+			Temp.remove(dir);
+		})).timeout(400);
 		#end
 	});
 }

@@ -182,7 +182,48 @@ class Numbers {
 	// The shortest round-tripping digits of x > 0 (from the number's text form).
 	static function shortest(x:Float):{digits:String, exponent:Int} {
 		if (x == 0) return {digits: "0", exponent: 0};
-		var text = Seed.numberText(x);
+		return digitsOf(Seed.numberText(x));
+	}
+
+	// Number::toString's text of x (not 0): hxmc's, which has the nearest
+	// decimal of each length that reads back (its rt FloatText), but for a
+	// power of two, whose interval below is half the one above: there the
+	// nearest of 16 digits may not read back where the one above it does,
+	// and hxmc's has 17 (2^-97: 6.310887241768095e-30, not ...0944e-30)
+	public static function text(x:Float):String {
+		var s = Std.string(x);
+		var significant = 0, i = 0;
+		while (i < s.length && s.charAt(i) != "e") {
+			var c = s.charCodeAt(i++);
+			if (c >= "0".code && c <= "9".code && (significant > 0 || c != "0".code)) significant++;
+		}
+		if (significant < 17 || !Math.isFinite(x)) return s;
+		var a = Math.abs(x), e = Math.floor(Math.log(a) / Math.log(2));
+		while (Math.pow(2, e) > a) e--;
+		while (Math.pow(2, e + 1) <= a) e++;
+		if (Math.pow(2, e) != a) return s;
+		var d = digitsOf(x < 0 ? s.substr(1) : s);
+		if (d.digits.length != 17) return s;
+		var below = d.digits.substr(0, 16), above = increment(below);
+		var order = d.digits.charAt(16) < "5" ? [below, above] : [above, below];
+		for (c in order) {
+			var exponent = d.exponent + (c.length > 16 ? 1 : 0), digits = c.length > 16 ? "1" : c;
+			while (digits.length > 1 && digits.charAt(digits.length - 1) == "0") digits = digits.substr(0, digits.length - 1);
+			if (Std.parseFloat(digits.charAt(0) + "." + digits.substr(1) + "e" + exponent) == a) return (x < 0 ? "-" : "") + format(digits, exponent);
+		}
+		return s;
+	}
+
+	// digits d1 d2 ... times 10^exponent as Number::toString writes them
+	static function format(digits:String, exponent:Int):String {
+		var k = digits.length, n = exponent + 1;
+		if (k <= n && n <= 21) return digits + StringTools.rpad("", "0", n - k);
+		if (0 < n && n <= 21) return digits.substr(0, n) + "." + digits.substr(n);
+		if (-6 < n && n <= 0) return "0." + StringTools.rpad("", "0", -n) + digits;
+		return digits.charAt(0) + (k > 1 ? "." + digits.substr(1) : "") + "e" + (n - 1 >= 0 ? "+" : "-") + Std.string(Std.int(Math.abs(n - 1)));
+	}
+
+	static function digitsOf(text:String):{digits:String, exponent:Int} {
 		var exponent = 0;
 		var e = text.indexOf("e");
 		if (e >= 0) {
@@ -358,7 +399,7 @@ class Numbers {
 			case "floor": Math.ffloor(a);
 			case "ceil": Math.fceil(a);
 			case "trunc": a < 0 ? Math.fceil(a) : Math.ffloor(a);
-			case "round": if (a < 0 && a >= -0.5) -0.0; else if (!Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) a; else Math.ffloor(a + 0.5);
+			case "round": if (a == 0) a; else if (a < 0 && a >= -0.5) -0.0; else if (!Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) a; else Math.ffloor(a + 0.5);
 			case "sqrt": Math.sqrt(a);
 			case "cbrt": if (a == 0 || !Math.isFinite(a)) a; else {
 					var r = a < 0 ? -Math.pow(-a, 1 / 3) : Math.pow(a, 1 / 3);

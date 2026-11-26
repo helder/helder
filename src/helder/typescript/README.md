@@ -248,6 +248,12 @@ function of the lowering's own calls it there, by its number, through
 `helder.jobs.script.Entry`). `image(path)`, `font`, `model`, `sound` and `bytes` from `helder/asset`,
 and `import icon from "./icon.png" with {type: "image"}`, are Haxe's
 `Asset.*` (the file found and bundled when the build starts: `TsAssets`).
+A model's type is helder/scene's Model where the program has helder/scene
+(its index.ts adds `model` to helder/asset's `Models`), else unknown: so
+helder/asset's declarations name no type of helder/scene's, and a program
+of helder/ui alone (which reaches helder/asset) neither reads helder/scene's
+declarations nor types its declaration class and manifest (examples/ts-todo's
+Haxe typing about half as long).
 `helder/native/platform` (src/helder/native/platform.ts) is the build's target as
 constants: `platform.os` (linux, macos, windows, wasi, android, ios),
 `platform.target` (hxmc's name) and `platform.arm` are literals where they
@@ -679,7 +685,11 @@ constructor's defaults, a fixed step). The 3d lane draws helder/scene's
 frames from TypeScript (tests/3d/ts/frames.ts: examples/ts-scene's scenes,
 against Haxe's goldens).
 
-The lane needs node 24 or later.
+The lane needs node 24 or later. It also runs the TypeScript fuzzer's
+seed 0 (tests/typescript/fuzz, its README: random programs that
+type-check by construction, run by node and by helder, a difference
+shrunk to a case of `cases/`); the fuzz lane runs it for minutes from a
+random seed. A known failure in `cases/` is marked `// skip: <why>`.
 
 `node tests/typescript/bench.mjs [--runs N] [--save dir] [--base dir] [names]`
 times the programs of `bench/` compiled by helder's compiler against node,
