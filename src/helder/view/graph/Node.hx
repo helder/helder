@@ -262,6 +262,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	public function read():T {
 		var s = Atoms.current;
 		if (s != null && s != home && !shared) return of(s).read();
+		// (read by its own run: a cycle, an error, not a run started again without end)
+		if (computing) throw new GraphError("a computation read itself while it ran (a cycle)");
 		if (kind != SIGNAL) fresh();
 		if (observer != null) observer.track(this);
 		return serve();
