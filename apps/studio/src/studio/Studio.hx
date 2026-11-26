@@ -1645,9 +1645,21 @@ class Studio {
 		if (m != null && m.screen == s && s.version > m.version) {
 			measuring = null;
 			var ms = Math.round((haxe.Timer.stamp() - m.t0) * 10000) / 10;
-			var color = selectionColor(s);
-			Sys.println('studio: ${m.label} shown in $ms ms, ${frames - m.frame} studio frame(s)' + (s.patchedMs >= 0 ? ', the program\'s own ${s.patchedMs} ms' : ''));
-			log("patch-shown", {ms: ms, frames: frames - m.frame, programMs: s.patchedMs, label: m.label, color: color, version: s.version});
+			var shown = frames - m.frame, programMs = s.patchedMs, version = s.version;
+			Sys.println('studio: ${m.label} shown in $ms ms, $shown studio frame(s)' + (programMs >= 0 ? ', the program\'s own $programMs ms' : ''));
+			// (its colour from the frame's pixels: here when they were copied, else read back from the host,
+			// Previews.pixels: a shared texture's, macOS's and Windows')
+			var img = s.image.peek();
+			if (img == null || img.hasPixels) log("patch-shown", {ms: ms, frames: shown, programMs: programMs, label: m.label, color: selectionColor(s, img), version: version});
+			else {
+				var done = false;
+				hold(() -> done, "the patched frame's pixels", 15);
+				Async.launch(_ -> {
+					var read = #if (hxmc.target == "wasm32-wasi") null #else previews.pixels(s) #end;
+					log("patch-shown", {ms: ms, frames: shown, programMs: programMs, label: m.label, color: selectionColor(s, read), version: version});
+					done = true;
+				});
+			}
 		}
 		if (focused.peek() == s.info.name && selection.peek() != null) refreshSelection();
 	}
@@ -1681,13 +1693,14 @@ class Studio {
 	}
 
 	// the strongest colour in the selection's box of the screen's last frame (a check's: what it shows)
-	function selectionColor(s:Screen):Null<String> {
-		var sel = selection.peek(), img = s.image.peek();
-		// (a frame of the browser's preview host is a bitmap on the GPU: its pixels not here)
+	function selectionColor(s:Screen, img:Null<helder.image.Image>):Null<String> {
+		var sel = selection.peek();
 		if (sel == null || img == null || sel.screen != s.info.name || !img.hasPixels) return null;
+		// (the selection in points, the frame at its pixels a point: the focused one's at the canvas' scale)
+		var k = img.width / Math.max(1, s.width());
 		var px = img.pixels, best = -1.0, out:Null<String> = null;
-		var x0 = Std.int(Math.max(0, sel.x)), y0 = Std.int(Math.max(0, sel.y));
-		var x1 = Std.int(Math.min(img.width, sel.x + sel.width)), y1 = Std.int(Math.min(img.height, sel.y + sel.height));
+		var x0 = Std.int(Math.max(0, sel.x * k)), y0 = Std.int(Math.max(0, sel.y * k));
+		var x1 = Std.int(Math.min(img.width, (sel.x + sel.width) * k)), y1 = Std.int(Math.min(img.height, (sel.y + sel.height) * k));
 		for (y in y0...y1)
 			for (x in x0...x1) {
 				var i = (y * img.width + x) * 4;

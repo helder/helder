@@ -200,6 +200,21 @@ pass):
 | css-writing-modes-3 | 22 | 0 | 0 |
 <!-- /values -->
 
+## Differential
+
+`differential.mjs` (the css-differential lane, not in CI: it fetches)
+compares helder.css with @csstools/css-tokenizer and
+css-parser-algorithms (pinned devDependencies, spec-conformant) on real
+stylesheets (`sheets.mjs`: pinned npm builds of Bootstrap, Tailwind 2,
+Bulma, GitHub's Primer, Foundation, Font Awesome, animate.css and
+normalize.css, fetched into bin/css/sheets) and 2,000 generated inputs
+made of CSS's edges (`FUZZ_SEED`). It checks every token's kind,
+offsets and value and the component values' tree; `CssDump.hx` writes
+helder.css's side. A NUL is filtered to U+FFFD before @csstools reads
+the text, as Syntax 3 §3.3 filters it: @csstools reads a NUL in an
+unquoted url as non-printable (a bad url), which css-parsing-tests'
+component_value_list #26 says it is not.
+
 ## Report
 
 <!-- report -->
