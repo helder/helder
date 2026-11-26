@@ -26,13 +26,14 @@ class Act {
 		return opened(root, props -> Render.insert(props.children, ui.root, null));
 	}
 
-	// the size the root's <Surface> gives (its window's), rendered once with nothing in it
-	public static function size(root:RootView):{width:Null<Int>, height:Null<Int>} {
-		var out:{width:Null<Int>, height:Null<Int>} = {width: null, height: null};
+	// the size and title the root's <Surface> gives (its window's), rendered once with nothing in it
+	public static function size(root:RootView):{width:Null<Int>, height:Null<Int>, title:Null<String>} {
+		var out:{width:Null<Int>, height:Null<Int>, title:Null<String>} = {width: null, height: null, title: null};
 		var store = new Atoms("helder.scenario"), c = new ScreenContext("helder.scenario", true, null, store);
 		c.run(() -> helder.dev.Hot.scope("helder.scenario", () -> opened(root, props -> {
 			out.width = Render.read(props.width);
 			out.height = Render.read(props.height);
+			out.title = Render.read(props.title);
 		})))();
 		store.dispose();
 		return out;

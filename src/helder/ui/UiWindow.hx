@@ -450,10 +450,17 @@ class UiWindow {
 	inline function get_root()
 		return ui.root;
 
+	// the screen its frames and events run in (its clock, timers and store:
+	// a play window's scenario, helder.scenario.Player); null: the program's
+	public var screen:Null<ScreenContext> = null;
+
 	// there is something new to draw
-	public function needsFrame():Bool
-		return redraw || ui.needsFrame || (ui.stretched.length > 0 && !window.surface.resizing) || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
-			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves();
+	public function needsFrame():Bool {
+		var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end, s = screen;
+		return redraw || ui.needsFrame || (ui.stretched.length > 0 && !window.surface.resizing) || Clock.active || ScreenContext.main.nextTimer() <= now || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
+			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves()
+			|| s != null && (s.animating || s.nextTimer() <= now);
+	}
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
 	inline function mirrorMoves():Bool {
@@ -471,6 +478,14 @@ class UiWindow {
 	// first (now: what the frame's events started, Ui.now's, is not after
 	// it, as the vsync's time App.frame.time may be)
 	public function frame() {
+		var s = screen;
+		if (s != null && ScreenContext.current != s) {
+			s.run(() -> {
+				frame();
+				true;
+			});
+			return;
+		}
 		Clock.tick(clock != null ? clock() : #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end);
 		// (laid out at the surface's size: the device's follows it only at
 		// beginFrame, so that a single resize, a maximise's, laid out at the
@@ -890,6 +905,14 @@ class UiWindow {
 
 	// one of the window's events
 	public function handle(e:OsEvent) {
+		var s = screen;
+		if (s != null && ScreenContext.current != s) {
+			s.run(() -> {
+				handle(e);
+				true;
+			});
+			return;
+		}
 		var k = scale;
 		switch e.kind {
 			case Close:
