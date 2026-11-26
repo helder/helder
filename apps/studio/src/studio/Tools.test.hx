@@ -61,7 +61,9 @@ function tests() {
 			equals([sys.FileSystem.exists(f), s.project.screen("sketches/a.helder#Home") != null], [true, true]);
 			s.redo();
 			equals([sys.FileSystem.exists(f), s.project.screen("sketches/a.helder#Home") != null], [false, false]);
-			equals(s.tools.call("project.patch", {path: "sketches/a.helder", delete: true}, "a").isError, true);
+			var again = s.tools.call("project.patch", {path: "sketches/a.helder", delete: true}, "a");
+			equals(again.isError, false);
+			equals(haxe.Json.parse(again.content[0].text).result, "gone");
 		}));
 		test("an empty folder: a main and a story made, its screen there and built", async(() -> {
 			// (outside any package: its own project, helder's modules mapped by the
@@ -128,6 +130,33 @@ function tests() {
 				equals(c.ok, true);
 				equals(c.crashed, ['App/Bad: $why']);
 				equals(s.crashes(), ['App/Bad: $why']);
+				done = true;
+				s.stop();
+			} catch (e:haxe.Exception) {
+				done = true;
+				s.stop();
+				Temp.remove(dir);
+				throw e;
+			}
+			Temp.remove(dir);
+		})).timeout(180);
+		test("a file made again: the checker finds it (no TS2307 kept)", async(() -> {
+			if ((Sys.getEnv("HELDER_SRC") ?? "") == "") Sys.putEnv("HELDER_SRC", BuildInfo.helderSrc());
+			var dir = Temp.dir("helder-studio-again"), s = empty(dir), done = false;
+			try {
+				helder.async.Async.launch(_ -> while (!done) {
+					if (s.previews != null) s.previews.show(["App/Start"], null);
+					helder.async.Async.delay(0.1);
+				});
+				var app = 'export function App() {\n\treturn <view grow={1}/>;\n}\n';
+				s.tools.call("project.patch", {path: "app.tsx", text: app}, "a");
+				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\n\nUiWindow.run(<Surface title="A" width={200} height={200}><view/></Surface>);\n'}, "a");
+				s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const start = story({ name: "App/Start", width: 200, height: 200, render: () => <App/> });\n'}, "a");
+				function result(r:{content:Array<Dynamic>, isError:Bool}):String
+					return haxe.Json.parse(r.content[0].text).result;
+				equals(result(s.tools.call("project.patch", {path: "app.tsx", delete: true}, "a")), "failed");
+				equals(s.problems()[0].indexOf("TS2307") > 0, true);
+				equals(result(s.tools.call("project.patch", {path: "app.tsx", text: app}, "a")), "built");
 				done = true;
 				s.stop();
 			} catch (e:haxe.Exception) {

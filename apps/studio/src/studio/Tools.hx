@@ -44,7 +44,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true, e.g. the starter's app.tsx and app.story.tsx once unused). The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
+			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.story.tsx go by themselves once a story of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -264,7 +264,8 @@ class Tools implements Mcp.Target {
 		var by = agent == null ? null : studio.presence.peer(agent)?.name;
 		if (args.delete == true) {
 			if (args.text != null || args.edits != null) throw "delete, or text or edits, not both";
-			if (!studio.docs.has(f)) throw '${args.path}: no such file';
+			// (gone already: the starter's files go by themselves, two deletes may cross)
+			if (!studio.docs.has(f)) return {result: "gone", message: '${args.path} is not there (deleted already)', diagnostics: []};
 			studio.remove(f, by);
 			return landed();
 		}

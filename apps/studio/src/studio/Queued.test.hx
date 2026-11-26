@@ -31,6 +31,26 @@ function tests() {
 			s.stop();
 			Temp.remove(dir);
 		}));
+		test("the starter's files go by themselves once the agent's story is there and nothing imports them", async(() -> {
+			var dir = Temp.dir("helder-queued-tidy");
+			if ((Sys.getEnv("HELDER_SRC") ?? "") == "") Sys.putEnv("HELDER_SRC", BuildInfo.helderSrc());
+			var s = new Studio(dir, {starter: true});
+			s.presence.arrive("a", "claude-code");
+			function there()
+				return [for (f in ["app.tsx", "app.story.tsx", "main.tsx"]) sys.FileSystem.exists('$dir/$f')];
+			s.tools.call("project.patch", {path: "pond.tsx", text: 'export function Pond() {\n\treturn <view grow={1}/>;\n}\n'}, "a");
+			equals(there(), [true, true, true]);
+			s.tools.call("project.patch", {path: "pond.story.tsx", text: 'import { story } from "helder/story";\nimport { Pond } from "./pond";\n\nexport const start = story({ name: "Pond/Start", width: 200, height: 200, render: () => <Pond/> });\n'}, "a");
+			// (main.tsx, the starter's still, imports ./app: it stays)
+			equals(there(), [true, false, true]);
+			s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { Pond } from "./pond";\n\nUiWindow.run(<Surface title="Pond" width={200} height={200}><Pond/></Surface>);\n'}, "a");
+			equals(there(), [false, false, true]);
+			// (each removal an entry of the history: undone, back)
+			s.undo();
+			equals(there(), [true, false, true]);
+			s.stop();
+			Temp.remove(dir);
+		}));
 		test("a project's frames: nothing held", () -> {
 			var dir = "bin/queued-test-design";
 			helder.cli.TestCommand.mkdirs(dir);

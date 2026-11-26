@@ -1517,6 +1517,20 @@ class Studio {
 		log("edited", {file: file, origin: origin, changes: [for (c in tx.changes) {start: c.start, end: c.end, text: c.text}]});
 		if (origin == "agent") agentEdited(file, tx);
 		if (origin == "code") saveLater(file) else commit(file);
+		if (origin == "agent") tidy();
+	}
+
+	// (an empty folder's starter: its files gone once the agent's project no
+	// longer needs them, each an entry of the history, after an edit of the
+	// agent's (not an undo's); the agent never deletes them)
+	function tidy() {
+		var p = project;
+		if (!starter || p == null) return;
+		var own = Lambda.exists(p.screens, i -> i.source.match(Story(_)) && !starterOwn(i.name));
+		for (f in Starter.unused(p.dir, docs, p.sources(), own, starterOwn("App/Start"))) {
+			log("starter-removed", {file: f});
+			remove(f);
+		}
 	}
 
 	// an agent's edit (an MCP agent's project.patch, an ACP agent's write: its

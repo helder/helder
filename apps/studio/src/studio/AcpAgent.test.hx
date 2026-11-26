@@ -37,7 +37,7 @@ function tests() {
 			equals([report.wrote, report.outside, report.missing], ["ok", "error", -32601]);
 			equals(report.servers, ["http helder-studio http://127.0.0.1:7340/mcp"]);
 			equals(report.denied, AcpAgent.DENIED);
-			equals(report.session, {tools: AcpAgent.TOOLS, strict: true, sources: [], settings: {disableClaudeAiConnectors: true, disableAllHooks: true}});
+			equals(report.session, {tools: AcpAgent.TOOLS, allowed: AcpAgent.ALLOWED, strict: true, sources: [], settings: {disableClaudeAiConnectors: true, disableAllHooks: true}});
 			equals(["Bash", "Write", "Agent", "Task", "Workflow", "Monitor"].filter(t -> !AcpAgent.DENIED.contains(t)), []);
 			equals(report.link, "app.helder:2");
 			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");

@@ -156,6 +156,11 @@ class AcpAgent implements Agent {
 		"SendToProject", "SendToProjectContext", "Skill"
 	];
 
+	// (the studio's own tools allowed outright: else Claude Code's auto mode,
+	// a session's default, has its classifier judge each call, and it blocked
+	// one of two deletes sent at once)
+	public static final ALLOWED = ["mcp__helder-studio"];
+
 	// (Claude Code's built-ins the session has: reading the project, its plan)
 	public static final TOOLS = ["Read", "Glob", "Grep", "TodoWrite"];
 
@@ -166,6 +171,7 @@ class AcpAgent implements Agent {
 		claudeCode: {
 			options: {
 				tools: TOOLS,
+				allowedTools: ALLOWED,
 				disallowedTools: DENIED,
 				strictMcpConfig: true,
 				settingSources: [],

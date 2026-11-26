@@ -63,8 +63,10 @@ class Project {
 	// The last build's snapshot, kept by a compilation server: the next build
 	// with the same entry and options updates it with the files that changed
 	// since (by size and time), so tsgo reparses and rechecks only what they
-	// affect; none changed, it is used as it is.
-	static var last:Null<{key:String, snapshot:Int, project:Dynamic, stamps:Map<String, String>}> = null;
+	// affect; none changed, it is used as it is. A module it could not find
+	// (TS2307) is looked for again: tsgo keeps the failed lookup, and the file
+	// made since is none of those read (deleted then made again, or new).
+	static var last:Null<{key:String, snapshot:Int, project:Dynamic, stamps:Map<String, String>, unresolved:Bool}> = null;
 
 	static function stamp(file:String):String {
 		var s = try sys.FileSystem.stat(file) catch (_:Dynamic) return "";
@@ -80,8 +82,9 @@ class Project {
 				var now = stamp(f);
 				if (now == "") deleted.push(f) else if (now != s) changed.push(f);
 			}
-			if (changed.length == 0 && deleted.length == 0) return {snapshot: previous.snapshot, project: previous.project};
-			var r:Dynamic = tsgo.call("updateSnapshot", {snapshot: previous.snapshot, changes: {fileNotifications: {changed: changed, deleted: deleted}, ensurePrograms: true}});
+			if (changed.length == 0 && deleted.length == 0 && !previous.unresolved) return {snapshot: previous.snapshot, project: previous.project};
+			var files:Dynamic = previous.unresolved ? {invalidateAll: true} : {changed: changed, deleted: deleted};
+			var r:Dynamic = tsgo.call("updateSnapshot", {snapshot: previous.snapshot, changes: {fileNotifications: files, ensurePrograms: true}});
 			// (the same snapshot again: taken once more, given back once)
 			tsgo.call("release", {snapshot: r.snapshot == previous.snapshot ? r.snapshot : previous.snapshot});
 			return {snapshot: r.snapshot, project: previous.project};
@@ -102,7 +105,7 @@ class Project {
 		var key = absolute + "\n" + haxe.Json.stringify(options);
 		var at = snapshot(tsgo, key, [absolute, globals], options);
 		// (kept for the next build, a failed one's too: its files are watched)
-		function keep() last = {key: key, snapshot: at.snapshot, project: at.project, stamps: [for (f in read) f => stamp(f)]};
+		function keep() last = {key: key, snapshot: at.snapshot, project: at.project, stamps: [for (f in read) f => stamp(f)], unresolved: unresolved};
 		try load(tsgo, tables, at, absolute, globals) catch (e:Dynamic) {
 			keep();
 			throw e;
@@ -111,6 +114,8 @@ class Project {
 	}
 
 	var config:Null<String> = null;
+	// (a module not found: TS2307, TS2792)
+	var unresolved = false;
 
 	function load(tsgo:Tsgo, tables:Tables, at:{snapshot:Int, project:Dynamic}, absolute:String, globals:String) {
 		var names:Array<String> = tsgo.call("getSourceFileNames", at);
@@ -123,6 +128,7 @@ class Project {
 				var where = d.fileName == null ? path : relative(d.fileName) + ":" + (d.startPosition.line + 1);
 				if (d.fileName != null && d.startPosition != null && d.endPosition != null && d.startPosition.line == d.endPosition.line)
 					where += ": characters " + d.startPosition.character + "-" + d.endPosition.character + " ";
+				if (d.code == 2307 || d.code == 2792) unresolved = true;
 				errors.push(where + ": TS" + d.code + ": " + message(d));
 			}
 		report(tsgo.call("getProgramDiagnostics", at));
