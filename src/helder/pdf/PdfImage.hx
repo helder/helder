@@ -18,10 +18,11 @@ class PdfImage {
 	public static var jpx:Null<(data:Bytes, reduce:Int, maxPixels:Int) -> Null<Jpx.JpxImage>> = null;
 	// helder.image's JPEG decoder, linked by Pdf.open and Pdf.render (useJpeg); a web build drawing
 	// through PdfWeb.prepare's browser decoding may leave it out (a JPEG the browser did not take: Unsupported)
-	public static var jpegDecoder:Null<(data:Bytes, scale:Int) -> {width:Int, height:Int, rgba:Bytes}> = null;
+	// (cmyk: a four-component JPEG's samples as they are, its result's cmyk then true)
+	public static var jpegDecoder:Null<(data:Bytes, scale:Int, cmyk:Bool) -> {width:Int, height:Int, rgba:Bytes, ?cmyk:Bool}> = null;
 
 	public static function useJpeg()
-		jpegDecoder = (d, s) -> helder.image.JpegDecoder.decode(d, null, s);
+		jpegDecoder = (d, s, cmyk) -> helder.image.JpegDecoder.decode(d, null, s, cmyk);
 
 	public static var jpxInfo:Null<(data:Bytes) -> Null<{width:Int, height:Int, levels:Int}>> = null;
 
@@ -83,11 +84,16 @@ class PdfImage {
 				if (jpxSpace == null) jpxSpace = nc == 1 ? "gray" : nc == 4 ? "cmyk" : "rgb";
 			}
 		}
-		var jpg:Null<{width:Int, height:Int, rgba:Bytes}> = null;
+		var csv = dict.has("ColorSpace") ? dict.get("ColorSpace") : dict.get("CS");
+		var cs:Null<ColorSpace> = mask ? null : csv == PNull ? (jpxSpace == "gray" ? ColorSpace.GRAY : jpxSpace == "cmyk" ? ColorSpace.CMYK : ColorSpace.RGB) : ColorSpace.load(doc, csv,
+			resources);
+		var jpg:Null<{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool}> = null;
 		if (jpeg && !mask) {
 			var scale = shownW > 0 && shownH > 0 ? helder.image.JpegDecoder.scaleFor(w, h, shownW, shownH) : 1;
 			if (jpegDecoder == null) throw PdfError.unsupported("a JPEG image without its decoder linked (PdfImage.useJpeg)");
-			jpg = try jpegDecoder(data, scale) catch (e:Dynamic) throw PdfError.corrupt("a JPEG image: " + Std.string(e));
+			// (a CMYK one's samples, for its colour space and Decode array: a PDF's are not inverted as
+			// Photoshop's own JPEG files are; read as those, a cover's photograph was a negative)
+			jpg = try jpegDecoder(data, scale, cs != null && cs.components == 4) catch (e:Dynamic) throw PdfError.corrupt("a JPEG image: " + Std.string(e));
 			// (the image at the decoder's size: the masks below resampled to it)
 			w = jpg.width;
 			h = jpg.height;
@@ -114,12 +120,10 @@ class PdfImage {
 				}
 			return out;
 		}
-		var csv = dict.has("ColorSpace") ? dict.get("ColorSpace") : dict.get("CS");
-		var cs = csv == PNull ? (jpxSpace == "gray" ? ColorSpace.GRAY : jpxSpace == "cmyk" ? ColorSpace.CMYK : ColorSpace.RGB) : ColorSpace.load(doc, csv,
-			resources);
 		if (jpeg) {
-			// (the decoder's RGBA is the bitmap's, opaque: premultiplied as it is; an Adobe CMYK JPEG in a
-			// DeviceCMYK image: the decoder's RGB as it is)
+			// (the decoder's RGBA is the bitmap's, opaque: premultiplied as it is; a CMYK one's samples
+			// through the Decode array and the colour space, as any CMYK image's)
+			if (jpg != null && jpg.cmyk == true) cmykPixels(px, w * h, decodeArr != null && decodeArr.length >= 8 ? decodeArr : cs.defaultDecode(8), cs);
 		} else {
 			var n = cs.components == 0 ? 1 : cs.components;
 			var dec = decodeArr ?? cs.defaultDecode(bpc);
@@ -206,6 +210,22 @@ class PdfImage {
 				px.set(o + 3, a);
 			}
 		return shrink(out, shownW, shownH);
+	}
+
+	// (n pixels of C, M, Y, K bytes to opaque RGB in place: DeviceCMYK's conversion directly, another
+	// four-component space (ICCBased, its alternate) through its rgb; dec: the Decode array)
+	static function cmykPixels(px:Bytes, n:Int, dec:Array<Float>, cs:ColorSpace) {
+		var plain = cs == ColorSpace.CMYK, comps = [0.0, 0, 0, 0], k = [for (c in 0...4) (dec[c * 2 + 1] - dec[c * 2]) / 255];
+		for (i in 0...n) {
+			var o = i * 4;
+			for (c in 0...4)
+				comps[c] = dec[c * 2] + px.get(o + c) * k[c];
+			var rgb = plain ? ColorSpace.cmyk(comps[0], comps[1], comps[2], comps[3]) : cs.rgb(comps);
+			px.set(o, (rgb >> 16) & 255);
+			px.set(o + 1, (rgb >> 8) & 255);
+			px.set(o + 2, rgb & 255);
+			px.set(o + 3, 255);
+		}
 	}
 
 	// an image of at least twice the pixels it is shown at, a side, averaged down by a whole factor to

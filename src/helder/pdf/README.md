@@ -90,7 +90,12 @@ var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, do
   scaling (1/2 to 1/8) to no fewer pixels than it is shown at, a JPEG 2000
   by whole resolution levels (`Jpx`, ported from leanpdf), any other image
   twice its shown size or more averaged down after decoding; CCITT G3 and
-  G4 (`Ccitt`, ported from leanpdf). On the web back end glyphs are kept
+  G4 (`Ccitt`, ported from leanpdf). A CMYK JPEG (plain, or YCCK as
+  Photoshop writes it) is read as its samples (`JpegDecoder.decode`'s
+  `cmyk`), through the image's colour space and Decode array, as pdf.js and
+  Core Graphics read it: a PDF's are not inverted as Photoshop's own JPEG
+  files are, and read as those a cover's photograph was a negative
+  (`PdfImage.test.hx` builds YCCK, plain and Decode-inverted ones). On the web back end glyphs are kept
   in the page as Path2D (helder.canvas's GlyphCache) and drawn by key.
 - **Decoded images and contents kept** per document (`Document.images`, an
   LRU bounded by `PdfLimits.imageCache`, 64 MB by default): images by their
