@@ -297,7 +297,8 @@ index.matching(el, out);                                  // one element, no fil
   bits, inserts, removals, texts, form attributes), every element whose
   matched selectors changed, by matching everything again, is marked.
   Breaking `~`'s, `:has()`'s or `:is()`'s flags on purpose makes it fail
-  within 300 cases.
+  within 300 cases; the guards' reading of the old class has a test of
+  its own.
 - `tests/css/CssSelectorsCheck.hx` (the css lane): WPT's
   dom/nodes/selectors.js. Its 34 invalid selectors don't parse and its
   279 valid and scoped ones do. Its valid ones are matched as
@@ -340,7 +341,12 @@ restyle.clear();
   - all its siblings (`SIBLINGS`: `:nth-child(of S)`'s counts);
   - the document (`DOCUMENT`).
 
-  `:is()`, `:where()` and `:not()` pass on where they sit. Pseudo-classes
+  A feature of a top-level compound keeps a guard, the compound's other
+  ids, classes and tag, as Blink's sets do. A change on an element
+  without them invalidates nothing, so `:focus-within` set on `<body>`
+  skips `.row:focus-within .actions` (the element's old class and id count
+  too). `:is()`, `:where()` and `:not()` pass on where they sit, without a
+  guard. Pseudo-classes
   read from attributes (`:checked`, `:disabled`, `:link`, `:lang()`...)
   depend on those, and the ones read from ancestors (`:lang()`, `:dir()`,
   a fieldset's `:disabled`, contenteditable's `:read-write`) restyle the
