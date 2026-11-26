@@ -4,7 +4,7 @@ import helder.os.Settings;
 import helder.ui.Clock;
 import helder.ui.controls.Look;
 import helder.ui.UiWindow;
-import helder.ui.widgets.WindowButtons;
+import helder.ui.controls.WindowButtons;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -160,7 +160,7 @@ class ViewerView implements Markup {
 				<field tag="goto-field" value={viewer.gotoText} placeholder={Std.string(viewer.pageSignal() + 1)} aria-label="Page number" height={28} padding="0 8"
 					borderRadius={6} background={Look.ref.well} borderWidth={1} borderColor={Look.ref.edge} onInput={e -> viewer.gotoText(e.text)}
 					onKeyDown={e -> if (e.key == helder.ui.Key.ENTER) {
-						viewer.goToTyped((cast e.current : helder.ui.widgets.TextField).text);
+						viewer.goToTyped((cast e.current : helder.ui.controls.TextField).text);
 						e.stop();
 					}}
 					ref={n -> Clock.add(_ -> {

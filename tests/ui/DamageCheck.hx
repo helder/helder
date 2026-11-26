@@ -4,7 +4,7 @@ import helder.gfx.*;
 import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 
 // A window's frame kept from frame to frame and drawn only where it
 // changed (Renderer.keep: Ui.paint's damage) against the same tree drawn

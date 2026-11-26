@@ -1,6 +1,6 @@
 import helder.ui.*;
 import helder.ui.UiWindow;
-import helder.ui.widgets.EditableText;
+import helder.ui.controls.EditableText;
 import helder.os.windows.Com;
 import helder.os.windows.Tsf;
 import helder.os.windows.Tsf.IUnknownQi;

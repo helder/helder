@@ -1,6 +1,5 @@
 import Model;
 import helder.ui.*;
-import helder.ui.widgets.Theme;
 
 // A glyph's ink small (the grid's cells, the first letters' chips): fitted
 // to the cell's height by the face's whole range, centred on its advance;
@@ -39,6 +38,6 @@ class Thumb extends Node {
 			var ox = x + (w - s.advance * scale) / 2, base = y + (h - (top - bottom) * scale) / 2 + top * scale;
 			drawn = d = {shape: s, x: x, y: y, w: w, h: h, path: Glyphs.path(s.contours, scale, ox, base)};
 		}
-		c.path(d.path, Model.drawn(f, char) ? Theme.c("fg") : Theme.c("fg3"));
+		c.path(d.path, Model.drawn(f, char) ? AppLook.paint(AppLook.tokens.fg) : AppLook.paint(AppLook.tokens.fg3));
 	}
 }

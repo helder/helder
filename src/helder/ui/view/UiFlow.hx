@@ -187,6 +187,8 @@ class PopoverMount implements Mountable<Node> {
 					p.atX = a.x;
 					p.atY = a.y;
 				}
+				// (the overlay is outside the tree it is for: the sheet where it is written, a <Themed>'s look, as nav's sheets have it)
+				p.theme = marker.sheet();
 				marker.ui.open(p);
 				if (props.onOpen != null) props.onOpen(p);
 			} else if (!on && p.ui != null) p.ui.close(p);

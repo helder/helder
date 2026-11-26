@@ -5,7 +5,7 @@ import helder.ui.*;
 import helder.ui.controls.*;
 import helder.ui.controls.Standard;
 import helder.ui.controls.Props.PathSegment;
-import helder.ui.widgets.Icons;
+import helder.ui.controls.Icons;
 import helder.ui.draw.*;
 import helder.view.*;
 

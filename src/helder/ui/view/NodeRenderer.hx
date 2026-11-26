@@ -18,7 +18,7 @@ import helder.ui.access.Role;
 // the node's color; objectPosition ("left top", CSS's), its place;
 // objectFit, "fill", "contain", "cover" or "none"; mirrored, flipped right
 // to left), icon (an image, its Svg), field and textarea (a text field, one
-// line or several: helder.ui.widgets' TextField and TextArea; value,
+// line or several: helder.ui.controls' TextField and TextArea; value,
 // placeholder, type, rows, readOnly, maxLength, spellCheck, keyboard,
 // enterKeyHint, autoCapitalize, autoCorrect, autoComplete; onSubmit, its
 // Enter; onInput, its text changed by its user), glass, webview, video
@@ -121,8 +121,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "image": new ImageNode();
 			case "icon": new ImageNode(null, "icon");
 			// (a text field, one line or several: native where the window's policy says, EditableText)
-			case "field": new helder.ui.widgets.TextField();
-			case "textarea": new helder.ui.widgets.TextArea();
+			case "field": new helder.ui.controls.TextField();
+			case "textarea": new helder.ui.controls.TextArea();
 			// (the system's web view where the window has one: helder.ui.platform.WebView)
 			case "webview": new helder.ui.platform.WebView();
 			// (Liquid Glass: the system's where it has one, else drawn)
@@ -549,10 +549,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		return cast n;
 	}
 
-	// (an icon's: lucide's of that name, helder.ui.widgets.Icons)
+	// (an icon's: lucide's of that name, helder.ui.controls.Icons)
 	@:attribute static function name(n:Node, attr:String, v:Dynamic) {
 		if (!Std.isOfType(n, ImageNode)) noAttribute(n, attr);
-		(cast n : ImageNode).svg = v == null ? null : helder.ui.widgets.Icons.svg(v);
+		(cast n : ImageNode).svg = v == null ? null : helder.ui.controls.Icons.svg(v);
 	}
 
 	// (an icon's or an image's: flipped right to left, ImageNode.mirrored)
@@ -616,8 +616,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		field(n, name).secret = v == "password";
 
 	@:attribute static function rows(n:Node, name:String, v:Dynamic) {
-		if (!Std.isOfType(n, helder.ui.widgets.TextArea)) noAttribute(n, name);
-		if (v != null) (cast n : helder.ui.widgets.TextArea).rows = Std.int(number(v));
+		if (!Std.isOfType(n, helder.ui.controls.TextArea)) noAttribute(n, name);
+		if (v != null) (cast n : helder.ui.controls.TextArea).rows = Std.int(number(v));
 		n.markDirty();
 	}
 
@@ -651,8 +651,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function autoCorrect(n:Node, name:String, v:Dynamic)
 		field(n, name).autocorrect = v == null ? null : v == true || v == "true" || v == "on" || v == "";
 
-	static function field(n:Node, name:String):helder.ui.widgets.EditableText {
-		if (!Std.isOfType(n, helder.ui.widgets.EditableText)) noAttribute(n, name);
+	static function field(n:Node, name:String):helder.ui.controls.EditableText {
+		if (!Std.isOfType(n, helder.ui.controls.EditableText)) noAttribute(n, name);
 		return cast n;
 	}
 
@@ -704,8 +704,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "onTextInput": n.onTextInput = own(h, n.onTextInput);
 			case "onInput": n.onInput = h;
 			case "onSubmit":
-				if (!Std.isOfType(n, helder.ui.widgets.TextField)) throw 'helder.ui: <${n.tag}> has no event onSubmit (a <field>\'s)';
-				(cast n : helder.ui.widgets.TextField).onSubmit = h == null ? null : t -> {
+				if (!Std.isOfType(n, helder.ui.controls.TextField)) throw 'helder.ui: <${n.tag}> has no event onSubmit (a <field>\'s)';
+				(cast n : helder.ui.controls.TextField).onSubmit = h == null ? null : t -> {
 					var e = Event.of(Submit, n, 0, 0);
 					e.text = t;
 					h(e);

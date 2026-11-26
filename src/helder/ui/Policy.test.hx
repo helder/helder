@@ -2,8 +2,8 @@ package helder.ui;
 
 import helder.test.Test;
 import helder.ui.platform.*;
-import helder.ui.widgets.TextField;
-import helder.ui.widgets.TextArea;
+import helder.ui.controls.TextField;
+import helder.ui.controls.TextArea;
 
 // Ui.policy's defaults (the test lane: natively, a desktop; as wasm32-wasi,
 // a browser's): on the desktop text fields and areas drawn even where the

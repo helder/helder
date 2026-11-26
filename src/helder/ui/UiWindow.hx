@@ -247,7 +247,7 @@ class UiWindow {
 				var all = true;
 				for (w in open)
 					if (w.followsSystem) w.setDark(d) else all = false;
-				// (the screen's, Theme.c's: unless a window says its own)
+				// (the screen's: unless a window says its own)
 				if (all) ScreenContext.main.dark(d);
 			}));
 		}
@@ -1028,7 +1028,7 @@ class UiWindow {
 			w.followsSystem = false;
 			Graph.renderEffect(() -> Render.read(props.dark), v -> {
 				w.setDark(v);
-				// (what Theme.c and the screen's others read: this window's)
+				// (what the screen's readers read: this window's)
 				ScreenContext.main.dark(v);
 			});
 		}

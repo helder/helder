@@ -42,8 +42,8 @@ class ScreenContext {
 	public final safeArea:Signal<Edges>;
 	// an inset title bar's area free of the window's buttons (env(titlebar-area-*); null: not inset)
 	public final titlebarArea:Signal<Null<Rect>>;
-	// dark or light: a host gives it to the screen's Ui (Ui.dark); what
-	// Theme.c and others outside a Ui read (UiWindow: the system's,
+	// dark or light: a host gives it to the screen's Ui (Ui.dark), and
+	// what code outside a Ui reads (UiWindow: the system's,
 	// Settings.dark, or a <Surface dark>'s)
 	public final dark:Signal<Bool>;
 	// its surface's width and height in points and its size class

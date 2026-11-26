@@ -1,4 +1,4 @@
-package helder.ui.widgets;
+package helder.ui.controls;
 
 import helder.os.TitleBar.TitleHit;
 import helder.ui.Node;

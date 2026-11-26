@@ -2,7 +2,7 @@ import haxe.Timer;
 import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 
 // The program on its own thread on iOS (IosCheck scroll: tests/gfx/ios.sh
 // launches the app again with it): a list scrolled by its UIScrollView,

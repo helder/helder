@@ -6,7 +6,7 @@ import helder.syntax.Transaction;
 import helder.ui.code.CodeAction;
 import helder.ui.code.CodeLanguage;
 import helder.ui.code.CodeModel;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 
 // A code editor (helder.ui.code; helder.ui's README): a CodeView of a CodeModel,
 // with its find and replace panel (secondary-F, secondary-H: the matches

@@ -236,7 +236,7 @@ function tests() {
 		#end
 		test("typing keys stay with a text field; Control and the rest do not", () -> {
 			var f = fixture(), log = [];
-			var field = new helder.ui.widgets.TextField();
+			var field = new helder.ui.controls.TextField();
 			f.root.append(field);
 			f.ui.keymap = new Keymap().bind("n", Next).bind("ctrl-n", Bubble);
 			f.root.on(TestAction, a -> {

@@ -11,7 +11,7 @@ import helder.ui.access.Role;
 import helder.ui.controls.Props;
 import helder.ui.controls.Variant;
 import helder.ui.menu.DrawnMenu;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 import helder.view.Render;
 import helder.view.View;
 import helder.view.graph.Graph;
@@ -439,7 +439,7 @@ function tests() {
 @:renderer(helder.ui.view.NodeRenderer)
 private class Fixture implements helder.view.Markup {
 	public static function iconButtons(selected:Signal<Bool>):View {
-		var icon = helder.ui.widgets.Icons.svg("panel-left");
+		var icon = helder.ui.controls.Icons.svg("panel-left");
 		return <view flexDirection="row">
 			<Standard.Button tag="icon-0" icon={icon} label="Small" size="sm"/>
 			<Standard.Button tag="icon-1" icon={icon} label="Inspector" variant="ghost" selected={selected} onPress={() -> selected(!selected.peek())}/>
@@ -448,7 +448,7 @@ private class Fixture implements helder.view.Markup {
 	}
 
 	public static function pathSegments():Array<PathSegment>
-		return [{label: "Home", icon: helder.ui.widgets.Icons.svg("folder")}, {label: "Pictures"}, {label: "2026"}, {label: "Reference images"}];
+		return [{label: "Home", icon: helder.ui.controls.Icons.svg("folder")}, {label: "Pictures"}, {label: "2026"}, {label: "Reference images"}];
 
 	public static function path(segments:Signal<Array<PathSegment>>, editing:Signal<Bool>, onNavigate:Int->Void, onSubmit:String->Void,
 			?onSeparator:(Int, Node)->Void):View
@@ -494,7 +494,7 @@ private class Fixture implements helder.view.Markup {
 		return <Standard.Themed look={Look.base}>
 			<view padding={10} rowGap={8}>
 				<view tag="box" slot="field-box" width={196} height={30}>
-					<image src={helder.ui.widgets.Icons.svg("search")} width={14} height={14}/>
+					<image src={helder.ui.controls.Icons.svg("search")} width={14} height={14}/>
 					<field tag="q" slot="field-box-input" placeholder="Search"/>
 				</view>
 				<view tag="other" focusable width={20} height={20}/>

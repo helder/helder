@@ -99,9 +99,9 @@ class Reel {
 			case "play": '<polygon points="6 3 20 12 6 21 6 3"/>';
 			case "skip-back": '<polygon points="19 20 9 12 19 4 19 20"/><line x1="5" x2="5" y1="19" y2="5"/>';
 			case "skip-forward": '<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/>';
-			case _: helder.ui.widgets.Icons.markup(name);
+			case _: helder.ui.controls.Icons.markup(name);
 		}
-		s = helder.ui.Svg.parse(helder.ui.widgets.Icons.OPEN + body + "</svg>");
+		s = helder.ui.Svg.parse(helder.ui.controls.Icons.OPEN + body + "</svg>");
 		icons.set(name, s);
 		return s;
 	}

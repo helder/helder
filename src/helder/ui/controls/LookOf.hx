@@ -102,7 +102,9 @@ class LookMacro {
 			opt("checkbox", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("switch", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("pathbar", macro :helder.ui.controls.Tokens.Refs->Dynamic),
-			opt("render", renders)
+			opt("render", renders),
+			// (an app's own parts: a slot each, its style a function of the tokens)
+			opt("parts", macro :haxe.DynamicAccess<helder.ui.controls.Tokens.Refs->Dynamic>)
 		]);
 	}
 

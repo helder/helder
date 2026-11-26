@@ -5,7 +5,7 @@ import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.ui.menu.Menu;
 import helder.ui.view.UiFlow.MenuBarView;
-import helder.ui.widgets.Theme;
+import helder.ui.controls.Standard.Themed;
 import helder.view.*;
 
 // Foundry (README.md): a font made by drawing it, for people who never made
@@ -36,8 +36,9 @@ class Foundry implements Markup {
 		#if !(hxmc.target == "wasm32-wasi")
 		Mcp.start(ws);
 		#end
-		UiWindow.run(<Surface title="Foundry" width={1280} height={800} titlebar="inset" theme={Shell.sheet} background={Theme.c("canvas")}
+		UiWindow.run(<Surface title="Foundry" width={1280} height={800} titlebar="inset" background={AppLook.paint(AppLook.tokens.canvas)}
 			dark={ws.dark()}>
+			<Themed look={AppLook.look}>
 			<view flexGrow={1} minHeight={0} onKeyDown={e -> space(ws, e, true)} onKeyUp={e -> space(ws, e, false)} actions={[Actions.handle(FoundryAction, a -> {
 				switch a {
 					case Undo: ws.undo();
@@ -73,6 +74,7 @@ class Foundry implements Markup {
 				<MenuBarView menus={menus()}/>
 				{Shell.view(ws)}
 			</view>
+			</Themed>
 		</Surface>);
 	}
 

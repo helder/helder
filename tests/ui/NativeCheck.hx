@@ -2,7 +2,7 @@ import haxe.Timer;
 import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 
 // A native view over a scroller moved with the compositor's scroll
 // (AsyncScrollWindowCheck --native; macOS: an NSTextField, Windows: an EDIT): the program blocked

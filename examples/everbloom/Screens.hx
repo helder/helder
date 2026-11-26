@@ -6,7 +6,7 @@ import helder.async.Task;
 import helder.os.Links;
 import helder.ui.*;
 import helder.ui.view.UiFlow.*;
-import helder.ui.widgets.Pager;
+import helder.ui.controls.Pager;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
