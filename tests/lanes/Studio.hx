@@ -111,9 +111,9 @@ class Studio {
 		var only = (Sys.getEnv("HELDER_STUDIO_STEPS") ?? "").split(",").filter(x -> x != "");
 		function step(name:String):Bool {
 			if (only.length > 0 && !only.contains(name)) return false;
-			// (its copy and the studio's files of it: a run of it as fresh as the whole lane's)
-			rmrf('$b/$name');
+			// (the studio's files of it, then its copy (their links into it): a run of it as fresh as the whole lane's)
 			rmrf('bin/studio/$name');
+			rmrf('$b/$name');
 			return true;
 		}
 		if (only.length == 0) {
