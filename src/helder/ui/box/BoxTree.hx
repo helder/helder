@@ -223,22 +223,10 @@ class BoxTree {
 
 	// ---- ::first-letter (CSS 2.1 §5.12.2, Pseudo-Elements 4 §2.3)
 
-	// (whether a ::first-letter rule matches the element: helder.css has no public query for a
-	// pseudo-element's rules yet, so its index is asked as its cascade asks it)
-	function firstLetterRules(el:Element):Bool
-		return @:privateAccess {
-			var idx = styles.pseudos.get("first-letter");
-			if (idx == null) return false;
-			var found = [];
-			styles.bloom.moveTo(el);
-			idx.matching(el, found, styles.bloom, null, styles.hasCache);
-			found.length > 0;
-		}
-
 	// The first letter of a block container's first formatted line, with the punctuation before and
 	// after it, in a box of the element's ::first-letter style (an inline box, or a float when it floats).
 	function firstLetter(el:Element, b:Box) {
-		if (!firstLetterRules(el)) return;
+		if (!styles.hasPseudo(el, "first-letter")) return;
 		var t = firstText(b);
 		if (t == null) return;
 		var text = t.text, n = text.length, i = 0;

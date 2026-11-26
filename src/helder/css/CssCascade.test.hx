@@ -245,6 +245,19 @@ function tests() {
 			equals(CssText.join(html.display.terms, CssText.term), "block");
 			equals(html.originalDisplay.outer, Contents);
 		});
+		test("whether a pseudo-element's rule matches", () -> {
+			var s = styles('<p id=a class=x>a</p><p id=b>b</p><div id=c>c</div>', "p::first-letter { color: red } .x::before { content: 'x' }");
+			function has(id:String, name:String)
+				return s.hasPseudo(s.document.getElementById(id), name);
+			equals(has("a", "first-letter"), true);
+			equals(has("b", "first-letter"), true);
+			equals(has("c", "first-letter"), false);
+			equals(has("a", "before"), true);
+			equals(has("b", "before"), false);
+			// (a name no sheet has: none)
+			equals(has("a", "first-line"), false);
+			equals(has("a", "after"), false);
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

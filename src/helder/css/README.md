@@ -844,6 +844,7 @@ s.color(BorderTopColor).r;                   // sRGB, currentcolor resolved
 s.number(Opacity); s.position.zIndex;        // numbers
 s.display.inner == Flex;                     // CssDisplay
 s.originalDisplay.outer == Inline;           // before blockification
+styles.hasPseudo(el, "first-letter");      // a ::first-letter rule matches el
 s.fontSize(); s.lineHeight(); s.families();  // the font
 s.backgrounds();                             // layers, lists repeated to the images'
 s.generated();                               // content as items (Text, Counter, Quote...)
