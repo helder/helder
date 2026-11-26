@@ -25,10 +25,46 @@ function tests() {
 				equals(b.text.height > 20, true);
 			}
 		});
+		test("a scroller held by its column's item at its content's height: told once, and not when it scrolls", () -> {
+			var told = [], before = Layout.warnings;
+			Layout.warnings = s -> told.push(s);
+			function lay(minHeight:Null<Float>):Node {
+				var ui = new Ui(new StoryText(), 400, 300);
+				var dispose = Render.render(Fixture.trapped(minHeight), ui.root);
+				ui.update();
+				ui.root.find("list").markDirty();
+				ui.update();
+				var list = ui.root.find("list");
+				dispose();
+				return list;
+			}
+			try {
+				equals(lay(null).height, 1000.0);
+				equals(told.length, 1);
+				equals(told[0].indexOf("<view>") > 0 && told[0].indexOf("minHeight 0") > 0, true);
+				told = [];
+				equals(lay(0).height, 160.0);
+				equals(told, []);
+			} catch (e:Dynamic) {
+				Layout.warnings = before;
+				throw e;
+			}
+			Layout.warnings = before;
+		});
 	});
 }
 
 private class Fixture implements helder.view.Markup {
+	public static function trapped(minHeight:Null<Float>)
+		return <view height={200}>
+			<view height={40} flexShrink={0}/>
+			<view flexGrow={1} minHeight={minHeight}>
+				<view tag="list" flexGrow={1} overflowY="scroll">
+					<view height={1000}/>
+				</view>
+			</view>
+		</view>;
+
 	public static function bubble(align:String)
 		return <view width={300}>
 			<view tag="box" alignSelf={align} maxWidth={100} padding="8 10">
