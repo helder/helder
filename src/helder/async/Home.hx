@@ -12,8 +12,17 @@ import helder.view.graph.Atoms;
 // context, as TypeScript's timers and promises do. Once the store is
 // cleared or let go, what is still pending there is dropped.
 class Home extends Dispatcher {
-	// the screen running now (ScreenContext sets it while one with a store is current)
-	@:noCompletion public static var current:Null<Home> = null;
+	// the screen running now: its store's (helder.ui's ScreenContext makes
+	// its store current and Atoms.within its runner), null outside one
+	@:noCompletion public static var current(get, never):Null<Home>;
+
+	static function get_current():Null<Home> {
+		var a = Atoms.current, enter = Atoms.within;
+		if (a == null || enter == null) return null;
+		var h:Null<Home> = a.tasks;
+		if (h == null || !h.live()) a.tasks = h = new Home(a, enter);
+		return h;
+	}
 
 	final loop:Loop;
 	final store:Atoms;

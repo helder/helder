@@ -32,6 +32,12 @@ class Atoms {
 	public static var current:Null<Atoms> = null;
 	// (a screen's context current: what it makes is not a top level's)
 	@:noCompletion public static var screen = false;
+	// (the screen whose store is current: f run in it, its context current;
+	// helder.async.Home's, which helder.ui's ScreenContext sets without
+	// naming helder.async: a program without tasks links none)
+	@:noCompletion public static var within:Null<(Void->Void)->Void> = null;
+	// (helder.async.Home's dispatcher of its tasks, made again once it is cleared)
+	@:noCompletion public var tasks:Dynamic = null;
 	// (tests only, tests/view/graph's foreign mode: signals and unowned memos
 	// made at home in the default store whatever store is current, as a top
 	// level's are, so that every read in a store goes through its node of them)
