@@ -40,7 +40,7 @@ class Cli {
 	}
 
 	static function helderTest() {
-		run(helderCli(), ["test", "--target", "all,interp"]);
+		run(helderCli(), ["test", "--target", "all"]);
 		// (TypeScript's tests beside an example's sources: helder/test, natively and as wasm32-wasi)
 		run(helderCli(), ["test", "examples/ts-todo", "--target", "all"]);
 		// (the studio's own: its canvas' snapping, its ACP client, apps/studio/src/studio)

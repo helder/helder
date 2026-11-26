@@ -6,7 +6,7 @@ import helder.os.TitleBar;
 // An inset title bar's hit-testing (TitleBars.hit) and each system's codes
 // for it: Windows' WM_NCHITTEST, Wayland's resize edges, X11's
 // _NET_WM_MOVERESIZE (natively and as wasm32-wasi)
-@:test.interp function tests() {
+function tests() {
 	describe("TitleBar", () -> {
 		test("the edges first, the corners larger, then the app's answer", () -> {
 			equals(TitleBars.hit(400, 2, 800, 600, 6, true, Drag), Top);

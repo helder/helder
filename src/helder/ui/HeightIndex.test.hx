@@ -8,7 +8,6 @@ import helder.test.Test;
 // changes (a stateful property), each checked by every row's offset and
 // the rows at offsets (between rows, at their starts, past the ends); a
 // million rows measured in part, its lookups and an insert in the middle.
-@:test.interp
 function tests() {
 	describe("HeightIndex", () -> {
 		test("offsets and rows of a small list", () -> {

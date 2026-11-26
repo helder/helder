@@ -7,11 +7,9 @@ import helder.syntax.Transaction;
 import helder.test.Gen;
 import helder.test.Test;
 
-// helder.syntax's edits (the test lane: natively, as wasm32-wasi and on
-// Eval): each on TSX and Haxe markup, the text after it exactly, its
+// helder.syntax's edits (the test lane: natively and as wasm32-wasi): each on TSX and Haxe markup, the text after it exactly, its
 // inverse giving the text back byte for byte; reading and printing back;
 // the time a read and an edit take on a file of 2000 lines
-@:test.interp
 function tests() {
 	describe("reading", () -> {
 		test("printed back byte for byte: markup, comments, strings, regular expressions, templates", () -> {

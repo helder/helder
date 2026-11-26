@@ -51,8 +51,9 @@ function tests() { ... }
 
 The others are never built for Eval, so they need no `#if` for it (they
 may use hxmc.unsafe, helder.os's windows); `--target interp` with no file
-opting in says so in a line and passes. Opted in: helder.test's own
-Equal.test.hx.
+opting in says so in a line and passes. Opted in: AssetPath.test.hx
+(AssetMacro checks an asset's path with it at compile time). No lane runs
+`interp`: the opt-in is for running such a file by hand.
 
 ## Files
 

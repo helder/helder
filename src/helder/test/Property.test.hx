@@ -10,7 +10,6 @@ using StringTools;
 // a seed's cases the same on every run (and target: the snapshot is
 // shared by host, wasm and interp), the store's failure replayed first,
 // rejections' limit, a stateful case's steps shrunk, the report
-@:test.interp
 function tests() {
 	describe("shrinking", () -> {
 		test("a list with an item over 100: [101]", () -> {

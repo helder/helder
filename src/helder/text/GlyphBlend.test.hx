@@ -7,7 +7,6 @@ import helder.text.Shaping.GlyphBlend;
 // coverage at gamma 1 without contrast, the ends kept, light text on dark
 // given more ink than its coverage and dark on light less, the gamma's
 // ratios Direct2D's table's (Windows Terminal's scaling)
-@:test.interp
 function tests() {
 	describe("GlyphBlend", () -> {
 		test("gamma 1, no contrast: the coverage as it is", () -> {

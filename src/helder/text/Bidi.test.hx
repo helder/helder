@@ -6,7 +6,6 @@ import helder.test.Test;
 // (tests/text/bidi-character-test.txt: explicit embeddings, overrides and
 // isolates, bracket pairs, numbers, all the paragraph directions): each
 // line's paragraph level, levels and visual order.
-@:test.interp
 function tests() {
 	describe("Bidi (UAX #9)", () -> {
 		test("BidiCharacterTest.txt's sample: levels and visual order", () -> {

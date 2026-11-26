@@ -1142,7 +1142,7 @@ own left alone.
   While it lives, on Windows, the compiler's executable is in use (an npm
   install that replaces it waits for the server to end, or
   `HELDER_BUILD_SERVER=0`).
-- **`helder test` with several targets** (`--target all`, `host,wasm,interp`)
+- **`helder test` with several targets** (`--target all`, `host,wasm`)
   builds them at once, each by a compiler of its own (at most
   `HELDER_TEST_JOBS`, 4; `1`: one after the other), each one's output kept
   and shown in its turn, then runs them one after the other in order: the
