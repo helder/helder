@@ -49,8 +49,7 @@ const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'I
 }
 const tsc=['node_modules/typescript/bin/tsc','--target','esnext','--strict','--skipLibCheck'];
 // (maxBuffer: definitions/pbr.ts prints every variant's shader text in four languages, past spawnSync's 1 MB)
-// (in UTC, node and helder alike: a program's local times are CI's on a Mac too)
-function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024,env:{...process.env,TZ:'UTC'}});if(r.error)throw r.error;return r;}
+function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024});if(r.error)throw r.error;return r;}
 // (util.inspect's symbol keys: Node 24 writes Symbol(k): v, earlier ones
 // [Symbol(k)]: v; helder's one way: both outputs written one way, so the
 // oracle's version does not matter)
