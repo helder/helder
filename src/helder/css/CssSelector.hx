@@ -24,28 +24,40 @@ class CssSelector {
 	// cache's test
 	public final local:Bool;
 
+	// where a CssRuleIndex files it (by its rightmost compound)
+	public final bucket:CssBucket;
+
 	public static inline var MAX_HASHES = 4;
 
-	public function new(compounds:Array<CssCompound>, combinators:Array<CssCombinator>, relative:Null<CssCombinator>, pseudo:Null<CssPseudoElement>) {
+	// (what a sheet compiled at build time makes, its parts worked out then: CssTheme)
+	function new(compounds:Array<CssCompound>, combinators:Array<CssCombinator>, relative:Null<CssCombinator>, pseudo:Null<CssPseudoElement>,
+			specificity:CssSpecificity, hashes:Array<Int>, local:Bool, bucket:CssBucket) {
 		this.compounds = compounds;
 		this.combinators = combinators;
 		this.relative = relative;
 		this.pseudo = pseudo;
+		this.specificity = specificity;
+		this.hashes = hashes;
+		this.local = local;
+		this.bucket = bucket;
+	}
+
+	public static function of(compounds:Array<CssCompound>, combinators:Array<CssCombinator>, relative:Null<CssCombinator>,
+			pseudo:Null<CssPseudoElement>):CssSelector {
 		var s = CssSpecificity.ZERO;
 		for (c in compounds)
 			for (p in c)
 				s = s.add(CssSpecificity.of(p));
 		if (pseudo != null) s = s.add(CssSpecificity.make(0, 0, 1));
-		specificity = s;
-		hashes = ancestorHashes(compounds, combinators);
-		local = isLocal(this);
+		return new CssSelector(compounds, combinators, relative, pseudo, s, ancestorHashes(compounds, combinators), isLocal(compounds, combinators, relative),
+			bucketOf(compounds[compounds.length - 1]));
 	}
 
-	static function isLocal(s:CssSelector):Bool {
-		for (c in s.combinators)
+	static function isLocal(compounds:Array<CssCompound>, combinators:Array<CssCombinator>, relative:Null<CssCombinator>):Bool {
+		for (c in combinators)
 			if (c == NextSibling || c == SubsequentSibling) return false;
-		if (s.relative != null) return false;
-		for (c in s.compounds)
+		if (relative != null) return false;
+		for (c in compounds)
 			for (x in c)
 				switch x {
 					case Attribute(_, ns, _, _, _) if (ns != NoNamespace): return false;
@@ -58,6 +70,39 @@ class CssSelector {
 					default:
 				}
 		return true;
+	}
+
+	// (its id, else a class, else its type, else :is()'s types or a link's,
+	// else :root, else an attribute's name, else none)
+	static function bucketOf(last:CssCompound):CssBucket {
+		var id = null, cls = null, tag = null, attr = null, kinds:Null<Array<String>> = null, isRoot = false;
+		for (s in last)
+			switch s {
+				case Id(n) if (id == null): id = n;
+				case Class(n) if (cls == null): cls = n;
+				case Type(n, _) if (tag == null): tag = n;
+				case Attribute(n, NoNamespace, _, _, _) if (attr == null): attr = n;
+				case Pseudo(Link | AnyLink) if (kinds == null): kinds = ["a", "area"];
+				case Pseudo(Root): isRoot = true;
+				case Pseudo(Is(list)) if (kinds == null): kinds = types(list);
+				default:
+			}
+		return if (id != null) ById(Css.lower(id)) else if (cls != null) ByClass(Css.lower(cls)) else if (tag != null) ByTag([Css.lower(tag)]) else
+			if (kinds != null) ByTag(kinds) else if (isRoot) ByRoot else if (attr != null) ByAttribute(attr) else Anywhere;
+	}
+
+	// (:is()'s arguments' types when each is a type alone, lowercased, each once; else null)
+	static function types(list:Array<CssSelector>):Null<Array<String>> {
+		var out = [];
+		for (x in list)
+			switch x.compounds {
+				case [[Type(n, _)]] if (x.pseudo == null):
+					var k = Css.lower(n);
+					if (!out.contains(k)) out.push(k);
+				default:
+					return null;
+			}
+		return out.length == 0 ? null : out;
 	}
 
 	// (a compound is an ancestor of the subject when the combinator right
@@ -93,6 +138,20 @@ class CssSelector {
 
 	public function toString():String
 		return SelectorPrinter.selector(this);
+}
+
+// Where CssRuleIndex files a selector, by its rightmost compound: its id's
+// bucket, else a class's, else its type's (or the tag buckets of :is()'s
+// types, a link's: an element has one tag, so it finds the entry once),
+// else :root's, else an attribute's (its name as written; one with a
+// namespace goes nowhere else), else the universal one. Keys ASCII lowercase.
+enum CssBucket {
+	ById(key:String);
+	ByClass(key:String);
+	ByTag(keys:Array<String>);
+	ByRoot;
+	ByAttribute(name:String);
+	Anywhere;
 }
 
 // a compound selector's simple selectors, in order (a type or universal one first if any)

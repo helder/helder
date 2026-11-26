@@ -1,6 +1,8 @@
 package helder.css;
 
+import helder.css.CssProperty;
 import helder.css.CssSheet;
+import helder.css.CssTerm;
 import helder.dom.Element;
 import helder.dom.Node;
 
@@ -22,13 +24,22 @@ class CssHints {
 		switch el.localName {
 			case "li":
 				var v = integer(el.getAttribute("value"));
-				return v == null ? null : CssSheet.attribute('counter-set: list-item $v');
+				return v == null ? null : counter(CounterSet, false, v);
 			case "ol":
 				var start = integer(el.getAttribute("start"));
-				if (el.hasAttribute("reversed")) return CssSheet.attribute(start == null ? "counter-reset: reversed(list-item)" : 'counter-reset: reversed(list-item) ${start + 1}');
-				return start == null ? null : CssSheet.attribute('counter-reset: list-item ${start - 1}');
+				if (el.hasAttribute("reversed")) return counter(CounterReset, true, start == null ? null : start + 1);
+				return start == null ? null : counter(CounterReset, false, start - 1);
 			case _: return null;
 		}
+	}
+
+	// (`counter-set: list-item 3`, `counter-reset: reversed(list-item) 4`, as
+	// a sheet compiles them: no parser for every cascade)
+	static function counter(p:CssProperty, reversed:Bool, value:Null<Int>):Array<CssDeclared> {
+		var name = CssTerm.Ident("list-item");
+		var terms = [reversed ? CssTerm.Func("reversed", [name]) : name];
+		if (value != null) terms.push(CssTerm.Number(value, true));
+		return [{property: CssProperties.name(p), id: p, value: Terms(terms), important: false}];
 	}
 
 	// (HTML's rules for parsing integers: spaces, a sign, digits, the rest ignored)

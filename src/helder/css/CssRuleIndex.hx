@@ -49,41 +49,17 @@ class CssRuleIndex<T> {
 	// order: the cascade's order of appearance (the order added)
 	public function add(selector:CssSelector, value:T) {
 		var e = new CssIndexed(selector, value, count++);
-		var last = selector.compounds[selector.compounds.length - 1];
-		var id = null, cls = null, tag = null, attr = null, kinds:Null<Array<String>> = null, isRoot = false;
-		for (s in last)
-			switch s {
-				case Id(n) if (id == null): id = n;
-				case Class(n) if (cls == null): cls = n;
-				case Type(n, _) if (tag == null): tag = n;
-				case Attribute(n, NoNamespace, _, _, _) if (attr == null): attr = n;
-				case Pseudo(Link | AnyLink) if (kinds == null): kinds = ["a", "area"];
-				case Pseudo(Root): isRoot = true;
-				case Pseudo(Is(list)) if (kinds == null): kinds = types(list);
-				default:
-			}
-		// (in one bucket, or in the tag buckets of :is()'s types or a link's:
-		// an element has one tag, so it finds the entry once)
-		if (id != null) push(ids, Css.lower(id), e) else if (cls != null) push(classes, Css.lower(cls), e) else if (tag != null) push(tags,
-			Css.lower(tag), e) else if (kinds != null) for (k in kinds) push(tags, k, e) else if (isRoot) roots.push(e) else if (attr != null) {
-			var k = Css.lower(attr);
-			if (!attributes.exists(k)) attributeNames.push({written: attr, lower: k});
-			push(attributes, k, e);
-		} else universal.push(e);
-	}
-
-	// (:is()'s arguments' types when each is a type alone, lowercased, each once; else null)
-	static function types(list:Array<CssSelector>):Null<Array<String>> {
-		var out = [];
-		for (x in list)
-			switch x.compounds {
-				case [[Type(n, _)]] if (x.pseudo == null):
-					var k = Css.lower(n);
-					if (!out.contains(k)) out.push(k);
-				default:
-					return null;
-			}
-		return out.length == 0 ? null : out;
+		switch selector.bucket {
+			case ById(k): push(ids, k, e);
+			case ByClass(k): push(classes, k, e);
+			case ByTag(keys): for (k in keys) push(tags, k, e);
+			case ByRoot: roots.push(e);
+			case ByAttribute(name):
+				var k = Css.lower(name);
+				if (!attributes.exists(k)) attributeNames.push({written: name, lower: k});
+				push(attributes, k, e);
+			case Anywhere: universal.push(e);
+		}
 	}
 
 	static function push<T>(m:Map<String, Array<CssIndexed<T>>>, k:String, e:CssIndexed<T>) {

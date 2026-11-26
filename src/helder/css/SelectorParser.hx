@@ -64,7 +64,7 @@ class SelectorParser {
 			if (c.end()) return null;
 			combinators.push(k);
 		}
-		return new CssSelector(compounds, combinators, lead, pseudo);
+		return CssSelector.of(compounds, combinators, lead, pseudo);
 	}
 
 	function compound(c:Cursor):Null<{simple:CssCompound, pseudo:Null<CssPseudoElement>}> {

@@ -674,6 +674,44 @@ styles.pages;                              // @page rules: selectors, declaratio
   metrics, so they stay as written until fonts give them. rem and rlh on
   the root are its own.
 
+### Themes compiled at build time
+
+`CssTheme.sheet(text)` and `CssTheme.file(path)` are macros: the CSS (a
+string constant, or a file beside the calling module or under a class
+path, its `@import`s read beside it) is parsed when the program is
+compiled, and the sheet becomes the expressions that make it again, one
+static per sheet: selectors with their specificity, Bloom hashes and
+bucket (`CssSelector.bucket`, `CssBucket`: where `CssRuleIndex` files
+it), declarations as `CssProperty` ids with typed values, @media's
+parsed queries, the at-rules' data. `CssCascade.themed(doc, sheets)`
+cascades with those sheets alone: no user agent's sheet but one passed,
+no `<style>` or `<link>`, no style attribute. A program styled so links
+no CSS tokenizer or parser: the initial values are compiled too
+(`CssInitial`), the shorthands' serialization reads longhands' texts
+without one, and the serializer's code point classes are `CssChars`.
+`var()` stays dynamic: custom properties are substituted when styles
+are computed, on the component values the sheet kept. The sheets have
+no URL (url()s stay as written); a string not constant is an error (use
+`CssSheet.parse` for CSS known only when the program runs). The macro
+parses on Eval, the compiler's interpreter, so the parsing half of
+helder.css stays runnable there.
+
+```haxe
+var styles = CssCascade.themed(doc, [
+	CssTheme.sheet("button { padding: 4px 8px; color: var(--accent) }"),
+	CssTheme.file("theme.css")               // UserAgent, User or Author (the default) as a second argument
+], {media: {type: "screen", width: 800, height: 600}});
+```
+
+`CssTheme.test.hx` compares a compiled sheet with the same text parsed
+(every rule, selector with its specificity, hashes, locality and
+bucket, declaration) and their styles, every longhand of every element
+and its ::before; the css lane builds a probe styled by compiled sheets
+alone (tests/css/ThemeProbe.hx, `-dce full` with symbols) and checks its
+values and that its symbols hold no Tokenizer, Parser, SelectorParser or
+sheet builder, and the same probe parsing one sheet when it runs, which
+holds them all (2505 and 2695 KB with symbols, on macOS).
+
 ## Style storage
 
 A computed style (`CssStyle`) is a pointer per group of properties,

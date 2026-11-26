@@ -88,6 +88,16 @@ function tests() {
 			equals(text("symbols", "initial \"X\""), null);
 			equals(text("fallback", "none"), null);
 		});
+		test("lists' hints as their CSS compiles", () -> {
+			var doc = Dom.parse('<ol start=3 reversed><li value=-2></ol><ol start=5></ol><ol reversed></ol>');
+			inline function of(ds:Null<Array<CssSheet.CssDeclared>>)
+				return [for (d in ds ?? []) '${d.property} ${d.id} ${CssValues.serialize(d.property, d.value)} ${d.important}'];
+			var ols = doc.getElementsByTagName("ol");
+			equals(of(CssHints.lists(cast ols.item(0))), of(CssSheet.attribute("counter-reset: reversed(list-item) 4")));
+			equals(of(CssHints.lists(cast ols.item(1))), of(CssSheet.attribute("counter-reset: list-item 4")));
+			equals(of(CssHints.lists(cast ols.item(2))), of(CssSheet.attribute("counter-reset: reversed(list-item)")));
+			equals(of(CssHints.lists(cast doc.getElementsByTagName("li").item(0))), of(CssSheet.attribute("counter-set: list-item -2")));
+		});
 		test("lists", () -> {
 			var lines = markers('<ol><li>a<li>b<ol><li>c<li>d</ol><li value=7>e<li>f</ol>'
 				+ '<ol start=3><li>g<li>h</ol><ol reversed><li>i<li>j<li>k</ol><ol reversed start=10><li>l<li>m</ol>'

@@ -42,8 +42,19 @@ class CssCascade {
 		for (s in documentSheets(doc, o)) sheets.push(s);
 		for (s in o.author ?? []) sheets.push({sheet: s, media: null});
 		var hints = o.hints == true;
-		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, hints ? CssHints.declarations : null, hints ? CssUserAgent.hints() : null);
+		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, hints ? CssHints.declarations : null,
+			hints ? CssUserAgent.hints() : null);
 		@:privateAccess styles.sharing = o.share != false;
+		return styles;
+	}
+
+	// A document's styles from these sheets alone (CssTheme's, compiled at
+	// build time): no user agent's sheet but one passed, no <style> or
+	// <link>, no style attribute, nothing parsed, so a program styled only
+	// so links no CSS tokenizer or parser. var() is substituted as ever.
+	public static function themed(doc:Document, sheets:Array<CssSheet>, ?options:{?media:CssMediaContext, ?share:Bool}):CssStyles {
+		var styles = @:privateAccess new CssStyles(doc, [for (s in sheets) {sheet: s, media: null}], options?.media ?? CssMedia.PRINT, null, null);
+		@:privateAccess styles.sharing = options?.share != false;
 		return styles;
 	}
 

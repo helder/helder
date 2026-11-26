@@ -27,6 +27,27 @@ class Css {
 		// (BLESS=1: counters-manifest.json's pending cases)
 		exe("bin/css/CssCountersCheck", cps(["src", "tests/css"]).concat(["-main", "CssCountersCheck"]));
 		run(exePath("bin/css/CssCountersCheck", HOST), []);
+		themes();
+	}
+
+	// (a program styled by sheets compiled at build time alone, CssTheme:
+	// its values, and its symbols without a CSS tokenizer or parser; the
+	// same parsing a sheet when it runs has them, so the check checks)
+	static function themes() {
+		if (Sys.systemName() == "Windows") return;
+		var parser = ["helder_css_Tokenizer", "helder_css_Parser", "helder_css__Parser_", "helder_css_SelectorParser", "helder_css__CssSheet_Builder"];
+		var expected = "block 14px 28px 0px 1px rgb(0, 128, 0) rgb(0, 0, 200) 12px 6px";
+		for (mode in ["theme", "parse"]) {
+			var out = 'bin/css/ThemeProbe-$mode';
+			exe(out, cps(["src", "tests/css"]).concat(["-main", "ThemeProbe", "-dce", "full", "-D", "hxmc.symbols"]).concat(mode == "parse" ? ["-D", "css.parse"] : []));
+			var got = StringTools.trim(output(exePath(out, HOST), [])).split("\n").join(" ");
+			if (got != expected) throw new Failed('$out: "$got", expected "$expected"');
+			var symbols = output("nm", [exePath(out, HOST)]).split("\n");
+			var linked = [for (p in parser) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
+			if (mode == "theme" && linked.length > 0) throw new Failed('$out links a CSS parser: ${linked.join(", ")}');
+			if (mode == "parse" && linked.length < 3) throw new Failed('$out: no parser in its symbols (${linked.join(", ")}): the check checks nothing');
+			Sys.println('$out: ${Math.round(sys.FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols, ${linked.length == 0 ? "no CSS parser" : "parser: " + linked.join(", ")}');
+		}
 	}
 
 	// (what follows css-reftests or css-render on the command line: theirs, Run.hx)

@@ -23,9 +23,9 @@ typedef CssMediaContext = {
 class CssMedia {
 	public static final PRINT:CssMediaContext = {type: "print", width: 793.7, height: 1122.5, resolution: 1, color: 8};
 
-	final queries:Array<Query>;
+	final queries:Array<CssMediaQuery>;
 
-	function new(queries:Array<Query>)
+	function new(queries:Array<CssMediaQuery>)
 		this.queries = queries;
 
 	// An empty list matches everything.
@@ -57,7 +57,7 @@ class CssMedia {
 		return out;
 	}
 
-	static function query(r:Reader):Query {
+	static function query(r:Reader):CssMediaQuery {
 		r.space();
 		var w = r.ident();
 		if (w != null) {
@@ -87,7 +87,7 @@ class CssMedia {
 	}
 
 	// (`and <condition-without-or>` after a type)
-	static function rest(r:Reader):Null<Cond> {
+	static function rest(r:Reader):Null<CssMediaCondition> {
 		r.space();
 		if (r.done()) return null;
 		var w = r.ident();
@@ -98,7 +98,7 @@ class CssMedia {
 		return c;
 	}
 
-	static function condition(r:Reader, ors = true):Cond {
+	static function condition(r:Reader, ors = true):CssMediaCondition {
 		r.space();
 		var w = r.ident();
 		if (w != null && Css.lower(w) == "not") {
@@ -122,7 +122,7 @@ class CssMedia {
 		return l == "and" ? And(items) : Or(items);
 	}
 
-	static function inParens(r:Reader):Cond {
+	static function inParens(r:Reader):CssMediaCondition {
 		r.space();
 		return switch r.peek() {
 			case Block(open, values, _) if (open.kind.match(OpenParen)):
@@ -145,7 +145,7 @@ class CssMedia {
 	}
 
 	// (name), (name: value), (name op value), (value op name), (value op name op value)
-	static function feature(values:Array<CssValue>):Cond {
+	static function feature(values:Array<CssValue>):CssMediaCondition {
 		var items = [for (v in values) if (!isSpace(v)) v];
 		if (items.length == 1) return switch items[0] {
 			case Token(_.kind => Ident(n)): Feature(Css.lower(n), null, null);
@@ -213,7 +213,7 @@ class CssMedia {
 
 	// ---- evaluation
 
-	static function eval(q:Query, ctx:CssMediaContext):Bool
+	static function eval(q:CssMediaQuery, ctx:CssMediaContext):Bool
 		return switch q {
 			case Never: false;
 			case Typed(type, not, c):
@@ -223,7 +223,7 @@ class CssMedia {
 		}
 
 	// (three values: 1 true, 0 false, -1 unknown)
-	static function cond(c:Cond, ctx:CssMediaContext):Int
+	static function cond(c:CssMediaCondition, ctx:CssMediaContext):Int
 		return switch c {
 			case Unknown: -1;
 			case Negate(x):
@@ -349,18 +349,19 @@ class CssMedia {
 		}
 }
 
-private enum Query {
+// A media query, parsed (public for CssTheme's compiled sheets)
+enum CssMediaQuery {
 	Never;
 	// type, `not`, the condition after `and`
-	Typed(type:String, not:Bool, condition:Null<Cond>);
-	Condition(c:Cond);
+	Typed(type:String, not:Bool, condition:Null<CssMediaCondition>);
+	Condition(c:CssMediaCondition);
 }
 
-private enum Cond {
+enum CssMediaCondition {
 	Feature(name:String, op:Null<String>, value:Null<Array<CssValue>>);
-	Negate(c:Cond);
-	And(items:Array<Cond>);
-	Or(items:Array<Cond>);
+	Negate(c:CssMediaCondition);
+	And(items:Array<CssMediaCondition>);
+	Or(items:Array<CssMediaCondition>);
 	// general-enclosed and unknown features
 	Unknown;
 }
