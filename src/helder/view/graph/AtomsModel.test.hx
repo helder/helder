@@ -24,14 +24,17 @@ import helder.view.graph.Graph.*;
 //   copy's.
 //
 // A case's limit and memory make a hang or a leak a failure; the fuzz lane
-// soaks both (HELDER_PROPERTY_SOAK, random seeds).
+// soaks both (HELDER_PROPERTY_SOAK, random seeds). (memory 512: the
+// footprint is read without a collection, from the property's start; a
+// million cases leave 40 KB live, the garbage between collections swings
+// it by tens of MB)
 function tests() {
-	test("the graph against plain evaluation", () -> property(plainGen(), plain, {cases: 200, limit: 20, memory: 64}));
+	test("the graph against plain evaluation", () -> property(plainGen(), plain, {cases: 200, limit: 20, memory: 512}));
 	// (cases the fuzzer found, shrunk: a store's node ran in another store's
 	// transaction, a commit's stale frame readers in the next store's drain)
 	test("stores: found by the fuzzer", () -> for (r in FOUND)
 		property(modelGen(), model, {replay: r}));
-	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120, limit: 20, memory: 64}));
+	test("stores against fresh copies of the graph", () -> property(modelGen(), model, {cases: 120, limit: 20, memory: 512}));
 }
 
 final FOUND = [
