@@ -15,6 +15,7 @@ class Studio {
 		{name: "demos", about: "the showcase demos' stills against goldens", run: demosLane},
 		{name: "studio-web", about: "helder studio in headless Chromium", run: studioWeb},
 		{name: "story-host", about: "helder.story.Host's 50 stories, timed", run: storyHost},
+		{name: "scenarios", about: "pong's scenarios against its stories in the studio, timed", run: scenarios},
 		{name: "headless-run", about: "helder run --headless on scripted examples", run: headlessRun}
 	];
 
@@ -309,6 +310,10 @@ class Studio {
 		run(NODE, ["apps/studio/web/build.mjs", '$b/site', "--compiler", "bin/compiler-web", "examples/todo=Todo", '$b/screens50=50 screens']);
 		run(NODE, ["tests/studio-web/check.mjs", '$b/site', b].concat(BLESS ? ["--bless"] : []));
 	}
+
+	// (the studio headless on copies of tests/scenario/fixtures/pong: stills over MCP, bin/scenario/results.md)
+	static function scenarios()
+		run(NODE, ["tests/scenario/check.mjs", helderCli(), "bin/scenario"]);
 
 	static function storyHost() {
 		var b = "bin/story-host";
