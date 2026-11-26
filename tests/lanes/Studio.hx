@@ -16,6 +16,7 @@ class Studio {
 		{name: "studio-web", about: "helder studio in headless Chromium", run: studioWeb},
 		{name: "story-host", about: "helder.story.Host's 50 stories, timed", run: storyHost},
 		{name: "scenarios", about: "pong's scenarios against its stories in the studio, timed", run: scenarios},
+		{name: "viewer-scenarios", about: "the viewer's scenarios in the studio: each still drawn, beside its story's, timed", run: viewerScenarios},
 		{name: "headless-run", about: "helder run --headless on scripted examples", run: headlessRun}
 	];
 
@@ -314,6 +315,10 @@ class Studio {
 	// (the studio headless on copies of tests/scenario/fixtures/pong: stills over MCP, bin/scenario/results.md)
 	static function scenarios()
 		run(NODE, ["tests/scenario/check.mjs", helderCli(), "bin/scenario"]);
+
+	// (the studio headless on copies of apps/viewer: bin/scenario-viewer/results.md)
+	static function viewerScenarios()
+		run(NODE, ["tests/scenario/viewer.mjs", helderCli(), "bin/scenario-viewer"]);
 
 	static function storyHost() {
 		var b = "bin/story-host";

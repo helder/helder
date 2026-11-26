@@ -67,6 +67,12 @@ class Preview {
 	}
 	#end
 
+	// from bytes read already, at once on this thread (a preview host's screens: Sandbox)
+	public static function from(path:String, bytes:Null<Bytes>, done:Shown->Void):Void->Void {
+		done(shown(bytes == null ? failed("no such file") : decodeBytes({path: path, bytes: bytes})));
+		return () -> {};
+	}
+
 	// (the web's: the bytes read already)
 	static function decodeBytes(req:{path:String, bytes:Bytes}):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
 		return try fitted(Decode.of({path: req.path, bytes: req.bytes, side: SIDE})) catch (e:Dynamic) failed(e);

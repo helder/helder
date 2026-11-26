@@ -75,18 +75,21 @@ enum ViewerAction {
 }
 
 class ViewerActions {
+	// (the actions' names declared once a process: a type's, every screen's)
 	static var declared = false;
 
-	// the viewer's default bindings, in keymap (once): the root's context is
+	// the viewer's default bindings, in keymap (once a keymap: each screen of a preview host has its own): the root's context is
 	// "Viewer", with browser while the browser shows and full while a file
 	// is open full size; fullscreen while it is, pdf while a document of
 	// several pages is shown, markdown while a Markdown document is, media
 	// while a video or an audio file is, goto
 	// while its go to page card is open, search in the search field
 	public static function defaults(keymap:Keymap) {
-		if (declared) return;
-		declared = true;
-		actions("viewer", ViewerAction);
+		if (!declared) {
+			declared = true;
+			actions("viewer", ViewerAction);
+		}
+		if (Lambda.exists(keymap.bindings(), b -> b.context == "Viewer" && b.action != null && Actions.equals(b.action, ViewerAction.Open))) return;
 		keymap.bind("secondary-o", Open, "Viewer");
 		// (the browser: its list's arrows, Home, End, Page Up and Down, Enter and type-ahead are the list's own)
 		var browser = "Viewer && browser && !about", typing = "Viewer && browser && !search && !about";

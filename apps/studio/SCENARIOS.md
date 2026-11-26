@@ -242,6 +242,55 @@ stores'.
   [e0: 2] · s1 = 0 [e0: 1]`), the skipped test in `Holds.test.hx` ("latest
   looks ahead to a held value through a memo..."). The stores fuzzer leaves
   `latest` over memos out until it is fixed (`latest` over signals stays).
+## The viewer (apps/viewer, stacked on #278)
+
+The first Haxe app on scenarios: `src/viewer/Viewer.scenario.hx`, 16 moments.
+
+- **Model per screen.** `Shell.main` keeps what is the process's (the command line, `--store`,
+  `--register`, `--version`, the error log, the single instance, the keymap's user file); the
+  explorer is made in `Window`, the root main gives `UiWindow.run`, once a screen and owned by it.
+  `Cell`'s plain `value` stays: each screen's explorer has its own cells. `Shell.explorer` (a
+  top-level signal) is the current screen's.
+- **Effects from the environment.** In a preview host (`Hosting.on`) a screen's files are the
+  `Sandbox`'s: the tests' folders and the samples in memory (read once a process, at their paths
+  under the project, where the host runs), an empty folder and one whose listing is refused
+  (`MemoryFiles.denied`); decodes, previews, PDF sizes and thumbnails made at once from those
+  bytes, so a still is whole when it is drawn; no store, log, instance, menu bar or thumbnails'
+  cache of the user's. The phone and tablet shells follow from `size` (the size class).
+- **Per-window statics** into the screen's: the video playing (`Viewer.video`, was
+  `MediaView.current`), the window's geometry (`Geometry`, was `Shell.asked`/`offset`),
+  `Kinds.utc` a signal; the keymap's defaults bound once a keymap (each screen has its own), the
+  actions' names declared once a process. Kept by content, every screen's: Tiles, Thumbnails,
+  PdfPages, Glyphs; a viewer's DecodeCache is its own.
+- **Async in its store (helder).** `helder.async.Home`: a task started in a screen with a store
+  (ScreenContext sets `Home.current`) takes the screen's dispatcher: its body, children,
+  continuations, timers and jobs' results run in that store and context; a store cleared or let go
+  drops what is pending (`src/helder/view/graph/AtomsAsync.test.hx`).
+- **boot through the actions.** `act(Go(...))`, `act(OpenRecent(...))`, `with(x -> ...)` (the
+  explorer's own functions: a selection, a search's text). Boot runs before the root renders, so
+  they wait for the screen's explorer and run as it is made; a folder boot goes to stands in for
+  the command line's path (no history to go back to).
+
+Numbers (`bun run test viewer-scenarios`, this Mac, bin/scenario-viewer/results.md): every still
+drawn; App/Photo full size, App/Markdown (dark, light) and App/Phone, photo the same pixels as
+Viewer/fit, Viewer/Markdown and Phone/Full size (the first three stories went); the others differ
+where the Sandbox is richer (thumbnails, the sidebar's places, no video or audio). Stills 702-739 ms
+after the screens' program started (16 scenarios, cold), 56-58 ms reopened from frames.hframes.
+Memory a scenario screen about 36.5 MB, a story screen about 25 MB in the same runs: mostly the
+screen's frame (1100x700 at 2x is 12 MB) and its decodes; RSS is noisy here (stories and
+scenarios together came in under stories alone).
+
+Moments that wait for phase 2's steps (their stories stay): the PDF between two pages (a scroll),
+the marquee (a drag), the search field focused (focus), the phone's long press, select mode and
+info sheet (PhoneState is the phone shell's own, not bootable), the sidebar's volume card (the
+volumes are the machine's: a Sandbox of volumes, or `settings`).
+
+Found while porting: the studio could not build the viewer's screens at all (its stories under
+tests/, no class path of the project's: now each story file's root by its package; a main that is
+private: `@:privateAccess`); dev builds' live literals broke two markup patterns the viewer uses (a
+variant, `size="sm"`, checked as a literal; a ternary's string beside a number, `"auto"`): both
+fixed in helder; `helder.test.Guard`'s getpid and `helder.dev.Hosted`'s clashed in a test build
+that opens a window on macOS (the viewer's own tests).
 
 - **Held transactions depend on the order nodes were made.** With async
   answers in flight (several asks, holds, an answer failing), helder's
@@ -262,7 +311,7 @@ stores'.
 - Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
   screen's context and store; a step's write is a store write like boot's.
 - Per-context: Haxe's `Date.now`, zone, locale, settings, TS timers' clock (they run in their
-  store now, but on the real clock).
+  store now, but on the real clock; Haxe's tasks too: helder.async.Home).
 - Strict `http` fixtures (`async/http/Client.hx` has no hook yet); an async memo's request is
   each store's already (no node shared), so fixtures can differ per scenario.
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.
