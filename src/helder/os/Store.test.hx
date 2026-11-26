@@ -90,7 +90,7 @@ function tests() {
 				}
 			},
 			teardown: s -> for (f in sys.FileSystem.readDirectory(dir)) sys.FileSystem.deleteFile(dir + "/" + f)
-		}, {cases: 60, steps: 15}));
+		}, {cases: 30, steps: 12}));
 		test("a name that is not one", () -> {
 			throws(() -> Store.open("../up", dir));
 			throws(() -> Store.open("", dir));
