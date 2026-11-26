@@ -1164,6 +1164,8 @@ export declare class TextArea extends EditableText {
 export declare class TextField extends EditableText {
 	constructor(text?: string);
 	onSubmit: ((arg0: string) => void) | null;
+	// (a value from outside on one line too, as a browser's input's)
+	setText(s: string): void;
 }
 
 // The window's buttons in an inset title bar (helder.os's TitleBar, a
