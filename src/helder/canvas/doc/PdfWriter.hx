@@ -4,6 +4,8 @@ import haxe.io.Bytes;
 import haxe.io.BytesBuffer;
 import helder.canvas.Gradient;
 import helder.canvas.doc.Recorder;
+import helder.canvas.doc.PdfFonts;
+import helder.text.FontFile;
 
 // A Document as a PDF (1.7): a page a recording, its calls as vectors.
 // Paths as PDF's (m, l, c, h; f, f*, S; W n for clips, q and Q for saves),
@@ -14,7 +16,23 @@ import helder.canvas.doc.Recorder;
 // What PDF cannot say (conic gradients, patterns, a gradient's reflect or
 // repeat, erasing) is drawn on the CPU into an image of its own (the page's
 // size, at `fallbackScale`). Streams Flate-compressed (helder.image's
-// zlib); text arrives as the glyphs' outlines.
+// zlib).
+//
+// Text recorded as text (Recorder's Text ops, from GlyphText) is PDF text:
+// each face one embedded subset font for the document (PdfFonts), each
+// glyph placed where the layout put it (Tm, TJ), filled (Tr 0: a colour, or
+// a linear or radial gradient as a pattern) or stroked (Tr 1, the pen in
+// the painter's units, as a path's). What text cannot show as drawn is
+// drawn apart and its text made invisible (Tr 3), so that copy and search
+// still find it: a paint PDF's text cannot have (a pattern, a conic
+// gradient, an unbounded operator: its outlines, then the CPU's), colour
+// glyphs (COLR's layers as fills, CBDT's and sbix's bitmaps as images).
+// Text in a layer with a filter (a shadow's copy) is outlines alone, so each
+// character is found once. Characters ToUnicode cannot say glyph by glyph
+// (a cluster of several glyphs, a glyph shown before for other characters,
+// a right-to-left run in visual order) are an ActualText span of them in
+// their logical order. Links, anchors, bookmarks, page labels and the
+// document's information are Document's.
 class PdfWriter {
 	public var fallbackScale = 2.0;
 
@@ -22,20 +40,26 @@ class PdfWriter {
 	var resources:Resources;
 	// (the page's resources' object: its forms' too)
 	var resourcesId = 0;
+	final fonts:PdfFonts;
 
-	public function new() {}
+	public function new() {
+		fonts = new PdfFonts(this);
+	}
 
 	public static function write(doc:Document):Bytes
 		return new PdfWriter().document(doc);
 
+	@:allow(helder.canvas.doc)
 	function reserve():Int {
 		objects.push(null);
 		return objects.length - 1;
 	}
 
+	@:allow(helder.canvas.doc)
 	function set(id:Int, s:String)
 		objects[id] = Bytes.ofString(s);
 
+	@:allow(helder.canvas.doc)
 	function stream(id:Int, dict:String, data:Bytes, compress = true) {
 		var body = compress ? helder.image.Deflate.zlib(data) : data;
 		var b = new BytesBuffer();
@@ -45,6 +69,7 @@ class PdfWriter {
 		objects[id] = b.getBytes();
 	}
 
+	@:allow(helder.canvas.doc)
 	function add(s:String):Int {
 		var id = reserve();
 		set(id, s);
@@ -53,12 +78,25 @@ class PdfWriter {
 
 	public function document(doc:Document):Bytes {
 		var pagesId = reserve();
-		var kids = [];
-		for (page in doc.pages)
-			kids.push(this.page(page, pagesId));
+		var kids = [for (_ in doc.pages) reserve()];
+		for (i in 0...doc.pages.length)
+			page(doc, i, kids[i], pagesId);
 		set(pagesId, '<< /Type /Pages /Kids [${[for (k in kids) '$k 0 R'].join(" ")}] /Count ${kids.length} >>');
-		var catalog = add('<< /Type /Catalog /Pages $pagesId 0 R >>');
-		var info = add('<< /Producer (helder.canvas) >>');
+		fonts.write();
+		var cat = new StringBuf();
+		cat.add('<< /Type /Catalog /Pages $pagesId 0 R');
+		var outline = outlines(doc, kids);
+		if (outline > 0) cat.add(' /Outlines $outline 0 R /PageMode /UseOutlines');
+		var dests = names(doc, kids);
+		if (dests != "") cat.add(' /Names << /Dests << /Names [$dests] >> >>');
+		var labels = pageLabels(doc);
+		if (labels != "") cat.add(' /PageLabels << /Nums [$labels] >>');
+		if (doc.lang != null) cat.add(' /Lang ${textString(doc.lang)}');
+		var meta = reserve();
+		stream(meta, "/Type /Metadata /Subtype /XML", xmp(doc), false);
+		cat.add(' /Metadata $meta 0 R >>');
+		var catalog = add(cat.toString());
+		var info = add(infoDict(doc));
 		var out = new BytesBuffer();
 		// (the header, then a comment of bytes past ASCII: a binary file)
 		var head = Bytes.ofHex("255044462d312e370a25e2e3cfd30a");
@@ -84,21 +122,215 @@ class PdfWriter {
 		return out.getBytes();
 	}
 
-	function page(r:Recorder, parent:Int):Int {
+	function page(doc:Document, index:Int, id:Int, parent:Int) {
+		var r = doc.pages[index];
 		resources = new Resources();
 		resourcesId = reserve();
 		var content = new StringBuf();
 		// (canvas units: y down from the top left)
 		content.add('1 0 0 -1 0 ${r.height} cm\n');
-		body(r, 0, r.ops.length, content);
+		body(r, 0, r.ops.length, content, true);
 		var cid = reserve();
 		stream(cid, "", Bytes.ofString(content.toString()));
 		set(resourcesId, resources.dict());
-		return add('<< /Type /Page /Parent $parent 0 R /MediaBox [0 0 ${r.width} ${r.height}] /Resources $resourcesId 0 R /Contents $cid 0 R /Group << /S /Transparency /CS /DeviceRGB >> >>');
+		var annots = [];
+		for (l in doc.links)
+			if (l.page == index) {
+				var rect = '[${num(l.x)} ${num(r.height - l.y - l.h)} ${num(l.x + l.w)} ${num(r.height - l.y)}]';
+				var target = l.uri != null ? '/A << /S /URI /URI ${byteString(l.uri)} >>' : '/Dest ${textString(l.name)}';
+				annots.push(add('<< /Type /Annot /Subtype /Link /Rect $rect /Border [0 0 0] /F 4 $target >>'));
+			}
+		var a = annots.length > 0 ? ' /Annots [${[for (x in annots) '$x 0 R'].join(" ")}]' : "";
+		set(id, '<< /Type /Page /Parent $parent 0 R /MediaBox [0 0 ${r.width} ${r.height}] /Resources $resourcesId 0 R /Contents $cid 0 R$a'
+			+ ' /Group << /S /Transparency /CS /DeviceRGB >> >>');
 	}
 
-	// ops from..to into content; a layer's ops into a group of their own
-	function body(r:Recorder, from:Int, to:Int, out:StringBuf) {
+	// a place on a page as a destination (y its top, in the page's units; x null: the reader's)
+	function dest(doc:Document, kids:Array<Int>, page:Int, x:Null<Float>, y:Float):String
+		return '[${kids[page]} 0 R /XYZ ${x == null ? "null" : num(x)} ${num(doc.pages[page].height - y)} null]';
+
+	// the named destinations' tree: one leaf, its names in the order of their strings' bytes
+	function names(doc:Document, kids:Array<Int>):String {
+		var byName = new Map<String, String>();
+		for (a in doc.anchors)
+			if (a.page >= 0 && a.page < kids.length) byName.set(a.name, dest(doc, kids, a.page, a.x, a.y));
+		var list = [for (k in byName.keys()) k];
+		list.sort((a, b) -> {
+			var x = stringBytes(a), y = stringBytes(b);
+			for (i in 0...(x.length < y.length ? x.length : y.length))
+				if (x[i] != y[i]) return x[i] - y[i];
+			return x.length - y.length;
+		});
+		return [for (k in list) '${textString(k)} ${byName.get(k)}'].join(" ");
+	}
+
+	// (a text string's bytes as textString writes it)
+	static function stringBytes(s:String):Array<Int> {
+		var out = [], ascii = true;
+		for (i in 0...s.length) {
+			var c = StringTools.fastCodeAt(s, i);
+			if (c < 32 || c > 126) ascii = false;
+		}
+		if (ascii) return [for (i in 0...s.length) StringTools.fastCodeAt(s, i)];
+		out.push(0xFE);
+		out.push(0xFF);
+		for (i in 0...s.length) {
+			var c = StringTools.fastCodeAt(s, i);
+			out.push(c >> 8);
+			out.push(c & 255);
+		}
+		return out;
+	}
+
+	// the bookmarks as the outline's items, each one's parent the last shallower one before it (0: none)
+	function outlines(doc:Document, kids:Array<Int>):Int {
+		var list = [for (b in doc.bookmarks) if (b.page >= 0 && b.page < kids.length) b];
+		if (list.length == 0) return 0;
+		var root = reserve();
+		var ids = [for (_ in list) reserve()];
+		var children:Array<Array<Int>> = [for (_ in list) []], top = [], stack:Array<Int> = [];
+		for (i in 0...list.length) {
+			while (stack.length > 0 && list[stack[stack.length - 1]].level >= list[i].level)
+				stack.pop();
+			if (stack.length == 0) top.push(i) else children[stack[stack.length - 1]].push(i);
+			stack.push(i);
+		}
+		function count(i:Int):Int {
+			var n = 0;
+			for (c in children[i])
+				n += 1 + count(c);
+			return n;
+		}
+		function items(of:Array<Int>, up:Int) {
+			for (k in 0...of.length) {
+				var i = of[k], b = new StringBuf();
+				b.add('<< /Title ${textString(list[i].title)} /Parent $up 0 R /Dest ${dest(doc, kids, list[i].page, null, list[i].y)}');
+				if (k > 0) b.add(' /Prev ${ids[of[k - 1]]} 0 R');
+				if (k + 1 < of.length) b.add(' /Next ${ids[of[k + 1]]} 0 R');
+				var c = children[i];
+				if (c.length > 0) b.add(' /First ${ids[c[0]]} 0 R /Last ${ids[c[c.length - 1]]} 0 R /Count ${count(i)}');
+				b.add(" >>");
+				set(ids[i], b.toString());
+				items(c, ids[i]);
+			}
+		}
+		items(top, root);
+		set(root, '<< /Type /Outlines /First ${ids[top[0]]} 0 R /Last ${ids[top[top.length - 1]]} 0 R /Count ${list.length} >>');
+		return root;
+	}
+
+	function pageLabels(doc:Document):String {
+		var list = [for (l in doc.labels) if (l.page >= 0 && l.page < doc.pages.length) l];
+		if (list.length == 0) return "";
+		list.sort((a, b) -> a.page - b.page);
+		var b = new StringBuf();
+		// (the first range starts at the first page: numbers as usual before the first label)
+		if (list[0].page != 0) b.add("0 << /S /D >> ");
+		for (l in list) {
+			var s = switch l.style {
+				case "decimal": "D";
+				case "lower-roman": "r";
+				case "upper-roman": "R";
+				case "lower-alpha": "a";
+				case "upper-alpha": "A";
+				case _: null;
+			}
+			b.add('${l.page} <<${s == null ? "" : ' /S /$s'}${l.prefix != "" ? ' /P ${textString(l.prefix)}' : ""}${l.start != 1 ? ' /St ${l.start}' : ""} >> ');
+		}
+		return StringTools.trim(b.toString());
+	}
+
+	function infoDict(doc:Document):String {
+		var b = new StringBuf();
+		b.add("<<");
+		for (e in [
+			["Title", doc.title],
+			["Author", doc.author],
+			["Subject", doc.subject],
+			["Keywords", doc.keywords],
+			["Creator", doc.creator],
+			["Producer", doc.producer]
+		])
+			if (e[1] != null) b.add(' /${e[0]} ${textString(e[1])}');
+		if (doc.created != null) b.add(' /CreationDate (${pdfDate(doc.created)})');
+		if (doc.modified != null) b.add(' /ModDate (${pdfDate(doc.modified)})');
+		b.add(" >>");
+		return b.toString();
+	}
+
+	static function two(v:Int):String
+		return StringTools.lpad(Std.string(v), "0", 2);
+
+	static function pdfDate(d:Date):String
+		return 'D:${d.getUTCFullYear()}${two(d.getUTCMonth() + 1)}${two(d.getUTCDate())}${two(d.getUTCHours())}${two(d.getUTCMinutes())}${two(d.getUTCSeconds())}Z';
+
+	static function isoDate(d:Date):String
+		return '${d.getUTCFullYear()}-${two(d.getUTCMonth() + 1)}-${two(d.getUTCDate())}T${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())}Z';
+
+	// the information again as XMP (Dublin Core's, XMP's and PDF's schemas)
+	function xmp(doc:Document):Bytes {
+		var esc = s -> StringTools.htmlEscape(s, true);
+		var b = new StringBuf();
+		b.add('<?xpacket begin="\u{FEFF}" id="W5M0MpCehiHzreSzNTczkc9d"?>\n<x:xmpmeta xmlns:x="adobe:ns:meta/">\n');
+		b.add('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n<rdf:Description rdf:about=""');
+		b.add(' xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">\n');
+		b.add("<dc:format>application/pdf</dc:format>\n");
+		if (doc.title != null) b.add('<dc:title><rdf:Alt><rdf:li xml:lang="x-default">${esc(doc.title)}</rdf:li></rdf:Alt></dc:title>\n');
+		if (doc.author != null) b.add('<dc:creator><rdf:Seq><rdf:li>${esc(doc.author)}</rdf:li></rdf:Seq></dc:creator>\n');
+		if (doc.subject != null) b.add('<dc:description><rdf:Alt><rdf:li xml:lang="x-default">${esc(doc.subject)}</rdf:li></rdf:Alt></dc:description>\n');
+		if (doc.keywords != null) {
+			b.add("<dc:subject><rdf:Bag>");
+			for (k in doc.keywords.split(","))
+				if (StringTools.trim(k) != "") b.add('<rdf:li>${esc(StringTools.trim(k))}</rdf:li>');
+			b.add('</rdf:Bag></dc:subject>\n<pdf:Keywords>${esc(doc.keywords)}</pdf:Keywords>\n');
+		}
+		if (doc.lang != null) b.add('<dc:language><rdf:Bag><rdf:li>${esc(doc.lang)}</rdf:li></rdf:Bag></dc:language>\n');
+		if (doc.producer != null) b.add('<pdf:Producer>${esc(doc.producer)}</pdf:Producer>\n');
+		if (doc.creator != null) b.add('<xmp:CreatorTool>${esc(doc.creator)}</xmp:CreatorTool>\n');
+		if (doc.created != null) b.add('<xmp:CreateDate>${isoDate(doc.created)}</xmp:CreateDate>\n');
+		if (doc.modified != null) b.add('<xmp:ModifyDate>${isoDate(doc.modified)}</xmp:ModifyDate>\n');
+		b.add('</rdf:Description>\n</rdf:RDF>\n</x:xmpmeta>\n<?xpacket end="w"?>');
+		return Bytes.ofString(b.toString(), UTF8);
+	}
+
+	// a text string: printable ASCII as it is, else UTF-16BE after its byte order mark
+	static function textString(s:String):String {
+		var ascii = true;
+		for (i in 0...s.length) {
+			var c = StringTools.fastCodeAt(s, i);
+			if (c < 32 || c > 126) ascii = false;
+		}
+		if (ascii) return byteString(s);
+		var b = new StringBuf();
+		b.add("<FEFF");
+		for (i in 0...s.length)
+			b.add(StringTools.hex(StringTools.fastCodeAt(s, i), 4));
+		b.add(">");
+		return b.toString();
+	}
+
+	// a string of bytes (a URI's UTF-8) as a literal, its parentheses and backslashes escaped
+	static function byteString(s:String):String {
+		var bytes = Bytes.ofString(s, UTF8), b = new StringBuf();
+		b.add("(");
+		for (i in 0...bytes.length) {
+			var c = bytes.get(i);
+			if (c == "(".code || c == ")".code || c == "\\".code) {
+				b.addChar("\\".code);
+				b.addChar(c);
+			} else if (c < 32 || c > 126) {
+				b.addChar("\\".code);
+				for (k in [6, 3, 0])
+					b.addChar("0".code + ((c >> k) & 7));
+			} else b.addChar(c);
+		}
+		b.add(")");
+		return b.toString();
+	}
+
+	// ops from..to into content; a layer's ops into a group of their own (asText: text as text, not in a
+	// layer with a filter, a shadow's copy)
+	function body(r:Recorder, from:Int, to:Int, out:StringBuf, asText:Bool) {
 		var i = from;
 		while (i < to) {
 			var o = r.ops[i];
@@ -120,7 +352,7 @@ class PdfWriter {
 						j++;
 					}
 					var inner = new StringBuf();
-					body(r, i + 1, j, inner);
+					body(r, i + 1, j, inner, asText && o.filter == null);
 					var fid = reserve();
 					stream(fid, '/Type /XObject /Subtype /Form /BBox [0 0 ${r.width} ${r.height}] /Group << /S /Transparency /CS /DeviceRGB >> /Resources $resourcesId 0 R', Bytes.ofString(inner.toString()));
 					resources.forms.push(fid);
@@ -131,16 +363,20 @@ class PdfWriter {
 				case Clip:
 					path(o.path, o.matrix, out);
 					out.add(o.evenOdd ? "W* n\n" : "W n\n");
-				case Fill:
-					paintOp(r, i, o, out);
-				case StrokePath:
-					paintOp(r, i, o, out);
+				case Fill | StrokePath:
+					paintOp(r, o, out);
+				case Text:
+					if (asText) {
+						i = text(r, i, to, out);
+						continue;
+					}
+					paintOp(r, o.outlined(), out);
 				case Clear:
 					if (((o.color >>> 24) & 255) > 0) {
 						out.add('q ${rgb(o.color)} rg /${resources.state(((o.color >>> 24) & 255) / 255, 1, null)} gs 0 0 ${r.width} ${r.height} re f Q\n');
 					}
 				case ClearRect | Pixels:
-					fallback(r, i, out);
+					fallback(r, o, out);
 				case Image:
 					image(o, out);
 			}
@@ -148,10 +384,21 @@ class PdfWriter {
 		}
 	}
 
+	// (a number as PDF writes one: at most four decimals, never an exponent)
 	static function num(v:Float):String {
-		if (Math.abs(v) < 1e-9) return "0";
-		var s = Std.string(Math.round(v * 10000) / 10000);
-		return s;
+		var n = Math.fround(v * 10000);
+		if (n == 0 || !Math.isFinite(n)) return "0";
+		var neg = n < 0;
+		if (neg) n = -n;
+		var whole = Math.ffloor(n / 10000), frac = Std.int(n - whole * 10000);
+		var s = whole < 2147483647 ? Std.string(Std.int(whole)) : Std.string(whole);
+		if (frac > 0) {
+			var f = StringTools.lpad(Std.string(frac), "0", 4);
+			while (StringTools.endsWith(f, "0"))
+				f = f.substr(0, f.length - 1);
+			s += "." + f;
+		}
+		return neg ? "-" + s : s;
 	}
 
 	static function rgb(c:Int):String
@@ -200,29 +447,46 @@ class PdfWriter {
 			}
 	}
 
-	function paintOp(r:Recorder, i:Int, o:Op, out:StringBuf) {
-		var p = o.paint, s = p.shader, stroke = o.kind == StrokePath;
-		var unbounded = p.blend != null && p.blend.unbounded;
+	// whether a paint is one PDF has: a colour, a linear or radial gradient padded, a bounded blend mode
+	static function plainPaint(p:Paint):Bool {
+		var s = p.shader;
 		var plain = s == null || ((Std.isOfType(s, LinearGradient) || Std.isOfType(s, RadialGradient)) && (cast s : Gradient).spread == Gradient.PAD);
-		if (!plain || unbounded) {
-			fallback(r, i, out);
-			return;
-		}
-		out.add("q\n");
+		return plain && !(p.blend != null && p.blend.unbounded);
+	}
+
+	// a paint as the graphics state's: its opacity and blend mode, its colour or pattern, to fill or stroke with
+	function setPaint(r:Recorder, p:Paint, m:Matrix, stroke:Bool, out:StringBuf) {
+		var s = p.shader;
 		var alpha = p.alpha * (s == null ? ((p.color >>> 24) & 255) / 255 : 1);
-		var smask = s != null ? gradientMask(r, cast s, o.matrix) : -1;
+		var smask = s != null ? gradientMask(r, cast s, m) : -1;
 		var gs = resources.state(alpha, alpha, p.blend, smask);
 		out.add('/$gs gs\n');
 		if (s == null) out.add('${rgb(p.color)} ${stroke ? "RG" : "rg"}\n') else {
-			var pat = shadingPattern(r, cast s, o.matrix);
+			var pat = shadingPattern(r, cast s, m);
 			out.add('/Pattern ${stroke ? "CS" : "cs"} /P$pat ${stroke ? "SCN" : "scn"}\n');
 		}
+	}
+
+	static function pen(st:Stroke, out:StringBuf) {
+		out.add('${num(st.width)} w ${st.cap.kind} J ${st.join.kind} j ${num(st.miterLimit)} M\n');
+		if (st.dash != null && st.dash.valid()) out.add('[${[for (d in st.dash.intervals) num(d)].join(" ")}] ${num(st.dash.offset)} d\n');
+	}
+
+	static function cm(m:Matrix):String
+		return '${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.e)} ${num(m.f)} cm\n';
+
+	function paintOp(r:Recorder, o:Op, out:StringBuf) {
+		var stroke = o.kind == StrokePath;
+		if (!plainPaint(o.paint)) {
+			fallback(r, o, out);
+			return;
+		}
+		out.add("q\n");
+		setPaint(r, o.paint, o.matrix, stroke, out);
 		if (stroke) {
-			var st = o.stroke, m = o.matrix;
 			// (a stroke in its own units: the transform made the PDF's, the pen with it)
-			out.add('${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.e)} ${num(m.f)} cm\n');
-			out.add('${num(st.width)} w ${st.cap.kind} J ${st.join.kind} j ${num(st.miterLimit)} M\n');
-			if (st.dash != null && st.dash.valid()) out.add('[${[for (d in st.dash.intervals) num(d)].join(" ")}] ${num(st.dash.offset)} d\n');
+			out.add(cm(o.matrix));
+			pen(o.stroke, out);
 			path(o.path, Matrix.IDENTITY, out);
 			out.add("S\nQ\n");
 		} else {
@@ -230,6 +494,220 @@ class PdfWriter {
 			out.add(o.evenOdd ? "f*\nQ\n" : "f\nQ\n");
 		}
 	}
+
+	// ---- text
+
+	// consecutive Text ops of one text, their characters apart (a layout's lines, its runs of faces): its
+	// glyphs in the order drawn, cut where all the glyphs before show characters before all those after;
+	// a piece of one glyph whose characters ToUnicode can say is shown as it is, the others are each an
+	// ActualText span of their characters in order (the next op after them returned)
+	function text(r:Recorder, from:Int, to:Int, out:StringBuf):Int {
+		var s = r.ops[from].run.text;
+		var j = from;
+		var hulls:Array<Array<Int>> = [];
+		while (j < to && r.ops[j].kind == Text && r.ops[j].run.text == s) {
+			var run = r.ops[j].run, lo = 0x7FFFFFFF, hi = -1;
+			for (k in 0...run.count) {
+				if (run.starts[k] < lo) lo = run.starts[k];
+				if (run.ends[k] > hi) hi = run.ends[k];
+			}
+			var apart = true;
+			for (h in hulls)
+				if (lo < h[1] && h[0] < hi) apart = false;
+			if (!apart && hulls.length > 0) break;
+			hulls.push([lo, hi]);
+			j++;
+		}
+		var ops:Array<Int> = [], idx:Array<Int> = [];
+		for (k in from...j)
+			for (g in 0...r.ops[k].run.count) {
+				ops.push(k);
+				idx.push(g);
+			}
+		var n = ops.length;
+		inline function runOf(q:Int):ShapedRun
+			return r.ops[ops[q]].run;
+		var after = [for (_ in 0...n + 1) 0x7FFFFFFF];
+		var q = n - 1;
+		while (q >= 0) {
+			var st = runOf(q).starts[idx[q]];
+			after[q] = st < after[q + 1] ? st : after[q + 1];
+			q--;
+		}
+		// (the pieces: glyphs a to b, characters lo to hi)
+		var cuts:Array<{a:Int, b:Int, lo:Int, hi:Int}> = [];
+		var a = 0, lo = 0x7FFFFFFF, hi = -1;
+		for (q in 0...n) {
+			var run = runOf(q), g = idx[q];
+			if (run.starts[g] < lo) lo = run.starts[g];
+			if (run.ends[g] > hi) hi = run.ends[g];
+			if (hi > after[q + 1]) continue;
+			cuts.push({a: a, b: q + 1, lo: lo, hi: hi});
+			a = q + 1;
+			lo = 0x7FFFFFFF;
+			hi = -1;
+		}
+		var pieces:Array<{a:Int, b:Int, actual:Null<String>}> = [];
+		for (i in 0...cuts.length) {
+			var p = cuts[i], hi = p.hi;
+			// (the default ignorable characters after it, which no glyph shows: a joiner, a selector)
+			var limit = i + 1 < cuts.length ? cuts[i + 1].lo : s.length;
+			while (hi < limit) {
+				var c = StringTools.fastCodeAt(s, hi), len = 1;
+				if (c >= 0xD800 && c < 0xDC00 && hi + 1 < s.length) {
+					c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(s, hi + 1) - 0xDC00);
+					len = 2;
+				}
+				if (!ignorable(c)) break;
+				hi += len;
+			}
+			var t = hi > p.lo ? s.substring(p.lo, hi) : "";
+			var actual:Null<String> = t;
+			if (p.b - p.a == 1) {
+				var run = runOf(p.a);
+				if (fonts.get(run.face).map(run.ids[idx[p.a]], t)) actual = null;
+			} else {
+				// (where a glyph has its characters to itself, its ToUnicode says them too: for readers without ActualText)
+				var shared = new Map<Int, Int>();
+				for (x in p.a...p.b) {
+					var st = runOf(x).starts[idx[x]];
+					shared.set(st, (shared.get(st) ?? 0) + 1);
+				}
+				for (x in p.a...p.b) {
+					var rx = runOf(x), gx = idx[x], f = fonts.get(rx.face);
+					if (shared.get(rx.starts[gx]) == 1 && !f.mapped(rx.ids[gx]) && rx.ends[gx] > rx.starts[gx]) f.map(rx.ids[gx], s.substring(rx.starts[gx], rx.ends[gx]));
+				}
+			}
+			pieces.push({a: p.a, b: p.b, actual: actual});
+		}
+		var k = 0;
+		while (k < pieces.length) {
+			var p = pieces[k], b = p.b;
+			if (p.actual == null)
+				while (k + 1 < pieces.length && pieces[k + 1].actual == null)
+					b = pieces[++k].b;
+			if (p.actual != null) out.add('/Span << /ActualText ${textString(p.actual)} >> BDC\n');
+			var q = p.a;
+			while (q < b) {
+				var e = q;
+				while (e < b && ops[e] == ops[q])
+					e++;
+				textPart(r, r.ops[ops[q]], idx[q], idx[e - 1] + 1, out);
+				q = e;
+			}
+			if (p.actual != null) out.add("EMC\n");
+			k++;
+		}
+		return j;
+	}
+
+	// (Unicode's default ignorable code points: drawn as nothing)
+	static function ignorable(c:Int):Bool
+		return c == 0xAD || c == 0x34F || c == 0x61C || c == 0x115F || c == 0x1160 || c == 0x17B4 || c == 0x17B5 || (c >= 0x180B && c <= 0x180F)
+			|| (c >= 0x200B && c <= 0x200F) || (c >= 0x202A && c <= 0x202E) || (c >= 0x2060 && c <= 0x206F) || c == 0x3164 || (c >= 0xFE00 && c <= 0xFE0F)
+			|| c == 0xFEFF || c == 0xFFA0 || (c >= 0xFFF0 && c <= 0xFFF8) || (c >= 0x1BCA0 && c <= 0x1BCA3) || (c >= 0x1D173 && c <= 0x1D17A)
+			|| (c >= 0xE0000 && c <= 0xE0FFF);
+
+	// whether text shows a glyph as it is drawn (not a colour one)
+	static function colourGlyph(face:FontFile, g:Int, size:Float):Bool
+		return face.bitmapsOnly || face.hasColor && (face.colorLayers(g) != null || face.colorBitmap(g, size) != null);
+
+	// glyphs a to b of a Text op as a text object
+	function textPart(r:Recorder, o:Op, a:Int, b:Int, out:StringBuf) {
+		var run = o.run, face = run.face, f = fonts.get(face);
+		if (resources.fonts.indexOf(f) < 0) resources.fonts.push(f);
+		var stroke = o.stroke != null, visible = plainPaint(o.paint);
+		var size = run.size, sx = size * run.scaleX;
+		var colour = [for (k in a...b) colourGlyph(face, run.ids[k], size)];
+		if (!visible) {
+			// (a paint text cannot have: the outlines, drawn as a path is)
+			var part = new ShapedRun(face, size);
+			part.scaleX = run.scaleX;
+			part.skew = run.skew;
+			for (k in a...b)
+				part.push(run.ids[k], run.xs[k], run.ys[k], run.starts[k], run.ends[k]);
+			var g = new Glyphs();
+			g.addRun(part);
+			var p = new Op(stroke ? StrokePath : Fill, o.matrix);
+			p.path = g.path;
+			p.paint = o.paint;
+			p.stroke = o.stroke;
+			paintOp(r, p, out);
+		} else
+			for (k in a...b)
+				if (colour[k - a]) colourGlyphDrawn(r, o, k, out);
+		out.add("q\n" + cm(o.matrix));
+		if (visible) {
+			setPaint(r, o.paint, o.matrix, stroke, out);
+			if (stroke) pen(o.stroke, out);
+		}
+		out.add('BT\n/${f.name} 1 Tf\n');
+		var mode = -1, open = false, px = 0.0, py = 0.0;
+		for (k in a...b) {
+			var want = !visible || colour[k - a] ? 3 : stroke ? 1 : 0;
+			if (want != mode) {
+				if (open) out.add("] TJ\n");
+				open = false;
+				out.add('$want Tr\n');
+				mode = want;
+			}
+			var x = run.xs[k], y = run.ys[k], g = run.ids[k];
+			if (open && Math.abs(y - py) < 1e-4) {
+				// (the pen moved from the advance's end to where the layout put the glyph)
+				var adj = (px - x) * 1000 / sx;
+				if (Math.abs(adj) >= 0.01) out.add(num(adj) + " ");
+			} else {
+				if (open) out.add("] TJ\n");
+				out.add('${num(sx)} 0 ${num(run.skew * sx)} ${num(-size)} ${num(x)} ${num(y)} Tm\n[');
+				open = true;
+			}
+			out.add("<" + StringTools.hex(f.code(g), 4) + ">");
+			// (the width a reader advances by: W's, whole thousandths)
+			px = x + Math.round(f.width(g)) * sx / 1000;
+			py = y;
+		}
+		if (open) out.add("] TJ\n");
+		out.add("ET\nQ\n");
+	}
+
+	// a colour glyph as it looks: COLR's layers filled, a bitmap's PNG as an image
+	function colourGlyphDrawn(r:Recorder, o:Op, k:Int, out:StringBuf) {
+		var run = o.run, face = run.face, g = run.ids[k], s = run.size / face.unitsPerEm;
+		var x = run.xs[k], y = run.ys[k];
+		var layers = face.colorLayers(g);
+		if (layers != null) {
+			for (l in layers) {
+				var sink = new Glyphs();
+				face.outline(l.glyph, sink, [s * run.scaleX, 0, run.skew * s * run.scaleX, -s, x, y]);
+				var p = new Paint().copyFrom(o.paint);
+				// (a layer's own colour; -1 the text's)
+				if (l.color != -1) {
+					p.shader = null;
+					p.color = l.color;
+				}
+				var f = new Op(Fill, o.matrix);
+				f.path = sink.path;
+				f.paint = p;
+				paintOp(r, f, out);
+			}
+			return;
+		}
+		var bm = face.colorBitmap(g, run.size);
+		if (bm == null) return;
+		var d = try helder.image.PngDecoder.decode(bm.png) catch (_:Dynamic) null;
+		if (d == null) return;
+		var bitmap = new Bitmap(d.width, d.height);
+		bitmap.writeStraight(d.rgba, 0, 0, d.width, d.height);
+		var kx = run.size / bm.ppem;
+		var im = new Op(Image, o.matrix);
+		im.image = bitmap;
+		im.rect = [0, 0, d.width, d.height, x + bm.left * kx * run.scaleX, y - bm.top * kx, d.width * kx * run.scaleX, d.height * kx];
+		im.paint = new Paint();
+		im.paint.alpha = o.paint.alpha;
+		image(im, out);
+	}
+
+	// ---- gradients and images
 
 	// a gradient's shading: an axial or radial one over its stops (a stitching function of linear ones)
 	function shading(g:Gradient, alpha:Bool):Int {
@@ -324,11 +802,10 @@ class PdfWriter {
 		out.add('q /$gs gs ${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.e)} ${num(m.f)} cm /Im$id Do Q\n');
 	}
 
-	// one call PDF cannot say drawn on the CPU (its state: the saves and clips around it replayed), placed as an image
-	function fallback(r:Recorder, i:Int, out:StringBuf) {
+	// one call PDF cannot say drawn on the CPU, placed as an image
+	function fallback(r:Recorder, o:Op, out:StringBuf) {
 		var k = fallbackScale, w = Std.int(Math.ceil(r.width * k)), h = Std.int(Math.ceil(r.height * k));
 		var c = new Canvas(w, h);
-		var o = r.ops[i];
 		c.scale(k, k);
 		var m = o.matrix;
 		c.transform(m.a, m.b, m.c, m.d, m.e, m.f);
@@ -358,6 +835,7 @@ class PdfWriter {
 
 // A page's resources as they are used
 private class Resources {
+	public final fonts:Array<EmbeddedFont> = [];
 	public final states:Array<String> = [];
 	public final patterns:Array<Int> = [];
 	public final images:Array<Int> = [];
@@ -396,7 +874,10 @@ private class Resources {
 
 	public function dict():String {
 		var b = new StringBuf();
-		b.add("<< /ExtGState << ");
+		b.add("<< /Font << ");
+		for (f in fonts)
+			b.add('/${f.name} ${f.id} 0 R ');
+		b.add(">> /ExtGState << ");
 		for (i in 0...states.length)
 			b.add('/GS$i ${states[i]} ');
 		b.add(">> /Pattern << ");

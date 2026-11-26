@@ -5,8 +5,9 @@ import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 
 // Two Painters drawn alike: the pixels (a), and a recording beside them
-// (b: the DOM facade's pages, for PDF and SVG); pixels are a's
-class Tee implements Painter {
+// (b: the DOM facade's pages, for PDF and SVG); pixels are a's. Text goes
+// to b as text where b keeps it (GlyphText), to a as outlines.
+class Tee implements Painter implements GlyphText {
 	public var width(default, null):Int;
 	public var height(default, null):Int;
 	public var matrix(get, never):Matrix;
@@ -84,6 +85,20 @@ class Tee implements Painter {
 		a.stroke(path, style, paint);
 		sync();
 		b.stroke(path, style, paint);
+	}
+
+	var glyphs:Null<Glyphs> = null;
+
+	public function glyphText(run:ShapedRun, paint:Paint, ?style:Stroke):Bool {
+		if (glyphs == null) glyphs = new Glyphs();
+		var g = glyphs;
+		g.path.clear();
+		g.addRun(run);
+		if (style == null) a.fill(g.path, paint) else a.stroke(g.path, style, paint);
+		sync();
+		if (Std.isOfType(b, GlyphText) && (cast b : GlyphText).glyphText(run, paint, style)) return true;
+		if (style == null) b.fill(g.path, paint) else b.stroke(g.path, style, paint);
+		return true;
 	}
 
 	public function clearRect(x:Float, y:Float, w:Float, h:Float) {

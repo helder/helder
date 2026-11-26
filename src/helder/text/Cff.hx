@@ -11,6 +11,7 @@ import haxe.io.Bytes;
 // FontMatrix's scale to the head table's units per em applied), y up.
 class Cff {
 	final data:Bytes;
+	final start:Int;
 	final globalSubrs:Index;
 	final charStrings:Index;
 	// the local subroutines: one set, or per font DICT (CID-keyed)
@@ -27,6 +28,7 @@ class Cff {
 	// the CFF table at start; unitsPerEm: the head table's
 	public function new(data:Bytes, start:Int, unitsPerEm:Int) {
 		this.data = data;
+		this.start = start;
 		var hdrSize = data.get(start + 2);
 		var names = new Index(data, start + hdrSize);
 		var tops = new Index(data, names.after);
@@ -141,6 +143,259 @@ class Cff {
 		return b.empty ? [0, 0, 0, 0] : [Math.floor(b.x0), Math.floor(b.y0), Math.ceil(b.x1), Math.ceil(b.y1)];
 	}
 
+	// a CID-keyed font's CID of a glyph (its charset's); another's the glyph
+	public function cid(g:Int):Int {
+		if (cids == null) {
+			var hdrSize = data.get(start + 2);
+			var tops = new Index(data, new Index(data, start + hdrSize).after);
+			var top = dict(tops.start(0), tops.end(0));
+			cids = top.exists(0x0C1E) && top.exists(15) && top.get(15)[0] > 2 ? charsetCids(start + Std.int(top.get(15)[0]), charStrings.count) : [];
+		}
+		return g >= 0 && g < cids.length ? cids[g] : g;
+	}
+
+	var cids:Null<Array<Int>> = null;
+
+	// the table as a bare CFF of these glyphs (a PDF's FontFile3): every glyph
+	// kept at its index, the others' charstrings an endchar, the subroutines
+	// none of them calls a return, the rest byte for byte (lossless, no
+	// renumbering: a glyph's index, or a CID-keyed font's CID, stays its own)
+	public function subset(glyphs:Array<Int>):Bytes {
+		var keep = new Map<Int, Bool>();
+		keep.set(0, true);
+		for (g in glyphs)
+			if (g >= 0 && g < charStrings.count) keep.set(g, true);
+		// (the subroutines the kept glyphs call, found by running them)
+		called = new Map();
+		calledGlobal = new Map();
+		for (g in keep.keys())
+			try outline(g, new Bounds()) catch (_:Dynamic) {}
+		var usedGlobal = calledGlobal, usedLocal = called;
+		called = null;
+		calledGlobal = null;
+		var hdrSize = data.get(start + 2);
+		var names = new Index(data, start + hdrSize);
+		var tops = new Index(data, names.after);
+		var strings = new Index(data, tops.after);
+		var top = entries(data, tops.start(0), tops.end(0));
+		var topMap = dict(tops.start(0), tops.end(0));
+		var nGlyphs = charStrings.count;
+		function at(op:Int):Int
+			return topMap.exists(op) ? Std.int(topMap.get(op)[0]) : -1;
+		var cidKeyed = topMap.exists(0x0C1E);
+		var charset = at(15), encoding = at(16);
+		var charsetBytes = charset > 2 ? data.sub(start + charset, charsetLength(start + charset, nGlyphs)) : null;
+		var encodingBytes = encoding > 1 ? data.sub(start + encoding, encodingLength(start + encoding)) : null;
+		var charStringsBytes = index([
+			for (g in 0...nGlyphs)
+				keep.exists(g) ? data.sub(charStrings.start(g), charStrings.end(g) - charStrings.start(g)) : ENDCHAR
+		]);
+		var gsubrs = index(subrs(globalSubrs, usedGlobal));
+		var fdSelectBytes:Null<Bytes> = null;
+		if (cidKeyed && at(0x0C25) >= 0) {
+			var p = start + at(0x0C25);
+			fdSelectBytes = data.sub(p, data.get(p) == 0 ? 1 + nGlyphs : 5 + 3 * u16(p + 1));
+		}
+		// (each private DICT, Subrs pointing right after it, then its subroutines)
+		function privateOf(d:Map<Int, Array<Float>>, local:Null<Index>):Null<{dict:Bytes, subrs:Bytes}> {
+			if (!d.exists(18)) return null;
+			var pr = d.get(18), p = start + Std.int(pr[1]);
+			var b = new haxe.io.BytesBuffer();
+			for (e in entries(data, p, p + Std.int(pr[0])))
+				if (e.op != 19) b.add(e.raw);
+			if (local == null) return {dict: b.getBytes(), subrs: Bytes.alloc(0)};
+			var size = b.length + 6;
+			b.add(operand(size));
+			b.addByte(19);
+			var used = usedLocal.get(local);
+			return {dict: b.getBytes(), subrs: index(subrs(local, used == null ? new Map() : used))};
+		}
+		var fontDicts:Array<Array<DictEntry>> = [];
+		var privates:Array<Null<{dict:Bytes, subrs:Bytes}>> = [];
+		if (cidKeyed) {
+			var fds = new Index(data, start + at(0x0C24));
+			for (i in 0...fds.count) {
+				fontDicts.push(entries(data, fds.start(i), fds.end(i)));
+				privates.push(privateOf(dict(fds.start(i), fds.end(i)), localSubrs[i]));
+			}
+		} else privates.push(privateOf(topMap, localSubrs[0]));
+		// (offsets as five-byte integers: each DICT's size known before the offsets are)
+		function rewrite(es:Array<DictEntry>, values:Map<Int, Array<Int>>):Bytes {
+			var b = new haxe.io.BytesBuffer();
+			for (e in es) {
+				var v = values.get(e.op);
+				if (v == null) {
+					b.add(e.raw);
+					continue;
+				}
+				for (x in v)
+					b.add(operand(x));
+				if (e.op >= 0x0C00) {
+					b.addByte(12);
+					b.addByte(e.op & 0xFF);
+				} else b.addByte(e.op);
+			}
+			return b.getBytes();
+		}
+		var values = new Map<Int, Array<Int>>();
+		if (charsetBytes != null) values.set(15, [0]);
+		if (encodingBytes != null) values.set(16, [0]);
+		values.set(17, [0]);
+		if (cidKeyed) {
+			values.set(0x0C24, [0]);
+			if (fdSelectBytes != null) values.set(0x0C25, [0]);
+		} else if (privates[0] != null) values.set(18, [0, 0]);
+		var private0 = [18 => [0, 0]];
+		var header = data.sub(start, hdrSize);
+		var namesBytes = data.sub(start + hdrSize, names.after - start - hdrSize);
+		var stringsBytes = data.sub(tops.after, strings.after - tops.after);
+		var o = header.length + namesBytes.length + index([rewrite(top, values)]).length + stringsBytes.length + gsubrs.length;
+		if (charsetBytes != null) {
+			values.set(15, [o]);
+			o += charsetBytes.length;
+		}
+		if (encodingBytes != null) {
+			values.set(16, [o]);
+			o += encodingBytes.length;
+		}
+		values.set(17, [o]);
+		o += charStringsBytes.length;
+		var fdArray:Null<Bytes> = null;
+		if (cidKeyed) {
+			if (fdSelectBytes != null) {
+				values.set(0x0C25, [o]);
+				o += fdSelectBytes.length;
+			}
+			values.set(0x0C24, [o]);
+			o += index([for (es in fontDicts) rewrite(es, private0)]).length;
+			fdArray = index([
+				for (i in 0...fontDicts.length) {
+					var p = privates[i];
+					var d = rewrite(fontDicts[i], p == null ? new Map() : [18 => [p.dict.length, o]]);
+					if (p != null) o += p.dict.length + p.subrs.length;
+					d;
+				}
+			]);
+		} else if (privates[0] != null) values.set(18, [privates[0].dict.length, o]);
+		var out = new haxe.io.BytesBuffer();
+		for (b in [header, namesBytes, index([rewrite(top, values)]), stringsBytes, gsubrs])
+			out.add(b);
+		if (charsetBytes != null) out.add(charsetBytes);
+		if (encodingBytes != null) out.add(encodingBytes);
+		out.add(charStringsBytes);
+		if (fdSelectBytes != null) out.add(fdSelectBytes);
+		if (fdArray != null) out.add(fdArray);
+		for (p in privates)
+			if (p != null) {
+				out.add(p.dict);
+				out.add(p.subrs);
+			}
+		return out.getBytes();
+	}
+
+	static final ENDCHAR = Bytes.ofHex("0e");
+	static final RETURN = Bytes.ofHex("0b");
+
+	// (while subsetting: the subroutines run, local ones by their INDEX)
+	@:allow(helder.text) var called:Null<Map<Index, Map<Int, Bool>>> = null;
+	@:allow(helder.text) var calledGlobal:Null<Map<Int, Bool>> = null;
+
+	function subrs(x:Index, used:Map<Int, Bool>):Array<Bytes>
+		return [for (n in 0...x.count) used.exists(n) ? data.sub(x.start(n), x.end(n) - x.start(n)) : RETURN];
+
+	// a charset's length (formats 0, 1 and 2)
+	function charsetLength(p:Int, nGlyphs:Int):Int {
+		var format = data.get(p);
+		if (format == 0) return 1 + 2 * (nGlyphs - 1);
+		var q = p + 1, covered = 0;
+		while (covered < nGlyphs - 1) {
+			covered += (format == 1 ? data.get(q + 2) : u16(q + 2)) + 1;
+			q += format == 1 ? 3 : 4;
+		}
+		return q - p;
+	}
+
+	// each glyph's CID or SID by its charset
+	function charsetCids(p:Int, nGlyphs:Int):Array<Int> {
+		var cids = [0];
+		var format = data.get(p), q = p + 1;
+		while (cids.length < nGlyphs) {
+			if (format == 0) {
+				cids.push(u16(q));
+				q += 2;
+				continue;
+			}
+			var first = u16(q), left = format == 1 ? data.get(q + 2) : u16(q + 2);
+			q += format == 1 ? 3 : 4;
+			for (k in 0...left + 1)
+				if (cids.length < nGlyphs) cids.push(first + k);
+		}
+		return cids;
+	}
+
+	function encodingLength(p:Int):Int {
+		var format = data.get(p), n = data.get(p + 1);
+		var len = (format & 0x7F) == 0 ? 2 + n : 2 + 2 * n;
+		if (format & 0x80 != 0) len += 1 + 3 * data.get(p + len);
+		return len;
+	}
+
+	// a DICT's entries: each operator with its operands' bytes as they are
+	static function entries(d:Bytes, p:Int, end:Int):Array<DictEntry> {
+		var list:Array<DictEntry> = [];
+		var begin = p;
+		while (p < end) {
+			var b0 = d.get(p);
+			if (b0 <= 21) {
+				var op = b0;
+				p++;
+				if (b0 == 12) op = 0x0C00 | d.get(p++);
+				list.push({op: op, raw: d.sub(begin, p - begin)});
+				begin = p;
+			} else if (b0 == 28) p += 3 else if (b0 == 29) p += 5 else if (b0 == 30) {
+				p++;
+				while (p < end) {
+					var b = d.get(p++);
+					if (b >> 4 == 0xF || b & 15 == 0xF) break;
+				}
+			} else if (b0 >= 247 && b0 <= 254) p += 2 else p++;
+		}
+		return list;
+	}
+
+	// an integer operand of five bytes
+	static function operand(v:Int):Bytes {
+		var b = Bytes.alloc(5);
+		b.set(0, 29);
+		b.set(1, (v >> 24) & 255);
+		b.set(2, (v >> 16) & 255);
+		b.set(3, (v >> 8) & 255);
+		b.set(4, v & 255);
+		return b;
+	}
+
+	// an INDEX of these objects
+	static function index(items:Array<Bytes>):Bytes {
+		var b = new haxe.io.BytesBuffer();
+		b.addByte(items.length >> 8);
+		b.addByte(items.length & 255);
+		if (items.length == 0) return b.getBytes();
+		var total = 1;
+		for (i in items)
+			total += i.length;
+		var offSize = total < 0x100 ? 1 : total < 0x10000 ? 2 : total < 0x1000000 ? 3 : 4;
+		b.addByte(offSize);
+		var off = 1;
+		for (k in 0...items.length + 1) {
+			for (j in 0...offSize)
+				b.addByte((off >> (8 * (offSize - 1 - j))) & 255);
+			if (k < items.length) off += items[k].length;
+		}
+		for (i in items)
+			b.add(i);
+		return b.getBytes();
+	}
+
 	@:allow(helder.text) inline function byte(p:Int):Int
 		return data.get(p);
 
@@ -169,6 +424,8 @@ class Cff {
 	static inline function bias(count:Int):Int
 		return count < 1240 ? 107 : count < 33900 ? 1131 : 32768;
 }
+
+private typedef DictEntry = {op:Int, raw:Bytes};
 
 // an INDEX: count objects, their data after the offsets (offSize bytes each, from 1)
 private class Index {
@@ -386,6 +643,13 @@ private class Charstring {
 				case 10 | 29: // callsubr, callgsubr
 					var local = b0 == 10;
 					var n = cff.subr(local, Std.int(s.pop()), subrs);
+					if (cff.calledGlobal != null) {
+						if (!local) cff.calledGlobal.set(n, true) else {
+							var m = cff.called.get(subrs);
+							if (m == null) cff.called.set(subrs, m = new Map());
+							m.set(n, true);
+						}
+					}
 					run(cff.subrStart(local, n, subrs), cff.subrEnd(local, n, subrs));
 				case 11: // return
 					depth--;

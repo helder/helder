@@ -13,7 +13,11 @@ text with, usable on its own.
   (fvar) and `instance(["wght" => 700])`, avar's mappings and gvar's
   deltas applied to outlines and advances (`Variations`; checked against
   Chromium on `tests/text/var.ttf`); `SystemFonts.match` gives a variable
-  face's instance at the weight asked for. CFF2 (variable) outlines are
+  face's instance at the weight asked for (`variation`: its coordinates).
+  `cffSubset(glyphs)`: a CFF face's table with only those glyphs'
+  charstrings and the subroutines they call, the others emptied in place
+  (`Cff.subset`, lossless: a PDF's FontFile3); `glyphCid`: a CID-keyed
+  glyph's CID. CFF2 (variable) outlines are
   not read; HVAR, MVAR and GPOS's variations are not applied.
   Colour glyphs: CBDT/CBLC and sbix bitmaps (Noto Color Emoji, Apple
   Color Emoji: their PNG files, a font of bitmaps only loads too) and COLR

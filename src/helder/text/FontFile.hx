@@ -47,6 +47,22 @@ class FontFile {
 	inline function get_varied():Bool
 		return coords != null;
 
+	// the instance's normalized coordinates (null: the default's): a face and
+	// its variation, one PDF font
+	public var variation(get, never):Null<Array<Float>>;
+
+	inline function get_variation()
+		return coords;
+
+	// a CFF face's table subset to these glyphs (Cff.subset: a PDF's
+	// FontFile3), null when its outlines are not CFF's
+	public function cffSubset(glyphs:Array<Int>):Null<Bytes>
+		return cff == null ? null : cff.subset(glyphs);
+
+	// a CID-keyed CFF face's CID of a glyph (its charset's); any other face's the glyph itself
+	public function glyphCid(g:Int):Int
+		return cff == null ? g : cff.cid(g);
+
 	public var unitsPerEm(default, null) = 1000;
 	public var ascender(default, null) = 0;
 	public var descender(default, null) = 0; // negative
@@ -1049,7 +1065,12 @@ class FontFile {
 	function outlineAt(g:Int, out:Outline, a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {
 		if (g < 0 || g >= numGlyphs || bitmapsOnly) return;
 		if (cff != null) {
-			cff.outline(g, out);
+			// (the transform applied to its points: the CFF interpreter's are font units)
+			if (a == 1 && b == 0 && c == 0 && d == 1 && e == 0 && f == 0) cff.outline(g, out) else {
+				if (moved == null) moved = new Transformed();
+				moved.set(out, a, b, c, d, e, f);
+				cff.outline(g, moved);
+			}
 			return;
 		}
 		var start = loca(g), end = loca(g + 1);
@@ -1059,6 +1080,8 @@ class FontFile {
 		glyphAt = g;
 		if (contours >= 0) simple(p, contours, out, a, b, c, d, e, f) else composite(p, out, a, b, c, d, e, f);
 	}
+
+	var moved:Null<Transformed> = null;
 
 	// (a glyph's points as read: contours' ends, flags, x and y, kept for the
 	// next glyph, grown when one needs more)
@@ -1474,4 +1497,42 @@ private class Bounds implements Outline {
 	}
 
 	public function close() {}
+}
+
+// an Outline's points through a transform (x' = a x + c y + e, y' = b x + d y + f)
+private class Transformed implements Outline {
+	var out:Outline;
+	var a = 1.0;
+	var b = 0.0;
+	var c = 0.0;
+	var d = 1.0;
+	var e = 0.0;
+	var f = 0.0;
+
+	public function new() {}
+
+	public function set(out:Outline, a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {
+		this.out = out;
+		this.a = a;
+		this.b = b;
+		this.c = c;
+		this.d = d;
+		this.e = e;
+		this.f = f;
+	}
+
+	public function moveTo(x:Float, y:Float)
+		out.moveTo(a * x + c * y + e, b * x + d * y + f);
+
+	public function lineTo(x:Float, y:Float)
+		out.lineTo(a * x + c * y + e, b * x + d * y + f);
+
+	public function quadTo(cx:Float, cy:Float, x:Float, y:Float)
+		out.quadTo(a * cx + c * cy + e, b * cx + d * cy + f, a * x + c * y + e, b * x + d * y + f);
+
+	public function cubicTo(c1x:Float, c1y:Float, c2x:Float, c2y:Float, x:Float, y:Float)
+		out.cubicTo(a * c1x + c * c1y + e, b * c1x + d * c1y + f, a * c2x + c * c2y + e, b * c2x + d * c2y + f, a * x + c * y + e, b * x + d * y + f);
+
+	public function close()
+		out.close();
 }

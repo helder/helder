@@ -1,6 +1,7 @@
 package helder.canvas;
 
 import helder.text.FontFile;
+import helder.text.FontSet;
 import helder.text.TextLayout;
 
 // Text on a canvas: a helder.text layout's glyphs (shaped by helder's
@@ -25,18 +26,69 @@ final class Glyphs implements helder.text.Outline {
 	}
 
 	// the layout's glyphs filled, its first line's baseline at (x, y)
-	public static function fill(canvas:Painter, layout:TextLayout, x:Float, y:Float, paint:Paint) {
-		var g = get();
-		g.path.clear();
-		g.add(layout, x, y);
-		canvas.fill(g.path, paint);
+	public static function fill(canvas:Painter, layout:TextLayout, x:Float, y:Float, paint:Paint)
+		get().draw(canvas, layout, x, y, 1, paint, null);
+
+	public static function stroke(canvas:Painter, layout:TextLayout, x:Float, y:Float, style:Stroke, paint:Paint)
+		get().draw(canvas, layout, x, y, 1, paint, style);
+
+	// the layout drawn: as text where the painter keeps it (GlyphText: each run of a face offered,
+	// those it does not take as outlines), else filled (style null) or stroked as outlines
+	public function draw(canvas:Painter, layout:TextLayout, x:Float, y:Float, scaleX:Float, paint:Paint, style:Null<Stroke>) {
+		path.clear();
+		if (Std.isOfType(canvas, GlyphText)) runs(cast canvas, layout, x, y, scaleX, paint, style) else add(layout, x, y, scaleX);
+		if (path.isEmpty()) return;
+		if (style == null) canvas.fill(path, paint) else canvas.stroke(path, style, paint);
 	}
 
-	public static function stroke(canvas:Painter, layout:TextLayout, x:Float, y:Float, style:Stroke, paint:Paint) {
-		var g = get();
-		g.path.clear();
-		g.add(layout, x, y);
-		canvas.stroke(g.path, style, paint);
+	// (each line's glyphs in runs of one face and size, in the order drawn)
+	function runs(to:GlyphText, layout:TextLayout, x:Float, y:Float, scaleX:Float, paint:Paint, style:Null<Stroke>) {
+		var lines = layout.lines;
+		if (lines.length == 0) return;
+		var first = lines[0];
+		var set:Null<FontSet> = null;
+		for (line in lines) {
+			var by = y + line.top + line.baseline - (first.top + first.baseline);
+			for (i in line.glyphStart...line.glyphEnd) {
+				if (layout.glyphHidden(i)) continue;
+				var face:FontFile = layout.glyphFont(i), fs = layout.glyphFontSet(i);
+				if (run == null) run = new ShapedRun(face, fs.size);
+				if (run.face != face || set != fs) {
+					flush(to, paint, style);
+					set = fs;
+					run.face = face;
+					run.size = fs.size;
+					run.scaleX = scaleX;
+					run.skew = fs.oblique ? 0.25 : 0;
+					run.text = layout.text;
+				}
+				var c = layout.glyphCluster(i);
+				run.push(layout.glyphId(i), x + (layout.glyphX(i) + layout.glyphOffsetX(i)) * scaleX, by + layout.glyphOffsetY(i), c, c + layout.glyphLength(i));
+			}
+			flush(to, paint, style);
+		}
+	}
+
+	var run:Null<ShapedRun> = null;
+
+	function flush(to:GlyphText, paint:Paint, style:Null<Stroke>) {
+		if (run == null || run.count == 0) return;
+		if (!to.glyphText(run, paint, style)) addRun(run);
+		run.clear();
+	}
+
+	// a run's outlines added to path
+	public function addRun(r:ShapedRun) {
+		var s = r.size / r.face.unitsPerEm;
+		for (i in 0...r.count) {
+			transform[0] = s * r.scaleX;
+			transform[1] = 0;
+			transform[2] = r.skew * s * r.scaleX;
+			transform[3] = -s;
+			transform[4] = r.xs[i];
+			transform[5] = r.ys[i];
+			r.face.outline(r.ids[i], this, transform);
+		}
 	}
 
 	// the layout's outlines added to path, its first line's baseline at (x, y);
