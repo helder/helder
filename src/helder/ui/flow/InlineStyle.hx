@@ -60,9 +60,11 @@ interface InlineStyle {
 	function verticalAlign():InlineVerticalAlign;
 	// vertical-align's length (pixels, Length) or percentage (a fraction of the line height, Percent)
 	function verticalShift():Float;
-	// an inline box's edges
+	// an inline box's edges (an atomic inline's margins above and below too)
 	function marginStart():Float;
 	function marginEnd():Float;
+	function marginTop():Float;
+	function marginBottom():Float;
 	function borderStart():Float;
 	function borderEnd():Float;
 	function paddingStart():Float;

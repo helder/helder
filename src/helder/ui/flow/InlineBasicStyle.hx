@@ -41,7 +41,7 @@ class InlineBasicStyle implements InlineStyle {
 	public var clamp = 0;
 	public var vertical:InlineVerticalAlign = Baseline;
 	public var shift = 0.0;
-	public var margins = [0.0, 0.0];
+	public var margins = [0.0, 0.0, 0.0, 0.0];
 	public var borders = [0.0, 0.0, 0.0, 0.0];
 	public var paddings = [0.0, 0.0, 0.0, 0.0];
 	public var decoration:InlineDecoration = None;
@@ -98,9 +98,9 @@ class InlineBasicStyle implements InlineStyle {
 		return s;
 	}
 
-	// the same horizontal margin, border and padding on both sides (vertical: border and padding)
+	// the same margin, border and padding on every side
 	public function edges(margin:Float, border:Float, padding:Float):InlineBasicStyle {
-		margins = [margin, margin];
+		margins = [margin, margin, margin, margin];
 		borders = [border, border, border, border];
 		paddings = [padding, padding, padding, padding];
 		return this;
@@ -213,6 +213,12 @@ class InlineBasicStyle implements InlineStyle {
 
 	public function marginEnd()
 		return margins[1];
+
+	public function marginTop()
+		return margins[2];
+
+	public function marginBottom()
+		return margins[3];
 
 	public function borderStart()
 		return borders[0];

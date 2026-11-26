@@ -55,7 +55,9 @@ Blink rounds them (ascent, descent, line gap: line-height: normal).
 
 - **White space** (CSS Text 3 §4.1.1, phase I): per white-space-collapse,
   collapsible spaces and tabs become one space, across inline box
-  boundaries (the first kept, in its item); a collapsible segment break
+  boundaries (the first kept, in its item; but a nowrap item's space
+  before a wrapping item's: the second, so that the line may break there,
+  as Blink keeps it); a collapsible segment break
   becomes a space, or nothing next to a zero width space or between two
   East Asian wide characters that are not Hangul; collapsible spaces at
   the start and after a forced break are dropped (the ones at a line's end
@@ -76,10 +78,14 @@ Blink rounds them (ascent, descent, line gap: line-height: normal).
   CSS's tailorings): line-break (strict: CJ as NS; normal and loose: as
   ID; loose: iteration marks and the prolonged sound mark too; anywhere),
   word-break (break-all: letters and digits as ID; keep-all: none between
-  them), a break on both sides of an atomic inline (CSS Text 3 §5.1, even
-  next to a no-break space). Then white-space's wrapping by the nearest
-  common ancestor of the two sides (a `<nobr>` ends with an opportunity
-  its parent allows), break-spaces (after every space), hyphens (a soft
+  them; and hyphens, as Blink has it), a break on both sides of an atomic
+  inline (CSS Text 3 §5.1, even next to a no-break space). Then
+  white-space's wrapping, by the item before the opportunity as Blink's
+  line breaker decides it (CSS Text 3 §5.1 says the nearest common
+  ancestor's; Chromium breaks after a pre-wrap box's spaces before nowrap
+  text, and not after nowrap spaces before wrapping text; a wrapping item
+  that ends in a space breaks at its end whatever starts the next), never
+  before a forced break, break-spaces (after every space), hyphens (a soft
   hyphen's break shows a hyphen; none with hyphens: none). The
   opportunity at an inline box's edge is before the box (after the boxes
   that close there).
@@ -100,6 +106,75 @@ hash of the key, the text compared in place); past a million glyphs it is
 emptied, and a content shapes its pieces again (`ensureShaped`). Words
 lose kerning across the spaces between them, as Blink's word cache does.
 
+## Lines
+
+```haxe
+var l = new InlineLayout().layout(c, new InlineConstraints(700));
+for (k in 0...l.lines)
+	for (f in l.lineFragmentStart(k)...l.lineFragmentEnd(k))
+		switch l.kind(f) {
+			case TextRun: draw(l.glyphs, l.glyphRun(f), l.x(f), l.y(f) + l.ascent(f));
+			case BoxSpan: background(l.item(f), l.x(f), l.y(f), l.fragmentWidth(f), l.fragmentHeight(f));
+			case _:
+		}
+InlineLayout.minContent(c);                 // shrink-to-fit, flex, tables
+InlineLayout.maxContent(c);
+```
+
+`InlineLayout.layout` lays a finished content out (`LineBuilder`).
+`InlineConstraints` gives the available width, the containing block's
+direction (-1: the root's), and where floats are: `lineWidth(y, height)`,
+the offset and width of the line at y (asked at the strut's height, asked
+again at the line's own when it is taller, the line built again where
+that is narrower). Laid out again with the same content and constraints
+it does nothing; at another width it places the same shaped pieces.
+
+- **Breaking**: greedy, as LayoutNG's line breaker: a line takes pieces up
+  to the last opportunity where it fits. What does not count: the spaces
+  that hang at its end (collapsible ones removed, pre-wrap's and its tabs
+  hanging; before a forced break or at the content's end only the part
+  that overflows hangs, CSS Text 3 §4.1.3), and an inline box's end edges
+  after them (Blink leaves them out). Collapsible spaces at a line's start
+  are removed, and a line with nothing yet but boxes' edges does not
+  break. A soft hyphen's break counts its hyphen (hyphenate-character
+  auto: U+2010 where the font has it, else "-"); one that fits but for its
+  hyphen is the break taken where all else overflows. A run that fits
+  nowhere is cut where overflow-wrap (break-word, anywhere; word-break:
+  break-word) lets it: at the last cluster that fits, else after its first
+  one, or before a tab or a break-spaces space that overflows; else it
+  overflows to the next opportunity. Tabs go to the next stop, tab-size
+  spaces of the block's font apart (as Blink measures them), the stop
+  after it when closer than half a space.
+- **Line boxes** (CSS 2.1 §10.8): the root's strut and every inline box and
+  atomic on the line, each with its layout bounds (a box's font's ascent
+  and descent and its half-leading, the part above floored to a pixel as
+  Blink's; an atomic's margin box, its baseline its own or its bottom
+  margin edge). A box is aligned once its children are in it: its
+  vertical-align shift from its parent's baseline (sub and super by the
+  parent's size, text-top, text-bottom and middle by its subtree's
+  extent, lengths and percentages of its line height; in Blink's
+  LayoutUnit, 1/64 of a pixel), then its subtree into its parent's; top-
+  and bottom-aligned subtrees are placed last, the line growing to hold
+  them. A line with nothing in it (no text, preserved space, atomic, box
+  edge or forced break: CSS 2.1 §9.4.2) is zero high.
+- **Alignment**: text-align (start, end, left, right, center; justify is
+  the next PR's), text-align-last on the last line and before forced
+  breaks, text-indent (each-line, hanging); an overflowing line is start
+  aligned.
+- **Output**: per line its top, height, baseline, width used, left, the
+  width it had, its text range and its fragments; per fragment its kind
+  (`TextRun`: an item's text on a line, a tab its own; `BoxStart` and
+  `BoxEnd`: a box's edges where it starts and ends; `BoxSpan`: its border
+  box on the line, for backgrounds and borders; `Atomic`; `Hyphen`;
+  `Float`, `Abspos`: their static positions), rectangle, ascent and
+  descent, bidi level, item, text range and glyph run. `InlineGlyphs` holds
+  the runs, per glyph its face, id, x from the fragment's left, y offset,
+  advance and the text unit its cluster starts at: what paint and
+  PdfWriter both read.
+- **Intrinsic sizes**: `minContent` breaks at every opportunity
+  (overflow-wrap: anywhere's cuts in, break-word's out), `maxContent` at
+  forced breaks only; each the widest line's used width.
+
 ## Tests
 
 - `LineBreaks.test.hx`: Unicode's LineBreakTest.txt (a sample in
@@ -110,6 +185,36 @@ lose kerning across the spaces between them, as Blink's word cache does.
   (tests/flow/fixtures/Ahem.ttf: public domain, from WPT); properties:
   the items and pieces cover the text in order, the text has no
   collapsible spaces left in a row or at a line's start.
+- `InlineLayout.test.hx`: lines, spaces at their ends, inline boxes'
+  edges and spans, vertical-align, atomics, forced breaks, pre-wrap, soft
+  hyphens, overflow-wrap, tabs, text-align and text-indent, floats'
+  lineWidth, intrinsic sizes and glyph runs, in Ahem; properties: no line
+  wider than its width unless it holds a piece that cannot break, a layout
+  the same twice, min-content <= max-content, at max-content a line a
+  forced break, the fragments' text in order the content's.
+- `flow-differential` (tests/flow/differential.mjs): generated content
+  (text in white-space's modes, nested inline boxes with margins, borders
+  and padding, inline-blocks, vertical-align's values, line heights,
+  forced breaks, letter and word spacing, overflow-wrap and word-break,
+  text-align and text-indent) laid out by headless Chromium and by
+  tests/flow/InlineDiffCheck.hx natively, in Ahem: each text node's
+  Range.getClientRects, each inline box's getClientRects (each box given
+  a faint background, so that Blink does not cull it), each inline-block's
+  border box and the block's height, within 0.5px (a node's touching
+  rectangles on a line as one: where a fragment ends is each engine's
+  own). FLOW_CASES (300) from FLOW_SEED (0), then the kept cases
+  (tests/flow/fixtures/differential; KEEP=1 keeps a new failure there);
+  differential-known.json gives each case known to differ its reason, and
+  a known case that passes fails the run. FLOW_ONLY=seed-12 prints one
+  case's rectangles on both sides (its page: bin/flow/only.html);
+  FLOW_NO=va,tab,bs,ow,ls,edges,atomic,br,tb,mid,tt,shift leaves features
+  out. On Chromium 141: 276 of the first 300 seeds the same, the other 24
+  known (17 of them top- and bottom-aligned subtrees that nest); a fresh
+  range (FLOW_SEED=1000): 269 of 300, 290 with no top or bottom.
+- `bench inline` (tests/bench/InlineBench.hx): the HTML Standard's 26,641
+  paragraphs (3.3 MB) at 700px in Inter, natively: 146 ms per MB with the
+  word cache empty, 133 with it full, 38 laid out again at 500px;
+  TextLayout on the same texts: 135 made, 18 wrapped again.
 
 `node src/helder/ui/flow/generate.mjs` makes LineBreakData.hx (each code
 point's Line_Break class and the flags its rules read: East Asian width,

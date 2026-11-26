@@ -7,8 +7,8 @@ import haxe.io.Bytes;
 // LineBreakData's classes) with CSS Text 3's tailorings: line-break
 // (strict: CJ as NS; normal and loose: as ID; loose: iteration marks and
 // the prolonged sound mark as ID too; anywhere: a break between any two
-// typographic character units), word-break (break-all: letters and digits
-// as ID; keep-all: none between them). Checked against Unicode's
+// typographic character units), word-break (break-all: letters, digits and,
+// as Blink has it, hyphens as ID; keep-all: none between them). Checked against Unicode's
 // LineBreakTest.txt (LineBreaks.test.hx).
 //
 // analyze writes a status before each UTF-16 unit of a text (and its end):
@@ -202,7 +202,8 @@ class LineBreaks {
 			var o = opt[u] | opt[u - 1];
 			if (s != FORCED) {
 				// (an atomic inline: a break on both sides, whatever is next to it)
-				if (opt[u] & ATOMIC != 0 || opt[u - 1] & ATOMIC != 0) s = ALLOWED;
+				var k = at(u);
+				if (k == BK || k == CR || k == LF || k == NL) {} else if (opt[u] & ATOMIC != 0 || opt[u - 1] & ATOMIC != 0) s = ALLOWED;
 				else if (opt[u] & opt[u - 1] & KEEP_ALL != 0 && s == ALLOWED && letter(u - 1) && letter(u)) s = NONE;
 				else if (o & ANYWHERE != 0) s = ALLOWED;
 			}
@@ -253,7 +254,8 @@ class LineBreaks {
 				k = AL;
 			case _:
 		}
-		if (o & BREAK_ALL != 0 && (k == AL || k == HL || k == NU)) k = ID;
+		// (and hyphens: Blink breaks around them with break-all)
+		if (o & BREAK_ALL != 0 && (k == AL || k == HL || k == NU || k == HY)) k = ID;
 		return k | f;
 	}
 

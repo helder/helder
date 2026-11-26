@@ -17,6 +17,7 @@ class Bench {
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
 		{name: "bench layout", about: "helder.ui.box on the HTML Standard's page: box tree, layout, paint, memory per box and fragment", run: layoutBench},
+		{name: "bench inline", about: "helder.ui.flow's inline layout on the HTML Standard's paragraphs, against TextLayout", run: inlineBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
@@ -72,6 +73,11 @@ class Bench {
 	}
 
 	// (natively; the page and its sheets fetched into bin/bench/html)
+	static function inlineBench() {
+		exe("bin/bench/InlineBench", cps(["src", "tests/bench"]).concat(["-main", "InlineBench"]));
+		run(NODE, ["tests/bench/inline.mjs", exePath("bin/bench/InlineBench", HOST)]);
+	}
+
 	static function cascadeBench() {
 		exe("bin/bench/CascadeBench", cps(["src", "tests/bench", "tests/css"]).concat(["-main", "CascadeBench"]));
 		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
