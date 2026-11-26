@@ -45,8 +45,30 @@ class CssBloom {
 
 	// the filter made el's ancestors' (for elements met in any order, as a
 	// lazy cascade meets them: the ancestors shared with the last element
-	// stay, the others popped and pushed; in tree order, few)
+	// stay, the others popped and pushed; in tree order, few). The tree
+	// must not have changed since the last call: reset() if it has
+	// (CssStyles.forget does).
 	public function moveTo(el:Element) {
+		// (in tree order, without a walk up: a sibling of the last element
+		// changes nothing, its child pushes one, going back up pops to the
+		// parent found in the chain)
+		var p = el.parentElement, top = chain.length == 0 ? null : chain[chain.length - 1];
+		if (p == top) return;
+		if (p != null && p.parentElement == top) {
+			chain.push(p);
+			push(p);
+			return;
+		}
+		var k = chain.length - 1;
+		while (k >= 0 && chain[k] != p)
+			k--;
+		if (k >= 0 || p == null) {
+			while (chain.length > k + 1) {
+				chain.pop();
+				pop();
+			}
+			return;
+		}
 		ancestors.resize(0);
 		var p = el.parentElement;
 		while (p != null) {
@@ -66,6 +88,13 @@ class CssBloom {
 			chain.push(a);
 			push(a);
 		}
+	}
+
+	// empty again (after the tree changed under moveTo's chain)
+	public function reset() {
+		while (pushed.length > 0)
+			pop();
+		chain.resize(0);
 	}
 
 	// (moveTo's: what it pushed, and its scratch)

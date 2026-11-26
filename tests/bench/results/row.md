@@ -10,26 +10,35 @@ selected states, the row's parts, siblings' borders (`.row + .row`,
 `:nth-child(odd)`), buttons' `:hover`, `:active` and `:focus-visible`,
 and one `.list:has(.selected) .row`.
 
-Each operation is the DOM's change and then the restyle: the elements
-CssRestyle marks, matched again through the rule index and Bloom filter.
-Beside it is the same change with every element matched again (no
-invalidation). The least of 200 runs, in microseconds.
+Each operation is the DOM's change, then the restyle: the elements
+CssRestyle marks are let go (`CssStyles.forget`) and styled again. That
+goes through the style-sharing cache, the rule index and Bloom filter,
+and the cascade. Beside it is the same change with every element styled
+again by a cascade without the sharing cache (no invalidation). The
+least of 200 runs, in microseconds, 2026-11-26, load average about 5.
 
-| operation | restyle (marked) | every element matched again (220) |
+| operation | restyle (marked, shared) | every element again, no sharing cache |
 | --- | ---: | ---: |
-| the rows made (createElement, appendChild) | 183 µs (220) | 159 µs |
-| a row hovered | **17 µs (18)** | 146 µs |
-| a row unhovered | **17 µs (18)** | 144 µs |
-| a button focused (focus, focus-visible; focus-within up to the root) | **18 µs (18)** | 145 µs |
-| a row selected (its class) | 127 µs (220) | 129 µs |
+| 12 more rows made in the styled list | **149 µs** (436, 396 shared) | 225 µs (436) |
+| a row hovered | **55 µs** (18, 6 shared) | 147 µs (220) |
+| a row unhovered | **16 µs** (18, 6 shared) | 106 µs (220) |
+| a button focused (focus, focus-visible; focus-within up to the root) | **68 µs** (18, 4 shared) | 156 µs (220) |
+| a row selected (its class) | 174 µs (220, 156 shared) | 206 µs (220) |
 
-- **Hovered, unhovered, focused**: the row's subtree alone. Focus sets
-  `:focus-within` on the button's ancestors up to `<html>`, and the
-  guards (a feature's compound's other ids, classes and tag) skip the
-  list, body and html: none is a `.row`. Before the guards, focusing
-  marked all 220 (158 µs).
+- **Rows made**: the list's subtree is marked, all 436 elements, since
+  the sheet counts siblings (`.row + .row`, `:nth-child(odd)`). 396 of
+  them take a sibling's or cousin's style without matching. The rest
+  costs both columns alike: the sheet's `.list:has(.selected) .row` is
+  matched for each row, once per element through the `:has()` cache
+  (CssHasCache) in both. Before that cache the column read 300 µs
+  against 367 µs. A cascade made afresh costs more in both, because the
+  first row's styles are worked out from nothing.
+- **Hovered, unhovered, focused**: the row's subtree alone, through
+  #337's guards. A hover's first styles are worked out (55 µs), and
+  unhovering goes back to styles made before (16 µs).
 - **Selected**: `.list:has(.selected) .row` puts the class inside
   `:has()`, and anything inside `:has()` restyles the document, as
-  documented. Without that rule the change marks the row alone.
-- **Made**: every new element needs a style, so the marks cost a little
-  over matching everything (the tracker's marks and their read-out).
+  documented.
+
+The first version of this bench (#337) timed matching alone, without the
+cascade: a hover 17 µs against 146 µs.

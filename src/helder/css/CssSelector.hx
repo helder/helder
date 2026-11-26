@@ -15,6 +15,14 @@ class CssSelector {
 	public final pseudo:Null<CssPseudoElement>;
 	public final specificity:CssSpecificity;
 	public final hashes:Array<Int>;
+	// whether its match reads only the element's own tag, id, classes,
+	// attributes (without a namespace) and state, and its ancestors': no
+	// sibling's or child's (combinators + and ~, :nth-*, :first-child...,
+	// :has(), :empty), no place (:root, :scope), no other element's form
+	// state (:checked's options, :disabled's fieldset legend). Two such
+	// elements with equivalent ancestors match it alike: the style-sharing
+	// cache's test
+	public final local:Bool;
 
 	public static inline var MAX_HASHES = 4;
 
@@ -30,6 +38,26 @@ class CssSelector {
 		if (pseudo != null) s = s.add(CssSpecificity.make(0, 0, 1));
 		specificity = s;
 		hashes = ancestorHashes(compounds, combinators);
+		local = isLocal(this);
+	}
+
+	static function isLocal(s:CssSelector):Bool {
+		for (c in s.combinators)
+			if (c == NextSibling || c == SubsequentSibling) return false;
+		if (s.relative != null) return false;
+		for (c in s.compounds)
+			for (x in c)
+				switch x {
+					case Attribute(_, ns, _, _, _) if (ns != NoNamespace): return false;
+					case Pseudo(Is(l) | Where(l) | Not(l)):
+						for (i in l)
+							if (!i.local) return false;
+					case Pseudo(Has(_) | NthChild(_, _) | NthLastChild(_, _) | NthOfType(_) | NthLastOfType(_) | FirstChild | LastChild | OnlyChild | FirstOfType
+						| LastOfType | OnlyOfType | Empty | Root | Scope | Checked | Enabled | Disabled | ReadOnly | ReadWrite | PlaceholderShown | Valid | Invalid):
+						return false;
+					default:
+				}
+		return true;
 	}
 
 	// (a compound is an ancestor of the subject when the combinator right

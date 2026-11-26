@@ -597,9 +597,38 @@ styles.pages;                              // @page rules: selectors, declaratio
   links, the root, an attribute: `CssRuleIndex`, with the ancestors' Bloom
   filter, `CssBloom`, moved to each element; rules that can never match,
   `:visited`'s, left out), then matched by helder.css's selectors.
-- **Sharing**: an element whose parent's style, matched rules, style
-  attribute, hints and place (the root, a flex or grid item) are an
-  earlier element's gets that element's style. Otherwise its cascade is
+- **The style-sharing cache** (Stylo's and WebKit's), before matching.
+  An element takes the style of one of the 32 elements styled last when
+  all of these hold:
+  - its parent is that element's parent, or that parent's twin (an
+    element that took its own style from the cache the same way, so their
+    ancestors match every selector alike);
+  - its tag, namespace, classes, style attribute, hints and state are the
+    same;
+  - the attributes the sheets' local selectors read are the same: their
+    values where a selector reads one, their presence where only
+    `[attr]` or `:link` reads them;
+  - it has no id a selector names (one no selector names can't tell it
+    apart);
+  - the selectors that are not local (`CssSelector.local`: sibling
+    combinators, `:nth-*` and the like, `:has()`, `:empty`, other
+    elements' form state) that the earlier element tried, past the Bloom
+    filter, match it as they matched that one. This is Stylo's
+    revalidation: only those few are matched again, and an element that
+    tried more than 16 is not kept.
+
+  `share: false` turns it off; `shares` counts it. `:has()`'s results are
+  kept per element during the styles' pass (`CssHasCache`, which
+  `CssMatcher.matches` takes; cleared by `forget`), so `.list:has(.x) .row`
+  asks the list once, not once per row. On the HTML Standard
+  (341,289 elements) it styles 235,786 elements without matching them.
+  `forget(elements)` lets the styles of elements a change marked go
+  (CssRestyle's), with the cache's candidates and twins. The Bloom filter
+  follows the elements in tree order: a sibling changes nothing, a child
+  pushes one, going back up pops (`CssBloom.moveTo`).
+- **Sharing after matching**: an element whose parent's style, matched
+  rules, style attribute, hints and place (the root, a flex or grid item)
+  are an earlier element's gets that element's style. Otherwise its cascade is
   worked out (`CssResolver`): declarations sorted by origin and
   importance (user agent, user, author; then author, user, user agent
   `!important`), a style attribute's above every rule's, layer (later
@@ -737,7 +766,14 @@ CssCascadeCheck runs WPT's css-cascade and css-variables tests that read
 statically, CssValuesCheck the computed rows of WPT's value tests in
 their own pages (tests/css); both check every value against #321's
 cascade as it was merged, frozen in tests/css/reference.
-`bun run test bench cascade` styles the HTML Standard's page.
+`CssSharing.test.hx`: what the cache shares (siblings, cousins, an id
+no selector names, links by their href's presence) and what it must not
+(a named id, a positional rule, another state or class, cousins whose
+parents a rule tells apart), and a property over 300 random documents
+and sheets: every element's every longhand the same with the cache and
+without it. `bun run test bench cascade` styles the HTML Standard's
+page and checks it against #321's cascade and against no sharing cache:
+0 values differ of 3,191,706 each.
 
 ## Counters and generated content
 

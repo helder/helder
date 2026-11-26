@@ -33,6 +33,11 @@ class CssRuleIndex<T> {
 	public var visited(default, null) = 0;
 	public var rejected(default, null) = 0;
 	public var matched(default, null) = 0;
+	// the selectors that are not local (CssSelector.local) the last matching
+	// tried past the Bloom filter, and whether each matched: what a style
+	// shared with another element must match there alike (Stylo's revalidation)
+	public final revalidate:Array<CssSelector> = [];
+	public final revalidated:Array<Bool> = [];
 
 	public function new() {}
 
@@ -121,17 +126,24 @@ class CssRuleIndex<T> {
 
 	// the entries whose selector matches el, in the order added, into out;
 	// bloom: el's ancestors (null: none checked); scope: :scope's element
-	public function matching(el:Element, out:Array<CssIndexed<T>>, ?bloom:CssBloom, ?scope:Element) {
+	public function matching(el:Element, out:Array<CssIndexed<T>>, ?bloom:CssBloom, ?scope:Element, ?cache:CssMatcher.CssHasCache) {
 		scratch.resize(0);
 		candidates(el, scratch);
 		var from = out.length;
+		revalidate.resize(0);
+		revalidated.resize(0);
 		for (e in scratch) {
 			visited++;
 			if (bloom != null && !bloom.mightMatch(e.selector)) {
 				rejected++;
 				continue;
 			}
-			if (CssMatcher.matches(e.selector, el, scope)) {
+			var yes = CssMatcher.matches(e.selector, el, scope, cache);
+			if (!e.selector.local) {
+				revalidate.push(e.selector);
+				revalidated.push(yes);
+			}
+			if (yes) {
 				matched++;
 				out.push(e);
 			}

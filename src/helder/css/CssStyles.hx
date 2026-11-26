@@ -17,12 +17,13 @@ import helder.dom.Node;
 
 using StringTools;
 
-// A document's styles: its sheets' rules in a CssRuleIndex (by their
-// rightmost compound, the ancestors' Bloom filter moved to each element
-// matched); each element's style the one made before for the same parent
-// style and cascade (rules, style attribute, hints, its place: the root,
-// a flex or grid item), else worked out (CssResolver) and its groups
-// interned. A rule that can never match (:visited's) is left out;
+// A document's styles: each element's first a recent sibling's or
+// cousin's, before matching (the style-sharing cache, below); else its
+// sheets' rules matched through a CssRuleIndex (by their rightmost
+// compound, the ancestors' Bloom filter moved to each element matched)
+// and the style made before for the same parent style and cascade (rules,
+// style attribute, hints, its place: the root, a flex or grid item) taken,
+// else worked out (CssResolver) and its groups interned. A rule that can never match (:visited's) is left out;
 // :hover's and the like match the element's state, off on a page. And the
 // at-rules' data for the later stages (@page, @font-face,
 // @counter-style).
@@ -50,7 +51,25 @@ class CssStyles {
 	var initials:Null<Array<CssGroup>>;
 	final initialValues = new IntMap<Null<Array<CssTerm>>>();
 	final initialComputed = new IntMap<Array<CssTerm>>();
-	// (how styles came: a cascade seen before, or worked out; distinct styles)
+	// (the style-sharing cache: recent elements whose style a sibling or
+	// cousin may take before matching, most recent first; each element that
+	// took one's equivalent, for its children's cousins; the attributes a
+	// local selector reads)
+	final candidates:Array<Candidate> = [];
+	final twins = new ObjectMap<Element, Element>();
+	// (true: a selector reads its value; false: its presence alone)
+	final watched = new Map<String, Bool>();
+	// (the ids some selector names: an element with another id may share)
+	final ids = new Map<String, Bool>();
+	public static inline var CANDIDATES = 32;
+	// (a candidate with more selectors to match again is not kept: cheaper to match)
+	static inline var REVALIDATE = 16;
+	static final NO_SELECTORS:Array<CssSelector> = [];
+	static final NO_RESULTS:Array<Bool> = [];
+	var sharing = true;
+	// (how styles came: shared from a sibling or cousin before matching, a
+	// cascade seen before, or worked out; distinct styles)
+	public var shares(default, null) = 0;
 	public var hits(default, null) = 0;
 	public var misses(default, null) = 0;
 	public var distinct(default, null) = 0;
@@ -105,6 +124,20 @@ class CssStyles {
 
 	var paged:Null<CssPages>;
 
+	// The styles of elements a change made stale (CssRestyle's marked) let
+	// go, made again when next asked. The sharing cache's candidates and
+	// twins go too: what made two elements equivalent may have changed.
+	public function forget(elements:Iterable<Element>) {
+		for (el in elements) {
+			cache.remove(el);
+			pseudoCache.remove(el);
+		}
+		candidates.resize(0);
+		twins.clear();
+		bloom.reset();
+		hasCache.clear();
+	}
+
 	// The groups made so far, per group, and the distinct styles.
 	public function counts():{groups:Map<String, Int>, styles:Int} {
 		var out = new Map<String, Int>();
@@ -115,18 +148,33 @@ class CssStyles {
 	// ---- an element's style
 
 	function style(el:Element, pseudo:Null<String>, parent:Null<CssStyle>, isRoot:Bool):CssStyle {
-		var idx = pseudo == null ? index : pseudos.get(pseudo);
-		var found:Array<CssIndexed<Rule>> = [];
-		if (idx != null) {
-			bloom.moveTo(el);
-			idx.matching(el, found, bloom);
-		}
-		var matched = [for (m in found) m.value];
 		var attribute = pseudo == null ? el.getAttribute("style") : null;
 		var hinted = pseudo == null && hints != null ? hints(el) : null;
 		var lists = pseudo == null ? CssHints.lists(el) : null;
 		if (lists != null) hinted = hinted == null ? lists : hinted.concat(lists);
 		var hintKey = hinted == null || hinted.length == 0 ? "" : Std.string([for (d in hinted) [d.property, Std.string(d.value)]]);
+		// (a sibling's or cousin's style, before matching)
+		var sig = sharing && pseudo == null && !isRoot ? signature(el) : null;
+		if (sig != null) {
+			var c = share(el, parent, attribute, hintKey, sig);
+			if (c != null) {
+				shares++;
+				// (a twin is for its children's cousins: a leaf needs none; one given children later shares less, never wrongly)
+				if (el.firstElementChild != null) twins.set(el, twins.get(c.el) ?? c.el);
+				return c.style;
+			}
+		}
+		var idx = pseudo == null ? index : pseudos.get(pseudo);
+		var found:Array<CssIndexed<Rule>> = [];
+		if (idx != null) {
+			bloom.moveTo(el);
+			idx.matching(el, found, bloom, null, hasCache);
+		}
+		// (what a sharer must match alike: the selectors that are not local this element tried, and their results)
+		var reval = idx == null || idx.revalidate.length == 0 ? NO_SELECTORS : idx.revalidate.copy();
+		var results = idx == null || idx.revalidated.length == 0 ? NO_RESULTS : idx.revalidated.copy();
+		var local = reval.length <= REVALIDATE;
+		var matched = [for (m in found) m.value];
 		var item = item(pseudo == null ? el.parentNode : el);
 		// (the same parent style and cascade: the same style)
 		var h = parent == null ? 1 : parent.id;
@@ -141,10 +189,12 @@ class CssStyles {
 			if (x.parent == parent && x.pseudo == pseudo && x.root == isRoot && x.item == item && x.attribute == attribute && x.hints == hintKey
 				&& same(x.rules, matched)) {
 				hits++;
+				if (sig != null && local) remember(el, parent, attribute, hintKey, sig, x.style, reval, results);
 				return x.style;
 			}
 		misses++;
 		var s = resolve(el, pseudo, parent, isRoot, item, matched, attribute, hinted);
+		if (sig != null && local) remember(el, parent, attribute, hintKey, sig, s, reval, results);
 		bucket.push({
 			parent: parent,
 			pseudo: pseudo,
@@ -156,6 +206,142 @@ class CssStyles {
 			style: s
 		});
 		return s;
+	}
+
+	// (the style-sharing cache, as Stylo's and WebKit's: an element takes a
+	// recent element's style when its parent is that element's parent or
+	// that parent's equivalent (a twin: an element that took its style from
+	// the cache, the same way, so their ancestors match alike), and its tag,
+	// namespace, classes, style attribute, hints, state and the attributes
+	// local selectors read are the same, it has no id a selector names, and
+	// the selectors that are not local (CssSelector.local) the recent element
+	// tried match it alike (Stylo's revalidation): every rule then matches
+	// both alike)
+	function share(el:Element, parent:Null<CssStyle>, attribute:Null<String>, hintKey:String, sig:String):Null<Candidate> {
+		var p = el.parentElement, cls = el.getAttributeNS(null, "class"), state = el.state;
+		var rp = p == null ? null : twins.get(p) ?? p;
+		memo.resize(0);
+		memoed.resize(0);
+		for (k in 0...candidates.length) {
+			var c = candidates[k];
+			if (c.parent != parent || c.tag != el.localName || c.ns != el.namespaceURI || c.cls != cls || c.attribute != attribute || c.state != state
+				|| c.sig != sig || c.hints != hintKey) continue;
+			var cp = c.el.parentElement;
+			if (cp != p && (cp == null ? null : twins.get(cp) ?? cp) != rp) continue;
+			if (!revalidates(c, el)) continue;
+			if (k > 0) {
+				candidates.splice(k, 1);
+				candidates.unshift(c);
+			}
+			return c;
+		}
+		return null;
+	}
+
+	// (the candidate's selectors that are not local match el as they matched
+	// it; each matched once on el however many candidates ask, those with
+	// :has() last, the costliest)
+	function revalidates(c:Candidate, el:Element):Bool {
+		for (pass in 0...2)
+			for (k in 0...c.reval.length) {
+				var sel = c.reval[k];
+				if ((pass == 1) != heavy(sel)) continue;
+				var i = memo.indexOf(sel), yes;
+				if (i >= 0) yes = memoed[i] else {
+					yes = CssMatcher.matches(sel, el, null, hasCache);
+					memo.push(sel);
+					memoed.push(yes);
+				}
+				if (yes != c.results[k]) return false;
+			}
+		return true;
+	}
+
+	final memo:Array<CssSelector> = [];
+	final hasCache = new CssMatcher.CssHasCache();
+	final memoed:Array<Bool> = [];
+
+	// (whether a selector has :has(), anywhere)
+	static function heavy(s:CssSelector):Bool {
+		for (c in s.compounds)
+			for (x in c)
+				switch x {
+					case Pseudo(Has(_)): return true;
+					case Pseudo(Is(l) | Where(l) | Not(l)): for (i in l) if (heavy(i)) return true;
+					case Pseudo(NthChild(_, l) | NthLastChild(_, l)) if (l != null): for (i in l) if (heavy(i)) return true;
+					default:
+				}
+		return false;
+	}
+
+	function remember(el:Element, parent:Null<CssStyle>, attribute:Null<String>, hintKey:String, sig:String, style:CssStyle, reval:Array<CssSelector>,
+			results:Array<Bool>) {
+		candidates.unshift({
+			reval: reval,
+			results: results,
+			el: el,
+			parent: parent,
+			tag: el.localName,
+			ns: el.namespaceURI,
+			cls: el.getAttributeNS(null, "class"),
+			attribute: attribute,
+			state: el.state,
+			sig: sig,
+			hints: hintKey,
+			style: style
+		});
+		if (candidates.length > CANDIDATES) candidates.pop();
+	}
+
+	// (the attributes local selectors read, as one string: their values, or
+	// their presence where no selector reads a value; null: no sharing, an id
+	// some selector names, as WebKit's)
+	function signature(el:Element):Null<String> {
+		var id = el.getAttributeNS(null, "id");
+		if (id != null && ids.exists(Css.lower(id))) return null;
+		if (!el.hasAttributes()) return "";
+		var b:Null<StringBuf> = null;
+		for (n in el.getAttributeNames()) {
+			var k = Css.lower(n), value = watched.get(k);
+			if (value == null) continue;
+			if (b == null) b = new StringBuf();
+			b.add(k);
+			if (value) {
+				b.add("=");
+				b.add(el.getAttribute(n));
+			}
+			b.add("\x00");
+		}
+		return b == null ? "" : b.toString();
+	}
+
+	// (the attributes a selector reads, into watched; the ids it names, into ids)
+	function watch(s:CssSelector)
+		for (c in s.compounds)
+			for (x in c)
+				switch x {
+					case Id(n): ids.set(Css.lower(n), true);
+					case Attribute(n, _, Exists, _, _): mark(n, false);
+					case Attribute(n, _, _, _, _): mark(n, true);
+					case Pseudo(Is(l) | Where(l) | Not(l) | Has(l)): for (i in l) watch(i);
+					case Pseudo(NthChild(_, l) | NthLastChild(_, l)) if (l != null): for (i in l) watch(i);
+					case Pseudo(Link | AnyLink): mark("href", false);
+					case Pseudo(Lang(_)):
+						mark("lang", true);
+						mark("xml:lang", true);
+					case Pseudo(Dir(_)): mark("dir", true);
+					case Pseudo(Default):
+						for (n in ["selected", "checked"]) mark(n, false);
+						mark("type", true);
+					case Pseudo(Required | Optional): mark("required", false);
+					case Pseudo(Indeterminate): mark("value", false);
+					default:
+				}
+
+	// (an attribute read, by its value or its presence: its value wins)
+	function mark(name:String, value:Bool) {
+		var k = Css.lower(name);
+		if (value || !watched.exists(k)) watched.set(k, value || watched.get(k) == true);
 	}
 
 	static function same(a:Array<Int>, b:Array<Rule>):Bool {
@@ -395,7 +581,9 @@ class CssStyles {
 					};
 					switch s.pseudo {
 						case _ if (never(s)):
-						case null: index.add(s, rule);
+						case null:
+							index.add(s, rule);
+							watch(s);
 						case p:
 							var name = pseudoName(p);
 							if (name == null) continue;
@@ -454,6 +642,21 @@ class CssStyles {
 			order: order
 		};
 	}
+}
+
+private typedef Candidate = {
+	el:Element,
+	reval:Array<CssSelector>,
+	results:Array<Bool>,
+	parent:Null<CssStyle>,
+	tag:String,
+	ns:Null<String>,
+	cls:Null<String>,
+	attribute:Null<String>,
+	state:Int,
+	sig:String,
+	hints:String,
+	style:CssStyle
 }
 
 private typedef Rule = {selector:CssSelector, declarations:Array<CssDeclared>, origin:CssOrigin, layer:Int, order:Int, zero:Bool, index:Int}

@@ -21,7 +21,9 @@ typedef CssCascadeOptions = {
 	// author sheets after the document's own
 	?author:Array<CssSheet>,
 	// HTML's presentational hints (bgcolor, align, width...), as WeasyPrint's -p
-	?hints:Bool
+	?hints:Bool,
+	// false: no style-sharing cache, every element matched (the cache's checks)
+	?share:Bool
 }
 
 // A document's computed style: its sheets (the user agent's, the user's,
@@ -40,7 +42,9 @@ class CssCascade {
 		for (s in documentSheets(doc, o)) sheets.push(s);
 		for (s in o.author ?? []) sheets.push({sheet: s, media: null});
 		var hints = o.hints == true;
-		return @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, hints ? CssHints.declarations : null, hints ? CssUserAgent.hints() : null);
+		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, hints ? CssHints.declarations : null, hints ? CssUserAgent.hints() : null);
+		@:privateAccess styles.sharing = o.share != false;
+		return styles;
 	}
 
 	// The document's own sheets, in tree order, each with its media attribute's query.

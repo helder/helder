@@ -255,7 +255,7 @@ function tests() {
 			equals(c.inheritedText == d.inheritedText, false);
 			equals(a.spacing == c.spacing, false);
 			equals(a.border == c.border, true);
-			equals(s.hits >= 1, true);
+			equals(s.hits + s.shares >= 1, true);
 		});
 		test("pseudo-elements", () -> {
 			var s = styles('<ul><li id=x>a</li></ul>', 'li::before { content: "> "; color: red } li::marker { color: blue } li { color: green }');
