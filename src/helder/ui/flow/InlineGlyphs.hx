@@ -115,10 +115,16 @@ class InlineGlyphs {
 	var lastFace:Null<FontFile> = null;
 	var lastIndex = -1;
 
-	// (the glyphs' x moved by dx from the run's glyph `from` on: justification's)
-	public function shift(from:Int, to:Int, dx:Float)
-		for (g in from...to)
-			gX[g] += dx;
+	// the runs from `runs` on let go (a line laid out again)
+	public function truncate(runs:Int) {
+		if (runs >= this.runs) return;
+		count = rStart[runs];
+		this.runs = runs;
+	}
+
+	// a glyph not drawn (an ellipsis' cut: id -1, as a hidden glyph's)
+	public inline function hide(g:Int)
+		gId[g] = -1;
 
 	static function ints(v:Vector<Int>, n:Int):Vector<Int> {
 		var w = new Vector<Int>(n);

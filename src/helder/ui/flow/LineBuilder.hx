@@ -497,7 +497,7 @@ class LineBuilder {
 			if (st == REMOVED) continue;
 			var item = c.pieceItem(i), kind = c.pieceKind(i);
 			var from = i == p ? u : c.pieceStart(i), to = i == endP ? endU : c.pieceEnd(i);
-			var w = advance(i, from, to, x);
+			var w = advance(i, from, to, x) + (st == HANG ? 0 : expansion * opportunities(i, from, to));
 			if (kind != InlineContent.ITEM) {
 				// (a tab: a fragment of its own, as Blink's control items)
 				if (textItem != item || kind == InlineContent.TAB || c.pieceKind(i - 1) == InlineContent.TAB) {
@@ -512,7 +512,7 @@ class LineBuilder {
 				}
 				// (preserved white space too: only removed spaces leave a line empty)
 				filled = true;
-				glyphsOf(i, from, to, x - o.fX[textFragment]);
+				glyphsOf(i, from, to, x - o.fX[textFragment], st == HANG ? 0 : expansion);
 				o.fWidth[textFragment] = x + w - o.fX[textFragment];
 				o.fEnd[textFragment] = to;
 				if (i == lastText) {
@@ -662,7 +662,7 @@ class LineBuilder {
 			}
 			var item = c.pieceItem(i), kind = c.pieceKind(i);
 			var from = i == p ? u : c.pieceStart(i), to = i == endP ? endU : c.pieceEnd(i);
-			var w = advance(i, from, to, x);
+			var w = advance(i, from, to, x) + (st == HANG ? 0 : expansion * opportunities(i, from, to));
 			if (solid(i)) sawSolid = true;
 			if (kind != InlineContent.ITEM) {
 				leaf(0, i, from, to, c.level(item), w, cur, st == HANG);
@@ -815,7 +815,7 @@ class LineBuilder {
 							fRise[textFragment] = o.fAscent[textFragment];
 							o.fRun[textFragment] = o.glyphs.begin(c.fonts.set(f));
 						}
-						glyphsOf(i, vFrom[v], vTo[v], x - o.fX[textFragment]);
+						glyphsOf(i, vFrom[v], vTo[v], x - o.fX[textFragment], vHang[v] ? 0 : expansion);
 						o.fWidth[textFragment] = x + w - o.fX[textFragment];
 						if (vFrom[v] < o.fStart[textFragment]) o.fStart[textFragment] = vFrom[v];
 						if (vTo[v] > o.fEnd[textFragment]) o.fEnd[textFragment] = vTo[v];
@@ -929,14 +929,40 @@ class LineBuilder {
 			for (i in p...last + 1)
 				if (c.pieceKind(i) == InlineContent.WORD) lastText = i;
 		// (the boxes it continues from the line before, outermost first; then its pieces, in visual order where bidi reorders them)
+		var firstRun = out.glyphs.runs;
 		slots = 0;
 		slot(-1, -1, 0, 0);
-		var x = reorders(p, last) ? placeVisual(p, u, last, x0, lastText) : placeLogical(p, u, last, x0, lastText);
+		expansion = 0;
+		var visual = reorders(p, last);
+		var x = visual ? placeVisual(p, u, last, x0, lastText) : placeLogical(p, u, last, x0, lastText);
 		var trailing = lineTrailing, filled = lineFilled;
 		var used = x - trailing;
 		// (before a forced break or at the end, preserved spaces hang only
 		// where they overflow: conditionally, CSS Text 3 §4.1.3)
 		if (trailing > 0 && (endFlags & FORCED != 0 || endP >= c.pieces)) used = Math.min(x, Math.max(used, avail));
+		// (justified: the room left shared among its opportunities, the line placed again)
+		var root = c.root;
+		var align = endFlags & FORCED != 0 || endP >= c.pieces ? root.textAlignLast() : root.textAlign();
+		if (align == Auto) align = root.textAlign() == Justify ? Start : root.textAlign();
+		var justify = root.textJustify();
+		if (align == Justify && justify != None && avail - used > EPSILON) {
+			interCharacter = justify == InterCharacter;
+			var n = countOpportunities(p, u, last);
+			if (n > 0) {
+				expansion = (avail - used) / n;
+				out.fragments = out.lFirst[k];
+				out.glyphs.truncate(firstRun);
+				slots = 0;
+				slot(-1, -1, 0, 0);
+				x = visual ? placeVisual(p, u, last, x0, lastText) : placeLogical(p, u, last, x0, lastText);
+				trailing = lineTrailing;
+				filled = lineFilled;
+				used = x - trailing;
+				if (trailing > 0 && (endFlags & FORCED != 0 || endP >= c.pieces)) used = Math.min(x, Math.max(used, avail));
+				expansion = 0;
+				lastOpportunity = -1;
+			}
+		}
 		// --- vertical: every box's metrics, its children's in it, then the line box ---
 		var height = 0.0, baseline = 0.0;
 		for (s in 0...slots)
@@ -995,9 +1021,6 @@ class LineBuilder {
 			for (s in 0...slots)
 				sBaseline[s] = 0;
 		// --- alignment ---
-		var root = c.root;
-		var align = endFlags & FORCED != 0 || endP >= c.pieces ? root.textAlignLast() : root.textAlign();
-		if (align == Auto) align = root.textAlign() == Justify ? Start : root.textAlign();
 		// (the paragraph's direction: a right-to-left one's start and indent on the right; overflowing, start aligned)
 		var rtl = (c.bidi ? c.paragraphDirection(u) : dir) == 1;
 		var free = avail - used;
@@ -1067,17 +1090,69 @@ class LineBuilder {
 	}
 
 	// (piece p's glyphs from...to into the current run, from x in it)
-	function glyphsOf(p:Int, from:Int, to:Int, x:Float) {
+	function glyphsOf(p:Int, from:Int, to:Int, x:Float, expand:Float) {
 		var e = c.pieceEntry(p);
 		if (e < 0) return;
 		var sh = c.shaper, g0 = sh.glyphStart(e), s = c.pieceStart(p), whole = from == s && to == c.pieceEnd(p);
-		var glyphs = out.glyphs;
+		var glyphs = out.glyphs, each = expand != 0 && justifies(p), rtl = sh.rtl(e);
 		for (g in g0...g0 + sh.glyphCount(e)) {
 			var cl = s + sh.cluster(g);
 			if (!whole && (cl < from || cl >= to)) continue;
+			// (justification's share: after each opportunity, before it in a right-to-left word)
+			var extra = each && opportunity(cl) ? expand : 0.0;
+			if (rtl) x += extra;
 			if (sh.id(g) >= 0) glyphs.add(sh.face(g), sh.id(g), x + sh.dx(g), sh.dy(g), sh.advance(g), cl);
 			x += sh.advance(g);
+			if (!rtl) x += extra;
 		}
+	}
+
+	// --- justification ---
+
+	// (the space each justification opportunity is given; its kind: text-justify's)
+	var expansion = 0.0;
+	var interCharacter = false;
+	// (the line's last opportunity, inter-character's: none after it)
+	var lastOpportunity = -1;
+
+	// (whether piece p's units take a share)
+	inline function justifies(p:Int):Bool {
+		var k = c.pieceKind(p);
+		return interCharacter ? k == InlineContent.WORD || k == InlineContent.SPACE : k == InlineContent.SPACE;
+	}
+
+	// (a unit that takes a share: a space, or with inter-character any cluster's start)
+	inline function opportunity(u:Int):Bool
+		return u != lastOpportunity && (interCharacter ? c.breakAt(u) & LineBreaks.CLUSTER != 0 : c.text.charCodeAt(u) == 32);
+
+	// (the opportunities among piece p's units from...to)
+	function opportunities(p:Int, from:Int, to:Int):Int {
+		if (expansion == 0 || !justifies(p)) return 0;
+		var n = 0;
+		for (u in from...to)
+			if (opportunity(u)) n++;
+		return n;
+	}
+
+	// (a line's opportunities: its pieces' but those that hang, and with
+	// inter-character its last cluster's)
+	function countOpportunities(p:Int, u:Int, last:Int):Int {
+		var e = expansion, n = 0;
+		expansion = 1;
+		lastOpportunity = -1;
+		for (i in p...last + 1) {
+			var st = state[i - p];
+			if (st == REMOVED || st == HANG || !justifies(i)) continue;
+			var from = i == p ? u : c.pieceStart(i), to = i == endP ? endU : c.pieceEnd(i);
+			for (v in from...to)
+				if (opportunity(v)) {
+					n++;
+					lastOpportunity = v;
+				}
+		}
+		expansion = e;
+		if (!interCharacter) lastOpportunity = -1 else if (n > 0) n--;
+		return n;
 	}
 
 	// (the hyphen a break after piece p's soft hyphen shows, at x)

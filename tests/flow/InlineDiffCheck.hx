@@ -126,8 +126,10 @@ class InlineDiffCheck {
 			case "right": Right;
 			case "end": End;
 			case "left": Left;
+			case "justify": Justify;
 			case _: Start;
 		}
+		o.justify = s.textJustify == "inter-character" ? InterCharacter : Auto;
 		o.indent = s.textIndent;
 		o.dir = s.direction == "rtl" ? Rtl : Ltr;
 		o.bidi = switch (s.unicodeBidi : String) {

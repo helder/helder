@@ -138,6 +138,58 @@ function tests() {
 			equals(l.lineLeft(0), (100 - 42) / 2);
 			equals(l.x(0), (100 - 42) / 2 + 10);
 		});
+		test("justify: the room shared among the spaces, the last line as it is", () -> {
+			var root = ahem(s -> s.align = Justify);
+			var l = lay(c -> c.addText("aa b cc dd", ahem()), 100, root);
+			equals(l.lines, 2);
+			// ("aa b cc" is 112 wide: no; "aa b" 64, two spaces' room shared: 36 to the one space)
+			equals(texts(l), ["aa b", "cc dd"]);
+			equals([l.lineWidth(0), l.lineWidth(1)], [100.0, 80.0]);
+			var g = l.glyphs, r = l.glyphRun(0);
+			// (b after the widened space: 32 + 16 + 36)
+			equals(g.x(g.runStart(r) + 3), 84.0);
+		});
+		test("justify: an atomic between, its space alone takes the room", () -> {
+			var root = ahem(s -> {
+				s.align = Justify;
+				s.indent = 10;
+			});
+			var l = lay(c -> {
+				c.addText("abc ", ahem());
+				c.addAtomic(0, 44, Math.NaN, ahem(s -> s.margins = [3, 2, 0, 0]));
+				c.addText("abcdxyz  abcd", ahem());
+			}, 220, root);
+			equals(l.fragmentWidth(0), 64 + 29.0);
+			var same = lay(c -> {
+				c.addText("abc ", ahem(s -> s.height = 30));
+				c.addAtomic(0, 44, Math.NaN, ahem(s -> {
+					s.height = 30;
+					s.margins = [2, 3, 0, 0];
+					s.vertical = TextTop;
+				}));
+				c.addText("abcdxyz  abcd-ab\ta  ", ahem(s -> s.height = 30));
+			}, 220, ahem(s -> {
+				s.align = Justify;
+				s.indent = 10;
+				s.height = 30;
+			}));
+			equals(texts(same), ["abc abcdxyz", "abcd-ab a"]);
+			equals(same.fragmentWidth(0), 64 + 29.0);
+		});
+		test("justify: inter-character, after every character but the line's last", () -> {
+			var root = ahem(s -> {
+				s.align = Justify;
+				s.justify = InterCharacter;
+			});
+			var l = lay(c -> c.addText("ab cd", ahem()), 120, ahem(s -> {
+				s.align = Justify;
+				s.justify = InterCharacter;
+			}));
+			equals(l.lines, 1);
+			equals(l.lineWidth(0), 80.0);
+			var l2 = lay(c -> c.addText("ab cd ef", ahem()), 100, root);
+			equals(l2.lineWidth(0), 100.0);
+		});
 		test("floats narrow lines: lineWidth's offset and width", () -> {
 			var c = new InlineContent(ahem());
 			c.addText("aa bb cc", ahem());

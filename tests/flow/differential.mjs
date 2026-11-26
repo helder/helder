@@ -113,6 +113,10 @@ function generate(seed) {
 		return out;
 	};
 	const c = {name: `g${GENERATOR}-seed-${seed}`, width: int(0, 40) * 10, style: root, children: children(root, 0)};
+	// (what was added since: drawn apart, so that the first draws' cases stay as they were)
+	const r2 = random(seed * 104729 + 3);
+	// (text-justify: auto; Chromium 141 takes inter-character as auto)
+	if (!NO.has('justify') && r2() < 0.25) [root.textAlign, root.textJustify] = ['justify', 'auto'];
 	if (NO.has('bs') && root.whiteSpace === 'break-spaces') root.whiteSpace = 'pre-wrap';
 	if (NO.has('ow')) [root.overflowWrap, root.wordBreak] = ['normal', 'normal'];
 	if (NO.has('ls')) [root.letterSpacing, root.wordSpacing] = [0, 0];
@@ -135,7 +139,7 @@ function css(s, atomic) {
 	const px = a => a.map(v => v + 'px').join(' ');
 	return [`font: ${s.fontSize}px/${s.lineHeight == null ? 'normal' : s.lineHeight + 'px'} Ahem`, `white-space: ${s.whiteSpace}`,
 		`overflow-wrap: ${s.overflowWrap}`, `word-break: ${s.wordBreak}`, `letter-spacing: ${s.letterSpacing}px`, `word-spacing: ${s.wordSpacing}px`,
-		`text-align: ${s.textAlign}`, `text-indent: ${s.textIndent}px`, `direction: ${s.direction}`, `unicode-bidi: ${s.unicodeBidi}`,
+		`text-align: ${s.textAlign}`, `text-justify: ${s.textJustify ?? 'auto'}`, `text-indent: ${s.textIndent}px`, `direction: ${s.direction}`, `unicode-bidi: ${s.unicodeBidi}`,
 		`vertical-align: ${s.verticalAlign === 'length' ? s.verticalShift + 'px' : s.verticalAlign}`,
 		`margin: ${px(s.margin)}`, `padding: ${px(s.padding)}`, `border: solid transparent`, `border-width: ${px(s.border)}`, 'tab-size: 8',
 		// (a background: an inline box Blink would cull (no fragment of its own) reports its own rectangles)
