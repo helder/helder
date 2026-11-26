@@ -500,11 +500,35 @@ function model(spec:ModelSpec, settled = false) {
 			if (open == 0) break;
 			if (++rounds > 100) throw "never settled: asks after 100 rounds";
 		}
+		// (each value read, until reading asks nothing more: a memo nothing
+		// observes computes again when read after a write (its clock, Solid 2's),
+		// asking anew; then answered as any other)
+		var reads:Array<String> = [];
+		for (_ in 0...20) {
+			reads = [];
+			for (k in 0...STORES)
+				if (copy[k] != null) for (n in 0...top.nodes.length) {
+					reads.push(inStore(k, () -> attempt(() -> untrack(top.nodes[n]))));
+					reads.push(copy[k].store.run(() -> attempt(() -> untrack(copy[k].built.nodes[n]))));
+				}
+			var open = 0;
+			for (k in 0...STORES)
+				if (copy[k] != null) open += real.opened(k) + copies.opened(k);
+			if (open == 0) break;
+			for (k in 0...STORES)
+				if (copy[k] != null) {
+					real.answerAll(k);
+					copies.answerAll(k);
+				}
+			flushed();
+		}
+		var at = 0;
 		for (k in 0...STORES)
 			if (copy[k] != null) {
-				for (n in 0...top.nodes.length)
-					equals(inStore(k, () -> attempt(() -> untrack(top.nodes[n]))), copy[k].store.run(() -> attempt(() -> untrack(copy[k].built.nodes[n]))),
-						'store $k\'s node $n, settled');
+				for (n in 0...top.nodes.length) {
+					equals(reads[at], reads[at + 1], 'store $k\'s node $n, settled');
+					at += 2;
+				}
 				equals(real.last(k), copies.last(k), 'store $k\'s effects, settled');
 			}
 	}
