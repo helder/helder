@@ -54,15 +54,31 @@ class Atoms {
 
 	// its nodes let go: every value as it started (top-level effects made again)
 	public function clear() {
-		dispose();
+		drop();
 		root = new Owner(null);
 		replay();
 	}
 
-	// its nodes let go (a screen's, gone); nothing of it is left on the atoms
+	// its nodes let go (a screen's, gone); nothing of it is left on the atoms,
+	// and a read or write in it after is an error
 	public function dispose() {
+		drop();
+		disposed = true;
+	}
+
+	var disposed = false;
+
+	function drop() {
 		root.dispose();
 		nodes = new haxe.ds.ObjectMap();
+	}
+
+	// (tests: the top-level effects recorded let go and forgotten, none recorded after)
+	@:noCompletion public static function forget() {
+		for (e in effects)
+			e.dispose();
+		effects = [];
+		record = #if helder.scenarios true #else false #end;
 	}
 
 	// (atom's node here)
@@ -87,6 +103,7 @@ class Atoms {
 	}
 
 	function make<T>(atom:Node<T>):Node<T> {
+		if (disposed) throw new Owner.GraphError('a store let go ($name) read or written');
 		var n = atom.copy(this);
 		nodes.set(cast atom, cast n);
 		var f = atom.copied;
@@ -97,6 +114,7 @@ class Atoms {
 
 	// f run with this store current
 	public function run<R>(f:Void->R):R {
+		if (disposed) throw new Owner.GraphError('a store let go ($name) run');
 		var was = current;
 		current = this;
 		try {
