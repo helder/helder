@@ -22,7 +22,8 @@ the ordinary type checker (no key scheme). Fields: `boot`, `time` (its clock's s
 or ms; the clock stands at the moment), `zone` ("UTC" or a fixed offset), `locale`, `settings`,
 `seed`, `size: [w, h]` (else the root's `<Surface>`'s), `dark`, `play` (seconds of its clock run to
 the moment), `loop` (seconds run live from the moment while hovered), `http` (its requests'
-answers, strict). Phase 2 next: `steps`. Stories stay for
+answers, strict), `steps` (what a user does after boot: `tap`, `type`, `press`, `scroll`,
+`drag`, `waitFor`). Stories stay for
 components (controls); a story's and a scenario's names are one list (two of one name: an error).
 
 The model lives in exported top-level signals and memos. Component-local signals stay as they
@@ -284,9 +285,10 @@ screen 27-38 MB (36 in three), a story screen 5-25 MB; mostly a screen's frame (
 in under stories alone).
 
 Moments that wait for phase 2's steps (their stories stay): the PDF between two pages (a scroll),
-the marquee (a drag), the search field focused (focus), the phone's long press, select mode and
+the marquee (a drag held mid-way), the phone's long press, select mode and
 info sheet (PhoneState is the phone shell's own, not bootable), the sidebar's volume card (the
-volumes are the machine's: a Sandbox of volumes, or `settings`).
+volumes are the machine's: a Sandbox of volumes, or `settings`). The search field focused is
+App/Search focused, dark and light: a tap (phase 2c).
 
 Found while porting: the studio could not build the viewer's screens at all (its stories under
 tests/, no class path of the project's: now each story file's root by its package; a main that is
@@ -380,10 +382,45 @@ matches the screen's failure, named); the `scenarios` lane's weather fixture: it
 answered by a file and by a 503, each the same pixels as the story posing that answer; a request
 none matches crashes its screen, named in the studio's log.
 
+## Phase 2c: semantic steps (done)
+
+`steps: [tap("Add"), type("New habit", "Stretch"), press("Enter"), scroll("Rows", "end"),
+drag(from, to), waitFor("Saved")]` (`helder.scenario.Steps`; TypeScript's from
+`helder/scenario`): run after boot, before the still and before a loop, in the screen's context
+and store (its clock, its zone, its seed). A query is a string, tried in this order: a node with
+a role and that name, that label, that text, that id; or `{role, name, label, text, id}`, each
+given matched. Only what is shown counts (a size, some opacity, its centre inside the screen
+and inside each scroll view round it); the first tier that matches must match one node, more is
+an error (`"Twin" is 2 nodes: button "Twin", button "Twin" (a role, a label or an id tells them
+apart)`). Queries read `UiInspector`'s nodes (the access tree's role and label, a text's text, a
+markup id), not the headless script's locator: theirs is a tag-first match for scripts.
+
+A step acts as a user does: `tap` presses and releases at the node's centre, `type` taps then
+types, `press` a key, `scroll` wheels the node's scroll view (by points, to an end, or until a
+query is shown), `drag` presses, moves in ten frames and releases. After each step the screen's
+clock runs until nothing is pending (frames asked for, animations, timers due within a second,
+helder.async's tasks), a minute of it at most: exact, not a sleep; `waitFor` runs it until its
+query is shown. After the last step the pointer leaves the screen, so no hover shows in the
+still. A step that finds nothing fails its screen as an http miss does (the crash on the frame,
+`project.patch`'s crashed for the agent): `step 2: no "Ad" (near: button "Add")` and a compact
+tree of what is shown (40 lines), the near misses closest first.
+
+Found on the way: `UiInspector` kept a node's source and component only in dev and headless
+builds, and failed to compile outside them; and a step file's module functions shadowed the
+class's statics TypeScript keeps (the functions are the class's alone now). A scenario's
+position is its Haxe file's (`scenario({...})`), none for TypeScript's.
+
+Tests: `Scenario.test.hx` (a tap, typing and Enter; a scroll until a row is shown, then its tap;
+a step that finds nothing and an ambiguous one, their messages); the `scenarios` lane's habits
+fixture: "All done" and "Added" reached by hand (taps and typing after boot) the same pixels as
+boot writing them, and a broken step failing its screen, its near miss named; the viewer's
+search field focused (dark, light) reached by a tap (`viewer-scenarios`, beside its stories).
+Left: `longPress`, `swipe`, `pinch`; a drag held mid-way (the marquee's story stays); the
+phone's select mode and info sheet (PhoneState is the phone shell's own: steps reach them now,
+not yet written).
+
 ## Phase 2 notes
 
-- Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
-  screen's context and store; a step's write is a store write like boot's.
 - Per-context, left: Haxe's `Date.now` (hxmc's runtime), Haxe's tasks' clock
   (helder.async.Home's on the real loop).
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.

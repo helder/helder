@@ -6,7 +6,8 @@
 // live literal's patch, the clock fixture's screens deterministic (built
 // twice, the same beside other neighbours, its zones and locales apart), the
 // weather app's request answered by its fixtures (a request none matches
-// failing its screen), and the
+// failing its screen), the habits app's steps reaching its boot's pixels
+// (a broken step failing its screen), and the
 // screens' program's memory with 1 and 6 scenarios (bin/scenario/results.md).
 //
 //   node tests/scenario/check.mjs <helder> <out>
@@ -215,6 +216,33 @@ fs.writeFileSync(path.join(unmatched, 'app.scenario.tsx'), fs.readFileSync(path.
 const named = await studio(unmatched, async (call, wait) => (await wait(/Weather\/Ghent crashed: ([^\n]*)/, 120))[1])
 console.log(`a request no fixture matches: Weather/Ghent crashed: ${named}`)
 if (!/no http fixture for GET https:\/\/api\.open-meteo\.com\/v1\/forecast/.test(named)) failed++
+
+// 7. steps (phase 2): the habits app's moments reached by hand (taps and
+// typing after boot) the same pixels as boot writing them; a step that no
+// longer resolves fails its screen, its near misses named
+const habits = 'tests/scenario/fixtures/habits'
+const byHand = await studio(copy('steps', [], habits), async (call, wait) => {
+  await wait(/all (\d+) screens shown/)
+  const diffs = {}
+  async function saved(name) {
+    const r = await call('run.snap', {screen: name})
+    const png = Buffer.from(r.content.find(c => c.type === 'image').data, 'base64')
+    fs.writeFileSync(path.join(out, `habits-${name.replace(/[/, ]+/g, '-')}.png`), png)
+    return decode(png)
+  }
+  for (const name of ['Habits/All done', 'Habits/Added'])
+    diffs[name] = differ(await saved(`${name}, by hand`), await saved(name))
+  return diffs
+})
+for (const [name, d] of Object.entries(byHand)) {
+  console.log(`${name}, by hand (its steps) against boot alone: ${d} pixels differ`)
+  if (d > 0) failed++
+}
+const broken = copy('broken', [], habits)
+fs.writeFileSync(path.join(broken, 'app.scenario.tsx'), fs.readFileSync(path.join(broken, 'app.scenario.tsx'), 'utf8').replace('tap("Add")', 'tap("Ad")'))
+const stepped = await studio(broken, async (call, wait) => (await wait(/Habits\/Added, by hand crashed: ([^\n]*)/, 120))[1])
+console.log(`a step that no longer resolves: Habits/Added, by hand crashed: ${stepped}`)
+if (!/step 2: no "Ad" \(near: button "Add"/.test(stepped)) failed++
 
 // 4. memory per scenario screen: 1 scenario against 6
 const one = copy('one', ['pong.story.tsx'])
