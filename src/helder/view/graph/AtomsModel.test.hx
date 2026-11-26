@@ -354,6 +354,10 @@ class Seen {
 		return m;
 	}
 
+	// (a store's asks not answered nor cancelled)
+	public function opened(store:Int):Int
+		return [for (a in asks[store]) if (!a.later.cancelled) a].length;
+
 	// (a store's open asks answered by their input alone: whatever order they were asked in)
 	public function answerAll(store:Int):Int {
 		var n = 0;
@@ -480,11 +484,17 @@ function model(spec:ModelSpec, settled = false) {
 	function settle() {
 		var rounds = 0;
 		while (true) {
-			var n = 0;
 			for (k in 0...STORES)
-				if (copy[k] != null) n += real.answerAll(k) + copies.answerAll(k);
+				if (copy[k] != null) {
+					real.answerAll(k);
+					copies.answerAll(k);
+				}
 			flushed();
-			if (n == 0) break;
+			// (settled once a flush asked nothing new: its runs may ask again)
+			var open = 0;
+			for (k in 0...STORES)
+				if (copy[k] != null) open += real.opened(k) + copies.opened(k);
+			if (open == 0) break;
 			if (++rounds > 100) throw "never settled: asks after 100 rounds";
 		}
 		for (k in 0...STORES)
