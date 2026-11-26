@@ -24,6 +24,9 @@ class Css {
 		// (BLESS=1: cascade-manifest.json's pending cases)
 		exe("bin/css/CssCascadeCheck", cps(["src", "tests/css"]).concat(["-main", "CssCascadeCheck"]));
 		run(exePath("bin/css/CssCascadeCheck", HOST), []);
+		// (BLESS=1: counters-manifest.json's pending cases)
+		exe("bin/css/CssCountersCheck", cps(["src", "tests/css"]).concat(["-main", "CssCountersCheck"]));
+		run(exePath("bin/css/CssCountersCheck", HOST), []);
 	}
 
 	// (what follows css-reftests or css-render on the command line: theirs, Run.hx)

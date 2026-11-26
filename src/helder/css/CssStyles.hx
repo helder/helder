@@ -4,6 +4,7 @@ import haxe.ds.IntMap;
 import haxe.ds.ObjectMap;
 import helder.css.CssDisplay;
 import helder.css.CssMedia;
+import helder.css.CssPages;
 import helder.css.CssProperty;
 import helder.css.CssResolver;
 import helder.css.CssRuleIndex;
@@ -90,6 +91,20 @@ class CssStyles {
 		return s;
 	}
 
+	// A page's computed style (Paged Media 3 §5): the @page rules that match
+	// it (its index for :first, its page type's name, its side, whether
+	// it's blank), by their specificity, inheriting from the root element's;
+	// with its size, bleed, marks and orientation.
+	public function pageStyle(index:Int, name:Null<String>, left:Bool, blank:Bool):CssPage
+		return (paged ??= new CssPages(this)).page(index, name, left, blank);
+
+	// One of a page's 16 margin boxes' style ("top-left", ..., "bottom-right-corner"),
+	// inheriting from the page's; null for a name that isn't one.
+	public function marginBoxStyle(index:Int, name:Null<String>, left:Bool, blank:Bool, box:String):Null<CssStyle>
+		return (paged ??= new CssPages(this)).margin(index, name, left, blank, box);
+
+	var paged:Null<CssPages>;
+
 	// The groups made so far, per group, and the distinct styles.
 	public function counts():{groups:Map<String, Int>, styles:Int} {
 		var out = new Map<String, Int>();
@@ -109,6 +124,8 @@ class CssStyles {
 		var matched = [for (m in found) m.value];
 		var attribute = pseudo == null ? el.getAttribute("style") : null;
 		var hinted = pseudo == null && hints != null ? hints(el) : null;
+		var lists = pseudo == null ? CssHints.lists(el) : null;
+		if (lists != null) hinted = hinted == null ? lists : hinted.concat(lists);
 		var hintKey = hinted == null || hinted.length == 0 ? "" : Std.string([for (d in hinted) [d.property, Std.string(d.value)]]);
 		var item = item(pseudo == null ? el.parentNode : el);
 		// (the same parent style and cascade: the same style)
@@ -180,6 +197,12 @@ class CssStyles {
 			var k = 0;
 			for (d in CssSheet.attribute(attribute)) out.push(candidate(d, Author, true, UNLAYERED, 0, k++));
 		}
+		return cascaded(out, parent, pseudo, isRoot, item);
+	}
+
+	// (a style of these candidates: sorted, mapped, worked out, its groups interned)
+	@:allow(helder.css)
+	function cascaded(out:Array<CssCandidate>, parent:Null<CssStyle>, pseudo:Null<String>, isRoot:Bool, item:Bool):CssStyle {
 		// best first: rank, then attached, layer, specificity, order
 		out.sort((a, b) -> {
 			if (a.rank != b.rank) return b.rank - a.rank;
@@ -242,7 +265,7 @@ class CssStyles {
 	// legacy, the parent's)
 	function extra(g:Int, r:CssResolver, parent:Null<CssStyle>, pseudo:Null<String>, isRoot:Bool, item:Bool):Bool {
 		if (g == BOX) return isRoot || item || r.declares(Position) && r.positioned();
-		if (g == CONTENT) return pseudo == "before" || pseudo == "after";
+		if (g == CONTENT) return pseudo == "before" || pseudo == "after" || pseudo != null && pseudo.charAt(0) == "@" && pseudo != "@page";
 		if (g == CONTAINER) return parent != null && parent.container.justifyItems.length == 2;
 		return false;
 	}
@@ -414,6 +437,7 @@ class CssStyles {
 			case _: null;
 		}
 
+	@:allow(helder.css)
 	static function candidate(d:CssDeclared, origin:CssOrigin, attached:Bool, layer:Int, specificity:Int, order:Int):CssCandidate {
 		var o = switch origin {
 			case UserAgent: 0;

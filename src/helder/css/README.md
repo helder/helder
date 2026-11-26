@@ -688,7 +688,8 @@ writes from it and the property table:
   lays text out again: the fonts, spacing, white space), `Paint`,
   `Composite` (opacity and transforms), `None` (cursor, transitions...).
 
-The typed reads layout will use:
+The typed reads layout will use (by id they return what the group holds,
+allocating nothing; a keyword's terms are one shared array a keyword):
 
 ```haxe
 var s = styles.computed(el);
@@ -737,3 +738,97 @@ statically, CssValuesCheck the computed rows of WPT's value tests in
 their own pages (tests/css); both check every value against #321's
 cascade as it was merged, frozen in tests/css/reference.
 `bun run test bench cascade` styles the HTML Standard's page.
+
+## Counters and generated content
+
+`CssCounters` keeps counters and quotes as the box tree walks a document
+in tree order (Lists 3 §4, Content 3 §3): it enters each element, then
+its ::marker, ::before, children and ::after, and exits them.
+
+```haxe
+var counters = new CssCounters(styles);
+counters.enter(li);
+counters.enter(li, "marker");
+counters.marker(li);              // [Text("3. ")]: ::marker's content, list-style-image or list-style-type
+counters.exit(li, "marker");
+counters.enter(li, "before");
+counters.content(li, "before");   // [Text("§2.1 "), Image(...)]: strings, counters, attr(), quotes, images
+counters.exit(li, "before");
+// ...the children...
+counters.exit(li);
+counters.value("list-item"); counters.values("section");  // counter() and counters()
+```
+
+- **Scopes**: a counter an element makes (by `counter-reset`, or by a
+  `counter-increment`, `counter-set` or `counter()` of a name not in
+  scope) is in scope for its descendants and its following siblings; a
+  later sibling's counter of the name replaces it, a descendant's nests
+  in it. On an element, resets apply first (only a name's last), then
+  increments (a list item's implicit `list-item 1`, or -1 inside a
+  reversed counter, unless it names list-item itself), then sets. An
+  increment that would overflow 32 bits is left out, as browsers do. An
+  element without a box of its own (`display: none` or `contents`) sets
+  no counters, and its children count as its parent's.
+- **Reversed counters**: `reversed(name)` without a value starts at the
+  sum of its scope's increments negated plus its last non-zero one, a
+  `counter-set` ending the sum (Lists 3 §4.4.2).
+- **HTML**: `ol`'s `start` and `reversed` and `li`'s `value` apply as
+  `counter-reset` and `counter-set` whether or not the cascade's `hints`
+  are on, and so do the lists' `type` attributes: a list numbers wrongly
+  without them.
+- **Quotes**: `open-quote` and `close-quote` (and the no- ones) keep a
+  depth through the document; `quotes: auto` gives English's pairs.
+- **Typed counter properties**: `style.counters(CounterReset)` and the
+  like give `{name, value, reversed}`, value null for `reversed()`
+  without one.
+
+## Counter styles
+
+`CssCounterStyles` formats a number in a counter style (Counter Styles 3):
+the predefined ones (`CssCounterStylesData`: §6's rules, from decimal to
+the Armenian, Georgian, Hebrew, roman, Greek, kana and Indic ones, disc,
+circle, square, the disclosure triangles, cjk-earthly-branch and
+cjk-heavenly-stem; `CssCounterAlgorithms`: §7's Chinese, Japanese and
+Korean longhands from -9999 to 9999, and ethiopic-numeric) and the
+document's `@counter-style` rules, a later rule over an earlier one and
+over a predefined style but decimal, disc, square, circle and the
+disclosure ones (which can't be redefined). Each system (cyclic, fixed,
+symbolic, alphabetic, numeric, additive, extends) as §3.1 says; a value
+out of the range, or with no representation, takes the fallback's (an
+extends loop extends decimal); then the pad, counted with the negative
+sign, then the negative sign; a marker adds the prefix and suffix.
+`symbols()` makes an anonymous style. `CssCounterDescriptors` reads and
+writes the descriptors. Left out: §7.1.2's optional extended CJK forms
+past 9999, and images as symbols (a marker's text can't be one).
+
+```haxe
+var formats = new CssCounterStyles(styles.counterStyles);
+formats.format(14, "lower-roman");  // "xiv"
+formats.marker(3, "cjk-decimal");   // "三、"
+```
+
+## Pages
+
+`styles.pageStyle(index, name, left, blank)` cascades the `@page` rules
+for a page (Paged Media 3 §4, §5): those whose selectors match its
+context (`:first` the first page, a page type's name, `:left` or
+`:right`, `:blank`), by origin and importance, then specificity (a page
+type's name, then `:first` and `:blank`, then `:left` and `:right`),
+then order. The page context's style inherits from the root element's;
+`CssPage` has it and the page's size in px (`size`'s lengths, a page
+size keyword and an orientation; auto: A4), `bleed` (auto: 6pt with crop
+marks, else 0), `marks` and `page-orientation`.
+`styles.marginBoxStyle(index, name, left, blank, box)` gives one of the
+16 margin boxes' style, inheriting from its page's, Paged Media 3
+§6.2's `text-align` and `vertical-align` beneath its rules, `content:
+normal` as none. Data only: the paged host lays out.
+
+Tests (`CssCounters.test.hx`, natively and as wasm32-wasi): the
+predefined styles, `@counter-style`'s systems and descriptors, their
+syntax, lists (`start`, `reversed`, `value`, `type`), counters, scopes and
+quotes, the @page cascade; and properties: decimal and lower-alpha are
+the numbers they write, upper-roman's symbols sum back, and a list's
+markers count its items as HTML's ordinal values say. The css lane's
+CssCountersCheck renders WPT's css-counter-styles and css-lists reftests
+and their references to text through CssCounters, and reads
+`@counter-style`'s syntax tests.

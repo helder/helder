@@ -20,6 +20,24 @@ class CssGroup {
 	function copy():CssGroup
 		throw "abstract";
 
+	// (the stored fields by id, for CssStyle's typed reads: no allocation)
+	@:allow(helder.css)
+	function lengthOf(p:CssProperty):Null<CssLength>
+		return null;
+
+	@:allow(helder.css)
+	function rgbaOf(p:CssProperty):Null<CssRgba>
+		return null;
+
+	// (a keyword's index; -1: not a keyword here, -2: in others)
+	@:allow(helder.css)
+	function keywordOf(p:CssProperty):Int
+		return -1;
+
+	@:allow(helder.css)
+	function numberOf(p:CssProperty):Float
+		return Math.NaN;
+
 	function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {}
 
 	function same(o:CssGroup):Bool

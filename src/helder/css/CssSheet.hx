@@ -191,7 +191,9 @@ private class Builder {
 			case "counter-style" if (body != null):
 				var items = [for (v in prelude) if (!v.match(Token(_.kind => Whitespace))) v];
 				switch items {
-					case [Token(_.kind => Ident(n))] if (!["none", "decimal", "disc", "circle", "square", "inherit", "initial", "unset"].contains(Css.lower(n))):
+					// (the user agent's sheet defines decimal and the like; no other may, Counter Styles 3 §3)
+					case [Token(_.kind => Ident(n))] if (!["none", "inherit", "initial", "unset", "revert", "revert-layer", "default"].contains(Css.lower(n))
+						&& (origin == UserAgent || !RESERVED.contains(Css.lower(n)))):
 						[CounterStyle({name: n, descriptors: declarations(body)})];
 					case _: [];
 				}
@@ -323,6 +325,8 @@ private class Builder {
 		}
 		return {selectors: selectors, declarations: declared, descriptors: descriptors, margins: margins, origin: origin, order: 0};
 	}
+
+	static final RESERVED = ["decimal", "disc", "square", "circle", "disclosure-open", "disclosure-closed"];
 
 	static final MARGINS = [
 		"top-left-corner", "top-left", "top-center", "top-right", "top-right-corner", "bottom-left-corner", "bottom-left", "bottom-center", "bottom-right",

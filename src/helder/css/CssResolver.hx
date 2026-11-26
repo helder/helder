@@ -75,8 +75,8 @@ class CssResolver {
 			case OutlineWidth: keyword(OutlineStyle) == "none" ? ZERO : v;
 			case Float: positioned() ? NONE : v;
 			case Display: blockify(v);
-			// (normal on ::before and ::after is none, Content 3 §1)
-			case Content if (pseudo == "before" || pseudo == "after"): v.length == 1 && v[0].match(Keyword("normal")) ? NONE : v;
+			// (normal on ::before and ::after is none, Content 3 §1, and on a page's margin boxes, Paged Media 3 §4.2)
+			case Content if (pseudo == "before" || pseudo == "after" || pseudo != null && pseudo.charAt(0) == "@" && pseudo != "@page"): v.length == 1 && v[0].match(Keyword("normal")) ? NONE : v;
 			case _: v;
 		}
 	}

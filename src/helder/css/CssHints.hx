@@ -14,6 +14,38 @@ using StringTools;
 class CssHints {
 	static inline var HTML = "http://www.w3.org/1999/xhtml";
 
+	// (HTML's list numbering, applied whether or not hints are: li's value
+	// as counter-set, ol's start and reversed as counter-reset, Rendering
+	// §15.3.7; a list numbers wrongly without them)
+	public static function lists(el:Element):Null<Array<CssDeclared>> {
+		if (el.namespaceURI != HTML) return null;
+		switch el.localName {
+			case "li":
+				var v = integer(el.getAttribute("value"));
+				return v == null ? null : CssSheet.attribute('counter-set: list-item $v');
+			case "ol":
+				var start = integer(el.getAttribute("start"));
+				if (el.hasAttribute("reversed")) return CssSheet.attribute(start == null ? "counter-reset: reversed(list-item)" : 'counter-reset: reversed(list-item) ${start + 1}');
+				return start == null ? null : CssSheet.attribute('counter-reset: list-item ${start - 1}');
+			case _: return null;
+		}
+	}
+
+	// (HTML's rules for parsing integers: spaces, a sign, digits, the rest ignored)
+	static function integer(text:Null<String>):Null<Int> {
+		if (text == null) return null;
+		var k = 0, n = text.length;
+		while (k < n && " \t\n\r\x0C".indexOf(text.charAt(k)) >= 0) k++;
+		var negative = false;
+		if (k < n && (text.charAt(k) == "-" || text.charAt(k) == "+")) negative = text.charAt(k++) == "-";
+		var start = k;
+		var v = 0.0;
+		while (k < n && text.charCodeAt(k) >= "0".code && text.charCodeAt(k) <= "9".code) v = v * 10 + (text.charCodeAt(k++) - "0".code);
+		if (k == start) return null;
+		if (v > 2147483647) v = 2147483647;
+		return Std.int(negative ? -v : v);
+	}
+
 	public static function declarations(el:Element):Array<CssDeclared> {
 		if (el.namespaceURI != HTML) return [];
 		var css = new StringBuf();
