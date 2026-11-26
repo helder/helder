@@ -30,6 +30,12 @@ in [CONTRIBUTING.md](../CONTRIBUTING.md#tests).
 | `syntax` | helder.syntax, the syntax trees the studio edits (src/helder/syntax; its edits' tests are the test lane's, Syntax.test.hx): every .ts and .tsx file, and every .hx file with markup, of the repository read and printed back byte for byte, read structurally, each Haxe markup literal read as the macro's parser reads it (tests/syntax/Check.hx, on Eval and natively: the read of the largest file timed) |
 | `syntax-run` | helder.syntax's edits on the examples (tests/syntax/ExamplesCheck.hx; Linux: Mesa's llvmpipe, no display): todo, ts-todo, mail, the guide's screen and the viewer's shell and shader copied into bin/syntax/run and edited (attributes set, added and removed, literals, children inserted, elements moved, deleted, wrapped, unwrapped and renamed, a component renamed, a definition's field), each edit's change only in its span and undone by its inverse; each built and run headless (helder run --headless), its --tree showing each change; ts-todo's story renamed and its tests run (helder test) |
 
+## CSS (lanes/Css.hx)
+
+| Lane | Checks |
+| --- | --- |
+| `css` | helder.css's property table (src/helder/css/CssData.hx, from @webref/css) against WPT's cases read statically (tests/css/CssCheck.hx, natively): values.json's properties all in the table, its rows, selectors.json's and reftests.json's fields, every property's and type's grammar parsed; the grammars' own tests are the test lane's (CssGrammars.test.hx). tests/css/README.md has the counts: values per module, reftests per chapter, what is out and why |
+
 ## Images and PDF (lanes/Image.hx)
 
 | Lane | Checks |
