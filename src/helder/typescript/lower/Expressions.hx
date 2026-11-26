@@ -64,8 +64,9 @@ abstract class Expressions extends Statements {
 				}
 				else x = u.unaryOperator() == KindMinusToken || u.unaryOperator() == KindPlusToken ? numeric(u.operand(), false) : expr(u.operand());
 				switch (u.unaryOperator()) {
-					case KindMinusToken: EConv(FNeg, b.coerce(x, TF64));
-					case KindPlusToken: b.coerce(x, TF64);
+					// (a string's number by ToNumber, not its reference unboxed)
+					case KindMinusToken: EConv(FNeg, number(x));
+					case KindPlusToken: number(x);
 					case KindExclamationToken: ENot(truth(x));
 					case KindPlusPlusToken | KindMinusMinusToken: x;
 					case KindTildeToken: EConv(I2F, EBin(Xor, b.runtime("libInt", [any(x)]), EInt(-1)));
