@@ -31,8 +31,10 @@ export declare function scenario(def: ScenarioDef): Scenario;
 
 // (main's root held, its top-level effects recorded: before the app's modules run)
 export declare function hold(): void;
-// the window of one of list, by its name (another of them played later in it)
-export declare function play(list: Scenario[], name: string): void;
+// the window of one of list, by its name (another of them played later
+// in it); no name: the one the page's ?scenario= names (a share's web
+// build, helder.run's Play from here), else the app from its start
+export declare function play(list: Scenario[], name?: string): void;
 
 // a tap at the node's centre (a press and its release), or at {x, y} in points
 export declare function tap(query: string | Query | {x: number; y: number}): Step;

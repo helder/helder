@@ -16,6 +16,25 @@ import helder.view.Render;
 // drawn live and replayed from the decoded file, at 2x, pixel for pixel
 function tests() {
 	describe("FrameArchive", () -> {
+		#if !(hxmc.target == "wasm32-wasi")
+		test("portable: a font it refers to by its file stored with it (a share's), drawn when the file is gone", () -> {
+			var dir = haxe.io.Path.normalize((Sys.getEnv("TMPDIR") ?? "/tmp") + "/helder-portable-" + Std.random(1000000));
+			sys.FileSystem.createDirectory(dir);
+			var font = '$dir/face.ttf';
+			sys.io.File.copy("apps/studio/fonts/HankenGrotesk-Regular.ttf", font);
+			var face = helder.text.SystemFonts.get().file(font, 0), w = new FrameWriter();
+			w.rect(0, 0, 10, 10, 0, 0xFF000000, 0, 0);
+			var frame = w.frame();
+			frame.fonts.push(FrameArchive.fontRef(face));
+			var a = new FrameArchive();
+			a.add("s", "key", 10, 10, frame);
+			var p = FrameArchive.decode(a.portable().encode());
+			sys.FileSystem.deleteFile(font);
+			sys.FileSystem.deleteDirectory(dir);
+			equals([p.names().join(","), p.key("s")], ["s", ""]);
+			equals(p.list("s") != null, true);
+		});
+		#end
 		test("floats: on the grid as steps, else raw", () -> {
 			var o = new FrameStreams(), values = [0, 12.5, 12.5, -3.25, 1 / 3, 1e300, Math.NaN, 1 / 64];
 			for (v in values)
