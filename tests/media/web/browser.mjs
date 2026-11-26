@@ -13,7 +13,9 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const pw = require('playwright');
+// (the checkout's playwright, else node's global one: npm i -g playwright)
+let pw;
+try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const wasm = path.resolve(process.argv[2]);
 const browsers = process.argv.length > 3 ? process.argv.slice(3) : ['chromium', 'firefox', 'webkit'];
