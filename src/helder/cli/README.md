@@ -9,7 +9,8 @@ says so and falls back to `node_modules/.bin/haxe`. With helder's sources
 and node at hand it builds with helder's compiler instead (src/helder/compiler:
 hxmc's with markup in any function and the TypeScript frontend, built once
 into the user's cache by `src/helder/compiler/build.mjs`), hxmc's native one
-when that does not build. Installed from npm, both come prebuilt (below).
+when node cannot run that; a build of it that fails is the command's failure
+(its errors, exit code 1). Installed from npm, both come prebuilt (below).
 
 ```sh
 helder dev                                    # the project here, on this machine, live
