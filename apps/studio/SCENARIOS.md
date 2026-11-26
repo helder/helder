@@ -204,6 +204,28 @@ What turned out different from the first design:
 - "Same bring rules" would run an endless game step for 2 s of the clock and move the ball off
   its moment; a scenario's clock stands at its moment (`play` runs it there).
 
+The papercraft field test's fixes (harbour, a TypeScript 3D app; 2026-11-26):
+
+- **Loops of a 3D scenario played from the file.** A loop whose scene is kept as its picture (not
+  markup alone) is recorded as pictures: 24 fps, 480 px at most, each a JPEG when opaque, encoded
+  as it is read (holding the readbacks made it GC-bound). Hovered, a fresh still's loop plays
+  from frames.hframes even while the program runs; the host is asked to loop live only when no
+  loop is kept. Harbour: its two 7 s scenario loops and a 4 s story loop kept, 168/168/96 frames,
+  4.7 MB a 7 s loop, 4-20 s to record (load 18-580); hovered, decoded in 339 ms, its first frame
+  339 ms after the hover. Its frames file is 41 MB, 27 MB of it the stills' 2x PNGs.
+- **Rows apart.** A row's gap grows with the widest row, so titles and captions fit at the
+  zoom that fits wide frames (harbour's scenario row sat on its story row).
+- **Cache misses.** A live literal's patch made the program's sources the patched files (the
+  stills taken after it were keyed by the old ones: all stale on reopen; the `scenarios` lane:
+  13 stale before, 0 now), the unchanged ones re-keyed. A crashed screen's old still stays in
+  the file under its old key: reopened, dimmed (the field test's 1 of 8).
+- **Worlds.** At most 8 stills built at once (`Host.MOUNTED`): the settled one drawn longest ago
+  let go, its still written first, built again at a focus, its loop, a request or a literal's
+  patch. 24 screens of a `<Scene>` failed from the 17th ("more than 16 worlds alive").
+- **The guide.** Instructions, the start, game, 3d and ui topics and the starter default to
+  scenarios (the starter's `app.scenario.tsx`, its model a top-level signal); stories for
+  components with controls.
+
 Found while building: `signal(undefined)()` reads back `null` in TypeScript (weather's
 `forecast() === undefined` never held; the fixture reads `== null`). An interop gap, not the
 stores'.
