@@ -208,6 +208,19 @@ Found while building: `signal(undefined)()` reads back `null` in TypeScript (wea
 `forecast() === undefined` never held; the fixture reads `== null`). An interop gap, not the
 stores'.
 
+## Open: known gaps
+
+- **`latest` through a memo, beside a hold.** A change held on an answer
+  (`s0 = 1`, a render effect waiting on a memo that asks with it), then a
+  write beside it (`s1 = 0`): a user effect showing `latest(() -> s0 + s1)`
+  (the sum a memo) shows 0 here, its memo reading `s0`'s committed value;
+  Solid 2.0.4 shows 1, looking ahead to the held `s0`. Not the stores': the
+  plain graph does the same. `tests/view/graph/solid-oracle.mjs` case 3
+  (Solid's output: `made [] · answer 7 [e3: 7, e0: 1, ...] · s0 = 1
+  [e0: 2] · s1 = 0 [e0: 1]`), the skipped test in `Holds.test.hx` ("latest
+  looks ahead to a held value through a memo..."). The stores fuzzer leaves
+  `latest` over memos out until it is fixed (`latest` over signals stays).
+
 ## Phase 2 notes
 
 - Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the

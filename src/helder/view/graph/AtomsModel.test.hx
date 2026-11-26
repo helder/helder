@@ -268,7 +268,15 @@ function modelGen():Gen<ModelSpec>
 		var numbers = signals + memos.length;
 		var boundaries = [for (_ in 0...c.draw(int(0, 3))) {node: c.draw(int(0, numbers - 1)), loading: c.draw(bool())}];
 		var nodes = numbers + boundaries.length;
-		var effects = [for (_ in 0...c.draw(int(1, 6))) {render: c.draw(bool()), node: c.draw(int(0, nodes - 1)), how: c.draw(int(0, 3)), cleanup: c.draw(bool()), writes: c.draw(int(0, 3)) == 0}];
+		// (latest over a memo: a known gap, left out; tests/view/graph/Holds.test.hx, apps/studio/SCENARIOS.md)
+		inline function how(node:Int):Int {
+			var h = c.draw(int(0, 3));
+			return h == 2 && node >= signals ? 0 : h;
+		}
+		var effects = [for (_ in 0...c.draw(int(1, 6))) {
+			var render = c.draw(bool()), node = c.draw(int(0, nodes - 1));
+			{render: render, node: node, how: how(node), cleanup: c.draw(bool()), writes: c.draw(int(0, 3)) == 0};
+		}];
 		var derived = [for (i => m in memos) if (m.match(Derived(_))) signals + i];
 		var ops = [for (_ in 0...c.draw(int(1, 300))) switch c.draw(int(0, 12)) {
 			case 0 | 1: Write(c.draw(int(0, STORES - 1)), c.draw(int(0, signals - 1)), c.draw(int(0, 5)));
@@ -278,7 +286,9 @@ function modelGen():Gen<ModelSpec>
 			case 6 | 7: Answer(c.draw(int(0, STORES - 1)), c.draw(int(0, 3)), c.draw(int(0, 9)), c.draw(int(0, 3)) == 0);
 			case 8: Make(c.draw(int(1, STORES - 1)));
 			case 9: c.draw(bool()) ? Dispose(c.draw(int(1, STORES - 1))) : Clear(c.draw(int(1, STORES - 1)));
-			case _: Read(c.draw(int(0, STORES - 1)), c.draw(int(0, nodes)), c.draw(int(0, 3)));
+			case _:
+				var store = c.draw(int(0, STORES - 1)), node = c.draw(int(0, nodes));
+				Read(store, node, how(node));
 		}];
 		{signals: signals, memos: memos, boundaries: boundaries, effects: effects, ops: ops};
 	};

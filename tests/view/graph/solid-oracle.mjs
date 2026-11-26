@@ -7,10 +7,10 @@
 import {pathToFileURL} from 'node:url'
 
 const S = await import(pathToFileURL(process.argv[2]).href)
-const {createSignal, createMemo, createEffect, createRenderEffect, createRoot, flush} = S
+const {createSignal, createMemo, createEffect, createRenderEffect, createRoot, flush, latest, createErrorBoundary} = S
 
 // a graph: signals by their first values, memos by index after them, effects
-function build(signals, memos, effects) {
+function build(signals, memos, effects, boundaries = []) {
   const nodes = [], writers = {}, asks = [], log = []
   let round = 0
   createRoot(() => {
@@ -39,8 +39,12 @@ function build(signals, memos, effects) {
         }
       }
     }
+    for (const b of boundaries) {
+      const n = nodes[b]
+      nodes.push(createErrorBoundary(() => n(), e => `caught ${e?.message ?? e}`))
+    }
     for (const [k, e] of effects.entries()) {
-      const n = nodes[e.node]
+      const n = e.latest ? (m => () => latest(m))(nodes[e.node]) : nodes[e.node]
       const apply = v => { log.push(`e${k}: ${v}`) }
       // (helder's effects take an error handler, Solid's render effects none:
       // the error shown as their value, what is not ready still thrown)
@@ -88,3 +92,15 @@ await run('2. held, its answer fails, then the reader moves off it', build([0], 
   ['made'], ['s0 = 1', g => g.writers[0](1)],
   ['the open ask fails', g => g.asks.find(a => !a.done && (a.done = true)).reject(new Error('e0'))],
   ['s0 = 2', g => g.writers[0](2)]])
+
+// 3. a held change, then a write beside it: latest looks ahead to the held value
+// (the shrunk case failed its first answer: a render effect's error halts
+// Solid without a boundary, helder's effects take a handler; answered here)
+const memos3 = [['Sum', 0, 0], ['Sum', 0, 0], ['Sum', 0, 1], ['Async', 0], ['Sum', 0, 0], ['Inner', 0], ['Inner', 0], ['Inner', 0],
+  ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Sum', 0, 0], ['Inner', 0], ['Sum', 0, 0], ['Inner', 0], ['Inner', 0], ['Inner', 0],
+  ['Inner', 5], ['Sum', 0, 0], ['Sum', 0, 0], ['Sum', 0, 0], ['Inner', 0], ['Inner', 0], ['Sum', 0, 0], ['Sum', 0, 0], ['Inner', 0], ['Sum', 0, 1],
+  ['Sum', 0, 0], ['Sum', 0, 0], ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Inner', 0], ['Sum', 0, 0], ['Sum', 0, 0], ['Inner', 0]]
+const effects3 = [{node: 30, latest: true}, {node: 0}, {node: 0}, {node: 6, render: true}, {node: 0}]
+await run('3. held, then a write beside it, read with latest', build([0, 1, 2], memos3, effects3, [30]), [
+  ['made'], ['the open ask answers 7', g => g.asks.find(a => !a.done && (a.done = true)).resolve(7)],
+  ['s0 = 1', g => g.writers[0](1)], ['s1 = 0', g => g.writers[1](0)]])

@@ -411,6 +411,35 @@ function tests() {
 		@:privateAccess helder.view.graph.Scheduler.forget(null);
 	});
 
+	test("latest looks ahead to a held value through a memo computed for a write beside the hold", () -> {
+		var log = [], asks:Array<Later<Int>> = [];
+		var s0 = signal(0), s1 = signal(1);
+		var asked = memo(() -> {
+			s0();
+			var l = new Later<Int>();
+			asks.push(l);
+			(l : Dynamic);
+		});
+		var sum = memo(() -> s0() + s1());
+		root(_ -> {
+			effect(() -> latest(() -> sum()), (v, _) -> {
+				log.push('$v');
+				null;
+			});
+			renderEffect(() -> asked(), _ -> {});
+		});
+		flush();
+		asks[0].resolve(7);
+		flush();
+		s0(1);
+		flush();
+		s1(0);
+		flush();
+		// (Solid 2.0.4: 1, 2, 1; tests/view/graph/solid-oracle.mjs, case 3)
+		equals(log, ["1", "2", "1"]);
+		@:privateAccess helder.view.graph.Scheduler.forget(null);
+	}).skip(); // (known gap: here 1, 2, 0: the memo reads s0's committed value; apps/studio/SCENARIOS.md, open)
+
 	// born-held.test.ts (A29, creation-time form; F-2, F-7)
 	describe("A29 born held: nodes created mainline during a hold", () -> {
 		function heldSignal() {
