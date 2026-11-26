@@ -683,6 +683,7 @@ class Studio {
 	// leaves the camera where it is)
 	public function focus(name:Null<String>, fly = true) {
 		focused(name);
+		if (name != scrub.peek()?.screen) scrub(null);
 		entered(false);
 		others([]);
 		selection(null);
@@ -691,6 +692,71 @@ class Studio {
 		if (fly) fitTo(name, true);
 		refreshCode();
 		log("focused", {screen: name});
+	}
+
+	// the frame the prompt is about (what the agent is sent: its name and its
+	// PNG, AcpAgent.blocks): the selected one, unless its chip was cleared (×)
+	public function about():Null<String> {
+		var f = focused();
+		return f == unasked() ? null : f;
+	}
+
+	// (the frame whose chip was cleared: still selected, not sent)
+	final unasked:Signal<Null<String>> = signal(null);
+
+	// the selection bar's Ask: the prompt about the frame, its field focused
+	public function askAbout(name:String) {
+		if (focused.peek() != name) focus(name, false);
+		unasked(null);
+		if (!talk.open.peek()) toggleChat();
+		talk.field?.focus();
+		log("ask-about", {screen: name});
+	}
+
+	// the chip's ×: the prompt about the whole app, the frame still selected
+	public function clearAbout() {
+		unasked(focused.peek());
+		log("ask-about", {screen: null});
+	}
+
+	// the selection bar's Code: the frame's story or scenario (or design) file at its line
+	public function codeOf(name:String) {
+		var info = project?.screen(name);
+		if (info == null) return;
+		var text = docs.get(info.file).text;
+		var line = info.source.match(Design(_)) ? (info.start == null ? 1 : docs.get(info.file).doc.lineCol(info.start).line) : Project.lineOf(info.file, text, name);
+		if (classic) openCode(info.file, line) else talk.reading({file: info.file, line: line});
+		log("reading", {file: info.file, line: line});
+	}
+
+	// the selected loop frame's recorded loop, scrubbed or played (null: not
+	// touched, the frame as it is); t: seconds from its moment
+	public final scrub:Signal<Null<{screen:String, t:Float, playing:Bool}>> = signal(null);
+
+	// (a loop's length, seconds: its recorded frames')
+	var scrubLength = 0.0;
+
+	public function scrubTo(name:String, t:Float, length:Float) {
+		scrubLength = length;
+		scrub({screen: name, t: Math.max(0, Math.min(length, t)), playing: false});
+		log("scrub", {screen: name, t: Math.round(t * 100) / 100});
+	}
+
+	// play or pause the recorded loop (its clock this studio's: round and round)
+	public function scrubPlay(name:String, on:Bool, length:Float) {
+		var was = scrub.peek(), t = was?.screen == name ? was.t : 0.0;
+		scrubLength = length;
+		scrub({screen: name, t: t, playing: on});
+		log("scrub-play", {screen: name, playing: on});
+		if (!on) return;
+		var last = -1.0;
+		Clock.add(now -> {
+			var c = scrub.peek();
+			if (c == null || c.screen != name || !c.playing) return false;
+			if (last >= 0 && scrubLength > 0) scrub({screen: name, t: (c.t + now - last) % scrubLength, playing: true});
+			last = now;
+			return true;
+		});
 	}
 
 	// whether the focused frame's contents are entered (a double click): a click selects a node in it
@@ -937,7 +1003,8 @@ class Studio {
 		var hit = layout.at(camera.wx(px), camera.wy(py));
 		focused(hit?.name);
 		log("aimed", {screen: hit?.name});
-		if (double && hit != null) play();
+		if (hit?.name != scrub.peek()?.screen) scrub(null);
+		if (double && hit != null && !project.screen(hit.name).source.match(Design(_))) playWindow(hit.name);
 	}
 
 	// the chat column put away or back (Cmd+B): the frames kept where they are on screen
@@ -989,13 +1056,10 @@ class Studio {
 	// the watched shell's: in a window of its own (playWindow)
 	public function play() {
 		if (project == null) return;
-		// (the watched shell: the frame aimed at, else the app, in a window of its own)
+		// (the watched shell's Play app: the app from its start, in a window of its own, whatever is selected)
 		if (!classic) {
-			var f = focused.peek(), info = f == null ? null : project.screen(f);
-			if (info == null || !info.source.match(Design(_))) {
-				playWindow(info?.name);
-				return;
-			}
+			playWindow(null);
+			return;
 		}
 		var t = target.peek();
 		if (t != "studio") {
@@ -1146,22 +1210,39 @@ class Studio {
 		if (launched.peek() != null) launched(null);
 	}
 
-	// what helder dev runs to play a screen: a TypeScript story's main (written:
-	// PLAY, play(story)), else the project (its app)
+	// what helder dev runs to play a screen (Play from here): a TypeScript
+	// story's main (written: PLAY, play(story)); a scenario's, the app's main
+	// after its boot (PLAY imports BOOT, boot(scenario), then the main: the
+	// imports run in order); else the project (its app)
 	public function playEntry(info:ScreenInfo):String {
+		var main = project.typescript ? project.mainFile() : null;
 		switch info.source {
-			// (a scenario's Play: the app itself, from its start; its moment is phase 2's, a saved state)
-			case Story(binding) if (project.typescript && binding != null && !Project.isScenario(info.file)):
-				var rel = info.file.substr(project.dir.length + 1);
-				rel = "./" + rel.substr(0, rel.lastIndexOf("."));
-				var entry = project.dir + "/" + PLAY;
-				Files.save(entry, '// helder studio\'s Play: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
-					+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+			case Story(binding) if (project.typescript && binding != null):
+				var rel = module(info.file), entry = project.dir + "/" + PLAY;
+				if (!Project.isScenario(info.file)) {
+					Files.save(entry, '// helder studio\'s Play from here: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
+						+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+					return entry;
+				}
+				if (main == null) return project.dir;
+				Files.save(project.dir + "/" + BOOT, '// helder studio\'s Play from here: ${info.name}\'s boot, before the app\'s main (${PLAY})\n'
+					+ 'import { boot } from "helder/scenario";\nimport { $binding } from "$rel";\n\nboot($binding);\n');
+				Files.save(entry, '// helder studio\'s Play from here: the app from ${info.name}\'s moment (written by the studio, run by helder dev)\n'
+					+ 'import "./${haxe.io.Path.withoutExtension(BOOT)}";\nimport "${module(main)}";\n');
 				return entry;
 			case _:
 				return project.dir;
 		}
 	}
+
+	// (a file of the project as a module beside PLAY: "./app.scenario")
+	function module(file:String):String {
+		var rel = file.substr(project.dir.length + 1);
+		return "./" + rel.substr(0, rel.lastIndexOf("."));
+	}
+
+	// (a scenario's boot, PLAY's first import)
+	public static inline var BOOT = ".helder-play-boot.tsx";
 
 	// (the main a story's window plays, at the project's root: helder dev watches the folder of its entry)
 	public static inline var PLAY = ".helder-play.tsx";
@@ -2161,7 +2242,7 @@ class Studio {
 			var notes = a == local ? [] : inbox.take();
 			if (notes.length > 0) ask(Inbox.text(notes), false);
 		}
-		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
+		a.ask(p, {screen: focused.peek() == unasked.peek() ? null : focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
 			case Done(_) | Failed(_):
 				// (done as the agent is: a build still running shows on its frames, not as a held turn)
 				end(e);

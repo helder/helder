@@ -94,17 +94,17 @@ class Watch implements Markup {
 	static function playable(studio:Studio):Bool
 		return studio.layout.screens().length > 0 && !blank(studio) && !studio.waiting();
 
-	// Play: the frame aimed at, else the app (Studio.play), in a window of
-	// its own: "Starting…" at once (its build's last line beside it), "Stop"
-	// while it runs, Play again when it closes; what failed beside it (a
-	// click: its file at the line), until the next Play or its ×
+	// Play app: the app from its start (Studio.play), whatever is selected, in
+	// a window of its own (a frame's own moment: its bar's Play from here):
+	// "Starting…" at once (its build's last line beside it), "Stop" while it
+	// (or a Play from here) runs, Play app again when it closes; what failed
+	// beside it (a click: its file at the line), until the next Play or its ×
 	static function play(studio:Studio):View
 		return <view flexDirection="row" alignItems="center" columnGap={8} minWidth={0} flexShrink={1}>
 			<Show when={studio.launched() != null && studio.launched().state != "running"}>{launchNote(studio)}</Show>
 			<button tag="play" aria-label={playLabel(studio)} flexDirection="row" alignItems="center" columnGap={6} height={28} padding="0 12" borderRadius={8}
 				flexShrink={0} background={c("ink")} color={c("ground")} cursor="pointer" onPress={() -> pressed(studio)}>
-				<image src={playLabel(studio) == "Play" ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}
-					ref={(n:Node) -> pulse(n, () -> studio.launched()?.state == "starting")}/>
+				<image src={playLabel(studio) == "Play app" ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}/>
 				<text fontSize={12} fontWeight={Theme.MEDIUM}>{playLabel(studio)}</text>
 			</button>
 		</view>;
@@ -114,7 +114,7 @@ class Watch implements Markup {
 		return switch studio.launched()?.state {
 			case "starting": "Starting…";
 			case "running": "Stop";
-			case _: "Play";
+			case _: "Play app";
 		}
 	}
 

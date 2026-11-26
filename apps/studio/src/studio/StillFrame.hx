@@ -77,6 +77,15 @@ class StillFrame extends Node {
 
 	var stopped:Null<(frames:Int, ms:Float) -> Void> = null;
 
+	// one of its loop's frames shown (the selection bar's scrubber), its loop stopped
+	public function at(l:DisplayList, p:Array<PassData>) {
+		playing++;
+		if (l == list) return;
+		list = l;
+		passes = p;
+		paintChanged();
+	}
+
 	// let go (its owner's cleanup): its loop stopped, its scenes' boxes and
 	// worlds (one of 16 a process each: a board of scenes' stills)
 	public function dispose() {

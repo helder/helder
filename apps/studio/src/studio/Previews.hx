@@ -188,6 +188,16 @@ class Previews {
 
 	final decoded = new Map<String, Bool>();
 
+	// a screen's loop as recorded in the frames file, of the files the
+	// running program (else the open) was made of: the selection bar's
+	// scrubber's (null: none recorded, or of other files)
+	public function recorded(name:String):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>, width:Float, height:Float}> {
+		var s = screen(name), sources = running ?? opened;
+		if (s == null || sources == null || !kept.looped(name) || !kept.fresh(name, s.info.file, sources)) return null;
+		var l = kept.loop(name), size = kept.size(name);
+		return l == null || size == null || l.lists.length == 0 ? null : {fps: l.fps, lists: l.lists, passes: l.passes, width: size.width, height: size.height};
+	}
+
 	// whether every screen is drawn from the file as its files are now
 	public function fresh():Bool
 		return hosting() && !Lambda.exists(screens, s -> s.still.peek() == null || s.stale.peek());
@@ -594,6 +604,7 @@ class Previews {
 		// (a still of a story whose file went since: not kept)
 		if (s != null && running != null && FileSystem.exists(s.info.file)) {
 			kept.took(s.info.name, s.info.file, path, running);
+			s.kept(s.kept.peek() + 1);
 			// (its loop's still the new one: its loop played from the file from now on)
 			if (p.loopFrames > 0) still(s, running);
 		}
@@ -845,6 +856,8 @@ class Screen {
 	// (what its still's passes draw as data: a markup <Scene>'s, built again where it is shown)
 	public var stillPasses:Array<helder.ui.draw.PassData> = [];
 	public var stillHeight = 0.0;
+	// bumped as the host's still of it is kept (its loop recorded with it: recorded's)
+	public final kept = signal(0);
 	// (the pixels a point its still's images hold: Density's)
 	public var holds = Math.POSITIVE_INFINITY;
 	public var version = 0;

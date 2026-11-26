@@ -248,6 +248,10 @@ class WebPreviews {
 	public function fileLoops(name:String):Bool
 		return false;
 
+	// (natively the frames file's recorded loop; here none)
+	public function recorded(name:String):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>, width:Float, height:Float}>
+		return null;
+
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0, sharp = 1.0) {
 		var key = names.join("
 ") + "	" + (focused ?? "") + "	" + scale + "	" + sharp + "	" + stills + "	" + (looping ?? "");
