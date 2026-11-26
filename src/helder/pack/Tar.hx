@@ -6,7 +6,7 @@ import haxe.io.Bytes;
 // the .tar.gz): regular files with their Unix modes, directories, and
 // symbolic links; root's owner, a fixed time, so that the same input gives
 // the same bytes. A name past ustar's 100 bytes is split at a slash into
-// its prefix (155) and name.
+// its prefix (155) and name; a link's target has 100 bytes.
 class Tar {
 	public static function write(entries:Array<TarEntry>):Bytes {
 		var out = new Buf(1 << 20);
@@ -15,13 +15,15 @@ class Tar {
 			var name = kind == "5".code && !StringTools.endsWith(e.name, "/") ? e.name + "/" : e.name;
 			var prefix = "";
 			if (Bytes.ofString(name).length > 100) {
-				var cut = name.lastIndexOf("/", name.length - 2);
-				while (cut > 0 && Bytes.ofString(name.substr(cut + 1)).length > 100)
-					cut = name.lastIndexOf("/", cut - 1);
-				if (cut <= 0 || Bytes.ofString(name.substr(0, cut)).length > 155) throw 'Tar: $name: too long a name';
+				// (the first slash that leaves a name of 100 bytes: the shortest prefix)
+				var cut = name.indexOf("/");
+				while (cut > 0 && cut < name.length - 1 && Bytes.ofString(name.substr(cut + 1)).length > 100)
+					cut = name.indexOf("/", cut + 1);
+				if (cut <= 0 || cut >= name.length - 1 || Bytes.ofString(name.substr(0, cut)).length > 155) throw 'Tar: $name: too long a name';
 				prefix = name.substr(0, cut);
 				name = name.substr(cut + 1);
 			}
+			if (e.link != null && Bytes.ofString(e.link).length > 100) throw 'Tar: $name: too long a link (${e.link})';
 			var size = e.data == null ? 0 : e.data.length;
 			var h = Bytes.alloc(512);
 			h.fill(0, 512, 0);

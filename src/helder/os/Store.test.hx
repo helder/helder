@@ -1,5 +1,6 @@
 package helder.os;
 
+import helder.test.Gen;
 import helder.test.Test;
 
 // Store, a small key-value store kept between runs: values written through
@@ -43,6 +44,10 @@ function tests() {
 			Store.open("app", dir).set("odd", odd);
 			equals(Store.open("app", dir).get("odd"), odd);
 		});
+		test("a NUL in a value kept", () -> {
+			Store.open("app", dir).set("a", "x\x00y");
+			equals(Store.open("app", dir).get("a"), "x\x00y");
+		});
 		test("stores of other names apart", () -> {
 			Store.open("one", dir).set("k", "1");
 			Store.open("two", dir).set("k", "2");
@@ -57,6 +62,35 @@ function tests() {
 			equals(Store.open("app", dir).get("best"), "2");
 			assert(!sys.FileSystem.exists(dir + "/app.json.tmp"));
 		});
+		test("against a map: sets, removes and clears, read back by a store opened again", () -> stateful({
+			setup: () -> {store: Store.open("app", dir), model: new Map<String, String>()},
+			steps: [
+				{name: "set", run: (s, c) -> {
+					var k = c.draw(oneOf([pick(["a", "b", "", "__proto__", "constructor"]), string(char(), 0, 6)])), v = c.draw(string(char(true), 0, 12));
+					s.store.set(k, v);
+					s.model.set(k, v);
+				}},
+				{name: "remove", run: (s, c) -> {
+					var k = c.draw(pick(["a", "b", "", "__proto__", "constructor"]));
+					s.store.remove(k);
+					s.model.remove(k);
+				}},
+				{name: "clear", run: (s, c) -> {
+					s.store.clear();
+					s.model.clear();
+				}}
+			],
+			check: s -> {
+				var keys = [for (k in s.model.keys()) k];
+				keys.sort(Reflect.compare);
+				var again = Store.open("app", dir);
+				for (st in [s.store, again]) {
+					equals(st.keys(), keys);
+					equals([for (k in keys) st.get(k)], [for (k in keys) s.model.get(k)]);
+				}
+			},
+			teardown: s -> for (f in sys.FileSystem.readDirectory(dir)) sys.FileSystem.deleteFile(dir + "/" + f)
+		}, {cases: 60, steps: 15}));
 		test("a name that is not one", () -> {
 			throws(() -> Store.open("../up", dir));
 			throws(() -> Store.open("", dir));
