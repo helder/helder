@@ -66,6 +66,20 @@ function tests() {
 				w.dispose();
 				equals(after, {blank: -1, tiles: tiles.length, images: images.length, groups: groups.length});
 			});
+		// (trim, the system asking for memory back, between frames that draw
+		// elsewhere: the compositor's frames still show the grid as at rest)
+		for (keep in [true, false])
+			test("trim: what the compositor shows kept: " + (keep ? "a frame kept" : "the system's layers"), () -> stateful({
+				setup: () -> {
+					var w = new Grid(keep);
+					w.frames(12);
+					w.rest = w.composed();
+					w;
+				},
+				steps: [{name: "trim", run: (w, _) -> w.trim()}, {name: "elsewhere", run: (w, _) -> w.elsewhere()}],
+				check: w -> equals(w.differ(w.rest), 0),
+				teardown: w -> w.dispose()
+			}, {cases: 8, steps: 8}));
 		// (its pass asked for once a recording of its list (Renderer.passKey),
 		// not once a frame: a frame that walks again (a node entering) records
 		// the list again, the first recording's passes dropped with it, and a
@@ -317,6 +331,12 @@ private class Grid {
 		if (count % 2 == 0) ui.scrollTo(notes, 0, (count * 97) % 7000);
 		frames(1);
 	}
+
+	// (its compositor's frame at rest: a test's)
+	public var rest:Null<haxe.io.Bytes> = null;
+
+	public function trim()
+		r.trim();
 
 	// the compositor's frame now
 	public function composed():haxe.io.Bytes {

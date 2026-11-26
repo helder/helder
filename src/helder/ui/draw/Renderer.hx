@@ -805,11 +805,12 @@ class Renderer implements TextureCanvas {
 
 	// (past the budget: the tiles longest unseen first, of layers not drawn
 	// for EVICT frames all of them, but those of the compositor's frame
-	// shown (the last one's); none at all: trim)
+	// shown (the last one's); trim (all): every one but those, of layers
+	// the last frame did not draw or compose all of them)
 	function evictTiles(all:Bool) {
 		var gone:Array<Layer> = null;
 		for (l => t in tiled)
-			if (all || frames - t.frame > EVICT) {
+			if (frames - t.frame > (all ? 0 : EVICT)) {
 				tileBytes -= t.tiles.length * TILE * TILE * 4;
 				t.free(device);
 				if (gone == null) gone = [];
@@ -818,6 +819,15 @@ class Renderer implements TextureCanvas {
 		if (gone != null)
 			for (l in gone)
 				tiled.remove(l);
+		// (what the compositor shows kept: a kept frame does not draw it again,
+		// and the compositor draws the tiles it has, blank where one is freed)
+		if (all)
+			for (t in tiled)
+				for (k in t.tiles.copy())
+					if (k.frame < frames - 1) {
+						t.remove(k, device);
+						tileBytes -= TILE * TILE * 4;
+					}
 		while (tileBytes > tileBudget) {
 			var worst:Null<LayerTile> = null, from:Null<LayerTiles> = null;
 			for (t in tiled)
