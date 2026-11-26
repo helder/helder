@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.Node;
 
 // Outlines around selected nodes, a PostProcess's (post.outline): the

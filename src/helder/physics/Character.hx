@@ -1,6 +1,6 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node;
 
 // A walking character: an upright capsule body (it does not turn, no

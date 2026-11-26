@@ -47,7 +47,7 @@ class WebViewCheck implements Markup {
 
 	static function main() {
 		start("embedded");
-		var w = new UiWindow("WebView", 400, 700);
+		var w = new UiWindow({title: "WebView", width: 400, height: 700});
 		var me = new WebViewCheck();
 		Render.render(me.view(), w.root);
 		UiWindow.run();

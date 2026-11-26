@@ -1,6 +1,6 @@
 package viewer;
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import haxe.io.Bytes;
 import helder.gfx.*;

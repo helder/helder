@@ -1,9 +1,9 @@
 package helder.scene.anim;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node;
 import helder.scene.gltf.GltfDoc;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // Keyframes of nodes' transforms (glTF's animations: translation,
 // rotation, scale; step, linear and cubic-spline interpolation), each

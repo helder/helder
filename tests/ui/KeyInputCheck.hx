@@ -37,7 +37,7 @@ class KeyInputCheck {
 class X11TextInput {
 	public static function run() {
 		var check = KeyInputCheck.check;
-		var w = new Window("KeyInputCheck", 64, 64);
+		var w = new Window({title: "KeyInputCheck", width: 64, height: 64});
 		var d = w.surface.display, id = w.surface.handle.toI64();
 		var last = Arena.scopedValue(a -> {
 			var lo:Ptr<Int32> = a.alloc(4), hi:Ptr<Int32> = a.alloc(4);
@@ -125,7 +125,7 @@ class CocoaTextInput {
 
 	public static function run() {
 		var check = KeyInputCheck.check;
-		var w = new Window("KeyInputCheck", 120, 80);
+		var w = new Window({title: "KeyInputCheck", width: 120, height: 80});
 		w.startTextInput(20, 20, 2, 30);
 		// the text view: the first of the content view's subviews
 		var content = Msg.id(w.surface.handle, ObjC.sel("superview"));

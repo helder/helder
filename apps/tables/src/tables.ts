@@ -4,8 +4,8 @@
 // saved), the row panel, its structure, the SQL console and its results;
 // where you came from (Back); what the status bar says
 import { signal, Signal } from "helder/view";
-import { CodeEditor, DataGrid, GridColumn, Node, Svg, Theme, UiWindow } from "helder/ui";
-import { Store } from "helder/os";
+import { CodeEditor, DataGrid, GridColumn, Node, Svg, UiWindow } from "helder/ui";
+import { Store, Settings } from "helder/os";
 import { delay } from "helder/async";
 import { complete } from "./complete";
 import { Drizzle, Setup, VERSION, message } from "./drizzle";
@@ -17,6 +17,7 @@ import { Sql } from "./sql";
 import * as filters from "./filters";
 import { Condition } from "./filters";
 import { Column, Relation, Table } from "./table";
+import { look } from "./look";
 
 // a menu's item: its label, a quieter detail, an icon, disabled, checked (on), a separator (line)
 export type Entry = { label: string; detail?: string; icon?: Svg; disabled?: boolean; on?: boolean; muted?: boolean; line?: boolean; run: () => void };
@@ -112,7 +113,7 @@ export class Tables {
 		this.db = new Drizzle(url);
 		this.appearance = signal(this.store.get("appearance") ?? "system");
 		for (const g of [this.grid, this.structure, this.results]) {
-			g.titleFamily = Theme.UI;
+			g.titleFamily = look.tokens.font;
 			g.rowHeight = 28;
 			g.headerHeight = 32;
 		}
@@ -139,8 +140,8 @@ export class Tables {
 		this.structure.readOnly = true;
 		this.results.readOnly = true;
 		for (const e of [this.editor, this.review]) {
-			e.view.fontFamily = Theme.CODE;
-			e.view.fontSize = Theme.BODY;
+			e.view.fontFamily = look.tokens.mono;
+			e.view.fontSize = look.tokens.size;
 			e.view.lineHeight = 20;
 		}
 		this.review.model.readOnly = true;
@@ -159,7 +160,7 @@ export class Tables {
 	// dark: the appearance chosen, or the system's
 	dark(): boolean {
 		const a = this.appearance();
-		return a === "system" ? UiWindow.dark() : a === "dark";
+		return a === "system" ? Settings.dark() : a === "dark";
 	}
 
 	appear(kind: string) {

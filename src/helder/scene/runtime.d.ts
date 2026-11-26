@@ -23,7 +23,8 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Asset, FontFile, Image} from "helder/asset";
-import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
+import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/math";
+import type {WindowOptions} from "helder/os";
 import type {Node} from "helder/scene";
 import type {Read} from "helder/view";
 
@@ -210,7 +211,7 @@ export type LightShadow = { size?: number; bias?: number; normalBias?: number; r
 
 // what Lines are made with (each optional): 2 pixels wide, mitred, butt
 // ends, solid, depth tested, opaque, tone mapped, none drawn
-export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; onTop?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
+export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; overlay?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
 
 // LocalShadows' options (shadows.local(options))
 export type LocalShadowsOptions = { atlas?: number; maxLocal?: number; tileSize?: number };
@@ -283,7 +284,9 @@ export type TubeOptions = { flat?: boolean; tangents?: boolean; tubularSegments?
 // World matrices are computed when asked and cached: a slot keeps the
 // version of its parent's world matrix it was computed from, so a change
 // high in the tree makes everything below it stale without visiting it,
-// and still parts of a scene cost nothing per frame.
+// and still parts of a scene cost nothing per frame. A slot also keeps the
+// epoch it was last checked at (bumped by any transform or tree change), so
+// asking again before the next change is no walk up to the root.
 //
 // A node's id: the world (4 bits: up to 16 worlds alive), the slot's
 // generation (7 bits, never 0 for a live node, so no node is 0, NONE) and
@@ -291,7 +294,8 @@ export type TubeOptions = { flat?: boolean; tangents?: boolean; tubularSegments?
 export declare class World {
 	constructor(name?: string);
 	readonly root: Node;
-	// the world's slot freed for another (its nodes' handles stale)
+	// the world's slot freed for another (its nodes' handles stale); again,
+	// nothing (its slot may be another's by then)
 	dispose(): void;
 	// the number of live nodes, the root included
 	readonly count: number;
@@ -1945,7 +1949,7 @@ export declare class Occlusion {
 //   dash, gap    a dashed line (lengths in the line's own units along it;
 //                0: solid), dashOffset moving the dashes along (animated:
 //                a marching line)
-//   onTop        drawn over everything (not depth tested), after the
+//   overlay      drawn over everything (not depth tested), after the
 //                scene; else depth tested against it
 //   transparent  blended by its colours' alpha, after the see-through
 //                surfaces (not written to depth)
@@ -1984,7 +1988,7 @@ export declare class Lines {
 	dashOffset: number;
 	// a polyline's last point joined back to its first
 	closed: boolean;
-	onTop: boolean;
+	overlay: boolean;
 	transparent: boolean;
 	toneMapped: boolean;
 	visible: boolean;
@@ -2012,7 +2016,7 @@ export declare class Lines {
 // LineRenderer.of(renderer)): each shown node's lines one instanced draw
 // (LineShader: a segment an instance), the depth-tested opaque ones after
 // the opaque surfaces (AfterOpaque), the see-through ones (transparent)
-// after the see-through surfaces, those drawn over everything (onTop) last
+// after the see-through surfaces, those drawn over everything (overlay) last
 // (AfterTransparent). Their points are uploaded once changed; nothing is
 // allocated a frame. DebugDraw draws through it.
 export declare class LineRenderer {
@@ -2031,15 +2035,15 @@ export declare class LineRenderer {
 // written into a ring of segments, drawn by the DebugDraw feature
 // (renderer.use(new DebugDraw())) as one draw of lines through the
 // renderer's LineRenderer, another for those drawn over everything
-// (onTop), then cleared: nothing to keep or remove, and nothing allocated
+// (overlay), then cleared: nothing to keep or remove, and nothing allocated
 // a frame. A colour is 0xRRGGBB as a page writes it (shown as written: not
 // lit, fogged or tone mapped).
 //
 //   DebugDraw.line(a, b, 0xFF4040);
 //   DebugDraw.aabb(mesh.bounds, 0x40FF40);
-//   DebugDraw.onTop = true;               // the calls from here on over everything
+//   DebugDraw.overlay = true;             // the calls from here on over everything
 //   DebugDraw.axes(player.worldMatrix(), 0.5);
-//   DebugDraw.onTop = false;
+//   DebugDraw.overlay = false;
 //
 // Debug's calls are these, compiled out of a release build (helder build's
 // -D helder.release) unless -D helder.debugdraw: their arguments not
@@ -2057,7 +2061,7 @@ export declare class DebugDraw {
 	static capacity: number;
 	static readonly dropped: number;
 	// whether the calls from here on are drawn over everything (not depth tested)
-	static onTop: boolean;
+	static overlay: boolean;
 	// the renderer's DebugDraw, made and turned on when it has none
 	static of(renderer: Renderer): DebugDraw;
 	// a segment from a to b
@@ -3032,9 +3036,9 @@ export declare class Surface {
 // same); on Linux with WAYLAND_DISPLAY set, Wayland's
 // (helder.os.linux.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
 export declare class Window {
-	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
-	// where the system cannot, opaque: see transparent)
-	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset" | "none", transparent?: boolean);
+	// a window made from its options (WindowOptions: its title, its size, its
+	// title bar, whether it is transparent)
+	constructor(options: WindowOptions);
 	readonly surface: Surface;
 	// its title bar's text (the browser: the page's title)
 	title: string;

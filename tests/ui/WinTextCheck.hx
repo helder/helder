@@ -1,6 +1,6 @@
 import helder.ui.*;
 import helder.ui.UiWindow;
-import helder.ui.widgets.EditableText;
+import helder.ui.controls.EditableText;
 import helder.os.windows.Com;
 import helder.os.windows.Tsf;
 import helder.os.windows.Tsf.IUnknownQi;
@@ -87,7 +87,7 @@ class WinTextCheck implements Markup {
 	}
 
 	static function main() {
-		var w = new UiWindow("WinTextCheck", 320, 160);
+		var w = new UiWindow({title: "WinTextCheck", width: 320, height: 160});
 		var name = signal("ab");
 		Render.render(<view padding={12}>
 			<field tag="name" value={name} onInput={e -> name(e.text)}/>

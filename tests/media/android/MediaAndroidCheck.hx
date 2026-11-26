@@ -92,7 +92,7 @@ class MediaAndroidCheck {
 		m.close();
 		if (why != null && t.codec != H264) {
 			Sys.println('MediaAndroidCheck: skipped: $f (${t.codec}: $why)');
-			for (fr in frames) fr.release();
+			for (fr in frames) fr.dispose();
 			if (d != null) d.close();
 			return null;
 		}
@@ -131,7 +131,7 @@ class MediaAndroidCheck {
 		var first = frames[0], name = @:privateAccess decoders[0].codec.name;
 		var ok = frames.length == crcs.length && bad.length == 0 && first.width == e.width && first.height == e.height && first.bits == e.bits;
 		var detail = '${frames.length} of ${crcs.length}, ${first.width}x${first.height} ${first.bits} bits ${first.matrix}${first.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}';
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 		return {ok: ok, detail: detail, name: name, count: frames.length};
 	}
@@ -181,7 +181,7 @@ class MediaAndroidCheck {
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s',
 			d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
-		buf.free();
+		buf.dispose();
 		m.close();
 	}
 
@@ -239,7 +239,7 @@ class MediaAndroidCheck {
 			k += 5;
 		}
 		var mean = sum / (pixels.length / 5 * 3), name = @:privateAccess decoders[0].codec.name;
-		for (fr in frames) fr.release();
+		for (fr in frames) fr.dispose();
 		close();
 		return {
 			ok: ok && w == e.width && h == e.height && mean < 1.5 && worst <= 8,
@@ -264,8 +264,8 @@ class MediaAndroidCheck {
 		McVideo.readable = true;
 		var p = Player.open(source("h264-aac.mp4"), {silent: true});
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
-		check("the player loaded", p.loaded && p.duration == 1, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		check("the player loaded", p.loaded() && p.duration() == 1, '${p.error()} ${p.duration()}');
 		var crcs:Array<Int> = videos["h264-aac.mp4"].crcs;
 		function at(what:String, f:Null<VideoFrame>, time:Float, i:Int)
 			check('h264-aac.mp4: $what: the frame at $time', f != null && f.time == time && crc(f) == crcs[i], f == null ? "none" : '${f.time}');
@@ -302,7 +302,7 @@ class MediaAndroidCheck {
 		var p = Player.open(source("h264-aac.mp4"));
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (!p.loaded && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		while (!p.loaded() && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
 		var heard = @:privateAccess p.out != null;
 		p.play();
 		var last:Null<VideoFrame> = null;
@@ -311,13 +311,13 @@ class MediaAndroidCheck {
 			if (f != null && f != last) {
 				last = f;
 				shows.push(f.time);
-				var off = p.time - f.time;
+				var off = p.time() - f.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.002);
 		}
-		if (p.error != null) check("played: no error", false, p.error);
-		var position = p.time, ring = @:privateAccess p.ring, written = ring == null ? 0 : ring.written;
+		if (p.error() != null) check("played: no error", false, p.error());
+		var position = p.time(), ring = @:privateAccess p.ring, written = ring == null ? 0 : ring.written;
 		p.close();
 		Sys.println('MediaAndroidCheck: played on ${heard ? "AAudio" : "the monotonic clock (no audio output)"}');
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));

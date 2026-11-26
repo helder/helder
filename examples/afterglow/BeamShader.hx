@@ -1,3 +1,4 @@
+import helder.math.*;
 import Mood.noise2;
 import MothShader.MothView;
 import helder.gfx.shader.*;

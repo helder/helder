@@ -1,5 +1,6 @@
 // Strings are not shader values (in TypeScript: string.ts).
 // expect: shader: a String is not a shader value
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

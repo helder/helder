@@ -2,9 +2,9 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 import helder.scene.math.MathTools;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.PostEffects;

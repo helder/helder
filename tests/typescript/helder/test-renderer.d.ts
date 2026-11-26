@@ -5,7 +5,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
+import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/math";
 
 declare const __haxe: {TestNode: "TestRenderer.TestNode", MathProbe: "MathProbe", __module: "TestTypeScript"};
 
@@ -17,8 +17,8 @@ export declare class TestNode {
 	toHtml(): string;
 }
 
-// helder's math types (helder.gfx.shader's vectors and matrix, helder.scene's
-// quaternion: struct values) crossing to TypeScript as helder/gfx's classes
+// helder's math types (helder.math's vectors, matrix and
+// quaternion: struct values) crossing to TypeScript as helder/math's classes
 // (tests/typescript/helder/math.ts): arguments, results, a field, a property.
 export declare class MathProbe {
 	constructor(at: Vec3);

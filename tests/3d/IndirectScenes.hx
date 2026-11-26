@@ -1,7 +1,7 @@
 import helder.asset.Asset;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.*;
 import helder.scene.render.*;
 import helder.scene.render.LightmapMode;
@@ -127,7 +127,7 @@ class IndirectScenes {
 				for (k in 0...2) {
 					var f = world.node();
 					f.position = new Vec3(k == 0 ? -2 : 2, 0, 0);
-					f.rotation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
+					f.rotation = helder.math.Quat.axisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
 					MeshRenderer.attach(f, Shapes.of(device, Geometry.plane({width: 4, height: 6}), new Material("floor", new Vec4(0.5, 0.5, 0.52, 1), 0, k == 0 ? 0.7 : 0.15)));
 				}
 				var ball = world.node();
@@ -186,7 +186,7 @@ class IndirectScenes {
 				for (k in 0...2) {
 					var n = world.node();
 					n.position = new Vec3(k == 0 ? -1.5 : 1.5, 0, 0);
-					n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
+					n.rotation = helder.math.Quat.axisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
 					MeshRenderer.attach(n, tile);
 					var l = Lightmap.attach(n, new Lightmap(baked, new Vec4(k * 0.5, 0, 0.5, 1), true));
 					l.mode = k == 0 ? Indirect : All;

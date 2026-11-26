@@ -3,10 +3,10 @@ package helder.scene.view;
 import haxe.io.Bytes;
 import helder.gfx.Device;
 import helder.gfx.PassDesc;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.Surface;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.view.SceneTags.*;
 import helder.test.Test;
 import helder.ui.Ui;
@@ -130,6 +130,9 @@ function tests() {
 			}
 			// (the box: 240 by 143 points, the text under it)
 			equals(images, [["480x286"], ["480x286"]]);
+			// (its screens let go: their <Scene>s' worlds with them)
+			for (s in host.screens)
+				s.reset();
 			host.device.dispose();
 		});
 		#end

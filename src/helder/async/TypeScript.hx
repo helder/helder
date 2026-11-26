@@ -8,6 +8,7 @@ package helder.async;
 // coroutines are the program's async functions (helder.typescript.api.Coroutines).
 @:typescript("helder/async")
 @:typescript.packages(helder.async.http)
-@:typescript.functions(delay = helder.async.Tasks.delay, readBytes = helder.async.Tasks.bytes)
+@:typescript.classes(helder.async.Fetch)
+@:typescript.functions(delay = helder.async.Tasks.delay)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

@@ -1,6 +1,6 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 
 // A joint holding two bodies together at points (anchors, each in its
 // body's frame; b null: a fixed point of the world, its anchor in world

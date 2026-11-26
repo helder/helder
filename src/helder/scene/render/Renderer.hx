@@ -2,9 +2,9 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
@@ -108,7 +108,7 @@ class Renderer {
 	// target (x right, y down; 0, 0: none): temporal antialiasing's
 	// (post.taa: Taa sets it before each frame), the view buffers' and
 	// the main pass's alike; the motion the view buffers record leaves it out
-	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	public var jitter:helder.math.Vec2 = new helder.math.Vec2(0, 0);
 	// the frames drawn (each draw one)
 	public var frames(default, null) = 0;
 	// the frame's point and spot lights (gathered by draw: what the draws'
@@ -404,7 +404,7 @@ class Renderer {
 		var projection = camera.projection(aspect);
 		frame.projection = jittered ? jitterOf(projection, jx, jy) : projection;
 		frame.viewProj = viewProj;
-		frame.jitter = new helder.gfx.shader.Vec2(jx, jy);
+		frame.jitter = new helder.math.Vec2(jx, jy);
 		frame.stillViewProj = still;
 		frame.previousViewProj = frames > 0 && lastWorld == world ? lastViewProj : still;
 		frame.index = frames;
@@ -451,6 +451,12 @@ class Renderer {
 		frames++;
 	}
 
+	final sorting:Array<DrawItem> = [];
+
+	static function drawAfter(a:DrawItem, d:DrawItem):Bool
+		return a.key > d.key || a.key == d.key && (a.primitive.id > d.primitive.id || a.primitive == d.primitive && (a.group > d.group
+			|| a.group == d.group && a.lightKey > d.lightKey));
+
 	// (the frame before's unjittered view-projection, and its world)
 	var lastViewProj:Mat4 = Mat4.identity();
 	var lastWorld:Null<World> = null;
@@ -482,7 +488,8 @@ class Renderer {
 		extractEye = eye;
 		var meshes = world.store(MeshRenderer.KIND), tints = world.store(MeshRenderer.TINT);
 		var levels = Lod.pick;
-		var listed = clusterSource == null;
+		// (no local light in the frame: every draw's list empty, none looked for)
+		var listed = clusterSource == null && frameLights.count > 0;
 		for (k in 0...meshes.length) {
 			var node = meshes.nodeAt(k), mesh = meshes.valueAt(k);
 			if (!node.shown() || !world.inTree(node)) continue;
@@ -559,16 +566,7 @@ class Renderer {
 			if (setCount == sets.length) sets.push(s) else sets[setCount] = s;
 			setCount++;
 		}
-		// (insertion sort: a scene's order changes little from frame to frame)
-		for (i in 1...count) {
-			var d = list[i], j = i - 1;
-			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && (list[j].primitive.id > d.primitive.id || list[j].primitive == d.primitive && (list[j].group > d.group
-				|| list[j].group == d.group && list[j].lightKey > d.lightKey)))) {
-				list[j + 1] = list[j];
-				j--;
-			}
-			list[j + 1] = d;
-		}
+		Sorted.sort(list, count, sorting, drawAfter);
 		// (the see-through draws, last in the list: farthest first)
 		var first = count;
 		while (first > 0 && list[first - 1].primitive.material.blended)
@@ -1286,7 +1284,7 @@ class FrameInfo {
 	public var stillViewProj:Mat4 = Mat4.identity();
 	public var previousViewProj:Mat4 = Mat4.identity();
 	// the jitter in clip space (x, y: Renderer.jitter's)
-	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	public var jitter:helder.math.Vec2 = new helder.math.Vec2(0, 0);
 	// the renderer's frames drawn before this one
 	public var index = 0;
 	public var eye:Vec3 = new Vec3(0, 0, 0);

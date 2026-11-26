@@ -11,7 +11,13 @@ browser engine and no runtime to install.
   time: a folder's subfolders, the one you are in highlighted, › to go
   deeper, the drive's free space at the foot. The sidebar is the
   system's material, as Finder's is: macOS's sidebar, Windows 11's Mica,
-  KDE's blur (opaque with Reduce Transparency, and elsewhere). A toolbar with back and
+  KDE's blur (opaque with Reduce Transparency, and elsewhere). On Windows
+  and Linux the toolbar is the title bar, from the window's top edge, the
+  window's buttons at its top right as tall as it (over the inspector's
+  top when it is open), its empty parts dragging the window. Hidden
+  files are those with a leading dot and, on Windows, those Explorer
+  hides (hidden or system: AppData, a profile's "My Documents" and the
+  like). A toolbar with back and
   forward, the folder's name (its menu lists the folders enclosing it),
   search, the View menu (the order, folders first, hidden files: a menu
   button, opened as the mouse goes down, an item picked by dragging onto
@@ -76,7 +82,11 @@ browser engine and no runtime to install.
 - **PDFs as a browser shows them**: the pages in one column you scroll
   through, fitted to the window's width, each drawn at the size it is
   shown (sharp again after a zoom) as it comes into view, a tag with the
-  page you are on, and straight to a page by its number.
+  page you are on, and straight to a page by its number. Their text is
+  selectable as a browser's: the I-beam over it, a drag across lines and
+  pages, a double click a word, a triple a line, Ctrl+A (Cmd+A) the
+  document once you pressed in it, Ctrl+C (Cmd+C) or the right click's
+  Copy; a press beside the text is the page's.
 - **Markdown documents** (`.md`, `.markdown`, `.mdown`) as a readable
   column: headings, lists and task lists, tables, quotes, code
   highlighted, pictures from the same folder. A link to a heading scrolls
@@ -500,7 +510,7 @@ hidden files, the inspector and the status line are kept between runs
   document's folder: a file the viewer shows opened in its folder, its
   files stepped through, `other.md#usage` at that heading; a folder
   browsed; another file the system's app's); `http`, `https` and `mailto`
-  are helder.os's `Links.open` (the browser; a new tab on the web). Its
+  are helder.os's `Links.show` (the browser; a new tab on the web). Its
   pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
   most 1600 a side), at most the column's width, and laid out at the size
   their headers say (helder.image's `Image.size`, read through Files

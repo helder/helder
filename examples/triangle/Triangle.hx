@@ -3,7 +3,7 @@
 // tags: gfx, shaders
 // demo: canvas 512x384
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.os.*;
@@ -54,7 +54,7 @@ class Triangle {
 	}
 
 	static function main() {
-		var window = new Window("Triangle", 640, 480);
+		var window = new Window({title: "Triangle", width: 640, height: 480});
 		var triangle = new Triangle(Device.create(window.surface));
 		App.run(triangle.frame, e -> switch e.kind {
 			case Close: window.close();

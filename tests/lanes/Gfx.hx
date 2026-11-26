@@ -50,23 +50,34 @@ class Gfx {
 		run(NODE, ["tests/gfx/web.mjs", "bin/gfx/WebCheck.wasm", "bin/gfx"]);
 	}
 
+	// (ComputeCheck, then helder.parallel's Gpu form: tests/parallel/GpuCheck,
+	// and examples/cloth's against its CPU forms: ClothCheck)
 	static function gfxCompute() {
-		native('bin/gfx-compute/$GFX_TARGET/ComputeCheck', cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck"]), GFX_TARGET);
-		var exe = exePath('bin/gfx-compute/$GFX_TARGET/ComputeCheck', GFX_TARGET);
-		// (Mesa's llvmpipe and WARP: software; no Metal device on a Mac VM: exit 3, skipped)
-		Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
-		Sys.putEnv("HXMC_GFX_SOFTWARE", "1");
-		var p = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? new Process("wine", [exe]) : new Process(exe, []);
-		var r = drain(p);
-		var code = p.exitCode();
-		p.close();
-		Sys.print(r.out + r.err);
-		if (code == 3) Sys.println("gfx-compute: skipped (no Metal device)") else if (code != 0) throw new Failed('$exe: exit code $code');
+		for (c in [
+			{main: "ComputeCheck", dirs: ["tests/gfx"]},
+			{main: "GpuCheck", dirs: ["tests/parallel"]},
+			{main: "ClothCheck", dirs: ["tests/parallel", "examples/cloth"]}
+		]) {
+			native('bin/gfx-compute/$GFX_TARGET/${c.main}', cps(["src"].concat(c.dirs)).concat(["-main", c.main]), GFX_TARGET);
+			var exe = exePath('bin/gfx-compute/$GFX_TARGET/${c.main}', GFX_TARGET);
+			// (Mesa's llvmpipe and WARP: software; no Metal device on a Mac VM: exit 3, skipped)
+			Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
+			Sys.putEnv("HXMC_GFX_SOFTWARE", "1");
+			var p = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? new Process("wine", [exe]) : new Process(exe, []);
+			var r = drain(p);
+			var code = p.exitCode();
+			p.close();
+			Sys.print(r.out + r.err);
+			if (code == 3) Sys.println('gfx-compute: ${c.main} skipped (no device with compute)') else if (code != 0) throw new Failed('$exe: exit code $code');
+		}
 	}
 
 	static function gfxComputeWeb() {
 		wasm("bin/gfx-compute/ComputeCheck.wasm", cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck"]));
 		run(NODE, ["tests/gfx/compute-web.mjs", "bin/gfx-compute/ComputeCheck.wasm"]);
+		// (helder.parallel's Gpu form, its results awaited: Items.read)
+		wasm("bin/gfx-compute/GpuWebCheck.wasm", cps(["src", "tests/parallel"]).concat(["-main", "GpuWebCheck"]));
+		run(NODE, ["tests/parallel/browser.mjs", "bin/gfx-compute/GpuWebCheck.wasm"]);
 	}
 
 	// (helder.gfx's frames and helder.scene's drawn on the CPU against the GPUs'
@@ -78,6 +89,8 @@ class Gfx {
 			{out: exePath('$b/SoftShaderCheck', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderCheck", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
 			{out: exePath('$b/GfxCheck', HOST), args: gfxCp().concat(["-main", "GfxCheck", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/ComputeCheck', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/GpuCheck', HOST), args: cps(["src", "tests/parallel"]).concat(["-main", "GpuCheck", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/ClothCheck', HOST), args: cps(["src", "tests/parallel", "examples/cloth"]).concat(["-main", "ClothCheck", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/RenderCheck', HOST), args: sceneCp().concat(["-main", "RenderCheck"]).concat(soft)}
 		];
 		prebuild(builds);
@@ -85,6 +98,8 @@ class Gfx {
 			hxmc(p.out, p.args);
 		run(exePath('$b/SoftShaderCheck', HOST), []);
 		run(exePath('$b/ComputeCheck', HOST), []);
+		run(exePath('$b/GpuCheck', HOST), []);
+		run(exePath('$b/ClothCheck', HOST), []);
 		for (s in ["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"])
 			run(exePath('$b/GfxCheck', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
 		run("sh", ["tests/3d/check.sh", b], ["SOFT" => "1"]);

@@ -185,7 +185,9 @@ class FontFile {
 		bitmapsOnly = tag != "OTTO" && !tables.exists("glyf") && (tables.exists("CBDT") && tables.exists("CBLC") || tables.exists("sbix"));
 		var outlines = tag == "OTTO" ? ["CFF "] : bitmapsOnly ? [] : ["loca", "glyf"];
 		if (tag == "OTTO" && !tables.exists("CFF ") && tables.exists("CFF2")) throw "FontFile: CFF2 outlines are not supported";
-		for (t in ["head", "hhea", "hmtx", "maxp", "cmap"].concat(outlines))
+		// (no cmap at all where no Unicode one is asked for: a PDF's TrueType subsets reach their glyphs by
+		// CIDToGIDMap and often leave it out)
+		for (t in ["head", "hhea", "hmtx", "maxp"].concat(unicode ? ["cmap"] : []).concat(outlines))
 			if (!tables.exists(t)) throw "FontFile: no " + t + " table";
 		hmtx = tables.get("hmtx");
 		var head = tables.get("head");
@@ -1036,6 +1038,9 @@ class FontFile {
 	// segments (a line, a quadratic curve through a control point, or CFF's
 	// cubic curves through two)
 	public function outline(g:Int, out:Outline, ?transform:Array<Float>) {
+		depth = 0;
+		parts = 0;
+		points = 0;
 		if (transform == null) outlineAt(g, out, 1, 0, 0, 1, 0, 0) else
 			outlineAt(g, out, transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
 	}
@@ -1068,6 +1073,7 @@ class FontFile {
 		for (i in 0...contours)
 			ends[i] = u16(data, p + 10 + 2 * i);
 		var n = contours == 0 ? 0 : ends[contours - 1] + 1;
+		if ((points += n) > MAX_POINTS) return;
 		var q = p + 10 + 2 * contours;
 		q += 2 + u16(data, q); // (the instructions)
 		if (flags.length < n) {
@@ -1125,9 +1131,13 @@ class FontFile {
 			xs[i] = ta * x + tc * y + te;
 			ys[i] = tb * x + td * y + tf;
 		}
+		// (a damaged glyph's ends that go back: each contour after drew the
+		// points again, hundreds of contours millions of segments; each
+		// point drawn once)
 		var s = 0;
 		for (c in 0...contours) {
 			var e = ends[c];
+			if (e < s - 1 || e >= n) break;
 			var count = e - s + 1;
 			if (count >= 2) contour(xs, ys, flags, s, count, out);
 			s = e + 1;
@@ -1235,10 +1245,26 @@ class FontFile {
 			}
 			k++;
 			// (ARGS_ARE_XY_VALUES assumed: point matching is rare)
+			if (depth >= MAX_DEPTH || ++parts > MAX_PARTS) return;
+			depth++;
 			outlineAt(g, out, ta * a + tc * b, tb * a + td * b, ta * c + tc * d, tb * c + td * d, ta * dx + tc * dy + te, tb * dx + td * dy + tf);
+			depth--;
 			if (flags & 0x20 == 0) break;
 		}
 	}
+
+	// (a damaged font's composite glyphs: one that holds itself recursed
+	// until the stack ran out, a few that hold each other fanned out to
+	// gigabytes of path, each level's scale compounding. Fonts nest a few
+	// levels, a glyph of all its components some thousands of points:
+	// HarfBuzz's bounds, about)
+	static inline var MAX_DEPTH = 6;
+	static inline var MAX_PARTS = 256;
+	static inline var MAX_POINTS = 20000;
+
+	var depth = 0;
+	var parts = 0;
+	var points = 0;
 
 	inline function f2dot14(p:Int):Float
 		return s16(data, p) / 16384;
@@ -1251,6 +1277,11 @@ class FontFile {
 	// --- tables ---
 
 	function chooseCmap(required:Bool) {
+		if (!tables.exists("cmap")) {
+			if (required) throw "FontFile: no cmap table";
+			cmap = -1;
+			return;
+		}
 		var c = tables.get("cmap");
 		var n = u16(data, c + 2);
 		var best = -1, bestScore = -1;

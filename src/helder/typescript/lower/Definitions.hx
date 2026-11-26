@@ -317,7 +317,7 @@ class Scope {
 // counterpart: a stage's function and the functions it calls, from the
 // AST to the IR, typed by their annotations (the program is checked: the
 // types are what tsgo agreed to) as Lower types Haxe: numbers are Float,
-// helder/gfx's Vec2, Vec3, Vec4, Mat4 and Texture2D the math types, type
+// helder/math's Vec2, Vec3, Vec4, Mat4 and helder/gfx's Texture2D the math types, type
 // aliases of object types structs (named after the alias), the methods add,
 // sub, mul, div and neg the operators (c = c.add(x) is Haxe's c += x on a
 // vector: c = c + x). Names are allocated in Lower's
@@ -668,7 +668,7 @@ class TsAdapter implements ShaderAdapter {
 			case KindTypeReference if (t.typeName().kind == KindIdentifier):
 				var n = t.typeName().text;
 				var from = Scope.imported(t.file, n);
-				if (from != null && from.module == "helder/gfx")
+				if (from != null && (from.module == "helder/gfx" || from.module == "helder/math"))
 					return switch from.name {
 						case "Vec2": TVec(2);
 						case "Vec3": TVec(3);
@@ -706,7 +706,7 @@ class TsAdapter implements ShaderAdapter {
 			case KindTypeReference if (t.typeName().kind == KindIdentifier):
 				var n = t.typeName().text;
 				var from = Scope.imported(t.file, n);
-				if (from != null && from.module == "helder/gfx") return null;
+				if (from != null && (from.module == "helder/gfx" || from.module == "helder/math")) return null;
 				var alias = from != null ? declaration(from.specifier, from.name, KindTypeAliasDeclaration) : Scope.declared(t.file, n, KindTypeAliasDeclaration);
 				alias == null ? null : objectMembers(alias.type());
 			case _: null;

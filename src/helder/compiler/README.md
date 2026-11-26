@@ -3,7 +3,8 @@
 helder's compiler: hxmc's compiler (@hxmc/cli's `haxe`, with the same
 command line) with helder's hooks linked in. The helder CLI builds every
 program with it (src/helder/cli's `Compiler.hx`; hxmc's native compiler,
-with a warning, when it cannot build it): one-shot builds and `helder dev`'s
+with a warning, when node cannot run its build; its errors and exit code 1
+when that build fails): one-shot builds and `helder dev`'s
 compilation server alike.
 
 - `Compiler.hx`, the main: installs hxmc's hooks (defines, the module
@@ -186,7 +187,8 @@ TS checked node ─► TS adapter  ──┘
 ### 3. Shaders
 
 ```ts
-import {shader, vec4, mix, normalize, pow, clamp, type Vec2, type Vec4, type Mat4} from 'helder/gfx'
+import {shader, vec4, mix, normalize, pow, clamp} from 'helder/gfx'
+import {type Vec2, type Vec4, type Mat4} from 'helder/math'
 
 type SkyParams = {invViewProj: Mat4, eye: Vec4, horizon: Vec4, zenith: Vec4}
 

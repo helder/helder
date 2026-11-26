@@ -3,8 +3,8 @@
 // tags: 3d, lod, instancing, docs
 // demo: canvas 640x400
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -22,7 +22,7 @@ import helder.scene.render.Lod.LodLevel;
 //   helder run docs/examples/scene-lod
 class Levels {
 	static function main() {
-		var window = new Window("Levels of detail", 640, 400);
+		var window = new Window({title: "Levels of detail", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.55, 0.65, 0.8, 1);

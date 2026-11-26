@@ -1,6 +1,7 @@
 // An array field without its length (@:length(n)): the error at the field.
-// expect: ShaderArrayLength.hx:12: characters 2-25
+// expect: ShaderArrayLength.hx:13: characters 2-25
 // expect: an array field has a length, @:length(n)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

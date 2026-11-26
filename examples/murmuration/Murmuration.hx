@@ -2,6 +2,7 @@
 // summary: Half a million starlings wheeling over a marsh at dusk, steered on the GPU by compute stages (separation, alignment and cohesion over a hashed grid), a hawk splitting them, drawn as instances with beating wings into an HDR frame with bloom
 // tags: 3d, compute, instancing, shaders, post
 // demo: canvas 960x540
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;
@@ -299,7 +300,7 @@ class Murmuration {
 	static function main() {
 		var args = Sys.args(), b = args.indexOf("--bench");
 		if (b >= 0) return bench(Std.parseInt(args[b + 1] ?? "1920") ?? 1920, Std.parseInt(args[b + 2] ?? "1080") ?? 1080);
-		var window = new Window("Murmuration", 1280, 720);
+		var window = new Window({title: "Murmuration", width: 1280, height: 720});
 		var m = new Murmuration(Device.create(window.surface));
 		// (--birds n: at most n fly, as helder.build's homepage asks)
 		var cap = args.indexOf("--birds");

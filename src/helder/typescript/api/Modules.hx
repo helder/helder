@@ -11,7 +11,7 @@ import haxe.macro.Type;
 //   @:typescript("helder/view", "index.d.ts")          // the module, its declarations' file (beside the class)
 //   @:typescript.classes(helder.view.Render, ...)        // classes: their public members (those marked
 //                                                        // @:typescript when some are), @:noCompletion ones aside
-//   @:typescript.packages(helder.ui.widgets, ...)        // every public class of a package (its directory's
+//   @:typescript.packages(helder.ui.nav, ...)            // every public class of a package (its directory's
 //                                                        // modules, tests and stories aside): what is added to
 //                                                        // it is the program's too; @:typescript.hide on a
 //                                                        // class, or @:noCompletion, leaves it out

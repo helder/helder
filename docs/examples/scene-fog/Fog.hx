@@ -3,8 +3,8 @@
 // tags: 3d, fog, hdr, docs
 // demo: canvas 640x400
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -20,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-fog
 class Fog {
 	static function main() {
-		var window = new Window("Fog", 640, 400);
+		var window = new Window({title: "Fog", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device, true, 1, true);   // offscreen, HDR
 		renderer.sunDirection = new Vec3(1, 0.25, -0.4);

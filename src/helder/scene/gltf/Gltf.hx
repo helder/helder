@@ -1,11 +1,11 @@
 package helder.scene.gltf;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.gltf.GltfDoc;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // glTF 2.0 files read into a GltfDoc: the JSON form (.gltf: buffers as
 // data: URIs, or files that resolve returns) and the binary form (.glb: a

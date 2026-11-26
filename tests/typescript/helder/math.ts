@@ -2,7 +2,7 @@
 // Vec2, Vec3, Vec4, Mat4 and Quat given to Haxe and back, by value (a value
 // given is the program's still, a value read a copy).
 import { MathProbe } from "./test-renderer";
-import { Vec2, Vec3, Vec4, Quat, Mat4 } from "helder/gfx";
+import { Vec2, Vec3, Vec4, Quat, Mat4 } from "helder/math";
 
 const v = new Vec3(1, 2, 3);
 const s = MathProbe.scaled(v, 2);

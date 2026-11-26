@@ -345,7 +345,7 @@ class AsyncCheck {
 			c2.writeString("GET /fail HTTP/1.1\r\n\r\n");
 			out.push("" + readResponse(new Reader(c2)).status);
 			c2.close();
-			var ws = WebSocket.connect("127.0.0.1", server.port, "/ws");
+			var ws = WebSocket.open('ws://127.0.0.1:${server.port}/ws');
 			ws.send("hello");
 			out.push(ws.receive());
 			var long = StringTools.lpad("", "x", 70000);

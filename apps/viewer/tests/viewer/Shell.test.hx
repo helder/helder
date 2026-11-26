@@ -372,7 +372,7 @@ private class Nothing implements helder.ui.Canvas {
 	public function popTransform() {}
 
 	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:helder.gfx.Color, borderWidth:Float, border:helder.gfx.Color,
-		?corners:helder.ui.Corners, ?sides:helder.ui.Edges, style:helder.ui.BorderStyle = Solid) {}
+		?corners:helder.ui.Corners, ?sides:helder.os.Edges, style:helder.ui.BorderStyle = Solid) {}
 
 	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:helder.gfx.Color, blur:Float, ?corners:helder.ui.Corners,
 		?offset:Array<Float>) {}

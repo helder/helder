@@ -1,6 +1,7 @@
 // The fragment stage takes what the vertex stage returns (in Haxe: RejectMismatch.hx).
 // expect: shader: stage interface mismatch: the fragment function takes Other, but the vertex function returns O
-import {shader, position, vec4, type Vec2, type Vec3, type Vec4} from "helder/gfx";
+import {shader, position, vec4} from "helder/gfx";
+import {type Vec2, type Vec3, type Vec4} from "helder/math";
 
 type V = {pos: Vec2};
 type O = {pos: Vec4};

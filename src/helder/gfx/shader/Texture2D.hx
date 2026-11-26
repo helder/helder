@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import haxe.io.Bytes;
 
 // A texture and the sampler that reads it, as a shader's parameter (after

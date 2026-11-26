@@ -36,9 +36,10 @@
 //   Glow.params.glow.write({color: vec4(1, 0.5, 0.2, 1), time: vec4(t, 0, 0, 0)}, bytes);
 import {Script, MaterialShader, type Material} from './runtime';
 import {
-	UniformWriter, TextureSlot, type Mat4, type Quat, type Vec3, type Params, type Slots, type SlotsDef, type ShaderCode, type VertexBufferLayout,
+	UniformWriter, TextureSlot, type Params, type Slots, type SlotsDef, type ShaderCode, type VertexBufferLayout,
 	type UniformBlock, type TextureBinding,
 } from "helder/gfx";
+import { type Mat4, type Quat, type Vec3 } from "helder/math";
 import type { World } from './runtime';
 
 // helder/asset's model(path): helder/scene's Model where the program has

@@ -7,8 +7,8 @@ import helder.gfx.Encoder;
 import helder.gfx.Pipeline;
 import helder.gfx.Sampler;
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 import helder.media.VideoFrame;
 import helder.media.ui.VideoShader;
 

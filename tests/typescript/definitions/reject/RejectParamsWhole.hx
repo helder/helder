@@ -1,5 +1,6 @@
 // A stage's object of parameters is read by its fields (in TypeScript: params-whole.ts).
 // expect: shader: p, the stage's parameters, is read by its fields (p.name): it is no shader value
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

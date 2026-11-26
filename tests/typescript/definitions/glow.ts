@@ -3,7 +3,8 @@
 // same CPU stages' values. lit's variants: Lit (the defaults), Glow (its
 // emissive slot replaced by one with a uniform block of its own, after the
 // stages'; tinted: the vertex's optional tint read, a varying kept).
-import {slots, position, vec2, vec3, vec4, sin, type Vec2, type Vec3, type Vec4} from "helder/gfx";
+import {slots, position, vec2, vec3, vec4, sin} from "helder/gfx";
+import {type Vec2, type Vec3, type Vec4} from "helder/math";
 import {print} from "./print";
 
 type GlowVertex = {pos: Vec2, uv: Vec2, tint?: Vec4};

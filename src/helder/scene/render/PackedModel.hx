@@ -3,14 +3,14 @@ package helder.scene.render;
 import haxe.io.Bytes;
 import haxe.io.BytesInput;
 import helder.gfx.Device;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
 import helder.scene.anim.AnimationClip;
 import helder.scene.math.Aabb;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // A model packed at build time (helder.scene.gltf.Pack): read without JSON,
 // its vertex data handed to the GPU as it is, its images decoded by
@@ -91,9 +91,9 @@ class PackedModel {
 			var s = [for (_ in 0...4) i.readInt32()];
 			var x = [for (_ in 0...9) i.readFloat()];
 			mat.alphaCutoff = x[0];
-			mat.uvOffset = new helder.gfx.shader.Vec2(x[1], x[2]);
+			mat.uvOffset = new helder.math.Vec2(x[1], x[2]);
 			mat.uvRotation = x[3];
-			mat.uvScale = new helder.gfx.shader.Vec2(x[4], x[5]);
+			mat.uvScale = new helder.math.Vec2(x[4], x[5]);
 			mat.clearcoat = x[6];
 			mat.clearcoatRoughness = x[7];
 			mat.transmission = x[8];

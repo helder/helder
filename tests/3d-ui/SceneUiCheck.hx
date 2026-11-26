@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.*;
 import helder.scene.render.InstancedMesh;
 import helder.scene.render.Light;
@@ -50,7 +50,7 @@ class SceneUiCheck implements Markup {
 			<light kind="point" intensity={() -> x() * 2} range={8.0}/>
 			<Show when={shown}><node name="flag"/></Show>
 			<For each={moons}>{m -> <node name={m()}/>}</For>
-			<hemisphereLight name="sky" sky={new helder.gfx.shader.Vec3(0.5, 0.6, 0.9)} ground={new helder.gfx.shader.Vec3(0.3, 0.2, 0.1)} intensity={2}/>
+			<hemisphereLight name="sky" sky={new helder.math.Vec3(0.5, 0.6, 0.9)} ground={new helder.math.Vec3(0.3, 0.2, 0.1)} intensity={2}/>
 			<sprites name="clouds" of={clouds} mode="axis"/>
 			<mesh name="post"><cylinderGeometry radiusTop={0.2} height={1} flat/><toonMaterial steps={3}/></mesh>
 			<spotLight name="lamp" range={12.0} castShadows shadowSize={512} shadowBias={0.002} shadowRadius={1.5}/>
@@ -104,6 +104,7 @@ class SceneUiCheck implements Markup {
 		var range = tree.world.store(helder.scene.render.Lod.RANGE).get(tree);
 		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
 		typed();
+		shared();
 		leaks();
 		Sys.println('SceneUiCheck: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
@@ -117,9 +118,9 @@ class SceneUiCheck implements Markup {
 		var world = new World();
 		var angle = signal(0.5), lift = signal(1.0), red = signal(0.25), power = signal(2.0), kind = signal("point");
 		Render.render(<node>
-			<node name="turned" rotation={helder.scene.math.Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)} scale={new Vec3(2, 2, 2)}/>
-			<node name="fixed" rotation={helder.scene.math.Quat.axisAngle(up, 0.25)}/>
-			<mesh name="painted" shape="box" color={new helder.gfx.shader.Vec4(red(), 0, 0, 1)} roughness={0.75}/>
+			<node name="turned" rotation={helder.math.Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)} scale={new Vec3(2, 2, 2)}/>
+			<node name="fixed" rotation={helder.math.Quat.axisAngle(up, 0.25)}/>
+			<mesh name="painted" shape="box" color={new helder.math.Vec4(red(), 0, 0, 1)} roughness={0.75}/>
 			<light name="bulb" kind={kind()} intensity={power()} range={6} castShadows/>
 			<camera name="lens" fov={angle() * 2}/>
 		</node>, SceneRenderer.root(world));
@@ -151,6 +152,34 @@ class SceneUiCheck implements Markup {
 		check("a make prop (kind): a new light, its set props kept", spot.kind == Spot && spot.intensity == 5 && spot.range == 6 && spot.castShadows);
 		var lens = Camera.of(world.root.find("lens"));
 		check("a camera's fov in place", lens != null && near(lens.fovY, 2.0));
+		world.dispose();
+	}
+
+	// geometry and material tags of the same props: one geometry, one
+	// material (their meshes one instanced draw); a prop changed, its own
+	static function shared() {
+		var world = new World();
+		var tint = signal(0.5);
+		Render.render(<node>
+			<mesh name="a"><cylinderGeometry radiusTop={0.2} height={1}/><lambertMaterial color={new helder.math.Vec4(1, 0, 0, 1)}/></mesh>
+			<mesh name="b"><cylinderGeometry radiusTop={0.2} height={1}/><lambertMaterial color={new helder.math.Vec4(1, 0, 0, 1)}/></mesh>
+			<mesh name="c"><cylinderGeometry radiusTop={0.2000001} height={1}/><lambertMaterial color={new helder.math.Vec4(tint(), 0, 0, 1)}/></mesh>
+		</node>, SceneRenderer.root(world));
+		inline function part(name:String)
+			return SceneRenderer.of(world.root.find(name));
+		var a = part("a"), b = part("b"), c = part("c");
+		check("the same props: one geometry", a.geometryPart.geometry() == b.geometryPart.geometry());
+		check("the same props: one material", a.materialPart.material() == b.materialPart.material());
+		check("a number apart: a geometry of its own", a.geometryPart.geometry() != c.geometryPart.geometry());
+		check("another colour: a material of its own", a.materialPart.material() != c.materialPart.material());
+		var red = a.materialPart.material();
+		tint(1.0);
+		flush();
+		check("a prop changed to another's: its material shared", c.materialPart.material() == red && red.baseColor.y == 0);
+		tint(0.25);
+		flush();
+		check("changed again: its own, the others' kept", c.materialPart.material() != red && a.materialPart.material() == red
+			&& b.materialPart.material() == red && c.materialPart.material().baseColor.x == 0.25);
 		world.dispose();
 	}
 

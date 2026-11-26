@@ -1,6 +1,6 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.Device;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.*;
 import helder.scene.math.Aabb;
 import helder.scene.render.*;

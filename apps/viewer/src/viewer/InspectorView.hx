@@ -4,7 +4,7 @@ import helder.ui.Node;
 import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
 import helder.ui.menu.Menus;
-import helder.ui.widgets.WindowButtons;
+import helder.ui.controls.WindowButtons;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -61,8 +61,12 @@ class InspectorView implements Markup {
 			if (k != "") stop = x.preview(k.substr(0, k.indexOf("\t")), s -> shown(s));
 		});
 		onCleanup(() -> if (stop != null) stop());
+		// (Windows' and Linux's window buttons over its top: the toolbar's row carried on, a title bar's)
 		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={0} overflow="hidden"
 			borders={fill ? "0 0 0 0" : "0 0 0 1"} borderColor={Look.ref.line}>
+			<Show when={!fill && WindowButtons.side() == "end"}>
+				<view tag="inspector-bar" height={Shell.BAR} flexShrink={0} dragRegion borders="0 0 1 0" borderColor={Look.ref.line}/>
+			</Show>
 			<Show when={many() != ""}>{() -> {
 				many();
 				var all = untrack(several);

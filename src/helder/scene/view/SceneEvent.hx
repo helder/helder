@@ -1,6 +1,6 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node as SceneGraphNode;
 import helder.ui.Event;
 
@@ -17,7 +17,7 @@ class SceneEvent {
 	public var point(default, null):Vec3 = new Vec3(0, 0, 0);
 	public var distance(default, null) = 0.0;
 	public var normal(default, null):Vec3 = new Vec3(0, 0, 1);
-	public var uv(default, null):helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	public var uv(default, null):helder.math.Vec2 = new helder.math.Vec2(0, 0);
 	public var event(default, null):Null<Event> = null;
 	public var gesture(default, null):Null<helder.ui.gesture.Gesture> = null;
 	// the pointer's (event's or gesture's): 0 the mouse, else a finger's or a pen's slot

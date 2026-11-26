@@ -43,10 +43,14 @@ static final look = Look.base.with({
 | Button | Enter, Space, a click | a button |
 | Checkbox | Space, a click | a checkbox, checked or mixed |
 | Switch | Space, Enter, a click | a switch, on or off |
+| Slider | the arrows (Shift: ten steps), Home, End, a press or a drag | a slider and its value |
+| Segmented | the arrows, a click | a radio group |
 
 ## What else
 
 - **Options:** a button's `variant` (`primary`, `secondary`, `outline`, `ghost`, `danger`), `size` (`sm`, `md`, `lg`), `icon`, `disabled`, `onPress`; a checkbox's and a switch's `label`, `checked`, `onChange`, `disabled`, and a checkbox's `indeterminate`.
+- **More controls:** a `Slider` (a number as a field filled up to it), a `Segmented` choice (one of a few options) and a `Tooltip` (what a control does and its shortcut, once the pointer rests on it).
+- **Your own parts:** a look's `parts` style an app's own slots from the same tokens (`parts: {panel: t => ({background: t.surface})}`), and `Look.ref.fg3` is a token's colour inline.
 - **Looks:** colours in light and dark, a neutral accent and eight others, a compact density, a type scale and motion, all tokens; restyle one part (`switch: t => ({knob: {radius: 3}})`) or any state of it.
 - **Your own rendering:** `render: {switch: Lamp}` draws every switch as your component, inside other widgets too; it keeps the switch's keys and accessibility.
 - **Interactions:** [popups, keyboard shortcuts and drag and drop](interactions.md).

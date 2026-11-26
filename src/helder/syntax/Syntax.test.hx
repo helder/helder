@@ -4,6 +4,7 @@ import helder.syntax.Document;
 import helder.syntax.Edits;
 import helder.syntax.Scanner;
 import helder.syntax.Transaction;
+import helder.test.Gen;
 import helder.test.Test;
 
 // helder.syntax's edits (the test lane: natively, as wasm32-wasi and on
@@ -76,6 +77,10 @@ function tests() {
 		});
 		test("a string with a quote written as code", () -> {
 			edit('<text title="a"/>', Tsx, d -> Edits.setAttribute(d, d.elementsNamed("text")[0], "title", AString('say "hi"')), '<text title={"say \\"hi\\""}/>');
+		});
+		test("a string with an entity's text: in a hole, read back as written", () -> {
+			var doc = Document.parse("const a = <view/>;\n", Tsx);
+			equals(Edits.attribute(doc, "title", AString("&amp;")), 'title={"&amp;"}');
 		});
 	});
 
@@ -176,6 +181,44 @@ function tests() {
 			equals(both.apply(d.text), '<view a="2"><b/></view>');
 			equals(both.inverse.apply(both.apply(d.text)), d.text);
 		});
+	});
+
+	describe("round trips", () -> {
+		test("markup printed as the edits write it, read back: the same tree, by helder.syntax and by the compiler", () -> property(sample, t -> {
+			var text = t.wrap(), doc = Document.parse(text, t.lang);
+			equals(doc.structured, true, "structured");
+			equals(doc.print(), text, "printed back");
+			equals([for (e in doc.elements()) e.name], names(t.root), "the elements");
+			var read = new helder.view.Syntax.Parser(t.markup(), (m, at, n) -> throw '$m at $at').document();
+			equals(tree(read), t.root, "the compiler's reading");
+		}, {cases: 200}));
+		test("an edit and its inverse: the text back byte for byte, the edited one read again", () -> property(c -> {
+			var t:Sample = c.draw(sample), e:Edit = c.draw(edits);
+			{sample: t, edit: e};
+		}, x -> {
+			var text = x.sample.wrap(), doc = Document.parse(text, x.sample.lang);
+			var els = doc.elements(), e = x.edit;
+			var el = els[e.at % els.length];
+			var tx = switch e.kind {
+				case 0: Edits.setAttribute(doc, el, e.name, e.value);
+				case 1: Edits.removeAttribute(doc, el, e.name);
+				case 2: Edits.rename(doc, el, "Card");
+				case 3 if (el != els[0]): Edits.delete(doc, el);
+				case 4: Edits.wrap(doc, el, "Box");
+				case 5 if (el != els[0] && el.elements().length == 1): Edits.unwrap(doc, el);
+				case 6: Edits.insertChild(doc, el, e.index % (el.elements().length + 1), print(doc, {name: "text", attrs: [{name: e.name, value: e.value}], children: []}));
+				case _: return;
+			}
+			var after = tx.apply(text);
+			equals(tx.inverse.apply(after), text, "the inverse");
+			var again = Document.parse(after, x.sample.lang);
+			equals(again.structured, true, "read again");
+			equals(again.print(), after, "printed back");
+			if (e.kind == 0) {
+				var a = again.elementAt(tx.map(el.start, 1)).attr(e.name);
+				equals(a == null ? null : value(a), e.value, "the attribute set");
+			}
+		}, {cases: 200}));
 	});
 
 	describe("speed", () -> {
@@ -280,3 +323,120 @@ private function edit(text:String, lang:Lang, f:Document->Transaction, expected:
 	// (the edited text reads again)
 	equals(Document.parse(after, lang).structured, true, null, pos);
 }
+
+// (an element of a generated tree: the compiler's reading compared as one)
+private typedef El = {name:String, attrs:Array<{name:String, value:AttrValue}>, children:Array<El>};
+
+private typedef Edit = {kind:Int, at:Int, index:Int, name:String, value:AttrValue};
+
+private final ATTRS = ["title", "color", "grow", "data-x", "label"];
+
+private final attrValue:Gen<AttrValue> = oneOf([
+	c -> AString(c.draw(string(oneOf([char(), pick(["&amp;", "&#65;", "&lt;", "{x}", "$x", "${x}", "'", '"', "\\", "\n", "\r", "\t", "`"])]), 0, 8))),
+	c -> AFlag,
+	c -> ACode(Std.string(c.draw(int(-99, 99))))
+]);
+
+private final element:Gen<El> = recursive(c -> el(c, []), inner -> c -> el(c, c.draw(array(inner, 0, 3))));
+
+private function el(c:helder.test.Choices, children:Array<El>):El {
+	var names = [], attrs = [];
+	for (a in c.draw(array(pick(ATTRS), 0, 3)))
+		if (!names.contains(a)) {
+			names.push(a);
+			attrs.push({name: a, value: c.draw(attrValue)});
+		}
+	return {name: c.draw(pick(["view", "text", "Frame", "box-row"])), attrs: attrs, children: children};
+}
+
+private final edits:Gen<Edit> = c -> {kind: c.draw(int(0, 6)), at: c.draw(int(0, 99)), index: c.draw(int(0, 9)), name: c.draw(pick(ATTRS)), value: c.draw(attrValue)};
+
+private final sample:Gen<Sample> = c -> new Sample(c.draw(pick([Tsx, Haxe, Markup])), c.draw(element), c.draw(bool()));
+
+private class Sample {
+	public final lang:Lang;
+	public final root:El;
+	final lined:Bool;
+
+	public function new(lang, root, lined) {
+		this.lang = lang;
+		this.root = root;
+		this.lined = lined;
+	}
+
+	public function markup():String
+		return print(Document.parse("", lang), root, lined ? "\n" : "");
+
+	// (in a file of its language)
+	public function wrap():String
+		return switch lang {
+			case Tsx: "const a = " + markup() + ";\n";
+			case Haxe: "class A implements Markup {\n\tfunction v() return " + markup() + ";\n}\n";
+			case _: markup() + "\n";
+		}
+
+	function toString():String
+		return wrap();
+}
+
+// (an element as text: its attributes as Edits writes them, its children on lines of their own or not)
+private function print(doc:Document, e:El, nl = ""):String {
+	var b = "<" + e.name;
+	for (a in e.attrs)
+		b += " " + Edits.attribute(doc, a.name, a.value);
+	if (e.children.length == 0) return b + "/>";
+	return b + ">" + [for (k in e.children) nl + print(doc, k, nl)].join("") + nl + "</" + e.name + ">";
+}
+
+private function names(e:El):Array<String>
+	return [e.name].concat(Lambda.flatten([for (k in e.children) names(k)]));
+
+// (the compiler's tree as a generated one: a string in a hole read as the string)
+private function tree(n:helder.view.Syntax.PNode):Null<El>
+	return switch n.kind {
+		case PElement(name, attrs, children, _): {
+				name: name,
+				attrs: [
+					for (a in attrs) {
+						name: a.name,
+						value: switch a.value {
+							case AStatic(s): AString(s);
+							case AFlag: AFlag;
+							case AExpr(code, _): unquoted(code);
+							case ASpread(code, _): ACode("..." + code);
+						}
+					}
+				],
+				children: [for (k in children) tree(k)].filter(k -> k != null)
+			};
+		case _: null;
+	}
+
+// (an attribute's value as written: a string in a hole its string)
+private function value(a:Attribute):AttrValue {
+	if (a.value == null) return AFlag;
+	var t = a.valueText();
+	return a.value.kind == Str ? AString(t) : unquoted(t);
+}
+
+private function unquoted(code:String):AttrValue {
+	var q = code.charAt(0);
+	if (code.length < 2 || q != '"' || code.charAt(code.length - 1) != q) return ACode(code);
+	var b = new StringBuf(), i = 1;
+	while (i < code.length - 1) {
+		var c = code.charAt(i++);
+		if (c != "\\") {
+			b.add(c);
+			continue;
+		}
+		var e = code.charAt(i++);
+		b.add(switch e {
+			case "n": "\n";
+			case "r": "\r";
+			case "t": "\t";
+			case _: e;
+		});
+	}
+	return AString(b.toString());
+}
+

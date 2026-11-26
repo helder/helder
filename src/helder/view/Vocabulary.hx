@@ -127,7 +127,7 @@ class Vocabulary {
 	// literal's, for every renderer: helder.ui.Part)
 	public static final NODES:Map<String, String> = [
 		"view" => "helder.ui.Node", "scroll" => "helder.ui.Node", "text" => "helder.ui.TextNode", "image" => "helder.ui.ImageNode",
-		"icon" => "helder.ui.ImageNode", "field" => "helder.ui.widgets.TextField", "textarea" => "helder.ui.widgets.TextArea",
+		"icon" => "helder.ui.ImageNode", "field" => "helder.ui.controls.TextField", "textarea" => "helder.ui.controls.TextArea",
 		"glass" => "helder.ui.Glass", "webview" => "helder.ui.platform.WebView", "video" => "helder.media.ui.VideoNode"
 	];
 

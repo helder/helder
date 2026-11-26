@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 
 // A theme's rules applied to the nodes with a slot (Node.slot): those of

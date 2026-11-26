@@ -1,7 +1,8 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import helder.os.DragOperation;
 #if (hxmc.target == "wasm32-wasi")
@@ -23,6 +24,17 @@ import helder.ui.view.UiView;
 import helder.view.graph.Graph;
 import helder.view.Render;
 import helder.view.RootView;
+
+// what a UiWindow is made with: helder.os's WindowOptions (its title, size,
+// title bar, transparent: the background's alpha showing what is behind the
+// window), the text engine (default: helder.text's, DrawText) and antialias
+// (default true: the device's frames multisampled, 4 samples a pixel, where
+// the GPU has them)
+typedef UiWindowOptions = {
+	> helder.os.Window.WindowOptions,
+	@:optional var text:TextEngine;
+	@:optional var antialias:Bool;
+}
 
 // <Surface>'s props (UiWindow.Surface)
 typedef SurfaceProps = {
@@ -47,7 +59,7 @@ typedef SurfaceProps = {
 	?clickThrough:helder.view.graph.Read<Bool>,
 	// the system's shadow around the window (helder.os's Window.shadow)
 	?shadow:helder.view.graph.Read<Bool>,
-	// dark or light (default: the system's appearance, UiWindow.dark)
+	// dark or light (default: the system's appearance, helder.os's Settings.dark)
 	?dark:helder.view.graph.Read<Bool>,
 	// the window closed by its user (default: closed)
 	?onClose:Void->Void,
@@ -128,10 +140,12 @@ class UiWindow {
 	// how long the loop sleeps at most with nothing to draw (seconds): what
 	// changes the UI from outside its events shows within it
 	@:noCompletion public static var idleWait = 0.1;
-	// whether the system's appearance is dark (App.prefersDark), asked again
-	// every second while the loop runs; each window's Ui.dark follows it
-	@:typescript public static final dark:helder.view.graph.Signal<Bool> = Graph.signalOf(App.prefersDark(), {ownedWrite: true});
-	static var darkAsked = 0.0;
+	// (the keymap file and the scroll bars' look, asked again every second while the loop runs)
+	static var polled = 0.0;
+	// (the windows that follow the system's appearance, Settings.dark: every
+	// one but a <Surface dark={...}>'s; the effect made with the first)
+	var followsSystem = true;
+	static var appearance = false;
 
 	static final open:Array<UiWindow> = [];
 	// the last frame drawn: its size and scale (a change needs a frame)
@@ -175,12 +189,11 @@ class UiWindow {
 	// (HELDER_DAMAGE: "full" draws each frame whole, "flash" shows what each frame drew: helder.ui.draw.Renderer.keep)
 	static final damage = Sys.getEnv("HELDER_DAMAGE") ?? "";
 
-	// (antialias: the device's frames multisampled, 4 samples a pixel, where
-	// the GPU has them; transparent: helder.os's, the background's alpha
-	// showing what is behind the window)
-	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard,
-			transparent = false) {
-		window = new helder.os.Window(title, width, height, titlebar, transparent);
+	// a window and its Ui from its options (UiWindowOptions: helder.os's
+	// WindowOptions, the text engine, antialias)
+	public function new(options:UiWindowOptions) {
+		var width = options.width, height = options.height, text = options.text, antialias = options.antialias != false;
+		window = new helder.os.Window({title: options.title, width: width, height: height, titlebar: options.titlebar, transparent: options.transparent});
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
 		#if (helder.headless || helder.soft)
@@ -208,6 +221,8 @@ class UiWindow {
 			renderer = new helder.ui.draw.Renderer(device);
 			renderer.groups = true;
 			renderer.steps = true;
+			// (helder.parallel's Gpu form on the windows' device, where it has compute and none was set)
+			if (device != null && helder.parallel.Parallel.device == null) helder.parallel.Parallel.device = device;
 			#end
 		}
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
@@ -222,8 +237,20 @@ class UiWindow {
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
-		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
-		ui.dark = dark.peek();
+		if (window.titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
+		// (the ui dark or light with the system's frame: setDark, Window.dark)
+		setDark(helder.os.Settings.dark.peek());
+		if (!appearance) {
+			appearance = true;
+			ScreenContext.main.dark(ui.dark);
+			Graph.root(_ -> Graph.effect(() -> helder.os.Settings.dark(), d -> {
+				var all = true;
+				for (w in open)
+					if (w.followsSystem) w.setDark(d) else all = false;
+				// (the screen's: unless a window says its own)
+				if (all) ScreenContext.main.dark(d);
+			}));
+		}
 		// (a hand over what is pressed, as web pages have it)
 		if (Platform.os() == 3) ui.pressCursor = Pointer;
 		nativeScroll(scrolling);
@@ -603,7 +630,7 @@ class UiWindow {
 		var key = out.join(" ");
 		if (key == taken) return;
 		taken = key;
-		window.input([for (i in 0...out.length >> 2) {x: out[4 * i], y: out[4 * i + 1], width: out[4 * i + 2], height: out[4 * i + 3]}]);
+		window.input = [for (i in 0...out.length >> 2) {x: out[4 * i], y: out[4 * i + 1], width: out[4 * i + 2], height: out[4 * i + 3]}];
 	}
 
 	// (n's box where it draws and the pointer finds it, else its children's;
@@ -685,11 +712,17 @@ class UiWindow {
 
 	// the window's safe area in UI pixels: the Ui's, and markup's
 	// env(safe-area-inset-*) from the first window's (SafeArea), when it changed
+	// (the ui dark or light, and the system's frame with it: Window.dark)
+	function setDark(v:Bool) {
+		ui.dark = v;
+		window.dark = v;
+	}
+
 	function safeArea() {
 		var k = scale, s = ui.safeArea;
-		var t = window.safeTop / k, r = window.safeRight / k, b = window.safeBottom / k, l = window.safeLeft / k;
+		var t = window.safe.top / k, r = window.safe.right / k, b = window.safe.bottom / k, l = window.safe.left / k;
 		if (s.top != t || s.right != r || s.bottom != b || s.left != l) {
-			ui.safeArea = new helder.ui.Edges(t, r, b, l);
+			ui.safeArea = new helder.os.Edges(t, r, b, l);
 			ui.requestFrame();
 		}
 		if (open[0] == this) helder.ui.SafeArea.set(t, r, b, l);
@@ -929,8 +962,8 @@ class UiWindow {
 		if (content != null) Render.open(content);
 		App.run(() -> {
 			var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;
-			if (now - darkAsked > 1) {
-				darkAsked = now;
+			if (now - polled > 1) {
+				polled = now;
 				// (the user's keymap file, read again when it changed: the menus' labels too)
 				if (helder.ui.actions.Keymap.global.poll()) for (w in open)
 					w.ui.requestFrame();
@@ -942,12 +975,6 @@ class UiWindow {
 						w.ui.scrollbarLook = overlay ? MacOverlay : MacLegacy;
 						w.ui.requestFrame();
 					}
-				var d = App.prefersDark();
-				if (d != dark.peek()) {
-					dark(d);
-					for (w in open)
-						w.ui.dark = d;
-				}
 			}
 			var drew = false;
 			for (w in open.copy())
@@ -984,8 +1011,7 @@ class UiWindow {
 		var title:Null<String> = Render.read(props.title);
 		var bg:Null<Color> = props.background == null ? null : props.background();
 		var backdrop:Null<helder.os.WindowBackdrop> = props.backdrop == null ? null : props.backdrop();
-		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar ?? Standard, (bg != null && bg.a < 255) || (backdrop != null && backdrop != None));
+		var w = new UiWindow({title: title ?? "helder", width: width ?? (web ? 0 : 800), height: height ?? (web ? 0 : 600), antialias: props.antialias != false, titlebar: props.titlebar ?? Standard, transparent: (bg != null && bg.a < 255) || (backdrop != null && backdrop != None)});
 		// (a backdrop seen through a clear background, unless one is given)
 		if (bg == null && backdrop != null && backdrop != None) w.background = Color.TRANSPARENT;
 		if (props.backdrop != null) Graph.renderEffect(() -> props.backdrop(), v -> w.window.backdrop = v);
@@ -998,7 +1024,14 @@ class UiWindow {
 			w.background = v;
 			w.ui.requestFrame();
 		});
-		if (props.dark != null) Graph.renderEffect(() -> Render.read(props.dark), v -> w.ui.dark = v);
+		if (props.dark != null) {
+			w.followsSystem = false;
+			Graph.renderEffect(() -> Render.read(props.dark), v -> {
+				w.setDark(v);
+				// (what the screen's readers read: this window's)
+				ScreenContext.main.dark(v);
+			});
+		}
 		if (props.clickThrough != null) Graph.renderEffect(() -> props.clickThrough(), v -> {
 			w.clickThrough = v;
 			w.ui.requestFrame();

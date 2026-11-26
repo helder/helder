@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
@@ -41,7 +42,9 @@ class ScreenContext {
 	public final safeArea:Signal<Edges>;
 	// an inset title bar's area free of the window's buttons (env(titlebar-area-*); null: not inset)
 	public final titlebarArea:Signal<Null<Rect>>;
-	// dark or light: a host gives it to the screen's Ui (Ui.dark)
+	// dark or light: a host gives it to the screen's Ui (Ui.dark), and
+	// what code outside a Ui reads (UiWindow: the system's,
+	// Settings.dark, or a <Surface dark>'s)
 	public final dark:Signal<Bool>;
 	// its surface's width and height in points and its size class
 	// (SizeClass.current): the Ui made last in it, as it resizes (a window's,
@@ -94,7 +97,7 @@ class ScreenContext {
 	static function get_main():ScreenContext {
 		if (first == null) {
 			first = new ScreenContext("main", false, @:privateAccess helder.ui.actions.Keymap.app);
-			// (the system's appearance: UiWindow's, followed by the windows)
+			// (light until a UiWindow writes the system's appearance, Settings.dark, or a <Surface dark>'s)
 			first.dark(false);
 		}
 		return first;

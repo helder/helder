@@ -91,7 +91,7 @@ class WinPatternsCheck {
 	}
 
 	static function main() {
-		var w = new UiWindow("patterns", 400, 640);
+		var w = new UiWindow({title: "patterns", width: 400, height: 640});
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);
 		var step = 0, nodes:Array<Ptr> = [];

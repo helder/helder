@@ -1,5 +1,6 @@
 package helder.ui.draw.soft;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Bitmap;
@@ -892,6 +893,10 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 			at = Math.pow(2, Math.round(Math.log(size) / Math.log(2) * 4) / 4);
 			sigma = sigma * at / size;
 			again = true;
+		}
+		if (at > GlyphAtlas.MAX_SIZE) {
+			sigma = sigma * GlyphAtlas.MAX_SIZE / at;
+			at = GlyphAtlas.MAX_SIZE;
 		}
 		var k = size / at, ix = GlyphAtlas.pixel(gx + ex, size), sub = k == 1 ? GlyphAtlas.phase(gx + ex, size) : 0;
 		var a = at > LARGE ? null : atlas.get(f, id, at, sub, oblique, sigma, color & 0xFFFFFF);

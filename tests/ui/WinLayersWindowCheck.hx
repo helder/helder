@@ -45,7 +45,7 @@ class WinLayersWindowCheck {
 			Sys.exit(2);
 		}
 		sys.FileSystem.createDirectory(dir);
-		var w = new helder.ui.UiWindow("WinLayersWindowCheck", 400, 300);
+		var w = new helder.ui.UiWindow({title: "WinLayersWindowCheck", width: 400, height: 300});
 		var root = w.root;
 		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();

@@ -20,8 +20,8 @@ class KeyClickCheck {
 			return;
 		}
 		var plain = Sys.args().indexOf("--plain") >= 0, ui:Null<UiWindow> = null, win:Window, presses = 0;
-		if (plain) win = new Window("KeyClickCheck", 300, 200) else {
-			ui = new UiWindow("KeyClickCheck", 300, 200);
+		if (plain) win = new Window({title: "KeyClickCheck", width: 300, height: 200}) else {
+			ui = new UiWindow({title: "KeyClickCheck", width: 300, height: 200});
 			var n = new Node();
 			n.style.set({width: 300, height: 200, background: 0xFF2F7FE8});
 			n.onClick = _ -> presses++;

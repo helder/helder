@@ -42,7 +42,7 @@ class WebCheck {
 			Sys.println('WebCheck: headless: ${device.width}x${device.height} (${name(device.backend)})');
 			return;
 		}
-		var w = new Window("WebCheck", 256, 192);
+		var w = new Window({title: "WebCheck", width: 256, height: 192});
 		var device = Device.create(w.surface);
 		var draw = Scene.make(scene, device);
 		var frames = 0;

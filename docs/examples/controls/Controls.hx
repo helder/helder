@@ -6,7 +6,7 @@ import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
-import helder.ui.widgets.Icons;
+import helder.ui.controls.Icons;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 

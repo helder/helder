@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 // Screen-space ambient occlusion, a PostProcess's (post.ao = new
 // Ssao({...})): GTAO (Jimenez et al. 2016) from the renderer's view

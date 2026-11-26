@@ -35,7 +35,7 @@ class Listing {
 	}
 
 	public static function shows(e:Entry, hidden:Bool, query:String):Bool
-		return (hidden || !Kinds.hidden(e.name)) && (query == "" || e.name.toLowerCase().indexOf(query.toLowerCase()) >= 0);
+		return (hidden || !Kinds.hidden(e)) && (query == "" || e.name.toLowerCase().indexOf(query.toLowerCase()) >= 0);
 
 	// entries filtered and sorted
 	public static function of(entries:Array<Entry>, order:Order, hidden:Bool, query:String):Array<Entry> {

@@ -3,7 +3,8 @@
 import {
 	World, Camera, Light, Renderer, Material, MeshRenderer, Shapes, material, pbr, type Device, type Encoder, type Model, type PbrSurface,
 } from "helder/scene";
-import { sin, vec3, vec4, type Vec3, type Vec4 } from "helder/gfx";
+import { sin, vec3, vec4 } from "helder/gfx";
+import { type Vec3, type Vec4 } from "helder/math";
 
 // The standard material with two of its slots replaced, as examples/glow's
 // (helder/scene's material: compiled with the program into the variants

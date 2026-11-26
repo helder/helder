@@ -14,6 +14,7 @@ class Bench {
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
+		{name: "bench harbour", about: "a TypeScript 3D app of ~1,100 meshes, its frames", run: harbourBench},
 		{name: "bench scene-markup", about: "3D in markup against the same scene in code", run: sceneMarkupBench},
 		{name: "bench jobs", about: "background work against the main thread's frames", run: jobs},
 		{name: "bench thread", about: "the page's thread against a worker, in browsers", run: threadWeb},
@@ -22,6 +23,9 @@ class Bench {
 		{name: "bench frame", about: "tests/3d's scenes timed, first frame and after", run: () -> scenes("FrameBench")},
 		{name: "bench async", about: "helder.async's tasks, timers, switches and locks", run: () -> program("AsyncBench", cps(["src"]))},
 		{name: "bench watch", about: "the watchers' cost a tick on a large tree", run: () -> program("WatchBench", cps(["src"]))},
+		{name: "bench parallel", about: "helder.parallel's forms on a particle step (docs/design/parallel.md)", run: () -> program("ParallelBench", cps(["src", "tests/bench/parallel"]))},
+		{name: "bench cloth", about: "examples/cloth's step in helder.parallel's forms", run: () -> program("ClothBench", cps(["src", "examples/cloth"]))},
+		{name: "bench reduce", about: "helder.parallel's reductions on the GPU against reading back", run: () -> program("ReduceBench", cps(["src"]))},
 		{name: "bench soft", about: "the CPU's canvas against the GPU on the same scenes", run: () -> {
 			program("SoftBench", uiCp());
 			run(exePath("bin/bench/SoftBench", HOST), [], ["HELDER_SOFT" => "1"]);
@@ -117,6 +121,23 @@ class Bench {
 		run(NODE, ["tests/bench/code.mjs", '$b/stats.json', '$b/phases.json']);
 		exe('$b/CodeBench', cps(["src", "tests/bench"]).concat(["-main", "CodeBench", "-D", "hxmc.libc=glibc"]));
 		run(exePath('$b/CodeBench', HOST), ['$b/code.tsx']);
+	}
+
+	// (tests/bench/harbour: a Studio field test's papercraft diorama in
+	// TypeScript, ~1,100 meshes of shared shapes, ~100 transforms moving a
+	// frame, soft shadows and SSAO; RUNS runs of 8 s, each a process:
+	// tests/bench/harbour.mjs, bin/harbour-bench/results.md)
+	static function harbourBench() {
+		var h = helderCli(), b = "bin/harbour-bench";
+		mkdirs(b);
+		File.saveContent('$b/script.json', haxe.Json.stringify({events: [{t: 8, type: "mark", name: "end"}]}));
+		var runs = Std.parseInt(Sys.getEnv("RUNS") ?? "3"), stats = [];
+		for (k in 0...runs) {
+			stats.push('$b/stats$k.json');
+			run(h, ["run", "--headless", "tests/bench/harbour", "--size", "1180x740", "--scale", "2", "--script", '$b/script.json', "--stats", stats[k]]);
+		}
+		run(NODE, ["tests/bench/harbour.mjs"].concat(stats));
+		File.saveContent('$b/results.md', output(NODE, ["tests/bench/harbour.mjs"].concat(stats).concat(["--markdown"])) ?? "");
 	}
 
 	static function millionBench() {

@@ -96,6 +96,8 @@ class MetalBackend {
 	var drawable = Ptr.nil();
 	var texture = Ptr.nil();
 	var enc = Ptr.nil();
+	// (the render encoder's textures and samplers by slot, 2 a slot: ids, 0 none)
+	final bound:Array<Int> = [];
 	var pipeline:MtlPipeline = null;
 	// drawIndexed's index buffer, type (MTL.IndexType*) and offset
 	var ibuf = Ptr.nil();
@@ -562,6 +564,10 @@ class MetalBackend {
 		Msg.vIntIntPtrIntPtrInt(enc, S.drawIndexedPrimitivesIndirect, pipeline.topology, itype, ibuf, ioffset, buffers[id - 1], offset);
 
 	// the work so far committed and waited for (a frame's: it goes on in a new command buffer), then the shared memory read
+	// (a buffer's contents: shared storage, the CPU's and the GPU's)
+	public function bufferMemory(id:Int):Ptr
+		return Msg.id(buffers[id - 1], ObjC.sel("contents"));
+
 	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
 		var b = buffers[id - 1];
 		if (offset + size > Msg.i(b, ObjC.sel("length")).toInt()) throw "helder.gfx: readBuffer: past the buffer's end";
@@ -728,6 +734,8 @@ class MetalBackend {
 		passQueries = p.queries == null ? 0 : p.queries.id();
 		if (passQueries != 0) Msg.vPtr(pass, ObjC.sel("setVisibilityResultBuffer:"), querySets[passQueries - 1].buffer);
 		enc = Msg.idPtr(cmd, S.renderCommandEncoderWithDescriptor, pass);
+		for (i in 0...bound.length)
+			bound[i] = 0;
 		viewport.value.originX = 0;
 		viewport.value.originY = 0;
 		viewport.value.width = w;
@@ -776,6 +784,14 @@ class MetalBackend {
 			Msg.vPtrInt(computeEnc, S.setSamplerState, s, slot);
 			return;
 		}
+		// (the same texture and sampler at a slot again: not sent, the
+		// encoder keeps them; a draw's material binds every slot it reads)
+		var k = 2 * slot;
+		while (bound.length <= k + 1)
+			bound.push(0);
+		if (bound[k] == texture && bound[k + 1] == sampler) return;
+		bound[k] = texture;
+		bound[k + 1] = sampler;
 		Msg.vPtrInt(enc, S.setVertexTexture, t, slot);
 		Msg.vPtrInt(enc, S.setFragmentTexture, t, slot);
 		Msg.vPtrInt(enc, S.setVertexSamplerState, s, slot);

@@ -67,7 +67,7 @@ class UiDrawCheck {
 				}
 			var ok = dark > 400;
 			Sys.println('UiDrawCheck: smoke: the font ${face.family} ${face.subfamily}, $dark dark pixels in the paragraph: ' + (ok ? "ok" : "FAIL"));
-			Sys.println('UiDrawCheck: smoke: the system\'s appearance ' + (App.prefersDark() ? "dark" : "light"));
+			Sys.println('UiDrawCheck: smoke: the system\'s appearance ' + (Settings.dark.peek() ? "dark" : "light"));
 			Sys.exit(ok ? 0 : 1);
 		}
 		Sys.exit(compare(pixels, golden) && runs(ui) ? 0 : 1);
@@ -88,7 +88,7 @@ class UiDrawCheck {
 
 	#if !(helder.soft && helder.headless)
 	static function window(golden:String, out:String) {
-		var w = new helder.ui.UiWindow("UiDrawCheck", W, H);
+		var w = new helder.ui.UiWindow({title: "UiDrawCheck", width: W, height: H});
 		Sample.build(w.root);
 		var pixels = Bytes.alloc(W * H * 4);
 		var frames = 0;

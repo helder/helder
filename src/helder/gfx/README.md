@@ -269,9 +269,9 @@ own code is GC code (a kernel's discipline would let collections skip it).
 ## Shaders
 
 Shaders are Haxe (`helder.gfx.shader`): a definition, `shader({vertex,
-fragment})` (src/helder/compiler/README.md), of functions on the math types
-(`Vec2`, `Vec3`, `Vec4`, `Mat4`, swizzles, operators, `ShaderMath`'s
-builtins), structs of them (`@:structInit` classes, typedefs of anonymous
+fragment})` (src/helder/compiler/README.md), of functions on helder.math's
+types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, swizzles, operators:
+/src/helder/math/README.md) and `ShaderMath`'s builtins, structs of them (`@:structInit` classes, typedefs of anonymous
 structures) and `Texture2D` parameters (`sample(t, uv)`: in the fragment
 stage at the mip level the fragment's footprint needs, in the vertex stage
 the first; `sampleLevel(t, uv, level)` at a given one; `discard()`, a
@@ -579,7 +579,7 @@ A draw runs its vertex stage at once, clips (near, far, and a guard band
 that keeps the fixed point exact), sets triangles up in fixed point (8 bits
 under the pixel, the top-left rule; the planes of depth, 1/w and each
 varying over w: perspective-correct) and bins them into the pass's 32x32
-tiles. The pass's end shades the tiles in parallel (`helder.jobs.Parallel`:
+tiles. The pass's end shades the tiles in parallel (`helder.jobs.Spread`:
 GC-free callbacks on the pool's threads, which spin a while between runs;
 `HELDER_SOFT_THREADS=n` caps them, 1 none), each its triangles in order:
 a row's span from the edges, the depth test before the fragment stage,

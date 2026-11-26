@@ -1,5 +1,6 @@
 package helder.ui.view;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 import helder.ui.*;
 

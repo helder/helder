@@ -1,6 +1,7 @@
 // A definition's argument is static (in Haxe: RejectNotStatic.hx).
 // expect: shader: stages is not static
-import {shader, position, vec4, type Vec2, type Vec3, type Vec4} from "helder/gfx";
+import {shader, position, vec4} from "helder/gfx";
+import {type Vec2, type Vec3, type Vec4} from "helder/math";
 
 type V = {pos: Vec2};
 type O = {pos: Vec4};

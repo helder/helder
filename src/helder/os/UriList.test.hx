@@ -1,5 +1,6 @@
 package helder.os;
 
+import helder.test.Gen;
 import helder.test.Test;
 
 // text/uri-list's file paths (X11's drops: helder.os.linux.x11.X11Window)
@@ -19,6 +20,9 @@ import helder.test.Test;
 			equals(text, "file:///tmp/a%20b%23%25.jpg\r\nfile:///tmp/caf%C3%A9%3F%0A.webp\r\n");
 			equals(UriList.paths(text), files);
 		});
+		test("any absolute paths: encoded, read back the same", () -> property(array(string(char(), 0, 12).map(s -> "/" + s), 0, 4), files -> {
+			equals(UriList.paths(UriList.encode(files)), files);
+		}, {cases: 300}));
 		test("broken escapes and empty paths left out", () -> {
 			equals(UriList.paths("file:///tmp/a%2\nfile:///tmp/a%zz\nfile://host\n\n"), []);
 		});

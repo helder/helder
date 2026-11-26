@@ -17,7 +17,7 @@ import helder.view.graph.Signal;
 // inputmode, enterkeyhint, autocapitalize, autocorrect).
 class WebField implements Markup {
 	static function main() {
-		var w = new UiWindow("Fields", 420, 320);
+		var w = new UiWindow({title: "Fields", width: 420, height: 320});
 		var name = signal(""), notes = signal(""), submitted = signal(""), fruit = signal("Apple"), drawn = signal("");
 		Render.render(<view flexGrow={1} padding={20} rowGap={12} alignItems="stretch" fontFamily="Inter" background="#ffffff">
 			<view flexDirection="row" columnGap={12}>

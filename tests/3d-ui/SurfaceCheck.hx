@@ -1,7 +1,7 @@
 import StageProbe.ProbeShader;
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.World;
 import helder.scene.view.SceneTags.*;

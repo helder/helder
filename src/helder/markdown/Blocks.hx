@@ -29,6 +29,12 @@ class Blocks {
 	var nextNonspaceColumn = 0;
 	var scanned = -1;
 	var scanFrom = 0;
+	// (where a rule's scan of this line failed, for its mark: one from
+	// before there fails there too. Each nested item's marker scanned the
+	// line's rest again: "- - - … *" quadratic up to the nesting limit)
+	var ruleLine = -1;
+	var ruleMark = 0;
+	var ruleStop = 0;
 	var indent = 0;
 	var indented = false;
 	var blank = false;
@@ -360,10 +366,16 @@ class Blocks {
 
 	function rule():Bool {
 		var c = at(line, nextNonspace), count = 0;
+		if (ruleLine == lineNumber && ruleMark == c && nextNonspace <= ruleStop) return false;
 		for (j in nextNonspace...line.length) {
 			Scan.tick();
 			var d = line.fastCodeAt(j);
-			if (d == c) count++ else if (!isSpaceOrTab(d)) return false;
+			if (d == c) count++ else if (!isSpaceOrTab(d)) {
+				ruleLine = lineNumber;
+				ruleMark = c;
+				ruleStop = j;
+				return false;
+			}
 		}
 		if (count < 3) return false;
 		closeUnmatched();

@@ -138,6 +138,60 @@ function tests() {
 			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home"]);
 			equals(ui.root.find("level-back").style.opacity, 1.0);
 		});
+		test("macOS: the bar the title bar's row, on the window's buttons' centre, the level right under it, still in full screen", () -> {
+			t = 0;
+			Ui.now = () -> t;
+			Clock.tick(0);
+			var x = Fixtures.explorer(null, [Fixtures.DISK]);
+			x.start("tests/fixtures/folder");
+			var ui = new Ui(new StoryText(), 1100, 700);
+			ui.window = new MacHost();
+			helder.ui.SafeArea.setTitlebar({x: 78, y: 0, width: 1022, height: 28});
+			var dispose = Render.render(Shell.view(x), ui.root);
+			function settle() {
+				frame(ui);
+				Clock.finish();
+				frame(ui);
+				at(ui, 0.2);
+			}
+			function middle(tag:String):Float {
+				var b = ui.root.find(tag).windowBounds();
+				return b.y + b.height / 2;
+			}
+			function rects():String
+				return [for (tag in ["level-home", "level-bar", "sidebar-body"]) {
+					var b = ui.root.find(tag).windowBounds();
+					'$tag ${b.x},${b.y} ${b.width}x${b.height}';
+				}].join(", ");
+			settle();
+			for (level in ["", "tests/fixtures"]) {
+				x.sidebar.show(level);
+				settle();
+				// (the buttons' row: the system's, sized by the window's metrics, centred in it)
+				var lights = middle("window-controls");
+				assert(Math.abs(middle("level-home") - lights) <= 1, 'home at ${middle("level-home")}, the buttons at $lights');
+				if (level != "") assert(Math.abs(middle("level-back") - lights) <= 1, 'back at ${middle("level-back")}, the buttons at $lights');
+				var bar = ui.root.find("level-bar").windowBounds(), body = ui.root.find("sidebar-body").windowBounds();
+				equals(bar.y, 0.0, "the title bar's row");
+				assert(body.y >= bar.y + bar.height && body.y - (bar.y + bar.height) <= 6, 'the level right under it: ${bar.y + bar.height} then ${body.y}');
+				// (it drags the window but over its buttons)
+				var home = ui.root.find("level-home").windowBounds();
+				// (between the window's buttons and the back row: the window's to drag)
+				var lights = ui.root.find("window-controls").windowBounds();
+				equals(ui.titleHit(lights.x + lights.width + 8, bar.y + bar.height / 2), helder.os.TitleBar.TitleHit.Drag);
+				equals(ui.titleHit(home.x + home.width / 2, home.y + home.height / 2), helder.os.TitleBar.TitleHit.Content);
+				// (full screen: the buttons hidden, nothing moved)
+				var before = rects();
+				helder.ui.SafeArea.setTitlebar(null);
+				settle();
+				equals(rects(), before);
+				helder.ui.SafeArea.setTitlebar({x: 78, y: 0, width: 1022, height: 28});
+				settle();
+			}
+			dispose();
+			helder.ui.SafeArea.setTitlebar(null);
+			Graph.flush();
+		});
 		test("the window declares no motion: its frames walked once", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
 			// (a declaration (motion, matched, ride, a presence's transition) turns on
@@ -486,4 +540,30 @@ private class Levels {
 
 	static function text(n:helder.ui.Node):String
 		return Std.isOfType(n, TextNode) ? (cast n : TextNode).text : [for (c in n.children) text(c)].join("");
+}
+
+// (a window of macOS's: its buttons the system's, 54 by 16)
+private class MacHost implements helder.ui.WindowHost {
+	public function new() {}
+
+	public function controls():String
+		return "system";
+
+	public function systemControls():Null<helder.os.Rect>
+		return {x: 0.0, y: 0.0, width: 54, height: 16};
+
+	public function placeControls(x:Float, y:Float) {}
+
+	public function minimize() {}
+
+	public function maximized():Bool
+		return false;
+
+	public function maximize(on:Bool) {}
+
+	public function close() {}
+
+	public function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float, allowed:Array<helder.os.DragOperation>,
+		done:helder.os.DragOperation->Void):Bool
+		return false;
 }

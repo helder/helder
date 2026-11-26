@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.Edges;
+
 // Edges from one number (all four), [vertical, horizontal], [top, horizontal,
 // bottom] or [top, right, bottom, left], as CSS writes them
 @:forward

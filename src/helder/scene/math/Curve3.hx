@@ -1,6 +1,7 @@
 package helder.scene.math;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Quat;
+import helder.math.Vec3;
 
 // A curve in space, an immutable value (three's Curve and its kinds): a
 // cubic Bezier, a Catmull-Rom spline through points (open or closed), a

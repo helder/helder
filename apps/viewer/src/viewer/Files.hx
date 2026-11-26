@@ -9,8 +9,10 @@ enum abstract EntryKind(String) to String {
 }
 
 // a folder's entry: its name, kind, size in bytes, times in seconds since
-// the epoch (0: not known)
-typedef Entry = {name:String, kind:EntryKind, size:Float, modified:Float, created:Float};
+// the epoch (0: not known); hidden: the system hides it besides a leading dot
+// (Windows' FILE_ATTRIBUTE_HIDDEN or SYSTEM: AppData, NTUSER.DAT, a profile's
+// junctions as "My Documents")
+typedef Entry = {name:String, kind:EntryKind, size:Float, modified:Float, created:Float, ?hidden:Bool};
 
 // a batch of a listing: its entries, whether it is the last, why it failed
 typedef Batch = {entries:Array<Entry>, done:Bool, ?error:String};

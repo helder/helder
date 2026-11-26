@@ -2,9 +2,10 @@
 // summary: A cloister at night lit by 200 lights: candles along its walks and fireflies over its garden, each pixel lit by its cell's lights (ClusteredLights), four lanterns, two of them casting shadows all round from one atlas (Shadows), its columns at three levels of detail (Lod)
 // tags: 3d, lights, shadows, lod
 // demo: canvas 800x480
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -25,7 +26,7 @@ class Lights {
 	static inline var FIREFLIES = 76;
 
 	static function main() {
-		var window = new Window("Lights at night", 800, 480);
+		var window = new Window({title: "Lights at night", width: 800, height: 480});
 		var device = Device.create(window.surface);
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 2});
 		var renderer = new Renderer(device).use(shadows).use(new ClusteredLights(device, {maxLights: 256}));

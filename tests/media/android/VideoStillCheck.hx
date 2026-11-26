@@ -44,7 +44,7 @@ class VideoStillCheck implements Markup {
 		function step(_:Float):Bool {
 			var n = node, now = haxe.Timer.stamp();
 			var p = n == null ? null : n.player;
-			if (p == null || !p.loaded) return true;
+			if (p == null || !p.loaded()) return true;
 			var f = p.shown;
 			switch phase {
 				case 0:

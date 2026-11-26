@@ -20,6 +20,7 @@ import helder.canvas.Painter;
 //   var bitmap = Pdf.render(pdf, 0, 2.0);      // page 1 at 2 pixels a point, on the CPU
 //   Pdf.draw(pdf.pages[0], painter, scale);    // onto any Painter (the GPU's, a recording)
 //   Pdf.text(pdf.pages[0]);                    // its text
+//   Pdf.runs(pdf.pages[0]);                    // its lines, each glyph's box on the page
 class Pdf {
 	public static function open(bytes:Bytes, password = "", ?limits:PdfLimits):Document
 		return openSource(new PdfSource.PdfBytes(bytes), false, password, limits);
@@ -64,12 +65,16 @@ class Pdf {
 
 	// the page's text: its characters in content order (ToUnicode, else the glyph names), a space at a
 	// gap, a newline at a new line; nothing painted
-	public static function text(page:Page):String {
+	public static function text(page:Page):String
+		return [for (r in runs(page)) r.text].join("\n");
+
+	// the page's text as it is placed: its lines (PdfRun), each glyph's box on the page as shown
+	public static function runs(page:Page):Array<PdfRun> {
 		var it = new Interpreter(page.doc, new NoPainter(), new Matrix());
 		it.textOnly = true;
-		it.text = new StringBuf();
+		it.text = new TextRuns(pageMatrix(page, 1));
 		it.run(page.contents(), page.resources);
-		return it.text.toString();
+		return it.text.done();
 	}
 
 	// the page's pixels at scale (pixels a point), on the CPU

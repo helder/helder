@@ -58,6 +58,25 @@ class Menus {
 		return r;
 	}
 
+	// (TypeScript's builders of the model, helder/ui's item, separator,
+	// submenu and role: Haxe has MenuItem's constructors)
+	@:noCompletion public static function menuItem(label:String, action:Dynamic):MenuItem
+		return Item(label, action);
+
+	@:noCompletion public static function menuSeparator():MenuItem
+		return Separator;
+
+	@:noCompletion public static function menuSubmenu(label:String, items:Array<MenuItem>):MenuItem
+		return Submenu(label, items);
+
+	// (a standard item: "about", "quit", "copy"..., MenuRole's; its label the platform's unless given)
+	@:noCompletion public static function menuRole(role:String, ?label:String):MenuItem
+		return Role(cast role, label);
+
+	// (TypeScript's resolve: the items as the platform's menus take them, from the focus or from)
+	@:noCompletion public static function menuResolve(ui:Ui, items:Array<MenuItem>, ?from:Node):Array<PlatformMenuItem>
+		return resolve(ui, items, from, []);
+
 	// a context menu at x, y (window layout pixels) for from (its actions
 	// dispatched from there; default: the focus)
 	public static function popup(ui:Ui, items:Array<MenuItem>, x:Float, y:Float, ?from:Node) {

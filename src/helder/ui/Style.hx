@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 
 // A node's style: flexbox layout (Layout) and how the node is drawn. Each

@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 // Depth of field, a PostProcess's (post.dof): a circle of confusion from
 // the view buffers' depth (ViewBuffers, asked for by the chain), the

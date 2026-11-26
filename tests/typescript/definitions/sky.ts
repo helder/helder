@@ -1,6 +1,7 @@
 // helder.scene's sky (src/helder/scene/render/SkyShader.hx) in TypeScript:
 // the same text in every language as Haxe's (Sky.hx prints that one).
-import {shader, position, vec2, vec3, vec4, mix, normalize, pow, clamp, max, min, dot, length, abs, exp, type Vec2, type Vec3, type Vec4, type Mat4} from "helder/gfx";
+import {shader, position, vec2, vec3, vec4, mix, normalize, pow, clamp, max, min, dot, length, abs, exp} from "helder/gfx";
+import {type Vec2, type Vec3, type Vec4, type Mat4} from "helder/math";
 import {print} from "./print";
 
 type SkyVertex = {pos: Vec2};

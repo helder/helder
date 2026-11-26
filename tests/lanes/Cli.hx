@@ -10,6 +10,7 @@ using StringTools;
 class Cli {
 	public static final LANES:Array<Lane> = [
 		{name: "test", about: "every *.test.hx and *.test.ts, natively and as wasm32-wasi", run: helderTest},
+		{name: "fuzz", about: "the robustness properties soaked (FUZZ_SECONDS each, FUZZ_SEED)", run: fuzz},
 		{name: "cli", about: "helder build, run, dev and devices", run: cli},
 		{name: "devtools", about: "the devtools protocol without a window", run: devtools},
 		{name: "declarations", about: "the generated TypeScript declarations", run: declarations},
@@ -20,6 +21,17 @@ class Cli {
 		{name: "edit-loop", about: "the edit loop's times, from save to frame", run: editLoop},
 		{name: "dev-host", about: "helder dev's host swapping shared libraries", run: devHost}
 	];
+
+	// (the properties with a limit, each run FUZZ_SECONDS (20) natively from
+	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
+	// crashes or blows up is left in bin/fuzz/properties)
+	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
+		"src/helder/markdown/Markdown.test.hx"];
+
+	static function fuzz()
+		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
+		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host", "--out", "bin/fuzz"]),
+			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
 
 	static function helderTest() {
 		run(helderCli(), ["test", "--target", "all,interp"]);
@@ -65,6 +77,19 @@ class Cli {
 			File.saveContent("bin/cli/path/adb/adb", "#!/bin/sh\necho 'List of devices attached'\necho 'emulator-5554  device product:sdk_gphone64 model:Pixel_7 device:emu64xa transport_id:1'\n");
 			run("chmod", ["+x", "bin/cli/path/adb/adb"]);
 			expect(h, ["devices"], ["PATH" => FileSystem.fullPath("bin/cli/path/adb"), "ADB" => ""], "emulator-5554  Pixel 7");
+			// (helder's compiler that does not build: a stand-in node for
+			// build.mjs, more errors than a pipe holds, exit code 1: the
+			// errors and the build's exit code 1, not a wait for ever nor
+			// hxmc's compiler in its place; on Linux timeout's 124 if it
+			// waits, macOS having no timeout)
+			mkdirs("bin/cli/path/node");
+			File.saveContent("bin/cli/path/node/node", "#!/bin/sh\ni=0\nwhile [ $i -lt 1000 ]; do\n  echo \"src/helder/compiler/Compiler.hx:1: characters 1-2 : a stand-in error, line $i of a compiler that does not build\" >&2\n  i=$((i + 1))\ndone\nexit 1\n");
+			run("chmod", ["+x", "bin/cli/path/node/node"]);
+			final broken = ["HELDER_NODE" => FileSystem.fullPath("bin/cli/path/node/node"), "HELDER_BUILD_SERVER" => "0"];
+			final linux = HOST.startsWith("linux-");
+			final counter = (linux ? ["120", h] : []).concat(["build", "examples/counter/Counter.hx", "-o", "bin/cli/broken-compiler"]);
+			// (~105 KB of errors, more than a pipe holds: the last of them, then the failure)
+			expect(linux ? "timeout" : h, counter, broken, "line 999 of a compiler that does not build\n    error helder's compiler does not build", 1);
 		}
 		run(h, ["build", "examples/counter/Counter.hx"]);
 		// (outside the checkout, no node_modules above it, a fresh cache, no

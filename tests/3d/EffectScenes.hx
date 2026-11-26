@@ -1,7 +1,7 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.*;
 import helder.scene.render.*;
 import helder.scene.render.PostProcess;
@@ -218,7 +218,7 @@ class EffectScenes {
 		function put(name:String, mesh:Mesh, x:Float, y:Float, z:Float, ?turn:Float):Node {
 			var n = world.node(name);
 			n.position = new Vec3(x, y, z);
-			if (turn != null) n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), turn);
+			if (turn != null) n.rotation = helder.math.Quat.axisAngle(new Vec3(0, 1, 0), turn);
 			MeshRenderer.attach(n, mesh);
 			return n;
 		}

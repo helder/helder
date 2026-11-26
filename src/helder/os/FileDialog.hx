@@ -10,7 +10,7 @@ import hxmc.Platform;
 // picker then: available says beforehand where it is known).
 @:hxmc.unsafe(gc)
 class FileDialog {
-	public static function open(window:Window, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String>
+	public static function pick(window:Window, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String>
 		// (a headless run: the script's answer, helder.headless)
 		return #if helder.headless helder.os.headless.Headless.run.fileDialog(title) #else if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) null else
 			#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) helder.os.windows.FileOpenDialog.open(window.surface.handle, title, filters) else #end

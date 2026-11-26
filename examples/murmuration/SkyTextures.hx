@@ -1,6 +1,6 @@
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec2;
+import helder.math.Vec2;
 import SkyShader;
 
 class SkyTextures {

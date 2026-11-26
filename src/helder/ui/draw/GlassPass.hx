@@ -2,8 +2,8 @@ package helder.ui.draw;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 import helder.gfx.Color;
 import helder.ui.draw.GlassShader;
 

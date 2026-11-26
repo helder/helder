@@ -2,9 +2,10 @@
 // summary: A room lit by a grid of light probes (its spheres warmer by the red wall, greener by the green), a reflection probe of its box over a polished floor (the walls reflected where they are), and a window of a rect area light (linearly transformed cosines)
 // tags: 3d, lights, probes, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -21,7 +22,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-probes
 class Room {
 	static function main() {
-		var window = new Window("Probes and area lights", 640, 400);
+		var window = new Window({title: "Probes and area lights", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.01, 0.01, 0.015, 1);

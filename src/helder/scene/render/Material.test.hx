@@ -1,11 +1,11 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Mat4;
+import helder.math.Mat4;
 import helder.gfx.shader.Texture2D;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.render.PbrShader;
 import helder.test.Test;
 import helder.scene.render.PbrShader.materialOf;
@@ -180,7 +180,7 @@ function tests() {
 		});
 		test("instanced: a normal turned by the instance matrix's inverse transpose, as the object's normalMatrix (uneven and mirrored scales)", () -> {
 			for (scale in [new Vec3(0.3, 1.4, 0.7), new Vec3(2, 0.25, 1), new Vec3(-1, 0.5, 2)]) {
-				var turn = helder.scene.math.Quat.axisAngle(new Vec3(0.48, 0.8, 0.36), 0.9);
+				var turn = helder.math.Quat.axisAngle(new Vec3(0.48, 0.8, 0.36), 0.9);
 				var m = helder.scene.math.MathTools.compose(new Vec3(1, 2, 3), turn, scale);
 				var nm = helder.scene.math.MathTools.normalMatrix(m);
 				for (n in [new Vec3(0, 1, 0), new Vec3(0.6, 0, 0.8), new Vec3(-0.48, 0.6, 0.64)]) {

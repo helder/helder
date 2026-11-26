@@ -146,8 +146,7 @@ Http.serve(server, req -> {
 HTTP/1.1 kept alive, bodies by `content-length`, each connection a child
 task (an error in the handler is a 500, and the server goes on), `HEAD`.
 WebSocket: text messages, fragments joined, pings answered, close; a
-client too (`WebSocket.connect(host, port, path)`, or `WebSocket.open(url)`
-for `ws://` and `wss://`), and a server's over a connection of its own
+client too (`WebSocket.open(url)`, `ws://` or `wss://`), and a server's over a connection of its own
 (`WebSocket.accept(io, out, shut)`: TLS on an accepted socket).
 
 ### TLS

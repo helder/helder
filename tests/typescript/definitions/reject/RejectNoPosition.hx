@@ -1,5 +1,6 @@
 // The varyings have one position(...) (in TypeScript: no-position.ts).
 // expect: shader: the vertex function: exactly one field of NoPosition is the clip-space position, marked by position(...) where it is built (it has 0)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

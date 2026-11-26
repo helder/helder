@@ -1,6 +1,6 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 
 // Two bodies touching at a point: the normal from a to b, how deep they
 // overlap (Collide.test's; the world keeps its own in Contacts)

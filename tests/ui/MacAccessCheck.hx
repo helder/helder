@@ -41,7 +41,7 @@ class MacAccessCheck implements Markup {
 	}
 
 	static function main() {
-		var w = new UiWindow("MacAccessCheck", 320, 240);
+		var w = new UiWindow({title: "MacAccessCheck", width: 320, height: 240});
 		var saved = 0, checked = signal(false), volume = signal(0.5), name = signal(""), areaOn = signal(false), notes = signal("");
 		Render.render(<view padding={12} rowGap={8} alignItems="start">
 			<text>Settings</text>
@@ -120,7 +120,7 @@ class MacAccessCheck implements Markup {
 						step = 4;
 					case 4:
 						check("Tab left to the window: its focus on", w.ui.focus != null && w.ui.focus.tag == "save", w.ui.focus == null ? "none" : w.ui.focus.tag);
-						(cast w.root.find("name") : helder.ui.widgets.EditableText).secret = true;
+						(cast w.root.find("name") : helder.ui.controls.EditableText).secret = true;
 						step = 5;
 					case 5:
 						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;

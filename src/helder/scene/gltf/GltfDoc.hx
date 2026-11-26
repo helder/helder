@@ -1,11 +1,11 @@
 package helder.scene.gltf;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
-import helder.scene.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
+import helder.math.Quat;
 
 // A glTF 2.0 document as typed data (Gltf.parse): what the JSON says, its
 // indices checked, -1 for "none", the buffers' bytes loaded. Accessors are

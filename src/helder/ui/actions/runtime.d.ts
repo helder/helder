@@ -4,7 +4,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {ActionState, Menu, MenuItem, Node, PlatformMenuItem} from "helder/ui";
+import type {ActionState, Node} from "helder/ui";
 
 declare const __haxe: {Script: "helder.ui.actions.Script", __module: "helder.ui.actions.TypeScript"};
 
@@ -16,7 +16,7 @@ declare const __haxe: {Script: "helder.ui.actions.Script", __module: "helder.ui.
 // value of them), and its spaces Haxe's (ActionSpace): a definition's
 // (define, its handler's output), and StandardAction's, whose values the
 // program's handlers are given as its objects (mirror). The rest are
-// helder.ui's: handlers, keymaps, dispatch, menus.
+// helder.ui's: handlers, keymaps, dispatch (menus: helder/ui's).
 export declare class Script {
 	// a program's actions(namespace, {...}): its definition's output
 	// (ActionsDefinition.toJson), its values the program's (form: which
@@ -67,20 +67,6 @@ export declare class Script {
 	static dispatch(ui: unknown, action: any, from?: Node): boolean;
 	// what a menu shows action as from the focus (or from): ActionState
 	static state(ui: unknown, action: any, from?: Node): ActionState;
-	static item(label: string, action: any): MenuItem;
-	static separator(): MenuItem;
-	static submenu(label: string, items: MenuItem[]): MenuItem;
-	// a standard item ("about", "quit", "copy"...: MenuRole's), its label the platform's unless given
-	static role(role: string, label?: string): MenuItem;
-	// a menu of the bar (role "window": the window menu)
-	static menu(label: string, items: MenuItem[], role?: string): Menu;
-	// the items as the platform's menus take them: labels, shortcuts, states
-	static resolve(ui: unknown, items: MenuItem[], from?: Node): PlatformMenuItem[];
-	// a context menu at x, y for from (default: the focus)
-	static popup(ui: unknown, items: MenuItem[], x: number, y: number, from?: Node): void;
-	// the window's menu bar (the platform's, else drawn at the top of its root)
-	static menuBar(ui: unknown, menus: Menu[]): unknown;
-	static setMenus(bar: unknown, menus: Menu[]): void;
 }
 
 export {};

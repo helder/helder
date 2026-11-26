@@ -115,10 +115,10 @@ range is `Corrupt`), so a caller catches one type. Tests:
 `ImageLimits.test.hx` (hostile headers per decoder: the largest sides,
 products past an Int, a frame larger than its screen, chunks past the end,
 every test image cut short, each decoder's file cut in mid-structure),
-`bun run test image-fuzz` (tests/image/Fuzz.hx: a time-boxed mutation
-fuzzer over tests/image's files, the limits lowered, every read the
-reader refused surfacing as an ImageError, none swallowed into a decode;
-CI's headless job runs it for 30 s), and the image lane checks every
+tests/image/Fuzz.test.hx (a property over tests/image's files mutated,
+the limits lowered, every read the reader refused surfacing as an
+ImageError, none swallowed into a decode; the test lane's few seconds,
+the fuzz lane's soak: `bun run test fuzz`), and the image lane checks every
 `hxmc.unsafe` of helder.image against a reviewed list, each with its
 reason (`tests/image/unsafe.mjs`, `unsafe.txt`).
 
@@ -128,7 +128,7 @@ reason (`tests/image/unsafe.mjs`, `unsafe.txt`).
 `PngDecoder.decode` or `WebpDecoder.decode` (lossy), puts a decode's
 planes, coefficients and pixels off the GC heap (IoBuffers, each a
 Bytes view): `take` hands the result to the caller as an `hxmc.Buffer`
-(moved, not copied: a job's result), `free` frees the rest. With `GcPoint.poll()` in
+(moved, not copied: a job's result), `dispose` frees the rest. With `GcPoint.poll()` in
 the decoders' row loops (a GC point, `@:hxmc.collects`: one atomic load
 unless a collection is asked for), a decode run as a GC job no longer
 holds the other threads' collections: helder's viewer prefetching a 24 MP

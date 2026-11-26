@@ -1,6 +1,6 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.World;
 import helder.test.Test;
@@ -32,6 +32,8 @@ function tests() {
 			ui.update();
 			orbit = new OrbitControls(box, camera);
 		});
+		// (each test's world let go: a slot of 16)
+		afterEach(() -> box.world.dispose());
 		function drag(id:Int, x0:Float, y0:Float, x1:Float, y1:Float) {
 			ui.pointerDown(x0, y0, 1, id, Touch);
 			for (k in 1...5) {

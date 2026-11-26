@@ -28,6 +28,9 @@ typedef PartStyle = {
 	?invalid:PartStyle,
 	?readonly:PartStyle,
 	?dark:PartStyle,
+	// (a text field's placeholder's colour, its selection's background)
+	?placeholder:PartStyle,
+	?selection:PartStyle,
 	?draw:PartDraw
 }
 

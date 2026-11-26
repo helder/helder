@@ -29,7 +29,9 @@ using StringTools;
 // written with the real paths again (the content, so the positions, are
 // the same). Several targets' builds at once, then each run in turn (once).
 class TestCommand {
-	public static inline var GEN = "bin/test/src";
+	// (--out's: the links, the mains, the builds, the properties' store)
+	static var out = "bin/test";
+	public static var GEN = "bin/test/src";
 	// (a test file's opt-in to interp: on its tests())
 	public static final INTERP = ~/^\s*@:test\.interp\b/m;
 
@@ -41,6 +43,13 @@ class TestCommand {
 			case "timeout": runner = runner.concat(["--timeout", x.value]);
 			case _:
 		}
+		if (o.out != null) {
+			out = norm(o.out);
+			GEN = '$out/src';
+			TS_MAIN = '$out/ts/main.ts';
+		}
+		// (the test programs' store, helder.test.Property's)
+		if (out != "bin/test") Sys.putEnv("HELDER_PROPERTY_STORE", '$out/properties');
 		// (the runner's colours and symbols: its output is a pipe here)
 		if (Term.outColor) runner.push("--color");
 		if (Term.outColor && Style.unicode) runner.push("--unicode");
@@ -179,13 +188,13 @@ class TestCommand {
 				var out = Output.of(Compiler.tool(), cp.concat(["--run", "HelderTestInterp"]).concat(runner), map, "building and running the tests on interp", hold);
 				return {target: t, label: t, exe: null, wasm: false, output: out, seconds: haxe.Timer.stamp() - t0, held: hold};
 			case "wasm":
-				var exe = "bin/test/test.wasm";
+				var exe = '$out/test.wasm';
 				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "-D", "hxmc.target=wasm32-wasi", "--custom-target", 'hxmc=$exe']).concat(Os.define("wasm32-wasi"));
 				var what = "building the tests for wasm";
 				var b = assets(words, exe, "wasm32-wasi", map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
 				return {target: t, label: "wasm", exe: exe, wasm: true, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
 			case _:
-				var exe = Sys.systemName() == "Windows" ? "bin/test/host.exe" : "bin/test/host";
+				var exe = Sys.systemName() == "Windows" ? '$out/host.exe' : '$out/host';
 				// (Linux: the dynamic glibc mode, as helder build's: tests of helder.os link the system's libraries)
 				var mode = Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : [];
 				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "--custom-target", 'hxmc=$exe']).concat(mode).concat(Os.define(Compiler.hostTarget()));
@@ -205,7 +214,7 @@ class TestCommand {
 	@:coroutine static function buildTypescript(t:String, p:Project, runner:Array<String>, map:Mapper, server:Null<Int>, hold:Bool):Built {
 		var connect = (server == null ? [] : ["--connect", Std.string(server)]).concat(["-D", "helder.text.engine=helder"]);
 		var wasm = t == "wasm";
-		var exe = wasm ? "bin/test/ts.wasm" : Sys.systemName() == "Windows" ? "bin/test/ts-host.exe" : "bin/test/ts-host";
+		var exe = wasm ? '$out/ts.wasm' : Sys.systemName() == "Windows" ? '$out/ts-host.exe' : '$out/ts-host';
 		var target = (wasm ? ["-D", "hxmc.target=wasm32-wasi"] : Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : []).concat(Os.define(wasm ? "wasm32-wasi" : Compiler.hostTarget()));
 		var words = connect.concat(Compiler.markup(p.defines)).concat(["-cp", p.helder]).concat(AssetStep.define(exe)).concat([
 			"-main", "helder.typescript.js.Seed", "-D", "helder.typescript=" + FileSystem.fullPath(TS_MAIN), "-D", "helder.root=" + FileSystem.fullPath(".").split("\\").join("/"),
@@ -235,7 +244,7 @@ class TestCommand {
 		return {ok: out.code == 0, summary: out.summary() + ' (${secs(b.seconds)} build, ${secs(haxe.Timer.stamp() - t1)} run)'};
 	}
 
-	public static inline var TS_MAIN = "bin/test/ts/main.ts";
+	public static var TS_MAIN = "bin/test/ts/main.ts";
 
 	// the TypeScript tests' main: for each file, a module telling the runner
 	// its name (bin/test/ts/file<i>.ts), then the file itself, imported (ES
@@ -255,7 +264,8 @@ class TestCommand {
 			var f = files[i];
 			save('$dir/file$i.ts', '$importRunner\nScript.file("${lit(f.real)}");\n');
 			main.push('import "./file$i";');
-			var rel = f.real.startsWith("/") || ~/^[A-Za-z]:/.match(f.real) ? f.real : "../../../" + f.real;
+			var up = [for (_ in 0...dir.split("/").length) ".."].join("/");
+			var rel = f.real.startsWith("/") || ~/^[A-Za-z]:/.match(f.real) ? f.real : '$up/' + f.real;
 			main.push('import "${lit(~/\.tsx?$/.replace(rel, ""))}";');
 		}
 		main.push(importRunner);

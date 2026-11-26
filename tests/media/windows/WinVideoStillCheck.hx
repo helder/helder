@@ -51,9 +51,9 @@ class WinVideoStillCheck implements Markup {
 				say("FAIL: timed out");
 				Sys.exit(1);
 			}
-			if (p == null || !p.loaded) {
-				if (p != null && p.error != null) {
-					say('FAIL: ${p.error}');
+			if (p == null || !p.loaded()) {
+				if (p != null && p.error() != null) {
+					say('FAIL: ${p.error()}');
 					Sys.exit(1);
 				}
 				return true;

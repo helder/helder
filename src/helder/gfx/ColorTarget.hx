@@ -1,6 +1,6 @@
 package helder.gfx;
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 // a pass's colour target: the frame's, or a render target
 // (TextureDesc.renderTarget) of the pipelines' colorFormat; a multisampled

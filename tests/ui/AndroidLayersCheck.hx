@@ -46,7 +46,7 @@ class AndroidLayersCheck {
 		// (debug.helder.damage: HELDER_DAMAGE)
 		Props.__system_property_get(Mem.cstr("debug.helder.damage"), v);
 		if ((cast v : CString).toString() != "") Props.setenv(Mem.cstr("HELDER_DAMAGE"), v, 1);
-		var w = new helder.ui.UiWindow("AndroidLayersCheck", 0, 0);
+		var w = new helder.ui.UiWindow({title: "AndroidLayersCheck", width: 0, height: 0});
 		var root = w.root;
 		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();

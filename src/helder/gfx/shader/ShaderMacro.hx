@@ -1,6 +1,7 @@
 package helder.gfx.shader;
 
 #if macro
+import helder.math.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
@@ -52,9 +53,15 @@ class ShaderMacro {
 	public static function build(out:ShaderOutput, lower:Lower, stages:{vertex:Expr, fragment:Expr, vertexType:ComplexType, fragmentType:ComplexType}, lean = false):Expr {
 		var p = out.program;
 		var pos = Context.currentPos();
-		// (-D helder.soft: the stages' form for the CPU back end too, Soft)
+		// (-D helder.soft: the stages' form for the CPU back end too, Soft;
+		// its module typed in those builds only, a cold build's other macros
+		// spared it)
+		#if helder.soft
 		var soft = Soft.enabled() ? new Soft(p, softPrefix(out), Context.getLocalModule().split(".").slice(0, -1), Context.getLocalModule()) : null;
 		var softCode = soft == null ? null : soft.stages();
+		#else
+		var softCode:Null<{vertex:Expr, fragment:Expr}> = null;
+		#end
 		function code(s:StageCode, ?cpu:Expr):Expr {
 			var fields:Array<ObjectField> = [for (c in s.code) {field: c.language, expr: macro $v{c.text}}];
 			if (cpu != null) fields.push({field: "soft", expr: cpu});
@@ -158,10 +165,12 @@ class ShaderMacro {
 			}).fields);
 		}
 		var name = base + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls)).substr(0, 8);
+		#if helder.soft
 		if (soft != null) {
 			cls.fields = cls.fields.concat(soft.fields);
 			if (Context.defined("helder.soft.print")) for (f in soft.fields) Sys.println(new haxe.macro.Printer().printField(f));
 		}
+		#end
 		cls.name = name;
 		cls.pack = pack;
 		cls.pos = pos;
@@ -283,11 +292,13 @@ class ShaderMacro {
 		// (its subgroups made of workgroup memory, for the devices without them)
 		if (out.emulated != null)
 			codeFields.push({field: "emulated", expr: {expr: EObjectDecl([for (x in out.emulated) {field: x.language, expr: macro $v{x.text}}]), pos: pos}});
+		#if helder.soft
 		// (-D helder.soft: the stage's form for the CPU back end, Soft)
 		var softForm = Soft.enabled() ? Soft.compute(c, Context.getLocalModule().split(".").pop() + "_" + (Context.getLocalMethod() ?? "compute") + "_"
 			+ haxe.crypto.Md5.encode([for (x in out.code) x.text].join("")).substr(0, 8),
 			Context.getLocalModule().split(".").slice(0, -1), Context.getLocalModule()) : null;
 		if (softForm != null) codeFields.push({field: "soft", expr: softForm.code});
+		#end
 		var code:Expr = {expr: EObjectDecl(codeFields), pos: pos};
 		var uniforms = macro ([$a{[for (u in c.entry.uniforms) macro {name: $v{u.struct.name}, binding: $v{u.binding}, size: $v{u.size}}]}] : Array<helder.gfx.shader.Shader.UniformBlock>);
 		var textures = macro ([$a{[for (t in c.entry.textures) macro {name: $v{t.name}, binding: $v{t.slot}}]}] : Array<helder.gfx.shader.Shader.TextureBinding>);
@@ -337,7 +348,9 @@ class ShaderMacro {
 			}).fields);
 		}
 		var name = base + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls)).substr(0, 8);
+		#if helder.soft
 		if (softForm != null) cls.fields = cls.fields.concat(softForm.soft.fields);
+		#end
 		cls.name = name;
 		cls.pack = pack;
 		cls.pos = pos;
@@ -375,11 +388,11 @@ class ShaderMacro {
 			return switch t {
 				case TFloat: macro b.getFloat(o + $v{off});
 				case TInt: macro b.getInt32(o + $v{off});
-				case TVec(2): macro new helder.gfx.shader.Vec2(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}));
-				case TVec(4): macro new helder.gfx.shader.Vec4(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}), b.getFloat(o + $v{off + 8}), b.getFloat(o + $v{off + 12}));
+				case TVec(2): macro new helder.math.Vec2(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}));
+				case TVec(4): macro new helder.math.Vec4(b.getFloat(o + $v{off}), b.getFloat(o + $v{off + 4}), b.getFloat(o + $v{off + 8}), b.getFloat(o + $v{off + 12}));
 				case TMat4:
 					var cols = [for (c in 0...4) load(TVec(4), off + 16 * c)];
-					macro new helder.gfx.shader.Mat4($a{cols});
+					macro new helder.math.Mat4($a{cols});
 				case TStruct(st):
 					var obj:Expr = {
 						expr: EObjectDecl([for (i in 0...st.fields.length) {field: st.fields[i].field, expr: load(st.fields[i].type, s.offsets[i])}]),
@@ -430,9 +443,9 @@ class ShaderMacro {
 		return switch t {
 			case TFloat: macro :Float;
 			case TInt: macro :Int;
-			case TVec(2): macro :helder.gfx.shader.Vec2;
-			case TVec(4): macro :helder.gfx.shader.Vec4;
-			case TMat4: macro :helder.gfx.shader.Mat4;
+			case TVec(2): macro :helder.math.Vec2;
+			case TVec(4): macro :helder.math.Vec4;
+			case TMat4: macro :helder.math.Mat4;
 			case TStruct(s): lower.haxeType(s).toComplexType();
 			case _: throw "storage";
 		}

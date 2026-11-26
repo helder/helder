@@ -409,27 +409,22 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   1,000 boxes moving at once: a frame's work the same as drawing them still
   (0.82 ms against 0.85 ms median, headless on llvmpipe), retargeting all
   of them 3.7 ms, 152 GC bytes a frame either way (the bench motion lane).
-- **`helder.ui.widgets`**: text editing, `TextField` (caret, selection,
-  keyboard editing, `cut`, `copy`, `paste`, `selectAll`) and `TextArea`
-  (lines: wrapping, Up and Down, scrolling), both on `EditableText`, with
-  an input method's composition shown at the caret (markup's `<field/>`
-  and `<textarea/>`); `Icons`, lucide's icons by name (markup's
-  `<icon/>`); `Theme`, the studio's look for any app (its sheet's
-  parts by slot: panels, sections, buttons, fields, menus; light and dark
-  from the same tokens, `Theme.c` for a colour given inline; superseded
-  by `helder.ui.controls`' looks, "Controls" below, and going once the
-  apps move); `Controls`,
-  styled by it: `Slider` (a number as a field filled up to it, set by a
-  press, a drag or the keys), `Segmented` (one of a few options, a radio
-  group) and `Tip` (a tooltip: what a control does and its shortcut, under
-  it once the pointer rests there, for a button that shows only an icon).
-- **`helder.ui.controls`**: the standard controls, `Button`, `Checkbox`
-  `Switch` and `PathBar`, their behaviour (`Press`, `Toggle`) and their
+- **`helder.ui.controls`** (besides the controls, "Controls" below): text
+  editing, `TextField` (caret, selection, keyboard editing, `cut`, `copy`,
+  `paste`, `selectAll`) and `TextArea` (lines: wrapping, Up and Down,
+  scrolling), both on `EditableText`, with an input method's composition
+  shown at the caret (markup's `<field/>` and `<textarea/>`); `Icons`,
+  lucide's icons by name (markup's `<icon/>`); `DataGrid` (with
+  `GridColumn`, its colours `GridTheme`'s: a look's tokens); `WindowButtons`
+  (`WindowControls`, an inset title bar's buttons); `Pager` (`Pages`).
+- **`helder.ui.controls`**: the standard controls, `Button`, `Checkbox`,
+  `Switch`, `PathBar`, `Slider`, `Segmented` and `Tooltip`, their behaviour (`Press`, `Toggle`) and their
   looks (`Look`): "Controls" below. Others (menus, tabs) are still views
   with a role, `focusable` and `onPress`, as in the examples. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
-  (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
-  Windows', GTK's settings).
+  (`helder.os.Settings.dark`: the browser's colour scheme, macOS's,
+  Windows', GTK's settings), or a `<Surface dark={...}>`'s own; code outside a
+  `Ui` reads the screen's (`ScreenContext.dark`).
 - **`helder.ui.code`**: a code editor. `CodeModel` is its document: a
   rope (`Rope`: chunks of at most 1 KB with their lengths, UTF-8 lengths
   and line breaks; line and offset lookups and UTF-16/UTF-8 mapping by
@@ -460,7 +455,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 - **Popups**: `Popup` nodes are layers over the tree (`Ui.open`, `Ui.close`:
   children of `Ui.overlay`, drawn and hit after the tree, not clipped by
   it), anchored to a node (below, above, beside; flipped and kept in the
-  window), in a corner of the window (notifications), at a point (a context menu) or modal (a backdrop, the focus kept inside); a press outside or
+  window), in a corner of the window (notifications), at a point (a context menu) or modal (a scrim, the focus kept inside); a press outside or
   Escape asks them to close. An anchored popup follows its anchor, placed
   again every layout (the window resized, the anchor scrolled): a
   popover (`UiFlow.Popover`, `Sheet`'s popover on a wide screen). A menu
@@ -737,8 +732,8 @@ Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
 `Viewer.zoomTo(100)` makes a value, `{type: "zoomTo", percent: 100}`; a
 handler is a `switch (a.type)`, narrowed by the checker. The same
 machinery dispatches it (`on(node, ...)`, `onWindow`, `onApp`, a JSON
-keymap's `["viewer::ZoomTo", 100]`, menus' `item(label, action)`,
-`resolve`, `popup`, `MenuBar`); `Standard` is StandardAction's
+keymap's `["viewer::ZoomTo", 100]`, helder/ui's menus, `item(label,
+action)`, `popup`, `<MenuBarView>`); `Standard` is StandardAction's
 (`Standard.quit()`), its values given to a TypeScript handler as the
 program's objects. tests/typescript/definitions/shortcuts.tsx and
 Shortcuts.hx print the same; examples/ts-todo binds its filters.
@@ -919,7 +914,7 @@ Attributes are camel, as React Native writes them:
 The elements are also the neutral ones of single-source components
 (`@:neutral`, src/helder/view/README.md): a view and a text here, the
 element of that name in a page; `<icon name="check"/>` draws lucide's icon
-of that name (`helder.ui.widgets.Icons`, an inline SVG in a page;
+of that name (`helder.ui.controls.Icons`, an inline SVG in a page;
 `mirrored` flips it right to left, `data-mirrored` in a page); `<field/>`
 and `<textarea/>` are a text field (`TextField`, `TextArea`: native where
 `Ui.policy` says; a page's `<input>`, `<textarea>`): `value`,
@@ -954,7 +949,7 @@ indicator leave clear) is CSS's `env()`: a literal attribute naming
 `env(safe-area-inset-top)` (`-right`, `-bottom`, `-left`; a fallback after
 a comma for a name it does not know) is bound to the main window's insets
 in UI pixels (`SafeArea.insets`, a signal; UiWindow sets it from
-`helder.os.Window.safeTop`... over the scale) and set again when they
+`helder.os.Window.safe.top`... over the scale) and set again when they
 change (a rotation, the bars hidden): `padding-top="env(safe-area-inset-top)"`,
 `padding="calc(env(safe-area-inset-top) + 8px) 16px"`,
 `margin-bottom="max(12px, env(safe-area-inset-bottom))"` (`calc()`,
@@ -966,7 +961,7 @@ whole screen.
 A desktop window's title bar can be inset into the app
 (`<Surface titlebar="inset">`, helder.os's `TitleBar`): the content runs
 under it and the app lays out the window's buttons with
-`<WindowControls/>` (`helder.ui.widgets.WindowButtons`: on macOS a box of
+`<WindowControls/>` (`helder.ui.controls.WindowButtons`: on macOS a box of
 the system's own buttons' size, the buttons placed at it after each
 layout; on Windows minimise, maximise and close drawn, 46 by 32, the close
 button red when hovered; on Linux round ones; nothing in the browser, on a
@@ -1016,7 +1011,7 @@ name up at run time and links them all.
 
 `helder.ui.controls` holds the standard controls, drawn by helder in one
 look on every platform: `Button`, `Checkbox` (`indeterminate` too),
-`Switch` and `PathBar`. Each control has its behaviour (`Press`,
+`Switch`, `PathBar`, `Slider`, `Segmented` and `Tooltip`. Each control has its behaviour (`Press`,
 `Toggle`), its named parts (nodes bound by `ref`), and a look's recipe
 for those parts. Behaviour owns the keys, focus and accessibility
 state. Recipes compile once per look into rules, and a custom renderer
@@ -1086,6 +1081,18 @@ shortcut. The editor selects `text` (the labels joined with `/` by
 default), calls `onSubmit(text)` on Enter, and closes on Escape or blur.
 `editable={false}` disables the editor. The bar takes `size` (`sm` or
 `md`), `tag`, and an accessible `label` (defaults to “Path”).
+
+**Slider** is a number between `min` and `max` shown as a field: its
+`label` inside on the left, its value (`digits`, `unit`) on the right, the
+part up to it filled. A press or a drag sets it, the arrow keys step it
+(`step`; Shift: ten steps), Home and End go to the ends. **Segmented** is
+one of a few `options` (`value`, `label`, `icon`, `hint`) side by side, a
+radio group: a press chooses, the arrows move; `compact` shows an icon
+alone. **Tooltip** says what the control it holds does, with its `keys`,
+under it (`placement`) once the pointer rests on it half a second. Their
+parts are the look's (`slider`, `slider-fill`, `slider-label`,
+`slider-value`, `segmented`, `segmented-item`, `tooltip`,
+`tooltip-keys`): an app's look restyles them as its own parts.
 
 ### Looks
 
@@ -1230,8 +1237,6 @@ do (`tests/ui/ControlsCostCheck.hx`, the ui-draw lane, which checks both).
 
 The controls' gallery, every state in light and dark at both densities,
 is `tests/ui/ControlsGallery.hx` against `tests/ui/controls/`.
-`widgets.Theme` is the studio's look from before; it goes once the apps
-move onto looks.
 
 ## Themes
 
@@ -1705,7 +1710,7 @@ its fill, an outer shadow under its box is skipped, a blur's terms that
 hold along a row are kept. A frame's draws are recorded outside the
 collector's heap (`Quads`: each quad's fields, a group's clear and
 composite) and painted when the frame is read, in bands of 16 rows at once
-(`helder.jobs.Parallel`, GC-free, as helder.gfx's CPU back end shades its
+(`helder.jobs.Spread`, GC-free, as helder.gfx's CPU back end shades its
 tiles; `HELDER_SOFT_THREADS=n` caps the threads), each band its records in
 the order drawn: the same pixels as one thread. What draws with the GPU (a
 part's shader, a `<Scene>`, a sprite box, fx's boxes) draws in a `-D

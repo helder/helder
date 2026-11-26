@@ -1,8 +1,9 @@
 package helder.scene.math;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // What the scene needs of gfx's Mat4 and Vec3 beyond the shaders' builtins,
 // as a static extension (using helder.scene.math.MathTools): one set of math

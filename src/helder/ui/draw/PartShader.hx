@@ -2,8 +2,8 @@ package helder.ui.draw;
 
 import helder.gfx.shader.Shader;
 import helder.gfx.shader.ShaderMath.*;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 
 // A part drawn by a shader of its own (a recipe's draw, PartShader.of: an
 // escape hatch; a function, and outside helder.ui.controls, so that a

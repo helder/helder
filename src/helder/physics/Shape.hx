@@ -1,6 +1,6 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 
 // A body's shape, in the body's frame (centred on its position, turned by
 // its orientation): a sphere of a radius, a box of half extents, a capsule

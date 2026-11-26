@@ -86,11 +86,25 @@ var thumb = helder.pdf.Pdf.openSource(source, true); // its first page alone, do
   (`Type1`: eexec, charstrings, subrs, seac, flex), Type 3 (its glyph
   procedures run); a font not embedded from the system by its name
   (Liberation's metric-compatible faces first), fitted to the file's widths.
+- **Text where it is** (`Pdf.runs(page)`): the page's lines (`PdfRun`),
+  each glyph's box on the page as shown (`PdfGlyph`: points from the top
+  left, the page's /Rotate applied; a corner, the advance's side and the
+  side up to the ascent, so turned, slanted and vertical text too), its
+  characters in its line's text; a code that maps to no Unicode a box
+  without text. A new line where the baseline moves off its line or turns,
+  a space at a gap of a quarter em along it. `Pdf.text` is its lines
+  joined by newlines, from the same pass. The ascent and descent are the
+  font descriptor's when plausible, else 0.8 and -0.2 em.
 - **Images, sized to the page**: a JPEG decoded reduced by its DCT's
   scaling (1/2 to 1/8) to no fewer pixels than it is shown at, a JPEG 2000
   by whole resolution levels (`Jpx`, ported from leanpdf), any other image
   twice its shown size or more averaged down after decoding; CCITT G3 and
-  G4 (`Ccitt`, ported from leanpdf). On the web back end glyphs are kept
+  G4 (`Ccitt`, ported from leanpdf). A CMYK JPEG (plain, or YCCK as
+  Photoshop writes it) is read as its samples (`JpegDecoder.decode`'s
+  `cmyk`), through the image's colour space and Decode array, as pdf.js and
+  Core Graphics read it: a PDF's are not inverted as Photoshop's own JPEG
+  files are, and read as those a cover's photograph was a negative
+  (`PdfImage.test.hx` builds YCCK, plain and Decode-inverted ones). On the web back end glyphs are kept
   in the page as Path2D (helder.canvas's GlyphCache) and drawn by key.
 - **Decoded images and contents kept** per document (`Document.images`, an
   LRU bounded by `PdfLimits.imageCache`, 64 MB by default): images by their
@@ -120,7 +134,7 @@ ReportLab, pypdf, LibreOffice and by hand: corpus.py; a scanned page,
 CJK text, a 120-page document, form fields among them; against pdf.js's
 in Chromium: pdfjs.mjs, tests/pdf/ref; check.mjs: of the 3x3 blocks either
 inks at most 10% apart, and the text against pdf.js's getTextContent;
-15 of 15; tests/pdf/known.txt lists pages expected to fail, none now), the pdf-fuzz
-lane (the corpus mutated for 30 s, each mutant ending in pixels or a
-PdfError: about 13,000 mutants, none otherwise), Crypto.test.hx (the test
+15 of 15; tests/pdf/known.txt lists pages expected to fail, none now), tests/pdf/Fuzz.test.hx
+(a property: the corpus mutated, each mutant ending in pixels or a
+PdfError within its time and memory; soaked by the fuzz lane), Crypto.test.hx (the test
 lane).

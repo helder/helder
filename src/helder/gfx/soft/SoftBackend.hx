@@ -1,6 +1,6 @@
 package helder.gfx.soft;
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import haxe.io.Bytes;
 import helder.os.Blit;
@@ -19,14 +19,15 @@ import hxmc.unsafe.Ptr;
 // that keeps their fixed point exact), sets them up (fixed point, 8 bits
 // under the pixel; the planes of their depth, 1/w and varyings) and bins
 // them into the pass's 32x32 tiles; the pass's end shades its tiles in
-// parallel (helder.jobs.Parallel: HELDER_SOFT_THREADS caps the threads,
+// parallel (helder.jobs.Spread: HELDER_SOFT_THREADS caps the threads,
 // 1 none beside the caller's), each in the order its triangles came
 // (Raster), then resolves a multisampled target. Uniform blocks are copied
 // when set and textures bound by their records, so later changes do not
 // reach draws already made. A window's frame is shown by the system's own
-// path (helder.os.Blit), where it changed. Compute stages run on the
-// calling thread, 4 invocations a call (their CPU form's lanes). No shared
-// textures.
+// path (helder.os.Blit), where it changed. Compute stages run 4
+// invocations a call (their CPU form's lanes), their workgroups in chunks
+// on the same threads (those with atomics on the calling thread). No
+// shared textures.
 @:hxmc.unsafe(gc)
 class SoftBackend {
 	public final backend = Backend.Soft;
@@ -42,7 +43,7 @@ class SoftBackend {
 	final bufferSizes:Array<Int> = [];
 	final textures:Array<Ptr> = [];
 	final samplers:Array<Int> = [];
-	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage, size:Array<Int>, workgroup:Int, frame:Int}>> = [];
+	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage, size:Array<Int>, workgroup:Int, frame:Int, atomics:Bool}>> = [];
 	final pipelines:Array<SoftPipeline> = [];
 	final queries:Array<Ptr> = [];
 	final queryCounts:Array<Int> = [];
@@ -79,13 +80,12 @@ class SoftBackend {
 	var vertsSize = 0;
 	final clip:Ptr;
 	// the compute tier's: pipelines, the one set, its context, ids and storage bindings
-	final computes:Array<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int}> = [];
-	var computing:Null<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int}> = null;
+	final computes:Array<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int, atomics:Bool}> = [];
+	var computing:Null<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int, atomics:Bool}> = null;
 	final cctx:Ptr;
-	final cin:Ptr;
-	// (a workgroup's memory, its calls' frames: grown to the largest pipeline's)
-	var shared = Ptr.nil();
-	var sharedSize = 0;
+	// (a dispatch: its header, then each chunk's context, input, workgroup memory and frames)
+	var job = Ptr.nil();
+	var jobSize = 0;
 	final storage:Ptr;
 
 	public function new(surface:Surface, antialias:Bool) {
@@ -101,7 +101,6 @@ class SoftBackend {
 		clip = LibC.malloc(2 * 16 * 4 * (4 + Abi.MAX_VARYINGS) + 3 * 4 * (4 + Abi.MAX_VARYINGS));
 		cctx = LibC.malloc(Abi.COMPUTE_SIZE);
 		LibC.memset(cctx, 0, Abi.COMPUTE_SIZE);
-		cin = LibC.malloc(16 * 14);
 		storage = LibC.malloc(Buffers.SIZE * 16);
 		LibC.memset(storage, 0, Buffers.SIZE * 16);
 		resize(surface.width, surface.height);
@@ -167,6 +166,10 @@ class SoftBackend {
 		if (offset + size > bufferSizes[id - 1]) throw "helder.gfx: writeBuffer: past the buffer's end";
 		copy(p.add(offset), data, dataOffset, size);
 	}
+
+	// (a buffer's memory: the CPU's own)
+	public function bufferMemory(id:Int):Ptr
+		return buffer(id);
 
 	public function readBuffer(id:Int, offset:Int, dst:Bytes, dstOffset:Int, size:Int) {
 		var p = buffer(id);
@@ -237,7 +240,8 @@ class SoftBackend {
 			stage: d.stage,
 			size: d.code.workgroupSize,
 			workgroup: s.workgroup ?? 0,
-			frame: s.frame ?? 0
+			frame: s.frame ?? 0,
+			atomics: s.atomics ?? false
 		});
 		return shaders.length;
 	}
@@ -732,7 +736,7 @@ class SoftBackend {
 	// the pass's tiles shaded, their bins emptied
 	function flush() {
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
-		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
+		helder.jobs.Spread.run(TileCall.address(), pass, n, threads);
 		LibC.memset(bins, 0, n * Raster.BIN);
 		Mem.setI32(pass, Raster.CLEAR, 0);
 		rebase();
@@ -778,7 +782,7 @@ class SoftBackend {
 		if (!inPass) return;
 		inPass = false;
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
-		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
+		helder.jobs.Spread.run(TileCall.address(), pass, n, threads);
 		if (!resolveFrom.isNull() && !resolveTo.isNull()) resolve(resolveFrom, resolveTo);
 		resolveFrom = resolveTo = Ptr.nil();
 		passQueries = 0;
@@ -850,8 +854,9 @@ class SoftBackend {
 		return texture(id);
 
 	// ---- the compute tier: a dispatch's invocations 4 a call (the
-	// stage's lanes), workgroup by workgroup, on this thread (its atomics'
-	// order the same on every machine); storage buffers and textures by slot
+	// stage's lanes), its workgroups in chunks on helder.jobs' threads (a
+	// stage with atomics: in order, on this thread, so that their order is
+	// the same on every machine); storage buffers and textures by slot
 
 	public function has(f:Feature):Bool
 		return true;
@@ -860,7 +865,7 @@ class SoftBackend {
 		var s = shader <= 0 || shader > shaders.length ? null : shaders[shader - 1];
 		if (s == null) throw "helder.gfx: createComputePipeline: a shader without its CPU form";
 		var size = s.size == null ? [1, 1, 1] : [for (k in 0...3) k < s.size.length ? s.size[k] : 1];
-		computes.push({entry: s.entry, size: size, workgroup: s.workgroup, frame: s.frame});
+		computes.push({entry: s.entry, size: size, workgroup: s.workgroup, frame: s.frame, atomics: s.atomics});
 		return computes.length;
 	}
 
@@ -881,63 +886,35 @@ class SoftBackend {
 	public function setStorageTexture(slot:Int, id:Int)
 		if (slot >= 0 && slot < 16) Mem.setPtr(cctx, Abi.IMAGES + 8 * slot, texture(id));
 
-	// (a workgroup's memory zeroed at its start; with barriers its phases
-	// each over the workgroup's calls before the next, the call returning
-	// the next phase, -1 the end, each call's frame its own)
+	// (each chunk a run of workgroups, with a copy of the context, its own
+	// input and workgroup memory: Dispatch.chunk)
 	public function dispatch(x:Int, y:Int, z:Int) {
 		var c = computing;
 		if (c == null || x <= 0 || y <= 0 || z <= 0) return;
 		LibC.memcpy(cctx.add(Abi.UNIFORMS), bound, 256);
-		Mem.setPtr(cctx, Abi.IN, cin);
-		var sx = c.size[0], sy = c.size[1], sz = c.size[2], n = sx * sy * sz, calls = (n + 3) >> 2;
-		var need = c.workgroup + calls * c.frame;
-		if (need > sharedSize) {
-			if (!shared.isNull()) LibC.free(shared);
-			shared = LibC.malloc(need);
-			sharedSize = need;
+		var groups = x * y * z, n = c.size[0] * c.size[1] * c.size[2];
+		// (4 chunks a thread, where there are enough invocations to pay for the threads)
+		var pieces = c.atomics || groups < 2 || groups * n < 4096 ? 1 : (helder.jobs.Spread.threads(threads) + 1) * 4;
+		if (pieces > groups) pieces = groups;
+		var slot = Dispatch.slot(c.workgroup, c.frame, n);
+		var need = Dispatch.HEAD + pieces * slot;
+		if (need > jobSize) {
+			if (!job.isNull()) LibC.free(job);
+			job = LibC.malloc(need);
+			jobSize = need;
 		}
-		var frames = shared.add(c.workgroup);
-		Mem.setPtr(cctx, Abi.WORKGROUP, shared);
-		for (gz in 0...z)
-			for (gy in 0...y)
-				for (gx in 0...x) {
-					if (c.workgroup > 0) LibC.memset(shared, 0, c.workgroup);
-					var phase = 0;
-					while (phase >= 0) {
-						var next = -1, k = 0;
-						while (k < n) {
-							var lanes = n - k < 4 ? n - k : 4;
-							for (l in 0...4) {
-								// (a lane past the workgroup: the last one's ids, masked out)
-								var i = k + (l < lanes ? l : lanes - 1), lx = i % sx, ly = Std.int(i / sx) % sy, lz = Std.int(i / (sx * sy));
-								// (ComputeInput's fields in order: x, y, z, localX, localY, localZ, localIndex,
-								// groupX, groupY, groupZ, subgroupLane, subgroupSize, subgroupIndex, subgroups)
-								inline function set(f:Int, v:Int)
-									Mem.setI32(cin, 16 * f + 4 * l, v);
-								set(0, gx * sx + lx);
-								set(1, gy * sy + ly);
-								set(2, gz * sz + lz);
-								set(3, lx);
-								set(4, ly);
-								set(5, lz);
-								set(6, i);
-								set(7, gx);
-								set(8, gy);
-								set(9, gz);
-								set(10, i & 3);
-								set(11, 4);
-								set(12, k >> 2);
-								set(13, calls);
-							}
-							Mem.setI32(cctx, Abi.MASK, (1 << lanes) - 1);
-							Mem.setPtr(cctx, Abi.FRAME, frames.add((k >> 2) * c.frame));
-							Mem.setI32(cctx, Abi.PHASE, phase);
-							next = Raster.Fragment.call(c.entry, cctx);
-							k += 4;
-						}
-						phase = next;
-					}
-				}
+		Mem.setPtr(job, Dispatch.ENTRY, c.entry);
+		for (k in 0...3) {
+			Mem.setI32(job, Dispatch.SIZE + 4 * k, c.size[k]);
+			Mem.setI32(job, Dispatch.GROUPS + 4 * k, [x, y, z][k]);
+		}
+		Mem.setI32(job, Dispatch.WORKGROUP, c.workgroup);
+		Mem.setI32(job, Dispatch.FRAME, c.frame);
+		Mem.setI32(job, Dispatch.SLOT, slot);
+		Mem.setI32(job, Dispatch.EACH, Std.int((groups + pieces - 1) / pieces));
+		for (k in 0...pieces)
+			LibC.memcpy(job.add(Dispatch.HEAD + k * slot), cctx, Abi.COMPUTE_SIZE);
+		if (pieces == 1) Dispatch.chunk(job, 0) else helder.jobs.Spread.run(Dispatch.address(), job, pieces, threads);
 	}
 
 	public function dispatchIndirect(id:Int, offset:Int) {
@@ -964,9 +941,9 @@ class SoftBackend {
 		return false;
 
 	public function dispose() {
-		if (!shared.isNull()) LibC.free(shared);
-		shared = Ptr.nil();
-		sharedSize = 0;
+		if (!job.isNull()) LibC.free(job);
+		job = Ptr.nil();
+		jobSize = 0;
 		for (b in buffers)
 			if (!b.isNull()) LibC.free(b);
 		for (t in textures)
@@ -987,6 +964,92 @@ class SoftBackend {
 
 // (Raster.tile's address)
 @:hxmc.unsafe(gc)
+// a compute dispatch's chunks: the job's header (the entry, the
+// workgroup's size, the groups, the workgroup memory's and a call's
+// frame's bytes, a slot's, the groups a chunk), then a slot a chunk: its
+// context (the backend's copied), its input (ComputeInput's 14 fields, 4
+// lanes each), its workgroup memory and its calls' frames
+@:hxmc.unsafe(gc)
+private class Dispatch {
+	public static inline var ENTRY = 0;
+	public static inline var SIZE = 8;
+	public static inline var GROUPS = 20;
+	public static inline var WORKGROUP = 32;
+	public static inline var FRAME = 36;
+	public static inline var SLOT = 40;
+	public static inline var EACH = 44;
+	public static inline var HEAD = 48;
+	static inline var CONTEXT = (Abi.COMPUTE_SIZE + 15) & ~15;
+	static inline var INPUT = 16 * 14;
+
+	static var addr = Ptr.nil();
+
+	public static function address():Ptr {
+		if (addr.isNull()) addr = hxmc.unsafe.Callback.addr(chunk);
+		return addr;
+	}
+
+	public static function slot(workgroup:Int, frame:Int, n:Int):Int
+		return CONTEXT + INPUT + ((workgroup + 15) & ~15) + ((n + 3) >> 2) * frame;
+
+	// chunk k's workgroups (a workgroup's memory zeroed at its start; with
+	// barriers its phases each over the workgroup's calls before the next,
+	// the call returning the next phase, -1 the end, each call's frame its own)
+	@:hxmc.callback @:hxmc.unsafe public static function chunk(job:Ptr, k:Int):Int {
+		var entry = Mem.getPtr(job, ENTRY);
+		var sx = Mem.getI32(job, SIZE), sy = Mem.getI32(job, SIZE + 4), sz = Mem.getI32(job, SIZE + 8);
+		var x = Mem.getI32(job, GROUPS), y = Mem.getI32(job, GROUPS + 4), z = Mem.getI32(job, GROUPS + 8);
+		var workgroup = Mem.getI32(job, WORKGROUP), frame = Mem.getI32(job, FRAME), each = Mem.getI32(job, EACH);
+		var ctx = job.add(HEAD + k * Mem.getI32(job, SLOT)), cin = ctx.add(CONTEXT), shared = cin.add(INPUT);
+		var frames = shared.add((workgroup + 15) & ~15);
+		var n = sx * sy * sz, calls = (n + 3) >> 2;
+		Mem.setPtr(ctx, Abi.IN, cin);
+		Mem.setPtr(ctx, Abi.WORKGROUP, shared);
+		var from = k * each, to = from + each;
+		if (to > x * y * z) to = x * y * z;
+		for (g in from...to) {
+			var gx = g % x, gy = Std.int(g / x) % y, gz = Std.int(g / (x * y));
+			if (workgroup > 0) LibC.memset(shared, 0, workgroup);
+			var phase = 0;
+			while (phase >= 0) {
+				var next = -1, i0 = 0;
+				while (i0 < n) {
+					var lanes = n - i0 < 4 ? n - i0 : 4;
+					for (l in 0...4) {
+						// (a lane past the workgroup: the last one's ids, masked out)
+						var i = i0 + (l < lanes ? l : lanes - 1), lx = i % sx, ly = Std.int(i / sx) % sy, lz = Std.int(i / (sx * sy));
+						// (ComputeInput's fields in order: x, y, z, localX, localY, localZ, localIndex,
+						// groupX, groupY, groupZ, subgroupLane, subgroupSize, subgroupIndex, subgroups)
+						inline function set(f:Int, v:Int)
+							Mem.setI32(cin, 16 * f + 4 * l, v);
+						set(0, gx * sx + lx);
+						set(1, gy * sy + ly);
+						set(2, gz * sz + lz);
+						set(3, lx);
+						set(4, ly);
+						set(5, lz);
+						set(6, i);
+						set(7, gx);
+						set(8, gy);
+						set(9, gz);
+						set(10, i & 3);
+						set(11, 4);
+						set(12, i0 >> 2);
+						set(13, calls);
+					}
+					Mem.setI32(ctx, Abi.MASK, (1 << lanes) - 1);
+					Mem.setPtr(ctx, Abi.FRAME, frames.add((i0 >> 2) * frame));
+					Mem.setI32(ctx, Abi.PHASE, phase);
+					next = Raster.Fragment.call(entry, ctx);
+					i0 += 4;
+				}
+				phase = next;
+			}
+		}
+		return 0;
+	}
+}
+
 private class TileCall {
 	static var addr = Ptr.nil();
 

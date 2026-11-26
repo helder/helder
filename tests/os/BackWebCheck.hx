@@ -10,7 +10,7 @@ import helder.os.*;
 // ("key escape" when it reaches the app), "t" typing on and off.
 class BackWebCheck {
 	static function main() {
-		var w = new Window("BackWebCheck", 200, 100);
+		var w = new Window({title: "BackWebCheck", width: 200, height: 100});
 		var depth = 0, last = -1;
 		App.onBack = () -> {
 			if (depth == 0) {

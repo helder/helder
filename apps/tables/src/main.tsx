@@ -1,13 +1,14 @@
 // Tables: drizzle-kit studio's server in a window, written in TypeScript.
 // `tables [url]`, the server at http://127.0.0.1:4983 unless given
-import { UiWindow, Surface, MenuBarView, Theme } from "helder/ui";
-import { actions, handle, item, role, separator, submenu, Keymap } from "helder/ui/actions";
+import { UiWindow, Surface, MenuBarView, Look, Themed, item, role, separator, submenu } from "helder/ui";
+import { actions, handle, Keymap } from "helder/ui/actions";
 import { font } from "helder/asset";
 import { App } from "helder/scene";
 import { platform } from "helder/native/platform";
 import { args } from "helder/os";
 import { Tables, setMac } from "./tables";
 import { view, focusSearch, focusFilter } from "./shell";
+import { look } from "./look";
 
 // Hanken Grotesk for the interface, Geist Mono for values
 font("fonts/HankenGrotesk-Regular.ttf");
@@ -48,8 +49,6 @@ Keymap.global.bind("secondary-s", Do.save())
 const given = args().length > 0 && !args()[0].startsWith("--") ? args()[0] : null;
 const app = new Tables(given === null ? "http://127.0.0.1:4983/" : given.startsWith("http") ? given : "http://" + given);
 app.focusFilter = focusFilter;
-// (the colours given inline follow the appearance chosen, as the sheet's do)
-Theme.appearance = () => app.dark();
 // (an error nothing caught: said in the status bar, the app going on)
 App.onError = (e, source) => {
 	console.log(`tables: ${source}: ${e instanceof Error ? e.stack : e}`);
@@ -60,13 +59,13 @@ app.start();
 
 // the menu bar: File, Edit, View (its views, the row panel, the appearance)
 const menus = [
-	{ label: "File", items: [item("Save Changes", Do.save()), item("Discard Changes", Do.discard()), separator, item("Refresh", Do.refresh()), separator, item("Close Window", Do.close()), role("quit")] },
-	{ label: "Edit", items: [item("Undo", Do.undo()), separator, role("cut"), role("copy"), role("paste"), role("select-all")] },
+	{ label: "File", items: [item("Save Changes", Do.save()), item("Discard Changes", Do.discard()), separator(), item("Refresh", Do.refresh()), separator(), item("Close Window", Do.close()), role("quit")] },
+	{ label: "Edit", items: [item("Undo", Do.undo()), separator(), role("cut"), role("copy"), role("paste"), role("select-all")] },
 	{
 		label: "View",
 		items: [
-			item("Data", Do.data()), item("Structure", Do.structure()), item("SQL", Do.query()), separator, item("Row Panel", Do.panel()), item("Back", Do.back()), separator,
-			item("Search Tables", Do.search()), item("Filter Rows", Do.filter()), separator,
+			item("Data", Do.data()), item("Structure", Do.structure()), item("SQL", Do.query()), separator(), item("Row Panel", Do.panel()), item("Back", Do.back()), separator(),
+			item("Search Tables", Do.search()), item("Filter Rows", Do.filter()), separator(),
 			submenu("Appearance", [item("System", Do.appearance("system")), item("Light", Do.appearance("light")), item("Dark", Do.appearance("dark"))])
 		]
 	},
@@ -77,46 +76,48 @@ const menus = [
 let win: UiWindow | null = null;
 
 UiWindow.run(
-	<Surface title="Tables" width={1180} height={740} titlebar="inset" theme={Theme.sheet} background={Theme.c("canvas")} dark={app.dark()}
+	<Surface title="Tables" width={1180} height={740} titlebar="inset" background={Look.ref.canvas} dark={app.dark()}
 		ref={(w: UiWindow) => (win = w)} onClose={() => app.quit(() => win?.close())}>
-		<view flexGrow={1} actions={handle(Do, a => {
-			// (the changes' review open: only saving them, or the appearance)
-			if ((app.reviewing.peek() || app.asking.peek() !== null) && a.type !== "save" && a.type !== "appearance") return true;
-			switch (a.type) {
-				case "save": app.save(); break;
-				case "discard": app.discard(); break;
-				case "refresh": app.mode.peek() === "sql" ? app.run() : app.refresh(); break;
-				case "search": focusSearch(); break;
-				case "filter": if (app.mode.peek() === "data") focusFilter(); break;
-				case "back": app.back(); break;
-				case "run": if (app.mode.peek() === "sql") app.run(); break;
-				case "data": app.mode("data"); break;
-				case "structure": app.mode("structure"); break;
-				case "query": app.showSql(); break;
-				case "undo": if (app.mode.peek() === "data") app.undo(); break;
-				case "panel":
-					app.mode("data");
-					app.panel(!app.panel.peek());
-					break;
-				case "appearance": app.appear(a.kind); break;
-				case "close": app.quit(() => win?.close()); break;
-			}
-			return true;
-		}, a => {
-			switch (a.type) {
-				case "data": return app.mode.peek() === "data" ? "checked" : "unchecked";
-				case "structure": return app.mode.peek() === "structure" ? "checked" : "unchecked";
-				case "query": return app.mode.peek() === "sql" ? "checked" : "unchecked";
-				case "panel": return app.panel.peek() ? "checked" : "unchecked";
-				case "appearance": return app.appearance.peek() === a.kind ? "checked" : "unchecked";
-				case "save": case "discard": case "undo": return app.changes.peek() > 0 ? "enabled" : "disabled";
-				case "back": return app.canBack.peek() ? "enabled" : "disabled";
-				case "run": return app.mode.peek() === "sql" ? "enabled" : "disabled";
-				default: return "enabled";
-			}
-		})}>
-			<MenuBarView menus={menus}/>
-			{view(app)}
-		</view>
+		<Themed look={look}>
+			<view flexGrow={1} actions={handle(Do, a => {
+				// (the changes' review open: only saving them, or the appearance)
+				if ((app.reviewing.peek() || app.asking.peek() !== null) && a.type !== "save" && a.type !== "appearance") return true;
+				switch (a.type) {
+					case "save": app.save(); break;
+					case "discard": app.discard(); break;
+					case "refresh": app.mode.peek() === "sql" ? app.run() : app.refresh(); break;
+					case "search": focusSearch(); break;
+					case "filter": if (app.mode.peek() === "data") focusFilter(); break;
+					case "back": app.back(); break;
+					case "run": if (app.mode.peek() === "sql") app.run(); break;
+					case "data": app.mode("data"); break;
+					case "structure": app.mode("structure"); break;
+					case "query": app.showSql(); break;
+					case "undo": if (app.mode.peek() === "data") app.undo(); break;
+					case "panel":
+						app.mode("data");
+						app.panel(!app.panel.peek());
+						break;
+					case "appearance": app.appear(a.kind); break;
+					case "close": app.quit(() => win?.close()); break;
+				}
+				return true;
+			}, a => {
+				switch (a.type) {
+					case "data": return app.mode.peek() === "data" ? "checked" : "unchecked";
+					case "structure": return app.mode.peek() === "structure" ? "checked" : "unchecked";
+					case "query": return app.mode.peek() === "sql" ? "checked" : "unchecked";
+					case "panel": return app.panel.peek() ? "checked" : "unchecked";
+					case "appearance": return app.appearance.peek() === a.kind ? "checked" : "unchecked";
+					case "save": case "discard": case "undo": return app.changes.peek() > 0 ? "enabled" : "disabled";
+					case "back": return app.canBack.peek() ? "enabled" : "disabled";
+					case "run": return app.mode.peek() === "sql" ? "enabled" : "disabled";
+					default: return "enabled";
+				}
+			})}>
+				<MenuBarView menus={menus}/>
+				{view(app)}
+			</view>
+		</Themed>
 	</Surface>
 );

@@ -23,7 +23,7 @@ class AppLoopCheck {
 	}
 
 	static function main() {
-		var window = new Window("AppLoopCheck", 64, 64);
+		var window = new Window({title: "AppLoopCheck", width: 64, height: 64});
 		var frames = 0, t0 = haxe.Timer.stamp();
 		var timerLate = -1.0, replyLate = -1.0, onWorker = false;
 		Async.launch(_ -> {

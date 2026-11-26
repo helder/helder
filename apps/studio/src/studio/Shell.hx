@@ -6,8 +6,8 @@ import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 import helder.view.graph.Read;
 import helder.ui.view.UiFlow.VirtualList;
-import helder.ui.widgets.WindowButtons;
-import helder.ui.widgets.WindowButtons.WindowControls;
+import helder.ui.controls.WindowButtons;
+import helder.ui.controls.WindowButtons.WindowControls;
 import studio.Theme.c;
 
 using StringTools;

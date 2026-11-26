@@ -1,5 +1,7 @@
 package helder.gfx.shader;
 
+import helder.math.*;
+
 // An array of a compute stage's workgroup memory (ShaderMath.compute's
 // main: a field of its third parameter), shared by the invocations of a
 // workgroup and read and written by index (w.part[i] = v): WGSL's

@@ -9,6 +9,9 @@ import { takeShard } from '../shard.mjs';
 // helder's compiler natively and as wasm32-wasi, their outputs compared; standards/
 // throw on a mismatch themselves; reject/ must fail with a diagnostic.
 // --shard i/n selects this machine's work. --jobs sets its local worker count.
+// (UTC, as CI's machines: node, the oracle, writes local times in the
+// machine's zone, a WASI program in UTC)
+process.env.TZ='UTC';
 const T='tests/typescript';
 const args=process.argv.slice(2);
 const [partI,partN]=takeShard(args);
@@ -54,7 +57,12 @@ function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:1200
 const oracleFlags=typeof Float16Array==='undefined'?['--js-float16array']:[];
 function inspected(s) {return s.replace(/\[(Symbol\((?:[^()]|\([^()]*\))*\))\]: /g,'$1: ');}
 function ok(r,what) {assert.equal(r.status,0,`${what}\n${r.stdout}\n${r.stderr}`);}
-const targets=['linux-x86_64','wasm32-wasi'];
+// (the native half's programs are Linux x64 ELF files, glibc's and its
+// platform's: elsewhere, a Mac's, they neither link without @hxmc/linux-x64
+// nor run, so the lane runs the wasm half alone and says so)
+const native=process.platform==='linux' && process.arch==='x64';
+const targets=native?['linux-x86_64','wasm32-wasi']:['wasm32-wasi'];
+if(!native && shardI===0)console.log(`typescript: linux-x86_64 skipped (its programs run on a Linux x64 host, this is ${process.platform}-${process.arch}); wasm32-wasi only`);
 const files=fs.readdirSync(`${T}/cases`).filter(f=>f.endsWith('.ts')).sort();
 let passed=0;
 for(const file of files) {
@@ -258,7 +266,8 @@ for(const file of fs.readdirSync(`${D}/reject`).filter(f=>/\.tsx?$/.test(f)).sor
     assert.ok((b.stdout+b.stderr).includes(want),`${main}.hx should report ${want}, got ${b.stdout}${b.stderr}`);
     console.log(`PASS definition rejected: ${file}, ${main}.hx`);
 }
-// helder/gfx's TypeScript, as typescript.mjs writes it
+// helder/math's and helder/gfx's TypeScript, as their typescript.mjs write them
+if(mine())ok(run(process.execPath,['src/helder/math/typescript.mjs','--check']),'src/helder/math/index.ts');
 if(mine())ok(run(process.execPath,['src/helder/gfx/typescript.mjs','--check']),'src/helder/gfx/index.ts');
 // The CLI end to end: TypeScript entries built and run by `helder run` (a file, a directory)
 // (one unit with helder dev's below: the CLI built once)

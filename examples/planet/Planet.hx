@@ -5,14 +5,14 @@
 import Atmosphere;
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.image.Image;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.debug.FrameStats;
 import helder.scene.debug.Overlay;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 
 // The atmosphere is the example's own code (Atmosphere, AtmosphereShader:
@@ -279,7 +279,7 @@ class Planet {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("Planet", 640, 480);
+		var window = new Window({title: "Planet", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var planet = new Planet(device);
 		var overlay = new Overlay(device), stats = new FrameStats(120);

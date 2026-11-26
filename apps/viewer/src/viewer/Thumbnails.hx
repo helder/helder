@@ -244,13 +244,13 @@ class Thumbnails {
 			var d = PdfPages.render(req.path, null, 0, req.side, true, src);
 			var t = fit({width: d.pixelsWidth, height: d.pixelsHeight, rgba: d.rgba}, req.side, mem);
 			var pixels = mem.take(t.rgba);
-			mem.free();
+			mem.dispose();
 			return {width: t.width, height: t.height, pixels: pixels, cold: true};
 		} catch (e:helder.pdf.PdfSource.PdfMissing) {
-			mem.free();
+			mem.dispose();
 			throw e;
 		} catch (_:Dynamic) {}
-		mem.free();
+		mem.dispose();
 		return {width: 0, height: 0, pixels: null, cold: true};
 	}
 
@@ -262,11 +262,11 @@ class Thumbnails {
 			if (d != null) {
 				d = fit(d, req.side, mem);
 				var pixels = mem.take(d.rgba);
-				mem.free();
+				mem.dispose();
 				return {width: d.width, height: d.height, pixels: pixels, cold: true};
 			}
 		} catch (_:Dynamic) {}
-		mem.free();
+		mem.dispose();
 		return {width: 0, height: 0, pixels: null, cold: true};
 	}
 	#else
@@ -292,7 +292,7 @@ class Thumbnails {
 			if (hit != null) {
 				d = try jpeg(hit.bytes, req.side, mem) catch (_:ImageError) null;
 				cold = d == null;
-				if (cold) mem.free();
+				if (cold) mem.dispose();
 			}
 			if (d == null) d = source(req.path, req.size, req.side, mem, (at, n) -> read(req.path, at, n));
 			if (d != null) {
@@ -302,11 +302,11 @@ class Thumbnails {
 					cache.put(key, d.width, d.height, encoded);
 				}
 				var pixels = mem.take(d.rgba);
-				mem.free();
+				mem.dispose();
 				return {width: d.width, height: d.height, pixels: pixels, cold: cold};
 			}
 		} catch (_:Dynamic) {}
-		mem.free();
+		mem.dispose();
 		if (cache != null) cache.putNone(key);
 		return {width: 0, height: 0, pixels: null, cold: cold};
 	}
@@ -397,7 +397,7 @@ class Thumbnails {
 			var bytes = head.sub(p.offset, p.length);
 			var d = try jpeg(bytes, side, mem) catch (_:ImageError) null;
 			if (d == null) {
-				mem.free();
+				mem.dispose();
 				continue;
 			}
 			if (Exif.orientation(bytes) == 1) d = Exif.apply(d.rgba, d.width, d.height, Exif.orientation(head), mem);

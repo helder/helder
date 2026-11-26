@@ -77,6 +77,7 @@ class Layout {
 		root.lx = 0;
 		root.ly = 0;
 		round(root, 0, 0, 0, 0, scrollers);
+		if (l.held.length > 0) l.tell();
 		return true;
 	}
 
@@ -369,6 +370,7 @@ class Layout {
 			it.basis = Math.max(b, it.edges);
 			// the automatic minimum
 			if ((row ? cs.minWidth : cs.minHeight) == DimValue.Auto && cs.overflow == Visible) {
+				it.autoMin = true;
 				var content:Float;
 				// (a row's: its min-content width, no less than its definite height's through its aspect ratio)
 				if (row) content = cs.aspectRatio > 0 && known(it.styleCross) ? Math.max(minContentWidth(c, innerW, false), it.styleCross * cs.aspectRatio)
@@ -473,6 +475,7 @@ class Layout {
 		for (k in firstLine...lastLine) {
 			var l = lines[k];
 			if (block) for (i in l.start...l.end) items[i].main = items[i].hypo else resolveFlexible(l, mainSize, gapMain);
+			if (warnings != null && !row && perform && !block) trapped(l, mainSize, gapMain);
 			// (items on their baselines: laid out to find them, the line as deep as the deepest above
 			// them and below them)
 			var lc = 0.0, above = 0.0, below = 0.0;
@@ -972,6 +975,62 @@ class Layout {
 		return clamp(stays ? b : c, it.minMain, it.maxMain);
 	}
 
+	// where layout's warnings go: a development build's output, else none
+	// (a release's and the tests' quiet; a test sets it to read them)
+	@:noCompletion public static var warnings:Null<String->Void> = #if hxmc.dev s -> Sys.println(s) #else null #end;
+
+	// (the nodes told of already, across passes: once a node)
+	static final warned = new haxe.ds.ObjectMap<Node, Bool>();
+	// (this pass' column items held past their column, and by how much: told
+	// of once laid out, when a scroller in one is as tall as that)
+	final held:Array<Node> = [];
+	final excess:Array<Float> = [];
+
+	// (a column's items held at their automatic minimum, their content's
+	// height, past the column: CSS's min-height auto trap, a scroller in
+	// one grown to its content instead of scrolling)
+	function trapped(l:Line, mainSize:Float, gap:Float) {
+		var used = 0.0;
+		for (i in l.start...l.end)
+			used += items[i].main + items[i].mMainStart + items[i].mMainEnd + (i > l.start ? gap : 0);
+		if (!(used > mainSize + 0.5)) return;
+		for (i in l.start...l.end) {
+			var it = items[i], n = it.node;
+			if (!it.autoMin || it.main > it.minMain + 0.5 || n.style.flexShrink == 0 || warned.exists(n)) continue;
+			held.push(n);
+			excess.push(used - mainSize);
+		}
+	}
+
+	function tell() {
+		for (i in 0...held.length) {
+			var n = held[i], s = scrollerIn(n, excess[i]);
+			if (s == null || warned.exists(n)) continue;
+			warned.set(n, true);
+			warnings('helder.ui: <${n.tag}>${at(n)} holds the scroller <${s.tag}>${at(s)} at its content\'s height, past its flex column, so it does not scroll: give it minHeight 0 (a flex item\'s min-height auto is its content\'s)');
+		}
+	}
+
+	static function at(n:Node):String {
+		#if ((hxmc.dev || helder.headless) && !macro)
+		if (n.source != null) return ' (${n.source.file}:${n.source.line})';
+		#end
+		return "";
+	}
+
+	// (a scroller of auto height in n, n too, at least least tall: what the
+	// column would have scrolled; none past a definite height, which holds it already)
+	static function scrollerIn(n:Node, least:Float):Null<Node> {
+		var s = n.style;
+		if (s.overflowY == Scroll && s.height == DimValue.Auto && s.maxHeight == DimValue.Auto) return n.height >= least - 0.5 ? n : null;
+		if (s.height != DimValue.Auto || s.maxHeight != DimValue.Auto || n.height < least - 0.5) return null;
+		for (c in n.children) {
+			var f = scrollerIn(c, least);
+			if (f != null) return f;
+		}
+		return null;
+	}
+
 	static function resolveFlexible(l:Line, mainSize:Float, gap:Float) {
 		var start = l.start, end = l.end;
 		var gaps = gap * (end - start - 1);
@@ -1286,6 +1345,8 @@ private class Item {
 	public var cross = 0.0;
 	public var frozen = false;
 	public var violation = 0.0;
+	// (its min along the main axis CSS's automatic one)
+	public var autoMin = false;
 	// (on its baseline: that below its outer start)
 	public var baseline = 0.0;
 
@@ -1295,6 +1356,7 @@ private class Item {
 		this.node = node;
 		mMainStart = mMainEnd = mCrossStart = mCrossEnd = 0;
 		autoMain = autoCross = 0;
+		autoMin = false;
 		minMain = maxMain = minCross = maxCross = 0;
 		align = Stretch;
 		styleCross = basis = edges = hypo = main = cross = violation = baseline = 0;

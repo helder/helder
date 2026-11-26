@@ -2,6 +2,7 @@ package viewer;
 
 import helder.image.Image;
 import viewer.Decode.Decoded;
+import viewer.PageText;
 import viewer.PdfLayout;
 
 // A PDF shown as one continuous column of pages (PdfLayout), without a
@@ -29,9 +30,12 @@ class PdfDoc {
 	public final zoom = new Cell(1.0);
 	// (the layout laid out again: a zoom, a view's new size; what places the pages reads it)
 	public final laid = new Cell(0);
-	public final scroll = new Cell({x: 0.0, y: 0.0});
+	// (quiet: a move out of sight, its overlay scrollbar not shown for it)
+	public final scroll = new Cell({x: 0.0, y: 0.0, quiet: false});
 	public final shown:Cell<Array<Int>> = new Cell([]);
 	public final rendered = new Cell(0);
+	// (a page's text landed: its PdfText's)
+	public final texted = new Cell(0);
 	// device pixels a point (the window's scale)
 	public var density = 1.0;
 	// the page moved (the viewer's title)
@@ -48,6 +52,12 @@ class PdfDoc {
 	final asked = new Map<Int, Int>();
 	// (pages that could not be drawn: not asked again)
 	final failed = new Map<Int, Bool>();
+	// (each page's text as it lands with its drawing, its boxes while it is
+	// near; every page's once a selection is begun (wanted), one at a time
+	// after the drawings)
+	final texts = new Map<Int, PageText>();
+	var wanted = false;
+	var reading = -1;
 
 	public function new(path:String, sizes:Array<PageSize>, fileSize:Int, decode:(key:String, side:Int, done:Decoded->Void) -> Void) {
 		this.path = path;
@@ -72,6 +82,26 @@ class PdfDoc {
 		laid(laid.value + 1);
 		var s = a == null ? {x: layout.clampX(0), y: layout.clampY(0)} : layout.placed(a, width / 2, 0);
 		moved(s.x, s.y);
+	}
+
+	// as it first opens, again (opened once more: its last page, zoom and
+	// place not kept): auto, at the top, page 1, quietly
+	public function start() {
+		fitted = true;
+		if (!sized) return;
+		layout.setZoom(layout.auto());
+		laid(laid.value + 1);
+		moved(layout.clampX(0), layout.clampY(0), true);
+	}
+
+	// a page typed (from 1): its index, clamped to the pages; null for
+	// anything but digits (a sign, a fraction, letters, nothing)
+	public static function typed(text:String, pages:Int):Null<Int> {
+		var t = StringTools.trim(text);
+		if (pages <= 0 || !~/^[0-9]+$/.match(t)) return null;
+		// (too long for an Int: past the last page)
+		var n = t.length > 9 ? pages : Std.parseInt(t);
+		return (n < 1 ? 1 : n > pages ? pages : n) - 1;
 	}
 
 	// the view scrolled there (its own: the wheel, a trackpad, its bars)
@@ -127,11 +157,11 @@ class PdfDoc {
 	public function lines(n:Float)
 		moved(x, layout.clampY(y + n * LINE));
 
-	function moved(sx:Float, sy:Float) {
+	function moved(sx:Float, sy:Float, quiet = false) {
 		x = sx;
 		y = sy;
 		zoom(layout.zoom);
-		scroll({x: sx, y: sy});
+		scroll({x: sx, y: sy, quiet: quiet});
 		update();
 	}
 
@@ -153,6 +183,17 @@ class PdfDoc {
 		return r == null ? 0 : r.side;
 	}
 
+	// a page's text (null: not read yet)
+	public function text(i:Int):Null<PageText>
+		return texts.get(i);
+
+	// every page's text read, from the page the view is on out
+	public function wantText() {
+		if (wanted) return;
+		wanted = true;
+		update();
+	}
+
 	function update() {
 		var p = layout.current(y);
 		if (p != page.value) {
@@ -168,11 +209,16 @@ class PdfDoc {
 		if (near.join(",") != shown.value.join(",")) shown(near);
 		// (two pages or more out of view: let go)
 		for (k in [for (k in renders.keys()) k])
-			if (k < first - 2 || k > last + 2) renders.remove(k);
+			if (k < first - 2 || k > last + 2) {
+				renders.remove(k);
+				var t = texts.get(k);
+				if (t != null && t.boxes.length > 0) texts.set(k, {text: t.text, boxes: []});
+			}
 		// (in view first, from the top; then the one after, the one before)
 		var order = vis.concat([for (i in near) if (vis.indexOf(i) < 0) i]);
 		for (i in order) {
 			if (busy >= 2) return;
+
 			var need = side(i), have = renders.get(i), was = asked.get(i);
 			if (have != null && have.side >= need / SHARPER && have.side <= need * SMALLER) continue;
 			if (was != null || failed.exists(i)) continue;
@@ -180,6 +226,29 @@ class PdfDoc {
 			busy++;
 			decode(Decode.key(path, i), need, d -> landed(i, need, d));
 		}
+		if (!wanted || busy > 0 || reading >= 0) return;
+		var p = page.value;
+		for (r in 0...pages) {
+			for (i in [p - r, p + r]) {
+				if (i < 0 || i >= pages || texts.exists(i) || failed.exists(i)) continue;
+				reading = i;
+				decode(Decode.key(path, i), PdfPages.TEXT, d -> read(i, d));
+				return;
+			}
+		}
+	}
+
+	// (a page's text alone: kept without its boxes unless the page is near)
+	function read(i:Int, d:Decoded) {
+		reading = -1;
+		Decode.release(d);
+		var t = d.text ?? {text: "", boxes: []};
+		if (!texts.exists(i)) {
+			var near = shown.value.indexOf(i) >= 0;
+			texts.set(i, near ? t : {text: t.text, boxes: []});
+			texted(texted.value + 1);
+		}
+		update();
 	}
 
 	// (the larger side shown, in device pixels, at most PdfPages' largest)
@@ -189,6 +258,11 @@ class PdfDoc {
 	function landed(i:Int, need:Int, d:Decoded) {
 		busy--;
 		asked.remove(i);
+		var t = texts.get(i);
+		if (d.text != null && (t == null || t.boxes.length == 0)) {
+			texts.set(i, d.text);
+			texted(texted.value + 1);
+		}
 		if (d.error == null && d.frames.length > 0) {
 			// (the pixels the image's now: off the heap, freed when it goes)
 			var img = Image.ofHeld(d.pixelsWidth, d.pixelsHeight, d.frames[0].pixels, false);

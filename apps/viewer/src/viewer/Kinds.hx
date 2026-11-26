@@ -52,8 +52,9 @@ class Kinds {
 	public static function viewable(e:Entry):Bool
 		return e.kind != Folder && (FolderModel.isImage(e.name) || FolderModel.isMedia(e.name) || FolderModel.isMarkdown(e.name));
 
-	public static function hidden(name:String):Bool
-		return name.startsWith(".");
+	// whether it is hidden when hidden files are not shown: a dot's name, or one the system hides (Entry.hidden)
+	public static function hidden(e:Entry):Bool
+		return e.hidden == true || e.name.startsWith(".");
 
 	// a size as the list and inspector say it ("3.8 MB"); a folder's none
 	public static function size(bytes:Float):String

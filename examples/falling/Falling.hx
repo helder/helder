@@ -2,9 +2,10 @@
 // summary: Balls and tumbling boxes dropped into a walled box by helder.physics (contacts with angular impulses, restitution, friction, sleeping at a fixed step), drawn by helder.scene with shadows; click to drop more
 // tags: 3d, physics
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.physics.*;
 import helder.scene.*;
@@ -79,7 +80,7 @@ class Falling {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Falling", 640, 480);
+		var window = new Window({title: "Falling", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var scene = new Falling(device);
 		// (the frame's stages: physics at the fixed rate)

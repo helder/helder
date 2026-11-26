@@ -1,3 +1,4 @@
+import helder.math.*;
 import Reel.*;
 import Reel.SceneDef;
 import helder.gfx.shader.*;

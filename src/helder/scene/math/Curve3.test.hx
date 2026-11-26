@@ -1,6 +1,6 @@
 package helder.scene.math;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.test.Test;
 
 // Curve3 on the CPU: lengths (a line's, a straight Bezier's, a circle's

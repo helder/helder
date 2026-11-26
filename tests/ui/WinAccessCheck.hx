@@ -44,7 +44,7 @@ class WinAccessCheck implements Markup {
 	static final SIMPLE = guid("d6dd68d1-86fd-4332-8666-9abedea2d24c");
 
 	static function main() {
-		var w = new UiWindow("WinAccessCheck", 320, 240);
+		var w = new UiWindow({title: "WinAccessCheck", width: 320, height: 240});
 		var saved = 0, checked = signal(false), volume = signal(0.5), name = signal("");
 		Render.render(<view padding={12} rowGap={8} alignItems="start">
 			<text>Settings</text>

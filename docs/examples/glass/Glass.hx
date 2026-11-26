@@ -4,7 +4,7 @@
 // demo: canvas 480x360
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
-import helder.ui.widgets.Icons;
+import helder.ui.controls.Icons;
 import helder.view.*;
 
 // Liquid Glass (the docs' Layout page): colourful rows scrolling under a

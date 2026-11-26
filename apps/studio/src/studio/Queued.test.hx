@@ -38,7 +38,7 @@ function tests() {
 			s.presence.arrive("a", "claude-code");
 			function there()
 				return [for (f in ["app.tsx", "app.story.tsx", "main.tsx"]) sys.FileSystem.exists('$dir/$f')];
-			s.tools.call("project.patch", {path: "pond.tsx", text: 'export function Pond() {\n\treturn <view grow={1}/>;\n}\n'}, "a");
+			s.tools.call("project.patch", {path: "pond.tsx", text: 'export function Pond() {\n\treturn <view flexGrow={1}/>;\n}\n'}, "a");
 			equals(there(), [true, true, true]);
 			s.tools.call("project.patch", {path: "pond.story.tsx", text: 'import { story } from "helder/story";\nimport { Pond } from "./pond";\n\nexport const start = story({ name: "Pond/Start", width: 200, height: 200, render: () => <Pond/> });\n'}, "a");
 			// (main.tsx, the starter's still, imports ./app: it stays)

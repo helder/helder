@@ -10,7 +10,7 @@ import helder.ui.UiWindow;
 class ThreadBench {
 	static function main() {
 		var args = Sys.args(), i = args.indexOf("--work"), work = i >= 0 ? Std.parseFloat(args[i + 1]) : 0.0, still = args.contains("--still");
-		var w = new UiWindow("Bench", 480, 360);
+		var w = new UiWindow({title: "Bench", width: 480, height: 360});
 		var list = new Node("list");
 		list.style.set({width: 480, height: 360, overflow: Scroll, background: Color.rgb(0xffffff)});
 		for (r in 0...200) {

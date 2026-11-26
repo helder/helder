@@ -2,7 +2,7 @@ import haxe.Timer;
 import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
-import helder.ui.widgets.TextField;
+import helder.ui.controls.TextField;
 
 // The program on its own thread on iOS (IosCheck scroll: tests/gfx/ios.sh
 // launches the app again with it): a list scrolled by its UIScrollView,
@@ -21,7 +21,7 @@ class IosScrollCheck {
 	}
 
 	public static function run() {
-		var w = new helder.ui.UiWindow("IosScrollCheck", 0, 0);
+		var w = new helder.ui.UiWindow({title: "IosScrollCheck", width: 0, height: 0});
 		var field = new TextField();
 		field.host = Native;
 		field.style.set({height: 40, flexShrink: 0, margin: 60});

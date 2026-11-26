@@ -3,8 +3,8 @@
 // tags: 3d, lights, docs
 // demo: canvas 640x400
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.render.*;
@@ -23,7 +23,7 @@ class ManyLights {
 	static inline var LIGHTS = 160;
 
 	static function main() {
-		var window = new Window("Many lights", 640, 400);
+		var window = new Window({title: "Many lights", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.02, 0.02, 0.035, 1);

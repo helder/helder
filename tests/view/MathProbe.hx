@@ -1,11 +1,11 @@
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
-import helder.scene.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
+import helder.math.Quat;
 
-// helder's math types (helder.gfx.shader's vectors and matrix, helder.scene's
-// quaternion: struct values) crossing to TypeScript as helder/gfx's classes
+// helder's math types (helder.math's vectors, matrix and
+// quaternion: struct values) crossing to TypeScript as helder/math's classes
 // (tests/typescript/helder/math.ts): arguments, results, a field, a property.
 class MathProbe {
 	// where it is (a struct stored in the object)

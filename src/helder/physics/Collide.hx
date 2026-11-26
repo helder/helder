@@ -1,7 +1,7 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Mat4;
+import helder.math.Vec3;
+import helder.math.Mat4;
 
 // The contact tests, each adding its contacts to out: sphere against
 // sphere, plane and box; box against plane (its corners under it) and box

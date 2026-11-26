@@ -30,7 +30,7 @@ class LaneBuild {
 			fields.push(f);
 		}
 		pub(fn("fill", [["s", "Lane"]], self, each("s"), null, false));
-		pub(fn("splat", [["v", 'helder.gfx.shader.Vec$n']], self, each("Lane.splat(v.$)"), null, false));
+		pub(fn("splat", [["v", 'helder.math.Vec$n']], self, each("Lane.splat(v.$)"), null, false));
 		pub(fn("zero", [], self, each("Lane.zero()"), null, false));
 		pub(fn("select", [["m", "LaneBool"], ["a", self], ["b", self]], self, each("Lane.select(m, a.$, b.$)"), null, false));
 		return fields;
@@ -68,6 +68,8 @@ class LaneBuild {
 			generic(f, ["x"], lanes(f, ["x"]));
 		generic("min", ["x", "y"], "x.min(y)");
 		generic("max", ["x", "y"], "x.max(y)");
+		add("min", [["x", "LaneInt"], ["y", "LaneInt"]], "LaneInt", "x.min(y)");
+		add("max", [["x", "LaneInt"], ["y", "LaneInt"]], "LaneInt", "x.max(y)");
 		generic("pow", ["x", "y"], "x.pow(y)");
 		generic("atan2", ["y", "x"], lanes("atan2", ["y", "x"]));
 		generic("step", ["edge", "x"], "Lane.select(x.lt(edge), Lane.zero(), Lane.constant(0x3F800000, 1))");

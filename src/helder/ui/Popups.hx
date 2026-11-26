@@ -66,7 +66,7 @@ class Popups {
 	}
 
 	// a press outside the popups on top (and their anchors) dismisses them;
-	// on a modal one's backdrop, it. True: a menu was, the press taken
+	// on a modal one's scrim, it. True: a menu was, the press taken
 	static function dismissOutside(ui:Ui, target:Null<Node>):Bool {
 		var i = ui.overlay.children.length, taken = false;
 		while (--i >= 0) {

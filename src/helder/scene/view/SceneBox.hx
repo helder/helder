@@ -1,7 +1,7 @@
 package helder.scene.view;
 
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.Node as SceneGraphNode;
 import helder.scene.World;
@@ -22,6 +22,9 @@ import helder.ui.Event;
 // animate is set.
 class SceneBox extends helder.ui.Node {
 	public final world:World;
+	// whether its world is its own, disposed with it (a <Scene> not given
+	// one, a scene built from data): a world's slot is one of 16
+	public var ownsWorld = false;
 	public final root:SceneNode;
 	public var camera:Null<Camera>;
 	// a frame each tick (an animation outside the markup's signals)
@@ -223,11 +226,11 @@ class SceneBox extends helder.ui.Node {
 	// the window's safe area over this box (Ui.safeArea: a phone's bars,
 	// notch or cutout), in UI pixels from its edges: where a game's own
 	// controls and HUD stay clear of them while the scene fills the screen
-	public function safeArea():helder.ui.Edges {
+	public function safeArea():helder.os.Edges {
 		var u = ui;
-		if (u == null) return helder.ui.Edges.ZERO;
+		if (u == null) return helder.os.Edges.ZERO;
 		var s = u.safeArea, r = rect();
-		return new helder.ui.Edges(Math.max(0, s.top - r.y), Math.max(0, r.x + r.width - (u.width - s.right)), Math.max(0, r.y + r.height - (u.height - s.bottom)),
+		return new helder.os.Edges(Math.max(0, s.top - r.y), Math.max(0, r.x + r.width - (u.width - s.right)), Math.max(0, r.y + r.height - (u.height - s.bottom)),
 			Math.max(0, s.left - r.x));
 	}
 
@@ -250,10 +253,14 @@ class SceneBox extends helder.ui.Node {
 				device.destroyTexture(t);
 			retired.resize(0);
 			retiredAt.resize(0);
-			renderer.dispose();
+			if (renderer != null) renderer.dispose();
 		}
 		color = depth = multi = light = null;
 		renderer = null;
+		if (ownsWorld) {
+			SceneRenderer.disposed(root);
+			world.dispose();
+		}
 	}
 
 	// the camera drawn with: camera, the world's first, else a default
@@ -290,7 +297,7 @@ class SceneBox extends helder.ui.Node {
 		hit.distance = b.distance;
 		hit.point = b.point;
 		hit.normal = ray.dir * -1;
-		hit.uv = new helder.gfx.shader.Vec2(0, 0);
+		hit.uv = new helder.math.Vec2(0, 0);
 		hit.triangle = -1;
 		hit.primitive = null;
 		hit.instance = -1;

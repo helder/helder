@@ -2,8 +2,9 @@
 // summary: A glTF 2.0 scene (a .glb referenced with Model.of, typed from the file) drawn by helder.scene's renderer: metallic-roughness materials, a sun with a shadow map under a sky, a keyframe animation from the file; drag or use the arrows to turn around it
 // tags: 3d, gltf, pbr, input
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.anim.*;
@@ -24,7 +25,7 @@ import helder.scene.render.*;
 //     -main GltfViewer --custom-target hxmc=viewer -D hxmc.libc=glibc
 class GltfViewer {
 	static function main() {
-		var window = new Window("glTF scene", 640, 480);
+		var window = new Window({title: "glTF scene", width: 640, height: 480});
 		var device = Device.create(window.surface, {antialias: true});
 		var renderer = new Renderer(device).use(new Shadows(device)).use(new Sky(device));
 		var world = new World();

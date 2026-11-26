@@ -1,7 +1,7 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec2;
+import helder.math.Vec3;
 import helder.scene.math.Curve3;
 import helder.test.Test;
 
@@ -99,7 +99,7 @@ function tests() {
 			approx(g.normal(0).y, 1, 1e-6);
 			approx(g.bounds.max.z, 0.5, 1e-6);
 			equals(wound(g), null);
-			var mirrored = Geometry.box().transformed(helder.gfx.shader.Mat4.scaling(-1, 1, 1));
+			var mirrored = Geometry.box().transformed(helder.math.Mat4.scaling(-1, 1, 1));
 			equals(wound(mirrored), null);
 			equals(closed(mirrored), null);
 			var moved = Geometry.box().translated(0, 2, 0);

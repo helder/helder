@@ -1,11 +1,11 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Light;
 import helder.scene.view.SceneRenderer.SceneNode;
 import helder.ui.draw.PassData;
@@ -98,19 +98,19 @@ class SceneData {
 		if (Std.isOfType(v, Bool)) return Flag(v);
 		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return Num(v);
 		if (Std.isOfType(v, String)) return Text(v);
-		if (Std.isOfType(v, helder.gfx.shader.Vec2.Vec2Data)) {
+		if (Std.isOfType(v, helder.math.Vec2.Vec2Data)) {
 			var a:Vec2 = cast v;
 			return Vec([a.x, a.y]);
 		}
-		if (Std.isOfType(v, helder.gfx.shader.Vec3.Vec3Data)) {
+		if (Std.isOfType(v, helder.math.Vec3.Vec3Data)) {
 			var a:Vec3 = cast v;
 			return Vec([a.x, a.y, a.z]);
 		}
-		if (Std.isOfType(v, helder.gfx.shader.Vec4.Vec4Data)) {
+		if (Std.isOfType(v, helder.math.Vec4.Vec4Data)) {
 			var a:Vec4 = cast v;
 			return Vec([a.x, a.y, a.z, a.w]);
 		}
-		if (Std.isOfType(v, helder.scene.math.Quat.QuatData)) {
+		if (Std.isOfType(v, helder.math.Quat.QuatData)) {
 			var a:Quat = cast v;
 			return Vec([a.x, a.y, a.z, a.w]);
 		}
@@ -121,6 +121,7 @@ class SceneData {
 	// is, SceneReplay.draw), each element's markup node in the data's order
 	public static function build(d:PassData):SceneReplay {
 		var box = new SceneBox(new World("scene"));
+		box.ownsWorld = true;
 		box.hdr = flag(d.root.get("hdr"));
 		box.antialias = flag(d.root.get("antialias"));
 		var nodes = [];
@@ -244,4 +245,8 @@ class SceneReplay {
 	// drawn where its frame's list has it (the list's GPU texture of its mark): into c, at x, y, w by h
 	public function draw(c:helder.ui.Canvas, x:Float, y:Float, w:Float, h:Float)
 		box.paintContent(c, x, y, w, h);
+
+	// let go: its box and its world (one of 16 a process)
+	public function dispose()
+		box.dispose();
 }

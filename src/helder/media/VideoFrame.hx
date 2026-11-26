@@ -2,7 +2,7 @@ package helder.media;
 
 // A decoded picture: when it shows (seconds), its size, and the system's
 // image (Apple's: a CVPixelBuffer on an IOSurface, NV12 or P010 planes),
-// held until release().
+// held until dispose().
 @:hxmc.unsafe(gc)
 class VideoFrame {
 	public final time:Float;
@@ -51,7 +51,7 @@ class VideoFrame {
 		return image.toI64().toInt();
 	#end
 
-	public function release() {
+	public function dispose() {
 		#if (target.name == "hxmc")
 		if (image.isNull()) return;
 		owner.release(this);

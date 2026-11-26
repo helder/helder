@@ -1,13 +1,14 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.os.DragOperation;
 import helder.os.TitleBar.TitleHit;
 import helder.test.Test;
 import helder.view.Render;
-import helder.ui.widgets.WindowButtons;
-import helder.ui.widgets.WindowButtons.WindowControls;
+import helder.ui.controls.WindowButtons;
+import helder.ui.controls.WindowButtons.WindowControls;
 
 // An inset title bar in ui: env(titlebar-area-*) resolved and bound as the
 // safe area's (the fallback without one), drag-region and the window's

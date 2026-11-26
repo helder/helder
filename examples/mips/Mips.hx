@@ -2,6 +2,7 @@
 // summary: A checkered floor to the horizon, filtered trilinearly through generated mip levels, and swatches of a texture's levels uploaded one by one
 // tags: gfx, shaders, 3d, textures
 // demo: canvas 512x384
+import helder.math.*;
 import MipsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
@@ -125,7 +126,7 @@ class Mips {
 
 	static function main() {
 		var args = Sys.args(), still = args.indexOf("--time");
-		var window = new Window("Mip maps", 640, 480);
+		var window = new Window({title: "Mip maps", width: 640, height: 480});
 		var mips = new Mips(Device.create(window.surface));
 		var start = Sys.time();
 		App.run(() -> mips.frame(still >= 0 ? Std.parseFloat(args[still + 1]) : Sys.time() - start), e -> switch e.kind {

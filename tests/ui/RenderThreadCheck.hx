@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import haxe.io.Bytes;
 import haxe.Timer;
 import helder.gfx.*;
@@ -37,7 +37,7 @@ class RenderThreadCheck {
 		var a = Sys.args(), t = a.indexOf("--time");
 		var k = a.indexOf("--work");
 		if (t >= 0) return time(Std.parseInt(a[t + 1]) ?? 300, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
-		var win = new Window("RenderThreadCheck", W, H);
+		var win = new Window({title: "RenderThreadCheck", width: W, height: H});
 		var step = 0, threaded:Array<Array<Bytes>> = [];
 		App.run(() -> {
 			switch step++ {
@@ -187,7 +187,7 @@ class RenderThreadCheck {
 
 	// (a helder.ui.UiWindow closed right after a frame handed to the render thread)
 	static function closing() {
-		var w = new helder.ui.UiWindow("RenderThreadCheck", W, H);
+		var w = new helder.ui.UiWindow({title: "RenderThreadCheck", width: W, height: H});
 		var node = new Node();
 		node.style.set({width: 100, height: 50, background: 0xFF3B82F6});
 		w.root.append(node);
@@ -200,7 +200,7 @@ class RenderThreadCheck {
 	}
 
 	static function time(n:Int, work:Float) {
-		var w = new helder.ui.UiWindow("RenderThreadCheck", 800, 600);
+		var w = new helder.ui.UiWindow({title: "RenderThreadCheck", width: 800, height: 600});
 		var list = new Node();
 		list.style.set({overflow: Scroll, height: 600, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...400) {

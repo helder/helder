@@ -48,14 +48,12 @@ class Interpreter {
 	var tm = new Matrix();
 	var tlm = new Matrix();
 
-	// (text: the characters shown, appended in content order, a space at a gap and a newline at a new line;
-	// textOnly: nothing painted, no image decoded: the text alone)
-	public var text:Null<StringBuf> = null;
+	// (text: the glyphs shown, in content order, as runs (TextRuns); textOnly: nothing painted, no image
+	// decoded: the text alone)
+	public var text:Null<TextRuns> = null;
 	public var textOnly = false;
 	// (collect: the images a page draws, by their cache key and size shown, and nothing drawn: PdfWeb.prepare)
 	public var collect:Null<Array<{key:String, dict:PdfDict, value:PdfValue, width:Int, height:Int}>> = null;
-	var lastText:Null<Matrix> = null;
-	var lastSize = 0.0;
 
 	public function new(doc:Document, painter:Painter, base:Matrix) {
 		this.doc = doc;
@@ -423,20 +421,9 @@ class Interpreter {
 		}
 	}
 
-	// a code's characters into text: a newline when the baseline moved, a space at a gap of a quarter em
-	function addText(f:PdfFont, code:Int, trm:Matrix) {
-		var u = f.unicodeOf(code);
-		if (u == "") return;
-		var m = gs.ctm.clone().multiply(trm), size = Math.sqrt(m.c * m.c + m.d * m.d);
-		if (lastText != null) {
-			var dy = Math.abs(m.f - lastText.f), dx = m.e - lastText.e;
-			if (dy > Math.max(size, lastSize) * 0.5) text.add("\n") else if (dx > Math.max(size, lastSize) * 0.25 && u != " ") text.add(" ");
-		}
-		text.add(u);
-		// (where the next would start: past this one's advance)
-		lastText = m.clone().multiply(new Matrix(1, 0, 0, 1, f.width(code) / 1000, 0));
-		lastSize = size;
-	}
+	// a code's glyph and characters into text
+	function addText(f:PdfFont, code:Int, trm:Matrix)
+		text.add(f, gs.ctm.clone().multiply(trm), f.width(code) / 1000, f.unicodeOf(code));
 
 	function type3Glyph(f:PdfFont, code:Int, trm:Matrix) {
 		var name = f.glyphName(code);

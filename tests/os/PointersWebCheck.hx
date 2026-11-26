@@ -9,7 +9,7 @@ import helder.os.Event;
 // too, which a touch never makes.
 class PointersWebCheck {
 	static function main() {
-		var w = new Window("PointersWebCheck", 300, 200);
+		var w = new Window({title: "PointersWebCheck", width: 300, height: 200});
 		var last = "";
 		App.run(() -> {
 			var s = "frame";

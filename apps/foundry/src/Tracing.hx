@@ -3,14 +3,13 @@ import helder.text.FontFile;
 import helder.text.Outline;
 import helder.text.SystemFonts;
 import helder.ui.Path;
-import helder.ui.widgets.Theme;
 
 // The letter to trace on the board: the interface's font's (Hanken
 // Grotesk), its x-height (or cap height) made the face's, centred where
 // the glyph is.
 class Tracing {
 	public static function path(char:String, face:Face, cx:Float, scale:Float, ox:Float, base:Float):Null<Path> {
-		var f = SystemFonts.get().match(Theme.UI);
+		var f = SystemFonts.get().match(AppLook.tokens.font);
 		if (f == null) return null;
 		var cp = Charset.code(char);
 		if (cp < 0) return null;

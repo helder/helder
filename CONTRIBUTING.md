@@ -61,9 +61,10 @@ links, a notice, the footer and its own sheets over it.
 - **Unit tests** are `*.test.hx` (helder.test) next to their source:
   `src/helder/jobs/Jobs.test.hx` for `src/helder/jobs`. `helder test`
   finds them; the test lane runs them all.
-- **A new module with a model or an inverse comes with a property**
-  (helder.test's `property`): a parser against its printer, an edit
-  against its undo, a structure against a plain array.
+- **A new module with a model or an inverse ships a property test**
+  (helder.test's `property`, or `stateful` for a sequence of operations):
+  a parser against its printer, an edit against its undo, a structure
+  against a plain array. Reviews ask for it.
 - **Checks** are native or integration programs that exit non-zero on a
   failure: `*Check.hx` in `tests/<package>/`, run by a lane of
   `tests/lanes/`.

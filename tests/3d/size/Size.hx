@@ -1,6 +1,6 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.os.*;
 
 // helder.scene's cost per feature (sizes.sh, run by hand: no lane runs it): one program, a
@@ -44,11 +44,11 @@ import helder.os.*;
 // -D size_local (Shadows' point and spot lights' tiles: LocalShadows)
 class Size {
 	static function main() {
-		var window = new Window("Size", 320, 240);
+		var window = new Window({title: "Size", width: 320, height: 240});
 		var device = Device.create(window.surface);
 		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 		#if (size_level >= 1)
-		var q = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), 0.3);
+		var q = helder.math.Quat.axisAngle(new Vec3(0, 1, 0), 0.3);
 		var m = helder.scene.math.MathTools.inverse(q.toMat4());
 		pass.colors[0].clear = new Vec4(m.c0.x * 0.1, 0.1, 0.12, 1);
 		#end
@@ -100,7 +100,7 @@ class Size {
 			helder.scene.render.Geometry.box(), helder.scene.render.Geometry.sphere(), helder.scene.render.Geometry.cylinder(),
 			helder.scene.render.Geometry.cone(), helder.scene.render.Geometry.capsule(), helder.scene.render.Geometry.torus(),
 			helder.scene.render.Geometry.torusKnot(), helder.scene.render.Geometry.ring(), helder.scene.render.Geometry.circle(),
-			helder.scene.render.Geometry.plane(), helder.scene.render.Geometry.lathe([new helder.gfx.shader.Vec2(0.5, 0), new helder.gfx.shader.Vec2(0.2, 1)]),
+			helder.scene.render.Geometry.plane(), helder.scene.render.Geometry.lathe([new helder.math.Vec2(0.5, 0), new helder.math.Vec2(0.2, 1)]),
 			helder.scene.render.Geometry.tube(curve, {radius: 0.1})
 		])
 			helder.scene.render.MeshRenderer.attach(world.node(), helder.scene.render.Shapes.of(device, g, new helder.scene.render.Material()));

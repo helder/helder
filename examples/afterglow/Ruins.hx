@@ -2,8 +2,8 @@ import Builder;
 import Screens;
 import Sdf;
 import Stones;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // The diorama: overgrown ruins over still water, built once in code
 // (Stones' fields meshed by Builder) and painted by PaintShader. Near:

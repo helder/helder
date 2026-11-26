@@ -13,7 +13,7 @@ src/helder/image/ImageMemory.hx: final buffers:Array<hxmc.unsafe.IoBuffer> = [];
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function bytes(n:Int):Bytes {  # trusted: the decoders' Bytes is an IoBuffer's view
 src/helder/image/ImageMemory.hx: var b = hxmc.unsafe.IoBuffer.alloc(n), v = b.view();  # zeroed, its view a Bytes the decoders use as any (its accesses checked); only with offHeapMemory()
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function take(v:Bytes):hxmc.Buffer {  # trusted: the view's IoBuffer adopted by the caller's Buffer (moved, not copied)
-src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function free() {  # trusted: the buffers under its views freed
+src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function dispose() {  # trusted: the buffers under its views freed
 src/helder/image/Inflate.hx: import hxmc.unsafe.UInt8;  # the spans' element type
 src/helder/image/PngCore.hx: import hxmc.unsafe.UInt8;  # the spans' element type
 src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Arena;  # iOS's: CFNumber's value and the drawing's CGRect, scoped

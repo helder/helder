@@ -147,10 +147,17 @@ class Manifest {
 		known(a, ANDROID, '"helder": {"android"}');
 		known(i, IOS, '"helder": {"ios"}');
 		var id = str(h, "id", '"helder": {"id"}');
-		var pkg = str(a, "package", '"helder": {"android": {"package"}}') ?? id;
+		// (an id that stands in for a platform's own is named as written: the user never wrote the package or bundle id)
+		var pkg = str(a, "package", '"helder": {"android": {"package"}}');
+		if (pkg == null && id != null && !Apk.validId(id))
+			throw '$where: "helder": {"id"}: "$id" is not an Android application id (a.b.c: letters, digits, _; each part starting with a letter), or give "helder": {"android": {"package"}}';
 		if (pkg != null && !Apk.validId(pkg)) throw '$where: "helder": {"android": {"package": "$pkg"}} is not an application id (a.b.c: letters, digits, _; each part starting with a letter)';
-		var bundle = str(i, "bundleId", '"helder": {"ios": {"bundleId"}}') ?? id;
+		pkg ??= id;
+		var bundle = str(i, "bundleId", '"helder": {"ios": {"bundleId"}}');
+		if (bundle == null && id != null && !Bundle.validId(id))
+			throw '$where: "helder": {"id"}: "$id" is not an iOS bundle id (a.b.c: letters, digits, -), or give "helder": {"ios": {"bundleId"}}';
 		if (bundle != null && !Bundle.validId(bundle)) throw '$where: "helder": {"ios": {"bundleId": "$bundle"}} is not a bundle id (a.b.c: letters, digits, -)';
+		bundle ??= id;
 		var build:Dynamic = h.build;
 		if (build != null && !(Std.isOfType(build, Int) && (build : Int) >= 1)) throw '$where: "helder": {"build"}: a whole number from 1, not ${haxe.Json.stringify(build)}';
 		var minSdk:Dynamic = a.minSdk, targetSdk:Dynamic = a.targetSdk;

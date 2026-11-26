@@ -299,6 +299,8 @@ class Studio {
 
 	// (the site apps/studio/web/build.mjs writes: the studio for the web, todo and 50 screens bundled)
 	static function studioWeb() {
+		// (Playwright first: the builds take minutes)
+		run(NODE, ["tests/playwright.mjs"]);
 		var b = "bin/studio-web";
 		rmrf(b);
 		run(NODE, ["tests/story/host/host.mjs", "project", '$b/screens50']);

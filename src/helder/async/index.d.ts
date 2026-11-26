@@ -8,9 +8,21 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", delay: "helder.async.Tasks.delay", readBytes: "helder.async.Tasks.bytes", __module: "helder.async.TypeScript"};
+declare const __haxe: {Fetch: "helder.async.Fetch", Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", delay: "helder.async.Tasks.delay", __module: "helder.async.TypeScript"};
 
 export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8Array; text?: string; contentType?: string; ca?: string };
+
+// A file's bytes, awaited: in the browser a fetch of its URL (relative to the
+// page; cancelling the coroutine aborts it), natively the file read at once.
+// progress, if given, is told the bytes received and how many there will
+// be (0 while that is not known): in the browser as they arrive (at most
+// every 50 ms), and once all are here.
+//
+//   var level = Fetch.bytes("levels/2.glb");
+//   var map = Fetch.bytes("maps/big.bin", (loaded, total) -> trace(loaded / total));
+export declare class Fetch {
+	static bytes(path: string, progress?: (loaded: number, total: number) => void): Promise<Uint8Array>;
+}
 
 // An HTTP/1.1 client on helder.async's TCP (one connection a request): the
 // body read by Content-Length, chunked or until the server closes. No
@@ -101,8 +113,6 @@ export declare class WebSocket {
 	static wants(req: Request): boolean;
 	// the request's connection taken over (Http.serve's handler returns null after)
 	static upgrade(req: Request): Promise<WebSocket>;
-	// a client's WebSocket to host:port at path (ws)
-	static connect(host: string, port: number, path?: string): Promise<WebSocket>;
 	// a client's WebSocket to a ws or wss url: the system's stack where there
 	// is one (NSURLSession on macOS and iOS, WinHTTP on Windows, Java's
 	// sockets under these frames on Android); else, or with a ca (PEM), wss
@@ -119,7 +129,5 @@ export declare class WebSocket {
 
 // done after that many seconds
 export declare function delay(seconds: number): Promise<void>;
-// a file's bytes: natively read, in the browser fetched (Fetch.bytes)
-export declare function readBytes(path: string): Promise<Uint8Array>;
 
 export {};

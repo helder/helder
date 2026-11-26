@@ -1,7 +1,7 @@
 package studio;
 
 import helder.os.Rect;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import helder.ui.*;
 import helder.ui.view.Interpreter.Interpreted;

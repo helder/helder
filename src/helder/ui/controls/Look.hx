@@ -32,7 +32,8 @@ import helder.view.graph.Graph;
 class Look<V> {
 	public static var base(get, never):LookOf<BaseVariants>;
 	// the token references, as inline markup takes them (color={Look.ref.fg3}): resolved with the nearest sheet's colours
-	public static var ref(get, never):Refs;
+	// (every one there: TypeScript's Refs, a patch's, has them optional)
+	@:typescript.type("Required<Refs>") public static var ref(get, never):Refs;
 	// the look of the subtree (Themed's)
 	public static final context:Context<Null<Look<Dynamic>>> = Graph.context((null : Look<Dynamic>));
 	// (a TypeScript program's styles parsed: Styles.of, set by with)
@@ -41,7 +42,8 @@ class Look<V> {
 	static var baseLook:Null<Look<BaseVariants>> = null;
 	static var refs0:Null<Refs> = null;
 
-	public final tokens:Tokens;
+	// (every one there, as a patch's are not)
+	@:typescript.type("Required<Tokens>") public final tokens:Tokens;
 	final density:Density;
 	final accent:Accent;
 	final tokenPatch:Dynamic;

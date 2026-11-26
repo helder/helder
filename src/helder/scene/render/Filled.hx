@@ -1,7 +1,7 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec4;
 
 // Arrays of n copies of a value, made by a loop: an array comprehension
 // over a constant range ([for (_ in 0...24) 0.0]) is unrolled by the

@@ -12,7 +12,7 @@ import helder.ui.UiWindow;
 // Control, a pinch's).
 class WebScrollPage {
 	static function main() {
-		var w = new UiWindow("Scroll", 400, 300);
+		var w = new UiWindow({title: "Scroll", width: 400, height: 300});
 		var page = new Node("page"), row = new Node("row");
 		page.style.set({width: 400, height: 300, overflow: Scroll, background: Color.rgb(0xffffff)});
 		row.style.set({height: 80, flexShrink: 0, overflow: Scroll, flexDirection: Row, scrollbarWidth: None});

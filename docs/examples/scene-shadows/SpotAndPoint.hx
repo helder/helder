@@ -3,8 +3,8 @@
 // tags: 3d, lights, shadows, docs
 // demo: canvas 640x400
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;
@@ -20,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-shadows
 class SpotAndPoint {
 	static function main() {
-		var window = new Window("Spot and point shadows", 640, 400);
+		var window = new Window({title: "Spot and point shadows", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		// #region shadows
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 3});

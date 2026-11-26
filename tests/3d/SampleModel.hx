@@ -1,8 +1,8 @@
 import haxe.io.Bytes;
 import haxe.io.BytesBuffer;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.math.MathTools;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // The sample glTF scene of helder.scene (examples/gltf-viewer/sample.glb, MIT as the
 // repository), generated here: a ground, a turned pedestal carrying a

@@ -53,10 +53,11 @@ class Edits {
 		return tx(doc, [new Change(from, a.node.end, "")]);
 	}
 
-	// an attribute as written: name="text" (text with a double quote: name={"text"}), name={code}, name
+	// an attribute as written: name="text" (text with a double quote, or an
+	// & that markup reads as an entity: name={"text"}), name={code}, name
 	public static function attribute(doc:Document, name:String, value:AttrValue):String
 		return switch value {
-			case AString(s) if (s.indexOf('"') < 0 && s.indexOf("\n") < 0 && (doc.lang == Haxe || s.indexOf("{") < 0)): name + '="' + s + '"';
+			case AString(s) if (s.indexOf('"') < 0 && s.indexOf("\n") < 0 && s.indexOf("&") < 0 && (doc.lang == Haxe || s.indexOf("{") < 0)): name + '="' + s + '"';
 			case AString(s): name + "={" + quote(doc, s, '"') + "}";
 			case ACode(code): name + "={" + code + "}";
 			case AFlag: name;

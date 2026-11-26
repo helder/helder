@@ -3,6 +3,7 @@
 // tags: ui, view, styles
 // demo: canvas 860x560
 
+import helder.os.Settings;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.actions.Actions;
@@ -62,7 +63,7 @@ class Mail implements Markup {
 	public final sort = signal({by: "date", down: true});
 	// the last move, while it can be undone
 	public final undo:Signal<Null<{text:String, run:Void->Void}>> = signal(null);
-	public final dark = signal(UiWindow.dark.peek());
+	public final dark = signal(Settings.dark.peek());
 	var root:Null<Node> = null;
 
 	public function new() {

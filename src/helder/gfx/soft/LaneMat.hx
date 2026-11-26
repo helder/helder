@@ -6,7 +6,7 @@ abstract LaneMat(LaneMatData) {
 	public inline function new(c0:Lane4, c1:Lane4, c2:Lane4, c3:Lane4)
 		this = new LaneMatData(c0, c1, c2, c3);
 
-	public static inline function splat(m:helder.gfx.shader.Mat4):LaneMat
+	public static inline function splat(m:helder.math.Mat4):LaneMat
 		return new LaneMat(Lane4.splat(m.c0), Lane4.splat(m.c1), Lane4.splat(m.c2), Lane4.splat(m.c3));
 
 	public static inline function zero():LaneMat

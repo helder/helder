@@ -421,7 +421,7 @@ class Headless {
 				fail('$s: a literal step patches a dev build\'s live literals: helder run --headless --dev');
 				#end
 			case "file-dialog" | "file-dialog-cancel":
-			// (FileDialog.open takes the next answer whenever it asks)
+			// (FileDialog.pick takes the next answer whenever it asks)
 			case t:
 				fail('$s: $t is not done headless yet');
 		}

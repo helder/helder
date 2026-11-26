@@ -3,8 +3,8 @@ import Model;
 import helder.asset.Asset;
 import helder.text.FontFile;
 import helder.ui.*;
-import helder.ui.widgets.Theme;
-import helder.ui.widgets.Theme.c;
+import helder.ui.controls.Look;
+import helder.ui.controls.Standard.Button;
 import helder.ui.view.UiFlow.Popover;
 import helder.view.*;
 import helder.view.Flow.*;
@@ -78,7 +78,7 @@ class Start implements Markup {
 			ws.say("A blank font: trace the grey letter behind each one, or draw your own");
 		}
 		function open() {
-			var path = helder.os.FileDialog.open(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
+			var path = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open a font", [{name: "Fonts", extensions: ["ttf", "otf"]}]);
 			if (path == null) return;
 			try {
 				var face = Outlines.face(FontFile.parse(sys.io.File.getBytes(path)), "My Font");
@@ -88,27 +88,22 @@ class Start implements Markup {
 				ws.say('Could not read that font ($e)');
 			}
 		}
-		return <Popover open={ws.starting} modal placement="center" backdrop={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
-			<view tag="start" role="dialog" aria-label="Start a font" width={860} padding={28} rowGap={20} borderRadius={Theme.RADIUS_M + 4} background={c("bg")}
-				borderWidth={1} borderColor={c("edge")} boxShadow={Theme.popover()}>
+		return <Popover open={ws.starting} modal placement="center" scrim={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
+			<view tag="start" slot="dialog" role="dialog" aria-label="Start a font" width={860} padding={28} rowGap={20}>
 				<view rowGap={6}>
-					<text fontSize={22} fontWeight={Theme.MEDIUM}>Start a font</text>
-					<text color={c("fg2")}>Pick where to begin. Every letter stays yours to redraw: the pen, the proportions and the spacing too.</text>
+					<text fontSize={22} fontWeight={AppLook.tokens.medium}>Start a font</text>
+					<text color={Look.ref.fg2}>Pick where to begin. Every letter stays yours to redraw: the pen, the proportions and the spacing too.</text>
 				</view>
 				<view display="grid" gridTemplateColumns="repeat(4, 1fr)" columnGap={12}>
 					<For each={STARTERS}>{(s:Read<Starter>) -> card(s(), busy, pick)}</For>
 				</view>
 				<view flexDirection="row" alignItems="center" columnGap={8}>
-					<button tag="start-blank" slot="button" aria-label="Start blank" onPress={blank}>
-						<image src={Icons.pen} width={14} height={14}/><text>Start blank</text>
-					</button>
+					<Button tag="start-blank" variant="ghost" label="Start blank" icon={Icons.pen} onPress={blank}>Start blank</Button>
 					<Show when={helder.os.FileDialog.available()}>
-						<button tag="start-file" slot="button" aria-label="Open a font file" onPress={open}>
-							<image src={Icons.download} width={14} height={14}/><text>Open a font file…</text>
-						</button>
+						<Button tag="start-file" variant="ghost" label="Open a font file" icon={Icons.download} onPress={open}>Open a font file…</Button>
 					</Show>
 					<view flexGrow={1}/>
-					<text fontSize={Theme.SMALL} color={c("fg3")}>A font made from an OFL font is shared under the OFL too.</text>
+					<text fontSize={AppLook.tokens.small} color={Look.ref.fg3}>A font made from an OFL font is shared under the OFL too.</text>
 				</view>
 			</view>
 		</Popover>;
@@ -116,15 +111,15 @@ class Start implements Markup {
 
 	static function card(s:Starter, busy:Read<String>, pick:Starter->Void):View
 		return <button tag={"start-" + s.id} slot="starter" aria-label={"Start from " + s.name} onPress={() -> pick(s)}>
-			<view height={120} alignItems="center" justifyContent="center" borderRadius={Theme.RADIUS_M} background={c("well")}>
-				<Show when={busy() == s.id} fallback={<text fontFamily={s.family} fontSize={58} lineHeight="64px" color={c("fg")}>Ag</text>}>
-					<text color={c("fg2")}>Reading…</text>
+			<view height={120} alignItems="center" justifyContent="center" borderRadius={AppLook.tokens.radiusPanel} background={Look.ref.well}>
+				<Show when={busy() == s.id} fallback={<text fontFamily={s.family} fontSize={58} lineHeight="64px" color={Look.ref.fg}>Ag</text>}>
+					<text color={Look.ref.fg2}>Reading…</text>
 				</Show>
 			</view>
 			<view rowGap={4} padding="10 2 0">
-				<text fontWeight={Theme.MEDIUM}>{s.name}</text>
-				<text fontSize={Theme.SMALL} color={c("fg2")} lineHeight="16px">{s.about}</text>
-				<text fontSize={10} color={c("fg3")} padding="4 0 0">{s.license}</text>
+				<text fontWeight={AppLook.tokens.medium}>{s.name}</text>
+				<text fontSize={AppLook.tokens.small} color={Look.ref.fg2} lineHeight="16px">{s.about}</text>
+				<text fontSize={10} color={Look.ref.fg3} padding="4 0 0">{s.license}</text>
 			</view>
 		</button>;
 

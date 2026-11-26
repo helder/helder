@@ -1,8 +1,8 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Hit;
 import helder.test.Test;
 

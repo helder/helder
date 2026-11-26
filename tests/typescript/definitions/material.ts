@@ -4,7 +4,8 @@
 // language as Haxe's MaterialShader.material (Material.hx), its block's
 // slot in each, its writer's bytes. (A literal below 1e-4: as pbr.ts says)
 import {material, pbr, type PbrSurface} from "helder/scene";
-import {sin, vec4, type Vec3, type Vec4} from "helder/gfx";
+import {sin, vec4} from "helder/gfx";
+import {type Vec3, type Vec4} from "helder/math";
 import {print} from "./print";
 
 type GlowParams = {color: Vec4, time: Vec4};

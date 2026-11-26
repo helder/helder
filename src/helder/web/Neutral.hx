@@ -46,7 +46,7 @@ class Neutral {
 	public static function states(el:Dynamic, name:String, v:Dynamic)
 		if (v != null) js.Syntax.code("throw new Error({0})", "helder.web: states is drawn nodes' (a page's look is its CSS)");
 
-	// an icon: an <svg> of 24 by 24, stroked (helder.ui.widgets.Icons)
+	// an icon: an <svg> of 24 by 24, stroked (helder.ui.controls.Icons)
 	public static function icon():Dynamic {
 		var svg = js.Browser.document.createElementNS(Html.SVG_NS, "svg");
 		for (a in [
@@ -59,7 +59,7 @@ class Neutral {
 
 	// (its name: lucide's icon of that name, its paths)
 	public static function iconName(el:Dynamic, name:String, v:Dynamic)
-		el.innerHTML = v == null ? "" : helder.ui.widgets.Icons.markup(v);
+		el.innerHTML = v == null ? "" : helder.ui.controls.Icons.markup(v);
 
 	// focusable: in the tab order (true; a button's or a link's own), out of it (false), the element's own (null)
 	public static function focusable(el:Dynamic, name:String, v:Dynamic)

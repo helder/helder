@@ -1,8 +1,8 @@
 package helder.scene;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.scene.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Quat;
 
 // What helder/scene's Node (src/helder/scene/index.ts, a class of the
 // program's over a node's handle) calls for TypeScript programs: Node's

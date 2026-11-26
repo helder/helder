@@ -13,7 +13,7 @@ import helder.ui.UiWindow;
 // page's own, or drawn).
 class WebLayersPage {
 	static function main() {
-		var w = new UiWindow("Layers", 400, 300);
+		var w = new UiWindow({title: "Layers", width: 400, height: 300});
 		var page = new Node("page");
 		page.style.set({width: 400, height: 300, background: Color.rgb(0xffffff)});
 		var header = new TextNode("Layers");

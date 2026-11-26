@@ -32,7 +32,7 @@ class ShapeWindowCheck {
 	static function main() {
 		var a = Sys.args(), t = a.indexOf("--transparent"), expect = t < 0 ? "yes" : a[t + 1];
 		var desk = behind();
-		var w = new helder.ui.UiWindow("ShapeWindowCheck", W, H, null, false, Standard, true);
+		var w = new helder.ui.UiWindow({title: "ShapeWindowCheck", width: W, height: H, antialias: false, titlebar: Standard, transparent: true});
 		w.background = Color.TRANSPARENT;
 		var box = new Node(), half = new Node();
 		box.style.set({position: Absolute, left: 50, top: 40, width: 60, height: 60, background: 0xFFFF0000});
@@ -228,7 +228,7 @@ class ShapeWindowCheck {
 	// (borderless, transparent, over the others, out of the task bar, full
 	// height at the right of its screen's work area)
 	static function edgeWindow():helder.ui.UiWindow {
-		var e = new helder.ui.UiWindow("ShapeWindowCheck edge", EDGE, 200, null, false, None, true);
+		var e = new helder.ui.UiWindow({title: "ShapeWindowCheck edge", width: EDGE, height: 200, antialias: false, titlebar: None, transparent: true});
 		e.background = Color.TRANSPARENT;
 		var strip = new Node();
 		strip.style.set({position: Absolute, right: 0, top: 0, bottom: 0, width: 8, background: 0xFFFF0000});
@@ -289,7 +289,7 @@ class ShapeWindowCheck {
 
 	// (where it takes the pointer: the boxes it draws, in pixels, not the bar of pointer-events none)
 	static function inputs(w:helder.ui.UiWindow) {
-		var k = w.scale, given = w.window.inputRects;
+		var k = w.scale, given = w.window.input;
 		var r = given == null ? null : [for (b in given) for (v in [b.x, b.y, b.width, b.height]) Std.int(v)];
 		function box(x:Float, y:Float, bw:Float, bh:Float):Array<Int> {
 			var x0 = Math.floor(x * k), y0 = Math.floor(y * k);
@@ -367,7 +367,7 @@ class ShapeWindowCheck {
 				M.i(o, S.sel("windowNumber")).toInt() + (M.b(o, S.sel("ignoresMouseEvents")) ? " (ignores)" : "") + " level " + M.i(o, S.sel("level")).toInt();
 			}];
 			Sys.println('ShapeWindowCheck: at the press: the window server\'s window there ${at}, this one ${M.i(win, S.sel("windowNumber")).toInt()}, ours front to back ${order.join(", ")}');
-			'ShapeWindowCheck: at the press: ignores the mouse ${helder.os.apple.objc.Msg.b(win, helder.os.apple.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
+			'ShapeWindowCheck: at the press: ignores the mouse ${helder.os.apple.objc.Msg.b(win, helder.os.apple.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.input}, its scale ${w.window.scale}';
 		}));
 	}
 	#end
@@ -389,7 +389,7 @@ class ShapeWindowCheck {
 			return null;
 		}
 		#end
-		var d = new helder.ui.UiWindow("ShapeWindowCheck desk", W * 2, H * 2, null, false);
+		var d = new helder.ui.UiWindow({title: "ShapeWindowCheck desk", width: W * 2, height: H * 2, antialias: false});
 		d.background = Color.rgb(0x00FF00);
 		d.window.moveTo(200, 200);
 		return d;

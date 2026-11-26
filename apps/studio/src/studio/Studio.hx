@@ -1823,7 +1823,7 @@ class Studio {
 	public function follow(href:String) {
 		var h = href.trim();
 		if (~/^(https?|mailto):/i.match(h)) {
-			helder.os.Links.open(h, false);
+			helder.os.Links.show(h, false);
 			return;
 		}
 		var place = Replies.place(h);

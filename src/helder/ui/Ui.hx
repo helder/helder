@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Mods;
 import helder.os.Rect;
 import helder.gfx.Color;
@@ -208,6 +209,17 @@ class Ui extends ScrollHost {
 		if (over == barUnder) return;
 		barUnder = over;
 		requestFrame();
+	}
+
+	// n's offsets now where it rests: its overlay scrollbars not shown for
+	// the move to them (one made out of sight, a document put back at its
+	// start before it is shown again), nor still fading from a move before
+	public function rested(n:Node) {
+		var m = barMoved.get(n);
+		if (m == null) return;
+		m[0] = n.scrollX;
+		m[1] = n.scrollY;
+		m[2] = -1e9;
 	}
 
 	// how far n's overlay scrollbars show (0 to 1), its last moves noted; a frame asked for while they fade
@@ -2732,14 +2744,19 @@ class Ui extends ScrollHost {
 		if (was && !held && !trackpad.holds(n)) Scrolling.clamp(n);
 	}
 
-	// (whether n's offsets are the program's own: not as the compositor last
-	// gave them; those forgotten once it moved off them, so that the program
-	// coming back to them later is its own too, #98's list at a wheel's end)
+	// (whether n's offsets are the program's own (its frame's shot, which
+	// the mirror takes): not as the program and the compositor last agreed
+	// on them, as the compositor gave them or as the mirror took them from
+	// the program; those forgotten once it moved off them, so that the
+	// program coming back to them later is its own too (#98's list at a
+	// wheel's end). A frame before the program took the compositor's
+	// offsets (one at the end of a turn that blocked, while the mirror
+	// scrolled) has them as last agreed: not its own, the mirror's kept
+	// (WinLayersWindowCheck's stall run: the list back at 0, then 80 of 640))
 	function mirrorOwn(n:Node):Bool {
 		var a = mirrorAt.get(n);
-		if (a == null) return true;
-		if (a[0] == n.scrollX && a[1] == n.scrollY) return false;
-		mirrorAt.remove(n);
+		if (a != null && a[0] == n.scrollX && a[1] == n.scrollY) return false;
+		mirrorAt.set(n, [n.scrollX, n.scrollY]);
 		return true;
 	}
 	var accessBuilt = -1;

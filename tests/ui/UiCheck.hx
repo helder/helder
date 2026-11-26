@@ -1,3 +1,4 @@
+import helder.os.Edges;
 import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
@@ -5,10 +6,10 @@ import helder.ui.platform.*;
 import helder.ui.DimValue;
 import helder.ui.actions.Keymap;
 import helder.ui.actions.Keystroke;
-import helder.ui.widgets.TextField;
-import helder.ui.widgets.TextArea;
-import helder.ui.widgets.EditableText;
-import helder.ui.widgets.EditableText.SpellAction;
+import helder.ui.controls.TextField;
+import helder.ui.controls.TextArea;
+import helder.ui.controls.EditableText;
+import helder.ui.controls.EditableText.SpellAction;
 import helder.image.Image;
 import helder.image.PngDecoder;
 

@@ -6,7 +6,7 @@ import helder.ui.VirtualScroll;
 import helder.ui.controls.Look;
 import helder.ui.controls.Props.PathSegment;
 import helder.ui.controls.Standard;
-import helder.ui.widgets.WindowButtons;
+import helder.ui.controls.WindowButtons;
 import helder.ui.menu.Menu.MenuItem;
 import helder.ui.menu.Menus;
 import helder.ui.view.UiFlow.VirtualList;
@@ -45,9 +45,11 @@ class ContentView implements Markup {
 
 	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser;
-		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear)
+		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear; Windows' and Linux's at the
+		// window's top right, over its end when no inspector is right of it, kept clear: the toolbar the title bar)
 		return <view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} height={tablet() ? 52 : Shell.BAR} flexShrink={0} padding="0 8" dragRegion
 			paddingLeft={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
+			paddingRight={WindowButtons.side() == "end" && (tablet() || !b.inspector()) ? Shell.END_BUTTONS : 8}
 			borders="0 0 1 0" borderColor={Look.ref.line}>
 			<Show when={tablet()}>
 				<Standard.Button tag="sidebar-toggle" variant="ghost" icon={Glyphs.get("sidebar")} label="Sidebar" onPress={() -> x.sidebarOpen(true)}/>
@@ -343,7 +345,7 @@ class ContentView implements Markup {
 		var got:Array<MenuItem> = [];
 		x.files.list(dir, batch -> {
 			for (e in batch.entries)
-				if (e.kind == Folder && !Kinds.hidden(e.name)) got.push(Item(e.name, Go(FolderModel.join(dir, e.name))));
+				if (e.kind == Folder && !Kinds.hidden(e)) got.push(Item(e.name, Go(FolderModel.join(dir, e.name))));
 			if (!batch.done) return;
 			got.sort((a, b) -> switch [a, b] {
 				case [Item(l, _), Item(m, _)]: FolderModel.compare(l, m);

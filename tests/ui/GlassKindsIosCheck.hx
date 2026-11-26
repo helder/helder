@@ -6,7 +6,7 @@ import helder.ui.*;
 // compares helder's with it (--compare ... 3)
 class GlassKindsIosCheck {
 	static function main() {
-		var w = new UiWindow("GlassKindsCheck", GlassKindsCheck.W, 600);
+		var w = new UiWindow({title: "GlassKindsCheck", width: GlassKindsCheck.W, height: 600});
 		var holder = new Node();
 		holder.style.set({position: Absolute, left: 0, top: 140, width: GlassKindsCheck.W, height: GlassKindsCheck.H});
 		GlassKindsCheck.build(holder);

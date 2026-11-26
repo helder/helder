@@ -4,8 +4,8 @@
 // demo: canvas 640x400
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.render.*;
@@ -18,7 +18,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-environment
 class Sky {
 	static function main() {
-		var window = new Window("An environment prefiltered by helder", 640, 400);
+		var window = new Window({title: "An environment prefiltered by helder", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		var world = new World("environment");

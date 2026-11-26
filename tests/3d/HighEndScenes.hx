@@ -1,6 +1,6 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.*;
 import helder.scene.render.*;
 import helder.scene.render.PostProcess;
@@ -102,7 +102,7 @@ class HighEndScenes {
 					eye.position = new Vec3(0, 1.6, 6);
 					eye.lookAt(new Vec3(-0.08 + t * 0.16, 0.8, 0));
 					moving.box.position = new Vec3(-1.6 + t * 1.2, 1.23 + t * 0.1, 0.6);
-					moving.wheel.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), t * 0.9);
+					moving.wheel.rotation = helder.math.Quat.axisAngle(new Vec3(0, 0, 1), t * 0.9);
 				}
 				var moved = (enc:Encoder) -> {
 					place(0);
@@ -185,7 +185,7 @@ class HighEndScenes {
 	static function put(world:World, name:String, mesh:Mesh, x:Float, y:Float, z:Float, ?turn:Float):Node {
 		var n = world.node(name);
 		n.position = new Vec3(x, y, z);
-		if (turn != null) n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), turn);
+		if (turn != null) n.rotation = helder.math.Quat.axisAngle(new Vec3(0, 1, 0), turn);
 		MeshRenderer.attach(n, mesh);
 		return n;
 	}
@@ -226,7 +226,7 @@ class HighEndScenes {
 		var clay = new Material("clay", new Vec4(0.85, 0.4, 0.25, 1), 0, 0.5);
 		for (k in 0...4) {
 			var n = put(world, "box", Shapes.box(device, k % 2 == 0 ? dark : clay, 0.7, 0.7, 0.7), -1.9 + k * 1.25, 1.3 + (k % 2) * 0.5, -0.6, 0.35 + k * 0.4);
-			n.rotation = helder.scene.math.Quat.fromEuler(0.5 + k * 0.3, 0.35 + k * 0.4, 0.2 * k);
+			n.rotation = helder.math.Quat.fromEuler(0.5 + k * 0.3, 0.35 + k * 0.4, 0.2 * k);
 		}
 		put(world, "ball", Shapes.sphere(device, dark, 0.45, 32, 16), -0.6, 0.45, 0.6);
 		put(world, "ball2", Shapes.sphere(device, clay, 0.35, 32, 16), 1.4, 0.35, 0.8);
@@ -245,7 +245,7 @@ class HighEndScenes {
 		var spoke = Shapes.box(device, new Material("spoke", new Vec4(0.95, 0.85, 0.3, 1), 0, 0.5), 1.6, 0.14, 0.14);
 		for (k in 0...3) {
 			var s = world.node("spoke", wheel);
-			s.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), k * Math.PI / 3);
+			s.rotation = helder.math.Quat.axisAngle(new Vec3(0, 0, 1), k * Math.PI / 3);
 			// (each a little before the last: not one plane, whose overlaps any rasterizer breaks its own way)
 			s.position = new Vec3(0, 0, k * 0.03);
 			MeshRenderer.attach(s, spoke);
@@ -295,7 +295,7 @@ class Show {
 		if (t == null) return;
 		if (pipeline == null) {
 			pipeline = device.createPipeline(ShowColorShader.pipeline({}));
-			var v = ShowColorShader.vertexBytes([{pos: new helder.gfx.shader.Vec2(-1, -1)}, {pos: new helder.gfx.shader.Vec2(3, -1)}, {pos: new helder.gfx.shader.Vec2(-1, 3)}]);
+			var v = ShowColorShader.vertexBytes([{pos: new helder.math.Vec2(-1, -1)}, {pos: new helder.math.Vec2(3, -1)}, {pos: new helder.math.Vec2(-1, 3)}]);
 			triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
 			sampler = device.createSampler({filter: Nearest, wrap: Clamp});
 		}

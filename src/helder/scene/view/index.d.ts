@@ -7,7 +7,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Camera, Renderer, ToneMap, World} from "../../scene/runtime";
-import type {Vec3, Vec4} from "helder/gfx";
+import type {Vec3, Vec4} from "helder/math";
 import type {Node, UiView} from "helder/ui";
 import type {Read} from "helder/view";
 

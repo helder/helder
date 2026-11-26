@@ -226,7 +226,7 @@ class McVideo implements VideoDecoder {
 		// (what the reader already has: of before the seek)
 		var dropped = [];
 		take(dropped);
-		for (f in dropped) f.release();
+		for (f in dropped) f.dispose();
 	}
 
 	// whether f is a buffer of the codec's for a layer (else an AImage)

@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.Edges;
+
 // A style given untyped as StyleProps: a TypeScript program's, its values
 // as markup's attributes write them ("row", "0 12", "#3b82f6", "scale(0.97)",
 // numbers; CSS's names in camel, as markup's: helder.view.Vocabulary), parsed once: a sheet's rules when it is

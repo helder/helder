@@ -53,7 +53,7 @@ class Explorer {
 	// a file's text (a Markdown document's: read through files, by default on the loop)
 	public final read:(path:String, done:Null<String>->Void)->Void;
 	// a web address opened (a document's link): the system's browser, a new tab on the web
-	public var openUrl:String->Bool = url -> helder.os.Links.open(url, false);
+	public var openUrl:String->Bool = url -> helder.os.Links.show(url, false);
 
 	var choosing = false;
 	static inline var RECENT = 20;

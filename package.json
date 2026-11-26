@@ -53,6 +53,9 @@
     "./gfx": {
       "types": "./src/helder/gfx/index.ts"
     },
+    "./math": {
+      "types": "./src/helder/math/index.ts"
+    },
     "./dev": {
       "types": "./src/helder/dev/index.d.ts"
     },

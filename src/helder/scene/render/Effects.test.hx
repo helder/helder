@@ -1,10 +1,10 @@
 package helder.scene.render;
 
 import helder.gfx.Device;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.World;
 import helder.scene.render.EffectShaders.octDecode;
 import helder.scene.render.EffectShaders.viewPointAt;
@@ -81,6 +81,8 @@ function tests() {
 			#end
 			Outline.select(model, 0);
 			equals(ViewBuffers.groupOf(arm), 0);
+			// (its slot of 16 freed for the next files' worlds)
+			world.dispose();
 		});
 		test("a LUT's strip: size slices of size by size, red across, green down, blue by slice", () -> {
 			var s = Lut.strip(4, (r, g, b) -> new Vec3(r, g, b));

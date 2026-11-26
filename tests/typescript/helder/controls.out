@@ -18,6 +18,7 @@ root
       text "Dark mode"
 
 #E11D48FF #E11D481F button soft md 0 20 0 20
+#E11D48FF 0 6 0 6
 true
 root
   view
@@ -29,6 +30,8 @@ root
       lamp checkbox checked "Porch"
         view
         text "on: Porch"
+      badge
+        text "3"
 
 function
 0 0 pathbar-separator pathbar null md

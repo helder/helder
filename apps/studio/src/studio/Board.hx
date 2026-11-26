@@ -119,6 +119,8 @@ class Board implements Markup {
 	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
 		var n = new StillFrame(s.still.peek(), s.stillPasses, s.stillWidth, s.stillHeight);
 		n.tag = "still";
+		// (its scenes' worlds let go with it)
+		onCleanup(n.dispose);
 		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.shownFailure() != null || s.crashedSignal()}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
 		});

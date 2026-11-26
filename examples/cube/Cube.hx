@@ -2,6 +2,7 @@
 // summary: A textured cube with rounded, lit edges casting a soft shadow, depth-tested, its matrices a uniform block; drag it to turn it
 // tags: gfx, shaders, 3d, input
 // demo: canvas 512x384
+import helder.math.*;
 import CubeShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
@@ -153,7 +154,7 @@ class Cube {
 
 	static function main() {
 		var args = Sys.args(), still = args.indexOf("--angle");
-		var window = new Window("Cube", 640, 480);
+		var window = new Window({title: "Cube", width: 640, height: 480});
 		var cube = new Cube(Device.create(window.surface));
 		var spin = new Spin(still >= 0 ? 0 : Spin.SPEED), angle = still >= 0 ? Std.parseFloat(args[still + 1]) : 0.0;
 		var last = Sys.time();

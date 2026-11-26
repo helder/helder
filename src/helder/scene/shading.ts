@@ -7,9 +7,9 @@
 // their text is the same). Material's factories (Material.toon(...)) are
 // Haxe's, these are for a material of one's own on a model.
 import {
-	slots, position, vec2, vec3, vec4, mat4, sample, dot, cross, normalize, mix, clamp, smoothstep, pow, min, max, floor, discard,
-	type Vec2, type Vec3, type Vec4, type Texture2D,
+	slots, position, vec2, vec3, vec4, mat4, sample, dot, cross, normalize, mix, clamp, smoothstep, pow, min, max, floor, discard, type Texture2D,
 } from "helder/gfx";
+import { type Vec2, type Vec3, type Vec4 } from "helder/math";
 import {
 	pbr, pbrColor, pbrAlpha, pbrPosition, reflectance, uvOf, fogAmount, display, joint, instanceNormal, instanceUv, type PbrVertex, type PbrVaryings,
 	type PbrVertexParams, type PbrFragmentParams, type PbrSurface, type PbrPoint, type PbrFrame, type PbrMaterial, type LitSurface, type LightSample,

@@ -1,8 +1,8 @@
 package helder.scene;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.scene.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Quat;
 
 // A node of a World's scene graph: a handle, an Int (the world, a
 // generation and a slot: World), so nodes cost no object each and a

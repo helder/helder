@@ -8,9 +8,10 @@
 //
 //   helder run docs/examples/scene-nodes/main.ts
 import { Window, Device, App, World, Camera, Light, Material, MeshRenderer, Shapes, Renderer, FixedStep } from "helder/scene";
-import { vec3, vec4, Quat } from "helder/gfx";
+import { vec3, vec4 } from "helder/gfx";
+import { Quat } from "helder/math";
 
-const window = new Window("World and nodes", 640, 400);
+const window = new Window({title: "World and nodes", width: 640, height: 400});
 const device = Device.create(window.surface);
 const renderer = new Renderer(device);
 renderer.sky = vec3(0.05, 0.06, 0.1);

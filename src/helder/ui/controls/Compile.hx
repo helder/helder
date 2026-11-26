@@ -19,10 +19,11 @@ import helder.ui.controls.Tokens;
 // a toggle's travel (its knob's) springing.
 @:noCompletion class Compile {
 	public static final CONTROLS = ["button", "checkbox", "switch", "pathbar"];
-	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin"];
+	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin", "placeholder",
+		"selection"];
 	static final CONDS = [
 		"hover", "active", "focus-visible", "data-state=checked", "data-state=mixed", "data-selected", "data-state=open", "data-invalid", "data-readonly", "dark",
-		"data-disabled", "has:focus"
+		"data-disabled", "has:focus", "placeholder", "selection"
 	];
 	static final AXES = ["variant", "size"];
 	// (a toggle's travel: a spring's overshoot, as a cubic Bézier)
@@ -110,7 +111,9 @@ import helder.ui.controls.Tokens;
 		for (k in 0...STATES.length) {
 			var s = part.states.get(STATES[k]);
 			if (s == null) continue;
-			var cond = group == null || STATES[k] == "dark" ? CONDS[k] : 'group/$group:${CONDS[k]}';
+			// (the appearance and a text's placeholder and selection: the part's own, not its group's)
+			var own = STATES[k] == "dark" || STATES[k] == "placeholder" || STATES[k] == "selection";
+			var cond = group == null || own ? CONDS[k] : 'group/$group:${CONDS[k]}';
 			emit(rules, slot, s, when.concat([cond]), group, variant, size, null);
 		}
 	}
@@ -161,7 +164,8 @@ private class Merged {
 
 // (a part's style merged: its properties, its states', its draw)
 private class Part {
-	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin"];
+	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin", "placeholder",
+		"selection"];
 
 	public final props:Dynamic = {};
 	public final states = new Map<String, Part>();

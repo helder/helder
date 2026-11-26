@@ -94,16 +94,36 @@ function tests() {
 			}
 			equals(superlinear, []);
 		});
+		// (the property's shrunk case: each ")" cut off counted the link's parentheses again)
+		test("an autolink's run of closing parentheses: counted once", () -> {
+			var text = "http://a.b/c" + "".lpad(")", 400), from = Scan.steps;
+			Markdown.parse(text);
+			assert(Scan.steps - from <= 40 * text.length + 400, '${Scan.steps - from} steps for ${text.length} characters');
+		});
+		// (the property's shrunk case: each item's marker scanned the line's rest for a rule again)
+		test("nested items on one line: each marker's rule scan once", () -> {
+			var text = [for (_ in 0...77) "- "].join("") + "*", from = Scan.steps;
+			Markdown.parse(text);
+			assert(Scan.steps - from <= 40 * text.length + 400, '${Scan.steps - from} steps for ${text.length} characters');
+		});
 	});
 	describe("properties", () -> {
 		test("any text parses, in steps bounded by its length", () -> property(MARKDOWN, text -> {
-			var from = Scan.steps, t0 = haxe.Timer.stamp();
-			Markdown.parse(text);
+			var from = Scan.steps;
+			var doc = Markdown.parse(text);
 			var steps = Scan.steps - from;
-			// (a bound of steps, the same anywhere; and seconds, against a stall the count misses)
-			assert(steps <= 40 * text.length + 400, '$steps steps for ${text.length} characters');
-			assert(haxe.Timer.stamp() - t0 < 2, "over 2 s");
-		}, {cases: 300}));
+			// (a bound of steps, the same anywhere: a character's, and each
+			// line's walk of the containers open, as CommonMark's algorithm
+			// does: blank or lazy lines in nested lists)
+			assert(steps <= 40 * text.length + 5 * lines(text) * depth(doc.blocks) + 400, '$steps steps for ${text.length} characters');
+		}, {cases: 300, limit: 10}));
+		test("the repository's documents mutated parse, in steps bounded by their length", () -> property(mutated(documents()), b -> {
+			// (a byte a character: a mutated file is seldom UTF-8, and Eval refuses a string that is not)
+			var text = [for (i in 0...b.length) String.fromCharCode(b.get(i))].join(""), from = Scan.steps;
+			var doc = Markdown.parse(text);
+			var steps = Scan.steps - from;
+			assert(steps <= 40 * text.length + 5 * lines(text) * depth(doc.blocks) + 400, '$steps steps for ${text.length} characters');
+		}, {cases: 100, seconds: 3, limit: 10, memory: 256}));
 		test("plain text's paragraph: that text", () -> property(PLAIN, text -> switch Markdown.parse(text).blocks {
 			case [Paragraph(content)]: equals(Markdown.plain(content), text);
 			case b: fail('not a paragraph: $b');
@@ -456,3 +476,37 @@ private class Html {
 	}
 }
 
+
+// (the docs' and the packages' READMEs, up to 16 KB each: the robustness property's seeds)
+private function documents():Map<String, haxe.io.Bytes> {
+	var out = new Map<String, haxe.io.Bytes>();
+	function walk(dir:String)
+		for (f in sys.FileSystem.readDirectory(dir)) {
+			var p = '$dir/$f';
+			if (sys.FileSystem.isDirectory(p)) walk(p);
+			else if (f.endsWith(".md") && sys.FileSystem.stat(p).size <= 16384) out.set(p, sys.io.File.getBytes(p));
+		}
+	walk("docs");
+	walk("src/helder");
+	return out;
+}
+
+private function lines(text:String):Int
+	return ~/\r\n?|\n/g.split(text).length;
+
+// (the deepest container: a list's item two, a quote one)
+private function depth(blocks:Array<Block>):Int {
+	var most = 0;
+	for (b in blocks) {
+		var d = switch b {
+			case List(_, _, _, items):
+				var inner = 0;
+				for (i in items) inner = Std.int(Math.max(inner, depth(i.blocks)));
+				2 + inner;
+			case Quote(inner): 1 + depth(inner);
+			case _: 0;
+		}
+		if (d > most) most = d;
+	}
+	return most;
+}

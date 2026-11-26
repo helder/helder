@@ -2,9 +2,9 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Node;
 import helder.scene.World;
 import helder.scene.math.Aabb;
@@ -120,6 +120,7 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	public function new(device:Device, size = 1024) {
 		this.device = device;
 		this.size = size;
+		castAfter = (a, b) -> after(casterPrims[a], casterPrims[b]);
 		var d = ShadowInstancedShader.pipeline({cull: None, depthCompare: Less, depthWrite: true});
 		d.colorFormat = R32F;
 		d.depthFormat = Depth32F;
@@ -457,32 +458,53 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	// the casters sorted by primitive (insertion sort: a scene's order
 	// changes little from frame to frame), their boxes with them; cut into
 	// the sun's runs of one primitive
+	// (casters by their buffers: primitives of one geometry in other
+	// materials, the same draw to a shadow map)
+	static inline function rank(p:Mesh.Primitive):Int
+		return (cast p.vertices : Int);
+
+	static inline function after(a:Mesh.Primitive, b:Mesh.Primitive):Bool
+		return rank(a) > rank(b) || rank(a) == rank(b) && ((cast a.indices : Int) > (cast b.indices : Int) || a.indices == b.indices && a.count > b.count);
+
+	static inline function same(a:Mesh.Primitive, b:Mesh.Primitive):Bool
+		return a == b || a.vertices == b.vertices && a.indices == b.indices && a.count == b.count && a.indexFormat == b.indexFormat;
+
+	final order:Array<Int> = [];
+	final sorting:Array<Int> = [];
+	final movedNodes:Array<Node> = [];
+	final movedPrims:Array<Mesh.Primitive> = [];
+	final movedBox:Array<Float> = [];
+	final castAfter:Int->Int->Bool;
+
 	function sort() {
-		for (i in 1...count) {
-			var n = casterNodes[i], p = casterPrims[i], j = i - 1;
-			var b0 = casterBox[i * 6], b1 = casterBox[i * 6 + 1], b2 = casterBox[i * 6 + 2], b3 = casterBox[i * 6 + 3], b4 = casterBox[i * 6 + 4],
-				b5 = casterBox[i * 6 + 5];
-			while (j >= 0 && casterPrims[j].id > p.id) {
-				casterNodes[j + 1] = casterNodes[j];
-				casterPrims[j + 1] = casterPrims[j];
-				for (f in 0...6)
-					casterBox[(j + 1) * 6 + f] = casterBox[j * 6 + f];
-				j--;
-			}
-			casterNodes[j + 1] = n;
-			casterPrims[j + 1] = p;
-			casterBox[(j + 1) * 6] = b0;
-			casterBox[(j + 1) * 6 + 1] = b1;
-			casterBox[(j + 1) * 6 + 2] = b2;
-			casterBox[(j + 1) * 6 + 3] = b3;
-			casterBox[(j + 1) * 6 + 4] = b4;
-			casterBox[(j + 1) * 6 + 5] = b5;
+		while (order.length < count) {
+			order.push(0);
+			movedNodes.push(Node.NONE);
+			movedPrims.push(null);
+			for (_ in 0...6)
+				movedBox.push(0);
+		}
+		for (i in 0...count)
+			order[i] = i;
+		Sorted.sort(order, count, sorting, castAfter);
+		for (i in 0...count) {
+			var k = order[i];
+			movedNodes[i] = casterNodes[k];
+			movedPrims[i] = casterPrims[k];
+			for (f in 0...6)
+				movedBox[i * 6 + f] = casterBox[k * 6 + f];
+		}
+		for (i in 0...count) {
+			casterNodes[i] = movedNodes[i];
+			casterPrims[i] = movedPrims[i];
+			for (f in 0...6)
+				casterBox[i * 6 + f] = movedBox[i * 6 + f];
 		}
 		batchCount = 0;
 		var i = 0;
 		while (i < count) {
 			var j = i + 1;
-			while (j < count && casterPrims[j] == casterPrims[i])
+			while (j < count && same(casterPrims[j], casterPrims[i]))
 				j++;
 			if (batchCount == batchStart.length) {
 				batchStart.push(0);

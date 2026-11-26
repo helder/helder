@@ -10,7 +10,7 @@ package helder.ui;
 // left or up where it would not fit (a context menu); TopLeft, TopRight,
 // BottomLeft and BottomRight put it in that corner of the window, gap from
 // its edges (notifications); Manual leaves it to its style (left, top). A modal one
-// covers the window (its own style: a backdrop; its content centred, as
+// covers the window (its own style: a scrim; its content centred, as
 // Ui.open makes it) and keeps the keyboard focus inside: Tab cycles in
 // it, the tree under it takes no pointer events. onDismiss: asked to close
 // by a click outside it (not on its anchor; unless dismissOnOutside is
