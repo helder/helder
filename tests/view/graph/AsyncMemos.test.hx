@@ -10,6 +10,7 @@ import view.graph.Kit;
 // Verdicts), async-cleanup-timing.test.ts, async-chain-supersession.test.ts,
 // first-observer-stale-reader.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	describe("async compute", () -> {

@@ -39,12 +39,12 @@ class Tools implements Mcp.Target {
 	public static final list:Array<Dynamic> = [
 		{
 			name: "project.read",
-			description: "Read a file of the project open in helder studio (with the studio's unsaved state), or without a path list its source files and screens (stories by flow).",
+			description: "Read a file of the project open in helder studio (with the studio's unsaved state), or without a path list its source files and screens (scenarios and stories, by flow).",
 			inputSchema: {type: "object", properties: {path: {type: "string", description: "a path relative to the project's directory, or absolute"}}}
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file; its indentation spaces or left out, never a raw tab: write no tab characters in a call) replaced by its new text (indented as the file is), or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.story.tsx go by themselves once a story of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
+			description: "Edit a file of the project: each edit's old text (once in the file; its indentation spaces or left out, never a raw tab: write no tab characters in a call) replaced by its new text (indented as the file is), or the whole text given, or the file deleted (delete: true). The starter's app.tsx and app.scenario.tsx go by themselves once a screen of yours is there and nothing imports them. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -123,7 +123,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "studio.guide",
-			description: "How to build here, fast: the project's files, screens as stories, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets, 3d). Call it instead of exploring the repository: start first, then the topic you need.",
+			description: "How to build here, fast: the project's files, screens as scenarios, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets, 3d). Call it instead of exploring the repository: start first, then the topic you need.",
 			inputSchema: {type: "object", properties: {topic: {type: "string", description: "start (the default), ui, game, design, assets, 3d"}}}
 		},
 		{

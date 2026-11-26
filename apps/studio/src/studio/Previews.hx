@@ -153,7 +153,7 @@ class Previews {
 		return Math.round(s * 10000) / 10;
 
 	// (a screen's still from the file, dimmed when its files changed since)
-	function still(s:Screen):Bool {
+	function still(s:Screen, ?sources:Sources):Bool {
 		var passes = [], l = kept.list(s.info.name, passes), size = kept.size(s.info.name);
 		s.stillPasses = passes;
 		if (size != null) {
@@ -161,14 +161,16 @@ class Previews {
 			s.stillHeight = size.height;
 		}
 		s.still(l);
-		s.stale(l != null && !kept.fresh(s.info.name, s.info.file, opened));
+		s.stale(l != null && !kept.fresh(s.info.name, s.info.file, sources ?? opened));
 		return l != null;
 	}
 
-	// whether a screen's loop plays from the file: its still shown, fresh, a loop stored
-	function fileLoops(name:String):Bool {
+	// whether a screen's loop plays from the file: its still fresh, a loop
+	// stored (the program running too: a hovered loop not run live, whatever
+	// its frames cost)
+	public function fileLoops(name:String):Bool {
 		var s = screen(name);
-		return s != null && s.image.peek() == null && s.still.peek() != null && !s.stale.peek() && kept.looped(name);
+		return s != null && s.still() != null && !s.stale() && kept.looped(name);
 	}
 
 	// a hovered screen's loop from the file (null: none, it runs live)
@@ -422,6 +424,9 @@ class Previews {
 		p.closeStdin();
 		process = p;
 		running = built;
+		// (a still of other files: its loop not played from the file)
+		for (s in screens)
+			if (s.still.peek() != null) s.stale(!kept.fresh(s.info.name, s.info.file, built));
 		hosted = hosting();
 		said = "";
 		startedAt = haxe.Timer.stamp();
@@ -586,8 +591,12 @@ class Previews {
 	function tookStill(p:Dynamic) {
 		var s = order[Std.int(p.screen)], path:String = p.path;
 		// (a still of a story whose file went since: not kept)
-		if (s != null && running != null && FileSystem.exists(s.info.file)) kept.took(s.info.name, s.info.file, path, running);
-		if (s != null && p.loopFrames > 0) onLog('studio: ${s.info.name}\'s loop kept: ${p.loopFrames} frames, ${p.loopBytes} B before deflate');
+		if (s != null && running != null && FileSystem.exists(s.info.file)) {
+			kept.took(s.info.name, s.info.file, path, running);
+			// (its loop's still the new one: its loop played from the file from now on)
+			if (p.loopFrames > 0) still(s, running);
+		}
+		if (s != null && p.loopFrames > 0) onLog('studio: ${s.info.name}\'s loop kept: ${p.loopFrames} frames, ${p.loopBytes} B before deflate, recorded in ${p.loopMs} ms');
 		try FileSystem.deleteFile(path) catch (_:Dynamic) {}
 	}
 
@@ -647,8 +656,7 @@ class Previews {
 		var patches = service.sources.patches(file, w -> why = w);
 		if (patches != null && patches.length == 0) return "unchanged";
 		if (patches != null && patch(patches)) {
-			service.sources.took(patches);
-			running = Sources.of(project);
+			took(patches);
 			return "patched";
 		}
 		if (literalsOnly == true) return "failed";
@@ -662,8 +670,14 @@ class Previews {
 		return service == null || service.sources == null ? null : service.sources.patchesOf(file, text, why);
 
 	// the patches the host took (a save after them changes nothing)
-	public function took(list:Array<{id:String, source:String}>)
+	// (the files as patched, written: the program's sources from now on, the
+	// stills kept of them; those it draws again taken again, under the new key)
+	public function took(list:Array<{id:String, source:String}>) {
 		if (service != null && service.sources != null) service.sources.took(list);
+		var was = running;
+		running = Sources.of(project);
+		if (was != null) kept.rekey([for (s in screens) {name: s.info.name, file: s.info.file}], was, running);
+	}
 
 	// live literals sent to the host (one program: every screen's next frame shows them); false: not connected
 	public function patch(list:Array<{id:String, source:String}>):Bool {

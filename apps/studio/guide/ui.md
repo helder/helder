@@ -71,8 +71,8 @@ export function List() {
 }
 ```
 
-- A view that takes its state as props (`Read` props take a value or a
-  signal) can be posed by a story and run by the app alike.
+- The app's model in exported top-level signals: a scenario's `boot` sets
+  them (`Read` props take a value or a signal).
 - `signal(v)`: read `s()`, set `s(v)` or `s(old => new)`.
 - `For each={signal}`: its child a function of each item (a `Read`: call it).
 - `Show when={...}`: shown while true.
@@ -85,8 +85,8 @@ export function List() {
 
 - HTTP: `Client.request(url, {method, headers, text})` from `helder/async`
   (there is no `fetch`): `await` it, then `res.status`, `res.text()`
-  (`JSON.parse` it). Fetch in the app, never in a story: pose stories with
-  data.
+  (`JSON.parse` it). A scenario's `boot` sets the data it shows; fetch
+  only where the app runs it.
 - `Date` works: `new Date()`, `Date.now()`, `getDay()`, `getDate()`,
   `getMonth()`, `getFullYear()`, `toISOString()`. Write day and month
   names yourself (no `Intl` or locale options).

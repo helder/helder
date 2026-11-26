@@ -1,0 +1,228 @@
+# helder.css
+
+CSS read as the specs define it, for helder's HTML and CSS to PDF
+engine: CSS Syntax 3's tokens, rules and declarations, the properties and
+their value grammars, in pure Haxe (native and wasm32-wasi). Its tests
+gate on css-parsing-tests' and web-platform-tests' own cases (tests/css).
+
+```haxe
+import helder.css.Css;
+
+for (rule in Css.sheet("a { color: red; &:hover { color: blue } }"))
+	switch rule {
+		case Qualified(prelude, declarations, rules): trace(Css.serialize(prelude), [for (d in declarations) d.name]);
+		case At(name, prelude, block): trace('@$name');
+		case Declarations(_):
+	}
+var style = Css.declarations("color: red; margin: 0 !important");  // a style attribute
+var value = Css.values("1px solid rgb(0 0 0 / 50%)");            // a property's value
+```
+
+```haxe
+import helder.css.CssGrammars;
+
+var margin = CssGrammars.property("margin");   // margin.syntax: "<'margin-top'>{1,4}", margin.longhands, ...
+var g = CssGrammars.of(margin.syntax);         // Repeat(Prop("margin-top"), 1, 4, false)
+var rect = CssGrammars.type("rect()", ["clip"]); // clip's rect( <top>, <right>, <bottom>, <left> ), not a shape's
+```
+
+## Syntax
+
+CSS read as CSS Syntax Level 3 reads it (the Editor's Draft of 20
+October 2026, CSS Nesting's blocks included): tokens, component values,
+rules and declarations, and text written back from them. The values,
+selectors and the cascade above it give them meaning; this layer
+accepts every input and gives each the structure a browser's parser
+would.
+
+### Entry points
+
+The spec's parser entry points (§5.4) on text. None throws: a syntax
+error is null, and what the spec drops (an invalid declaration, a rule
+cut off by the end) is left out.
+
+| | |
+| --- | --- |
+| `Css.tokens(text, ranges = false)` | every token (§4); `ranges`: unicode-range tokens, as the unicode-range descriptor is read |
+| `Css.sheet(text)` | parse a stylesheet (and a stylesheet's contents): its rules, CDO and CDC dropped at the top level |
+| `Css.decode(bytes, ?protocol, ?environment)` | a stylesheet's bytes as text (§3.2): the BOM, else the protocol's label (Content-Type's charset), the `@charset "...";` bytes, the environment's encoding, UTF-8; `{text, encoding}`, the encoding's WHATWG name |
+| `Css.rule(text)` | parse a rule: one, whitespace around it |
+| `Css.declaration(text)` | parse a declaration (@supports' condition) |
+| `Css.declarations(text)` | parse a list of declarations (a style attribute): at-rules and bad declarations left out |
+| `Css.block(text)` | a block's contents (§5.5.5): declarations, nested rules and at-rules, in order |
+| `Css.value(text)`, `Css.values(text)` | parse a component value, a list of component values |
+| `Css.list(text)` | parse a comma-separated list of component values |
+| `Css.serialize(values)`, `Css.serializeTokens(tokens)` | text that tokenizes to the same tokens again (§9) |
+| `Css.lower(s)` | ASCII lowercase: keywords match ASCII case-insensitively (`İmportant` is not `important`, which `toLowerCase` would make it) |
+| `CssAnB.parse(values)` | An+B (§6): `a`, `b`, `matches(index)`, `toString()` (§9.1) |
+
+### The tree
+
+- **`CssToken`**: `kind`, a `CssTokenKind`, and `start`, `end`: where
+  it was read, in the text's String units (UTF-16 code units natively and
+  as wasm32-wasi, code points on Eval). Kinds: `Ident`, `Function`,
+  `AtKeyword`, `Hash(value, id)` (`id`: the "id" type flag), `Str`,
+  `BadString`, `Url`, `BadUrl`, `Delim` (one code point), `Number`,
+  `Percentage` and `Dimension` (value, integer: the type flag, text: the
+  number as written, for serialization; a dimension's unit),
+  `UnicodeRange(start, end)`, `Whitespace`, `Cdo`, `Cdc`, `Colon`,
+  `Semicolon`, `Comma`, and the brackets.
+- **`CssValue`**: `Token(token)`, `Function(name, values, open, close)`,
+  `Block(open, values, close)` (`open`: the `{`, `[` or `(`; `close`:
+  null when the text ended first, so serializing writes no closing
+  bracket the text did not have).
+- **`CssRule`**: `Qualified(prelude, declarations, rules)` (the block's
+  first run of declarations, then its rules, later runs as
+  `Declarations`, CSSOM's nested declarations rules), `At(name, prelude,
+  block)` (`block`: null for a statement at-rule; its items as read, runs
+  of declarations as `Declarations`: the at-rule says what they are),
+  `Declarations(list)`.
+- **`CssDeclaration`**: `name` (as written), `value` (without the
+  whitespace around it nor `!important`), `important`, `text` (a custom
+  property's value as written in the source, null for others), `start`,
+  `end`. A declaration named `unicode-range` (any case) has its value
+  tokenized again with unicode ranges allowed, as the spec says.
+
+### How it reads
+
+The tokenizer runs over the String as it is: the input's filtering
+(§3.3) is done as each code point is read (CR, FF and CR LF one LF, NUL
+and a lone surrogate U+FFFD, a surrogate pair one code point), so the
+offsets are the text's own and a value without escapes is a substring.
+Ident code points are this draft's: ASCII letters, digits, `-`, `_` and
+HTML's custom element names' non-ASCII ranges (U+0080 is a delim).
+
+The parser follows §5.5's algorithms over the token array, a mark
+restored where a block's item reads as a declaration first and a rule
+after. Every rule counts as valid in its context: validity is the
+grammar's above this (selectors, the at-rules' own), so no "invalid rule
+error" is ever returned. Two choices where the draft says less:
+
+- **§5.5.5's erratum**: the draft returns a block's contents at `}` or
+  the end without its last run of declarations (`a { color: red }` would
+  have none). It is appended, as the drafts before did.
+- **Limits**: functions and simple blocks nest as deep as the text (read
+  without recursion), rules to 256 levels: a block deeper is read past
+  as values and left empty. A declaration that can no longer be one
+  (a `{}` block after other values, anything but `!important` after one)
+  stops there, the implementation note's early exits: a nested rule is
+  not read to its end as a declaration first.
+
+Serializing writes whitespace as one space, quotes strings with `"`,
+escapes what would read otherwise (an ident's leading digit, a unit `e3`
+that would be an exponent, a `\` delim as `\` and a newline), and puts
+`/**/` between two tokens that would read as one: §9's table, and two
+pairs it leaves out (`<` `!` before an ident starting with `--` or a CDC,
+which would read as a CDO; an ident `--` before `>`, which would read as
+a CDC).
+
+`Css.decode` reads UTF-8, UTF-16 and WHATWG Encoding's single-byte
+encodings (windows-1252, ISO-8859-x, KOI8...: EncodingData.hx, made by
+tests/css/make-encodings.mjs); the multi-byte CJK ones (GBK, gb18030,
+Big5, EUC-JP, ISO-2022-JP, Shift_JIS, EUC-KR) are not decoded, so their
+labels count as unknown ones and the next fallback applies.
+
+helder.gfx's `CssColor` parses a colour written as a string (for SVG's
+paints and helder.ui's styles); `<color>` on component values is the
+values' layer.
+
+### Tests
+
+- `tests/css` (the `css` lane, natively): css-parsing-tests' 305 Syntax
+  cases (CC0, pinned by tests/css/import-css-parsing-tests.mjs), all
+  required, none pending. The fixtures follow the 2021 draft; 36 cases
+  carry the current draft's expected result and why (blocks parsed as
+  contents, a declaration's value trimmed and ended at `;`, no `~=`-style
+  tokens, unicode-range tokens for the descriptor alone, at-rules out of a
+  declaration list). Its colour files are skipped: `<color>` is CSS
+  Color's grammar, not Syntax's.
+- `Css.test.hx` (natively and as wasm32-wasi): examples, and properties:
+  tokens serialized tokenize the same (whitespace runs one), tokens'
+  offsets in order with only comments between them, any text parses and
+  its values print back, mutated stylesheets (site/site.css, the
+  fixtures) parse within a time and memory limit (soaked by the `fuzz`
+  lane).
+
+## Properties
+
+`CssData` (generated: `node src/helder/css/generate.mjs`) is
+[@webref/css](https://github.com/w3c/webref/tree/main/packages/css)
+8.7.10, the CSS specs' definitions as webref scrapes them, cut to
+checkpoint 1's properties:
+
+- `properties`: 222 `CssProperty`s, each with the module it is in scope
+  for (`module`), its spec's anchor (`href`), its grammar (`syntax`, the
+  spec's text), `initial`, `inherited` (null for a shorthand), `appliesTo`,
+  `percentages`, `computed` (the computed value's prose), `animation`,
+  `longhands` and `alias` (a legacy name's property: `word-wrap`,
+  `font-stretch`, `grid-gap`).
+- `types`: the 274 named types and functions the grammars reference, all
+  the way down (`<color>` to `<color-base>` to `<rgb()>` to
+  `<legacy-rgb-syntax>`), and `<'p'>`s of properties out of scope
+  (`<'overflow-block'>`). A name defined again for some properties or types
+  (webref's `for`: clip's `rect()`, transform's `scale()`) has its `scope`;
+  `CssGrammars.type(name, context)` takes the one of the context (the
+  property, then the types and functions a reference is inside), else the
+  general one. 21 have no grammar: Values 4's and Syntax 3's own
+  (`<length>`, `<custom-ident>`, `<declaration-value>`), matched by hand,
+  each named in scope.json's `primitives`.
+- `descriptors`: the 69 of `@page`, `@font-face` and `@media` (its
+  features).
+
+The grammars are each spec's latest level, as webref keeps them, so some
+take more than checkpoint 1 renders (`width`'s `anchor-size()`, `<color>`'s
+`light-dark()`); what of it is matched is the matcher's conformance to
+say. Where checkpoint 1's module and the latest differ, scope.json's
+`overrides` keep the module's: `string-set` is GCPM 3's (a content list),
+not CSS Content 3's (strings). Its `types` give the grammars the specs say
+in prose: CSS 2.1's `<top>` to `<left>` (`<length> | auto`), Fonts 4's
+`<font-src-list>`.
+
+scope.json lists the properties in scope under their module, and every
+other webref property is out, by its spec (`outSpecs`) or by name (`out`),
+each with why; the generator fails on a property it can't place, a
+longhand or alias out of scope, or a type no definition gives.
+manifest.json has the package's hash and the counts. Out are 601:
+
+| Out | Properties |
+| --- | --- |
+| -webkit- aliases and WebKit's compat properties | 68 |
+| logical properties, writing modes (deferred) | 72 |
+| animation, transitions, view transitions, will-change: a page is still | 55 |
+| scrolling, line clamping, overflow 4 | 56 |
+| SVG's presentation properties, fill and stroke | 52 |
+| Borders 4 (corner shapes, partial borders), Backgrounds 4, Gaps 1's decorations | 86 |
+| interaction (UI 4's carets, cursors, appearance; spatial navigation; reading order; the top layer) | 27 |
+| masking (CSS 2.1's `clip` is in), filters, blending, containment | 30 |
+| multicol, footnotes, regions, shapes and exclusions, forms, `@container` (deferred) | 29 |
+| speech | 19 |
+| Text 4 and 5, Text Decoration 4, Inline 3 past `line-height` and `vertical-align` | 37 |
+| Sizing 4, Transforms 2 (3D, `translate`/`rotate`/`scale`), anchor positioning, motion paths | 33 |
+| `image-rendering`, `image-resolution` and Images 5, ruby, MathML, line grids, color schemes, palettes, HDR, page floats past CSS 2.1's, zoom, the rest of the next levels | 37 |
+
+## Value grammars
+
+`CssGrammars.parse(text)` reads the value definition syntax (CSS Values 4
+§2) into a `CssGrammar`, and `print` writes it back:
+
+- `Keyword(name)`, `Delim(text)` (`,` and `/` as written, others quoted:
+  `'+'`), `Named(name, range)` (`<length>`, `<rgb()>`, `<length [0,∞]>`:
+  `{min, max, unit}`, `<angle [-90deg,90deg]>`), `Prop(name)`
+  (`<'margin-top'>`), `Func(name, args)` (`rect( ... )`), `Block(open,
+  inner)` (`( ... )`, `'[' ... ']'`);
+- `Sequence`, `All` (`&&`), `Any` (`||`), `One` (`|`), binding in that
+  order, tightest first; brackets group and keep their node, so `a || [ b
+  || c ]` is not `a || b || c` (any order of three);
+- `Repeat(item, min, max, comma)`: `?`, `*`, `+`, `{A}`, `{A,B}`, `{A,}`,
+  `#` and `#{A,B}` (comma: a comma list; max -1: no limit), stacked as
+  written (`<length>#?`); `Required(item)`: `[ ... ]!`.
+
+A text that is not a grammar throws, with where. `of(syntax)` parses a
+definition once and keeps it.
+
+Tests (`CssGrammars.test.hx`, natively, as wasm32-wasi and on Eval): every property's,
+type's and descriptor's grammar of the data parses and prints back to
+itself, every reference it makes is defined (in its context), every
+longhand and alias is in the table; the shapes of a few and the errors;
+and a property: any tree prints to text that parses back to it. The css
+lane checks the same data against the WPT fixtures (tests/css).

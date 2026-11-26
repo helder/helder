@@ -43,7 +43,7 @@ class Scheduler {
 	static var asked = false;
 	static var failure:Null<haxe.Exception> = null;
 	static var hasFailure = false;
-	// (commits made: an unowned memo's freshness)
+	// (the default store's flushes of writes: an unowned memo's freshness; a store's its own)
 	static var ticks = 0;
 
 	public static function flush()
@@ -81,7 +81,7 @@ class Scheduler {
 				landingsTaken = ls;
 				for (n in ls) {
 					var tx = n.pendingIn != null ? n.pendingIn.find() : null;
-					if (tx == null || tx.committed) tx = newTx();
+					if (tx == null || tx.committed) tx = newTx(n.home);
 					n.pendingIn = null;
 					world = tx;
 					n.land();
@@ -95,16 +95,29 @@ class Scheduler {
 				ls.resize(0);
 			}
 			if (writes.length > 0) {
-				ticks++;
-				world = newTx();
 				var ws = writes;
 				writes = writesTaken;
 				writesTaken = ws;
-				for (n in ws)
-					n.stageWrite(world);
-				ws.resize(0);
-				drain();
-				settle();
+				// (a transaction a store: what one screen waits on never holds
+				// another's commit; the default store's first, then each screen's
+				// in the order of their first writes)
+				while (ws.length > 0) {
+					var store = ws[0].home, rest = 0;
+					if (store != null) for (n in ws)
+						if (n.home == null) {
+							store = null;
+							break;
+						}
+					var tx = world = newTx(store);
+					if (store == null) ticks++ else store.ticks++;
+					for (n in ws)
+						if (n.home == store) n.stageWrite(tx) else ws[rest++] = n;
+					ws.resize(rest);
+					drain();
+					settle();
+					// (what its commit made stale, outside a transaction: never in the next store's)
+					drain();
+				}
 			}
 			// (what is stale outside a transaction: verdict readers after a commit)
 			drain();
@@ -179,8 +192,12 @@ class Scheduler {
 	}
 
 	// (a transaction: a spare one, else new)
-	static function newTx():Tx
-		return spareTx.length > 0 ? spareTx.pop() : new Tx();
+	// (a transaction of a store's nodes: a spare one, else new)
+	static function newTx(store:Null<Atoms>):Tx {
+		var t = spareTx.length > 0 ? spareTx.pop() : new Tx();
+		t.store = store;
+		return t;
+	}
 
 	// (a list for applies to run: reused, one per nesting)
 	static function takeBatch():Array<Node<Dynamic>> {
@@ -205,7 +222,8 @@ class Scheduler {
 	static function settle() {
 		var t = world.find();
 		world = null;
-		if (t.blocked.length > 0) {
+		if (t.blocked.length > 0) t.park();
+		if (t.blocked.length > 0 || t.waiting()) {
 			if (!held.contains(t)) held.push(t);
 			// (its readers, served the screen, see it held now: isPending)
 			for (n in t.readers)
@@ -243,6 +261,23 @@ class Scheduler {
 	// (b merged into a: a parked if either was)
 	static function merged(a:Tx, b:Tx) {
 		if (held.remove(b) && !held.contains(a)) held.push(a);
+	}
+
+	// (a store let go or cleared: its writes not flushed yet, its answers not
+	// landed and its transactions parked dropped, nothing of it kept here)
+	static function forget(store:Atoms) {
+		var rest = 0;
+		for (n in writes)
+			if (n.home == store) n.hasPending = false else writes[rest++] = n;
+		writes.resize(rest);
+		rest = 0;
+		for (n in landings)
+			if (n.home != store) landings[rest++] = n;
+		landings.resize(rest);
+		rest = 0;
+		for (t in held)
+			if (t.store != store) held[rest++] = t;
+		held.resize(rest);
 	}
 
 	static function enqueueWrite(n:Node<Dynamic>) {

@@ -35,9 +35,9 @@ import hxmc.unsafe.*;
 class Preview {
 	static var host:Null<Host> = null;
 
-	public static function run(stories:Array<Story>) {
+	public static function run(stories:Array<Story>, ?scenarios:Array<helder.scenario.Scenario>) {
 		var rt = new WorkerHost();
-		var h = new Host(stories, rt);
+		var h = new Host(stories, rt, 1.0, scenarios);
 		host = h;
 		#if hxmc.dev
 		helder.dev.Agent.serve(send);

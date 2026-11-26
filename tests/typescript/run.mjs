@@ -309,7 +309,8 @@ for(const entry of ['examples/ts-hello/main.ts','examples/ts-hello']) {
         const r=tsc(p);assert.equal(r.status,0,`tsc -p ${p}: the editor finds errors\n${r.stdout}${r.stderr}`);
     }
     assert.match(tsc(`${T}/editor/dom`).stdout,/main\.ts\(2,1\): error TS2584: Cannot find name 'document'/,'tsc -p editor/dom: document is no helder global');
-    ok(run(compiler,[`${fresh}/src/main.tsx`,'-o',`${fresh}/bin/app`]),'helder new\'s main.tsx compile');
+    // (a window's program: on Linux the dynamic glibc mode, as helder build's; the default static musl links no X11)
+    ok(run(compiler,[`${fresh}/src/main.tsx`,...(process.platform==='linux'?['-D','hxmc.libc=glibc']:[]),'-o',`${fresh}/bin/app`]),'helder new\'s main.tsx compile');
     console.log(`PASS editor: tsc -p of ${projects.length} projects, document refused, helder new's built`);
 }
 }

@@ -268,7 +268,7 @@ class Declarations {
 	// (a class its module exports: not a function's host, not internal)
 	static function exported(m:ApiModule, name:String):Bool
 		return m.internal.indexOf(name) < 0
-			&& !Lambda.exists(m.classes, c -> c.cls.name == name && c.only != null);
+			&& !Lambda.exists(m.classes, c -> c.cls.name == name && c.only != null && !m.opaque.contains(c));
 
 	// helder/view's JSX: TSX's values are Views, a component any function of
 	// its props, a prop of a type made from other values (Read) taking them at
