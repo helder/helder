@@ -161,8 +161,8 @@ private final TREE:Gen<String> = c -> {
 				case 0: b.add(element(depth + 1));
 				case 1:
 					var t = c.draw(TEXT);
-					if (t == "") continue;
-					b.add(escape(t, false));
+					// (an element always has the children drawn: an empty one would be written <n/>)
+					b.add(escape(t == "" ? "t" : t, false));
 				case 2: b.add("<![CDATA[" + c.draw(TEXT).replace("]]", "]") + "]]>");
 				case 3: b.add("<!--" + c.draw(TEXT).replace("-", "") + "-->");
 				// (the white space after a target is all its: data starts after it)
