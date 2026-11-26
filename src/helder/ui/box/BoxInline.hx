@@ -19,10 +19,21 @@ class BoxInline implements InlineStyle {
 	final s:BoxStyle;
 	final cb:Float;
 
-	public function new(box:Box, cb:Float) {
+	function new(box:Box, cb:Float) {
 		this.box = box;
 		s = box.style.model();
 		this.cb = cb;
+	}
+
+	// A box's, one for its style, its split edges and a containing block's width: styles are
+	// compared by identity (InlineFonts' and the shaper's caches), so boxes of one style share
+	// one (its `box`: the first of them).
+	public static function of(box:Box, cb:Float):BoxInline {
+		var style = box.style;
+		var edges = box.kind == Text ? 0 : box.flags & (Box.NO_START | Box.NO_END);
+		var b = style.inlines[edges];
+		if (b == null || b.cb != cb) style.inlines[edges] = b = new BoxInline(box, cb);
+		return b;
 	}
 
 	inline function k(p:String):String
@@ -33,18 +44,8 @@ class BoxInline implements InlineStyle {
 		return Math.isNaN(v) ? 0 : v;
 	}
 
-	public function fontFamilies():Array<String> {
-		var out = [], word = [];
-		for (t in s.terms("font-family")) switch t {
-			case Delim(","):
-				if (word.length > 0) out.push(word.join(" "));
-				word = [];
-			case Ident(v) | Str(v) | Keyword(v): word.push(v);
-			case _:
-		}
-		if (word.length > 0) out.push(word.join(" "));
-		return out;
-	}
+	public function fontFamilies():Array<String>
+		return box.style.families();
 
 	public function fontSize():Float
 		return s.css.fontSize();

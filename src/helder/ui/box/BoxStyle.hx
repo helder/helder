@@ -23,6 +23,8 @@ using StringTools;
 class BoxStyle {
 	public final css:CssStyle;
 	public final anonymous:Bool;
+	// (its InlineStyles by split edges, BoxInline.of's)
+	@:allow(helder.ui.box.BoxInline) final inlines:Array<Null<BoxInline>> = [null, null, null, null];
 
 	public function new(css:CssStyle, anonymous = false) {
 		this.css = css;
@@ -55,24 +57,82 @@ class BoxStyle {
 	inline function typed(p:String):Bool
 		return !anonymous || CssProperties.inherits(cast idOf(p));
 
-	public function keyword(p:String):String
+	public function keyword(p:String):String {
+		// (keywords the groups keep as an index, read without terms made for them)
+		if (!anonymous) {
+			var k:Int = switch p {
+				case "white-space-collapse": cast css.inheritedText.whiteSpaceCollapse;
+				case "text-wrap-mode": cast css.inheritedText.textWrapMode;
+				case "word-break": cast css.inheritedText.wordBreak;
+				case "line-break": cast css.inheritedText.lineBreak;
+				case "overflow-wrap": cast css.inheritedText.overflowWrap;
+				case "hyphens": cast css.inheritedText.hyphens;
+				case "direction": cast css.inheritedText.direction;
+				case "text-align-last": cast css.inheritedText.textAlignLast;
+				case "font-kerning": cast css.font.fontKerning;
+				case "list-style-position": cast css.list.listStylePosition;
+				case "visibility": cast css.ui.visibility;
+				case "pointer-events": cast css.ui.pointerEvents;
+				case "float": cast css.box.float;
+				case "box-sizing": cast css.box.boxSizing;
+				case "overflow-x": cast css.box.overflowX;
+				case "overflow-y": cast css.box.overflowY;
+				case "unicode-bidi": cast css.box.unicodeBidi;
+				case "position": cast css.position.position;
+				case "outline-style": cast css.outline.outlineStyle;
+				case "text-decoration-style": cast css.decoration.textDecorationStyle;
+				case _: -2;
+			}
+			if (k >= 0) return CssProperties.keywords(cast idOf(p))[k];
+		}
 		return switch terms(p) {
 			case [Keyword(k)] | [Ident(k)]: k;
 			case [Part(_, [Keyword(k)])]: k;
 			case _: "";
 		}
+	}
 
 	public function px(p:String):Float {
 		if (!typed(p)) return 0;
 		var id = idOf(p);
 		if (id < 0) return 0;
-		var l = css.length(cast id);
+		var l = lengthOf(p, id);
 		return switch l.kind {
 			case Px | Plain: l.value;
 			case Relative: relative(l);
 			case _: 0;
 		}
 	}
+
+	// (the groups' typed fields where layout reads often: CssStyle.length interns its terms again)
+	function lengthOf(p:String, id:Int):CssLength
+		return switch p {
+			case "margin-top": css.spacing.marginTop;
+			case "margin-right": css.spacing.marginRight;
+			case "margin-bottom": css.spacing.marginBottom;
+			case "margin-left": css.spacing.marginLeft;
+			case "padding-top": css.spacing.paddingTop;
+			case "padding-right": css.spacing.paddingRight;
+			case "padding-bottom": css.spacing.paddingBottom;
+			case "padding-left": css.spacing.paddingLeft;
+			case "border-top-width": css.border.borderTopWidth;
+			case "border-right-width": css.border.borderRightWidth;
+			case "border-bottom-width": css.border.borderBottomWidth;
+			case "border-left-width": css.border.borderLeftWidth;
+			case "width": css.box.width;
+			case "height": css.box.height;
+			case "min-width": css.box.minWidth;
+			case "min-height": css.box.minHeight;
+			case "max-width": css.box.maxWidth;
+			case "max-height": css.box.maxHeight;
+			case "letter-spacing": css.inheritedText.letterSpacing;
+			case "word-spacing": css.inheritedText.wordSpacing;
+			case "line-height": css.font.lineHeight;
+			case "font-size": css.font.fontSize;
+			case "outline-width": css.outline.outlineWidth;
+			case "outline-offset": css.outline.outlineOffset;
+			case _: css.length(cast id);
+		}
 
 	// (a length in a font's unit helder.css leaves to layout: ex and ch as half an em, cap and ic
 	// as 0.7 and 1, until the fonts' own metrics come here)
@@ -91,7 +151,7 @@ class BoxStyle {
 		if (!typed(p)) return toLen(terms(p));
 		var id = idOf(p);
 		if (id < 0) return Auto;
-		var l = css.length(cast id);
+		var l = lengthOf(p, id);
 		return switch l.kind {
 			case Px | Plain: Px(l.value);
 			case Relative: Px(relative(l));
@@ -260,6 +320,15 @@ class BoxStyle {
 	public function model():BoxStyle {
 		if (modelRead) return this;
 		modelRead = true;
+		// (an anonymous box's are all initial: none, zero, auto)
+		if (anonymous) {
+			for (_ in 0...4) {
+				margin.push(Px(0));
+				padding.push(Px(0));
+				border.push(0);
+			}
+			return this;
+		}
 		for (s in SIDES) {
 			margin.push(len('margin-$s'));
 			padding.push(len('padding-$s'));
@@ -277,10 +346,35 @@ class BoxStyle {
 
 	// ---- positioning and the rest layout asks
 
+	// (what layout asks of every box, read once: a bit each, position's keyword)
+	var traits = -1;
+	var positionWord = "";
+
+	static inline var FLOATING = 1;
+	static inline var CLIPS = 2;
+	static inline var RTL = 4;
+	static inline var VISIBLE = 8;
+	static inline var COLLAPSE = 16;
+	static inline var BREAKS = 32;
+	static inline var WRAPS = 64;
+
+	function trait(bit:Int):Bool {
+		if (traits < 0) {
+			positionWord = keyword("position");
+			var f = keyword("float"), x = keyword("overflow-x"), y = keyword("overflow-y"), v = keyword("visibility"), c = keyword("white-space-collapse");
+			traits = (f == "left" || f == "right" ? FLOATING : 0) | ((x != "visible" && x != "") || (y != "visible" && y != "") ? CLIPS : 0)
+				| (keyword("direction") == "rtl" ? RTL : 0) | (v != "hidden" && v != "collapse" ? VISIBLE : 0) | (c == "collapse" || c == "" ? COLLAPSE : 0)
+				| (c != "collapse" ? BREAKS : 0) | (keyword("text-wrap-mode") != "nowrap" ? WRAPS : 0);
+		}
+		return traits & bit != 0;
+	}
+
 	public var position(get, never):String;
 
-	function get_position():String
-		return keyword("position");
+	function get_position():String {
+		trait(0);
+		return positionWord;
+	}
 
 	public var positioned(get, never):Bool;
 
@@ -289,8 +383,8 @@ class BoxStyle {
 
 	public var floating(get, never):Bool;
 
-	function get_floating():Bool
-		return keyword("float") == "left" || keyword("float") == "right";
+	inline function get_floating():Bool
+		return trait(FLOATING);
 
 	public var absolute(get, never):Bool;
 
@@ -300,15 +394,13 @@ class BoxStyle {
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;
 
-	function get_clips():Bool {
-		var x = keyword("overflow-x"), y = keyword("overflow-y");
-		return x != "visible" && x != "" || y != "visible" && y != "";
-	}
+	inline function get_clips():Bool
+		return trait(CLIPS);
 
 	public var rtl(get, never):Bool;
 
-	function get_rtl():Bool
-		return keyword("direction") == "rtl";
+	inline function get_rtl():Bool
+		return trait(RTL);
 
 	// z-index: null for auto
 	public function zIndex():Null<Int>
@@ -324,13 +416,32 @@ class BoxStyle {
 
 	public var visible(get, never):Bool;
 
-	function get_visible():Bool
-		return keyword("visibility") != "hidden" && keyword("visibility") != "collapse";
+	inline function get_visible():Bool
+		return trait(VISIBLE);
 
 	// a stacking context of its own (CSS 2.1 §9.9.1, Color 4's opacity, Transforms 1)
 	public function stacking():Bool
 		return positioned && zIndex() != null || opacity < 1 || keyword("transform") != "none" && terms("transform").length > 0
 			|| keyword("position") == "fixed";
+
+	// ---- the font
+
+	var familyList:Null<Array<String>> = null;
+
+	// font-family's names, generic ones as their keywords (read once)
+	public function families():Array<String> {
+		if (familyList != null) return familyList;
+		var out = [], word = [];
+		for (t in terms("font-family")) switch t {
+			case Delim(","):
+				if (word.length > 0) out.push(word.join(" "));
+				word = [];
+			case Ident(v) | Str(v) | Keyword(v): word.push(v);
+			case _:
+		}
+		if (word.length > 0) out.push(word.join(" "));
+		return familyList = out;
+	}
 
 	// ---- vertical-align (Inline 3's longhands: baseline-shift, then alignment-baseline)
 
@@ -356,18 +467,16 @@ class BoxStyle {
 
 	public var collapse(get, never):Bool;
 
-	function get_collapse():Bool {
-		var k = keyword("white-space-collapse");
-		return k == "collapse" || k == "";
-	}
+	inline function get_collapse():Bool
+		return trait(COLLAPSE);
 
 	public var preserveBreaks(get, never):Bool;
 
-	function get_preserveBreaks():Bool
-		return keyword("white-space-collapse") != "collapse";
+	inline function get_preserveBreaks():Bool
+		return trait(BREAKS);
 
 	public var wraps(get, never):Bool;
 
-	function get_wraps():Bool
-		return keyword("text-wrap-mode") != "nowrap";
+	inline function get_wraps():Bool
+		return trait(WRAPS);
 }

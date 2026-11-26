@@ -67,6 +67,15 @@ function tests() {
 			walk(t.root);
 			equals(markers, ["1.  outside", "2. ", "•  outside"]);
 		});
+		test("boxes of one computed style share their BoxStyle and InlineStyle", () -> {
+			var t = build('<p><a>x</a> <a>y</a> <a style="color:red">z</a></p>');
+			var as = t.root.first.first.children().filter(b -> b.kind == Inline);
+			equals(as.length, 3);
+			assert(as[0].style == as[1].style);
+			assert(as[0].style != as[2].style);
+			assert(BoxInline.of(as[0], 100) == BoxInline.of(as[1], 100));
+			assert(BoxInline.of(as[0], 100) != BoxInline.of(as[0], 200));
+		});
 		test("counter styles", () -> {
 			equals(Counters.text("lower-roman", 14), "xiv");
 			equals(Counters.text("upper-alpha", 28), "AB");

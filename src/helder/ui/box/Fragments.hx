@@ -40,8 +40,11 @@ class Fragments {
 		runs.resize(0);
 	}
 
+	var capacity = 0;
+
 	public function add(kind:Int, box:Box, width:Float, height:Float):Int {
 		var id = count++;
+		if (id >= capacity) grow();
 		kinds[id] = kind;
 		boxes[id] = box;
 		parents[id] = -1;
@@ -57,6 +60,25 @@ class Fragments {
 		ends[id] = 0;
 		datas[id] = -1;
 		return id;
+	}
+
+	// (every column a size up at once: a growth by one is a copy per fragment)
+	function grow() {
+		capacity = capacity < 64 ? 64 : capacity * 2;
+		kinds.resize(capacity);
+		boxes.resize(capacity);
+		parents.resize(capacity);
+		firsts.resize(capacity);
+		lasts.resize(capacity);
+		nexts.resize(capacity);
+		xs.resize(capacity);
+		ys.resize(capacity);
+		ws.resize(capacity);
+		hs.resize(capacity);
+		baselines.resize(capacity);
+		starts.resize(capacity);
+		ends.resize(capacity);
+		datas.resize(capacity);
 	}
 
 	// child appended to parent's children, at (x, y) in it
