@@ -71,13 +71,13 @@ class Cli {
 			// hxmc's compiler in its place; on Linux timeout's 124 if it
 			// waits, macOS having no timeout)
 			mkdirs("bin/cli/path/node");
-			File.saveContent("bin/cli/path/node/node", "#!/bin/sh\ni=0\nwhile [ $i -lt 4000 ]; do\n  echo \"src/helder/compiler/Compiler.hx:1: characters 1-2 : a stand-in error, line $i of a compiler that does not build\" >&2\n  i=$((i + 1))\ndone\nexit 1\n");
+			File.saveContent("bin/cli/path/node/node", "#!/bin/sh\ni=0\nwhile [ $i -lt 1000 ]; do\n  echo \"src/helder/compiler/Compiler.hx:1: characters 1-2 : a stand-in error, line $i of a compiler that does not build\" >&2\n  i=$((i + 1))\ndone\nexit 1\n");
 			run("chmod", ["+x", "bin/cli/path/node/node"]);
 			final broken = ["HELDER_NODE" => FileSystem.fullPath("bin/cli/path/node/node"), "HELDER_BUILD_SERVER" => "0"];
 			final linux = HOST.startsWith("linux-");
 			final counter = (linux ? ["120", h] : []).concat(["build", "examples/counter/Counter.hx", "-o", "bin/cli/broken-compiler"]);
-			expect(linux ? "timeout" : h, counter, broken, "line 3999 of a compiler that does not build", 1);
-			expect(linux ? "timeout" : h, counter, broken, "helder's compiler does not build", 1);
+			// (~105 KB of errors, more than a pipe holds: the last of them, then the failure)
+			expect(linux ? "timeout" : h, counter, broken, "line 999 of a compiler that does not build\n    error helder's compiler does not build", 1);
 		}
 		run(h, ["build", "examples/counter/Counter.hx"]);
 		// (outside the checkout, no node_modules above it, a fresh cache, no
