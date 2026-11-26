@@ -631,9 +631,14 @@ against Haxe's goldens).
 
 The lane needs node 24 or later.
 
-`node tests/typescript/bench.mjs [names]` times the programs of `bench/`
-compiled by helder's compiler against node and against their Haxe
-versions (`bench/<Name>.hx`, by the same compiler), median of 5 runs each.
+`node tests/typescript/bench.mjs [--runs N] [--save dir] [--base dir] [names]`
+times the programs of `bench/` compiled by helder's compiler against node,
+bun's JIT (`bun build --compile`, when bun is installed) and their Haxe
+versions (`bench/<Name>.hx`, by the same compiler), the minimum of N runs
+each, interleaved; `--save` keeps the executables, `--base` times an
+earlier `--save` beside them. The `app-*` programs are app-style code
+(objects, strings, JSON, Map/Set, callbacks, classes, regular
+expressions), with no Haxe version.
 Linux x86-64, TypeScript's time over Haxe's: binary-trees 2.05, branded
 21.5 (46.5 before branded numbers and constrained parameters were typed:
 229 ms from 495), fibonacci 1.09, nbody 2.60, numeric-loop 3.89, primes
