@@ -1409,7 +1409,9 @@ step's births (an Items of their own) and the step takes them into the
 ring, so the ring is never written on the CPU: where the device has
 compute the step runs on the GPU (helder.parallel's Auto: a body whose
 Items the GPU draws), and only the births are uploaded; on WebGL2 it
-runs on the CPU's lanes and the ring is uploaded. `sparks.on` forces a
+runs on the CPU's lanes and the ring is uploaded. On Metal the births are
+the buffer's own memory, so the first `emit` after a step waits for that
+step's dispatch (which reads them). `sparks.on` forces a
 form; on the CPU's forms the same steps give the same numbers on every
 target. Tests: Particles.test.hx (births, the floor, a sphere, deaths,
 Simd and Jobs the same bits); tests/parallel/GpuCheck (the GPU's steps

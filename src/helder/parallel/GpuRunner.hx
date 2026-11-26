@@ -62,6 +62,7 @@ class GpuRunner {
 		var r = runner(device);
 		r.upload(d);
 		d.drawn = true;
+		if (d.shared) d.busy = true;
 		return cast d.buffer;
 	}
 
@@ -97,9 +98,10 @@ class GpuRunner {
 	@:allow(helder.parallel) function fetch(d:ItemsData) {
 		if (d.buffer == null) {
 			d.state |= ItemsData.CPU;
+			d.busy = false;
 			return;
 		}
-		if (device.backend == WebGPU) throw new haxe.Exception("Items: its values are the GPU's, and WebGPU reads back asynchronously: await items.read() in a coroutine first");
+		if (device.backend == WebGPU) throw new haxe.Exception("Items: its values are the GPU's, and WebGPU reads back asynchronously: await read(items) in a coroutine first");
 		var buf:Buffer = cast d.buffer;
 		if (d.shared) device.readBuffer(buf, 0, none, 0, 0) else if (d.size > 0) {
 			if (scratch.length < d.size) scratch = Bytes.alloc(d.size + (d.size >> 2));
@@ -107,6 +109,7 @@ class GpuRunner {
 			hxmc.unsafe.LibC.memcpy(d.bytes(), BytesPtr.of(scratch, 0, d.size), d.size);
 		}
 		d.state |= ItemsData.CPU;
+		d.busy = false;
 	}
 
 	// (an Items disposed: its buffer destroyed, at the next dispatch where it is collected)
@@ -183,11 +186,15 @@ class GpuRunner {
 	}
 
 	function wrote(form:GpuForm, items:Array<ItemsData>)
-		for (k in 0...items.length)
+		for (k in 0...items.length) {
+			var d = items[k];
+			// (shared bytes: read or written by the dispatch until it is done)
+			if (d.shared) d.busy = true;
 			if (form.writes[k]) {
-				items[k].state = ItemsData.GPU;
-				items[k].byGpu = true;
+				d.state = ItemsData.GPU;
+				d.byGpu = true;
 			}
+		}
 
 	// (the partials' buffers, two in turn: grown, never shrunk)
 	final parts:Array<Null<Buffer>> = [null, null];

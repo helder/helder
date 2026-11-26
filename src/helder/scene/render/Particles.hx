@@ -24,7 +24,9 @@ import helder.scene.render.ParticleShader;
 // (ParticleShader, GpuParticles' quads, streaks and fades), without a copy
 // where a dispatch moved them. On a device without compute (WebGL2) the
 // same step runs on the CPU's lanes and the ring is uploaded each frame;
-// on the CPU's forms the same steps give the same numbers everywhere.
+// on the CPU's forms the same steps give the same numbers everywhere. On
+// Metal the births are the buffer's own memory (shared): the first emit
+// after a step waits for that step's dispatch, which reads them.
 //
 //   var sparks = new Particles(65536);
 //   renderer.use(sparks);
