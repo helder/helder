@@ -324,6 +324,12 @@ class BoxInline implements InlineStyle {
 	public function paddingEnd():Float
 		return ends() ? len(s.padding[endSide()]) : 0;
 
+	public function marginTop():Float
+		return len(s.margin[0]);
+
+	public function marginBottom():Float
+		return len(s.margin[2]);
+
 	public function borderTop():Float
 		return s.border[0];
 
