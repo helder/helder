@@ -16,7 +16,7 @@ import studio.Theme.c;
 class CodePanel implements Markup {
 	public static function view(studio:Studio):View
 		return <For each={studio.talk.reading() == null ? [] : [studio.talk.reading()]}>{(r:Read<{file:String, line:Null<Int>}>) ->
-			<view tag="code-panel" position="absolute" left={0} top={0} bottom={0} width="55%" minWidth={320} background={c("card")} borderWidth="0 1 0 0"
+			<view tag="code-panel" position="absolute" left={0} top={0} bottom={0} width={covers(studio)} background={c("card")} borderWidth="0 1 0 0"
 				borderColor={c("hair2")} onPress={e -> e.stop()} onPointerDown={e -> e.stop()}>
 				<view flexDirection="row" alignItems="center" columnGap={8} height={36} padding="0 8 0 14" flexShrink={0} borderWidth="0 0 1 0" borderColor={c("hair")}>
 					<text tag="code-panel-file" flexGrow={1} minWidth={0} lineClamp={1} textOverflow="ellipsis" fontFamily={Theme.CODE} fontSize={Theme.SMALL}
@@ -28,6 +28,15 @@ class CodePanel implements Markup {
 				{code(studio, r())}
 			</view>
 		}</For>;
+
+	// the canvas' width it covers (its share, at least MIN; 0: closed): what is laid out beside it
+	public static function covers(studio:Studio):Float {
+		studio.stageSize();
+		return studio.talk.reading() == null ? 0 : Math.max(MIN, studio.stageWidth * SHARE);
+	}
+
+	static inline var SHARE = 0.55;
+	static inline var MIN = 320.0;
 
 	static function label(studio:Studio, r:{file:String, line:Null<Int>}):String
 		return Shell.fileLabel(studio, r.file) + (r.line == null ? "" : ':${r.line}');

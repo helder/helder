@@ -103,7 +103,7 @@ class Previews {
 	var order:Array<Screen> = [];
 	// the screens in view and the one focused, last told; the last asked (told again to a new host)
 	var shown = "";
-	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float, sharp:Float}> = null;
 	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
 	public var stills = false;
 	public var looping:Null<String> = null;
@@ -160,6 +160,7 @@ class Previews {
 			s.stillWidth = size.width;
 			s.stillHeight = size.height;
 		}
+		s.holds = l == null ? Math.POSITIVE_INFINITY : Density.of(l);
 		s.still(l);
 		s.stale(l != null && !kept.fresh(s.info.name, s.info.file, sources ?? opened));
 		return l != null;
@@ -186,6 +187,16 @@ class Previews {
 	}
 
 	final decoded = new Map<String, Bool>();
+
+	// a screen's loop as recorded in the frames file, of the files the
+	// running program (else the open) was made of: the selection bar's
+	// scrubber's (null: none recorded, or of other files)
+	public function recorded(name:String):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>, width:Float, height:Float}> {
+		var s = screen(name), sources = running ?? opened;
+		if (s == null || sources == null || !kept.looped(name) || !kept.fresh(name, s.info.file, sources)) return null;
+		var l = kept.loop(name), size = kept.size(name);
+		return l == null || size == null || l.lists.length == 0 ? null : {fps: l.fps, lists: l.lists, passes: l.passes, width: size.width, height: size.height};
+	}
 
 	// whether every screen is drawn from the file as its files are now
 	public function fresh():Bool
@@ -513,7 +524,7 @@ class Previews {
 					connection = c;
 					onLog('studio: the screens\' host is running (${order.length} screens, frames: $sharing)');
 					// (what is in view, told again: those draw first, the others after, once each)
-					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, _ -> {});
+					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, sharp: showWanted.sharp, stills: stills, loop: looping}, _ -> {});
 					reloaded();
 				case "Host.frame":
 					frame(m.params);
@@ -593,6 +604,7 @@ class Previews {
 		// (a still of a story whose file went since: not kept)
 		if (s != null && running != null && FileSystem.exists(s.info.file)) {
 			kept.took(s.info.name, s.info.file, path, running);
+			s.kept(s.kept.peek() + 1);
 			// (its loop's still the new one: its loop played from the file from now on)
 			if (p.loopFrames > 0) still(s, running);
 		}
@@ -752,16 +764,17 @@ class Previews {
 
 	// the screens in view (the others suspended in the host, their last
 	// frames kept here) and the one zoomed into, drawn every frame at scale
-	// pixels a point (the canvas' zoom: its frames as sharp as the studio shows them)
-	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
+	// pixels a point, the others in view at sharp (the canvas' zoom: its
+	// frames as sharp as the studio shows them)
+	public function show(names:Array<String>, focused:Null<String>, scale = 1.0, sharp = 1.0) {
+		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + sharp + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
-		showWanted = {names: names, focused: focused, scale: scale};
+		showWanted = {names: names, focused: focused, scale: scale, sharp: sharp};
 		// (a hovered loop runs live: the program; its loop from the file plays without it)
 		if (looping != null && !fileLoops(looping)) wake();
 		var c = connection;
-		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, _ -> {});
+		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale, sharp: sharp, stills: stills, loop: looping}, _ -> {});
 	}
 
 	// a devtools request about a screen (false: the host is not connected)
@@ -843,6 +856,10 @@ class Screen {
 	// (what its still's passes draw as data: a markup <Scene>'s, built again where it is shown)
 	public var stillPasses:Array<helder.ui.draw.PassData> = [];
 	public var stillHeight = 0.0;
+	// bumped as the host's still of it is kept (its loop recorded with it: recorded's)
+	public final kept = signal(0);
+	// (the pixels a point its still's images hold: Density's)
+	public var holds = Math.POSITIVE_INFINITY;
 	public var version = 0;
 	// (natively) the host's target its image shows (helder.story.NativeHost's buffer; 0: none)
 	public var buffer = 0;

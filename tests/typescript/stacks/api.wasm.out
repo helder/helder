@@ -1,0 +1,3 @@
+RangeError: too many: 3
+    at tests/typescript/stacks/api.ts:9:25
+1

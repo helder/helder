@@ -21,7 +21,7 @@ class Fixtures implements Markup {
 
 	// an explorer of them, decoding at once on this thread (volumes: the sidebar's devices)
 	public static function explorer(?dirs:Array<String>, ?volumes:Array<helder.os.Places.Volume>):Explorer {
-		Kinds.utc = true;
+		Kinds.utc(true);
 		Tiles.forget();
 		var m = files(dirs ?? ["tests/fixtures/folder", "tests/fixtures/pdf"]);
 		var x = new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], volumes ?? [], Preview.now, null, (path, done) -> done(m.text(path)));
@@ -40,7 +40,7 @@ class Fixtures implements Markup {
 	// (keep: the files kept, by name; a story's leaves out video and audio,
 	// which only some machines decode, so its counts are the same everywhere)
 	public static function samples(?keep:String->Bool):Explorer {
-		Kinds.utc = true;
+		Kinds.utc(true);
 		Tiles.forget();
 		var m = new MemoryFiles(), bytes = new Map<String, haxe.io.Bytes>();
 		for (f in Samples.FILES) {

@@ -67,9 +67,10 @@ class Kinds {
 
 	static final MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-	// dates in UTC rather than the machine's zone: the stories', so their
-	// trees are the same on every machine
-	public static var utc = false;
+	// dates in UTC rather than the machine's zone: the stories' and
+	// scenarios', so their trees are the same on every machine (a signal:
+	// each screen's own)
+	public static final utc = helder.view.graph.Graph.signalOf(false, {ownedWrite: true});
 
 	// a time as "14 Jun 2026, 22:51"
 	public static function date(seconds:Float):String {
@@ -77,7 +78,7 @@ class Kinds {
 		var d = Date.fromTime(seconds * 1000);
 		inline function two(n:Int)
 			return StringTools.lpad(Std.string(n), "0", 2);
-		return utc ? '${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}'
+		return utc() ? '${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}'
 			: '${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${two(d.getHours())}:${two(d.getMinutes())}';
 	}
 

@@ -109,7 +109,12 @@ class Frontend implements helder.compiler.Plugin {
 		hxmc.Main.generate(com, com.file, (com, p) -> {
 			phase("lower runtime");
 			var frontend = new Lowering(ready.project, p, ready.api, dev, name -> core.Define.rawDefined(com.defines, name) ? core.Define.rawDefinedValueSafe(com.defines, name, "1") : null);
-			frontend.lower();
+			// (a TSHX004 of a program importing another helder than this one: said so)
+			try frontend.lower() catch (e:Dynamic) {
+				var m = Std.string(e), why = Mixed.explain(m, Project.read, source());
+				if (why == m) throw e;
+				throw why;
+			}
 			// (what the program links of helder's API: its package's classes and permissions)
 			Uses.record(com, [for (f in p.funcs) f.name], [
 				for (f in Project.read)

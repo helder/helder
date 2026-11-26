@@ -243,18 +243,8 @@ class Hot {
 		#else
 		if (hxmc.Platform.os() == 3) {
 			var n = DevWeb.restore_length();
-			if (n >= 0) {
-				var b = haxe.io.Bytes.alloc(n);
-				hxmc.unsafe.Arena.scoped(a -> {
-					var p = a.alloc(n + 1, 1);
-					DevWeb.restore_take(p);
-					hxmc.unsafe.BytesPtr.copyIn(b, 0, p, n);
-				});
-				data = b.toString();
-			}
-			DevWeb.register(hxmc.unsafe.Callback.addr(webReload));
-			// (the devtools protocol from the page: helder.compiler.web's preview, Hot.literals)
-			DevWeb.devtools(hxmc.unsafe.Callback.addr(webDevtools));
+			if (n >= 0) data = fromPage(n, false).toString();
+			webCallbacks();
 		} else {
 			var file = Sys.getEnv("HXMC_DEV_SNAPSHOT");
 			if (file != null && file != "" && sys.FileSystem.exists(file)) data = sys.io.File.getContent(file);
@@ -405,7 +395,7 @@ class Hot {
 				#if hxmc.dev_host
 				// (Android: the library fetched from the dev server into the app's files, the snapshot there too)
 				if (helder.dev.Hosted.hosted() && m.fetch != null) {
-					var files = (cast helder.dev.Hosted.get(helder.dev.Hosted.FILES) : hxmc.unsafe.CString).toString();
+					var files = helder.dev.Hosted.text(helder.dev.Hosted.FILES);
 					var lib = files + "/hxmc-dev-" + m.fetch + ".so";
 					fetch(Std.string(m.fetch), lib);
 					m.snapshot = files + "/hxmc-dev.snapshot";
@@ -507,15 +497,26 @@ class Hot {
 	// a devtools message from the page (n bytes of JSON-RPC, DevWeb.devtools_take):
 	// the agent's, its answer through DevWeb.devtools_send
 	@:hxmc.callback static function webDevtools(n:Int):Int {
+		var m:Dynamic = try haxe.Json.parse(fromPage(n, true).toString()) catch (_:Dynamic) null;
+		if (m != null) helder.dev.Agent.receive(m);
+		return 0;
+	}
+
+	// (n bytes the page hands over: the snapshot it was given, or a devtools message)
+	@:hxmc.unsafe(gc) static function fromPage(n:Int, devtools:Bool):haxe.io.Bytes {
 		var b = haxe.io.Bytes.alloc(n);
 		hxmc.unsafe.Arena.scoped(a -> {
 			var p = a.alloc(n + 1, 1);
-			DevWeb.devtools_take(p);
+			if (devtools) DevWeb.devtools_take(p) else DevWeb.restore_take(p);
 			hxmc.unsafe.BytesPtr.copyIn(b, 0, p, n);
 		});
-		var m:Dynamic = try haxe.Json.parse(b.toString()) catch (_:Dynamic) null;
-		if (m != null) helder.dev.Agent.receive(m);
-		return 0;
+		return b;
+	}
+
+	// (the page's calls: before it loads the new build; the devtools protocol, helder.compiler.web's preview, Hot.literals)
+	@:hxmc.unsafe(gc) static function webCallbacks() {
+		DevWeb.register(hxmc.unsafe.Callback.addr(webReload));
+		DevWeb.devtools(hxmc.unsafe.Callback.addr(webDevtools));
 	}
 
 	@:hxmc.noGc static function sendDevtools(b:haxe.io.Bytes)

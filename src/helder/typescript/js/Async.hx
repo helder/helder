@@ -3,6 +3,7 @@ package helder.typescript.js;
 import helder.typescript.js.Values;
 import helder.typescript.js.Lib.*;
 import helder.async.Errors;
+import helder.typescript.js.Promises.JsPromise;
 
 // Generator objects: a compiled step function (see Frontend.resumableClosure)
 // resumed with a value and a mode (0 next, 1 throw, 2 return).
@@ -16,6 +17,10 @@ class JsGenerator extends JsObject {
 	public var frame:Array<Dynamic> = null;
 	// (the last suspension was an await, not a yield)
 	public var awaiting = false;
+	// (an async function's: its promise, and its frame while it awaits, V8's
+	// `async f (file:line:column)`, Lowering's)
+	public var promise:Null<JsPromise> = null;
+	public var awaitAt:Null<String> = null;
 	public function new(proto:JsObject, step:Dynamic) {
 		super(proto);
 		this.step = step;
@@ -26,6 +31,8 @@ class JsGenerator extends JsObject {
 
 class Async {
 	public static var GeneratorProto:JsObject;
+	// the async function resumed first in the stack running now (Promises.async)
+	public static var running:Null<JsGenerator> = null;
 	public static function setup():Void {
 		GeneratorProto = new JsObject(Builtins.IteratorProto);
 		for (name in ["next", "throw", "return"]) {
@@ -66,10 +73,27 @@ class Async {
 		return object(["value", "done"], [v, !g.suspended]);
 	}
 
-	public static function suspend(g:JsGenerator, id:Int, kind:Int):Void {
+	public static function suspend(g:JsGenerator, id:Int, kind:Int, at:String):Void {
 		g.state = id;
 		g.suspended = true;
 		g.awaiting = kind == 1;
+		g.awaitAt = at == "" ? null : at;
+	}
+
+	// the frames of the async functions awaiting the one running, as V8's
+	// async stack traces have them: each awaits the one before (null: none)
+	public static function awaits():Null<Array<String>> {
+		var g = running;
+		if (g == null) return null;
+		var r:Null<Array<String>> = null;
+		var p = g.promise;
+		while (p != null && p.awaiter != null && p.state == 0) {
+			var w = p.awaiter;
+			if (w.awaitAt == null || !w.suspended || (r != null && r.length >= Frames.MAX)) break;
+			(r ??= []).push(w.awaitAt);
+			p = w.promise;
+		}
+		return r;
 	}
 
 	// yield*: forward a resumption to the inner iterator; its result object.

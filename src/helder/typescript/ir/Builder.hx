@@ -13,7 +13,7 @@ enum JumpKind {
 // A generator or async function body: its suspension points, the value a
 // suspension hands out, and the step function's arguments (generator object,
 // value sent in, resumption mode: 0 next, 1 throw, 2 return).
-typedef Resumable = {count:Int, value:Local, gen:Local, sent:Local, mode:Local, async:Bool, generator:Bool, kinds:Map<Int, Int>};
+typedef Resumable = {count:Int, value:Local, gen:Local, sent:Local, mode:Local, async:Bool, generator:Bool, kinds:Map<Int, Int>, sites:Map<Int, String>};
 typedef JumpTarget = {labels:Array<String>, kind:JumpKind, breakCode:Int, continueCode:Int, breakDepth:Int, continueDepth:Int};
 
 class Builder {
@@ -32,6 +32,13 @@ class Builder {
 	public var constructorThis:Dynamic = null;
 	public var parameterProperties:Array<String> = null;
 	public var resumable:Resumable = null;
+	// where the code that follows comes from (SPos: the frames of a stack,
+	// helder.typescript.js.Frames), its file null before the first; quiet: a
+	// function whose frame is another's (a generator's or an async function's
+	// call, its body in the step function) has none
+	public var file:Null<String> = null;
+	public var line = 0;
+	public var quiet = false;
 	public function new(p:Program, f:FuncInfo) {
 		this.p = p;
 		this.f = f;
@@ -80,12 +87,28 @@ class Builder {
 	}
 
 	public function block(run:() -> Void):Vector<Stmt> {
-		var old = out;
+		var old = out, oldFile = file, oldLine = line;
 		out = [];
 		run();
 		var v = Vector.fromArrayCopy(out);
 		out = old;
+		// (a nested list's positions end with it, as hxmc's MirBuild reads them)
+		file = oldFile;
+		line = oldLine;
 		return v;
+	}
+
+	// the code that follows from file's line (packed: Lines), replacing a
+	// position no code followed (not a suspension point's, Functions.yieldPoint)
+	public function mark(file:Null<String>, line:Int) {
+		if (quiet || file == null) return;
+		if (out.length > 0) switch out[out.length - 1] {
+			case SPos(f, _) if (f != "%yield"): out.pop();
+			case _:
+		}
+		out.push(SPos(file, line));
+		this.file = file;
+		this.line = line;
 	}
 
 	public function coerce(e:Ex, t:Ty):Ex {

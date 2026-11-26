@@ -6,12 +6,12 @@ import helder.view.*;
 
 // The browser and the viewer, at a laptop's size: the folder as a grid
 // and as a list, dark and light; several selected; a PDF's column scrolled
-// between two pages; a Markdown document, dark and light; the inspector of
-// a photo, of a PDF and of a Markdown document; a marquee being dragged
-// over the grid; the search field focused, dark and light; a photo full size
-// with its back pill, an error in its place, the status line; an empty
-// folder, one that cannot be read, a search with no results (their trees
-// in Viewer.story.snap)
+// between two pages; the inspector of a photo, of a PDF and of a Markdown
+// document; a marquee being dragged over the grid; the search field
+// focused, dark and light; an error in a photo's place, the status line;
+// an empty folder, one that cannot be read, a search with no results (their
+// trees in Viewer.story.snap). A photo full size and a Markdown document,
+// dark and light, are Viewer.scenario.hx's (the program's own Window)
 final gridDark = story({name: "Browser/grid, dark", width: 1100, height: 700, render: c -> themed(browse(), true)});
 
 final gridLight = story({name: "Browser/grid, light", width: 1100, height: 700, render: c -> themed(browse(), false)});
@@ -124,8 +124,6 @@ final noResults = story({
 	}
 });
 
-final fit = story({name: "Viewer/fit", width: 1100, height: 700, render: c -> themed(viewing("photo 2.jpg"), true)});
-
 final error = story({name: "Viewer/error", width: 1100, height: 700, render: c -> themed(viewing("broken.jpg"), true)});
 
 final pdf = story({
@@ -143,10 +141,6 @@ final pdf = story({
 		themed(x, true);
 	}
 });
-
-final markdownDark = story({name: "Viewer/Markdown, dark", width: 1100, height: 700, render: c -> themed(welcome(), true)});
-
-final markdownLight = story({name: "Viewer/Markdown, light", width: 1100, height: 700, render: c -> themed(welcome(), false)});
 
 final inspectorMarkdown = story({
 	name: "Browser/inspector, a Markdown document",
@@ -183,15 +177,6 @@ final status = story({
 		themed(x, true);
 	}
 });
-
-// (the web build's Markdown sample full size: headings, a list, a table, code, a picture of its folder)
-private function welcome():Explorer {
-	// (by extension: FolderModel.isMedia is empty where nothing decodes them)
-	var x = Fixtures.samples(name -> !~/\.(mp4|mov|m4v|webm|mkv|m4a|mp3|flac|mka)$/i.match(name));
-	x.browser.go(Samples.ROOT);
-	x.open("Welcome.md");
-	return x;
-}
 
 // (the fixture folder browsed, decoded at once)
 private function browse():Explorer {

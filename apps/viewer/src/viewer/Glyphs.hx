@@ -42,6 +42,7 @@ class Glyphs {
 		"play" => '<path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/>'
 	];
 
+	// (by name: every screen's)
 	static final parsed = new Map<String, Svg>();
 
 	public static function get(name:String):Svg {

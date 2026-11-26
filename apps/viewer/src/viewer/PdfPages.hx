@@ -47,6 +47,7 @@ class PdfPages {
 	};
 
 	static final lock = new sys.thread.Mutex();
+	// (by path and stamp: content, so every screen's, a preview host's too)
 	static var docs:Array<{path:String, stamp:String, doc:Document}> = [];
 
 	// page index of the PDF at path (bytes: its contents, when read

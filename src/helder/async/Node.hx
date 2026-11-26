@@ -67,7 +67,7 @@ class Node implements ICancellationToken implements IElement<Node> {
 	// a child task, started on the loop (after the current task suspends)
 	public function async<T>(body:Body<T>):Task<T> {
 		var t = new Task<T>(this, ctx, body, true);
-		loop.dispatch(t);
+		Async.start(t);
 		return t;
 	}
 

@@ -79,6 +79,7 @@ class Scenario {
 	public static function define(def:ScenarioDef):Scenario
 		return new Scenario(def);
 
+
 	// a file name of its name (Pong/You win: Pong-You-win)
 	public function slug():String
 		return ~/[^A-Za-z0-9_-]+/g.replace(name, "-");

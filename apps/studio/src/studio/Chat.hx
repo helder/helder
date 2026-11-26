@@ -244,6 +244,7 @@ class Chat implements Markup {
 			background={c("card")} borderWidth={1}
 			borderColor={studio.talk.waits() ? Color.parse(waiter(studio).colour) : c(blank ? "hair" : "hair2")}
 			boxShadow={blank ? "0 24 80 rgba(0,0,0,0.35)" : "none"}>
+			<For each={blank || studio.about() == null ? [] : [studio.about()]} by={(n:String) -> n}>{(n:Read<String>) -> about(studio, n())}</For>
 			<field tag="prompt" slot="ask-input" aria-label="Prompt" value={text} minHeight={blank ? 48 : 22} fontSize={blank ? 16 : Theme.CHAT_SIZE}
 				placeholder={blank ? "What do you want to make?" : "Reply…"} ref={(n:Node) -> studio.talk.field = n}
 				onInput={e -> text(e.text)} onKeyDown={e -> if (e.key == Key.ENTER) send()}/>
@@ -271,6 +272,24 @@ class Chat implements Markup {
 					</button>
 				</Show>
 			</view>
+		</view>;
+	}
+
+	// what the prompt is sent about (AcpAgent.blocks: the frame's name and its
+	// PNG): the frame, its picture; × sends it about the whole app, the frame
+	// still selected
+	static function about(studio:Studio, name:String):View {
+		var s = studio.previews?.screen(name), p = SelectionBar.parts(studio.project, name);
+		return <view tag="about-chip" flexDirection="row" alignItems="center" columnGap={6} alignSelf="flex-start" maxWidth="100%" height={24}
+			padding="0 4 0 4" borderRadius={Theme.CHIP} background={c("bubble")}>
+			<Show when={s?.image() != null}>
+				<image tag="about-image" src={s?.image()} height={16} width={16 * (s == null ? 1 : s.width() / Math.max(1, s.height()))} borderRadius={2} flexShrink={0}/>
+			</Show>
+			<text fontSize={11} color={c("ink2")} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}>{"About: " + (p?.label ?? name)}</text>
+			<button tag="about-clear" aria-label="Not about this frame" width={16} height={16} alignItems="center" justifyContent="center" flexShrink={0}
+				cursor="pointer" onPress={() -> studio.clearAbout()}>
+				<image src={Icons.close} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("ink3")}/>
+			</button>
 		</view>;
 	}
 

@@ -71,6 +71,19 @@ function tests() {
 		equals(host.frame(2), 0);
 		equals(host.busy(), false);
 	});
+	var sharp = test("sharp: those in view drawn at the studio's zoom; out of view, again at the host's", () -> {
+		var a = new Story("A", _ -> View.view(<view/>), 1, null, 100, 100);
+		var b = new Story("B", _ -> View.view(<view/>), 1, null, 100, 100);
+		var sizes = [];
+		var host = new Host([a, b], new HeadlessHost((s, _) -> sizes.push(s.name + " " + s.drawnScale)));
+		host.still(true);
+		host.show(["A", "B"], 2.5);
+		host.frame(0);
+		host.show(["B"], 2.5);
+		host.frame(1);
+		host.frame(2);
+		equals(sizes, ["A 2.5", "B 2.5", "A 1"]);
+	});
 	var recorded = test("a loop recorded once a build; a story's randomness seeded: built again, the same still", () -> {
 		var s = new Story("Random/loop", _ -> View.view(<view width={10 + Math.random() * 80} height={10} background="#000000"/>), 1, null, 100, 100, 1.0);
 		var host = new Host([s], new HeadlessHost());
@@ -110,6 +123,7 @@ function tests() {
 	// (as wasm32-wasi the host's device is the browser's WebGPU or WebGL2, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
 	recorded.skip();
+	sharp.skip();
 	stills.skip();
 	outOfView.skip();
 	throws.skip();

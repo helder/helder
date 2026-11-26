@@ -155,7 +155,11 @@ class Frontend extends ApiCalls {
 				for (n in statementsOf(m.file)) statement(n, true);
 			}
 			// (timers and promises: only a program that has them runs the loop)
-			if (eventLoop) b.runtime("libRunEventLoop", []);
+			// (the loop's callbacks are no frames of the program's last line)
+			if (eventLoop) {
+				if (lines) b.mark("", 0);
+				b.runtime("libRunEventLoop", []);
+			}
 		});
 		// (its agnostic literals' code for each renderer, set first)
 		if (tsx != null) body = Vector.fromArrayCopy(tsx.install().concat(body.toArray()));

@@ -8,3 +8,8 @@ declare function clearTimeout(id: number | undefined): void;
 declare function clearInterval(id: number | undefined): void;
 declare function queueMicrotask(callback: () => void): void;
 declare function structuredClone<T>(value: T): T;
+// (V8's, which node's types declare: an object's stack from here, and how many frames a stack keeps)
+interface ErrorConstructor {
+	captureStackTrace(target: object, constructorOpt?: Function): void;
+	stackTraceLimit: number;
+}
