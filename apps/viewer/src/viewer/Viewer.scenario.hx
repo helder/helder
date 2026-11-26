@@ -60,9 +60,9 @@ final noResults = scenario({
 	}
 });
 
-final searchDark = scenario({name: "App/Search focused, dark", size: [1100, 700], dark: true, steps: [tap("Search this folder")]});
+final searchDark = scenario({name: "App/Search focused, dark", size: [1100, 700], dark: true, steps: [tap("Search")]});
 
-final searchLight = scenario({name: "App/Search focused, light", size: [1100, 700], dark: false, steps: [tap("Search this folder")]});
+final searchLight = scenario({name: "App/Search focused, light", size: [1100, 700], dark: false, steps: [tap("Search")]});
 
 final empty = scenario({name: "App/Empty folder", size: [1100, 700], dark: true, boot: () -> act(Go(Sandbox.EMPTY))});
 

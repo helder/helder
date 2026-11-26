@@ -26,7 +26,7 @@ export type Query = { role?: string; name?: string; label?: string; text?: strin
 // scenario({...})'s fields (TypeScript's helder/scenario the same)
 export type ScenarioDef = { name: string; boot?: () => void; time?: string | number; seed?: number; zone?: string; locale?: string; settings?: SettingsOverride; http?: Record<string, number | string | object>; steps?: Step[]; size?: number[]; dark?: boolean; loop?: number; play?: number };
 
-// (TypeScript's scenario({...}): helder/scenario)
+// (TypeScript's scenario({...}): helder/scenario; its position this file's, none)
 export declare function scenario(def: ScenarioDef): Scenario;
 
 // (main's root held, its top-level effects recorded: before the app's modules run)
