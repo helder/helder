@@ -183,6 +183,12 @@ if(mine()) {
         console.log('PASS platform control (a condition that is no constant: GetTickCount64 linked)');
     }
 }
+// errors' stacks: stacks.mjs (their frames against node's)
+if(mine()) {
+// (22 builds: past run's two minutes on a loaded machine)
+ok(spawnSync(process.execPath,[`${T}/stacks.mjs`],{encoding:'utf8',timeout:600000}),'errors\' stacks (stacks.mjs)');
+console.log('PASS stacks (stacks.mjs)');
+}
 // helder/native's definitions: native.mjs (native.c, objc, com, jni where
 // their systems are; refused elsewhere)
 if(mine()) {
