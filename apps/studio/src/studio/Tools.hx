@@ -160,6 +160,7 @@ class Tools implements Mcp.Target {
 			case "project.read": text(read(args.path));
 			case "project.patch": text(Json.stringify(patch(args, agent), "  "));
 			case "build.check":
+				studio.settle();
 				var pr = studio.previews;
 				if (pr == null) throw "no project open";
 				var r = pr.check();
@@ -168,7 +169,9 @@ class Tools implements Mcp.Target {
 				var crashed = studio.crashes();
 				if (crashed.length > 0) out.crashed = crashed;
 				text(Json.stringify(out, "  "));
-			case "run.snap": snap(args);
+			case "run.snap":
+				studio.settle();
+				snap(args);
 			case "run.tree": text(Json.stringify(tree(args.screen), "  "));
 			case "studio.focus":
 				// (the agent is where the user looks)

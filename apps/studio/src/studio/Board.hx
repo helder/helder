@@ -107,7 +107,7 @@ class Board implements Markup {
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
 			onPointerEnter={_ -> studio.hover(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
-			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null && !s.crashedSignal() ? 1 : 0.45}/>
+			<image src={s.image()} width={r().w} height={r().h} opacity={studio.shownFailure() == null && !s.crashedSignal() ? 1 : 0.45}/>
 			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
 			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
@@ -117,7 +117,7 @@ class Board implements Markup {
 	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
 		var n = new StillFrame(s.still.peek(), s.stillPasses, s.stillWidth, s.stillHeight);
 		n.tag = "still";
-		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null || s.crashedSignal()}, v -> {
+		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.shownFailure() != null || s.crashedSignal()}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
 		});
 		// (hovered: its loop from the file, played; let go, the still)
@@ -195,14 +195,20 @@ class Board implements Markup {
 	}
 
 	// (by a live frame: a failed build's first error and where, else what it
-	// threw when run; "": neither)
+	// threw when run; "": neither. A failed build: one chip a row, by its first frame)
 	static function trouble(studio:Studio, name:String):String {
 		var info = studio.project?.screen(name);
 		if (info == null || info.source.match(Design(_))) return "";
-		var f = studio.failure();
-		if (f != null) return "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}');
+		var f = studio.shownFailure();
+		if (f != null) return first(studio, name) ? "Build failed · " + (f.at == null ? f.message : '${f.at} · ${f.message}') : "";
 		var s = studio.previews?.screen(name);
 		return s != null && s.crashedSignal() ? "Crashed · " + s.report() : "";
+	}
+
+	// (the first of its row's frames)
+	static function first(studio:Studio, name:String):Bool {
+		var rs = studio.layout.screens(), r = Lambda.find(rs, r -> r.name == name);
+		return r != null && Lambda.find(rs, x -> x.flow == r.flow)?.name == name;
 	}
 
 	// (a frame's width in the stage's points)

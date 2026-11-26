@@ -173,6 +173,16 @@ class Studio {
 	// why, its first error and the diagnostics (the live frames show it,
 	// Board; the prompt's turn can)
 	public final failure:Signal<Null<Failure>> = signal(null);
+	// the failure as the canvas shows it: the agent's patches settled first (a
+	// multi-file change breaks the build between its files, then mends it),
+	// none at once; the agent's tools read failure, not this
+	public final shownFailure:Signal<Null<Failure>> = signal(null);
+	// (when the agent last patched; 0: settled, its build.check or run.snap,
+	// its turn's end)
+	var patchedAt = 0.0;
+
+	public function settle()
+		patchedAt = 0;
 	// the status line's message
 	public final message = signal("");
 	// the stage's size (points): what fits a view; its node; bumped when it changes
@@ -552,6 +562,8 @@ class Studio {
 		var key = r == null ? "" : '${r.x} ${r.y} ${r.width} ${r.height}';
 		if (key != playRect && (playRect = key) != "")
 			log("player", {rect: [r.x, r.y, r.width, r.height], stage: [stageWidth, stageHeight], compact: compactNow});
+		var f = failure.peek();
+		if (f != shownFailure.peek() && (f == null || haxe.Timer.stamp() - patchedAt > SETTLED)) shownFailure(f);
 		if (framing && stageWidth > 0) {
 			framing = false;
 			if (!camera.taken) frameAll();
@@ -755,6 +767,9 @@ class Studio {
 		real = true;
 		framesCame();
 	}
+
+	// (seconds without a patch before a failed build shows on the canvas)
+	static inline var SETTLED = 1.5;
 
 	// (the framing's least scale: a still stays readable; the frames past the view's
 	// end go to the edge's tab)
@@ -1552,6 +1567,7 @@ class Studio {
 	// frame when it named none), what it made marked (Marks)
 	function agentEdited(file:String, tx:Transaction) {
 		touch();
+		patchedAt = haxe.Timer.stamp();
 		var by = docs.nextUndo()?.by;
 		if (by == null || project == null) return;
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
@@ -2033,6 +2049,7 @@ class Studio {
 		log("asked", {prompt: p, starting: booting.peek()});
 		var answered = false, heard = -1.0, asked:Null<String> = null;
 		function end(e:Agent.AgentEvent) {
+			settle();
 			if (asked != null) questions.close(asked);
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
 			var ps = a == local ? [] : problems(), cs = a == local ? [] : previews?.crashed() ?? [];
