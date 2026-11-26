@@ -42,6 +42,8 @@ class AttrMacro {
 					name: name,
 					access: [AStatic],
 					pos: pos,
+					// (converted as its type is: a literal of an enum's checked, enumAttribute)
+					meta: [{name: ":converted", pos: pos}],
 					kind: FFun({args: [{name: "style", type: macro :helder.ui.Style}, {name: "v", type: macro :Dynamic}], ret: macro :Void, expr: macro style.$name = $conv})
 				});
 			}
@@ -160,29 +162,60 @@ class AttrMacro {
 		return macro @:pos(pos) helder.ui.view.NodeRenderer.setAttribute;
 	}
 
-	// (CSS's names that are another's here)
-	static final CSS:Map<String, String> = [
-		"flex-wrap" => "wrap", "flexWrap" => "wrap", "border-radius" => "radius", "borderRadius" => "radius",
-		"background-color" => "background", "backgroundColor" => "background", "box-shadow" => "shadow", "boxShadow" => "shadow"
-	];
+	// the message for an attribute none of ui's elements has: the name meant (AttrNames)
+	public static function unknown(name:String):String
+		return AttrNames.unknown(name, [for (t in table()) if (t.name.indexOf("*") < 0) t.name]);
 
-	// the message for an attribute none of ui's elements has: the name meant,
-	// CSS's (CSS) or the nearest of theirs
-	public static function unknown(name:String):String {
-		var names = [for (t in table()) if (t.name.indexOf("*") < 0) t.name];
-		var meant = CSS.get(name);
-		if (meant != null && names.indexOf(meant) < 0) meant = null;
-		if (meant == null) {
-			var best = 4;
-			for (n in names) {
-				var d = distance(name.toLowerCase(), n.toLowerCase());
-				if (d < best) {
-					best = d;
-					meant = n;
-				}
+	// a literal value of an attribute checked: one an enum attribute does not take an error, its values said
+	public static function checkValue(name:String, value:String, pos:Position) {
+		var e = enumAttribute(name);
+		if (e != null && e.keys.indexOf(AttrNames.key(value)) < 0) Context.error(AttrNames.badValue(name, value, e.type, e.keys), pos);
+	}
+
+	// (an attribute that is a Style property of an enum abstract, converted as convert does, not
+	// by a function of StyleAttrs' own: its type's name and the keys its values are matched by)
+	static function enumAttribute(name:String):Null<{type:String, keys:Array<String>}> {
+		var c = camel(name);
+		for (f in styleProperties())
+			if (f.name == name || f.name == c || kebab(f.name) == name) {
+				if (ownConverter(f.name)) return null;
+				return enumKeys(f.type);
 			}
+		return null;
+	}
+
+	static function ownConverter(property:String):Bool
+		return switch Context.getType("helder.ui.view.StyleAttrs") {
+			case TInst(c, _): Lambda.exists(c.get().statics.get(), f -> f.name == property && !f.meta.has(":converted"));
+			case _: false;
 		}
-		return "helder.ui: no attribute " + name + " (not one of NodeRenderer's or Style's)" + (meant == null ? "" : "; did you mean " + meant + "?");
+
+	// an enum abstract's keys (its values' names and strings, @:css's, as AttrNames.key gives them), null: not one
+	static function enumKeys(t:Type):Null<{type:String, keys:Array<String>}> {
+		t = lazy(t);
+		switch t {
+			case TAbstract(_.get() => {name: "Null", pack: []}, [inner]) | TType(_.get() => {name: "Null", pack: []}, [inner]): return enumKeys(inner);
+			case TType(_, _): return enumKeys(Context.follow(t, true));
+			case TAbstract(a, _) if (a.get().meta.has(":enum")):
+				var keys = [];
+				for (f in a.get().impl.get().statics.get()) {
+					if (!f.meta.has(":enum") || !f.kind.match(FVar(_, _))) continue;
+					if (keys.indexOf(AttrNames.key(f.name)) < 0) keys.push(AttrNames.key(f.name));
+					switch f.expr()?.expr {
+						case TConst(TString(s)) | TCast({expr: TConst(TString(s))}, _) if (keys.indexOf(AttrNames.key(s)) < 0): keys.push(AttrNames.key(s));
+						case _:
+					}
+					for (m in f.meta.extract(":css"))
+						for (p in m.params)
+							switch p.expr {
+								case EConst(CString(s, _)) if (keys.indexOf(AttrNames.key(s)) < 0): keys.push(AttrNames.key(s));
+								case _:
+							}
+				}
+				return {type: a.get().name, keys: keys};
+			case _:
+				return null;
+		}
 	}
 
 	static function camel(n:String):String {
@@ -191,24 +224,13 @@ class AttrMacro {
 		return parts[0] + [for (p in parts.slice(1)) p.charAt(0).toUpperCase() + p.substr(1)].join("");
 	}
 
-	// (Levenshtein's)
-	static function distance(a:String, b:String):Int {
-		var prev = [for (j in 0...b.length + 1) j];
-		for (i in 1...a.length + 1) {
-			var cur = [i];
-			for (j in 1...b.length + 1)
-				cur.push(Std.int(Math.min(Math.min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + (a.charCodeAt(i - 1) == b.charCodeAt(j - 1) ? 0 : 1))));
-			prev = cur;
-		}
-		return prev[b.length];
-	}
-
 	// what setter resolves at compile time, as names to their functions' paths
 	// (each attribute's, as named and in kebab-case; data-* and aria-* as
 	// prefixes, * any other name: setAttribute): helder.typescript's manifest
 	// lists them (NodeRenderer.setterTable)
-	public static function table():Array<{name:String, fn:String}> {
-		var out = [
+	// (an enum attribute's row: its type's name and the keys of its values, which a literal is checked by)
+	public static function table():Array<{name:String, fn:String, ?type:String, ?keys:Array<String>}> {
+		var out:Array<{name:String, fn:String, ?type:String, ?keys:Array<String>}> = [
 			{name: "data-*", fn: "helder.ui.view.NodeRenderer.setData"},
 			{name: "aria-*", fn: "helder.ui.view.NodeRenderer.setData"}
 		];
@@ -217,7 +239,8 @@ class AttrMacro {
 			for (k in [n, kebab(n)])
 				if (!seen.exists(k)) {
 					seen.set(k, true);
-					out.push({name: k, fn: fn});
+					var e = enumAttribute(k);
+					out.push(e == null ? {name: k, fn: fn} : {name: k, fn: fn, type: e.type, keys: e.keys});
 				}
 		// (setter's order: the renderer's own attributes, then Style's)
 		switch Context.getType("helder.ui.view.NodeRenderer") {
@@ -340,8 +363,8 @@ class AttrMacro {
 		};
 	}
 
-	static function key(s:String):String
-		return StringTools.replace(StringTools.replace(s, "-", ""), "_", "").toLowerCase();
+	static inline function key(s:String):String
+		return AttrNames.key(s);
 
 	// [every value of an enum abstract]
 	public static function values(e:Expr):Expr {

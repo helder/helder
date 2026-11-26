@@ -115,11 +115,12 @@ function tests() {
 					if (s.previews != null) s.previews.show(["App/Good", "App/Bad"], null);
 					helder.async.Async.delay(0.1);
 				});
-				s.tools.call("project.patch", {path: "app.tsx", text: 'export function Good() {\n\treturn <view grow={1}/>;\n}\n\nexport function Bad() {\n\treturn <view grow={1}>\n\t\t<text text-align="end">Bad</text>\n\t</view>;\n}\n'}, "a");
+				s.tools.call("project.patch", {path: "app.tsx", text: 'const end: any = ["e", "nd"].join("");\n\nexport function Good() {\n\treturn <view grow={1}/>;\n}\n\nexport function Bad() {\n\treturn <view grow={1}>\n\t\t<text text-align={end}>Bad</text>\n\t</view>;\n}\n'}, "a");
 				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { Good } from "./app";\n\nUiWindow.run(<Surface title="Two" width={200} height={200}><Good/></Surface>);\n'}, "a");
 				var r = s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { Good, Bad } from "./app";\n\nexport const good = story({ name: "App/Good", width: 200, height: 200, render: () => <Good/> });\nexport const bad = story({ name: "App/Bad", width: 200, height: 200, render: () => <Bad/> });\n'}, "a");
 				var a:Dynamic = haxe.Json.parse(r.content[0].text);
-				var why = "app.tsx:7: text-align: end is not a TextAlign";
+				// (a value known only when it runs: a literal one is an error when compiling)
+				var why = "app.tsx:9: text-align: end is not a TextAlign";
 				equals(a.result, "crashed");
 				equals(a.crashed, ['App/Bad: $why']);
 				equals([s.previews.screen("App/Good").version > 0, s.previews.screen("App/Bad").crashed], [true, true]);

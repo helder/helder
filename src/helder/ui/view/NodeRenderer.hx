@@ -69,7 +69,13 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			// (a literal naming env(): bound to the safe area, SafeArea)
 			case EConst(CString(s, _)) if (v.expr.match(EConst(CString(_.indexOf("env(") >= 0 => true, _)))):
 				macro helder.ui.SafeArea.bind($n, ${helder.ui.view.AttrMacro.setter(s, name.pos, lenient)}, $name, $v);
-			case EConst(CString(s, _)): macro ${helder.ui.view.AttrMacro.setter(s, name.pos, lenient)}($n, $name, $v);
+			case EConst(CString(s, _)):
+				// (a literal value an enum attribute does not take: an error here, not when it is set)
+				switch v.expr {
+					case EConst(CString(value, _)) if (!lenient): helder.ui.view.AttrMacro.checkValue(s, value, v.pos);
+					case _:
+				}
+				macro ${helder.ui.view.AttrMacro.setter(s, name.pos, lenient)}($n, $name, $v);
 			case _: macro helder.ui.view.NodeRenderer.setAttribute($n, $name, $v);
 		}
 	}

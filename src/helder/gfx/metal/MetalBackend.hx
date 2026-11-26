@@ -999,7 +999,7 @@ class MetalBackend {
 		cmd = Msg.id(queue, S.commandBuffer);
 		var src:Ptr<UInt8> = Msg.id(readback, ObjC.sel("contents"));
 		// (the layer's and a shared texture's BGRA8 as RGBA; a render target of RGBA8 (frameInto) as it is)
-		var bgra = Msg.i(texture, ObjC.sel("pixelFormat")) != MTL.PixelFormatRGBA8Unorm;
+		var bgra = Msg.i(texture, ObjC.sel("pixelFormat")).toInt() != MTL.PixelFormatRGBA8Unorm;
 		for (i in 0...width * height) {
 			dst.set(4 * i, src[4 * i + (bgra ? 2 : 0)]);
 			dst.set(4 * i + 1, src[4 * i + 1]);
