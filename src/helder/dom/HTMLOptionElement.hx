@@ -4,6 +4,11 @@ package helder.dom;
 // shows the selected option's children (HTML 4.10.10).
 @:allow(helder.dom)
 class HTMLOptionElement extends Element {
+	// its selectedness (set: dirty, so the selected attribute no longer changes it)
+	public var selected(get, set):Bool;
+	// its selected attribute
+	public var defaultSelected(get, set):Bool;
+
 	var selectedness = false;
 	var dirtiness = false;
 	var cachedSelect:Null<HTMLSelectElement> = null;
@@ -11,6 +16,27 @@ class HTMLOptionElement extends Element {
 	function new(doc:Document, prefix:Null<String>) {
 		super(doc, "option", Namespaces.HTML, prefix);
 		doc.selects++;
+	}
+
+	inline function get_selected():Bool
+		return selectedness;
+
+	function set_selected(v:Bool):Bool {
+		selectedness = v;
+		dirtiness = true;
+		var s = cachedSelect;
+		if (s == null) return v;
+		if (v) deselectOthers(s);
+		s.resetSelectedness(true);
+		return v;
+	}
+
+	function get_defaultSelected():Bool
+		return byNamespace(null, "selected") != null;
+
+	function set_defaultSelected(v:Bool):Bool {
+		if (v) setAttribute("selected", "") else removeAttribute("selected");
+		return v;
 	}
 
 	// (when created: selected if it has a selected attribute)

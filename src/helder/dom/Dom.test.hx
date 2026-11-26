@@ -91,6 +91,22 @@ function tests() {
 			doc.getElementsByTagName("option").item(0).setAttribute("selected", "");
 			equals(shown.textContent, "A");
 		});
+		test("an option's selected and defaultSelected", () -> {
+			var doc = Dom.parse("<select><button><selectedcontent></selectedcontent></button><option>A<option selected>B</select>");
+			var options = doc.getElementsByTagName("option");
+			var a:HTMLOptionElement = cast options.item(0), b:HTMLOptionElement = cast options.item(1);
+			equals([a.selected, b.selected, a.defaultSelected, b.defaultSelected], [false, true, false, true]);
+			a.selected = true;
+			equals([a.selected, b.selected], [true, false]);
+			equals(doc.getElementsByTagName("selectedcontent").item(0).textContent, "A");
+			// (a is dirty now: its attribute no longer changes its selectedness; b's still does)
+			a.defaultSelected = true;
+			a.defaultSelected = false;
+			equals([a.selected, a.hasAttribute("selected")], [true, false]);
+			b.defaultSelected = false;
+			b.defaultSelected = true;
+			equals([a.selected, b.selected], [false, true]);
+		});
 		test("processing instructions' attributes", () -> {
 			var pi:ProcessingInstruction = cast Dom.parse("<?start name='a&amp;b' n=\"2\"?>").firstChild;
 			equals(pi.target, "start");

@@ -89,10 +89,12 @@ attribute change through its one step: where mutation records and live
 ranges will hook in.
 
 Element creation is one path, the standard's "create an element", which
-picks the element's class: `HTMLTemplateElement` (its `content`), and the
-select, option and selectedcontent elements' own (their HTML behaviour:
-an option's selectedness, a select's selectedcontent showing a copy of its
-selected option, kept up as options and attributes change). Every other
+picks the element's class: `HTMLTemplateElement` (its `content`),
+`HTMLOptionElement` (`selected`: its selectedness, dirty once set;
+`defaultSelected`: its selected attribute), and the select and
+selectedcontent elements' own (their HTML behaviour: a select's
+selectedcontent showing a copy of its selected option, kept up as options
+and attributes change). Every other
 element is an `Element`; HTML's other element classes come later.
 
 The tree is linked siblings, no arrays per node; the collections are views
