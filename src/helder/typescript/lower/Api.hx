@@ -149,7 +149,7 @@ class MRenderer {
 	public final native:Bool;
 	public final markEnds:Bool;
 	public final functions:Map<String, String> = [];
-	public final setters:Null<{names:Map<String, String>, prefixes:Map<String, String>, fallback:Null<String>}>;
+	public final setters:Null<{names:Map<String, String>, prefixes:Map<String, String>, fallback:Null<String>, values:Map<String, {type:String, keys:Array<String>}>}>;
 
 	public function new(path:String, d:Dynamic) {
 		this.path = path;
@@ -166,8 +166,21 @@ class MRenderer {
 		setters = d.setters == null ? null : {
 			names: [for (f in Reflect.fields(d.setters.names)) f => Reflect.field(d.setters.names, f)],
 			prefixes: [for (f in Reflect.fields(d.setters.prefixes)) f => Reflect.field(d.setters.prefixes, f)],
-			fallback: d.setters.fallback
+			fallback: d.setters.fallback,
+			values: d.setters.values == null ? [] : [for (f in Reflect.fields(d.setters.values)) f => Reflect.field(d.setters.values, f)]
 		};
+	}
+
+	// a literal attribute name and value's error when compiling (null: none): a name
+	// none of its setters is (its fallback's: an error when set), a value its enum does
+	// not take; the name meant, the values taken said (helder.ui.view.AttrNames)
+	public function attributeError(name:String, value:Null<String>):Null<String> {
+		if (setters == null || setters.fallback == null) return null;
+		var known = setters.names.exists(name) || Lambda.exists([for (p in setters.prefixes.keys()) p], p -> StringTools.startsWith(name, p));
+		if (!known) return helder.ui.view.AttrNames.unknown(name, [for (n in setters.names.keys()) n]);
+		var e = setters.values.get(name);
+		if (value != null && e != null && e.keys.indexOf(helder.ui.view.AttrNames.key(value)) < 0) return helder.ui.view.AttrNames.badValue(name, value, e.type, e.keys);
+		return null;
 	}
 
 	// the function setting attribute name (setters), or null: setProperty's
