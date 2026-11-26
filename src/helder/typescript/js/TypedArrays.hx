@@ -19,6 +19,7 @@ class JsTypedArray extends JsObject {
 
 	public function new(proto:JsObject, kind:Int, buffer:JsBuffer, offset:Int, count:Int) {
 		super(proto);
+		form = Form.TYPED;
 		this.kind = kind;
 		this.buffer = buffer;
 		this.offset = offset;

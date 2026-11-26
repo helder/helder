@@ -34,6 +34,15 @@ class Props {
 	public function new() {}
 }
 
+// What an object is, for the property paths: one field to test where
+// Std.isOfType would walk the class chain.
+class Form {
+	public static inline var PLAIN = 0;
+	public static inline var ARRAY = 1;
+	public static inline var TYPED = 2;
+	public static inline var FUNCTION = 3;
+}
+
 class JsObject {
 	public var proto:JsObject;
 	public var props:Props = null;
@@ -42,6 +51,8 @@ class JsObject {
 	public var layout:Layout = null;
 	// (zero for a new object: compiled code makes typed instances without this constructor)
 	public var bits = 0;
+	// (a Form: zero, plain, for compiled code's typed instances too)
+	public var form = Form.PLAIN;
 
 	static inline var NOT_EXTENSIBLE = 1;
 	// a typed class's prototype (helder.typescript.lower): compiled code
@@ -91,6 +102,17 @@ class JsObject {
 			if (i != null) return layout.get(this, i);
 		}
 		return props.slots.get(k);
+	}
+
+	// an own property's value, or absent: one lookup where hasOwn and getOwn take two
+	public function lookup(k:String, absent:Dynamic):Dynamic {
+		if (layout != null) {
+			var i = layout.index.get(k);
+			if (i != null) return layout.get(this, i);
+		}
+		if (props == null) return absent;
+		var v = props.slots.get(k);
+		return !Lib.same(v, null) || props.slots.exists(k) ? v : absent;
 	}
 
 	// an own property's names, in order
@@ -182,6 +204,12 @@ class JsArray extends JsObject {
 	public var nums:Array<Float> = null;
 	@:isVar public var items(get, set):Array<Dynamic> = [];
 	public var length:Float = 0;
+
+	public function new(proto:JsObject) {
+		super(proto);
+		form = Form.ARRAY;
+	}
+
 	override public function tag():String return "Array";
 
 	inline function get_items():Array<Dynamic> {
@@ -241,6 +269,7 @@ class JsFunction extends JsObject {
 	public var alloc:JsObject->JsObject = null;
 	public function new(proto:JsObject, kind:Int, name:String, arity:Int) {
 		super(proto);
+		form = Form.FUNCTION;
 		this.kind = kind;
 		this.name = name;
 		this.arity = arity;
@@ -265,7 +294,10 @@ class JsMap extends JsObject {
 	public var isSet:Bool;
 	// (a WeakMap or WeakSet: same representation, its own methods)
 	public var weak = false;
-	// (lookup indexes: primitive keys by encoding, objects and symbols by identity)
+	// (the live entries)
+	public var count = 0;
+	// (lookup indexes: strings, other primitive keys by encoding, objects and symbols by identity)
+	public var stringIndex:Map<String, Int> = null;
 	public var primitiveIndex:Map<String, Int> = null;
 	public var objectIndex:haxe.ds.ObjectMap<Dynamic, Int> = null;
 	public function new(proto:JsObject, isSet:Bool) {

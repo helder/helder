@@ -39,17 +39,28 @@ class Seed {
 		return a % b;
 	}
 
+	// (integers by their digits: hxmc's shortest digits are exact big-integer
+	// arithmetic, slow for the numbers most text is made of)
 	public static function numberText(v:Float):String {
 		if (v == 0) return "0";
+		if (v >= -2147483648.0 && v <= 2147483647.0) {
+			var i = Std.int(v);
+			if (i == v) return Std.string(i);
+		} else if (v > -9007199254740992.0 && v < 9007199254740992.0 && Math.ffloor(v) == v) {
+			var a = v < 0 ? -v : v, high = Math.ffloor(a / 1e9);
+			var low = Std.string(Std.int(a - high * 1e9));
+			return (v < 0 ? "-" : "") + Std.string(Std.int(high)) + "000000000".substr(low.length) + low;
+		}
+		// (the rest: the shortest digits, powers of two too)
 		return Numbers.text(v);
 	}
 
 	public static function text(v:Dynamic):String {
+		if (Std.isOfType(v, String)) return v;
 		if (Lib.same(v, undefinedValue)) return "undefined";
 		if (v == null) return "null";
 		if (Std.isOfType(v, Bool)) return v ? "true" : "false";
-		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return numberText(v);
-		if (Std.isOfType(v, String)) return v;
+		if (Std.isOfType(v, Float)) return numberText(v);
 		if (Std.isOfType(v, Symbols.JsSymbol)) return Lib.error("TypeError", "Cannot convert a Symbol value to a string");
 		if (Lib.isObject(v)) return text(Lib.toPrimitive(v, "string"));
 		return Std.string(v);
@@ -58,7 +69,7 @@ class Seed {
 	public static function truth(v:Dynamic):Bool {
 		if (v == null || Lib.same(v, undefinedValue)) return false;
 		if (Std.isOfType(v, Bool)) return v;
-		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) {
+		if (Std.isOfType(v, Float)) {
 			var n:Float = v;
 			return n != 0 && !Math.isNaN(n);
 		}
@@ -73,7 +84,7 @@ class Seed {
 		if (Lib.same(v, undefinedValue)) return "undefined";
 		if (v == null) return "object";
 		if (Std.isOfType(v, Bool)) return "boolean";
-		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return "number";
+		if (Std.isOfType(v, Float)) return "number";
 		if (Std.isOfType(v, String)) return "string";
 		if (Std.isOfType(v, Symbols.JsSymbol)) return "symbol";
 		if (Std.isOfType(v, JsFunction)) return "function";
@@ -104,6 +115,7 @@ class Seed {
 	}
 
 	public static function numeric(v:Dynamic):Float {
+		if (Std.isOfType(v, Float)) return v;
 		if (Lib.same(v, undefinedValue)) return Math.NaN;
 		if (v == null) return 0;
 		if (Std.isOfType(v, Bool)) return v ? 1 : 0;
@@ -339,6 +351,8 @@ class Seed {
 
 	public static function libCallMethod(o:Dynamic, k:Dynamic, args:Array<Dynamic>):Dynamic return Lib.callMethod(o, k, args);
 
+	public static function libCallNamed(o:Dynamic, name:String, args:Array<Dynamic>):Dynamic return Lib.callNamed(o, name, args);
+
 	public static function libConstruct(f:Dynamic, args:Array<Dynamic>, newTarget:Dynamic):Dynamic return Lib.construct(f, args, newTarget);
 
 	public static function libSuperConstruct(cls:Dynamic, args:Array<Dynamic>, newTarget:Dynamic):Dynamic return Lib.superConstruct(cls, args, newTarget);
@@ -401,6 +415,10 @@ class Seed {
 	public static function libObject(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic return Lib.object(keys, values);
 
 	public static function libGet(o:Dynamic, k:Dynamic):Dynamic return Lib.get(o, k);
+
+	public static function libGetNamed(o:Dynamic, name:String):Dynamic return Lib.getNamed(o, name);
+
+	public static function libPutNamed(o:Dynamic, name:String, v:Dynamic):Dynamic return Lib.putNamed(o, name, v);
 
 	public static function libPut(o:Dynamic, k:Dynamic, v:Dynamic):Dynamic return Lib.put(o, k, v);
 
@@ -534,6 +552,7 @@ class Seed {
 		libSetProto(o, null);
 		libCall(f, null, []);
 		libCallMethod(o, "x", []);
+		libCallNamed(o, "x", []);
 		libConstruct(f, [], f);
 		libSuperConstruct(f, [], f);
 		libConstructResult(o, o);
@@ -554,6 +573,8 @@ class Seed {
 		libAppendAll([], a);
 		libGet(o, "x");
 		libPut(o, "x", null);
+		libGetNamed(o, "x");
+		libPutNamed(o, "x", null);
 		libDelete(o, "x");
 		libHas(o, "x");
 		libIterate(libIterator(a));

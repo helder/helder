@@ -34,7 +34,34 @@ class JsRegExp extends JsObject {
 	public var program:RxNode;
 	public var groupCount:Int;
 	public var groupNames:Array<String>;
+	// (shared by the RegExps of one source and flags: Regex.compile)
+	public var compiled:Compiled;
+	// (the matcher of the last string searched, kept for the next exec on it)
+	public var matcher:Regex = null;
 	override public function tag():String return "RegExp";
+}
+
+// A pattern parsed, with what its matches need: the flags as bits, the code
+// units a match can start with (inclusive pairs; null: any, or the empty
+// string matches), whether it starts at a line's start.
+class Compiled {
+	public final program:RxNode;
+	public final groups:Int;
+	public final names:Array<String>;
+	public final bits:Int;
+	public final flags:String;
+	public final first:Array<Int>;
+	public final anchored:Bool;
+
+	public function new(program:RxNode, groups:Int, names:Array<String>, bits:Int, flags:String, first:Array<Int>, anchored:Bool) {
+		this.program = program;
+		this.groups = groups;
+		this.names = names;
+		this.bits = bits;
+		this.flags = flags;
+		this.first = first;
+		this.anchored = anchored;
+	}
 }
 
 // Regular expressions: a parser for JavaScript pattern syntax and a
@@ -42,6 +69,15 @@ class JsRegExp extends JsObject {
 class Regex {
 	public static var RegExpProto:JsObject;
 	public static function isRegExp(v:Dynamic):Bool return Std.isOfType(v, JsRegExp);
+
+	// flags as bits
+	static inline var GLOBAL = 1;
+	static inline var IGNORE_CASE = 2;
+	static inline var MULTILINE = 4;
+	static inline var DOT_ALL = 8;
+	static inline var UNICODE = 16; // u or v
+	static inline var STICKY = 32;
+	static inline var INDICES = 64;
 
 	// Parsing.
 	var p:String;
@@ -456,27 +492,81 @@ class Regex {
 		} catch (e:RegexSyntax) e.message;
 	}
 
-	// (patterns are parsed once per source and flags)
-	static var cache:Map<String, {program:RxNode, groups:Int, names:Array<String>}> = [];
+	// (patterns are parsed once per source and flags: by flags, then source)
+	static var cache:Map<String, Map<String, Compiled>> = [];
+
 	public static function compile(source:String, flags:String):JsRegExp {
-		for (k in 0...flags.length) {
-			var f = flags.charAt(k);
-			if ("dgimsuvy".indexOf(f) < 0 || flags.indexOf(f) != k) error("SyntaxError", "Invalid flags supplied to RegExp constructor '" + flags + "'");
+		var sources = cache.get(flags);
+		if (sources == null) {
+			for (k in 0...flags.length) {
+				var f = flags.charAt(k);
+				if ("dgimsuvy".indexOf(f) < 0 || flags.indexOf(f) != k) error("SyntaxError", "Invalid flags supplied to RegExp constructor '" + flags + "'");
+			}
+			cache.set(flags, sources = []);
 		}
-		var key = flags + "/" + source;
-		var compiled = cache.get(key);
+		var compiled = sources.get(source);
 		if (compiled == null) {
-			compiled = try parse(source, flags) catch (e:RegexSyntax) error("SyntaxError", "Invalid regular expression: /" + source + "/" + flags + ": " + e.message);
-			cache.set(key, compiled);
+			var bits = 0;
+			for (k in 0...flags.length) bits |= switch (flags.charAt(k)) {
+				case "g": GLOBAL;
+				case "i": IGNORE_CASE;
+				case "m": MULTILINE;
+				case "s": DOT_ALL;
+				case "u" | "v": UNICODE;
+				case "y": STICKY;
+				case _: INDICES;
+			}
+			var parsed = try parse(source, flags) catch (e:RegexSyntax) error("SyntaxError", "Invalid regular expression: /" + source + "/" + flags + ": " + e.message);
+			var text = "";
+			for (f in ["d", "g", "i", "m", "s", "u", "v", "y"]) if (flags.indexOf(f) >= 0) text += f;
+			compiled = new Compiled(parsed.program, parsed.groups, parsed.names, bits, text, firsts(parsed.program, bits & IGNORE_CASE != 0, bits & UNICODE != 0), anchored(parsed.program));
+			sources.set(source, compiled);
 		}
 		var r = new JsRegExp(RegExpProto);
 		r.source = source;
 		r.flags = flags;
+		r.compiled = compiled;
 		r.groupCount = compiled.groups;
 		r.groupNames = compiled.names;
 		r.program = compiled.program;
 		r.setOwn("lastIndex", 0.0, Attr.HIDDEN | Attr.LOCKED);
 		return r;
+	}
+
+	// (the code units a match of n starts with, as inclusive pairs; null when
+	// any can, or n matches the empty string)
+	static function firsts(n:RxNode, fold:Bool, unicode:Bool):Array<Int> {
+		return switch (n) {
+			case RChar(c) if (c >= 0xd800 && (unicode || c > 0xffff)): null;
+			case RChar(c) if (!fold): [c, c];
+			// (ignoring case, an ASCII letter matches its other case only: Regex.canonical)
+			case RChar(c) if (c >= 65 && c <= 90 || c >= 97 && c <= 122): [c & ~32, c & ~32, c | 32, c | 32];
+			case RChar(c) if (c < 128): [c, c];
+			case RSet(ranges, false) if (!fold && !(unicode && ranges.filter(r -> r >= 0xd800).length > 0)): ranges;
+			case RGroup(_, x): firsts(x, fold, unicode);
+			case RSeq(items) if (items.length > 0): firsts(items[0], fold, unicode);
+			case RRepeat(x, min, _, _, _, _) if (min > 0): firsts(x, fold, unicode);
+			case RAlt(options):
+				var out = [];
+				for (o in options) {
+					var f = firsts(o, fold, unicode);
+					if (f == null) return null;
+					out = out.concat(f);
+				}
+				out;
+			case _: null;
+		};
+	}
+
+	// (a match of n starts where a line starts: at 0, or after a line terminator if multiline)
+	static function anchored(n:RxNode):Bool {
+		return switch (n) {
+			case RStart: true;
+			case RGroup(_, x): anchored(x);
+			case RSeq(items): items.length > 0 && anchored(items[0]);
+			case RAlt(options): options.length > 0 && options.filter(o -> !anchored(o)).length == 0;
+			case _: false;
+		};
 	}
 
 	// Matching.
@@ -486,6 +576,9 @@ class Regex {
 	var multiline:Bool;
 	var dotAll:Bool;
 	var steps = 0;
+	var compiled:Compiled;
+	var end = -1;
+	var accept:Int->Bool;
 	function at(k:Int):Int {
 		var c = s.charCodeAt(k);
 		if (unicode && c >= 0xd800 && c <= 0xdbff && k + 1 < s.length) {
@@ -514,7 +607,11 @@ class Regex {
 
 	function inSet(c:Int, ranges:Array<Int>):Bool {
 		if (contains(c, ranges)) return true;
-		if (ignoreCase) {
+		if (ignoreCase && c < 128) {
+			var x = c >= 65 && c <= 90 || c >= 97 && c <= 122 ? c ^ 32 : c;
+			return x != c && contains(x, ranges);
+		}
+		else if (ignoreCase) {
 			var alternatives = [String.fromCharCode(c).toLowerCase(), String.fromCharCode(c).toUpperCase()];
 			for (a in alternatives) if (a.length == 1) {
 				var x = a.charCodeAt(0);
@@ -605,6 +702,25 @@ class Regex {
 				return false;
 			case RRepeat(x, min, max, greedy, first, last):
 				switch (x) {
+					case RChar(_) | RAny | RSet(_, _) if (!unicode):
+						// (single code units: the positions are k + count)
+						var j = k, count = 0;
+						while (max < 0 || count < max) {
+							var nj = single(x, j);
+							if (nj < 0) break;
+							j = nj;
+							count++;
+						}
+						if (count < min) return false;
+						if (greedy) {
+							var c = count;
+							while (c >= min) {
+								if (next(k + c)) return true;
+								c--;
+							}
+						}
+						else for (c in min...count + 1) if (next(k + c)) return true;
+						return false;
 					case RChar(_) | RAny | RSet(_, _):
 						// (single characters: positions found iteratively)
 						var positions = [k];
@@ -632,6 +748,17 @@ class Regex {
 	}
 
 	function matchSequence(items:Array<RxNode>, index:Int, k:Int, next:Int->Bool):Bool {
+		// (single characters match one way only: in a loop, without a continuation each)
+		while (index < items.length) {
+			switch (items[index]) {
+				case RChar(_) | RAny | RSet(_, _):
+					if (++steps > 50000000) error("RangeError", "Maximum regular expression backtracking exceeded");
+					k = single(items[index], k);
+					if (k < 0) return false;
+					index++;
+				case _: break;
+			}
+		}
 		if (index == items.length) return next(k);
 		return match(items[index], k, j -> matchSequence(items, index + 1, j, next));
 	}
@@ -651,41 +778,75 @@ class Regex {
 		return count >= min && greedy && next(k);
 	}
 
-	// A match starting exactly at k: captures (start/end pairs, group 0 first), or null.
-	public static function matchAt(r:JsRegExp, s:String, k:Int):Array<Int> {
-		var m = new Regex(r.source, r.flags.indexOf("u") >= 0 || r.flags.indexOf("v") >= 0);
+	// (one matcher for every start position in s)
+	static function matcher(r:JsRegExp, s:String):Regex {
+		var c = r.compiled;
+		if (r.matcher != null && Lib.same(r.matcher.s, s) && r.matcher.compiled == c) return r.matcher;
+		var m = new Regex(r.source, c.bits & UNICODE != 0);
 		m.s = s;
-		m.ignoreCase = r.flags.indexOf("i") >= 0;
-		m.multiline = r.flags.indexOf("m") >= 0;
-		m.dotAll = r.flags.indexOf("s") >= 0;
-		m.caps = [for (_ in 0...2 * (r.groupCount + 1)) -1];
-		var end = -1;
-		if (!m.match(r.program, k, j -> {
-			end = j;
-			return true;})) return null;
-		m.caps[0] = k;
-		m.caps[1] = end;
-		return m.caps;
+		m.compiled = c;
+		m.ignoreCase = c.bits & IGNORE_CASE != 0;
+		m.multiline = c.bits & MULTILINE != 0;
+		m.dotAll = c.bits & DOT_ALL != 0;
+		m.caps = [];
+		m.accept = j -> {
+			m.end = j;
+			return true;
+		};
+		return r.matcher = m;
 	}
+
+	// (a match can start at k: its first code unit is one it can start with, and a line starts there if it must)
+	function possible(k:Int):Bool {
+		if (compiled.anchored && k > 0 && !(multiline && lineTerminator(StringTools.fastCodeAt(s, k - 1)))) return false;
+		var first = compiled.first;
+		if (first == null) return true;
+		if (k >= s.length) return false;
+		var c = StringTools.fastCodeAt(s, k), i = 0;
+		while (i < first.length) {
+			if (c >= first[i] && c <= first[i + 1]) return true;
+			i += 2;
+		}
+		return false;
+	}
+
+	// A match starting exactly at k: captures (start/end pairs, group 0 first), or null.
+	function attempt(k:Int):Array<Int> {
+		if (!possible(k)) return null;
+		var n = 2 * (compiled.groups + 1);
+		if (caps.length != n) caps = [for (_ in 0...n) -1]; else for (g in 0...n) caps[g] = -1;
+		steps = 0;
+		if (!match(compiled.program, k, accept)) return null;
+		var found = caps;
+		found[0] = k;
+		found[1] = end;
+		// (the next attempt's own: this one is the caller's)
+		caps = [];
+		return found;
+	}
+
+	public static function matchAt(r:JsRegExp, s:String, k:Int):Array<Int> return matcher(r, s).attempt(k);
 
 	// RegExpBuiltinExec: the match object (array with index, input, groups), or null.
 	public static function exec(r:JsRegExp, s:String):Dynamic {
-		var global = r.flags.indexOf("g") >= 0, sticky = r.flags.indexOf("y") >= 0, unicode = r.flags.indexOf("u") >= 0 || r.flags.indexOf("v") >= 0;
+		var bits = r.compiled.bits;
+		var global = bits & GLOBAL != 0, sticky = bits & STICKY != 0;
 		var lastIndex = toLength(get(r, "lastIndex"));
 		if (!global && !sticky) lastIndex = 0;
 		if (lastIndex > s.length) {
 			if (global || sticky) put(r, "lastIndex", 0);
 			return null;
 		}
-		var k = Std.int(lastIndex);
+		var k = Std.int(lastIndex), unicode = bits & UNICODE != 0;
 		// (unicode: an index inside a surrogate pair is the pair's, the code point holding it)
 		if (unicode && k > 0 && k < s.length) {
 			var c = s.charCodeAt(k), before = s.charCodeAt(k - 1);
 			if (c >= 0xdc00 && c <= 0xdfff && before >= 0xd800 && before <= 0xdbff) k--;
 		}
 		var caps:Array<Int> = null;
+		var m = matcher(r, s);
 		while (k <= s.length) {
-			caps = matchAt(r, s, k);
+			caps = m.attempt(k);
 			if (caps != null || sticky) break;
 			k = advance(s, k, unicode);
 		}
@@ -709,7 +870,7 @@ class Regex {
 			groups = g;
 		}
 		a.setOwn("groups", groups);
-		if (r.flags.indexOf("d") >= 0) {
+		if (r.compiled.bits & INDICES != 0) {
 			var indices:JsArray = cast array([for (g in 0...r.groupCount + 1) caps[2 * g] < 0 ? undef() : array([caps[2 * g], caps[2 * g + 1]])]);
 			var ig:Dynamic = undef();
 			if (groups != undef()) {
@@ -776,10 +937,7 @@ class Regex {
 		function method(name:String, arity:Int, fn:(Dynamic, Array<Dynamic>, Dynamic) -> Dynamic) RegExpProto.setOwn(name, Builtins.nativeFunction(Symbols.functionName(name), arity, fn), Attr.HIDDEN);
 		function getter(name:String, fn:JsRegExp->Dynamic) RegExpProto.setOwn(name, new Accessor(Builtins.nativeFunction("get " + name, 0, (t, _, _) -> t == RegExpProto ? (name == "source" ? "(?:)" : name == "flags" ? "" : undef()) : fn(thisRegExp(t, name))), null), Attr.HIDDEN);
 		getter("source", r -> escapeSource(r.source));
-		getter("flags", r -> {
-			var out = "";
-			for (f in ["d", "g", "i", "m", "s", "u", "v", "y"]) if (r.flags.indexOf(f) >= 0) out += f;
-			return out;});
+		getter("flags", r -> r.compiled.flags);
 		for (pair in [["global", "g"], ["ignoreCase", "i"], ["multiline", "m"], ["dotAll", "s"], ["unicode", "u"], ["unicodeSets", "v"], ["sticky", "y"], ["hasIndices", "d"]]) getter(pair[0], r -> r.flags.indexOf(pair[1]) >= 0);
 		method("exec", 1, (t, a, _) -> exec(thisRegExp(t, "exec"), Seed.text(arg(a, 0))));
 		method("test", 1, (t, a, _) -> regExpExec(t, Seed.text(arg(a, 0))) != null);
@@ -792,6 +950,8 @@ class Regex {
 			r.program = c.program;
 			r.groupCount = c.groupCount;
 			r.groupNames = c.groupNames;
+			r.compiled = c.compiled;
+			r.matcher = null;
 			put(r, "lastIndex", 0);
 			return r;});
 		method("\x00@@match", 1, (t, a, _) -> {
@@ -846,10 +1006,11 @@ class Regex {
 			var unicode = r.flags.indexOf("u") >= 0;
 			var out:Array<Dynamic> = [];
 			if (limit == 0) return array(out);
-			if (s.length == 0) return array(matchAt(r, s, 0) != null ? [] : [s]);
+			var m = matcher(r, s);
+			if (s.length == 0) return array(m.attempt(0) != null ? [] : [s]);
 			var p = 0, q = 0;
 			while (q < s.length) {
-				var caps = matchAt(r, s, q);
+				var caps = m.attempt(q);
 				if (caps == null || caps[1] == p || caps[1] > s.length) {
 					q = advance(s, q, unicode);
 					continue;

@@ -30,7 +30,8 @@ class Lib {
 		return f.kind != JsFunction.METHOD;
 	}
 
-	public static function isNumber(v:Dynamic):Bool return Std.isOfType(v, Float) || Std.isOfType(v, Int);
+	// (a boxed Int is a Float to Std.isOfType)
+	public static function isNumber(v:Dynamic):Bool return Std.isOfType(v, Float);
 
 	public static function arg(args:Array<Dynamic>, i:Int):Dynamic return i < args.length ? args[i] : undef();
 
@@ -44,10 +45,19 @@ class Lib {
 		return Seed.text(v);
 	}
 
+	// (an array index is a canonical integer below 2^32 - 1: digits, no leading zero)
 	public static function index(k:String):Float {
-		if (k == "" || k.length > 10) return -1;
-		var n = Std.parseFloat(k);
-		return n >= 0 && n < 4294967295.0 && Math.ffloor(n) == n && Seed.numberText(n) == k ? n : -1;
+		var n = k.length;
+		if (n == 0 || n > 10) return -1;
+		var c = StringTools.fastCodeAt(k, 0);
+		if (c < 48 || c > 57 || c == 48 && n > 1) return -1;
+		var v = 0.0;
+		for (i in 0...n) {
+			c = StringTools.fastCodeAt(k, i);
+			if (c < 48 || c > 57) return -1;
+			v = v * 10 + (c - 48);
+		}
+		return v < 4294967295.0 ? v : -1;
 	}
 
 	// (an integral number usable as an array index, else -1)
@@ -88,33 +98,41 @@ class Lib {
 	// Properties.
 	public static function get(o:Dynamic, k:Dynamic):Dynamic {
 		if (o == null || same(o, undef())) return error("TypeError", "Cannot read properties of " + Seed.text(o) + " (reading '" + key(k) + "')");
-		if (Std.isOfType(o, JsArray) && isNumber(k)) {
-			var a:JsArray = cast o;
-			var i = numericIndex(k);
-			if (a.nums != null) {
-				if (i >= 0 && i < a.nums.length) return a.nums[Std.int(i)];
+		if (isNumber(k) && isObject(o)) {
+			var obj:JsObject = o;
+			if (obj.form == Form.ARRAY) {
+				var a:JsArray = cast o;
+				var i = numericIndex(k);
+				if (a.nums != null) {
+					if (i >= 0 && i < a.nums.length) return a.nums[Std.int(i)];
+				}
+				else if (i >= 0 && i < a.items.length) {
+					var v = a.items[Std.int(i)];
+					if (!same(v, hole)) return v;
+				}
 			}
-			else if (i >= 0 && i < a.items.length) {
-				var v = a.items[Std.int(i)];
-				if (!same(v, hole)) return v;
-			}
+			else if (obj.form == Form.TYPED) return TypedArrays.elementGet(cast o, numericIndex(k));
 		}
-		else if (Std.isOfType(o, TypedArrays.JsTypedArray) && isNumber(k)) return TypedArrays.elementGet(cast o, numericIndex(k));
 		return getKey(o, key(k), o);
+	}
+
+	// o.name, a name the compiler knows is one (never a symbol or a number)
+	public static function getNamed(o:Dynamic, name:String):Dynamic {
+		if (o == null || same(o, undef())) return error("TypeError", "Cannot read properties of " + Seed.text(o) + " (reading '" + name + "')");
+		return getKey(o, name, o);
 	}
 
 	public static function getKey(o:Dynamic, name:String, receiver:Dynamic):Dynamic {
 		var obj:JsObject;
 		if (isObject(o)) obj = o;
-		else {
-			if (Std.isOfType(o, String)) {
-				var s:String = o;
-				if (name == "length") return s.length;
-				var i = index(name);
-				if (i >= 0 && i < s.length) return s.charAt(Std.int(i));
-			}
-			obj = protoOf(o);
+		else if (Std.isOfType(o, String)) {
+			var s:String = o;
+			if (name == "length") return s.length;
+			var i = index(name);
+			if (i >= 0 && i < s.length) return s.charAt(Std.int(i));
+			obj = Builtins.StringProto;
 		}
+		else obj = protoOf(o);
 		while (obj != null) {
 			var v = ownGet(obj, name, receiver);
 			if (!same(v, absent)) return v;
@@ -124,35 +142,33 @@ class Lib {
 	}
 
 	static function ownGet(obj:JsObject, name:String, receiver:Dynamic):Dynamic {
-		if (Std.isOfType(obj, JsArray)) {
-			var a:JsArray = cast obj;
-			if (name == "length") return a.length;
-			var i = index(name);
-			if (a.nums != null) {
-				if (i >= 0 && i < a.nums.length) return a.nums[Std.int(i)];
-			}
-			else if (i >= 0 && i < a.items.length) {
-				var v = a.items[Std.int(i)];
-				return same(v, hole) ? absent : v;
-			}
+		switch (obj.form) {
+			case Form.ARRAY:
+				var a:JsArray = cast obj;
+				if (name == "length") return a.length;
+				var i = index(name);
+				if (a.nums != null) {
+					if (i >= 0 && i < a.nums.length) return a.nums[Std.int(i)];
+				}
+				else if (i >= 0 && i < a.items.length) {
+					var v = a.items[Std.int(i)];
+					return same(v, hole) ? absent : v;
+				}
+			case Form.TYPED:
+				var i = index(name);
+				if (i >= 0) {
+					var t:TypedArrays.JsTypedArray = cast obj;
+					return TypedArrays.elementGet(t, i);
+				}
+			case _:
 		}
-		else if (Std.isOfType(obj, TypedArrays.JsTypedArray)) {
-			var i = index(name);
-			if (i >= 0) {
-				var t:TypedArrays.JsTypedArray = cast obj;
-				return TypedArrays.elementGet(t, i);
-			}
+		var v = obj.lookup(name, absent);
+		if (same(v, absent)) return obj.form == Form.FUNCTION ? functionOwn(cast obj, name) : absent;
+		if (Std.isOfType(v, Accessor)) {
+			var acc:Accessor = v;
+			return acc.getter == null ? undef() : call(acc.getter, receiver, []);
 		}
-		if (obj.hasOwn(name)) {
-			var v = obj.getOwn(name);
-			if (Std.isOfType(v, Accessor)) {
-				var acc:Accessor = v;
-				return acc.getter == null ? undef() : call(acc.getter, receiver, []);
-			}
-			return v;
-		}
-		if (Std.isOfType(obj, JsFunction)) return functionOwn(cast obj, name);
-		return absent;
+		return v;
 	}
 
 	// (a function's name, length and lazily created prototype)
@@ -178,7 +194,7 @@ class Lib {
 		}
 		if (!isObject(o)) return false;
 		var obj:JsObject = o;
-		if (Std.isOfType(obj, JsArray)) {
+		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (name == "length") return true;
 			var i = index(name);
@@ -187,12 +203,12 @@ class Lib {
 			}
 			else if (i >= 0 && i < a.items.length) return !same(a.items[Std.int(i)], hole);
 		}
-		else if (Std.isOfType(obj, TypedArrays.JsTypedArray)) {
+		else if (obj.form == Form.TYPED) {
 			var i = index(name);
 			if (i >= 0) return i < (cast obj : TypedArrays.JsTypedArray).length();
 		}
 		if (obj.hasOwn(name)) return true;
-		if (Std.isOfType(obj, JsFunction)) return functionOwn(cast obj, name) != absent;
+		if (obj.form == Form.FUNCTION) return functionOwn(cast obj, name) != absent;
 		return false;
 	}
 
@@ -210,25 +226,35 @@ class Lib {
 
 	public static function put(o:Dynamic, k:Dynamic, v:Dynamic):Dynamic {
 		if (o == null || same(o, undef())) return error("TypeError", "Cannot set properties of " + Seed.text(o) + " (setting '" + key(k) + "')");
-		if (Std.isOfType(o, JsArray) && isNumber(k)) {
-			var a:JsArray = cast o;
-			var i = numericIndex(k);
-			if (a.nums != null && isNumber(v)) {
-				if (i >= 0 && i < a.nums.length) {
-					a.nums[Std.int(i)] = v;
+		if (isNumber(k) && isObject(o)) {
+			var obj:JsObject = o;
+			if (obj.form == Form.ARRAY) {
+				var a:JsArray = cast o;
+				var i = numericIndex(k);
+				if (a.nums != null && isNumber(v)) {
+					if (i >= 0 && i < a.nums.length) {
+						a.nums[Std.int(i)] = v;
+						return v;
+					}
+				}
+				else if (i >= 0 && i < a.items.length && !same(a.items[Std.int(i)], hole)) {
+					a.items[Std.int(i)] = v;
 					return v;
 				}
 			}
-			else if (i >= 0 && i < a.items.length && !same(a.items[Std.int(i)], hole)) {
-				a.items[Std.int(i)] = v;
+			else if (obj.form == Form.TYPED) {
+				TypedArrays.elementSet(cast o, numericIndex(k), v);
 				return v;
 			}
 		}
-		else if (Std.isOfType(o, TypedArrays.JsTypedArray) && isNumber(k)) {
-			TypedArrays.elementSet(cast o, numericIndex(k), v);
-			return v;
-		}
 		setKey(o, key(k), v, o);
+		return v;
+	}
+
+	// o.name = v, a name the compiler knows is one
+	public static function putNamed(o:Dynamic, name:String, v:Dynamic):Dynamic {
+		if (o == null || same(o, undef())) return error("TypeError", "Cannot set properties of " + Seed.text(o) + " (setting '" + name + "')");
+		setKey(o, name, v, o);
 		return v;
 	}
 
@@ -244,7 +270,7 @@ class Lib {
 			return;
 		}
 		var obj:JsObject = o;
-		if (Std.isOfType(obj, JsArray)) {
+		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (name == "length") {
 				setLength(a, v);
@@ -260,7 +286,7 @@ class Lib {
 				return;
 			}
 		}
-		else if (Std.isOfType(obj, TypedArrays.JsTypedArray)) {
+		else if (obj.form == Form.TYPED) {
 			var i = index(name);
 			if (i >= 0) {
 				TypedArrays.elementSet(cast obj, i, v);
@@ -282,7 +308,7 @@ class Lib {
 			obj.writeOwn(name, v);
 			return;
 		}
-		if (Std.isOfType(obj, JsFunction) && functionOwn(cast obj, name) != absent && name != "prototype") {
+		if (obj.form == Form.FUNCTION && functionOwn(cast obj, name) != absent && name != "prototype") {
 			readOnly(name, obj);
 			return;
 		}
@@ -307,7 +333,7 @@ class Lib {
 		obj.setOwn(name, v);
 	}
 
-	static function readOnly(name:String, obj:JsObject):Void error("TypeError", "Cannot assign to read only property '" + name + "' of " + (Std.isOfType(obj, JsFunction) ? "function" : "object") + " '" + describe(obj) + "'");
+	static function readOnly(name:String, obj:JsObject):Void error("TypeError", "Cannot assign to read only property '" + name + "' of " + (obj.form == Form.FUNCTION ? "function" : "object") + " '" + describe(obj) + "'");
 
 	// (an inherited accessor or read-only data property that governs a write; null when a plain write may proceed)
 	static function inherited(obj:JsObject, name:String):Dynamic {
@@ -376,7 +402,7 @@ class Lib {
 		if (!isObject(o)) return true;
 		var obj:JsObject = o;
 		var name = key(k);
-		if (Std.isOfType(obj, JsArray)) {
+		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			var i = index(name);
 			if (i >= 0 && i < a.items.length) {
@@ -385,13 +411,13 @@ class Lib {
 			}
 			if (name == "length") return error("TypeError", "Cannot delete property 'length' of [object Array]");
 		}
-		else if (Std.isOfType(obj, TypedArrays.JsTypedArray)) {
+		else if (obj.form == Form.TYPED) {
 			var i = index(name);
 			if (i >= 0 && i < (cast obj : TypedArrays.JsTypedArray).length()) return error("TypeError", "Cannot delete property '" + name + "' of " + describe(obj));
 			if (i >= 0) return true;
 		}
 		if (obj.attr(name) & Attr.LOCKED != 0) return error("TypeError", "Cannot delete property '" + name + "' of " + describe(obj));
-		if (Std.isOfType(obj, JsFunction) && (name == "name" || name == "length")) {
+		if (obj.form == Form.FUNCTION && (name == "name" || name == "length")) {
 			var f:JsFunction = cast obj;
 			if (f.deletedSpecial == null) f.deletedSpecial = [];
 			f.deletedSpecial.set(name, true);
@@ -410,12 +436,12 @@ class Lib {
 		if (!isObject(o)) return [];
 		var obj:JsObject = o;
 		var out:Array<String> = [];
-		if (Std.isOfType(obj, JsArray)) {
+		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (a.nums != null) for (i in 0...a.nums.length) out.push(Std.string(i));
 			else for (i in 0...a.items.length) if (!same(a.items[i], hole)) out.push(Std.string(i));
 		}
-		else if (Std.isOfType(obj, TypedArrays.JsTypedArray)) for (i in 0...(cast obj : TypedArrays.JsTypedArray).length()) out.push(Std.string(i));
+		else if (obj.form == Form.TYPED) for (i in 0...(cast obj : TypedArrays.JsTypedArray).length()) out.push(Std.string(i));
 		var own = obj.ownNames();
 		if (own == null) return out;
 		var numeric:Array<String> = [];
@@ -445,11 +471,13 @@ class Lib {
 	}
 
 	// Calls and construction.
-	static function positional(f:JsFunction, args:Array<Dynamic>):Array<Dynamic> {
+	// (the arguments after `lead` slots the caller fills: one array, sized once)
+	static function positional(f:JsFunction, args:Array<Dynamic>, lead:Int):Array<Dynamic> {
 		var fixed = f.rest ? f.arity - 1 : f.arity;
-		var passed = args.length == fixed ? args.copy() : args.slice(0, fixed);
-		while (passed.length < fixed) passed.push(undef());
-		if (f.rest) passed.push(array(args.slice(fixed)));
+		var passed:Array<Dynamic> = [];
+		passed.resize(lead + fixed + (f.rest ? 1 : 0));
+		for (i in 0...fixed) passed[lead + i] = i < args.length ? args[i] : undef();
+		if (f.rest) passed[lead + fixed] = array(args.slice(fixed));
 		return passed;
 	}
 
@@ -458,8 +486,8 @@ class Lib {
 		var fn:JsFunction = f;
 		if (fn.native != null) return fn.native(thisArg, args, undef());
 		if (fn.kind >= JsFunction.BASE) return error("TypeError", "Class constructor " + fn.name + " cannot be invoked without 'new'");
-		var passed = positional(fn, args);
-		passed.unshift(thisArg);
+		var passed = positional(fn, args, 1);
+		passed[0] = thisArg;
 		return Reflect.callMethod(null, fn.impl, passed);
 	}
 
@@ -469,28 +497,34 @@ class Lib {
 		return call(f, o, args);
 	}
 
+	public static function callNamed(o:Dynamic, name:String, args:Array<Dynamic>):Dynamic {
+		var f = getNamed(o, name);
+		if (!Std.isOfType(f, JsFunction)) return error("TypeError", (isObject(o) ? describe(o) : Seed.typeOf(o)) + "." + name + " is not a function");
+		return call(f, o, args);
+	}
+
 	public static function construct(f:Dynamic, args:Array<Dynamic>, newTarget:Dynamic):Dynamic {
 		if (!isConstructor(f)) return error("TypeError", describe(f) + " is not a constructor");
 		if (!isConstructor(newTarget)) return error("TypeError", "newTarget is not a constructor");
 		var fn:JsFunction = f;
 		if (fn.native != null) return fn.native(undef(), args, newTarget);
-		var passed = positional(fn, args);
+		var passed = positional(fn, args, fn.kind == JsFunction.PLAIN ? 1 : 2);
 		switch (fn.kind) {
 			case JsFunction.PLAIN:
 				var obj = new JsObject(protoFrom(newTarget, Builtins.ObjectProto));
-				passed.unshift(obj);
+				passed[0] = obj;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				return isObject(r) ? r : obj;
 			case JsFunction.BASE:
 				var obj = allocate(newTarget, protoFrom(newTarget, Builtins.ObjectProto));
 				initFields(fn, obj);
-				passed.unshift(newTarget);
-				passed.unshift(obj);
+				passed[0] = obj;
+				passed[1] = newTarget;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				return isObject(r) ? r : obj;
 			case _:
-				passed.unshift(newTarget);
-				passed.unshift(undef());
+				passed[0] = undef();
+				passed[1] = newTarget;
 				var r = Reflect.callMethod(null, fn.impl, passed);
 				if (!isObject(r)) return error("ReferenceError", "Must call super constructor in derived class before accessing 'this' or returning from derived constructor");
 				return r;
@@ -807,7 +841,7 @@ class Lib {
 			for (k in Objects.ownPropertyKeys(obj)) {
 				if (Symbols.isSymbolKey(k) || seen.exists(k)) continue;
 				seen.set(k, true);
-				if (obj.attr(k) & Attr.HIDDEN == 0 && hasOwnKey(obj, k) && !(Std.isOfType(obj, JsArray) && k == "length") && !(Std.isOfType(obj, JsFunction) && !obj.hasOwn(k))) out.push(k);
+				if (obj.attr(k) & Attr.HIDDEN == 0 && hasOwnKey(obj, k) && !(obj.form == Form.ARRAY && k == "length") && !(obj.form == Form.FUNCTION && !obj.hasOwn(k))) out.push(k);
 			}
 			obj = obj.proto;
 		}
@@ -843,9 +877,9 @@ class Lib {
 	}
 
 	public static function compareStrings(a:String, b:String):Int {
-		var n = Std.int(Math.min(a.length, b.length));
+		var n = a.length < b.length ? a.length : b.length;
 		for (i in 0...n) {
-			var x = a.charCodeAt(i), y = b.charCodeAt(i);
+			var x = StringTools.fastCodeAt(a, i), y = StringTools.fastCodeAt(b, i);
 			if (x < y) return -1;
 			if (x > y) return 1;
 		}
