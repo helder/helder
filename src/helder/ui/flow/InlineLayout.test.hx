@@ -314,6 +314,15 @@ function tests() {
 			equals([p.node == t, p.offset == 5], [true, true]);
 			equals(c.domPosition(3).node == u, true);
 			equals([c.unitOf(t, 3), c.unitOf(t, 4), c.unitOf(u, 0), c.unitOf(u, 1)], [1, 2, 3, 4]);
+			// (after the text: its last text's end, not the box closed after it)
+			var span = doc.createElement("span");
+			var d = content(c -> {
+				c.openBox(ahem(), span);
+				c.addText("c", ahem(), u, 0);
+				c.closeBox(span);
+			});
+			var end = d.domPosition(1);
+			equals([end.node == u, end.offset == 1], [true, true]);
 		});
 		test("hyphens: auto: a word broken at its language's points, a hyphen shown", () -> {
 			helder.text.Hyphenation.add(helder.text.hyphenation.EnUs.patterns());

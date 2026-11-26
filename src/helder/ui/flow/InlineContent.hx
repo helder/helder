@@ -221,12 +221,14 @@ class InlineContent {
 
 	// a position in the text (a unit, a caret's place before it) as a DOM
 	// position: the node of the item it is in and the offset in it (its
-	// Text node's offset, an element's 0 or 1: before or after it)
+	// Text node's offset, an element's 0 or 1: before or after it); after
+	// the text, the end of its last text or atomic (not the boxes closed
+	// after it: a caret's place is in the text)
 	public function domPosition(u:Int):{node:Null<Node>, offset:Int} {
 		if (items == 0) return {node: null, offset: 0};
 		if (u >= text.length) {
 			var i = items - 1;
-			while (i > 0 && iSource[i] == null)
+			while (i > 0 && (iSource[i] == null || kind(i) == Open || kind(i) == Close))
 				i--;
 			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? offsets[iEnd[i] - 1] + 1 : 0} : {node: iSource[i], offset: 1};
 		}
