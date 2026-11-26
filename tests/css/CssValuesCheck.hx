@@ -141,7 +141,7 @@ class CssValuesCheck {
 		// (the same through #321's cascade, frozen: the row's property, and every longhand on a page's first row)
 		if (!LOGICAL.match(html + " " + prop + " " + value)) {
 			var old = reference.RefCascade.styles(doc, {media: media}).computed(target);
-			var props = parityPages.exists(file) ? [prop] : LONGHANDS.concat([prop]);
+			var props = (parityPages.exists(file) ? [prop] : LONGHANDS.concat([prop])).filter(p -> !ZEROED.match(p));
 			parityPages.set(file, true);
 			for (p in props) {
 				parityChecks++;
@@ -155,6 +155,8 @@ class CssValuesCheck {
 	// (#321 had no logical properties: pages with them are left out)
 	static final LOGICAL = ~/(margin|padding|inset|border)-(block|inline)|(min-|max-|\b)(inline|block)-size|border-(start|end)-(start|end)-radius/;
 	static final LONGHANDS = [for (p in helder.css.CssData.properties) if (p.longhands.length == 0 && p.alias == null && !LOGICAL.match(p.name) && p.name != "all") p.name];
+	// (#321 zeroed a border's or outline's computed width under a none style; Borders 4 zeroes the used one)
+	static final ZEROED = ~/^(border-(top|right|bottom|left)-width|outline-width)$/;
 	static final parityPages = new Map<Int, Bool>();
 	static final parity:Array<String> = [];
 	static var parityChecks = 0;

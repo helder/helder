@@ -106,6 +106,7 @@ class BoxStyle {
 		if (!typed(p)) return 0;
 		var id = idOf(p);
 		if (id < 0) return 0;
+		if (unstyled(p)) return 0;
 		var l = lengthOf(p, id);
 		return switch l.kind {
 			case Px | Plain: l.value;
@@ -117,6 +118,21 @@ class BoxStyle {
 				}
 			case _: 0;
 		}
+	}
+
+	// (a border's or outline's used width under a none or hidden style: 0,
+	// Borders 4 §4.3; its computed one, helder.css's, is as written)
+	function unstyled(p:String):Bool {
+		var style = switch p {
+			case "border-top-width": "border-top-style";
+			case "border-right-width": "border-right-style";
+			case "border-bottom-width": "border-bottom-style";
+			case "border-left-width": "border-left-style";
+			case "outline-width": "outline-style";
+			case _: return false;
+		}
+		var k = keyword(style);
+		return k == "none" || k == "hidden" && p != "outline-width";
 	}
 
 	// (the groups' typed fields where layout reads often: CssStyle.length interns its terms again)
@@ -182,6 +198,7 @@ class BoxStyle {
 		if (!typed(p)) return toLen(terms(p));
 		var id = idOf(p);
 		if (id < 0) return Auto;
+		if (unstyled(p)) return Px(0);
 		var l = lengthOf(p, id);
 		return switch l.kind {
 			case Px | Plain: Px(l.value);

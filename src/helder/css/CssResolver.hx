@@ -63,16 +63,12 @@ class CssResolver {
 	public inline function declares(p:CssProperty):Bool
 		return cascaded.exists(p);
 
-	// (computed values that read other properties: a border's or outline's
-	// width its style's, float position's, display the box's place, CSS 2.1
-	// §9.7, Display 3 §2.7; content the pseudo-element's)
+	// (computed values that read other properties: float position's,
+	// display the box's place, CSS 2.1 §9.7, Display 3 §2.7; content the
+	// pseudo-element's. A border's width under a none style is its own:
+	// Borders 4 zeroes the used one, not the computed one)
 	function adjust(p:CssProperty, v:Array<CssTerm>):Array<CssTerm> {
 		return switch p {
-			case BorderTopWidth: width(BorderTopStyle, v);
-			case BorderRightWidth: width(BorderRightStyle, v);
-			case BorderBottomWidth: width(BorderBottomStyle, v);
-			case BorderLeftWidth: width(BorderLeftStyle, v);
-			case OutlineWidth: keyword(OutlineStyle) == "none" ? ZERO : v;
 			case Float: positioned() ? NONE : v;
 			case Display: blockify(v);
 			// (normal on ::before and ::after is none, Content 3 §1, and on a page's margin boxes, Paged Media 3 §4.2)
@@ -81,12 +77,6 @@ class CssResolver {
 		}
 	}
 
-	function width(style:CssProperty, v:Array<CssTerm>):Array<CssTerm> {
-		var s = keyword(style);
-		return s == "none" || s == "hidden" ? ZERO : v;
-	}
-
-	static final ZERO = [Dimension(0, "px")];
 	static final NONE = [Keyword("none")];
 	static final BLOCK = [Keyword("block")];
 

@@ -417,6 +417,52 @@ const countersReport = {}
   Object.assign(countersReport, {by, pairs: pairs.length, syntax: syntax.length, tests: tests.length})
 }
 
+// ---- interpolation.json: test_interpolation's and its kin's calls (interpolation-testcommon.js) on
+// in-scope properties, read statically, with their pages: what CssTransition's interpolation must give
+const interpolationReport = {}
+{
+  const NAMES = new Set(['test_interpolation', 'test_no_interpolation', 'test_not_animatable'])
+  const pages = [], rows = [], unread = {}
+  const strip = text => text
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, l => /\brel\s*=\s*["']?(help|author|match|mismatch|reviewer)\b/i.test(l) ? '' : l)
+    .replace(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '')
+    .replace(/\n\s*\n+/g, '\n')
+  let files = 0
+  for (const file of walk(path.join(root, 'css'))) {
+    const rel = path.relative(root, file)
+    if (!/\.html?$/.test(rel) || /\/(support|resources)\//.test(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    if (![...NAMES].some(n => text.includes(n + '('))) continue
+    let page = -1
+    for (const src of scripts(text)) for (const c of calls('var neutralKeyframe = "@neutral";\n' + src, NAMES)) {
+      const [options, expectations] = c.args
+      const why = !options || typeof options !== 'object' ? 'options not read statically'
+        : !module.has(options.property) ? 'out of scope: the property'
+        : options.method && options.method !== 'CSS Transitions' ? 'another method than CSS Transitions'
+        : typeof options.from !== 'string' || typeof options.to !== 'string' ? 'from or to not read statically'
+        : c.name === 'test_interpolation' && !Array.isArray(options['CSS Transitions'] ?? expectations) ? 'expectations not read statically'
+        : null
+      if (why) {
+        unread[why] = (unread[why] ?? 0) + 1
+        continue
+      }
+      if (page < 0) page = pages.push(strip(text)) - 1
+      const list = c.name === 'test_interpolation' ? (options['CSS Transitions'] ?? expectations).map(e => [e.at, e.expect]) : null
+      const kind = c.name === 'test_interpolation' ? 'interpolation' : c.name === 'test_no_interpolation' ? 'discrete' : 'not animatable'
+      rows.push([kind, options.property, options.from, options.to, list, options.behavior ?? null, page, files])
+    }
+    if (page >= 0) files++
+  }
+  writeJson(out + '/interpolation.json', {
+    source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'rows: [interpolation | discrete | not animatable, property, from (@neutral: the element\'s own value), to, [[at, expected]] (interpolation\'s), '
+      + 'transition-behavior, page]; pages: the tests\' markup without scripts (a #target-template, .parent and .target rules)',
+    rows, pages
+  }, 2)
+  Object.assign(interpolationReport, {rows: rows.length, pages: pages.length, unread})
+}
+
 // ---- the report, into tests/css/README.md between its markers
 const n = (a, b) => b[1] - a[1]
 const table = (head, rows) => [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n')

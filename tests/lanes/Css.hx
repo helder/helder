@@ -27,6 +27,9 @@ class Css {
 		// (BLESS=1: counters-manifest.json's pending cases)
 		exe("bin/css/CssCountersCheck", cps(["src", "tests/css"]).concat(["-main", "CssCountersCheck"]));
 		run(exePath("bin/css/CssCountersCheck", HOST), []);
+		// (BLESS=1: interpolation-manifest.json's pending cases)
+		exe("bin/css/CssInterpolationCheck", cps(["src", "tests/css"]).concat(["-main", "CssInterpolationCheck"]));
+		run(exePath("bin/css/CssInterpolationCheck", HOST), []);
 		themes();
 		modules();
 	}
@@ -35,7 +38,8 @@ class Css {
 	// its values, and its symbols without a CSS tokenizer or parser; the
 	// same parsing a sheet when it runs has them, so the check checks)
 	static function themes() {
-		var expected = "block 14px 28px 0px 1px rgb(0, 128, 0) rgb(0, 0, 200) 12px 6px";
+		// (a width under border-style: none computes as given, Borders 4; the used width is 0)
+		var expected = "block 14px 28px 3px 1px rgb(0, 128, 0) rgb(0, 0, 200) 12px 6px";
 		probe("ThemeProbe", expected, []);
 		probe("ThemeProbe", expected, ["-D", "css.parse"]);
 	}
