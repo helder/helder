@@ -113,6 +113,19 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// lands (a value or an error); and whether its current run is that frame)
 	var retired:Null<Owner> = null;
 	var shown = false;
+	// its home: the store it was made in (Atoms; null: the default), what a
+	// computation runs in; its initial value, another store's node of it made
+	// from it (or from its function) and kept by that store; what each is given
+	// when made (fast refresh)
+	final home:Null<Atoms>;
+	final init:Null<T>;
+	// (made with no owner: a memo then computes when read, nothing keeps it up to
+	// date; a store's node of it the same, though its store's root owns it)
+	var free:Bool;
+	var copied:Null<(Node<Dynamic>, Atoms) -> Void> = null;
+	// (a node made with state of its own beside it, a boundary: made again by
+	// this in another store, not copied)
+	var remake:Null<Void->Node<Dynamic>> = null;
 
 	function new(kind:Int, value:Null<T>, fn:Null<Null<T>->Dynamic>, options:Null<NodeOptions<T>>) {
 		// (a signal belongs to no owner: only computations are disposed with theirs)
@@ -124,6 +137,40 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		equals = options != null ? options.equals : null;
 		unobserved = options != null ? options.unobserved : null;
 		ownedWrite = options != null && options.ownedWrite == true;
+		free = Owner.current == null;
+		home = Atoms.homeless && kind <= COMPUTED && Owner.current == null ? null : Atoms.current;
+		init = value;
+		if (home == null && (kind == EFFECT || kind == RENDER) && Atoms.record && Owner.current == null && !Atoms.screen) Atoms.effects.push(cast this);
+	}
+
+	// (its store's flushes of writes so far: another store's leave its memos alone)
+	inline function ticks():Int
+		return home == null ? Scheduler.ticks : home.ticks;
+
+	// (read or written in a store not its home: that store's node of it; the
+	// default store sees through to its home)
+	inline function at():Node<T> {
+		var s = Atoms.current;
+		return s == null || s == home ? this : of(s);
+	}
+
+	inline function of(s:Atoms):Node<T>
+		return s.of(this);
+
+	// (its node in store: its initial value, or its function, owned by the store's root)
+	function copy(store:Atoms):Node<T> {
+		var savedOwner = Owner.current, savedAtoms = Atoms.current, savedHomeless = Atoms.homeless;
+		Owner.current = kind == SIGNAL ? null : store.root;
+		Atoms.current = store;
+		Atoms.homeless = false;
+		var make = remake;
+		var n:Node<T> = make != null ? cast make() : new Node(kind, init, fn, {equals: equals, unobserved: unobserved, ownedWrite: ownedWrite});
+		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
+		Atoms.homeless = savedHomeless;
+		n.writable = writable;
+		n.free = free;
+		return n;
 	}
 
 	public static function signal<T>(value:T, options:Null<NodeOptions<T>>):Node<T> {
@@ -204,12 +251,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	public function read():T {
+		var s = Atoms.current;
+		if (s != null && s != home) return of(s).read();
 		if (kind != SIGNAL) fresh();
 		if (observer != null) observer.track(this);
 		return serve();
 	}
 
 	public function peek():T {
+		var s = Atoms.current;
+		if (s != null && s != home) return of(s).peek();
 		if (kind != SIGNAL) fresh();
 		return serve();
 	}
@@ -246,6 +297,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			if (screen && p != null) {
 				runner.blockedIn = p;
 				p.block(runner);
+				p.awaits(this);
 			}
 			if (!screen && (ahead == w || (p != null && p == w))) {
 				if (runner != null) runner.joined = true;
@@ -287,6 +339,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	}
 
 	public function write(v:T) {
+		var s = Atoms.current;
+		if (s != null && s != home) {
+			of(s).write(v);
+			return;
+		}
 		checkWritable();
 		if (same(latest(), v)) return;
 		pendingValue = v;
@@ -307,16 +364,16 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// f given the latest value written (pending, else staged, else committed)
 	public function update(f:T->T)
-		write(f(latest()));
+		if (Atoms.current != null && Atoms.current != home) at().update(f) else write(f(latest()));
 
 	inline function latest():Null<T>
 		return hasPending ? pendingValue : stagedIn != null ? staged : value;
 
 	// (a computed up to date: an unowned memo nothing observes is not kept
-	// up to date by the flushes, it computes again when read after one, as
-	// Solid 2 releases it)
+	// up to date by the flushes, it computes again when read after one of
+	// its store's, as Solid 2 releases it)
 	inline function fresh() {
-		if (kind == COMPUTED && !writable && parent == null && tick != Scheduler.ticks && (observers == null || observers.length == 0)) state = DIRTY;
+		if (kind == COMPUTED && !writable && free && tick != ticks() && (observers == null || observers.length == 0)) state = DIRTY;
 		if (state != CLEAN) updateIfNecessary();
 	}
 
@@ -434,6 +491,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 					} else {
 						o.blockedIn = tx;
 						tx.block(o);
+						tx.awaits(this);
 					}
 				case _:
 			}
@@ -474,7 +532,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		state = s;
 		if (was == CLEAN) {
 			// (an owned memo is eager: brought up to date by the flush, read or not)
-			if (kind >= EFFECT || parent != null) Scheduler.enqueue(this);
+			if (kind >= EFFECT || !free) Scheduler.enqueue(this);
 			if (kind == COMPUTED) markObservers(CHECK);
 		}
 	}
@@ -506,7 +564,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		} else
 			try clean() catch (e:haxe.Exception) Scheduler.report(e);
 		shown = false;
-		tick = Scheduler.ticks;
+		tick = ticks();
 		// (a superseded async run: cancelled, its answer dropped)
 		asked++;
 		if (awaiting != null) {
@@ -516,12 +574,15 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		}
 		pendingIn = null;
 		release();
-		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe;
+		var savedOwner = Owner.current, savedObserver = observer, savedRunner = runner, savedProbe = probe, savedAtoms = Atoms.current;
 		Owner.current = this;
+		Atoms.current = home;
 		observer = this;
 		runner = this;
 		probe = PROBE_NONE;
-		world = Scheduler.world != null ? Scheduler.world.find() : null;
+		// (the transaction running, if it is its store's: another store's never takes it in)
+		var running = Scheduler.world != null ? Scheduler.world.find() : null;
+		world = running != null && running.store == home ? running : null;
 		joined = false;
 		run = ++runs;
 		kept = 0;
@@ -533,6 +594,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			failed = true;
 		}
 		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
 		observer = savedObserver;
 		runner = savedRunner;
 		probe = savedProbe;
@@ -587,6 +649,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 				} else if (tx != null) {
 					blockedIn = tx;
 					tx.block(this);
+					tx.awaits(notReadyNode);
 				}
 			case _:
 				// (a user effect holds nothing: it runs again when the value lands)
@@ -608,8 +671,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 
 	// (async: pending in the transaction that asked, until the answer lands)
 	function ask(a:Awaitable<Dynamic>, w:Null<Tx>) {
-		var tx = w != null ? w : Scheduler.newTx();
+		var tx = w != null ? w : Scheduler.newTx(home);
 		pendingIn = tx.held();
+		if (!tx.asks.contains(this)) tx.asks.push(this);
 		awaiting = a;
 		var id = asked;
 		propagatePending(tx);
@@ -655,7 +719,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	function failWith(e:Dynamic, tx:Null<Tx>) {
 		if (kind == COMPUTED) {
 			// (the same error again is no change)
-			if (tx != null ? (stagedFailed && stagedError == e) : (hasError && error == e)) return;
+			// (against what it has staged, else what it shows, as a value is: settle)
+			if (stagedIn != null ? (stagedFailed && stagedError == e) : (hasError && error == e)) return;
 			if (tx != null) stageError(e, tx) else {
 				error = e;
 				hasError = true;
@@ -681,10 +746,15 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// logged and its run skipped, a render effect's halts (the flush throws it))
 	function deliver(e:Dynamic) {
 		if (onFailure != null) {
+			// (in its store, as its apply)
+			var savedAtoms = Atoms.current;
+			Atoms.current = home;
 			try {
 				within(null, null, () -> onFailure(e));
+				Atoms.current = savedAtoms;
 				return;
 			} catch (x:haxe.Exception) {
+				Atoms.current = savedAtoms;
 				e = x.native;
 				thrown = x;
 			}
@@ -774,13 +844,14 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (applyCleanup != null) {
 			var c = applyCleanup;
 			applyCleanup = null;
-			c();
+			inHome(c);
 		}
 		var prev = applied;
 		applied = value;
 		// (with no owner, untracked: as within, with no closure made)
-		var savedOwner = Owner.current, savedObserver = observer;
+		var savedOwner = Owner.current, savedObserver = observer, savedAtoms = Atoms.current;
 		Owner.current = null;
+		Atoms.current = home;
 		observer = null;
 		#if hxmc.dev
 		// (hxmc dev: in its compute's scope, what it makes keyed as there: helder.view.Refresh)
@@ -790,10 +861,12 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var c = try apply(value, prev) catch (e:haxe.Exception) {
 		#end
 			Owner.current = savedOwner;
+			Atoms.current = savedAtoms;
 			observer = savedObserver;
 			throw Errors.kept(e);
 		}
 		Owner.current = savedOwner;
+		Atoms.current = savedAtoms;
 		observer = savedObserver;
 		if (c != null && !Reflect.isFunction(c))
 			throw new GraphError("effect callback returned an invalid cleanup value: return a cleanup function or nothing");
@@ -822,11 +895,22 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			var c = applyCleanup;
 			applyCleanup = null;
 			Owner.disposing++;
-			try c() catch (e:haxe.Exception) {
+			try inHome(c) catch (e:haxe.Exception) {
 				Owner.disposing--;
 				throw Errors.kept(e);
 			}
 			Owner.disposing--;
 		}
+	}
+
+	// (an apply's cleanup in its store, as the apply)
+	function inHome(c:Void->Void) {
+		var saved = Atoms.current;
+		Atoms.current = home;
+		try c() catch (e:haxe.Exception) {
+			Atoms.current = saved;
+			throw Errors.kept(e);
+		}
+		Atoms.current = saved;
 	}
 }

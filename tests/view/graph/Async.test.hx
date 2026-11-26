@@ -6,6 +6,7 @@ import helder.view.graph.Graph.*;
 
 // Solid 2's async fundamentals (view's README, Holds), each test the F-rule it states.
 function tests() {
+	Stores.hooks();
 	describe("first load", () -> {
 		test("a render effect waits for it; untracked, it is not ready (F-2, F-9)", () -> {
 			var load = new Later<String>();

@@ -243,6 +243,10 @@ class WebPreviews {
 	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}>
 		return null;
 
+	// (natively whether a screen's loop plays from the frames file; here never)
+	public function fileLoops(name:String):Bool
+		return false;
+
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
 		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;

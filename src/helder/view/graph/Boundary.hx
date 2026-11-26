@@ -105,6 +105,8 @@ class Boundary extends Owner {
 			v;
 		}, null, false);
 		output.catcher = true;
+		// (its state is its own: a store's is a boundary made again there, Atoms)
+		output.remake = () -> cast @:privateAccess loading(fn, fallback).node();
 		return new Memo(output);
 	}
 
@@ -170,6 +172,8 @@ class Boundary extends Owner {
 			v;
 		}, null, false);
 		output.catcher = true;
+		// (its state is its own: a store's is a boundary made again there, Atoms)
+		output.remake = () -> cast @:privateAccess errored(fn, fallback).node();
 		return new Memo(output);
 	}
 }

@@ -5,6 +5,8 @@ import helder.math.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.Surface;
+import helder.scenario.Act;
+import helder.scenario.Scenario;
 import helder.story.Story;
 import helder.ui.*;
 import helder.ui.draw.*;
@@ -70,10 +72,17 @@ class Host {
 	public var onFrame:Null<HostScreen->Void> = null;
 	// told: a screen threw (its failure; the others go on)
 	public var onFailure:Null<HostScreen->Void> = null;
+	// told: a still about to be let go (to make room: MOUNTED), its frame shown
+	// still (NativeHost: its still written first)
+	public var onPark:Null<HostScreen->Void> = null;
 
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
-	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0) {
+	// what the program's main gave UiWindow.run, each scenario's to render (helder.scenario; null: none)
+	public final root:Null<helder.view.RootView>;
+
+	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0, ?scenarios:Array<Scenario>) {
+		root = Hosting.root;
 		this.runtime = runtime;
 		this.scale = scale;
 		// (helder.text's own shaping: a screen looks the same everywhere)
@@ -84,7 +93,16 @@ class Host {
 		renderer.groups = true;
 		for (s in stories)
 			if (s != null) screens.push(new HostScreen(this, s));
+		if (scenarios != null && scenarios.length > 0) {
+			var main = root;
+			if (main == null) throw "helder.story.Host: scenarios, but the program's main gave UiWindow.run no root";
+			var size = Lambda.exists(scenarios, s -> s.width == null) ? Act.size(main) : null;
+			for (s in scenarios)
+				screens.push(new HostScreen(this, new Story(s.name, _ -> throw "helder.story: a scenario has no view of its own", s.seed, null, s.width ?? size?.width, s.height ?? size?.height, s.loop), s));
+		}
 		if (screens.length == 0) throw "helder.story.Host: no stories (a release build has none)";
+		for (k => s in screens)
+			if (Lambda.exists(screens.slice(0, k), o -> o.name == s.name)) throw 'helder.story.Host: two screens named "${s.name}" (a story\'s and a scenario\'s names are one list)';
 	}
 
 	public function screen(name:String):Null<HostScreen>
@@ -106,7 +124,7 @@ class Host {
 		if (on == stills) return;
 		stills = on;
 		for (s in screens)
-			if (s.ui != null) s.reset();
+			s.reset();
 	}
 
 	// the screen running its loop from its moment (null, or a story without
@@ -146,11 +164,12 @@ class Host {
 	// always): how many were drawn
 	public function frame(now:Float):Int {
 		var drawn = 0;
+		time = now;
 		for (s in screens)
 			if (s.visible && s.failure == null && guard(s, () -> turn(s, now))) drawn++;
 		if (drawn > 0) return drawn;
 		for (s in screens)
-			if (aside(s)) return guard(s, () -> {
+			if (aside(s)) return (s.ui != null || room()) && guard(s, () -> {
 				s.mount();
 				var ui = s.ui, v = s.version;
 				if (ui != null) s.context.run(() -> ui.update());
@@ -172,6 +191,10 @@ class Host {
 
 	// (a screen in view's turn: whether it drew)
 	function turn(s:HostScreen, now:Float):Bool {
+		var own = s == focused || s == looping;
+		if (s.parked && !own) return false;
+		if (s.ui == null && !own && !room()) return false;
+		s.parked = false;
 		s.mount();
 		// (a loop: its clock from its moment, its loop's seconds, then again)
 		if (s == looping) {
@@ -198,7 +221,7 @@ class Host {
 
 	// (out of view: never drawn, or a still that changed; not the looping one)
 	function aside(s:HostScreen):Bool
-		return !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
+		return !s.parked && !s.visible && s != looping && s.failure == null && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
@@ -222,6 +245,12 @@ class Host {
 		var loop:Float = s.story.loop ?? 0;
 		if (fps <= 0 || loop <= 0 || s.looped) return w.frame();
 		s.looped = true;
+		// (a pass kept as its picture, a scene with effects: each frame drawn on
+		// the GPU and read back, smaller and fewer, so that it plays from the
+		// file whatever the program's frame costs)
+		var pictured = w.pictures > 0;
+		if (pictured) fps = Std.int(Math.min(fps, PICTURE_FPS));
+		var kp = Math.min(s.scale, PICTURE_SIDE / Math.max(s.width, s.height));
 		w.loop(fps);
 		s.reset();
 		s.mount();
@@ -229,19 +258,75 @@ class Host {
 		if (u == null) return w.frame();
 		for (f in 0...Math.ceil(loop * fps)) {
 			if (f > 0) w.next();
-			w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
 			s.context.run(() -> {
 				if (f > 0) Clock.tick(s.moment + f / fps);
 				u.update();
-				u.paint(w);
 			});
+			if (pictured && captured(s, kp)) w.gpu(renderer);
+			w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
+			s.context.run(() -> u.paint(w));
 		}
+		renderer.scale = u.scale = s.scale;
 		s.reset();
 		return w.frame();
 	}
 
+	// Stills built at once at most: each holds its scenes' worlds (16 a
+	// process, helder.scene.World), a canvas zoomed out shows them all. One
+	// more built, the still drawn longest ago and settled for SETTLE seconds
+	// is let go (parked: its frame kept where it is shown, its still taken,
+	// onPark), built again at a reload, a focus, its loop, a literal's patch
+	// (unpark); none settled, the new one waits a turn
+	public static inline var MOUNTED = 8;
+	public static inline var SETTLE = 0.5;
+
+	var time = 0.0;
+
+	// (room for one more screen built: one let go if need be; false: none yet)
+	function room():Bool {
+		if (!stills) return true;
+		var n = 0, oldest:Null<HostScreen> = null;
+		for (s in screens) {
+			var ui = s.ui;
+			if (ui == null) continue;
+			n++;
+			if (s != focused && s != looping && s.version > 0 && !s.redraw && !ui.needsFrame && time - s.drawnAt >= SETTLE
+				&& (oldest == null || s.drawnAt < oldest.drawnAt)) oldest = s;
+		}
+		if (n < MOUNTED) return true;
+		if (oldest == null) return false;
+		park(oldest);
+		return true;
+	}
+
+	function park(s:HostScreen) {
+		if (onPark != null) onPark(s);
+		s.reset();
+		s.parked = true;
+		s.redraw = false;
+	}
+
+	// a screen built (a request about it), parked or not yet
+	public function build(s:HostScreen)
+		if (s.ui == null && s.failure == null) guard(s, () -> {
+			s.parked = false;
+			s.mount();
+			false;
+		});
+
+	// the parked built again (a literal patched: what they show may have changed)
+	public function unpark()
+		for (s in screens)
+			if (s.parked) {
+				s.parked = false;
+				s.redraw = true;
+			}
+
 	// pixels a point of a still's passes' pictures (Host.written)
 	public static inline var CAPTURE = 2.0;
+	// a loop's pictures' frames a second and longest side in pixels (Host.written)
+	public static inline var PICTURE_FPS = 24;
+	public static inline var PICTURE_SIDE = 480.0;
 
 	// (a screen drawn at k pixels a point into the runtime's surface, not handed over: whether it was)
 	function captured(s:HostScreen, k:Float):Bool {
@@ -268,7 +353,7 @@ class Host {
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)
 	public function busy():Bool {
 		for (s in screens)
-			if (s.visible && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating)) || aside(s)) return true;
+			if (s.visible && !s.parked && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating)) || aside(s)) return true;
 		return false;
 	}
 
@@ -316,6 +401,7 @@ class Host {
 		runtime.capture(s, device);
 		device.endFrame();
 		s.version++;
+		s.drawnAt = time;
 		frames++;
 		runtime.present(s, changed);
 		if (onFrame != null) onFrame(s);
@@ -333,6 +419,8 @@ class HostScreen {
 	public final height:Int;
 	public var ui(default, null):Null<Ui> = null;
 	public var controls(default, null):Null<Controls> = null;
+	// what it shows when it is a scenario's (the program's main, its data), else its story's view
+	public final scenario:Null<Scenario>;
 	public var visible = false;
 	// (its loop recorded: Host.written's, once a build)
 	public var looped = false;
@@ -346,6 +434,9 @@ class HostScreen {
 	@:allow(helder.story.Host) public var version(default, null) = 0;
 	// (shown again, focused: a frame due whatever changed)
 	@:allow(helder.story.Host) var redraw = true;
+	// (let go to make room, its frame kept: Host.MOUNTED; when it was drawn last, the host's time)
+	@:allow(helder.story.Host) var parked = false;
+	@:allow(helder.story.Host) var drawnAt = 0.0;
 	// when it was built (haxe.Timer.stamp; -1: not yet)
 	public var mountedAt(default, null) = -1.0;
 	// its clock's time at its moment (a still's), and when its loop began (the host's time; -1: not yet)
@@ -354,13 +445,17 @@ class HostScreen {
 	// (its view's owner let go: reset)
 	var unrender:Null<Void->Void> = null;
 
-	public function new(host:Host, story:Story) {
+	public function new(host:Host, story:Story, ?scenario:Scenario) {
 		this.host = host;
 		this.story = story;
+		this.scenario = scenario;
 		name = story.name;
 		width = story.width ?? Stories.WIDTH;
 		height = story.height ?? Stories.HEIGHT;
-		context = new ScreenContext(name);
+		// (its values a store of its own: a scenario's apart from the others')
+		context = new ScreenContext(name, true, null, new helder.view.graph.Atoms(name));
+		var dark = scenario?.dark;
+		if (dark != null) context.dark(dark);
 		scale = host.scale;
 	}
 
@@ -377,9 +472,15 @@ class HostScreen {
 			ui = u;
 			var c = new Controls(story.seed);
 			controls = c;
-			unrender = Render.render(story.build(c), u.root);
-			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got)
-			if (host.stills) bring(u, c);
+			var sc = scenario, main = host.root;
+			if (sc != null && main != null) {
+				if (sc.play != null) c.play(sc.play);
+				unrender = Act.mount(sc, main, context, u);
+			} else
+				unrender = Render.render(story.build(c), u.root);
+			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got;
+			// a scenario's clock stands at its moment unless it plays to it)
+			if (host.stills && (sc == null || !c.settled())) bring(u, c);
 			moment = Clock.now;
 			true;
 		}));
@@ -411,12 +512,18 @@ class HostScreen {
 
 	// let go and built again at its next turn (from its clock's start: its moment again)
 	public function reset() {
+		if (parked) {
+			parked = false;
+			redraw = true;
+		}
 		if (ui == null) return;
 		context.run(() -> {
 			if (unrender != null) unrender();
 			if (controls != null) controls.dispose();
 		});
 		unrender = null;
+		// (built again from its start: its values too)
+		context.atoms?.clear();
 		@:privateAccess context.steps.resize(0);
 		@:privateAccess context.timers.resize(0);
 		@:privateAccess context.now = 0;

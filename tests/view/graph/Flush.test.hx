@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // flush.test.ts
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should batch updates", () -> {

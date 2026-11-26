@@ -1,9 +1,9 @@
 # Start
 
 The user watches the canvas. Put something real on it within your first
-few tool calls: the app's first view and a story of it. Don't explore the repository: this guide and
-its topics have what you need (`studio.guide {topic}`: ui, game, design,
-assets).
+few tool calls: the app's first view, its screen the starter's `App/Start`
+scenario. Don't explore the repository: this guide and its topics have
+what you need (`studio.guide {topic}`: ui, game, 3d, design, assets).
 
 ## The project
 
@@ -12,20 +12,24 @@ A new project is the starter: a TypeScript helder program.
 | File | What it is |
 |---|---|
 | `main.tsx` | the app in a window (`helder run .`) |
-| `app.tsx` | its view |
-| `app.story.tsx` | its screens: each story a frame on the canvas |
+| `app.tsx` | its model and its view |
+| `app.scenario.tsx` | its screens: each scenario the app at a moment, a frame on the canvas |
 | `tsconfig.json` | where helder's modules are (leave it) |
 | `*.helder` | design files: frames and groups the studio draws itself |
 
 `app.tsx` is a plain placeholder: replace it with the app (keep `App` as
-its view's name, or change `main.tsx` and `app.story.tsx` with it). Until
-your first change the canvas holds the places of your first frames, not
-this screen.
+its view's name, or change `main.tsx` with it). Until your first change
+the canvas holds the places of your first frames, not this screen.
 
 ```tsx file=app.tsx
+import { signal } from "helder/view";
+
+// the app's model: exported top-level signals, which a scenario's boot sets
+export const title = signal("App");
+
 export function App() {
 	return <view flexGrow={1} alignItems="center" justifyContent="center" background="#ffffff">
-		<text fontSize={14} color="#71717a">App</text>
+		<text fontSize={14} color="#71717a">{title()}</text>
 	</view>;
 }
 ```
@@ -41,36 +45,58 @@ UiWindow.run(
 );
 ```
 
-## Screens are stories
+## Screens are scenarios
 
-Each `story` in a `*.story.tsx` file is a screen on the canvas, named
-`Flow/Screen` (the part before the last `/` is its row). Its size is the
-frame's (a phone's, 390 by 844, without one). Each story renders on its
-own, with state of its own: make the state inside `render` (or a
-component), not at a module's top level, so screens don't share it.
+Keep the app's model in exported top-level signals, one per value, not in
+closures or module variables (`let`), which a scenario cannot reach. A
+scenario is the real app (`main.tsx`, as it is) at a moment: `boot` runs
+first in its screen, setting the signals or calling the app's own
+functions. Name it `Flow/Screen` (the part before the last `/` is its row).
 
-```tsx file=app.story.tsx
-import { story } from "helder/story";
-import { App } from "./app";
+```tsx file=app.scenario.tsx
+import { scenario } from "helder/scenario";
+import { title } from "./app";
 
-export const start = story({ name: "App/Start", width: 480, height: 640, render: () => <App/> });
-export const phone = story({ name: "App/Phone", render: () => <App/> });
+export const start = scenario({ name: "App/Start" });
+export const welcome = scenario({ name: "App/Welcome", boot() { title("Welcome back"); } });
 ```
 
-Each story is a literal `story({name, width, height, render})` at the
-module's top level, read before anything is built: no helper making it,
-no spread in it; put any shared code inside `render`.
+Each scenario is a literal `scenario({...})` at the module's top level,
+read before anything is built. Add one to add a screen; rename or remove
+one and the canvas follows. Also: `loop`, `time` (`"2026-11-26T09:00"`:
+its clock's start), `size: [w, h]` (else main's window's), `seed`, `dark`,
+`play` (seconds run to the moment). Each screen has state of its own:
+screens never share a value.
 
-Add a story to add a screen; rename or remove one and the canvas follows.
+The canvas is a storyboard of stills: a scenario shows its moment, it does
+not run. Write one for each key moment, named for it ("Pong/Serve",
+"Pong/Game over"), so the frame is exact and repeatable. `loop: 2` records
+2 s from its moment, played while its frame is hovered: only where motion
+is the point. Play runs the app itself, in a window of its own, live.
 
-The canvas is a storyboard of stills: each story shows its moment, it does
-not run. For anything with motion or state, write a story for each key
-moment, named for it ("Pong/Serve", "Pong/Game over"), posing the view
-through props or state (`<Court state={{...serve(), score: [3, 2]}}/>`)
-rather than running its clock, so the frame is exact and repeatable. A
-story with `loop: 2` plays 2 s from its moment while its frame is hovered:
-only where motion is the point. The app itself (`main.tsx`) is what Play
-runs, in a window of its own, live.
+## Stories are for components
+
+A story (`*.story.tsx`) shows a component alone, with controls the user
+can change: write one only for that. Its name and a scenario's are one
+list: name them apart.
+
+```tsx file=badge.tsx
+import { Read } from "helder/view";
+
+export function Badge(props: { label: Read<string>; color: Read<number> }) {
+	return <view padding="4 10" borderRadius={10} background={props.color()}>
+		<text fontSize={12} color="#ffffff">{props.label()}</text>
+	</view>;
+}
+```
+
+```tsx file=badge.story.tsx
+import { story } from "helder/story";
+import { Badge } from "./badge";
+
+export const badge = story({ name: "Badge/Default", width: 240, height: 120,
+	render: c => <Badge label={c.text("label", "New")} color={c.color("color", 0xFF2563EB)}/> });
+```
 
 ## The loop
 
@@ -82,9 +108,9 @@ runs, in a window of its own, live.
    prompt with no clear subject: 2-3 directions, asked so, and start on
    the first.
 3. Make it real, a step at a time so the canvas grows with the work:
-   first something that draws and a story of it, then one concept per
+   first something that draws on its scenario, then one concept per
    step (a small `project.patch`, `build.check`, the screen updating),
-   new stories as their moments exist. Each step real, no scaffolding;
+   new scenarios as their moments exist. Each step real, no scaffolding;
    one build per concept, not per line. `{path, text}` makes a new file
    (its folders too).
 4. Look: `run.snap {screen: "App/Start"}`, `run.tree` for nodes and their

@@ -9,6 +9,7 @@ using StringTools;
 class View {
 	public static final LANES:Array<Lane> = [
 		{name: "view", about: "helder.view on Eval, natively and as JavaScript", run: view},
+		{name: "view-stores", about: "helder.view's graph tests through stores (atoms)", run: viewStores},
 		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup", run: ui},
 		{name: "layout-conformance", about: "flexbox and grid against Taffy's fixtures", run: layoutConformance},
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
@@ -25,6 +26,12 @@ class View {
 		js("bin/view/ViewCheck.js", cp.concat(["-main", "ViewCheck"]));
 		run(NODE, ["bin/view/ViewCheck.js"]);
 	}
+
+	// (tests/view/graph run in a store each test (home), and through a store's
+	// nodes of the default's (foreign): tests/view/graph/Stores.hx)
+	static function viewStores()
+		for (mode in ["home", "foreign"])
+			run(helderCli(), ["test", "tests/view/graph"], ["HELDER_GRAPH_STORES" => mode]);
 
 	static function ui() {
 		var cp = cps(["src", "tests/ui"]);

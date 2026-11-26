@@ -56,6 +56,11 @@ class ScreenContext {
 	@:allow(helder.ui) var surface:Null<Ui> = null;
 	// reduced motion (Clock.reducedMotion while current)
 	public var reducedMotion = false;
+	// its atoms' store (helder.view.graph.Atoms: a preview host's screen's; null: the default)
+	public final atoms:Null<helder.view.graph.Atoms>;
+	// the wall clock's ms at its clock's 0 (a scenario's time: helder.os.Now; null: the system's)
+	public var epoch:Null<Float> = null;
+	final wall:Void->Float;
 	// suspended: its clock is not ticked, its timers do not run (a host's screen off screen)
 	public var suspended = false;
 	#if (target.name == "hxmc")
@@ -75,8 +80,12 @@ class ScreenContext {
 	@:allow(helder.ui.motion.Motions) var motionTicking = false;
 
 	// (isolated: settings of its own, in memory; the main context's are the platform's)
-	public function new(name:String, isolated = true, ?keymap:helder.ui.actions.Keymap) {
+	// (atoms: its store, its own signals made there)
+	public function new(name:String, isolated = true, ?keymap:helder.ui.actions.Keymap, ?atoms:helder.view.graph.Atoms) {
 		this.name = name;
+		this.atoms = atoms;
+		var was = helder.view.graph.Atoms.current;
+		helder.view.graph.Atoms.current = atoms;
 		this.keymap = keymap ?? new helder.ui.actions.Keymap();
 		safeArea = Graph.signalOf(Edges.ZERO, {ownedWrite: true});
 		titlebarArea = Graph.signalOf((null : Null<Rect>), {ownedWrite: true});
@@ -87,6 +96,8 @@ class ScreenContext {
 		#if (target.name == "hxmc")
 		stores = isolated ? new Map() : null;
 		#end
+		wall = () -> (epoch ?? 0) + now * 1000;
+		helder.view.graph.Atoms.current = was;
 		// (a new screen starts where the program's clock is, with its motion setting)
 		if (first != null) {
 			now = first.now;
@@ -120,6 +131,9 @@ class ScreenContext {
 
 	inline function enter() {
 		cur = this;
+		helder.view.graph.Atoms.current = atoms;
+		helder.view.graph.Atoms.screen = true;
+		helder.os.Now.get = epoch == null ? null : wall;
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = stores;
 		#end
@@ -127,6 +141,9 @@ class ScreenContext {
 
 	inline function leave(was:Null<ScreenContext>) {
 		cur = was;
+		helder.view.graph.Atoms.current = was?.atoms;
+		helder.view.graph.Atoms.screen = was != null;
+		helder.os.Now.get = was?.epoch == null ? null : was.wall;
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = was?.stores;
 		#end

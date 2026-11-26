@@ -3,6 +3,6 @@
 // to it as helder's are: a module's declaration class (helder.typescript.api.Modules),
 // its declarations generated (tests/typescript/run.mjs checks them).
 @:typescript("./test-renderer", "../typescript/helder/test-renderer.d.ts")
-@:typescript.classes(TestRenderer.TestNode, MathProbe)
+@:typescript.classes(TestRenderer.TestNode, MathProbe, StoreProbe)
 @:build(helder.typescript.api.Manifest.build())
 class TestTypeScript {}

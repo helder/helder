@@ -28,9 +28,12 @@ class FrameWriter implements TextureCanvas {
 	var out = new FrameStreams();
 	// (this frame's fonts and images, by their index in it: its loop's too)
 	final fonts:Array<FontFile> = [];
-	final images:Array<Image> = [];
-	// the passes drawn as placeholders (what a frame of data cannot show)
+	// (a picture's as it was read: its pixels let go, a loop's hundreds not held)
+	final images:Array<ImageRef> = [];
+	// the passes drawn as placeholders (what a frame of data cannot show),
+	// and those drawn as their pictures (read back from the GPU)
 	public var passes(default, null) = 0;
+	public var pictures(default, null) = 0;
 	// the renderer whose frame it writes again (gpu): the GPU host what draws
 	// on the GPU finds (Renderer.of), its pass done in that frame, its texture
 	// read back (pixels) for its box to be its picture; null: a placeholder
@@ -50,7 +53,7 @@ class FrameWriter implements TextureCanvas {
 		return {
 			bytes: still ?? out.bytes(),
 			fonts: [for (f in fonts) FrameArchive.fontRef(f)],
-			images: [for (i in images) FrameArchive.imageRef(i)],
+			images: images.copy(),
 			// (a loop a pass draws in: none, played live)
 			loop: fps > 0 && loopFrames.length > 0 && passes == stillPasses ? {fps: fps, frames: FrameLoop.encode(loopFrames)} : null
 		};
@@ -58,7 +61,8 @@ class FrameWriter implements TextureCanvas {
 
 	// the still painted: what is painted next is its loop's first frame, at fps
 	public function loop(fps:Int) {
-		// (its frames drawn by no renderer: a pass in them a placeholder, counted)
+		// (its frames drawn by no renderer unless given one again (gpu, each
+		// frame's): a pass in them a placeholder, counted)
 		host = null;
 		pixels = null;
 		stillPasses = passes;
@@ -183,9 +187,12 @@ class FrameWriter implements TextureCanvas {
 		out.float(43, stroke.dashOffset ?? 0);
 	}
 
-	public function image(img:Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners) {
+	public function image(img:Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners)
+		drawn(img == null ? null : FrameArchive.imageRef(img), x, y, w, h, u0, v0, u1, v1, radius, corners);
+
+	function drawn(r:Null<ImageRef>, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners) {
 		out.op(FrameOp.IMAGE);
-		out.uint(img == null ? 0 : index(images, img) + 1);
+		out.uint(r == null ? 0 : refIndex(r) + 1);
 		box(x, y, w, h);
 		out.float(50, u0);
 		out.float(51, v0);
@@ -232,7 +239,10 @@ class FrameWriter implements TextureCanvas {
 			return;
 		}
 		var img = pixels == null ? null : pixels(t);
-		if (img == null) placeholder(x, y, w, h) else image(img, x, y, w, h, 0, 0, 1, 1, radius, corners);
+		if (img == null) placeholder(x, y, w, h) else {
+			pictures++;
+			drawn(FrameArchive.pixelsRef(img, fps > 0), x, y, w, h, 0, 0, 1, 1, radius, corners);
+		}
 	}
 
 	// (what a node that draws on the GPU draws, as data, by the id its
@@ -422,6 +432,16 @@ class FrameWriter implements TextureCanvas {
 		out.float(92, size);
 		out.bool(oblique);
 		out.int(run);
+	}
+
+	// (the same pixels once: a still loop's frames one picture)
+	function refIndex(r:ImageRef):Int {
+		for (k in 0...images.length) {
+			var i = images[k];
+			if (i == r || i.hash == r.hash && i.kind == r.kind && i.width == r.width && i.height == r.height && i.color == r.color) return k;
+		}
+		images.push(r);
+		return images.length - 1;
 	}
 
 	static function index<T>(list:Array<T>, x:T):Int {

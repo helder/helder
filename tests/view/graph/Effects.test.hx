@@ -5,6 +5,7 @@ import helder.view.graph.Graph.*;
 
 // createEffect.test.ts (sync)
 function tests() {
+	Stores.hooks();
 	afterEach(() -> flush());
 
 	test("should run effect", () -> {

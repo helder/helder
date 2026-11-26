@@ -75,6 +75,15 @@ class Stills {
 		dirty = true;
 	}
 
+	// the stills fresh under from fresh under to (a live literal patched: its
+	// screens' frames that change taken again, the others the same)
+	public function rekey(names:Array<{name:String, file:String}>, from:Sources, to:Sources)
+		for (n in names)
+			if (archive.key(n.name) == from.key(n.file, n.name)) {
+				archive.rekey(n.name, to.key(n.file, n.name));
+				dirty = true;
+			}
+
 	// the screens not in the project any more let go
 	public function keep(names:Array<String>)
 		for (n in archive.names())
