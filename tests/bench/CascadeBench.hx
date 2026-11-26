@@ -15,7 +15,7 @@ import sys.io.File;
 // share of the styles' phase, what they allocate and keep, the groups and
 // styles made; then the styles against #321's cascade (frozen): every
 // element's display, margin-top, color and font-size, every 37th's every
-// longhand.
+// longhand; and against the same cascade without the sharing cache.
 //
 //   bin/bench/CascadeBench <page.html> <sheets.json: URL to file> <runs>
 class CascadeBench {
@@ -82,6 +82,19 @@ class CascadeBench {
 				if (differ.length < 20) differ.push('${all[k].localName} $p: ${a.text(p)} (#321: ${b.text(p)})');
 			}
 		}
+		// (the sharing cache against none: the same values)
+		var plain = CssCascade.styles(doc, {load: load, url: options.url, share: false});
+		var sharingChecked = 0, sharingDiffer = [], sharingDiffers = 0;
+		for (k in 0...all.length) {
+			var props = k % 37 == 0 ? longhands : ["display", "margin-top", "color", "font-size"];
+			var a = kept.computed(all[k]), b = plain.computed(all[k]);
+			for (p in props) {
+				sharingChecked++;
+				if (a.text(p) == b.text(p)) continue;
+				sharingDiffers++;
+				if (sharingDiffer.length < 20) sharingDiffer.push('${all[k].localName} $p: ${a.text(p)} (no sharing: ${b.text(p)})');
+			}
+		}
 		inline function ms(s:Float)
 			return Math.round(s * 1e4) / 10;
 		var groups = {};
@@ -95,11 +108,13 @@ class CascadeBench {
 			gcShare: Math.round(best.gc / best.styles * 1000) / 10,
 			allocatedPerElement: Math.round(best.allocated / elements),
 			keptPerElement: Math.round((after - before) / elements),
+			shares: kept.shares,
 			hits: kept.hits,
 			misses: kept.misses,
 			styles_: counts.styles,
 			groups: groups,
-			parity: {checked: checked, differs: differs, first: differ}
+			parity: {checked: checked, differs: differs, first: differ},
+			sharing: {checked: sharingChecked, differs: sharingDiffers, first: sharingDiffer}
 		}));
 	}
 
