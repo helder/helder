@@ -837,7 +837,7 @@ class Regex {
 			if (global || sticky) put(r, "lastIndex", 0);
 			return null;
 		}
-		var k = Std.int(lastIndex);
+		var k = Std.int(lastIndex), unicode = bits & UNICODE != 0;
 		// (unicode: an index inside a surrogate pair is the pair's, the code point holding it)
 		if (unicode && k > 0 && k < s.length) {
 			var c = s.charCodeAt(k), before = s.charCodeAt(k - 1);
@@ -845,7 +845,6 @@ class Regex {
 		}
 		var caps:Array<Int> = null;
 		var m = matcher(r, s);
-		var unicode = bits & UNICODE != 0;
 		while (k <= s.length) {
 			caps = m.attempt(k);
 			if (caps != null || sticky) break;
