@@ -263,6 +263,45 @@ keyed on its space: the same space, the same fragment.
 - Relative positioning (§9.4.3) moves a box's fragment, and an inline
   box's, after its place is known.
 
+## Floats and positioning
+
+- `Exclusions`: a block formatting context's floats, their margin boxes
+  in the layout's coordinates. `place` puts the next one by §9.5.1's
+  rules (no higher than an earlier float, beside the floats there, at its
+  side of the containing block, down past them until it fits); `band`
+  gives the room across a line or a box; `clear` where clearance puts a
+  box; `lowest` what a root's auto height takes in (§10.6.7).
+- `Space` carries the context's floats, the containing block's left and
+  the box's predicted top: a child's top margins are summed before it is
+  laid out (`predict`: its own and its first in-flow descendants' while
+  nothing parts them), so the floats and lines inside it know where they
+  are. A prediction that misses (margins collapsing through an empty
+  first child) leaves its floats off by that much.
+- In block flow a float is laid out shrink-to-fit and placed at the
+  current position; clearance (§9.5.2) puts a box's border edge below the
+  floats it clears, its own top margin then not collapsing with what is
+  before it; a formatting context's root (overflow, flow-root, a table)
+  goes beside the floats in the room they leave, or down past them when
+  its margins, set width or a table's min-content don't fit.
+- In a line (`WordFlow`): a float met is placed by the block at the line's
+  top (`Space.placeFloat`), the line's room taken again; `lineWidth` gives
+  each line its room and how far down it widens, a line whose first word
+  doesn't fit goes there.
+- Absolutely positioned boxes wait in their containing block's list
+  (`Positioned`: the nearest positioned box's, else the root's; fixed ones
+  the root's), with their static place in the fragment they were met in
+  (a block's next position, or where they are in a line). Once the
+  containing block is sized each is laid out by §10.3.7 and §10.6.4's
+  equations against its padding box (the root's: the initial containing
+  block, the viewport): auto widths shrink to fit, auto margins centre
+  (negative vertical ones too), top and bottom with an auto height
+  stretch it. A layout that leaves such boxes outside itself isn't reused
+  from the cache (`Box.ESCAPES`), nor one beside floats.
+- Not yet: the static position of a box that was block-level before
+  blockification is taken where it is met in a line, not below it;
+  sticky positioning (as relative); floats' intrinsic contribution beyond
+  their min- and max-content.
+
 ## Tables
 
 `TableFlow` (CSS 2.1 §17, with CSS Tables 3 where they agree) lays out a

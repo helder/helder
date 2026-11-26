@@ -30,6 +30,9 @@ class WordFlow {
 	static inline var CLOSE = 3;
 	static inline var ATOMIC = 4;
 	static inline var NEWLINE = 5;
+	// (out of flow: placed by the block, at the line they are met in)
+	static inline var FLOAT = 6;
+	static inline var ABSOLUTE = 7;
 
 	final flow:BlockFlow;
 	// (the content's atoms, kept between calls)
@@ -68,7 +71,7 @@ class WordFlow {
 		var textBoxes = new haxe.ds.ObjectMap<helder.dom.Node, Box>();
 		// (inline boxes and atomic inlines in order: their items come in that order, one piece each;
 		// a style is shared by boxes alike, so it doesn't say which)
-		var opened:Array<Box> = [], atomics:Array<Box> = [];
+		var opened:Array<Box> = [], atomics:Array<Box> = [], outOfFlow:Array<Box> = [];
 		function walk(b:Box) {
 			var k = b.first;
 			while (k != null) {
@@ -85,6 +88,12 @@ class WordFlow {
 						c.closeBox(k.node);
 					case Break:
 						c.addBreak(k.node, BoxInline.of(k, width));
+					case _ if (k.floating || k.absolute):
+						outOfFlow.push(k);
+						if (measureOnly && k.floating) {
+							if (k.context != null) k.context.intrinsic(k, space) else flow.intrinsic(k, space);
+						}
+						if (k.floating) c.addFloat(k.node) else c.addAbspos(k.node);
 					case _:
 						var w = 0.0, h = 0.0, base = Math.NaN;
 						if (measureOnly) {
@@ -109,7 +118,7 @@ class WordFlow {
 		markers = found;
 		cbWidth = width;
 		count = 0;
-		var openOf = new Map<Int, Box>(), nextOpen = 0, nextAtomic = 0;
+		var openOf = new Map<Int, Box>(), nextOpen = 0, nextAtomic = 0, nextOut = 0;
 		for (p in 0...c.pieces) {
 			var item = c.pieceItem(p);
 			var kind = switch c.pieceKind(p) {
@@ -120,11 +129,13 @@ class WordFlow {
 						case Close: CLOSE;
 						case Atomic: ATOMIC;
 						case Break: NEWLINE;
+						case Float: FLOAT;
+						case Abspos: ABSOLUTE;
 						case _: -1;
 					}
 			}
 			if (kind < 0) continue;
-			var style:BoxInline = cast c.style(kind == CLOSE ? c.match(item) : item);
+			var style:BoxInline = kind == FLOAT || kind == ABSOLUTE ? null : cast c.style(kind == CLOSE ? c.match(item) : item);
 			var keep = kind == SPACE && switch style.whiteSpaceCollapse() {
 				case Collapse | PreserveBreaks | Discard: false;
 				case _: true;
@@ -139,6 +150,7 @@ class WordFlow {
 					b;
 				case CLOSE: openOf.get(c.match(item)) ?? style.box;
 				case ATOMIC: atomics[nextAtomic++];
+				case FLOAT | ABSOLUTE: outOfFlow[nextOut++];
 				case WORD | SPACE if (source != null): textBoxes.get(source) ?? style.box;
 				case _: style.box;
 			}
@@ -186,6 +198,12 @@ class WordFlow {
 					run += w;
 					line += w;
 					trailing = kept[i] ? 0 : trailing + w;
+				case FLOAT:
+					var b = boxes[i];
+					var m = fixed(b.style.model().margin[1]) + fixed(b.style.margin[3]);
+					min = Math.max(min, b.minContent + m);
+					line += b.maxContent + m;
+				case ABSOLUTE:
 				case NEWLINE:
 					min = Math.max(min, run - trailing);
 					max = Math.max(max, line - trailing);
@@ -214,15 +232,19 @@ class WordFlow {
 		var i = 0, first = true;
 		// (the inline boxes open where a line starts)
 		var open:Array<Box> = [];
+		// (floats and absolutely positioned boxes placed once, where their line is first tried)
+		var done = [for (_ in 0...count) false];
+		var avail = width, left = 0.0, next = Math.POSITIVE_INFINITY;
+		function room() {
+			var lw = space.lineWidth == null ? null : space.lineWidth(oy + y, strut.height);
+			avail = lw == null ? width : lw.width;
+			left = lw == null ? 0 : lw.offset - ox;
+			next = lw == null ? Math.POSITIVE_INFINITY : lw.next - oy;
+		}
 		while (i < count || first) {
-			var avail = width, left = 0.0;
-			if (space.lineWidth != null) {
-				var lw = space.lineWidth(oy + y, strut.height);
-				avail = lw.width;
-				left = lw.offset - ox;
-			}
+			room();
 			var x = first ? indent : 0.0;
-			var start = i, lastBreak = -1, forced = false;
+			var start = i, lastBreak = -1, forced = false, filled = false;
 			while (i < count) {
 				var k = kinds[i];
 				if (k == NEWLINE) {
@@ -230,12 +252,40 @@ class WordFlow {
 					i++;
 					break;
 				}
+				if (k == FLOAT || k == ABSOLUTE) {
+					if (!done[i]) {
+						done[i] = true;
+						if (k == FLOAT) {
+							if (space.placeFloat != null) {
+								// (the float's own lines are laid out by this: these atoms kept around it)
+								var saved = save();
+								space.placeFloat(saved.boxes[i], oy + y);
+								load(saved);
+							}
+							room();
+						} else if (space.placeAbsolute != null) space.placeAbsolute(boxes[i], ox + left + x, oy + y);
+					}
+					i++;
+					continue;
+				}
 				if (breaks[i] && i > start) lastBreak = i;
 				var w = widths[i];
-				if ((k == WORD || k == ATOMIC) && x + w > avail + 0.001 && lastBreak > start) {
-					i = lastBreak;
-					break;
+				if ((k == WORD || k == ATOMIC) && x + w > avail + 0.001) {
+					if (lastBreak > start) {
+						i = lastBreak;
+						break;
+					}
+					// (nothing fits beside the floats here: the line goes down to where they end, §9.5)
+					if (!filled && next < Math.POSITIVE_INFINITY && next > y) {
+						y = next;
+						i = start;
+						room();
+						x = first ? indent : 0.0;
+						lastBreak = -1;
+						continue;
+					}
 				}
+				if (k == WORD || k == ATOMIC) filled = true;
 				x += w;
 				i++;
 			}
@@ -286,12 +336,12 @@ class WordFlow {
 		// (collapsible spaces at the line's start and end take no room)
 		var hidden = [for (k in start...end) false];
 		var k = start;
-		while (k < end && (kinds[k] == SPACE && !kept[k] || kinds[k] == OPEN || kinds[k] == CLOSE)) {
+		while (k < end && (kinds[k] == SPACE && !kept[k] || kinds[k] == OPEN || kinds[k] == CLOSE || kinds[k] >= FLOAT)) {
 			if (kinds[k] == SPACE) hidden[k - start] = true;
 			k++;
 		}
 		k = end - 1;
-		while (k >= start && (kinds[k] == SPACE && !kept[k] || kinds[k] == OPEN || kinds[k] == CLOSE || kinds[k] == NEWLINE)) {
+		while (k >= start && (kinds[k] == SPACE && !kept[k] || kinds[k] == OPEN || kinds[k] == CLOSE || kinds[k] == NEWLINE || kinds[k] >= FLOAT)) {
 			if (kinds[k] == SPACE) hidden[k - start] = true;
 			k--;
 		}
@@ -598,6 +648,42 @@ class WordFlow {
 		flush();
 	}
 
+	// (the atoms of the content being laid out, copied while another is: a float in a line)
+	function save():Saved
+		return {
+			kinds: kinds.slice(0, count),
+			boxes: boxes.slice(0, count),
+			starts: starts.slice(0, count),
+			ends: ends.slice(0, count),
+			widths: widths.slice(0, count),
+			breaks: breaks.slice(0, count),
+			kept: kept.slice(0, count),
+			atomicFragments: atomicFragments.slice(0, count),
+			pieces: pieces.slice(0, count),
+			count: count,
+			markers: markers,
+			content: content,
+			cbWidth: cbWidth
+		};
+
+	function load(s:Saved) {
+		for (k in 0...s.count) {
+			kinds[k] = s.kinds[k];
+			boxes[k] = s.boxes[k];
+			starts[k] = s.starts[k];
+			ends[k] = s.ends[k];
+			widths[k] = s.widths[k];
+			breaks[k] = s.breaks[k];
+			kept[k] = s.kept[k];
+			atomicFragments[k] = s.atomicFragments[k];
+			pieces[k] = s.pieces[k];
+		}
+		count = s.count;
+		markers = s.markers;
+		content = s.content;
+		cbWidth = s.cbWidth;
+	}
+
 	// (a run's columns made their size at once: grown one glyph at a time, each push copies)
 	static function sized(run:ShapedRun, n:Int) {
 		run.ids.resize(n);
@@ -656,6 +742,22 @@ class WordFlow {
 			case Px(v): v;
 			case _: 0;
 		}
+}
+
+private typedef Saved = {
+	kinds:Array<Int>,
+	boxes:Array<Box>,
+	starts:Array<Int>,
+	ends:Array<Int>,
+	widths:Array<Float>,
+	breaks:Array<Bool>,
+	kept:Array<Bool>,
+	atomicFragments:Array<Int>,
+	pieces:Array<Int>,
+	count:Int,
+	markers:Array<Box>,
+	content:Null<InlineContent>,
+	cbWidth:Float
 }
 
 private typedef Metrics = {ascent:Float, descent:Float, above:Float, below:Float, height:Float, size:Float, face:FontFile, xHeight:Float}

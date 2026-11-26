@@ -66,6 +66,49 @@ function tests() {
 			equals(v.fragments.count, count);
 			equals(v.fragments.width(v.layout(400)), 400.0);
 		});
+		test("floats: placement, lines beside them, clearance, a root's height", () -> {
+			var v = view('<div id=box style="width:200px"><div id=l style="float:left;width:50px;height:30px"></div><div id=r style="float:right;width:40px;height:60px"></div>'
+				+ '<div id=l2 style="float:left;width:50px;height:10px"></div><p id=p style="margin:0">x</p><div id=c style="clear:left;height:5px"></div></div>'
+				+ '<div id=root style="overflow:hidden"><div style="float:left;width:10px;height:40px"></div></div>');
+			equals(rect(v, "l"), [0.0, 1, 50, 30]);
+			equals(rect(v, "r"), [160.0, 1, 40, 60]);
+			equals(rect(v, "l2"), [50.0, 1, 50, 10]);
+			equals(rect(v, "c")[1], 31.0);
+			equals(rect(v, "root")[3], 40.0);
+			// (the paragraph's line starts after the left floats)
+			var line = lineOf(v, "p");
+			equals(line[0], 100.0);
+		});
+		test("a formatting context's root beside floats, or below them", () -> {
+			var v = view('<div style="width:200px"><div style="float:left;width:50px;height:30px"></div><div id=a style="overflow:hidden;height:10px"></div>'
+				+ '<div id=b style="display:flow-root;height:10px;margin-left:160px"></div></div>');
+			equals(rect(v, "a"), [50.0, 1, 150, 10]);
+			equals(rect(v, "b")[1], 31.0);
+		});
+		test("absolute and fixed positioning", () -> {
+			var v = view('<div id=cb style="position:relative;width:200px;height:100px;margin-left:10px;padding:5px">x<div id=a style="position:absolute;left:10px;top:20px;width:30px;height:40px"></div>'
+				+ '<div id=b style="position:absolute;right:0;bottom:0;width:20px;height:10px"></div><div id=c style="position:absolute;left:0;right:0;width:100px;margin:0 auto;height:5px"></div>'
+				+ '<div id=s style="position:absolute;height:5px;width:5px"></div><div id=f style="position:fixed;left:3px;top:4px;width:5px;height:5px"></div></div>');
+			equals(rect(v, "a"), [20.0, 21, 30, 40]);
+			equals(rect(v, "b"), [200.0, 101, 20, 10]);
+			equals(rect(v, "c")[0], 65.0);
+			// (its static position: where it is met in the line, after the text's 16px)
+			equals(rect(v, "s")[0], 31.0);
+			equals(rect(v, "f"), [3.0, 4, 5, 5]);
+		});
+		test("floats placed never overlap, and stay in their containing block when they fit", () -> property(FLOATS, list -> {
+			var ex = new Exclusions();
+			var placed = [];
+			for (f in list) {
+				var at = ex.place(f.left, f.w, f.h, f.y, 0, 300);
+				for (p in placed) {
+					var apart = at.x + f.w <= p.x + 1e-9 || p.x + p.w <= at.x + 1e-9 || at.y + f.h <= p.y + 1e-9 || p.y + p.h <= at.y + 1e-9;
+					assert(apart, 'overlap: ${at.x},${at.y} ${f.w}x${f.h} and ${p.x},${p.y} ${p.w}x${p.h}');
+				}
+				if (f.w <= 300) assert(at.x >= -1e-9 && at.x + f.w <= 300 + 1e-9, 'out: ${at.x} + ${f.w}');
+				placed.push({x: at.x, y: at.y, w: f.w, h: f.h});
+			}
+		}, {cases: 300}));
 		test("siblings' margins collapse as §8.3.1 says", () -> property(SIBLINGS, list -> {
 			var html = [for (k in 0...list.length) {
 				var s = list[k];
@@ -97,6 +140,29 @@ function tests() {
 }
 
 private typedef Sibling = {h:Int, mt:Int, mb:Int};
+
+private final FLOATS:Gen<Array<{left:Bool, w:Float, h:Float, y:Float}>> = array(c -> {
+	left: c.draw(pick([true, false])),
+	w: c.draw(int(1, 320)) * 1.0,
+	h: c.draw(int(1, 80)) * 1.0,
+	y: c.draw(int(0, 100)) * 1.0
+}, 1, 8);
+
+// (the first line box of an element's box: its x and y)
+private function lineOf(v:Laid, id:String):Array<Float> {
+	var el:Element = v.document.getElementById(id);
+	var f = v.fragments;
+	var k = f.count;
+	while (k-- > 0)
+		if (f.kind(k) == Fragments.BOX && f.box(k).node == el && f.parent(k) >= 0) {
+			var c = f.first(k);
+			while (c >= 0 && f.kind(c) != Fragments.LINE) c = f.next(c);
+			if (c < 0) return [];
+			var at = f.absolute(c);
+			return [at.x, at.y];
+		}
+	return [];
+}
 
 private final SIBLINGS:Gen<Array<Sibling>> = array(c -> ({h: c.draw(pick([0, 0, 10, 25])), mt: c.draw(int(-15, 30)), mb: c.draw(int(-15, 30))} : Sibling), 1, 7);
 
