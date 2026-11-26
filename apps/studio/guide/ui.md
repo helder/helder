@@ -28,8 +28,11 @@ Flex: `direction` (`column`, `row`), `grow`, `shrink`, `align-items`,
 `left`, `top`, `right`, `bottom`. Text: `font-size`, `font-weight`,
 `color`, `text-align`, `max-lines`.
 
-A shadow or a glow: `shadow="0 8 24 rgba(0,0,0,0.15)"` (x, y, blur,
-colour; several comma-separated; `0 0 16 #22d3ee` glows).
+A box's shadow or glow: `shadow="0 8 24 rgba(0,0,0,0.15)"` (x, y, blur,
+colour; several comma-separated; `0 0 16 #22d3ee` glows). It is the box's,
+as CSS's box-shadow: on a `<text>` it lights the text's whole box. Glowing
+text: `text-shadow="0 0 12 #22d3ee"` on the `<text>` (the letters' shapes,
+blurred; `"0 0 4 #22d3ee, 0 0 16 #22d3ee"` for a stronger glow).
 
 ## State, lists, conditions, events
 
