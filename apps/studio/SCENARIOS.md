@@ -419,6 +419,69 @@ Left: `longPress`, `swipe`, `pinch`; a drag held mid-way (the marquee's story st
 phone's select mode and info sheet (PhoneState is the phone shell's own: steps reach them now,
 not yet written).
 
+## The UI monkey (property rollout item 5)
+
+`helder.scenario.Monkey`: a stateful property over the real program, booted as its scenarios,
+many cases in one process and none drawn (no GPU device: a Ui, a ScreenContext and a store a case,
+the root mounted by `Act.mount` as a host's screen is, its frames painted onto nothing).
+
+```haxe
+Hosting.on = true;
+App.main();
+Hosting.on = false;
+test("the app under a monkey", () -> Monkey.check({
+  from: Monkey.from("app.App_scenario"),          // or Monkey.from(plain, crowded)
+  atoms: [Monkey.atom(App.rows), Monkey.atom(App.query)]
+}, {cases: 40, limit: 30}));
+```
+
+- **A case**: one of the scenarios (`from`), its environment drawn over its own (size, a phone's
+  to 2000 x 1400, no smaller than `smallest`, 240 x 180; dark; locale; text scale; start time
+  1970-2100; a fixed zone), the atoms written after its boot (values of their types, derived by
+  `Monkey.atom`'s macro: Int, Float, Bool, String, arrays, Null, structures, enums, enum abstracts;
+  or a Gen given; strings: short words, runs of any characters, right to left, emoji, marks, line
+  breaks, huge one-word names, long texts), then up to `steps` (20) steps drawn from what the
+  screen shows: taps on its nodes (interactive roles mostly), typing into its text fields, keys,
+  scrolls of its overflowing scrollers (to an end, by points), drags, resizes, idle time
+  (`wait`). Each is a `Steps` step, run and waited for exactly as a scenario file runs it.
+- **Invariants**, after boot, each step and the end (the pointer gone): `throws` (nothing thrown,
+  no request its fixtures miss), `sizes` (no NaN, infinite or negative box), `window` (what is
+  shown, outside every clipping box, inside the window), `settles` (its clock rests within a
+  minute), `steady` (a frame after settling nothing moved, no frame asked), `scrolls` (a scroller
+  wheeled to its end is there, its last row shown; to its start at 0), `kept` (idle time moves
+  no scroll position and makes no node again; typing keeps its field's focus and moves no
+  scroller but its own, or one clamped to a shorter end), `popups` (an anchored popup closed with
+  its anchor gone, else at it). `except` leaves some out.
+- **A failure** is shrunk (helder.test's choices: steps taken out, values lowered, the
+  environment back to the scenario's) and written as a scenario file
+  (`bin/test/monkey/<test>.<line>.scenario.hx`; the fuzz lane's `bin/fuzz/monkey`, CI's
+  artifact): the scenario it started from (its boot by its path), the environment that differs,
+  the atoms' values, its steps. Moved beside the scenarios, it opens in the studio.
+  `Monkey.find` returns the smallest case instead of failing the test (its scenario too, built
+  again).
+- **Seeds**: the test lane's fixed (seed 0, 30 cases), the fuzz lane's random (its 20 s soak).
+
+Steps gained `resize(w, h)`, `wait(seconds)` and taps and scrolls at `{x, y}` for it (a node no
+query tells apart, a scroller with no name). A resize step changes the screen's Ui, not the studio
+frame's size (its still is drawn at the scenario's).
+
+Found on the way: each step's wait ran a minute of the screen's clock (only a paint answers
+`Ui.needsFrame`; a frame asked for is now painted onto nothing); a one-line field took a line break
+typed (iOS's Return, an input method's) or given as its value and grew a line each; a soak's
+rejections were bounded by the cases asked, not run.
+
+Tests: `src/helder/scenario/Monkey.test.hx` (a small program that holds: 30 cases, a 20 s soak of
+15,121 cases passed; one with two bugs, each found, shrunk, written and replayed: a huge name past
+the window, to the atom's value alone; a popup left open as a search takes its anchor away, to a
+few steps), in the fuzz lane.
+
+Follow-ups: the viewer (generated folders: huge names, RTL, emoji and combining names, many
+entries, broken files), TypeScript programs (a `helder/scenario` monkey), and the invariants left:
+a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
+idle time and typing, at most one media playing, frames compared (a still built twice the same
+pixels), perf bounds; a resize step as the studio frame's size; `play` scenarios (their clock run
+first).
+
 ## Phase 2 notes
 
 - Per-context, left: Haxe's `Date.now` (hxmc's runtime), Haxe's tasks' clock

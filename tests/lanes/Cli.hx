@@ -10,7 +10,7 @@ using StringTools;
 class Cli {
 	public static final LANES:Array<Lane> = [
 		{name: "test", about: "every *.test.hx and *.test.ts, natively and as wasm32-wasi", run: helderTest},
-		{name: "fuzz", about: "the robustness properties soaked (FUZZ_SECONDS each, FUZZ_SEED), then helder's TypeScript against node (FUZZ_TS_SECONDS)", run: fuzz},
+		{name: "fuzz", about: "the robustness properties and UI monkeys soaked (FUZZ_SECONDS each, FUZZ_SEED), then helder's TypeScript against node (FUZZ_TS_SECONDS)", run: fuzz},
 		{name: "cli", about: "helder build, run, dev and devices", run: cli},
 		{name: "devtools", about: "the devtools protocol without a window", run: devtools},
 		{name: "declarations", about: "the generated TypeScript declarations", run: declarations},
@@ -24,10 +24,11 @@ class Cli {
 
 	// (the properties with a limit, each run FUZZ_SECONDS (20) natively from
 	// FUZZ_SEED (random: a failure says its seed); a case that hangs,
-	// crashes or blows up is left in bin/fuzz/properties)
+	// crashes or blows up is left in bin/fuzz/properties, a UI monkey's
+	// failure written as a scenario file in bin/fuzz/monkey)
 	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
 		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx", "src/helder/dom/Dom.test.hx",
-		"src/helder/dom/XmlParser.test.hx"];
+		"src/helder/dom/XmlParser.test.hx", "src/helder/scenario/Monkey.test.hx"];
 
 	static function fuzz() {
 		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
