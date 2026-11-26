@@ -102,11 +102,15 @@ class SidebarView implements Markup {
 			ticking = true;
 			helder.ui.Clock.addFor(n, step);
 		});
+		// (macOS's buttons at the window's start: the bar is the title bar's
+		// row; kept so in full screen, where they hide, so that nothing moves)
+		// (read untracked: the sidebar not made again as the title bar changes)
+		var t = helder.ui.SafeArea.titlebar.peek(), start = signal(t != null && t.x > 0);
+		renderEffect(() -> WindowButtons.side(), side -> if (side != null) start(side == "start"));
 		// (Windows' and Linux's: its 30-point bar centred on the 40-point toolbar's line, the window's buttons at that row's end)
 		return <view tag="sidebar" width={WIDTH} flexShrink={0} padding="0 10" rowGap={6} overflow="hidden"
-			paddingTop={WindowButtons.side() == "start" ? 0 : WindowButtons.side() == "end" ? 5 : 8}>
-			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} flexShrink={0} dragRegion/></Show>
-			{bar(x)}
+			paddingTop={start() ? 0 : WindowButtons.side() == "end" ? 5 : 8}>
+			{bar(x, start)}
 			<view tag="sidebar-body" flexGrow={1} minHeight={0} ref={(n:Node) -> {
 				body = n;
 				// (shown a tenth of a second: levels from now on pushed)
@@ -126,11 +130,14 @@ class SidebarView implements Markup {
 
 	// (the bar over the levels, still while they slide (a navigation bar's):
 	// the back row to the level above, its label cross-faded in place, gone
-	// at the overview by a fade; the overview's button, never moved. Its
+	// at the overview by a fade; the overview's button at its end, never
+	// moved. On macOS the title bar's row, beside the window's buttons and
+	// centred on them, dragging the window but over its buttons; the
+	// level's title right under it, no band left empty. Its
 	// fades on tracks of its own, as the panes' moves: a declared motion
 	// (motion-opacity, transition) turns on helder.ui's motions for the
 	// whole window, each of its frames then walked twice)
-	static function bar(x:Explorer):View {
+	static function bar(x:Explorer, start:helder.view.graph.Read<Bool>):View {
 		var s = x.sidebar, node:Null<Node> = null, ticking = false;
 		function top():Bool
 			return s.level() == "";
@@ -163,7 +170,8 @@ class SidebarView implements Markup {
 				helder.ui.Clock.addFor(node, step);
 			}
 		});
-		return <view tag="level-bar" flexDirection="row" alignItems="center" padding="0 2" columnGap={2} flexShrink={0} ref={(n:Node) -> node = n}>
+		return <view tag="level-bar" flexDirection="row" alignItems="center" columnGap={2} flexShrink={0} height={start() ? Shell.BAR : null}
+			padding={start() ? '0 2 0 ${Shell.BUTTONS - 10}' : "0 2"} dragRegion={start()} ref={(n:Node) -> node = n}>
 			<button slot="side-back" tag="level-back" focusable={!top()} aria-label={() -> "Back to " + s.backLabel()}
 				flexShrink={1} minWidth={0} opacity={shown()} pointerEvents={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
 				<image src={Glyphs.get("back")} width={14} height={14} flexShrink={0}/>

@@ -3259,7 +3259,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (133 lines)
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (135 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3390,7 +3390,9 @@ Node#root 0,0 390x844
                       PdfText#page-text 330,68 440x587
                       PdfText#page-text 257,667 586x440
                       PdfText#page-text 330,1119 440x586
-                TextNode#page-indicator 1034,64 50x23 "2 / 3"
+                Node#view 1034,64 50x23
+                  Node#page-indicator 1044,68 30x15
+                    TextNode#text 1044,68 30x15 "2 / 3"
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 

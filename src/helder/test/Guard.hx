@@ -98,8 +98,9 @@ class Guard {
 }
 
 #if ((helder.os == "macos" || helder.os == "ios") && !eval)
-// (Apple's phys_footprint: rusage_info_v2's, after its uuid and seven counters)
-@:hxmc.c private extern class Rusage {
+// (Apple's phys_footprint: rusage_info_v2's, after its uuid and seven counters;
+// fast as every other getpid's declaration: one declared both ways fails a build)
+@:hxmc.c @:hxmc.fast private extern class Rusage {
 	static function getpid():Int;
 	static function proc_pid_rusage(pid:Int, flavor:Int, buffer:hxmc.unsafe.Ptr):Int;
 }
