@@ -67,7 +67,7 @@ class Share {
 		Jni.bool(allowed(), Jni.method(set, allow ? "add" : "remove", "(Ljava/lang/Object;)Z"), Jni.string(path).toI64());
 		if (!allow) return Ptr.nil();
 		var authority = Jni.fromString(Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getPackageName", "()Ljava/lang/String;")))
-			+ helder.pack.android.Apk.FILES;
+			+ ".hxmc.files"; // (helder.pack.android.Apk.FILES: the packer's, not loaded into an app)
 		var builder = Jni.cls("android.net.Uri$Builder");
 		var b = Jni.newObject(builder, Jni.method(builder, "<init>", "()V"));
 		for (part in [["scheme", "content"], ["authority", authority], ["path", path]])

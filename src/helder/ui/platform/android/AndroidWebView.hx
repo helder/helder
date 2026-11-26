@@ -551,7 +551,7 @@ class AndroidWebView implements helder.ui.platform.PlatformWebView {
 					Jni.call(bmp, m["recycle"]);
 					for (o in [buf, canvas, bmp, config])
 						Jni.deleteLocal(o);
-					helder.ui.platform.apple.WebView.unpremultiply(px);
+					unpremultiply(px);
 					shot = {width: w, height: h, pixels: px};
 				}
 			} catch (e:Dynamic) Sys.println("helder.ui: a web view's snapshot: " + Std.string(e));
@@ -591,6 +591,20 @@ class AndroidWebView implements helder.ui.platform.PlatformWebView {
 			web = params = Ptr.nil();
 		});
 		listener = null;
+	}
+
+	// (straight alpha from the bitmap's premultiplied pixels, as the other platforms' views give)
+	static function unpremultiply(b:haxe.io.Bytes) {
+		var i = 0;
+		while (i < b.length) {
+			var a = b.get(i + 3);
+			if (a != 0 && a != 255) {
+				b.set(i, Std.int(Math.min(255, b.get(i) * 255 / a + 0.5)));
+				b.set(i + 1, Std.int(Math.min(255, b.get(i + 1) * 255 / a + 0.5)));
+				b.set(i + 2, Std.int(Math.min(255, b.get(i + 2) * 255 / a + 0.5)));
+			}
+			i += 4;
+		}
 	}
 }
 
