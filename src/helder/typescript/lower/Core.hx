@@ -328,6 +328,32 @@ abstract class Core {
 		case _: b.runtime("text", [any(e)]);
 	};
 
+	function plusText(e:Ex):Ex return switch (Ir.typeOf(e)) {
+		case TRef(RStr): e;
+		case TF64: b.runtime("numberText", [e]);
+		case _: b.runtime("plusText", [any(e)]);
+	};
+
+	// (a piece's value now: later pieces' evaluation may write what it reads)
+	function piece(e:Ex):Ex return switch e {
+		case EStr(_) | ELocal(_): e;
+		case _: b.temp(e);
+	};
+
+	// pieces of text as one string, four at a time, empty literals left out
+	function join(pieces:Array<Ex>):Ex {
+		var xs = [for (x in pieces) if (!x.match(EStr(""))) x];
+		if (xs.length == 0) return EStr("");
+		var all = xs[0];
+		var i = 1;
+		while (i < xs.length) {
+			var m = xs.length - i < 3 ? xs.length - i : 3;
+			all = b.runtime(m == 1 ? "concat" : "concat" + (m + 1), [all].concat(xs.slice(i, i + m)));
+			i += m;
+		}
+		return all;
+	}
+
 	function thisValue():Ex return env.exists("this") ? read(env.get("this")) : b.runtime("getUndefined", []);
 
 	static var compound:Map<Kind, Kind> = [KindPlusEqualsToken => KindPlusToken, KindMinusEqualsToken => KindMinusToken, KindAsteriskEqualsToken => KindAsteriskToken,

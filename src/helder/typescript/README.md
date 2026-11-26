@@ -175,7 +175,8 @@ own property, diverges (TSHX100). A binding no
 closure captures is a plain local (`Captures.hx`); a captured one is a
 shared box. A string local a loop only appends to (`s += x`, no other use
 of it in the loop) is built in a buffer while the loop runs, so the loop is
-linear; `s.charCodeAt(i)` on a string is String.prototype's own (made
+linear; a template or a chain of `+` making a string is one string made of
+its pieces' text (four at a time), not a concat a piece; `s.charCodeAt(i)` on a string is String.prototype's own (made
 read-only, as Math is frozen).
 
 An array literal of numbers (number[], a branded number's, T extends

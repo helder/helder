@@ -3,6 +3,8 @@ package helder.typescript.js;
 import helder.typescript.js.Values;
 import helder.typescript.js.Symbols.JsSymbol;
 import helder.typescript.js.Lib.*;
+import haxe.Int64;
+import haxe.io.FPHelper;
 
 // Number.prototype methods, number parsing and Math.
 class Numbers {
@@ -138,6 +140,22 @@ class Numbers {
 
 	// x >= 0 with f fraction digits, ties rounded up (Number.prototype.toFixed).
 	static function fixed(x:Float, f:Int):String {
+		var n = scaled(x, f);
+		if (n >= 0) {
+			var d = Int64.toStr(n);
+			if (f == 0) return d;
+			var b = new StringBuf();
+			if (d.length > f) {
+				b.addSub(d, 0, d.length - f);
+				b.addChar(".".code);
+				b.addSub(d, d.length - f);
+			} else {
+				b.add("0.");
+				for (_ in d.length...f) b.addChar("0".code);
+				b.add(d);
+			}
+			return b.toString();
+		}
 		var d = exact(x);
 		var shift = d.power + f;
 		var n:String;
@@ -157,9 +175,69 @@ class Numbers {
 		return n.substr(0, n.length - f) + "." + n.substr(n.length - f);
 	}
 
+	static final fives = powers(5, 28);
+	static final tens = powers(10, 19);
+
+	static function powers(base:Int, count:Int):Array<Int64> {
+		var p:Int64 = 1;
+		return [for (_ in 0...count) {
+			var v = p;
+			p *= base;
+			v;
+		}];
+	}
+
+	// x × 10^f (x >= 0 finite) rounded to an integer, ties up, where it is
+	// below 2^63 and f <= 27; else -1. x is m × 2^e, so x × 10^f is
+	// m × 5^f × 2^(e + f): a product of at most 116 bits, shifted, exact
+	// (the slow path expands x's every decimal digit)
+	static function scaled(x:Float, f:Int):Int64 {
+		if (x == 0) return 0;
+		if (f > 27) return -1;
+		var bits = FPHelper.doubleToI64(x);
+		var biased = (bits.high >>> 20) & 0x7FF;
+		var m = Int64.make(bits.high & 0xFFFFF, bits.low);
+		var e = -1074;
+		if (biased != 0) {
+			m = m | Int64.make(0x100000, 0);
+			e = biased - 1075;
+		}
+		var q = fives[f], low32 = Int64.make(0, -1);
+		var m0 = m & low32, m1 = m >>> 32, q0 = q & low32, q1 = q >>> 32;
+		var p00 = m0 * q0, p01 = m0 * q1, p10 = m1 * q0;
+		var mid = (p00 >>> 32) + (p01 & low32) + (p10 & low32);
+		var lo = (p00 & low32) | (mid << 32);
+		var hi = m1 * q1 + (p01 >>> 32) + (p10 >>> 32) + (mid >>> 32);
+		var s = e + f;
+		if (s >= 0) return hi != 0 || lo < 0 || s >= 63 || lo >>> (63 - s) != 0 ? -1 : lo << s;
+		var k = -s;
+		if (k >= 117) return 0;
+		// (adding half of 2^k rounds ties up)
+		if (k <= 64) {
+			var sum = lo + (Int64.ofInt(1) << (k - 1));
+			if (Int64.ucompare(sum, lo) < 0) hi++;
+			lo = sum;
+		} else hi += Int64.ofInt(1) << (k - 65);
+		if (k >= 64) return hi >>> (k - 64);
+		if (hi >>> k != 0) return -1;
+		var n = (lo >>> k) | (hi << (64 - k));
+		return n < 0 ? -1 : n;
+	}
+
 	// p significant digits of x > 0 (ties up), as digits and the decimal exponent of the first.
 	static function rounded(x:Float, p:Int):{digits:String, exponent:Int} {
 		if (x == 0) return {digits: StringTools.lpad("", "0", p), exponent: 0};
+		// (by scaled where p - 1 - exponent fraction digits fit: the estimate
+		// of the exponent from the logarithm is put right by n's digits)
+		var e = Math.floor(Math.log(x) / Math.log(10));
+		for (_ in 0...3) {
+			if (p > 18 || p - 1 - e < 0) break;
+			var n = scaled(x, p - 1 - e);
+			if (n < 0) break;
+			if (n >= tens[p]) e++;
+			else if (n < tens[p - 1]) e--;
+			else return {digits: Int64.toStr(n), exponent: e};
+		}
 		var d = exact(x);
 		var digits = d.digits;
 		var exponent = digits.length - 1 + d.power;
