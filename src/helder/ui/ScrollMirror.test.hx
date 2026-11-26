@@ -2,6 +2,7 @@ package helder.ui;
 
 import helder.os.Event as OsEvent;
 import helder.os.ScrollPhase;
+import helder.test.Gen;
 import helder.test.Test;
 
 // The compositor's mirror of the scrollers, as one stops being its: its
@@ -85,4 +86,121 @@ function tests() {
 			equals(t.list.scrollY, 0.0);
 		});
 	});
+	// The compositor's mirror of the scrollers (ScrollMirror) against the
+	// program's frames in any order (a stateful property, headless): a wheel's
+	// notches the mirror takes while the program is busy, the program's turns
+	// (the mirror's offsets drained, the events, its frame taken), frames
+	// taken before a drain (a frame at the end of a turn that blocked: the
+	// system's layers falling back meanwhile ask for one, as in
+	// WinLayersWindowCheck's stall run, whose list the program had at 80 of
+	// the compositor's 640), the program's own scrolls. After each step the
+	// mirror is where the program last put the list and the notches since
+	// took it, and after a turn the program is there too.
+	describe("ScrollMirror against the program's frames", () -> {
+		test("the mirror's offsets against the program's frames, in any order", () -> stateful({
+			setup: () -> new Fixture(),
+			steps: [
+				{name: "wheel", run: (f, c) -> f.wheel(c.draw(int(1, 4)))},
+				{name: "turn", run: (f, _) -> f.turn()},
+				{name: "frame before a drain", run: (f, _) -> f.frame()},
+				{name: "the program's scroll", run: (f, c) -> f.scroll(c.draw(int(0, 40)) * 20)}
+			],
+			check: f -> f.check()
+		}, {cases: 150, steps: 30}));
+		test("a frame taken before a drain: the compositor's offset kept", () -> {
+			var f = new Fixture();
+			f.wheel(3);
+			f.frame();
+			f.check();
+			f.turn();
+			f.check();
+		});
+	});
+}
+
+private class Fixture {
+	static inline var ROWS = 200;
+	static inline var ROW = 20;
+	static inline var H = 200;
+
+	final ui:Ui;
+	final list = new Node("list");
+	final m = new ScrollMirror();
+	final shot = new ScrollShot();
+	final waiting:Array<OsEvent> = [];
+	// (where the program last put the list, moved by the notches since: the mirror's offset)
+	var expected = 0.0;
+	var turned = true;
+
+	public function new() {
+		Ui.now = () -> 0;
+		ui = new Ui(new helder.story.StoryText(), 300, H);
+		list.style.set({width: 300, height: H, overflow: Scroll});
+		for (_ in 0...ROWS) {
+			var r = new Node();
+			r.style.set({height: ROW, flexShrink: 0});
+			list.append(r);
+		}
+		ui.root.append(list);
+		take();
+	}
+
+	// (the program's frame: laid out, its scrollers to the mirror)
+	function take() {
+		ui.update();
+		ScrollShot.take(ui, shot);
+		m.adopt(shot);
+	}
+
+	// (a turn's start: the mirror's offsets to the program, the events read meanwhile)
+	function drain() {
+		m.step(Ui.now());
+		m.drain((n, x, y, held, moving) -> ui.mirrored(n, x, y, held, moving));
+		for (e in waiting)
+			UiEvents.deliver(ui, e, 1);
+		waiting.resize(0);
+	}
+
+	// n of a wheel's notches over the list, 40 points down each, routed to the mirror as read
+	public function wheel(n:Int) {
+		for (_ in 0...n) {
+			var e = new OsEvent();
+			e.kind = Scroll;
+			e.x = 150;
+			e.y = 100;
+			e.deltaY = 40;
+			UiEvents.route(m, e);
+			// (the compositor's frame at the next vsync: the mirror stepped)
+			m.step(Ui.now());
+			waiting.push(e);
+			expected = Math.min(ROWS * ROW - H, expected + 40);
+		}
+		turned = false;
+	}
+
+	public function turn() {
+		drain();
+		take();
+		turned = true;
+	}
+
+	public function frame() {
+		take();
+		turned = false;
+	}
+
+	// a turn whose program puts the list at y
+	public function scroll(y:Float) {
+		drain();
+		list.scrollY = y;
+		take();
+		expected = y;
+		turned = true;
+	}
+
+	public function check() {
+		var o = m.offsets(list);
+		equals(o == null ? -1.0 : o.y, expected, "the mirror's offset");
+		if (turned) equals(list.scrollY, expected, "the program's, after its turn");
+	}
 }
