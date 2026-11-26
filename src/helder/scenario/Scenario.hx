@@ -14,11 +14,16 @@ import haxe.PosInfos;
 //   final won = scenario({name: "Pong/You win", boot: () -> { Game.score([7, 5]); Game.over(true); }});
 //   final moving = scenario({name: "Pong/In motion", loop: 3});
 //
-// time: its start instant (an ISO date, "2026-11-26T09:00" local or with
-// its zone, or ms since 1970) on its clock, which stands at the moment
-// (play: seconds of it run to the moment first; loop: run live from it
-// while hovered, as a story's); seed: Math.random's; size: [width, height]
-// in points (else its <Surface>'s); dark.
+// time: its start instant (an ISO date, "2026-11-26T09:00" in its zone or
+// with a zone of its own, or ms since 1970) on its clock, which stands at
+// the moment (play: seconds of it run to the moment first; loop: run live
+// from it while hovered, as a story's); zone: its time zone, "UTC" or a
+// fixed offset ("+05:30"); locale: its language ("nl-BE"); settings: the
+// system's settings it sees (textScale, reducedMotion,
+// reducedTransparency, contrast, orientation); seed: Math.random's, its
+// own; size: [width, height] in points (else its <Surface>'s); dark.
+// Nothing of the machine it runs on: zone UTC, locale en-US and settings
+// at rest unless given, TypeScript's timers on its clock.
 function scenario(def:ScenarioDef, ?pos:PosInfos):Scenario
 	return new Scenario(def, pos);
 
@@ -28,6 +33,10 @@ class Scenario {
 	// ms since 1970 (null: the system's clock)
 	public final time:Null<Float>;
 	public final seed:Int;
+	// minutes east of UTC
+	public final zone:Int;
+	public final locale:String;
+	public final settings:helder.os.Settings.SettingsOverride;
 	public final width:Null<Int>;
 	public final height:Null<Int>;
 	public final dark:Null<Bool>;
@@ -38,7 +47,19 @@ class Scenario {
 	public function new(def:ScenarioDef, ?pos:PosInfos) {
 		name = def.name;
 		boot = def.boot;
-		time = instant(def.time);
+		var z:Null<String> = def.zone;
+		zone = z == null ? 0 : helder.os.Now.parseZone(z) ?? throw 'helder.scenario: zone "$z" is not UTC or a fixed offset (+05:30): a named zone\'s rules are not carried';
+		time = instant(def.time, zone);
+		var l:Null<String> = def.locale;
+		locale = l == null ? "en-US" : helder.os.locale.LocaleTag.normalize(l) ?? throw 'helder.scenario: locale "$l" is not a language tag (nl-BE)';
+		var given:helder.os.Settings.SettingsOverride = def.settings ?? {};
+		settings = {
+			textScale: given.textScale ?? 1.0,
+			reducedMotion: given.reducedMotion ?? false,
+			reducedTransparency: given.reducedTransparency ?? false,
+			contrast: given.contrast ?? Normal,
+			orientation: given.orientation
+		};
 		seed = def.seed ?? 1;
 		var size:Null<Array<Int>> = def.size;
 		width = size == null ? null : size[0];
@@ -49,19 +70,19 @@ class Scenario {
 		this.pos = pos;
 	}
 
-	// (an ISO date's ms: local without a zone; a number as it is)
-	public static function instant(t:Dynamic):Null<Float> {
+	// (an ISO date's ms: in zone (minutes east of UTC) without one of its own; a number as it is)
+	public static function instant(t:Dynamic, zone = 0):Null<Float> {
 		if (t == null) return null;
 		if (!Std.isOfType(t, String)) return (t : Float);
 		var re = ~/^(\d{4})-(\d\d)-(\d\d)(?:[T ](\d\d):(\d\d)(?::(\d\d))?)?(Z|[+-]\d\d:?\d\d)?$/;
 		if (!re.match(t)) throw 'helder.scenario: time "$t" is not an ISO date (2026-11-26T09:00, +01:00 or Z for its zone)';
 		inline function n(i:Int):Int
 			return Std.parseInt(re.matched(i) ?? "0") ?? 0;
-		var zone = re.matched(7);
-		if (zone == null) return new Date(n(1), n(2) - 1, n(3), n(4), n(5), n(6)).getTime();
+		var given = re.matched(7);
 		var utc = days(n(1), n(2), n(3)) * 86400000.0 + ((n(4) * 60 + n(5)) * 60 + n(6)) * 1000.0;
-		if (zone == "Z") return utc;
-		var z = zone.split(":").join(""), sign = z.charAt(0) == "-" ? -1 : 1;
+		if (given == null) return utc - zone * 60000.0;
+		if (given == "Z") return utc;
+		var z = given.split(":").join(""), sign = z.charAt(0) == "-" ? -1 : 1;
 		var off = (Std.parseInt(z.substr(1, 2)) ?? 0) * 60 + (Std.parseInt(z.substr(3, 2)) ?? 0);
 		return utc - sign * off * 60000.0;
 	}
@@ -92,6 +113,11 @@ typedef ScenarioDef = {
 	@:optional var boot:Void->Void;
 	@:optional @:typescript.type("string | number") var time:Dynamic;
 	@:optional var seed:Int;
+	// "UTC" or a fixed offset ("+05:30"); UTC unless given
+	@:optional var zone:String;
+	// a language tag ("nl-BE"); en-US unless given
+	@:optional var locale:String;
+	@:optional var settings:helder.os.Settings.SettingsOverride;
 	@:optional var size:Array<Int>;
 	@:optional var dark:Bool;
 	@:optional var loop:Float;

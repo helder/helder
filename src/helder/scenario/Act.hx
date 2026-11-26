@@ -10,13 +10,25 @@ import helder.view.graph.Graph;
 // A scenario played in a screen (helder.story.Host's), its context and
 // store current: its boot run, then the root main gave UiWindow.run
 // rendered, its <Surface>'s children into the screen's root (Hosting), its
-// wall clock its time
+// wall clock its time, its zone, language and settings its own
 class Act {
 	// mounted: what lets it go
 	public static function mount(sc:Scenario, root:RootView, context:ScreenContext, ui:Ui):Void->Void {
 		context.epoch = sc.time == null ? null : sc.time - context.now * 1000;
-		// (run's own: the wall clock read from here on is the scenario's)
-		helder.os.Now.get = sc.time == null ? null : () -> (context.epoch ?? 0) + context.now * 1000;
+		context.zone = sc.zone;
+		context.locale = sc.locale;
+		// (its orientation its size's, unless given)
+		var o = sc.settings.orientation ?? (ui.width > ui.height ? helder.os.Settings.Orientation.Landscape : helder.os.Settings.Orientation.Portrait);
+		context.settings = {
+			textScale: sc.settings.textScale,
+			reducedMotion: sc.settings.reducedMotion,
+			reducedTransparency: sc.settings.reducedTransparency,
+			contrast: sc.settings.contrast,
+			orientation: o
+		};
+		context.reducedMotion = sc.settings.reducedMotion;
+		// (run's own: what helder.os reads from here on is the scenario's)
+		@:privateAccess ScreenContext.environ(context);
 		var boot = sc.boot;
 		if (boot != null) {
 			boot();

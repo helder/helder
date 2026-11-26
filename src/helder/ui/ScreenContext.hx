@@ -60,6 +60,20 @@ class ScreenContext {
 	public final atoms:Null<helder.view.graph.Atoms>;
 	// the wall clock's ms at its clock's 0 (a scenario's time: helder.os.Now; null: the system's)
 	public var epoch:Null<Float> = null;
+	// its time zone (minutes east of UTC), language and settings over the
+	// system's (a scenario's zone, locale and settings: helder.os.Now, Locale,
+	// Settings while it is current; null: the system's)
+	public var zone:Null<Int> = null;
+	public var locale:Null<String> = null;
+	public var settings:Null<helder.os.Settings.SettingsOverride> = null;
+	// (a screen with a store of its own: TypeScript's timers on its clock
+	// (helder.os.Now.after), Math.random a sequence of its own, swapped in
+	// while it is current: screens side by side draw the same as alone)
+	final after:Null<(Float, Void->Void)->(Void->Void)>;
+	#if (target.name == "hxmc")
+	final random:Null<helder.os.Seed.SeedState>;
+	static final outside = new helder.os.Seed.SeedState();
+	#end
 	final wall:Void->Float;
 	// suspended: its clock is not ticked, its timers do not run (a host's screen off screen)
 	public var suspended = false;
@@ -99,6 +113,14 @@ class ScreenContext {
 		stores = isolated ? new Map() : null;
 		#end
 		wall = () -> (epoch ?? 0) + now * 1000;
+		after = atoms == null ? null : (ms, f) -> {
+			var t = @:privateAccess new Timer(now + ms / 1000, f);
+			timers.push(t);
+			() -> t.cancel();
+		};
+		#if (target.name == "hxmc")
+		random = atoms == null ? null : helder.os.Seed.seeded(1);
+		#end
 		helder.view.graph.Atoms.current = was;
 		// (a new screen starts where the program's clock is, with its motion setting)
 		if (first != null) {
@@ -122,7 +144,7 @@ class ScreenContext {
 	// f with this context current (its result); the one before current again after, also when f throws
 	public function run<T>(f:Void->T):T {
 		var was = cur;
-		enter();
+		enter(was);
 		var r = try f() catch (e:haxe.Exception) {
 			leave(was);
 			throw Errors.kept(e);
@@ -131,11 +153,17 @@ class ScreenContext {
 		return r;
 	}
 
-	inline function enter() {
+	inline function enter(was:Null<ScreenContext>) {
 		cur = this;
 		helder.view.graph.Atoms.current = atoms;
 		helder.view.graph.Atoms.screen = true;
-		helder.os.Now.get = epoch == null ? null : wall;
+		environ(this);
+		#if (target.name == "hxmc")
+		if (random != null) {
+			helder.os.Seed.save(was?.random ?? outside);
+			helder.os.Seed.restore(random);
+		}
+		#end
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = stores;
 		#end
@@ -145,10 +173,25 @@ class ScreenContext {
 		cur = was;
 		helder.view.graph.Atoms.current = was?.atoms;
 		helder.view.graph.Atoms.screen = was != null;
-		helder.os.Now.get = was?.epoch == null ? null : was.wall;
+		environ(was);
+		#if (target.name == "hxmc")
+		if (random != null) {
+			helder.os.Seed.save(random);
+			helder.os.Seed.restore(was?.random ?? outside);
+		}
+		#end
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = was?.stores;
 		#end
+	}
+
+	// (c's clock, zone, language and settings what helder.os reads; none: the system's)
+	static function environ(c:Null<ScreenContext>) {
+		helder.os.Now.get = c?.epoch == null ? null : c.wall;
+		helder.os.Now.zone = c?.zone;
+		helder.os.Now.after = c?.after;
+		helder.os.Locale.screen = c?.locale;
+		helder.os.Settings.screen = c?.settings;
 	}
 
 	// (Ui: its surface's width now)

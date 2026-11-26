@@ -3,8 +3,9 @@
 // MCP (run.snap) against the story that poses the same moment, pixel for
 // pixel; then timed: the stills of the stories alone, of the scenarios
 // alone (cold: built; again: from frames.hframes), the cache fresh after a
-// live literal's patch, and the screens' program's memory with 1 and 6
-// scenarios (bin/scenario/results.md).
+// live literal's patch, the clock fixture's screens deterministic (built
+// twice, the same beside other neighbours, its zones and locales apart), and the
+// screens' program's memory with 1 and 6 scenarios (bin/scenario/results.md).
 //
 //   node tests/scenario/check.mjs <helder> <out>
 import {spawn, execFileSync} from 'node:child_process'
@@ -20,10 +21,11 @@ fs.mkdirSync(out, {recursive: true})
 
 // (a copy of pong, without the files given, a repository of its own; its
 // frames none: kept at the package's root, bin/studio/<name>, not the copy's)
-function copy(name, without = []) {
-  const dir = path.resolve(out, 'pong-' + name)
-  fs.rmSync(path.resolve('bin/studio', 'pong-' + name), {recursive: true, force: true})
-  fs.cpSync(fixture, dir, {recursive: true})
+function copy(name, without = [], from = fixture) {
+  const base = path.basename(from) + '-' + name
+  const dir = path.resolve(out, base)
+  fs.rmSync(path.resolve('bin/studio', base), {recursive: true, force: true})
+  fs.cpSync(from, dir, {recursive: true})
   for (const f of without) fs.rmSync(path.join(dir, f))
   execFileSync('git', ['init', '-q', '-b', 'studio', dir])
   return dir
@@ -144,6 +146,45 @@ const reopened = await studio(cache, async (call, wait) => (await wait(/(\d+) st
 console.log(`reopened after a literal patch: ${reopened} stale`)
 if (+reopened > 0) failed++
 
+// 5. determinism (phase 2): the clock fixture (its zone's date, its locale's
+// formats, Math.random, a timer on its clock) the same pixels built twice,
+// a screen the same beside other neighbours, and its places apart
+const places = ['Brussels', 'Delhi', 'Plain']
+async function stills(dir, names) {
+  return studio(dir, async (call, wait) => {
+    await wait(/all (\d+) screens shown/)
+    const got = {}
+    for (const n of names) {
+      const r = await call('run.snap', {screen: `Clock/${n}`})
+      const png = Buffer.from(r.content.find(c => c.type === 'image').data, 'base64')
+      fs.writeFileSync(path.join(out, `${path.basename(dir)}-${n}.png`), png)
+      got[n] = decode(png)
+    }
+    return got
+  })
+}
+const clockFixture = 'tests/scenario/fixtures/clock'
+const first = await stills(copy('first', [], clockFixture), places)
+const second = await stills(copy('second', [], clockFixture), places)
+// (beside other neighbours: three screens of one size as before, the canvas'
+// zoom the same, Delhi's two neighbours other zones, locales, seeds and times)
+const others = copy('others', [], clockFixture)
+fs.writeFileSync(path.join(others, 'app.scenario.tsx'), fs.readFileSync(path.join(others, 'app.scenario.tsx'), 'utf8')
+  .replace('zone: "+01:00", locale: "nl-BE", seed: 3, play: 3', 'zone: "-08:00", locale: "en-US", seed: 9, play: 5')
+  .replace('time: "2026-11-26T09:00", play: 3 })', 'time: "2027-01-01T00:00", seed: 11, play: 1 })'))
+const besideOthers = await stills(others, ['Delhi'])
+for (const n of places) {
+  const d = differ(first[n], second[n])
+  console.log(`Clock/${n} built twice: ${d} pixels differ`)
+  if (d > 0) failed++
+}
+const besides = differ(first.Delhi, besideOthers.Delhi)
+console.log(`Clock/Delhi beside other neighbours (their zones, locales, seeds and timers): ${besides} pixels differ`)
+if (besides > 0) failed++
+const apart = differ(first.Brussels, first.Delhi)
+console.log(`Clock/Brussels against Clock/Delhi: ${apart} pixels differ (their zones and locales)`)
+if (apart === 0) failed++
+
 // 4. memory per scenario screen: 1 scenario against 6
 const one = copy('one', ['pong.story.tsx'])
 fs.writeFileSync(path.join(one, 'pong.scenario.tsx'), fs.readFileSync(path.join(one, 'pong.scenario.tsx'), 'utf8').split('\n').filter(l => !l.startsWith('export') || l.includes('"Pong/Rally"')).join('\n'))
@@ -159,6 +200,6 @@ const md = ['# Scenarios against stories: pong', '', '| screens | pass | n | sho
 fs.writeFileSync(path.join(out, 'results.md'), md.join('\n') + '\n')
 console.log(md.join('\n'))
 if (failed > 0) {
-  console.log(`${failed} scenario stills differ from their stories'`)
+  console.log(`${failed} check(s) failed`)
   process.exit(1)
 }

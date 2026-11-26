@@ -19,9 +19,10 @@ host `UiWindow.run` keeps its root (`helder.ui.Hosting`, `-D helder.scenarios`) 
 renders that root in a screen of its own: a ScreenContext and a store of values (section 6).
 `boot` runs there first: it writes the app's signals or calls the app's own functions, checked by
 the ordinary type checker (no key scheme). Fields: `boot`, `time` (its clock's start, an ISO date
-or ms; the clock stands at the moment), `seed`, `size: [w, h]` (else the root's `<Surface>`'s),
-`dark`, `play` (seconds of its clock run to the moment), `loop` (seconds run live from the moment
-while hovered). Phase 2: `steps`, `http`, `zone`, `locale`, `settings`. Stories stay for
+or ms; the clock stands at the moment), `zone` ("UTC" or a fixed offset), `locale`, `settings`,
+`seed`, `size: [w, h]` (else the root's `<Surface>`'s), `dark`, `play` (seconds of its clock run to
+the moment), `loop` (seconds run live from the moment while hovered). Phase 2 next: `http`,
+`steps`. Stories stay for
 components (controls); a story's and a scenario's names are one list (two of one name: an error).
 
 The model lives in exported top-level signals and memos. Component-local signals stay as they
@@ -327,12 +328,40 @@ fixed in helder.
   asking again. Helder's unowned memos are lazy, so this shows where
   Solid's eager ones ask at the write (Jotai's tests port: 'lazy').
 
+## Phase 2a: determinism per screen (done)
+
+A scenario reads nothing of the machine it runs on. A screen with a store (a preview host's)
+carries its environment on its `ScreenContext`, set into `helder.os` while it is current
+(`ScreenContext.environ`, at each enter and leave) and the system's again outside:
+- **Clock**: `helder.os.Now.get` (its `time`, #278); `Now.time()` for Haxe code (Haxe's
+  `Date.now` is hxmc's runtime's and reads the system's: a gap until hxmc takes a hook).
+- **Zone**: `Now.zone`, minutes east of UTC; TypeScript's `Date` local time (`Dates.offsetAt`) and
+  `Format.date` (the OS formatter, given the instant whose system local time is the screen's)
+  read it. Fixed offsets and UTC only: a named zone (Europe/Brussels) has rules helder does not
+  carry, and the machine's tz data would differ. A `time` without a zone is in the scenario's.
+- **Locale**: `Locale.screen` over the device's (`Locale.current`, `preferred()`; `Format`'s
+  numbers and dates).
+- **Settings**: `Settings.screen` (textScale, reducedMotion, reducedTransparency, contrast,
+  orientation: its size's unless given); `context.reducedMotion` too.
+- **Randomness**: each screen its own xoshiro state (`Seed.SeedState`), swapped in on enter and
+  out on leave: screens drawn in turn draw as alone. `seed` starts it.
+- **TypeScript timers**: set in a screen, on its clock (`Now.after`: its `ScreenContext`
+  timers), not the host's loop: `play` runs them, a still's clock stands.
+- **Defaults**: zone UTC, locale en-US, settings at rest, seed 1.
+- The device's `Locale` and `Settings` signals are `shared` (#322's: their watchers write from
+  outside every screen).
+
+Tests: `Scenario.test.hx` (environment per screen, none outside; random side by side as alone;
+a timer on the screen's clock); the `scenarios` lane's clock fixture (its zone's date, its
+locale's formats, `Math.random`, an interval): each place the same pixels built twice, Delhi the
+same beside other neighbours, Brussels and Delhi apart.
+
 ## Phase 2 notes
 
 - Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
   screen's context and store; a step's write is a store write like boot's.
-- Per-context: Haxe's `Date.now`, zone, locale, settings, TS timers' clock (they run in their
-  store now, but on the real clock; Haxe's tasks too: helder.async.Home).
+- Per-context, left: Haxe's `Date.now` (hxmc's runtime), Haxe's tasks' clock
+  (helder.async.Home's on the real loop).
 - Strict `http` fixtures (`async/http/Client.hx` has no hook yet); an async memo's request is
   each store's already (no node shared), so fixtures can differ per scenario.
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.

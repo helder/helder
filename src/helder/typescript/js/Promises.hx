@@ -176,7 +176,9 @@ class Promises {
 				if (!(delay >= 1 && delay <= 2147483647)) delay = 1;
 				t.interval = repeat ? delay : -1;
 				t.due = now() + delay;
-				if (eventHost != null) hostTimer(t);
+				var at = helder.os.Now.after;
+				if (at != null) screenTimer(t, at, delay);
+				else if (eventHost != null) hostTimer(t);
 				else if (immediate) immediates.push(t); else timers.push(t);
 				return t.id;
 			});
@@ -201,6 +203,22 @@ class Promises {
 			Builtins.globals.set(name, f);
 			global.setOwn(name, f, Attr.HIDDEN);
 		}
+	}
+
+	// (a timer set in a screen (a preview host's): on its virtual clock, not
+	// the host's loop, so that a still or a loop is the same each time; its
+	// callback, then the microtasks; an interval set again first)
+	static function screenTimer(t:Timer, after:(Float, Void->Void)->(Void->Void), delay:Float):Void {
+		hostTimers.set(t.id, after(delay, () -> {
+			if (!hostTimers.exists(t.id)) return;
+			if (!t.live()) {
+				hostTimers.remove(t.id);
+				return;
+			}
+			if (t.interval >= 0) screenTimer(t, after, t.interval) else hostTimers.remove(t.id);
+			inStore(t);
+			drain();
+		}));
 	}
 
 	// (a timer on the host's loop: its callback, then the microtasks; an

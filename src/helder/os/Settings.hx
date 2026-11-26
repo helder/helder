@@ -16,6 +16,15 @@ typedef SettingsValues = {
 	var orientation:Null<Orientation>;
 }
 
+// a screen's settings over the system's (a scenario's settings), each given one
+typedef SettingsOverride = {
+	@:optional var textScale:Float;
+	@:optional var reducedMotion:Bool;
+	@:optional var reducedTransparency:Bool;
+	@:optional var contrast:Contrast;
+	@:optional var orientation:Orientation;
+}
+
 enum abstract Contrast(String) to String {
 	var Normal = "normal";
 	var More = "more";
@@ -37,6 +46,8 @@ class Settings {
 	@:typescript public static var orientation(get, never):Read<Null<Orientation>>;
 
 	static var state:Null<SettingsState>;
+	// (the current screen's over the system's: helder.ui.ScreenContext sets it)
+	@:noCompletion public static var screen:Null<SettingsOverride> = null;
 
 	static function current():SettingsState {
 		if (state == null) {
@@ -53,12 +64,34 @@ class Settings {
 		return state;
 	}
 
-	static function get_textScale():Read<Float> return current().textScale;
-	static function get_reducedMotion():Read<Bool> return current().reducedMotion;
-	static function get_reducedTransparency():Read<Bool> return current().reducedTransparency;
-	static function get_contrast():Read<Contrast> return current().contrast;
+	static function get_textScale():Read<Float> {
+		var o = screen?.textScale;
+		return o != null ? fixed(o) : current().textScale;
+	}
+
+	static function get_reducedMotion():Read<Bool> {
+		var o = screen?.reducedMotion;
+		return o != null ? fixed(o) : current().reducedMotion;
+	}
+
+	static function get_reducedTransparency():Read<Bool> {
+		var o = screen?.reducedTransparency;
+		return o != null ? fixed(o) : current().reducedTransparency;
+	}
+
+	static function get_contrast():Read<Contrast> {
+		var o = screen?.contrast;
+		return o != null ? fixed(o) : current().contrast;
+	}
+
+	static inline function fixed<T>(v:T):Read<T>
+		return (new helder.view.graph.Read.Const<T>(v) : helder.view.graph.Read.Reader<T>);
+
 	static function get_dark():Read<Bool> return current().dark;
-	static function get_orientation():Read<Null<Orientation>> return current().orientation;
+	static function get_orientation():Read<Null<Orientation>> {
+		var o = screen?.orientation;
+		return o != null ? fixed((o : Null<Orientation>)) : current().orientation;
+	}
 
 	static function refresh() {
 		var v = values(), s = state;
@@ -140,12 +173,13 @@ private class SettingsState {
 	public final dark:helder.view.graph.Signal<Bool>;
 	public final orientation:helder.view.graph.Signal<Null<Orientation>>;
 
+	// (shared: the system's, the same in every screen's store, its watcher's writes seen by all)
 	public function new(v:SettingsValues) {
-		textScale = Graph.signal(v.textScale);
-		reducedMotion = Graph.signal(v.reducedMotion);
-		reducedTransparency = Graph.signal(v.reducedTransparency);
-		contrast = Graph.signal(v.contrast);
-		dark = Graph.signal(v.dark);
-		orientation = Graph.signal(v.orientation);
+		textScale = Graph.signalOf(v.textScale, {shared: true});
+		reducedMotion = Graph.signalOf(v.reducedMotion, {shared: true});
+		reducedTransparency = Graph.signalOf(v.reducedTransparency, {shared: true});
+		contrast = Graph.signalOf(v.contrast, {shared: true});
+		dark = Graph.signalOf(v.dark, {shared: true});
+		orientation = Graph.signalOf(v.orientation, {shared: true});
 	}
 }
