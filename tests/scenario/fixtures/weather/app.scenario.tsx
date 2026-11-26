@@ -1,10 +1,7 @@
 import { scenario } from "helder/scenario";
-import { forecast, error } from "./app";
-import { sampleForecast } from "./weather";
 
-// App fetches Open-Meteo as it mounts: until http fixtures (phase 2) boot
-// writes the answer, and the live request still goes out and may land
+// the real app, its request answered by a fixture (none goes out)
 const time = "2026-11-26T09:00";
 
-export const ghent = scenario({ name: "Weather/Ghent", time, boot() { forecast(sampleForecast()); } });
-export const offline = scenario({ name: "Weather/Offline", time, boot() { error("forecast: 503"); } });
+export const ghent = scenario({ name: "Weather/Ghent", time, http: { "api.open-meteo.com/v1/forecast*": "fixtures/forecast.json" } });
+export const offline = scenario({ name: "Weather/Offline", time, http: { "api.open-meteo.com/*": 503 } });

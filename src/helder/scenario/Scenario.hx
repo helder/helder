@@ -21,7 +21,9 @@ import haxe.PosInfos;
 // fixed offset ("+05:30"); locale: its language ("nl-BE"); settings: the
 // system's settings it sees (textScale, reducedMotion,
 // reducedTransparency, contrast, orientation); seed: Math.random's, its
-// own; size: [width, height] in points (else its <Surface>'s); dark.
+// own; http: its requests' answers, strict (helder.async.http.Fixtures: a
+// request none matches fails its screen, none goes out); size: [width,
+// height] in points (else its <Surface>'s); dark.
 // Nothing of the machine it runs on: zone UTC, locale en-US and settings
 // at rest unless given, TypeScript's timers on its clock.
 function scenario(def:ScenarioDef, ?pos:PosInfos):Scenario
@@ -37,6 +39,8 @@ class Scenario {
 	public final zone:Int;
 	public final locale:String;
 	public final settings:helder.os.Settings.SettingsOverride;
+	// its requests' answers by url pattern (helder.async.http.Fixtures)
+	public final http:Null<haxe.DynamicAccess<Dynamic>>;
 	public final width:Null<Int>;
 	public final height:Null<Int>;
 	public final dark:Null<Bool>;
@@ -61,6 +65,7 @@ class Scenario {
 			orientation: given.orientation
 		};
 		seed = def.seed ?? 1;
+		http = def.http;
 		var size:Null<Array<Int>> = def.size;
 		width = size == null ? null : size[0];
 		height = size == null ? null : size[1];
@@ -118,6 +123,10 @@ typedef ScenarioDef = {
 	// a language tag ("nl-BE"); en-US unless given
 	@:optional var locale:String;
 	@:optional var settings:helder.os.Settings.SettingsOverride;
+	// its requests' answers, strict (a request none matches fails its screen):
+	// url pattern ("api.example.com/v1/*", "POST host/path") to a status, a
+	// JSON value or a file's path ("fixtures/forecast.json")
+	@:optional @:typescript.type("Record<string, number | string | object>") var http:haxe.DynamicAccess<Dynamic>;
 	@:optional var size:Array<Int>;
 	@:optional var dark:Bool;
 	@:optional var loop:Float;

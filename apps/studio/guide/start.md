@@ -75,6 +75,17 @@ A scenario sees nothing of the machine: set what the moment depends on.
 {textScale: 1.5, reducedMotion: true}`, `seed` (`Math.random`'s, the
 screen's own). Write one scenario per place or language that matters.
 
+A scenario makes no live request: give it `http`, the answers by url
+(no scheme; `*` any run; a method first when it matters), each a status,
+a JSON value or a file's path in the project. A request none answers
+fails its screen, naming its method and url: add the fixture it asks for.
+Play stays live.
+
+```tsx
+export const offline = scenario({ name: "Weather/Offline", http: { "api.open-meteo.com/*": 503 } });
+export const ghent = scenario({ name: "Weather/Ghent", http: { "api.open-meteo.com/v1/forecast*": "fixtures/forecast.json" } });
+```
+
 The canvas is a storyboard of stills: a scenario shows its moment, it does
 not run. Write one for each key moment, named for it ("Pong/Serve",
 "Pong/Game over"), so the frame is exact and repeatable. `loop: 2` records

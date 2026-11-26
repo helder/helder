@@ -21,8 +21,8 @@ renders that root in a screen of its own: a ScreenContext and a store of values 
 the ordinary type checker (no key scheme). Fields: `boot`, `time` (its clock's start, an ISO date
 or ms; the clock stands at the moment), `zone` ("UTC" or a fixed offset), `locale`, `settings`,
 `seed`, `size: [w, h]` (else the root's `<Surface>`'s), `dark`, `play` (seconds of its clock run to
-the moment), `loop` (seconds run live from the moment while hovered). Phase 2 next: `http`,
-`steps`. Stories stay for
+the moment), `loop` (seconds run live from the moment while hovered), `http` (its requests'
+answers, strict). Phase 2 next: `steps`. Stories stay for
 components (controls); a story's and a scenario's names are one list (two of one name: an error).
 
 The model lives in exported top-level signals and memos. Component-local signals stay as they
@@ -356,12 +356,34 @@ a timer on the screen's clock); the `scenarios` lane's clock fixture (its zone's
 locale's formats, `Math.random`, an interval): each place the same pixels built twice, Delhi the
 same beside other neighbours, Brussels and Delhi apart.
 
+## Phase 2b: strict HTTP fixtures (done)
+
+A scenario's requests are answered by its `http`, none going out (MSW's way):
+`helder.async.http.Fixtures` on its screen's store (`Atoms.http`, which helder.ui never names:
+#293's lesson), asked first by `Client.request` (Haxe's and TypeScript's alike: TypeScript has
+no fetch, `Client.request` from helder/async; `Fetch` reads files and the page's assets, not
+hosts). A rule's pattern is a url without its scheme, `*` any run, a method first when it
+matters (`"POST api.example.com/todos"`); its answer a status (an empty body), a `.json` or
+`.txt` file's path read from the project, or any other value's JSON (200). A request none
+matches throws in the program (`no http fixture for GET <url> (... {"host/path*": ...})`) and
+fails its screen at the host's next turn (`HostScreen.missed`: the studio's crash on the frame,
+`project.patch`'s crashed for the agent). A scenario without `http` is strict too. Play runs the
+app outside the host: live.
+
+Found on the way: the screens' host never turned helder.async's loop (hosting, `UiWindow.run`
+returns before it would), so a screen's tasks, a TypeScript `await Client.request` among them,
+never ran: NativeHost turns it each turn now. And the weather fixture's app showed an error that
+came after its first render nowhere (its `<Show>` built once): fixed in the fixture.
+
+Tests: `Scenario.test.hx` (a JSON answer, a POST's status, a 503, a file; a request none
+matches the screen's failure, named); the `scenarios` lane's weather fixture: its request
+answered by a file and by a 503, each the same pixels as the story posing that answer; a request
+none matches crashes its screen, named in the studio's log.
+
 ## Phase 2 notes
 
 - Steps over the headless locators (`os/headless/Script.hx`, `Headless.find`): run in the
   screen's context and store; a step's write is a store write like boot's.
 - Per-context, left: Haxe's `Date.now` (hxmc's runtime), Haxe's tasks' clock
   (helder.async.Home's on the real loop).
-- Strict `http` fixtures (`async/http/Client.hx` has no hook yet); an async memo's request is
-  each store's already (no node shared), so fixtures can differ per scenario.
 - Flag reassigned top-level `let` and top-level `setTimeout`/`setInterval` in studio builds.
