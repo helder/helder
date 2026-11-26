@@ -2,6 +2,8 @@ package helder.css;
 
 import helder.css.CssTerm;
 
+using Lambda;
+
 // Terms written as CSSOM writes a specified value: keywords as the grammar
 // has them, numbers in six significant digits, strings in double quotes,
 // colours in Color 4's form, math functions as §10.12 serializes them;
@@ -22,10 +24,12 @@ class CssText {
 			case Brackets(open, args): open == "[" ? '[${join(args, term)}]' : '(${join(args, term)})';
 			case Delim(d): d;
 			case Raw(text): text;
+			case Part(_, terms): join(terms, term);
 		}
 
 	public static function join(terms:Array<CssTerm>, f:CssTerm->String):String {
 		var b = new StringBuf();
+		terms = flat(terms);
 		for (k in 0...terms.length) {
 			var t = terms[k];
 			switch t {
@@ -48,6 +52,17 @@ class CssText {
 		var b = new StringBuf();
 		Serializer.string(b, s);
 		return b.toString();
+	}
+
+	// (a shorthand's parts as their terms)
+	public static function flat(terms:Array<CssTerm>):Array<CssTerm> {
+		if (!terms.exists(t -> t.match(Part(_, _)))) return terms;
+		var out = [];
+		for (t in terms) switch t {
+			case Part(_, ts): for (x in flat(ts)) out.push(x);
+			case _: out.push(t);
+		}
+		return out;
 	}
 
 	// Terms split at their top-level commas (a list's layers).

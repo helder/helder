@@ -3,6 +3,8 @@ package helder.css;
 import helder.css.CssComputed;
 import helder.css.CssTerm;
 
+using Lambda;
+
 // A property's value read against its grammar, written in CSSOM's
 // canonical form, and computed as far as needs no layout.
 class CssValues {
@@ -16,10 +18,14 @@ class CssValues {
 
 	// A declaration's value for a property, null when it is not one of the
 	// property's grammar (an unknown property's, too).
-	public static function parse(property:String, text:String):Null<CssSpecified> {
+	public static function parse(property:String, text:String):Null<CssSpecified>
+		return read(property, Css.values(text));
+
+	// A declaration's component values for a property, as parse.
+	public static function read(property:String, values:Array<CssValue>):Null<CssSpecified> {
 		var custom = StringTools.startsWith(property, "--");
 		var name = custom ? property : Css.lower(property);
-		var values = trim(Css.values(text));
+		values = trim(values);
 		if (custom) return Unresolved(Css.serialize(values));
 		if (CssGrammars.property(name) == null || values.length == 0) return null;
 		if (values.length == 1) switch values[0] {
@@ -30,8 +36,16 @@ class CssValues {
 			case _:
 		}
 		if (substitutes(values)) return arbitrary(values) ? Unresolved(Css.serialize(values)) : null;
+		// (flex: three numbers are grow, shrink and a basis, which a number but 0 can't be)
+		if (name == "flex") {
+			var items = [for (v in values) if (!isSpace(v)) v];
+			if (items.length == 3 && items.foreach(v -> v.match(Token(_.kind => Number(_, _, _)))) && !items[2].match(Token(_.kind => Number(0, _, _)))) return null;
+		}
 		var terms = CssMatch.property(name, values);
-		return terms == null || !CssCanonical.valid(name, terms) ? null : Terms(terms);
+		if (terms == null || !CssCanonical.valid(name, terms)) return null;
+		// (a shorthand's value is one only if its longhands can be had from it)
+		if (CssShorthands.isShorthand(name) && CssShorthands.expand(name, terms) == null) return null;
+		return Terms(terms);
 	}
 
 	// The specified value as CSSOM serializes it (CssCanonical's forms).
@@ -39,6 +53,10 @@ class CssValues {
 		return switch v {
 			case Wide(k): k;
 			case Unresolved(text): text;
+			case Terms(terms) if (CssShorthands.isShorthand(Css.lower(property))):
+				var name = Css.lower(property);
+				var longhands = CssShorthands.expand(name, terms);
+				longhands == null ? "" : CssShorthands.serialize(name, [for (l => t in longhands) l => serialize(l, Terms(t))], false);
 			case Terms(terms): CssText.join(CssCanonical.terms(Css.lower(property), terms), CssText.term);
 		}
 
@@ -55,11 +73,25 @@ class CssValues {
 				var initial = parse(name, p.initial);
 				initial == null || initial.match(Wide(_)) ? null : compute(name, initial, c);
 			case Wide(_) | Unresolved(_): null;
+			case Terms(terms) if (CssShorthands.isShorthand(name)):
+				var longhands = CssShorthands.expand(name, terms);
+				if (longhands == null) return null;
+				var texts = new Map<String, String>();
+				for (l => t in longhands) {
+					var x = compute(l, Terms(t), c);
+					if (x == null) return null;
+					texts.set(l, x);
+				}
+				CssShorthands.serialize(name, texts, true);
 			case Terms(terms):
 				var computed = CssComputed.terms(name, CssCanonical.terms(name, terms), c);
 				CssText.join(CssCanonical.terms(name, computed), t -> text(t, c));
 		}
 	}
+
+	// Computed terms as getComputedStyle writes them, colours resolved in the context.
+	public static function written(property:String, terms:Array<CssTerm>, ctx:CssComputeContext):String
+		return CssText.join(CssCanonical.terms(property, terms), t -> text(t, ctx));
 
 	static function text(t:CssTerm, ctx:CssComputeContext):String
 		return switch t {

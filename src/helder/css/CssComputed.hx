@@ -3,13 +3,19 @@ package helder.css;
 import helder.css.CssCalc;
 import helder.css.CssTerm;
 
+using Lambda;
+using StringTools;
+
 // What is known when computing without layout: the element's font size
-// (em; font-size's own em is its parent's), the root's (rem), the
+// (em; font-size's own em is its parent's), the root's (rem), the line
+// heights (lh, rlh: the right one for the property, null for normal), the
 // viewport (vw, vh), its color (currentcolor).
 typedef CssComputeContext = {
 	?fontSize:Float,
 	?parentFontSize:Float,
 	?rootFontSize:Float,
+	?lineHeight:Float,
+	?rootLineHeight:Float,
 	?viewport:{width:Float, height:Float},
 	?color:String
 }
@@ -22,13 +28,32 @@ typedef CssComputeContext = {
 class CssComputed {
 	public static function terms(property:String, terms:Array<CssTerm>, ctx:CssComputeContext):Array<CssTerm> {
 		var fontSize = property == "font-size" ? ctx.parentFontSize ?? 16 : ctx.fontSize ?? 16;
-		var calc:CssCalcContext = {fontSize: fontSize, rootFontSize: ctx.rootFontSize ?? 16, viewport: ctx.viewport};
+		var calc:CssCalcContext = {
+			fontSize: fontSize,
+			rootFontSize: ctx.rootFontSize ?? 16,
+			lineHeight: ctx.lineHeight,
+			rootLineHeight: ctx.rootLineHeight,
+			viewport: ctx.viewport
+		};
 		var out = [for (t in terms) term(t, calc)];
 		return switch property {
 			case "background-position" | "object-position": CssText.unlayers([for (l in CssText.layers(out)) position(l)]);
-			case "background-position-x": CssText.unlayers([for (l in CssText.layers(out)) axis(l, "left", "right", "x-start", "x-end")]);
-			case "background-position-y": CssText.unlayers([for (l in CssText.layers(out)) axis(l, "top", "bottom", "y-start", "y-end")]);
-			case "background-image" | "list-style-image" | "border-image-source" | "content": [for (t in out) gradient(t)];
+			// (a logical keyword stays one alone; in a list of layers, browsers make it a percentage)
+			case "background-position-x":
+				var ls = CssText.layers(out);
+				CssText.unlayers([for (l in ls) axis(l, "left", "right", "x-start", "x-end", ls.length == 1)]);
+			case "background-position-y":
+				var ls = CssText.layers(out);
+				CssText.unlayers([for (l in ls) axis(l, "top", "bottom", "y-start", "y-end", ls.length == 1)]);
+			case "background-image" | "list-style-image" | "border-image-source" | "content": [for (t in out) resolution(gradient(t))];
+			// (horizontal text's shape: circle; filled is the default fill)
+			case "text-emphasis-style":
+				switch out {
+					case [Keyword("filled")] | [Keyword("filled"), Keyword("circle")]: [Keyword("circle")];
+					case [Keyword("open")]: [out[0], Keyword("circle")];
+					case [Keyword("filled"), shape]: [shape];
+					case _: out;
+				}
 			case "font-width" | "font-stretch": [for (t in out) width(t)];
 			case "border-top-width" | "border-right-width" | "border-bottom-width" | "border-left-width" | "border-width" | "outline-width":
 				[for (t in out) line(t)];
@@ -47,8 +72,10 @@ class CssComputed {
 			case "font-size":
 				[for (t in out) switch t {
 					case Keyword(k) if (SIZES.exists(k)): Dimension(SIZES[k], "px");
+					case Keyword("larger"): Dimension(step(fontSize, 1), "px");
+					case Keyword("smaller"): Dimension(step(fontSize, -1), "px");
 					case Percentage(p): Dimension(p * fontSize / 100, "px");
-					case Calc(n, type, range): term(Calc(n, type, range), {fontSize: fontSize, rootFontSize: calc.rootFontSize, viewport: calc.viewport}, fontSize);
+					case Calc(n, type, range): term(Calc(n, type, range), calc, fontSize);
 					case _: t;
 				}];
 			case "line-height":
@@ -81,6 +108,16 @@ class CssComputed {
 	static final SIZES = [
 		"xx-small" => 9.0, "x-small" => 10.0, "small" => 13.0, "medium" => 16.0, "large" => 18.0, "x-large" => 24.0, "xx-large" => 32.0, "xxx-large" => 48.0
 	];
+
+	// (larger and smaller: the parent's size a step along the absolute-size
+	// table when it is one of its sizes, Fonts 4 §2.5; else, or past either
+	// end, by browsers' ratio of 1.2)
+	static function step(parent:Float, by:Int):Float {
+		var i = TABLE.findIndex(s -> Math.abs(s - parent) < 1e-6), k = i + by;
+		return i >= 0 && k >= 0 && k < TABLE.length ? TABLE[k] : by > 0 ? parent * 1.2 : parent / 1.2;
+	}
+
+	static final TABLE = [9.0, 10.0, 13.0, 16.0, 18.0, 24.0, 32.0, 48.0];
 
 	static function term(t:CssTerm, calc:CssCalcContext, ?percent:Float):CssTerm
 		return switch t {
@@ -148,8 +185,8 @@ class CssComputed {
 	}
 
 	// (a logical keyword alone stays one)
-	static function axis(l:Array<CssTerm>, start:String, end:String, start2:String, end2:String):Array<CssTerm> {
-		if (l.length == 1 && l[0].match(Keyword(_)) && (l[0].match(Keyword("x-start" | "x-end" | "y-start" | "y-end")))) return l;
+	static function axis(l:Array<CssTerm>, start:String, end:String, start2:String, end2:String, alone:Bool):Array<CssTerm> {
+		if (alone && l.length == 1 && l[0].match(Keyword("x-start" | "x-end" | "y-start" | "y-end"))) return l;
 		var s = side(l, start, end, start2, end2);
 		return s == null ? l : [s];
 	}
@@ -172,8 +209,22 @@ class CssComputed {
 		}
 	}
 
-	// a gradient's position as percentages, a centre left out
+	// a gradient's position as percentages, a centre left out; a stop of two positions as two stops (Images 4 §3.4)
 	static function gradient(t:CssTerm):CssTerm
+		return switch t {
+			case Func(name, args) if (name.endsWith("gradient") && args.exists(a -> a.match(Delim(",")))):
+				var layers = CssText.layers(args);
+				var split = [for (l in layers) switch l {
+					case [c = Color(_), a, b] if (!a.match(Keyword(_)) && !b.match(Keyword(_))): [[c, a], [c, b]];
+					case _: [l];
+				}];
+				var flat = [for (s in split) for (l in s) l];
+				var out = Func(name, CssText.unlayers(flat));
+				name.startsWith("radial") || name.startsWith("repeating-radial") || name.startsWith("conic") || name.startsWith("repeating-conic") ? placed(out) : out;
+			case _: placed(t);
+		}
+
+	static function placed(t:CssTerm):CssTerm
 		return switch t {
 			case Func(name = "radial-gradient" | "repeating-radial-gradient" | "conic-gradient" | "repeating-conic-gradient", args):
 				var at = -1, comma = -1;
@@ -186,6 +237,16 @@ class CssComputed {
 				var centre = p.length == 2 && p[0].match(Percentage(50)) && p[1].match(Percentage(50));
 				var head = centre ? args.slice(0, at) : args.slice(0, at + 1).concat(p);
 				Func(name, head.length == 0 ? args.slice(comma + 1) : head.concat(args.slice(comma)));
+			case _: t;
+		}
+
+	// (image-set()'s resolutions: at least 0)
+	static function resolution(t:CssTerm):CssTerm
+		return switch t {
+			case Func("image-set", args): Func("image-set", [for (a in args) switch a {
+					case Dimension(v, u) if (v < 0): Dimension(0, u);
+					case _: a;
+				}]);
 			case _: t;
 		}
 

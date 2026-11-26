@@ -23,6 +23,8 @@ class CssMatch {
 	final at:Array<Int>;
 	final all:Array<CssValue>;
 	final excluded:Map<String, Bool>;
+	// (a shorthand's match: its properties' and types' matches tagged as Parts)
+	var tag = false;
 	var steps = 0;
 
 	function new(values:Array<CssValue>, excluded:Map<String, Bool>) {
@@ -40,11 +42,12 @@ class CssMatch {
 	public static function property(name:String, values:Array<CssValue>):Null<Array<CssTerm>> {
 		var p = CssGrammars.property(name);
 		if (p == null) return null;
-		return match(CssGrammars.of(p.syntax), values, [name], excludedOf(name, p.syntax));
+		return match(CssGrammars.of(p.syntax), values, [name], excludedOf(name, p.syntax), CssShorthands.isShorthand(name));
 	}
 
-	public static function match(g:CssGrammar, values:Array<CssValue>, context:Array<String>, ?excluded:Map<String, Bool>):Null<Array<CssTerm>> {
+	public static function match(g:CssGrammar, values:Array<CssValue>, context:Array<String>, ?excluded:Map<String, Bool>, tag = false):Null<Array<CssTerm>> {
 		var m = new CssMatch(values, excluded ?? new Map());
+		m.tag = tag;
 		var out:Null<Array<CssTerm>> = null;
 		try {
 			m.node(g, 0, context, (i, terms) -> {
@@ -93,7 +96,7 @@ class CssMatch {
 					var t = CssGrammars.type('\'$name\'', ctx);
 					t == null ? null : t.syntax;
 				}
-				syntax != null && node(CssGrammars.of(syntax), i, ctx.concat([name]), k);
+				syntax != null && node(CssGrammars.of(syntax), i, ctx.concat([name]), tag ? (j, terms) -> k(j, [Part(name, terms)]) : k);
 			case Func(name, args):
 				i < items.length && switch items[i] {
 					case Function(f, values, _, _) if (Css.lower(f) == Css.lower(name)):
@@ -149,6 +152,7 @@ class CssMatch {
 	function inside(values:Array<CssValue>, g:CssGrammar, ctx:Array<String>):Null<Array<CssTerm>> {
 		var m = new CssMatch(values, excluded);
 		m.steps = steps;
+		m.tag = tag;
 		var out:Null<Array<CssTerm>> = null;
 		m.node(g, 0, ctx, (j, terms) -> {
 			if (j != m.items.length) return false;
@@ -293,7 +297,8 @@ class CssMatch {
 		}
 		var t = CssGrammars.type(name, ctx);
 		if (t == null || t.syntax == null) return false;
-		return node(CssGrammars.of(t.syntax), i, ctx.concat([StringTools.endsWith(name, "()") ? name : '<$name>']), k);
+		var label = StringTools.endsWith(name, "()") ? name : '<$name>';
+		return node(CssGrammars.of(t.syntax), i, ctx.concat([label]), tag ? (j, terms) -> k(j, [Part(label, terms)]) : k);
 	}
 
 	// A number or dimension of the type, a math function of it, or null.

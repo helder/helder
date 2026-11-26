@@ -22,6 +22,9 @@ enum CssCalcNode {
 typedef CssCalcContext = {
 	?fontSize:Float,
 	?rootFontSize:Float,
+	// (lh's and rlh's: the line height in px; null for normal)
+	?lineHeight:Float,
+	?rootLineHeight:Float,
 	?viewport:{width:Float, height:Float}
 }
 
@@ -273,6 +276,8 @@ class CssCalc {
 			case "x": to(1, "dppx");
 			case "em" if (ctx != null && ctx.fontSize != null): to(ctx.fontSize, "px");
 			case "rem" if (ctx != null && ctx.rootFontSize != null): to(ctx.rootFontSize, "px");
+			case "lh" if (ctx != null && ctx.lineHeight != null): to(ctx.lineHeight, "px");
+			case "rlh" if (ctx != null && ctx.rootLineHeight != null): to(ctx.rootLineHeight, "px");
 			case "vw" | "svw" | "lvw" | "dvw" | "vi" | "svi" | "lvi" | "dvi" if (ctx != null && ctx.viewport != null): to(ctx.viewport.width / 100, "px");
 			case "vh" | "svh" | "lvh" | "dvh" | "vb" | "svb" | "lvb" | "dvb" if (ctx != null && ctx.viewport != null): to(ctx.viewport.height / 100, "px");
 			case "vmin" | "svmin" | "lvmin" | "dvmin" if (ctx != null && ctx.viewport != null): to(Math.min(ctx.viewport.width, ctx.viewport.height) / 100, "px");

@@ -32,6 +32,10 @@ enum CssTerm {
 	Delim(text:String);
 	// <declaration-value>, <any-value>, <url-modifier>: the values as they are, serialized
 	Raw(text:String);
+	// a shorthand's match: what a <'property'> (name: the property) or a
+	// named <type> (name: "<type>") of its grammar matched, for its
+	// expansion to longhands; written as its terms
+	Part(name:String, terms:Array<CssTerm>);
 }
 
 // A property's specified value: a CSS-wide keyword, a value with var() or

@@ -1,0 +1,11 @@
+/* The print defaults WeasyPrint's user agent sheet has, beside HTML's
+   rendering rules: an A4 page with 75px margins, headings as PDF
+   bookmarks. */
+@page { size: A4; margin: 75px; }
+
+h1 { bookmark-level: 1; }
+h2 { bookmark-level: 2; }
+h3 { bookmark-level: 3; }
+h4 { bookmark-level: 4; }
+h5 { bookmark-level: 5; }
+h6 { bookmark-level: 6; }

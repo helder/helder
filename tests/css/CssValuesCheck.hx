@@ -1,5 +1,8 @@
 import haxe.DynamicAccess;
+import helder.css.CssCascade;
 import helder.css.CssGrammars;
+import helder.dom.Dom;
+import helder.css.CssShorthands;
 import helder.css.CssTerm;
 import helder.css.CssValues;
 import sys.FileSystem;
@@ -43,6 +46,7 @@ class CssValuesCheck {
 		for (why => keys in groups) for (k in keys) pending.set(k, why);
 
 		var values:Dynamic = haxe.Json.parse(File.getContent('$here/fixtures/values.json'));
+		documents = (haxe.Json.parse(File.getContent('$here/fixtures/documents.json')) : Dynamic).documents;
 		var props:DynamicAccess<DynamicAccess<Array<Array<Dynamic>>>> = values.properties;
 		var names = props.keys();
 		names.sort(Reflect.compare);
@@ -53,8 +57,7 @@ class CssValuesCheck {
 			for (r in kinds.get("valid") ?? []) valid(name, module, r);
 			for (r in kinds.get("invalid") ?? []) invalid(name, module, r);
 			for (r in kinds.get("computed") ?? []) computed(name, module, r);
-			for (r in kinds.get("shorthand") ?? [])
-				add('shorthand $name: ${r[0]}', module, false, "cascade: shorthands expand to their longhands; not expanded", scope(name, r[0]));
+			for (r in kinds.get("shorthand") ?? []) shorthand(name, module, r);
 			for (r in kinds.get("inherits") ?? []) inherits(name, module, r);
 		}
 		var colorFiles = [for (f in FileSystem.readDirectory('$here/fixtures/colors')) if (f.endsWith(".json")) f];
@@ -108,6 +111,26 @@ class CssValuesCheck {
 	}
 
 	static final seen = new Map<String, Bool>();
+	static var documents:DynamicAccess<Dynamic>;
+
+	// (a computed value as the test's page gives it: the declaration on its
+	// #target's style, the page cascaded as WPT's harness shows it, a
+	// screen of 800 by 600)
+	static function inPage(file:Int, prop:String, value:String):Null<String> {
+		var page:Dynamic = documents.get(Std.string(file));
+		if (page == null) return null;
+		var html:String = Std.isOfType(page, String) ? page : page.html;
+		var doc = Dom.parse(html);
+		// (what its script sets on elements before the tests run)
+		if (!Std.isOfType(page, String)) for (s in (page.styles : Array<Array<String>>)) {
+			var el = doc.getElementById(s[0]);
+			if (el != null) el.setAttribute("style", (el.getAttribute("style") ?? "") + ";" + s[1] + ": " + s[2]);
+		}
+		var target = doc.getElementById("target") ?? doc.body;
+		if (target == null) return null;
+		target.setAttribute("style", (target.getAttribute("style") ?? "") + ";" + prop + ": " + value);
+		return CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}}).computed(target).text(prop);
+	}
 
 	static function valid(name:String, module:String, r:Array<Dynamic>) {
 		var custom = name == "--*";
@@ -115,6 +138,8 @@ class CssValuesCheck {
 		var key = 'valid $prop: $value';
 		var v = CssValues.parse(prop, value);
 		want = haxe.Json.stringify(expected ?? value);
+		// (setting "" removes the declaration: reading it gives "")
+		if (StringTools.trim(value) == "" && expected == "") return add(key, module, v == null, "values: an empty value set; accepted", scope(prop, value));
 		if (v == null) return add(key, module, false, reason(prop, value, "rejected"), scope(prop, value));
 		var got = CssValues.serialize(prop, v);
 		var ok = matches(got, expected ?? value, eps);
@@ -135,11 +160,40 @@ class CssValuesCheck {
 		var key = 'computed $prop: $value';
 		var v = CssValues.parse(prop, value);
 		want = haxe.Json.stringify(expected ?? value);
-		if (v == null) return add(key, module, false, reason(prop, value, "rejected"), scope(prop, value));
-		var got = CssValues.compute(prop, v);
-		if (got == null) return add(key, module, false, reason(prop, value, "no computed value", true), scope(prop, value));
+		var file0:Int = r[custom ? 3 : 2];
+		if (v == null && !(StringTools.trim(value) == "" && expected == "")) return add(key, module, false, reason(prop, value, "rejected"), scope(prop, value) ?? page(file0, value));
+		var file:Int = r[custom ? 3 : 2];
+		var skip = scope(prop, value) ?? page(file, value);
+		// (setting "" removes the declaration: there is nothing to compute)
+		if (StringTools.trim(value) == "" && expected == "") return add(key, module, v == null, "values: an empty value set; accepted", skip);
+		var got = inPage(file, prop, value) ?? CssValues.compute(prop, v);
+		if (got == null) return add(key, module, false, reason(prop, value, "no computed value", true), skip);
 		var ok = matches(got, expected ?? value, eps);
-		add(key, module, ok, ok ? "" : reason(prop, value, 'computes to ${haxe.Json.stringify(got)}', true), scope(prop, value));
+		add(key, module, ok, ok ? "" : reason(prop, value, 'computes to ${haxe.Json.stringify(got)}', true), skip);
+	}
+
+	// (the shorthand set: each longhand's specified value as expected)
+	static function shorthand(name:String, module:String, r:Array<Dynamic>) {
+		var value:String = r[0], expected:DynamicAccess<String> = r[1];
+		var key = 'shorthand $name: $value';
+		var v = CssValues.parse(name, value);
+		want = haxe.Json.stringify(expected);
+		if (v == null) return add(key, module, false, reason(name, value, "rejected"), scope(name, value));
+		var longhands = switch v {
+			case Terms(t): CssShorthands.expand(name, t);
+			case _: null;
+		}
+		var got = new Map<String, String>();
+		if (longhands != null) for (l => t in longhands) got.set(l, CssValues.serialize(l, Terms(t)));
+		// (an expected longhand that is a shorthand itself, as background's background-position, or a legacy name)
+		inline function text(l:String):Null<String> {
+			var p = CssGrammars.property(l);
+			if (p != null && p.alias != null) l = p.alias;
+			return got.exists(l) ? got.get(l) : CssShorthands.isShorthand(l) ? CssShorthands.serialize(l, got, false) : null;
+		}
+		var wrong = [for (l => e in expected) if (text(l) != e) '$l: ${haxe.Json.stringify(text(l))}'];
+		wrong.sort(Reflect.compare);
+		add(key, module, wrong.length == 0, wrong.length == 0 ? "" : 'values: a shorthand\'s longhands differ; ${wrong.join(", ")}', scope(name, value));
 	}
 
 	static function inherits(name:String, module:String, r:Array<Dynamic>) {
@@ -150,7 +204,7 @@ class CssValuesCheck {
 		var initial:Dynamic = r[1];
 		if (initial == null) return add(key, module, true, "", null);
 		want = haxe.Json.stringify(initial);
-		var got = CssValues.compute(name, Wide("initial"));
+		var got = inPage(r[3], name, "initial") ?? CssValues.compute(name, Wide("initial"));
 		var ok = got != null && matches(got, initial, null);
 		add(key, module, ok, ok ? "" : got == null ? 'cascade: an initial value in prose (the used value, the user agent\'s); ${haxe.Json.stringify(p.initial)}' : reason(name,
 			p.initial, 'initial computes to ${haxe.Json.stringify(got)}', true), null);
@@ -190,8 +244,12 @@ class CssValuesCheck {
 		if (prop == "transform" && ~/3d\(|[xyz]\(|z\(|perspective\(|scale[xyz]?\([^)]*%/i.match(v) && ~/3d\(|scalez\(|translatez\(|rotate[xyz]\(|perspective\(|%/.match(v))
 			return "out of scope: Transforms 2 (3D functions, percentages in scale())";
 		if (prop == "display" && v.indexOf("grid-lanes") >= 0) return "out of scope: Grid 3's grid-lanes (masonry)";
-		if (prop == "flex-wrap" && v.indexOf("balance") >= 0) return "out of scope: Flexbox 2's balance";
+		if ((prop == "flex-wrap" || prop == "flex-flow") && v.indexOf("balance") >= 0) return "out of scope: Flexbox 2's balance";
+		if (prop == "white-space" && v.indexOf("discard-") >= 0) return "out of scope: Text 4's white-space-trim";
+		if (prop == "font-synthesis" && v.indexOf("oblique-only") >= 0) return "out of scope: Fonts 5's oblique-only";
+		if (v.indexOf("border-area") >= 0) return "out of scope: Backgrounds 4's border-area";
 		if (prop == "object-fit" && v.trim().indexOf(" ") > 0) return "out of scope: Images 5's object-fit pairs";
+		if (~/\d(cqw|cqh|cqi|cqb|cqmin|cqmax)\b/.match(v)) return "out of scope: container query units (@container is deferred)";
 		if (DRAFT.exists(prop) && DRAFT[prop].match(v)) return 'out of scope: a draft\'s value past checkpoint 1\'s modules';
 		return null;
 	}
@@ -199,8 +257,18 @@ class CssValuesCheck {
 	// (values of drafts past checkpoint 1's levels, by property)
 	static final DRAFT:Map<String, EReg> = [
 		"opacity" => ~/^auto$/, "quotes" => ~/match-parent/, "text-emphasis-position" => ~/^auto$/, "align-items" => ~/(un)?safe normal/,
-		"justify-items" => ~/(un)?safe normal/
+		"justify-items" => ~/(un)?safe normal/, "place-items" => ~/(un)?safe normal/
 	];
+
+	// (a case out of scope by its page: vertical writing modes, a custom property of a relative colour)
+	static function page(file:Int, value:String):Null<String> {
+		var p:Dynamic = documents.get(Std.string(file));
+		if (p == null) return null;
+		var html:String = Std.isOfType(p, String) ? p : p.html;
+		if (~/writing-mode:\s*vertical|writing-mode:\s*sideways/.match(html)) return "out of scope: writing modes (deferred): the test's page is vertical";
+		if (value.indexOf("var(") >= 0 && ~/\b(rgb|hsl|hwb|lab|lch|oklab|oklch|color)\(\s*from\b/.match(html)) return "out of scope: Color 5 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4";
+		return null;
+	}
 
 	// (a failing colour of an outdated fixture: skipped)
 	static function outdated(why:String):Null<String>
@@ -212,11 +280,12 @@ class CssValuesCheck {
 	static function reason(prop:String, value:String, got:String, computed = false):String {
 		var p = CssGrammars.property(prop);
 		var v = value.toLowerCase();
-		var need = if (p != null && p.longhands.length > 0) "cascade: shorthands serialize from their longhands"
+		var need = if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
+		else if (p != null && p.longhands.length > 0) "cascade: shorthands serialize from their longhands"
 		else if (computed && ~/^(inherit|unset|revert|revert-layer)$/.match(v.trim())) "cascade: inherit, the parent's value"
 		else if (computed && (prop == "text-shadow" || prop == "box-shadow") && got.indexOf("rgb(0, 0, 0)") >= 0 && !~/rgb|#|[a-z]{3,} \d|\d [a-z]{3,}/.match(v)) "cascade: currentcolor, the element's color"
 		else if (computed && prop == "text-emphasis-style") "cascade: the writing mode's default shape"
-		else if (computed && v.indexOf("from-font") >= 0) "layout: the font's own metrics"
+		else if (computed && (v.indexOf("from-font") >= 0 || ~/\d(lh|rlh|ex|ch|ic|cap)\b/.match(v))) "layout: the font's own metrics"
 		else if (computed && prop == "justify-items" || prop == "justify-items" && got.indexOf("legacy") >= 0) "cascade: justify-items' legacy, the parent's"
 		else if (computed && ~/^(width|height)$/.match(prop) && got.indexOf("auto") >= 0) "layout: getComputedStyle's resolved value (the used one)"
 		else if (computed && ~/^grid-template|^grid-auto/.match(prop)) "layout: grid tracks' sizes"

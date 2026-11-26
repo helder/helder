@@ -17,6 +17,7 @@ class CssCanonical {
 
 	// What the property's prose adds to its grammar: false where a matched value is invalid.
 	public static function valid(property:String, terms:Array<CssTerm>):Bool {
+		terms = CssShorthands.plain(terms);
 		for (t in terms) if (!symbols(t) || !image(t)) return false;
 		return switch property {
 			case "font-feature-settings" | "font-variation-settings": terms.foreach(t -> switch t {
@@ -99,6 +100,20 @@ class CssCanonical {
 			case "grid-template-areas": areas(terms) ?? terms;
 			case "grid-template-columns" | "grid-template-rows" if (!terms.exists(t -> t.match(Keyword("subgrid")))):
 				[for (t in terms) names(t)].filter(t -> !t.match(Brackets("[", [])));
+			case "border-image-slice" | "border-image-width" | "border-image-outset":
+				// (sides as few as say the same, fill after)
+				var fill = terms.filter(t -> t.match(Keyword("fill"))), sides = terms.filter(t -> !t.match(Keyword("fill")));
+				var s = [for (t in sides) CssText.term(t)], n = s.length;
+				if (n == 4 && s[3] == s[1]) n = 3;
+				if (n == 3 && s[2] == s[0]) n = 2;
+				if (n == 2 && s[1] == s[0]) n = 1;
+				sides.slice(0, n).concat(fill);
+			case "grid-row-start" | "grid-row-end" | "grid-column-start" | "grid-column-end":
+				// (span 1 with a name is span and the name)
+				switch terms {
+					case [Keyword("span"), Number(1, _), name = Ident(_)]: [terms[0], name];
+					case _: terms;
+				}
 			case "text-emphasis-position": terms.length > 1 ? terms.filter(t -> !t.match(Keyword("right"))) : terms;
 			case "content" | "list-style-type" | "list-style": [for (t in terms) counters(t)];
 			case _: terms;

@@ -90,6 +90,28 @@ BLESS=1 bun run test css
 `make-encodings.mjs` makes src/helder/css/EncodingData.hx from WHATWG
 Encoding's encodings.json and indexes.json.
 
+## Selectors
+
+`CssSelectorsCheck.hx` reads `fixtures/selectors.json` (WPT's
+dom/nodes/selectors.js, BSD-3-Clause: `WPT-LICENSE.md`; extracted by
+`import-wpt.mjs`). Its invalid selectors must not parse and its valid and
+scoped ones must (querySelector's: no @namespace declared). Then the
+valid ones run as ParentNode-querySelector-All.html runs them, on
+`selectors.html` parsed by helder.dom:
+
+- setupSpecialElements' elements are added;
+- the contexts are the document, the in-document `#root`, a detached
+  clone and a fragment with a clone, each with the div verifyStaticList
+  appends;
+- the `data-clone` copy is appended to the body before the in-document
+  element's run;
+- querySelectorAll's ids in tree order must be the expected ones.
+
+Its `PENDING` cases (the name and context, and why) must fail, and fail
+the run once they pass: `:target`, which never matches. The scoped
+selectors are Selectors API 2's `find()` and refNodes, gone from the DOM,
+so they are only parsed.
+
 ## Values
 
 helder.css's values against WPT's value cases (fixtures/values.json) and
@@ -125,33 +147,23 @@ pass):
 
 
 <!-- values -->
-17035 of 17960 required (94.8%): checkpoint 1's progress; 925 pending, our gaps; 9499 skipped, not checkpoint 1's.
+17529 of 17787 required (98.5%): checkpoint 1's progress; 258 pending, our gaps; 9672 skipped, not checkpoint 1's.
 
 | Pending, by the stage that clears them | Cases |
 | --- | --- |
-| cascade | 638 |
-| layout | 263 |
+| layout | 234 |
 | values | 24 |
 
 | Pending because | Cases |
 | --- | --- |
-| cascade: shorthands serialize from their longhands | 295 |
-| layout: grid tracks' sizes | 207 |
-| cascade: shorthands expand to their longhands | 167 |
-| cascade: the test's own sizes (font size, container) | 131 |
-| layout: getComputedStyle's resolved value (the used one) | 36 |
-| cascade: currentcolor, the element's color | 19 |
-| cascade: var() and env() substituted | 16 |
-| layout: percentages of the containing block | 14 |
+| layout: grid tracks' sizes | 183 |
+| layout: getComputedStyle's resolved value (the used one) | 28 |
+| layout: percentages of the containing block | 17 |
 | values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands | 9 |
 | layout: the font's own metrics | 6 |
-| cascade: the writing mode's default shape | 5 |
 | values: Align 3's `[ first | last ]? && baseline` takes `baseline last` | 5 |
 | values: Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects | 5 |
 | values: rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed) | 3 |
-| cascade: inherit, the parent's value | 2 |
-| cascade: justify-items' legacy, the parent's | 2 |
-| cascade: url() made absolute against the document | 1 |
 | values: WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed) | 1 |
 | values: its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right | 1 |
 
@@ -163,40 +175,46 @@ pass):
 | outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept) | 488 |
 | outdated fixture: css-parsing-tests keeps rgb()'s fractions (WPT: rounded) | 468 |
 | out of scope: url()'s request modifiers and param() (Values 5) | 78 |
+| out of scope: Text 4's white-space-trim | 51 |
+| out of scope: container query units (@container is deferred) | 51 |
+| out of scope: Flexbox 2's balance | 38 |
 | out of scope: Transforms 2 (3D functions, percentages in scale()) | 28 |
-| out of scope: Flexbox 2's balance | 20 |
-| out of scope: a draft's value past checkpoint 1's modules | 18 |
+| out of scope: a draft's value past checkpoint 1's modules | 28 |
+| out of scope: Fonts 5's oblique-only | 20 |
+| out of scope: Backgrounds 4's border-area | 13 |
 | out of scope: Grid 3's grid-lanes (masonry) | 12 |
 | out of scope: Images 5's object-fit pairs | 9 |
+| out of scope: writing modes (deferred): the test's page is vertical | 9 |
+| out of scope: Color 5 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 1 |
 
 | Module | Required | Pending | Skipped |
 | --- | --- | --- | --- |
 | colors | 4326 | 0 | 3735 |
-| css-align-3 | 675 | 78 | 8 |
-| css-backgrounds-3 | 1420 | 106 | 252 |
-| css-box-3 | 186 | 22 | 6 |
+| css-align-3 | 738 | 5 | 18 |
+| css-backgrounds-3 | 1500 | 9 | 269 |
+| css-box-3 | 202 | 6 | 6 |
 | css-break-3 | 96 | 0 | 0 |
 | css-cascade-4 | 10 | 0 | 0 |
-| css-color-4 | 5820 | 31 | 4999 |
+| css-color-4 | 5831 | 3 | 5016 |
 | css-content-3 | 235 | 0 | 12 |
 | css-display-3 | 281 | 0 | 12 |
-| css-flexbox-1 | 177 | 96 | 29 |
-| css-fonts-4 | 797 | 44 | 54 |
-| css-grid-1 | 876 | 329 | 2 |
+| css-flexbox-1 | 251 | 0 | 51 |
+| css-fonts-4 | 803 | 6 | 86 |
+| css-grid-1 | 1021 | 183 | 3 |
 | css-images-3 | 123 | 5 | 9 |
-| css-inline-3 | 130 | 25 | 0 |
-| css-lists-3 | 210 | 23 | 0 |
-| css-masking-1 | 11 | 1 | 0 |
-| css-overflow-3 | 49 | 6 | 0 |
+| css-inline-3 | 149 | 3 | 3 |
+| css-lists-3 | 224 | 0 | 9 |
+| css-masking-1 | 12 | 0 | 0 |
+| css-overflow-3 | 55 | 0 | 0 |
 | css-page-3 | 21 | 0 | 0 |
 | css-page-floats-3 | 31 | 0 | 0 |
-| css-position-3 | 111 | 14 | 131 |
-| css-sizing-3 | 353 | 29 | 218 |
-| css-tables-3 | 43 | 2 | 0 |
-| css-text-3 | 426 | 54 | 2 |
-| css-text-decor-3 | 263 | 28 | 2 |
+| css-position-3 | 125 | 0 | 131 |
+| css-sizing-3 | 369 | 13 | 218 |
+| css-tables-3 | 45 | 0 | 0 |
+| css-text-3 | 427 | 0 | 55 |
+| css-text-decor-3 | 281 | 1 | 11 |
 | css-transforms-1 | 237 | 24 | 28 |
-| css-ui-3 | 106 | 8 | 0 |
+| css-ui-3 | 114 | 0 | 0 |
 | css-writing-modes-3 | 22 | 0 | 0 |
 <!-- /values -->
 
@@ -236,6 +254,57 @@ Its `PENDING` cases (the name and context, and why) must fail, and fail
 the run once they pass: `:target`, which never matches. The scoped
 selectors are Selectors API 2's `find()` and refNodes, gone from the DOM,
 so they are only parsed.
+
+## Cascade
+
+helder.css's cascade against WPT's css-cascade and css-variables tests,
+natively (`bun run test css`: CssCascadeCheck; BLESS=1:
+cascade-manifest.json and the counts below; SHOW=1: each case that
+doesn't pass):
+
+- `fixtures/cascade.json`: every test of those directories with what
+  became of it: read (its cases), a reftest (layout's), or out with why
+  (a script that changes the page or the CSSOM: no JavaScript here;
+  @scope, animation, shadow trees: past checkpoint 1). The pages read,
+  their markup without scripts, and their cases: `getComputedStyle(el)`'s
+  value of a property against a literal or another's (`assert_equals`
+  and `assert_not_equals` read statically: elements by id, the root,
+  `querySelectorAll`'s), variable-cycles' `test_cycles` (an element of
+  its declarations), crash tests (the page styled whole).
+- `CssCascadeCheck.hx`: each page parsed by helder.dom and cascaded as
+  WPT's harness shows it (a screen of 800 by 600); each case required
+  unless cascade-manifest.json's `pending` says why; a case that fails on
+  a page past checkpoint 1 (revert-rule, @scope, @container, @property,
+  animation, shadow trees, ident(), logical properties) is skipped with
+  that reason, one that passes is required.
+
+<!-- cascade -->
+70 of 70 cases pass; skipped (their page is past checkpoint 1):
+
+| Skipped because | Cases |
+| --- | --- |
+| out of scope: Cascade 6's revert-rule | 23 |
+| out of scope: @scope (deferred) | 10 |
+| out of scope: Values 5's ident() | 2 |
+| out of scope: animation (a page is still) | 1 |
+| out of scope: logical properties and writing modes (deferred) | 1 |
+| out of scope: registered custom properties (@property) | 1 |
+
+The tests, by what became of them:
+
+| Status | Tests |
+| --- | --- |
+| layout: a reftest | 235 |
+| out: its script changes the page (no JavaScript here) | 40 |
+| read | 36 |
+| out of scope: @scope (deferred) | 28 |
+| out: the CSSOM (no JavaScript here) | 25 |
+| out: no assertion read statically | 21 |
+| out of scope: animation (a page is still) | 14 |
+| read: values.json has its cases | 4 |
+| out of scope: shadow trees | 3 |
+| out: manual | 1 |
+<!-- /cascade -->
 
 ## Report
 

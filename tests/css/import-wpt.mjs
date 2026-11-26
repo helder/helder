@@ -101,6 +101,41 @@ for (const file of walk(path.join(root, 'css'))) {
   }
 }
 const sorted = Object.fromEntries(Object.keys(values).sort().map(k => [k, values[k]]))
+
+// ---- documents.json: the pages computed and inherits rows run in, scripts and test metadata left out
+const pages = new Set()
+for (const [prop, kinds] of Object.entries(sorted)) {
+  const shift = prop === '--*' ? 1 : 0
+  for (const r of kinds.computed ?? []) pages.add(r[2 + shift])
+  for (const r of kinds.inherits ?? []) pages.add(r[3])
+}
+const documents = {}
+for (const f of [...pages].sort((a, b) => a - b)) {
+  const html = fs.readFileSync(path.join(root, files[f]), 'utf8')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<link\b[^>]*\brel=["']?(help|author|match|mismatch)\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '')
+    .replace(/\n\s*\n+/g, '\n')
+  // (the scripts' top-level `el.style.prop = value` on an element by id, read statically)
+  const styles = []
+  for (const src of scripts(fs.readFileSync(path.join(root, files[f]), 'utf8'))) {
+    const env = bindings(src)
+    const ids = new Map([['target', 'target'], ['container', 'container']])
+    for (const m of src.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*document\.getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) ids.set(m[1], m[2])
+    for (const m of src.matchAll(/^(\w+)\.style\.(\w+)\s*=\s*([^;\n]+);?\s*$/gm)) {
+      if (!ids.has(m[1])) continue
+      const rhs = m[3].trim()
+      const value = /^['"`]/.test(rhs) ? rhs.slice(1, -1) : env.get(rhs)
+      if (typeof value === 'string') styles.push([ids.get(m[1]), m[2].replace(/[A-Z]/g, x => '-' + x.toLowerCase()), value])
+    }
+  }
+  documents[f] = styles.length ? {html, styles} : html
+}
+writeJson(out + '/documents.json', {
+  source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+  about: 'values.json\'s computed and inherits rows\' pages, by their index in its files: their markup without scripts and test metadata',
+  documents
+}, 2)
 writeJson(out + '/values.json', {
   source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
   rows: {
@@ -199,6 +234,118 @@ writeJson(out + '/reftests.json', {
     + 'noref, testharness, manual), why not]',
   directories: dirs
 }, 4)
+
+const cascadeReport = {}
+// ---- cascade.json: css-cascade's and css-variables' tests: what reads statically, the rest classified
+{
+  const tests = [], cases = [], pages = []
+  const mutation = /\.style\b|setProperty|removeProperty|className|classList|setAttribute|removeAttribute|appendChild|append\(|prepend\(|insertRule|deleteRule|innerHTML|textContent\s*=|createElement|removeChild|\.remove\(|cssText|replaceSync|adoptedStyleSheets|attachShadow|requestAnimationFrame|setTimeout|await|\.animate\(|disabled\s*=|media\s*=|insertBefore|replaceWith/
+  for (const dir of ['css/css-cascade', 'css/css-variables']) for (const file of walk(path.join(root, dir))) {
+    const rel = path.relative(root, file)
+    if (!isTest(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const d = describe(rel, text)
+    let status
+    if (d.type === 'reftest') status = 'layout: a reftest'
+    else if (d.type === 'crash') {
+      // (a crash test: its page styled whole, nothing thrown)
+      cases.push({page: pages.push(text.replace(/<script\b[\s\S]*?<\/script>/gi, '')) - 1, kind: 'crash'})
+      status = 'read: 1'
+    } else if (d.type !== 'testharness') status = 'out: ' + d.type
+    else {
+      const srcs = scripts(text)
+      const all = srcs.join('\n')
+      const page = pages.push(text.replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<link\b[^>]*\brel=["']?(help|author|match|mismatch)\b[^>]*>/gi, '').replace(/<meta\b[^>]*>/gi, '')) - 1
+      let found = 0
+      for (const src of srcs) {
+        // (test_cycles(declarations, invalid, valid): variable-cycles' helper, an element of those declarations)
+        for (const c of calls(src, new Set(['test_cycles']))) if (!c.errors) {
+          cases.push({page, kind: 'cycles', declarations: c.args[0], invalid: c.args[1], valid: c.args[2]})
+          found++
+        }
+        if (mutation.test(src.replace(/function test_cycles[\s\S]*?\n  }\n/, ''))) continue
+        // (each test()'s body apart: names as computed styles and values, then assert_equals of them)
+        const E = String.raw`(document\.getElementById\(\s*['"][^'"]+['"]\s*\)|document\.querySelector\(\s*['"]#[\w-]+['"]\s*\)|document\.documentElement|document\.body|\w+)`
+        const element = (e, extra) => {
+          let m = /getElementById\(\s*['"]([^'"]+)['"]/.exec(e) ?? /querySelector\(\s*['"]#([\w-]+)['"]/.exec(e)
+          if (m) return m[1]
+          if (e === 'document.documentElement') return '@root'
+          if (e === 'document.body') return '@body'
+          if (extra.has(e)) return extra.get(e)
+          if (/^\w+$/.test(e) && new RegExp(`id=["']?${e}\\b`).test(text)) return e
+          return null
+        }
+        const globals = new Map()
+        for (const m of src.matchAll(new RegExp(String.raw`(?:const|let|var)\s+(\w+)\s*=\s*` + E + String.raw`\s*;`, 'g'))) {
+          const id = element(m[2], new Map())
+          if (id) globals.set(m[1], id)
+        }
+        for (const m of src.matchAll(/\[\.\.\.document\.querySelectorAll\(\s*['"]([^'"]+)['"]\s*\)\]\.(?:map|forEach)\(\s*\(?(\w+)\)?\s*=>/g)) globals.set(m[2], '@all:' + m[1])
+        const prop = (m, i) => m[i] ?? m[i + 2] ?? m[i + 1]?.replace(/[A-Z]/g, x => '-' + x.toLowerCase())
+        const P = String.raw`(?:\.getPropertyValue\(\s*['"]([^'"]+)['"]\s*\)|\.(\w+)|\[\s*['"]([^'"]+)['"]\s*\])`
+        for (const seg of src.split(/\btest\s*\(/)) {
+          const els = new Map(globals), styles = new Map(), vals = new Map()
+          for (const m of seg.matchAll(new RegExp(String.raw`(?:const|let|var)\s+(\w+)\s*=\s*` + E + String.raw`\s*;`, 'g'))) {
+            const id = element(m[2], els)
+            if (id) els.set(m[1], id)
+          }
+          for (const m of seg.matchAll(new RegExp(String.raw`(?:const|let|var)\s+(\w+)\s*=\s*(?:window\.)?getComputedStyle\(\s*` + E + String.raw`\s*\)\s*;`, 'g'))) {
+            const id = element(m[2], els)
+            if (id) styles.set(m[1], id)
+          }
+          const ref = x => {
+            x = x.trim()
+            let m = new RegExp(String.raw`^(?:window\.)?getComputedStyle\(\s*` + E + String.raw`\s*\)` + P + '$').exec(x)
+            if (m) {
+              const id = element(m[1], els)
+              return id ? {el: id, property: prop(m, 2)} : null
+            }
+            m = new RegExp(String.raw`^(\w+)` + P + '$').exec(x)
+            if (m && styles.has(m[1])) return {el: styles.get(m[1]), property: prop(m, 2)}
+            if (vals.has(x)) return vals.get(x)
+            m = /^(['"])((?:[^'"\\]|\\.)*)\1$/.exec(x)
+            if (m) return {value: m[2].replace(/\\(['"\\])/g, '$1')}
+            return null
+          }
+          for (const m of seg.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*([^;\n]+);/g)) {
+            const r = ref(m[2])
+            if (r && r.el) vals.set(m[1], r)
+          }
+          for (const m of seg.matchAll(/assert_(equals|not_equals)\(\s*([^,]+?(?:\([^()]*\)[^,()]*)*)\s*,\s*((?:'[^']*'|"[^"]*"|[^,)]+?(?:\([^()]*\)[^,()]*)*))\s*[,)]/g)) {
+            const x = ref(m[2]), y = ref(m[3])
+            if (!x || !y || !x.el) continue
+            cases.push({page, kind: m[1] === 'equals' ? 'equals' : 'not', a: x, b: y})
+            found++
+          }
+        }
+      }
+      if (found === 0) pages.pop()
+      if (found === 0 && /test_valid_value|test_invalid_value|test_computed_value/.test(all)) status = 'read: values.json has its cases'
+      else if (found === 0) status = /scope/.test(rel) && /@scope/.test(text) ? 'out of scope: @scope (deferred)'
+        : /animation|transition|@keyframes/.test(rel) ? 'out of scope: animation (a page is still)'
+        : /attachShadow|shadowroot|shadow-dom/i.test(text) ? 'out of scope: shadow trees'
+        : /insertRule|deleteRule|replaceSync|adoptedStyleSheets|cssRules|CSSStyleSheet|cssText|CSSLayer|cssom/i.test(text + rel) ? 'out: the CSSOM (no JavaScript here)'
+        : null
+      status ??= found > 0 ? `read: ${found}` : mutation.test(all) ? 'out: its script changes the page (no JavaScript here)' : 'out: no assertion read statically'
+    }
+    tests.push([rel, d.type, status])
+  }
+  writeJson(out + '/cascade.json', {
+    source: 'web-platform-tests css/css-cascade, css/css-variables', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'tests: [path, type, status: read (cases read from it), layout (a reftest), out (why)]; pages: their markup without scripts; '
+      + 'cases: {page, kind: equals or not (a: {el: an id, @root, @body or @all:selector, property} against b: another or {value}), cycles (an element of '
+      + 'declarations in #main: invalid ones empty, valid ones not), crash (the page styled whole)}',
+    tests, pages, cases
+  }, 2)
+  const by = {}
+  for (const t of tests) {
+    const k = t[2].replace(/: \d+$/, '')
+    by[k] = (by[k] ?? 0) + 1
+  }
+  cascadeReport.by = by
+  cascadeReport.cases = cases.length
+  cascadeReport.tests = tests.length
+}
 
 // ---- the report, into tests/css/README.md between its markers
 const n = (a, b) => b[1] - a[1]
