@@ -25,10 +25,13 @@ class CssHints {
 				add("color", color(el.getAttribute("text")));
 				add("background-color", color(el.getAttribute("bgcolor")));
 				add("background-image", image(el.getAttribute("background")));
-				add("margin-top", length(el.getAttribute("marginheight") ?? el.getAttribute("topmargin")));
-				add("margin-bottom", length(el.getAttribute("marginheight") ?? el.getAttribute("bottommargin")));
-				add("margin-left", length(el.getAttribute("marginwidth") ?? el.getAttribute("leftmargin")));
-				add("margin-right", length(el.getAttribute("marginwidth") ?? el.getAttribute("rightmargin")));
+				// (HTML §15.3.2: the first of each margin's attributes that parses, else 8px)
+				inline function margin(property:String, a:String, b:String)
+					add(property, length(el.getAttribute(a)) ?? length(el.getAttribute(b)) ?? "8px");
+				margin("margin-top", "marginheight", "topmargin");
+				margin("margin-bottom", "marginheight", "bottommargin");
+				margin("margin-left", "marginwidth", "leftmargin");
+				margin("margin-right", "marginwidth", "rightmargin");
 			case "table":
 				add("background-color", color(el.getAttribute("bgcolor")));
 				add("background-image", image(el.getAttribute("background")));
