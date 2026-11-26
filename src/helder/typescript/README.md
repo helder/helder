@@ -204,6 +204,34 @@ empty one copies its shape and its values. A key is its string: hxmc's
 strings keep their hash, and `==` compares their addresses and lengths
 first, so no table interns them.
 
+An object literal whose properties have plain names (none computed, no
+method or accessor, no `__proto__`, no index), one of them typed (a
+number, a boolean, a string, an array, a class's instance, by its type),
+is an instance of an object type's layout (`Reps.objectLayout`, made for
+each keys and representations): an hxmc class of its own under JsObject,
+its properties in typed slots, its shapes grown from the layout's root (a
+property added later, an optional one the literal lacks, is the shape's).
+So is `{...x, k: v}` where x's type's values are one layout's: where x is
+exactly an instance of it, nothing beyond its slots, its slots are copied.
+A layout's instances are values of each literal's own type, of its
+contextual type, and of the types its literals' types are assignable to
+among those the program reads properties through (tsgo's
+`isTypeAssignableTo`, asked during the check). A read `o.k` where o's type
+is one of those (of at most three layouts) checks the instance is one,
+still laid out, then reads its slot, else takes the site's way; a write
+that fits the slot is stored in it. Structural typing lets any object
+arrive where such a type is: the check is always made. A number's slot is
+read unboxed where a number is wanted (arithmetic, a relation of numbers
+compared unboxed when both are, a number's typed slot, a sum of such
+reads computed unboxed and boxed once), else boxed. A value a slot does
+not take (through `any`, `as`, `JSON.parse`), a delete, an accessor or an
+attribute other than the default makes that instance an ordinary object
+of the same properties in their order (`JsObject.deopt`): plain objects
+never diverge, only typed classes' instances do. hxmc's escape analysis
+does not replace an instance that never leaves its function yet: each
+guarded read's other way, the site's stub, takes the object (an escape);
+it would need the instance's never-written `bits` folded first.
+
 An array literal of numbers (number[], a branded number's, T extends
 number's; an empty one by the type it is given) is a number array: the
 JsArray's `nums`, its elements unboxed while each is a number and the

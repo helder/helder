@@ -107,6 +107,7 @@ class Frontend extends ApiCalls {
 		reps = new Reps(p, types, classes);
 		b.out.push(SExpr(ECall(reps.startup, new Vector(0))));
 		captures = new Captures(src);
+		prepareLayouts();
 		if (api != null && api.manifest != null) {
 			bridge = new Haxe(this, p, api.manifest);
 			tsx = new Tsx(this, bridge, api, dev, dev || definitions.define("helder.headless") != null);

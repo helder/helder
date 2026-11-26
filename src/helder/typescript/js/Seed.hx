@@ -353,6 +353,26 @@ class Seed {
 
 	public static function libLayoutOf(cls:Dynamic):Dynamic return (cls : JsFunction).instanceLayout;
 
+	// an object type's layout (lower.Reps' object layouts): its set deopts an
+	// instance given a value its slot does not take (libDeopt, then libPut)
+	public static function libObjectLayout(names:Array<String>, get:(JsObject, Int) -> Dynamic, set:(JsObject, Int, Dynamic) -> Void):Layout {
+		if (Layout.deopt == null) Layout.deopt = o -> o.deopt();
+		return new Layout(names, get, set, true);
+	}
+
+	public static function libDeopt(o:JsObject):Void if (o.layout != null) Layout.deopt(o);
+
+	public static function libObjectProto():Dynamic return Builtins.ObjectProto;
+
+	// (what an object layout's typed slots take)
+	public static function libIsNumber(v:Dynamic):Bool return Lib.isNumber(v);
+
+	public static function libIsBoolean(v:Dynamic):Bool return Std.isOfType(v, Bool);
+
+	public static function libIsString(v:Dynamic):Bool return Std.isOfType(v, String);
+
+	public static function libNumber(v:Dynamic):Float return v;
+
 	// (a typed class's new instance: its layout, and its shapes' root)
 	public static function libSetLayout(o:JsObject, l:Layout):Void o.setLayout(l);
 
@@ -576,6 +596,8 @@ class Seed {
 		libClass("", libHole(), () -> null, 0, false, null);
 		libTypedClass(f, [], (o, i) -> null, (o, i, v) -> {}, p -> p);
 		libSetLayout(o, libLayoutOf(f));
+		libObjectLayout([], (o, i) -> null, (o, i, v) -> {});
+		if (libIsNumber(libNumber(0)) && libIsBoolean(true) && libIsString("")) libDeopt(libObjectProto());
 		mathSqrt(mathAbs(mathFloor(mathCeil(mathUnary("sin", mathBinary("atan2", mathMin(0, mathMax(0, 0)), 0))))));
 		libArrayIterable(a);
 		expectNumber(0, "");

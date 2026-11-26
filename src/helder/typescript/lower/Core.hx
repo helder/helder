@@ -9,6 +9,7 @@ import haxe.ds.Vector;
 import helder.typescript.ir.Builder;
 import helder.typescript.check.Types;
 import helder.typescript.lower.Classes.ClassLayout;
+import helder.typescript.lower.Reps.ObjectLayout;
 import helder.typescript.lower.Api;
 import helder.typescript.js.Lines;
 
@@ -408,6 +409,16 @@ abstract class Core {
 	var chainDepth = -1;
 	var chainTops:Map<Node, Bool> = [];
 
+	// ---- object types' layouts (Reps.objectLayout): each object literal's
+	// whose properties have plain names, and each `{...x, k: v}`'s whose x has
+	// one layout, made before any code is (Expressions.prepareLayouts)
+	var literalLayouts:Map<Node, ObjectLayout> = [];
+	var spreadLayouts:Map<Node, {from:ObjectLayout, to:ObjectLayout}> = [];
+	// (a property read numeric asks for as a number: where its object
+	// layout's slot is one, read unboxed; slot: for a typed slot, as store)
+	var numberRead:Null<Node> = null;
+	var numberIntoSlot = false;
+
 	// (what the layers define that an earlier one calls)
 	abstract function enter(m:Module):Void;
 	abstract function anonymousGlobal(name:String):Binding;
@@ -441,5 +452,5 @@ abstract class Core {
 	abstract function parameterProperties():Void;
 	abstract function call(n:Node):Ex;
 	abstract function valueFor(n:Node, t:Ty):Ex;
-	abstract function numeric(n:Node, slot:Bool):Ex;
+	abstract function numeric(n:Node, slot:Bool, coerce:Bool = true):Ex;
 }
