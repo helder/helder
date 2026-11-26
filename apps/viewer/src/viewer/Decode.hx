@@ -32,6 +32,8 @@ typedef Decoded = {
 	// "corrupt", "unsupported", "unreadable")
 	error:Null<String>,
 	errorKind:String,
+	// a PDF's page's text, with its drawing (not a first page alone's)
+	?text:viewer.PageText,
 }
 
 class Decode {
@@ -55,22 +57,26 @@ class Decode {
 	static function pdf(path:Null<String>, bytes:Null<Bytes>, page:Int, side:Int, size:Int, first = false, ?source:helder.pdf.PdfSource):Decoded {
 		return try {
 			var p = PdfPages.render(path, bytes, page, side, first, source);
-			var mem = ImageMemory.offHeapMemory();
-			var px = mem.take(p.rgba);
-			mem.dispose();
+			var frames = if (p.rgba == null) [] else {
+				var mem = ImageMemory.offHeapMemory();
+				var px = mem.take(p.rgba);
+				mem.dispose();
+				[{pixels: px, delay: 0.0}];
+			}
 			{
 				width: p.width,
 				height: p.height,
 				pixelsWidth: p.pixelsWidth,
 				pixelsHeight: p.pixelsHeight,
-				frames: [{pixels: px, delay: 0.0}],
+				frames: frames,
 				repetitions: 0,
 				format: "PDF",
 				fileSize: p.fileSize,
 				page: page,
 				pages: p.pages,
 				error: null,
-				errorKind: ""
+				errorKind: "",
+				text: p.text
 			};
 		} catch (e:helder.pdf.PdfError) {
 			var d = failedPdf(e, size);
