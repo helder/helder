@@ -259,6 +259,15 @@ for(const file of fs.readdirSync(`${D}/reject`).filter(f=>/\.tsx?$/.test(f)).sor
     assert.ok((b.stdout+b.stderr).includes(want),`${main}.hx should report ${want}, got ${b.stdout}${b.stderr}`);
     console.log(`PASS definition rejected: ${file}, ${main}.hx`);
 }
+// The fuzzer's short run (tests/typescript/fuzz): random programs of a
+// fixed seed against node, natively and a sample as wasm32-wasi, in a
+// directory of this run's (its findings kept there, not shrunk)
+if(mine()) {
+    const r=spawnSync(process.execPath,['tests/typescript/fuzz/fuzz.mjs','--seed','0','--programs','8','--out',`${dir}/fuzz`,'--no-shrink'],{encoding:'utf8',timeout:900000,maxBuffer:64*1024*1024});
+    ok(r,'the fuzzer\'s short run (fuzz.mjs)');
+    process.stdout.write(r.stdout.split('\n').filter(l=>l.startsWith('typescript fuzz: 8')).join('\n')+'\n');
+    console.log('PASS fuzz (seed 0, 8 programs)');
+}
 // helder/math's and helder/gfx's TypeScript, as their typescript.mjs write them
 if(mine())ok(run(process.execPath,['src/helder/math/typescript.mjs','--check']),'src/helder/math/index.ts');
 if(mine())ok(run(process.execPath,['src/helder/gfx/typescript.mjs','--check']),'src/helder/gfx/index.ts');

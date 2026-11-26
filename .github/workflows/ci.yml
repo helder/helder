@@ -22,7 +22,8 @@
 #   docs pages in two shards, a machine each);
 # - fuzz (pushes to main, nightly): the robustness properties (images, PDF,
 #   media containers, fonts, Markdown) soaked for 20 s each from a random
-#   seed, the failing cases kept as an artifact;
+#   seed, then helder's TypeScript against node for 5 minutes
+#   (tests/typescript/fuzz), the failing cases kept as an artifact;
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
 #   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
@@ -293,13 +294,13 @@ jobs:
     if: needs.changes.outputs.code == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     continue-on-error: true
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
         with: {node-version: 24}
-      - name: the robustness properties soaked for 20 s each (bun run test fuzz)
+      - name: the robustness properties soaked for 20 s each, the TypeScript fuzzer for 5 minutes (bun run test fuzz)
         run: bun run test fuzz
       # (a case that failed, hung, crashed or blew up: replayed first by helder test)
       - if: failure()

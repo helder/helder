@@ -583,7 +583,11 @@ constructor's defaults, a fixed step). The 3d lane draws helder/scene's
 frames from TypeScript (tests/3d/ts/frames.ts: examples/ts-scene's scenes,
 against Haxe's goldens).
 
-The lane needs node 24 or later.
+The lane needs node 24 or later. It also runs the TypeScript fuzzer's
+seed 0 (tests/typescript/fuzz, its README: random programs that
+type-check by construction, run by node and by helder, a difference
+shrunk to a case of `cases/`); the fuzz lane runs it for minutes from a
+random seed. A known failure in `cases/` is marked `// skip: <why>`.
 
 `node tests/typescript/bench.mjs [names]` times the programs of `bench/`
 compiled by helder's compiler against node and against their Haxe
