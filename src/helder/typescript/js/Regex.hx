@@ -666,6 +666,11 @@ class Regex {
 			return null;
 		}
 		var k = Std.int(lastIndex);
+		// (unicode: an index inside a surrogate pair is the pair's, the code point holding it)
+		if (unicode && k > 0 && k < s.length) {
+			var c = s.charCodeAt(k), before = s.charCodeAt(k - 1);
+			if (c >= 0xdc00 && c <= 0xdfff && before >= 0xd800 && before <= 0xdbff) k--;
+		}
 		var caps:Array<Int> = null;
 		while (k <= s.length) {
 			caps = matchAt(r, s, k);
