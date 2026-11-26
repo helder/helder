@@ -99,6 +99,8 @@ import hxmc.unsafe.*;
 	static function GetProcAddress(module:Ptr, name:Ptr):Ptr;
 	#end
 	static function GetLastError():Int;
+	// (a file's FILE_ATTRIBUTE_*: hidden 2, system 4; INVALID_FILE_ATTRIBUTES -1)
+	static function GetFileAttributesW(path:Ptr):Int;
 	static function Sleep(ms:Int):Void;
 	// (an event that wakes the main thread's wait for input: WinWindow's pump)
 	static function CreateEventW(attributes:Ptr, manual:Int, initial:Int, name:Ptr):Ptr;

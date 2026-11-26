@@ -25,12 +25,13 @@ class ViewerView implements Markup {
 		return (dark ? t.dark : t.light : Int) & 0xFFFFFF;
 	}
 
+	// (its bar on Windows and Linux as tall as the browser's toolbar: the window's buttons the same at its end)
 	public static function make(x:Explorer):View {
 		var viewer = x.viewer;
 		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} fontSize={13}
 			opacity={x.zoom.shown()} pointerEvents={x.full() ? "auto" : "none"} aria-hidden={!x.full()}>
-			<view tag="viewer-bar" flexDirection="row" alignItems="center" columnGap={8} height={BAR} flexShrink={0} dragRegion
-				paddingLeft={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} paddingRight={WindowButtons.side() == "end" ? 152 : 14}
+			<view tag="viewer-bar" flexDirection="row" alignItems="center" columnGap={8} height={WindowButtons.side() == "end" ? Shell.BAR : BAR} flexShrink={0} dragRegion
+				paddingLeft={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} paddingRight={WindowButtons.side() == "end" ? Shell.END_BUTTONS : 14}
 				display={viewer.fullscreen() ? "none" : "flex"}>
 				<button tag="back-pill" aria-label={() -> "Back to " + x.sidebar.title(x.browser.dir())} flexDirection="row"
 					alignItems="center" columnGap={6} height={30} padding="0 12 0 6" borderRadius={8} background={Look.ref.fill} color={Look.ref.fg}

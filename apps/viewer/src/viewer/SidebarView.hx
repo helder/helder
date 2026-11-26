@@ -102,8 +102,9 @@ class SidebarView implements Markup {
 			ticking = true;
 			helder.ui.Clock.addFor(n, step);
 		});
+		// (Windows' and Linux's: its 30-point bar centred on the 40-point toolbar's line, the window's buttons at that row's end)
 		return <view tag="sidebar" width={WIDTH} flexShrink={0} padding="0 10" rowGap={6} overflow="hidden"
-			paddingTop={WindowButtons.side() == "start" ? 0 : 8}>
+			paddingTop={WindowButtons.side() == "start" ? 0 : WindowButtons.side() == "end" ? 5 : 8}>
 			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} flexShrink={0} dragRegion/></Show>
 			{bar(x)}
 			<view tag="sidebar-body" flexGrow={1} minHeight={0} ref={(n:Node) -> {

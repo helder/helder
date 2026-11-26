@@ -1258,6 +1258,10 @@ export declare class Theme {
 // Linux's at the end), the other nothing.
 //   <view dragRegion><WindowControls side="start"/><text>Project</text></view>
 //   <view dragRegion><text>Inspector</text><view flexGrow={1}/><WindowControls side="end"/></view>
+// height: the drawn buttons' (32 by default, Windows' caption): a bar's
+// own height, so that they fill it from the window's top edge as Windows
+// 11's do in a taller title bar (WinUI's, Explorer's); their hit areas and
+// snap layouts follow.
 declare class WindowButtons {
 }
 
@@ -1266,7 +1270,7 @@ declare class WindowButtons {
 // null without an inset title bar (the system's, the browser, a phone).
 // Reactive, as SafeArea.titlebar: a bar's padding at that end can follow it.
 export declare function windowControlsSide(): string | null;
-export declare function WindowControls(props: { tag?: string; side?: string }): View;
+export declare function WindowControls(props: { tag?: string; side?: string; height?: number }): View;
 
 // A control's states as amounts that ease between 0 and 1 (hover, pressed,
 // checked, focus: the keyboard's ring, open), each over its look's time

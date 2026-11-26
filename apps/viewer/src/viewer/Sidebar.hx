@@ -88,7 +88,7 @@ class Sidebar {
 		stops.push(files.list(path, b -> {
 			if (target != path) return;
 			for (e in b.entries)
-				if (e.kind == Folder && !Kinds.hidden(e.name)) got.push({name: e.name, path: FolderModel.join(path, e.name), deeper: false});
+				if (e.kind == Folder && !Kinds.hidden(e)) got.push({name: e.name, path: FolderModel.join(path, e.name), deeper: false});
 			if (!b.done) return;
 			got.sort((a, b) -> FolderModel.compare(a.name, b.name));
 			land(got);
@@ -118,7 +118,7 @@ class Sidebar {
 		if (from != null) from = Browser.normalize(from);
 		var was = from == null ? null : Lambda.find(rows.value, r -> r.path == from);
 		var e = to == null || Browser.parent(to) != l ? null : files.stat(to);
-		var come = e != null && e.kind == Folder && !Kinds.hidden(e.name);
+		var come = e != null && e.kind == Folder && !Kinds.hidden(e);
 		if (was == null && !come) return;
 		var r = [for (r in rows.value) if (r.path != from) r];
 		if (come) {
@@ -135,7 +135,7 @@ class Sidebar {
 		stop = files.list(row.path, b -> {
 			if (found || level.value != at) return;
 			for (e in b.entries)
-				if (e.kind == Folder && !Kinds.hidden(e.name)) found = true;
+				if (e.kind == Folder && !Kinds.hidden(e)) found = true;
 			if (!found) return;
 			rows([for (r in rows.value) r.path == row.path ? {name: r.name, path: r.path, deeper: true} : r]);
 			if (stop != null) stop();

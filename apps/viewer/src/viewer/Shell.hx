@@ -33,6 +33,9 @@ class Shell implements Markup {
 	public static inline var BAR = 40;
 	// (macOS's buttons, left of a bar at the window's left edge: what the bar keeps clear)
 	public static inline var BUTTONS = 86;
+	// (Windows' and Linux's, drawn at the top right as tall as the bar (WindowControls): what a bar under them keeps
+	// clear at its end, three of Windows' 46 and a gap)
+	public static inline var END_BUTTONS = 146;
 	// the window's least size (a desktop's: the tablet's shell at its narrowest, never a phone's)
 	public static inline var MIN_WIDTH = 640;
 	public static inline var MIN_HEIGHT = 400;
@@ -558,8 +561,7 @@ class Shell implements Markup {
 			ref={(n:Node) -> x.zoom.attach(n)}>
 			<view tag="browser" flexGrow={1} minHeight={0} flexDirection="row" aria-hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
-				<view flexGrow={1} minWidth={0} flexDirection="row" paddingTop={WindowButtons.side() == "end" ? 32 : 0}
-					background={clear() ? Look.ref.canvas : null}>
+				<view flexGrow={1} minWidth={0} flexDirection="row" background={clear() ? Look.ref.canvas : null}>
 					{ContentView.make(x, medium)}
 					<Show when={b.inspector() && !medium()}>{InspectorView.make(x)}</Show>
 				</view>
@@ -567,12 +569,8 @@ class Shell implements Markup {
 			<Show when={medium()}>{Tablet.make(x)}</Show>
 			{ViewerView.make(x)}
 			{Flight.layer(x.zoom)}
-			<Show when={WindowButtons.side() == "end"}>
-				<view position="absolute" top={0} left={medium() ? 0 : SidebarView.WIDTH} right={0} height={Shell.BAR} dragRegion
-					display={x.full() ? "none" : "flex"}/>
-			</Show>
 			<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} flexDirection="row" alignItems="center"><WindowControls side="start"/></view>
-			<view tag="window-end" position="absolute" top={0} right={0} flexDirection="row"><WindowControls side="end"/></view>
+			<view tag="window-end" position="absolute" top={0} right={0} flexDirection="row"><WindowControls side="end" height={Shell.BAR}/></view>
 			<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
 		</view>;
 	}

@@ -421,6 +421,18 @@ class Window {
 			Platform.target() >= 9 ? false :
 			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setBackdrop(b) : x11().setBackdrop(b)) #else false #end;
 
+	// whether the system draws its frame dark: Windows' DWMWA_USE_IMMERSIVE_DARK_MODE
+	// (the 1-pixel border, a standard caption, and Mica's and Acrylic's tint
+	// follow it); elsewhere the frame follows the system's appearance, nothing
+	// to set. helder.ui's UiWindow keeps it the ui's (Ui.dark)
+	public var dark(default, set) = false;
+
+	function set_dark(on:Bool):Bool {
+		if (closed || HEADLESS || on == dark) return dark = on;
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setDark(on); #end
+		return dark = on;
+	}
+
 	// over every other window, whichever has the focus (macOS's floating
 	// level, Windows' HWND_TOPMOST, X11's _NET_WM_STATE_ABOVE); Wayland has
 	// no way to ask, false there

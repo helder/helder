@@ -236,14 +236,15 @@ class UiWindow {
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
 		if (window.titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
-		ui.dark = helder.os.Settings.dark.peek();
+		// (the ui dark or light with the system's frame: setDark, Window.dark)
+		setDark(helder.os.Settings.dark.peek());
 		if (!appearance) {
 			appearance = true;
 			ScreenContext.main.dark(ui.dark);
 			Graph.root(_ -> Graph.effect(() -> helder.os.Settings.dark(), d -> {
 				var all = true;
 				for (w in open)
-					if (w.followsSystem) w.ui.dark = d else all = false;
+					if (w.followsSystem) w.setDark(d) else all = false;
 				// (the screen's, Theme.c's: unless a window says its own)
 				if (all) ScreenContext.main.dark(d);
 			}));
@@ -709,6 +710,12 @@ class UiWindow {
 
 	// the window's safe area in UI pixels: the Ui's, and markup's
 	// env(safe-area-inset-*) from the first window's (SafeArea), when it changed
+	// (the ui dark or light, and the system's frame with it: Window.dark)
+	function setDark(v:Bool) {
+		ui.dark = v;
+		window.dark = v;
+	}
+
 	function safeArea() {
 		var k = scale, s = ui.safeArea;
 		var t = window.safe.top / k, r = window.safe.right / k, b = window.safe.bottom / k, l = window.safe.left / k;
@@ -1018,7 +1025,7 @@ class UiWindow {
 		if (props.dark != null) {
 			w.followsSystem = false;
 			Graph.renderEffect(() -> Render.read(props.dark), v -> {
-				w.ui.dark = v;
+				w.setDark(v);
 				// (what Theme.c and the screen's others read: this window's)
 				ScreenContext.main.dark(v);
 			});

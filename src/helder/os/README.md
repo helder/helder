@@ -298,7 +298,12 @@ WM_NCHITTEST answers the top edge (HTTOP), the drag regions (HTCAPTION:
 Windows' own moves, snaps and double clicks) and the maximise button
 (HTMAXBUTTON: Windows 11's snap layouts; its presses taken by the window,
 its hover passed on as a move); `TitleBars.button` and `HEIGHT` are the
-drawn buttons' sizes. Wayland: neither the compositor's decorations nor
+drawn buttons' sizes (`<WindowControls height>` makes them a taller bar's,
+from the window's top edge as Windows 11's own in a tall title bar, their
+hit areas and snap layouts with them). `window.dark` is the frame's
+appearance there (`DWMWA_USE_IMMERSIVE_DARK_MODE`: the 1-pixel border and
+Mica's tint dark or light; helder.ui's `UiWindow` keeps it its ui's).
+Wayland: neither the compositor's decorations nor
 helder's bar; a drag region's press `xdg_toplevel.move` (a double press
 maximises, the right button the window menu), an edge's `resize`. X11:
 undecorated (`_MOTIF_WM_HINTS`), `_NET_WM_MOVERESIZE` for a drag region
