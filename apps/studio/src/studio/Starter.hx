@@ -36,6 +36,23 @@ class Starter {
 		return is("app.story.tsx", STORY) && is("app.tsx", APP);
 	}
 
+	// the starter's files the agent's own project no longer needs: each
+	// (app.story.tsx, then app.tsx) as the starter wrote it, once a story of
+	// the agent's is there, and no other file imports it; its story while
+	// App/Start is the starter's still (its app.tsx edited: the agent's)
+	public static function unused(dir:String, docs:Docs, sources:Array<String>, ownStory:Bool, starterStory:Bool):Array<String> {
+		if (!ownStory) return [];
+		var out = [];
+		for (f in [{name: "app.story.tsx", text: STORY, module: "app\\.story"}, {name: "app.tsx", text: APP, module: "app"}]) {
+			var path = '$dir/${f.name}';
+			if (f.name == "app.story.tsx" && !starterStory) continue;
+			if (!docs.has(path) || docs.get(path).text != f.text) continue;
+			var imports = new EReg('[\'"]\\./${f.module}(\\.tsx?)?[\'"]', "");
+			if (!Lambda.exists(sources, s -> s != path && !out.contains(s) && docs.has(s) && imports.match(docs.get(s).text))) out.push(path);
+		}
+		return out;
+	}
+
 	// (nothing in it but dot files)
 	public static function empty(dir:String):Bool
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));

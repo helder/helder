@@ -202,7 +202,7 @@ lines.on('line', line => {
       mcp = m.params.mcpServers[0]?.url ?? null
       const o = m.params._meta?.claudeCode?.options
       denied = o?.disallowedTools ?? null
-      options = o && {tools: o.tools, strict: o.strictMcpConfig, sources: o.settingSources, settings: o.settings}
+      options = o && {tools: o.tools, allowed: o.allowedTools, strict: o.strictMcpConfig, sources: o.settingSources, settings: o.settings}
       return send({id: m.id, result: {sessionId: 's1'}})
     case 'session/prompt':
       return void prompt(m.id, m.params)
