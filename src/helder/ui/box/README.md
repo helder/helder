@@ -4,19 +4,21 @@ helder's CSS engine past the cascade: a helder.dom document's computed
 styles (helder.css) made into a box tree, laid out into flat fragments
 (helder.ui.flow), painted on a helder.canvas Painter and hit tested. The
 plan is that helder.ui becomes this engine, for apps and for HTML to PDF
-alike; this is its first slice: the box tree and block layout (paint,
-hit testing and the reftests come next).
+alike; this is its first slice: blocks, lines (through a stand-in), paint.
 
 ```haxe
-import helder.css.CssCascade;
-import helder.ui.box.*;
-import helder.ui.flow.*;
+import helder.ui.box.DocumentView;
 
 var doc = helder.dom.Dom.parse('<!doctype html><p style="border: 2px solid">Hello');
-var tree = BoxTree.build(doc, CssCascade.styles(doc, {hints: true}), {image: url -> bitmaps.get(url)});
-var fragments = new Fragments();
-var root = tree.root.context.layout(tree.root, new Space(fragments, new FontMatch(), 800, 600));
-fragments.width(root);                   // 800: the html element's border box
+var canvas = new helder.canvas.Canvas(800, 600);
+var view = DocumentView.render(doc, 800, canvas, {
+	url: "https://example.com/page.html",
+	load: url -> sheets.get(url),        // <link rel=stylesheet>, @import
+	image: url -> bitmaps.get(url),      // <img>, url() backgrounds
+	font: url -> fontFiles.get(url)      // @font-face
+});
+view.hit(20, 12);                        // {node: the Text, offset: 1}
+sys.io.File.saveBytes("page.png", canvas.toPng());
 ```
 
 ## The box tree
@@ -61,6 +63,31 @@ parent, first child and next sibling, place in its parent's border box,
 size, baseline, text range (a span's edges), glyph run. Glyph runs are
 helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
 
+## Paint and hit testing
+
+- `PaintOrder` (CSS 2.1 Appendix E): per stacking context (positioned
+  with a z-index, opacity under 1, a transform) its background, negative
+  z-index children, in-flow blocks' backgrounds and borders, inline
+  content (inline boxes' backgrounds, text, atomic inlines whole,
+  replaced content), positioned descendants and z-index 0 in tree order,
+  positive z-index, outlines. Each step has a state: opacity layers,
+  2D transforms (`Transforms`: about transform-origin) and overflow clips
+  (the padding box).
+- `BoxPainter` replays it on any Painter: the canvas's background (the
+  root's, else body's, §14.2, over the whole canvas), box shadows
+  (outer, inset, blurred), backgrounds (`Backgrounds`: colour, url()
+  images and gradients, layers, size with contain and cover, position,
+  repeat with space and round, origin, clip, attachment fixed; `Gradients`:
+  linear by angle, side or corner, radial circles and ellipses by extent
+  or length, repeating, stops placed as Images 3 says), borders
+  (`Borders`: per side, every style, border-radius, inset and outset
+  shaded as Chromium shades them), text with its decorations from every
+  decorating box (underline, overline, line-through; solid, double,
+  dotted, dashed), images, outlines. Boxes are snapped to whole pixels,
+  as browsers paint them.
+- `HitTest.at` walks the same order backwards, through the transforms and
+  clips: a text node and the offset nearest the point, or an element.
+
 ## Fonts
 
 `FontMatch` matches a computed font to a helder.text face (Fonts 4 §5):
@@ -79,4 +106,6 @@ elements; properties: a block container's children are all block-level
 or all inline-level, and the text runs are the document's text in
 order. helder.ui.flow's `BlockFlow.test.hx`: widths, heights, margin
 collapsing, relative offsets, the cache; a property against a plain
-model of §8.3.1's sibling margins.
+model of §8.3.1's sibling margins. `DocumentView.test.hx`: backgrounds,
+borders, the canvas's background, Appendix E's order, opacity, overflow
+clips, transforms, hit testing.
