@@ -100,7 +100,7 @@ abstract class Expressions extends Statements {
 				}
 				else x = u.unaryOperator() == KindMinusToken || u.unaryOperator() == KindPlusToken ? numeric(u.operand(), false) : expr(u.operand());
 				switch (u.unaryOperator()) {
-					// (ToNumber: a boolean's or a string's slot too)
+					// (ToNumber: a boolean's or a string's value, not its reference unboxed)
 					case KindMinusToken: EConv(FNeg, number(x));
 					case KindPlusToken: number(x);
 					case KindExclamationToken: ENot(truth(x));
@@ -669,7 +669,8 @@ abstract class Expressions extends Statements {
 		var key = intOf(n.argumentExpression()) ?? b.temp(number(expr(n.argumentExpression())));
 		return {
 			read: () -> reps.arrayGetNumber(b, obj, key, g -> number(g)),
-			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, key, e)
+			// (a value that is no number into the boxed path, which takes the key as a double: a counter's is an Int64)
+			write: (e) -> Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, Ir.typeOf(key) == TI64 ? EConv(L2F, key) : key, e)
 		};
 	}
 

@@ -111,8 +111,11 @@
     "typescript": ">=7.1.0-0"
   },
   "devDependencies": {
+    "@csstools/css-parser-algorithms": "4.0.3",
+    "@csstools/css-tokenizer": "4.0.3",
     "@hxmc/source": "0.1.0-nightly.20261123.717d9f7",
     "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
+    "lightningcss": "1.33.0",
     "typescript": "7.1.0-dev.20261106.1"
   },
   "trustedDependencies": [

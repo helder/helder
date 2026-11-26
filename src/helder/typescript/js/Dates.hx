@@ -113,7 +113,8 @@ class Dates {
 		return s;
 	}
 
-	static function year(y:Float):String return y >= 0 ? pad(y, 4) : "-" + pad(-y, 6);
+	// (toString's and toUTCString's: four digits at least, the sign alone; ISO's six are toISOString's)
+	static function year(y:Float):String return y >= 0 ? pad(y, 4) : "-" + pad(-y, 4);
 
 	public static function iso(t:Float):String {
 		var y = yearFromTime(t);

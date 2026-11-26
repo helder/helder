@@ -790,6 +790,31 @@ class Previews {
 		return true;
 	}
 
+	// the program running with a screen built in it, what a tool that asks
+	// the program needs (run.tree, run.snap): woken when the screens were
+	// drawn from the frames file, waited for (its build, its start, the
+	// screen's first frame); null, else why not: its build failed, it
+	// crashed, or seconds went by
+	@:coroutine public function live(s:Screen, seconds = LIVE):Null<String> {
+		wake();
+		var t0 = haxe.Timer.stamp();
+		while (!stopping) {
+			if (connection != null && s.version > 0 && !s.reloading) return null;
+			if (failed) {
+				var d = Lambda.find(latest, d -> d.severity == "error");
+				return 'the build failed' + (d == null ? "" : ': ${d.file == null ? "" : Path.withoutDirectory(d.file) + ":" + d.line + ": "}${d.message}');
+			}
+			if (s.crashed) return '${s.info.name} crashed: ${s.report.peek()}';
+			if (haxe.Timer.stamp() - t0 > seconds)
+				return '${s.info.name} is not running: the program did not start within ${Math.round(seconds)} s (${status.peek()}); try again';
+			Async.delay(0.02);
+		}
+		return "the studio is closing";
+	}
+
+	// (how long a tool waits for the program: a cold build and its start)
+	public static inline var LIVE = 180.0;
+
 	// a screen's last frame's pixels (the image's own; a texture's read back
 	// by the host: Host.snap), or null
 	@:coroutine public function pixels(s:Screen):Null<Image> {
