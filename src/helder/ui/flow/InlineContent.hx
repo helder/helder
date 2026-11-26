@@ -675,7 +675,10 @@ class InlineContent {
 				}
 			}
 		}
-		var any = rtl || plaintext;
+		// (a block container's bidi-override: its inline content's, each paragraph in an override, CSS Writing Modes 3 §2.2)
+		var rootBidi = root.unicodeBidi();
+		var forced = rootBidi == BidiOverride || rootBidi == IsolateOverride ? (base == 1 ? 0x202E : 0x202D) : -1;
+		var any = rtl || plaintext || forced >= 0;
 		for (k in 1...styles.length)
 			if (styles[k].direction() == Rtl) rtl = true;
 		// (an override or embedding asked for: the algorithm, even on left-to-right text)
@@ -717,6 +720,7 @@ class InlineContent {
 			cps.push(c);
 			at.push(-1);
 		}
+		if (forced >= 0) control(forced);
 		for (i in 0...items) {
 			switch kind(i) {
 				case Open:
@@ -747,6 +751,7 @@ class InlineContent {
 					at.push(iStart[i]);
 					paragraph();
 					first = iEnd[i];
+					if (forced >= 0) control(forced);
 					for (o in open)
 						for (c in opening(styles[iStyle[o]]))
 							control(c);

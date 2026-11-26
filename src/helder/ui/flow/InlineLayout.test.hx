@@ -135,6 +135,15 @@ function tests() {
 			}, 200);
 			equals([l.x(find(l, TextRun, 0)), l.x(find(l, TextRun, 1))], [0.0, 32.0]);
 		});
+		test("a block's bidi-override: its text in the override's direction", () -> {
+			var root = ahem(s -> {
+				s.dir = Rtl;
+				s.bidi = BidiOverride;
+			});
+			var l = lay(c -> c.addText("ab", ahem()), 200, root);
+			// (a forced right to left: its caret on its right, the line's right end)
+			equals(l.caret(0).x, 200.0);
+		});
 		test("pre-wrap's spaces hang at a line's end", () -> {
 			var pw = ahem(s -> s.collapse = Preserve);
 			var l = lay(c -> c.addText("aa   bb", pw), 60);
