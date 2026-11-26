@@ -34,6 +34,11 @@ class Lower implements ShaderAdapter {
 	static final SHADER_PACK = "helder.gfx.shader";
 	// (the math types: Vec2, Vec3, Vec4, Mat4)
 	static final MATH_PACK = "helder.math";
+	// (the scalars and the math types by path: type's fast path)
+	static final scalars = [
+		"Float" => TFloat, "Int" => TInt, "Bool" => TBool, "Void" => TVoid, MATH_PACK + ".Vec2" => TVec(2), MATH_PACK + ".Vec3" => TVec(3),
+		MATH_PACK + ".Vec4" => TVec(4), MATH_PACK + ".Mat4" => TMat4
+	];
 
 	final structs = new Map<String, SStruct>();
 	final building = new Map<String, Bool>();
@@ -79,6 +84,23 @@ class Lower implements ShaderAdapter {
 	var locals:Map<Int, SVar>;
 	var localNames:Map<String, Bool>;
 	var temps = 0;
+
+	// the classes this lowering met, by path: a Ref's get() decodes the
+	// whole class again each time, and the math types' calls and fields are
+	// most of a shader's expressions (a Ref's toString() is its path, or a
+	// field's name, without decoding; not a field's key: ShaderMath's
+	// builtins are overloads of one name)
+	final classes = new Map<String, ClassType>();
+
+	function classOf(r:Ref<ClassType>):ClassType {
+		var k = r.toString(), c = classes.get(k);
+		if (c == null) classes.set(k, c = r.get());
+		return c;
+	}
+
+	// (a type of the package pack itself, by path: its name, else null)
+	static function inPackage(pack:String, path:String):Null<String>
+		return StringTools.startsWith(path, pack + ".") && path.lastIndexOf(".") == pack.length ? path.substr(pack.length + 1) : null;
 
 	public function new() {}
 
@@ -304,8 +326,8 @@ class Lower implements ShaderAdapter {
 	// (an optional field's type: T of Null<T>)
 	static function unNull(t:Type):Type
 		return switch t {
-			case TAbstract(a, [u]) if (a.get().name == "Null" && a.get().pack.length == 0): u;
-			case TType(td, []) if (td.get().name == "Null"): unNull(td.get().type);
+			case TAbstract(a, [u]) if (a.toString() == "Null"): u;
+			case TType(td, []) if (td.toString() == "Null"): unNull(td.get().type);
 			case _: t;
 		}
 
@@ -329,6 +351,12 @@ class Lower implements ShaderAdapter {
 	// --- types ---
 
 	function type(t:Type, pos:Position):SType {
+		switch t {
+			case TAbstract(a, []):
+				var s = scalars.get(a.toString());
+				if (s != null) return s;
+			case _:
+		}
 		// (a typedef of an anonymous structure: a struct of its name)
 		var named = namedStruct(t, pos);
 		if (named != null) {
@@ -355,11 +383,11 @@ class Lower implements ShaderAdapter {
 					case ["", "Null"]: error('${t.toString()}: a nullable type is not a shader type', pos);
 					case _: error('${t.toString()} is not a shader type (Float, Int, Bool, Vec2, Vec3, Vec4, Mat4 and structs of them)', pos);
 				}
-			case TInst(_.get() => {pack: [], name: "Array"}, [_]):
+			case TInst(r, [_]) if (r.toString() == "Array"):
 				error('${t.toString()}: an array is a uniform block\'s field (@:length(8) var lights:Array<Vec4>), read by index there', pos);
-			case TInst(c, []):
+			case TInst(r, []):
 				// (the math types' representations, as `this` of their methods)
-				var c = c.get();
+				var c = classOf(r);
 				switch [c.pack.join("."), c.name] {
 					case [MATH_PACK, "Vec2Data"]: TVec(2);
 					case [MATH_PACK, "Vec3Data"]: TVec(3);
@@ -388,6 +416,9 @@ class Lower implements ShaderAdapter {
 
 	function namedStruct(t:Type, pos:Position):Null<SStruct>
 		return switch t {
+			case TType(td, []) if (structs.exists(td.toString())):
+				// (a typedef's struct met before: anonStruct's, by its path)
+				structs.get(td.toString());
 			case TType(td, []):
 				var d = td.get();
 				switch d.type {
@@ -469,7 +500,7 @@ class Lower implements ShaderAdapter {
 	// a field's type: an Array<Vec4> or Array<Mat4> of @:length(n) an array
 	function fieldType(key:String, f:ClassField, t:Type):SType {
 		var element = switch t.follow() {
-			case TInst(_.get() => {pack: [], name: "Array"}, [e]): e;
+			case TInst(r, [e]) if (r.toString() == "Array"): e;
 			case _: return type(t, f.pos);
 		}
 		var m = f.meta.extract(":length");
@@ -509,7 +540,7 @@ class Lower implements ShaderAdapter {
 	static function positionArg(e:TypedExpr):Null<TypedExpr>
 		return switch e.expr {
 			case TParenthesis(x) | TMeta(_, x) | TCast(x, null): positionArg(x);
-			case TCall({expr: TField(_, FStatic(c, cf))}, [x]) if (cf.get().name == "position" && path(c.get()) == SHADER_PACK + ".ShaderMath"): x;
+			case TCall({expr: TField(_, FStatic(c, cf))}, [x]) if (cf.toString() == "position" && c.toString() == SHADER_PACK + ".ShaderMath"): x;
 			case _: null;
 		}
 
@@ -743,19 +774,18 @@ class Lower implements ShaderAdapter {
 					error('new ${s.path}: a shader struct is built by its @:structInit constructor, all fields given', e.pos);
 				build(s, args, out);
 			// (Uniform<T>, @:generic: Uniform_<T's path>)
-			case TField(x, FInstance(c, _, cf)) if (cf.get().name == "value" && c.get().pack.join(".") == SHADER_PACK
-				&& (c.get().name == "Uniform" || StringTools.startsWith(c.get().name, "Uniform_"))):
+			case TField(x, FInstance(c, _, cf)) if (cf.toString() == "value" && isUniform(inPackage(SHADER_PACK, c.toString()))):
 				uniformRead(x, e);
-			case TField(x, FInstance(c, _, cf)): field(x, c.get(), cf.get(), e, out);
+			case TField(x, FInstance(c, _, cf)): field(x, classOf(c), cf.get(), e, out);
 			case TField(x, FAnon(cf)):
 				switch strip(x).expr {
-					case TLocal(v) if (paramsObject != null && v.id == paramsObject.id): local(paramsObject.fields.get(cf.get().name));
-					case TLocal(v) if (workgroupObject != null && v.id == workgroupObject.id): local(workgroupObject.fields.get(cf.get().name));
-					case TField({expr: TLocal(v)}, FAnon(o)) if (v.id == slotsSelf && o.get().name == "options"): option(cf.get().name, e);
+					case TLocal(v) if (paramsObject != null && v.id == paramsObject.id): local(paramsObject.fields.get(cf.toString()));
+					case TLocal(v) if (workgroupObject != null && v.id == workgroupObject.id): local(workgroupObject.fields.get(cf.toString()));
+					case TField({expr: TLocal(v)}, FAnon(o)) if (v.id == slotsSelf && o.toString() == "options"): option(cf.toString(), e);
 					case TLocal(v) if (v.id == slotsSelf): error('${v.name}.${cf.get().name}: the slot object is read as ${v.name}.options.<name> and called as ${v.name}.<slot>(s, p)', e.pos);
 					case _: field(x, null, cf.get(), e, out);
 				}
-			case TField(_, FStatic(c, cf)): constant(c.get(), cf.get(), e);
+			case TField(_, FStatic(c, cf)): constant(classOf(c), cf.get(), e);
 			case TField(_, _): error("this field access is not supported in a shader", e.pos);
 			case TObjectDecl(fs):
 				// (a struct of a typedef: its fields by name, in the struct's order)
@@ -906,7 +936,7 @@ class Lower implements ShaderAdapter {
 			case TField({expr: TLocal(v)}, FAnon(slot)) if (v.id == slotsSelf):
 				return slotCall(slot.get(), args, e, out);
 			case TField(_, FStatic(cr, cfr)):
-				c = cr.get();
+				c = classOf(cr);
 				cf = cfr.get();
 			case TField(_, FInstance(_, _, cfr)):
 				error('${cfr.get().name}: a method call is not supported in a shader (shader functions are static)', e.pos);
@@ -959,7 +989,7 @@ class Lower implements ShaderAdapter {
 			}
 		}
 		switch c.kind {
-			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK && (a.get().name == "Storage" || a.get().name == "RWStorage" || a.get().name == "Workgroup")):
+			case KAbstractImpl(a) if (a.toString() == SHADER_PACK + ".Storage" || a.toString() == SHADER_PACK + ".RWStorage" || a.toString() == SHADER_PACK + ".Workgroup"):
 				// (a storage buffer's element read, b[i], or written, b[i] = v: SStore, its value the expression's)
 				var b = expr(args[0], out);
 				return switch cf.name {
@@ -984,7 +1014,7 @@ class Lower implements ShaderAdapter {
 						error("the length of a storage buffer is not known to every back end (Metal's buffers have none): pass the count in a uniform block", e.pos);
 					case name: error('${a.get().name}.$name is not supported in a shader', e.pos);
 				}
-			case KAbstractImpl(a) if (a.get().pack.join(".") == MATH_PACK):
+			case KAbstractImpl(a) if (inPackage(MATH_PACK, a.toString()) != null):
 				var xs = lowered();
 				var name = cf.name;
 				if (name == "_new") return {e: ENew(xs), t: t};
@@ -1207,6 +1237,10 @@ class Lower implements ShaderAdapter {
 
 	static function not(x:SExpr):SExpr
 		return {e: EUnop(Not, x), t: TBool};
+
+	// (helder.gfx.shader's Uniform, or a generic one's instance: Uniform_<...>)
+	static function isUniform(name:Null<String>):Bool
+		return name != null && (name == "Uniform" || StringTools.startsWith(name, "Uniform_"));
 
 	static function local(v:SVar):SExpr
 		return {e: ELocal(v), t: v.type};
