@@ -17,7 +17,7 @@
 //   node tests/dom/parse5.mjs bin/dom/DomDump [count]
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { parse } from 'parse5';
 
 const [dumper, countArg] = process.argv.slice(2);
@@ -83,7 +83,30 @@ const files = compared.map(([name, s]) => {
 	fs.writeFileSync(file, s);
 	return file;
 });
-for (let i = 0; i < files.length; i += 500) execFileSync(dumper, files.slice(i, i + 500));
+// (a failed dump explains itself: its status or signal, the tool's output,
+// the document that fails, found by dumping the chunk's one at a time)
+function run(chunk) {
+	return spawnSync(dumper, chunk, { encoding: 'utf8', maxBuffer: 1 << 26 });
+}
+function said(r) {
+	return `status ${r.status}, signal ${r.signal}${r.error ? `, error ${r.error.message}` : ''}\n--- stdout\n${r.stdout ?? ''}\n--- stderr\n${r.stderr ?? ''}`;
+}
+for (let i = 0; i < files.length; i += 500) {
+	const chunk = files.slice(i, i + 500);
+	const r = run(chunk);
+	if (r.status === 0) continue;
+	console.log(`FAILED: helder's side, ${dumper} on documents ${i} to ${i + chunk.length - 1} (${chunk[0]} ... ${chunk.at(-1)}): ${said(r)}`);
+	let named = false;
+	for (const f of chunk) {
+		const one = run([f]);
+		if (one.status === 0) continue;
+		console.log(`FAILED: helder's side, ${f} alone: ${said(one)}`);
+		named = true;
+		break;
+	}
+	if (!named) console.log('FAILED: each of those documents dumps alone (a failure of that one run, not of a document)');
+	process.exit(1);
+}
 
 const NS = { 'http://www.w3.org/2000/svg': 'svg ', 'http://www.w3.org/1998/Math/MathML': 'math ' };
 const ATTR_NS = { 'http://www.w3.org/1999/xlink': 'xlink ', 'http://www.w3.org/XML/1998/namespace': 'xml ', 'http://www.w3.org/2000/xmlns/': 'xmlns ' };
@@ -113,8 +136,19 @@ function dump(root) {
 
 const differ = [], seen = new Set();
 compared.forEach(([name], i) => {
-	const want = dump(parse(compared[i][1], { scriptingEnabled: false }));
-	const got = fs.readFileSync(files[i] + '.helder', 'utf8');
+	let want, got;
+	try {
+		want = dump(parse(compared[i][1], { scriptingEnabled: false }));
+	} catch (e) {
+		console.log(`FAILED: parse5's side, ${files[i]}: ${e.stack}`);
+		process.exit(1);
+	}
+	try {
+		got = fs.readFileSync(files[i] + '.helder', 'utf8');
+	} catch (e) {
+		console.log(`FAILED: helder's side, ${files[i]}.helder not written (${e.message}) though ${dumper} exited 0`);
+		process.exit(1);
+	}
 	if (got === want) return;
 	const g = got.split('\n'), w = want.split('\n');
 	let k = 0;
