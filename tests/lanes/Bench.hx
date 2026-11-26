@@ -16,6 +16,7 @@ class Bench {
 		{name: "bench match", about: "helder.css's selector matching: each selector against the rule index and Bloom filter", run: matchBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
+		{name: "bench layout", about: "helder.ui.box on the HTML Standard's page: box tree, layout, paint, memory per box and fragment", run: layoutBench},
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
@@ -80,6 +81,12 @@ class Bench {
 	static function rowBench() {
 		exe("bin/bench/RowBench", cps(["src", "tests/bench"]).concat(["-main", "RowBench"]));
 		run(exePath("bin/bench/RowBench", HOST), []);
+	}
+
+	// (natively; the page and its sheets fetched as bench cascade's)
+	static function layoutBench() {
+		exe("bin/bench/LayoutBench", cps(["src", "tests/bench"]).concat(["-main", "LayoutBench"]));
+		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/LayoutBench", HOST)]);
 	}
 
 	// (natively; the pages and sheets fetched into bin/bench/html and bin/bench/match)

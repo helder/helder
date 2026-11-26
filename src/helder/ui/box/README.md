@@ -109,3 +109,10 @@ collapsing, relative offsets, the cache; a property against a plain
 model of §8.3.1's sibling margins. `DocumentView.test.hx`: backgrounds,
 borders, the canvas's background, Appendix E's order, opacity, overflow
 clips, transforms, hit testing.
+
+## Measures
+
+The css-reftests lane (tests/css) gates on WPT's CSS 2.1 reftests;
+`bun run test css-render <page> <out.png> --tree` draws one page and
+prints its boxes and fragments; `bun run test bench layout` times the
+HTML Standard's page by phase and what its boxes and fragments take.
