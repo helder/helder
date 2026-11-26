@@ -171,7 +171,7 @@ class Sites {
 		if (s.dict || exotic(obj, key) || Lib.index(key) >= 0) return Lib.put(obj, key, v);
 		var i = s.slotOf(key);
 		if (i >= 0) {
-			if (s.attrs[i] & (Attr.READONLY | Attr.ACCESSOR) != 0) return Lib.put(obj, key, v);
+			if (s.attrs[i] & (Attr.READONLY | Attr.ACCESSOR | Attr.FROZEN) != 0) return Lib.put(obj, key, v);
 			record(site, new Found(Found.SET, s, i, null, null, null));
 			site.shape = s;
 			site.slot = i;
@@ -202,9 +202,25 @@ class Sites {
 		return v;
 	}
 
-	public static function call(o:Dynamic, site:Site, args:Array<Dynamic>):Dynamic {
+	// (each its lookup, its refusal and its call in itself, too big for hxmc's
+	// inliner: a small function holding a reference across a call, inlined
+	// twice into one caller, loses the second copy's shadow-stack frame
+	// natively, its argument then read back as another value)
+	public static function call(o:Dynamic, site:Site, args:Array<Dynamic>):Dynamic return dispatch(o, site, args.length, args, null, null, null, true);
+
+	public static function call0(o:Dynamic, site:Site):Dynamic return dispatch(o, site, 0, null, null, null, null, false);
+
+	public static function call1(o:Dynamic, site:Site, a:Dynamic):Dynamic return dispatch(o, site, 1, null, a, null, null, false);
+
+	public static function call2(o:Dynamic, site:Site, a:Dynamic, b:Dynamic):Dynamic return dispatch(o, site, 2, null, a, b, null, false);
+
+	public static function call3(o:Dynamic, site:Site, a:Dynamic, b:Dynamic, c:Dynamic):Dynamic return dispatch(o, site, 3, null, a, b, c, false);
+
+	static inline function dispatch(o:Dynamic, site:Site, n:Int, list:Null<Array<Dynamic>>, a:Dynamic, b:Dynamic, c:Dynamic, listed:Bool):Dynamic {
 		var f = get(o, site);
-		if (!Std.isOfType(f, JsFunction)) return Lib.error("TypeError", (Lib.isObject(o) ? Lib.describe(o) : Seed.typeOf(o)) + "." + site.key + " is not a function");
-		return Lib.call(f, o, args);
+		if (!Std.isOfType(f, JsFunction))
+			return Lib.error("TypeError", (Lib.isObject(o) ? Lib.describe(o) : Seed.typeOf(o)) + "." + site.key + " is not a function");
+		if (listed) return Lib.call(f, o, list);
+		return n == 0 ? Lib.call0(f, o) : n == 1 ? Lib.call1(f, o, a) : n == 2 ? Lib.call2(f, o, a, b) : Lib.call3(f, o, a, b, c);
 	}
 }

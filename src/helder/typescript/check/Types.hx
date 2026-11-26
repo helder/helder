@@ -55,6 +55,8 @@ class Types {
 	// (RegExpMatchArray's and RegExpExecArray's symbols: a match's groups, string by
 	// their type, undefined where a group took no part)
 	var matches:Null<Array<String>> = null;
+	// (Map's and Set's interfaces: Expressions' direct calls)
+	var collections:Null<Map<String, String>> = null;
 	// type parameters taken as number: a generic function's copy for numbers
 	// (lower.Expressions.specialization), while it is declared and lowered
 	public var numberParams:Null<Map<Int, Bool>> = null;
@@ -92,6 +94,14 @@ class Types {
 			final id:Dynamic = r == null ? null : r.reference != null ? r.reference.id : r.id;
 			if (id != null) Std.string(id);
 		}];
+		if (collections == null) {
+			collections = [];
+			for (name in ["Map", "Set"]) {
+				final r:Dynamic = try tsgo.call("resolveName", {snapshot: at.snapshot, project: at.project, name: name, meaning: 64}) catch (_:Dynamic) null;
+				final id:Dynamic = r == null ? null : r.reference != null ? r.reference.id : r.id;
+				if (id != null) collections.set(Std.string(id), name);
+			}
+		}
 		var ids = [for (i in 1...sf.count) if (typed.contains(sf.kindAt(i))) i];
 		if (ids.length > 0) {
 			var result:Array<Dynamic> = tsgo.call("getTypeAtLocations", {snapshot: at.snapshot, project: at.project, locations: [for (i in ids) sf.location(i)]});
@@ -253,6 +263,10 @@ class Types {
 	}
 
 	// whether the type is a regular expression's match (its groups read by index)
+	// "Map" or "Set" where every value of the type is one (by its interface), else null
+	public function collection(t:Null<TsType>):Null<String>
+		return t == null || t.symbol == null || collections == null ? null : collections.get(t.symbol);
+
 	public function isMatch(t:Null<TsType>):Bool
 		return t != null && t.symbol != null && matches != null && matches.contains(t.symbol);
 

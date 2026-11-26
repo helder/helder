@@ -16,7 +16,8 @@ function outer(): number[] {
 	const inner = (x: number): number => {
 		throw new Error("inner " + x);
 	};
-	return [1, 2].map(x => inner(x));
+	// (a function expression: an arrow here is lowered into outer's loop, with no frame of its own)
+	return [1, 2].map(function (x) { return inner(x); });
 }
 
 const counter = (() => {

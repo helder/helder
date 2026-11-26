@@ -1259,6 +1259,10 @@ abstract class Expressions extends Statements {
 			}
 			return b.runtime("libCallMethod", [any(o), EStr("push"), pack([v])]);
 		}
+		var looped = iteration(n, callee, actual);
+		if (looped != null) return looped;
+		var direct = directCall(n, callee, actual);
+		if (direct != null) return direct;
 		var inner = callee;
 		while (inner.kind == KindParenthesizedExpression) inner = inner.expression();
 		var method = layoutCall(n, inner, actual);
@@ -1277,11 +1281,151 @@ abstract class Expressions extends Statements {
 				chainCheck(n, fn);
 				return b.runtime("libCall", [fn, obj, argumentList(actual)]);
 			}
-			if (named) return reps.siteCall(b, obj, inner.name().text, argumentList(actual));
+			if (named) {
+				var few = fewArguments(actual);
+				if (few != null) return b.runtime("libCallAt" + few.length, [obj, reps.site(inner.name().text)].concat(few));
+				return reps.siteCall(b, obj, inner.name().text, argumentList(actual));
+			}
 			return b.runtime("libCallMethod", [obj, key, argumentList(actual)]);
 		}
 		var fn = expr(callee);
 		chainCheck(n, fn);
+		var few = fewArguments(actual);
+		if (few != null) return b.runtime("libCall" + few.length, [any(fn), b.runtime("getUndefined", [])].concat(few));
 		return apply(fn, argumentList(actual));
+	}
+
+	// ---- array iteration with an inline arrow, as a loop
+
+	static final iterations = ["filter" => 1, "map" => 1, "forEach" => 1, "some" => 1, "every" => 1, "find" => 1, "findIndex" => 1, "reduce" => 2];
+
+	// `a.m(x => e)` (filter, map, forEach, some, every, find, findIndex;
+	// reduce with its initial value) on an array: where a is a plain array
+	// (Array.prototype's, nothing of its own beyond its elements: its frozen
+	// methods are the built-ins) a loop over its elements as the method
+	// visits them (its length then, those it has), e lowered in place with
+	// the arrow's parameters bound; else the method called with the arrow
+	function iteration(n:Node, callee:Node, actual:Array<Node>):Null<Ex> {
+		var inner = strip(callee);
+		if (inner.kind != KindPropertyAccessExpression || !plainAccess(inner) || n.questionDotToken() != null || inner.name().kind != KindIdentifier) return null;
+		var name = inner.name().text;
+		if (!iterations.exists(name) || actual.length != iterations.get(name) || hasSpread(actual) || !types.isArray(inner.expression().tsType)) return null;
+		var fn = strip(actual[0]);
+		if (fn.kind != KindArrowFunction || fn.body().kind == KindBlock || hasModifier(fn, KindAsyncKeyword)) return null;
+		var params = parametersOf(fn);
+		if (params.length > (name == "reduce" ? 4 : 3)) return null;
+		for (p in params) if (p.name().kind != KindIdentifier || p.initializer() != null || p.dotDotDotToken() != null || p.questionToken() != null) return null;
+		typedOperations++;
+		var arr = b.temp(any(expr(inner.expression())));
+		var init = name == "reduce" ? b.temp(any(expr(actual[1]))) : null;
+		var ty = name == "some" || name == "every" ? TBool : name == "findIndex" ? TF64 : TRef(RAny);
+		var result = b.local("iterated", ty);
+		var loop = b.block(() -> {
+			var arrayClass = reps.arrayClass;
+			var length = b.temp(EField(arrayClass, arrayClass.fieldIndex("length"), ECast(TRef(RObj(arrayClass)), arr)));
+			var out = b.local("out", TRef(RArr(TRef(RAny))));
+			if (name == "filter" || name == "map") b.out.push(SSet(out, ENewArr(TRef(RAny), new Vector(0))));
+			b.out.push(SSet(result, switch name {
+				case "some": bool(false);
+				case "every": bool(true);
+				case "findIndex": EF64(-1);
+				case "reduce": init;
+				case _: b.runtime("getUndefined", []);
+			}));
+			var i = b.local("index", TF64);
+			b.out.push(SSet(i, EF64(0)));
+			b.out.push(SLoop(b.block(() -> {
+				b.out.push(SIf(ENot(EBin(FLt, ELocal(i), length)), Vector.fromArrayCopy([SBreak]), new Vector(0)));
+				var e = reps.elementAt(b, arr, ELocal(i));
+				function element(t:Ty):Ex {
+					var l = b.local("value", t);
+					b.out.push(SIf(ELocal(e.unboxed), b.block(() -> b.out.push(SSet(l, t == TF64 ? ELocal(e.number) : any(ELocal(e.number))))),
+						b.block(() -> b.out.push(SSet(l, store(ELocal(e.value), t))))));
+					return ELocal(l);
+				}
+				var present = b.block(() -> {
+					var outer = env;
+					env = env.copy();
+					for (k in 0...params.length) {
+						var p = params[k], t = parameterType(p);
+						var v = name == "reduce" && k == 0 ? store(ELocal(result), t) : switch (name == "reduce" ? k - 1 : k) {
+							case 0: element(t);
+							case 1: store(ELocal(i), t);
+							case _: store(arr, t);
+						};
+						env.set(p.name().text, bind(p.name(), t, v));
+					}
+					var v = expr(fn.body());
+					env = outer;
+					switch name {
+						case "filter": b.out.push(SIf(truth(v), b.block(() -> b.out.push(SArrPush(TRef(RAny), out, element(TRef(RAny))))), new Vector(0)));
+						case "map": b.out.push(SArrPush(TRef(RAny), out, any(v)));
+						case "some": b.out.push(SIf(truth(v), Vector.fromArrayCopy([SSet(result, bool(true)), SBreak]), new Vector(0)));
+						case "every": b.out.push(SIf(ENot(truth(v)), Vector.fromArrayCopy([SSet(result, bool(false)), SBreak]), new Vector(0)));
+						case "find": b.out.push(SIf(truth(v), b.block(() -> {
+								b.out.push(SSet(result, element(TRef(RAny))));
+								b.out.push(SBreak);
+							}), new Vector(0)));
+						case "findIndex": b.out.push(SIf(truth(v), Vector.fromArrayCopy([SSet(result, ELocal(i)), SBreak]), new Vector(0)));
+						case "reduce": b.out.push(SSet(result, any(v)));
+						case _:
+					}
+				});
+				// (find and findIndex visit every index, a hole as undefined; the others skip holes)
+				if (name == "find" || name == "findIndex") {
+					b.out.push(SIf(ELocal(e.present), new Vector(0), b.block(() -> b.out.push(SSet(e.value, b.runtime("getUndefined", []))))));
+					for (s in present) b.out.push(s);
+				}
+				else {
+					var absent = name == "map" ? Vector.fromArrayCopy([SArrPush(TRef(RAny), out, b.runtime("libHole", []))]) : new Vector(0);
+					b.out.push(SIf(ELocal(e.present), present, absent));
+				}
+				b.out.push(SSet(i, EBin(FAdd, ELocal(i), EF64(1))));
+			})));
+			if (name == "filter" || name == "map") b.out.push(SSet(result, b.runtime("libArray", [ELocal(out)])));
+		});
+		var call = b.block(() -> {
+			var f = closure(actual[0]);
+			var args = [arr, reps.site(name), f].concat(init == null ? [] : [init]);
+			b.out.push(SSet(result, b.coerce(b.runtime("libCallAt" + (args.length - 2), args), ty)));
+		});
+		b.out.push(SIf(b.runtime("libPlainArray", [arr]), loop, call));
+		return ELocal(result);
+	}
+
+	// ---- built-ins' methods called directly on a receiver of a known type (js.Direct)
+
+	static final directs = ["Map.get" => 1, "Map.has" => 1, "Map.set" => 2, "Set.has" => 1, "Set.add" => 1, "Array.includes" => 1, "Array.indexOf" => 1];
+
+	function directCall(n:Node, callee:Node, actual:Array<Node>):Null<Ex> {
+		var inner = strip(callee);
+		if (inner.kind != KindPropertyAccessExpression || !plainAccess(inner) || n.questionDotToken() != null || inner.name().kind != KindIdentifier) return null;
+		var t = inner.expression().tsType, name = inner.name().text;
+		var kind = types.isArray(t) ? "Array" : types.collection(t);
+		var key = kind + "." + name;
+		if (kind == null || !directs.exists(key) || actual.length != directs.get(key) || hasSpread(actual)) return null;
+		typedOperations++;
+		var o = b.temp(any(expr(inner.expression())));
+		var args = [for (a in actual) b.temp(any(expr(a)))];
+		var ty = name == "includes" || name == "has" ? TBool : name == "indexOf" ? TF64 : TRef(RAny);
+		var result = b.local("direct", ty);
+		var plain = kind == "Array" ? b.runtime("libPlainArray", [o]) : b.runtime("libPlainMap", [o, bool(kind == "Set")]);
+		var fast = b.block(() -> b.out.push(SSet(result, switch key {
+			case "Map.get": b.runtime("libMapGet", [o, args[0]]);
+			case "Map.has" | "Set.has": b.runtime("libMapHas", [o, args[0]]);
+			case "Map.set": b.runtime("libMapSet", [o, args[0], args[1]]);
+			case "Set.add": b.runtime("libMapSet", [o, args[0], args[0]]);
+			case "Array.includes": b.runtime("libArrayIncludes", [o, args[0]]);
+			case _: b.runtime("libArrayIndexOf", [o, args[0]]);
+		})));
+		var slow = b.block(() -> b.out.push(SSet(result, b.coerce(b.runtime("libCallAt" + args.length, [o, reps.site(name)].concat(args)), ty))));
+		b.out.push(SIf(plain, fast, slow));
+		return ELocal(result);
+	}
+
+	// (at most three arguments, no spread: given as they are, Lib.call1...)
+	function fewArguments(actual:Array<Node>):Null<Array<Ex>> {
+		if (actual.length > 3 || hasSpread(actual)) return null;
+		return [for (a in actual) b.temp(any(expr(a)))];
 	}
 }

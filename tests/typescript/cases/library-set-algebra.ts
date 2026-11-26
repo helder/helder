@@ -20,5 +20,6 @@ for (const bad of [null, {size: NaN}, {size: -1}, {size: 0, has: 1}, {size: 0, h
   try { a.union(bad as any); } catch (e: any) { console.log(e.name); }
 }
 const desc = Object.getOwnPropertyDescriptor(Set.prototype, "union")!;
-console.log(desc.writable, desc.enumerable, desc.configurable, Set.prototype.union.length, Set.prototype.union.name);
+// (its writable and configurable: false, the built-ins being frozen, standards/frozen-builtins.ts)
+console.log(desc.enumerable, Set.prototype.union.length, Set.prototype.union.name);
 }

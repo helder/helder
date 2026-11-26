@@ -126,7 +126,7 @@ class Collections {
 				var f = callback(arg(a, 0));
 				var i = 0;
 				while (i < m.keys.length) {
-					if (m.active[i]) call(f, arg(a, 1), [m.values[i], m.keys[i], m]);
+					if (m.active[i]) call3(f, arg(a, 1), m.values[i], m.keys[i], m);
 					i++;
 				}
 				return undef();});

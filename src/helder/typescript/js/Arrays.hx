@@ -57,7 +57,7 @@ class Arrays {
 		while (i < n) {
 			if (hasAt(o, i)) {
 				var v = get(o, i);
-				if (Seed.truth(call(f, self, [v, i, o])) == when) return when;
+				if (Seed.truth(call3(f, self, v, i, o)) == when) return when;
 			}
 			i++;
 		}
@@ -70,7 +70,7 @@ class Arrays {
 		var i:Float = last ? n - 1 : 0;
 		while (i >= 0 && i < n) {
 			var v = get(o, i);
-			if (Seed.truth(call(f, self, [v, i, o]))) return index ? (i : Dynamic) : v;
+			if (Seed.truth(call3(f, self, v, i, o))) return index ? (i : Dynamic) : v;
 			i += last ? -1 : 1;
 		}
 		return index ? (-1 : Dynamic) : undef();
@@ -97,7 +97,7 @@ class Arrays {
 			if (mapped) callback(f);
 			if (source == null || same(source, undef())) error("TypeError", Seed.text(source) + " is not iterable");
 			var values = getKey(source, Symbols.iterator, source) != undef() ? toList(source) : arrayLikeList(toObject(source));
-			if (mapped) for (i in 0...values.length) values[i] = call(f, arg(a, 2), [values[i], i]);
+			if (mapped) for (i in 0...values.length) values[i] = call2(f, arg(a, 2), values[i], i);
 			return array(values);
 		});
 		method(p, "push", 1, (t, a, _) -> {
@@ -246,7 +246,7 @@ class Arrays {
 			while (i < n) {
 				if (hasAt(o, i)) {
 					var v = get(o, i);
-					setIndex(out, i, call(f, self, [v, i, o]));
+					setIndex(out, i, call3(f, self, v, i, o));
 				}
 				i++;
 			}
@@ -258,7 +258,7 @@ class Arrays {
 			while (i < n) {
 				if (hasAt(o, i)) {
 					var v = get(o, i);
-					if (Seed.truth(call(f, self, [v, i, o]))) setIndex(out, out.length, v);
+					if (Seed.truth(call3(f, self, v, i, o))) setIndex(out, out.length, v);
 				}
 				i++;
 			}
@@ -269,7 +269,7 @@ class Arrays {
 			while (i < n) {
 				if (hasAt(o, i)) {
 					var v = get(o, i);
-					call(f, self, [v, i, o]);
+					call3(f, self, v, i, o);
 				}
 				i++;
 			}
@@ -410,7 +410,7 @@ class Arrays {
 				}
 				i++;
 			}
-			present = mergeSort(present, (x, y) -> same(cmp, undef()) ? compareStrings(Seed.text(x), Seed.text(y)) : {var r = Seed.numeric(call(cmp, undef(), [x, y])); r > 0 ? 1 : r < 0 ? -1 : 0;});
+			present = mergeSort(present, (x, y) -> same(cmp, undef()) ? compareStrings(Seed.text(x), Seed.text(y)) : {var r = Seed.numeric(call2(cmp, undef(), x, y)); r > 0 ? 1 : r < 0 ? -1 : 0;});
 			var target:Dynamic = name == "sort" ? o : new JsArray(ArrayProto);
 			var k:Float = 0;
 			for (v in present) setAt(target, k++, v);
@@ -449,7 +449,7 @@ class Arrays {
 			var n = lengthOf(o);
 			var i:Float = 0;
 			while (i < n) {
-				if (hasAt(o, i)) flatten(out, call(f, arg(a, 1), [get(o, i), i, o]), 1);
+				if (hasAt(o, i)) flatten(out, call3(f, arg(a, 1), get(o, i), i, o), 1);
 				i++;
 			}
 			return out;});

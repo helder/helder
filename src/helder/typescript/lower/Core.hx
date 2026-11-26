@@ -152,8 +152,27 @@ abstract class Core {
 			fail(n, n.text + " is excluded; use explicit code and supported built-ins");
 		if (n.kind == KindCallExpression && n.expression().kind == KindImportKeyword)
 			fail(n, "dynamic import is excluded; use statically linked functions");
+		// (a frozen built-in's member written, deleted: js.Builtins.freeze)
+		var target = switch n.kind {
+			case KindBinaryExpression if (n.operatorToken().kind >= KindFirstAssignment && n.operatorToken().kind <= KindLastAssignment): n.left();
+			case KindDeleteExpression: n.expression();
+			case KindPrefixUnaryExpression | KindPostfixUnaryExpression if (n.unaryOperator() == KindPlusPlusToken || n.unaryOperator() == KindMinusMinusToken): n.operand();
+			case _: null;
+		}
+		if (target != null) {
+			target = strip(target);
+			var owner = target.kind == KindPropertyAccessExpression || target.kind == KindElementAccessExpression ? strip(target.expression()) : null;
+			if (owner != null && owner.kind == KindPropertyAccessExpression && owner.name().text == "prototype") owner = strip(owner.expression());
+			if (owner != null && owner.kind == KindIdentifier && frozenBuiltins.contains(owner.text))
+				fail(n, owner.text + "'s built-in members are frozen: they are not written or deleted (a program's own object can have its own)");
+		}
 		for (c in n.children()) validate(c);
 	}
+
+	// (js.Builtins.frozen's)
+	static final frozenBuiltins = ["Object", "Array", "String", "Number", "Boolean", "Symbol", "Map", "Set", "WeakMap", "WeakSet", "Promise", "RegExp", "Date", "JSON",
+		"Math", "Reflect", "ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array",
+		"Float16Array", "Float32Array", "Float64Array"];
 
 	function members(n:Node):Array<Node> {
 		var list = n.members();
