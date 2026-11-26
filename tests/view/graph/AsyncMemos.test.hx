@@ -534,4 +534,33 @@ function tests() {
 		settle();
 		equals(log, [0, "rounds 1", 30, "rounds 1"]);
 	});
+
+	// (Solid 2.0.4's: shown once both answered; helder's ran it no more: the
+	// second answer equal to the first, its wait ended without the run it
+	// stopped at. Found by AtomsModel's settled property)
+	test("a memo stopped at an async memo asked again runs once its equal answer lands", () -> {
+		var asks:Array<{l:Later<Int>, v:Int}> = [], shown = [];
+		var s0 = signal(0), s1 = signal(0);
+		function async()
+			return memo(() -> {
+				var l = new Later<Int>();
+				asks.push({l: l, v: s0()});
+				(l : Dynamic);
+			});
+		var a = async(), b = async();
+		var sum = memo(() -> (b() : Int) + (a() : Int));
+		root(_ -> effect(_ -> sum(), (v, _) -> shown.push(v)));
+		flush();
+		// (a write elsewhere: a, which sum has not read yet, asks again when it does)
+		s1(3);
+		flush();
+		var rounds = 0;
+		while (asks.length > 0 && rounds < 20) {
+			for (x in asks.splice(0, asks.length))
+				x.l.resolve(x.v * 10);
+			flush();
+			rounds++;
+		}
+		equals(shown, [0]);
+	});
 }

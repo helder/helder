@@ -86,6 +86,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	// (a run's tracking: the old sources read again in order, then the new ones)
 	var run = 0;
 	var kept = 0;
+	// (the node its last run stopped at, not ready: an equal answer of it still runs it again)
+	var stalledOn:Null<Node<Dynamic>> = null;
 	// (its function running, its sources reconciled after: the run's to settle, not let go under it)
 	var computing = false;
 	var added:Null<Array<Node<Dynamic>>> = null;
@@ -514,6 +516,13 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (observers == null) return;
 		for (o in observers) {
 			if (o.disposed) continue;
+			// (one whose last run stopped at this node shows nothing yet: it runs
+			// again, whichever transaction it waited in)
+			if (o.stalledOn == this) {
+				if (o.kind == RENDER && (o.blockedIn != null || o.caughtBy != null)) o.release();
+				o.mark(DIRTY);
+				continue;
+			}
 			if (o.catcher || o.verdictRun) {
 				o.mark(DIRTY);
 				continue;
@@ -615,6 +624,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		state = CLEAN;
 		var w = world != null ? world.find() : null;
 		var mine = w != null && joined;
+		stalledOn = waiting ? notReadyNode : null;
 		if (waiting) wait(notReadyIn != null ? notReadyIn.find() : null)
 		else if (failed) failWith(failure, mine ? w : null)
 		else if (kind == COMPUTED && Std.isOfType(r, Awaitable)) ask(r, w)
