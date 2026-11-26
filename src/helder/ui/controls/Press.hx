@@ -10,7 +10,7 @@ import helder.view.graph.Read;
 import helder.view.graph.Signal;
 
 // The behaviour of what is pressed (WAI-ARIA's button): a click, Enter or
-// Space activates it (Ui's onActivate), none while it is disabled (then
+// Space activates it (Ui's onPress), none while it is disabled (then
 // not focusable either). Its states are signals (hovered: never by touch;
 // pressed: the pointer down on it and still over it, cancelled when it
 // leaves; focusVisible: focused from the keyboard) and eased amounts
@@ -20,7 +20,7 @@ import helder.view.graph.Signal;
 // data-selected), which a look's recipes read.
 //
 //   final p = Press.of(props, "button");
-//   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
+//   <button ref={p.root}><image ref={p.part("icon")} .../></button>
 class Press {
 	public final hovered:Signal<Bool>;
 	public final pressed:Signal<Bool>;
@@ -76,7 +76,7 @@ class Press {
 		var sem = n.semantics;
 		sem.role = role;
 		if (label != null) sem.label = label;
-		n.onActivate = e -> if (!disabled.peek()) activate(e);
+		n.onPress = e -> if (!disabled.peek()) activate(e);
 		var before = n.onStates;
 		n.onStates = () -> {
 			if (before != null) before();

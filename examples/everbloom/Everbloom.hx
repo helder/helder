@@ -111,8 +111,8 @@ class Everbloom implements Markup {
 	}
 
 	static function view():View
-		return <view grow={1} background={Theme.BACKGROUND} color={Theme.TEXT}>
-			<view grow={1} min-height={0}>
+		return <view flexGrow={1} background={Theme.BACKGROUND} color={Theme.TEXT}>
+			<view flexGrow={1} minHeight={0}>
 				<Repeat count={3}>{t -> <view position="absolute" left={0} top={0} right={0} bottom={0} display={tab() == t ? "flex" : "none"}>
 					<For each={stacks[t]}>{(route:Read<Route>) -> {
 						// (the screen made once, untracked: its row's)
@@ -126,30 +126,30 @@ class Everbloom implements Markup {
 		</view>;
 
 	static function TabBar():View
-		return <view role="tablist" direction="row" background={Theme.BACKGROUND} borders="1 0 0 0" border-color={Theme.BORDER}
-			padding-bottom="env(safe-area-inset-bottom)">
-			<Repeat count={3}>{t -> <view:button id={["tab-home", "tab-search", "tab-cart"][t]} role="tab" selected={tab() == t} focusable grow={1} basis={0}
-				height={49} align-items="center" justify="center" row-gap={2} onPress={() -> tab(t)}>
+		return <view role="tablist" flexDirection="row" background={Theme.BACKGROUND} borders="1 0 0 0" borderColor={Theme.BORDER}
+			paddingBottom="env(safe-area-inset-bottom)">
+			<Repeat count={3}>{t -> <button id={["tab-home", "tab-search", "tab-cart"][t]} role="tab" aria-selected={tab() == t} flexGrow={1} flexBasis={0}
+				height={49} alignItems="center" justifyContent="center" rowGap={2} onPress={() -> tab(t)}>
 				<view>
 					{Theme.icon([Theme.HOME, Theme.SEARCH, Theme.CART][t], 24, tab() == t ? Theme.TEXT : Theme.MUTED)}
 					<Show when={t == 2 && (cart()?.totalQuantity ?? 0) > 0}>
-						<view id="cart-badge" position="absolute" top={-4} left={18} min-width={18} height={18} padding="0 5" radius={9} background={Theme.SALE}
-							align-items="center" justify="center">
-							<text color="#ffffff" font-size={11} font-weight={700}>{Std.string(cart()?.totalQuantity ?? 0)}</text>
+						<view id="cart-badge" position="absolute" top={-4} left={18} minWidth={18} height={18} padding="0 5" borderRadius={9} background={Theme.SALE}
+							alignItems="center" justifyContent="center">
+							<text color="#ffffff" fontSize={11} fontWeight={700}>{Std.string(cart()?.totalQuantity ?? 0)}</text>
 						</view>
 					</Show>
 				</view>
-				<text font-size={11} font-weight={tab() == t ? 600 : 500} color={tab() == t ? Theme.TEXT : Theme.MUTED}>{["Home", "Search", "Cart"][t]}</text>
-			</view:button>}</Repeat>
+				<text fontSize={11} fontWeight={tab() == t ? 600 : 500} color={tab() == t ? Theme.TEXT : Theme.MUTED}>{["Home", "Search", "Cart"][t]}</text>
+			</button>}</Repeat>
 		</view>;
 
 	static function Alert():View
-		return <view position="absolute" left={0} top={0} right={0} bottom={0} background="rgba(0,0,0,0.4)" align-items="center" justify="center"
-			role="alertdialog" label="Alert">
-			<view width={280} radius={14} background={Theme.BACKGROUND} padding={20} row-gap={16} align-items="center">
-				<text font-size={15} line-height="20px" text-align="center">{alert() ?? ""}</text>
-				<view:button role="button" focusable height={44} align-self="stretch" radius={12} background={Theme.TEXT} align-items="center"
-					justify="center" onPress={() -> alert(null)}><text color="#ffffff" font-size={16} font-weight={600}>OK</text></view:button>
+		return <view position="absolute" left={0} top={0} right={0} bottom={0} background="rgba(0,0,0,0.4)" alignItems="center" justifyContent="center"
+			role="alertdialog" aria-label="Alert">
+			<view width={280} borderRadius={14} background={Theme.BACKGROUND} padding={20} rowGap={16} alignItems="center">
+				<text fontSize={15} lineHeight="20px" textAlign="center">{alert() ?? ""}</text>
+				<button height={44} alignSelf="stretch" borderRadius={12} background={Theme.TEXT} alignItems="center"
+					justifyContent="center" onPress={() -> alert(null)}><text color="#ffffff" fontSize={16} fontWeight={600}>OK</text></button>
 			</view>
 		</view>;
 }

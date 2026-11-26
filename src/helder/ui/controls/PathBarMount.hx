@@ -62,7 +62,7 @@ private class PathBarNode extends Node {
 		semantics = {role: Navigation, label: props.label ?? "Path"};
 		if (Graph.use(Look.context) == null) theme = Look.base.sheet();
 
-		row.style.set({direction: Row, alignItems: Center, width: "100%", minWidth: 0});
+		row.style.set({flexDirection: Row, alignItems: Center, width: "100%", minWidth: 0});
 		append(row);
 		overflow = button("overflow", "Hidden folders", showOverflow);
 		overflow.append(caption("…"));
@@ -132,7 +132,7 @@ private class PathBarNode extends Node {
 	static function caption(text:String):TextNode {
 		var n = new TextNode(text);
 		n.style.textWrap = NoWrap;
-		n.style.maxLines = 1;
+		n.style.lineClamp = 1;
 		return n;
 	}
 
@@ -158,7 +158,7 @@ private class PathBarNode extends Node {
 		if (activate != null) n.style.cursor = Pointer;
 		var icon = new ImageNode();
 		icon.svg = Icons.svg("chevron-right");
-		icon.style.set({width: 11, height: 11, shrink: 0});
+		icon.style.set({width: 11, height: 11, flexShrink: 0});
 		icon.mirrored = true;
 		n.append(icon);
 		return n;

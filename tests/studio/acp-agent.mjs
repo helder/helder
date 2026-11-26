@@ -91,7 +91,7 @@ async function prompt(id, p) {
     const reply = 'The [Home](studio:screen/Home) frame has its title. Now the list, drawn in `app.helder:4`: three rows, the first one done.\n\n- a **checked** row\n- two open ones'
     for (let i = 0; i < reply.length; i += 9)
       update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 9)}})
-    const tools = ['app.helder · the title', 'app.helder · the input row', 'Read app.helder', 'app.helder · the list', 'app.helder · <view row-gap={1}>']
+    const tools = ['app.helder · the title', 'app.helder · the input row', 'Read app.helder', 'app.helder · the list', 'app.helder · <view rowGap={1}>']
     tools.forEach((title, k) => {
       update(s, {sessionUpdate: 'tool_call', toolCallId: 'w' + k, title, kind: 'edit', status: k < tools.length - 1 ? 'completed' : 'in_progress'})
     })

@@ -12,9 +12,9 @@ import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 
 function Checkbox(props:{checked:Signal<Bool>, label:String})
-	return <view:button role="checkbox" checked={props.checked} onPress={() -> props.checked(c -> !c)}>
+	return <button role="checkbox" aria-checked={props.checked} onPress={() -> props.checked(c -> !c)}>
 		<Show when={props.checked()}><icon name="check"/></Show>
-	</view:button>;
+	</button>;
 
 function main() {
 	var items = signal(["a", "b"]);
@@ -71,7 +71,11 @@ compiled (one alone: `View.view(<...>)`). A literal's value is a `View`: its hol
 children and attribute values) are evaluated where the literal is; mounting
 it makes its nodes, each time it is mounted.
 
-- Lowercase names are the renderer's elements; capitalized or dotted names
+- Lowercase names are the renderer's elements (ui's: helder.view.Vocabulary,
+  helder's own and HTML's names that mean something, `<button>`, `<h2>`,
+  `<nav>`; their attributes camel as React Native writes them, CSS's names
+  for the style, ARIA's as HTML writes them; another name or spelling an
+  error naming the one meant); capitalized or dotted names
   are components, `Name(props)`, called once when mounted, untracked, in an
   owner of their own; props are one object. Haxe checks the props: a wrong
   type or an unknown prop is an error at the attribute. Content is the
@@ -79,8 +83,8 @@ it makes its nodes, each time it is mounted.
   children are one: For's row).
 - Attributes: `name="text"`, `name={expr}`, `name` (true), `{...object}`;
   `on...` are listeners (one may take no event: `onPress={() -> ...}`),
-  `ref={n -> ...}` gets the node, `key` is ignored, `style` is the
-  renderer's style.
+  `ref={n -> ...}` gets the node (typed by the element: ui's image an
+  `ImageNode`), `key` is ignored, `style` is the renderer's style.
 - Listeners are typed by the renderer's events (`@:events`, "Renderers"
   below): ui's `onPress` gives a `helder.ui.Event`, `onPan` a `Pan`, the
   DOM's `onKeyDown` a `js.html.KeyboardEvent`, a scene node's `onTap` a
@@ -114,7 +118,9 @@ it makes its nodes, each time it is mounted.
   function given the item as a Read: keyed by the item, rows kept and
   moved; `keyed={false}`, a row per index, its Read what is there),
   `Repeat` (a row per number), `Show`, `Switch` and `Match` (`when`
-  truthy: not null and not false), `Provider`, `Errored`, `Loading`.
+  truthy: not null and not false; Show's child a function of one, given
+  when's value as a Read: `<Show when={user()}>{u -> <text>{u().name}</text>}</Show>`),
+  `Provider`, `Errored`, `Loading`.
 
 ## The graph
 
@@ -374,8 +380,9 @@ with none for a renderer is an error naming it and the renderer.
 
 A function of such a class marked `@:neutral` is for every renderer, one
 definition for all (a single-source component): its elements are the neutral
-ones (`view`, `text`, `scroll`, `icon`, `field`, and `view:button`,
-`text:p`... naming a page's element), which a renderer with
+ones (`helder.view.Vocabulary`: `view`, `text`, `scroll`, `icon`, `field`,
+and HTML's names, `button`, `p`, `h2`..., each a page's element of that
+name), which a renderer with
 `neutralElement`, `neutralProperty`, `neutralSetter`, `neutralListen`
 and `part` (macros: helder.web's DomRenderer) realises its own way at
 compile time, and any other as its own elements (ui's, whose vocabulary

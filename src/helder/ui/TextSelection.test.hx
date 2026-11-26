@@ -231,7 +231,7 @@ function tests() {
 			s.style.overflow = Scroll;
 			var v = new Node("doc");
 			v.selectable = true;
-			v.style.shrink = 0;
+			v.style.flexShrink = 0;
 			var ts = [for (k in 0...20) new TextNode('line $k')];
 			for (t in ts)
 				v.append(t);

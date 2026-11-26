@@ -289,11 +289,11 @@ function tests() {
 			var look = Look.base.with({
 				tokens: {accent: Look.tone("#e11d48")},
 				button: t -> {variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}},
-				"switch": t -> {knob: {radius: 3}},
+				"switch": t -> {knob: {borderRadius: 3}},
 				density: Compact
 			});
 			var m = mount(<Standard.Themed look={look}>
-				<view padding={10} row-gap={8}>
+				<view padding={10} rowGap={8}>
 					<look.Button tag="go" variant="primary">Go</look.Button>
 					<look.Button tag="soft" variant="soft">Soft</look.Button>
 					<look.Switch tag="knob" label="Knob"/>
@@ -304,7 +304,7 @@ function tests() {
 			equals(go.style.background, Color.parse("#e11d48"));
 			equals(soft.style.background, look.sheet().light.get("accentSoft"));
 			equals(knob.slot, "switch-knob");
-			equals(knob.style.radius, 3.0);
+			equals(knob.style.borderRadius, 3.0);
 			equals(go.style.height, (30 : helder.ui.Dim));
 			m.dispose();
 		});
@@ -436,10 +436,11 @@ function tests() {
 	#end
 }
 
+@:renderer(helder.ui.view.NodeRenderer)
 private class Fixture implements helder.view.Markup {
 	public static function iconButtons(selected:Signal<Bool>):View {
 		var icon = helder.ui.widgets.Icons.svg("panel-left");
-		return <view direction="row">
+		return <view flexDirection="row">
 			<Standard.Button tag="icon-0" icon={icon} label="Small" size="sm"/>
 			<Standard.Button tag="icon-1" icon={icon} label="Inspector" variant="ghost" selected={selected} onPress={() -> selected(!selected.peek())}/>
 			<Standard.Button tag="icon-2" icon={icon} label="Large" size="lg"/>
@@ -481,7 +482,7 @@ private class Fixture implements helder.view.Markup {
 	public static function lamp(props:SwitchProps<Dynamic>):View {
 		var t = new Toggle("switch", Switch, props.checked, null, props.onChange);
 		t.label = props.label;
-		return <view tag="lamp" ref={t.root} direction="row">
+		return <view tag="lamp" ref={t.root} flexDirection="row">
 			<view ref={t.part("icon")} width={24} height={24}/>
 		</view>;
 	}
@@ -491,7 +492,7 @@ private class Fixture implements helder.view.Markup {
 
 	public static function searchBox():View
 		return <Standard.Themed look={Look.base}>
-			<view padding={10} row-gap={8}>
+			<view padding={10} rowGap={8}>
 				<view tag="box" slot="field-box" width={196} height={30}>
 					<image src={helder.ui.widgets.Icons.svg("search")} width={14} height={14}/>
 					<field tag="q" slot="field-box-input" placeholder="Search"/>

@@ -9,10 +9,10 @@ through. Half-transparent pixels blend over what is behind them.
 
 ```tsx
 <Surface title='Clock' titlebar='none' width={480} height={240} background='transparent'>
-  <view grow={1} align-items='center' justify='center'>
-    <view width={200} height={200} radius={100} background='#18181bdd'
-      align-items='center' justify='center'>
-      <text color='#ffffff' font-size={38}>10:24</text>
+  <view flexGrow={1} alignItems='center' justifyContent='center'>
+    <view width={200} height={200} borderRadius={100} background='#18181bdd'
+      alignItems='center' justifyContent='center'>
+      <text color='#ffffff' fontSize={38}>10:24</text>
     </view>
   </view>
 </Surface>

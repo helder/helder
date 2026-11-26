@@ -14,8 +14,9 @@ import js.html.*;
 // rather than made, a region's content replaced, dispose; then hydration
 // of markup written as the static renderer writes it (claimed, not made;
 // empty texts; nested regions; the markup the static renderer writes, as
-// a second renderer), a mismatch rendered again. Its result in
-// window.domTest: {checks, failed: [what]}.
+// a second renderer), a mismatch rendered again; the neutral elements
+// (helder.view.Vocabulary's, a single-source component's) as a page's.
+// Its result in window.domTest: {checks, failed: [what]}.
 class DomCheck implements Markup {
 	static var checks = 0;
 	static final failed:Array<String> = [];
@@ -42,10 +43,43 @@ class DomCheck implements Markup {
 		return {el: el, dispose: dispose};
 	}
 
+	// a single-source component (@:neutral): helder's and HTML's names, as
+	// ui writes them, realised as the DOM's (NeutralMacro)
+	@:neutral static function card(pressed:Void->Void):View
+		return <view flexDirection="row" padding={8} aria-label="Card" tabIndex={-1}>
+			<h2>Title</h2>
+			<text fontStyle="italic">Hello</text>
+			<button slot="go" onPress={pressed}>Go</button>
+			<image src="a.png"/>
+			<field placeholder="Name" readOnly maxLength={4}/>
+		</view>;
+
+	static function neutral() {
+		var pressed = 0;
+		var m = mount(card(() -> pressed++));
+		var root:Element = cast m.el.firstChild;
+		check("neutral: a view, a div; its style CSS's, its ARIA's and tabIndex as they are", root.localName == "div" && root.style.flexDirection == "row"
+			&& root.style.padding == "8px" && root.getAttribute("aria-label") == "Card" && root.getAttribute("tabindex") == "-1", root.outerHTML);
+		var h2 = m.el.querySelector("h2"), text:Element = cast m.el.querySelector("span");
+		check("neutral: HTML's names their own, a text a span", h2 != null && h2.textContent == "Title" && text != null && text.style.fontStyle == "italic",
+			m.el.innerHTML);
+		var b:Element = cast m.el.querySelector("button");
+		check("neutral: a button not a form's, its slot data-slot", b != null && b.getAttribute("type") == "button" && b.getAttribute("data-slot") == "go",
+			m.el.innerHTML);
+		b.click();
+		check("neutral: onPress a click", pressed == 1, Std.string(pressed));
+		var img = m.el.querySelector("img"), input = m.el.querySelector("input");
+		check("neutral: an image an img, a field an input, its attributes HTML's", img != null && img.getAttribute("src") == "a.png"
+			&& input != null && input.getAttribute("placeholder") == "Name" && input.hasAttribute("readonly") && input.getAttribute("maxlength") == "4",
+			m.el.innerHTML);
+		m.dispose();
+	}
+
 	static function main() {
 		rendering();
 		hydration();
 		surface();
+		neutral();
 		effect(() -> {
 			dark: Settings.dark(),
 			motion: Settings.reducedMotion(),

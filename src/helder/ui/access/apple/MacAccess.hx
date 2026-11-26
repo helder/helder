@@ -234,6 +234,13 @@ class MacAccess {
 			case Tab: "AXTabButton";
 			case Dialog | AlertDialog: "AXApplicationDialog";
 			case Navigation: "AXLandmarkNavigation";
+			case Main: "AXLandmarkMain";
+			case Banner: "AXLandmarkBanner";
+			case ContentInfo: "AXLandmarkContentInfo";
+			case Complementary: "AXLandmarkComplementary";
+			case Region: "AXLandmarkRegion";
+			case Form: "AXLandmarkForm";
+			case Article: "AXDocumentArticle";
 			case TextInput if (n.secret): "AXSecureTextField";
 			case _: null;
 		}
@@ -321,7 +328,7 @@ class MacAccess {
 			case SpinButton: "AXIncrementor";
 			case MenuBar: "AXMenuBar";
 			case Toolbar: "AXToolbar";
-			case Navigation: "AXGroup";
+			case Navigation | Main | Banner | ContentInfo | Complementary | Region | Form | Article: "AXGroup";
 		}
 
 	// --- the classes' methods ---

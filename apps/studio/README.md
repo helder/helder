@@ -171,7 +171,7 @@ click flies there).
 <Design>
 	<Frame name="Home" width={390} height={844} canvas:at="0 0" background="#f8fafc" padding={24}>
 		<note>For the editor only.</note>
-		<text font-size={28} font-weight={700} color="#3b82f6">todos</text>
+		<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>
 	</Frame>
 </Design>
 ```

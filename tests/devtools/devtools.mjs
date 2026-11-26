@@ -211,7 +211,7 @@ async function ui() {
 	const ui = r.result?.uis?.[0];
 	const row = ui?.root?.children?.[0];
 	check('Ui.getTree: the Ui, its root and overlay', ui?.width === 320 && ui.root.tag === 'root' && ui.overlay.tag === 'overlay', JSON.stringify(r).slice(0, 300));
-	check('Ui.getTree: tags, boxes, style', row?.tag === 'row' && row.style.direction === 'row' && row.style.background === '#ff18181b' && row.children.length === 3
+	check('Ui.getTree: tags, boxes, style', row?.tag === 'row' && row.style.flexDirection === 'row' && row.style.background === '#ff18181b' && row.children.length === 3
 		&& row.children.every((b) => b.tag === 'box' && b.width === 60 && b.height === 40) && row.children[1].x === 68 && row.children[1].y === 8,
 		JSON.stringify(row).slice(0, 400));
 	// the source map: where markup wrote a node, and back

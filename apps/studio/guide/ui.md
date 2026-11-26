@@ -1,32 +1,36 @@
 # UI
 
 helder's UI from TypeScript (TSX): `<view>` (a box, flex by default:
-a column), `<text>`, `<image>`, `<scroll>`, `<field>`; attributes are
-CSS-like (kebab-case), sizes in points. State is signals (`helder/view`):
-an attribute or a hole that reads a signal follows it.
+a column), `<text>`, `<image>`, `<scroll>`, `<field>`, and HTML's names
+for what they mean (`<button>`, `<h2>`, `<p>`, `<a href>`, `<ul>`/`<li>`,
+`<nav>`, `<textarea>`...); attributes are camel, as React Native writes
+them: the style CSS's names (`flexDirection`, `alignItems`), sizes in
+points; assistive technology's ARIA's (`aria-label`, `aria-checked`).
+State is signals (`helder/view`): an attribute or a hole that reads a
+signal follows it.
 
 ## Layout and style
 
 ```tsx file=card.tsx
 export function Card(props: { title: string; note: string }) {
-	return <view direction="row" align-items="center" column-gap={12} padding="12 16" radius={10}
-		background="#ffffff" border-width={1} border-color="#e4e4e7">
-		<view width={40} height={40} radius={20} background="#3b82f6"/>
-		<view grow={1} row-gap={2}>
-			<text font-size={15} font-weight={600} color="#18181b">{props.title}</text>
-			<text font-size={13} color="#71717a" max-lines={2} text-overflow="ellipsis">{props.note}</text>
+	return <view flexDirection="row" alignItems="center" columnGap={12} padding="12 16" borderRadius={10}
+		background="#ffffff" borderWidth={1} borderColor="#e4e4e7">
+		<view width={40} height={40} borderRadius={20} background="#3b82f6"/>
+		<view flexGrow={1} rowGap={2}>
+			<text fontSize={15} fontWeight={600} color="#18181b">{props.title}</text>
+			<text fontSize={13} color="#71717a" lineClamp={2} textOverflow="ellipsis">{props.note}</text>
 		</view>
 	</view>;
 }
 ```
 
-Flex: `direction` (`column`, `row`), `grow`, `shrink`, `align-items`,
-`justify` (`start`, `center`, `end`, `space-between`), `row-gap`,
-`column-gap`, `wrap`. Boxes: `width`, `height`, `min-width`, `padding`
-("12 16"), `radius`, `background`, `border-width`, `border-color`,
-`opacity`, `overflow="hidden"`. Placed: `position="absolute"` with
-`left`, `top`, `right`, `bottom`. Text: `font-size`, `font-weight`,
-`color`, `text-align`, `max-lines`.
+Flex: `flexDirection` (`column`, `row`), `flexGrow`, `flexShrink`,
+`alignItems`, `justifyContent` (`start`, `center`, `end`,
+`space-between`), `rowGap`, `columnGap`, `flexWrap`. Boxes: `width`,
+`height`, `minWidth`, `padding` ("12 16"), `borderRadius`, `background`,
+`borderWidth`, `borderColor`, `opacity`, `overflow="hidden"`. Placed:
+`position="absolute"` with `left`, `top`, `right`, `bottom`. Text:
+`fontSize`, `fontWeight`, `fontStyle`, `color`, `textAlign`, `lineClamp`.
 
 A box's shadow or glow: `shadow="0 8 24 rgba(0,0,0,0.15)"` (x, y, blur,
 colour; several comma-separated; `0 0 16 #22d3ee` glows). It is the box's,
@@ -48,21 +52,21 @@ export function List() {
 		items(l => l.concat([draft()]));
 		draft("");
 	}
-	return <view padding={16} row-gap={8} background="#f8fafc" grow={1}>
-		<view direction="row" column-gap={8}>
-			<field grow={1} value={draft} placeholder="Add an item" label="Item" padding="8 12" radius={6}
-				background="#ffffff" border-width={1} border-color="#e4e4e7"
+	return <view padding={16} rowGap={8} background="#f8fafc" flexGrow={1}>
+		<view flexDirection="row" columnGap={8}>
+			<field flexGrow={1} value={draft} placeholder="Add an item" aria-label="Item" padding="8 12" borderRadius={6}
+				background="#ffffff" borderWidth={1} borderColor="#e4e4e7"
 				onInput={(e: Event) => draft(e.text)} onKeyDown={(e: Event) => { if (e.key === Key.ENTER) add(); }}/>
-			<view:button role="button" focusable padding="8 12" radius={6} background="#18181b" color="#fafafa"
-				cursor="pointer" onPress={() => add()}>Add</view:button>
+			<button padding="8 12" borderRadius={6} background="#18181b" color="#fafafa"
+				cursor="pointer" onPress={() => add()}>Add</button>
 		</view>
 		<For each={items}>{item =>
-			<text font-size={14} color="#18181b">{item()}</text>
+			<text fontSize={14} color="#18181b">{item()}</text>
 		}</For>
 		<Show when={() => items().length === 0}>
 			<text color="#a1a1aa">Nothing yet</text>
 		</Show>
-		<text font-size={12} color="#71717a">{`${items().length} items`}</text>
+		<text fontSize={12} color="#71717a">{`${items().length} items`}</text>
 	</view>;
 }
 ```
@@ -72,8 +76,8 @@ export function List() {
 - `signal(v)`: read `s()`, set `s(v)` or `s(old => new)`.
 - `For each={signal}`: its child a function of each item (a `Read`: call it).
 - `Show when={...}`: shown while true.
-- Events: `onPress` (a `view:button`: a click, Enter or Space), `onClick`,
-  `onPointerDown`/`Move`/`Up` (`e.x`, `e.y` in the window; `e.localX`,
+- Events: `onPress` (a `<button>`'s: a click, Enter or Space; a button
+  takes the focus), `onPointerDown`/`Move`/`Up` (`e.x`, `e.y` in the window; `e.localX`,
   `e.localY` in the node), `onKeyDown`/`Up` (`e.key`: `Key.ENTER`, `Key.LEFT`,
   a letter's character code: `"a".charCodeAt(0)`), `onInput` (`e.text`).
 
@@ -100,9 +104,9 @@ export async function temperature(): Promise<number> {
 
 export function Today(props: { temp: number; date: Date }) {
 	const d = props.date;
-	return <view padding="16 20" radius={12} background="#ffffff" shadow="0 8 24 rgba(0,0,0,0.12)" row-gap={4}>
-		<text font-size={13} color="#71717a">{`${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</text>
-		<text font-size={32} font-weight={600} color="#18181b">{`${Math.round(props.temp)}°`}</text>
+	return <view padding="16 20" borderRadius={12} background="#ffffff" boxShadow="0 8 24 rgba(0,0,0,0.12)" rowGap={4}>
+		<text fontSize={13} color="#71717a">{`${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</text>
+		<text fontSize={32} fontWeight={600} color="#18181b">{`${Math.round(props.temp)}°`}</text>
 	</view>;
 }
 ```

@@ -154,11 +154,11 @@ class StoreShots implements Markup {
 			var dispose = Stories.render(s, c, ui.root, line == null ? null : content -> {
 				var bg = "#" + StringTools.hex(o.background ?? 0x111827, 6), fg = "#" + StringTools.hex(o.color ?? 0xffffff, 6);
 				var band = Math.round(height / scale * 0.14), size = Math.round(width / scale * 0.075);
-				<view grow={1} background={bg}>
-					<view height={band} align-items="center" justify="center" padding="0 24">
-						<text font-size={size} font-weight={700} color={fg}>{line}</text>
+				<view flexGrow={1} background={bg}>
+					<view height={band} alignItems="center" justifyContent="center" padding="0 24">
+						<text fontSize={size} fontWeight={700} color={fg}>{line}</text>
 					</view>
-					<view grow={1}>{content}</view>
+					<view flexGrow={1}>{content}</view>
 				</view>;
 			});
 			r.scale = scale;

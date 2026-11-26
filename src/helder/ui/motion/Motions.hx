@@ -222,11 +222,11 @@ class Motions {
 		if (p.presence != null) p.presence.set(1);
 		// (its radius and fill from the source's)
 		var s = n.style;
-		if (src.radius != s.radius) {
-			var to = s.radius;
+		if (src.radius != s.borderRadius) {
+			var to = s.borderRadius;
 			if (p.radius == null) p.radius = new Track(src.radius, 1e-3) else p.radius.set(src.radius);
 			p.radius.animate(t, to, curveOf(spec.radiusCurve(), n));
-			write(() -> s.radius = src.radius);
+			write(() -> s.borderRadius = src.radius);
 		}
 		if (src.background != s.background && !src.background.isToken && !s.background.isToken) {
 			var to = s.background;
@@ -337,7 +337,7 @@ class Motions {
 				v1: e ? p.t.velocity : 0,
 				v2: e ? p.r.velocity : 0,
 				v3: e ? p.b.velocity : 0,
-				radius: child.style.radius,
+				radius: child.style.borderRadius,
 				background: child.style.background,
 				update: updates,
 				consumed: false
@@ -525,7 +525,7 @@ class Motions {
 		}
 		if (p.radius != null && p.radius.moving()) {
 			p.radius.sample(now);
-			s.radius = p.radius.value;
+			s.borderRadius = p.radius.value;
 		}
 		if (p.background != null && p.background.moving()) {
 			p.background.sample(now);

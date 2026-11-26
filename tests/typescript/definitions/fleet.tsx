@@ -5,8 +5,8 @@ import {story, tree} from "helder/story";
 import {Show, type Signal} from "helder/view";
 
 function card(title: Signal<string>, ships: Signal<number>, warning?: Signal<boolean>) {
-	return <view grow={1} padding={24} row-gap={12} background="#0b1020" color="#e5e7eb" font-size={16}>
-		<text tag="title" font-size={28}>{title()}</text>
+	return <view flexGrow={1} padding={24} rowGap={12} background="#0b1020" color="#e5e7eb" fontSize={16}>
+		<text tag="title" fontSize={28}>{title()}</text>
 		<text tag="ships">{Math.trunc(ships()) + " ships"}</text>
 		<Show when={() => warning !== undefined && warning()}><text tag="warning" color="#f59e0b">Low fuel</text></Show>
 	</view>;

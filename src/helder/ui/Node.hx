@@ -62,7 +62,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public var onClick(get, set):Null<Event->Void>;
 	// a press: a click, or Enter or Space while it has the focus (after onKeyDown, unless it
 	// prevented the default), as a DOM button's click (a link's: Enter, not Space, as a DOM link's)
-	public var onActivate(get, set):Null<Event->Void>;
+	public var onPress(get, set):Null<Event->Void>;
 	public var onWheel(get, set):Null<Event->Void>;
 	public var onKeyDown(get, set):Null<Event->Void>;
 	public var onKeyUp(get, set):Null<Event->Void>;
@@ -332,6 +332,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	@:allow(helder.ui.Ui) function attach(u:Null<Ui>) {
 		if (ui == u) return;
+		if (glassGroup != null) glassGroup.attach(u);
 		if (ui != null) ui.detached(this);
 		ui = u;
 		// (what it recorded before not copied: it may have changed while out)
@@ -343,6 +344,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		restyleLater();
 		for (c in children)
 			c.attach(u);
+		if (glassGroup != null) glassGroup.attached(u);
 	}
 
 	// --- changes ---
@@ -531,15 +533,15 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return handlers.onClick = v;
 	}
 
-	inline function get_onActivate():Null<Event->Void>
-		return handlers == null ? null : handlers.onActivate;
+	inline function get_onPress():Null<Event->Void>
+		return handlers == null ? null : handlers.onPress;
 
-	function set_onActivate(v:Null<Event->Void>):Null<Event->Void> {
+	function set_onPress(v:Null<Event->Void>):Null<Event->Void> {
 		if (handlers == null) {
 			if (v == null) return v;
 			handlers = new Handlers();
 		}
-		return handlers.onActivate = v;
+		return handlers.onPress = v;
 	}
 
 	inline function get_onWheel():Null<Event->Void>
@@ -744,7 +746,27 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	}
 
 	// (Ui.update's, after the layout, for the nodes that joined Ui.natives: a platform's view kept in step)
-	@:allow(helder.ui.Ui) function syncNative() {}
+	@:allow(helder.ui.Ui) function syncNative()
+		if (glassGroup != null) glassGroup.sync();
+
+	// (its glass merged: GlassGroup.of's, markup's glassSpacing)
+	@:allow(helder.ui) var glassGroup:Null<GlassGrouping> = null;
+
+	// the glass inside it drawn together, nearer than this many points
+	// merged (null: not a group; markup's glassSpacing, any view's; GlassGroup.of sets it)
+	public var glassSpacing(get, never):Null<Float>;
+
+	function get_glassSpacing():Null<Float>
+		return glassGroup == null ? null : glassGroup.spacing;
+
+	// an attribute of its own (another package's element's: a video's
+	// autoPlay), set by markup's renderer: false where it has none
+	@:noCompletion public function setOwn(name:String, v:Dynamic):Bool
+		return false;
+
+	// an event of its own (a video's onEnded), its handler h: false where it has none
+	@:noCompletion public function listenOwn(name:String, h:Dynamic):Bool
+		return false;
 
 	// (where syncNative last placed its view: x, y, width, height, shown (1,
 	// else 0), in the window's points; null: none placed)
@@ -952,7 +974,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			if (family == null) family = s.fontFamily;
 			if (Math.isNaN(size) && s.fontSize != null) size = s.fontSize;
 			if (weight < 0 && s.fontWeight != null) weight = s.fontWeight;
-			if (italic < 0 && s.italic != null) italic = s.italic ? 1 : 0;
+			if (italic < 0 && s.fontStyle != null) italic = s.fontStyle == Italic ? 1 : 0;
 			if (Math.isNaN(lh) && Math.isNaN(lhPx)) {
 				if (s.lineHeightPx != null) lhPx = s.lineHeightPx else if (s.lineHeight != null) lh = s.lineHeight;
 			}
@@ -1069,7 +1091,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		var d = -1, t = -1, w = -1, n = this;
 		while (n != null && (d < 0 || t < 0 || w < 0)) {
 			var s = n.style;
-			if (d < 0 && s.dir != null) d = (cast s.dir : Int) + 1;
+			if (d < 0 && s.direction != null) d = (cast s.direction : Int) + 1;
 			if (t < 0 && s.textTransform != null) t = (cast s.textTransform : Int);
 			if (w < 0 && s.textWrap != null) w = (cast s.textWrap : Int);
 			n = n.inheritsFrom();
@@ -1346,7 +1368,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// --- content (subclasses) ---
 
 	public function hasContent():Bool
-		return false;
+		return glassGroup != null;
 
 	// the content's size for the given content-box constraints (NaN: unknown
 	// or unbounded)
@@ -1430,7 +1452,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return measureContent(text, Math.NaN, Math.NaN, 0, Math.NaN).width;
 
 	// draws the content in its content box at (x, y), in window pixels
-	public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {}
+	public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float)
+		if (glassGroup != null) glassGroup.paint(canvas);
 
 	// its children in their layout order (Style.order: lower first, ties in
 	// the tree's order): the children themselves when none has an order
@@ -1591,7 +1614,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (!Math.isNaN(lb)) return lb;
 		// (a reversed column's: its last item's, the first from the top, as Chromium)
 		var items = inOrder();
-		if (style.display != Grid && style.direction == ColumnReverse) {
+		if (style.display != Grid && style.flexDirection == ColumnReverse) {
 			items = items.copy();
 			items.reverse();
 		}
@@ -1763,7 +1786,7 @@ private class Handlers {
 	public var onLostPointerCapture:Null<Event->Void> = null;
 	public var gestures:Null<Array<helder.ui.gesture.Gesture>> = null;
 	public var onClick:Null<Event->Void> = null;
-	public var onActivate:Null<Event->Void> = null;
+	public var onPress:Null<Event->Void> = null;
 	public var onWheel:Null<Event->Void> = null;
 	public var onKeyDown:Null<Event->Void> = null;
 	public var onKeyUp:Null<Event->Void> = null;

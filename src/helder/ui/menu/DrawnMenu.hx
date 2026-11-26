@@ -67,7 +67,7 @@ class DrawnMenu {
 		popup = new Popup("menu");
 		popup.style.set({
 			padding: 4,
-			radius: 6,
+			borderRadius: 6,
 			minWidth: 180,
 			background: dark ? 0xFF2B2B2F : 0xFFFFFFFF,
 			borderWidth: 1,
@@ -75,7 +75,7 @@ class DrawnMenu {
 			color: dark ? 0xFFE4E4E7 : 0xFF18181B,
 			fontSize: 13
 		});
-		popup.style.shadow = helder.ui.Shadow.parse("0 4px 16px rgba(0, 0, 0, 0.35)");
+		popup.style.boxShadow = helder.ui.Shadow.parse("0 4px 16px rgba(0, 0, 0, 0.35)");
 		popup.semantics = {role: helder.ui.access.Role.Menu};
 		popup.menu = true;
 		popup.onDismiss = () -> close(false);
@@ -91,11 +91,11 @@ class DrawnMenu {
 			}
 			var row = new Node("menu-item");
 			row.style.set({
-				direction: Row,
+				flexDirection: Row,
 				alignItems: Center,
 				height: 26,
 				padding: [0.0, 10, 0, 6],
-				radius: 4,
+				borderRadius: 4,
 				columnGap: 8,
 				cursor: helder.ui.Cursor.Default
 			});
@@ -110,7 +110,7 @@ class DrawnMenu {
 			var check = new TextNode(it.checked == true ? "✓" : "", "menu-check");
 			check.style.set({width: 14});
 			var label = new TextNode(it.label, "menu-label");
-			label.style.set({grow: 1, maxLines: 1});
+			label.style.set({flexGrow: 1, lineClamp: 1});
 			var keys = new TextNode(it.items != null ? "›" : it.shortcut ?? "", "menu-keys");
 			keys.style.set({color: dark ? 0xFFA1A1AA : 0xFF71717A, marginLeft: 16});
 			if (it.disabled == true) row.style.opacity = 0.45;

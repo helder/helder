@@ -15,6 +15,7 @@ import helder.view.graph.Read;
 // own outlines (Outlines: Inter, Hanken Grotesk, Geist Mono, each under
 // the SIL Open Font License, as what is made from it stays), a font file
 // of the user's (desktop), or nothing. Each card set in its own font.
+@:renderer(helder.ui.view.NodeRenderer)
 class Start implements Markup {
 	public static inline var PEBBLE = "Foundry Pebble";
 
@@ -88,44 +89,44 @@ class Start implements Markup {
 			}
 		}
 		return <Popover open={ws.starting} modal placement="center" backdrop={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
-			<view tag="start" role="dialog" label="Start a font" width={860} padding={28} row-gap={20} radius={Theme.RADIUS_M + 4} background={c("bg")}
-				border-width={1} border-color={c("edge")} shadow={Theme.popover()}>
-				<view row-gap={6}>
-					<text font-size={22} font-weight={Theme.MEDIUM}>Start a font</text>
+			<view tag="start" role="dialog" aria-label="Start a font" width={860} padding={28} rowGap={20} borderRadius={Theme.RADIUS_M + 4} background={c("bg")}
+				borderWidth={1} borderColor={c("edge")} boxShadow={Theme.popover()}>
+				<view rowGap={6}>
+					<text fontSize={22} fontWeight={Theme.MEDIUM}>Start a font</text>
 					<text color={c("fg2")}>Pick where to begin. Every letter stays yours to redraw: the pen, the proportions and the spacing too.</text>
 				</view>
-				<view display="grid" grid-template-columns="repeat(4, 1fr)" column-gap={12}>
+				<view display="grid" gridTemplateColumns="repeat(4, 1fr)" columnGap={12}>
 					<For each={STARTERS}>{(s:Read<Starter>) -> card(s(), busy, pick)}</For>
 				</view>
-				<view direction="row" align-items="center" column-gap={8}>
-					<view:button tag="start-blank" slot="button" role="button" label="Start blank" focusable onPress={blank}>
+				<view flexDirection="row" alignItems="center" columnGap={8}>
+					<button tag="start-blank" slot="button" aria-label="Start blank" onPress={blank}>
 						<image src={Icons.pen} width={14} height={14}/><text>Start blank</text>
-					</view:button>
+					</button>
 					<Show when={helder.os.FileDialog.available()}>
-						<view:button tag="start-file" slot="button" role="button" label="Open a font file" focusable onPress={open}>
+						<button tag="start-file" slot="button" aria-label="Open a font file" onPress={open}>
 							<image src={Icons.download} width={14} height={14}/><text>Open a font file…</text>
-						</view:button>
+						</button>
 					</Show>
-					<view grow={1}/>
-					<text font-size={Theme.SMALL} color={c("fg3")}>A font made from an OFL font is shared under the OFL too.</text>
+					<view flexGrow={1}/>
+					<text fontSize={Theme.SMALL} color={c("fg3")}>A font made from an OFL font is shared under the OFL too.</text>
 				</view>
 			</view>
 		</Popover>;
 	}
 
 	static function card(s:Starter, busy:Read<String>, pick:Starter->Void):View
-		return <view:button tag={"start-" + s.id} slot="starter" role="button" label={"Start from " + s.name} focusable onPress={() -> pick(s)}>
-			<view height={120} align-items="center" justify="center" radius={Theme.RADIUS_M} background={c("well")}>
-				<Show when={busy() == s.id} fallback={<text font-family={s.family} font-size={58} line-height="64px" color={c("fg")}>Ag</text>}>
+		return <button tag={"start-" + s.id} slot="starter" aria-label={"Start from " + s.name} onPress={() -> pick(s)}>
+			<view height={120} alignItems="center" justifyContent="center" borderRadius={Theme.RADIUS_M} background={c("well")}>
+				<Show when={busy() == s.id} fallback={<text fontFamily={s.family} fontSize={58} lineHeight="64px" color={c("fg")}>Ag</text>}>
 					<text color={c("fg2")}>Reading…</text>
 				</Show>
 			</view>
-			<view row-gap={4} padding="10 2 0">
-				<text font-weight={Theme.MEDIUM}>{s.name}</text>
-				<text font-size={Theme.SMALL} color={c("fg2")} line-height="16px">{s.about}</text>
-				<text font-size={10} color={c("fg3")} padding="4 0 0">{s.license}</text>
+			<view rowGap={4} padding="10 2 0">
+				<text fontWeight={Theme.MEDIUM}>{s.name}</text>
+				<text fontSize={Theme.SMALL} color={c("fg2")} lineHeight="16px">{s.about}</text>
+				<text fontSize={10} color={c("fg3")} padding="4 0 0">{s.license}</text>
 			</view>
-		</view:button>;
+		</button>;
 
 	static function countDrawn(f:Face):Int
 		return [for (k in f.glyphs.keys()) k].length;

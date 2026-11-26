@@ -1,5 +1,5 @@
-// an attribute none of ui's elements has, CSS's name for one of them, in a component (in Haxe: RejectAttrUnknown.hx).
-// expect: helder.ui: no attribute flex-direction (not one of NodeRenderer's or Style's); did you mean direction?
+// an attribute in CSS's kebab-case, its camel name said, in a component (in Haxe: RejectAttrUnknown.hx).
+// expect: markup: flex-direction is written flexDirection (camel, as CSS's and HTML's are in JavaScript)
 import { UiWindow, Surface } from "helder/ui";
 
 function Row() {

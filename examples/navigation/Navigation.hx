@@ -31,44 +31,44 @@ class Navigation implements Markup {
 	}
 
 	static function Screen(props:{nav:Routes, title:String, ?root:Bool, ?action:View, children:View}):View
-		return <view tag="page" grow={1} background="#ffffff">
-			<view direction="row" align-items="center" padding="10 12" column-gap={8} border-width="0 0 1 0" border-color="#e4e4e7">
-				{props.root != true ? <view:button tag="back" role="button" label="Back" focusable padding="6 10" radius={6} cursor="pointer"
-					onPress={() -> props.nav.back()}>‹ Back</view:button> : null}
-				<text grow={1} font-size={18} font-weight={600}>{props.title}</text>
+		return <view tag="page" flexGrow={1} background="#ffffff">
+			<view flexDirection="row" alignItems="center" padding="10 12" columnGap={8} borderWidth="0 0 1 0" borderColor="#e4e4e7">
+				{props.root != true ? <button tag="back" aria-label="Back" padding="6 10" borderRadius={6} cursor="pointer"
+					onPress={() -> props.nav.back()}>‹ Back</button> : null}
+				<text flexGrow={1} fontSize={18} fontWeight={600}>{props.title}</text>
 				{props.action}
 			</view>
-			<scroll grow={1} basis={0} padding={12} row-gap={compact() ? 2 : 8}>{props.children}</scroll>
+			<scroll flexGrow={1} flexBasis={0} padding={12} rowGap={compact() ? 2 : 8}>{props.children}</scroll>
 		</view>;
 
 	static function List(props:{nav:Routes}):View {
 		var nav = props.nav;
-		return <Screen nav={nav} title="Fruit" root action={<view:button tag="settings" role="button" focusable padding="6 10" radius={6} cursor="pointer"
-			onPress={() -> nav.go("/settings")}>Settings</view:button>}>
-			{[for (i => f in fruits) <view:button tag={"fruit-" + i} role="button" focusable padding={compact() ? "6 12" : "12 12"} radius={8}
-				background="#f4f4f5" cursor="pointer" onPress={() -> nav.go("/fruit/" + i)}>{f}</view:button>]}
+		return <Screen nav={nav} title="Fruit" root action={<button tag="settings" padding="6 10" borderRadius={6} cursor="pointer"
+			onPress={() -> nav.go("/settings")}>Settings</button>}>
+			{[for (i => f in fruits) <button tag={"fruit-" + i} padding={compact() ? "6 12" : "12 12"} borderRadius={8}
+				background="#f4f4f5" cursor="pointer" onPress={() -> nav.go("/fruit/" + i)}>{f}</button>]}
 		</Screen>;
 	}
 
 	static function Detail(props:{nav:Routes, id:Int}):View {
 		var name = fruits[props.id] ?? "?", count = signal(0);
 		return <Screen nav={props.nav} title={name}>
-			<text font-size={48}>{name.charAt(0)}</text>
+			<text fontSize={48}>{name.charAt(0)}</text>
 			<text>{"Number " + (props.id + 1) + " of " + fruits.length + "."}</text>
-			<view:button tag="like" role="button" focusable padding="8 12" radius={6} background="#18181b" color="#fafafa" cursor="pointer"
-				onPress={() -> count(c -> c + 1)}>{"Liked " + count()}</view:button>
-			{props.id + 1 < fruits.length ? <view:button tag="next" role="button" focusable padding="8 12" radius={6} background="#f4f4f5" cursor="pointer"
-				onPress={() -> props.nav.go("/fruit/" + (props.id + 1))}>{"Next: " + fruits[props.id + 1]}</view:button> : null}
+			<button tag="like" padding="8 12" borderRadius={6} background="#18181b" color="#fafafa" cursor="pointer"
+				onPress={() -> count(c -> c + 1)}>{"Liked " + count()}</button>
+			{props.id + 1 < fruits.length ? <button tag="next" padding="8 12" borderRadius={6} background="#f4f4f5" cursor="pointer"
+				onPress={() -> props.nav.go("/fruit/" + (props.id + 1))}>{"Next: " + fruits[props.id + 1]}</button> : null}
 		</Screen>;
 	}
 
 	static function Settings(props:{nav:Routes}):View
 		return <Screen nav={props.nav} title="Settings">
-			<view:button tag="compact" role="switch" checked={compact} focusable direction="row" padding="12 12" radius={8} background="#f4f4f5"
+			<button tag="compact" role="switch" aria-checked={compact} flexDirection="row" padding="12 12" borderRadius={8} background="#f4f4f5"
 				cursor="pointer" onPress={() -> compact(c -> !c)}>
-				<text grow={1}>Compact list</text>
+				<text flexGrow={1}>Compact list</text>
 				<text>{compact() ? "On" : "Off"}</text>
-			</view:button>
-			<view:button tag="home" role="button" focusable padding="8 12" cursor="pointer" onPress={() -> props.nav.reset("/")}>Back to the list</view:button>
+			</button>
+			<button tag="home" padding="8 12" cursor="pointer" onPress={() -> props.nav.reset("/")}>Back to the list</button>
 		</Screen>;
 }

@@ -109,7 +109,7 @@ import helder.ui.controls.Look;
 			r.beforePass(record);
 		}
 		painted++;
-		g.gpuTexture(color, id, x, y, width, height, parent == null ? 0 : parent.style.radius);
+		g.gpuTexture(color, id, x, y, width, height, parent == null ? 0 : parent.style.borderRadius);
 	}
 
 	static function rgba(c:Color):Vec4

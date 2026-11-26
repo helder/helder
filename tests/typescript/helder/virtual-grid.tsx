@@ -39,10 +39,10 @@ UiProbe.key(Key.DOWN, ["shift"]);
 UiProbe.key(Key.ENTER);
 
 render(
-	<VirtualList each={files} itemHeight={20} onActivate={item => console.log("legacy activate", item.toUpperCase())}>{
-		(file: Read<string>, i: number) => <text tag={"legacy-" + i}>{file()}</text>
+	<VirtualList each={files} itemHeight={20} onActivate={rows => console.log("row activate", files()[rows[0]].toUpperCase())}>{
+		(file: Read<string>, i: number) => <text tag={"plain-" + i}>{file()}</text>
 	}</VirtualList>,
 	UiProbe.root(240, 140)
 );
-UiProbe.click("legacy-2");
+UiProbe.click("plain-2");
 UiProbe.key(Key.ENTER);

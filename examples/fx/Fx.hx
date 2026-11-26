@@ -88,7 +88,7 @@ class Fx implements Markup {
 		var a = vec(e.a), b = vec(e.b);
 		if (e.shader == null) {
 			var n = new Neon();
-			n.style.grow = 1;
+			n.style.flexGrow = 1;
 			renderEffect(() -> values[props.i](), v -> n.setKnobs(v));
 			renderEffect(() -> timeOf(props.i), t -> {
 				n.time = t;
@@ -97,7 +97,7 @@ class Fx implements Markup {
 			return n;
 		}
 		var n = new FxBox(e.shader);
-		n.style.grow = 1;
+		n.style.flexGrow = 1;
 		n.a = a;
 		n.b = b;
 		renderEffect(() -> values[props.i](), v -> n.setKnobs(v));
@@ -109,23 +109,23 @@ class Fx implements Markup {
 	}
 
 	static function Tile(props:{i:Int}):View
-		return <view grow={1} basis={0} min-width={0} row-gap={8} cursor="pointer" onClick={() -> {
+		return <view flexGrow={1} flexBasis={0} minWidth={0} rowGap={8} cursor="pointer" onPress={() -> {
 			focus(props.i);
 			open(props.i);
 		}}>
-			<view tag={"fx-" + props.i} matched={"fx-" + props.i} grow={1} min-height={0} radius={14} overflow="hidden" border-width={2}
-				border-color={focus() == props.i ? ACCENT : "#00000000"}>
+			<view tag={"fx-" + props.i} matched={"fx-" + props.i} flexGrow={1} minHeight={0} borderRadius={14} overflow="hidden" borderWidth={2}
+				borderColor={focus() == props.i ? ACCENT : "#00000000"}>
 				<Live i={props.i}/>
 			</view>
-			<view direction="row" align-items="baseline">
-				<text grow={1} font-size={14} font-weight={600}>{EFFECTS[props.i].name}</text>
-				<text font-size={12} color={MUTED}>{EFFECTS[props.i].shader == null ? "helder.canvas" : "shader"}</text>
+			<view flexDirection="row" alignItems="baseline">
+				<text flexGrow={1} fontSize={14} fontWeight={600}>{EFFECTS[props.i].name}</text>
+				<text fontSize={12} color={MUTED}>{EFFECTS[props.i].shader == null ? "helder.canvas" : "shader"}</text>
 			</view>
 		</view>;
 
 	static function Grid():View
-		return <view grow={1} row-gap={18} transition="fade">
-			<Repeat count={3}>{r -> <view direction="row" grow={1} basis={0} min-height={0} column-gap={18}>
+		return <view flexGrow={1} rowGap={18} transition="fade">
+			<Repeat count={3}>{r -> <view flexDirection="row" flexGrow={1} flexBasis={0} minHeight={0} columnGap={18}>
 				<Repeat count={3}>{c -> <Tile i={r * 3 + c}/>}</Repeat>
 			</view>}</Repeat>
 		</view>;
@@ -140,42 +140,42 @@ class Fx implements Markup {
 		var e = EFFECTS[props.i];
 		var dragging = false;
 		var at = (x:Float, w:Float) -> set(props.i, props.k, x / Math.max(1, w));
-		return <view row-gap={8} opacity={e.knobs[props.k] == "-" ? 0.35 : 1}>
-			<view direction="row">
-				<text grow={1} font-size={14} font-weight={knob() == props.k ? 650 : 450} color={knob() == props.k ? INK : MUTED}>{e.knobs[props.k]}</text>
-				<text font-size={13} color={MUTED} font-variant-numeric="tabular-nums">{Std.string(Math.round(values[props.i]()[props.k] * 100)) + "%"}</text>
+		return <view rowGap={8} opacity={e.knobs[props.k] == "-" ? 0.35 : 1}>
+			<view flexDirection="row">
+				<text flexGrow={1} fontSize={14} fontWeight={knob() == props.k ? 650 : 450} color={knob() == props.k ? INK : MUTED}>{e.knobs[props.k]}</text>
+				<text fontSize={13} color={MUTED} fontVariantNumeric="tabular-nums">{Std.string(Math.round(values[props.i]()[props.k] * 100)) + "%"}</text>
 			</view>
-			<view tag={"knob-" + props.k} height={22} justify="center" cursor="pointer" onPointerDown={e -> {
+			<view tag={"knob-" + props.k} height={22} justifyContent="center" cursor="pointer" onPointerDown={e -> {
 				dragging = true;
 				knob(props.k);
 				e.current.capture();
 				at(e.localX, e.current.width);
 			}} onPointerMove={e -> if (dragging) at(e.localX, e.current.width)} onPointerUp={_ -> dragging = false} onPointerCancel={_ -> dragging = false}>
-				<view height={4} radius={2} background={LINE}>
-					<view height={4} radius={2} background={knob() == props.k ? ACCENT : "#5a6280"} width={(values[props.i]()[props.k] * 100) + "%"}/>
+				<view height={4} borderRadius={2} background={LINE}>
+					<view height={4} borderRadius={2} background={knob() == props.k ? ACCENT : "#5a6280"} width={(values[props.i]()[props.k] * 100) + "%"}/>
 				</view>
-				<view position="absolute" top={3} left={"calc(" + (values[props.i]()[props.k] * 100) + "% - 8px)"} width={16} height={16} radius={8}
-					background={INK} shadow="0 1px 4px rgba(0,0,0,0.5)"/>
+				<view position="absolute" top={3} left={"calc(" + (values[props.i]()[props.k] * 100) + "% - 8px)"} width={16} height={16} borderRadius={8}
+					background={INK} boxShadow="0 1px 4px rgba(0,0,0,0.5)"/>
 			</view>
 		</view>;
 	}
 
 	static function Detail(props:{i:Int}):View {
 		var e = EFFECTS[props.i];
-		return <view grow={1} direction="row" column-gap={32}>
-			<view tag={"fx-" + props.i} matched={"fx-" + props.i} grow={1} radius={22} overflow="hidden"><Live i={props.i}/></view>
-			<view width={320} row-gap={14} justify="center" transition="fade slide-left(32)">
-				<text font-size={13} color={MUTED} font-weight={600} letter-spacing={1.6}>{"EFFECT " + (props.i + 1) + " OF " + EFFECTS.length}</text>
-				<text font-size={36} font-weight={700} letter-spacing={-0.8}>{e.name}</text>
-				<text font-size={15} color={MUTED} line-height={1.5}>{e.blurb}</text>
+		return <view flexGrow={1} flexDirection="row" columnGap={32}>
+			<view tag={"fx-" + props.i} matched={"fx-" + props.i} flexGrow={1} borderRadius={22} overflow="hidden"><Live i={props.i}/></view>
+			<view width={320} rowGap={14} justifyContent="center" transition="fade slide-left(32)">
+				<text fontSize={13} color={MUTED} fontWeight={600} letterSpacing={1.6}>{"EFFECT " + (props.i + 1) + " OF " + EFFECTS.length}</text>
+				<text fontSize={36} fontWeight={700} letterSpacing={-0.8}>{e.name}</text>
+				<text fontSize={15} color={MUTED} lineHeight={1.5}>{e.blurb}</text>
 				<view height={1} background={LINE} margin="6 0"/>
 				<Repeat count={4}>{k -> <Slider i={props.i} k={k}/>}</Repeat>
-				<view direction="row" column-gap={10} align-items="center" padding="6 0 0 0">
-					<view width={22} height={22} radius={11} background={e.a} border-width={1} border-color={LINE}/>
-					<view width={22} height={22} radius={11} background={e.b} border-width={1} border-color={LINE}/>
-					<text font-size={13} color={MUTED}>its two colours</text>
+				<view flexDirection="row" columnGap={10} alignItems="center" padding="6 0 0 0">
+					<view width={22} height={22} borderRadius={11} background={e.a} borderWidth={1} borderColor={LINE}/>
+					<view width={22} height={22} borderRadius={11} background={e.b} borderWidth={1} borderColor={LINE}/>
+					<text fontSize={13} color={MUTED}>its two colours</text>
 				</view>
-				<text font-size={12} color={MUTED} padding="10 0 0 0">↑ ↓ a knob · ← → turn it · Esc back</text>
+				<text fontSize={12} color={MUTED} padding="10 0 0 0">↑ ↓ a knob · ← → turn it · Esc back</text>
 			</view>
 		</view>;
 	}
@@ -210,15 +210,15 @@ class Fx implements Markup {
 	}
 
 	public static function view():View
-		return <view tag="fx" grow={1} padding="32 40" row-gap={20} background={NIGHT} color={INK} font-family="Inter" motion="default" focusable
-			onKeyDown={key} ref={n -> root = n}>
-			<view direction="row" align-items="baseline" column-gap={14}>
-				<text font-size={30} font-weight={700} letter-spacing={-0.6}>Effects</text>
-				<text font-size={15} color={MUTED} grow={1}>shader definitions with knobs, and a canvas with filters</text>
-				<text font-size={13} color={MUTED}>{Clock.reducedMotion ? "reduced motion: stills" : open() < 0 ? "Enter opens · arrows move" : ""}</text>
+		return <view tag="fx" flexGrow={1} padding="32 40" rowGap={20} background={NIGHT} color={INK} fontFamily="Inter" motion="default" focusable
+			onKeyDown={key} ref={(__part:helder.ui.Part) -> {var n:helder.ui.Node = cast __part; root = n;}}>
+			<view flexDirection="row" alignItems="baseline" columnGap={14}>
+				<text fontSize={30} fontWeight={700} letterSpacing={-0.6}>Effects</text>
+				<text fontSize={15} color={MUTED} flexGrow={1}>shader definitions with knobs, and a canvas with filters</text>
+				<text fontSize={13} color={MUTED}>{Clock.reducedMotion ? "reduced motion: stills" : open() < 0 ? "Enter opens · arrows move" : ""}</text>
 			</view>
-			<view grow={1} min-height={0}>
-				<Show when={() -> open() < 0} fallback={<view grow={1}>{() -> <Detail i={open()}/>}</view>}>
+			<view flexGrow={1} minHeight={0}>
+				<Show when={() -> open() < 0} fallback={<view flexGrow={1}>{() -> <Detail i={open()}/>}</view>}>
 					{Grid()}
 				</Show>
 			</view>

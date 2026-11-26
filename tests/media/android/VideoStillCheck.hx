@@ -1,6 +1,5 @@
 import helder.asset.Asset;
 import helder.media.MemorySource;
-import helder.media.ui.MediaTags.*;
 import helder.media.ui.VideoNode;
 import helder.ui.Clock;
 import helder.ui.UiWindow;
@@ -8,7 +7,7 @@ import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import hxmc.unsafe.*;
 
-// A <Video> on Android (android.sh): quads.mp4's flat quadrants in a box,
+// A <video> on Android (android.sh): quads.mp4's flat quadrants in a box,
 // drawn by helder or, with debug.helder.video=layer (setprop), on its
 // system layer (MediaCodec onto a SurfaceControl; late: asked for once
 // paused, as a slow device's layers start); played until six frames
@@ -89,8 +88,8 @@ class VideoStillCheck implements Markup {
 			return true;
 		}
 		UiWindow.run(<Surface title="VideoStillCheck" width={480} height={800} background="#333333">
-			<view grow={1} padding-top={200} padding-left={40} overflow="scroll">
-				<Video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
+			<view flexGrow={1} paddingTop={200} paddingLeft={40} overflow="scroll">
+				<video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
 					onError={e -> say('error $e')} ref={v -> {
 						node = v;
 						Clock.addFor(v, step);

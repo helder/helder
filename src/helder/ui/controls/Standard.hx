@@ -30,7 +30,7 @@ class Standard implements Markup {
 		p.variant = props.variant ?? look.defaultOf("button", "variant");
 		p.size = props.size ?? look.defaultOf("button", "size");
 		var text = Std.isOfType(props.children, String), alone = props.children == null && props.icon != null;
-		return <view:button tag={props.tag} ref={(n:Node) -> {
+		return <button tag={props.tag} ref={(n:Node) -> {
 			p.root(n);
 			if (own) n.theme = look.sheet();
 			// (an icon alone: square, no padding)
@@ -43,7 +43,7 @@ class Standard implements Markup {
 			<Show when={props.icon != null}><image ref={p.part("icon")} src={props.icon}/></Show>
 			<Show when={text}><text ref={p.part("label")}>{props.children}</text></Show>
 			<Show when={!text && props.children != null}>{props.children}</Show>
-		</view:button>;
+		</button>;
 	}
 
 	public static function PathBar(props:PathBarProps):UiView
@@ -64,7 +64,7 @@ class Standard implements Markup {
 			<view ref={t.part("box")}>
 				<image ref={t.part("mark")} src={() -> mark(t.mixed())}/>
 			</view>
-			<text hidden ref={t.part("label")}>{props.label}</text>
+			<text aria-hidden ref={t.part("label")}>{props.label}</text>
 		</view>;
 	}
 
@@ -81,7 +81,7 @@ class Standard implements Markup {
 			if (own) n.theme = look.sheet();
 		}}>
 			<view ref={t.part("track")}><view ref={t.part("knob")}/></view>
-			<text hidden ref={t.part("label")}>{props.label}</text>
+			<text aria-hidden ref={t.part("label")}>{props.label}</text>
 		</view>;
 	}
 
@@ -97,6 +97,6 @@ class Standard implements Markup {
 	public static function Themed(props:{look:Look<Dynamic>, ?children:Any}):UiView {
 		Graph.setContext(Look.context, props.look);
 		// (no taller nor wider than where it is put: a scroller inside it scrolls)
-		return <view grow={1} min-width={0} min-height={0} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;
+		return <view flexGrow={1} minWidth={0} minHeight={0} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;
 	}
 }

@@ -19,7 +19,7 @@ import helder.gfx.Color;
 // "fade, background-color 150ms".
 class Transition {
 	// the Style properties that ease (as Style names them)
-	public static final EASED = ["background", "color", "borderColor", "outlineColor", "textDecorationColor", "opacity", "transform", "shadow", "ringColor", "ringWidth"];
+	public static final EASED = ["background", "color", "borderColor", "outlineColor", "textDecorationColor", "opacity", "transform", "boxShadow", "ringColor", "ringWidth"];
 
 	// the properties (Style's names; "all": every one that eases), each with its own timing (several: CSS's lists)
 	public final properties:Array<String>;
@@ -46,13 +46,13 @@ class Transition {
 	// whether property (a Style name) is a colour or the opacity: what still
 	// eases under reduced motion (Clock.reducedMotion), where travel jumps
 	public static function fades(property:String):Bool
-		return property != "transform" && property != "shadow" && property != "ringWidth";
+		return property != "transform" && property != "boxShadow" && property != "ringWidth";
 
 	// the timing of property (a Style name), null when it does not ease: its duration, delay, easing
 	public function timing(property:String):Null<{duration:Float, delay:Float, easing:Array<Float>}> {
 		var k = properties.lastIndexOf(property);
 		// (a ring is a box-shadow to CSS)
-		if (k < 0 && (property == "ringColor" || property == "ringWidth")) k = properties.lastIndexOf("shadow");
+		if (k < 0 && (property == "ringColor" || property == "ringWidth")) k = properties.lastIndexOf("boxShadow");
 		if (k < 0) k = properties.lastIndexOf("all");
 		if (k < 0 || EASED.indexOf(property) < 0) return null;
 		var d = durations[k % durations.length];
@@ -101,7 +101,7 @@ class Transition {
 			case "border-color": "borderColor";
 			case "outline-color": "outlineColor";
 			case "text-decoration-color": "textDecorationColor";
-			case "box-shadow": "shadow";
+			case "box-shadow": "boxShadow";
 			case "translate" | "scale" | "rotate": "transform";
 			case _ if (css.indexOf("-") > 0): [for (i => w in css.split("-")) i == 0 ? w : w.charAt(0).toUpperCase() + w.substr(1)].join("");
 			case _: css;
@@ -196,7 +196,7 @@ class Transition {
 		return switch property {
 			case "opacity" | "ringWidth": (from : Float) + ((to : Float) - (from : Float)) * k;
 			case "transform": Transform.between(from, to, k);
-			case "shadow": Shadow.between(from, to, k);
+			case "boxShadow": Shadow.between(from, to, k);
 			case _: Color.between(from, to, k);
 		}
 }

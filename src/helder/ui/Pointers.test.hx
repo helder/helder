@@ -33,7 +33,7 @@ function tests() {
 			list.style.overflow = Scroll;
 			item = new Node("item");
 			item.style.height = 600;
-			item.style.shrink = 0;
+			item.style.flexShrink = 0;
 			list.append(item);
 			listen(a, "a");
 			listen(b, "b");
@@ -147,7 +147,7 @@ function tests() {
 				list.style.overflow = Scroll;
 				item = new Node("item");
 				item.style.height = 6000;
-				item.style.shrink = 0;
+				item.style.flexShrink = 0;
 				list.append(item);
 				ui.update();
 				var times = [11000.0, 11050, 11100], ys = [190.0, 150, 110];
@@ -197,7 +197,7 @@ function tests() {
 		});
 		test("a right click clicks, but presses nothing (a context menu's); the left presses", () -> {
 			var pressed = 0;
-			a.onActivate = _ -> pressed++;
+			a.onPress = _ -> pressed++;
 			ui.pointerDown(50, 25, 3);
 			ui.pointerUp(50, 25, 3);
 			equals(pressed, 0);

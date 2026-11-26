@@ -74,19 +74,19 @@ class Showreel implements Markup {
 	// a scene from its start on: its own time, fading in over the last and out under the next
 	static function playing(start:Float):View {
 		var s = sceneAt(start + 0.001), t = memo(() -> clock() - start);
-		return <view position="absolute" left={0} top={0} right={0} bottom={0} transition="fade" motion-presence="calm">{SCENES[s.index].view(t)}</view>;
+		return <view position="absolute" left={0} top={0} right={0} bottom={0} transition="fade" motionPresence="calm">{SCENES[s.index].view(t)}</view>;
 	}
 
 	public static function view(only:Int):View {
 		if (only >= 0) {
 			// (reduced motion: the scene's last state, still)
 			var t = memo(() -> Clock.reducedMotion ? SCENES[only].duration : clock());
-			return <view grow={1}>{SCENES[only].view(t)}</view>;
+			return <view flexGrow={1}>{SCENES[only].view(t)}</view>;
 		}
 		// (the scene playing, by its start: a new row each time one begins, the last fading out under it)
 		var current = memo(() -> sceneAt(clock()).start);
 		var starts = memo(() -> [current()]);
-		return <view grow={1} background={NIGHT}>
+		return <view flexGrow={1} background={NIGHT}>
 			<For each={starts}>{(start:Read<Float>) -> playing(untrack(() -> start()))}</For>
 		</view>;
 	}

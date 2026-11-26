@@ -43,33 +43,45 @@ using haxe.macro.ExprTools;
 // helder.web.DomRenderer => DomControls): Pick), else an error naming it
 // and the renderer. A function of such a class marked @:neutral is for
 // every renderer (a single-source component: its elements the neutral ones,
-// view, text, view:button..., each renderer realising them).
+// view, text, button..., each renderer realising them).
 class MarkupMacro {
 	// the root (helder.view.Root: RootView), as a literal's renderer: components only, no code to mount
 	public static inline final ROOT = "helder.view.Root";
-	// the neutral elements' events (view, text, view:button...): ui's, in every renderer
+	// the neutral elements' events (view, text, button...): ui's, in every renderer
 	public static inline final NEUTRAL_EVENTS = "helder.ui.view.NodeEvents";
 
 	// (the events of a type @:events names: its fields' types by name)
 	static final eventSets = new Map<String, Map<String, Type>>();
 
 	// the events a renderer declares (@:events(T): T's fields, each attribute's
-	// event type), the neutral elements' when neutral; null: it declares none
-	public static function events(renderer:Null<String>, neutral:Bool):Null<{of:String, events:Map<String, Type>}> {
-		var path = neutral ? NEUTRAL_EVENTS : renderer == null || renderer == ROOT ? null : HostMacro.info(renderer).events;
+	// event type), a neutral element's when tag is given (ui's, and its own:
+	// Vocabulary.EVENT_TYPES); null: it declares none
+	public static function events(renderer:Null<String>, tag:Null<String>):Null<{of:String, events:Map<String, Type>}> {
+		var path = tag != null ? NEUTRAL_EVENTS : renderer == null || renderer == ROOT ? null : HostMacro.info(renderer).events;
 		if (path == null) return null;
-		var set = eventSets.get(path);
-		if (set == null) {
-			set = new Map();
-			switch Context.follow(Context.getType(path)) {
-				case TAnonymous(a):
-					for (f in a.get().fields)
-						set.set(f.name, f.type);
-				case t: Context.error('helder.view: @:events($path) is no structure of events (${haxe.macro.TypeTools.toString(t)})', Context.currentPos());
-			}
-			eventSets.set(path, set);
+		var set = eventSet(path);
+		var own = tag == null ? null : Vocabulary.EVENT_TYPES.get(Vocabulary.base(tag));
+		if (own != null) {
+			var all = set.copy();
+			for (k => t in eventSet(own))
+				all.set(k, t);
+			set = all;
 		}
-		return {of: neutral ? "a neutral element (its events ui's, " + path + ")" : renderer, events: set};
+		return {of: tag != null ? "<" + tag + "> (its events ui's, " + path + (own == null ? "" : ", and " + own) + ")" : renderer, events: set};
+	}
+
+	static function eventSet(path:String):Map<String, Type> {
+		var set = eventSets.get(path);
+		if (set != null) return set;
+		set = new Map();
+		switch Context.follow(Context.getType(path)) {
+			case TAnonymous(a):
+				for (f in a.get().fields)
+					set.set(f.name, f.type);
+			case t: Context.error('helder.view: @:events($path) is no structure of events (${haxe.macro.TypeTools.toString(t)})', Context.currentPos());
+		}
+		eventSets.set(path, set);
+		return set;
 	}
 
 	// the Markup interface's build macro: every field's literals wrapped
@@ -179,7 +191,7 @@ class MarkupMacro {
 	// @:neutral), the renderer its return type pins it to, its children's (a
 	// children prop of ViewOf<R>); null when it does not type (the call's error then)
 	@:allow(helder.view.HaxeTarget) static function component(callee:Expr):Null<{name:String, field:String, limits:Null<{only:Array<String>, other:Map<String, Expr>}>,
-		pin:Null<String>, ret:String, children:Null<String>, reads:Array<String>, childFunction:Bool}> {
+		pin:Null<String>, ret:String, children:Null<String>, reads:Array<String>, childFunction:Bool, childAccessor:Bool}> {
 		var t = try Context.typeExpr(callee) catch (_:Dynamic) return null;
 		var name = callee.toString(), fieldName = name.split(".").pop(), l = null;
 		switch t.expr {
@@ -189,7 +201,7 @@ class MarkupMacro {
 				if (!cf.get().meta.has(":neutral")) l = limits(c.get().meta);
 			case _:
 		}
-		var pin = null, ret = "", children = null, reads = [], childFunction = false;
+		var pin = null, ret = "", children = null, reads = [], childFunction = false, childAccessor = false;
 		switch Context.follow(t.t) {
 			case TFun(args, r):
 				pin = HostMacro.pinOf(r);
@@ -199,7 +211,8 @@ class MarkupMacro {
 						for (f in a.get().fields) {
 							if (f.name == "children") {
 								children = HostMacro.viewOf(f.type);
-								childFunction = isFunctionType(f.type);
+								childAccessor = isEither(f.type) && isFunctionType(f.type);
+								childFunction = !childAccessor && isFunctionType(f.type);
 							}
 							if (isRead(f.type)) reads.push(f.name);
 						}
@@ -207,14 +220,25 @@ class MarkupMacro {
 				}
 			case _:
 		}
-		return {name: name, field: fieldName, limits: l, pin: pin, ret: ret, children: children, reads: reads, childFunction: childFunction};
+		return {name: name, field: fieldName, limits: l, pin: pin, ret: ret, children: children, reads: reads, childFunction: childFunction,
+			childAccessor: childAccessor};
 	}
 
-	// (a function's type, through Null and typedefs)
+	// (a function's type, through Null and typedefs; an EitherType with a
+	// function of one (Show's children, content or its accessor's function))
 	static function isFunctionType(t:Type):Bool
 		return switch Context.follow(t) {
 			case TFun(_, _): true;
 			case TAbstract(_.get() => {pack: [], name: "Null"}, [p]): isFunctionType(p);
+			case TAbstract(_.get() => {pack: ["haxe", "extern"], name: "EitherType"}, [a, b]): isFunctionType(a) || isFunctionType(b);
+			case _: false;
+		}
+
+	// (an EitherType of content and a function: its child a function of one, else content)
+	static function isEither(t:Type):Bool
+		return switch Context.follow(t) {
+			case TAbstract(_.get() => {pack: [], name: "Null"}, [p]): isEither(p);
+			case TAbstract(_.get() => {pack: ["haxe", "extern"], name: "EitherType"}, _): true;
 			case _: false;
 		}
 
@@ -281,11 +305,21 @@ class MarkupMacro {
 				case ECall({expr: EField({expr: EConst(CIdent("__NEUTRAL__"))}, _)}, _) if (!neutral && !native && late):
 					macro @:pos(e.pos) (throw $v{"helder.view: " + path + " realises no neutral elements"} : Dynamic);
 				case ECall({expr: EField({expr: EConst(CIdent("__NEUTRAL__"))}, _)}, _) if (!neutral && !native):
-					Context.error("markup: " + path + " realises no neutral elements (view, text, view:button...: neutralElement and the rest, or neutralNative)", e.pos);
+					Context.error("markup: " + path + " realises no neutral elements (view, text, button...: neutralElement and the rest, or neutralNative)", e.pos);
 				case ECall({expr: EField({expr: EConst(CIdent("__NEUTRAL__"))}, f)}, args):
 					var a = [for (x in args) sub(x)];
 					switch [f, neutral] {
 						case ["element", true]: macro @:pos(e.pos) $p{host}.neutralElement(${a[0]});
+						// (one the renderer makes with a function of its own, Renders' element_<tag>: <video>, helder.media's)
+						case ["element", false] if (a[0].expr.match(EConst(CString(_, _))) && i.creators.indexOf(switch a[0].expr {
+								case EConst(CString(t, _)): t;
+								case _: "";
+							}) >= 0):
+							var f = "element_" + switch a[0].expr {
+								case EConst(CString(t, _)): t;
+								case _: "";
+							};
+							macro @:pos(e.pos) $p{host}.$f();
 						case ["element", false]: macro @:pos(e.pos) $p{host}.createElement(${a[0]});
 						case ["property", true]: macro @:pos(e.pos) $p{host}.neutralProperty(${a[0]}, ${a[1]}, ${a[2]}, ${a[3]});
 						case ["property", false]: macro @:pos(e.pos) $p{host}.setProperty(${a[0]}, ${a[2]}, ${a[3]});
@@ -407,6 +441,28 @@ class HaxeTarget implements Target<Expr> {
 
 	public function error(message:String, where:Null<Where>):Dynamic
 		return Context.error(message, at(where));
+
+	public function warning(message:String, where:Where)
+		Context.warning(message, at(where));
+
+	public function checked():Bool
+		return true;
+
+	public function singleSource():Bool
+		return MarkupMacro.neutralMethod();
+
+	// (a function of the node: an untyped parameter typed as it, another checked)
+	// (each node's type looked up once a build)
+	static final nodes = new Map<String, ComplexType>();
+
+	public function ref(e:Expr, node:String):Expr {
+		var ct = nodes.get(node);
+		if (ct == null) nodes.set(node, ct = haxe.macro.TypeTools.toComplexType(Context.getType(node)));
+		return switch e.expr {
+			case EConst(CIdent("null")): e;
+			case _: macro @:pos(e.pos) ($e : $ct -> Void);
+		}
+	}
 
 	public function elements(renderer:String):Null<Array<String>>
 		return HostMacro.info(renderer).elements;
@@ -547,8 +603,8 @@ class HaxeTarget implements Target<Expr> {
 	// function of another type an error at the attribute (its name to its
 	// value's end). A renderer that declares none (and an agnostic literal's
 	// own elements): a function of one argument or none, its event unknown
-	public function handler(e:Expr, name:String, renderer:Null<String>, neutral:Bool, where:Where):Expr {
-		var set = MarkupMacro.events(renderer, neutral);
+	public function handler(e:Expr, name:String, renderer:Null<String>, tag:Null<String>, where:Where):Expr {
+		var set = MarkupMacro.events(renderer, tag);
 		var event:Null<Type> = null;
 		if (set != null) {
 			event = set.events.get(StringTools.startsWith(name, "on:") ? "on" : name);
@@ -612,6 +668,13 @@ class HaxeTarget implements Target<Expr> {
 			case _: false;
 		}
 
+	public function arity(e:Expr):Int
+		return switch e.expr {
+			case EFunction(_, f): f.args.length;
+			case EParenthesis(x) | EMeta(_, x) | ECheckType(x, _): arity(x);
+			case _: -1;
+		}
+
 	public function devKeys():Bool
 		return Context.defined("hxmc.dev");
 
@@ -636,7 +699,8 @@ class HaxeTarget implements Target<Expr> {
 			if (c != null && c.pin != null && c.pin != renderer)
 				Context.error("helder.view: <" + name + "> is " + c.pin + "'s markup (it returns " + c.ret + "), not " + renderer + "'s", p);
 		}
-		return {callee: callee, children: c != null ? c.children : null, reads: c != null ? c.reads : null, childFunction: c != null && c.childFunction};
+		return {callee: callee, children: c != null ? c.children : null, reads: c != null ? c.reads : null, childFunction: c != null && c.childFunction,
+			childAccessor: c != null && c.childAccessor};
 	}
 
 	public function ident(name:String):Expr

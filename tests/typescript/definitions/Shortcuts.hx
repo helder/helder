@@ -31,7 +31,7 @@ class Shortcuts implements helder.view.Markup {
 		keymap.setUser('[{"context": "Viewer", "bindings": {"2": ["viewer::ZoomTo", 200], "m": ["viewer::Move", {"x": 3, "y": 4}],
 			"o": ["viewer::Open", ["a.png", ["x", "y"]]], "1": null}}]');
 		ui.keymap = keymap;
-		helder.view.Render.render(<view key-context="Viewer" actions={[Actions.handle(ViewerAction, a -> {
+		helder.view.Render.render(<view keyContext="Viewer" actions={[Actions.handle(ViewerAction, a -> {
 			log.push(show(a));
 			if (a.match(ZoomTo(_))) zoomed = !zoomed;
 			!a.match(Open(_, _));

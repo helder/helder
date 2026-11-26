@@ -31,8 +31,8 @@ function tests() {
 private class Fixture implements helder.view.Markup {
 	public static function bubble(align:String)
 		return <view width={300}>
-			<view tag="box" align-self={align} max-width={100} padding="8 10">
-				<text tag="text" font-size={10}>{"aaaa bbbb cccc dddd eeee ffff gggg"}</text>
+			<view tag="box" alignSelf={align} maxWidth={100} padding="8 10">
+				<text tag="text" fontSize={10}>{"aaaa bbbb cccc dddd eeee ffff gggg"}</text>
 			</view>
 		</view>;
 }

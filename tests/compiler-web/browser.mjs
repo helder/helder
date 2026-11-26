@@ -97,8 +97,8 @@ try {
 	const read = (ex) => Object.fromEntries(readdirSync(path.join(repo, 'examples', ex)).filter((f) => statSync(path.join(repo, 'examples', ex, f)).isFile())
 		.map((f) => [`/work/${ex}/${f}`, readFileSync(path.join(repo, 'examples', ex, f), 'utf8')]));
 	const examples = [
-		{ ex: 'todo', file: '/work/todo/Todo.hx', title: '<text font-size={28} font-weight={700} color="#3b82f6">todos</text>' },
-		{ ex: 'ts-todo', file: '/work/ts-todo/app.tsx', title: '<text font-size={28} font-weight={700} color="#3b82f6">todos</text>' },
+		{ ex: 'todo', file: '/work/todo/Todo.hx', title: '<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>' },
+		{ ex: 'ts-todo', file: '/work/ts-todo/app.tsx', title: '<text fontSize={28} fontWeight={700} color="#3b82f6">todos</text>' },
 	];
 	numbers.examples = {};
 	for (const { ex, file, title } of examples) {

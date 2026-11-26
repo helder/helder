@@ -144,19 +144,19 @@ private class Fixture implements helder.view.Markup {
 
 	public static function leading()
 		return <view>
-			<text tag="px" line-height="22px">a</text>
-			<text tag="times" line-height={1.5}>b</text>
+			<text tag="px" lineHeight="22px">a</text>
+			<text tag="times" lineHeight={1.5}>b</text>
 		</view>;
 
 	public static function dialog(open:Signal<Bool>)
 		return <view>
-			{open() ? <view tag="dialog"><view tag="cancel" focusable/><view tag="ok" focusable autofocus/></view> : null}
+			{open() ? <view tag="dialog"><view tag="cancel" focusable/><view tag="ok" focusable autoFocus/></view> : null}
 		</view>;
 
 	public static function overlay()
 		return <view width={200} height={200}>
 			<view tag="button" position="absolute" left={0} top={0} width={40} height={40}/>
-			<view position="absolute" left={0} top={0} width={200} height={200} pointer-events="none">
+			<view position="absolute" left={0} top={0} width={200} height={200} pointerEvents="none">
 				<view tag="chip" position="absolute" left={0} top={0} width={40} height={40} transform="translate(140px, 140px)"/>
 			</view>
 		</view>;

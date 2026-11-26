@@ -46,15 +46,15 @@ class Planets implements Markup {
 			false;
 		});
 		UiWindow.run(<Surface title="Planets" width={640} height={400}>
-			<view direction="row" grow={1}>
-				<Scene world={world} camera={camera} grow={1}>
+			<view flexDirection="row" flexGrow={1}>
+				<Scene world={world} camera={camera} flexGrow={1}>
 					<mesh shape="sphere" size={1.2} color={new Vec4(1, 0.8, 0.3, 1)} onClick={_ -> picked("the Sun")}/>
 					<light kind="point" intensity={10.0} range={30.0}/>
 					{[for (p in planets) <Planet name={p.name} r={p.r} size={p.size} speed={p.speed} color={p.color} picked={picked}/>]}
 				</Scene>
-				<view width={160} padding={16} row-gap={8} background="#18181b" color="#fafafa">
-					<text font-size={16}>Planets</text>
-					<text font-size={13}>Picked: {picked}</text>
+				<view width={160} padding={16} rowGap={8} background="#18181b" color="#fafafa">
+					<text fontSize={16}>Planets</text>
+					<text fontSize={13}>Picked: {picked}</text>
 				</view>
 			</view>
 		</Surface>);
@@ -72,7 +72,7 @@ class Planets implements Markup {
 				<mesh shape="sphere" size={props.size} color={props.color} onClick={_ -> props.picked(props.name)}/>
 				<Show when={props.picked() == props.name}>
 					<Ui position={new Vec3(0, props.size, 0)}>
-						<text font-size={12} color="#fafafa" padding="2 6" radius={4} background="#000000a0">{props.name}</text>
+						<text fontSize={12} color="#fafafa" padding="2 6" borderRadius={4} background="#000000a0">{props.name}</text>
 					</Ui>
 				</Show>
 			</node>

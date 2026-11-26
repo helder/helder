@@ -116,7 +116,7 @@ class Menus {
 		};
 		n.onPointerUp = e -> if (e.pointerType == helder.os.PointerType.Mouse && drawn != null && drawn.isOpen) drawn.release(e.x, e.y);
 		// (a mouse's click: its press opened it already)
-		n.onActivate = e -> if (e == null || e.type != helder.ui.EventType.Click || e.pointerType != helder.os.PointerType.Mouse) open();
+		n.onPress = e -> if (e == null || e.type != helder.ui.EventType.Click || e.pointerType != helder.os.PointerType.Mouse) open();
 	}
 }
 
@@ -235,7 +235,7 @@ class MenuBar {
 		titles.resize(0);
 		var dark = ui.dark;
 		node.style.set({
-			direction: Row,
+			flexDirection: Row,
 			alignItems: Center,
 			height: 28,
 			padding: [0.0, 4, 0, 4],
@@ -245,11 +245,11 @@ class MenuBar {
 			fontSize: 13,
 			borders: [0.0, 0, 1, 0],
 			borderColor: dark ? 0xFF2E2E33 : 0xFFE4E4E7,
-			shrink: 0
+			flexShrink: 0
 		});
 		for (i in 0...menus.length) {
 			var t = new Node("menubar-item");
-			t.style.set({padding: [3.0, 9, 3, 9], radius: 4, cursor: helder.ui.Cursor.Default});
+			t.style.set({padding: [3.0, 9, 3, 9], borderRadius: 4, cursor: helder.ui.Cursor.Default});
 			t.semantics = {role: helder.ui.access.Role.MenuItem, label: menus[i].label, expanded: false};
 			t.append(new TextNode(menus[i].label, "menubar-label"));
 			var index = i;
@@ -326,7 +326,7 @@ class MenuBarMount implements helder.view.Flow.Mountable<Node> {
 
 	public function mount(parent:Node, before:Null<Node>):Array<Node> {
 		var box = new Node("menubar-box");
-		box.style.shrink = 0;
+		box.style.flexShrink = 0;
 		var i = before == null ? parent.children.length : parent.indexOf(before);
 		parent.insert(box, i < 0 ? parent.children.length : i);
 		var bar:Null<MenuBar> = null;

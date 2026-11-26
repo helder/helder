@@ -101,6 +101,20 @@ class Interpreter implements Target<Step> {
 	public function error(message:String, where:Null<Where>):Dynamic
 		throw message;
 
+	// (a design's React names: set as HTML's, said where they are)
+	public function warning(message:String, where:Where)
+		errors.push({at: base + where.at, message: message});
+
+	// (its names checked as they are set: NodeRenderer's, each error marked on its node)
+	public function checked():Bool
+		return false;
+
+	public function singleSource():Bool
+		return false;
+
+	public function ref(e:Step, node:String):Step
+		return e;
+
 	public function elements(renderer:String):Null<Array<String>>
 		return null;
 
@@ -181,7 +195,10 @@ class Interpreter implements Target<Step> {
 	public function isFunction(e:Step):Bool
 		return false;
 
-	public function handler(e:Step, name:String, renderer:Null<String>, neutral:Bool, where:Where):Step
+	public function arity(e:Step):Int
+		return -1;
+
+	public function handler(e:Step, name:String, renderer:Null<String>, tag:Null<String>, where:Where):Step
 		return e;
 
 	public function devKeys():Bool
@@ -305,11 +322,16 @@ class Interpreter implements Target<Step> {
 			case _: _ -> throw 'markup: $name has no interpreted step';
 		}
 
+	// (a name none is: its node outlined, the one meant said where it is, NodeRenderer's)
 	function element(tag:String):Node
-		return try NodeRenderer.createElement(tag) catch (_:Dynamic) {
+		return try {
+			var bad = helder.view.Vocabulary.tag(tag);
+			if (bad != null) throw bad;
+			NodeRenderer.createElement(tag);
+		} catch (e:Dynamic) {
 			var n = new Node(tag);
 			outline(n);
-			unknown.set(n, '<$tag> is no element');
+			unknown.set(n, Std.string(e));
 			n;
 		};
 

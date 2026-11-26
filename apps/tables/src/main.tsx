@@ -79,7 +79,7 @@ let win: UiWindow | null = null;
 UiWindow.run(
 	<Surface title="Tables" width={1180} height={740} titlebar="inset" theme={Theme.sheet} background={Theme.c("canvas")} dark={app.dark()}
 		ref={(w: UiWindow) => (win = w)} onClose={() => app.quit(() => win?.close())}>
-		<view grow={1} actions={handle(Do, a => {
+		<view flexGrow={1} actions={handle(Do, a => {
 			// (the changes' review open: only saving them, or the appearance)
 			if ((app.reviewing.peek() || app.asking.peek() !== null) && a.type !== "save" && a.type !== "appearance") return true;
 			switch (a.type) {

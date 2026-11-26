@@ -42,15 +42,15 @@ export function serve(): State {
 export function Court(props: { state: Read<State> }) {
 	return <view width={W} height={H} background="#0e1424" overflow="hidden">
 		<view position="absolute" left={W / 2 - 1} top={0} width={2} height={H} background="#26304a"/>
-		<view position="absolute" left={16} top={props.state().left} width={8} height={PADDLE} radius={4} background="#9fd3ff"/>
-		<view position="absolute" left={W - 24} top={props.state().right} width={8} height={PADDLE} radius={4} background="#f2c65a"/>
-		<view position="absolute" left={props.state().ball.x} top={props.state().ball.y} width={BALL} height={BALL} radius={BALL / 2} background="#e8e2d0"/>
-		<view position="absolute" left={0} right={0} top={12} align-items="center">
-			<text font-size={24} font-weight={700} color="#e8e2d0">{`${props.state().score[0]}   ${props.state().score[1]}`}</text>
+		<view position="absolute" left={16} top={props.state().left} width={8} height={PADDLE} borderRadius={4} background="#9fd3ff"/>
+		<view position="absolute" left={W - 24} top={props.state().right} width={8} height={PADDLE} borderRadius={4} background="#f2c65a"/>
+		<view position="absolute" left={props.state().ball.x} top={props.state().ball.y} width={BALL} height={BALL} borderRadius={BALL / 2} background="#e8e2d0"/>
+		<view position="absolute" left={0} right={0} top={12} alignItems="center">
+			<text fontSize={24} fontWeight={700} color="#e8e2d0">{`${props.state().score[0]}   ${props.state().score[1]}`}</text>
 		</view>
 		<Show when={() => props.state().over}>
-			<view position="absolute" left={0} right={0} top={H / 2 - 20} align-items="center">
-				<text font-size={28} font-weight={700} color="#f2c65a">Game over</text>
+			<view position="absolute" left={0} right={0} top={H / 2 - 20} alignItems="center">
+				<text fontSize={28} fontWeight={700} color="#f2c65a">Game over</text>
 			</view>
 		</Show>
 	</view>;
@@ -114,7 +114,7 @@ export function Game() {
 		if (e.key === Key.DOWN || e.key === "s".charCodeAt(0)) down = on;
 		if (on && e.key === Key.SPACE && state().over) state(serve());
 	}
-	return <view focusable autofocus onKeyDown={(e: Event) => key(e, true)} onKeyUp={(e: Event) => key(e, false)}>
+	return <view focusable autoFocus onKeyDown={(e: Event) => key(e, true)} onKeyUp={(e: Event) => key(e, false)}>
 		<Court state={state}/>
 	</view>;
 }

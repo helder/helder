@@ -266,7 +266,7 @@ class Tsx {
 			if (pin == Plan.ROOT) fail("helder.view: <" + name + "> is a root: UiWindow.run's or Render.open's content, not " + renderer + "'s markup");
 			if (pin != null && pin != renderer) fail("helder.view: <" + name + "> is " + pin + "'s markup, not " + renderer + "'s");
 		}
-		var reads = [], children:Null<String> = null, childFunction = false;
+		var reads = [], children:Null<String> = null, childFunction = false, childAccessor = false;
 		for (p in props) {
 			if (p.name == "children") {
 				switch HTypes.bare(p.t) {
@@ -274,10 +274,20 @@ class Tsx {
 					case HFn(_, _): childFunction = true;
 					case _:
 				}
+				// (content or a function of one: Show's)
+				var t = p.t;
+				while (t.match(HNull(_))) t = switch t {
+					case HNull(x): x;
+					case _: t;
+				}
+				switch t {
+					case HAbstract("haxe.extern.EitherType", ps, _, _) if (Lambda.exists(ps, t -> HTypes.bare(t).match(HFn(_, _)))): childAccessor = true;
+					case _:
+				}
 			}
 			if (HTypes.bare(p.t).match(HRead(_))) reads.push(p.name);
 		}
-		return {callee: MHaxeComponent(c, m), children: children, reads: reads, childFunction: childFunction};
+		return {callee: MHaxeComponent(c, m), children: children, reads: reads, childFunction: childFunction, childAccessor: childAccessor};
 	}
 
 	function staticOf(path:String, field:String, at:Node):{c:MClass, m:MMember} {
@@ -723,7 +733,7 @@ class Tsx {
 				return bridge.call(runtime(r, name), args);
 			case Neutral:
 				if (!r.neutral && !r.native) {
-					var m = "markup: " + r.path + " realises no neutral elements (view, text, view:button...)";
+					var m = "markup: " + r.path + " realises no neutral elements (view, text, button...)";
 					if (ctx.late) return bridge.call(bridge.interop("fail"), [EStr(m)]);
 					throw "TSHX001: " + m;
 				}
@@ -917,6 +927,20 @@ class TsTarget implements Target<TsMarkup> {
 
 	public function error(message:String, where:Null<Where>):Dynamic return @:privateAccess tsx.f.fail(nodeAt(where), message);
 
+	// (as an error is said, on stderr: the program still compiled)
+	public function warning(message:String, where:Where) {
+		var n = nodeAt(where);
+		Sys.stderr().writeString(helder.typescript.check.Project.relative(n.file.path) + ":" + n.file.line(n.file.skipTrivia(n.pos)) + ": warning: " + message + "\n");
+	}
+
+	public function checked():Bool return true;
+
+	// (TypeScript has no @:neutral)
+	public function singleSource():Bool return false;
+
+	// (tsgo checked it against the declarations' JSX types: a function of the element's node)
+	public function ref(e:TsMarkup, node:String):TsMarkup return e;
+
 	public function elements(renderer:String):Null<Array<String>> {
 		var r = @:privateAccess tsx.manifest.renderers.get(renderer);
 		return r == null ? null : r.elements;
@@ -990,8 +1014,16 @@ class TsTarget implements Target<TsMarkup> {
 		case _: false;
 	}
 
+	public function arity(e:TsMarkup):Int return switch e {
+		case MCode(n, _) if (isFunction(e)):
+			var s = n;
+			while (s.kind == KindParenthesizedExpression) s = s.expression();
+			(s.parameters() ?? []).length;
+		case _: -1;
+	}
+
 	// (tsgo checked it against the declarations' JSX types: a function of the event or of none)
-	public function handler(e:TsMarkup, name:String, renderer:Null<String>, neutral:Bool, where:Where):TsMarkup return MHandler(e);
+	public function handler(e:TsMarkup, name:String, renderer:Null<String>, tag:Null<String>, where:Where):TsMarkup return MHandler(e);
 
 	public function devKeys():Bool return tsx.dev;
 

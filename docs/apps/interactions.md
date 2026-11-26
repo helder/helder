@@ -8,19 +8,19 @@ A modal keeps focus inside, and Escape or a press outside calls
 <Example id="mail"/>
 
 This dialog uses a `Button` component that takes a label, a tag and a
-click handler. One signal opens and closes the popup.
+press handler. One signal opens and closes the popup.
 
 ```haxe
 static function Confirm(props:{onYes:Void->Void}):View {
   var open = signal(false);
   return <view>
-    <Button tag='delete' label='Delete' onClick={() -> open(true)}/>
+    <Button tag='delete' label='Delete' onPress={() -> open(true)}/>
     <Popover open={open} modal placement='center' onDismiss={() -> open(false)}>
-      <view role='dialog' label='Delete this file?' padding={16} row-gap={12} radius={8} background='#ffffff'>
-        <text font-weight={700}>Delete this file?</text>
-        <view direction='row' column-gap={8} justify='end'>
-          <Button tag='no' label='Cancel' onClick={() -> open(false)}/>
-          <Button tag='yes' label='Delete' onClick={() -> {
+      <view role='dialog' aria-label='Delete this file?' padding={16} rowGap={12} borderRadius={8} background='#ffffff'>
+        <text fontWeight={700}>Delete this file?</text>
+        <view flexDirection='row' columnGap={8} justifyContent='end'>
+          <Button tag='no' label='Cancel' onPress={() -> open(false)}/>
+          <Button tag='yes' label='Delete' onPress={() -> {
             open(false);
             props.onYes();
           }}/>
@@ -32,19 +32,19 @@ static function Confirm(props:{onYes:Void->Void}):View {
 ```
 
 A keymap binds keys to named actions. Handlers dispatch from the focused
-view up through its parents. Put a `key-context` on a view to give its
+view up through its parents. Put a `keyContext` on a view to give its
 shortcuts a scope.
 
 ```haxe
 static function Editor(props:{text:Signal<String>, onSave:Void->Void}):View
-  return <view row-gap={8} key-context='Editor' actions={[helder.ui.actions.Actions.handle(EditorAction, a -> {
+  return <view rowGap={8} keyContext='Editor' actions={[helder.ui.actions.Actions.handle(EditorAction, a -> {
     switch a {
       case Save: props.onSave();
       case Clear: props.text('');
     }
     true;
   })]}>
-    <field:textarea label='Text' value={props.text} onInput={e -> props.text(e.text)}/>
+    <textarea aria-label='Text' value={props.text} onInput={e -> props.text(e.text)}/>
   </view>;
 ```
 

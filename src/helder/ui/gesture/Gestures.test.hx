@@ -28,11 +28,11 @@ function tests() {
 			ui.root.append(list);
 			card = new Node("card");
 			card.style.height = 100;
-			card.style.shrink = 0;
+			card.style.flexShrink = 0;
 			list.append(card);
 			var rest = new Node("rest");
 			rest.style.height = 600;
-			rest.style.shrink = 0;
+			rest.style.flexShrink = 0;
 			list.append(rest);
 			card.onClick = e -> log.push("click");
 			ui.update();
@@ -178,7 +178,7 @@ function tests() {
 			NodeRenderer.listen(card, "onTap", (g:Gesture) -> seen.push("tap"));
 			NodeRenderer.listen(card, "onPan", (g:Gesture) -> seen.push("pan"));
 			NodeRenderer.listen(card, "onPinch", (g:Gesture) -> {});
-			NodeRenderer.setAttribute(card, "pan-axis", "x");
+			NodeRenderer.setAttribute(card, "panAxis", "x");
 			equals(card.gestures.length, 3);
 			assert(card.gesture(Pan).axis == X && card.gesture(Scale).minPointers == 2);
 			ui.pointerDown(40, 30, 1, 1, Touch);

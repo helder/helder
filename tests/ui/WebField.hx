@@ -19,16 +19,16 @@ class WebField implements Markup {
 	static function main() {
 		var w = new UiWindow("Fields", 420, 320);
 		var name = signal(""), notes = signal(""), submitted = signal(""), fruit = signal("Apple"), drawn = signal("");
-		Render.render(<view grow={1} padding={20} row-gap={12} align-items="stretch" font-family="Inter" background="#ffffff">
-			<view direction="row" column-gap={12}>
+		Render.render(<view flexGrow={1} padding={20} rowGap={12} alignItems="stretch" fontFamily="Inter" background="#ffffff">
+			<view flexDirection="row" columnGap={12}>
 				<Select tag="fruit" value={fruit} options={["Apple", "Pear", "Plum", "Fig"]} label="Fruit"/>
-				<view host="drawn" grow={1}><field tag="drawn" value={drawn} placeholder="Drawn" label="Drawn" onInput={e -> drawn(e.text)} padding="6 10"
-					border-width={1}/></view>
+				<view host="drawn" flexGrow={1}><field tag="drawn" value={drawn} placeholder="Drawn" aria-label="Drawn" onInput={e -> drawn(e.text)} padding="6 10"
+					borderWidth={1}/></view>
 			</view>
-			<field tag="name" value={name} placeholder="Your name" label="Name" keyboard="email" enterkey="go" autocapitalize="none" onInput={e -> name(e.text)}
-				onKeyDown={e -> if (e.key == Key.ENTER) submitted(name.peek())} padding="6 10" border-width={1}/>
-			<field:textarea tag="notes" value={notes} rows={3} placeholder="Notes" label="Notes" onInput={e -> notes(e.text)} padding="6 10" border-width={1}/>
-			<view:button tag="reset" role="button" focusable align-self="start" padding="6 12" border-width={1} onPress={_ -> name("Reset")}>Reset</view:button>
+			<field tag="name" value={name} placeholder="Your name" aria-label="Name" keyboard="email" enterKeyHint="go" autoCapitalize="none" onInput={e -> name(e.text)}
+				onKeyDown={e -> if (e.key == Key.ENTER) submitted(name.peek())} padding="6 10" borderWidth={1}/>
+			<textarea tag="notes" value={notes} rows={3} placeholder="Notes" aria-label="Notes" onInput={e -> notes(e.text)} padding="6 10" borderWidth={1}/>
+			<button tag="reset" alignSelf="start" padding="6 12" borderWidth={1} onPress={_ -> name("Reset")}>Reset</button>
 		</view>, w.root);
 		var last = "";
 		w.onFrame = () -> {
@@ -51,20 +51,20 @@ class WebField implements Markup {
 	// (a select: its value on a button, its options in a popup under it while open)
 	static function Select(props:{value:Signal<String>, options:Array<String>, tag:String, label:String}):View {
 		var open = signal(false);
-		return <view:button tag={props.tag} role="combobox" label={props.label} expanded={open} focusable width={160} padding="6 10" border-width={1}
+		return <button tag={props.tag} role="combobox" aria-label={props.label} aria-expanded={open} width={160} padding="6 10" borderWidth={1}
 			onPress={() -> open(o -> !o)}>
 			{props.value}
 			<Popover open={open} placement="below" onDismiss={() -> open(false)}>
-				<view tag={props.tag + "-list"} role="listbox" width={160} padding={4} border-width={1} background="#ffffff">
+				<view tag={props.tag + "-list"} role="listbox" width={160} padding={4} borderWidth={1} background="#ffffff">
 					<For each={props.options}>{option -> {
 						var o = option();
-						<view:button role="option" focusable padding="4 8" onPress={() -> {
+						<button role="option" padding="4 8" onPress={() -> {
 							props.value(o);
 							open(false);
-						}}>{o}</view:button>;
+						}}>{o}</button>;
 					}}</For>
 				</view>
 			</Popover>
-		</view:button>;
+		</button>;
 	}
 }

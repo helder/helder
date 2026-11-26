@@ -152,13 +152,13 @@ class LayoutConformanceCheck {
 		vs.position = Absolute;
 		vs.left = 0;
 		vs.top = 0;
-		vs.direction = Row;
+		vs.flexDirection = Row;
 		vs.alignItems = Start;
 		vs.width = Dim.parse(f.viewport.width);
 		vs.height = Dim.parse(f.viewport.height);
 		ui.root.append(viewport);
 		var rtl = variant.endsWith("rtl");
-		vs.dir = rtl ? Rtl : Ltr;
+		vs.direction = rtl ? Rtl : Ltr;
 		var nodes = [];
 		var root = build(f.tree, rtl, notes, nodes);
 		// (the root: laid out in the available space, not by its position, as Taffy's)
@@ -191,9 +191,9 @@ class LayoutConformanceCheck {
 		var n:Node = t.text != null ? new AhemNode(t.text) : new Node();
 		nodes.push(n);
 		var s = n.style;
-		s.dir = rtl ? Rtl : Ltr;
+		s.direction = rtl ? Rtl : Ltr;
 		// (CSS's initial values where helder.ui's differ)
-		s.direction = Row;
+		s.flexDirection = Row;
 		s.alignItems = Stretch;
 		var style:DynamicAccess<String> = t.style;
 		var rowStart = "auto", rowEnd = "auto", colStart = "auto", colEnd = "auto";
@@ -261,7 +261,7 @@ class LayoutConformanceCheck {
 							|| [for (c in ch) if ((c.style : DynamicAccess<String>).get("position") == "absolute") c].length > 0)
 							note("position: static");
 					}
-				case "flex-direction": s.direction = switch v {
+				case "flex-direction": s.flexDirection = switch v {
 						case "column": Column;
 						case "row-reverse": RowReverse;
 						case "column-reverse": ColumnReverse;
@@ -269,10 +269,10 @@ class LayoutConformanceCheck {
 					}
 				case "flex-wrap":
 					if (v != "wrap" && v != "nowrap") note('flex-wrap: $v');
-					s.wrap = v != "nowrap";
-				case "flex-grow": s.grow = Std.parseFloat(v);
-				case "flex-shrink": s.shrink = Std.parseFloat(v);
-				case "flex-basis": s.basis = dim(k, v);
+					s.flexWrap = v != "nowrap";
+				case "flex-grow": s.flexGrow = Std.parseFloat(v);
+				case "flex-shrink": s.flexShrink = Std.parseFloat(v);
+				case "flex-basis": s.flexBasis = dim(k, v);
 				case "width": s.width = dim(k, v);
 				case "height": s.height = dim(k, v);
 				case "min-width": s.minWidth = dim(k, v);
@@ -309,7 +309,7 @@ class LayoutConformanceCheck {
 						case "space-evenly": SpaceEvenly;
 						case _: note('$k: $v'); Normal;
 					}
-				case "justify-content": s.justify = switch unsafe(k, v) {
+				case "justify-content": s.justifyContent = switch unsafe(k, v) {
 						case "start" | "flex-start": Start;
 						case "end" | "flex-end": End;
 						case "center": Center;
@@ -322,7 +322,7 @@ class LayoutConformanceCheck {
 				case "overflow-x": s.overflowX = overflow(v);
 				case "overflow-y": s.overflowY = overflow(v);
 				case "scrollbar-width": note("scrollbar-width: a gutter");
-				case "direction": s.dir = v == "rtl" ? Rtl : Ltr;
+				case "direction": s.direction = v == "rtl" ? Rtl : Ltr;
 				case "box-sizing": if (v != "border-box") note('box-sizing: $v');
 				// (Taffy's, with flex-wrap: balance)
 				case "flex-line-count":
@@ -345,9 +345,9 @@ class LayoutConformanceCheck {
 				case _: note('$k: $v');
 			}
 		// (a block: helder.ui's column, not a flex row)
-		if (s.display == Block && !style.exists("flex-direction")) s.direction = Column;
+		if (s.display == Block && !style.exists("flex-direction")) s.flexDirection = Column;
 		// (start and end, not flex-start and flex-end: the same but in a reverse flex direction)
-		if (s.display != Grid && (s.direction == RowReverse || s.direction == ColumnReverse))
+		if (s.display != Grid && (s.flexDirection == RowReverse || s.flexDirection == ColumnReverse))
 			for (k in ["justify-content", "align-content"])
 				if (style.exists(k) && ~/(^| )(start|end)$/.match(style[k])) note('$k: ${style[k]} in a reverse direction');
 		if (style.exists("border-top") || style.exists("border-right") || style.exists("border-bottom") || style.exists("border-left")) {

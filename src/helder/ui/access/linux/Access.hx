@@ -271,8 +271,10 @@ class Access {
 			case SpinButton: 52;
 			case MenuBar: 34;
 			case Toolbar: 63;
-			// (ATSPI_ROLE_LANDMARK)
-			case Navigation: 110;
+			// (ATSPI_ROLE_LANDMARK, FORM, ARTICLE)
+			case Navigation | Main | Banner | ContentInfo | Complementary | Region: 110;
+			case Form: 87;
+			case Article: 109;
 			case Group | TabPanel: 39;
 		}
 
@@ -281,7 +283,7 @@ class Access {
 		35 => "menu item", 37 => "page tab", 38 => "page tab list", 39 => "panel", 40 => "password text", 42 => "progress bar", 43 => "push button", 44 => "radio button",
 		49 => "scroll pane", 51 => "slider", 62 => "toggle button", 64 => "tool tip", 75 => "application", 79 => "entry", 83 => "heading", 88 => "link",
 		98 => "list box", 99 => "grouping", 55 => "table", 56 => "table cell", 57 => "table column header", 90 => "table row", 65 => "tree",
-		91 => "tree item", 50 => "separator", 52 => "spin button", 63 => "tool bar", 110 => "landmark", 34 => "menu bar"
+		91 => "tree item", 50 => "separator", 52 => "spin button", 63 => "tool bar", 110 => "landmark", 34 => "menu bar", 87 => "form", 109 => "article"
 	];
 
 	function roleOf(id:Int):Int {
@@ -841,7 +843,7 @@ class Access {
 	// an item's place in its set, a live region's politeness (as Chromium gives them)
 	function attributes(n:AccessNode):Array<Dynamic> {
 		var pairs:Array<Dynamic> = [["toolkit", "helder"]];
-		if (n.role == Navigation) pairs.push(["xml-roles", "navigation"]);
+		if (n.role.landmark() || n.role == Article) pairs.push(["xml-roles", n.role.aria()]);
 		if (n.current) pairs.push(["current", "page"]);
 		if (n.level != null) pairs.push(["level", Std.string(n.level)]);
 		if (n.setSize > 0) {

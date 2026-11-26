@@ -32,13 +32,13 @@ class BoxCheck {
 		n.style.set({position: Absolute, left: (b.left : Float), top: (b.top : Float), width: (b.width : Float), height: (b.height : Float),
 			background: Color.parse(b.background)});
 		// (one value, or each corner's and each side's)
-		if (Std.isOfType(b.radius, String)) n.style.corners = CornersValue.parse(b.radius) else if (b.radius != null) n.style.radius = b.radius;
+		if (Std.isOfType(b.radius, String)) n.style.corners = CornersValue.parse(b.radius) else if (b.radius != null) n.style.borderRadius = b.radius;
 		if (b.border != null) {
 			if (Std.isOfType(b.border, String)) n.style.borders = [for (p in (b.border : String).split(" ")) Std.parseFloat(p)] else n.style.borderWidth = b.border;
 			n.style.borderColor = Color.parse(b.borderColor);
 		}
 		if (b.overflow == "hidden") n.style.overflow = Hidden;
-		if (b.shadow != null) n.style.shadow = Shadow.parse(b.shadow);
+		if (b.shadow != null) n.style.boxShadow = Shadow.parse(b.shadow);
 		if (b.outline != null) {
 			helder.ui.view.StyleAttrs.apply(n.style, "outline", b.outline);
 			n.style.outlineOffset = b.outlineOffset ?? 0;

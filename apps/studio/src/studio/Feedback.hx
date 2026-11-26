@@ -22,63 +22,64 @@ import studio.Theme.c;
 // input but a pan, a zoom, a frame aimed at or played, and these tabs).
 // Its chip by a frame's caption and a frame not drawn yet (its shimmer) are
 // Board's, from here.
+@:renderer(helder.ui.view.NodeRenderer)
 class Feedback implements Markup {
 	// the layer, in the stage's points (Board's overlay)
 	public static function canvas(studio:Studio):View
-		return <view tag="watch" position="absolute" inset={0} pointer-events="none">
+		return <view tag="watch" position="absolute" inset={0} pointerEvents="none">
 			<For each={studio.marks.reveals()} by={(r:Reveal) -> r.screen}>{(r:Read<Reveal>) -> reveal(studio, r)}</For>
 			<For each={halos(studio)} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
 				<view tag={"halo-" + Shell.slug(p().name)} position="absolute" left={frame(studio, p().screen).x} top={frame(studio, p().screen).y}
-					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} radius={3} opacity={p().working ? 1 : 0} transition="opacity 0.3s"
-					shadow={breath(studio, p().colour)}/>
+					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} borderRadius={3} opacity={p().working ? 1 : 0} transition="opacity 0.3s"
+					boxShadow={breath(studio, p().colour)}/>
 			}</For>
 			<For each={picked(studio)} by={(p:{screen:String, colour:String}) -> p.screen}>{(p:Read<{screen:String, colour:String}>) ->
 				<view tag={"picked-" + Shell.slug(p().screen)} position="absolute" left={frame(studio, p().screen).x} top={frame(studio, p().screen).y}
-					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} radius={3} shadow={Shadow.parse('0 0 0 2px ${p().colour}')}/>
+					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} borderRadius={3} boxShadow={Shadow.parse('0 0 0 2px ${p().colour}')}/>
 			}</For>
 			<For each={studio.marks.touches()} by={(t:Touch) -> t.id}>{(t:Read<Touch>) ->
 				<view tag="touch" position="absolute" left={touchBox(studio, t()).x} top={touchBox(studio, t()).y} width={touchBox(studio, t()).w}
-					height={touchBox(studio, t()).h} radius={2} shadow={flash(studio, t())}/>
+					height={touchBox(studio, t()).h} borderRadius={2} boxShadow={flash(studio, t())}/>
 			}</For>
 			<For each={studio.marks.cursors()} by={(h:Hand) -> h.peer}>{(h:Read<Hand>) ->
-				<view tag={"hand-" + Shell.slug(h().name)} position="absolute" left={sx(studio, h().x)} top={sy(studio, h().y)} align-items="flex-start"
+				<view tag={"hand-" + Shell.slug(h().name)} position="absolute" left={sx(studio, h().x)} top={sy(studio, h().y)} alignItems="flex-start"
 					opacity={h().working ? 1 : 0} transition="opacity 0.3s">
 					<image src={Icons.pointer} width={16} height={16} color={Color.parse(h().colour)}/>
-					<view padding="2 7" radius={5} background={Color.parse(h().colour)} transform="translate(12px, 2px)">
-						<text font-size={Theme.SMALL} font-weight={Theme.MEDIUM} color={c("on-agent")} max-lines={1} text-wrap="nowrap">{h().name}</text>
+					<view padding="2 7" borderRadius={5} background={Color.parse(h().colour)} transform="translate(12px, 2px)">
+						<text fontSize={Theme.SMALL} fontWeight={Theme.MEDIUM} color={c("on-agent")} lineClamp={1} textWrap="nowrap">{h().name}</text>
 					</view>
 				</view>
 			}</For>
 			<For each={edges(studio)} by={(e:Edge) -> e.key}>{(e:Read<Edge>) ->
-				<view:button tag={"edge-" + Shell.slug(e().key)} role="button" label={e().text} pointer-events="auto" cursor="pointer"
-					position="absolute" left={e().angle == 0 ? null : e().x} right={e().angle == 0 ? 8 + studio.insets().right : null} top={e().y} height={26} direction="row" align-items="center" column-gap={6} padding="0 10"
-					radius={13} background={c("skeleton")} border-width={1} border-color={c("hair2")} onPress={() -> studio.flyTo(e().screen)}>
-					<view width={6} height={6} radius={3} background={Color.parse(e().colour)}/>
-					<text font-size={Theme.SMALL} color={c("ink2")} max-lines={1} text-wrap="nowrap">{e().text}</text>
+				<button tag={"edge-" + Shell.slug(e().key)} focusable={false} aria-label={e().text} pointerEvents="auto" cursor="pointer"
+					position="absolute" left={e().angle == 0 ? null : e().x} right={e().angle == 0 ? 8 + studio.insets().right : null} top={e().y} height={26} flexDirection="row" alignItems="center" columnGap={6} padding="0 10"
+					borderRadius={13} background={c("skeleton")} borderWidth={1} borderColor={c("hair2")} onPress={() -> studio.flyTo(e().screen)}>
+					<view width={6} height={6} borderRadius={3} background={Color.parse(e().colour)}/>
+					<text fontSize={Theme.SMALL} color={c("ink2")} lineClamp={1} textWrap="nowrap">{e().text}</text>
 					<image src={Icons.chevronRight} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("ink3")} transform={'rotate(${e().angle}deg)'}/>
-				</view:button>
+				</button>
 			}</For>
 		</view>;
 
 	// a frame's chip by its caption: the agent working on it (its dot breathing, its status), its done note a few seconds after
 	public static function chip(studio:Studio, screen:String):View
 		return <For each={on(studio, screen).slice(0, 1)} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
-			<view tag={"working-" + Shell.slug(p().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
-				shrink={1} min-width={0} background={tint(p().colour, 0.14)}>
-				<view width={6} height={6} radius={3} shrink={0} background={Color.parse(p().colour)} opacity={p().working ? pulse(studio) : 1}/>
-				<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" shrink={1} min-width={0} color={light(p().colour)}>{p().status == "" ? p().name : p().status}</text>
+			<view tag={"working-" + Shell.slug(p().name)} height={20} padding="0 8" borderRadius={10} flexDirection="row" alignItems="center" columnGap={5}
+				flexShrink={1} minWidth={0} background={tint(p().colour, 0.14)}>
+				<view width={6} height={6} borderRadius={3} flexShrink={0} background={Color.parse(p().colour)} opacity={p().working ? pulse(studio) : 1}/>
+				<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0} color={light(p().colour)}>{p().status == "" ? p().name : p().status}</text>
 			</view>
 		}</For>;
 
 	// the header's: a chip each, its status after its name
 	public static function chips(studio:Studio):View
-		return <view tag="agents" direction="row" align-items="center" column-gap={4} shrink={1} min-width={0}>
+		return <view tag="agents" flexDirection="row" alignItems="center" columnGap={4} flexShrink={1} minWidth={0}>
 			<For each={studio.presence.peers()} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
-				<view tag={"agent-" + Shell.slug(p().name)} direction="row" align-items="center" column-gap={5} height={22} padding="0 7" radius={11}
-					background={c("well")} shrink={1} min-width={0} max-width={200} opacity={p().working ? 1 : 0.6}>
-					<view width={6} height={6} radius={3} background={Color.parse(p().colour)} shrink={0}/>
-					<text font-size={Theme.SMALL} max-lines={1} color={c("fg")} shrink={0}>{p().name}</text>
-					<text font-size={Theme.SMALL} max-lines={1} text-overflow="ellipsis" color={c("fg3")} shrink={1} min-width={0}>{p().status}</text>
+				<view tag={"agent-" + Shell.slug(p().name)} flexDirection="row" alignItems="center" columnGap={5} height={22} padding="0 7" borderRadius={11}
+					background={c("well")} flexShrink={1} minWidth={0} maxWidth={200} opacity={p().working ? 1 : 0.6}>
+					<view width={6} height={6} borderRadius={3} background={Color.parse(p().colour)} flexShrink={0}/>
+					<text fontSize={Theme.SMALL} lineClamp={1} color={c("fg")} flexShrink={0}>{p().name}</text>
+					<text fontSize={Theme.SMALL} lineClamp={1} textOverflow="ellipsis" color={c("fg3")} flexShrink={1} minWidth={0}>{p().status}</text>
 				</view>
 			}</For>
 		</view>;
@@ -107,7 +108,7 @@ class Feedback implements Markup {
 			width={frame(studio, r().screen).w} height={frame(studio, r().screen).h} overflow="hidden">
 			<view position="absolute" left={0} right={0} bottom={0} height={frame(studio, r().screen).h * (1 - scan(studio, r()))} background={c("card")}/>
 			<view position="absolute" left={0} right={0} height={2} top={frame(studio, r().screen).h * scan(studio, r()) - 1} background={Color.parse(r().colour)}
-				shadow={Shadow.parse('0 0 12px 2px ${rgba(r().colour, 0.6)}')}/>
+				boxShadow={Shadow.parse('0 0 12px 2px ${rgba(r().colour, 0.6)}')}/>
 		</view>;
 
 	// (where the scan line is, 0 to 1: ease in-out)

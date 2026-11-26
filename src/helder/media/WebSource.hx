@@ -41,7 +41,7 @@ class WebSource implements ByteSource {
 	}
 
 	// a URL, its first request started, at once: opened by the first read
-	// (<Video src="clip.mp4">, in a browser)
+	// (<video src="clip.mp4">, in a browser)
 	public static function of(url:String):WebSource
 		return new WebSource(WebMedia.url(url), url, false);
 

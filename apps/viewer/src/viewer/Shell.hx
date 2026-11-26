@@ -26,6 +26,7 @@ import viewer.ViewerActions;
 // inspector kept between runs (helder.os.Store "helder-viewer"); decodes
 // and listings as helder.jobs' jobs. On a desktop that has one, the
 // sidebar is the system's material (Finder's), the rest opaque.
+@:renderer(helder.ui.view.NodeRenderer)
 class Shell implements Markup {
 	// the toolbar's height, the window's buttons' row (macOS: the sidebar's top)
 	public static inline var BAR = 40;
@@ -47,21 +48,21 @@ class Shell implements Markup {
 		parts: {
 			panel: t -> {background: t.surface},
 			"side-head": t -> {padding: [6, 8, 4, 8], fontSize: 11, fontWeight: 600, color: t.fg3},
-			"side-row": t -> {direction: Row, alignItems: Center, columnGap: 8, height: 28, shrink: 0, padding: [0, 8], radius: 8, color: t.fg2,
+			"side-row": t -> {flexDirection: Row, alignItems: Center, columnGap: 8, height: 28, flexShrink: 0, padding: [0, 8], borderRadius: 8, color: t.fg2,
 				hover: {background: t.hover, color: t.fg}, selected: {background: t.accentSoft, color: t.fg, fontWeight: 500},
 				open: {color: t.fg, fontWeight: 500}},
-			"side-back": t -> {direction: Row, alignItems: Center, columnGap: 2, height: 26, shrink: 1, minWidth: 0, padding: [0, 8, 0, 2], radius: 7,
+			"side-back": t -> {flexDirection: Row, alignItems: Center, columnGap: 2, height: 26, flexShrink: 1, minWidth: 0, padding: [0, 8, 0, 2], borderRadius: 7,
 				color: t.fg3, fontSize: 12, hover: {background: t.hover, color: t.fg}},
-			"title-button": t -> {direction: Row, alignItems: Center, columnGap: 4, height: 30, shrink: 1, minWidth: 0, padding: [0, 6, 0, 8],
-				radius: 8, fontSize: 14, fontWeight: 600, color: t.fg, hover: {background: t.hover}},
-			tool: t -> {direction: Row, alignItems: Center, columnGap: 2, height: 30, shrink: 0, padding: [0, 4, 0, 7], radius: 8, color: t.fg2,
+			"title-button": t -> {flexDirection: Row, alignItems: Center, columnGap: 4, height: 30, flexShrink: 1, minWidth: 0, padding: [0, 6, 0, 8],
+				borderRadius: 8, fontSize: 14, fontWeight: 600, color: t.fg, hover: {background: t.hover}},
+			tool: t -> {flexDirection: Row, alignItems: Center, columnGap: 2, height: 30, flexShrink: 0, padding: [0, 4, 0, 7], borderRadius: 8, color: t.fg2,
 				hover: {background: t.hover, color: t.fg}},
-			"head-cell": t -> {direction: Row, alignItems: Center, columnGap: 4, height: 30, color: t.fg3, hover: {color: t.fg}, selected: {color: t.fg}},
-			"grid-tile": t -> {radius: 10, hover: {background: t.hover}},
-			"thumb-box": t -> {radius: 10, selected: {background: t.accentSoft}},
-			photo: t -> {radius: 8, background: t.fill, selected: {ringWidth: 2.5, ringColor: t.accent, ringOffsetWidth: 2, ringOffsetColor: t.surface}},
-			"name-pill": t -> {fontSize: 12.5, padding: [1, 6, 1, 6], radius: 5, color: t.fg, selected: {background: t.accent, color: t.accentFg, fontWeight: 500}},
-			"list-row": t -> {direction: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], radius: 7,
+			"head-cell": t -> {flexDirection: Row, alignItems: Center, columnGap: 4, height: 30, color: t.fg3, hover: {color: t.fg}, selected: {color: t.fg}},
+			"grid-tile": t -> {borderRadius: 10, hover: {background: t.hover}},
+			"thumb-box": t -> {borderRadius: 10, selected: {background: t.accentSoft}},
+			photo: t -> {borderRadius: 8, background: t.fill, selected: {ringWidth: 2.5, ringColor: t.accent, ringOffsetWidth: 2, ringOffsetColor: t.surface}},
+			"name-pill": t -> {fontSize: 12.5, padding: [1, 6, 1, 6], borderRadius: 5, color: t.fg, selected: {background: t.accent, color: t.accentFg, fontWeight: 500}},
+			"list-row": t -> {flexDirection: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], borderRadius: 7,
 				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}},
 			// (a Markdown document: a column of about 70 characters, 760 points at most, centred; MarkdownView's parts)
 			"markdown": t -> {background: t.canvas, color: t.fg},
@@ -80,9 +81,9 @@ class Shell implements Markup {
 			"markdown-list": t -> {rowGap: 6},
 			"markdown-item-body": t -> {rowGap: 6},
 			"markdown-marker": t -> {minWidth: 24, paddingRight: 6, fontSize: 15, lineHeight: 1.6, color: t.fg2},
-			"markdown-task": t -> {width: 15, height: 15, margin: [5, 9, 0, 0], radius: 4, borderWidth: 1.5, borderColor: t.edgeStrong, fontSize: 10,
+			"markdown-task": t -> {width: 15, height: 15, margin: [5, 9, 0, 0], borderRadius: 4, borderWidth: 1.5, borderColor: t.edgeStrong, fontSize: 10,
 				fontWeight: 700, checked: {background: t.accent, borderColor: t.accent, color: t.accentFg}},
-			"markdown-code": t -> {padding: [12, 14, 12, 0], radius: 8, background: t.fill},
+			"markdown-code": t -> {padding: [12, 14, 12, 0], borderRadius: 8, background: t.fill},
 			"markdown-code-span": t -> {fontFamily: "JetBrains Mono", fontSize: 13.5, color: t.fg},
 			"markdown-link": t -> {color: t.info, cursor: Pointer, hover: {textDecoration: 1}},
 			"markdown-table": t -> {borders: [1, 0, 0, 1], borderColor: t.line},
@@ -90,8 +91,8 @@ class Shell implements Markup {
 			"markdown-td": t -> {fontSize: 14, lineHeight: 1.45, padding: [7, 12], borders: [0, 1, 1, 0], borderColor: t.line},
 			"markdown-rule": t -> {height: 1, margin: [8, 0], background: t.line},
 			"markdown-html": t -> {fontFamily: "JetBrains Mono", fontSize: 12.5, color: t.fg3},
-			"markdown-image": t -> {radius: 6},
-			"markdown-image-alt": t -> {fontSize: 13, italic: true, color: t.fg3, padding: [4, 10], radius: 6, background: t.fill}
+			"markdown-image": t -> {borderRadius: 6},
+			"markdown-image-alt": t -> {fontSize: 13, fontStyle: Italic, color: t.fg3, padding: [4, 10], borderRadius: 6, background: t.fill}
 		}
 	});
 
@@ -552,11 +553,11 @@ class Shell implements Markup {
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} min-height={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
+		return <view tag="window" flexGrow={1} minHeight={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} fontFamily="system-ui" fontSize={13} onPointerEnter={back}
 			ref={(n:Node) -> x.zoom.attach(n)}>
-			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
+			<view tag="browser" flexGrow={1} minHeight={0} flexDirection="row" aria-hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
-				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}
+				<view flexGrow={1} minWidth={0} flexDirection="row" paddingTop={WindowButtons.side() == "end" ? 32 : 0}
 					background={clear() ? Look.ref.canvas : null}>
 					{ContentView.make(x, medium)}
 					<Show when={b.inspector() && !medium()}>{InspectorView.make(x)}</Show>
@@ -566,25 +567,25 @@ class Shell implements Markup {
 			{ViewerView.make(x)}
 			{Flight.layer(x.zoom)}
 			<Show when={WindowButtons.side() == "end"}>
-				<view position="absolute" top={0} left={medium() ? 0 : SidebarView.WIDTH} right={0} height={Shell.BAR} drag-region
+				<view position="absolute" top={0} left={medium() ? 0 : SidebarView.WIDTH} right={0} height={Shell.BAR} dragRegion
 					display={x.full() ? "none" : "flex"}/>
 			</Show>
-			<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} direction="row" align-items="center"><WindowControls side="start"/></view>
-			<view tag="window-end" position="absolute" top={0} right={0} direction="row"><WindowControls side="end"/></view>
+			<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} flexDirection="row" alignItems="center"><WindowControls side="start"/></view>
+			<view tag="window-end" position="absolute" top={0} right={0} flexDirection="row"><WindowControls side="end"/></view>
 			<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
 		</view>;
 	}
 
 	static function about(viewer:Viewer):View
-		return <view tag="about-backdrop" position="absolute" inset={0} background={Look.ref.scrim} align-items="center" justify="center"
-			onClick={_ -> viewer.aboutOpen(false)}>
-			<view tag="about" width={340} padding={20} row-gap={6} radius={12} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
-				align-items="center" shadow="0 8px 30px rgba(0, 0, 0, 0.25)">
+		return <view tag="about-backdrop" position="absolute" inset={0} background={Look.ref.scrim} alignItems="center" justifyContent="center"
+			onPress={_ -> viewer.aboutOpen(false)}>
+			<view tag="about" width={340} padding={20} rowGap={6} borderRadius={12} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
+				alignItems="center" boxShadow="0 8px 30px rgba(0, 0, 0, 0.25)">
 				<image src={helder.image.Image.decode(helder.asset.Asset.embed("about-icon.png"))} width={72} height={72}/>
-				<text tag="about-name" font-size={18} color={Look.ref.fg}>Viewer</text>
+				<text tag="about-name" fontSize={18} color={Look.ref.fg}>Viewer</text>
 				<text tag="about-version" color={Look.ref.fg3}>{"Version " + Version.NAME}</text>
-				<text color={Look.ref.fg2} text-align="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
-				<text color={Look.ref.fg3} text-align="center">MIT License · github.com/helder/helder</text>
+				<text color={Look.ref.fg2} textAlign="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
+				<text color={Look.ref.fg3} textAlign="center">MIT License · github.com/helder/helder</text>
 			</view>
 		</view>;
 }

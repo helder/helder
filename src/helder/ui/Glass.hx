@@ -10,10 +10,10 @@ import helder.gfx.Color;
 // macOS 26 it is the system's own (helder.ui.platform.apple.Glass) where the
 // window's layers are the system's (Ui.layered), a view placed in the layer
 // tree (LayerSlot) that samples what is behind it; elsewhere, and in frames
-// read back, it is drawn. In a `<glass-group>` (GlassGroup) glass near each
+// read back, it is drawn. In a view with glassSpacing (GlassGroup) glass near each
 // other merge.
 //
-//   <glass direction="row" padding={12} column-gap={8} tint="#3478f640" interactive>
+//   <glass flexDirection="row" padding={12} columnGap={8} tint="#3478f640" interactive>
 //     <icon name="play"/><text>Play</text>
 //   </glass>
 class Glass extends Node {
@@ -31,7 +31,7 @@ class Glass extends Node {
 
 	public function new() {
 		super("glass");
-		style.radius = CAPSULE;
+		style.borderRadius = CAPSULE;
 	}
 
 	public var clear(get, never):Bool;
@@ -55,7 +55,7 @@ class Glass extends Node {
 	function group():Null<GlassGroup> {
 		var p = parent;
 		while (p != null) {
-			if (Std.isOfType(p, GlassGroup)) return cast p;
+			if (p.glassGroup != null) return cast p.glassGroup;
 			p = p.parent;
 		}
 		return null;
@@ -63,7 +63,7 @@ class Glass extends Node {
 
 	// its corners' radius as drawn, in points (one for all: the system's glass has one)
 	public function radius():Float
-		return Math.min(style.radius, Math.min(width, height) / 2);
+		return Math.min(style.borderRadius, Math.min(width, height) / 2);
 
 	@:noCompletion override public function hasContent():Bool
 		return true;
@@ -111,7 +111,7 @@ class Glass extends Node {
 		}
 		var t:Int = tint ?? 0;
 		native.look(clear, t, interactive, radius());
-		if (g != null) native.place(absX - g.absX, absY - g.absY, width, height, on);
+		if (g != null) native.place(absX - g.node.absX, absY - g.node.absY, width, height, on);
 		else {
 			systemLayer = native.slot;
 			systemLayer.shown = on;

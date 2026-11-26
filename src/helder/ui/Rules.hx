@@ -187,7 +187,7 @@ class Rules {
 			} else {
 				// (corners or borders some of whose sides a rule leaves (NaN): those before it kept, as CSS's longhands)
 				var c = style.corners, b = style.borders;
-				var cBefore = c != null && partial([c.topLeft, c.topRight, c.bottomRight, c.bottomLeft]) ? scratch.corners ?? new Corners(scratch.radius, scratch.radius, scratch.radius, scratch.radius) : null;
+				var cBefore = c != null && partial([c.topLeft, c.topRight, c.bottomRight, c.bottomLeft]) ? scratch.corners ?? new Corners(scratch.borderRadius, scratch.borderRadius, scratch.borderRadius, scratch.borderRadius) : null;
 				var bBefore = b != null && partial([b.top, b.right, b.bottom, b.left]) ? scratch.borders ?? new Edges(scratch.borderWidth, scratch.borderWidth, scratch.borderWidth, scratch.borderWidth) : null;
 				scratch.set(style);
 				if (cBefore != null)
@@ -199,7 +199,7 @@ class Rules {
 		resolveColors(scratch, tokens, CURRENT, dark);
 		// (lengths naming the sheet's: radii, one corner's)
 		var lengths = sheet == null ? null : sheet.lengths;
-		if (Length.isToken(scratch.radius)) scratch.radius = Math.max(0, Length.resolve(scratch.radius, lengths));
+		if (Length.isToken(scratch.borderRadius)) scratch.borderRadius = Math.max(0, Length.resolve(scratch.borderRadius, lengths));
 		var cr = scratch.corners;
 		if (cr != null && (Length.isToken(cr.topLeft) || Length.isToken(cr.topRight) || Length.isToken(cr.bottomRight) || Length.isToken(cr.bottomLeft)))
 			scratch.corners = new Corners(Length.resolve(cr.topLeft, lengths), Length.resolve(cr.topRight, lengths), Length.resolve(cr.bottomRight, lengths),
@@ -242,7 +242,7 @@ class Rules {
 			st.scrollbarColor, st.scrollbarTrackColor];
 		for (c in colors)
 			if (c != null && c.isToken) return true;
-		return shadowUsesCurrent(st.shadow) || shadowUsesCurrent(st.textShadow);
+		return shadowUsesCurrent(st.boxShadow) || shadowUsesCurrent(st.textShadow);
 	}
 
 	static function shadowUsesCurrent(sh:Null<Shadow>):Bool {
@@ -261,7 +261,7 @@ class Rules {
 	// (by id: what each property is, a colour (1), a shadow (2), else 0; color's id)
 	static final KINDS = [
 		for (name in StyleFields.NAMES)
-			COLORS.indexOf(name) >= 0 ? 1 : name == "shadow" || name == "textShadow" ? 2 : 0
+			COLORS.indexOf(name) >= 0 ? 1 : name == "boxShadow" || name == "textShadow" ? 2 : 0
 	];
 	static final COLOR = StyleFields.NAMES.indexOf("color");
 	static final SIDES = [
@@ -537,7 +537,7 @@ class Rules {
 		if (s.textDecorationColor != null) s.textDecorationColor = resolve(s.textDecorationColor, tokens, current, dark);
 		if (s.scrollbarColor != null) s.scrollbarColor = resolve(s.scrollbarColor, tokens, current, dark);
 		if (s.scrollbarTrackColor != null) s.scrollbarTrackColor = resolve(s.scrollbarTrackColor, tokens, current, dark);
-		if (s.shadow != null) s.shadow = resolveShadow(s.shadow, tokens, current, dark);
+		if (s.boxShadow != null) s.boxShadow = resolveShadow(s.boxShadow, tokens, current, dark);
 		if (s.textShadow != null) s.textShadow = resolveShadow(s.textShadow, tokens, current, dark);
 	}
 

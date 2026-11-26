@@ -102,7 +102,7 @@ class FxBox extends helder.ui.Node {
 			queued = r.frames;
 			r.beforePass(record);
 		}
-		var radius = style.radius;
+		var radius = style.borderRadius;
 		(cast canvas : helder.ui.draw.TextureCanvas).gpuTexture(color, id, x, y, width, height, radius);
 	}
 

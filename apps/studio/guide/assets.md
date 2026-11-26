@@ -11,9 +11,9 @@ const logo = image("assets/logo.png");
 font("assets/Title.ttf");
 
 export function Badge() {
-	return <view direction="row" align-items="center" column-gap={10} padding={12}>
+	return <view flexDirection="row" alignItems="center" columnGap={10} padding={12}>
 		<image src={logo} width={48} height={48}/>
-		<text font-family="Hanken Grotesk" font-size={20}>Pond</text>
+		<text fontFamily="Hanken Grotesk" fontSize={20}>Pond</text>
 	</view>;
 }
 ```

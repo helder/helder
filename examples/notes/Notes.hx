@@ -188,61 +188,61 @@ class Notes implements Markup {
 	// --- the views
 
 	static function Folder(props:{name:String}):View
-		return <view tag={"folder-" + props.name.split(" ")[0].toLowerCase()} role="button" focusable cursor="pointer" direction="row" align-items="center"
-			padding="8 12" radius={8} background={folder() == props.name ? c("#e8eaf2", "#232838") : c("#00000000", "#00000000")} onPress={() -> folder(props.name)}>
-			<text grow={1} font-size={14} font-weight={folder() == props.name ? 600 : 450}>{props.name}</text>
-			<text font-size={12} color={c("#8b90a0", "#7d849c")} font-variant-numeric="tabular-nums">{
+		return <view tag={"folder-" + props.name.split(" ")[0].toLowerCase()} role="button" focusable cursor="pointer" flexDirection="row" alignItems="center"
+			padding="8 12" borderRadius={8} background={folder() == props.name ? c("#e8eaf2", "#232838") : c("#00000000", "#00000000")} onPress={() -> folder(props.name)}>
+			<text flexGrow={1} fontSize={14} fontWeight={folder() == props.name ? 600 : 450}>{props.name}</text>
+			<text fontSize={12} color={c("#8b90a0", "#7d849c")} fontVariantNumeric="tabular-nums">{
 				"" + [for (n in notes()) if (props.name == "All notes" || n.folder == props.name) n].length
 			}</text>
 		</view>;
 
 	static function Item(props:{note:Note}):View {
 		var n = props.note;
-		return <view tag={"note-" + n.id} role="option" selected={selected() == n.id} focusable cursor="pointer" padding="12 14" radius={10} row-gap={4}
+		return <view tag={"note-" + n.id} role="option" aria-selected={selected() == n.id} focusable cursor="pointer" padding="12 14" borderRadius={10} rowGap={4}
 			transition="fade slide-up(10)" background={selected() == n.id ? c("#ffffff", "#1d2232") : c("#00000000", "#00000000")}
-			shadow={selected() == n.id ? (dark() ? "0 1px 0 rgba(0,0,0,0.4)" : "0 1px 3px rgba(20,30,60,0.12)") : "none"} onPress={() -> selected(n.id)}>
-			<view direction="row" align-items="center" column-gap={6}>
-				<Show when={n.pinned}><view width={6} height={6} radius={3} background="#f59e0b" transition="pop"/></Show>
-				<text grow={1} font-size={15} font-weight={600} text-overflow="ellipsis" text-wrap="nowrap">{n.title() == "" ? "Untitled" : n.title()}</text>
-				<text font-size={12} shrink={0} text-wrap="nowrap" color={c("#8b90a0", "#7d849c")}>{ago(n.edited())}</text>
+			boxShadow={selected() == n.id ? (dark() ? "0 1px 0 rgba(0,0,0,0.4)" : "0 1px 3px rgba(20,30,60,0.12)") : "none"} onPress={() -> selected(n.id)}>
+			<view flexDirection="row" alignItems="center" columnGap={6}>
+				<Show when={n.pinned}><view width={6} height={6} borderRadius={3} background="#f59e0b" transition="pop"/></Show>
+				<text flexGrow={1} fontSize={15} fontWeight={600} textOverflow="ellipsis" textWrap="nowrap">{n.title() == "" ? "Untitled" : n.title()}</text>
+				<text fontSize={12} flexShrink={0} textWrap="nowrap" color={c("#8b90a0", "#7d849c")}>{ago(n.edited())}</text>
 			</view>
-			<text font-size={13} color={c("#6b7080", "#8f97b3")} max-lines={2} line-height={1.4}>{n.body() == "" ? "No text yet" : n.body().split("\n").join(" ")}</text>
+			<text fontSize={13} color={c("#6b7080", "#8f97b3")} lineClamp={2} lineHeight={1.4}>{n.body() == "" ? "No text yet" : n.body().split("\n").join(" ")}</text>
 		</view>;
 	}
 
 	static function Editor(props:{note:Note}):View {
 		var n = props.note;
-		return <view grow={1} padding="34 48" row-gap={14}>
-			<view direction="row" align-items="center" column-gap={10}>
-				<text font-size={13} color={c("#8b90a0", "#7d849c")}>{n.folder + " · edited " + ago(n.edited()) + (n.edited() > 0 ? " ago" : "") + " · " + words(n.body()) + " words"}</text>
-				<view grow={1}/>
-				<view tag="pin" role="button" focusable cursor="pointer" padding="5 12" radius={999} background={n.pinned() ? "#fef3c7" : c("#eef0f5", "#232838")}
+		return <view flexGrow={1} padding="34 48" rowGap={14}>
+			<view flexDirection="row" alignItems="center" columnGap={10}>
+				<text fontSize={13} color={c("#8b90a0", "#7d849c")}>{n.folder + " · edited " + ago(n.edited()) + (n.edited() > 0 ? " ago" : "") + " · " + words(n.body()) + " words"}</text>
+				<view flexGrow={1}/>
+				<view tag="pin" role="button" focusable cursor="pointer" padding="5 12" borderRadius={999} background={n.pinned() ? "#fef3c7" : c("#eef0f5", "#232838")}
 					onPress={togglePin}>
-					<text font-size={13} font-weight={600} color={n.pinned() ? "#b45309" : c("#6b7080", "#8f97b3")}>{n.pinned() ? "Pinned" : "Pin"}</text>
+					<text fontSize={13} fontWeight={600} color={n.pinned() ? "#b45309" : c("#6b7080", "#8f97b3")}>{n.pinned() ? "Pinned" : "Pin"}</text>
 				</view>
 			</view>
-			<field tag="title" value={n.title} label="Title" font-family="Inter" font-size={32} font-weight={700} letter-spacing={-0.6} padding={0}
-				background="#00000000" border-width={0} color={c("#14161d", "#eef1fb")} onInput={e -> n.title(e.text)}/>
-			<field:textarea tag="body" grow={1} value={n.body} label="Note" font-size={16} line-height={1.65} padding={0} background="#00000000" border-width={0}
+			<field tag="title" value={n.title} aria-label="Title" fontFamily="Inter" fontSize={32} fontWeight={700} letterSpacing={-0.6} padding={0}
+				background="#00000000" borderWidth={0} color={c("#14161d", "#eef1fb")} onInput={e -> n.title(e.text)}/>
+			<textarea tag="body" flexGrow={1} value={n.body} aria-label="Note" fontSize={16} lineHeight={1.65} padding={0} background="#00000000" borderWidth={0}
 				color={c("#2c3040", "#c9cfe2")} onInput={e -> n.body(e.text)}/>
 		</view>;
 	}
 
 	static function Keycap(props:{label:String}):View
-		return <view padding="2 7" radius={5} shrink={0} background={c("#eef0f5", "#232838")} border-width={1} border-color={c("#dde0e8", "#2e3448")}>
-			<text font-size={11} font-weight={600} text-wrap="nowrap" color={c("#6b7080", "#8f97b3")}>{props.label}</text>
+		return <view padding="2 7" borderRadius={5} flexShrink={0} background={c("#eef0f5", "#232838")} borderWidth={1} borderColor={c("#dde0e8", "#2e3448")}>
+			<text fontSize={11} fontWeight={600} textWrap="nowrap" color={c("#6b7080", "#8f97b3")}>{props.label}</text>
 		</view>;
 
 	static function Result(props:{c:Read<Command>}):View {
 		var i = () -> found().indexOf(props.c());
-		return <view tag={"result-" + untrack(i)} direction="row" align-items="center" column-gap={12} padding="10 14" radius={10} cursor="pointer"
-			onClick={() -> run(i())} onPointerEnter={_ -> pick(i())}>
+		return <view tag={"result-" + untrack(i)} flexDirection="row" alignItems="center" columnGap={12} padding="10 14" borderRadius={10} cursor="pointer"
+			onPress={() -> run(i())} onPointerEnter={_ -> pick(i())}>
 			<Show when={() -> pick() == i()}>
-				<view matched="pick" position="absolute" left={0} top={0} right={0} bottom={0} radius={10} background={c("#eef1ff", "#252c46")}/>
+				<view matched="pick" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={10} background={c("#eef1ff", "#252c46")}/>
 			</Show>
-			<view width={8} height={8} radius={4} background={props.c().kind == "Command" ? "#6d8bff" : props.c().kind == "Folder" ? "#22c55e" : "#f59e0b"}/>
-			<text grow={1} font-size={15} font-weight={pick() == i() ? 600 : 450}>{props.c().label}</text>
-			<text font-size={12} color={c("#8b90a0", "#7d849c")}>{props.c().kind}</text>
+			<view width={8} height={8} borderRadius={4} background={props.c().kind == "Command" ? "#6d8bff" : props.c().kind == "Folder" ? "#22c55e" : "#f59e0b"}/>
+			<text flexGrow={1} fontSize={15} fontWeight={pick() == i() ? 600 : 450}>{props.c().label}</text>
+			<text fontSize={12} color={c("#8b90a0", "#7d849c")}>{props.c().kind}</text>
 			<Show when={() -> props.c().keys != ""}><Keycap label={props.c().keys}/></Show>
 		</view>;
 	}
@@ -250,14 +250,14 @@ class Notes implements Markup {
 	static function Launcher():View {
 		var input:Null<helder.ui.Node> = null;
 		onSettled(() -> if (input != null) input.focus());
-		return <view position="absolute" left={0} top={0} right={0} bottom={0} z-index={10} align-items="center" padding="110 0 0 0" transition="fade"
-			background={dark() ? "#00000088" : "#1a1f3355"} onClick={() -> closeLauncher()}>
-			<view tag="launcher" width={620} radius={16} background={c("#ffffff", "#141824")} border-width={1} border-color={c("#e3e6ee", "#2a3048")}
-				shadow="0 30px 80px rgba(10, 15, 40, 0.35)" transition="fade scale" onClick={e -> e.stop()}>
-				<view direction="row" align-items="center" column-gap={10} padding="14 18" border-width="0 0 1 0" border-color={c("#eceef3", "#232838")}>
+		return <view position="absolute" left={0} top={0} right={0} bottom={0} zIndex={10} alignItems="center" padding="110 0 0 0" transition="fade"
+			background={dark() ? "#00000088" : "#1a1f3355"} onPress={() -> closeLauncher()}>
+			<view tag="launcher" width={620} borderRadius={16} background={c("#ffffff", "#141824")} borderWidth={1} borderColor={c("#e3e6ee", "#2a3048")}
+				boxShadow="0 30px 80px rgba(10, 15, 40, 0.35)" transition="fade scale" onPress={e -> e.stop()}>
+				<view flexDirection="row" alignItems="center" columnGap={10} padding="14 18" borderWidth="0 0 1 0" borderColor={c("#eceef3", "#232838")}>
 					<icon name="search" width={18} height={18} color={c("#8b90a0", "#7d849c")}/>
-					<field tag="query" grow={1} value={query} placeholder="Type a command or a note's name" label="Command" font-size={17} padding={0}
-						background="#00000000" border-width={0} ref={n -> input = n} onInput={e -> {
+					<field tag="query" flexGrow={1} value={query} placeholder="Type a command or a note's name" aria-label="Command" fontSize={17} padding={0}
+						background="#00000000" borderWidth={0} ref={(__part:helder.ui.Part) -> {var n:helder.ui.Node = cast __part; input = n;}} onInput={e -> {
 							query(e.text);
 							pick(0);
 						}} onKeyDown={e -> switch e.key {
@@ -277,14 +277,14 @@ class Notes implements Markup {
 						}}/>
 					<Keycap label="esc"/>
 				</view>
-				<view padding={8} row-gap={2} motion="snappy">
+				<view padding={8} rowGap={2} motion="snappy">
 					<For each={found} by={x -> x.label}>{(x:Read<Command>) -> <Result c={x}/>}</For>
-					<Show when={() -> found().length == 0}><text padding={14} font-size={14} color={c("#8b90a0", "#7d849c")}>Nothing matches</text></Show>
+					<Show when={() -> found().length == 0}><text padding={14} fontSize={14} color={c("#8b90a0", "#7d849c")}>Nothing matches</text></Show>
 				</view>
-				<view direction="row" column-gap={16} padding="10 18" border-width="1 0 0 0" border-color={c("#eceef3", "#232838")}>
-					<text font-size={12} color={c("#8b90a0", "#7d849c")}>↑ ↓ to move</text>
-					<text font-size={12} color={c("#8b90a0", "#7d849c")}>↩ to run</text>
-					<text font-size={12} color={c("#8b90a0", "#7d849c")}>esc to close</text>
+				<view flexDirection="row" columnGap={16} padding="10 18" borderWidth="1 0 0 0" borderColor={c("#eceef3", "#232838")}>
+					<text fontSize={12} color={c("#8b90a0", "#7d849c")}>↑ ↓ to move</text>
+					<text fontSize={12} color={c("#8b90a0", "#7d849c")}>↩ to run</text>
+					<text fontSize={12} color={c("#8b90a0", "#7d849c")}>esc to close</text>
 				</view>
 			</view>
 		</view>;
@@ -315,37 +315,37 @@ class Notes implements Markup {
 	}
 
 	public static function view():View
-		return <view tag="app" focusable ref={n -> app = n} grow={1} direction="row" font-family="Inter" motion="default" motion-color="calm" background={c("#f6f7fa", "#0d1018")}
+		return <view tag="app" focusable ref={(__part:helder.ui.Part) -> {var n:helder.ui.Node = cast __part; app = n;}} flexGrow={1} flexDirection="row" fontFamily="Inter" motion="default" motionColor="calm" background={c("#f6f7fa", "#0d1018")}
 			color={c("#14161d", "#eef1fb")} onKeyDown={key}>
-			<view width={232} padding="22 14" row-gap={4} background={c("#eef0f5", "#11141e")} border-width="0 1 0 0" border-color={c("#e3e6ee", "#1e2333")}>
-				<view direction="row" align-items="center" column-gap={10} padding="0 8 14 8">
-					<view width={26} height={26} radius={8} background="linear-gradient(135deg, #f59e0b, #ef4444)"/>
-					<text font-size={17} font-weight={700}>Notes</text>
+			<view width={232} padding="22 14" rowGap={4} background={c("#eef0f5", "#11141e")} borderWidth="0 1 0 0" borderColor={c("#e3e6ee", "#1e2333")}>
+				<view flexDirection="row" alignItems="center" columnGap={10} padding="0 8 14 8">
+					<view width={26} height={26} borderRadius={8} background="linear-gradient(135deg, #f59e0b, #ef4444)"/>
+					<text fontSize={17} fontWeight={700}>Notes</text>
 				</view>
-				<view tag="open-launcher" role="button" focusable cursor="pointer" direction="row" align-items="center" column-gap={8} padding="8 10" radius={8}
-					margin="0 0 12 0" background={c("#ffffff", "#1a1f2d")} border-width={1} border-color={c("#e3e6ee", "#262c3e")} onPress={openLauncher}>
+				<view tag="open-launcher" role="button" focusable cursor="pointer" flexDirection="row" alignItems="center" columnGap={8} padding="8 10" borderRadius={8}
+					margin="0 0 12 0" background={c("#ffffff", "#1a1f2d")} borderWidth={1} borderColor={c("#e3e6ee", "#262c3e")} onPress={openLauncher}>
 					<icon name="search" width={14} height={14} color={c("#8b90a0", "#7d849c")}/>
-					<text grow={1} font-size={13} text-wrap="nowrap" color={c("#8b90a0", "#7d849c")}>Search…</text>
+					<text flexGrow={1} fontSize={13} textWrap="nowrap" color={c("#8b90a0", "#7d849c")}>Search…</text>
 					<Keycap label="Ctrl K"/>
 				</view>
 				<Repeat count={FOLDERS.length}>{k -> <Folder name={FOLDERS[k]}/>}</Repeat>
-				<view grow={1}/>
-				<view tag="theme" role="button" focusable cursor="pointer" padding="8 12" radius={8} onPress={() -> dark(!dark())}>
-					<text font-size={13} color={c("#6b7080", "#8f97b3")}>{dark() ? "Light theme" : "Dark theme"}</text>
+				<view flexGrow={1}/>
+				<view tag="theme" role="button" focusable cursor="pointer" padding="8 12" borderRadius={8} onPress={() -> dark(!dark())}>
+					<text fontSize={13} color={c("#6b7080", "#8f97b3")}>{dark() ? "Light theme" : "Dark theme"}</text>
 				</view>
 			</view>
-			<view width={330} padding="22 12" row-gap={6} border-width="0 1 0 0" border-color={c("#e3e6ee", "#1e2333")}>
-				<view direction="row" align-items="center" padding="0 6 10 6">
-					<text grow={1} font-size={19} font-weight={700} letter-spacing={-0.3}>{folder()}</text>
-					<view tag="new" role="button" focusable cursor="pointer" padding="5 12" radius={8} background="#14161d" onPress={newNote}>
-						<text font-size={13} font-weight={600} color="#ffffff">New</text>
+			<view width={330} padding="22 12" rowGap={6} borderWidth="0 1 0 0" borderColor={c("#e3e6ee", "#1e2333")}>
+				<view flexDirection="row" alignItems="center" padding="0 6 10 6">
+					<text flexGrow={1} fontSize={19} fontWeight={700} letterSpacing={-0.3}>{folder()}</text>
+					<view tag="new" role="button" focusable cursor="pointer" padding="5 12" borderRadius={8} background="#14161d" onPress={newNote}>
+						<text fontSize={13} fontWeight={600} color="#ffffff">New</text>
 					</view>
 				</view>
-				<view tag="list" role="listbox" label="Notes" row-gap={4}>
+				<view tag="list" role="listbox" aria-label="Notes" rowGap={4}>
 					<For each={shown}>{(n:Read<Note>) -> <Item note={untrack(() -> n())}/>}</For>
 				</view>
 			</view>
-			<view grow={1} min-width={0}>
+			<view flexGrow={1} minWidth={0}>
 				<For each={() -> {
 					var n = current();
 					n == null ? [] : [n];

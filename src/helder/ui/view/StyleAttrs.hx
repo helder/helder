@@ -4,7 +4,7 @@ import helder.gfx.Color;
 import helder.ui.*;
 
 // Markup attributes as Style properties (NodeRenderer): an attribute named
-// as a property (or in kebab-case: "align-items") sets it from the value as
+// as a property (CSS's name in camel: alignItems) sets it from the value as
 // markup gives it: numbers, strings as CSS writes them ("50%", "#3b82f6",
 // "space-between", "8 12"), Bool, or the property's own type. apply is
 // generated from Style's properties (AttrMacro); the functions below named
@@ -30,6 +30,10 @@ class StyleAttrs {
 		}
 	}
 
+	// CSS's nowrap, wrap (wrap-reverse: wrap), or a Bool
+	static function flexWrap(style:Style, v:Dynamic)
+		style.flexWrap = v == true || v == "true" || v == "wrap" || v == "wrap-reverse";
+
 	static function transform(style:Style, v:Dynamic)
 		style.transform = v == null || v == "none" ? null : Std.isOfType(v, String) ? Transform.parse(v) : (v : Transform);
 
@@ -41,11 +45,11 @@ class StyleAttrs {
 		style.transformOrigin = v == null ? null : Std.isOfType(v, String) ? Transform.origin(v) : (v : Array<Dim>);
 
 	// several values: each corner's, as CSS's border-radius
-	static function radius(style:Style, v:Dynamic) {
+	static function borderRadius(style:Style, v:Dynamic) {
 		if (Std.isOfType(v, String) && StringTools.trim(v).indexOf(" ") > 0) style.corners = CornersValue.parse(v) else if (Std.isOfType(v, Array))
 			style.corners = (v : Array<Float>) else {
 			style.corners = null;
-			style.radius = float(v);
+			style.borderRadius = float(v);
 		}
 	}
 
@@ -140,9 +144,6 @@ class StyleAttrs {
 	static function gridRow(style:Style, v:Dynamic)
 		style.gridRow = Std.isOfType(v, String) ? Grid.GridPlacement.parse(v) : Std.isOfType(v, Int) ? new Grid.GridPlacement(v, 0, 1) : v;
 
-	// (kebab-case names converted once each)
-	static final camels = new Map<String, String>();
-
 	// (the shorthands' other forms: two gaps; one to four offsets; flex's keywords and values)
 	static function gap(style:Style, v:Dynamic) {
 		var p = Std.isOfType(v, String) ? [for (x in StringTools.trim(v).split(" ")) if (x != "") x] : null;
@@ -171,31 +172,21 @@ class StyleAttrs {
 		}
 		var p = [for (x in StringTools.trim(v).split(" ")) if (x != "") x];
 		switch p {
-			case ["none"]: style.grow = 0; style.shrink = 0; style.basis = DimValue.Auto;
-			case ["auto"]: style.grow = 1; style.shrink = 1; style.basis = DimValue.Auto;
-			case ["initial"]: style.grow = 0; style.shrink = 1; style.basis = DimValue.Auto;
+			case ["none"]: style.flexGrow = 0; style.flexShrink = 0; style.flexBasis = DimValue.Auto;
+			case ["auto"]: style.flexGrow = 1; style.flexShrink = 1; style.flexBasis = DimValue.Auto;
+			case ["initial"]: style.flexGrow = 0; style.flexShrink = 1; style.flexBasis = DimValue.Auto;
 			case [g]: style.flex = float(g);
 			// (CSS's: a second number is the shrink factor, else the basis)
 			case [g, b]: if (Math.isNaN(Std.parseFloat(b)) || StringTools.endsWith(b, "%") || StringTools.endsWith(b, "px")) {
 					style.flex = float(g);
-					style.basis = dim(b);
+					style.flexBasis = dim(b);
 				} else {
 					style.flex = float(g);
-					style.shrink = float(b);
+					style.flexShrink = float(b);
 				}
-			case [g, s, b]: style.grow = float(g); style.shrink = float(s); style.basis = dim(b);
+			case [g, s, b]: style.flexGrow = float(g); style.flexShrink = float(s); style.flexBasis = dim(b);
 			case _: throw "flex: " + v;
 		}
-	}
-
-	static function camel(n:String):String {
-		if (n.indexOf("-") < 0) return n;
-		var c = camels.get(n);
-		if (c != null) return c;
-		var parts = n.split("-");
-		c = parts[0] + [for (p in parts.slice(1)) p.charAt(0).toUpperCase() + p.substr(1)].join("");
-		camels.set(n, c);
-		return c;
 	}
 
 	static function key(v:Dynamic):String {

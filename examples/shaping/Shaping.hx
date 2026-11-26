@@ -24,15 +24,15 @@ class Shaping implements Markup {
 	public function new() {}
 
 	static function Sample(props:{label:String, text:String}):View
-		return <view direction="row" column-gap={12} align-items="center">
-			<text width={92} font-size={12} color="#71717a">{props.label}</text>
-			<text font-size={20}>{props.text}</text>
+		return <view flexDirection="row" columnGap={12} alignItems="center">
+			<text width={92} fontSize={12} color="#71717a">{props.label}</text>
+			<text fontSize={20}>{props.text}</text>
 		</view>;
 
 	public function view():View
-		return <view grow={1} padding={20} row-gap={10} background="#fafafa" font-size={14} color="#18181b">
-			<text font-size={22} font-weight={700}>Text in pure Haxe</text>
-			<view row-gap={8} background="#ffffff" radius={8} border-width={1} border-color="#e4e4e7" padding={12}>
+		return <view flexGrow={1} padding={20} rowGap={10} background="#fafafa" fontSize={14} color="#18181b">
+			<text fontSize={22} fontWeight={700}>Text in pure Haxe</text>
+			<view rowGap={8} background="#ffffff" borderRadius={8} borderWidth={1} borderColor="#e4e4e7" padding={12}>
 				<Sample label="Kerning" text="AVATAR Tower WAVE"/>
 				<Sample label="Arabic" text="مرحبا بالعالم"/>
 				<Sample label="Hebrew" text="שלום עולם"/>
@@ -40,8 +40,8 @@ class Shaping implements Markup {
 				<Sample label="Marks" text={"n\u0303 a\u0308 o\u0323\u0302 e\u0301"}/>
 				<Sample label="Scripts" text="Ελληνικά Кириллица"/>
 			</view>
-			<field value={input} placeholder="Type in any script" label="Text to shape" onInput={e -> input(e.text)} padding="8 12" radius={6}
-				border-width={1} border-color="#e4e4e7" background="#ffffff"/>
-			<text font-size={26}>{input}</text>
+			<field value={input} placeholder="Type in any script" aria-label="Text to shape" onInput={e -> input(e.text)} padding="8 12" borderRadius={6}
+				borderWidth={1} borderColor="#e4e4e7" background="#ffffff"/>
+			<text fontSize={26}>{input}</text>
 		</view>;
 }

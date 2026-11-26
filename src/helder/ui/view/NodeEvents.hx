@@ -7,16 +7,16 @@ import helder.ui.gesture.Scale;
 import helder.ui.gesture.Tap;
 
 // ui's events, by attribute (NodeRenderer's @:events): what each handler is
-// given, and the neutral elements' (view, text, view:button...) in every
-// renderer, a page's renderer realising them as its own. Markup checks a
+// given, and the neutral elements' (view, text, button...) in every
+// renderer, a page's renderer realising them as its own; which elements
+// have which, helder.view.Vocabulary's EVENTS and OWN_EVENTS. Markup checks a
 // handler against it: a function of this type or of none (onPress={() -> ...}),
 // an untyped parameter typed by it (onInput={e -> name(e.text)}); a name
 // not here is no event. Data, not code: helder.typescript's manifest and
 // declarations read it as they read the elements.
 typedef NodeEvents = {
-	// a click, or Enter or Space on a focused node (Node.onActivate)
+	// a click, or Enter or Space on a focused node (Node.onPress; a page's onClick)
 	onPress:Event,
-	onClick:Event,
 	onPointerDown:Event,
 	onPointerUp:Event,
 	onPointerMove:Event,
@@ -31,7 +31,7 @@ typedef NodeEvents = {
 	onComposition:Event,
 	// a field's text changed by its user (text: its text now)
 	onInput:Event,
-	// a one-line field's Enter, its keyboard's Enter key (text: its text)
+	// a <field>'s Enter, its keyboard's Enter key (text: its text)
 	onSubmit:Event,
 	onFocus:Event,
 	onBlur:Event,

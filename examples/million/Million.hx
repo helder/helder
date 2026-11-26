@@ -86,40 +86,40 @@ class Million implements Markup {
 		return s + out;
 	}
 
-	static function Button(props:{tag:String, label:String, onClick:Void->Void}):View
-		return <view:button tag={props.tag} role="button" focusable cursor="pointer" padding="4 10" radius={6} background="#18181b" color="#fafafa"
-			onPress={props.onClick}>{props.label}</view:button>;
+	static function Button(props:{tag:String, label:String, onPress:Void->Void}):View
+		return <button tag={props.tag} cursor="pointer" padding="4 10" borderRadius={6} background="#18181b" color="#fafafa"
+			onPress={props.onPress}>{props.label}</button>;
 
 	// a row: a day's header, or a message (its author's initial, name and number, its text)
 	static function Row(props:{id:Read<Int>, selected:Signal<Dynamic>}):View {
 		var id = untrack(() -> props.id());
 		if (isDay(id))
 			return <view tag="day" padding="6 16" background="#f4f4f5">
-				<text font-size={11} font-weight={700} color="#71717a">{"Day " + thousands(Std.int(id / 200) + 1)}</text>
+				<text fontSize={11} fontWeight={700} color="#71717a">{"Day " + thousands(Std.int(id / 200) + 1)}</text>
 			</view>;
 		var name = author(id);
-		return <view tag="message" direction="row" column-gap={10} padding="8 16" background={props.selected() == id ? "#dbeafe" : "#ffffff"}>
-			<view width={32} height={32} radius={16} shrink={0} background={id >= COUNT ? "#18181b" : COLORS[hash(id + 3) % COLORS.length]} align-items="center"
-				justify="center"><text color="#ffffff" font-weight={700}>{name.charAt(0)}</text></view>
-			<view grow={1} shrink={1} min-width={0} row-gap={2}>
-				<view direction="row" column-gap={6}><text font-weight={700}>{name}</text><text color="#a1a1aa">{"#" + thousands(id)}</text></view>
+		return <view tag="message" flexDirection="row" columnGap={10} padding="8 16" background={props.selected() == id ? "#dbeafe" : "#ffffff"}>
+			<view width={32} height={32} borderRadius={16} flexShrink={0} background={id >= COUNT ? "#18181b" : COLORS[hash(id + 3) % COLORS.length]} alignItems="center"
+				justifyContent="center"><text color="#ffffff" fontWeight={700}>{name.charAt(0)}</text></view>
+			<view flexGrow={1} flexShrink={1} minWidth={0} rowGap={2}>
+				<view flexDirection="row" columnGap={6}><text fontWeight={700}>{name}</text><text color="#a1a1aa">{"#" + thousands(id)}</text></view>
 				<text color="#3f3f46">{message(id)}</text>
 			</view>
 		</view>;
 	}
 
 	public function view():View {
-		return <view grow={1} background="#fafafa" font-size={13} color="#18181b">
-			<view tag="toolbar" direction="row" align-items="center" column-gap={6} padding="8 12" background="#ffffff">
-				<text tag="title" grow={1} font-weight={700}>A million rows</text>
-				<Button tag="top" label="Top" onClick={() -> list.focusIndex(0)}/>
-				<Button tag="middle" label="Middle" onClick={() -> list.scrollToIndex(Std.int(items().length / 2), "start")}/>
-				<Button tag="end" label="End" onClick={() -> list.focusIndex(items().length - 1)}/>
-				<Button tag="insert" label="Insert" onClick={insertAbove}/>
+		return <view flexGrow={1} background="#fafafa" fontSize={13} color="#18181b">
+			<view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} padding="8 12" background="#ffffff">
+				<text tag="title" flexGrow={1} fontWeight={700}>A million rows</text>
+				<Button tag="top" label="Top" onPress={() -> list.focusIndex(0)}/>
+				<Button tag="middle" label="Middle" onPress={() -> list.scrollToIndex(Std.int(items().length / 2), "start")}/>
+				<Button tag="end" label="End" onPress={() -> list.focusIndex(items().length - 1)}/>
+				<Button tag="insert" label="Insert" onPress={insertAbove}/>
 			</view>
 			<VirtualList tag="rows" each={items} estimate={52} selected={selected} label="Messages" ref={l -> list = l}>{(id:Read<Int>, i:Int) ->
 				<Row id={id} selected={selected}/>}</VirtualList>
-			<view tag="status" direction="row" padding="6 12" background="#ffffff">
+			<view tag="status" flexDirection="row" padding="6 12" background="#ffffff">
 				<text tag="status-text" color="#71717a">{thousands(items().length) + " rows" + (selected() == null ? "" : " · #" + thousands(selected()) + " selected")}</text>
 			</view>
 		</view>;

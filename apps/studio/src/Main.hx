@@ -8,6 +8,7 @@ import studio.Studio;
 // `studio [project] [--classic] [--events <file>] [--mcp-port <n>] [--agent <name>]
 // [--hold-while <file>] [--cover <png>]` (--cover: the project's cover written, then closed;
 // apps/studio/web/build.mjs runs it headless for each example)
+@:renderer(helder.ui.view.NodeRenderer)
 class Main implements Markup {
 	public static var window(default, null):Null<UiWindow> = null;
 

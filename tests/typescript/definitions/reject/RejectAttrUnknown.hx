@@ -1,5 +1,5 @@
-// an attribute none of ui's elements has, CSS's name for one of them, in a component (in TypeScript: attr-unknown.tsx).
-// expect: helder.ui: no attribute flex-direction (not one of NodeRenderer's or Style's); did you mean direction?
+// an attribute in CSS's kebab-case, its camel name said, in a component (in TypeScript: attr-unknown.tsx).
+// expect: markup: flex-direction is written flexDirection (camel, as CSS's and HTML's are in JavaScript)
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 

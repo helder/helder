@@ -1,4 +1,4 @@
-// helder.media for TypeScript programs (helder.typescript): <Video> in a
+// helder.media for TypeScript programs (helder.typescript): <video> in a
 // window's markup (its node, VideoNode: play, pause, seek, step and its
 // time, duration and playing signals), a Player for audio alone, the
 // byte sources a file is read from.
@@ -6,9 +6,9 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {ImageFit, Node} from "helder/ui";
-import type {Read, Signal} from "helder/view";
+import type {Signal} from "helder/view";
 
-declare const __haxe: {Player: "helder.media.Player", ByteSource: "helder.media.ByteSource", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", Video: "helder.media.ui.MediaTags.Video", __module: "helder.media.TypeScript"};
+declare const __haxe: {Player: "helder.media.Player", ByteSource: "helder.media.ByteSource", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", __module: "helder.media.TypeScript"};
 
 export type PlayerOptions = { device?: string; silent?: boolean };
 
@@ -72,7 +72,20 @@ export declare interface ByteSource {
 	close(): void;
 }
 
-// A video in helder.ui (<Video>, MediaTags): its Player's frame shown in
+// A video in helder.ui, <video> in markup (NodeRenderer's element_video):
+//
+//   <video src="clip.mp4" objectFit="cover" autoPlay loop muted flexGrow={1} ref={v -> video = v}/>
+//
+// src a path or a helder.media.ByteSource (a file's bytes: a MemorySource;
+// a signal: another file when it changes); objectFit, autoPlay, loop,
+// muted, volume, playbackRate; layer={true}: the system's
+// AVSampleBufferDisplayLayer where the window has system layers, not
+// helder's drawing; onLoaded, onEnded, onError, onTime (VideoEvents). Its
+// player's controls are the node's (ref): play, pause, seek, step, and its
+// time, duration and playing signals. An audio file plays the same way
+// without a box (helder.media.Player).
+//
+// Its Player's frame shown in
 // the content box as fit says (contain by default), its size the
 // picture's (upright) where the style gives none. Drawn by helder
 // (VideoTexture: the frame turned to RGB in a pass of its own, then drawn
@@ -140,6 +153,33 @@ export declare class MemorySource {
 	close(): void;
 }
 
-export declare function Video(props: { src?: Read<string | ByteSource>; fit?: ImageFit; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<unknown>; height?: Read<unknown>; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
+type Value<T> = T | (() => T);
+type UiAttributes = import("helder/ui").Attributes;
+
+// <video> (helder.media.ui.VideoNode): a neutral element's attributes and its own
+export interface VideoAttributes extends UiAttributes {
+	ref?: ((node: VideoNode) => void) | null;
+	children?: never;
+	src?: Value<unknown>;
+	objectFit?: Value<import("helder/ui").ImageFit>;
+	autoPlay?: Value<boolean>;
+	loop?: Value<boolean>;
+	muted?: Value<boolean>;
+	volume?: Value<number>;
+	playbackRate?: Value<number>;
+	layer?: Value<boolean>;
+	onLoaded?: ((event: VideoNode) => void) | null;
+	onEnded?: ((event: VideoNode) => void) | null;
+	onError?: ((event: string) => void) | null;
+	onTime?: ((event: number) => void) | null;
+}
+
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			video: VideoAttributes;
+		}
+	}
+}
 
 export {};

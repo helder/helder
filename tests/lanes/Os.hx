@@ -162,12 +162,12 @@ class Os {
 		native('bin/os/$GFX_TARGET/LocaleCheck', cps(["src", "tests/os"]).concat(["-main", "LocaleCheck"]), GFX_TARGET);
 		var locale = exePath('bin/os/$GFX_TARGET/LocaleCheck', GFX_TARGET);
 		if (wine != "") shell('$wine$locale') else run(locale, []);
-		// (macOS: a <Video> drawn and in the system's layer: tests/media/apple/VideoWindowCheck.hx)
+		// (macOS: a <video> drawn and in the system's layer: tests/media/apple/VideoWindowCheck.hx)
 		if (GFX_TARGET.startsWith("macos-") && HOST.startsWith("macos-")) {
 			native('bin/media/$GFX_TARGET/VideoWindowCheck', cps(["src", "tests/ui", "tests/media/apple"]).concat(["-main", "VideoWindowCheck"]), GFX_TARGET);
 			run('bin/media/$GFX_TARGET/VideoWindowCheck', []);
 		}
-		// (Windows: a <Video> drawn and on its system layer, a still read: tests/media/windows/WinVideoStillCheck.hx)
+		// (Windows: a <video> drawn and on its system layer, a still read: tests/media/windows/WinVideoStillCheck.hx)
 		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
 			native('bin/media/$GFX_TARGET/WinVideoStillCheck', cps(["src", "tests/media/windows"]).concat(["-main", "WinVideoStillCheck"]), GFX_TARGET);
 			for (mode in ["drawn", "layer-unit", "layer"]) run(exePath('bin/media/$GFX_TARGET/WinVideoStillCheck', GFX_TARGET), [mode, "bin/media"]);

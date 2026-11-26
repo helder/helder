@@ -8,7 +8,7 @@ AudioToolbox (`helder.media.apple`), the browser's WebCodecs
 (`helder.media.web`), Android's MediaCodec (`helder.media.android`),
 Windows' Media Foundation (`helder.media.windows`), Linux's libavcodec,
 VAAPI through it (`helder.media.linux`), helder's own Vorbis where an app
-links it. A `Player` plays a file, a `<Video>` shows it in helder.ui.
+links it. A `Player` plays a file, a `<video>` shows it in helder.ui.
 
 ```haxe
 var media = Media.open(new FileSource("clip.mp4"));   // a coroutine (helder.async)
@@ -20,8 +20,7 @@ while ((p = media.next()) != null)    // the file's order, each track's in decod
 ```
 
 ```haxe
-import helder.media.ui.MediaTags.*;
-<Video src="clip.mp4" fit="cover" autoplay={true} loop={true} grow={1} ref={v -> video = v}/>
+<video src="clip.mp4" objectFit="cover" autoPlay={true} loop={true} flexGrow={1} ref={v -> video = v}/>
 video.seek(12.5); video.step(1); video.time();   // exact seeks, frame steps, signals
 ```
 
@@ -36,7 +35,7 @@ never assume the whole file in memory, and skip what they do not need
 | --- | --- |
 | `FileSource(path)` | a local file, natively (and on wasm32-wasi where the runtime has files: node's WASI); offsets past 2 GiB |
 | `MemorySource(bytes)` | bytes in memory |
-| `WebSource.url(url)` | the browser: fetch with HTTP Range requests, a part at a time (its size from the first's `Content-Range`); a server that ignores Range sends the file once, kept as a Blob; `WebSource.of(url)` at once, opened by its first read (`<Video src>`'s in a browser) |
+| `WebSource.url(url)` | the browser: fetch with HTTP Range requests, a part at a time (its size from the first's `Content-Range`); a server that ignores Range sends the file once, kept as a Blob; `WebSource.of(url)` at once, opened by its first read (`<video src>`'s in a browser) |
 | `WebSource.blob(name)` | a Blob's slices: one the page gave (`browser.mjs`'s option `blobs`, `{name: Blob}`, or `host.blob(name, blob)` from the page or another module: a file picked or dropped, helder.os's `WebFolders`); `WebSource.ofBlob(name)` at once, opened by its first read |
 | `WebSource.opfs(path)` | a file of the origin's private file system |
 
@@ -323,10 +322,14 @@ the main thread only. A file the demuxers do not read (Ogg) is not tried.
 
 ## Showing
 
-`<Video>` (`ui.MediaTags`, `ui.VideoNode`): a helder.ui box showing a
-player's frame as fit says (contain by default), sized as its picture,
-upright, where the style gives none; src a path or a ByteSource; its
-`time`, `duration` and `playing` signals, `onTime` each frame. While it
+`<video>` (a ui element of helder.media's, `ui.VideoNode`: linked where
+markup names it, NodeRenderer's `element_video`): a helder.ui box showing
+a player's frame as `objectFit` says (contain by default), sized as its
+picture, upright, where the style gives none; `src` a path or a
+ByteSource; `autoPlay`, `loop`, `muted`, `volume`, `playbackRate`,
+`layer`; its `time`, `duration` and `playing` signals (its `ref`, a
+`VideoNode`), its events `onLoaded`, `onEnded`, `onError` and `onTime`
+each frame (`ui.VideoEvents`). While it
 plays the animation clock ticks it. Two ways to show it:
 
 - drawn by helder (`ui.VideoTexture`), the default: the frame's planes
@@ -452,7 +455,7 @@ totals exact; four frames turned to RGB on Metal
 against ffmpeg's where the picture is flat (within 2 levels); exact seeks
 and steps landing on the frame by time and pixels; a clip played through
 CoreAudio's file output: each frame once, within a frame of the clock, the
-audio's 8000 frames there. The window lane's `VideoWindowCheck.hx`: a `<Video>`
+audio's 8000 frames there. The window lane's `VideoWindowCheck.hx`: a `<video>`
 in a scroller under a popup both ways, seeked, played, paused, scrolled
 (drawn: helder's frames read back, `quads.mp4`'s flat colours exact; the
 system's layer: rendering, placed and moved with the scroller, cut by its
@@ -490,7 +493,7 @@ at most 8; where the system tags them otherwise than ffmpeg reads them,
 said); exact seeks and steps; a clip played through AAudio (each frame
 once, within a frame of the clock, its 8000 frames). Codecs the device
 lacks are skipped with a line, H.264 and AAC never. `VideoStillCheck.hx`: a
-`<Video>` of `quads.mp4` in a scroller, drawn, on its system layer, and
+`<video>` of `quads.mp4` in a scroller, drawn, on its system layer, and
 with the layer asked for once paused (`late`, as a slow device's layers
 start), played until six frames were shown, sought and paused, the frame
 at 0.2 shown for ten frames; `still.mjs` reads the screencap's quadrants
@@ -508,7 +511,7 @@ exact seeks and steps; a clip played (WASAPI's clock, the monotonic
 clock where the machine has no output, said: CI's runner), each frame
 once within a frame of it. HEVC, VP9 and AV1 (Store extensions), Opus
 and what else the system lacks are skipped with a line, H.264 and AAC
-never. The window lane's `WinVideoStillCheck.hx`: a `<Video>` of `quads.mp4`
+never. The window lane's `WinVideoStillCheck.hx`: a `<video>` of `quads.mp4`
 in a scroller, drawn and on its layer, played until six frames were
 shown, sought and paused, the window's pixels (PrintWindow) read at the
 quadrants' centres: within 8 levels of the source both ways. Limits on

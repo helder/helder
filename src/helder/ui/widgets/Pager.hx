@@ -71,7 +71,7 @@ class Pager implements helder.view.Markup {
 	// the pages (slides), shown as the pager has them
 	public static function Pages(props:{pager:Pager, slides:Array<View>}):View {
 		var slides = props.slides, pager = props.pager, page = pager.page, position = pager.position;
-		return <view tag="pager" overflow="hidden" onPan={pager.pan} pan-axis="x" ref={n -> pager.root = n}>
+		return <view tag="pager" overflow="hidden" onPan={pager.pan} panAxis="x" ref={p -> pager.root = cast p}>
 			<view position="relative" left={((page() - position()) * 100) + "%"}>
 				{[for (i in 0...slides.length) <view tag={"page-" + i} position={i == page() ? Position.Relative : Position.Absolute} top={0}
 					left={((i - page()) * 100) + "%"} width="100%">{slides[i]}</view>]}

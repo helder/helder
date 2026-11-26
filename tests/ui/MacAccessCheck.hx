@@ -43,13 +43,13 @@ class MacAccessCheck implements Markup {
 	static function main() {
 		var w = new UiWindow("MacAccessCheck", 320, 240);
 		var saved = 0, checked = signal(false), volume = signal(0.5), name = signal(""), areaOn = signal(false), notes = signal("");
-		Render.render(<view padding={12} row-gap={8} align-items="start">
+		Render.render(<view padding={12} rowGap={8} alignItems="start">
 			<text>Settings</text>
-			<Button tag="save" label="Save" onClick={() -> saved++}/>
+			<Button tag="save" label="Save" onPress={() -> saved++}/>
 			<Checkbox tag="remember" checked={checked} label="Remember"/>
 			<Slider tag="volume" value={volume} step={0.1} label="Volume"/>
-			<field tag="name" host="native" value={name} placeholder="Name" label="Name" onInput={e -> name(e.text)}/>
-			<Show when={areaOn}><field:textarea tag="notes" host="native" value={notes} onInput={e -> notes(e.text)}/></Show>
+			<field tag="name" host="native" value={name} placeholder="Name" aria-label="Name" onInput={e -> name(e.text)}/>
+			<Show when={areaOn}><textarea tag="notes" host="native" value={notes} onInput={e -> notes(e.text)}/></Show>
 		</view>, w.root);
 		var view = w.window.surface.handle;
 		var frames = 0, step = 0;

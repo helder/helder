@@ -24,8 +24,8 @@ this screen.
 
 ```tsx file=app.tsx
 export function App() {
-	return <view grow={1} align-items="center" justify="center" background="#ffffff">
-		<text font-size={14} color="#71717a">App</text>
+	return <view flexGrow={1} alignItems="center" justifyContent="center" background="#ffffff">
+		<text fontSize={14} color="#71717a">App</text>
 	</view>;
 }
 ```

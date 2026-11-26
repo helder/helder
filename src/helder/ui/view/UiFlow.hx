@@ -3,7 +3,6 @@ package helder.ui.view;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.view.*;
-import haxe.extern.EitherType;
 import helder.view.Flow.Mountable;
 import helder.view.graph.Graph;
 import helder.view.graph.Read;
@@ -45,15 +44,14 @@ class UiFlow {
 	// listbox of options to assistive technology (label: its name), each
 	// with its place among all of them; Up, Down, Page Up and Down, Home
 	// and End move the focus to a row (made if need be), selected (the key
-	// of the row selected: written as the focus moves, a row pressed) and
-	// onActivate (Enter, Space) given its item. Its child function gets a
-	// row's item (a Read) and its index when made; ref the VirtualScroll
-	// (scrollToIndex, focusIndex, the window). With a Selection the callback
-	// takes the selected indices (Enter or double click); by still keys rows;
-	// selectMode as VirtualGrid's.
-	@:typescript.type('<T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown')
-	public static function VirtualList<T>(props:VirtualListProps<T>):Any
-		return new VirtualRows<T>(props);
+	// of the row selected, by's K: written as the focus moves, a row
+	// pressed) and onActivate (Enter, Space) given its index ([i]). Its
+	// child function gets a row's item (a Read) and its index when made; ref
+	// the VirtualScroll (scrollToIndex, focusIndex, the window). With a
+	// Selection onActivate takes the selected indices (Enter or double
+	// click); by still keys rows; selectMode as VirtualGrid's.
+	public static function VirtualList<T, K>(props:VirtualListProps<T, K>):Any
+		return new VirtualRows<T, K>(props);
 
 	// VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
 	// gap apart and padding in (4, 12), in a GridScroll: only the rows in
@@ -68,10 +66,10 @@ class UiFlow {
 
 }
 
-typedef VirtualListProps<T> = {
+typedef VirtualListProps<T, K> = {
 	var each:Read<Array<T>>;
 	var children:(Read<T>, Int)->Any;
-	@:typescript.type("(item: T) => string | number") var ?by:T->Dynamic;
+	var ?by:T->K;
 	var ?keyed:Bool;
 	var ?estimate:Float;
 	var ?itemHeight:Float;
@@ -79,8 +77,8 @@ typedef VirtualListProps<T> = {
 	var ?overscan:Int;
 	var ?keep:Int;
 	// (the selected row's key: by's, else its item where keyed, else its index)
-	@:typescript.type("Signal<T | string | number | null>") var ?selected:Signal<Dynamic>;
-	var ?onActivate:EitherType<T->Void, Array<Int>->Void>;
+	var ?selected:Signal<Null<K>>;
+	var ?onActivate:Array<Int>->Void;
 	var ?label:String;
 	var ?ref:VirtualScroll->Void;
 	var ?tag:String;
@@ -219,8 +217,8 @@ function anchorAt(parent:Node, before:Null<Node>, tag:String):Node {
 // list's changes diffed as For's (a common start and end, the middle by key)
 // into the scroller's splices, its rows' items written
 @:renderer(helder.ui.view.NodeRenderer)
-class VirtualRows<T> implements Mountable<Node> {
-	final props:VirtualListProps<T>;
+class VirtualRows<T, K> implements Mountable<Node> {
+	final props:VirtualListProps<T, K>;
 
 	public function new(props)
 		this.props = props;
@@ -232,7 +230,7 @@ class VirtualRows<T> implements Mountable<Node> {
 		// (growing from 0: its rows' extent no part of its parent's size)
 		if (p.height != null) v.style.height = p.height else {
 			v.style.height = 0;
-			v.style.grow = 1;
+			v.style.flexGrow = 1;
 			v.style.minHeight = 0;
 		}
 		if (p.overscan != null) v.overscan = p.overscan;
@@ -261,7 +259,7 @@ class VirtualRows<T> implements Mountable<Node> {
 				case Key.PAGE_DOWN: i < 0 ? 0 : v.rowAtOffset(v.rowOffset(i) + v.viewHeight());
 				case _: null;
 			});
-			input.onActivate = cast p.onActivate;
+			input.onActivate = p.onActivate;
 			input.onContextMenu = p.onContextMenu;
 			if (p.selectMode != null) {
 				var mode:Read<Bool> = Read.of(p.selectMode);
@@ -269,9 +267,9 @@ class VirtualRows<T> implements Mountable<Node> {
 			}
 			if (p.textOf != null) input.textOf = i -> p.textOf(items[i]);
 		} else {
-			v.onRowActive = i -> if (selected != null) selected(keyOf(i));
-			var activate:T->Void = cast p.onActivate;
-			v.onRowActivate = i -> if (activate != null) activate(items[i]);
+			v.onRowActive = i -> if (selected != null) selected((keyOf(i) : Null<K>));
+			var activate = p.onActivate;
+			v.onRowActivate = i -> if (activate != null) activate([i]);
 		}
 		v.onMakeRow = (i, row) -> {
 			var o = new Owner(home), k:Dynamic = keyOf(i);

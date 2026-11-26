@@ -14,20 +14,20 @@ class Glass implements Markup {
 
 	static function main() {
 		UiWindow.run(<Surface title="Liquid Glass" width={480} height={360}>
-			<view grow={1} background="#f4f4f5" font-family="Inter" font-size={15}>
-				<scroll grow={1} padding={16} row-gap={10}>
-					{[for (i in 0...24) <view height={64} radius={14} padding={14} justify="center" background={colors[i % colors.length]}>
-						<text color="#ffffff" font-weight={600}>{'Row ${i + 1}'}</text>
+			<view flexGrow={1} background="#f4f4f5" fontFamily="Inter" fontSize={15}>
+				<scroll flexGrow={1} padding={16} rowGap={10}>
+					{[for (i in 0...24) <view height={64} borderRadius={14} padding={14} justifyContent="center" background={colors[i % colors.length]}>
+						<text color="#ffffff" fontWeight={600}>{'Row ${i + 1}'}</text>
 					</view>]}
 				</scroll>
-				<glass position="absolute" left={16} top={12} height={44} padding="0 18" direction="row" align-items="center" column-gap={8} interactive>
+				<glass position="absolute" left={16} top={12} height={44} padding="0 18" flexDirection="row" alignItems="center" columnGap={8} interactive>
 					<icon name="search" width={18} height={18}/><text>Search</text>
 				</glass>
-				<glass-group spacing={12} position="absolute" right={16} top={12} direction="row" column-gap={6}>
-					<glass width={44} height={44} align-items="center" justify="center" interactive><icon name="check" width={18} height={18}/></glass>
-					<glass width={44} height={44} align-items="center" justify="center" interactive><icon name="more" width={18} height={18}/></glass>
-					<glass width={44} height={44} align-items="center" justify="center" interactive><icon name="arrow-right" width={18} height={18}/></glass>
-				</glass-group>
+				<view glassSpacing={12} position="absolute" right={16} top={12} flexDirection="row" columnGap={6}>
+					<glass width={44} height={44} alignItems="center" justifyContent="center" interactive><icon name="check" width={18} height={18}/></glass>
+					<glass width={44} height={44} alignItems="center" justifyContent="center" interactive><icon name="more" width={18} height={18}/></glass>
+					<glass width={44} height={44} alignItems="center" justifyContent="center" interactive><icon name="arrow-right" width={18} height={18}/></glass>
+				</view>
 			</view>
 		</Surface>);
 	}

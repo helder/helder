@@ -134,7 +134,7 @@ static final look = Look.base.with({
 		"markdown-h1": t -> {fontSize: 28, fontWeight: 600, color: t.fg},
 		"markdown-p": t -> {lineHeight: 1.6, color: t.fg},
 		"markdown-link": t -> {color: t.accentInk},
-		"markdown-code": t -> {padding: [10, 12, 10, 0], radius: t.radius, background: t.fill},
+		"markdown-code": t -> {padding: [10, 12, 10, 0], borderRadius: t.radius, background: t.fill},
 		"markdown-quote": t -> {padding: [0, 0, 0, 12], borders: [0, 0, 0, 3], borderColor: t.line, color: t.fg2}
 	}
 });

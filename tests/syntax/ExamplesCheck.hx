@@ -80,7 +80,7 @@ class ExamplesCheck {
 		inline function title(d:Document)
 			return Lambda.find(d.elementsNamed("text"), e -> e.attr("color")?.valueText() == "#3b82f6");
 		inline function root(d:Document)
-			return Lambda.find(d.elementsNamed("view"), e -> e.attr("padding") != null && e.attr("row-gap") != null);
+			return Lambda.find(d.elementsNamed("view"), e -> e.attr("padding") != null && e.attr("rowGap") != null);
 		edits(path, [
 			{
 				what: '$app: the title\'s colour set',
@@ -161,7 +161,7 @@ class ExamplesCheck {
 			{
 				what: "mail: the bar's spacer renamed a scroll",
 				edit: d -> {
-					var spacer = Lambda.find(d.elementsNamed("view"), e -> e.selfClosing && e.attr("grow")?.valueText() == "1" && e.attrs().length == 1);
+					var spacer = Lambda.find(d.elementsNamed("view"), e -> e.selfClosing && e.attr("flexGrow")?.valueText() == "1" && e.attrs().length == 1);
 					{tx: Edits.rename(d, spacer, "scroll"), from: spacer.start, to: spacer.end};
 				}
 			},
@@ -389,11 +389,11 @@ import helder.view.graph.Graph.*;
 class GuideScreen implements Markup {
 	static function main() {
 		var text = signal(\"A draft\"), subject = signal(\"Hi\"), body = signal(\"\"), name = signal(\"Ann\");
-		var v:View = @:privateAccess <view padding={12} row-gap={12}>
+		var v:View = @:privateAccess <view padding={12} rowGap={12}>
 			{GuideCheck.Order({})}
 			{GuideCheck.Confirm({onYes: () -> {}})}
 			{GuideCheck.Greeting({name: name, onLink: () -> {}})}
-			{GuideCheck.SearchButton({onClick: () -> {}})}
+			{GuideCheck.SearchButton({onPress: () -> {}})}
 			{GuideCheck.Editor({text: text, onSave: () -> {}})}
 			{GuideCheck.Compose({subject: subject, body: body})}
 		</view>;

@@ -9,6 +9,7 @@ import helder.view.*;
 // A name edited in place (a tile's, a row's, a sidebar folder's), as
 // Finder's: the name selected but its extension, Enter or leaving the field
 // commits, Escape gives it up.
+@:renderer(helder.ui.view.NodeRenderer)
 class NameField implements Markup {
 	public static function field(name:String, commit:String->Void, cancel:Void->Void, center = false):View {
 		var text = name, done = false;
@@ -17,8 +18,8 @@ class NameField implements Markup {
 			done = true;
 			if (ok) commit(text) else cancel();
 		}
-		return <field tag="rename" value={name} label="Name" grow={1} min-width={0} padding="0 4" radius={4} background={Look.ref.canvas}
-			border-width={1} border-color={Look.ref.accent} color={Look.ref.fg} text-align={center ? "center" : "left"}
+		return <field tag="rename" value={name} aria-label="Name" flexGrow={1} minWidth={0} padding="0 4" borderRadius={4} background={Look.ref.canvas}
+			borderWidth={1} borderColor={Look.ref.accent} color={Look.ref.fg} textAlign={center ? "center" : "left"}
 			onInput={e -> text = e.text}
 			onKeyDown={e -> if (e.key == Key.ENTER || e.key == Key.ESCAPE) {
 				finish(e.key == Key.ENTER);

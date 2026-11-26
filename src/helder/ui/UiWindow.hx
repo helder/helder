@@ -612,7 +612,7 @@ class UiWindow {
 		if (n.style.display == None || !n.visible()) return;
 		var st = n.style;
 		var draws = Type.getClass(n) != Node || st.background.a > 0 || st.background.isToken || st.borderWidth > 0 || st.backgroundImage != null
-			|| st.shadow != null;
+			|| st.boxShadow != null;
 		if (draws && n.hittable()) {
 			var k = scale, x0 = Math.floor((n.absX - dx) * k), y0 = Math.floor((n.absY - dy) * k);
 			out.push(x0);

@@ -4,7 +4,7 @@ import helder.ui.*;
 import helder.ui.UiWindow;
 
 // A video between the browser's layers (web-video-layers.mjs: wasm32-wasi
-// in headless Chromium): a 400x300 window, a <Video> of long.webm on its
+// in headless Chromium): a 400x300 window, a <video> of long.webm on its
 // system layer (a canvas of the page: helder.media's WebSample), a box
 // drawn after it over its corner (a layer over the video's), and a list
 // beside it (a layer in its scroll view). Prints "video frames=n layer=b"
@@ -27,7 +27,7 @@ class WebVideoLayers {
 		list.style.set({position: Absolute, left: 290, top: 20, width: 100, height: 260, overflow: Scroll, background: Color.rgb(0xffffff)});
 		for (i in 0...30) {
 			var r = new Node();
-			r.style.set({height: 30, shrink: 0, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
+			r.style.set({height: 30, flexShrink: 0, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
 			list.append(r);
 		}
 		page.append(v);

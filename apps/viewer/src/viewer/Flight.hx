@@ -22,6 +22,7 @@ import helder.view.graph.Graph.*;
 // double); a decode landing elsewhere than the thumbnail guessed is flown
 // on to, one still coming held for. No tile (a file opened by its path,
 // one gone from the folder), no picture or reduced motion: the fade alone.
+@:renderer(helder.ui.view.NodeRenderer)
 class Flight implements Markup {
 	// (160 ms, a quick start easing out long: snappy, as Quick Look's)
 	public static final CURVE = Curve.tween(0.16, [0.2, 0.8, 0.2, 1]);
@@ -188,7 +189,7 @@ class Flight implements Markup {
 
 	function tileRadius(path:String):Float {
 		for (t in tiles)
-			if (t.path == path && t.node.ui != null) return t.node.style.radius;
+			if (t.path == path && t.node.ui != null) return t.node.style.borderRadius;
 		return 0;
 	}
 
@@ -253,11 +254,11 @@ class Flight implements Markup {
 	// the picture in flight, over everything in the root
 	public static function layer(z:Flight):View
 		return <Show when={z.flying() != ""}>
-			<view tag="zoom" position="absolute" left={z.box().x} top={z.box().y} width={z.box().width} height={z.box().height} radius={z.radius()}
-				overflow="hidden" pointer-events="none">
-				<Show when={z.image() != null}><image src={z.image()} width="100%" height="100%" fit="cover"/></Show>
+			<view tag="zoom" position="absolute" left={z.box().x} top={z.box().y} width={z.box().width} height={z.box().height} borderRadius={z.radius()}
+				overflow="hidden" pointerEvents="none">
+				<Show when={z.image() != null}><image src={z.image()} width="100%" height="100%" objectFit="cover"/></Show>
 				<Show when={z.image() == null}>
-					<view tag="zoom-page" grow={1} radius={z.radius()} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} opacity={z.page()}/>
+					<view tag="zoom-page" flexGrow={1} borderRadius={z.radius()} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge} opacity={z.page()}/>
 				</Show>
 			</view>
 		</Show>;

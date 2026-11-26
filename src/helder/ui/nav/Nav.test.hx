@@ -65,8 +65,8 @@ function tests() {
 	describe("NavScreen", () -> {
 		function nav():Router
 			return new Router()
-				.route("/", _ -> <NavScreen title="Browse" large><view tag="home" height={2000} shrink={0}/></NavScreen>)
-				.route("/a", _ -> <NavScreen title="Photos" large><view height={2000} shrink={0}/></NavScreen>)
+				.route("/", _ -> <NavScreen title="Browse" large><view tag="home" height={2000} flexShrink={0}/></NavScreen>)
+				.route("/a", _ -> <NavScreen title="Photos" large><view height={2000} flexShrink={0}/></NavScreen>)
 				.route("/b", _ -> <NavScreen title="Trip"><view tag="trip" height={100}/></NavScreen>);
 		function top(u:Ui):Node {
 			var screens = [for (n in u.root.find("stack").children) if (n.tag == "screen" && n.visible()) n];
@@ -117,7 +117,7 @@ function tests() {
 	describe("Sheet", () -> {
 		test("opens to its first detent, drags to large, down to dismiss", () -> {
 			var u = ui(390, 844), open = signal(false), at = signal(Medium);
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<Sheet open={open} detents={[Medium, Large]} detent={at} onDismiss={() -> open(false)} label="Info"><text tag="body">Info</text></Sheet>
 			</view>, u.root);
 			u.update();
@@ -159,7 +159,7 @@ function tests() {
 		});
 		test("a popover from its anchor on a wider screen", () -> {
 			var u = ui(820, 1180), open = signal(false), button:Null<Node> = null;
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<view tag="info" width={44} height={44} ref={n -> button = n}/>
 				<Sheet open={open} anchor={() -> button} onDismiss={() -> open(false)}><text>Info</text></Sheet>
 			</view>, u.root);
@@ -222,7 +222,7 @@ function tests() {
 				var u = ui(size.w, 600), clicks = 0;
 				var n = new Node("row");
 				n.style.height = 100;
-				n.onActivate = _ -> clicks++;
+				n.onPress = _ -> clicks++;
 				u.root.append(n);
 				helder.ui.menu.ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)]);
 				u.update();
@@ -246,9 +246,9 @@ function tests() {
 		test("a tap toggles; a drag sideways selects a run", () -> {
 			var u = ui(390, 844), grid:Null<helder.ui.GridScroll> = null;
 			var files = [for (i in 0...12) "f" + i];
-			var dispose = Render.render(<view grow={1}>
+			var dispose = Render.render(<view flexGrow={1}>
 				<VirtualGrid each={files} by={f -> f} cellWidth={120} cellHeight={120} gap={0} padding={0} selectMode={true} ref={g -> grid = g}>
-					{(f, i) -> <view grow={1} tag={f()}/>}
+					{(f, i) -> <view flexGrow={1} tag={f()}/>}
 				</VirtualGrid>
 			</view>, u.root);
 			u.update();
