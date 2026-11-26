@@ -16,11 +16,7 @@ class Sets {
 			Builtins.SetProto.setOwn(name, Builtins.nativeFunction(name, 1, (t, a, _) -> run(name, t, arg(a, 0))), Attr.HIDDEN);
 	}
 
-	static function size(m:JsMap):Int {
-		var n = 0;
-		for (active in m.active) if (active) n++;
-		return n;
-	}
+	static function size(m:JsMap):Int return m.count;
 
 	static function contains(m:JsMap, v:Dynamic):Bool return Collections.mapIndex(m, v) >= 0;
 

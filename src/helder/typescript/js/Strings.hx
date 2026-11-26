@@ -64,184 +64,221 @@ class Strings {
 			return out.toString();});
 		method(p, "toString", 0, (t, _, _) -> primitive(t, "string"));
 		method(p, "valueOf", 0, (t, _, _) -> primitive(t, "string"));
-		var names = ["charAt", "at", "charCodeAt", "codePointAt", "slice", "substring", "substr", "concat", "indexOf", "includes", "startsWith", "lastIndexOf", "endsWith",
-			"toLowerCase", "toUpperCase", "toLocaleLowerCase", "toLocaleUpperCase", "trim", "trimStart", "trimEnd", "trimLeft", "trimRight", "repeat", "padStart", "padEnd",
-			"split", "replace", "replaceAll", "localeCompare", "normalize", "isWellFormed", "toWellFormed", "search", "match", "matchAll"];
-		for (name in names) method(p, name, stringArity(name), (t, a, _) -> stringMethod(thisString(t), name, a));
+		// (each method its own function, in String.prototype's order)
+		function m(name:String, arity:Int, fn:(String, Array<Dynamic>) -> Dynamic) method(p, name, arity, (t, a, _) -> fn(thisString(t), a));
+		m("charAt", 1, (s, a) -> {
+			var i = toIntegerOrInfinity(arg(a, 0));
+			return i < 0 || i >= s.length ? "" : s.charAt(Std.int(i));});
+		m("at", 1, (s, a) -> {
+			var i = toIntegerOrInfinity(arg(a, 0));
+			if (i < 0) i += s.length;
+			return i < 0 || i >= s.length ? undef() : s.charAt(Std.int(i));});
+		m("charCodeAt", 1, (s, a) -> {
+			var i = toIntegerOrInfinity(arg(a, 0));
+			return i < 0 || i >= s.length ? Math.NaN : StringTools.fastCodeAt(s, Std.int(i));});
+		m("codePointAt", 1, (s, a) -> {
+			var i = toIntegerOrInfinity(arg(a, 0)), n = s.length;
+			if (i < 0 || i >= n) return undef();
+			var c = StringTools.fastCodeAt(s, Std.int(i));
+			if (c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
+				var d = StringTools.fastCodeAt(s, Std.int(i + 1));
+				if (d >= 0xdc00 && d <= 0xdfff) return (c - 0xd800) * 1024 + (d - 0xdc00) + 65536;
+			}
+			return c;});
+		m("slice", 2, (s, a) -> {
+			var n = s.length, second = arg(a, 1);
+			var start = relative(arg(a, 0), n), end = second == undef() ? n : relative(second, n);
+			return s.substring(Std.int(start), Std.int(Math.max(start, end)));});
+		m("substring", 2, (s, a) -> {
+			var n = s.length, second = arg(a, 1);
+			var start = Math.max(0, Math.min(toIntegerOrInfinity(arg(a, 0)), n)), end = second == undef() ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
+			return s.substring(Std.int(Math.min(start, end)), Std.int(Math.max(start, end)));});
+		m("substr", 2, (s, a) -> {
+			var n = s.length, second = arg(a, 1);
+			var start = relative(arg(a, 0), n);
+			var length = second == undef() ? n - start : Math.min(Math.max(toIntegerOrInfinity(second), 0), n - start);
+			return length <= 0 ? "" : s.substr(Std.int(start), Std.int(length));});
+		m("concat", 1, (s, a) -> {
+			var b = new StringBuf();
+			b.add(s);
+			for (v in a) b.add(Seed.text(v));
+			return b.toString();});
+		m("indexOf", 1, (s, a) -> s.indexOf(Seed.text(arg(a, 0)), from(s, arg(a, 1))));
+		m("includes", 1, (s, a) -> s.indexOf(needle(arg(a, 0), "includes"), from(s, arg(a, 1))) >= 0);
+		m("startsWith", 1, (s, a) -> {
+			var needle = needle(arg(a, 0), "startsWith");
+			return s.substr(from(s, arg(a, 1)), needle.length) == needle;});
+		m("lastIndexOf", 1, (s, a) -> {
+			var n = s.length, num = Seed.numeric(arg(a, 1));
+			var pos = Math.isNaN(num) ? n : Std.int(Math.max(0, Math.min(toIntegerOrInfinity(num), n)));
+			return s.lastIndexOf(Seed.text(arg(a, 0)), Std.int(pos));});
+		m("endsWith", 1, (s, a) -> {
+			var needle = needle(arg(a, 0), "endsWith"), second = arg(a, 1);
+			var end = second == undef() ? s.length : from(s, second);
+			return end >= needle.length && s.substr(end - needle.length, needle.length) == needle;});
+		m("toLowerCase", 0, (s, _) -> s.toLowerCase());
+		m("toUpperCase", 0, (s, _) -> s.toUpperCase());
+		m("toLocaleLowerCase", 0, (s, _) -> s.toLowerCase());
+		m("toLocaleUpperCase", 0, (s, _) -> s.toUpperCase());
+		m("trim", 0, (s, _) -> trim(s, true, true));
+		m("trimStart", 0, (s, _) -> trim(s, true, false));
+		m("trimEnd", 0, (s, _) -> trim(s, false, true));
+		m("trimLeft", 0, (s, _) -> trim(s, true, false));
+		m("trimRight", 0, (s, _) -> trim(s, false, true));
+		m("repeat", 1, (s, a) -> {
+			var first = arg(a, 0);
+			var count = toIntegerOrInfinity(first);
+			if (count < 0 || !Math.isFinite(count)) error("RangeError", "Invalid count value: " + Seed.text(first));
+			if (count * s.length > 536870888) error("RangeError", "Invalid string length");
+			var b = new StringBuf();
+			var i:Float = 0;
+			while (i < count) {
+				b.add(s);
+				i++;
+			}
+			return b.toString();});
+		m("padStart", 1, (s, a) -> pad(s, a, true));
+		m("padEnd", 1, (s, a) -> pad(s, a, false));
+		m("split", 2, split);
+		m("replace", 2, (s, a) -> replace(s, a, false));
+		m("replaceAll", 2, (s, a) -> replace(s, a, true));
+		m("localeCompare", 1, (s, a) -> collate(s, Seed.text(arg(a, 0))));
+		m("normalize", 0, (s, a) -> {
+			var first = arg(a, 0);
+			var form = first == undef() ? "NFC" : Seed.text(first);
+			if (["NFC", "NFD", "NFKC", "NFKD"].indexOf(form) < 0) return error("RangeError", "Invalid normalization form");
+			return normalizeString(s, form);});
+		m("isWellFormed", 0, (s, _) -> wellFormed(s, true));
+		m("toWellFormed", 0, (s, _) -> wellFormed(s, false));
+		m("search", 1, (s, a) -> matcher(s, arg(a, 0), "search"));
+		m("match", 1, (s, a) -> matcher(s, arg(a, 0), "match"));
+		m("matchAll", 1, (s, a) -> matcher(s, arg(a, 0), "matchAll"));
 		// (read-only: compiled code calls it itself on a string, Seed.stringCharCodeAt)
 		p.setOwn("charCodeAt", p.getOwn("charCodeAt"), Attr.HIDDEN | Attr.READONLY | Attr.LOCKED);
 		method(p, Symbols.iterator, 0, (t, _, _) -> new JsIterator(StringIteratorProto, thisString(t), "values"));
 	}
 
-	static function stringArity(name:String):Int return switch (name) {
-		case "toLowerCase" | "toUpperCase" | "toLocaleLowerCase" | "toLocaleUpperCase" | "trim" | "trimStart" | "trimEnd" | "trimLeft" | "trimRight" | "normalize" | "isWellFormed" | "toWellFormed": 0;
-		case "slice" | "substring" | "substr" | "split" | "replace" | "replaceAll": 2;
-		case _: 1;
-	};
+	// (a search's start: an integer from 0 to the length)
+	static function from(s:String, v:Dynamic):Int return Std.int(Math.max(0, Math.min(toIntegerOrInfinity(v), s.length)));
 
-	public static function stringMethod(s:String, name:String, args:Array<Dynamic>):Dynamic {
-		var first = arg(args, 0), second = arg(args, 1);
+	static function needle(v:Dynamic, name:String):String {
+		if (Regex.isRegExp(v)) error("TypeError", "First argument to String.prototype." + name + " must not be a regular expression");
+		return Seed.text(v);
+	}
+
+	static function trim(s:String, start:Bool, end:Bool):String {
+		var i = 0, j = s.length;
+		if (start) while (i < j && Seed.whitespace(StringTools.fastCodeAt(s, i))) i++;
+		if (end) while (j > i && Seed.whitespace(StringTools.fastCodeAt(s, j - 1))) j--;
+		return s.substring(i, j);
+	}
+
+	static function pad(s:String, a:Array<Dynamic>, start:Bool):String {
+		var n = s.length, second = arg(a, 1);
+		var target = toIntegerOrInfinity(arg(a, 0));
+		var fill = second == undef() ? " " : Seed.text(second);
+		if (target <= n || fill == "") return s;
+		if (target > 536870888) error("RangeError", "Invalid string length");
+		var needed = Std.int(target - n);
+		var padding = new StringBuf();
+		if (fill.length == 1) for (_ in 0...needed) padding.addChar(StringTools.fastCodeAt(fill, 0));
+		else while (padding.length < needed) padding.add(fill);
+		var pad = fill.length == 1 ? padding.toString() : padding.toString().substr(0, needed);
+		return start ? pad + s : s + pad;
+	}
+
+	static function wellFormed(s:String, test:Bool):Dynamic {
 		var n = s.length;
-		switch (name) {
-			case "charAt" | "at" | "charCodeAt" | "codePointAt":
-				var i = toIntegerOrInfinity(first);
-				if (name == "at" && i < 0) i += n;
-				if (i < 0 || i >= n) return name == "charAt" ? "" : name == "charCodeAt" ? Math.NaN : undef();
-				var c = s.charCodeAt(Std.int(i));
-				if (name == "codePointAt" && c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
-					var d = s.charCodeAt(Std.int(i + 1));
-					if (d >= 0xdc00 && d <= 0xdfff) return (c - 0xd800) * 1024 + (d - 0xdc00) + 65536;
-				}
-				return name == "charCodeAt" || name == "codePointAt" ? c : s.charAt(Std.int(i));
-			case "slice":
-				var start = relative(first, n), end = second == undef() ? n : relative(second, n);
-				return s.substring(Std.int(start), Std.int(Math.max(start, end)));
-			case "substring":
-				var start = Math.max(0, Math.min(toIntegerOrInfinity(first), n)), end = second == undef() ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
-				return s.substring(Std.int(Math.min(start, end)), Std.int(Math.max(start, end)));
-			case "substr":
-				var start = relative(first, n);
-				var length = second == undef() ? n - start : Math.min(Math.max(toIntegerOrInfinity(second), 0), n - start);
-				return length <= 0 ? "" : s.substr(Std.int(start), Std.int(length));
-			case "concat":
-				var b = new StringBuf();
-				b.add(s);
-				for (a in args) b.add(Seed.text(a));
-				return b.toString();
-			case "indexOf" | "includes" | "startsWith":
-				if (name != "indexOf" && Regex.isRegExp(first)) error("TypeError", "First argument to String.prototype." + name + " must not be a regular expression");
-				var needle = Seed.text(first);
-				var start = Std.int(Math.max(0, Math.min(toIntegerOrInfinity(second), n)));
-				if (name == "startsWith") return s.substr(start, needle.length) == needle;
-				var i = s.indexOf(needle, start);
-				return name == "indexOf" ? i : i >= 0;
-			case "lastIndexOf":
-				var num = Seed.numeric(second);
-				var pos = Math.isNaN(num) ? n : Std.int(Math.max(0, Math.min(toIntegerOrInfinity(num), n)));
-				return s.lastIndexOf(Seed.text(first), Std.int(pos));
-			case "endsWith":
-				if (Regex.isRegExp(first)) error("TypeError", "First argument to String.prototype.endsWith must not be a regular expression");
-				var needle = Seed.text(first);
-				var end = second == undef() ? n : Std.int(Math.max(0, Math.min(toIntegerOrInfinity(second), n)));
-				return end >= needle.length && s.substr(end - needle.length, needle.length) == needle;
-			case "toLowerCase" | "toLocaleLowerCase": return s.toLowerCase();
-			case "toUpperCase" | "toLocaleUpperCase": return s.toUpperCase();
-			case "trim" | "trimStart" | "trimEnd" | "trimLeft" | "trimRight":
-				var start = 0, end = n;
-				if (name != "trimEnd" && name != "trimRight") while (start < end && Seed.whitespace(s.charCodeAt(start))) start++;
-				if (name != "trimStart" && name != "trimLeft") while (end > start && Seed.whitespace(s.charCodeAt(end - 1))) end--;
-				return s.substring(start, end);
-			case "repeat":
-				var count = toIntegerOrInfinity(first);
-				if (count < 0 || !Math.isFinite(count)) error("RangeError", "Invalid count value: " + Seed.text(first));
-				if (count * s.length > 536870888) error("RangeError", "Invalid string length");
-				var b = new StringBuf();
-				var i:Float = 0;
-				while (i < count) {
-					b.add(s);
-					i++;
-				}
-				return b.toString();
-			case "padStart" | "padEnd":
-				var target = toIntegerOrInfinity(first);
-				var fill = second == undef() ? " " : Seed.text(second);
-				if (target <= n || fill == "") return s;
-				if (target > 536870888) error("RangeError", "Invalid string length");
-				var padding = new StringBuf();
-				var needed = Std.int(target - n);
-				while (padding.length < needed) padding.add(fill);
-				var pad = padding.toString().substr(0, needed);
-				return name == "padStart" ? pad + s : s + pad;
-			case "localeCompare": return collate(s, Seed.text(first));
-			case "normalize":
-				var form = first == undef() ? "NFC" : Seed.text(first);
-				if (["NFC", "NFD", "NFKC", "NFKD"].indexOf(form) < 0) return error("RangeError", "Invalid normalization form");
-				return normalizeString(s, form);
-			case "isWellFormed" | "toWellFormed":
-				var b = new StringBuf();
-				var ok = true;
-				var i = 0;
-				while (i < n) {
-					var c = s.charCodeAt(i);
-					if (c >= 0xd800 && c <= 0xdbff && i + 1 < n && s.charCodeAt(i + 1) >= 0xdc00 && s.charCodeAt(i + 1) <= 0xdfff) {
-						b.addChar(c);
-						b.addChar(s.charCodeAt(i + 1));
-						i += 2;
-						continue;
-					}
-					if (c >= 0xd800 && c <= 0xdfff) {
-						ok = false;
-						b.addChar(0xfffd);
-					} else b.addChar(c);
-					i++;
-				}
-				return name == "isWellFormed" ? ok : b.toString();
-			case "split":
-				if (first != null && first != undef()) {
-					var splitter = getKey(first, "\x00@@split", first);
-					if (splitter != undef() && splitter != null) return call(splitter, first, [s, second]);
-				}
-				var limit = second == undef() ? 4294967295.0 : toUint32(second);
-				var out = new JsArray(ArrayProto);
-				if (limit == 0) return out;
-				if (first == undef()) {
-					setIndex(out, 0, s);
-					return out;
-				}
-				var delimiter = Seed.text(first);
-				if (delimiter == "") {
-					var i = 0;
-					while (i < n && out.length < limit) setIndex(out, out.length, s.charAt(i++));
-					return out;
-				}
-				var start = 0;
-				while (out.length < limit) {
-					var i = s.indexOf(delimiter, start);
-					if (i < 0) {
-						setIndex(out, out.length, s.substr(start));
-						break;
-					}
-					setIndex(out, out.length, s.substring(start, i));
-					start = i + delimiter.length;
-				}
-				return out;
-			case "replace" | "replaceAll":
-				if (first != null && first != undef()) {
-					if (name == "replaceAll" && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "replaceAll must be called with a global RegExp");
-					var replacer = getKey(first, "\x00@@replace", first);
-					if (replacer != undef() && replacer != null) return call(replacer, first, [s, second]);
-				}
-				var search = Seed.text(first);
-				var functional = isCallable(second);
-				var replacement = functional ? "" : Seed.text(second);
-				var b = new StringBuf();
-				var start = 0;
-				var pos = s.indexOf(search);
-				while (pos >= 0) {
-					b.add(s.substring(start, pos));
-					b.add(functional ? Seed.text(call(second, undef(), [search, pos, s])) : Regex.expand(replacement, search, s, pos, [], null));
-					start = pos + search.length;
-					if (name == "replace") break;
-					if (search == "") {
-						if (pos >= n) break;
-						b.add(s.charAt(pos));
-						start = pos + 1;
-					}
-					pos = s.indexOf(search, start);
-				}
-				b.add(s.substr(start));
-				return b.toString();
-			case "search" | "match" | "matchAll":
-				var symbol = name == "search" ? "\x00@@search" : name == "match" ? "\x00@@match" : "\x00@@matchAll";
-				if (first != null && first != undef()) {
-					if (name == "matchAll" && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "String.prototype.matchAll called with a non-global RegExp argument");
-					var m = getKey(first, symbol, first);
-					if (m != undef() && m != null) return call(m, first, [s]);
-				}
-				var re = createRegExp(first == undef() ? "" : Seed.text(first), name == "matchAll" ? "g" : "");
-				return call(get(re, symbol), re, [s]);
-			case _: return error("TypeError", "String.prototype." + name + " is not implemented");
+		var b = new StringBuf();
+		var ok = true;
+		var i = 0;
+		while (i < n) {
+			var c = StringTools.fastCodeAt(s, i);
+			if (c >= 0xd800 && c <= 0xdbff && i + 1 < n && StringTools.fastCodeAt(s, i + 1) >= 0xdc00 && StringTools.fastCodeAt(s, i + 1) <= 0xdfff) {
+				b.addChar(c);
+				b.addChar(StringTools.fastCodeAt(s, i + 1));
+				i += 2;
+				continue;
+			}
+			if (c >= 0xd800 && c <= 0xdfff) {
+				ok = false;
+				b.addChar(0xfffd);
+			} else b.addChar(c);
+			i++;
 		}
+		return test ? ok : b.toString();
+	}
+
+	static function split(s:String, a:Array<Dynamic>):Dynamic {
+		var first = arg(a, 0), second = arg(a, 1), n = s.length;
+		if (first != null && first != undef()) {
+			var splitter = getKey(first, "\x00@@split", first);
+			if (splitter != undef() && splitter != null) return call(splitter, first, [s, second]);
+		}
+		var limit = second == undef() ? 4294967295.0 : toUint32(second);
+		var out = new JsArray(ArrayProto);
+		if (limit == 0) return out;
+		if (first == undef()) {
+			setIndex(out, 0, s);
+			return out;
+		}
+		var delimiter = Seed.text(first);
+		if (delimiter == "") {
+			var i = 0;
+			while (i < n && out.length < limit) setIndex(out, out.length, s.charAt(i++));
+			return out;
+		}
+		var start = 0;
+		while (out.length < limit) {
+			var i = s.indexOf(delimiter, start);
+			if (i < 0) {
+				setIndex(out, out.length, s.substr(start));
+				break;
+			}
+			setIndex(out, out.length, s.substring(start, i));
+			start = i + delimiter.length;
+		}
+		return out;
+	}
+
+	static function replace(s:String, a:Array<Dynamic>, all:Bool):Dynamic {
+		var first = arg(a, 0), second = arg(a, 1), n = s.length;
+		if (first != null && first != undef()) {
+			if (all && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "replaceAll must be called with a global RegExp");
+			var replacer = getKey(first, "\x00@@replace", first);
+			if (replacer != undef() && replacer != null) return call(replacer, first, [s, second]);
+		}
+		var search = Seed.text(first);
+		var functional = isCallable(second);
+		var replacement = functional ? "" : Seed.text(second);
+		var b = new StringBuf();
+		var start = 0;
+		var pos = s.indexOf(search);
+		while (pos >= 0) {
+			b.add(s.substring(start, pos));
+			b.add(functional ? Seed.text(call(second, undef(), [search, pos, s])) : Regex.expand(replacement, search, s, pos, [], null));
+			start = pos + search.length;
+			if (!all) break;
+			if (search == "") {
+				if (pos >= n) break;
+				b.add(s.charAt(pos));
+				start = pos + 1;
+			}
+			pos = s.indexOf(search, start);
+		}
+		b.add(s.substr(start));
+		return b.toString();
+	}
+
+	static function matcher(s:String, first:Dynamic, name:String):Dynamic {
+		var symbol = name == "search" ? "\x00@@search" : name == "match" ? "\x00@@match" : "\x00@@matchAll";
+		if (first != null && first != undef()) {
+			if (name == "matchAll" && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "String.prototype.matchAll called with a non-global RegExp argument");
+			var m = getKey(first, symbol, first);
+			if (m != undef() && m != null) return call(m, first, [s]);
+		}
+		var re = createRegExp(first == undef() ? "" : Seed.text(first), name == "matchAll" ? "g" : "");
+		return call(get(re, symbol), re, [s]);
 	}
 
 	// localeCompare: an approximation of ICU's root collation in three levels:
@@ -249,9 +286,21 @@ class Strings {
 	// accents folded), then accents, then case (lowercase first).
 	static var accents = "ÀÁÂÃÄÅàáâãäåÈÉÊËèéêëÌÍÎÏìíîïÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿÑñÇç";
 	static var bases = "AAAAAAaaaaaaEEEEeeeeIIIIiiiiOOOOOOooooooUUUUuuuuYyyNnCc";
+	// (the accented letters are all in U+00C0 to U+00FF: their bases by code unit)
+	static var latin:Array<Int> = null;
+
 	static function baseOf(c:Int):Int {
-		var k = accents.indexOf(String.fromCharCode(c));
-		return k >= 0 ? bases.charCodeAt(k) : c;
+		if (c < 0xc0 || c > 0xff) return c;
+		if (latin == null) {
+			latin = [for (u in 0xc0...0x100) u];
+			for (k in 0...accents.length) latin[StringTools.fastCodeAt(accents, k) - 0xc0] = StringTools.fastCodeAt(bases, k);
+		}
+		return latin[c - 0xc0];
+	}
+
+	static function lower(c:Int):Int {
+		if (c < 128) return c >= 65 && c <= 90 ? c + 32 : c;
+		return String.fromCharCode(c).toLowerCase().charCodeAt(0);
 	}
 
 	static function primary(c:Int):Int {
@@ -259,28 +308,32 @@ class Strings {
 		if (b >= 65 && b <= 90) b += 32;
 		if (b >= 97 && b <= 122) return 30000 + b;
 		if (b >= 48 && b <= 57) return 20000 + b;
-		if (b >= 0xc0) return 40000 + String.fromCharCode(b).toLowerCase().charCodeAt(0);
+		if (b >= 0xc0) return 40000 + lower(b);
 		return 10000 + b;
 	}
 
 	public static function collate(a:String, b:String):Int {
-		var n = Std.int(Math.min(a.length, b.length));
+		var n = a.length < b.length ? a.length : b.length;
 		for (i in 0...n) {
-			var x = primary(a.charCodeAt(i)), y = primary(b.charCodeAt(i));
+			var x = StringTools.fastCodeAt(a, i), y = StringTools.fastCodeAt(b, i);
+			if (x == y) continue;
+			x = primary(x);
+			y = primary(y);
 			if (x != y) return x < y ? -1 : 1;
 		}
 		if (a.length != b.length) return a.length < b.length ? -1 : 1;
 		for (i in 0...n) {
-			var x = a.charCodeAt(i), y = b.charCodeAt(i);
+			var x = StringTools.fastCodeAt(a, i), y = StringTools.fastCodeAt(b, i);
 			var ax = baseOf(x) != x, ay = baseOf(y) != y;
 			if (ax != ay) return ax ? 1 : -1;
 		}
 		for (i in 0...n) {
-			var x = a.charCodeAt(i), y = b.charCodeAt(i);
+			var x = StringTools.fastCodeAt(a, i), y = StringTools.fastCodeAt(b, i);
 			if (x == y) continue;
-			var lx = String.fromCharCode(x).toLowerCase().charCodeAt(0) == x, ly = String.fromCharCode(y).toLowerCase().charCodeAt(0) == y;
+			var lx = lower(x) == x, ly = lower(y) == y;
 			if (lx != ly) return lx ? -1 : 1;
 		}
-		return compareStrings(a, b) < 0 ? -1 : compareStrings(a, b) > 0 ? 1 : 0;
+		var c = compareStrings(a, b);
+		return c < 0 ? -1 : c > 0 ? 1 : 0;
 	}
 }

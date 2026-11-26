@@ -22,19 +22,21 @@ class Collections {
 		return t;
 	}
 
-	// (keys are compared with SameValueZero; an index maps each key to its slot)
+	// (keys are compared with SameValueZero; an index maps each key to its
+	// slot: strings by themselves, other primitives by an encoding, objects
+	// and symbols by identity)
 	static function mapIndex(m:JsMap, k:Dynamic):Int {
-		var id = mapKey(k);
-		if (id != null) {
-			var index = MapIndex.strings(m);
-			return index.exists(id) ? index.get(id) : -1;
+		var i:Null<Int>;
+		if (Std.isOfType(k, String)) i = m.stringIndex == null ? null : m.stringIndex.get(k);
+		else {
+			var id = mapKey(k);
+			if (id != null) i = m.primitiveIndex == null ? null : m.primitiveIndex.get(id);
+			else i = m.objectIndex == null ? null : m.objectIndex.get(k);
 		}
-		var index = MapIndex.objects(m);
-		return index.exists(k) ? index.get(k) : -1;
+		return i == null ? -1 : i;
 	}
 
 	static function mapKey(k:Dynamic):String {
-		if (Std.isOfType(k, String)) return "s" + k;
 		if (isNumber(k)) {
 			var n:Float = k;
 			return Math.isNaN(n) ? "NaN" : "n" + Seed.numberText(n == 0 ? 0 : n);
@@ -43,6 +45,18 @@ class Collections {
 		if (k == null) return "l";
 		if (Std.isOfType(k, Bool)) return k ? "t" : "f";
 		return null;
+	}
+
+	static function mapIndexSet(m:JsMap, k:Dynamic, slot:Null<Int>):Void {
+		if (Std.isOfType(k, String)) {
+			if (slot == null) m.stringIndex.remove(k) else MapIndex.strings(m).set(k, slot);
+			return;
+		}
+		var id = mapKey(k);
+		if (id != null) {
+			if (slot == null) m.primitiveIndex.remove(id) else MapIndex.primitives(m).set(id, slot);
+		}
+		else if (slot == null) m.objectIndex.remove(k) else MapIndex.objects(m).set(k, slot);
 	}
 
 	public static function mapPut(m:JsMap, k:Dynamic, v:Dynamic):JsMap {
@@ -57,8 +71,8 @@ class Collections {
 		m.keys.push(k);
 		m.values.push(v);
 		m.active.push(true);
-		var id = mapKey(k);
-		if (id != null) MapIndex.strings(m).set(id, slot); else MapIndex.objects(m).set(k, slot);
+		m.count++;
+		mapIndexSet(m, k, slot);
 		return m;
 	}
 
@@ -68,8 +82,8 @@ class Collections {
 		m.active[i] = false;
 		m.keys[i] = undef();
 		m.values[i] = undef();
-		var id = mapKey(k);
-		if (id != null) MapIndex.strings(m).remove(id); else MapIndex.objects(m).remove(k);
+		m.count--;
+		mapIndexSet(m, k, null);
 		return true;
 	}
 
@@ -104,6 +118,7 @@ class Collections {
 			method(p, "clear", 0, (t, _, _) -> {
 				var m = thisMap(t, isSet, "clear");
 				for (i in 0...m.active.length) m.active[i] = false;
+				m.count = 0;
 				MapIndex.clear(m);
 				return undef();});
 			method(p, "forEach", 1, (t, a, _) -> {
@@ -116,10 +131,7 @@ class Collections {
 				}
 				return undef();});
 			getter(p, "size", t -> {
-				var m = thisMap(t, isSet, "size");
-				var count = 0;
-				for (v in m.active) if (v) count++;
-				return count;});
+				return thisMap(t, isSet, "size").count;});
 			var iteratorProto = isSet ? SetIteratorProto : MapIteratorProto;
 			method(p, "keys", 0, (t, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "keys"), isSet ? "values" : "keys"));
 			method(p, "entries", 0, (t, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "entries"), "entries"));
@@ -167,6 +179,11 @@ class Collections {
 // (Map and Set lookup indexes, created on first use)
 class MapIndex {
 	public static function strings(m:JsMap):Map<String, Int> {
+		if (m.stringIndex == null) m.stringIndex = [];
+		return m.stringIndex;
+	}
+
+	public static function primitives(m:JsMap):Map<String, Int> {
 		if (m.primitiveIndex == null) m.primitiveIndex = [];
 		return m.primitiveIndex;
 	}
@@ -177,6 +194,7 @@ class MapIndex {
 	}
 
 	public static function clear(m:JsMap):Void {
+		m.stringIndex = null;
 		m.primitiveIndex = null;
 		m.objectIndex = null;
 	}

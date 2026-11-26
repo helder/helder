@@ -50,6 +50,32 @@ class Arrays {
 		return n < 0 ? Math.max(len + n, 0) : Math.min(n, len);
 	}
 
+	// some (when true) and every
+	static function test(t:Dynamic, a:Array<Dynamic>, when:Bool):Bool {
+		var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+		var i:Float = 0;
+		while (i < n) {
+			if (hasAt(o, i)) {
+				var v = get(o, i);
+				if (Seed.truth(call(f, self, [v, i, o])) == when) return when;
+			}
+			i++;
+		}
+		return !when;
+	}
+
+	// find, findIndex, findLast, findLastIndex: every index, holes too
+	static function find(t:Dynamic, a:Array<Dynamic>, last:Bool, index:Bool):Dynamic {
+		var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+		var i:Float = last ? n - 1 : 0;
+		while (i >= 0 && i < n) {
+			var v = get(o, i);
+			if (Seed.truth(call(f, self, [v, i, o]))) return index ? (i : Dynamic) : v;
+			i += last ? -1 : 1;
+		}
+		return index ? (-1 : Dynamic) : undef();
+	}
+
 	static function setupArray():Void {
 		var p = ArrayProto;
 		var c = constructor("Array", 1, p, (_, a, nt) -> {
@@ -211,40 +237,49 @@ class Arrays {
 				i++;
 			}
 			return false;});
-		for (name in ["map", "filter", "forEach", "some", "every", "find", "findIndex", "findLast", "findLastIndex"]) method(p, name, 1, function(t:Dynamic, a:Array<Dynamic>, _:Dynamic):Dynamic {
-			var o = toObject(t);
-			var n = lengthOf(o);
-			var f = callback(arg(a, 0));
-			var self = arg(a, 1);
+		// (each its own function: the loop runs per element)
+		method(p, "map", 1, (t, a, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
 			var out = new JsArray(ArrayProto);
-			if (name == "map") out.length = n;
-			var reverse = name == "findLast" || name == "findLastIndex";
-			var visitAll = StringTools.startsWith(name, "find");
-			var i:Float = reverse ? n - 1 : 0;
-			while (i >= 0 && i < n) {
-				if (visitAll || hasAt(o, i)) {
+			out.length = n;
+			var i:Float = 0;
+			while (i < n) {
+				if (hasAt(o, i)) {
 					var v = get(o, i);
-					var result = call(f, self, [v, i, o]);
-					switch (name) {
-						case "map": setIndex(out, i, result);
-						case "filter": if (Seed.truth(result)) setIndex(out, out.length, v);
-						case "some": if (Seed.truth(result)) return true;
-						case "every": if (!Seed.truth(result)) return false;
-						case "find" | "findLast": if (Seed.truth(result)) return v;
-						case "findIndex" | "findLastIndex": if (Seed.truth(result)) return i;
-						case _:
-					}
+					setIndex(out, i, call(f, self, [v, i, o]));
 				}
-				i += reverse ? -1 : 1;
+				i++;
 			}
-			return switch (name) {
-				case "map" | "filter": out;
-				case "some": false;
-				case "every": true;
-				case "find" | "findLast" | "forEach": undef();
-				case _: -1;
-			};
-		});
+			return out;});
+		method(p, "filter", 1, (t, a, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+			var out = new JsArray(ArrayProto);
+			var i:Float = 0;
+			while (i < n) {
+				if (hasAt(o, i)) {
+					var v = get(o, i);
+					if (Seed.truth(call(f, self, [v, i, o]))) setIndex(out, out.length, v);
+				}
+				i++;
+			}
+			return out;});
+		method(p, "forEach", 1, (t, a, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+			var i:Float = 0;
+			while (i < n) {
+				if (hasAt(o, i)) {
+					var v = get(o, i);
+					call(f, self, [v, i, o]);
+				}
+				i++;
+			}
+			return undef();});
+		method(p, "some", 1, (t, a, _) -> test(t, a, true));
+		method(p, "every", 1, (t, a, _) -> test(t, a, false));
+		method(p, "find", 1, (t, a, _) -> find(t, a, false, false));
+		method(p, "findIndex", 1, (t, a, _) -> find(t, a, false, true));
+		method(p, "findLast", 1, (t, a, _) -> find(t, a, true, false));
+		method(p, "findLastIndex", 1, (t, a, _) -> find(t, a, true, true));
 		for (name in ["reduce", "reduceRight"]) method(p, name, 1, (t, a, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);

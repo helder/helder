@@ -180,7 +180,7 @@ abstract class Expressions extends Statements {
 				var name = n.name().text;
 				chainCheck(n, a);
 				dynamicOperations++;
-				b.runtime("libGet", [any(a), EStr(name)]);
+				b.runtime("libGetNamed", [any(a), EStr(name)]);
 			case KindDeleteExpression:
 				var target = n.expression();
 				if (target.kind == KindPropertyAccessExpression) b.runtime("libDelete", [any(expr(target.expression())), EStr(target.name().text)]);
@@ -257,7 +257,16 @@ abstract class Expressions extends Statements {
 		}
 		if (n.kind == KindPropertyAccessExpression || n.kind == KindElementAccessExpression) {
 			var obj = expr(n.expression());
-			var key = n.kind == KindPropertyAccessExpression ? EStr(n.name().text) : expr(n.argumentExpression());
+			if (n.kind == KindPropertyAccessExpression) {
+				var name = EStr(n.name().text);
+				return {
+					read: () -> b.runtime("libGetNamed", [any(obj), name]),
+					write: (e) -> {
+						b.runtime("libPutNamed", [any(obj), name, any(e)]);
+					}
+				};
+			}
+			var key = expr(n.argumentExpression());
 			return {
 				read: () -> b.runtime("libGet", [any(obj), any(key)]),
 				write: (e) -> {
@@ -939,7 +948,7 @@ abstract class Expressions extends Statements {
 				chainCheck(n, fn);
 				return b.runtime("libCall", [fn, obj, argumentList(actual)]);
 			}
-			return b.runtime("libCallMethod", [obj, key, argumentList(actual)]);
+			return b.runtime(inner.kind == KindPropertyAccessExpression ? "libCallNamed" : "libCallMethod", [obj, key, argumentList(actual)]);
 		}
 		var fn = expr(callee);
 		chainCheck(n, fn);
