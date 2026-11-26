@@ -191,6 +191,8 @@ class DevCommand {
 			var sig = Signals.next([ProcessSignal.SIGINT, ProcessSignal.SIGTERM]);
 			shutdown(128 + sig);
 		});
+		// (started by a parent that keeps a pipe on our stdin, the studio's Play: it gone, we stop too)
+		if (Parent.piped()) task.async(_ -> Parent.watch(() -> Async.launch(_ -> shutdown(0))));
 		var http = listen(address, port);
 		if (http == null) {
 			Term.err(Style.status("error", Fail, 'no free port from $port'));

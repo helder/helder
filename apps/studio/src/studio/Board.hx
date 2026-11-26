@@ -28,6 +28,8 @@ using StringTools;
 class Board implements Markup {
 	public static function view(studio:Studio):View {
 		var stage:Null<Node> = null, panned = false, watch = !studio.classic;
+		// (the camera at rest: a frame drawn, the frames in view told how sharp, Studio.showVisible)
+		effect(() -> studio.camera.rest(), _ -> stage?.ui?.requestFrame());
 		return <view tag="stage" flexGrow={1} minWidth={0} overflow="hidden" cursor={watch ? studio.camera.hand() : (Default : Cursor)} background={c(watch ? "ground" : "canvas")} ref={n -> {
 			stage = n;
 			studio.stageNode = n;
@@ -111,6 +113,7 @@ class Board implements Markup {
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.shownFailure() == null && !s.crashedSignal() ? 1 : 0.45}/>
 			<Show when={s.still() != null && (s.image() == null || studio.hovered() == s.info.name && studio.previews.fileLoops(s.info.name))}>{still(studio, s, r)}</Show>
+			<Show when={studio.scrub()?.screen == s.info.name && studio.previews.recorded(s.info.name) != null}>{recorded(studio, s, r)}</Show>
 			<Show when={s.frames() == 0 && s.still() == null && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
 	}
@@ -121,6 +124,7 @@ class Board implements Markup {
 		n.tag = "still";
 		// (its scenes' worlds let go with it)
 		onCleanup(n.dispose);
+		effect(() -> studio.sharpness(), k -> n.sharp = k);
 		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.shownFailure() != null || s.crashedSignal()}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
 		});
@@ -130,6 +134,20 @@ class Board implements Markup {
 			var l = on ? studio.previews.fileLoop(s) : null;
 			if (l == null) n.stop() else n.play(l.fps, l.lists, l.passes, () -> studio.loopShown(name, "file"),
 				(frames, ms) -> studio.log("loop-played", {screen: name, frames: frames, msPerFrame: Math.round(ms * 1000) / 1000}));
+		});
+		return n;
+	}
+
+	// (the selection bar's scrubber: the frame of the loop recorded at its time, over the frame; never the live program)
+	static function recorded(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
+		var name = s.info.name, l = studio.previews.recorded(name);
+		var n = new StillFrame(l.lists[0], l.passes[0] ?? [], l.width, l.height);
+		n.tag = "recorded";
+		onCleanup(n.dispose);
+		effect(() -> {w: r().w, h: r().h}, v -> n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h}));
+		effect(() -> studio.scrub()?.t ?? 0.0, t -> {
+			var i = Std.int(t * l.fps) % l.lists.length;
+			n.at(l.lists[i], l.passes[i] ?? []);
 		});
 		return n;
 	}
@@ -195,8 +213,37 @@ class Board implements Markup {
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
 			}</For>
 			{Feedback.canvas(studio)}
+			{SelectionBar.view(studio)}
+			{failed(studio)}
 		</view>;
 	}
+
+	// a failed build on the canvas, whatever its zoom (its frames' chips are
+	// a frame wide): its first error, where (a link: the file at its line,
+	// as an agent's reply's), how many more, beside the code panel when it
+	// is open; its frames not drawn shimmer no more
+	static function failed(studio:Studio):View
+		return <For each={studio.shownFailure() == null ? [] : [studio.shownFailure()]}>{(f:Read<Studio.Failure>) ->
+			<view tag="build-failed" position="absolute" left={CodePanel.covers(studio) + 16} right={16} bottom={20} alignItems="center">
+				<view flexDirection="row" alignItems="center" columnGap={8} maxWidth={560} padding="8 14" borderRadius={10} background={c("skeleton")}
+					borderWidth={1} borderColor={c("error-soft")} pointerEvents="auto">
+					<view width={6} height={6} borderRadius={3} flexShrink={0} background={c("error")}/>
+					<text fontSize={Theme.SMALL} fontWeight={Theme.MEDIUM} color={c("error")} flexShrink={0}>Build failed</text>
+					<Show when={f().at != null}>
+						<button tag="build-failed-at" flexShrink={0} cursor="pointer" onPress={() -> studio.follow(f().at)}>
+							<text fontSize={Theme.SMALL} color={c("ink2")} textDecoration={1}>{f().at}</text>
+						</button>
+					</Show>
+					<text fontSize={Theme.SMALL} color={c("ink2")} lineClamp={2} flexShrink={1} minWidth={0}>{f().message}</text>
+					<Show when={more(f()) > 0}>
+						<text fontSize={Theme.SMALL} color={c("fg3")} flexShrink={0} textWrap="nowrap">{'+${more(f())} more'}</text>
+					</Show>
+				</view>
+			</view>
+		}</For>;
+
+	static function more(f:Studio.Failure):Int
+		return Std.int(Math.max(0, f.diagnostics.filter(d -> d.severity == "error").length - 1));
 
 	// (by a live frame: a failed build's first error and where, else what it
 	// threw when run; "": neither. A failed build: one chip a row, by its first frame)

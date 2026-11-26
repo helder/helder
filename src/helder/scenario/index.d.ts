@@ -7,7 +7,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {scenario: "helder.scenario.Scenario.define", __module: "helder.scenario.TypeScript"};
+declare const __haxe: {scenario: "helder.scenario.Scenario.define", hold: "helder.scenario.Player.hold", play: "helder.scenario.Player.run", __module: "helder.scenario.TypeScript"};
 
 export declare class Scenario {
 	private readonly scenario: never;
@@ -18,5 +18,10 @@ export type ScenarioDef = { name: string; boot?: () => void; time?: string | num
 
 // (TypeScript's scenario({...}): helder/scenario)
 export declare function scenario(def: ScenarioDef): Scenario;
+
+// (main's root held, its top-level effects recorded: before the app's modules run)
+export declare function hold(): void;
+// the window of one of list, by its name (another of them played later in it)
+export declare function play(list: Scenario[], name: string): void;
 
 export {};

@@ -206,6 +206,16 @@ class Project {
 		return [for (s in l) '${s.name}|${s.width}|${s.height}|${s.file}|${s.source}|${s.loop}'].join("\n");
 
 	// whether a file holds stories (by its name)
+	// the line (from 1) of a story's or scenario's call in its file's text, else 1
+	public static function lineOf(file:String, text:String, name:String):Int {
+		var doc = Document.parse(text, Lang.of(file));
+		for (c in doc.calls(isScenario(file) ? "scenario" : "story")) {
+			var lit = c.object(0)?.field("name")?.literal();
+			if (lit != null && unquote(lit.text(doc.text)) == name) return doc.lineCol(c.callee.start).line;
+		}
+		return 1;
+	}
+
 	public static function isStory(f:String):Bool
 		return f.endsWith(".story.hx") || f.endsWith(".story.tsx") || f.endsWith(".story.ts") || isScenario(f);
 

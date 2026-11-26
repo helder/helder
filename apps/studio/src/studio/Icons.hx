@@ -29,6 +29,7 @@ class Icons {
 	public static final maximize = load(Asset.embed("icons/maximize.svg"));
 	public static final monitor = load(Asset.embed("icons/monitor.svg"));
 	public static final penTool = load(Asset.embed("icons/pen-tool.svg"));
+	public static final pause = load(Asset.embed("icons/pause.svg"));
 	public static final play = load(Asset.embed("icons/play.svg"));
 	public static final redo = load(Asset.embed("icons/redo-2.svg"));
 	public static final repeat = load(Asset.embed("icons/repeat.svg"));

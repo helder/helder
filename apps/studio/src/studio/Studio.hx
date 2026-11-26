@@ -68,7 +68,9 @@ class Studio {
 		var p = project;
 		if (p == null) return true;
 		if (!starter) return p.screens.length == 0;
-		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && shows(i));
+		// (a failed build: no frame of the agent's comes, its failure shown on the canvas instead)
+		var failed = shownFailure() != null;
+		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && (failed || shows(i)));
 	}
 
 	// (a frame the canvas can show: a design's, a story's with a frame, a still, or what it threw)
@@ -602,19 +604,38 @@ class Studio {
 			pr.show([c.name], c.name, 2);
 			return;
 		}
-		var names = [];
+		var names = [], rects = [];
 		if (mode.peek() != "stories")
 			for (r in layout.screens()) {
 				var x0 = camera.sx(r.x), y0 = camera.sy(r.y), x1 = camera.sx(r.x + r.w), y1 = camera.sy(r.y + r.h);
-				if (x1 > 0 && y1 > 0 && x0 < stageWidth && y0 < stageHeight) names.push(r.name);
+				if (x1 > 0 && y1 > 0 && x0 < stageWidth && y0 < stageHeight) {
+					names.push(r.name);
+					rects.push(r);
+				}
 			}
-		// (the selected frame's pixels a point at the canvas' scale on the display, in halves, from 1 to 3,
-		// at most 4096 pixels a side (no tiles yet: deeper, its frame is scaled); kept while the camera flies)
+		var ds = Main.window == null ? 1.0 : Main.window.renderer.scale;
+		// (the frames in view as sharp as the canvas shows them once the camera rests, within Sharp's bounds;
+		// the selected one's every frame at the canvas' scale, kept while the camera flies)
+		var sharp = Sharp.scale(camera.rest.peek() * ds, rects);
+		if (sharp != sharpness.peek()) {
+			sharpness(sharp);
+			log("sharp", {k: sharp, rest: camera.rest.peek(), t: helder.ui.Clock.now});
+			var shown = names.copy();
+			hold(() -> sharpShown(pr, shown, sharp), 'the frames in view at ${sharp}x', 120);
+		}
+		// (a still in view holding fewer pixels than that, a scene's picture: its program woken to draw it so)
+		var thin = Lambda.find(names, n -> {
+			var s = pr.screen(n);
+			s != null && s.image.peek() == null && s.still.peek() != null && s.holds < sharp - 0.01;
+		});
+		if (thin != null && !woken) {
+			woken = true;
+			log("sharp-wake", {screen: thin, k: sharp, holds: pr.screen(thin).holds});
+			pr.wake();
+		}
 		if (!camera.flying) {
-			var px = camera.k * (Main.window == null ? 1.0 : Main.window.renderer.scale);
 			var r = focused.peek() == null ? null : layout.rect(focused.peek());
-			var most = r == null ? 3.0 : 4096 / Math.max(1, Math.max(r.w, r.h));
-			focusScale = Math.max(1, Math.min(Math.min(3, most), Math.ceil(px * 2 - 0.05) / 2));
+			focusScale = Sharp.scale(camera.k * ds, r == null ? [] : [r]);
 		}
 		// (what plays: drawn every frame at the display's scale)
 		var play = playing.peek();
@@ -626,16 +647,32 @@ class Studio {
 			// (fitted larger on a phone: its pixels at the size shown)
 			var s = pr.screen(live), k = s == null ? 1.0 : Math.max(1, Play.fit(this, s.width(), s.height(), play.kind == "story"));
 			var most = s == null ? 3.0 : 4096 / Math.max(1, Math.max(s.width(), s.height()));
-			pr.show(names, live, Math.min(Math.min(3 * k, most), (Main.window == null ? 1.0 : Main.window.renderer.scale) * k));
+			pr.show(names, live, Math.min(Math.min(3 * k, most), ds * k), sharp);
 			return;
 		}
 		// (the watched canvas: stills, the hovered frame's loop running; the old shell's frames live)
 		pr.stills = !classic;
 		var h = hovered.peek(), info = h == null || classic || !names.contains(h) ? null : project.screen(h);
 		pr.looping = info?.loop == null || pr.fileLoops(h) ? null : h;
-		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale);
+		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale, sharp);
 	}
 
+	// the frames in view's pixels a point (Sharp's): the host's drawn so, the stills' scenes too
+	public final sharpness = signal(1.0);
+
+	// (the program's frames of names at k pixels a point, or none to wait for: a headless run's script waits for them)
+	static function sharpShown(pr:Previews, names:Array<String>, k:Float):Bool {
+		if (pr.failed) return true;
+		for (n in names) {
+			var s = pr.screen(n), img = s?.image.peek();
+			if (s == null || s.crashed) continue;
+			if (img == null ? s.still.peek() != null && s.holds < k - 0.01 : img.width < Math.round(s.width() * k) - 1) return false;
+		}
+		return true;
+	}
+
+	// (the program woken for a sharper frame than a still holds: once)
+	var woken = false;
 	var focusScale = 1.0;
 
 	// ---- the canvas: focus and views
@@ -646,6 +683,7 @@ class Studio {
 	// leaves the camera where it is)
 	public function focus(name:Null<String>, fly = true) {
 		focused(name);
+		if (name != scrub.peek()?.screen) scrub(null);
 		entered(false);
 		others([]);
 		selection(null);
@@ -654,6 +692,71 @@ class Studio {
 		if (fly) fitTo(name, true);
 		refreshCode();
 		log("focused", {screen: name});
+	}
+
+	// the frame the prompt is about (what the agent is sent: its name and its
+	// PNG, AcpAgent.blocks): the selected one, unless its chip was cleared (×)
+	public function about():Null<String> {
+		var f = focused();
+		return f == unasked() ? null : f;
+	}
+
+	// (the frame whose chip was cleared: still selected, not sent)
+	final unasked:Signal<Null<String>> = signal(null);
+
+	// the selection bar's Ask: the prompt about the frame, its field focused
+	public function askAbout(name:String) {
+		if (focused.peek() != name) focus(name, false);
+		unasked(null);
+		if (!talk.open.peek()) toggleChat();
+		talk.field?.focus();
+		log("ask-about", {screen: name});
+	}
+
+	// the chip's ×: the prompt about the whole app, the frame still selected
+	public function clearAbout() {
+		unasked(focused.peek());
+		log("ask-about", {screen: null});
+	}
+
+	// the selection bar's Code: the frame's story or scenario (or design) file at its line
+	public function codeOf(name:String) {
+		var info = project?.screen(name);
+		if (info == null) return;
+		var text = docs.get(info.file).text;
+		var line = info.source.match(Design(_)) ? (info.start == null ? 1 : docs.get(info.file).doc.lineCol(info.start).line) : Project.lineOf(info.file, text, name);
+		if (classic) openCode(info.file, line) else talk.reading({file: info.file, line: line});
+		log("reading", {file: info.file, line: line});
+	}
+
+	// the selected loop frame's recorded loop, scrubbed or played (null: not
+	// touched, the frame as it is); t: seconds from its moment
+	public final scrub:Signal<Null<{screen:String, t:Float, playing:Bool}>> = signal(null);
+
+	// (a loop's length, seconds: its recorded frames')
+	var scrubLength = 0.0;
+
+	public function scrubTo(name:String, t:Float, length:Float) {
+		scrubLength = length;
+		scrub({screen: name, t: Math.max(0, Math.min(length, t)), playing: false});
+		log("scrub", {screen: name, t: Math.round(t * 100) / 100});
+	}
+
+	// play or pause the recorded loop (its clock this studio's: round and round)
+	public function scrubPlay(name:String, on:Bool, length:Float) {
+		var was = scrub.peek(), t = was?.screen == name ? was.t : 0.0;
+		scrubLength = length;
+		scrub({screen: name, t: t, playing: on});
+		log("scrub-play", {screen: name, playing: on});
+		if (!on) return;
+		var last = -1.0;
+		Clock.add(now -> {
+			var c = scrub.peek();
+			if (c == null || c.screen != name || !c.playing) return false;
+			if (last >= 0 && scrubLength > 0) scrub({screen: name, t: (c.t + now - last) % scrubLength, playing: true});
+			last = now;
+			return true;
+		});
 	}
 
 	// whether the focused frame's contents are entered (a double click): a click selects a node in it
@@ -900,7 +1003,8 @@ class Studio {
 		var hit = layout.at(camera.wx(px), camera.wy(py));
 		focused(hit?.name);
 		log("aimed", {screen: hit?.name});
-		if (double && hit != null) play();
+		if (hit?.name != scrub.peek()?.screen) scrub(null);
+		if (double && hit != null && !project.screen(hit.name).source.match(Design(_))) playWindow(hit.name);
 	}
 
 	// the chat column put away or back (Cmd+B): the frames kept where they are on screen
@@ -952,13 +1056,10 @@ class Studio {
 	// the watched shell's: in a window of its own (playWindow)
 	public function play() {
 		if (project == null) return;
-		// (the watched shell: the frame aimed at, else the app, in a window of its own)
+		// (the watched shell's Play app: the app from its start, in a window of its own, whatever is selected)
 		if (!classic) {
-			var f = focused.peek(), info = f == null ? null : project.screen(f);
-			if (info == null || !info.source.match(Design(_))) {
-				playWindow(info?.name);
-				return;
-			}
+			playWindow(null);
+			return;
 		}
 		var t = target.peek();
 		if (t != "studio") {
@@ -1040,61 +1141,232 @@ class Studio {
 	// project's files so that helder dev watches them: play(story)); the app
 	// (name null: the header's Play with no frame aimed at, the app's frame),
 	// or a Haxe project's story: the app. Headless (a check's run): told, not opened.
-	public function playWindow(name:Null<String>) {
+	public function playWindow(name:Null<String>, fresh = false) {
 		#if !(hxmc.target == "wasm32-wasi")
 		var info = name == null ? null : project.screen(name);
 		if (name != null && info == null) return;
+		var scenario = info != null && project.typescript && Project.isScenario(info.file);
+		var plan = fresh ? "open" : playPlan(targetProcess != null && launched.peek()?.state != "failed", windowScenarios, name, scenario,
+			launched.peek()?.state == "starting" || editedAt > windowBuiltAt);
+		log("play-plan", {screen: name, plan: plan});
+		switch plan {
+			case "switch":
+				playIn(name);
+				return;
+			case "queue":
+				queued = name;
+				launched({state: launched.peek()?.state ?? "running", note: 'Playing: ${info.label} once its build lands', at: null, playing: null});
+				// (no build lands: played all the same)
+				Async.launch(_ -> {
+					Async.delay(15);
+					if (queued == name) playIn(name);
+				});
+				return;
+			case "rewrite":
+				// (its main written again with every scenario: helder dev builds and reloads it, the window at this one)
+				playEntry(info);
+				queued = null;
+				arriving = info.label;
+				launched({state: "running", note: 'Playing: ${info.label} once its build lands', at: null, playing: null});
+				return;
+			case _:
+		}
+		windowScenarios = null;
 		var entry = info == null ? project.dir : playEntry(info);
 		var label = info?.label ?? project.name;
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
 		var args = ["dev", entry];
 		log("play-window", {screen: name, args: args});
+		// (headless: told, not opened, unless a check names a program standing in for helder)
 		#if helder.headless
-		message('would play $label in a window: helder ${args.join(" ")}');
-		#else
-		var was = targetProcess;
-		targetProcess = null;
-		if (was != null) was.kill();
-		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
-			message('helder dev did not start: $e');
+		var stand = Sys.getEnv("HELDER_STUDIO_PLAY_CLI") ?? "";
+		if (stand == "") {
+			message('would play $label in a window: helder ${args.join(" ")}');
+			return;
+		}
+		cli = stand;
+		#end
+		var scenarios = windowScenarios;
+		stopWindow();
+		windowScenarios = scenarios;
+		var l = new Launch(project.dir, 'building $label');
+		window = l;
+		playingLabel = label;
+		told();
+		// (a check's script waits for it to run or fail)
+		hold(() -> l.state != "starting", "Play's window", 300);
+		// (its stdin a pipe never written: the studio gone, however it ended, helder dev and its window with it, Parent)
+		var p = try new Process(cli, args, {cwd: project.dir, env: Parent.env()}) catch (e:Dynamic) {
+			launched({state: "failed", note: 'helder dev did not start: $e', at: null, playing: null});
 			null;
 		}
 		if (p == null) return;
-		p.closeStdin();
 		targetProcess = p;
-		message('playing $label in a window');
+		var seen = 0;
+		function lines(src:Stream.Source)
+			Async.launch(_ -> {
+				var r = new Reader(src), line;
+				try while ((line = r.readLine()) != null) {
+					if (targetProcess != p) continue;
+					var changed = l.read(line);
+					// (a build landed in the window: what waited for it played now)
+					if (l.builds > seen) {
+						seen = l.builds;
+						windowBuiltAt = haxe.Timer.stamp();
+						if (arriving != null) {
+							playingLabel = arriving;
+							arriving = null;
+						}
+						if (queued != null) playIn(queued);
+					}
+					if (changed) told();
+				} catch (_:haxe.Exception) {}
+			});
+		lines(p.stdout);
+		lines(p.stderr);
 		Async.launch(_ -> {
-			var r = new Reader(p.stdout), line;
-			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
+			var code = p.wait();
+			if (targetProcess != p) return;
+			targetProcess = null;
+			l.exited(code);
+			told();
+			// (closed: Play again; what failed stays shown until the next Play)
+			if (l.state == "ended") launched(null);
 		});
-		Async.launch(_ -> {
-			var r = new Reader(p.stderr), line;
-			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
-		});
-		Async.launch(_ -> {
-			p.wait();
-			if (targetProcess == p) targetProcess = null;
-		});
-		#end
 		#end
 	}
 
-	// what helder dev runs to play a screen: a TypeScript story's main (written:
-	// PLAY, play(story)), else the project (its app)
+	// what Play from here does with a frame (name): "open" a window of its
+	// own (none open, the open one plays no scenarios, or name is none);
+	// "switch" the open one to it (Scenario.play: nothing built); "queue"
+	// the switch after the build on its way (the window's build older than
+	// the edits); "rewrite" its main (a scenario it was not started with:
+	// helder dev builds and reloads it, at that one)
+	public static function playPlan(open:Bool, scenarios:Null<Array<String>>, name:Null<String>, scenario:Bool, stale:Bool):String {
+		if (!open || scenarios == null || name == null || !scenario) return "open";
+		if (!scenarios.contains(name)) return "rewrite";
+		return stale ? "queue" : "switch";
+	}
+
+	#if !(hxmc.target == "wasm32-wasi")
+	// (Play's window's helder dev, read: its devtools, the builds that landed)
+	var window:Null<Launch> = null;
+	#end
+	// (the switch waiting for a build; the scenario a rewritten main opens at; the one shown)
+	var queued:Null<String> = null;
+	var arriving:Null<String> = null;
+	var playingLabel:Null<String> = null;
+	// (the last edit of the project's files, the last build that landed in Play's window: haxe.Timer.stamp)
+	var editedAt = 0.0;
+	var windowBuiltAt = 0.0;
+
+	// (Play's window's state told: Launch's, what it plays once it runs)
+	function told() {
+		#if !(hxmc.target == "wasm32-wasi")
+		var l = window;
+		if (l == null) return;
+		launched({state: l.state, note: l.note, at: l.at, playing: l.state == "running" ? playingLabel : null});
+		log("launch", {state: l.state, note: l.note, at: l.at, playing: l.state == "running" ? playingLabel : null});
+		#end
+	}
+
+	// another scenario played in Play's window (Scenario.play through its
+	// helder dev's devtools: its store let go, its boot, the root again);
+	// refused, or no devtools: a window of its own instead
+	function playIn(name:String) {
+		#if !(hxmc.target == "wasm32-wasi")
+		queued = null;
+		var url = window?.devtools, label = project?.screen(name)?.label ?? name;
+		if (url == null) {
+			playWindow(name, true);
+			return;
+		}
+		Async.launch(_ -> {
+			var r = DevCall.call(url, "Scenario.play", {name: name});
+			if (r == null || r.error != null) {
+				log("play-switch", {screen: name, error: r?.error?.message ?? "no answer"});
+				playWindow(name, true);
+				return;
+			}
+			playingLabel = label;
+			told();
+			log("play-switch", {screen: name, playing: r.result?.playing});
+		});
+		#end
+	}
+
+	// what Play's window is doing (null: none): "starting", "running" or
+	// "failed" (Launch's), the line shown beside Play, where it failed, what it plays
+	public final launched:Signal<Null<{state:String, note:String, at:Null<String>, ?playing:Null<String>}>> = signal(null);
+
+	// Play's window closed (its helder dev ended), or what failed let go
+	public function stopWindow() {
+		#if !(hxmc.target == "wasm32-wasi")
+		var was = targetProcess;
+		targetProcess = null;
+		if (was != null) was.kill();
+		#end
+		queued = arriving = null;
+		windowScenarios = null;
+		if (launched.peek() != null) launched(null);
+	}
+
+	// what helder dev runs to play a screen (Play from here): a TypeScript
+	// story's main (written: PLAY, play(story) from helder/story); a
+	// scenario's, the app in a window of its own at that scenario's moment
+	// (helder.scenario.Player: PLAY imports BOOT, hold(), then every
+	// scenario of the project and the app's main, then play(them, its name);
+	// another played in the same window, Scenario.play); else the project (its app)
 	public function playEntry(info:ScreenInfo):String {
+		var main = project.typescript ? project.mainFile() : null;
 		switch info.source {
-			// (a scenario's Play: the app itself, from its start; its moment is phase 2's, a saved state)
-			case Story(binding) if (project.typescript && binding != null && !Project.isScenario(info.file)):
-				var rel = info.file.substr(project.dir.length + 1);
-				rel = "./" + rel.substr(0, rel.lastIndexOf("."));
-				var entry = project.dir + "/" + PLAY;
-				Files.save(entry, '// helder studio\'s Play: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
-					+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+			case Story(binding) if (project.typescript && binding != null):
+				var rel = module(info.file), entry = project.dir + "/" + PLAY;
+				if (!Project.isScenario(info.file)) {
+					Files.save(entry, '// helder studio\'s Play from here: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
+						+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+					return entry;
+				}
+				if (main == null) return project.dir;
+				var all = scenarios(), imports = [], names = [];
+				for (k => s in all) {
+					imports.push('import { ${s.binding} as s$k } from "${module(s.file)}";');
+					names.push('s$k');
+				}
+				Files.save(project.dir + "/" + BOOT, '// helder studio\'s Play from here: the app\'s root held for its scenarios\' window (${PLAY})\n'
+					+ 'import { hold } from "helder/scenario";\n\nhold();\n');
+				Files.save(entry, '// helder studio\'s Play from here: the app at a scenario\'s moment, in a window of its own (written by the studio, run by helder dev)\n'
+					+ 'import "./${haxe.io.Path.withoutExtension(BOOT)}";\n' + imports.join("\n") + '\nimport "${module(main)}";\nimport { play } from "helder/scenario";\n\n'
+					+ 'play([${names.join(", ")}], ${Json.stringify(info.name)});\n');
+				windowScenarios = [for (s in all) s.name];
 				return entry;
 			case _:
 				return project.dir;
 		}
 	}
+
+	// (the project's scenarios bound to a name, TypeScript's: Play from here's window plays each)
+	function scenarios():Array<{name:String, binding:String, file:String}> {
+		var out = [];
+		for (s in project.screens)
+			switch s.source {
+				case Story(b) if (b != null && Project.isScenario(s.file)): out.push({name: s.name, binding: b, file: s.file});
+				case _:
+			}
+		return out;
+	}
+
+	// (the scenarios Play's window was started with: another of them played in it, nothing built; null: it plays no scenario)
+	var windowScenarios:Null<Array<String>> = null;
+
+	// (a file of the project as a module beside PLAY: "./app.scenario")
+	function module(file:String):String {
+		var rel = file.substr(project.dir.length + 1);
+		return "./" + rel.substr(0, rel.lastIndexOf("."));
+	}
+
+	// (a scenario's boot, PLAY's first import)
+	public static inline var BOOT = ".helder-play-boot.tsx";
 
 	// (the main a story's window plays, at the project's root: helder dev watches the folder of its entry)
 	public static inline var PLAY = ".helder-play.tsx";
@@ -1107,7 +1379,7 @@ class Studio {
 		stopPlay();
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
 		var args = ["dev", project.dir].concat(t == "phone" ? ["--target", "android"] : t == "browser" ? ["--target", "web"] : []);
-		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
+		var p = try new Process(cli, args, {cwd: project.dir, env: Parent.env()}) catch (e:Dynamic) {
 			playLog('helder dev did not start: $e');
 			null;
 		}
@@ -1115,7 +1387,6 @@ class Studio {
 		playLog("helder " + args.join(" "));
 		log("play", {kind: "target", target: t, args: args});
 		if (p == null) return;
-		p.closeStdin();
 		targetProcess = p;
 		var opened = false;
 		function lines(src:Stream.Source)
@@ -1525,6 +1796,7 @@ class Studio {
 	// a file's text changed (Docs): the selection moved with it, the code view
 	// told, then the program: a live literal patched, else a build
 	function changed(file:String, tx:Transaction, origin:String) {
+		editedAt = haxe.Timer.stamp();
 		var sel = selection.peek();
 		if (sel != null && sel.file == file) {
 			var next:Selection = Reflect.copy(sel);
@@ -1618,54 +1890,82 @@ class Studio {
 		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 	}
 
-	// (natively) the design and story files on disk watched, a second apart:
-	// one changed there (another editor's save, an agent's, git) read into the
-	// studio as an edit of the file's (in the history, undone like any other),
-	// one added or deleted its frames or stories shown or gone (a story's: built)
+	// (natively) the project's files on disk watched, a second apart (every
+	// source, not only its design and story files: an agent's or an editor's
+	// edit of app.tsx): one changed there (another editor's save, an
+	// agent's, git) read into the studio as an edit of the file's (in the
+	// history, undone like any other), one added or deleted its frames or
+	// stories shown or gone (a story's: built; after a failed build, any
+	// source's: an import of it may resolve now)
 	@:coroutine function watch() {
 		#if !(hxmc.target == "wasm32-wasi")
-		var stamps = new Map<String, Float>();
-		function stamp(f:String):Float
-			return try sys.FileSystem.stat(f).mtime.getTime() catch (_:Dynamic) -1;
-		// (each file's text as it was: a change on disk is one from it)
-		for (f in Project.found(project.dir)) {
-			stamps.set(f, stamp(f));
-			try docs.get(f) catch (_:Dynamic) {}
-		}
-		function added(f:String, text:Null<String>) {
-			if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
-			// (a story where there was no program: the project read again, its program started)
-			else if (previews == null) revive();
-			else if (storiesChanged(f, text) && previews != null) {
-				message(text == null ? "a story file removed: building" : "a story file added: building");
-				log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
-				rebuild(f, true);
-			}
-		}
+		scanDisk();
 		while (true) {
 			Async.delay(1);
 			tree?.scan();
-			var now = Project.found(project.dir);
-			for (f in now) {
-				var t = stamp(f);
-				if (stamps.get(f) == t) continue;
-				var known = stamps.exists(f);
-				stamps.set(f, t);
-				var text = try Files.read(f) catch (_:Dynamic) continue;
-				if (!known) {
-					added(f, text);
-					continue;
-				}
-				var d = docs.get(f);
-				if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
-			}
-			for (f in [for (k in stamps.keys()) k])
-				if (!now.contains(f)) {
-					stamps.remove(f);
-					added(f, null);
-				}
+			scanDisk();
 		}
 		#end
+	}
+
+	// (each file's stamp, its mtime and size, as last seen: none yet, the first pass takes them)
+	var stamps:Null<Map<String, String>> = null;
+
+	// a pass over the project's files on disk (the first: each read as it is,
+	// a change on disk is one from it)
+	public function scanDisk() {
+		#if !(hxmc.target == "wasm32-wasi")
+		if (project == null) return;
+		function stamp(f:String):String
+			return try {
+				var s = sys.FileSystem.stat(f);
+				s.mtime.getTime() + " " + s.size;
+			} catch (_:Dynamic) "";
+		var now = project.sources();
+		for (f in Project.found(project.dir))
+			if (!now.contains(f)) now.push(f);
+		var known = stamps;
+		if (known == null) {
+			stamps = [for (f in now) f => stamp(f)];
+			for (f in now)
+				try docs.get(f) catch (_:Dynamic) {}
+			return;
+		}
+		for (f in now) {
+			var t = stamp(f);
+			if (known.get(f) == t) continue;
+			var seen = known.exists(f);
+			known.set(f, t);
+			var text = try Files.read(f) catch (_:Dynamic) continue;
+			if (!seen) {
+				diskAdded(f, text);
+				continue;
+			}
+			var d = docs.get(f);
+			if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
+		}
+		for (f in [for (k in known.keys()) k])
+			if (!now.contains(f)) {
+				known.remove(f);
+				diskAdded(f, null);
+			}
+		#end
+	}
+
+	// (a file added on disk, or gone: text null)
+	function diskAdded(f:String, text:Null<String>) {
+		if (f.endsWith(".helder")) framesChanged(f, project.design(f, text));
+		// (a story where there was no program: the project read again, its program started)
+		else if (previews == null) {
+			if (Project.isStory(f)) revive();
+		} else if (storiesChanged(f, text)) {
+			message(text == null ? "a story file removed: building" : "a story file added: building");
+			log("building", {file: f, why: text == null ? "a story file removed" : "a story file added"});
+			rebuild(f, true);
+		} else if (previews.failed) {
+			log("building", {file: f, why: text == null ? "a source removed after a failed build" : "a source added after a failed build"});
+			rebuild(f, true);
+		}
 	}
 
 	// the program told of a file's text: its live literals patched now (the
@@ -2066,7 +2366,7 @@ class Studio {
 			var notes = a == local ? [] : inbox.take();
 			if (notes.length > 0) ask(Inbox.text(notes), false);
 		}
-		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
+		a.ask(p, {screen: focused.peek() == unasked.peek() ? null : focused.peek(), selection: classic ? selection.peek() : null, problems: problems(), crashes: crashes()}, e -> switch e {
 			case Done(_) | Failed(_):
 				// (done as the agent is: a build still running shows on its frames, not as a held turn)
 				end(e);
@@ -2137,6 +2437,7 @@ class Studio {
 	@:coroutine public function stop() {
 		agent.close();
 		stopPlay();
+		stopWindow();
 		if (previews != null) previews.stop();
 		#if !(hxmc.target == "wasm32-wasi")
 		if (events != null) events.close();
