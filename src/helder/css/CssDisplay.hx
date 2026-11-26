@@ -36,12 +36,16 @@ enum abstract CssInnerDisplay(Int) {
 }
 
 // A computed display, decoded (Display 3 §2): its outer and inner types,
-// whether it's a list item. Interned per document.
+// whether it's a list item; original: the display before blockification
+// (Display 3 §2.7), itself when there was none (an absolutely positioned
+// box that was inline-level has its static position on the line). Interned
+// per document.
 class CssDisplay {
 	public final outer:CssOuterDisplay;
 	public final inner:CssInnerDisplay;
 	public final listItem:Bool;
 	public final terms:Array<CssTerm>;
+	public var original(default, null):CssDisplay;
 	@:allow(helder.css) var id = -1;
 
 	function new(outer:CssOuterDisplay, inner:CssInnerDisplay, listItem:Bool, terms:Array<CssTerm>) {
@@ -49,6 +53,7 @@ class CssDisplay {
 		this.inner = inner;
 		this.listItem = listItem;
 		this.terms = terms;
+		original = this;
 	}
 
 	@:allow(helder.css)

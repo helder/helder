@@ -134,6 +134,13 @@ class CssStyle extends CssStyleGroups {
 	inline function get_display():CssDisplay
 		return box.display;
 
+	// The display before blockification (an absolutely positioned or
+	// floated box's, a flex or grid item's, the root's), else display.
+	public var originalDisplay(get, never):CssDisplay;
+
+	inline function get_originalDisplay():CssDisplay
+		return box.display.original;
+
 	// The font size in px (em's for every property but font-size).
 	public inline function fontSize():Float
 		return font.fontSize.kind == Px ? font.fontSize.value : 16;

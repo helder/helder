@@ -78,7 +78,6 @@ class CssResolver {
 	}
 
 	static final NONE = [Keyword("none")];
-	static final BLOCK = [Keyword("block")];
 
 	public function positioned():Bool {
 		var p = keyword(Position);
@@ -92,13 +91,18 @@ class CssResolver {
 			case _: null;
 		}
 
+	// (display before blockification, when blockify changed it)
+	public var unblockified(default, null):Null<Array<CssTerm>>;
+
 	function blockify(v:Array<CssTerm>):Array<CssTerm> {
+		unblockified = null;
 		if (pseudo == "marker") return v;
 		if (!root && !positioned() && keyword(Float) == "none" && !item) return v;
 		var text = CssText.join(v, CssText.term);
-		if (root && text == "contents") return BLOCK;
-		var to = BLOCKIFIED.get(text);
-		return to == null ? v : [for (w in to.split(" ")) Keyword(w)];
+		var to = root && text == "contents" ? "block" : BLOCKIFIED.get(text);
+		if (to == null) return v;
+		unblockified = v;
+		return [for (w in to.split(" ")) Keyword(w)];
 	}
 
 	// (inline-level displays as block-level, layout-internal ones as block;

@@ -659,11 +659,11 @@ styles.pages;                              // @page rules: selectors, declaratio
   their parent's), the root's, the media's size and the colour
   (currentcolor in color itself the inherited colour); and what needs the
   tree: `justify-items: legacy`, `text-align: match-parent`, overflow's
-  visible beside a scrolling axis; and what reads another property: a
-  border's or outline's width 0 under a `none` (or `hidden`) style,
+  visible beside a scrolling axis; and what reads another property:
   `float: none` when absolutely positioned, and blockification (CSS 2.1
   §9.7, Display 3 §2.7: the root, floats, absolutely positioned boxes,
-  flex and grid items, past `display: contents`), `font-weight: bolder`
+  flex and grid items, past `display: contents`; the display before it
+  kept as `style.originalDisplay`, its own interned value), `font-weight: bolder`
   and `lighter` from the parent's weight (Fonts 4's table), and
   `content: normal` as `none` on ::before and ::after. `font-size:
   larger` and `smaller` step along the absolute-size table from the
@@ -843,6 +843,8 @@ s.px(BorderTopWidth);                        // px (NaN when not a length)
 s.color(BorderTopColor).r;                   // sRGB, currentcolor resolved
 s.number(Opacity); s.position.zIndex;        // numbers
 s.display.inner == Flex;                     // CssDisplay
+s.originalDisplay.outer == Inline;           // before blockification
+styles.hasPseudo(el, "first-letter");      // a ::first-letter rule matches el
 s.fontSize(); s.lineHeight(); s.families();  // the font
 s.backgrounds();                             // layers, lists repeated to the images'
 s.generated();                               // content as items (Text, Counter, Quote...)

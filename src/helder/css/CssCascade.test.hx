@@ -221,6 +221,43 @@ function tests() {
 			equals(CssProperties.impact(MarginInlineStart) == Layout, true);
 			equals(CssProperties.physical(MarginInlineStart, true) == MarginRight, true);
 		});
+		test("display before blockification", () -> {
+			var s = styles('<span id=a style="position: absolute">a</span><span id=b style="float: left; display: inline-flex">b</span><div style="display: flex"><span id=c>c</span></div><span id=d>d</span><div id=e style="position: absolute">e</div><p id=f style="display: block; position: absolute">f</p>', "");
+			function of(id:String)
+				return s.computed(s.document.getElementById(id));
+			var a = of("a"), b = of("b"), c = of("c"), d = of("d"), e = of("e"), f = of("f");
+			equals(text(s, "a", "display"), "block");
+			equals(a.originalDisplay.outer, Inline);
+			equals(CssText.join(b.originalDisplay.terms, CssText.term), "inline-flex");
+			equals(b.display.inner, Flex);
+			equals(c.originalDisplay.outer, Inline);
+			equals(c.display.outer, Block);
+			// (nothing blockified, or blockified to itself: display)
+			equals(d.originalDisplay == d.display, true);
+			equals(e.originalDisplay == e.display, true);
+			equals(a.originalDisplay.original == a.originalDisplay, true);
+			// (block from inline and block declared: displays, groups and styles apart)
+			equals(a.display == f.display, false);
+			equals(a.box == f.box, false);
+			equals(CssText.join(f.display.terms, CssText.term), "block");
+			var root = styles('<p>a</p>', "html { display: contents }");
+			var html = root.computed(root.document.documentElement);
+			equals(CssText.join(html.display.terms, CssText.term), "block");
+			equals(html.originalDisplay.outer, Contents);
+		});
+		test("whether a pseudo-element's rule matches", () -> {
+			var s = styles('<p id=a class=x>a</p><p id=b>b</p><div id=c>c</div>', "p::first-letter { color: red } .x::before { content: 'x' }");
+			function has(id:String, name:String)
+				return s.hasPseudo(s.document.getElementById(id), name);
+			equals(has("a", "first-letter"), true);
+			equals(has("b", "first-letter"), true);
+			equals(has("c", "first-letter"), false);
+			equals(has("a", "before"), true);
+			equals(has("b", "before"), false);
+			// (a name no sheet has: none)
+			equals(has("a", "first-line"), false);
+			equals(has("a", "after"), false);
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

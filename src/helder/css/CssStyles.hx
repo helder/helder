@@ -95,6 +95,19 @@ class CssStyles {
 		for (s in sheets) if (s.media == null || s.media.matches(media)) add(s.sheet.rules, s.sheet.origin, null);
 	}
 
+	// Whether a rule for the pseudo-element ("first-letter", "first-line",
+	// "before", "after", "marker"...) matches the element. The sheets'
+	// rules are indexed by pseudo-element as they are added, so a name no
+	// sheet uses is false without matching anything.
+	public function hasPseudo(el:Element, name:String):Bool {
+		var idx = pseudos.get(name);
+		if (idx == null) return false;
+		var found:Array<CssIndexed<Rule>> = [];
+		bloom.moveTo(el);
+		idx.matching(el, found, bloom, null, hasCache);
+		return found.length > 0;
+	}
+
 	// The element's style, or one of its pseudo-elements' ("before", "after", "marker").
 	public function computed(el:Element, ?pseudo:String):CssStyle {
 		if (pseudo != null) {
@@ -437,6 +450,7 @@ class CssStyles {
 				var p:CssProperty = cast i;
 				if (r.declares(p) || dependent(p)) @:privateAccess copy.set(p, r.get(p), intern);
 			}
+			if (g == BOX && r.unblockified != null) @:privateAccess (cast copy : CssGroups.CssBoxGroup).display = intern.display(r.get(Display), r.unblockified);
 			groups.push(intern.group(g, copy));
 		}
 		return made(groups, r.allCustoms());
