@@ -48,7 +48,7 @@ class WebPreviews {
 	// the screens in view and the one focused, last told
 	var shown = "";
 	// (the last show asked: told again to a host once it is ready, a new build's too)
-	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float, sharp:Float}> = null;
 	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
 	public var stills = false;
 	public var looping:Null<String> = null;
@@ -182,7 +182,7 @@ class WebPreviews {
 				// the new one is told what to show, since what waited may ask the new one again)
 				var ask = pending.copy();
 				pending.clear();
-				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, null);
+				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, sharp: showWanted.sharp, stills: stills, loop: looping}, null);
 				answerAll(ask, "the preview started again");
 			case "Host.failed":
 				// (a screen that threw in the worker: crashed, why; the others go on)
@@ -234,8 +234,9 @@ class WebPreviews {
 	}
 
 	// the screens in view (the others suspended in the host, their last
-	// frames kept) and the one zoomed into, drawn at scale pixels a point
-	// (the canvas' zoom: its frames as sharp as the studio shows them)
+	// frames kept) and the one zoomed into, drawn at scale pixels a point,
+	// the others in view at sharp (the canvas' zoom: its frames as sharp as
+	// the studio shows them)
 	// (natively the host started when the screens were drawn from the frames file; here it always runs)
 	public function wake() {}
 
@@ -247,12 +248,13 @@ class WebPreviews {
 	public function fileLoops(name:String):Bool
 		return false;
 
-	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
+	public function show(names:Array<String>, focused:Null<String>, scale = 1.0, sharp = 1.0) {
+		var key = names.join("
+") + "	" + (focused ?? "") + "	" + scale + "	" + sharp + "	" + stills + "	" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
-		showWanted = {names: names, focused: focused, scale: scale};
-		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, null);
+		showWanted = {names: names, focused: focused, scale: scale, sharp: sharp};
+		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale, sharp: sharp, stills: stills, loop: looping}, null);
 	}
 
 	function send(method:String, params:Dynamic, done:Null<Dynamic->Void>) {

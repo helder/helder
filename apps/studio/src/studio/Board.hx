@@ -28,6 +28,8 @@ using StringTools;
 class Board implements Markup {
 	public static function view(studio:Studio):View {
 		var stage:Null<Node> = null, panned = false, watch = !studio.classic;
+		// (the camera at rest: a frame drawn, the frames in view told how sharp, Studio.showVisible)
+		effect(() -> studio.camera.rest(), _ -> stage?.ui?.requestFrame());
 		return <view tag="stage" flexGrow={1} minWidth={0} overflow="hidden" cursor={watch ? studio.camera.hand() : (Default : Cursor)} background={c(watch ? "ground" : "canvas")} ref={n -> {
 			stage = n;
 			studio.stageNode = n;
@@ -121,6 +123,7 @@ class Board implements Markup {
 		n.tag = "still";
 		// (its scenes' worlds let go with it)
 		onCleanup(n.dispose);
+		effect(() -> studio.sharpness(), k -> n.sharp = k);
 		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.shownFailure() != null || s.crashedSignal()}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
 		});

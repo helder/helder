@@ -602,19 +602,38 @@ class Studio {
 			pr.show([c.name], c.name, 2);
 			return;
 		}
-		var names = [];
+		var names = [], rects = [];
 		if (mode.peek() != "stories")
 			for (r in layout.screens()) {
 				var x0 = camera.sx(r.x), y0 = camera.sy(r.y), x1 = camera.sx(r.x + r.w), y1 = camera.sy(r.y + r.h);
-				if (x1 > 0 && y1 > 0 && x0 < stageWidth && y0 < stageHeight) names.push(r.name);
+				if (x1 > 0 && y1 > 0 && x0 < stageWidth && y0 < stageHeight) {
+					names.push(r.name);
+					rects.push(r);
+				}
 			}
-		// (the selected frame's pixels a point at the canvas' scale on the display, in halves, from 1 to 3,
-		// at most 4096 pixels a side (no tiles yet: deeper, its frame is scaled); kept while the camera flies)
+		var ds = Main.window == null ? 1.0 : Main.window.renderer.scale;
+		// (the frames in view as sharp as the canvas shows them once the camera rests, within Sharp's bounds;
+		// the selected one's every frame at the canvas' scale, kept while the camera flies)
+		var sharp = Sharp.scale(camera.rest.peek() * ds, rects);
+		if (sharp != sharpness.peek()) {
+			sharpness(sharp);
+			log("sharp", {k: sharp, rest: camera.rest.peek(), t: helder.ui.Clock.now});
+			var shown = names.copy();
+			hold(() -> sharpShown(pr, shown, sharp), 'the frames in view at ${sharp}x', 120);
+		}
+		// (a still in view holding fewer pixels than that, a scene's picture: its program woken to draw it so)
+		var thin = Lambda.find(names, n -> {
+			var s = pr.screen(n);
+			s != null && s.image.peek() == null && s.still.peek() != null && s.holds < sharp - 0.01;
+		});
+		if (thin != null && !woken) {
+			woken = true;
+			log("sharp-wake", {screen: thin, k: sharp, holds: pr.screen(thin).holds});
+			pr.wake();
+		}
 		if (!camera.flying) {
-			var px = camera.k * (Main.window == null ? 1.0 : Main.window.renderer.scale);
 			var r = focused.peek() == null ? null : layout.rect(focused.peek());
-			var most = r == null ? 3.0 : 4096 / Math.max(1, Math.max(r.w, r.h));
-			focusScale = Math.max(1, Math.min(Math.min(3, most), Math.ceil(px * 2 - 0.05) / 2));
+			focusScale = Sharp.scale(camera.k * ds, r == null ? [] : [r]);
 		}
 		// (what plays: drawn every frame at the display's scale)
 		var play = playing.peek();
@@ -626,16 +645,32 @@ class Studio {
 			// (fitted larger on a phone: its pixels at the size shown)
 			var s = pr.screen(live), k = s == null ? 1.0 : Math.max(1, Play.fit(this, s.width(), s.height(), play.kind == "story"));
 			var most = s == null ? 3.0 : 4096 / Math.max(1, Math.max(s.width(), s.height()));
-			pr.show(names, live, Math.min(Math.min(3 * k, most), (Main.window == null ? 1.0 : Main.window.renderer.scale) * k));
+			pr.show(names, live, Math.min(Math.min(3 * k, most), ds * k), sharp);
 			return;
 		}
 		// (the watched canvas: stills, the hovered frame's loop running; the old shell's frames live)
 		pr.stills = !classic;
 		var h = hovered.peek(), info = h == null || classic || !names.contains(h) ? null : project.screen(h);
 		pr.looping = info?.loop == null || pr.fileLoops(h) ? null : h;
-		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale);
+		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale, sharp);
 	}
 
+	// the frames in view's pixels a point (Sharp's): the host's drawn so, the stills' scenes too
+	public final sharpness = signal(1.0);
+
+	// (the program's frames of names at k pixels a point, or none to wait for: a headless run's script waits for them)
+	static function sharpShown(pr:Previews, names:Array<String>, k:Float):Bool {
+		if (pr.failed) return true;
+		for (n in names) {
+			var s = pr.screen(n), img = s?.image.peek();
+			if (s == null || s.crashed) continue;
+			if (img == null ? s.still.peek() != null && s.holds < k - 0.01 : img.width < Math.round(s.width() * k) - 1) return false;
+		}
+		return true;
+	}
+
+	// (the program woken for a sharper frame than a still holds: once)
+	var woken = false;
 	var focusScale = 1.0;
 
 	// ---- the canvas: focus and views
