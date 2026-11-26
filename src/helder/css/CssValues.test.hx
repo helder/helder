@@ -52,6 +52,8 @@ function tests() {
 		});
 		test("a value drawn from any property's grammar parses back to itself", () -> property(VALUE, c -> {
 			var v = CssValues.parse(c.property, c.text);
+			// (what a prose rule turns down is drawn again)
+			assume(v != null || !PROSE.exists(c.property));
 			require(v, '${c.property}: ${c.text} rejected');
 			var s = CssValues.serialize(c.property, v);
 			var w = CssValues.parse(c.property, s);
@@ -75,6 +77,16 @@ private function computed(property:String, value:String):Null<String> {
 private final UNDRAWABLE = [
 	// a custom ident that may not be a keyword anywhere in the grammar: the draw picks its own, so only counters' none is left out
 	"all" => "only CSS-wide keywords"
+];
+
+// (properties whose prose rules out some of what their grammars match, and what)
+private final PROSE = [
+	"transition-timing-function" => "steps()'s count at least 1, 2 for jump-none (Easing 1 §2.3)",
+	"transition" => "steps()'s count; a duration not negative (Transitions 1 §2.2)",
+	"transition-duration" => "not negative (Transitions 1 §2.2)",
+	"filter" => "no negative amounts, nor a negative blur (Filter Effects 1 §5.1)",
+	"backdrop-filter" => "no negative amounts, nor a negative blur (Filter Effects 1 §5.1)",
+	"cursor" => "image-set() of URLs only (CSS UI 4 §5.1)"
 ];
 
 private final VALUE:Gen<{property:String, text:String}> = c -> {

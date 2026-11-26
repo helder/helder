@@ -13,7 +13,7 @@ import helder.css.CssToken;
 // only separates (calc() reads its own). The primitive types (Values 4's
 // numbers and dimensions, strings, identifiers, url(), `<color>`, the
 // math functions wherever a number or dimension may be) are matched here,
-// the rest by their definitions in CssData.
+// the rest by their definitions in CssTable.
 class CssMatch {
 	static final WIDE = ["initial", "inherit", "unset", "revert", "revert-layer", "revert-rule", "default"];
 	static final excludedCache = new Map<String, Map<String, Bool>>();

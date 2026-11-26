@@ -93,9 +93,11 @@ class CssCascadeCheck {
 			report(pass, rows.length - skips, statuses, skipped);
 			return;
 		}
+		Sys.println('css cascade: parity with #321\'s cascade: $parityChecks values, ${parity.length} differ');
+		for (p in parity.slice(0, 40)) Sys.println('  differs from #321: $p');
 		for (f in failures.slice(0, 40)) Sys.println('  required: $f');
 		for (f in fixed.slice(0, 40)) Sys.println('  passes, still pending (BLESS=1): $f');
-		if (failures.length > 0 || fixed.length > 0) Sys.exit(1);
+		if (failures.length > 0 || fixed.length > 0 || parity.length > 0) Sys.exit(1);
 	}
 
 	static var pages:Array<String>;
@@ -136,6 +138,7 @@ class CssCascadeCheck {
 				return wrong.length == 0 ? null : wrong.join(", ");
 			case kind:
 				var p = page(c.page);
+				logical = LOGICAL.match(pages[c.page]);
 				var as = values(p, c.a), bs:Array<String> = c.b.value != null ? [c.b.value] : values(p, c.b);
 				if (as.length == 0) return 'no element ${c.a.el}';
 				for (k in 0...as.length) {
@@ -150,8 +153,24 @@ class CssCascadeCheck {
 		var el:String = ref.el;
 		var els = if (el == "@root") [p.doc.documentElement] else if (el == "@body") [p.doc.body] else if (el.startsWith("@all:"))
 			CssMatcher.query(CssSelector.parse(el.substr(5)), p.doc) else [p.doc.getElementById(el)];
-		return [for (e in els) if (e != null) p.styles.computed(e).text(ref.property)];
+		var out = [for (e in els) if (e != null) p.styles.computed(e).text(ref.property)];
+		// (the same through #321's cascade, frozen; it had no logical properties)
+		if (logical) return out;
+		var old = reference.RefCascade.styles(p.doc, {media: {type: "screen", width: 800, height: 600}});
+		var k = 0;
+		for (e in els) if (e != null) {
+			parityChecks++;
+			var b = old.computed(e).text(ref.property);
+			if (b != out[k]) parity.push('${ref.el} ${ref.property}: ${haxe.Json.stringify(out[k])}, #321 gave ${haxe.Json.stringify(b)}');
+			k++;
+		}
+		return out;
 	}
+
+	static final LOGICAL = ~/(margin|padding|inset|border)-(block|inline)|(min-|max-|\b)(inline|block)-size|border-(start|end)-(start|end)-radius/;
+	static var logical = false;
+	static final parity:Array<String> = [];
+	static var parityChecks = 0;
 
 	static function all(root:Element):Array<Element> {
 		var out = [root];
@@ -168,7 +187,7 @@ class CssCascadeCheck {
 		if (~/@property\b/.match(html)) return "out of scope: registered custom properties (@property)";
 		if (~/:host|::slotted|shadowroot/.match(html)) return "out of scope: shadow trees";
 		if (~/\bident\(/.match(html)) return "out of scope: Values 5's ident()";
-		if (~/margin-(block|inline)|padding-(block|inline)|inset-(block|inline)|writing-mode/.match(html)) return "out of scope: logical properties and writing modes (deferred)";
+		if (~/writing-mode:\s*(vertical|sideways)/.match(html)) return "out of scope: vertical writing modes (deferred)";
 		return null;
 	}
 

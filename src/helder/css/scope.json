@@ -27,7 +27,19 @@
     "css-images-3": ["object-fit", "object-position", "image-orientation"],
     "css-flexbox-1": ["flex", "flex-direction", "flex-wrap", "flex-flow", "flex-grow", "flex-shrink", "flex-basis", "order"],
     "css-align-3": ["align-content", "align-items", "align-self", "justify-content", "justify-items", "justify-self", "place-content", "place-items", "place-self", "gap", "row-gap", "column-gap", "grid-gap", "grid-row-gap", "grid-column-gap"],
-    "css-grid-1": ["grid", "grid-template", "grid-template-columns", "grid-template-rows", "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow", "grid-area", "grid-row", "grid-column", "grid-row-start", "grid-row-end", "grid-column-start", "grid-column-end"]
+    "css-grid-1": ["grid", "grid-template", "grid-template-columns", "grid-template-rows", "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow", "grid-area", "grid-row", "grid-column", "grid-row-start", "grid-row-end", "grid-column-start", "grid-column-end"],
+    "css-sizing-4": ["aspect-ratio"],
+    "css-forms-1": ["field-sizing"],
+    "css-transitions-1": ["transition", "transition-property", "transition-duration", "transition-timing-function", "transition-delay", "transition-behavior"],
+    "css-ui-4": ["cursor", "pointer-events", "user-select", "accent-color", "appearance"],
+    "css-scrollbars-1": ["scrollbar-width", "scrollbar-color"],
+    "css-overflow-4": ["line-clamp", "max-lines", "block-ellipsis", "continue", "text-overflow"],
+    "css-text-4": ["text-wrap", "text-wrap-style"],
+    "css-text-decor-4": ["text-underline-offset"],
+    "filter-effects-1": ["filter", "backdrop-filter"],
+    "compositing-2": ["mix-blend-mode", "isolation"],
+    "css-transforms-2": ["translate", "rotate", "scale"],
+    "css-logical-1": ["margin-block", "margin-block-start", "margin-block-end", "margin-inline", "margin-inline-start", "margin-inline-end", "padding-block", "padding-block-start", "padding-block-end", "padding-inline", "padding-inline-start", "padding-inline-end", "inset-block", "inset-block-start", "inset-block-end", "inset-inline", "inset-inline-start", "inset-inline-end", "inline-size", "block-size", "min-inline-size", "min-block-size", "max-inline-size", "max-block-size", "border-block", "border-block-start", "border-block-end", "border-inline", "border-inline-start", "border-inline-end", "border-block-width", "border-block-style", "border-block-color", "border-inline-width", "border-inline-style", "border-inline-color", "border-block-start-width", "border-block-start-style", "border-block-start-color", "border-block-end-width", "border-block-end-style", "border-block-end-color", "border-inline-start-width", "border-inline-start-style", "border-inline-start-color", "border-inline-end-width", "border-inline-end-style", "border-inline-end-color", "border-start-start-radius", "border-start-end-radius", "border-end-start-radius", "border-end-end-radius"]
   },
   "overrides": {
     "text-justify": {
@@ -42,14 +54,31 @@
     }
   },
   "types": {
-    "top": {"syntax": "<length> | auto", "why": "CSS 2.1's clip: rect(); the spec says it in prose"},
-    "right": {"syntax": "<length> | auto", "why": "CSS 2.1's clip: rect(); the spec says it in prose"},
-    "bottom": {"syntax": "<length> | auto", "why": "CSS 2.1's clip: rect(); the spec says it in prose"},
-    "left": {"syntax": "<length> | auto", "why": "CSS 2.1's clip: rect(); the spec says it in prose"},
-    "font-src-list": {"syntax": "<font-src>#", "why": "Fonts 4 says it in prose: a list of <font-src>, each parsed on its own"}
+    "top": {
+      "syntax": "<length> | auto",
+      "why": "CSS 2.1's clip: rect(); the spec says it in prose"
+    },
+    "right": {
+      "syntax": "<length> | auto",
+      "why": "CSS 2.1's clip: rect(); the spec says it in prose"
+    },
+    "bottom": {
+      "syntax": "<length> | auto",
+      "why": "CSS 2.1's clip: rect(); the spec says it in prose"
+    },
+    "left": {
+      "syntax": "<length> | auto",
+      "why": "CSS 2.1's clip: rect(); the spec says it in prose"
+    },
+    "url-set": {"syntax": "<image-set()>", "why": "cursor's <url-set>: Images 4's image-set() of url()s; webref has no grammar for it"},
+    "font-src-list": {
+      "syntax": "<font-src>#",
+      "why": "Fonts 4 says it in prose: a list of <font-src>, each parsed on its own"
+    }
   },
   "primitives": {
     "angle": "Values 4: a dimension in deg, grad, rad or turn (or 0, where a grammar says so)",
+    "time": "Values 4: a dimension in s or ms",
     "custom-ident": "Values 4: an identifier, not a CSS-wide keyword nor `default`",
     "dashed-ident": "Values 4: an identifier starting with --",
     "declaration-value": "Syntax 3: any tokens but bad ones, unmatched closers and top-level ; or !",
@@ -136,7 +165,6 @@
     "css-sizing-4": "Sizing 4 (aspect-ratio, contain-intrinsic-size): not in checkpoint 1"
   },
   "out": {
-    "logical properties: writing-mode is deferred": ["border-block", "border-block-clip", "border-block-color", "border-block-end", "border-block-end-clip", "border-block-end-color", "border-block-end-radius", "border-block-end-style", "border-block-end-width", "border-block-start", "border-block-start-clip", "border-block-start-color", "border-block-start-radius", "border-block-start-style", "border-block-start-width", "border-block-style", "border-block-width", "border-inline", "border-inline-clip", "border-inline-color", "border-inline-end", "border-inline-end-clip", "border-inline-end-color", "border-inline-end-radius", "border-inline-end-style", "border-inline-end-width", "border-inline-start", "border-inline-start-clip", "border-inline-start-color", "border-inline-start-radius", "border-inline-start-style", "border-inline-start-width", "border-inline-style", "border-inline-width", "border-end-end-radius", "border-end-start-radius", "border-start-end-radius", "border-start-start-radius", "inset-block", "inset-block-end", "inset-block-start", "inset-inline", "inset-inline-end", "inset-inline-start", "block-size", "inline-size", "min-block-size", "min-inline-size", "max-block-size", "max-inline-size", "overflow-block", "overflow-inline", "background-position-block", "background-position-inline", "background-repeat-block", "background-repeat-inline"],
     "writing modes: deferred": ["writing-mode", "text-orientation", "text-combine-upright", "glyph-orientation-vertical"],
     "Borders 4 (corner shapes, partial borders, side radii): not in checkpoint 1": ["border-clip", "border-top-clip", "border-right-clip", "border-bottom-clip", "border-left-clip", "border-limit", "border-shape", "border-top-radius", "border-right-radius", "border-bottom-radius", "border-left-radius", "corner", "corner-block-end", "corner-block-end-shape", "corner-block-start", "corner-block-start-shape", "corner-bottom", "corner-bottom-left", "corner-bottom-left-shape", "corner-bottom-right", "corner-bottom-right-shape", "corner-bottom-shape", "corner-end-end", "corner-end-end-shape", "corner-end-start", "corner-end-start-shape", "corner-inline-end", "corner-inline-end-shape", "corner-inline-start", "corner-inline-start-shape", "corner-left", "corner-left-shape", "corner-right", "corner-right-shape", "corner-shape", "corner-start-end", "corner-start-end-shape", "corner-start-start", "corner-start-start-shape", "corner-top", "corner-top-left", "corner-top-left-shape", "corner-top-right", "corner-top-right-shape", "corner-top-shape"],
     "Backgrounds 4: not in checkpoint 1": ["background-repeat-x", "background-repeat-y", "background-tbd"],
@@ -151,9 +179,10 @@
     "Inline 3 beyond CSS 2.1's line-height and vertical-align: not in checkpoint 1": ["dominant-baseline", "initial-letter", "initial-letter-align", "initial-letter-wrap", "inline-sizing", "line-fit-edge", "text-box", "text-box-edge", "text-box-trim"],
     "masking: not in checkpoint 1 (CSS 2.1's clip is)": ["clip-path", "clip-rule", "mask", "mask-border", "mask-border-mode", "mask-border-outset", "mask-border-repeat", "mask-border-slice", "mask-border-source", "mask-border-width", "mask-clip", "mask-composite", "mask-image", "mask-mode", "mask-origin", "mask-position", "mask-repeat", "mask-size", "mask-type"],
     "scrolling: a page doesn't scroll": ["scroll-behavior", "scrollbar-gutter"],
-    "Text 4: not in checkpoint 1": ["hanging-punctuation", "hyphenate-character", "hyphenate-limit-chars", "hyphenate-limit-last", "hyphenate-limit-lines", "hyphenate-limit-zone", "line-padding", "text-autospace", "text-autospace-size", "text-group-align", "text-spacing", "text-spacing-trim", "text-wrap", "text-wrap-style", "white-space-trim", "word-space-transform", "wrap-after", "wrap-before", "wrap-inside"],
-    "Text Decoration 4: not in checkpoint 1": ["text-decoration-inset", "text-decoration-skip", "text-decoration-skip-box", "text-decoration-skip-ink", "text-decoration-skip-self", "text-decoration-skip-spaces", "text-emphasis-skip", "text-underline-offset"],
+    "Text 4: not in checkpoint 1": ["hanging-punctuation", "hyphenate-character", "hyphenate-limit-chars", "hyphenate-limit-last", "hyphenate-limit-lines", "hyphenate-limit-zone", "line-padding", "text-autospace", "text-autospace-size", "text-group-align", "text-spacing", "text-spacing-trim", "white-space-trim", "word-space-transform", "wrap-after", "wrap-before", "wrap-inside"],
+    "Text Decoration 4: not in checkpoint 1": ["text-decoration-inset", "text-decoration-skip", "text-decoration-skip-box", "text-decoration-skip-ink", "text-decoration-skip-self", "text-decoration-skip-spaces", "text-emphasis-skip"],
     "color fonts' palettes: not in checkpoint 1": ["font-palette"],
-    "interaction: a page takes no input": ["-webkit-appearance", "-webkit-user-select", "accent-color", "appearance", "caret", "caret-animation", "caret-color", "caret-shape", "cursor", "interactivity", "interest-delay", "interest-delay-end", "interest-delay-start", "nav-down", "nav-left", "nav-right", "nav-up", "resize", "user-select", "window-drag"]
+    "interaction: a page takes no input": ["-webkit-appearance", "-webkit-user-select", "caret", "caret-animation", "caret-color", "caret-shape", "interactivity", "interest-delay", "interest-delay-end", "interest-delay-start", "nav-down", "nav-left", "nav-right", "nav-up", "resize", "window-drag"],
+    "Borders 4 logical clips and side radii: not in checkpoint 1": ["border-block-clip", "border-block-end-clip", "border-block-end-radius", "border-block-start-clip", "border-block-start-radius", "border-inline-clip", "border-inline-end-clip", "border-inline-end-radius", "border-inline-start-clip", "border-inline-start-radius", "overflow-block", "overflow-inline", "background-position-block", "background-position-inline", "background-repeat-block", "background-repeat-inline"]
   }
 }

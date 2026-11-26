@@ -72,7 +72,7 @@ class Bench {
 
 	// (natively; the page and its sheets fetched into bin/bench/html)
 	static function cascadeBench() {
-		exe("bin/bench/CascadeBench", cps(["src", "tests/bench"]).concat(["-main", "CascadeBench"]));
+		exe("bin/bench/CascadeBench", cps(["src", "tests/bench", "tests/css"]).concat(["-main", "CascadeBench"]));
 		run(NODE, ["tests/bench/cascade.mjs", exePath("bin/bench/CascadeBench", HOST)]);
 	}
 
