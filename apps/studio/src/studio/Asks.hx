@@ -91,22 +91,28 @@ class Asks implements Markup {
 		</view>;
 
 	// (an option's picture: its frame drawn small, a screen's last frame, an image)
+	// (kept ones once answered: the frames may be gone)
 	static function thumb(studio:Studio, o:Offer):View {
+		if (o.kept != null) return design(() -> o.kept.markup, o.kept.width, o.kept.height);
+		if (o.still != null) return <image src={o.still} width={THUMB_W} height={THUMB_H} fit="contain"/>;
 		var p = studio.project;
 		var info = o.screen == null || p == null ? null : p.screen(o.screen);
-		if (info != null && info.source.match(Design(_))) {
-			var w = info.width > 0 ? info.width : 390, h = info.height > 0 ? info.height : 844;
-			var k = Math.min(THUMB_W / w, THUMB_H / h);
-			return <view width={w * k} height={h * k} overflow="hidden">
-				<view width={w} height={h} transform-origin="left top" transform={'scale($k)'} pointer-events="none" background="#ffffff" color="#000000"
-					font-family={helder.ui.Style.DEFAULT_FAMILY} font-size={helder.ui.Style.DEFAULT_SIZE} font-weight={helder.ui.Style.DEFAULT_WEIGHT}
-					ref={(n:Node) -> n.theme = {rules: []}}>{studio.designs.copy(info.name)}</view>
-			</view>;
-		}
+		if (info != null && info.source.match(Design(_)))
+			return design(() -> studio.designs.copy(info.name), info.width > 0 ? info.width : 390, info.height > 0 ? info.height : 844);
 		var s = info == null ? null : studio.previews?.screen(info.name);
 		if (s != null) return <image src={s.image()} width={THUMB_W} height={THUMB_H} fit="contain"/>;
 		var img = o.image == null ? null : picture(o.image);
 		return img == null ? <text font-size={11} color={c("dim")}>{o.label}</text> : <image src={img} width={THUMB_W} height={THUMB_H} fit="contain"/>;
+	}
+
+	// (a design frame's markup drawn small)
+	static function design(markup:Void->Any, w:Float, h:Float):View {
+		var k = Math.min(THUMB_W / w, THUMB_H / h);
+		return <view width={w * k} height={h * k} overflow="hidden">
+			<view width={w} height={h} transform-origin="left top" transform={'scale($k)'} pointer-events="none" background="#ffffff" color="#000000"
+				font-family={helder.ui.Style.DEFAULT_FAMILY} font-size={helder.ui.Style.DEFAULT_SIZE} font-weight={helder.ui.Style.DEFAULT_WEIGHT}
+				ref={(n:Node) -> n.theme = {rules: []}}>{markup()}</view>
+		</view>;
 	}
 
 	static function picture(path:String):Null<Image> {

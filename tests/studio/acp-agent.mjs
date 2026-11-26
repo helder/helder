@@ -72,7 +72,9 @@ async function prompt(id, p) {
     const {call, session} = await studio()
     await call({id: 2, method: 'tools/call', params: {name: 'studio.ask', arguments: {
       question: 'Which rows should glow?',
-      options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}],
+      // ("ask frames": the options the frames of sketches.helder's Done, Open, New)
+      options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}]
+        .map(o => text.startsWith('ask frames') ? {...o, frame: 'sketches.helder#' + o.label.split(' ')[0]} : o),
       multiple: true
     }}}, session)
     update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Asked which rows should glow.'}})
