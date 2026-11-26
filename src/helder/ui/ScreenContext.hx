@@ -61,8 +61,6 @@ class ScreenContext {
 	// the wall clock's ms at its clock's 0 (a scenario's time: helder.os.Now; null: the system's)
 	public var epoch:Null<Float> = null;
 	final wall:Void->Float;
-	// (its store's tasks' dispatcher, helder.async.Home: made again once the store is cleared)
-	var tasks:Null<helder.async.Home> = null;
 	// suspended: its clock is not ticked, its timers do not run (a host's screen off screen)
 	public var suspended = false;
 	#if (target.name == "hxmc")
@@ -86,6 +84,8 @@ class ScreenContext {
 	public function new(name:String, isolated = true, ?keymap:helder.ui.actions.Keymap, ?atoms:helder.view.graph.Atoms) {
 		this.name = name;
 		this.atoms = atoms;
+		// (a task started in its store runs in it: helder.async.Home, when linked)
+		if (atoms != null) atoms.enter = f -> run(f);
 		var was = helder.view.graph.Atoms.current;
 		helder.view.graph.Atoms.current = atoms;
 		this.keymap = keymap ?? new helder.ui.actions.Keymap();
@@ -136,7 +136,6 @@ class ScreenContext {
 		helder.view.graph.Atoms.current = atoms;
 		helder.view.graph.Atoms.screen = true;
 		helder.os.Now.get = epoch == null ? null : wall;
-		helder.async.Home.current = home();
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = stores;
 		#end
@@ -147,19 +146,9 @@ class ScreenContext {
 		helder.view.graph.Atoms.current = was?.atoms;
 		helder.view.graph.Atoms.screen = was != null;
 		helder.os.Now.get = was?.epoch == null ? null : was.wall;
-		helder.async.Home.current = was?.home();
 		#if (target.name == "hxmc")
 		helder.os.Store.scope = was?.stores;
 		#end
-	}
-
-	// (what a task started in it runs through: its store's, none without one)
-	function home():Null<helder.async.Home> {
-		var a = atoms;
-		if (a == null) return null;
-		var s = tasks;
-		if (s == null || !s.live()) tasks = s = new helder.async.Home(a, f -> run(f));
-		return s;
 	}
 
 	// (Ui: its surface's width now)

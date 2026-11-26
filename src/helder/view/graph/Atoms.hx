@@ -43,6 +43,12 @@ class Atoms {
 
 	// its name (a screen's: fast refresh's scope of its values)
 	public final name:String;
+	// (its screen's: f run with that screen's context current, helder.ui.ScreenContext
+	// sets it; null: a store of no screen's)
+	@:noCompletion public var enter:Null<(Void->Void)->Void> = null;
+	// (helder.async.Home, the dispatcher of the tasks started in it: kept with it, so that
+	// helder.ui and helder.view never link helder.async)
+	@:noCompletion public var tasks:Null<Any> = null;
 	// (what owns its nodes; its node of each atom read here not at home, by the atom)
 	var root = new Owner(null);
 	var nodes = new haxe.ds.ObjectMap<Node<Dynamic>, Node<Dynamic>>();
