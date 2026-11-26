@@ -62,14 +62,47 @@ class SelectionBar implements Markup {
 			<text fontSize={Theme.SMALL} textWrap="nowrap">{label}</text>
 		</button>;
 
-	// (the frame's place in the stage: under it, centred, MIN to MAX wide, kept inside the stage's sides)
+	// (where it goes in the stage: place's, from the frames and their captions there)
 	static function box(studio:Studio, name:String):{x:Float, y:Float, w:Float} {
 		studio.camera.changed();
 		studio.stageSize();
-		var r = studio.layout.rect(name), cam = studio.camera;
-		if (r == null) return {x: 0, y: 0, w: MIN};
-		var w = Math.max(MIN, Math.min(MAX, r.w * cam.k)), x = cam.sx(r.x + r.w / 2) - w / 2;
-		return {x: Math.max(GAP, Math.min(studio.stageWidth - w - GAP, x)), y: cam.sy(r.y + r.h) + GAP, w: w};
+		var r = studio.layout.rect(name), cam = studio.camera, p = parts(studio.project, name);
+		if (r == null || p == null) return {x: 0, y: 0, w: MIN};
+		function stage(x:Float, y:Float, w:Float, h:Float):FrameBox
+			return {x0: cam.sx(x), y0: cam.sy(y) - CAPTION, x1: cam.sx(x + w), y1: cam.sy(y + h)};
+		var w = Math.max(MIN, Math.min(MAX, r.w * cam.k));
+		var at = place(stage(r.x, r.y, r.w, r.h), [for (o in studio.layout.screens()) stage(o.x, o.y, o.w, o.h)], w, p.loop == null ? SHORT : TALL,
+			studio.stageWidth, studio.stageHeight);
+		return {x: at.x, y: at.y, w: w};
+	}
+
+	// (its heights: one row, a loop's two; a frame's caption above it, stage points)
+	static inline var SHORT = 40.0;
+	static inline var TALL = 72.0;
+	static inline var CAPTION = 26.0;
+
+	// where a bar w by h goes for a frame (its box from its caption's top,
+	// stage points) among the others: centred on it, inside the stage's
+	// sides, covering none of them: under it when the gap there fits; else
+	// above its caption; else the first gap further down its column, then
+	// up (pinned to its x); else (no gap in the stage) the stage's bottom edge
+	public static function place(frame:FrameBox, frames:Array<FrameBox>, w:Float, h:Float, stageW:Float, stageH:Float):{x:Float, y:Float} {
+		var x = Math.max(GAP, Math.min(stageW - w - GAP, (frame.x0 + frame.x1) / 2 - w / 2));
+		var column = frames.filter(f -> f.x1 > x && f.x0 < x + w);
+		function free(y:Float):Bool
+			return y >= GAP && y + h <= stageH - GAP && !Lambda.exists(column, f -> f.y1 + GAP > y && f.y0 - GAP < y + h);
+		var below = frame.y1 + GAP, above = frame.y0 - GAP - h;
+		if (free(below)) return {x: x, y: below};
+		if (free(above)) return {x: x, y: above};
+		var down = [for (f in column) if (f.y1 > frame.y1) f.y1 + GAP];
+		down.sort(Reflect.compare);
+		for (y in down)
+			if (free(y)) return {x: x, y: y};
+		var up = [for (f in column) if (f.y0 < frame.y0) f.y0 - GAP - h];
+		up.sort((a, b) -> Reflect.compare(b, a));
+		for (y in up)
+			if (free(y)) return {x: x, y: y};
+		return {x: x, y: stageH - GAP - h};
 	}
 
 	// a loop frame's recorded loop: play, pause, the time scrubbed; none
@@ -125,3 +158,6 @@ class SelectionBar implements Markup {
 		return r == Math.floor(r) ? Std.string(Std.int(r)) : Std.string(r);
 	}
 }
+
+// (a frame's box in the stage, its caption's top to its bottom)
+typedef FrameBox = {x0:Float, y0:Float, x1:Float, y1:Float};

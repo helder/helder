@@ -220,10 +220,11 @@ class Board implements Markup {
 
 	// a failed build on the canvas, whatever its zoom (its frames' chips are
 	// a frame wide): its first error, where (a link: the file at its line,
-	// as an agent's reply's), how many more; its frames not drawn shimmer no more
+	// as an agent's reply's), how many more, beside the code panel when it
+	// is open; its frames not drawn shimmer no more
 	static function failed(studio:Studio):View
 		return <For each={studio.shownFailure() == null ? [] : [studio.shownFailure()]}>{(f:Read<Studio.Failure>) ->
-			<view tag="build-failed" position="absolute" left={0} right={0} bottom={20} alignItems="center">
+			<view tag="build-failed" position="absolute" left={CodePanel.covers(studio) + 16} right={16} bottom={20} alignItems="center">
 				<view flexDirection="row" alignItems="center" columnGap={8} maxWidth={560} padding="8 14" borderRadius={10} background={c("skeleton")}
 					borderWidth={1} borderColor={c("error-soft")} pointerEvents="auto">
 					<view width={6} height={6} borderRadius={3} flexShrink={0} background={c("error")}/>

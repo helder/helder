@@ -47,6 +47,14 @@ function tests() {
 				helder.view.graph.Graph.flush();
 				equals(s.talk.reading.peek(), {file: s.project.dir + "/app.scenario.tsx", line: 5});
 			})));
+		test("the bar covers no frame: under its frame when the gap fits, else above its caption, else the next gap down its column", () -> {
+			var top = {x0: 100.0, y0: 74.0, x1: 220.0, y1: 140.0}, next = {x0: 100.0, y0: 166.0, x1: 220.0, y1: 230.0};
+			equals(SelectionBar.place(top, [top, next], 200, 40, 1000, 700), {x: 60.0, y: 24.0});
+			equals(SelectionBar.place(top, [top, {x0: 100.0, y0: 300.0, x1: 220.0, y1: 400.0}], 200, 40, 1000, 700), {x: 60.0, y: 150.0});
+			var high = {x0: 100.0, y0: 20.0, x1: 220.0, y1: 140.0};
+			equals(SelectionBar.place(high, [high, next], 200, 40, 1000, 700), {x: 60.0, y: 240.0});
+			equals(SelectionBar.place(high, [high, {x0: 0.0, y0: 150.0, x1: 1000.0, y1: 700.0}], 200, 40, 1000, 700), {x: 60.0, y: 650.0});
+		});
 		test("Play from here with a window open: switched (a scenario it has), queued (an edit not built), its main written again (one it has not), else a window of its own", () -> {
 			equals(Studio.playPlan(true, ["A/One", "A/Two"], "A/Two", true, false), "switch");
 			equals(Studio.playPlan(true, ["A/One", "A/Two"], "A/Two", true, true), "queue");
