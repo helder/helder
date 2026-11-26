@@ -459,48 +459,13 @@ class LineBuilder {
 		return f;
 	}
 
-	// the line endP and endU end, from p (unit u) at top: its fragments, its
-	// box; its height
-	function build(p:Int, u:Int, top:Float, x0:Float, avail:Float, offset:Float):Float {
-		var o = out, k = o.lines++;
-		if (k == o.lTop.length) growLines();
-		o.lFirst[k] = o.fragments;
-		var last = endU > startOf(endP) ? endP : endP - 1;
-		var count = last - p + 1;
-		if (count > state.length) state = new Vector<Int>(count * 2);
-		for (j in 0...(count > 0 ? count : 0))
-			state[j] = 0;
-		// (the spaces at its end: collapsible ones removed, others hanging)
-		var j = last;
-		while (j >= p) {
-			var kind = c.pieceKind(j);
-			if (kind == InlineContent.ITEM) {
-				var ik = c.kind(c.pieceItem(j));
-				if (ik == Close || ik == Open || ik == Float || ik == Abspos || ik == Break) {
-					j--;
-					continue;
-				}
-				break;
-			}
-			if (kind == InlineContent.WORD) break;
-			var f = c.flags(c.pieceItem(j));
-			if (f & InlineContent.COLLAPSIBLE != 0) state[j - p] = REMOVED else if (f & InlineContent.HANGS != 0) state[j - p] = HANG else break;
-			j--;
-		}
-		// (and those at its start)
-		var j = p;
-		while (j <= last) {
-			if (leading(j, false)) state[j - p] = REMOVED;
-			else if (solid(j) || c.pieceKind(j) == InlineContent.SPACE) break;
-			j++;
-		}
-		var lastText = -1;
-		if (endFlags & HYPHENATED != 0)
-			for (i in p...last + 1)
-				if (c.pieceKind(i) == InlineContent.WORD) lastText = i;
-		// (the boxes it continues from the line before: outermost first)
-		slots = 0;
-		var rootSlot = slot(-1, -1, 0, 0);
+	// (what placeLogical and placeVisual leave: whether the line has content, its hanging width)
+	var lineFilled = false;
+	var lineTrailing = 0.0;
+
+	// (the slots of the boxes a line starting at piece p continues, outermost
+	// first, each spanning from x0; the innermost's)
+	function continued(p:Int, x0:Float):Int {
 		var chain:Array<Int> = [];
 		if (p < c.pieces) {
 			var fi = c.pieceItem(p);
@@ -510,14 +475,21 @@ class LineBuilder {
 				b = c.parent(b);
 			}
 		}
-		var cur = rootSlot;
+		var cur = 0;
 		for (b in chain) {
 			var s = slot(b, cur, c.styleOf(b), 0);
 			sSpan[s] = fragment(BoxSpan, b, x0, 0, s);
 			sLeft[s] = x0;
 			cur = s;
 		}
-		// (what makes the line not empty: CSS 2.1 §9.4.2)
+		return cur;
+	}
+
+	// (the line's pieces placed in logical order, left to right: what has no
+	// right-to-left level; its fragments and boxes' slots; lineFilled, lineTrailing)
+	function placeLogical(p:Int, u:Int, last:Int, x0:Float, lastText:Int):Float {
+		var o = out;
+		var cur = continued(p, x0);
 		var filled = endFlags & FORCED != 0;
 		var x = x0, trailing = 0.0, textFragment = -1, textItem = -1;
 		for (i in p...last + 1) {
@@ -596,6 +568,371 @@ class LineBuilder {
 			sRight[b] = x;
 			b = sParent[b];
 		}
+		lineFilled = filled;
+		lineTrailing = trailing;
+		return x;
+	}
+
+	// (whether a line's pieces are reordered: bidi resolved, a right-to-left
+	// level on it or a right-to-left paragraph)
+	function reorders(p:Int, last:Int):Bool {
+		if (!c.bidi) return false;
+		if (c.paragraphDirection(c.pieceStart(p < c.pieces ? p : c.pieces - 1)) == 1) return true;
+		for (i in p...last + 1)
+			if (c.level(c.pieceItem(i)) != 0) return true;
+		return false;
+	}
+
+	// (the visual pass's leaves: each a piece and its units, or a hyphen after
+	// one (HYPHEN_LEAF), or a box with nothing else on the line (BOX_LEAF);
+	// its bidi level, advance, slot; vOrder: the leaves in visual order)
+	static inline var HYPHEN_LEAF = 1;
+	static inline var BOX_LEAF = 2;
+	static inline var REMOVED_LEAF = 3;
+	var leaves = 0;
+	var vPiece = new Vector<Int>(64);
+	var vKind = new Vector<Int>(64);
+	var vFrom = new Vector<Int>(64);
+	var vTo = new Vector<Int>(64);
+	var vLevel = new Vector<Int>(64);
+	var vSlot = new Vector<Int>(64);
+	var vWidth = new Vector<Float>(64);
+	var vOrder = new Vector<Int>(64);
+	var vHang = new Vector<Bool>(64);
+	// (per slot: its first and last leaf in visual order, the leaves before its Open)
+	var sFirst = new Vector<Int>(16);
+	var sLast = new Vector<Int>(16);
+	var sLeaves = new Vector<Int>(16);
+
+	function leaf(kind:Int, piece:Int, from:Int, to:Int, level:Int, w:Float, slot:Int, hang:Bool) {
+		if (leaves == vPiece.length) {
+			var n = leaves * 2;
+			vPiece = ints(vPiece, n);
+			vKind = ints(vKind, n);
+			vFrom = ints(vFrom, n);
+			vTo = ints(vTo, n);
+			vLevel = ints(vLevel, n);
+			vSlot = ints(vSlot, n);
+			vOrder = ints(vOrder, n);
+			vWidth = floats(vWidth, n);
+			var h = new Vector<Bool>(n);
+			Vector.blit(vHang, 0, h, 0, vHang.length);
+			vHang = h;
+		}
+		var v = leaves++;
+		vKind[v] = kind;
+		vPiece[v] = piece;
+		vFrom[v] = from;
+		vTo[v] = to;
+		vLevel[v] = level;
+		vWidth[v] = w;
+		vSlot[v] = slot;
+		vHang[v] = hang;
+	}
+
+	// (the line's pieces in visual order, UAX #9's L1 and L2 per line: its
+	// trailing white space at the paragraph's level, then runs reversed from
+	// the highest level down; each box's edges on its first and last leaf
+	// there (its line-left one its start's or its end's by its own
+	// direction); hanging spaces of a right-to-left paragraph hung past its
+	// left; lineFilled, lineTrailing)
+	function placeVisual(p:Int, u:Int, last:Int, x0:Float, lastText:Int):Float {
+		var o = out;
+		var base = c.paragraphDirection(u);
+		leaves = 0;
+		var cur = continued(p, x0);
+		if (sLeaves.length < sOpen.length) {
+			sFirst = new Vector<Int>(sOpen.length);
+			sLast = new Vector<Int>(sOpen.length);
+			sLeaves = new Vector<Int>(sOpen.length);
+		}
+		for (s in 0...slots)
+			sLeaves[s] = 0;
+		var filled = endFlags & FORCED != 0;
+		var x = x0, trailing = 0.0, sawSolid = false;
+		// (logical order: the boxes' slots, the leaves and their advances)
+		inline function closeEmpty(b:Int)
+			if (sLeaves[b] == leaves) leaf(BOX_LEAF, -1, 0, 0, c.level(sOpen[b]), 0, b, false);
+		for (i in p...last + 1) {
+			var st = state[i - p];
+			if (st == REMOVED) {
+				// (a collapsed space at the line's end: no width, but where it is a box's run ends)
+				if (c.pieceKind(i) == InlineContent.SPACE && sawSolid && endP < c.pieces && endFlags & FORCED == 0) leaf(REMOVED_LEAF, i, c.pieceStart(i), c.pieceEnd(i), base, 0, cur, false);
+				continue;
+			}
+			var item = c.pieceItem(i), kind = c.pieceKind(i);
+			var from = i == p ? u : c.pieceStart(i), to = i == endP ? endU : c.pieceEnd(i);
+			var w = advance(i, from, to, x);
+			if (solid(i)) sawSolid = true;
+			if (kind != InlineContent.ITEM) {
+				leaf(0, i, from, to, c.level(item), w, cur, st == HANG);
+				filled = true;
+				if (i == lastText) {
+					var h = hyphenWidth(item);
+					leaf(HYPHEN_LEAF, i, to, to, c.level(item), h, cur, false);
+					w += h;
+				}
+			} else
+				switch c.kind(item) {
+					case Open:
+						if (slots == sLeaves.length) {
+							sFirst = ints(sFirst, slots * 2);
+							sLast = ints(sLast, slots * 2);
+							sLeaves = ints(sLeaves, slots * 2);
+						}
+						var b = slot(item, cur, c.styleOf(item), STARTS);
+						sSpan[b] = fragment(BoxSpan, item, x, 0, b);
+						sLeaves[b] = leaves;
+						cur = b;
+						if (w > 0) filled = true;
+					case Close:
+						var b = cur;
+						while (b > 0 && sOpen[b] != c.box(item))
+							b = sParent[b];
+						if (b > 0) {
+							sEdges[b] |= ENDS;
+							closeEmpty(b);
+							cur = sParent[b];
+						}
+						if (w > 0) filled = true;
+					case Atomic:
+						if (slots == sLeaves.length) {
+							sFirst = ints(sFirst, slots * 2);
+							sLast = ints(sLast, slots * 2);
+							sLeaves = ints(sLeaves, slots * 2);
+						}
+						var a = slot(item, cur, c.styleOf(item), ATOMIC);
+						leaf(0, i, from, to, c.level(item), w, a, false);
+						filled = true;
+					case Float | Abspos:
+						leaf(0, i, from, to, c.level(item), 0, cur, false);
+					case Break:
+						filled = true;
+					case _:
+				}
+			x += w;
+		}
+		// (the boxes still open with nothing on the line)
+		var b = cur;
+		while (b > 0) {
+			closeEmpty(b);
+			b = sParent[b];
+		}
+		// L1: the white space at the line's end, and what has no width after it, at the paragraph's level
+		var v = leaves - 1;
+		while (v >= 0) {
+			var k = vKind[v] == 0 || vKind[v] == REMOVED_LEAF ? c.pieceKind(vPiece[v]) : -1;
+			if (k == InlineContent.SPACE || k == InlineContent.TAB || vWidth[v] == 0 && k != InlineContent.WORD) vLevel[v] = base;
+			else break;
+			v--;
+		}
+		// L2: the runs reversed, from the highest level down to the lowest odd one
+		var high = 0, low = 255;
+		for (v in 0...leaves) {
+			vOrder[v] = v;
+			if (vLevel[v] > high) high = vLevel[v];
+			if (vLevel[v] & 1 == 1 && vLevel[v] < low) low = vLevel[v];
+		}
+		var lv = high;
+		while (lv >= low && lv > 0) {
+			var q = 0;
+			while (q < leaves) {
+				if (vLevel[vOrder[q]] >= lv) {
+					var e = q;
+					while (e < leaves && vLevel[vOrder[e]] >= lv)
+						e++;
+					var a = q, z = e - 1;
+					while (a < z) {
+						var t = vOrder[a];
+						vOrder[a] = vOrder[z];
+						vOrder[z] = t;
+						a++;
+						z--;
+					}
+					q = e;
+				} else q++;
+			}
+			lv--;
+		}
+		// (each box's first and last leaf in visual order)
+		if (sRun.length < slots) {
+			sRun = floats(sRun, slots * 2);
+			sRuns = ints(sRuns, slots * 2);
+		}
+		for (s in 0...slots) {
+			sFirst[s] = -1;
+			sLast[s] = -1;
+			sRuns[s] = 0;
+		}
+		for (q in 0...leaves) {
+			var s = vSlot[vOrder[q]];
+			if (sEdges[s] & ATOMIC != 0) s = sParent[s];
+			while (s > 0) {
+				if (sFirst[s] < 0) sFirst[s] = q;
+				sLast[s] = q;
+				s = sParent[s];
+			}
+		}
+		// (the sweep: edges, leaves, edges)
+		x = x0;
+		var textFragment = -1, textItem = -1, textSlot = -1;
+		var chain:Array<Int> = [];
+		for (q in 0...leaves) {
+			var v = vOrder[q], s = vSlot[v];
+			chain.resize(0);
+			var b = sEdges[s] & ATOMIC != 0 ? sParent[s] : s;
+			while (b > 0) {
+				chain.push(b);
+				b = sParent[b];
+			}
+			var j = chain.length - 1;
+			while (j >= 0) {
+				var b = chain[j--];
+				if (sFirst[b] == q) {
+					x = edge(b, x, true);
+					sRun[b] = sLeft[b];
+					textItem = -1;
+				} else if (!inBox(q - 1, b)) sRun[b] = x;
+			}
+			var w = vWidth[v];
+			switch vKind[v] {
+				case BOX_LEAF | REMOVED_LEAF:
+				case HYPHEN_LEAF:
+					hyphen(vPiece[v], x, s);
+					textItem = -1;
+				case _:
+					var i = vPiece[v], item = c.pieceItem(i), kind = c.pieceKind(i);
+					if (kind != InlineContent.ITEM) {
+						if (textItem != item || textSlot != s || kind == InlineContent.TAB || c.pieceKind(i - 1) == InlineContent.TAB) {
+							textFragment = fragment(TextRun, item, x, 0, s);
+							textItem = item;
+							textSlot = s;
+							o.fStart[textFragment] = vFrom[v];
+							o.fEnd[textFragment] = vTo[v];
+							var f = c.font(item);
+							o.fAscent[textFragment] = c.fonts.ascent(f);
+							o.fDescent[textFragment] = c.fonts.descent(f);
+							fRise[textFragment] = o.fAscent[textFragment];
+							o.fRun[textFragment] = o.glyphs.begin(c.fonts.set(f));
+						}
+						glyphsOf(i, vFrom[v], vTo[v], x - o.fX[textFragment]);
+						o.fWidth[textFragment] = x + w - o.fX[textFragment];
+						if (vFrom[v] < o.fStart[textFragment]) o.fStart[textFragment] = vFrom[v];
+						if (vTo[v] > o.fEnd[textFragment]) o.fEnd[textFragment] = vTo[v];
+						if (vHang[v]) trailing += w;
+					} else {
+						textItem = -1;
+						var st = c.styles[c.styleOf(item)];
+						switch c.kind(item) {
+							case Atomic:
+								var left = st.direction() == Rtl ? st.marginEnd() : st.marginStart();
+								var f = fragment(Atomic, item, x + left, c.atomicWidth(item), s);
+								o.fEnd[f] = c.end(item);
+							case Float:
+								fragment(Float, item, x, 0, -1);
+							case Abspos:
+								fragment(Abspos, item, x, 0, -1);
+							case _:
+						}
+					}
+			}
+			x += w;
+			for (b in chain)
+				if (sLast[b] == q) {
+					x = edge(b, x, false);
+					span(b, sRun[b], sRight[b]);
+					textItem = -1;
+				} else if (!inBox(q + 1, b)) span(b, sRun[b], x);
+		}
+		for (s in 1...slots)
+			if (sFirst[s] < 0 && sEdges[s] & ATOMIC == 0) span(s, x0, x0);
+		// (the spans placed: the build keeps their x and width)
+		for (s in 1...slots)
+			if (sEdges[s] & ATOMIC == 0) sSpan[s] = -1;
+		lineFilled = filled;
+		lineTrailing = trailing;
+		return x;
+	}
+
+	// (whether the leaf at visual position q is in box slot b)
+	function inBox(q:Int, b:Int):Bool {
+		if (q < 0 || q >= leaves) return false;
+		var s = vSlot[vOrder[q]];
+		if (sEdges[s] & ATOMIC != 0) s = sParent[s];
+		while (s > 0) {
+			if (s == b) return true;
+			s = sParent[s];
+		}
+		return false;
+	}
+
+	// (a run of box slot b from left to right: its first run its BoxSpan's, the others BoxSpans of their own)
+	var sRun = new Vector<Float>(16);
+	var sRuns = new Vector<Int>(16);
+
+	function span(b:Int, left:Float, right:Float) {
+		var f = sRuns[b]++ == 0 ? sSpan[b] : fragment(BoxSpan, sOpen[b], left, 0, b);
+		out.fX[f] = left;
+		out.fWidth[f] = Math.max(0, right - left);
+	}
+
+	// (a box's edge on the line's left or right: its start's or end's by its
+	// direction, where it starts or ends on the line; its left or right there)
+	function edge(b:Int, x:Float, left:Bool):Float {
+		var st = c.styles[sStyle[b]], rtl = st.direction() == Rtl;
+		var start = left != rtl;
+		var has = sEdges[b] & (start ? STARTS : ENDS) != 0;
+		var margin = start ? st.marginStart() : st.marginEnd();
+		var w = has ? margin + (start ? st.borderStart() + st.paddingStart() : st.borderEnd() + st.paddingEnd()) : 0.0;
+		if (has) fragment(start ? BoxStart : BoxEnd, sOpen[b], x, w, b);
+		if (left) sLeft[b] = x + (has ? margin : 0) else sRight[b] = x + w - (has ? margin : 0);
+		return x + w;
+	}
+
+	// the line endP and endU end, from p (unit u) at top: its fragments, its
+	// box; its height
+	function build(p:Int, u:Int, top:Float, x0:Float, avail:Float, offset:Float):Float {
+		var o = out, k = o.lines++;
+		if (k == o.lTop.length) growLines();
+		o.lFirst[k] = o.fragments;
+		var last = endU > startOf(endP) ? endP : endP - 1;
+		var count = last - p + 1;
+		if (count > state.length) state = new Vector<Int>(count * 2);
+		for (j in 0...(count > 0 ? count : 0))
+			state[j] = 0;
+		// (the spaces at its end: collapsible ones removed, others hanging)
+		var j = last;
+		while (j >= p) {
+			var kind = c.pieceKind(j);
+			if (kind == InlineContent.ITEM) {
+				var ik = c.kind(c.pieceItem(j));
+				if (ik == Close || ik == Open || ik == Float || ik == Abspos || ik == Break) {
+					j--;
+					continue;
+				}
+				break;
+			}
+			if (kind == InlineContent.WORD) break;
+			var f = c.flags(c.pieceItem(j));
+			if (f & InlineContent.COLLAPSIBLE != 0) state[j - p] = REMOVED else if (f & InlineContent.HANGS != 0) state[j - p] = HANG else break;
+			j--;
+		}
+		// (and those at its start)
+		var j = p;
+		while (j <= last) {
+			if (leading(j, false)) state[j - p] = REMOVED;
+			else if (solid(j) || c.pieceKind(j) == InlineContent.SPACE) break;
+			j++;
+		}
+		var lastText = -1;
+		if (endFlags & HYPHENATED != 0)
+			for (i in p...last + 1)
+				if (c.pieceKind(i) == InlineContent.WORD) lastText = i;
+		// (the boxes it continues from the line before, outermost first; then its pieces, in visual order where bidi reorders them)
+		slots = 0;
+		slot(-1, -1, 0, 0);
+		var x = reorders(p, last) ? placeVisual(p, u, last, x0, lastText) : placeLogical(p, u, last, x0, lastText);
+		var trailing = lineTrailing, filled = lineFilled;
 		var used = x - trailing;
 		// (before a forced break or at the end, preserved spaces hang only
 		// where they overflow: conditionally, CSS Text 3 §4.1.3)
@@ -661,16 +998,20 @@ class LineBuilder {
 		var root = c.root;
 		var align = endFlags & FORCED != 0 || endP >= c.pieces ? root.textAlignLast() : root.textAlign();
 		if (align == Auto) align = root.textAlign() == Justify ? Start : root.textAlign();
+		// (the paragraph's direction: a right-to-left one's start and indent on the right; overflowing, start aligned)
+		var rtl = (c.bidi ? c.paragraphDirection(u) : dir) == 1;
 		var free = avail - used;
-		if (free < 0) free = 0;
-		var rtl = dir == 1;
-		var shift = switch align {
-			case Center: free / 2;
-			case Right: free;
-			case End: rtl ? 0 : free;
-			case Start | Justify | MatchParent: rtl ? free : 0;
-			case _: 0;
+		var right = switch align {
+			case Center: false;
+			case Right: true;
+			case Left: false;
+			case End: !rtl;
+			case _: rtl;
 		}
+		if (free < 0) right = rtl;
+		var shift = (right ? free : align == Center && free > 0 ? free / 2 : 0.0) - (rtl ? x0 : 0);
+		// (a right-to-left paragraph's hanging spaces, visually first: past the line's left)
+		if (rtl) shift -= x - used;
 		// --- the fragments placed ---
 		for (f in o.lFirst[k]...o.fragments) {
 			o.fX[f] += offset + shift;
@@ -683,7 +1024,7 @@ class LineBuilder {
 			// (an empty line: zero high, its boxes too)
 			if (!filled && o.fKind[f] != Atomic) {
 				o.fY[f] = top;
-				if (o.fKind[f] == BoxSpan) {
+				if (o.fKind[f] == BoxSpan && sSpan[s] == f) {
 					o.fX[f] = sLeft[s] + offset + shift;
 					o.fWidth[f] = sRight[s] - sLeft[s];
 				}
@@ -697,7 +1038,7 @@ class LineBuilder {
 					o.fHeight[f] = up + sDescent[s] + st.paddingBottom() + st.borderBottom();
 					o.fAscent[f] = sAscent[s];
 					o.fDescent[f] = sDescent[s];
-					if (o.fKind[f] == BoxSpan) {
+					if (o.fKind[f] == BoxSpan && sSpan[s] == f) {
 						o.fX[f] = sLeft[s] + offset + shift;
 						o.fWidth[f] = Math.max(0, sRight[s] - sLeft[s]);
 					}

@@ -129,6 +129,15 @@ class InlineDiffCheck {
 			case _: Start;
 		}
 		o.indent = s.textIndent;
+		o.dir = s.direction == "rtl" ? Rtl : Ltr;
+		o.bidi = switch (s.unicodeBidi : String) {
+			case "embed": Embed;
+			case "isolate": Isolate;
+			case "bidi-override": BidiOverride;
+			case "isolate-override": IsolateOverride;
+			case "plaintext": Plaintext;
+			case _: Normal;
+		}
 		o.margins = [s.margin[3], s.margin[1], s.margin[0], s.margin[2]];
 		o.borders = [s.border[3], s.border[1], s.border[0], s.border[2]];
 		o.paddings = [s.padding[3], s.padding[1], s.padding[0], s.padding[2]];

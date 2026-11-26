@@ -295,6 +295,8 @@ class InlineContent {
 	public static inline var HANGS = 16;
 	public static inline var BREAK_WORD = 32;
 	public static inline var ANYWHERE = 64;
+	// (a box's: its unicode-bidi opens and closes controls, in the text as Blink has them)
+	public static inline var CONTROLS = 128;
 
 	public inline function flags(i:Int):Int
 		return iFlags[i];
@@ -485,7 +487,8 @@ class InlineContent {
 				flags = (wrap ? WRAPS : 0) | (ws == BreakSpaces ? BREAK_SPACES : 0) | (st.hyphens() == None ? NO_HYPHENS : 0)
 					| (collapsible ? COLLAPSIBLE | HANGS : 0) | (wrap && (ws == Preserve || ws == PreserveSpaces) ? HANGS : 0)
 					| (st.overflowWrap() == BreakWord ? BREAK_WORD : 0)
-					| (st.overflowWrap() == Anywhere || st.wordBreak() == BreakWord ? BREAK_WORD | ANYWHERE : 0);
+					| (st.overflowWrap() == Anywhere || st.wordBreak() == BreakWord ? BREAK_WORD | ANYWHERE : 0)
+					| (last > 0 && st.unicodeBidi() != Normal ? CONTROLS : 0);
 				font = fonts.idOf(st);
 				letter = st.letterSpacing();
 				word = st.wordSpacing();
@@ -840,8 +843,8 @@ class InlineContent {
 			var k = kind(i);
 			if (k != Text) {
 				var p = addPiece(ITEM, iStart[i], iEnd[i], i);
-				// (a Close ends what is before it: no break before it)
-				pBreak[p] = k == Close ? LineBreaks.NONE : breakBefore(i);
+				// (a Close ends what is before it: no break before it; but a box's closing control is text: after a forced break, on the next line)
+				pBreak[p] = k == Close && !takesBreak(i) ? LineBreaks.NONE : breakBefore(i);
 				continue;
 			}
 			var u = iStart[i], e = iEnd[i];
@@ -872,7 +875,23 @@ class InlineContent {
 		var j = i - 1;
 		while (j >= 0 && iStart[j] == at && iEnd[j] == at && kind(j) != Close)
 			j--;
+		if (j >= 0 && kind(j) == Close && iStart[j] == at && takesBreak(j)) return LineBreaks.NONE;
 		return j == i - 1 ? s : LineBreaks.NONE;
+	}
+
+	// (a Close whose box's unicode-bidi closes a control after a forced break:
+	// the control is text, Blink's, so the box ends on the next line; the
+	// forced break is before it)
+	function takesBreak(close:Int):Bool {
+		var b = iBox[close], at = iStart[close];
+		if (b < 0 || iFlags[b] & CONTROLS == 0 || at == 0 || breaks.get(at) & LineBreaks.STATUS != LineBreaks.FORCED) return false;
+		// (the first such Close there takes it)
+		var j = close - 1;
+		while (j >= 0 && iStart[j] == at && iEnd[j] == at) {
+			if (kind(j) == Close && iBox[j] >= 0 && iFlags[iBox[j]] & CONTROLS != 0) return false;
+			j--;
+		}
+		return true;
 	}
 
 	function addPiece(kind:Int, start:Int, end:Int, item:Int):Int {

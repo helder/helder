@@ -35,6 +35,12 @@ function random(seed) {
 	};
 }
 
+// (FLOW_BIDI=1: right-to-left paragraphs and inline boxes' direction and
+// unicode-bidi too, not gated yet: the generator's second version. A case is
+// named by its version, g1-seed-12, since another draws other cases)
+const BIDI = process.env.FLOW_BIDI === '1';
+const GENERATOR = BIDI ? 2 : 1;
+
 // (FLOW_NO=va,tab,...: cases without those features, to see which one a difference is about)
 const NO = new Set((process.env.FLOW_NO ?? '').split(',').filter(x => x));
 
@@ -60,6 +66,7 @@ function generate(seed) {
 		letterSpacing: p.letterSpacing,
 		wordSpacing: p.wordSpacing,
 		textAlign: p.textAlign,
+		direction: p.direction, unicodeBidi: 'normal',
 		textIndent: p.textIndent,
 		verticalAlign: 'baseline', verticalShift: 0,
 		margin: [0, 0, 0, 0], border: [0, 0, 0, 0], padding: [0, 0, 0, 0],
@@ -70,6 +77,7 @@ function generate(seed) {
 		overflowWrap: pick(['normal', 'normal', 'break-word', 'anywhere']), wordBreak: pick(['normal', 'normal', 'normal', 'break-all']),
 		letterSpacing: pick([0, 0, 0, 2]), wordSpacing: pick([0, 0, 0, 5]),
 		textAlign: pick(['start', 'start', 'center', 'right', 'end']), textIndent: pick([0, 0, 0, 10, -5]),
+		direction: !BIDI || NO.has('bidi') ? 'ltr' : pick(['ltr', 'ltr', 'rtl']), unicodeBidi: 'normal',
 		verticalAlign: 'baseline', verticalShift: 0, margin: [0, 0, 0, 0], border: [0, 0, 0, 0], padding: [0, 0, 0, 0],
 	};
 	const words = () => {
@@ -91,6 +99,8 @@ function generate(seed) {
 				style.border = edges().map(x => x >> 1);
 				style.margin = NO.has('edges') ? [0, 0, 0, 0] : [0, int(-2, 6), 0, int(-2, 6)];
 				valign(style);
+				// (an embedding, isolate or override: Ahem's letters reordered)
+				if (BIDI && !NO.has('bidi') && r() < 0.3) [style.direction, style.unicodeBidi] = [pick(['ltr', 'rtl', 'rtl']), pick(['embed', 'isolate', 'bidi-override', 'isolate-override', 'plaintext'])];
 				out.push({kind: 'box', id: 'b' + ids++, style, children: children(style, depth + 1)});
 			} else if (k < 0.9) {
 				const style = inherited(parent, false);
@@ -102,7 +112,7 @@ function generate(seed) {
 		}
 		return out;
 	};
-	const c = {name: `seed-${seed}`, width: int(0, 40) * 10, style: root, children: children(root, 0)};
+	const c = {name: `g${GENERATOR}-seed-${seed}`, width: int(0, 40) * 10, style: root, children: children(root, 0)};
 	if (NO.has('bs') && root.whiteSpace === 'break-spaces') root.whiteSpace = 'pre-wrap';
 	if (NO.has('ow')) [root.overflowWrap, root.wordBreak] = ['normal', 'normal'];
 	if (NO.has('ls')) [root.letterSpacing, root.wordSpacing] = [0, 0];
@@ -125,7 +135,7 @@ function css(s, atomic) {
 	const px = a => a.map(v => v + 'px').join(' ');
 	return [`font: ${s.fontSize}px/${s.lineHeight == null ? 'normal' : s.lineHeight + 'px'} Ahem`, `white-space: ${s.whiteSpace}`,
 		`overflow-wrap: ${s.overflowWrap}`, `word-break: ${s.wordBreak}`, `letter-spacing: ${s.letterSpacing}px`, `word-spacing: ${s.wordSpacing}px`,
-		`text-align: ${s.textAlign}`, `text-indent: ${s.textIndent}px`,
+		`text-align: ${s.textAlign}`, `text-indent: ${s.textIndent}px`, `direction: ${s.direction}`, `unicode-bidi: ${s.unicodeBidi}`,
 		`vertical-align: ${s.verticalAlign === 'length' ? s.verticalShift + 'px' : s.verticalAlign}`,
 		`margin: ${px(s.margin)}`, `padding: ${px(s.padding)}`, `border: solid transparent`, `border-width: ${px(s.border)}`, 'tab-size: 8',
 		// (a background: an inline box Blink would cull (no fragment of its own) reports its own rectangles)
@@ -210,7 +220,7 @@ function differ(a, b) {
 const ONLY = process.env.FLOW_ONLY;
 const cases = [];
 // (FLOW_SEEDS=3,17: those seeds)
-if (ONLY) cases.push(generate(Number(ONLY.replace('seed-', ''))));
+if (ONLY) cases.push(generate(Number(ONLY.replace(/^g\d+-/, '').replace('seed-', ''))));
 else if (process.env.FLOW_SEEDS) for (const n of process.env.FLOW_SEEDS.split(',')) cases.push(generate(Number(n)));
 else for (let i = 0; i < COUNT; i++) cases.push(generate(SEED + i));
 const keptCases = !ONLY && fs.existsSync(kept) ? fs.readdirSync(kept).filter(f => f.endsWith('.json')).sort().map(f => JSON.parse(fs.readFileSync(path.join(kept, f), 'utf8'))) : [];
@@ -261,7 +271,7 @@ for (let i = 0; i < cases.length; i++) {
 	failed++;
 	failedNames.push(c.name);
 	if (lines.length < 20) lines.push(`- ${c.name} (width ${c.width}): ${d}`);
-	if (KEEP && c.name.startsWith('seed-') && !keptNames.has(c.name)) {
+	if (KEEP && !keptNames.has(c.name)) {
 		fs.mkdirSync(kept, {recursive: true});
 		fs.writeFileSync(path.join(kept, c.name + '.json'), JSON.stringify(c) + '\n');
 	}
