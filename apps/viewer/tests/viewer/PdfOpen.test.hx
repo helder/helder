@@ -157,7 +157,7 @@ private class Opened {
 	public function new(w:Int, h:Int, sizes:Array<{width:Float, height:Float}>, status:Bool, before:Int) {
 		Ui.now = () -> t;
 		Clock.tick(t);
-		Kinds.utc = true;
+		Kinds.utc(true);
 		Tiles.forget();
 		var files = new MemoryFiles().add("/d/");
 		for (i in 0...before)

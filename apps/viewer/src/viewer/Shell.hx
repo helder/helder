@@ -133,22 +133,35 @@ class Shell implements Markup {
 	}
 
 	#if (hxmc.target != "wasm32-wasi")
+	// (what main runs once a process: the command line, the error log, the
+	// single instance, the keymap; each screen's explorer is its Window's)
 	public static function main(args:Array<String>) {
 		Timing.mark("start " + Date.now().getTime());
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
+		fallbackFont();
+		#if helder.headless
+		// (a headless run (helder run --headless) the same each time: the listings,
+		// decodes and thumbnails on the loop, in order, not on the pool's threads)
+		helder.jobs.Jobs.workers = 0;
+		#end
+		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
+		helder.image.JpegDecoder.threads = 2;
+		helder.ui.actions.Keymap.mac = mac;
+		helder.ui.menu.Menus.appName = "Viewer";
+		// (a preview host's (the studio's): its screens' own explorers of the
+		// Sandbox, no store, log, instance or menus of the user's)
+		if (helder.ui.Hosting.on) {
+			UiWindow.run(<Window launch={{path: null, exitAfter: -1, report: null, store: null, mac: mac, phone: phone, glass: false, served: null}}/>);
+			return;
+		}
 		// (--store: what it keeps under that home, a test's run, as HELDER_HOME
 		// puts it; set here, before anything is opened: Launch Services' open -a
 		// passes the program no environment)
 		var own = storeDir(args);
 		if (own != null) Sys.putEnv("HELDER_HOME", own);
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
-		inline function num(k:String, d:Int):Int {
-			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
-			return v == null ? d : v;
-		}
-		fallbackFont();
 		// (an event's, a frame's or a task's error: written down with where it was thrown, the window kept)
 		var log = store == null ? null : haxe.io.Path.join([haxe.io.Path.directory(store.path), "errors.log"]);
 		helder.async.Errors.handler = (e, source) -> {
@@ -167,7 +180,6 @@ class Shell implements Markup {
 		var valued = ["--exit-after", "--report", "--store"];
 		inline function arg(name:String):Null<String>
 			return args.indexOf(name) >= 0 ? args[args.indexOf(name) + 1] : null;
-		var exitAfter = arg("--exit-after") != null ? Std.parseFloat(arg("--exit-after")) : -1.0, report = arg("--report");
 		if (args.contains("--version")) {
 			Sys.println("Viewer " + Version.NAME);
 			return;
@@ -190,16 +202,49 @@ class Shell implements Markup {
 			}
 		}
 		// (served before anything slower is made (the places, the thumbnails'
-		// cache): a launch right after this one finds it)
+		// cache): a launch right after this one finds it; what comes before
+		// the window's explorer is made kept for it)
 		var handed:Array<String> = [], opener:Null<String->Void> = null;
 		if (!args.contains("--new")) Instance.serve(p -> if (opener == null) handed.push(p) else opener(p));
-		#if helder.headless
-		// (a headless run (helder run --headless) the same each time: the listings,
-		// decodes and thumbnails on the loop, in order, not on the pool's threads)
-		helder.jobs.Jobs.workers = 0;
-		#end
-		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
-		helder.image.JpegDecoder.threads = 2;
+		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
+		ViewerActions.defaults(helder.ui.actions.Keymap.global);
+		if (store != null) helder.ui.actions.Keymap.global.loadUser(haxe.io.Path.join([haxe.io.Path.directory(store.path), "helder-viewer-keymap.json"]));
+		if (helder.ui.actions.Keymap.global.error != null) Sys.println("viewer: " + helder.ui.actions.Keymap.global.error);
+		// (the sidebar's material: the window clear, its content opaque but
+		// for the sidebar; reduce transparency's opaque as ever)
+		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
+		var served = args.contains("--new") ? null : (f:String->Void) -> {
+			opener = f;
+			for (p in handed.splice(0, handed.length))
+				f(p);
+		};
+		Timing.mark("run");
+		UiWindow.run(<Window launch={{path: path, exitAfter: arg("--exit-after") != null ? Std.parseFloat(arg("--exit-after")) : -1.0,
+			report: arg("--report"), store: store, mac: mac, phone: phone, glass: glass, served: served}}/>);
+	}
+
+	// (the current screen's explorer: a signal, each screen's own; null until its Window is made)
+	public static final explorer = signalOf((null : Null<Explorer>), {ownedWrite: true});
+	// (what was asked of it before it was made: a scenario's boot)
+	static final asked = signalOf(([] : Array<Explorer->Void>), {ownedWrite: true});
+
+	// an action on the current screen's explorer (a scenario's boot: as the
+	// explorer is made, before its first frame; a folder gone to there is in
+	// place of the command line's path)
+	public static function act(a:ViewerAction)
+		with(x -> x.perform(a));
+
+	// f on the current screen's explorer, now or as it is made
+	public static function with(f:Explorer->Void) {
+		var x = explorer.peek();
+		if (x != null) f(x) else asked(l -> l.concat([f]));
+	}
+
+	// (the screen's explorer: a phone's of its documents and grants, a
+	// preview host's of the Sandbox, else the machine's disk and places; what
+	// is kept by content stays the process's, every screen's: Tiles,
+	// Thumbnails, PdfPages, Glyphs; a viewer's DecodeCache is its own)
+	static function make():Explorer {
 		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		// (a phone: its Documents and the folders the user gave it, the places;
 		// Add a folder the system's picker; Open in… the share sheet, the files themselves)
@@ -208,52 +253,68 @@ class Shell implements Markup {
 		x.openFolder = () -> addFolder(x, grants);
 		x.addFolder = x.openFolder;
 		x.share = paths -> Async.launch(_ -> helder.os.Share.share({files: paths}));
+		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
 		#else
+		if (helder.ui.Hosting.on) return Sandbox.explorer();
 		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes(), null, jobSizes);
 		x.reveal = reveal;
 		x.openDefault = openDefault;
-		#end
-		var viewer = x.viewer;
-		viewer.mod = mac ? "Cmd" : "Ctrl";
 		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
-		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
-		helder.ui.actions.Keymap.mac = mac;
-		helder.ui.menu.Menus.appName = "Viewer";
-		ViewerActions.defaults(helder.ui.actions.Keymap.global);
-		if (store != null) helder.ui.actions.Keymap.global.loadUser(haxe.io.Path.join([haxe.io.Path.directory(store.path), "helder-viewer-keymap.json"]));
-		if (helder.ui.actions.Keymap.global.error != null) Sys.println("viewer: " + helder.ui.actions.Keymap.global.error);
+		#end
+		return x;
+	}
+
+	// the window of a screen: its explorer made, owned by it, and shown
+	static function Window(props:{launch:Launch}):RootView {
+		var l = props.launch, store = l.store ?? (helder.ui.Hosting.on ? try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null : null);
+		inline function num(k:String, d:Int):Int {
+			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
+			return v == null ? d : v;
+		}
+		// (made with no owner: its model is written as it starts, as a story's is)
+		var x = runWithOwner(null, make), viewer = x.viewer, phone = l.phone;
+		explorer(x);
+		onCleanup(() -> {
+			if (x.thumbnails != null) x.thumbnails.close();
+			viewer.release();
+		});
+		viewer.mod = l.mac ? "Cmd" : "Ctrl";
 		// (File's Open Recent: the last eight files opened, kept in the store)
 		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
 		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
 		var places = [for (p in x.sidebar.places.value) {name: p.name, path: p.path}];
-		x.recent(recent);
-		var opened = viewer.onOpened;
-		viewer.onOpened = p -> {
-			if (opened != null) opened(p);
-			recent = x.recent.value;
-			if (store != null) store.set("recent", recent.join("\n"));
-			if (bar != null) bar.setMenus(ViewerActions.menus(recent.slice(0, 8), places));
-		};
-		restore(store, x);
-		// (macOS's: Finder's "Open With", the Dock's icon)
-		helder.os.App.onOpen = paths -> {
-			x.start(paths[0]);
-			helder.view.graph.Graph.flush();
-		};
-		// (Ctrl+O: the system's dialog, the file picked opened in its folder; a phone's: Add Folder)
-		viewer.openDialog = () -> {
-			if (x.openFolder != null) return x.openFolder();
-			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
-			var picked = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
-			if (picked != null) x.start(picked);
-		};
-		if (path != null) x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path) else {
-			var dir = home(store, x);
-			x.browser.go(dir, store != null && store.get("dir") == dir ? store.get("selected") : null);
-		}
-		// (files handed over while this one started: opened after its own)
-		if (!args.contains("--new")) {
-			opener = p -> {
+		// (window geometry: what it was made with and what it then measured, this window's)
+		var geometry = new Geometry();
+		var boot = asked.peek();
+		runWithOwner(null, () -> {
+			x.recent(recent);
+			var opened = viewer.onOpened;
+			viewer.onOpened = p -> {
+				if (opened != null) opened(p);
+				recent = x.recent.value;
+				if (store != null) store.set("recent", recent.join("\n"));
+				if (bar != null) bar.setMenus(ViewerActions.menus(recent.slice(0, 8), places));
+			};
+			restore(store, x);
+			// (macOS's: Finder's "Open With", the Dock's icon; the process' one window's)
+			if (!helder.ui.Hosting.on) helder.os.App.onOpen = paths -> {
+				x.start(paths[0]);
+				helder.view.graph.Graph.flush();
+			};
+			// (Ctrl+O: the system's dialog, the file picked opened in its folder; a phone's: Add Folder)
+			viewer.openDialog = () -> {
+				if (x.openFolder != null) return x.openFolder();
+				if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
+				var picked = helder.os.FileDialog.pick(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
+				if (picked != null) x.start(picked);
+			};
+			// (boot's first: where it goes, in place of the command line's path)
+			if (boot.length > 0) asked([]);
+			for (f in boot)
+				f(x);
+			if (x.browser.dir.value == "") start(x, l.path, store);
+			// (files handed over while this one started: opened after its own)
+			if (l.served != null) l.served(p -> {
 				if (Timing.command(x, p)) {
 					helder.view.graph.Graph.flush();
 					return;
@@ -261,24 +322,18 @@ class Shell implements Markup {
 				x.start(p);
 				helder.view.graph.Graph.flush();
 				for (w in helder.os.App.windows) w.raise();
-			};
-			for (p in handed.splice(0, handed.length))
-				opener(p);
-		}
-		var window:Null<UiWindow> = null;
-		// (the sidebar's material: the window clear, its content opaque but
-		// for the sidebar; reduce transparency's opaque as ever)
-		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
+			});
+		});
+		var window:Null<UiWindow> = null, glass = l.glass;
 		var shows = signal(false);
-		Timing.mark("run");
-		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
+		return <Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
 			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(Settings.dark()), 6)}
 			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? helder.os.WindowBackdrop.None : helder.os.WindowBackdrop.Sidebar : null} clickThrough={false}
 			onDrop={(files, px, py) -> if (files.length > 0 && (window == null || !Drops.external(x, window.ui, files, px, py))) x.start(files[0])}
 			onClose={() -> {
-				save(store, window, x);
+				save(store, window, x, geometry);
 				if (x.thumbnails != null) x.thumbnails.close();
-				if (!args.contains("--new")) Instance.leave();
+				if (l.served != null) Instance.leave();
 				window.close();
 			}}
 			ref={w -> {
@@ -294,7 +349,7 @@ class Shell implements Markup {
 				if (!phone) w.window.setMinSize(MIN_WIDTH, MIN_HEIGHT);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
-				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
+				geometry.asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
 				attach(w.ui.root, x);
 				// (what the system made of it: none where it has no such material)
 				if (glass) renderEffect(() -> helder.os.Settings.reducedTransparency(), _ -> shows(w.window.backdrop == helder.os.WindowBackdrop.Sidebar));
@@ -302,23 +357,29 @@ class Shell implements Markup {
 				// (the window's size and place kept as they change, not only at its close: macOS's Quit, a crash, a logout)
 				Async.launch(_ -> while (!w.window.closed) {
 					Async.delay(1);
-					if (!w.window.closed) save(store, w, x);
+					if (!w.window.closed) save(store, w, x, geometry);
 				});
+				var exitAfter = l.exitAfter, report = l.report;
 				if (exitAfter >= 0) Async.launch(_ -> {
 					Async.delay(exitAfter);
 					var line = x.full.value ? 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})'
 						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height}, ${ends(w.ui)})';
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
-					save(store, w, x);
+					save(store, w, x, geometry);
 					if (x.thumbnails != null) x.thumbnails.close();
-					if (!args.contains("--new")) Instance.leave();
+					if (l.served != null) Instance.leave();
 					w.close();
 				});
 			}}>
-			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
-			{view(x, null, shows)}
-		</Surface>);
+			{phone || helder.ui.Hosting.on ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
+			{helder.ui.Hosting.on ? hosted(x) : view(x, null, shows)}
+		</Surface>;
+	}
+
+	// (a preview host's screen: no window's ref, its actions on its content's root)
+	static function hosted(x:Explorer):View {
+		return <view flexGrow={1} minHeight={0} ref={(n:Node) -> attach(n, x)}>{view(x)}</view>;
 	}
 
 	// (where the browser's panels end against the window's bottom, and the
@@ -384,13 +445,7 @@ class Shell implements Markup {
 	static function jobDecode(path:String, side:Int, done:Decoded->Void)
 		Async.launch(_ -> done(Decode.job(path, side)));
 
-	// (what the window was made with, and what it then measured: a menu bar
-	// in the window (Windows'), a frame the place counts or not; kept the
-	// same at the next start, so that size and place do not creep run by run)
-	static var asked:Null<{x:Null<Int>, y:Null<Int>, width:Int, height:Int}> = null;
-	static var offset:Null<Rect> = null;
-
-	static function save(store:Null<helder.os.Store>, w:Null<UiWindow>, x:Explorer) {
+	static function save(store:Null<helder.os.Store>, w:Null<UiWindow>, x:Explorer, g:Geometry) {
 		if (store == null) return;
 		var b = x.browser, o = b.order.value;
 		store.set("status", x.viewer.statusOn.peek() ? "1" : "0");
@@ -404,13 +459,14 @@ class Shell implements Markup {
 		var k = w.window.scale > 0 ? w.window.scale : 1;
 		var p = w.window.position();
 		var width = Math.round(w.window.width / k), height = Math.round(w.window.height / k);
-		if (offset == null && asked != null) offset = {
+		var asked = g.asked;
+		if (g.offset == null && asked != null) g.offset = {
 			x: p == null || asked.x == null ? 0 : p.x - asked.x,
 			y: p == null || asked.y == null ? 0 : p.y - asked.y,
 			width: width - asked.width,
 			height: height - asked.height
 		};
-		var o = offset ?? {x: 0, y: 0, width: 0, height: 0};
+		var o = g.offset ?? {x: 0, y: 0, width: 0, height: 0};
 		if (p != null) {
 			store.set("x", Std.string(p.x - o.x));
 			store.set("y", Std.string(p.y - o.y));
@@ -437,6 +493,13 @@ class Shell implements Markup {
 	static function phonePlaces():Array<helder.os.Places.Place> {
 		var d = helder.os.Paths.documents();
 		return d == null ? [] : [{kind: Documents, name: "Documents", path: d}];
+	}
+
+	// (where it starts: the path given, else the last folder, else a place)
+	static function start(x:Explorer, path:Null<String>, store:Null<helder.os.Store>) {
+		if (path != null) return x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path);
+		var dir = helder.ui.Hosting.on ? Sandbox.HOME : home(store, x);
+		x.browser.go(dir, store != null && store.get("dir") == dir ? store.get("selected") : null);
 	}
 
 	// (where a start without a path opens: the last folder (its selection kept), else Pictures, else home)
@@ -482,16 +545,16 @@ class Shell implements Markup {
 		x.copy = p -> if (root.ui != null) root.ui.clipboard.write(p);
 		root.on(ViewerAction, a -> switch a {
 			case PlayPause:
-				MediaView.toggle();
+				MediaView.toggle(viewer);
 				true;
 			case StepForward:
-				MediaView.step(1);
+				MediaView.step(viewer, 1);
 				true;
 			case StepBack:
-				MediaView.step(-1);
+				MediaView.step(viewer, -1);
 				true;
 			case ToggleMute:
-				MediaView.toggleMute();
+				MediaView.toggleMute(viewer);
 				true;
 			case _: x.perform(a);
 		}, x.actionState);
@@ -587,4 +650,27 @@ class Shell implements Markup {
 				<text color={Look.ref.fg3} textAlign="center">MIT License · github.com/helder/helder</text>
 			</view>
 		</view>;
+}
+
+// what a process was started with (main's), its screens' Window's to start from
+private typedef Launch = {
+	path:Null<String>,
+	exitAfter:Float,
+	report:Null<String>,
+	store:Null<helder.os.Store>,
+	mac:Bool,
+	phone:Bool,
+	glass:Bool,
+	// (the single instance's: files handed over, to an opener of them; null: --new)
+	served:Null<(String->Void)->Void>
+}
+
+// (what a window was made with, and what it then measured: a menu bar in
+// the window (Windows'), a frame the place counts or not; kept the same at
+// the next start, so that size and place do not creep run by run)
+private class Geometry {
+	public var asked:Null<{x:Null<Int>, y:Null<Int>, width:Int, height:Int}> = null;
+	public var offset:Null<Rect> = null;
+
+	public function new() {}
 }

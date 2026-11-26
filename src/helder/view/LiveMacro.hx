@@ -97,15 +97,19 @@ class LiveMacro {
 	// (Color.rgb(0x3b82f6): its int a colour's slot)
 	public static function liveIn(e:Expr, file:String):Expr {
 		if (!on()) return e;
-		function branch(x:Expr):Expr
+		// (a string beside another branch that is no string literal kept as written: a slot's
+		// read is a String, which an abstract's literal-only @:from, a Length's "auto" beside a
+		// number, does not take)
+		function branch(x:Expr, other:Null<Expr>):Expr
 			return switch x.expr {
+				case EConst(CString(_, DoubleQuotes)) if (other != null && !other.expr.match(EConst(CString(_, _)))): x;
 				case EConst(CInt(_) | CFloat(_) | CString(_, DoubleQuotes)): live(x, LExpr, file, 0) ?? x;
 				case _: liveIn(x, file);
 			}
 		return switch e.expr {
-			case ETernary(c, a, b): {expr: ETernary(c, branch(a), branch(b)), pos: e.pos};
-			case EIf(c, a, b) if (b != null): {expr: EIf(c, branch(a), branch(b)), pos: e.pos};
-			case EBinop(OpNullCoal, a, b): {expr: EBinop(OpNullCoal, a, branch(b)), pos: e.pos};
+			case ETernary(c, a, b): {expr: ETernary(c, branch(a, b), branch(b, a)), pos: e.pos};
+			case EIf(c, a, b) if (b != null): {expr: EIf(c, branch(a, b), branch(b, a)), pos: e.pos};
+			case EBinop(OpNullCoal, a, b): {expr: EBinop(OpNullCoal, a, branch(b, a)), pos: e.pos};
 			case EParenthesis(x): {expr: EParenthesis(liveIn(x, file)), pos: e.pos};
 			case ECall(callee = {expr: EField({expr: EConst(CIdent("Color")) | EField(_, "Color")}, "rgb" | "rgba" | "hex")}, args):
 				{expr: ECall(callee, [for (a in args) color(a, file)]), pos: e.pos};

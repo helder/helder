@@ -48,6 +48,9 @@ class Viewer {
 	public final aboutOpen = Graph.signal(false);
 	// the video or audio file shown (its path; "" none): the shell plays it
 	public final media = Graph.signal("");
+	// what plays it (MediaView's; the shell's actions reach it), null while none
+	@:allow(viewer.MediaView) public var video(default, null):Null<helder.media.ui.VideoNode> = null;
+	@:allow(viewer.MediaView) var refreshMedia:Null<Void->Void> = null;
 
 	// the image shown (its decode, its path), the animation's frame
 	public var shown(default, null):Null<Decoded> = null;

@@ -16,6 +16,16 @@ final total = Graph.memo(() -> score()[0] + score()[1]);
 // (what each screen's render read, by its screen)
 final seen = new Map<String, Array<Int>>();
 
+// (the loop turned for that long, outside every screen)
+function turn(seconds:Float) {
+	var done = false;
+	helder.async.Async.launch(_ -> {
+		helder.async.Async.delay(seconds);
+		done = true;
+	});
+	helder.async.Loop.current().runUntil(() -> done);
+}
+
 function win() {
 	score([7, 5]);
 	over(true);
@@ -67,6 +77,27 @@ function tests() {
 		equals(helder.os.Now.get, null);
 		equals(Scenario.instant("2026-11-26T09:00+01:00"), 1795680000000.0);
 	});
+	var tasks = test("a screen let go (reset: a park) drops the tasks its boot started; built again, its own run", () -> {
+		var ran = 0;
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Task", boot: () -> helder.async.Async.launch(_ -> {
+			helder.async.Async.delay(0.01);
+			score([1, 1]);
+			ran++;
+		})})]);
+		h.show(["Task"]);
+		h.frame(0);
+		h.screens[0].reset();
+		turn(0.03);
+		equals(ran, 0);
+		h.frame(1);
+		turn(0.03);
+		equals(ran, 1);
+		equals(h.screens[0].run(() -> {
+			Graph.flush();
+			score.peek();
+		}), [1, 1]);
+		equals(score.peek(), [0, 0]);
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -74,7 +105,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, story])
+	for (t in [host, boot, apart, time, tasks, story])
 		t.skip();
 	#end
 }

@@ -121,7 +121,7 @@ private function samples():Explorer {
 
 // (the phone's shell, brought to its moment by at)
 private function phone(at:PhoneState->Void):View {
-	Kinds.utc = true;
+	Kinds.utc(true);
 	var x = samples();
 	return Fixtures.phone(x, p -> {
 		at(p);

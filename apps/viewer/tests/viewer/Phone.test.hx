@@ -101,7 +101,7 @@ function tests() {
 		test("a folder pushed shows its top; popped back to, the one under it where it was", () -> {
 			t = 0;
 			Ui.now = () -> t;
-			Kinds.utc = true;
+			Kinds.utc(true);
 			Tiles.forget();
 			var files = new MemoryFiles();
 			files.add("/home/");
