@@ -125,11 +125,12 @@ class BoxInline implements InlineStyle {
 			case _: Math.NaN;
 		}
 
+	// (none in a list marker: browsers leave a marker's text unspaced)
 	public function letterSpacing():Float
-		return s.px("letter-spacing");
+		return box.pseudo == "marker" ? 0 : s.px("letter-spacing");
 
 	public function wordSpacing():Float
-		return s.px("word-spacing");
+		return box.pseudo == "marker" ? 0 : s.px("word-spacing");
 
 	public function textTransform():InlineTransform {
 		var v = 0;
@@ -221,11 +222,12 @@ class BoxInline implements InlineStyle {
 			case _: Normal;
 		}
 
+	// (a list marker's text is its own, at its start whatever its item's alignment)
 	public function textAlign():InlineAlign
-		return align(k("text-align-all"), Start);
+		return box.pseudo == "marker" ? Start : align(k("text-align-all"), Start);
 
 	public function textAlignLast():InlineAlign
-		return align(k("text-align-last"), Auto);
+		return box.pseudo == "marker" ? Auto : align(k("text-align-last"), Auto);
 
 	static function align(v:String, fallback:InlineAlign):InlineAlign
 		return switch v {
@@ -248,13 +250,8 @@ class BoxInline implements InlineStyle {
 			case _: Auto;
 		}
 
-	public function textIndent():Float {
-		for (t in s.terms("text-indent")) switch t {
-			case Keyword(_):
-			case x: return len(BoxStyle.toLen([x]));
-		}
-		return 0;
-	}
+	public function textIndent():Float
+		return len(box.style.len("text-indent"));
 
 	public function textIndentEachLine():Bool
 		return s.terms("text-indent").contains(Keyword("each-line"));

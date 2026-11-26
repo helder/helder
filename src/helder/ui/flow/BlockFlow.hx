@@ -11,14 +11,14 @@ import helder.ui.box.Len;
 // blocks, replaced sizes (§10.3.2, §10.6.2), heights, min and max sizes,
 // box-sizing, percentages, margin collapsing (§8.3.1: siblings, parent
 // and child, through empty boxes; none across a formatting context's
-// root), relative offsets (§9.4.3), and lines (WordFlow, the inline
-// layout's stand-in). Results are cached on the box by the constraint
+// root), relative offsets (§9.4.3), and lines (BlockLines, through the
+// inline lane's engine). Results are cached on the box by the constraint
 // space they were laid out in.
 class BlockFlow implements FormattingContext {
-	final words:WordFlow;
+	final lines:BlockLines;
 
 	public function new()
-		words = new WordFlow(this);
+		lines = new BlockLines(this);
 
 	public function layout(box:Box, space:Space):Int {
 		// (the cache: the same containing block, the same fixed width: the same fragment)
@@ -79,7 +79,7 @@ class BlockFlow implements FormattingContext {
 		function absolute(b:Box, x:Float, y:Float)
 			(b.style.position == "fixed" ? fixed : positioned).add(b, frag, x, y);
 		// (a float at y or below in its formatting context, beside the floats there)
-		function float(b:Box, top:Float) {
+		function float(b:Box, top:Float):Int {
 			var fs = childSpace(w);
 			fs.exclusions = null;
 			var f = child(b, fs);
@@ -90,6 +90,7 @@ class BlockFlow implements FormattingContext {
 			var at = ex.place(b.style.keyword("float") == "left", b.marginLeft + frags.width(f) + b.marginRight, fmt + frags.height(f) + fmb, top, cx, cx + w);
 			var off = offset(b, w, pctBase);
 			frags.adopt(frag, f, at.x + b.marginLeft - bx + off.x, at.y + fmt - by + off.y);
+			return f;
 		}
 		var topCollapses = !root && bt == 0 && pt == 0;
 		var autoHeight = Math.isNaN(heightSpec);
@@ -97,8 +98,8 @@ class BlockFlow implements FormattingContext {
 		var topPos = mt > 0 ? mt : 0.0, topNeg = mt < 0 ? mt : 0.0;
 		var pos = 0.0, neg = 0.0, y = 0.0;
 		var atTop = topCollapses, empty = true, baseline = Math.NaN;
-		var lines = box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
-		if (lines) {
+		var hasLines = box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
+		if (hasLines) {
 			var ls = childSpace(w);
 			ls.lineWidth = (ly, lh) -> {
 				if (ex.empty) return null;
@@ -106,9 +107,14 @@ class BlockFlow implements FormattingContext {
 				var next = ex.nextBelow(by + ly, lh);
 				return {offset: b.left - bx, width: b.right - b.left, next: next - by};
 			};
-			ls.placeFloat = (b, ly) -> float(b, by + ly);
+			var placed = [];
+			ls.placeFloat = (b, ly) -> placed.push(float(b, by + ly));
+			ls.unplace = n -> {
+				ex.drop(n);
+				for (_ in 0...n) if (placed.length > 0) frags.remove(placed.pop());
+			};
 			ls.placeAbsolute = (b, ax, ay) -> absolute(b, ax, ay);
-			var r = words.layout(box, w, ls, frag, bl + pl, bt + pt, pctBase);
+			var r = lines.layout(box, w, ls, frag, bl + pl, bt + pt, pctBase);
 			if (r.lines > 0) {
 				empty = false;
 				atTop = false;
@@ -496,7 +502,7 @@ class BlockFlow implements FormattingContext {
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
 		var size = replacedSize(box, space.width, space.height, bpx, bpy);
 		var ml = auto(s.margin[3], cb), mr = auto(s.margin[1], cb);
-		if (box.blockLevel) solve(box, size.w, ml, mr, cb, bpx, box.parent != null && box.parent.style.rtl) else {
+		if (box.blockLevel && !box.floating && !box.absolute) solve(box, size.w, ml, mr, cb, bpx, box.parent != null && box.parent.style.rtl) else {
 			box.marginLeft = Math.isNaN(ml) ? 0 : ml;
 			box.marginRight = Math.isNaN(mr) ? 0 : mr;
 		}
@@ -545,7 +551,7 @@ class BlockFlow implements FormattingContext {
 		} else if (box.kind == BlockReplaced || box.kind == InlineReplaced) {
 			min = max = replacedSize(box, Math.NaN, Math.NaN, 0, 0).w + bpx;
 		} else if (box.first != null && !box.first.blockLevel) {
-			var r = words.intrinsic(box, space);
+			var r = lines.intrinsic(box, space);
 			min = r.min + bpx;
 			max = r.max + bpx;
 		} else {

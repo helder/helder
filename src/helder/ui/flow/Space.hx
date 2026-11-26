@@ -24,6 +24,8 @@ class Space {
 	public var lineWidth:Null<(y:Float, h:Float) -> Null<{offset:Float, width:Float, next:Float}>> = null;
 	// a float met in a line at y (from the box's border box top): laid out and placed by the block
 	public var placeFloat:Null<(box:Box, y:Float) -> Void> = null;
+	// the last n floats placeFloat placed taken out again (the lines laid out anew around them)
+	public var unplace:Null<(n:Int) -> Void> = null;
 	// an absolutely positioned box met in a line, its static position (from the box's border box)
 	public var placeAbsolute:Null<(box:Box, x:Float, y:Float) -> Void> = null;
 	// the block formatting context's floats (null: none yet)

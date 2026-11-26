@@ -4,7 +4,8 @@ helder's CSS engine past the cascade: a helder.dom document's computed
 styles (helder.css) made into a box tree, laid out into flat fragments
 (helder.ui.flow), painted on a helder.canvas Painter and hit tested. The
 plan is that helder.ui becomes this engine, for apps and for HTML to PDF
-alike; this is its first slice: blocks, lines (through a stand-in), paint.
+alike: blocks, lines (the inline lane's engine), tables, floats,
+positioning, paint.
 
 ```haxe
 import helder.ui.box.DocumentView;
