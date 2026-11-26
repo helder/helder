@@ -75,8 +75,9 @@ class Monkey {
 	// a huge name (one word, nowhere to break), sometimes long)
 	public static final TEXTS:Gen<String> = oneOf([pick(["", "a", "Name"]), string(null, 0, 40), string(pick(["a", "W", "m", "中", "😀", "ש"]), 40, 300),
 		string(null, 40, 600)]);
-	// (keys pressed)
-	static final KEYS = ["Enter", "Escape", "Tab", "Backspace", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Space", "Home", "End", "Delete", "a"];
+	// (keys pressed; the editing keys side by side, early: a shrink lowering
+	// one finds the other, its search over the list's order)
+	static final KEYS = ["Enter", "Backspace", "Delete", "Escape", "Tab", "Space", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End", "a"];
 	// (sizes a case may have, a phone's, a tablet's, a laptop's, tiny, huge)
 	static final SIZES = [[390, 844], [820, 1180], [1280, 800], [320, 240], [2560, 1440], [1100, 700], [240, 180]];
 	static final LOCALES = ["nl-BE", "ar-EG", "he-IL", "ja-JP", "de-DE", "en-GB"];
@@ -133,8 +134,9 @@ class Monkey {
 		this.def = def;
 		this.pos = pos;
 		root = r;
+		var names = INVARIANTS.concat([for (k in def.checks ?? []) k.name]);
 		for (e in def.except ?? [])
-			if (!INVARIANTS.contains(e)) throw 'helder.scenario.Monkey: no invariant "$e" (${INVARIANTS.join(", ")})';
+			if (!names.contains(e)) throw 'helder.scenario.Monkey: no invariant "$e" (${names.join(", ")})';
 		except = def.except ?? [];
 		most = def.steps ?? 20;
 		var least = def.smallest ?? [240, 180];
@@ -182,7 +184,9 @@ class Monkey {
 				if (step == null) break;
 				c.note(code(step));
 				var before = Snapshot.of(s);
-				s.act(step);
+				// (drawn from the screen, it resolves; replayed after an edit
+				// of the case (shrinking), one that does not is no case)
+				try s.act(step) catch (e:StepError) throw new Rejected();
 				done.push(step);
 				if (!ok(s, {step: step, before: before})) break;
 			}
@@ -193,13 +197,23 @@ class Monkey {
 			}
 		} catch (e:haxe.Exception) {
 			// (a replayed case run out, or rejected: the property's, not a failure)
-			if (Std.isOfType(e, Overran) || Std.isOfType(e, Rejected)) control = e else fail(@:privateAccess Runner.error(e));
+			if (Std.isOfType(e, Overran) || Std.isOfType(e, Rejected)) control = e else fail("throws", @:privateAccess Runner.error(e));
 		}
 		try s.dispose() catch (e:haxe.Exception) {
-			fail('letting the screen go threw: ${@:privateAccess Runner.error(e)}');
+			fail("throws", 'letting the screen go threw: ${@:privateAccess Runner.error(e)}');
 		}
-		if (control != null) throw control;
-		if (failed() > 0) keep(c, base, env, writes, done);
+		if (control != null) {
+			@:privateAccess Runner.capture.resize(0);
+			throw control;
+		}
+		if (failed() == 0) return;
+		// (another invariant broken while shrinking: not the failure being shrunk)
+		if (target != null && first != target) {
+			@:privateAccess Runner.capture.resize(0);
+			throw new Rejected();
+		}
+		target = first;
+		keep(c, base, env, writes, done);
 	}
 
 	// (the case's environment: each field its scenario's unless drawn)
@@ -249,9 +263,9 @@ class Monkey {
 	// (after a step (null: boot, the end) and settling: whether they all held)
 	function ok(s:Screen, after:Null<{step:Step, before:Snapshot}>):Bool {
 		var seal = s.context.seal;
-		if (seal != null && seal.refused.length > 0) fail('${at(after)}${seal.refused[0]}');
-		if (!s.settled && on("settles")) fail('${at(after)}it never settles: ${s.pending()} after a minute of its clock');
-		if (s.missed != null) fail('${at(after)}${s.missed}');
+		if (seal != null && seal.refused.length > 0) fail("throws", '${at(after)}${seal.refused[0]}');
+		if (!s.settled && on("settles")) fail("settles", '${at(after)}it never settles: ${s.pending()} after a minute of its clock');
+		if (s.missed != null) fail("throws", '${at(after)}${s.missed}');
 		if (failed() > 0) return false;
 		var now = Snapshot.of(s);
 		if (on("sizes")) for (n in now.nodes) {
@@ -260,7 +274,7 @@ class Monkey {
 			for (x in [b.x, b.y, b.width, b.height, n.node.contentWidth, n.node.contentHeight, n.node.scrollX, n.node.scrollY])
 				if (!Math.isFinite(x)) finite = false;
 			if (!finite || b.width < 0 || b.height < 0) {
-				fail('${at(after)}${describe(n.node)} is ${b.x}, ${b.y}, ${b.width} × ${b.height} (content ${n.node.contentWidth} × ${n.node.contentHeight}, scrolled ${n.node.scrollX}, ${n.node.scrollY})');
+				fail("sizes", '${at(after)}${describe(n.node)} is ${b.x}, ${b.y}, ${b.width} × ${b.height} (content ${n.node.contentWidth} × ${n.node.contentHeight}, scrolled ${n.node.scrollX}, ${n.node.scrollY})');
 				break;
 			}
 		}
@@ -268,7 +282,7 @@ class Monkey {
 			if (n.clipped || !n.shown) continue;
 			var b = n.box, e = 0.5;
 			if (b.x < -e || b.y < -e || b.x + b.width > s.ui.width + e || b.y + b.height > s.ui.height + e) {
-				fail('${at(after)}${describe(n.node)} at ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} is outside the window (${s.ui.width} × ${s.ui.height})');
+				fail("window", '${at(after)}${describe(n.node)} at ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} is outside the window (${s.ui.width} × ${s.ui.height})');
 				break;
 			}
 		}
@@ -276,13 +290,13 @@ class Monkey {
 			var a = p.anchor;
 			if (a == null || !(p.placement == Below || p.placement == Above || p.placement == Left || p.placement == Right)) continue;
 			if (!s.attached(a)) {
-				fail('${at(after)}${describe(p)} is open, its anchor ${describe(a)} gone');
+				fail("popups", '${at(after)}${describe(p)} is open, its anchor ${describe(a)} gone');
 				break;
 			}
 			var ab = a.windowBounds(), pb = p.windowBounds(), g = p.gap + 2;
 			var inView = ab.x < s.ui.width && ab.y < s.ui.height && ab.x + ab.width > 0 && ab.y + ab.height > 0;
 			if (inView && (pb.x > ab.x + ab.width + g || pb.x + pb.width < ab.x - g || pb.y > ab.y + ab.height + g || pb.y + pb.height < ab.y - g)) {
-				fail('${at(after)}${describe(p)} at ${r(pb.x)}, ${r(pb.y)} is away from its anchor ${describe(a)} at ${r(ab.x)}, ${r(ab.y)}, ${r(ab.width)} × ${r(ab.height)}');
+				fail("popups", '${at(after)}${describe(p)} at ${r(pb.x)}, ${r(pb.y)} is away from its anchor ${describe(a)} at ${r(ab.x)}, ${r(ab.y)}, ${r(ab.width)} × ${r(ab.height)}');
 				break;
 			}
 		}
@@ -292,12 +306,12 @@ class Monkey {
 				var end = after.step.to == "end", sv = s.view(v.node);
 				if (sv != null && sv.scrollsY) {
 					var far = Math.max(0, sv.contentHeight - sv.height);
-					if (Math.abs(sv.offsetY - (end ? far : 0)) > 1) fail('${at(after)}${describe(v.node)} is scrolled to ${r(sv.offsetY)}, not its ${end ? "end" : "start"} (${r(end ? far : 0)}: ${r(sv.contentHeight)} of content, ${r(sv.height)} shown)');
+					if (Math.abs(sv.offsetY - (end ? far : 0)) > 1) fail("scrolls", '${at(after)}${describe(v.node)} is scrolled to ${r(sv.offsetY)}, not its ${end ? "end" : "start"} (${r(end ? far : 0)}: ${r(sv.contentHeight)} of content, ${r(sv.height)} shown)');
 					else if (end) {
 						var last = s.last(v.node);
 						if (last != null) {
 							var lb = last.windowBounds();
-							if (lb.y + lb.height > sv.y + sv.height + 1) fail('${at(after)}${describe(v.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
+							if (lb.y + lb.height > sv.y + sv.height + 1) fail("scrolls", '${at(after)}${describe(v.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
 						}
 					}
 				}
@@ -311,16 +325,21 @@ class Monkey {
 			for (n in now.nodes) {
 				var b = n.box, l = later.box(n.node);
 				if (l == null) {
-					fail('${at(after)}${describe(n.node)} is gone a frame after settling');
+					fail("steady", '${at(after)}${describe(n.node)} is gone a frame after settling');
 					break;
 				}
 				if (Math.abs(l.x - b.x) > 0.01 || Math.abs(l.y - b.y) > 0.01 || Math.abs(l.width - b.width) > 0.01 || Math.abs(l.height - b.height) > 0.01) {
-					fail('${at(after)}${describe(n.node)} moved a frame after settling: ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} to ${r(l.x)}, ${r(l.y)}, ${r(l.width)} × ${r(l.height)}');
+					fail("steady", '${at(after)}${describe(n.node)} moved a frame after settling: ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} to ${r(l.x)}, ${r(l.y)}, ${r(l.width)} × ${r(l.height)}');
 					break;
 				}
 			}
-			if (failed() == 0 && s.ui.needsFrame) fail('${at(after)}settled, it asks for a frame again with nothing changed');
+			if (failed() == 0 && s.ui.needsFrame) fail("steady", '${at(after)}settled, it asks for a frame again with nothing changed');
 		}
+		for (k in def.checks ?? [])
+			if (failed() == 0 && on(k.name)) {
+				var why = s.context.run(k.check);
+				if (why != null) fail(k.name, '${at(after)}$why');
+			}
 		return failed() == 0;
 	}
 
@@ -339,14 +358,14 @@ class Monkey {
 				}
 			for (n in now.nodes)
 				if (before.box(n.node) == null && n.parent != null && (gone.get(n.parent) ?? []).contains(n.node.tag)) {
-					fail('${at({step: step})}${describe(n.node)} was made again with nothing done');
+					fail("kept", '${at({step: step})}${describe(n.node)} was made again with nothing done');
 					return;
 				}
 		}
 		if (step.kind != "wait" && step.kind != "type") return;
 		var field = step.kind == "type" ? s.ui.focus : null;
 		if (step.kind == "type" && !~/[\x00-\x1F\x7F]/.match(step.text) && (field == null || !field.takesText())) {
-			fail('${at({step: step})}typing lost its field\'s focus (now ${field == null ? "none" : describe(field)})');
+			fail("kept", '${at({step: step})}typing lost its field\'s focus (now ${field == null ? "none" : describe(field)})');
 			return;
 		}
 		for (v in before.views) {
@@ -357,7 +376,7 @@ class Monkey {
 			var moved = Math.abs(sv.offsetY - v.offsetY) > 0.5 || Math.abs(sv.offsetX - v.offsetX) > 0.5;
 			var clamped = v.offsetY > far && Math.abs(sv.offsetY - far) <= 0.5;
 			if (moved && !clamped) {
-				fail('${at({step: step})}${describe(v.node)} scrolled from ${r(v.offsetY)} to ${r(sv.offsetY)} (${step.kind == "wait" ? "with nothing done" : "typing elsewhere"})');
+				fail("kept", '${at({step: step})}${describe(v.node)} scrolled from ${r(v.offsetY)} to ${r(sv.offsetY)} (${step.kind == "wait" ? "with nothing done" : "typing elsewhere"})');
 				return;
 			}
 		}
@@ -370,13 +389,17 @@ class Monkey {
 		return c == null ? 0 : c.length;
 	}
 
-	function fail(message:String) {
+	function fail(kind:String, message:String) {
+		if (messages.length == 0) first = kind;
 		messages.push(message);
 		@:privateAccess Runner.failure(message, pos);
 	}
 
-	// (the case's failures, without their place)
+	// (the case's failures, without their place; its first's invariant, and
+	// the one the smallest failing case broke: shrinking keeps to it)
 	final messages:Array<String> = [];
+	var first = "";
+	var target:Null<String> = null;
 
 	static function at(after:Null<{step:Step}>):String
 		return after == null ? "" : 'after ${code(after.step)}: ';
@@ -573,8 +596,12 @@ typedef MonkeyDef = {
 	@:optional var atoms:Array<MonkeyAtom>;
 	// texts typed (else short words, long runs, right to left, emoji, marks)
 	@:optional var texts:Gen<String>;
-	// invariants left out, by name (Monkey.INVARIANTS)
+	// invariants left out, by name (Monkey.INVARIANTS, the checks')
 	@:optional var except:Array<String>;
+	// the program's own invariants, after the monkey's: each run in the
+	// case's screen (its context and store current) after boot and each
+	// step, what is wrong (null: none)
+	@:optional var checks:Array<{name:String, check:Void->Null<String>}>;
 	// a case's most steps (20)
 	@:optional var steps:Int;
 	// the smallest window a case is given or resized to, [width, height] in
