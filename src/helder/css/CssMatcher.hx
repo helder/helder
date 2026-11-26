@@ -368,11 +368,10 @@ class CssMatcher {
 		return t != null && (Css.lower(t) == "checkbox" || Css.lower(t) == "radio");
 	}
 
-	// (an option's selectedness is helder.dom's, kept as its select's
-	// algorithm says; read here until helder.dom has HTMLOptionElement.selected)
+	// (an option's: its selectedness, as its select's algorithm keeps it)
 	static function checked(el:Element):Bool {
 		if (checkable(el)) return el.getAttributeNS(null, "checked") != null;
-		if (Std.isOfType(el, HTMLOptionElement)) return @:privateAccess (cast el : HTMLOptionElement).selectedness;
+		if (Std.isOfType(el, HTMLOptionElement)) return (cast el : HTMLOptionElement).selected;
 		return false;
 	}
 

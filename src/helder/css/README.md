@@ -230,7 +230,7 @@ CssMatcher.matches(list[0], doc.body.firstElementChild);
 - **Forms**: HTML's actually disabled (a disabled fieldset's descendants
   but its first legend's, an option in a disabled optgroup). `:checked`
   is a checkbox's or radio's `checked` attribute, an option's
-  selectedness as helder.dom keeps it. `:default` is a `selected` or
+  `selected`. `:default` is a `selected` or
   `checked` attribute (a form's default button is not), `:indeterminate`
   a `progress` without a value (radio groups are not), `:read-write` text
   inputs and textareas neither readonly nor disabled and contenteditable
