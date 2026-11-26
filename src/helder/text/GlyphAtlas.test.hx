@@ -80,5 +80,15 @@ function tests() {
 			assert(ink > b.width * b.height / 4, "its ink");
 			equals(a.dirtyX1, 0);
 		});
+		test("a glyph at a size no bitmap holds: none, not a negative length", () -> {
+			var a = new GlyphAtlas(64, 64);
+			a.begin();
+			for (size in [1e5, 1e7, 1e12, Math.POSITIVE_INFINITY, Math.NaN]) {
+				equals(a.bitmap(font, font.glyph("H".code), size, 0), null);
+				equals(a.get(font, font.glyph("H".code), size, 0)?.w ?? 0, 0);
+			}
+			equals(a.bitmap(font, font.glyph("H".code), 20, 0, false, 1e12), null);
+			assert(a.bitmap(font, font.glyph("H".code), 20, 0) != null, "a usual one still drawn");
+		});
 	});
 }

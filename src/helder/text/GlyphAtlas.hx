@@ -49,6 +49,11 @@ class GlyphAtlas {
 
 	// the phases a pixel holds (get's sub): sixtieths, every step CoreGraphics quantises pens to
 	public static inline var SUBPIXELS = GlyphPipeline.PHASES;
+	// the largest size a glyph is drawn at, and blur: a bitmap's bytes past
+	// them overflow an Int (the soft canvas' RGBA copy of one past ~23000
+	// px: "Invalid NativeArray length"); larger text is drawn at it, stretched
+	public static inline var MAX_SIZE = 2048;
+	static inline var MAX_BLUR = 256;
 
 	// the pixel and phase (sixtieths: get's sub) a glyph whose pen is at x
 	// device pixels draws at, size its ppem: floored to CoreGraphics' step
@@ -100,6 +105,7 @@ class GlyphAtlas {
 	// none); ink: the colour it is drawn in (0xRRGGBB, sRGB), which sets font
 	// smoothing's dilation
 	public function get(font:FontFile, glyph:Int, size:Float, sub:Int, oblique = false, blur = 0.0, ink = 0):Null<AtlasGlyph> {
+		if (!drawable(size, blur)) return new AtlasGlyph(0, 0, 0, 0, 0, 0);
 		var d = dilation(font, size, oblique, ink);
 		var f = face(font, size, oblique, blur, d), key = glyph * SUBPIXELS + sub;
 		var g = f.glyphs.get(key, null);
@@ -122,6 +128,7 @@ class GlyphAtlas {
 	// get draws it: its coverage (width x height, kept for the next: copy
 	// it) and its top left from its origin; null: nothing to draw
 	public function bitmap(font:FontFile, glyph:Int, size:Float, sub:Int, oblique = false, blur = 0.0, ink = 0):Null<Shaping.GlyphBitmap> {
+		if (!drawable(size, blur)) return null;
 		var d = dilation(font, size, oblique, ink);
 		if (!draw(font, glyph, size, sub / SUBPIXELS, oblique, d)) return null;
 		var pad = blur > 0 ? Math.ceil(3 * blur) : 0, b = alone;
@@ -131,6 +138,9 @@ class GlyphAtlas {
 		write(pad, blur, b.pixels, 0, b.width);
 		return b;
 	}
+
+	static inline function drawable(size:Float, blur:Float):Bool
+		return size > 0 && size <= MAX_SIZE && !(blur > MAX_BLUR);
 
 	// a frame begins: a full atlas makes room, the last frame's glyphs kept
 	public function begin() {

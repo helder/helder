@@ -1975,6 +1975,10 @@ class Renderer implements TextureCanvas {
 			sigma = sigma * at / size;
 			again = true;
 		}
+		if (at > GlyphAtlas.MAX_SIZE) {
+			sigma = sigma * GlyphAtlas.MAX_SIZE / at;
+			at = GlyphAtlas.MAX_SIZE;
+		}
 		var k = size / at, ix = GlyphAtlas.pixel(gx + ex, size), sub = k == 1 ? GlyphAtlas.phase(gx + ex, size) : 0;
 		var a = at > LARGE ? null : atlas.get(f, id, at, sub, oblique, sigma, color & 0xFFFFFF);
 		if (a == null) {
