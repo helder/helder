@@ -259,7 +259,7 @@ class Json {
 			var inner = indent + gap;
 			var parts:Array<String> = [];
 			var out:String;
-			if (Std.isOfType(v, JsArray)) {
+			if (Exotics.isArray(v)) {
 				var n = Arrays.lengthOf(v);
 				var j:Float = 0;
 				while (j < n) {

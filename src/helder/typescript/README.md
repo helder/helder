@@ -558,7 +558,7 @@ The runtime's optional built-ins (RegExp, its Unicode property escapes'
 tables, normalize's Unicode tables,
 Date, ArrayBuffer/DataView, the typed arrays, JSON, iterator helpers, Promise and the timers
 with the event loop, `Array.fromAsync`, Set's algebra, the URI functions,
-`structuredClone`) are installed by a program that uses them (`Features.hx`:
+`structuredClone`, Proxy, Reflect) are installed by a program that uses them (`Features.hx`:
 the globals it names, the method names it calls, its syntax); hxmc leaves
 the rest out. A hello world is 538 KB instead of 904 KB. A program that
 names `globalThis` or calls a method by a computed name installs them all.
@@ -577,9 +577,40 @@ flag's set operations, properties of strings) is a TSHX001 at its line.
 A `.json` file the program imports (`import data from "./data.json"`,
 resolveJsonModule's) is a module whose default export is its value.
 
-Excluded, with a diagnostic: `eval`, `Function`, `Proxy`, `with`,
-`__proto__`/`setPrototypeOf`, dynamic `import()`. Not yet: BigInt (and so
-BigInt64Array), `process` and node's other globals.
+**Proxy** (`js/Proxies.hx`) is an object of its own kind (JsObject's
+PROXY bit), callable where its target is, with an empty dictionary shape of
+its own, so no site records one: every access takes the runtime's way,
+which finds the bit and runs the handler's trap (all thirteen, each
+result checked against the target's invariants as the specification does),
+or the target's own operation without one. The runtime reaches a proxy's
+internal methods through `Exotics`, set when Proxy is installed, so a
+program that names no Proxy links none of them. A proxy of an array, or of
+a typed class's instance, held where its type says an array or that
+class's instance is a value of the type's representation, not one: it
+diverges there (TSHX100); an `any` or `object` slot takes it. Reflect is
+complete beside it: each function takes an object (else a TypeError) and
+answers a refusal with false, `Reflect.set` with a receiver writing the
+receiver's own property as the specification's [[Set]] does.
+`Object.setPrototypeOf` and `__proto__` change an object's prototype (a
+cycle, or an object that is not extensible, refused; a typed class's
+locked prototype diverges), which moves the epoch the sites' records hold
+by where the object was looked through.
+
+Excluded, with a diagnostic: `eval`, `Function`, `with`, `Intl`, dynamic
+`import()`, `WeakRef` and `FinalizationRegistry`. WeakMap and WeakSet are
+Map and Set underneath, their entries held strongly. hxmc's collector has
+weak cells for foreign references only (`hxmc.rt.Foreign`: an Objective-C
+or JNI object's), none for its own heap's. A WeakRef needs a cell the
+collector does not trace and clears when its referent dies, in a minor
+collection (or moves with the referent where it survives) and a major one,
+natively and on wasm. A FinalizationRegistry needs to learn which
+referents died: the cleared cells with their held values queued, drained
+by the event loop between turns (cleanup callbacks never run inside the
+collector). Weak semantics for WeakMap and WeakSet need ephemerons: a
+value marked only once its key is, to a fixed point, the entry cleared
+with the key. `deref`'s keeping its target alive until the job ends is
+the runtime's own list, cleared at the microtask checkpoint. Not yet:
+BigInt (and so BigInt64Array), `process` and node's other globals.
 
 ### Errors' stacks
 

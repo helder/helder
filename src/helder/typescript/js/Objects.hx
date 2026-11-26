@@ -23,22 +23,21 @@ class Objects {
 		method(o, "isPrototypeOf", 1, (t, a, _) -> {
 			var v = arg(a, 0);
 			if (!isObject(v)) return false;
-			var p = (v : JsObject).proto;
+			var p = prototypeOf(v);
 			while (p != null) {
 				if (p == t) return true;
-				p = p.proto;
+				p = prototypeOf(p);
 			}
 			return false;});
 		method(o, "propertyIsEnumerable", 1, (t, a, _) -> {
 			var obj = toObject(t);
 			var k = key(arg(a, 0));
-			return hasOwnKey(obj, k) && obj.attr(k) & Attr.HIDDEN == 0;});
+			return hasOwnKey(obj, k) && enumerableOwn(obj, k);});
 		method(o, "toString", 0, (t, _, _) -> objectToString(t));
 		method(o, "toLocaleString", 0, (t, _, _) -> callMethod(t, "toString", []));
 		method(o, "valueOf", 0, (t, _, _) -> toObject(t));
 		o.setOwn("__proto__", new Accessor(native("get __proto__", 0, (t, _, _) -> {
-			var p = toObject(t).proto;
-			return p;}), native("set __proto__", 1, (t, a, _) -> {
+			return prototypeOf(toObject(t));}), native("set __proto__", 1, (t, a, _) -> {
 				setPrototype(t, arg(a, 0));
 				return undef();})), Attr.HIDDEN);
 		var c = constructor("Object", 1, o, (t, a, nt) -> {
@@ -64,7 +63,7 @@ class Objects {
 			return o;});
 		method(c, "hasOwn", 2, (_, a, _) -> hasOwnKey(toObject(arg(a, 0)), key(arg(a, 1))));
 		method(c, "is", 2, (_, a, _) -> sameValue(arg(a, 0), arg(a, 1)));
-		method(c, "getPrototypeOf", 1, (_, a, _) -> toObject(arg(a, 0)).proto);
+		method(c, "getPrototypeOf", 1, (_, a, _) -> prototypeOf(toObject(arg(a, 0))));
 		method(c, "setPrototypeOf", 2, (_, a, _) -> {
 			var o = arg(a, 0);
 			var p = arg(a, 1);
@@ -108,11 +107,11 @@ class Objects {
 			integrity(arg(a, 0), false);
 			return arg(a, 0);});
 		method(c, "preventExtensions", 1, (_, a, _) -> {
-			if (isObject(arg(a, 0))) (arg(a, 0) : JsObject).extensible = false;
+			if (isObject(arg(a, 0)) && !Exotics.preventExtensions(arg(a, 0))) error("TypeError", "'preventExtensions' on proxy: trap returned falsish");
 			return arg(a, 0);});
 		method(c, "isFrozen", 1, (_, a, _) -> testIntegrity(arg(a, 0), true));
 		method(c, "isSealed", 1, (_, a, _) -> testIntegrity(arg(a, 0), false));
-		method(c, "isExtensible", 1, (_, a, _) -> isObject(arg(a, 0)) && (arg(a, 0) : JsObject).extensible);
+		method(c, "isExtensible", 1, (_, a, _) -> isObject(arg(a, 0)) && Exotics.isExtensible(arg(a, 0)));
 		method(c, "groupBy", 2, (_, a, _) -> groupBy(arg(a, 0), arg(a, 1), false));
 	}
 
@@ -177,10 +176,9 @@ class Objects {
 		return "[object " + (t == "Map" || t == "Set" ? "Object" : t) + "]";
 	}
 
-	static function enumerableOwn(o:JsObject, k:String):Bool return o.attr(k) & Attr.HIDDEN == 0;
-
 	// All own keys (strings in order, then symbols), hidden ones included.
 	public static function ownPropertyKeys(o:JsObject):Array<String> {
+		if (o.bits & JsObject.PROXY != 0) return Exotics.keys(o);
 		var strings:Array<String> = [];
 		var symbols:Array<String> = [];
 		if (Std.isOfType(o, JsArray)) {
@@ -201,7 +199,8 @@ class Objects {
 		return strings.concat(numeric).concat(extra).concat(other).concat(symbols);
 	}
 
-	static function descriptor(o:JsObject, k:String):Dynamic {
+	public static function descriptor(o:JsObject, k:String):Dynamic {
+		if (o.bits & JsObject.PROXY != 0) return Exotics.own(o, k);
 		if (!hasOwnKey(o, k)) return undef();
 		var d = new JsObject(ObjectProto);
 		var attribute = o.attr(k);
@@ -228,14 +227,33 @@ class Objects {
 
 	public static function defineProperty(o:JsObject, k:String, desc:Dynamic):Void {
 		if (!isObject(desc)) error("TypeError", "Property description must be an object: " + Seed.text(desc));
+		if (o.bits & JsObject.PROXY != 0) {
+			if (!Exotics.define(o, k, desc)) Exotics.fail("defineProperty", k);
+			return;
+		}
+		define(o, k, desc, true);
+	}
+
+	// [[DefineOwnProperty]] as Reflect.defineProperty and a proxy's target take it: whether it was done
+	public static function defineResult(o:JsObject, k:String, desc:Dynamic):Bool {
+		if (!isObject(desc)) error("TypeError", "Property description must be an object: " + Seed.text(desc));
+		return o.bits & JsObject.PROXY != 0 ? Exotics.define(o, k, desc) : define(o, k, desc, false);
+	}
+
+	static function refused(strict:Bool, text:String):Bool {
+		if (strict) error("TypeError", text);
+		return false;
+	}
+
+	static function define(o:JsObject, k:String, desc:Dynamic, strict:Bool):Bool {
 		if (!o.hasOwn(k) && Std.isOfType(o, JsFunction) && hasOwnKey(o, k)) o.setOwn(k, get(o, k), k == "prototype" ? Attr.HIDDEN | Attr.LOCKED : Attr.HIDDEN | Attr.READONLY);
 		var exists = o.hasOwn(k);
 		var old = exists ? o.attr(k) : Attr.HIDDEN | Attr.READONLY | Attr.LOCKED;
 		if (exists && old & Attr.LOCKED != 0) {
-			if (has(desc, "value") && !(old & Attr.READONLY != 0 && sameValue(get(desc, "value"), o.getOwn(k))) && old & Attr.READONLY != 0) error("TypeError", "Cannot redefine property: " + Symbols.functionName(k));
-			if (has(desc, "get") || has(desc, "set") || Seed.truth(get(desc, "configurable"))) error("TypeError", "Cannot redefine property: " + Symbols.functionName(k));
+			if (has(desc, "value") && !(old & Attr.READONLY != 0 && sameValue(get(desc, "value"), o.getOwn(k))) && old & Attr.READONLY != 0) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
+			if (has(desc, "get") || has(desc, "set") || Seed.truth(get(desc, "configurable"))) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
 		}
-		else if (!exists && !o.extensible) error("TypeError", "Cannot define property " + Symbols.functionName(k) + ", object is not extensible");
+		else if (!exists && !o.extensible) return refused(strict, "Cannot define property " + Symbols.functionName(k) + ", object is not extensible");
 		function flag(name:String, bit:Int, attribute:Int):Int {
 			if (!has(desc, name)) return attribute;
 			return Seed.truth(get(desc, name)) ? attribute & ~bit : attribute | bit;
@@ -255,7 +273,7 @@ class Objects {
 				acc.setter = s == undef() ? null : s;
 			}
 			o.setOwn(k, acc, attribute & ~Attr.READONLY);
-			return;
+			return true;
 		}
 		attribute = flag("writable", Attr.READONLY, attribute);
 		var value = has(desc, "value") ? get(desc, "value") : exists && !Std.isOfType(o.getOwn(k), Accessor) ? o.getOwn(k) : undef();
@@ -263,24 +281,40 @@ class Objects {
 			var a:JsArray = cast o;
 			if (k == "length") {
 				setLength(a, value);
-				return;
+				return true;
 			}
 			var i = index(k);
 			if (i >= 0) {
 				if (attribute == 0) {
 					setIndex(a, i, value);
-					return;
+					return true;
 				}
 				if (i < a.items.length) a.items[Std.int(i)] = hole;
 				if (i >= a.length) a.length = i + 1;
 			}
 		}
 		o.setOwn(k, value, attribute);
+		return true;
 	}
 
 	static function integrity(v:Dynamic, freeze:Bool):Void {
 		if (!isObject(v)) return;
 		var o:JsObject = v;
+		if (o.bits & JsObject.PROXY != 0) {
+			// (SetIntegrityLevel's own way, through the traps)
+			if (!Exotics.preventExtensions(o)) error("TypeError", "'preventExtensions' on proxy: trap returned falsish");
+			for (k in Exotics.keys(o)) {
+				var d = new JsObject(ObjectProto);
+				d.setOwn("configurable", false);
+				if (freeze) {
+					var current = Exotics.own(o, k);
+					if (same(current, undef())) continue;
+					if (!has(current, "get") && !has(current, "set")) d.setOwn("writable", false);
+				}
+				defineProperty(o, k, d);
+			}
+			return;
+		}
 		if (Std.isOfType(o, JsArray)) {
 			// (elements move to ordinary properties, which carry attributes)
 			var a:JsArray = cast o;
@@ -299,6 +333,16 @@ class Objects {
 	static function testIntegrity(v:Dynamic, frozen:Bool):Bool {
 		if (!isObject(v)) return true;
 		var o:JsObject = v;
+		if (o.bits & JsObject.PROXY != 0) {
+			if (Exotics.isExtensible(o)) return false;
+			for (k in Exotics.keys(o)) {
+				var d = Exotics.own(o, k);
+				if (same(d, undef())) continue;
+				if (Seed.truth(get(d, "configurable"))) return false;
+				if (frozen && !has(d, "get") && !has(d, "set") && Seed.truth(get(d, "writable"))) return false;
+			}
+			return true;
+		}
 		if (o.extensible) return false;
 		if (Std.isOfType(o, JsArray) && (cast o : JsArray).items.length > 0) return false;
 		if (o.ownNames() != null) for (k in o.ownNames().copy()) {

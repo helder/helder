@@ -108,6 +108,11 @@ class Inspect {
 
 	function formatValue(v:Dynamic, recurseTimes:Int):String {
 		if (!isObject(v)) return primitive(v);
+		// (a proxy shows its target, as node's showProxy: false does, not running its traps)
+		if (Exotics.is(v)) {
+			var t = Exotics.target(v);
+			return t == null ? "<Revoked Proxy>" : formatValue(t, recurseTimes);
+		}
 		if (seen.indexOf(v) >= 0) {
 			var i = circular.indexOf(v);
 			if (i < 0) {

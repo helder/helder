@@ -127,7 +127,7 @@ class Sites {
 		var proto = protoOf(o, s);
 		var h = proto;
 		while (h != null) {
-			if (exotic(h, key) || h.layout != null && h.layout.index.exists(key)) return Lib.getKey(o, key, o);
+			if (exotic(h, key) || h.bits & JsObject.PROXY != 0 || h.layout != null && h.layout.index.exists(key)) return Lib.getKey(o, key, o);
 			var j = h.shape.slotOf(key);
 			if (j >= 0) {
 				Shapes.watch(proto, h);
@@ -191,7 +191,7 @@ class Sites {
 		if (!obj.extensible || Lib.inherited(obj.proto, key) != null || Std.isOfType(v, Accessor)) return Lib.put(obj, key, v);
 		var h = obj.proto;
 		while (h != null) {
-			if (exotic(h, key) || h.layout != null) return Lib.put(obj, key, v);
+			if (exotic(h, key) || h.layout != null || h.bits & JsObject.PROXY != 0) return Lib.put(obj, key, v);
 			h = h.proto;
 		}
 		var next = s.with(key, 0, Shapes.KEYS, false);

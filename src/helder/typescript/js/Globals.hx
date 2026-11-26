@@ -202,49 +202,6 @@ class Globals {
 			if (name == "error" || name == "warn" || name == "trace") Sys.stderr().writeString(line + "\n"); else Seed.print(line + "\n");
 			return undef();
 		});
-		var reflect = new JsObject(ObjectProto);
-		globals.set("Reflect", reflect);
-		reflect.setOwn(Symbols.toStringTag, "Reflect", Attr.HIDDEN | Attr.READONLY);
-		method(reflect, "ownKeys", 1, (_, a, _) -> {
-			var o = arg(a, 0);
-			if (!isObject(o)) error("TypeError", "Reflect.ownKeys called on non-object");
-			return array([for (k in ownPropertyKeys(o)) Symbols.isSymbolKey(k) && Symbols.fromKey(k) != null ? (Symbols.fromKey(k) : Dynamic) : k]);});
-		method(reflect, "has", 2, (_, a, _) -> has(arg(a, 0), arg(a, 1)));
-		method(reflect, "get", 2, (_, a, _) -> {
-			var o = arg(a, 0);
-			if (!isObject(o)) error("TypeError", "Reflect.get called on non-object");
-			return getKey(o, key(arg(a, 1)), a.length > 2 ? a[2] : o);});
-		method(reflect, "set", 3, (_, a, _) -> {
-			try {
-				put(arg(a, 0), arg(a, 1), arg(a, 2));
-				return true;
-			} catch (e:Dynamic) {
-				return false;
-			}});
-		method(reflect, "apply", 3, (_, a, _) -> call(arg(a, 0), arg(a, 1), arrayLikeList(arg(a, 2))));
-		method(reflect, "construct", 2, (_, a, _) -> construct(arg(a, 0), arrayLikeList(arg(a, 1)), a.length > 2 ? a[2] : arg(a, 0)));
-		method(reflect, "getPrototypeOf", 1, (_, a, _) -> (arg(a, 0) : JsObject).proto);
-		method(reflect, "setPrototypeOf", 2, (_, a, _) -> {
-			setPrototype(arg(a, 0), arg(a, 1));
-			return true;});
-		method(reflect, "defineProperty", 3, (_, a, _) -> {
-			try {
-				defineProperty(arg(a, 0), key(arg(a, 1)), arg(a, 2));
-				return true;
-			} catch (e:Dynamic) {
-				return false;
-			}});
-		method(reflect, "deleteProperty", 2, (_, a, _) -> {
-			try {
-				return remove(arg(a, 0), arg(a, 1));
-			} catch (e:Dynamic) {
-				return false;
-			}});
-		method(reflect, "getOwnPropertyDescriptor", 2, (_, a, _) -> descriptor(arg(a, 0), key(arg(a, 1))));
-		method(reflect, "isExtensible", 1, (_, a, _) -> (arg(a, 0) : JsObject).extensible);
-		method(reflect, "preventExtensions", 1, (_, a, _) -> {
-			(arg(a, 0) : JsObject).extensible = false;
-			return true;});
 		// Test262 harness (assert.js, sta.js, compareArray.js)
 		var assert = native("assert", 2, (_, a, _) -> {
 			if (arg(a, 0) != true) error("Test262Error", arg(a, 1) == undef() ? "Expected true but got " + Seed.text(arg(a, 0)) : Seed.text(arg(a, 1)));
@@ -294,5 +251,46 @@ class Globals {
 		var globalObject = new JsObject(ObjectProto);
 		globals.set("globalThis", globalObject);
 		for (name => v in globals) if (name != "globalThis") globalObject.setOwn(name, v, Attr.HIDDEN);
+	}
+
+	// Reflect (Builtins.installReflect: a program that names it)
+	public static function setupReflect():Void {
+		var reflect = new JsObject(ObjectProto);
+		globals.set("Reflect", reflect);
+		reflect.setOwn(Symbols.toStringTag, "Reflect", Attr.HIDDEN | Attr.READONLY);
+		// (each takes an object, else a TypeError, and reports a refusal as false)
+		function target(a:Array<Dynamic>, name:String):JsObject {
+			var o = arg(a, 0);
+			if (!isObject(o)) error("TypeError", "Reflect." + name + " called on non-object");
+			return o;
+		}
+		method(reflect, "ownKeys", 1, (_, a, _) -> array([for (k in ownPropertyKeys(target(a, "ownKeys"))) Symbols.isSymbolKey(k) && Symbols.fromKey(k) != null ? (Symbols.fromKey(k) : Dynamic) : k]));
+		method(reflect, "has", 2, (_, a, _) -> has(target(a, "has"), arg(a, 1)));
+		method(reflect, "get", 2, (_, a, _) -> {
+			var o = target(a, "get");
+			return getKey(o, key(arg(a, 1)), a.length > 2 ? a[2] : o);});
+		method(reflect, "set", 3, (_, a, _) -> {
+			var o = target(a, "set");
+			return setResult(o, key(arg(a, 1)), arg(a, 2), a.length > 3 ? a[3] : o);});
+		method(reflect, "apply", 3, (_, a, _) -> {
+			if (!isCallable(arg(a, 0))) error("TypeError", "Function.prototype.apply was called on " + Seed.text(Inspect.inspect(arg(a, 0))) + ", which is " + Seed.typeOf(arg(a, 0)) + " and not a function");
+			if (!isObject(arg(a, 2))) error("TypeError", "CreateListFromArrayLike called on non-object");
+			return call(arg(a, 0), arg(a, 1), arrayLikeList(arg(a, 2)));});
+		method(reflect, "construct", 2, (_, a, _) -> {
+			var nt = a.length > 2 ? a[2] : arg(a, 0);
+			if (!isConstructor(arg(a, 0))) error("TypeError", describe(arg(a, 0)) + " is not a constructor");
+			if (!isConstructor(nt)) error("TypeError", describe(nt) + " is not a constructor");
+			if (!isObject(arg(a, 1))) error("TypeError", "CreateListFromArrayLike called on non-object");
+			return construct(arg(a, 0), arrayLikeList(arg(a, 1)), nt);});
+		method(reflect, "getPrototypeOf", 1, (_, a, _) -> prototypeOf(target(a, "getPrototypeOf")));
+		method(reflect, "setPrototypeOf", 2, (_, a, _) -> {
+			var o = target(a, "setPrototypeOf"), p = arg(a, 1);
+			if (p != null && !isObject(p)) error("TypeError", "Object prototype may only be an Object or null: " + Seed.text(p));
+			return setPrototypeResult(o, p);});
+		method(reflect, "defineProperty", 3, (_, a, _) -> Objects.defineResult(target(a, "defineProperty"), key(arg(a, 1)), arg(a, 2)));
+		method(reflect, "deleteProperty", 2, (_, a, _) -> removeResult(target(a, "deleteProperty"), key(arg(a, 1))));
+		method(reflect, "getOwnPropertyDescriptor", 2, (_, a, _) -> descriptor(target(a, "getOwnPropertyDescriptor"), key(arg(a, 1))));
+		method(reflect, "isExtensible", 1, (_, a, _) -> Exotics.isExtensible(target(a, "isExtensible")));
+		method(reflect, "preventExtensions", 1, (_, a, _) -> Exotics.preventExtensions(target(a, "preventExtensions")));
 	}
 }
