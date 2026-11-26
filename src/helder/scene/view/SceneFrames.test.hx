@@ -130,6 +130,9 @@ function tests() {
 			}
 			// (the box: 240 by 143 points, the text under it)
 			equals(images, [["480x286"], ["480x286"]]);
+			// (its screens let go: their <Scene>s' worlds with them)
+			for (s in host.screens)
+				s.reset();
 			host.device.dispose();
 		});
 		#end

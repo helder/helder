@@ -121,6 +121,7 @@ class SceneData {
 	// is, SceneReplay.draw), each element's markup node in the data's order
 	public static function build(d:PassData):SceneReplay {
 		var box = new SceneBox(new World("scene"));
+		box.ownsWorld = true;
 		box.hdr = flag(d.root.get("hdr"));
 		box.antialias = flag(d.root.get("antialias"));
 		var nodes = [];
@@ -244,4 +245,8 @@ class SceneReplay {
 	// drawn where its frame's list has it (the list's GPU texture of its mark): into c, at x, y, w by h
 	public function draw(c:helder.ui.Canvas, x:Float, y:Float, w:Float, h:Float)
 		box.paintContent(c, x, y, w, h);
+
+	// let go: its box and its world (one of 16 a process)
+	public function dispose()
+		box.dispose();
 }

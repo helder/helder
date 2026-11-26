@@ -88,7 +88,7 @@ function tests() {
 					if (s.previews != null) s.previews.show(["Pond/Start"], null);
 					helder.async.Async.delay(0.1);
 				});
-				s.tools.call("project.patch", {path: "app.tsx", text: 'export function App() {\n\treturn <view grow={1} background="#0e1424"><text color="#9fd3ff">Pond</text></view>;\n}\n'}, "a");
+				s.tools.call("project.patch", {path: "app.tsx", text: 'export function App() {\n\treturn <view flexGrow={1} background="#0e1424"><text color="#9fd3ff">Pond</text></view>;\n}\n'}, "a");
 				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { App } from "./app";\n\nUiWindow.run(<Surface title="Pond" width={320} height={480}><App/></Surface>);\n'}, "a");
 				s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const pond = story({ name: "Pond/Start", width: 320, height: 480, render: () => <App/> });\nexport const ripple = story({ name: "Pond/Ripple", width: 320, height: 480, loop: 1.5, render: () => <App/> });\n'}, "a");
 				equals(s.project.typescript, true);
@@ -125,12 +125,12 @@ function tests() {
 					if (s.previews != null) s.previews.show(["App/Good", "App/Bad"], null);
 					helder.async.Async.delay(0.1);
 				});
-				s.tools.call("project.patch", {path: "app.tsx", text: 'const end: any = ["e", "nd"].join("");\n\nexport function Good() {\n\treturn <view grow={1}/>;\n}\n\nexport function Bad() {\n\treturn <view grow={1}>\n\t\t<text text-align={end}>Bad</text>\n\t</view>;\n}\n'}, "a");
+				s.tools.call("project.patch", {path: "app.tsx", text: 'const end: any = ["e", "nd"].join("");\n\nexport function Good() {\n\treturn <view flexGrow={1}/>;\n}\n\nexport function Bad() {\n\treturn <view flexGrow={1}>\n\t\t<text textAlign={end}>Bad</text>\n\t</view>;\n}\n'}, "a");
 				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { Good } from "./app";\n\nUiWindow.run(<Surface title="Two" width={200} height={200}><Good/></Surface>);\n'}, "a");
 				var r = s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { Good, Bad } from "./app";\n\nexport const good = story({ name: "App/Good", width: 200, height: 200, render: () => <Good/> });\nexport const bad = story({ name: "App/Bad", width: 200, height: 200, render: () => <Bad/> });\n'}, "a");
 				var a:Dynamic = haxe.Json.parse(r.content[0].text);
 				// (a value known only when it runs: a literal one is an error when compiling)
-				var why = "app.tsx:9: text-align: end is not a TextAlign";
+				var why = "app.tsx:9: textAlign: end is not a TextAlign";
 				equals(a.result, "crashed");
 				equals(a.crashed, ['App/Bad: $why']);
 				equals([s.previews.screen("App/Good").version > 0, s.previews.screen("App/Bad").crashed], [true, true]);
@@ -159,7 +159,7 @@ function tests() {
 					if (s.previews != null) s.previews.show(["App/Start"], null);
 					helder.async.Async.delay(0.1);
 				});
-				var app = 'export function App() {\n\treturn <view grow={1}/>;\n}\n';
+				var app = 'export function App() {\n\treturn <view flexGrow={1}/>;\n}\n';
 				s.tools.call("project.patch", {path: "app.tsx", text: app}, "a");
 				s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\n\nUiWindow.run(<Surface title="A" width={200} height={200}><view/></Surface>);\n'}, "a");
 				s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const start = story({ name: "App/Start", width: 200, height: 200, render: () => <App/> });\n'}, "a");

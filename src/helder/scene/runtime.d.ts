@@ -291,7 +291,8 @@ export type TubeOptions = { flat?: boolean; tangents?: boolean; tubularSegments?
 export declare class World {
 	constructor(name?: string);
 	readonly root: Node;
-	// the world's slot freed for another (its nodes' handles stale)
+	// the world's slot freed for another (its nodes' handles stale); again,
+	// nothing (its slot may be another's by then)
 	dispose(): void;
 	// the number of live nodes, the root included
 	readonly count: number;
