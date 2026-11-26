@@ -403,7 +403,9 @@ function tests() {
 		flush();
 		s0(1);
 		flush();
-		[for (a in asks) if (!a.cancelled) a][0].reject("e0");
+		// (the last asked: in stores' foreign mode the first is the default
+		// store's, its memo computed as it was made)
+		[for (a in asks) if (!a.cancelled) a].pop().reject("e0");
 		flush();
 		s0(2);
 		flush();
