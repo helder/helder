@@ -555,7 +555,7 @@ class Studio {
 		if (framing && stageWidth > 0) {
 			framing = false;
 			if (!camera.taken) frameAll();
-		}
+		} else if (fitted != "" && !camera.taken && !camera.flying && box() != fitted) frameAll();
 		showVisible();
 		if (marks.anyFresh()) marks.inView(layout.inView());
 		designs.follow(openedAt > 0 ? openedAt : startedAt);
@@ -760,8 +760,18 @@ class Studio {
 	// end go to the edge's tab)
 	static inline var LEAST = 0.5;
 
+	// (the box framed last ("": none yet): framed again when it changes, the
+	// frames moved or gone (a sketch file removed, the rows below it moving up))
+	var fitted = "";
+
+	function box():String {
+		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real);
+		return b == null ? "" : '${b.x} ${b.y} ${b.w} ${b.h}';
+	}
+
 	function frameAll() {
 		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real), i = insets();
+		fitted = box();
 		if (b == null) return;
 		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1, LEAST);
 		camera.fly(v.x, v.y, v.k);
