@@ -76,8 +76,9 @@ class RefreshCheck implements Markup {
 				callback({f: () -> 2});
 				flush();
 				// (a screen's store: its own value of count, kept apart)
-				var screen = new helder.view.graph.Atoms("screen");
+				var screen = new helder.view.graph.Atoms("screen"), other = new helder.view.graph.Atoms("other");
 				screen.run(() -> count(8));
+				other.run(() -> count(9));
 				flush();
 				sys.io.File.saveContent(file, helder.dev.Hot.snapshot());
 				helder.dev.Hot.dispose();
@@ -97,7 +98,8 @@ class RefreshCheck implements Markup {
 				check("its initial value as it was: kept", tuned() == 2);
 				#end
 				check("@:hot(reset): not kept", fresh() == 0);
-				check("a store's own value, kept by the same key in its scope", new helder.view.graph.Atoms("screen").run(() -> count()) == 8 && count() == 5);
+				check("each store's own value, kept by the same key in its scope",
+					new helder.view.graph.Atoms("screen").run(() -> count()) == 8 && new helder.view.graph.Atoms("other").run(() -> count()) == 9 && count() == 5);
 				helder.dev.Hot.framed();
 		}
 		Sys.println(failures == 0 ? 'RefreshCheck $phase: ok' : 'RefreshCheck $phase: $failures failed');
