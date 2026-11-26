@@ -383,7 +383,10 @@ class Tools implements Mcp.Target {
 		var out = "(not written)";
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		#else
-		// (a texture the host shares: read back there; a frame on its way, out of view or a build's, waited for)
+		// (a texture the host shares: read back there; a frame on its way, out of view or a build's, waited for;
+		// drawn from the frames file: the program woken and the screen built first)
+		var why = studio.previews.live(s);
+		if (why != null) throw why;
 		var img = studio.previews.pixels(s);
 		if (s.crashed) throw '${s.info.name} crashed: ${s.report.peek()}';
 		if (img == null) throw '${s.info.name} has no frame yet';
@@ -441,6 +444,9 @@ class Tools implements Mcp.Target {
 		var d = designOf(name);
 		if (d != null) return designTree(d);
 		var s = screenOf(name);
+		// (drawn from the frames file: the program woken, the screen built in it, waited for)
+		var why = studio.previews.live(s);
+		if (why != null) throw why;
 		var answer:Dynamic = null;
 		if (!studio.previews.request(s, "Ui.getTree", {}, r -> answer = r)) throw '${s.info.name} is not running';
 		var t0 = haxe.Timer.stamp();
