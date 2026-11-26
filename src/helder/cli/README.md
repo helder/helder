@@ -416,6 +416,16 @@ access). helder.build lists it on https://helder.build/explore when
 `run.listed` is true. `helder share` does the same without an account:
 unlisted, at a random name, for a week.
 
+A project the studio has open has a frames file (`bin/studio/<project>/frames.hframes`,
+or `--frames <file>`): it goes up with the release, made portable (the
+fonts it refers to by their files stored with it), and the share's link is
+its **Board** (helder.run draws every scene's still and loop with
+`apps/board`). For a TypeScript project with scenarios, the web build's main
+is generated (`.helder-share.tsx`, helder.cli.Scenes): it starts at
+`?scenario=<name>` (helder.scenario.Player), so each scene's Play from here
+is one build; `/?app` is the app from its start. `--no-board` uploads the
+app alone. The studio's **Share** runs `helder share` with its frames.
+
 ```sh
 helder login                         # GitHub, through helder.build (its device flow); the token in helder's config directory
 helder publish --run                 # this project's run block: <run.name>.helder.run and helder.build/<run.name>, a new version
