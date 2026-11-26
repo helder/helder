@@ -83,6 +83,8 @@ class Store {
 			}
 			return s;
 		}
+		// (past a screen's own stores: a file on the machine, or the page's localStorage)
+		Seal.check('helder.os.Store.open("$name"${dir == null ? "" : ', "' + dir + '"'})');
 		#if (hxmc.target == "wasm32-wasi")
 		if (dir == null && helder.os.web.Dom.store_available() != 0) return new Store(name, "", true);
 		#end

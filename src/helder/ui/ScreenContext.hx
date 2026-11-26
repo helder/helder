@@ -82,6 +82,9 @@ class ScreenContext {
 	// the platform's, as the main context's); in memory, kept for the run
 	public final stores:Null<Map<String, helder.os.Store>>;
 	#end
+	// sealed off the machine while it is current (helder.os.Seal: a
+	// scenario's screen, a monkey's case; null: not)
+	public var seal:Null<helder.os.Seal> = null;
 
 	// its clock's time (its last tick); Clock's steps and timers
 	@:allow(helder.ui.Clock) public var now(default, null) = 0.0;
@@ -192,6 +195,7 @@ class ScreenContext {
 		helder.os.Now.after = c?.after;
 		helder.os.Locale.screen = c?.locale;
 		helder.os.Settings.screen = c?.settings;
+		helder.os.Seal.current = c?.seal;
 	}
 
 	// (Ui: its surface's width now)

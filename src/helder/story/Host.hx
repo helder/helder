@@ -183,6 +183,15 @@ class Host {
 				s.missed = null;
 				guard(s, () -> throw new haxe.Exception(m));
 			}
+		// (what a scenario's screen did to the machine, refused (helder.os.Seal), caught or not: its failure)
+		for (s in screens) {
+			var seal = s.context.seal;
+			if (seal != null && seal.refused.length > 0 && s.failure == null) {
+				var m = seal.refused[0];
+				seal.refused.resize(0);
+				guard(s, () -> throw new haxe.Exception(m));
+			}
+		}
 		for (s in screens)
 			if (s.visible && s.failure == null && guard(s, () -> turn(s, now))) drawn++;
 		if (drawn > 0) return drawn;
@@ -480,6 +489,8 @@ class HostScreen {
 		context = new ScreenContext(name, true, null, new helder.view.graph.Atoms(name));
 		var dark = scenario?.dark;
 		if (dark != null) context.dark(dark);
+		// (a scenario's: the real program, sealed off the machine's files, trash and places)
+		if (scenario != null) context.seal = new helder.os.Seal('scenario "$name"');
 		scale = host.scale;
 	}
 

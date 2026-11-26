@@ -244,6 +244,15 @@ function tests() {
 		equals((t.failure?.message ?? "").split("\n")[0], 'step 1: "Twin" is 2 nodes: button "Twin", button "Twin" (a role, a label or an id tells them apart)');
 		t.reset();
 	});
+	var sealed = test("a scenario's screen sealed off the machine: its places refused, caught or not, its failure", () -> {
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Places", boot: () -> try helder.os.Places.user() catch (_:Dynamic) {}})]);
+		h.still(true);
+		h.show(["Places"]);
+		h.frame(0);
+		h.frame(1);
+		equals((h.screens[0].failure?.message ?? "").split(" refused")[0], "helder.os.Places.user()");
+		equals(helder.os.Seal.current, null);
+	});
 	var story = test("beside stories", () -> {
 		var h = new Host([new Story("S", _ -> View.view(<view/>), 1, null, 50, 50)], new HeadlessHost(), 1.0, [scenario({name: "A"})]);
 		equals([for (s in h.screens) s.name], ["S", "A"]);
@@ -251,7 +260,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, resumed, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing])
+	for (t in [host, boot, apart, resumed, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing, sealed])
 		t.skip();
 	#end
 }
