@@ -1,6 +1,5 @@
 package helder.ui.box;
 
-import helder.css.CssTerm;
 import helder.text.FontFeature;
 import helder.ui.box.Len.Lens;
 import helder.ui.flow.InlineStyle;
@@ -62,237 +61,92 @@ class BoxInline implements InlineStyle {
 		return adjusted;
 	}
 
-	inline function k(p:String):String
-		return s.keyword(p);
-
 	function len(l:Len):Float {
 		var v = Lens.resolve(l, cb, 0);
 		return Math.isNaN(v) ? 0 : v;
 	}
 
+	// (the style's text part: what the box doesn't change)
+	var t(get, never):helder.ui.flow.InlineBasicStyle;
+
+	inline function get_t():helder.ui.flow.InlineBasicStyle
+		return s.text;
+
 	public function fontFamilies():Array<String>
-		return box.style.families();
+		return t.families;
 
 	public function fontSize():Float
-		return s.css.fontSize();
+		return t.size;
 
 	public function fontWeight():Int
-		return Std.int(s.number("font-weight", 400));
+		return t.weight;
 
 	public function fontStyle():InlineFontStyle
-		return switch k("font-style") {
-			case "italic": Italic;
-			case "oblique": Oblique;
-			case _: switch s.terms("font-style") {
-					case [Keyword("oblique"), _]: Oblique;
-					case _: Normal;
-				}
-		}
+		return t.style;
 
 	public function fontStretch():Float
-		return switch s.terms("font-width") {
-			case [Percentage(p)]: p;
-			case [Keyword(k)]: helder.text.FontFaces.FontFaceDescriptors.STRETCH.get(k) ?? 100;
-			case _: 100;
-		}
+		return t.stretch;
 
 	public function fontStyleAngle():Float
-		return switch s.terms("font-style") {
-			case [Keyword("oblique"), Dimension(v, "deg")]: v;
-			case [Keyword("oblique"), Dimension(v, "turn")]: v * 360;
-			case [Keyword("oblique"), Dimension(v, "rad")]: v * 180 / Math.PI;
-			case [Keyword("oblique"), Dimension(v, "grad")]: v * 0.9;
-			case _: 14;
-		}
+		return t.angle;
 
-	public function fontSynthesis():InlineSynthesis {
-		var v = 0;
-		if (k("font-synthesis-weight") != "none") v |= InlineSynthesis.Weight;
-		switch k("font-synthesis-style") {
-			case "none":
-			case "oblique-only": v |= InlineSynthesis.Oblique;
-			case _: v |= InlineSynthesis.Style | InlineSynthesis.Oblique;
-		}
-		return v;
-	}
+	public function fontSynthesis():InlineSynthesis
+		return t.synthesis;
 
 	public function fontOpticalSizing():Bool
-		return k("font-optical-sizing") != "none";
+		return t.opticalSizing;
 
-	public function fontVariations():Null<Map<String, Float>> {
-		var t = s.terms("font-variation-settings");
-		if (t.length == 0 || t[0].match(Keyword("normal"))) return null;
-		var out = new Map<String, Float>(), tag:Null<String> = null;
-		for (x in t) switch x {
-			case Str(v): tag = v;
-			case Number(v, _) if (tag != null): out.set(tag, v);
-			case _:
-		}
-		return out;
-	}
+	public function fontVariations():Null<Map<String, Float>>
+		return t.variations;
 
-	// font-variant-caps, -numeric, -east-asian, -position and historical-forms
-	// as their features, font-feature-settings' over them (CSS Fonts 4 §7.2)
-	public function fontFeatures():Null<Array<FontFeature>> {
-		var out = variants(), asked = settings();
-		if (asked != null)
-			for (f in asked) {
-				for (o in out.copy())
-					if (o.tag == f.tag) out.remove(o);
-				out.push(f);
-			}
-		return out.length == 0 ? null : out;
-	}
-
-	function variants():Array<FontFeature> {
-		var out:Array<FontFeature> = [];
-		inline function on(tags:Array<String>)
-			for (t in tags) out.push({tag: t, value: 1});
-		for (p in ["font-variant-caps", "font-variant-numeric", "font-variant-east-asian", "font-variant-position", "font-variant-alternates"])
-			for (t in s.terms(p)) switch t {
-				case Keyword(v): on(VARIANTS.get(v) ?? []);
-				case _:
-			}
-		return out;
-	}
-
-	static final VARIANTS = [
-		"small-caps" => ["smcp"], "all-small-caps" => ["smcp", "c2sc"], "petite-caps" => ["pcap"], "all-petite-caps" => ["pcap", "c2pc"],
-		"unicase" => ["unic"], "titling-caps" => ["titl"], "lining-nums" => ["lnum"], "oldstyle-nums" => ["onum"], "proportional-nums" => ["pnum"],
-		"tabular-nums" => ["tnum"], "diagonal-fractions" => ["frac"], "stacked-fractions" => ["afrc"], "ordinal" => ["ordn"], "slashed-zero" => ["zero"],
-		"jis78" => ["jp78"], "jis83" => ["jp83"], "jis90" => ["jp90"], "jis04" => ["jp04"], "simplified" => ["smpl"], "traditional" => ["trad"],
-		"full-width" => ["fwid"], "proportional-width" => ["pwid"], "ruby" => ["ruby"], "sub" => ["subs"], "super" => ["sups"], "historical-forms" => ["hist"]
-	];
-
-	function settings():Null<Array<FontFeature>> {
-		var t = s.terms("font-feature-settings");
-		if (t.length == 0 || t[0].match(Keyword("normal"))) return null;
-		var text = [for (x in t) switch x {
-			case Str(v): "'" + v + "'";
-			case Number(v, _): Std.string(Std.int(v));
-			case Keyword(v): v;
-			case Delim(","): ",";
-			case _: "";
-		}].join(" ").replace(" ,", ",");
-		return FontFeature.parse(text);
-	}
+	public function fontFeatures():Null<Array<FontFeature>>
+		return t.features;
 
 	public function fontKerning():InlineKerning
-		return switch k("font-kerning") {
-			case "normal": Normal;
-			case "none": None;
-			case _: Auto;
-		}
+		return t.kerning;
 
-	public function fontLigatures():InlineLigatures {
-		var v = 0;
-		for (t in s.terms("font-variant-ligatures")) switch t {
-			case Keyword("none"): v |= InlineLigatures.None;
-			case Keyword("no-common-ligatures"): v |= InlineLigatures.NoCommon;
-			case Keyword("no-contextual"): v |= InlineLigatures.NoContextual;
-			case Keyword("discretionary-ligatures"): v |= InlineLigatures.Discretionary;
-			case Keyword("historical-ligatures"): v |= InlineLigatures.Historical;
-			case _:
-		}
-		return v;
-	}
+	public function fontLigatures():InlineLigatures
+		return t.ligatures;
 
 	public function fontEmoji():InlineEmoji
-		return switch k("font-variant-emoji") {
-			case "text": Text;
-			case "emoji": Emoji;
-			case "unicode": Unicode;
-			case _: Normal;
-		}
+		return t.emoji;
 
 	public function color():Int
-		return s.color("color");
+		return t.colour;
 
-	public function lineHeight():Float {
-		if (lineHeightRead) return lineHeightValue;
-		lineHeightRead = true;
-		return lineHeightValue = switch s.terms("line-height") {
-			case [Dimension(v, "px")]: v;
-			case [Number(n, _)]: n * fontSize();
-			case [Percentage(p)]: p * fontSize() / 100;
-			case _: Math.NaN;
-		}
-	}
-
-	// (lineHeight's, read once: a style's)
-	var lineHeightRead = false;
-	var lineHeightValue = Math.NaN;
+	public function lineHeight():Float
+		return t.height;
 
 	// (none in a list marker: browsers leave a marker's text unspaced)
 	public function letterSpacing():Float
-		return box.markerPseudo() ? 0 : s.px("letter-spacing");
+		return box.markerPseudo() ? 0 : t.letters;
 
 	public function wordSpacing():Float
-		return box.markerPseudo() ? 0 : s.px("word-spacing");
+		return box.markerPseudo() ? 0 : t.words;
 
-	public function textTransform():InlineTransform {
-		var v = 0;
-		for (t in s.terms("text-transform")) switch t {
-			case Keyword("capitalize"): v |= InlineTransform.Capitalize;
-			case Keyword("uppercase"): v |= InlineTransform.Uppercase;
-			case Keyword("lowercase"): v |= InlineTransform.Lowercase;
-			case Keyword("full-width"): v |= InlineTransform.FullWidth;
-			case Keyword("full-size-kana"): v |= InlineTransform.FullSizeKana;
-			case _:
-		}
-		return v;
-	}
+	public function textTransform():InlineTransform
+		return t.transform;
 
 	public function whiteSpaceCollapse():InlineCollapse
-		return switch k("white-space-collapse") {
-			case "discard": Discard;
-			case "preserve": Preserve;
-			case "preserve-breaks": PreserveBreaks;
-			case "preserve-spaces": PreserveSpaces;
-			case "break-spaces": BreakSpaces;
-			case _: Collapse;
-		}
+		return t.collapse;
 
 	public function textWrapMode():InlineWrap
-		return k("text-wrap-mode") == "nowrap" ? NoWrap : Wrap;
+		return t.wrap;
 
 	public function tabSize():Float
-		return switch s.terms("tab-size") {
-			case [Number(n, _)]: n;
-			case [Dimension(v, _)]: -v;
-			case _: 8;
-		}
+		return t.tab;
 
 	public function wordBreak():InlineWordBreak
-		return switch k("word-break") {
-			case "break-all": BreakAll;
-			case "keep-all": KeepAll;
-			case "break-word": BreakWord;
-			case _: Normal;
-		}
+		return t.breakWord;
 
 	public function overflowWrap():InlineOverflowWrap
-		return switch k("overflow-wrap") {
-			case "break-word": BreakWord;
-			case "anywhere": Anywhere;
-			case _: Normal;
-		}
+		return t.overflow;
 
 	public function lineBreak():InlineLineBreak
-		return switch k("line-break") {
-			case "loose": Loose;
-			case "normal": Normal;
-			case "strict": Strict;
-			case "anywhere": Anywhere;
-			case _: Auto;
-		}
+		return t.breakLine;
 
 	public function hyphens():InlineHyphens
-		return switch k("hyphens") {
-			case "none": None;
-			case "auto": Auto;
-			case _: Manual;
-		}
+		return t.hyphen;
 
 	public function lang():Null<String> {
 		var b = box;
@@ -304,108 +158,49 @@ class BoxInline implements InlineStyle {
 	}
 
 	public function direction():InlineDirection
-		return s.rtl ? Rtl : Ltr;
+		return t.dir;
 
 	public function unicodeBidi():InlineBidi
-		return switch k("unicode-bidi") {
-			case "embed": Embed;
-			case "isolate": Isolate;
-			case "bidi-override": BidiOverride;
-			case "isolate-override": IsolateOverride;
-			case "plaintext": Plaintext;
-			case _: Normal;
-		}
+		return t.bidi;
 
 	// (a list marker's text is its own, at its start whatever its item's alignment)
 	public function textAlign():InlineAlign
-		return alignValue ??= box.markerPseudo() ? Start : align(k("text-align-all"), Start);
+		return box.markerPseudo() ? Start : t.align;
 
 	public function textAlignLast():InlineAlign
-		return alignLastValue ??= box.markerPseudo() ? Auto : align(k("text-align-last"), Auto);
-
-	// (what the line builder asks each line and each box it places: read once, a style's and a width's)
-	var alignValue:Null<InlineAlign> = null;
-	var alignLastValue:Null<InlineAlign> = null;
-	var justifyValue:Null<InlineJustify> = null;
-	var indentValue = Math.NaN;
-	var indentFlags = -1;
-	var overflowValue:Null<InlineTextOverflow> = null;
-	var clampValue = -1;
-	var verticalValue:Null<InlineVerticalAlign> = null;
-	var edgesValue:Null<Array<Float>> = null;
-
-	static function align(v:String, fallback:InlineAlign):InlineAlign
-		return switch v {
-			case "start": Start;
-			case "end": End;
-			case "left" | "-webkit-left": Left;
-			case "right" | "-webkit-right": Right;
-			case "center" | "-webkit-center": Center;
-			case "justify": Justify;
-			case "match-parent": MatchParent;
-			case "auto": Auto;
-			case _: fallback;
-		}
+		return box.markerPseudo() ? Auto : t.alignLast;
 
 	public function textJustify():InlineJustify
-		return justifyValue ??= switch k("text-justify") {
-			case "none": None;
-			case "inter-word": InterWord;
-			case "inter-character": InterCharacter;
-			case _: Auto;
-		}
+		return t.justify;
+
+	// (what the line builder asks each line: read once, a width's)
+	var indentValue = Math.NaN;
+	var edgesValue:Null<Array<Float>> = null;
 
 	// (none in a list marker's own line: its item's indent is its item's text's)
 	public function textIndent():Float {
 		if (indentValue == indentValue) return indentValue;
-		return indentValue = box.markerPseudo() ? 0 : len(box.style.len("text-indent"));
+		return indentValue = box.markerPseudo() ? 0 : len(s.textIndent);
 	}
 
 	public function textIndentEachLine():Bool
-		return indent() & 1 != 0;
+		return t.indentEachLine;
 
 	public function textIndentHanging():Bool
-		return indent() & 2 != 0;
+		return t.indentHanging;
 
-	function indent():Int {
-		if (indentFlags >= 0) return indentFlags;
-		var t = s.terms("text-indent");
-		return indentFlags = (t.contains(Keyword("each-line")) ? 1 : 0) | (t.contains(Keyword("hanging")) ? 2 : 0);
-	}
+	// (an ellipsis where the block clips)
+	public function textOverflow():InlineTextOverflow
+		return s.clips ? t.textOverflowEnd : Clip;
 
-	public function textOverflow():InlineTextOverflow {
-		if (overflowValue != null) return overflowValue;
-		if (!s.clips) return overflowValue = Clip;
-		var t = s.terms("text-overflow");
-		return overflowValue = t.length > 0 && t[t.length - 1].match(Keyword("ellipsis")) ? Ellipsis : Clip;
-	}
-
-	public function lineClamp():Int {
-		if (clampValue >= 0) return clampValue;
-		return clampValue = switch s.terms("line-clamp") {
-			case [Number(n, _)]: Std.int(n);
-			case _: 0;
-		}
-	}
+	public function lineClamp():Int
+		return t.clamp;
 
 	public function verticalAlign():InlineVerticalAlign
-		return verticalValue ??= switch box.style.verticalAlign().kind {
-			case "sub": Sub;
-			case "super": Super;
-			case "text-top": TextTop;
-			case "text-bottom": TextBottom;
-			case "middle": Middle;
-			case "top": Top;
-			case "bottom": Bottom;
-			case "length": Length;
-			case "percent": Percent;
-			case _: Baseline;
-		}
+		return t.vertical;
 
-	public function verticalShift():Float {
-		var v = box.style.verticalAlign();
-		return v.kind == "percent" ? v.shift / 100 : v.shift;
-	}
+	public function verticalShift():Float
+		return t.shift;
 
 	// (start and end: left and right in left-to-right text; a split box's parts lack the edges where it goes on)
 	inline function startSide():Int
@@ -468,36 +263,15 @@ class BoxInline implements InlineStyle {
 		];
 	}
 
-	public function textDecoration():InlineDecoration {
-		var v = 0;
-		for (t in s.terms("text-decoration-line")) switch t {
-			case Keyword("underline"): v |= InlineDecoration.Underline;
-			case Keyword("overline"): v |= InlineDecoration.Overline;
-			case Keyword("line-through"): v |= InlineDecoration.LineThrough;
-			case _:
-		}
-		return v;
-	}
+	public function textDecoration():InlineDecoration
+		return t.decoration;
 
 	public function textDecorationStyle():InlineDecorationStyle
-		return switch k("text-decoration-style") {
-			case "double": Double;
-			case "dotted": Dotted;
-			case "dashed": Dashed;
-			case "wavy": Wavy;
-			case _: Solid;
-		}
+		return t.decorationStyle;
 
 	public function textDecorationColor():Int
-		return switch s.terms("text-decoration-color") {
-			case [Color(c)]: BoxStyle.argb(c, color());
-			case _: color();
-		}
+		return t.decorationColour;
 
 	public function textDecorationThickness():Float
-		return switch s.terms("text-decoration-thickness") {
-			case [Dimension(v, _)]: v;
-			case [Percentage(p)]: p * fontSize() / 100;
-			case _: Math.NaN;
-		}
+		return t.decorationThickness;
 }

@@ -99,20 +99,13 @@ class FontMatch {
 
 	// The face for a style: its first family there is.
 	public function face(style:BoxStyle):FontFile {
-		var weight = Std.int(style.number("font-weight", 400));
-		var italic = style.keyword("font-style") != "normal" && style.keyword("font-style") != "";
-		var stretch = switch style.terms("font-width") {
-			case [Percentage(p)]: p;
-			case [Keyword(k)]: FontFaceDescriptors.STRETCH.get(k) ?? 100;
-			case _: 100;
-		}
-		var slant:FontStyle = switch style.terms("font-style") {
-			case [Keyword("italic")]: Italic;
-			case [Keyword("oblique"), Dimension(v, "deg")]: Oblique(v);
-			case [Keyword("oblique")]: Oblique(14);
+		var t = style.text, weight = t.weight, italic = t.style != Normal, stretch = t.stretch;
+		var slant:FontStyle = switch t.style {
+			case Italic: Italic;
+			case Oblique: Oblique(t.angle);
 			case _: Normal;
 		}
-		var names = familyNames(style.terms("font-family"));
+		var names = namesOf(t.families);
 		var key = [for (n in names) (n.generic ? "@" : "") + n.name].join(",") + "/" + weight + "/" + stretch + "/" + Std.string(slant);
 		var f = found.get(key);
 		if (f != null) return f;
@@ -126,24 +119,12 @@ class FontMatch {
 	}
 	// (each family: a name, or a generic family's keyword, which a font named
 	// like it, "serif" quoted, isn't)
-	static function familyNames(terms:Array<CssTerm>):Array<{name:String, generic:Bool}> {
-		var out = [], word = [], generic = false;
-		function flush() {
-			if (word.length > 0) out.push({name: word.join(" "), generic: generic});
-			word = [];
-			generic = false;
-		}
-		for (t in terms) switch t {
-			case Delim(","): flush();
-			case Ident(v) | Str(v) | Raw(v): word.push(v);
-			case Keyword(v):
-				word.push(v);
-				generic = true;
-			case _:
-		}
-		flush();
-		return out;
-	}
+	// (font-family's names as BoxStyle.families gives them: a generic's keyword, a quoted generic name quoted)
+	static function namesOf(families:Array<String>):Array<{name:String, generic:Bool}>
+		return [
+			for (f in families)
+				f.startsWith('"') ? {name: f.substr(1, f.length - 2), generic: false} : {name: f, generic: helder.ui.flow.InlineFonts.generic(f)}
+		];
 
 	function named(name:String, weight:Int, stretch:Float, slant:FontStyle):Null<FontFile> {
 		var m = faces.match(name, weight, stretch, slant);
@@ -404,7 +385,7 @@ class FontMatch {
 	}
 
 	public static function size(style:BoxStyle):Float
-		return style.css.fontSize();
+		return style.text.size;
 
 	// ascent, descent (positive, below) and line gap in px, rounded as Chromium's SimpleFontData does
 	public static function ascent(f:FontFile, size:Float):Float

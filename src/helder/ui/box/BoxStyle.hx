@@ -415,6 +415,171 @@ class BoxStyle {
 		if (d.outer == Internal && displayInner != TABLE_PART) displayOuter = BLOCK;
 	}
 
+	// ---- the text part: what inline layout and fonts read of it, typed
+	// (InlineBasicStyle's fields; its edges, lang and direction the box's,
+	// BoxInline's), read once. text-indent apart: a percentage of the
+	// containing block's width.
+
+	var textPart:Null<helder.ui.flow.InlineBasicStyle> = null;
+	var indentLen = Len.Auto;
+
+	public var text(get, never):helder.ui.flow.InlineBasicStyle;
+	public var textIndent(get, never):Len;
+
+	inline function get_text():helder.ui.flow.InlineBasicStyle
+		return textPart ??= readText();
+
+	inline function get_textIndent():Len {
+		if (textPart == null) textPart = readText();
+		return indentLen;
+	}
+
+	function readText():helder.ui.flow.InlineBasicStyle {
+		var t = new helder.ui.flow.InlineBasicStyle();
+		t.families = families();
+		t.size = css.fontSize();
+		t.weight = Std.int(number("font-weight", 400));
+		var fs = terms("font-style");
+		t.style = switch keyword("font-style") {
+			case "italic": Italic;
+			case "oblique": Oblique;
+			case _: switch fs {
+					case [Keyword("oblique"), _]: Oblique;
+					case _: Normal;
+				}
+		}
+		t.angle = switch fs {
+			case [Keyword("oblique"), Dimension(v, "deg")]: v;
+			case [Keyword("oblique"), Dimension(v, "turn")]: v * 360;
+			case [Keyword("oblique"), Dimension(v, "rad")]: v * 180 / Math.PI;
+			case [Keyword("oblique"), Dimension(v, "grad")]: v * 0.9;
+			case _: 14;
+		}
+		t.stretch = switch terms("font-width") {
+			case [Percentage(p)]: p;
+			case [Keyword(k)]: helder.text.FontFaces.FontFaceDescriptors.STRETCH.get(k) ?? 100;
+			case _: 100;
+		}
+		var synthesis = 0;
+		if (keyword("font-synthesis-weight") != "none") synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Weight;
+		switch keyword("font-synthesis-style") {
+			case "none":
+			case "oblique-only": synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Oblique;
+			case _: synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Style | helder.ui.flow.InlineValues.InlineSynthesis.Oblique;
+		}
+		t.synthesis = synthesis;
+		t.opticalSizing = keyword("font-optical-sizing") != "none";
+		t.variations = TextTerms.variations(terms("font-variation-settings"));
+		t.features = TextTerms.features(this);
+		t.kerning = switch keyword("font-kerning") {
+			case "normal": Normal;
+			case "none": None;
+			case _: Auto;
+		}
+		t.ligatures = TextTerms.ligatures(terms("font-variant-ligatures"));
+		t.emoji = switch keyword("font-variant-emoji") {
+			case "text": Text;
+			case "emoji": Emoji;
+			case "unicode": Unicode;
+			case _: Normal;
+		}
+		t.colour = color("color");
+		t.height = switch terms("line-height") {
+			case [Dimension(v, "px")]: v;
+			case [Number(n, _)]: n * t.size;
+			case [Percentage(p)]: p * t.size / 100;
+			case _: Math.NaN;
+		}
+		t.letters = px("letter-spacing");
+		t.words = px("word-spacing");
+		t.transform = TextTerms.transform(terms("text-transform"));
+		t.collapse = switch keyword("white-space-collapse") {
+			case "discard": Discard;
+			case "preserve": Preserve;
+			case "preserve-breaks": PreserveBreaks;
+			case "preserve-spaces": PreserveSpaces;
+			case "break-spaces": BreakSpaces;
+			case _: Collapse;
+		}
+		t.wrap = keyword("text-wrap-mode") == "nowrap" ? NoWrap : Wrap;
+		t.tab = switch terms("tab-size") {
+			case [Number(n, _)]: n;
+			case [Dimension(v, _)]: -v;
+			case _: 8;
+		}
+		t.breakWord = switch keyword("word-break") {
+			case "break-all": BreakAll;
+			case "keep-all": KeepAll;
+			case "break-word": BreakWord;
+			case _: Normal;
+		}
+		t.overflow = switch keyword("overflow-wrap") {
+			case "break-word": BreakWord;
+			case "anywhere": Anywhere;
+			case _: Normal;
+		}
+		t.breakLine = switch keyword("line-break") {
+			case "loose": Loose;
+			case "normal": Normal;
+			case "strict": Strict;
+			case "anywhere": Anywhere;
+			case _: Auto;
+		}
+		t.hyphen = switch keyword("hyphens") {
+			case "none": None;
+			case "auto": Auto;
+			case _: Manual;
+		}
+		t.dir = rtl ? Rtl : Ltr;
+		t.bidi = switch keyword("unicode-bidi") {
+			case "embed": Embed;
+			case "isolate": Isolate;
+			case "bidi-override": BidiOverride;
+			case "isolate-override": IsolateOverride;
+			case "plaintext": Plaintext;
+			case _: Normal;
+		}
+		t.align = TextTerms.align(keyword("text-align-all"), Start);
+		t.alignLast = TextTerms.align(keyword("text-align-last"), Auto);
+		t.justify = switch keyword("text-justify") {
+			case "none": None;
+			case "inter-word": InterWord;
+			case "inter-character": InterCharacter;
+			case _: Auto;
+		}
+		indentLen = len("text-indent");
+		var ti = terms("text-indent");
+		t.indentEachLine = ti.contains(Keyword("each-line"));
+		t.indentHanging = ti.contains(Keyword("hanging"));
+		var to = terms("text-overflow");
+		t.textOverflowEnd = to.length > 0 && to[to.length - 1].match(Keyword("ellipsis")) ? Ellipsis : Clip;
+		t.clamp = switch terms("line-clamp") {
+			case [Number(n, _)]: Std.int(n);
+			case _: 0;
+		}
+		var va = verticalAlign();
+		t.vertical = TextTerms.vertical(va.kind);
+		t.shift = va.kind == "percent" ? va.shift / 100 : va.shift;
+		t.decoration = TextTerms.decoration(terms("text-decoration-line"));
+		t.decorationStyle = switch keyword("text-decoration-style") {
+			case "double": Double;
+			case "dotted": Dotted;
+			case "dashed": Dashed;
+			case "wavy": Wavy;
+			case _: Solid;
+		}
+		t.decorationColour = switch terms("text-decoration-color") {
+			case [Color(c)]: argb(c, t.colour);
+			case _: t.colour;
+		}
+		t.decorationThickness = switch terms("text-decoration-thickness") {
+			case [Dimension(v, _)]: v;
+			case [Percentage(p)]: p * t.size / 100;
+			case _: Math.NaN;
+		}
+		return t;
+	}
+
 	// ---- paint's: the background, the corners' radii, the borders' styles and
 	// colours, box shadows and the outline, read once (paint reads them per
 	// box and per frame, its terms parsed no more)
