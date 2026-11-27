@@ -32,7 +32,7 @@ class DocumentWindowCheck {
 		var html = sys.io.File.getContent(a[0]);
 		var files:haxe.DynamicAccess<String> = a.length > 1 ? haxe.Json.parse(sys.io.File.getContent(a[1])) : {};
 		var canonical = ~/<link[^>]*rel="?canonical"?[^>]*href="([^"]+)"/;
-		var url = canonical.match(html) ? canonical.matched(1) : "file://" + a[0];
+		var url = files.exists("#page") ? files["#page"] : canonical.match(html) ? canonical.matched(1) : "file://" + a[0];
 		var w = new helder.ui.UiWindow({title: "DocumentWindowCheck", width: 1024, height: 768});
 		var t0 = Timer.stamp();
 		var node = DocumentNode.html(Dom.parse(html), {url: url, load: u -> files.exists(u) ? sys.io.File.getContent(files[u]) : null});

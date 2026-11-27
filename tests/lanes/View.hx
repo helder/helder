@@ -16,7 +16,7 @@ class View {
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer against golden images", run: uiDraw},
 		{name: "ui-web", about: "helder.ui as wasm32-wasi in headless Chromium", run: uiWeb},
-		{name: "document-window", about: "the HTML Standard and Wikipedia's longest page in a real window (DocumentNode): the wheel, jumps, anchors, the thumb and text dragged, each step's frame in a budget, the live heap flat (fetched into bin/bench/html)", run: documentWindow}
+		{name: "document-window", about: "long documents in a real window (DocumentNode: the HTML Standard, the ECMAScript spec, Wikipedia's longest page and Japanese pitch accent, War and Peace, WebKit's chapter-reflow): the wheel, jumps, anchors, the thumb and text dragged, each step's frame in a budget, the live heap flat (fetched into bin/bench/html)", run: documentWindow}
 	];
 
 	static function view() {
@@ -195,7 +195,7 @@ class View {
 		native(b, cps(["src", "tests/ui"]).concat(["-main", "DocumentWindowCheck"]), GFX_TARGET);
 		var linux = Sys.systemName() == "Linux";
 		var pre = linux ? 'LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a -s "-screen 0 1280x1024x24" ' : "HELDER_BACKGROUND=1 ";
-		var pages = ["html-spec", "telemann"];
+		var pages = ["html-spec", "telemann", "ecma262", "war-and-peace", "chapter-reflow", "pitch-accent"];
 		for (p in pages)
 			shell('$pre${exePath(b, GFX_TARGET)} bin/bench/html/$p.html bin/bench/html/$p-sheets.json');
 		// (--front: shown over the other windows, not made key, as a window in use presents; HELDER_TEST_FRONT=1)
