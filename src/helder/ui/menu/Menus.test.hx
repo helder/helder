@@ -60,6 +60,18 @@ function tests() {
 			equals(r[6].disabled, true);
 			equals(actions.length, 6);
 		});
+		test("a drawn menu taller than the window: inside it, scrolled, the row moved to by the keys in view", () -> {
+			var ui = new Ui(new helder.story.StoryText(), 400, 150);
+			DrawnMenu.open(ui, [for (i in 0...30) ({id: i, label: 'Item $i'} : helder.ui.platform.PlatformMenuItem)], 20, 20, id -> {});
+			ui.update();
+			var menu = ui.overlay.children[0], b = menu.windowBounds();
+			assert(b.y >= 0 && b.y + b.height <= 150, 'at ${b.y}, ${b.height} high');
+			ui.keyDown(Key.UP, 0);
+			ui.update();
+			var last = menu.children[29].windowBounds();
+			assert(last.y >= b.y - 0.5 && last.y + last.height <= b.y + b.height + 0.5, 'the last at ${last.y}');
+			DrawnMenu.current.close(false);
+		});
 		test("a drawn context menu: Down past what is disabled, Enter dispatches from its node; the focus given back", () -> {
 			var f = setup();
 			Menus.popup(f.ui, MODEL, 50, 40, f.view);

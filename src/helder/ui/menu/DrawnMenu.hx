@@ -73,7 +73,10 @@ class DrawnMenu {
 			borderWidth: 1,
 			borderColor: dark ? 0xFF3F3F46 : 0xFFD4D4D8,
 			color: dark ? 0xFFE4E4E7 : 0xFF18181B,
-			fontSize: 13
+			fontSize: 13,
+			// (taller than the window: as high as it, its items scrolled, as the platforms' menus are)
+			maxHeight: ui.height,
+			overflow: Scroll
 		});
 		popup.style.boxShadow = helder.ui.Shadow.parse("0 4px 16px rgba(0, 0, 0, 0.35)");
 		popup.semantics = {role: helder.ui.access.Role.Menu};
@@ -84,7 +87,7 @@ class DrawnMenu {
 			var it = items[i];
 			if (it.separator == true) {
 				var s = new Node("menu-separator");
-				s.style.set({height: 1, margin: [4.0, 6, 4, 6], background: dark ? 0xFF3F3F46 : 0xFFE4E4E7});
+				s.style.set({height: 1, margin: [4.0, 6, 4, 6], background: dark ? 0xFF3F3F46 : 0xFFE4E4E7, flexShrink: 0});
 				popup.append(s);
 				rows.push(null);
 				continue;
@@ -94,6 +97,7 @@ class DrawnMenu {
 				flexDirection: Row,
 				alignItems: Center,
 				height: 26,
+				flexShrink: 0,
 				padding: [0.0, 10, 0, 6],
 				borderRadius: 4,
 				columnGap: 8,
@@ -143,6 +147,7 @@ class DrawnMenu {
 			child = null;
 		}
 		ui.setFocus(row, false);
+		row.scrollIntoView();
 		if (open && items[i].items != null && items[i].disabled != true && child == null) openChild(i, false);
 		ui.requestFrame();
 	}
