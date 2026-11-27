@@ -261,7 +261,7 @@ class BoxPainter {
 			case "square": "\u25AA";
 			case _: return false;
 		}
-		if (StringTools.trim(run.text) != symbol) return false;
+		if (StringTools.trim(run.shown()) != symbol) return false;
 		if (color >>> 24 == 0) return true;
 		var a = Math.round(FontMatch.ascent(run.face, run.size)), offset = Std.int(a * 2 / 3), size = Std.int((offset + 1) / 2);
 		// (outside: from the line's start, its marker span's end: whatever its text's trailing space)

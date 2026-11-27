@@ -392,7 +392,6 @@ class BlockLines {
 		var r = l.glyphRun(f);
 		var ascent = l.ascent(f), descent = l.descent(f);
 		var t0 = l.textStart(f), t1 = l.textEnd(f);
-		var all = c.text.substring(t0, t1);
 		var from = t0 < t1 ? c.domOffset(t0) : 0, to = t0 < t1 ? c.domOffset(t1 - 1) + 1 : from;
 		if (r < 0) return;
 		var fonts = glyphs.runFonts(r);
@@ -400,7 +399,10 @@ class BlockLines {
 		var run:Null<ShapedRun> = null, runX = 0.0;
 		function flush(endX:Float) {
 			if (run == null || run.count == 0) return;
-			run.text = all;
+			// (the content's whole text, each glyph's characters in it: a line's runs
+			// one text to a painter that keeps text, a PDF's ActualText then giving a
+			// run of the other direction in logical order)
+			run.text = c.text;
 			var tf = frags.add(Fragments.TEXT, box, endX - runX, ascent + descent);
 			frags.setRange(tf, from, to);
 			frags.setBaseline(tf, ascent);
@@ -437,8 +439,7 @@ class BlockLines {
 				if (face.hasColor) run.palette = space.fonts.palette(face, box.style);
 				runX = glyphs.x(g);
 			}
-			var cl = glyphs.cluster(g), unit = cl - t0, end = next.get(cl) - t0;
-			if (unit < 0) unit = 0;
+			var cl = glyphs.cluster(g), unit = cl < t0 ? t0 : cl, end = next.get(cl);
 			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, end > unit ? end : unit + 1);
 		}
 		flush(n > 0 ? Math.max(l.fragmentWidth(f), glyphs.x(g0 + n - 1) + glyphs.advance(g0 + n - 1)) : l.fragmentWidth(f));

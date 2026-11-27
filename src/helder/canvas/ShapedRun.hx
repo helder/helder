@@ -44,6 +44,17 @@ class ShapedRun {
 		count++;
 	}
 
+	// the characters its glyphs show: its text from the first of them to the last
+	public function shown():String {
+		if (count == 0) return "";
+		var lo = starts[0], hi = ends[0];
+		for (i in 1...count) {
+			if (starts[i] < lo) lo = starts[i];
+			if (ends[i] > hi) hi = ends[i];
+		}
+		return text.substring(lo, hi);
+	}
+
 	// a copy of its own (a recording outlives the caller's buffers)
 	public function copy():ShapedRun {
 		var r = new ShapedRun(face, size);
