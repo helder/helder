@@ -283,11 +283,15 @@ class JsObject {
 		changed();
 	}
 
+	// (the methods of typed classes an instance may hide: those the program
+	// writes as properties, lower.Classes; they are not called directly)
+	public static var shadowable:Null<Map<String, Bool>> = null;
+
 	// (an own property hiding a method of a typed class's locked prototype)
 	function shadowsMethod(k:String):Bool {
 		var p = proto;
 		while (p != null && p.locked) {
-			if (p.hasOwn(k)) return true;
+			if (p.hasOwn(k)) return shadowable == null || !shadowable.exists(k);
 			p = p.proto;
 		}
 		return false;

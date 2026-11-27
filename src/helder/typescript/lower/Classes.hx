@@ -91,7 +91,21 @@ class Classes {
 	final bySymbol:Map<String, ClassLayout> = [];
 	final byNode:Map<Node, ClassLayout> = [];
 
+	// (the property names the program writes, `this.parse = this.parse.bind(this)`:
+	// an instance may hide a method of one with its own property, so such a
+	// method is not called directly and its prototype lets instances hide it)
+	static var written:Map<String, Bool> = [];
+
 	public function new(src:Project) {
+		written = [];
+		for (sf in src.files) for (i in 1...sf.count) if (sf.kindAt(i) == KindBinaryExpression) {
+			var n = sf.node(i), op = n.operatorToken().kind;
+			if (op < KindFirstAssignment || op > KindLastAssignment) continue;
+			var target = n.left();
+			while (target.kind == KindParenthesizedExpression) target = target.expression();
+			if (target.kind == KindPropertyAccessExpression && target.name().kind == KindIdentifier) written.set(target.name().text, true);
+			else if (target.kind == KindElementAccessExpression && target.argumentExpression().kind == KindStringLiteral) written.set(target.argumentExpression().text, true);
+		}
 		for (sf in src.files) for (n in sf.root.statements()) if (n.kind == KindClassDeclaration && n.name() != null) {
 			var c = layout(n);
 			if (c == null) continue;
@@ -99,6 +113,13 @@ class Classes {
 			bySymbol.set(n.name().symbol, c);
 			byNode.set(n, c);
 		}
+	}
+
+	// the methods of the classes with layouts an instance may hide
+	public function shadowed():Array<String> {
+		var out = [for (name in written.keys()) if (all.exists(c -> c.members.exists(name))) name];
+		out.sort(Reflect.compare);
+		return out;
 	}
 
 	// the class with a layout a symbol names, else null
@@ -114,7 +135,7 @@ class Classes {
 	public static function direct(m:Node):Bool
 		return m.kind == KindMethodDeclaration && m.body() != null && (m.name().kind == KindIdentifier || m.name().kind == KindStringLiteral)
 			&& m.asteriskToken() == null && !m.modifiers().exists(x -> x.kind == KindStaticKeyword || x.kind == KindAsyncKeyword)
-			&& !Core.usesArguments(m.body());
+			&& !Core.usesArguments(m.body()) && !written.exists(m.name().text);
 
 	// a getter or setter compiled as a direct function: plain name, not static
 	public static function directAccessor(m:Node):Bool
