@@ -116,8 +116,11 @@ class FrameArchive {
 	// each font it refers to by its file stored with it (at most maxFont
 	// bytes each; a larger one, an emoji font's, left to the reader's match);
 	// the keys let go (they name this machine's files). had: fonts the reader
-	// has already (a live share's scene: the release's file stored them), left out
-	public function portable(maxFont = 16 * 1024 * 1024, ?had:String->Bool):FrameArchive {
+	// has already (a live share's scene: the release's file stored them), left
+	// out. pictures: the pictures (a 3D scene's still, a loop's frames) no
+	// larger than that many pixels a side, a JPEG when opaque (a share's Board
+	// draws them on its cards; the studio's 2x PNGs made a harbour's file 39 MB)
+	public function portable(maxFont = 16 * 1024 * 1024, ?had:String->Bool, pictures = 0):FrameArchive {
 		var out = new FrameArchive();
 		for (name in order) {
 			var s = screens.get(name);
@@ -127,7 +130,8 @@ class FrameArchive {
 				if (b != null && b.length <= maxFont) out.blobs.set(f.hash, b);
 			}
 			for (i in s.images)
-				if (blobs.exists(i.hash)) out.blobs.set(i.hash, blobs.get(i.hash));
+				if (blobs.exists(i.hash) && !out.blobs.exists(i.hash))
+					out.blobs.set(i.hash, pictures > 0 && i.kind == PIXELS ? smaller(blobs.get(i.hash), pictures) : blobs.get(i.hash));
 			out.order.push(name);
 			out.screens.set(name, {
 				key: "",
@@ -141,6 +145,20 @@ class FrameArchive {
 		}
 		return out;
 	}
+
+	// a picture no larger than fit pixels a side, a JPEG when opaque; as it was when it is so already, or does not decode
+	static function smaller(b:Bytes, fit:Int):Bytes {
+		var jpeg = b.length > 2 && b.get(0) == 0xFF && b.get(1) == 0xD8;
+		var d = try jpeg ? helder.image.JpegDecoder.decode(b) : helder.image.PngDecoder.decode(b) catch (_:Dynamic) null;
+		if (d == null) return b;
+		var big = d.width > fit || d.height > fit, solid = opaque(d.rgba);
+		if (!big && !solid) return b;
+		var px = big ? helder.image.Resize.toFit(d.rgba, d.width, d.height, fit, fit) : {width: d.width, height: d.height, rgba: d.rgba};
+		var out = solid ? JpegEncoder.encode(px.rgba, px.width, px.height, SHARE_QUALITY) : PngEncoder.encode(px.rgba, px.width, px.height, false, false);
+		return out.length < b.length ? out : b;
+	}
+
+	public static inline var SHARE_QUALITY = 72;
 
 	// whether a font's or an image's bytes are stored here
 	public function has(hash:String):Bool

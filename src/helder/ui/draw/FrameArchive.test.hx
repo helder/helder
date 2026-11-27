@@ -34,6 +34,27 @@ function tests() {
 			equals([p.names().join(","), p.key("s")], ["s", ""]);
 			equals(p.list("s") != null, true);
 		});
+		test("portable: pictures no larger than the bound, a JPEG when opaque (a share's: the Board's cards)", () -> {
+			var px = haxe.io.Bytes.alloc(1200 * 800 * 4);
+			for (i in 0...1200 * 800) {
+				px.set(i * 4, i % 251);
+				px.set(i * 4 + 1, (i >> 3) % 241);
+				px.set(i * 4 + 2, (i >> 7) % 239);
+				px.set(i * 4 + 3, 255);
+			}
+			var w = new FrameWriter();
+			w.image(new helder.image.Image(1200, 800, px), 0, 0, 600, 400, 0, 0, 1, 1, 0);
+			var a = new FrameArchive();
+			a.add("s", "key", 600, 400, w.frame());
+			var whole = a.portable().encode(), small = a.portable(16 * 1024 * 1024, null, 400).encode();
+			assert(small.length < whole.length / 2, '${small.length} of ${whole.length}');
+			var p = FrameArchive.decode(small);
+			equals(p.list("s") != null, true);
+			var b = [for (v in @:privateAccess p.blobs) v][0];
+			equals([b.get(0), b.get(1)], [0xFF, 0xD8]);
+			var size = helder.image.JpegDecoder.size(b);
+			assert(size.width <= 400 && size.height <= 400 && size.width * 2 == size.height * 3, '${size.width}x${size.height}');
+		});
 		test("portable: fonts the reader has left out (a live share's scene), its fonts the archive it is taken into has", () -> {
 			var face = helder.text.SystemFonts.get().file("apps/studio/fonts/HankenGrotesk-Regular.ttf", 0), w = new FrameWriter();
 			w.rect(0, 0, 10, 10, 0, 0xFF000000, 0, 0);
