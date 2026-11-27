@@ -799,20 +799,31 @@ private class Screen {
 	static function same(a:InspectedNode, b:InspectedNode):Bool
 		return a.id == b.id && a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 
-	// (the scrollers that scroll, shown, not under a modal popup)
+	// (the scrollers that scroll, shown, not under a modal popup, and reached
+	// at the point a step wheels them at: none another covers)
 	public function scrollers():Array<ScrollView>
-		return context.run(() -> ui.scrollViews().filter(v -> (v.scrollsY || v.scrollsX) && !v.covered && v.width > 0 && v.height > 0
-			&& v.x + v.width / 2 >= 0 && v.y + v.height / 2 >= 0 && v.x + v.width / 2 < ui.width && v.y + v.height / 2 < ui.height));
+		return context.run(() -> ui.scrollViews().filter(v -> {
+			if (!(v.scrollsY || v.scrollsX) || v.covered || v.width <= 0 || v.height <= 0) return false;
+			var p:{x:Float, y:Float} = spot(v);
+			if (p.x < 0 || p.y < 0 || p.x >= ui.width || p.y >= ui.height) return false;
+			var h = @:privateAccess ui.hit(p.x, p.y);
+			h != null && v.node.contains(h);
+		}));
+
+	// (where a step wheels a scroller: its shown part's centre)
+	function spot(v:ScrollView):{x:Float, y:Float} {
+		var x0 = Math.max(0, v.x), y0 = Math.max(0, v.y), x1 = Math.min(ui.width, v.x + v.width), y1 = Math.min(ui.height, v.y + v.height);
+		return {x: Math.round((x0 + x1) / 2), y: Math.round((y0 + y1) / 2)};
+	}
 
 	// (a scroller's node, as a step finds it: a query, else its shown part's centre)
 	public function place(v:ScrollView):Dynamic {
-		var x0 = Math.max(0, v.x), y0 = Math.max(0, v.y), x1 = Math.min(ui.width, v.x + v.width), y1 = Math.min(ui.height, v.y + v.height);
 		var label = v.node.semantics?.label;
 		if (label != null && label != "" && label.length <= 60) {
 			var found = context.run(() -> Steps.matches(ui, label));
 			if (found.length == 1 && found[0].tag == v.node.tag && Math.abs(found[0].x - v.x) < 1 && Math.abs(found[0].y - v.y) < 1) return label;
 		}
-		return {x: Math.round((x0 + x1) / 2), y: Math.round((y0 + y1) / 2)};
+		return spot(v);
 	}
 
 	public function view(n:Node):Null<ScrollView>
