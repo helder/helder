@@ -127,8 +127,13 @@ InlineLayout.maxContent(c);
 direction (-1: the root's), and where floats are: `lineWidth(y, height)`,
 the offset and width of the line at y (asked at the strut's height, asked
 again at the line's own when it is taller, the line built again where
-that is narrower). Laid out again with the same content and constraints
-it does nothing; at another width it places the same shaped pieces.
+that is narrower). A line the floats shorten so that its first piece does
+not fit (or fits only by an overflow-wrap cut) moves down until it fits or
+the floats end (CSS 2.1 §9.5): to `floatEdge(y)`, the next y where the
+floats beside the lines change, or without it a pixel at a time; a line
+with nothing in it does not move. Laid out again with the same content and
+constraints it does nothing; at another width it places the same shaped
+pieces.
 
 - **Breaking**: greedy, as LayoutNG's line breaker: a line takes pieces up
   to the last opportunity where it fits. What does not count: the spaces
@@ -156,8 +161,10 @@ it does nothing; at another width it places the same shaped pieces.
   extent, lengths and percentages of its line height; in Blink's
   LayoutUnit, 1/64 of a pixel), then its subtree into its parent's; top-
   and bottom-aligned subtrees are placed last, the line growing to hold
-  them. A line with nothing in it (no text, preserved space, atomic, box
-  edge or forced break: CSS 2.1 §9.4.2) is zero high.
+  them. A line with nothing in it (no text, preserved space, atomic,
+  forced break, or inline box with a margin, border or padding on its
+  inline sides that is not zero, whatever they add up to: CSS 2.1 §9.4.2)
+  is zero high.
 - **Bidi**: a line with a right-to-left level on it, or in a right-to-left
   paragraph, is placed in visual order (UAX #9 per line: L1, the white
   space at its end at the paragraph's level; L2, runs reversed from the
@@ -195,9 +202,11 @@ it does nothing; at another width it places the same shaped pieces.
   the runs, per glyph its face, id, x from the fragment's left, y offset,
   advance and the text unit its cluster starts at: what paint and
   PdfWriter both read.
-- **Intrinsic sizes**: `minContent` breaks at every opportunity
-  (overflow-wrap: anywhere's cuts in, break-word's out), `maxContent` at
-  forced breaks only; each the widest line's used width.
+- **Intrinsic sizes**: `minContent` breaks at every opportunity, taken
+  whether or not it is needed (a negative text-indent leaves room on the
+  first line; overflow-wrap: anywhere's cuts in, break-word's out),
+  `maxContent` at forced breaks only; each the widest line's used width,
+  the first line's with its indent (a negative one reduces it).
 
 ## Hit testing and selection
 

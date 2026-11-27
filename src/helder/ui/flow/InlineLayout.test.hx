@@ -441,6 +441,30 @@ function tests() {
 					block(1)(c);
 				}, min: 2, max: 2}
 			];
+			// (text-indent-intrinsic-001: a positive one, 3em)
+			var plus = ahem(s -> s.indent = em(3));
+			var positive:Array<{build:InlineContent->Void, min:Float, max:Float}> = [
+				{build: c -> block(1)(c), min: 4, max: 4},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(2)(c);
+				}, min: 4, max: 6},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(6)(c);
+				}, min: 6, max: 10},
+				{build: c -> {
+					block(1)(c);
+					c.addBreak();
+					block(6)(c);
+				}, min: 6, max: 6}
+			];
+			for (k in positive) {
+				var c = content(k.build, plus);
+				equals([InlineLayout.minContent(c), InlineLayout.maxContent(c)], [em(k.min), em(k.max)]);
+			}
 			for (k in cases) {
 				var c = content(k.build, root);
 				equals([Math.max(0, InlineLayout.minContent(c)), Math.max(0, InlineLayout.maxContent(c))], [em(k.min), em(k.max)]);

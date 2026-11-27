@@ -80,7 +80,7 @@ class LineBuilder {
 				// (shortened by floats and its first piece not fitting, but by a cut: down to where the floats
 				// change, until it fits or they end, CSS 2.1 §9.5)
 				var narrowed = cons.lineWidth != null && (avail < cons.width - EPSILON || off != 0);
-				if (!narrowed || endUsed <= avail + EPSILON && endFlags & CUT == 0) break;
+				if (!narrowed || endUsed <= EPSILON || endUsed <= avail + EPSILON && endFlags & CUT == 0) break;
 				var next = cons.floatEdge != null ? cons.floatEdge(y) : y + 1;
 				if (!(next > y) || next == Math.POSITIVE_INFINITY) break;
 				y = next;
