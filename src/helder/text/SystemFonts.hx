@@ -101,6 +101,13 @@ class SystemFonts {
 		return null;
 	}
 
+	// The face of a family by its name alone, a generic family's keyword
+	// too ("serif" as a font's name); null when there is none.
+	public function named(family:String, weight = 400, italic = false):Null<FontFile> {
+		scan();
+		return best(family, weight, italic) ?? platformFamily(family, weight, italic);
+	}
+
 	// (in a browser the page's fonts are all there is: helder's Inter, which
 	// Page ships, is its sans-serif and its first fallback)
 	static function sans():Array<String>

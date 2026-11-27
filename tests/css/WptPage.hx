@@ -15,21 +15,41 @@ using StringTools;
 // XML when it is .xht, .xhtml or .svg, else as HTML; at WPT's own URL
 // (http://web-platform.test/...) when it is under the checkout, so its
 // root-relative links (/fonts/ahem.css) are found; its sheets, images and
-// fonts read from disk; Ahem registered as a font, as WPT's runners have it.
+// fonts read from disk; the same fonts on every machine (DejaVu for the
+// generic families, Ahem and WPT's test fonts installed, none of the system's).
 class WptPage {
 	public static inline var HOST = "http://web-platform.test/";
 
 	public static var wpt = "bin/wpt";
 	static var fonts:Null<FontMatch> = null;
 
+	// (DejaVu 2.37 for the generic families, import-wpt.mjs fetches it)
+	public static inline var DEJAVU = "bin/fonts/dejavu-2.37";
+
 	public static function shared():FontMatch {
 		if (fonts != null) return fonts;
 		// (helder's own shaping, as the lanes run it: the same pixels however the runner is started, on every OS)
 		helder.text.Shaping.engine = helder.text.Shaping.HELDER;
+		// (the same fonts on every machine, none of the system's: DejaVu's
+		// directory alone, then the fonts WPT's runners install)
+		if (!FileSystem.exists(DEJAVU)) throw 'no $DEJAVU (node tests/css/import-wpt.mjs --checkout)';
+		Sys.putEnv("HELDER_FONT_DIRS", FileSystem.fullPath(DEJAVU));
 		fonts = new FontMatch();
-		var ahem = '$wpt/fonts/Ahem.ttf';
-		if (FileSystem.exists(ahem)) fonts.register(File.getBytes(ahem), "Ahem");
+		for (f in installed()) fonts.register(File.getBytes(f), StringTools.endsWith(f, "/Ahem.ttf") ? "Ahem" : null);
 		return fonts;
+	}
+
+	// The font files installed as a test system's: Ahem, CSSTest's, and
+	// Ahem's renamed copies (the tests that ask for one installed: a font
+	// named "White Space", "serif", "inherit"...).
+	public static function installed():Array<String> {
+		var out = ['$wpt/fonts/Ahem.ttf'];
+		for (dir in ['$wpt/fonts/CSSTest', '$wpt/fonts/ahem-extra']) {
+			var names = FileSystem.exists(dir) ? FileSystem.readDirectory(dir) : [];
+			names.sort(Reflect.compare);
+			for (n in names) if (StringTools.endsWith(n.toLowerCase(), ".ttf")) out.push('$dir/$n');
+		}
+		return out.filter(FileSystem.exists);
 	}
 
 	public static function parse(path:String):Document {

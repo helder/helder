@@ -22,6 +22,16 @@ function tests() {
 			equals(at(d, 3, 2), 0x00FF00FF);
 			equals(at(d, 3, 7), 0x000000FF);
 		});
+		test("a font named like a generic family isn't the generic family", () -> {
+			var fonts = new FontMatch();
+			fonts.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "serif");
+			var doc = Dom.parse('<!doctype html><p id=a style=\'font-family: "serif"\'>a</p><p id=b style="font-family: serif">b</p>');
+			var styles = helder.css.CssCascade.styles(doc);
+			function face(id:String)
+				return fonts.face(new BoxStyle(styles.computed(doc.getElementById(id)))).family;
+			equals(face("a"), "Ahem");
+			equals(face("b") == "Ahem", false);
+		});
 		test("a document styled through a CSS module", () -> {
 			final view = helder.css.CssModule.load("helder/css/test-modules/view.module.css");
 			var c = draw('<div class="${view.box}"></div><div class="${view.wide}"></div>');

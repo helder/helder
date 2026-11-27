@@ -75,11 +75,11 @@ class FontMatch {
 		var weight = Std.int(style.number("font-weight", 400));
 		var italic = style.keyword("font-style") != "normal" && style.keyword("font-style") != "";
 		var names = familyNames(style.terms("font-family"));
-		var key = names.join(",") + "/" + weight + (italic ? "i" : "");
+		var key = [for (n in names) (n.generic ? "@" : "") + n.name].join(",") + "/" + weight + (italic ? "i" : "");
 		var f = found.get(key);
 		if (f != null) return f;
-		for (name in names) {
-			f = named(name, weight, italic);
+		for (n in names) {
+			f = n.generic ? generic(n.name, weight, italic) : named(n.name, weight, italic);
 			if (f != null) break;
 		}
 		if (f == null) f = system.match("serif", weight, italic);
@@ -87,17 +87,24 @@ class FontMatch {
 		return f;
 	}
 
-	static function familyNames(terms:Array<CssTerm>):Array<String> {
-		var out = [], word = [];
+	// (each family: a name, or a generic family's keyword, which a font named
+	// like it, "serif" quoted, isn't)
+	static function familyNames(terms:Array<CssTerm>):Array<{name:String, generic:Bool}> {
+		var out = [], word = [], generic = false;
+		function flush() {
+			if (word.length > 0) out.push({name: word.join(" "), generic: generic});
+			word = [];
+			generic = false;
+		}
 		for (t in terms) switch t {
-			case Delim(","):
-				if (word.length > 0) out.push(word.join(" "));
-				word = [];
-			case Ident(v) | Str(v): word.push(v);
-			case Keyword(v): word.push(v);
+			case Delim(","): flush();
+			case Ident(v) | Str(v) | Raw(v): word.push(v);
+			case Keyword(v):
+				word.push(v);
+				generic = true;
 			case _:
 		}
-		if (word.length > 0) out.push(word.join(" "));
+		flush();
 		return out;
 	}
 
@@ -105,17 +112,19 @@ class FontMatch {
 		var key = name.toLowerCase();
 		var list = faces.get(key);
 		if (list != null) return closest(list, weight, italic);
-		switch key {
-			case "serif" | "sans-serif" | "monospace": return system.match(key, weight, italic);
-			case "cursive" | "fantasy" | "math" | "fangsong": return system.match("serif", weight, italic);
-			case "system-ui" | "ui-sans-serif": return system.match("sans-serif", weight, italic);
-			case "ui-serif": return system.match("serif", weight, italic);
-			case "ui-monospace": return system.match("monospace", weight, italic);
-			case _:
-		}
 		if (families == null) families = [for (f in system.families()) f.toLowerCase() => true];
 		return families.exists(key) ? system.match(name, weight, italic) : null;
 	}
+
+	function generic(name:String, weight:Int, italic:Bool):Null<FontFile>
+		return switch name.toLowerCase() {
+			case "serif" | "sans-serif" | "monospace": system.match(name.toLowerCase(), weight, italic);
+			case "cursive" | "fantasy" | "math" | "fangsong" | "ui-serif": system.match("serif", weight, italic);
+			case "system-ui" | "ui-sans-serif" | "ui-rounded": system.match("sans-serif", weight, italic);
+			case "ui-monospace": system.match("monospace", weight, italic);
+			// (a keyword that isn't a generic family: a name)
+			case _: named(name, weight, italic);
+		}
 
 	// (Fonts 4 §5.2: the style first, then the nearest weight, lighter below 400, heavier above 500)
 	static function closest(list:Array<FontFile>, weight:Int, italic:Bool):FontFile {
