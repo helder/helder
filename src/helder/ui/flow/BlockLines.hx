@@ -346,7 +346,9 @@ class BlockLines {
 			// (its marker first, the item's first child)
 			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), rtl, l.lineAvailable(k));
 			// (spans made first, outer ones before inner: the boxes' parts on this line, by their Open item;
-			// then everything adopted in the items' order, the tree's, as paint and a PDF's text follow it)
+			// then everything adopted in the line's order, a span where its first part on the line is, before
+			// what it holds: the tree's order in a line of one direction, as paint and a PDF's text follow it;
+			// a run of the other direction kept as shown, PdfWriter's ActualText giving its logical order)
 			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
 			var start = l.lineFragmentStart(k), end = l.lineFragmentEnd(k);
 			var order = [for (f in start...end) if (l.kind(f) == BoxSpan) f];
@@ -401,8 +403,20 @@ class BlockLines {
 					adopts.set(f, () -> frags.adopt(p.frag, af, x, l.y(f) - p.y + off.y));
 				case _:
 			}
+			var first = new Map<Int, Int>();
+			for (f in start...end) if (l.kind(f) != BoxSpan) {
+				var open = c.box(l.item(f));
+				while (open >= 0) {
+					if (!first.exists(open) || first.get(open) > f) first.set(open, f);
+					open = c.parent(open);
+				}
+			}
+			inline function key(f:Int):Int
+				return l.kind(f) == BoxSpan ? first.get(l.item(f)) ?? f : f;
+			inline function rank(f:Int):Int
+				return l.kind(f) == BoxSpan ? c.depth(l.item(f)) : 1 << 20;
 			var all = [for (f in adopts.keys()) f];
-			all.sort((a, b) -> l.item(a) != l.item(b) ? l.item(a) - l.item(b) : a - b);
+			all.sort((a, b) -> key(a) != key(b) ? key(a) - key(b) : rank(a) != rank(b) ? rank(a) - rank(b) : a - b);
 			for (f in all) adopts.get(f)();
 		}
 		// (a list item with nothing else: a line for its marker, as tall as the marker's)
