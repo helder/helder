@@ -178,16 +178,40 @@ class Box {
 		return state == null && !v ? v : laid().cacheIgnore = v;
 
 	inline function get_cacheMore():Null<Array<Float>>
-		return state == null ? null : state.cacheMore;
+		return state == null || state.epoch != epoch ? null : state.cacheMore;
 
-	inline function set_cacheMore(v:Null<Array<Float>>):Null<Array<Float>>
-		return state == null && v == null ? v : laid().cacheMore = v;
+	inline function set_cacheMore(v:Null<Array<Float>>):Null<Array<Float>> {
+		if (state == null && v == null) return v;
+		var st = fresh();
+		return st.cacheMore = v;
+	}
 
 	inline function get_cacheFragment():Int
-		return state == null ? -1 : state.cacheFragment;
+		return state == null || state.epoch != epoch ? -1 : state.cacheFragment;
 
-	inline function set_cacheFragment(v:Int):Int
-		return state == null && v == -1 ? v : laid().cacheFragment = v;
+	inline function set_cacheFragment(v:Int):Int {
+		if (state == null && v == -1) return v;
+		var st = fresh();
+		return st.cacheFragment = v;
+	}
+
+	// (its state, its fragments of an epoch before let go: those of every layout before a clear)
+	function fresh():BoxState {
+		var st = laid();
+		if (st.epoch != epoch) {
+			st.epoch = epoch;
+			st.cacheFragment = -1;
+			st.cacheMore = null;
+		}
+		return st;
+	}
+
+	// the fragments of every layout so far let go at once (a view's cleared: their numbers are others' now),
+	// every box's cached fragment with them, without a walk of the boxes
+	public static function forgetFragments()
+		epoch++;
+
+	static var epoch = 0;
 
 	inline function get_escapes():Null<Array<helder.ui.flow.Positioned>>
 		return state == null ? null : state.escapes;
@@ -338,6 +362,7 @@ private class BoxState {
 	public var cacheFixedHeight = Math.NaN;
 	public var cacheIgnore = false;
 	public var cacheMore:Null<Array<Float>> = null;
+	public var epoch = 0;
 	public var cacheFragment = -1;
 	public var escapes:Null<Array<helder.ui.flow.Positioned>> = null;
 	public var minContent = Math.NaN;

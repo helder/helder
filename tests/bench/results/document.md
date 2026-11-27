@@ -187,10 +187,10 @@ the whole document at 900 px, from 1280):
 
 | | helder | Chromium 149 | Ladybird 2026.47.8 |
 | --- | ---: | ---: | ---: |
-| load: parsed, styled and laid out whole | 1,929 ms | 1,794 ms | 4,153 ms |
-| a forced relayout at 900 px | 287 ms | 139 ms | 294 ms |
-| RSS after load | 843 MB | 1,176 MB | 2,298 MB |
-| live heap after load | 785 MB | | |
+| load: parsed, styled and laid out whole | 1,681 ms (#482: 1,929) | 1,794 ms | 4,153 ms |
+| a forced relayout at 900 px | 207 ms (#482: 287) | 139 ms | 294 ms |
+| RSS after load | 787 MB (#482: 843) | 1,176 MB | 2,298 MB |
+| live heap after load | 730 MB (#482: 785) | | |
 
 A scroll's paint (the page laid out whole, drawn offscreen a frame at a
 time): a wheel's frame (60 px) allocates nothing at the median; a

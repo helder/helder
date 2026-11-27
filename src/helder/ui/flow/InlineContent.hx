@@ -589,10 +589,15 @@ class InlineContent {
 		pWidth = floats(pWidth, m);
 	}
 
+	var compacted = false;
+
 	// Its columns cut to what they hold (they grow by doubling, from 16 items
 	// and 64 units): a long document keeps one a block, for its lines' hit
 	// tests and its later layouts.
 	public function compact() {
+		// (once: a kept content is laid out again at each width)
+		if (compacted) return;
+		compacted = true;
 		inline function slack(length:Int, used:Int):Bool
 			return length > used + (used >> 2) + 8;
 		if (slack(iKind.length, items)) {
