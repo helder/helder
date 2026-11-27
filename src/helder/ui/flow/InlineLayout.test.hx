@@ -355,6 +355,121 @@ function tests() {
 			equals(texts(l), ["aa", "bb cc"]);
 			equals(l.x(0), 40.0);
 		});
+		test("floats: a line whose first piece does not fit beside them moves down until it fits (CSS 2.1 §9.5)", () -> {
+			// (a 150 by 50 float in 200: a 100 wide inline-block below it, at 0, 50)
+			var beside = (y:Float, h:Float) -> y < 50 ? {offset: 150.0, width: 50.0} : {offset: 0.0, width: 200.0};
+			for (edge in [(y:Float) -> y < 50 ? 50.0 : Math.POSITIVE_INFINITY, null]) {
+				var c = content(c -> c.addAtomic(100, 20, Math.NaN, ahem()));
+				var l = new InlineLayout().layout(c, new InlineConstraints(200, beside, -1, edge));
+				var a = find(l, Atomic);
+				// (its line 23 high: the strut's descent below the inline-block's baseline)
+				equals([l.x(a), l.y(a), l.lineTop(0), l.height], [0.0, 50.0, 50.0, 73.0]);
+			}
+			// (a word too long beside them, overflow-wrap: break-word: moved down, not cut)
+			var w = content(c -> c.addText("aaaaa", ahem(s -> s.overflow = BreakWord)));
+			var l = new InlineLayout().layout(w, new InlineConstraints(200, beside, -1, y -> y < 50 ? 50.0 : Math.POSITIVE_INFINITY));
+			equals([l.lines, l.lineTop(0), l.x(0)], [1, 50.0, 0.0]);
+			// (what fits stays beside them; with floats that never end, the line stays)
+			var fits = new InlineLayout().layout(content(c -> c.addAtomic(40, 20, Math.NaN, ahem())), new InlineConstraints(200, beside));
+			equals([l.lines, fits.lineTop(0), fits.x(0)], [1, 0.0, 150.0]);
+			var never = new InlineLayout().layout(content(c -> c.addAtomic(100, 20, Math.NaN, ahem())),
+				new InlineConstraints(200, (y, h) -> {offset: 150.0, width: 50.0}, -1, y -> Math.POSITIVE_INFINITY));
+			equals(never.lineTop(0), 0.0);
+		});
+		test("a line with only an inline box's edge is not empty (CSS 2.1 §9.4.2), whatever its edges add up to", () -> {
+			// (border-right 20, margin-right -20: 0 wide, a 20 high line in Ahem 20px/1)
+			var box = ahem(s -> {
+				s.size = 20;
+				s.height = 20;
+				s.borders = [0, 20, 0, 0];
+				s.margins = [0, -20, 0, 0];
+			});
+			var l = lay(c -> {
+				c.openBox(box);
+				c.closeBox();
+			}, 200, ahem(s -> {
+				s.size = 20;
+				s.height = 20;
+			}));
+			equals([l.lines, l.lineHeight(0), l.height], [1, 20.0, 20.0]);
+			// (no edges at all: a phantom line, no height)
+			var none = lay(c -> {
+				c.openBox(ahem());
+				c.closeBox();
+			}, 200);
+			equals(none.height, 0.0);
+		});
+		test("text-indent and intrinsic sizes: the first line's, a negative one reducing it (WPT text-indent-intrinsic-003, -004)", () -> {
+			// (12px, the indent -3em; inline-blocks of n em, zero width spaces, breaks: min-content, max-content in em)
+			inline function em(n:Float)
+				return n * 12;
+			var root = ahem(s -> s.indent = em(-3));
+			var block = (w:Float) -> (c:InlineContent) -> c.addAtomic(em(w), em(1), Math.NaN, ahem());
+			var cases:Array<{build:InlineContent->Void, min:Float, max:Float}> = [
+				{build: c -> block(1)(c), min: 0, max: 0},
+				{build: c -> block(5)(c), min: 2, max: 2},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(1)(c);
+				}, min: 1, max: 0},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(3)(c);
+				}, min: 3, max: 1},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(3)(c);
+					c.addText("​", ahem());
+					block(3)(c);
+				}, min: 3, max: 4},
+				{build: c -> {
+					block(4)(c);
+					c.addText("​", ahem());
+					block(3)(c);
+				}, min: 3, max: 4},
+				{build: c -> {
+					block(1)(c);
+					c.addBreak();
+					block(1)(c);
+				}, min: 1, max: 1},
+				{build: c -> {
+					block(5)(c);
+					c.addBreak();
+					block(1)(c);
+				}, min: 2, max: 2}
+			];
+			// (text-indent-intrinsic-001: a positive one, 3em)
+			var plus = ahem(s -> s.indent = em(3));
+			var positive:Array<{build:InlineContent->Void, min:Float, max:Float}> = [
+				{build: c -> block(1)(c), min: 4, max: 4},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(2)(c);
+				}, min: 4, max: 6},
+				{build: c -> {
+					block(1)(c);
+					c.addText("​", ahem());
+					block(6)(c);
+				}, min: 6, max: 10},
+				{build: c -> {
+					block(1)(c);
+					c.addBreak();
+					block(6)(c);
+				}, min: 6, max: 6}
+			];
+			for (k in positive) {
+				var c = content(k.build, plus);
+				equals([InlineLayout.minContent(c), InlineLayout.maxContent(c)], [em(k.min), em(k.max)]);
+			}
+			for (k in cases) {
+				var c = content(k.build, root);
+				equals([Math.max(0, InlineLayout.minContent(c)), Math.max(0, InlineLayout.maxContent(c))], [em(k.min), em(k.max)]);
+			}
+		});
 		test("min-content and max-content", () -> {
 			var c = content(c -> c.addText("aa bbb c", ahem()));
 			equals(InlineLayout.minContent(c), 48.0);
@@ -373,6 +488,62 @@ function tests() {
 			for (i in 0...l.lines)
 				if (l.lineWidth(i) > k.width + 1e-3 && contentRight(l, i) > k.width + 1e-3) assert(unbreakable(l, i), 'line $i: ${l.lineWidth(i)} > ${k.width}');
 		}));
+		test("resumed at line k's break: the same lines as laid out in one go, their tops from 0", () -> property(cases(), k -> {
+			var c = k.content, whole = new InlineLayout().layout(c, new InlineConstraints(k.width));
+			assume(whole.lines > 1);
+			for (line in 1...whole.lines) {
+				var token = whole.breakAt(line);
+				var rest = new InlineLayout().layout(c, new InlineConstraints(k.width), token);
+				equals([rest.firstLine, rest.lines], [line, whole.lines - line], 'from line $line');
+				var top = whole.lineTop(line);
+				var a = [
+					for (f in whole.lineFragmentStart(line)...whole.fragments)
+						[whole.kind(f), whole.x(f), whole.y(f) - top, whole.fragmentWidth(f), whole.fragmentHeight(f), whole.textStart(f), whole.textEnd(f)]
+				];
+				var b = [
+					for (f in 0...rest.fragments)
+						[rest.kind(f), rest.x(f), rest.y(f), rest.fragmentWidth(f), rest.fragmentHeight(f), rest.textStart(f), rest.textEnd(f)]
+				];
+				equals(b, a, 'from line $line');
+				approx(rest.height, whole.height - top, 1e-6);
+				equals(rest.endBreak(), null);
+			}
+		}));
+		test("a break token: the boxes open there continue without their start edge, at another width too", () -> {
+			var box = ahem(s -> s.edges(0, 2, 8));
+			var c = content(c -> {
+				c.addText("x ", ahem());
+				c.openBox(box);
+				c.addText("aa bb cc", ahem());
+				c.closeBox();
+			});
+			// (40 wide: "x" alone, then the box's lines)
+			var whole = new InlineLayout().layout(c, new InlineConstraints(60));
+			var token = whole.breakAt(2);
+			equals([token.line, token.openBoxes.length, token.openBoxes[0]], [2, 1, 1]);
+			var rest = new InlineLayout().layout(c, new InlineConstraints(200), token);
+			equals(rest.lines, 1);
+			equals(find(rest, BoxStart), -1);
+			assert(find(rest, BoxEnd) >= 0, "its end edge");
+			// (the span from the line's left, no start edge: "bb cc" and the end edge, 80 + 10)
+			var span = find(rest, BoxSpan);
+			equals([rest.x(span), rest.fragmentWidth(span)], [0.0, 90.0]);
+			// (laid out up to its third line, the rest from there: the start's edge on the first part only)
+			var head = new InlineLayout().layout(c, new InlineConstraints(60));
+			assert(find(head, BoxStart) >= 0, "its start edge");
+			equals(head.breakAt(1).openBoxes.length, 0);
+			// (a continuation's indent: only line 0's)
+			var indented = content(c -> c.addText("aa bb", ahem()), ahem(s -> s.indent = 20));
+			var all = new InlineLayout().layout(indented, new InlineConstraints(60));
+			equals([all.x(0), new InlineLayout().layout(indented, new InlineConstraints(60), all.breakAt(1)).x(0)], [20.0, 0.0]);
+			// (floats measured from the continuation's own top)
+			var asked = [];
+			new InlineLayout().layout(c, new InlineConstraints(200, (y, h) -> {
+				asked.push(y);
+				return {offset: 0.0, width: 200.0};
+			}), token);
+			equals(asked[0], 0.0);
+		});
 		test("laid out twice at a width: the same", () -> property(cases(), k -> {
 			var c = k.content;
 			var a = snapshot(new InlineLayout().layout(c, new InlineConstraints(k.width)));
