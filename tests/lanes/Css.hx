@@ -30,6 +30,9 @@ class Css {
 		// (BLESS=1: interpolation-manifest.json's pending cases)
 		exe("bin/css/CssInterpolationCheck", cps(["src", "tests/css"]).concat(["-main", "CssInterpolationCheck"]));
 		run(exePath("bin/css/CssInterpolationCheck", HOST), []);
+		// (BLESS=1: gcpm-manifest.json's pending cases)
+		exe("bin/css/CssGcpmCheck", cps(["src", "tests/css"]).concat(["-main", "CssGcpmCheck"]));
+		run(exePath("bin/css/CssGcpmCheck", HOST), []);
 		themes();
 		modules();
 	}

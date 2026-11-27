@@ -136,6 +136,7 @@ class CssReftestCheck {
 	// (tests this engine is not for: paged media, and what needs a script or SVG)
 	static function skipped(dir:String, t:Dynamic):Null<String> {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
+		if (dir.startsWith("css/css-gcpm")) return null;
 		if (needs.contains("print") || paged(dir)) return "paged: printed pages, not a screen (stage 7)";
 		if (needs.contains("script") || needs.contains("wait")) return "script: no JavaScript";
 		if (t.type == "noref") return manual(dir, t);
@@ -170,6 +171,8 @@ class CssReftestCheck {
 
 	static function run(dir:String, t:Dynamic):{pass:Bool, why:String} {
 		var path = '${WptPage.wpt}/$dir/${t.name}';
+		// (GCPM's running heads, leaders and cross-references: the paged host draws them; CssGcpmCheck reads them)
+		if (dir.startsWith("css/css-gcpm")) return {pass: false, why: "the paged host draws it (no golden: Chromium has no GCPM)"};
 		try {
 			var test = draw(path);
 			if (t.type == "crash") return {pass: true, why: ""};
@@ -341,6 +344,7 @@ class CssReftestCheck {
 	];
 
 	static function stage(dir:String, t:Dynamic):String {
+		if (dir.startsWith("css/css-gcpm")) return "paged";
 		var short = dir.startsWith("css/CSS2/") ? dir.substr(9) : dir;
 		var s = STAGES.get(short);
 		if (s != null) return s;

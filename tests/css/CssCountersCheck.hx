@@ -191,7 +191,7 @@ class CssCountersCheck {
 		return parts == null ? "" : [for (p in parts) switch p {
 			case Text(t): t;
 			case Image(_): "[image]";
-			case Other(_): "[other]";
+			case _: "[other]";
 		}].join("");
 
 	static function report(pass:Int, total:Int, statuses:Map<String, Int>, pending:Map<String, Array<String>>) {

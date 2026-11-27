@@ -9,9 +9,42 @@ import helder.dom.Node;
 enum CssGeneratedPart {
 	Text(text:String);
 	Image(image:CssTerm);
-	// what the paged stage resolves (string(), content(), leader(), target-counter()...)
+	// GCPM 3, what the paged host fills: a named string's value on the page
+	// (CssRunning), a running element, a leader's fill to the line's room
+	StringValue(name:String, which:String);
+	RunningElement(name:String, which:String);
+	Leader(fill:String);
+	// a cross-reference: its text once resolveTargets has run
+	Target(target:CssTarget);
 	Other(term:CssTerm);
 }
+
+// A cross-reference (Content 3 §3: target-counter(), target-counters(),
+// target-text()): the element its fragment names (#id, in the document),
+// what of it, and its text, null until CssCounters.resolveTargets fills
+// it (a page counter needs the pages).
+class CssTarget {
+	public final element:Null<Element>;
+	// "counter", "counters" or "text"
+	public final kind:String;
+	// the counter's name, or target-text()'s part (content, before, after, first-letter)
+	public final name:String;
+	public final separator:String;
+	public final style:String;
+	@:allow(helder.css.CssCounters) public var text(default, null):Null<String> = null;
+
+	@:allow(helder.css.CssCounters)
+	function new(element, kind, name, separator, style) {
+		this.element = element;
+		this.kind = kind;
+		this.name = name;
+		this.separator = separator;
+		this.style = style;
+	}
+}
+
+// A heading's bookmark (GCPM 3 §4): its level, label and state.
+typedef CssBookmark = {level:Int, label:String, open:Bool}
 
 // Counters and quotes through a document in tree order (Lists 3 §4,
 // Content 3 §3), as the box tree walks it: each element, then its
@@ -39,6 +72,11 @@ class CssCounters {
 	// (per entered element, the names its children made: dropped when it exits)
 	final levels:Array<Array<String>> = [[]];
 	var quotes = 0;
+	// (cross-references made, and per element with an id, its counters and
+	// its ::before's and ::after's text, as the walk met them)
+	final targets:Array<CssTarget> = [];
+	final snapshots = new haxe.ds.ObjectMap<Element, Map<String, Array<Int>>>();
+	final pseudoText = new haxe.ds.ObjectMap<Element, Map<String, String>>();
 
 	public function new(styles:CssStyles) {
 		this.styles = styles;
@@ -80,6 +118,8 @@ class CssCounters {
 			case Counter(name, _) | Counters(name, _, _) if (innermost(name) == null): make(level, name, 0, false);
 			case _:
 		}
+		// (an element a cross-reference may name: its counters as they are here)
+		if (pseudo == null && el.getAttribute("id") != null) snapshots.set(el, [for (name => list in scopes) if (list.length > 0) name => [for (c in list) c.value]]);
 		levels.push([]);
 	}
 
@@ -109,7 +149,131 @@ class CssCounters {
 	public function content(el:Element, ?pseudo:String):Null<Array<CssGeneratedPart>> {
 		var s = styles.computed(el, pseudo);
 		var items = s.generated();
-		return items == null ? null : resolve(items, el, s);
+		if (items == null) return null;
+		var out = resolve(items, el, s);
+		if ((pseudo == "before" || pseudo == "after") && el.getAttribute("id") != null) {
+			var m = pseudoText.get(el);
+			if (m == null) pseudoText.set(el, m = new Map());
+			m.set(pseudo, plain(out));
+		}
+		return out;
+	}
+
+	// The element's string-set (GCPM 3 §1.1), each name's value evaluated
+	// here: strings, counters as they are, attributes, content() of the
+	// element (text: its text, white space collapsed; before, after,
+	// marker; first-letter), quotes at their depth (left as they were);
+	// page and pages: the page counters, once the host knows them (0: as
+	// the counters in scope have them). Call it after entering the element.
+	public function strings(el:Element, page = 0, pages = 0):Array<{name:String, value:String}> {
+		var s = styles.computed(el);
+		this.page = page;
+		this.pages = pages;
+		return [for (set in CssItems.strings(s.terms(StringSet))) {name: set.name, value: text(set.items, el, s)}];
+	}
+
+	var page = 0;
+	var pages = 0;
+
+	// The element's bookmark (GCPM 3 §4: bookmark-level, its label
+	// evaluated here as string-set's, bookmark-state); null for a level of
+	// none. HTML's headings have their levels (WeasyPrint's UA rules).
+	public function bookmark(el:Element):Null<CssBookmark> {
+		var s = styles.computed(el);
+		var level = switch s.terms(BookmarkLevel) {
+			case [Number(n, _)]: Std.int(n);
+			case _: return null;
+		}
+		var label = CssItems.content(s.terms(BookmarkLabel)) ?? [ContentOf("text")];
+		page = pages = 0;
+		return {level: level, label: text(label, el, s), open: s.keyword(BookmarkState) != "closed"};
+	}
+
+	// Every cross-reference's text, once the pages are known (pageOf: the
+	// page an element starts on, for target-counter(..., page)); the
+	// walk must have passed their targets.
+	public function resolveTargets(pageOf:Element->Int) {
+		for (t in targets) t.text = if (t.element == null) "" else switch t.kind {
+			case "counter" if (t.name == "page"): format(pageOf(t.element), t.style);
+			case "counter":
+				var list = snapshots.get(t.element)?.get(t.name);
+				format(list == null ? 0 : list[list.length - 1], t.style);
+			case "counters":
+				var list = snapshots.get(t.element)?.get(t.name) ?? [0];
+				[for (v in list) format(v, t.style)].join(t.separator);
+			case _: switch t.name {
+					case "before" | "after": pseudoText.get(t.element)?.get(t.name) ?? "";
+					case "first-letter": firstLetter(textOf(t.element));
+					case _: textOf(t.element);
+				}
+		}
+	}
+
+	// (items as text where they are: what string-set and bookmark-label take)
+	function text(items:Array<CssContentItem>, el:Element, s:CssStyle):String {
+		var b = new StringBuf();
+		for (item in items) switch item {
+			case Text(t): b.add(t);
+			case Counter("page", style) if (page > 0): b.add(format(page, style));
+			case Counter("pages", style) if (pages > 0): b.add(format(pages, style));
+			case Counter(name, style): b.add(format(value(name), style));
+			case Counters(name, separator, style): b.add([for (v in values(name)) format(v, style)].join(separator));
+			case Attribute(name): b.add(el.getAttribute(name) ?? "");
+			case Quote(kind): b.add(quoteAt(kind, s));
+			case ContentOf(part = "before" | "after"):
+				var p = styles.computed(el, part), items = p.generated();
+				if (items != null) b.add(text(items, el, p));
+			case ContentOf("marker"):
+				var m = s.box.display.listItem ? marker(el) : null;
+				if (m != null) b.add(plain(m));
+			case ContentOf("first-letter"): b.add(firstLetter(textOf(el)));
+			case ContentOf(_): b.add(textOf(el));
+			case _:
+		}
+		return b.toString();
+	}
+
+	// (an element's text, white space collapsed as white-space: normal does)
+	static function textOf(el:Element):String
+		return StringTools.trim(~/[ \t\n\r\x0C]+/g.replace(el.textContent ?? "", " "));
+
+	// (CSS 2.1 §5.12.2's first letter: punctuation before and after it with it)
+	static function firstLetter(text:String):String {
+		var i = 0, n = text.length;
+		// (Unicode's punctuation where it is common: ASCII's, Latin-1's, General Punctuation, CJK's)
+		inline function punct(c:Int):Bool
+			return c < 0x80 ? c > 0x20 && !(c >= "0".code && c <= "9".code || c >= "A".code && c <= "Z".code || c >= "a".code && c <= "z".code)
+				: c == 0xA1 || c == 0xA7 || c == 0xAB || c == 0xB6 || c == 0xB7 || c == 0xBB || c == 0xBF || c >= 0x2010 && c <= 0x2027
+				|| c >= 0x2030 && c <= 0x205E || c >= 0x3001 && c <= 0x3003 || c >= 0x3008 && c <= 0x3011;
+		while (i < n && punct(StringTools.fastCodeAt(text, i))) i++;
+		if (i < n) i++;
+		while (i < n && punct(StringTools.fastCodeAt(text, i))) i++;
+		return text.substr(0, i);
+	}
+
+	static function plain(parts:Array<CssGeneratedPart>):String
+		return [for (p in parts) switch p {
+			case Text(t): t;
+			case _: "";
+		}].join("");
+
+	// (a cross-reference's element: a fragment, "#id", in the element's document)
+	function target(href:CssTerm, el:Element):Null<Element> {
+		var u = switch href {
+			case Str(v) | Url(v, _): v;
+			case Func("attr", args):
+				var name = switch args[0] {
+					case Ident(n): n;
+					case _: null;
+				}
+				name == null ? null : el.getAttribute(name);
+			case _: null;
+		}
+		if (u == null) return null;
+		var hash = u.indexOf("#");
+		if (hash < 0) return null;
+		var id = StringTools.urlDecode(u.substr(hash + 1));
+		return id == "" ? null : el.ownerDocument?.getElementById(id);
 	}
 
 	// A list item's marker: ::marker's content, else list-style-image, else
@@ -152,9 +316,22 @@ class CssCounters {
 			case Counters(name, separator, style): text([for (v in values(name)) format(v, style)].join(separator));
 			case Attribute(name): text(el.getAttribute(name) ?? "");
 			case Quote(kind): text(quote(kind, s));
+			case StringValue(name, which): out.push(StringValue(name, which));
+			case RunningElement(name, which): out.push(RunningElement(name, which));
+			case Leader(fill): out.push(Leader(fill));
+			case ContentOf(_): text(this.text([item], el, s));
+			case TargetCounter(href, name, style): out.push(Target(made(new CssTarget(target(href, el), "counter", name, "", style))));
+			case TargetCounters(href, name, separator, style):
+				out.push(Target(made(new CssTarget(target(href, el), "counters", name, separator, style))));
+			case TargetText(href, part): out.push(Target(made(new CssTarget(target(href, el), "text", part, "", ""))));
 			case Other(t): out.push(Other(t));
 		}
 		return out;
+	}
+
+	function made(t:CssTarget):CssTarget {
+		targets.push(t);
+		return t;
 	}
 
 	// (Content 3 §3.4: the depth's pair, the last one past the list's end; auto: English's)
@@ -182,6 +359,14 @@ class CssCounters {
 				"";
 			case _: "";
 		}
+	}
+
+	// (a quote's text at the depth, the depth left as it is: string-set's)
+	function quoteAt(kind:String, s:CssStyle):String {
+		var depth = quotes;
+		var t = quote(kind, s);
+		quotes = depth;
+		return t;
 	}
 
 	static final AUTO = [["“", "”"], ["‘", "’"]];

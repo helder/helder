@@ -187,6 +187,75 @@ function tests() {
 				n += l.reversed ? -1 : 1;
 			}
 		}, {cases: 100}));
+		test("GCPM's content parts", () -> {
+			var doc = Dom.parse('<!doctype html><style>p::after { content: "a" string(title, last) element(head) leader(dotted) leader("-") target-counter("#t", page) }</style><p id=p>x</p><h1 id=t>T</h1>');
+			var styles = CssCascade.styles(doc);
+			var counters = new CssCounters(styles);
+			var p = doc.getElementById("p");
+			counters.enter(p);
+			var list = counters.content(p, "after");
+			equals(Std.string([for (x in list) switch x {
+				case Target(t): 'Target(${t.kind},${t.name},${t.element?.localName})';
+				case x: Std.string(x);
+			}]), "[Text(a),StringValue(title,last),RunningElement(head,first),Leader(. ),Leader(-),Target(counter,page,h1)]");
+		});
+		test("string-set evaluated at its element", () -> {
+			var doc = Dom.parse('<!doctype html><style>body { counter-reset: h } h2 { counter-increment: h; string-set: title content(), number counter(h, upper-roman) ". " content(text) } h2::before { content: "§" } h3 { string-set: note content(before) "/" content(first-letter) attr(id) } h3::before { content: "(n)" }</style><h2>  One  <i>two</i> </h2><h2>Three</h2><h3 id=x>"Quoted</h3><p>none</p>');
+			var styles = CssCascade.styles(doc);
+			var counters = new CssCounters(styles);
+			var out = [];
+			for (el in [for (e in doc.body.children) e]) {
+				counters.enter(el);
+				for (s in counters.strings(el)) out.push('${s.name}=${s.value}');
+				counters.exit(el);
+			}
+			equals(out.join("|"), "title=One two|number=I. One two|title=Three|number=II. Three|note=(n)/\"Qx");
+		});
+		test("running elements and bookmarks", () -> {
+			var doc = Dom.parse('<!doctype html><style>header { position: running(head) } h2 { bookmark-label: "Part " counter(h) } section { counter-increment: h } .closed { bookmark-state: closed }</style><header id=r>Head</header><h1>Title  one</h1><section><h2 class=closed>A</h2></section><p>p</p>');
+			var styles = CssCascade.styles(doc);
+			equals(styles.computed(doc.getElementById("r")).running(), "head");
+			equals(styles.computed(doc.body).running(), null);
+			var counters = new CssCounters(styles);
+			var out = [];
+			function walk(el:Element) {
+				counters.enter(el);
+				var b = counters.bookmark(el);
+				if (b != null) out.push('${b.level} ${b.label} ${b.open}');
+				for (c in [for (e in el.children) e]) walk(c);
+				counters.exit(el);
+			}
+			walk(doc.documentElement);
+			equals(out.join("|"), "1 Title one true|2 Part 1 false");
+		});
+		test("cross-references resolved once the pages are known", () -> {
+			var doc = Dom.parse('<!doctype html><style>body { counter-reset: chapter } h1 { counter-increment: chapter } h1::before { content: "Ch. " counter(chapter) } a::after { content: target-counter(attr(href url), page) " " target-counter(attr(href), chapter, upper-roman) " " target-counters(attr(href), chapter, ".") " " target-text(attr(href)) " " target-text(attr(href), before) " " target-text(attr(href), first-letter) " " target-counter("#none", page) }</style><a href="#b">see</a><h1 id=a>Alpha</h1><h1 id=b>Beta</h1>');
+			var styles = CssCascade.styles(doc);
+			var counters = new CssCounters(styles);
+			var link = null;
+			function walk(el:Element) {
+				counters.enter(el);
+				for (p in ["before", "after"]) if (styles.computed(el, p).generated() != null) {
+					counters.enter(el, p);
+					var c = counters.content(el, p);
+					if (el.localName == "a") link = c;
+					counters.exit(el, p);
+				}
+				for (c in [for (e in el.children) e]) walk(c);
+				counters.exit(el);
+			}
+			walk(doc.documentElement);
+			function texts()
+				return [for (x in link) switch x {
+					case Target(t): t.text;
+					case Text(t): t;
+					case _: "?";
+				}].join("");
+			// (unresolved until the pages are known)
+			equals(texts(), "null null null null null null null");
+			counters.resolveTargets(el -> el.getAttribute("id") == "b" ? 7 : 1);
+			equals(texts(), "7 II 2 Beta Ch. 2 B ");
+		});
 	});
 }
 
