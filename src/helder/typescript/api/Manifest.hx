@@ -182,40 +182,6 @@ class Manifest {
 			keep.push(macro keep.push($i{name}));
 			m.getVia = keepIdent + "_" + name;
 		}
-		// (an inline method: under full DCE hxmc makes no function of it, every
-		// call inlined, so a wrapper of the keep class calls it, via: <keep
-		// class>_<wrapper>; a generic one's types are its own: left as it is)
-		function inlineMethod(f:ClassField, m:Dynamic, isStatic:Bool):Bool {
-			if (m.kind != "method" || !f.kind.match(FMethod(MethInline)) || f.params.length > 0 || (!isStatic && cls.params.length > 0)) return false;
-			var params = switch Context.follow(f.type) {
-				case TFun(a, r): {args: a, ret: r};
-				case _: return false;
-			}
-			var args:Array<FunctionArg> = isStatic ? [] : [{name: "self", type: self}], call:Array<Expr> = [];
-			for (i in 0...params.args.length) {
-				var a = params.args[i], n = "a" + i;
-				args.push({name: n, opt: a.opt, type: Context.toComplexType(a.t)});
-				call.push(macro $i{n});
-			}
-			var n = f.name, name = "__inline_" + f.name;
-			var target = isStatic ? macro @:privateAccess $p{tpath}.$n : macro @:privateAccess self.$n;
-			var none = switch Context.follow(params.ret) {
-				case TAbstract(_.get() => {name: "Void", pack: []}, _): true;
-				case _: false;
-			}
-			var body = none ? macro $target($a{call}) : macro return $target($a{call});
-			wrappers.push({name: name, access: [APublic, AStatic], kind: FFun({args: args, ret: Context.toComplexType(params.ret), expr: body}), pos: pos});
-			// (named by a call never run: a struct can be no value of the keep's array)
-			var nulls = [for (_ in 0...args.length) macro cast(null : Dynamic)];
-			keep.push(none || !struct(params.ret) ? macro $i{name}($a{nulls}) : {
-				var ret = Context.toComplexType(params.ret);
-				macro {
-					var result:$ret = $i{name}($a{nulls});
-				};
-			});
-			m.via = keepIdent + "_" + name;
-			return true;
-		}
 		for (f in c.statics) {
 			if (coroutine(f, statics, true)) continue;
 			var m = member(f, t);
@@ -224,7 +190,7 @@ class Manifest {
 			inlineGetter(f, m, true);
 			Reflect.setField(statics, f.name, m);
 			var n = f.name;
-			if (m.kind != "const" && m.mount != true && !inlineMethod(f, m, true)) keep.push(named(macro @:privateAccess $p{tpath}.$n, f));
+			if (m.kind != "const" && m.mount != true) keep.push(named(macro @:privateAccess $p{tpath}.$n, f));
 			// (a static property's setter: written, never run)
 			if (m.set != null) keep.push(macro @:privateAccess $p{tpath}.$n = cast(null : Dynamic));
 		}
@@ -237,15 +203,8 @@ class Manifest {
 			inlineGetter(f, m, false);
 			Reflect.setField(members, f.name, m);
 			var n = f.name;
-			if (inlineMethod(f, m, false)) {
-			} else if (m.kind == "method" || m.get != null) {
+			if (m.kind == "method" || m.get != null) {
 				keep.push(m.kind == "method" ? named(macro @:privateAccess o.$n, f, self, n) : macro keep.push(@:privateAccess o.$n));
-				any = true;
-			} else {
-				// (a plain field the program reads: full DCE keeps what is read)
-				keep.push(macro {
-					var value = @:privateAccess o.$n;
-				});
 				any = true;
 			}
 			if (m.set != null) {
