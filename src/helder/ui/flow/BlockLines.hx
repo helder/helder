@@ -311,9 +311,31 @@ class BlockLines {
 			}
 			return (cast c.style(i) : BoxInline).box;
 		}
+		var root = (cast c.root : BoxInline).box, rtl = root.style.rtl, align = root.style.keyword("text-align");
+		var startAligned = align == "" || align == "start" || align == "justify" || align == (rtl ? "right" : "left");
 		var lines = 0, baseline = Math.NaN;
 		for (k in from...to) {
 			var top = l.lineTop(k), h = l.lineHeight(k);
+			// (a leader's line: the leader takes what the line leaves, its copies whole from the end, so
+			// what follows it is at the line's end, GCPM 3 §1.1, as WeasyPrint's: the room before them)
+			var gap = 0.0, lx = 0.0, lr = 0.0;
+			if (built.leaders.length > 0 && startAligned)
+				for (f in l.lineFragmentStart(k)...l.lineFragmentEnd(k))
+					if (l.kind(f) == TextRun && textBox(l.item(f)).flags & Box.LEADER != 0) {
+						gap = Math.max(0, l.lineAvailable(k) - l.lineWidth(k));
+						lx = l.x(f);
+						lr = lx + l.fragmentWidth(f);
+						break;
+					}
+			// (a span around the leader, from before it: as much wider)
+			inline function around(f:Int):Bool {
+				var x = l.x(f), w = l.fragmentWidth(f);
+				return gap > 0 && l.kind(f) == BoxSpan && (rtl ? x + w > lr + 1e-6 && x <= lx + 1e-6 : x < lx - 1e-6 && x + w >= lr - 1e-6);
+			}
+			inline function fx(f:Int):Float {
+				var x = l.x(f), w = l.fragmentWidth(f);
+				return gap == 0 ? x : rtl ? (x + w <= lr + 1e-6 || around(f) ? x - gap : x) : (x >= lx - 1e-6 ? x + gap : x);
+			}
 			var line = frags.add(Fragments.LINE, (cast c.root : BoxInline).box, l.lineAvailable(k), h);
 			frags.adopt(frag, line, ox, oy + top);
 			frags.setBaseline(line, l.lineBaseline(k));
@@ -322,7 +344,7 @@ class BlockLines {
 				baseline = top + l.lineBaseline(k);
 			}
 			// (its marker first, the item's first child)
-			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), (cast c.root : BoxInline).box.style.rtl, l.lineAvailable(k));
+			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), rtl, l.lineAvailable(k));
 			// (spans made first, outer ones before inner: the boxes' parts on this line, by their Open item;
 			// then everything adopted in the items' order, the tree's, as paint and a PDF's text follow it)
 			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
@@ -342,7 +364,7 @@ class BlockLines {
 				var p = c.parent(open);
 				while (p >= 0 && !spanOf.exists(p)) p = c.parent(p);
 				var px = p >= 0 ? spanX.get(p) : 0.0, py = p >= 0 ? spanY.get(p) : top, pf = p >= 0 ? spanOf.get(p) : line;
-				var sf = frags.add(Fragments.SPAN, box, l.fragmentWidth(f), l.fragmentHeight(f));
+				var sf = frags.add(Fragments.SPAN, box, l.fragmentWidth(f) + (around(f) ? gap : 0), l.fragmentHeight(f));
 				var starts = false, ends = false;
 				for (g in start...end) if (l.item(g) == open) switch l.kind(g) {
 					case BoxStart: starts = true;
@@ -355,10 +377,10 @@ class BlockLines {
 				frags.setRange(sf, starts ? 0 : Box.NO_START, ends ? 0 : Box.NO_END);
 				frags.setBaseline(sf, l.ascent(f));
 				var off = BlockFlow.offset(box, l.lineAvailable(k), Math.NaN);
-				var at = {pf: pf, sf: sf, x: l.x(f) - px + off.x, y: l.y(f) - py + off.y};
+				var at = {pf: pf, sf: sf, x: fx(f) - px + off.x, y: l.y(f) - py + off.y};
 				adopts.set(f, () -> frags.adopt(at.pf, at.sf, at.x, at.y));
 				spanOf.set(open, sf);
-				spanX.set(open, l.x(f));
+				spanX.set(open, fx(f));
 				spanY.set(open, l.y(f));
 			}
 			for (f in start...end) switch l.kind(f) {
@@ -366,7 +388,8 @@ class BlockLines {
 					var item = l.item(f);
 					var p = parentOf(item);
 					var box = textBox(item);
-					adopts.set(f, () -> text(space, l, f, box, c, p.frag, l.x(f) - p.x, l.y(f) - p.y));
+					var x = fx(f) - p.x;
+					adopts.set(f, () -> text(space, l, f, box, c, p.frag, x, l.y(f) - p.y));
 				case Atomic:
 					var item = l.item(f);
 					var af = atomicFrag.get(item);
@@ -374,7 +397,8 @@ class BlockLines {
 					var p = parentOf(item);
 					var b = atomicBox.get(item);
 					var off = BlockFlow.offset(b, l.lineAvailable(k), Math.NaN);
-					adopts.set(f, () -> frags.adopt(p.frag, af, l.x(f) - p.x + off.x, l.y(f) - p.y + off.y));
+					var x = fx(f) - p.x + off.x;
+					adopts.set(f, () -> frags.adopt(p.frag, af, x, l.y(f) - p.y + off.y));
 				case _:
 			}
 			var all = [for (f in adopts.keys()) f];
