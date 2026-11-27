@@ -55,6 +55,14 @@ function tests() {
 		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
 		equals(again?.failure, f.failure);
 	});
+	var known = test("a finding still open (known) leaves its cases out, that cause alone: the others still found", () -> {
+		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0,
+			known: [{failure: "is outside the window", why: "open"}]}, {cases: 200, seed: 0});
+		equals(f, null);
+		var g = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"]),
+			known: [{failure: "is outside the window", why: "open"}]}, {cases: 200, seed: 0});
+		assert(g != null && g.failure.indexOf("its anchor button gone") > 0, g?.failure);
+	});
 	var orphan = test("a popup anchored to a button made again: found, shrunk to its three steps", () -> {
 		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200, seed: 0});
 		assert(f != null, "found");
@@ -109,7 +117,7 @@ function tests() {
 	});
 	#if (hxmc.target == "wasm32-wasi")
 	// (a robustness property's watchdog and the store's files: natively)
-	for (t in [right, outside, orphan, sealed])
+	for (t in [right, outside, known, orphan, sealed])
 		t.skip();
 	#end
 }

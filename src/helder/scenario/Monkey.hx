@@ -216,6 +216,12 @@ class Monkey {
 			throw control;
 		}
 		if (failed() == 0) return;
+		// (a finding still open (known): no case of this run's, the rest going on)
+		var why = messages[0] ?? "";
+		if (Lambda.exists(def.known ?? [], k -> why.indexOf(k.failure) >= 0)) {
+			@:privateAccess Runner.capture.resize(0);
+			throw new Rejected();
+		}
 		// (another invariant broken while shrinking: not the failure being shrunk)
 		if (target != null && first != target) {
 			@:privateAccess Runner.capture.resize(0);
@@ -622,6 +628,10 @@ typedef MonkeyDef = {
 	@:optional var texts:Gen<String>;
 	// invariants left out, by name (Monkey.INVARIANTS, the checks')
 	@:optional var except:Array<String>;
+	// findings still open: a case whose first failure holds one's text is
+	// rejected, not failed (that cause alone; every other failure counts),
+	// each with why (one fixed leaves the list)
+	@:optional var known:Array<{failure:String, why:String}>;
 	// whether the program moves by design now (asked in the case's screen:
 	// an animated image looping, a video playing): settles and steady not
 	// asked of it then
