@@ -30,7 +30,7 @@
 | root text: sans-serif, 14, 400, line height 1.25 (a multiple), black | Style.hx:15-19 | `:root { font: 400 14px/1.25 sans-serif; color: #000 }` |
 | `overflowWrap` BreakWord at the root | Node.hx:1007 | `:root { overflow-wrap: break-word }` |
 | the root's cursor Default | Cursor.hx | `:root { cursor: default }` |
-| the window's clear colour `#F4F4F5` | UiWindow.hx:130 | `:root { background-color: #f4f4f5 }` |
+| the window's clear colour `#F4F4F5` | UiWindow.hx:130 | none: the window's, not the root's (ENGINE.md) |
 | scrollbar thumb `0x59000000`, no track | Ui.hx:173 | `:root { scrollbar-color: rgb(0 0 0 / .35) transparent }` |
 | `<text>` and the HTML names on it: a box, its runs one paragraph; inside a text, runs | TextNode.hx:84-104 | `text, p, h1... { display: block }`, nested `display: inline` |
 | `<scroll>` | NodeRenderer.hx:117 | `scroll { overflow: scroll }` |
@@ -52,27 +52,71 @@ maps them (hover, `:active`, `:focus-visible`, `[data-state=checked]`,
 control's state). `h1`-`h6`, `strong`, `em`, `code` have no default look
 either: Look.base's slots style them.
 
-## What CSS can't say (a property of our own, `-helder-...`, or a rethink)
+## Properties of our own, and the rethinks (a design note)
 
-| helder.ui | Where | Note |
-| --- | --- | --- |
-| Liquid Glass `<glass>` (`tint`, `interactive`, `variant`, glass merging by `glassSpacing`) | Glass.hx, GlassGroup.hx | a system material; `backdrop-filter` only approximates it: `-helder-material` |
-| window backdrops (blur, mica, sidebar, glass) | UiWindow.hx:52-55 | the window's, not a box's: `-helder-backdrop` on the root |
-| scrollbar art (Plain, MacOverlay, MacLegacy), overlay bars that fade and take no room | ScrollbarLook.hx, Scrolling.hx | CSS's bars take room (`scrollbar-gutter`); `-helder-scrollbar-look` |
-| the focus ring the window draws (`outlineStyle` Auto) | Ui.hx:1356-1367 | `outline-style: auto` is the nearest; the ring's colour and offset are the window's |
-| rings (`ring*`: width, colour, offset, inset) composed over the box shadow | Style.hx:218-228 | box-shadow layers, or custom properties as Tailwind's `--tw-ring-*` |
-| a box shadow without a colour is `#00000040`, not currentcolor | Shadow.hx:12-22 | a rule can't change a shadow's default colour |
-| `textOverflow` Middle (an ellipsis in the middle) | TextOverflow.hx | `-helder-text-overflow: middle` |
-| `zIndex` among siblings only, no stacking contexts | Style.hx:269-271 | CSS's z-index makes stacking contexts; `isolation`/contexts differ |
-| `order` changes paint and hit order too | Style.hx:267 | CSS's order is layout only |
-| `display: block` as a column whose items neither grow nor shrink | Display.hx | CSS's block is flow layout |
-| `lineHeightPx` over `lineHeight` on one node; `"normal"` as inherited 1.25 | StyleAttrs.hx:83-93 | CSS has one line-height; normal is the font's |
-| an own value equal to its default counts as unset (`Rules.keep`) | Rules.hx:12-14 | CSS's style attribute wins whatever its value |
-| motion, layout animation (`motion`, `matched`, `ride`), function-valued states | NodeRenderer.hx:339-400 | transitions and animations only in part |
-| window chrome (`dragRegion`, `titleHit`, `<WindowControls>`) | NodeRenderer.hx:286, WindowButtons.hx | `app-region` (non-standard) is the nearest |
-| `host="native"` controls | Host.hx | ours |
-| part shaders (`PartShader`) | Recipe.hx | ours |
-| `<icon name>` | Icons.hx | ours (an element, not a style) |
-| the spellcheck wave's colour | EditableText.hx:87 | `::spelling-error` with `text-decoration-color` comes close |
-| `fontSize` default 14 (CSS's medium is 16) | Style.hx:17 | said in app.css (`:root`) |
-| safe areas, titlebar area | SafeArea.hx | CSS has them: `env(safe-area-inset-*)`, `env(titlebar-area-*)` |
+What app trees need that CSS has no property for, each as helder.ui has
+it today, so the port maps 1:1. All are `-helder-` properties in the
+support table as ours.
+
+- **`-helder-material: none | glass [ regular | clear ]?`**, not
+  inherited, initial none, computed as keywords. Today the `<glass>`
+  element (Glass.hx), `variant="clear"`. app.css gives `glass {
+  -helder-material: glass }` beside its capsule radius. Its siblings:
+  **`-helder-material-tint: <color>`** (initial transparent, a computed
+  colour; today `tint`, its alpha how far) and
+  **`-helder-material-spacing: none | <length [0,∞]>`** (initial none,
+  an absolute length; today a view's `glassSpacing`, GlassGroup.hx:
+  glass inside it nearer than this merge). `interactive` and `active`
+  stay attributes: behaviour and window state, not style.
+- **`-helder-backdrop: none | blur | mica | sidebar | glass`**, on the
+  root, not inherited, computed as a keyword. Today `<Surface backdrop>`
+  (UiWindow.hx:55, helder.os's WindowBackdrop): the window's material,
+  seen through a transparent clear colour.
+- **`-helder-scrollbar: system | overlay | always`**, inherited, initial
+  system, computed as a keyword. Today `<Surface scrollbars>`
+  (UiWindow.hx:77-81) choosing `Ui.scrollbarLook` (Plain, MacOverlay,
+  MacLegacy) and `Ui.overlayBars`: system follows macOS's setting
+  (always shown elsewhere), overlay shows them while scrolling. In app
+  trees no bar takes room, as today (Layout reserves no gutter);
+  `scrollbar-width` and `scrollbar-color` stay CSS's.
+- **`text-overflow: -helder-middle`**, a keyword of our own in CSS's
+  property (Overflow 4 has none for it): TextOverflow.Middle, the text's
+  start and end with "…" between ("E07-uitzonderingen…ster.xlsx"),
+  over the lines `line-clamp` allows.
+- **Part shaders: `background-image: paint(<name>)`**, the CSS Painting
+  API's function, so no property of our own: Recipe.hx's `draw:
+  PartShader.of(shader)` registers the shader under a name, and the
+  part's eased states and look reach it as its arguments and custom
+  properties, as `paint()` passes them.
+
+The rethinks, proposed:
+
+- **Rings** (`ring*`, composed over `boxShadow`): drop them as
+  properties. The codemod writes each ring as `box-shadow` layers (`0 0
+  0 offset offsetColor, 0 0 0 offset+width color`, `inset` for
+  ringInset) ahead of the shadow, per state, since it compiles the
+  theme's states anyway. Shadows interpolate (CssInterpolate), so rings
+  still ease.
+- **A shadow's default colour** (`#00000040`, not currentcolor): drop
+  it; the codemod writes the colour where a shadow leaves it out.
+- **Sibling-only `zIndex`**: standard. app.css would add `* { isolation:
+  isolate }` makes every node a stacking context, so z-index orders
+  siblings only, as today.
+- **`order` in paint and hit order**: standard already. Flexbox paints
+  in order-modified document order, and hit testing follows paint; the
+  engine has to implement that, nothing more.
+- **`lineHeightPx` over `lineHeight`**: one `line-height` (a number or
+  a length), the effective one per node written by the codemod. Markup's
+  `"normal"` (today inherited, 1.25 at the root) is written as nothing,
+  not CSS's `normal` (the font's metrics).
+- **A default-valued own field counting as unset** (Rules.keep): drop
+  it. The style attribute wins whatever its value, so the codemod drops
+  an attribute equal to its default where a theme rule sets the same
+  property and the node isn't under `Rules.keep`; the look stays.
+
+Others the port keeps as they are: motion and layout animation, window
+chrome (`dragRegion`, `titleHit`, `<WindowControls>`), `host="native"`,
+`<icon name>` (elements and attributes, not style); safe areas and the
+titlebar area are CSS's (`env(safe-area-inset-*)`,
+`env(titlebar-area-*)`); `display: block` as a non-growing column
+becomes CSS's block in the codemod only where it lays out alike.
