@@ -115,6 +115,15 @@ function tests() {
 			equals(v.pages[1].name, "wide");
 			equals([on(v, 1, "b"), on(v, 1, "c")], [0.0, 10]);
 		});
+		test("a line's text in the tree's order: a box's own before its children's after it, ::before and ::after, a marker first", () -> {
+			var v = paged('<style>.a::after { content: "z" } .b::before { content: "w" }</style><p style="margin:0">v<span class=a>one<b>two</b></span> x<i class=b>y</i></p><ol style="margin:0"><li>five</li></ol>');
+			equals(v.layout(), 1);
+			equals(texts(v, 0, false), ["v", "one", "two", "z", " x", "w", "y", "1.", "five"]);
+		});
+		test("a list marker's disc on a page: drawn as its text, read first in the PDF", () -> {
+			var v = paged('<ul style="margin:0"><li>five</li></ul>');
+			equals(helder.pdf.Pdf.text(helder.pdf.Pdf.open(v.pdf()).pages[0]), "\u2022 five");
+		});
 		test("the PDF: bookmarks from headings, links to a URI and to an id", () -> {
 			var v = paged('<h1 style="margin:0;font-size:10px">One</h1><p style="margin:0"><a href="#b">to b</a> <a href="https://example.com/">out</a></p><h2 id=b style="break-before:page;margin:0;font-size:10px">Two</h2>');
 			var pdf = v.pdf().toString();

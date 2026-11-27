@@ -28,6 +28,9 @@ class BoxPainter {
 	// on whole pixels; off for a PDF, whose text and borders keep layout's
 	// places (a tie rounds up, float noise aside)
 	public var snap = true;
+	// a list marker's disc, circle or square drawn as Chromium's shape; off:
+	// as its text, the counter style's symbol and suffix (print's, as WeasyPrint's)
+	public var shapes = true;
 	// the canvas's background: the area it covers (null: the painter's
 	// whole) and the box it is positioned in (null: the root's fragment);
 	// a page's: its page area, the root's box over all the pages
@@ -256,7 +259,7 @@ class BoxPainter {
 	function symbol(p:Painter, id:Int, b:Box, run:ShapedRun, x:Float, baseline:Float, color:Int):Bool {
 		// (the text's box: the marker's, or its text's)
 		var marker = b.kind == Text ? b.parent : b;
-		if (b.pseudo != "marker" || marker == null || marker.pseudo != "marker" || run.text == null) return false;
+		if (!shapes || b.pseudo != "marker" || marker == null || marker.pseudo != "marker" || run.text == null) return false;
 		var type = marker.style.keyword("list-style-type");
 		var symbol = switch type {
 			case "disc": "\u2022";
