@@ -122,9 +122,9 @@ class CssCounterStyles {
 		}
 		if (!inRange(value, s)) return fallback();
 		var negative = value < 0 && usesNegative(s);
-		var text = system(negative ? -value : value, s);
+		var magnitude = negative ? -(value : Float) : value;
+		var text = system(magnitude, s);
 		if (text == null) return fallback();
-		if (!negative && value < 0 && !usesNegative(s) && text == null) return fallback();
 		var before = negative ? s.negative[0] : "", after = negative ? s.negative[1] : "";
 		if (s.pad != null) {
 			var length = graphemes(before) + graphemes(text) + graphemes(after);
@@ -156,21 +156,23 @@ class CssCounterStyles {
 	}
 
 	// (the system's text for a value in range, the negative sign apart; null: it has none)
-	static function system(value:Int, s:Style):Null<String> {
+	static function system(value:Float, s:Style):Null<String> {
 		var symbols = s.symbols, n = symbols.length;
 		return switch s.system {
-			case Cyclic: symbols[mod(value - 1, n)];
-			case Fixed(first): value >= first && value - first < n ? symbols[value - first] : null;
+			case Cyclic: symbols[mod(Std.int(value % n) - 1, n)];
+			case Fixed(first):
+				var index = value - first;
+				index >= 0 && index < n ? symbols[Std.int(index)] : null;
 			case Symbolic:
 				if (value < 1) return null;
-				var sym = symbols[mod(value - 1, n)], count = Std.int(Math.ceil(value / n));
+				var sym = symbols[Std.int((value - 1) % n)], count = Std.int(Math.ceil(value / n));
 				[for (_ in 0...count) sym].join("");
 			case Alphabetic:
 				if (value < 1) return null;
 				var out = "", v = value;
 				while (v != 0) {
 					v--;
-					out = symbols[v % n] + out;
+					out = symbols[Std.int(v % n)] + out;
 					v = Std.int(v / n);
 				}
 				out;
@@ -178,7 +180,7 @@ class CssCounterStyles {
 				if (value == 0) return symbols[0];
 				var out = "", v = value;
 				while (v != 0) {
-					out = symbols[v % n] + out;
+					out = symbols[Std.int(v % n)] + out;
 					v = Std.int(v / n);
 				}
 				out;
@@ -197,7 +199,7 @@ class CssCounterStyles {
 					if (v == 0) return out.toString();
 				}
 				v == 0 ? out.toString() : null;
-			case Algorithm(name): CssCounterAlgorithms.format(name, value);
+			case Algorithm(name): value <= 2147483647 ? CssCounterAlgorithms.format(name, Std.int(value)) : null;
 			case Extends(_): null;
 		}
 	}

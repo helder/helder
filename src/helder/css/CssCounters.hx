@@ -106,11 +106,12 @@ class CssCounters implements CssCounting {
 			var current = inside("list-item");
 			increments.push({name: "list-item", value: current != null && current.reversed ? -1 : 1, reversed: false});
 		}
-		for (c in increments) {
-			var counter = inside(c.name) ?? make(level, c.name, 0, false);
-			// (one that would overflow 32 bits is left out, as browsers do)
-			var next = (counter.value : Float) + (c.value ?? 1);
-			if (next <= 2147483647 && next >= -2147483648) counter.value = Std.int(next);
+		if (increments.length == 1) increment(level, increments[0].name, increments[0].value ?? 1);
+		if (increments.length > 1) {
+			// Clamp repeated entries within the declaration before updating the counter.
+			var amounts = new Map<String, Int>();
+			for (c in increments) amounts.set(c.name, addIncrement(amounts.get(c.name) ?? 0, c.value ?? 1));
+			for (name => amount in amounts) increment(level, name, amount);
 		}
 		for (c in s.counters(CounterSet)) {
 			var counter = inside(c.name) ?? make(level, c.name, 0, false);
@@ -129,6 +130,16 @@ class CssCounters implements CssCounting {
 		if (pseudo == null && s.containment().has(Style)) contained.push({level: levels.length - 1, counted: counted, quotes: quotes});
 		levels.push([]);
 	}
+
+	function increment(level:Array<String>, name:String, amount:Int) {
+		var counter = inside(name) ?? make(level, name, 0, false);
+		// An increment that would overflow the running value is left out.
+		var next = (counter.value : Float) + amount;
+		if (next <= 2147483647 && next >= -2147483648) counter.value = CssItems.counterInteger(next);
+	}
+
+	static inline function addIncrement(amount:Int, next:Int):Int
+		return CssItems.counterInteger((amount : Float) + next);
 
 	public function exit(el:Element, ?pseudo:String) {
 		var s = styles.computed(el);
@@ -429,7 +440,7 @@ class CssCounters implements CssCounting {
 	// of its scope's increments negated, and its last non-zero one again; a
 	// counter-set in its scope ends the sum at its value)
 	function reversedStart(name:String, el:Element, pseudo:Null<String>):Int {
-		var num = 0, last = 0;
+		var num = 0.0, last = 0.0;
 		var done = false;
 		function visit(e:Element, p:Null<String>, own:Bool) {
 			if (done) return;
@@ -439,11 +450,11 @@ class CssCounters implements CssCounting {
 			if (!own && Lambda.exists(resets, c -> c.name == name)) return;
 			var inc = 0, explicit = false;
 			for (c in s.counters(CounterIncrement)) if (c.name == name) {
-				inc += c.value ?? 1;
+				inc = addIncrement(inc, c.value ?? 1);
 				explicit = true;
 			}
 			if (!explicit && name == "list-item" && s.box.display.listItem) inc = -1;
-			var negated = -inc;
+			var negated = -(inc : Float);
 			if (negated != 0) last = negated;
 			for (c in s.counters(CounterSet)) if (c.name == name) {
 				num += c.value ?? 0;
@@ -471,7 +482,7 @@ class CssCounters implements CssCounting {
 		}
 		if (pseudo != null) {
 			visit(el, pseudo, true);
-			return num + last;
+			return CssItems.counterInteger(num + last);
 		}
 		tree(el, true);
 		// (the following siblings and theirs, till one makes its own counter of the name)
@@ -481,7 +492,7 @@ class CssCounters implements CssCounting {
 			tree(sib, false);
 			sib = sib.nextElementSibling;
 		}
-		return num + last;
+		return CssItems.counterInteger(num + last);
 	}
 
 	function nests(e:Element, name:String):Bool
