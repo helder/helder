@@ -697,12 +697,21 @@ class BlockFlow implements FormattingContext {
 		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
 	}
 
-	// (a new block formatting context's root: no margin collapses across it, §8.3.1, §9.4.1)
+	// (a scroll container: overflow hidden, auto or scroll; clip makes none, Overflow 3 §3)
+	static function scrollContainer(s:BoxStyle):Bool {
+		var x = s.keyword("overflow-x"), y = s.keyword("overflow-y");
+		return x == "hidden" || y == "hidden" || scrolls(s);
+	}
+
+	// (a new block formatting context's root: no margin collapses across it, §8.3.1, §9.4.1; a flex or grid
+	// item too, Flexbox §4, Grid §6)
 	static function formattingRoot(box:Box):Bool {
 		var s = box.style;
+		if (box.parent == null || box.kind != Block) return true;
+		var inner = box.parent.style.inner;
 		// (layout and paint containment: an independent formatting context, Contain 2 §3.2, §3.4)
-		return box.parent == null || box.kind != Block || s.clips || s.inner == BoxStyle.FLOW_ROOT || box.floating || box.absolute
-			|| s.containment.has(Layout) || s.containment.has(Paint);
+		return scrollContainer(s) || s.inner == BoxStyle.FLOW_ROOT || box.floating || box.absolute || s.containment.has(Layout) || s.containment.has(Paint)
+			|| box.parent.kind == Container && (inner == BoxStyle.FLEX || inner == BoxStyle.GRID);
 	}
 
 	// The content width, the used side margins on the box (§10.3.3; shrink-to-fit §10.3.9).

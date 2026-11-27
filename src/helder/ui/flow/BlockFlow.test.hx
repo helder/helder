@@ -75,6 +75,21 @@ function tests() {
 			equals(rect(v, "d")[1], 67.0);
 			equals(rect(v, "q")[3], 21.0);
 		});
+		test("margins: a flex or grid item, a table cell or caption holds its children's", () -> {
+			var v = view('<div id=f style="display:flex"><div id=fi><div style="margin:4px 0 9px;height:5px"></div></div></div>'
+				+ '<div id=g style="display:grid"><div id=gi><div style="margin:4px 0 9px;height:5px"></div></div></div>'
+				+ '<table style="border-spacing:0"><caption id=k><div style="margin:4px 0 9px;height:5px"></div></caption>'
+				+ '<tr><td id=c style="padding:0"><div style="margin:4px 0 9px;height:5px"></div></td></tr></table>');
+			equals([rect(v, "fi")[3], rect(v, "f")[3]], [18.0, 18]);
+			equals([rect(v, "gi")[3], rect(v, "g")[3]], [18.0, 18]);
+			equals([rect(v, "k")[3], rect(v, "c")[3]], [18.0, 18]);
+		});
+		test("margins: through overflow: clip, not a formatting context's root", () -> {
+			var v = view('<div id=a style="overflow:clip"><div style="margin:4px 0 9px;height:5px"></div></div>'
+				+ '<div id=b style="overflow-x:clip;overflow-y:visible"><div style="margin:4px 0 9px;height:5px"></div></div>');
+			equals([rect(v, "a")[1], rect(v, "a")[3]], [5.0, 5]);
+			equals([rect(v, "b")[1], rect(v, "b")[3]], [19.0, 5]);
+		});
 		test("relative offsets", () -> {
 			var v = view('<div id=r style="position:relative;left:5px;top:6px;right:100px;height:10px"></div><div id=s style="position:relative;right:5px;bottom:10%"></div>');
 			equals(rect(v, "r"), [5.0, 7, 800, 10]);
