@@ -52,6 +52,7 @@ class BlockLines {
 			var lw = lineWidth(oy + y, h);
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
+		constraints.exactMetrics = space.exact;
 		try {
 			// (floats placed where their lines put them, the lines then laid out around them: until they stay)
 			var floats:Array<Box> = [];
@@ -531,7 +532,9 @@ class BlockLines {
 			// in just that, its item's text-align then moving nothing)
 			var w = 0.0;
 			for (p in 0...mc.pieces) w += mc.pieceWidth(p);
-			var ml = markerLayout.layout(mc, new InlineConstraints(w));
+			var mcons = new InlineConstraints(w);
+			mcons.exactMetrics = space.exact;
+			var ml = markerLayout.layout(mc, mcons);
 			if (ml.lines == 0) continue;
 			var mb = ml.lineBaseline(0);
 			if (own) {
