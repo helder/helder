@@ -12,13 +12,9 @@ import helder.css.CssValue;
 
 // A compiled sheet as data: what CssTheme writes at build time and the
 // cascade reads back when first asked, one decoder for every sheet rather
-// than code per rule, no tokenizer or parser. The data is one ASCII
-// string of chars 1 to 127, so it is a plain string constant: unsigned
-// numbers as base-64 digits (a char of 64 or more carries 6 bits and goes
-// on, one below 64 ends the number, plus one), strings interned (0 and the
-// string, else its index plus one), floats as integers where whole, else
-// as their text. Each type is written and read in its fields' order, enums
-// by their constructor's index.
+// than code per rule, no tokenizer or parser. CssPacked's encoding; each
+// type written and read in its fields' order, enums by their
+// constructor's index. Also CssInitial's table of initial values.
 class CssSheetData {
 	public static function decode(data:String):CssSheet
 		return new Reader(data).sheet();
@@ -27,73 +23,53 @@ class CssSheetData {
 	public static function encode(sheet:CssSheet, urls = true):String {
 		var w = new Writer(urls);
 		w.sheet(sheet);
-		return w.out.toString();
+		return w.toString();
+	}
+
+	// (CssInitial's: each property's initial value as its table says it, and with prose written out)
+	public static function encodeInitials(entries:Array<{name:String, specified:Null<CssSpecified>, of:Null<CssSpecified>}>):String {
+		var w = new Writer(false);
+		w.list(entries, e -> {
+			w.str(e.name);
+			w.bool(e.specified != null);
+			if (e.specified != null) w.spec(e.specified);
+			// (0 none, 1 the same as specified, 2 its own)
+			w.uint(e.of == null ? 0 : e.specified != null && w.same(e.of, e.specified) ? 1 : 2);
+			if (e.of != null && !(e.specified != null && w.same(e.of, e.specified))) w.spec(e.of);
+		});
+		return w.toString();
+	}
+
+	public static function decodeInitials(data:String):Map<String, CssInitial.CssInitialValue> {
+		var r = new Reader(data), out = new Map<String, CssInitial.CssInitialValue>();
+		for (_ in 0...r.uint()) {
+			var name = r.str();
+			var specified = r.bool() ? r.spec() : null;
+			var of = switch r.uint() {
+				case 0: null;
+				case 1: specified;
+				case _: r.spec();
+			}
+			out.set(name, {specified: specified, of: of});
+		}
+		return out;
 	}
 }
 
-private class Writer {
-	public final out = new StringBuf();
-	final pool = new Map<String, Int>();
-	var pooled = 0;
-
+private class Writer extends CssPackedWriter {
 	final urls:Bool;
 
-	public function new(urls:Bool)
+	public function new(urls:Bool) {
+		super();
 		this.urls = urls;
-
-	function uint(n:Int) {
-		// (unsigned: a negative n is a zigzagged int's top half)
-		while (n < 0 || n >= 63) {
-			out.addChar(64 + (n & 63));
-			n >>>= 6;
-		}
-		out.addChar(1 + n);
 	}
 
-	function int(n:Int)
-		uint((n << 1) ^ (n >> 31));
-
-	function bool(b:Bool)
-		uint(b ? 1 : 0);
-
-	function str(s:String) {
-		var k = pool.get(s);
-		if (k != null) return uint(k + 1);
-		uint(0);
-		var ascii = true;
-		for (i in 0...s.length) {
-			var c = StringTools.fastCodeAt(s, i);
-			if (c < 1 || c > 127) ascii = false;
-		}
-		// (ASCII as it is, else each code unit as a number)
-		uint(ascii ? s.length << 1 : (s.length << 1) | 1);
-		if (ascii) out.add(s) else for (i in 0...s.length) uint(StringTools.fastCodeAt(s, i));
-		pool.set(s, pooled++);
-	}
-
-	function nstr(s:Null<String>) {
-		bool(s != null);
-		if (s != null) str(s);
-	}
-
-	function float(f:Float) {
-		if (Math.isFinite(f) && f == Math.ffloor(f) && Math.abs(f) < 1e9 && !(f == 0 && 1 / f < 0)) {
-			uint(0);
-			int(Std.int(f));
-		} else {
-			uint(1);
-			str(Math.isNaN(f) ? "NaN" : f == Math.POSITIVE_INFINITY ? "Infinity" : f == Math.NEGATIVE_INFINITY ? "-Infinity" : Std.string(f));
-		}
-	}
-
-	function list<T>(xs:Array<T>, f:T->Void) {
-		uint(xs.length);
-		for (x in xs) f(x);
-	}
-
-	function nlist<T>(xs:Null<Array<T>>, f:T->Void) {
-		bool(xs != null);
-		if (xs != null) list(xs, f);
+	// (the same encoding: CssInitial's prose value where it is its table's)
+	public function same(a:CssSpecified, b:CssSpecified):Bool {
+		var x = new Writer(false), y = new Writer(false);
+		x.spec(a);
+		y.spec(b);
+		return x.toString() == y.toString();
 	}
 
 	public function sheet(s:CssSheet) {
@@ -149,7 +125,14 @@ private class Writer {
 	function declared(d:CssDeclared) {
 		str(d.property);
 		int(d.id);
-		switch d.value {
+		spec(d.value);
+		bool(d.important);
+		nlist(d.values, value);
+		nstr(d.shorthand);
+	}
+
+	public function spec(v:CssSpecified)
+		switch v {
 			case Wide(k):
 				uint(0);
 				str(k);
@@ -160,10 +143,6 @@ private class Writer {
 				uint(2);
 				list(ts, term);
 		}
-		bool(d.important);
-		nlist(d.values, value);
-		nstr(d.shorthand);
-	}
 
 	function term(t:CssTerm) {
 		uint(t.getIndex());
@@ -398,67 +377,7 @@ private class Writer {
 	}
 }
 
-private class Reader {
-	final data:String;
-	var at = 0;
-	final pool:Array<String> = [];
-
-	public function new(data:String)
-		this.data = data;
-
-	function uint():Int {
-		var v = 0, shift = 0;
-		while (true) {
-			var c = StringTools.fastCodeAt(data, at++);
-			if (c < 64) return v | ((c - 1) << shift);
-			v |= (c - 64) << shift;
-			shift += 6;
-		}
-	}
-
-	function int():Int {
-		var n = uint();
-		return (n >>> 1) ^ -(n & 1);
-	}
-
-	function bool():Bool
-		return uint() != 0;
-
-	function str():String {
-		var k = uint();
-		if (k > 0) return pool[k - 1];
-		var n = uint(), len = n >>> 1, s;
-		if (n & 1 == 0) {
-			s = data.substr(at, len);
-			at += len;
-		} else {
-			var b = new StringBuf();
-			for (_ in 0...len) b.addChar(uint());
-			s = b.toString();
-		}
-		pool.push(s);
-		return s;
-	}
-
-	function nstr():Null<String>
-		return bool() ? str() : null;
-
-	function float():Float {
-		if (uint() == 0) return int();
-		return switch str() {
-			case "NaN": Math.NaN;
-			case "Infinity": Math.POSITIVE_INFINITY;
-			case "-Infinity": Math.NEGATIVE_INFINITY;
-			case s: Std.parseFloat(s);
-		}
-	}
-
-	function list<T>(f:() -> T):Array<T>
-		return [for (_ in 0...uint()) f()];
-
-	function nlist<T>(f:() -> T):Null<Array<T>>
-		return bool() ? list(f) : null;
-
+private class Reader extends CssPacked {
 	static final ORIGINS:Array<CssOrigin> = [UserAgent, User, Author];
 	static final COMBINATORS:Array<CssCombinator> = [Descendant, Child, NextSibling, SubsequentSibling];
 	static final OPS:Array<CssAttributeOp> = [Exists, Equals, Includes, DashMatch, Prefix, Suffix, Substring];
@@ -510,17 +429,20 @@ private class Reader {
 
 	function declared():CssDeclared {
 		var property = str(), id = int();
-		var spec:CssSpecified = switch uint() {
-			case 0: Wide(str());
-			case 1: Unresolved(str());
-			case _: Terms(list(term));
-		}
+		var specified = spec();
 		var important = bool(), values = nlist(value), shorthand = nstr();
-		var d:CssDeclared = {property: property, id: id, value: spec, important: important};
+		var d:CssDeclared = {property: property, id: id, value: specified, important: important};
 		if (values != null) d.values = values;
 		if (shorthand != null) d.shorthand = shorthand;
 		return d;
 	}
+
+	public function spec():CssSpecified
+		return switch uint() {
+			case 0: Wide(str());
+			case 1: Unresolved(str());
+			case _: Terms(list(term));
+		}
 
 	function term():CssTerm
 		return switch uint() {
