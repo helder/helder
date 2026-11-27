@@ -68,10 +68,20 @@ class BlockFlow implements FormattingContext {
 		}
 		var reserve = fr == null ? 0.0 : space.reserve + (clone ? bb + pb : 0);
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
-		var w = width(box, s, space, bpx);
-		var root = formattingRoot(box);
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : size(s.height,
 			space.height, s.borderBox, bpy);
+		var w = width(box, s, space, bpx, bpy, heightSpec);
+		var root = formattingRoot(box);
+		// (an aspect-ratio's auto height: its width's through it, within min and max, and no less than its
+		// content unless it clips or has a min-height, that within its max, its max-width's through it too)
+		var floor = Math.NaN;
+		if (Math.isNaN(heightSpec) && Math.isNaN(space.fixedHeight)) {
+			var rh = Ratio.height(box, w, bpx, bpy);
+			if (!Math.isNaN(rh)) {
+				heightSpec = clampHeight(s, space.height, bpy, rh);
+				if (Lens.isAuto(s.minHeight) && !s.clips) floor = ratioCap(box, s, space.width, space.height, bpx, bpy);
+			}
+		}
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var pctBase = heightSpec;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
@@ -299,6 +309,7 @@ class BlockFlow implements FormattingContext {
 		// (a formatting context's root's auto height takes its floats in, §10.6.7)
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
 		var h = space.ignoreHeight ? Math.max(0, autoHeight ? content : heightSpec) : clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
+		if (content > h && !Math.isNaN(floor)) h = Math.max(h, Math.min(content, floor));
 		box.through = false;
 		// (its top and bottom margins adjoin: no content, border or padding, a zero or auto height, §8.3.1)
 		if (atTop && empty && !root && bb == 0 && pb == 0 && (autoHeight || heightSpec == 0) && h == 0) {
@@ -401,6 +412,15 @@ class BlockFlow implements FormattingContext {
 		var w = b.kind == BlockReplaced || b.kind == InlineReplaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
 		var minW = size(s.minWidth, cbw, s.borderBox, bpx), maxW = size(s.maxWidth, cbw, s.borderBox, bpx);
 		var rtl = b.parent != null && b.parent.style.rtl;
+		var ratio = b.kind != BlockReplaced && b.kind != InlineReplaced && !Math.isNaN(Ratio.of(b));
+		// (an aspect-ratio's auto width: its height's through it, the height set or what top and bottom leave,
+		// unless left and right give the width)
+		if (ratio && Math.isNaN(w) && (Math.isNaN(left) || Math.isNaN(right))) {
+			var hs = size(s.height, cbh, s.borderBox, bpy);
+			if (Math.isNaN(hs) && !Math.isNaN(top) && !Math.isNaN(bottom))
+				hs = Math.max(0, cbh - top - bottom - (Math.isNaN(mt) ? 0 : mt) - (Math.isNaN(mb) ? 0 : mb) - bpy);
+			if (!Math.isNaN(hs)) w = Ratio.width(b, clampHeight(s, cbh, bpy, hs), bpx, bpy);
+		}
 		function shrink(avail:Float):Float {
 			if (b.context != null) b.context.intrinsic(b, space) else intrinsic(b, space);
 			return Math.min(Math.max(b.minContent, avail), b.maxContent) - bpx;
@@ -436,7 +456,9 @@ class BlockFlow implements FormattingContext {
 					}
 				} else if (Math.isNaN(a))
 					a = rest - c
-				else if (Math.isNaN(c)) c = rest - a;
+				else if (Math.isNaN(c))
+					c = rest - a
+				else if (rtl) l = cbw - r - a - c - w - bpx;
 			} else {
 				if (Math.isNaN(a)) a = 0;
 				if (Math.isNaN(c)) c = 0;
@@ -476,6 +498,8 @@ class BlockFlow implements FormattingContext {
 		// (vertical: the height its content gave, or what top and bottom leave)
 		var h = frags.height(f) - bpy;
 		var spec = size(s.height, cbh, s.borderBox, bpy);
+		// (an aspect-ratio's height, through it from its width, as set)
+		if (ratio && Math.isNaN(spec)) spec = h;
 		var t = top, bt = bottom, a = mt, c = mb;
 		if (Math.isNaN(t) && Math.isNaN(bt)) {
 			if (Math.isNaN(a)) a = 0;
@@ -503,7 +527,7 @@ class BlockFlow implements FormattingContext {
 	}
 
 	// The content width, the used side margins on the box (§10.3.3; shrink-to-fit §10.3.9).
-	function width(box:Box, s:BoxStyle, space:Space, bpx:Float):Float {
+	function width(box:Box, s:BoxStyle, space:Space, bpx:Float, bpy:Float, height:Float):Float {
 		var cb = space.width;
 		var ml = auto(s.margin[3], cb), mr = auto(s.margin[1], cb);
 		var minW = Math.max(0, size(s.minWidth, cb, s.borderBox, bpx));
@@ -516,6 +540,8 @@ class BlockFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = size(s.width, cb, s.borderBox, bpx);
+		// (an auto width through an aspect-ratio from a height that is definite)
+		if (Math.isNaN(spec) && !Math.isNaN(height)) spec = Ratio.width(box, clampHeight(s, space.height, bpy, height), bpx, bpy);
 		// (a table's caption is laid out as a block in its table's width)
 		if (box.blockLevel && box.kind != InlineBlock && !box.floating && !box.absolute || box.style.part == BoxStyle.CAPTION) {
 			var rtl = box.parent != null && box.parent.style.rtl;
@@ -571,6 +597,22 @@ class BlockFlow implements FormattingContext {
 		return h < 0 ? 0 : h;
 	}
 
+	// (the most an aspect-ratio's content floor goes to: its max-height, its max-width's through the ratio)
+	static function ratioCap(box:Box, s:BoxStyle, cbw:Float, cbh:Float, bpx:Float, bpy:Float):Float {
+		var cap = size(s.maxHeight, cbh, s.borderBox, bpy), most = Ratio.height(box, size(s.maxWidth, cbw, s.borderBox, bpx), bpx, bpy);
+		if (Math.isNaN(cap) || most < cap) cap = most;
+		return Math.isNaN(cap) ? Math.POSITIVE_INFINITY : cap;
+	}
+
+	// (an automatic width within an aspect-ratio's min and max height through it, Sizing 4 §5.2.1)
+	public static function transferred(box:Box, s:BoxStyle, w:Float, cbh:Float, bpx:Float, bpy:Float):Float {
+		var lo = Ratio.width(box, size(s.minHeight, cbh, s.borderBox, bpy), bpx, bpy);
+		var hi = Ratio.width(box, size(s.maxHeight, cbh, s.borderBox, bpy), bpx, bpy);
+		if (!Math.isNaN(hi) && w > hi) w = hi;
+		if (!Math.isNaN(lo) && w < lo) w = lo;
+		return w;
+	}
+
 	// ---- replaced elements (§10.3.2, §10.6.2)
 
 	function replaced(box:Box, space:Space):Int {
@@ -599,14 +641,15 @@ class BlockFlow implements FormattingContext {
 	public static function replacedSize(box:Box, cbw:Float, cbh:Float, bpx:Float, bpy:Float):{w:Float, h:Float} {
 		var s = box.style.model();
 		var iw = box.image == null ? 0.0 : box.image.width, ih = box.image == null ? 0.0 : box.image.height;
-		var ratio = ih > 0 ? iw / ih : Math.NaN;
+		// (its natural ratio, or aspect-ratio's over it)
+		var ratio = Ratio.of(box);
 		var w = size(s.width, cbw, s.borderBox, bpx), h = size(s.height, cbh, s.borderBox, bpy);
 		if (Math.isNaN(w) && Math.isNaN(h)) {
 			w = iw;
-			h = ih;
+			h = Math.isNaN(ratio) ? ih : Ratio.height(box, w, bpx, bpy);
 		} else if (Math.isNaN(w))
-			w = Math.isNaN(ratio) ? iw : h * ratio
-		else if (Math.isNaN(h)) h = Math.isNaN(ratio) || ratio == 0 ? ih : w / ratio;
+			w = Math.isNaN(ratio) ? iw : Ratio.width(box, h, bpx, bpy)
+		else if (Math.isNaN(h)) h = Math.isNaN(ratio) ? ih : Ratio.height(box, w, bpx, bpy);
 		var maxW = size(s.maxWidth, cbw, s.borderBox, bpx), minW = size(s.minWidth, cbw, s.borderBox, bpx);
 		var maxH = size(s.maxHeight, cbh, s.borderBox, bpy), minH = size(s.minHeight, cbh, s.borderBox, bpy);
 		if (!Math.isNaN(maxW) && w > maxW) w = maxW;
@@ -627,12 +670,19 @@ class BlockFlow implements FormattingContext {
 			case Px(v): s.borderBox ? Math.max(v, bpx) : v + bpx;
 			case _: Math.NaN;
 		}
+		// (an aspect-ratio's: its fixed height's through it, else its content's within its min and max height's)
+		var bpy = fixed(s.padding[0]) + fixed(s.padding[2]) + s.border[0] + s.border[2];
+		if (Math.isNaN(w) && box.kind != BlockReplaced && box.kind != InlineReplaced) w = Ratio.width(box, size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy) + bpx;
 		if (!Math.isNaN(w)) {
 			min = max = w;
 		} else {
 			var c = contentSizes(box, space);
 			min = c.min;
 			max = c.max;
+			if (!Math.isNaN(Ratio.of(box)) && box.kind != BlockReplaced && box.kind != InlineReplaced) {
+				min = transferred(box, s, min - bpx, Math.NaN, bpx, bpy) + bpx;
+				max = transferred(box, s, max - bpx, Math.NaN, bpx, bpy) + bpx;
+			}
 		}
 		switch s.maxWidth {
 			case Px(v):

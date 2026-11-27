@@ -2,9 +2,9 @@ package helder.ui.flow;
 
 import helder.css.CssText;
 import helder.ui.Grid.GridAreas;
-import helder.ui.Grid.GridPlacement;
 import helder.ui.Grid.Track;
 import helder.ui.Grid.TrackSize;
+import helder.ui.flow.GridTemplate.FitTrack;
 import helder.ui.box.Box;
 import helder.ui.box.BoxKind;
 import helder.ui.box.BoxStyle;
@@ -15,10 +15,12 @@ using StringTools;
 
 // Grid layout (CSS Grid Layout 1, a subset), as helder.ui's GridLayout has it
 // for its own nodes (the same placement and track sizing, Taffy's fixtures
-// their test) over the box tree, its values parsed by helder.ui's Grid: the
-// explicit grid's tracks (grid-template-columns, -rows, -areas), implicit
-// ones as items need (grid-auto-columns, -rows); items placed by their lines
-// or auto-placed (grid-auto-flow: rows or columns, sparse or dense); the
+// their test) over the box tree: the explicit grid's tracks and named lines
+// (grid-template-columns, -rows, GridTemplate's: auto-fill and auto-fit
+// repeats, fit-content(); -areas, helder.ui's Grid parses), implicit ones
+// as items need (grid-auto-columns, -rows in turn); items placed by their
+// lines (GridLines) or auto-placed (grid-auto-flow: rows or columns, sparse
+// or dense), auto-fit's empty tracks collapsed; the
 // tracks sized columns first, then rows at the columns' widths (§11.3 to
 // §11.8: intrinsic tracks from the items' minimum, min- and max-content
 // contributions, spanning items by span, those crossing flexible tracks
@@ -53,10 +55,15 @@ class GridFlow implements FormattingContext {
 		var pl = BlockFlow.res(s.padding[3], cb), pr = BlockFlow.res(s.padding[1], cb), pt = BlockFlow.res(s.padding[0], cb), pb = BlockFlow.res(s.padding[2], cb);
 		var bl = s.border[3], br = s.border[1], bt = s.border[0], bb = s.border[2];
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
-		var w = width(box, s, space, bpx);
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : BlockFlow.size(s.height,
 			space.height, s.borderBox, bpy);
 		if (!Math.isNaN(heightSpec) && !space.ignoreHeight) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
+		var w = width(box, s, space, bpx, heightSpec);
+		// (an aspect-ratio's auto height: its width's through it)
+		if (Math.isNaN(heightSpec) && Math.isNaN(space.fixedHeight)) {
+			var rh = Ratio.height(box, w, bpx, bpy);
+			if (!Math.isNaN(rh)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, rh);
+		}
 		var minH = space.ignoreHeight ? Math.NaN : BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy);
 		var maxH = space.ignoreHeight ? Math.NaN : BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy);
 		var frags = space.fragments;
@@ -108,6 +115,14 @@ class GridFlow implements FormattingContext {
 			var minCH = nanTo(BlockFlow.size(m.minHeight, ah, m.borderBox, cbpy), 0) + cbpy, maxCH = nanTo(BlockFlow.size(m.maxHeight, ah, m.borderBox, cbpy), Math.POSITIVE_INFINITY) + cbpy;
 			var sw = BlockFlow.size(m.width, aw, m.borderBox, cbpx), sh = BlockFlow.size(m.height, ah, m.borderBox, cbpy);
 			var iw = Math.isNaN(sw) ? Math.NaN : clamp(sw + cbpx, minCW, maxCW), ih = Math.isNaN(sh) ? Math.NaN : clamp(sh + cbpy, minCH, maxCH);
+			// (an aspect-ratio's, normal: stretched across, its height through the ratio, and so its width within
+			// its min and max height's through it when that is stretched too, as Chromium has it)
+			var ratio = !Math.isNaN(Ratio.of(c)), normal = jy == "stretch" && normal(c);
+			if (Math.isNaN(iw) && jx == "stretch" && ratio && Math.isNaN(ih) && jy == "stretch") {
+				var lo = Ratio.width(c, minCH - cbpy, cbpx, cbpy) + cbpx, hi = Ratio.width(c, maxCH - cbpy, cbpx, cbpy) + cbpx;
+				iw = clamp(Math.min(roomW, hi), Math.max(minCW, lo), maxCW);
+			}
+			if (ratio && normal) jy = "start";
 			if (Math.isNaN(iw)) {
 				if (jx == "stretch") iw = clamp(roomW, minCW, maxCW) else {
 					// (fit-content: its max-content width, no more than the area, no less than its min-content)
@@ -162,12 +177,13 @@ class GridFlow implements FormattingContext {
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
 		var fixed = box.parent == null ? new Positioned() : space.fixed ?? positioned;
 		var fullW = w + pl + pr, fullH = h + pt + pb;
-		var colLines = [for (k in 0...cols.length + 1) (rtl ? pr : pl) + (k < cols.length ? colPos[k] : k > 0 ? colPos[k - 1] + cols[k - 1] : 0)];
-		var rowLines = [for (k in 0...rows.length + 1) pt + (k < rows.length ? rowPos[k] : k > 0 ? rowPos[k - 1] + rows[k - 1] : 0)];
+		// (each line where an area starts at it, its next track's start, and where one ends at it, its track's end: gaps between)
+		var colLines = lines(colPos, cols, rtl ? pr : pl, true), rowLines = lines(rowPos, rows, pt, true);
+		var colEnds = lines(colPos, cols, rtl ? pr : pl, false), rowEnds = lines(rowPos, rows, pt, false);
 		for (a in g.absolute) {
 			if (owner && a.style.position != "fixed" && box.parent != null) {
-				var c = area(placement(a.style, "grid-column"), colLines, g.explicitCols, g.shiftCols, fullW, g.areas, true);
-				var r = area(placement(a.style, "grid-row"), rowLines, g.explicitRows, g.shiftRows, fullH, g.areas, false);
+				var c = area(g.colLines, a.style, "grid-column", colLines, colEnds, g.shiftCols, g.colMap, fullW);
+				var r = area(g.rowLines, a.style, "grid-row", rowLines, rowEnds, g.shiftRows, g.rowMap, fullH);
 				var x0 = rtl ? fullW - c.to : c.from;
 				var one = new Positioned();
 				one.add(a, frag, bl + x0 + (rtl ? c.to - c.from : 0), bt + r.from);
@@ -186,7 +202,7 @@ class GridFlow implements FormattingContext {
 
 	// (the container's content width: given, set, or filling its containing block; shrink-to-fit when it
 	// floats, is absolutely positioned or inline-level)
-	function width(box:Box, s:BoxStyle, space:Space, bpx:Float):Float {
+	function width(box:Box, s:BoxStyle, space:Space, bpx:Float, height:Float):Float {
 		var cb = space.width;
 		var ml = BlockFlow.auto(s.margin[3], cb), mr = BlockFlow.auto(s.margin[1], cb);
 		var minW = nanTo(BlockFlow.size(s.minWidth, cb, s.borderBox, bpx), 0), maxW = BlockFlow.size(s.maxWidth, cb, s.borderBox, bpx);
@@ -196,6 +212,7 @@ class GridFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = BlockFlow.size(s.width, cb, s.borderBox, bpx);
+		if (Math.isNaN(spec)) spec = Ratio.width(box, height, bpx, s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], cb) + BlockFlow.res(s.padding[2], cb));
 		if (box.blockLevel && box.kind != InlineBlock && !box.floating && !box.absolute) {
 			var rtl = box.parent != null && box.parent.style.rtl;
 			var w = BlockFlow.solve(box, spec, ml, mr, cb, bpx, rtl);
@@ -215,7 +232,7 @@ class GridFlow implements FormattingContext {
 	// ---- the grid: tracks and placed items
 
 	function grid(box:Box, space:Space, w:Float, h:Float):Grid {
-		var st = box.style;
+		var st = box.style, s = st.model();
 		var items:Array<GridItem> = [], absolute:Array<Box> = [];
 		var c = box.first;
 		while (c != null) {
@@ -226,37 +243,81 @@ class GridFlow implements FormattingContext {
 			var t = text(st, "grid-template-areas");
 			t == "none" || t == "" ? null : GridAreas.parse(t);
 		} catch (_:Dynamic) null;
-		var colsTemplate = trackList(st, "grid-template-columns"), rowsTemplate = trackList(st, "grid-template-rows");
-		var autoCol = trackList(st, "grid-auto-columns")[0] ?? Track.AUTO, autoRow = trackList(st, "grid-auto-rows")[0] ?? Track.AUTO;
-		var explicitCols = areas == null ? colsTemplate.length : Std.int(Math.max(colsTemplate.length, areas.columns));
-		var explicitRows = areas == null ? rowsTemplate.length : Std.int(Math.max(rowsTemplate.length, areas.rows));
-		var shift = place(items, st, explicitCols, explicitRows, areas);
+		// (an auto repeat's room: the content box's size, else its max; its min the size to reach)
+		var bpx = s.border[1] + s.border[3] + BlockFlow.res(s.padding[1], space.width) + BlockFlow.res(s.padding[3], space.width);
+		var bpy = s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], space.width) + BlockFlow.res(s.padding[2], space.width);
+		var colsTemplate = GridTemplate.parse(st, "grid-template-columns", !Math.isNaN(w) ? w : BlockFlow.size(s.maxWidth, space.width, s.borderBox, bpx),
+			BlockFlow.size(s.minWidth, space.width, s.borderBox, bpx), gap(st, "column-gap", w));
+		var rowsTemplate = GridTemplate.parse(st, "grid-template-rows", !Math.isNaN(h) ? h : BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy),
+			BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy), gap(st, "row-gap", h));
+		var autoCols = GridTemplate.parse(st, "grid-auto-columns", w, Math.NaN, 0).tracks, autoRows = GridTemplate.parse(st, "grid-auto-rows", h, Math.NaN, 0).tracks;
+		var explicitCols = areas == null ? colsTemplate.tracks.length : Std.int(Math.max(colsTemplate.tracks.length, areas.columns));
+		var explicitRows = areas == null ? rowsTemplate.tracks.length : Std.int(Math.max(rowsTemplate.tracks.length, areas.rows));
+		var colLines = new GridLines(explicitCols, names(colsTemplate, areas, explicitCols, true));
+		var rowLines = new GridLines(explicitRows, names(rowsTemplate, areas, explicitRows, false));
+		var shift = place(items, st, colLines, rowLines);
 		var nCols = explicitCols + shift.cols, nRows = explicitRows + shift.rows;
 		for (it in items) {
 			if (it.col + it.colSpan > nCols) nCols = it.col + it.colSpan;
 			if (it.row + it.rowSpan > nRows) nRows = it.row + it.rowSpan;
 		}
-		var cols = [for (i in 0...nCols) i >= shift.cols && i - shift.cols < colsTemplate.length ? colsTemplate[i - shift.cols] : autoCol];
-		var rows = [for (i in 0...nRows) i >= shift.rows && i - shift.rows < rowsTemplate.length ? rowsTemplate[i - shift.rows] : autoRow];
+		var ct = colsTemplate.tracks, rt = rowsTemplate.tracks;
+		var cols = [for (i in 0...nCols) track(ct, autoCols, i - shift.cols)], rows = [for (i in 0...nRows) track(rt, autoRows, i - shift.rows)];
 		return {
 			cols: cols,
 			rows: rows,
 			items: items,
 			absolute: absolute,
-			explicitCols: explicitCols,
-			explicitRows: explicitRows,
+			colLines: colLines,
+			rowLines: rowLines,
 			shiftCols: shift.cols,
 			shiftRows: shift.rows,
-			areas: areas
+			colMap: collapse(colsTemplate, cols, items, shift.cols, true),
+			rowMap: collapse(rowsTemplate, rows, items, shift.rows, false)
 		};
 	}
 
-	// (a track list's text parsed as helder.ui's Grid parses it; none, or what it can't parse (named lines,
-	// auto-fill): no tracks)
-	static function trackList(st:BoxStyle, p:String):Array<Track> {
-		var t = text(st, p);
-		if (t == "none" || t == "" || t == "auto" && p.startsWith("grid-template")) return [];
-		return try helder.ui.Grid.tracks(t) catch (_:Dynamic) [];
+	// (a track from the explicit grid's start: the template's, else grid-auto-*'s in turn, after it and
+	// back from its start before it)
+	static function track(template:Array<Track>, autos:Array<Track>, i:Int):Track {
+		if (i >= 0 && i < template.length) return template[i];
+		if (autos.length == 0) return Track.AUTO;
+		var n = autos.length;
+		return i >= 0 ? autos[(i - template.length) % n] : autos[n - 1 - (-i - 1) % n];
+	}
+
+	// (each explicit line's names: the template's, and a named area's name-start and name-end, §7.3.2)
+	static function names(t:GridTemplate, areas:Null<GridAreas>, count:Int, columns:Bool):Array<Array<String>> {
+		var out = [for (i in 0...count + 1) i < t.names.length ? t.names[i].copy() : []];
+		if (areas != null) for (name => a in areas.areas) {
+			out[columns ? a.col : a.row].push(name + "-start");
+			out[columns ? a.colEnd : a.rowEnd].push(name + "-end");
+		}
+		return out;
+	}
+
+	// (auto-fit's empty tracks collapsed, §7.2.3.2: out of the tracks, the items' indices past them less; each
+	// line's index among the tracks left, for absolutely positioned children; null: none collapsed)
+	static function collapse(t:GridTemplate, tracks:Array<Track>, items:Array<GridItem>, shift:Int, columns:Bool):Null<Array<Int>> {
+		if (t.fitFrom < 0) return null;
+		var used = [for (_ in 0...tracks.length) false];
+		for (it in items) {
+			var a = columns ? it.col : it.row;
+			for (i in a...a + (columns ? it.colSpan : it.rowSpan)) used[i] = true;
+		}
+		var from = t.fitFrom + shift, any = false;
+		var gone = [for (i in 0...tracks.length) i >= from && i < from + t.fitCount && !used[i]];
+		for (g in gone) if (g) any = true;
+		if (!any) return null;
+		var map = [], k = 0;
+		for (i in 0...tracks.length + 1) {
+			map.push(k);
+			if (i < tracks.length && !gone[i]) k++;
+		}
+		for (it in items) if (columns) it.col = map[it.col] else it.row = map[it.row];
+		var i = tracks.length;
+		while (i-- > 0) if (gone[i]) tracks.splice(i, 1);
+		return map;
 	}
 
 	static function text(st:BoxStyle, p:String):String
@@ -266,62 +327,21 @@ class GridFlow implements FormattingContext {
 	// columns), then the rest by the cursor (sparse; dense: back at the start for each); the tracks before
 	// the explicit grid's of negative lines)
 	static inline var AUTO = -0x40000000;
-	static inline var LINES = 32767;
 	static inline var MAX_TRACKS = 65535;
 	static inline var LARGE = 64;
 
-	static function place(items:Array<GridItem>, st:BoxStyle, explicitCols:Int, explicitRows:Int, areas:Null<GridAreas>):{cols:Int, rows:Int} {
+	static function place(items:Array<GridItem>, st:BoxStyle, colLines:GridLines, rowLines:GridLines):{cols:Int, rows:Int} {
 		var flow = text(st, "grid-auto-flow");
 		var byColumn = flow.startsWith("column"), dense = flow.indexOf("dense") >= 0;
-		function resolveLines(p:GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
-			inline function index(line:Int):Int {
-				if (line > LINES) line = LINES else if (line < -LINES) line = -LINES;
-				return line > 0 ? line - 1 : count + 1 + line;
-			}
-			function named(name:String, isEnd:Bool):Int {
-				var atEnd = isEnd;
-				var a = areas == null ? null : areas.areas.get(name);
-				if (a == null && areas != null) {
-					for (suffix in ["-start", "-end"]) if (name.endsWith(suffix)) {
-						a = areas.areas.get(name.substr(0, name.length - suffix.length));
-						atEnd = suffix == "-end";
-					}
-				}
-				if (a == null) return count + (isEnd ? 1 : 0);
-				return columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row);
-			}
-			if (p.startName != null || p.endName != null) {
-				var a = p.startName != null ? named(p.startName, false) : p.start != 0 ? index(p.start) : AUTO;
-				var b = p.endName != null ? named(p.endName, true) : p.end != 0 ? index(p.end) : AUTO;
-				if (a != AUTO && b != AUTO) {
-					if (b == a) return {start: a, span: 1};
-					if (b < a) return {start: b, span: a - b};
-					return {start: a, span: b - a};
-				}
-				if (a != AUTO) return {start: a, span: p.span};
-				return {start: b - p.span, span: p.span};
-			}
-			if (p.start != 0 && p.end != 0) {
-				var a = index(p.start), b = index(p.end);
-				if (b < a) {
-					var t = a;
-					a = b;
-					b = t;
-				}
-				return {start: a, span: Std.int(Math.max(1, b - a))};
-			}
-			if (p.start != 0) return {start: index(p.start), span: p.span};
-			if (p.end != 0) return {start: index(p.end) - p.span, span: p.span};
-			return {start: AUTO, span: p.span};
-		}
-		function resolve(p:GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
-			var r = resolveLines(p, count, columns);
+		function resolve(lines:GridLines, b:Box, p:String):{start:Int, span:Int} {
+			var r = lines.resolve(b.style, p);
 			if (r.span > MAX_TRACKS) r.span = MAX_TRACKS;
 			if (r.start != AUTO && r.start > MAX_TRACKS - r.span) r.start = MAX_TRACKS - r.span;
+			if (r.start != AUTO && r.start < -MAX_TRACKS) r.start = -MAX_TRACKS;
 			return r;
 		}
 		var res = [for (it in items) {
-			var c = resolve(placement(it.box.style, "grid-column"), explicitCols, true), r = resolve(placement(it.box.style, "grid-row"), explicitRows, false);
+			var c = resolve(colLines, it.box, "grid-column"), r = resolve(rowLines, it.box, "grid-row");
 			byColumn ? {major: c, minor: r} : {major: r, minor: c};
 		}];
 		var shiftMajor = 0, shiftMinor = 0;
@@ -333,7 +353,7 @@ class GridFlow implements FormattingContext {
 			if (r.major.start != AUTO) r.major.start += shiftMajor;
 			if (r.minor.start != AUTO) r.minor.start += shiftMinor;
 		}
-		var minorCount = (byColumn ? explicitRows : explicitCols) + shiftMinor;
+		var minorCount = (byColumn ? rowLines.count : colLines.count) + shiftMinor;
 		var taken = new Map<Int, Map<Int, Bool>>(), small:Array<Int> = [], large:Array<Int> = [];
 		inline function overlaps(r:Array<Int>, major:Int, minor:Int, majorSpan:Int, minorSpan:Int):Bool {
 			var i = 0, hit = false;
@@ -429,37 +449,33 @@ class GridFlow implements FormattingContext {
 	}
 
 	// (an absolutely positioned child's area on an axis between the grid's lines, from the padding box's
-	// start: a line it hasn't, or auto, the padding edge)
-	static function area(p:GridPlacement, lines:Array<Float>, explicit:Int, shift:Int, full:Float, areas:Null<GridAreas>, columns:Bool):{from:Float, to:Float} {
-		inline function index(k:Int):Int
-			return k > 0 ? shift + k - 1 : k < 0 && shift + explicit + 1 + k >= 0 ? shift + explicit + 1 + k : -1;
-		function named(name:String, isEnd:Bool):Int {
-			var atEnd = isEnd;
-			var a = areas == null ? null : areas.areas.get(name);
-			if (a == null && areas != null) for (suffix in ["-start", "-end"]) if (name.endsWith(suffix)) {
-				a = areas.areas.get(name.substr(0, name.length - suffix.length));
-				atEnd = suffix == "-end";
-			}
-			if (a == null) return shift + explicit + 1;
-			return shift + (columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row));
-		}
-		var a = p.startName != null ? named(p.startName, false) : index(p.start), b = p.endName != null ? named(p.endName, true) : index(p.end);
-		if (a >= 0 && b == a) b = -1;
-		if (a >= 0 && b < 0 && p.end == 0 && p.endName == null && p.span > 1) b = a + p.span;
-		if (b >= 0 && a < 0 && p.start == 0 && p.startName == null && p.span > 1) a = b - p.span;
-		if (a >= 0 && b >= 0 && b < a) {
+	// start: a line it hasn't, or auto, the padding edge, §9.1)
+	static function area(lines:GridLines, st:BoxStyle, p:String, starts:Array<Float>, ends:Array<Float>, shift:Int, map:Null<Array<Int>>,
+			full:Float):{from:Float, to:Float} {
+		var l = lines.lines(st, p), last = map == null ? starts.length - 1 : map.length - 1;
+		// (swapped when backwards first, then one the grid hasn't auto)
+		var a = l.from, b = l.to;
+		if (a != GridLines.AUTO && b != GridLines.AUTO && b < a) {
 			var t = a;
 			a = b;
 			b = t;
 		}
-		var from = a >= 0 && a < lines.length ? lines[a] : 0.0, to = b >= 0 && b < lines.length ? lines[b] : full;
+		if (b == a) b = GridLines.AUTO;
+		inline function index(k:Int):Int
+			return k == GridLines.AUTO || k + shift < 0 || k + shift > last ? -1 : k + shift;
+		a = index(a);
+		b = index(b);
+		if (map != null) {
+			if (a >= 0) a = map[a];
+			if (b >= 0) b = map[b];
+		}
+		var from = a >= 0 ? starts[a] : 0.0, to = b >= 0 ? ends[b] : full;
 		return {from: from, to: Math.max(from, to)};
 	}
 
-	// (an item's lines on an axis: grid-column-start and -end as helder.ui's Grid parses "a / b")
-	static function placement(st:BoxStyle, p:String):GridPlacement {
-		var a = text(st, '$p-start'), b = text(st, '$p-end');
-		return try GridPlacement.parse((a == "" ? "auto" : a) + " / " + (b == "" ? "auto" : b)) catch (_:Dynamic) GridPlacement.AUTO;
+	static function lines(pos:Array<Float>, sizes:Array<Float>, edge:Float, starts:Bool):Array<Float> {
+		var n = sizes.length;
+		return [for (k in 0...n + 1) edge + (starts && k < n || k == 0 ? (n > 0 ? pos[k] : 0) : pos[k - 1] + sizes[k - 1])];
 	}
 
 	// ---- track sizing (§11.3 to §11.8), helder.ui's GridLayout.tracks over boxes
@@ -480,9 +496,17 @@ class GridFlow implements FormattingContext {
 		var definite = !Math.isNaN(room), maxContent = !definite && !minContent;
 		var minK = [for (_ in 0...n) 0], maxK = [for (_ in 0...n) 0], fr = [for (_ in 0...n) 0.0];
 		var base = [for (_ in 0...n) 0.0], limit = [for (_ in 0...n) 0.0];
+		// (fit-content()'s argument: the most its growth limit goes to)
+		var fit = [for (_ in 0...n) inf];
 		var settled = true;
 		for (i in 0...n) {
 			var d = defs[i];
+			var f = Std.downcast(d, FitTrack);
+			if (f != null) fit[i] = switch f.limit {
+				case Px(v): v;
+				case Percent(p) if (!Math.isNaN(pct)): pct * p / 100;
+				case _: inf;
+			}
 			var mn = 0.0, mx = inf;
 			minK[i] = switch d.min {
 				case Px(v):
@@ -598,6 +622,8 @@ class GridFlow implements FormattingContext {
 			return inf;
 		function growthLimit(i:Int):Float
 			return limit[i];
+		function fitted(i:Int):Float
+			return fit[i];
 		function toBase(space:Float, a:Int, b:Int, flex:Bool, affected:Int->Bool, lim:Int->Float, ofMax:Bool) {
 			if (space == 0) return;
 			var aff = flex ? i -> maxK[i] == FLEX && affected(i) : affected;
@@ -629,8 +655,8 @@ class GridFlow implements FormattingContext {
 			if (!any) return;
 			var have = gaps(a, b);
 			for (i in a...b) have += size(i, true);
-			var extra = upTo(Math.max(0, space - have), a, b, i -> affected(i) && (growable[i] || limit[i] == inf), one, true, unlimited);
-			if (extra > 0) upTo(extra, a, b, affected, one, true, unlimited);
+			var extra = upTo(Math.max(0, space - have), a, b, i -> affected(i) && (growable[i] || limit[i] == inf), one, true, fitted);
+			if (extra > 0) upTo(extra, a, b, affected, one, true, fitted);
 			for (i in a...b) {
 				if (inc[i] > planLimit[i]) planLimit[i] = inc[i];
 				inc[i] = 0;
@@ -658,7 +684,7 @@ class GridFlow implements FormattingContext {
 		}
 		function cap(k:Int, v:Float):Float {
 			var it = items[k], a = startOf(it), b = a + spanOf(it), most = gaps(a, b);
-			for (i in a...b) if (maxK[i] == FIXED) most += limit[i] else return v;
+			for (i in a...b) if (maxK[i] == FIXED) most += limit[i] else if (fit[i] < inf) most += fit[i] else if (maxK[i] == MIN_CONTENT && limit[i] < inf) most += limit[i] else return v;
 			return Math.min(v, most);
 		}
 		function scale(k:Int, v:Float):Float {
@@ -691,7 +717,7 @@ class GridFlow implements FormattingContext {
 						case _:
 					}
 					var want = switch maxK[i] {
-						case AUTO_TRACK | MAX_CONTENT: maxes[k];
+						case AUTO_TRACK | MAX_CONTENT: Math.min(maxes[k], fit[i]);
 						case MIN_CONTENT: mins[k];
 						case _: -1.0;
 					}
@@ -924,6 +950,13 @@ class GridFlow implements FormattingContext {
 		}
 	}
 
+	// (align-self normal, its own or its container's align-items')
+	static function normal(b:Box):Bool {
+		var v = keyword(b.style, "align-self");
+		if (v == "auto" || v == "normal" || v == "") v = keyword(b.parent.style, "align-items");
+		return v == "normal" || v == "" || v == "legacy";
+	}
+
 	static function keyword(s:BoxStyle, p:String):String {
 		var k = s.keyword(p);
 		return k == "" ? CssText.join(s.terms(p), CssText.term) : k;
@@ -942,6 +975,8 @@ class GridFlow implements FormattingContext {
 		var bpx = BlockFlow.fixed(s.padding[1]) + BlockFlow.fixed(s.padding[3]) + s.border[1] + s.border[3];
 		var min = 0.0, max = 0.0;
 		var w = BlockFlow.size(s.width, Math.NaN, s.borderBox, bpx);
+		var bpy = BlockFlow.fixed(s.padding[0]) + BlockFlow.fixed(s.padding[2]) + s.border[0] + s.border[2];
+		if (Math.isNaN(w)) w = Ratio.width(box, BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
 		if (!Math.isNaN(w)) min = max = w else {
 			var g = grid(box, space, Math.NaN, Math.NaN);
 			var colGap = gap(box.style, "column-gap", Math.NaN);
@@ -991,9 +1026,10 @@ private typedef Grid = {
 	rows:Array<Track>,
 	items:Array<GridItem>,
 	absolute:Array<Box>,
-	explicitCols:Int,
-	explicitRows:Int,
+	colLines:GridLines,
+	rowLines:GridLines,
 	shiftCols:Int,
 	shiftRows:Int,
-	areas:Null<GridAreas>
+	colMap:Null<Array<Int>>,
+	rowMap:Null<Array<Int>>
 }

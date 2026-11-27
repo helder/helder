@@ -10,7 +10,7 @@ import helder.ui.box.FontMatch;
 import helder.ui.box.Fragments;
 
 // Block layout: widths and auto margins, min and max, box-sizing,
-// percentages, heights, margin collapsing (siblings, negative, parent and
+// percentages, heights, aspect-ratio, margin collapsing (siblings, negative, parent and
 // child, through empty boxes, not across a formatting context's root),
 // relative offsets, the layout cache. Then a property: siblings' places
 // as a plain model of §8.3.1 has them.
@@ -32,6 +32,13 @@ function tests() {
 			equals(rect(v, "a")[3], 100.0);
 			equals(rect(v, "b")[3], 5.0);
 			equals(rect(v, "r")[3], 14.0);
+		});
+		test("aspect-ratio: a height from the width, no less than the content unless it clips; a width from a height", () -> {
+			var v = view('<div id=a style="width:100px;aspect-ratio:2"></div><div id=b style="width:20px;aspect-ratio:2">x x x</div>'
+				+ '<div id=c style="width:20px;aspect-ratio:2;overflow:hidden">x x x</div><div id=d style="width:100px;aspect-ratio:2;padding:5px;box-sizing:border-box"></div>'
+				+ '<div id=e style="height:30px;aspect-ratio:2;float:left"></div>');
+			equals([rect(v, "a")[3], rect(v, "b")[3], rect(v, "c")[3], rect(v, "d")[3]], [50.0, 48, 10, 50]);
+			equals(rect(v, "e")[2], 60.0);
 		});
 		test("margins: siblings, negative, parent and child", () -> {
 			var v = view('<div style="height:10px;margin-bottom:20px"></div><div id=a style="height:10px;margin-top:30px;margin-bottom:-5px"></div>'

@@ -9,7 +9,8 @@ import helder.ui.box.Fragments;
 
 // Flex layout's steps on small cases (Taffy's fixtures, through the
 // box-conformance lane, are its real test): growing and shrinking,
-// justify-content and align-items, wrapping, a column, text an item.
+// justify-content and align-items, aspect-ratio, wrapping, a column,
+// text an item.
 function tests() {
 	describe("FlexFlow", () -> {
 		test("items grow by their factors, shrink by theirs times their bases", () -> {
@@ -23,6 +24,14 @@ function tests() {
 				+ '<div id=a style="width:20px;height:10px"></div><div id=b style="width:20px;height:20px"></div></div>');
 			equals(rect(v, "a"), [0.0, 20, 20, 10]);
 			equals(rect(v, "b"), [80.0, 15, 20, 20]);
+		});
+		test("aspect-ratio: a base size from a definite cross size, stretched ones' too", () -> {
+			var v = view('<div style="display:flex;align-items:start;width:300px"><div id=a style="height:40px;aspect-ratio:2"></div></div>'
+				+ '<div style="display:flex;height:30px"><div id=b style="aspect-ratio:2"></div></div>'
+				+ '<div style="display:flex;flex-direction:column;width:100px"><div id=c style="aspect-ratio:2"></div></div>');
+			equals(rect(v, "a")[2], 80.0);
+			equals(rect(v, "b")[2], 60.0);
+			equals(rect(v, "c"), [0.0, 70, 100, 50]);
 		});
 		test("wrapping: lines as items fit, a column's items stretched", () -> {
 			var v = view('<div style="display:flex;flex-wrap:wrap;width:100px"><div id=a style="width:60px;height:10px"></div><div id=b style="width:60px;height:10px"></div></div>'

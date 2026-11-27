@@ -9,7 +9,8 @@ import helder.ui.box.Fragments;
 
 // Grid layout's steps on small cases (Taffy's fixtures, through the
 // box-conformance lane, are its real test): fr tracks and gaps,
-// auto-placement and spans, named areas, alignment in an area, an
+// auto-placement and spans, named areas and lines, auto-fill and
+// auto-fit, fit-content(), alignment in an area, an
 // absolutely positioned child in the area its lines give.
 function tests() {
 	describe("GridFlow", () -> {
@@ -24,6 +25,20 @@ function tests() {
 				+ '<div id=b style="grid-column:1 / span 2;height:5px"></div></div>');
 			equals(rect(v, "a"), [55.0, 20, 10, 10]);
 			equals(rect(v, "b"), [0.0, 30, 80, 5]);
+		});
+		test("named lines, an auto-fill repeat as many times as fit, fit-content() at most its argument", () -> {
+			var v = view('<div style="display:grid;grid-template-columns:[a] 20px [b] repeat(auto-fill, 30px [c]) 15px;width:125px">'
+				+ '<div id=a style="grid-column:b / 2 c"></div><div id=b style="grid-column:-2"></div></div>'
+				+ '<div style="display:grid;grid-template-columns:fit-content(15px) 1fr;width:100px"><div id=c>x x</div></div>');
+			equals(rect(v, "a"), [20.0, 0, 60, 0]);
+			equals(rect(v, "b"), [110.0, 0, 15, 0]);
+			equals(rect(v, "c"), [0.0, 0, 15, 20]);
+		});
+		test("auto-fit: the empty tracks collapse", () -> {
+			var v = view('<div style="display:grid;position:relative;grid-template-columns:repeat(auto-fit, 30px);column-gap:5px;width:100px;height:10px">'
+				+ '<div id=a style="grid-column:2"></div><div id=b style="position:absolute;grid-column:1 / -1;left:0;right:0;height:5px"></div></div>');
+			equals(rect(v, "a"), [0.0, 0, 30, 10]);
+			equals(rect(v, "b")[2], 30.0);
 		});
 		test("an absolutely positioned child: its lines' area its containing block", () -> {
 			var v = view('<div style="display:grid;position:relative;grid-template-columns:30px 30px;grid-template-rows:20px 20px;width:60px">'
