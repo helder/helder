@@ -54,6 +54,10 @@ class GridFlow implements FormattingContext {
 		var cb = space.width;
 		var pl = BlockFlow.res(s.padding[3], cb), pr = BlockFlow.res(s.padding[1], cb), pt = BlockFlow.res(s.padding[0], cb), pb = BlockFlow.res(s.padding[2], cb);
 		var bl = s.border[3], br = s.border[1], bt = s.border[0], bb = s.border[2];
+		// (in a fragmentainer, resumed: its start's border and padding were in the one before)
+		var fr = space.fragmentation;
+		var resume = fr != null ? fr.resume(box) : null;
+		if (resume != null) bt = pt = 0;
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : BlockFlow.size(s.height,
 			space.height, s.borderBox, bpy);
@@ -153,7 +157,9 @@ class GridFlow implements FormattingContext {
 				case _: 0;
 			}
 			var off = BlockFlow.offset(c, aw, ah);
-			frags.adopt(frag, f, bl + pl + x + off.x, bt + pt + y + off.y);
+			if (fr == null) frags.adopt(frag, f, bl + pl + x + off.x, bt + pt + y + off.y);
+			it.x = x + off.x;
+			it.top = y + off.y;
 			it.y = y;
 			it.frag = f;
 			if (it.row == firstRow && (pick == null || !onBaseline(pick) && onBaseline(it))) pick = it;
@@ -163,9 +169,38 @@ class GridFlow implements FormattingContext {
 			var b = frags.baseline(pick.frag);
 			baseline = bt + pt + pick.y + (Math.isNaN(b) ? frags.height(pick.frag) : b);
 		}
+		// (in a fragmentainer: its rows here, rows that spanning items join one, from where it resumes to a break;
+		// broken, its end's border and padding in a later one, its height to the fragmentainer's end)
+		var broken = false;
+		if (fr != null) {
+			var group = [], reach = -1, n = -1;
+			for (r in 0...rows.length) {
+				if (r > reach) n++;
+				for (it in items) if (it.row == r && it.row + it.rowSpan - 1 > reach) reach = it.row + it.rowSpan - 1;
+				if (reach < r) reach = r;
+				group.push(n);
+			}
+			var parts = new Rows();
+			for (it in items) {
+				var m = it.box.style.model(), ih = frags.height(it.frag);
+				parts.add(group[it.row], it.box, it.frag, it.x, it.top, it.top - BlockFlow.res(m.margin[0], w), it.top + ih + BlockFlow.res(m.margin[2], w));
+			}
+			var r = parts.place(box, frag, space, flow, bl + pl, bt + pt, h);
+			broken = r.broken;
+			if (broken) {
+				bb = pb = 0;
+				bpy = pt + bt;
+				h = Math.max(r.height, fr.size - space.pageTop - bt - pt);
+			} else if (resume != null)
+				h = r.height;
+			if (resume != null || broken) {
+				frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
+				baseline = Math.NaN;
+			}
+		}
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!Math.isNaN(baseline)) frags.setBaseline(frag, baseline);
-		var mt = BlockFlow.res(s.margin[0], cb), mb = BlockFlow.res(s.margin[2], cb);
+		var mt = resume != null ? 0 : BlockFlow.res(s.margin[0], cb), mb = broken ? 0 : BlockFlow.res(s.margin[2], cb);
 		box.topPositive = mt > 0 ? mt : 0;
 		box.topNegative = mt < 0 ? mt : 0;
 		box.bottomPositive = mb > 0 ? mb : 0;
@@ -180,7 +215,7 @@ class GridFlow implements FormattingContext {
 		// (each line where an area starts at it, its next track's start, and where one ends at it, its track's end: gaps between)
 		var colLines = lines(colPos, cols, rtl ? pr : pl, true), rowLines = lines(rowPos, rows, pt, true);
 		var colEnds = lines(colPos, cols, rtl ? pr : pl, false), rowEnds = lines(rowPos, rows, pt, false);
-		for (a in g.absolute) {
+		if (resume == null) for (a in g.absolute) {
 			if (owner && a.style.position != "fixed" && box.parent != null) {
 				var c = area(g.colLines, a.style, "grid-column", colLines, colEnds, g.shiftCols, g.colMap, fullW);
 				var r = area(g.rowLines, a.style, "grid-row", rowLines, rowEnds, g.shiftRows, g.rowMap, fullH);
@@ -1015,8 +1050,10 @@ private class GridItem {
 	public var areaW = 0.0;
 	// (on its row's baseline: the room above it that puts it there)
 	public var shim = 0.0;
-	// (its border box's top in the content box, once placed)
+	// (its border box's top in the content box, once placed, and its place there, relative offsets in)
 	public var y = 0.0;
+	public var x = 0.0;
+	public var top = 0.0;
 	public var frag = -1;
 
 	public function new(box:Box)

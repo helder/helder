@@ -64,8 +64,9 @@ class Breaks implements Fragmentation {
 		// (before a float, out of flow: its break-before and page name make no break, the one before's break-after does)
 		var a = ending(before), b = after.floating ? "auto" : starting(after);
 		var forced = Breaks.forced(a) ? a : Breaks.forced(b) ? b : null;
-		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between)
-		if (forced == null && !after.floating && ending(before, true) != starting(after, true)) forced = "page";
+		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between; a flex, grid
+		// or table container's items' make none)
+		if (forced == null && !after.floating && container(box) && ending(before, true) != starting(after, true)) forced = "page";
 		var appeal = a == "avoid" || a == "avoid-page" || b == "avoid" || b == "avoid-page" ? AVOID : PERFECT;
 		return offer({box: box, child: after, line: -1, from: null, bottom: bottom, appeal: inside(box, appeal), forced: forced, keep: false});
 	}

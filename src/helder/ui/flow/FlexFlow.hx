@@ -55,9 +55,14 @@ class FlexFlow implements FormattingContext {
 		var cb = space.width;
 		var pl = BlockFlow.res(s.padding[3], cb), pr = BlockFlow.res(s.padding[1], cb), pt = BlockFlow.res(s.padding[0], cb), pb = BlockFlow.res(s.padding[2], cb);
 		var bl = s.border[3], br = s.border[1], bt = s.border[0], bb = s.border[2];
+		// (in a fragmentainer, resumed: its start's border and padding were in the one before)
+		var fr = space.fragmentation;
+		var resume = fr != null ? fr.resume(box) : null;
+		if (resume != null) bt = pt = 0;
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : BlockFlow.size(s.height, space.height, s.borderBox, bpy);
 		if (!Math.isNaN(heightSpec)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
+		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var w = width(box, s, space, bpx, heightSpec);
 		// (an aspect-ratio's auto height: its width's through it)
 		if (Math.isNaN(heightSpec)) {
@@ -159,7 +164,7 @@ class FlexFlow implements FormattingContext {
 			at += lineCross[k] + between;
 		}
 		// (each item placed: stretched, then main axis alignment, then cross axis)
-		var baseline = Math.NaN;
+		var baseline = Math.NaN, placed:Array<Item> = [];
 		var justify = logical(keyword(box.style, "justify-content"), reverse);
 		var innerW = w, innerH = row ? crossSize : mainSize;
 		for (k in 0...lines.length) {
@@ -223,7 +228,11 @@ class FlexFlow implements FormattingContext {
 					y = mainAt;
 				}
 				var off = BlockFlow.offset(it.box, innerW, innerH);
-				frags.adopt(frag, it.frag, bl + pl + x + off.x, bt + pt + y + off.y);
+				it.x = x + off.x;
+				it.y = y + off.y;
+				it.line = k;
+				placed.push(it);
+				if (fr == null) frags.adopt(frag, it.frag, bl + pl + it.x, bt + pt + it.y);
 				if (Math.isNaN(baseline) && k == 0) {
 					var b = frags.baseline(it.frag);
 					baseline = bt + pt + y + (Math.isNaN(b) ? frags.height(it.frag) : b);
@@ -232,9 +241,32 @@ class FlexFlow implements FormattingContext {
 		}
 		var h = row ? crossSize : mainSize;
 		if (Math.isNaN(heightSpec)) h = clamp(h, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
+		// (in a fragmentainer: its rows here, from where it resumes to a break; broken, its end's border and padding
+		// in a later one, its height to the fragmentainer's end)
+		var broken = false;
+		if (fr != null) {
+			// (Rows: a row's line one row, a column's items one each, all one when it has several lines)
+			var rows = new Rows(), splits = row || lines.length == 1;
+			for (k in 0...placed.length) {
+				var it = placed[k], ih = frags.height(it.frag);
+				rows.add(row ? it.line : splits ? k : 0, it.box, it.frag, it.x, it.y, it.y - (row ? it.crossStart : it.mainStart), it.y + ih + (row ? it.crossEnd : it.mainEnd));
+			}
+			var r = rows.place(box, frag, space, flow, bl + pl, bt + pt, h);
+			broken = r.broken;
+			if (broken) {
+				bb = pb = 0;
+				bpy = pt + bt;
+				h = Math.max(r.height, fr.size - space.pageTop - bt - pt);
+			} else if (resume != null)
+				h = r.height;
+			if (resume != null || broken) {
+				frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
+				baseline = Math.NaN;
+			}
+		}
 		// (absolutely positioned children: static places as if each were the only item, Flexbox §4.1:
-		// justify-content along the main axis, align-self across, in the content box)
-		for (a in abs) {
+		// justify-content along the main axis, align-self across, in the content box; in its first fragment)
+		if (resume == null) for (a in abs) {
 			var j = fraction(justify, reverse), self = logical(selfOf(a, row), wrapReverse);
 			var k = fraction(self == "stretch" || self == "baseline" ? "flex-start" : self, wrapReverse);
 			var fx = row ? (rtl ? 1 - j : j) : (rtl ? 1 - k : k), fy = row ? k : j;
@@ -243,7 +275,7 @@ class FlexFlow implements FormattingContext {
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!Math.isNaN(baseline)) frags.setBaseline(frag, baseline);
 		// (its margins for its parent: a flex container's don't collapse with its items')
-		var mt = BlockFlow.res(s.margin[0], cb), mb = BlockFlow.res(s.margin[2], cb);
+		var mt = resume != null ? 0 : BlockFlow.res(s.margin[0], cb), mb = broken ? 0 : BlockFlow.res(s.margin[2], cb);
 		box.topPositive = mt > 0 ? mt : 0;
 		box.topNegative = mt < 0 ? mt : 0;
 		box.bottomPositive = mb > 0 ? mb : 0;
@@ -661,6 +693,10 @@ private class Item {
 	public var frozen = false;
 	public var violation = 0.0;
 	public var frag = -1;
+	// (its place in the content box, and its line)
+	public var x = 0.0;
+	public var y = 0.0;
+	public var line = 0;
 
 	public function new(box:Box, index:Int) {
 		this.box = box;
