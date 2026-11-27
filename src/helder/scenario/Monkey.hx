@@ -821,7 +821,11 @@ private class Screen {
 		var label = v.node.semantics?.label;
 		if (label != null && label != "" && label.length <= 60) {
 			var found = context.run(() -> Steps.matches(ui, label));
-			if (found.length == 1 && found[0].tag == v.node.tag && Math.abs(found[0].x - v.x) < 1 && Math.abs(found[0].y - v.y) < 1) return label;
+			// (its name when a wheel at its node's centre reaches it, as at its spot)
+			if (found.length == 1 && found[0].tag == v.node.tag && Math.abs(found[0].x - v.x) < 1 && Math.abs(found[0].y - v.y) < 1) {
+				var h = context.run(() -> @:privateAccess ui.hit(found[0].x + found[0].width / 2, found[0].y + found[0].height / 2));
+				if (h != null && v.node.contains(h)) return label;
+			}
 		}
 		return spot(v);
 	}
