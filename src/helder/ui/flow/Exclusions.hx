@@ -47,8 +47,15 @@ class Exclusions {
 	// A float of margin box w by h, at y or below, within left...right: its margin box's top left (§9.5.1).
 	public function place(left:Bool, w:Float, h:Float, y:Float, cbLeft:Float, cbRight:Float):{x:Float, y:Float} {
 		y = Math.max(y, lastTop);
+		// (rule 7: an oversized float can pass the opposite edge only without a float on its own side)
+		var oversized = w > cbRight - cbLeft;
+		var sameSideBottom = oversized ? clear(left ? "left" : "right") : Math.NEGATIVE_INFINITY;
 		while (true) {
-			var b = band(y, h, cbLeft, cbRight);
+			var low = cbLeft, high = cbRight;
+			if (oversized && y >= sameSideBottom) {
+				if (left) high = cbLeft + w else low = cbRight - w;
+			}
+			var b = band(y, h, low, high);
 			var next = nextBelow(y, h);
 			if (b.right - b.left >= w || next == Math.POSITIVE_INFINITY) {
 				var x = left ? b.left : b.right - w;
