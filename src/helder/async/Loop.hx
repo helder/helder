@@ -529,7 +529,10 @@ private class Wake {
 
 // (helder.view's graph on this loop: a write flushes when the task running
 // ends, Solid 2's microtask; a coroutine computation runs as a task started
-// now, cancelled when its run is superseded)
+// now, cancelled when its run is superseded). Nothing names it: kept, its
+// __init__ with it, as `-dce std` kept it, but in a release build, whose
+// UI flushes on its frames (the web viewer, given these hooks, stayed blank)
+#if !helder.release @:keep #end
 private class GraphHooks implements IDispatchObject {
 	final f:Void->Void;
 
