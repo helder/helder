@@ -37,6 +37,12 @@ class Space {
 	// the absolutely positioned boxes for the nearest positioned ancestor, and the fixed ones for the root
 	public var positioned:Null<Positioned> = null;
 	public var fixed:Null<Positioned> = null;
+	// the fragmentainer an in-flow box is laid out in (null: none, one
+	// continuous flow) and its border box's top there; not passed on by
+	// child(): floats, absolutely positioned boxes, atomics and table
+	// cells are monolithic
+	public var fragmentation:Null<Fragmentation> = null;
+	public var pageTop = 0.0;
 
 	public function new(fragments:Fragments, fonts:FontMatch, width:Float, height:Float) {
 		this.fragments = fragments;
