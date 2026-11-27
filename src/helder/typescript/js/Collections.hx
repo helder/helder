@@ -28,12 +28,20 @@ class Collections {
 	static function mapIndex(m:JsMap, k:Dynamic):Int {
 		var i:Null<Int>;
 		if (Std.isOfType(k, String)) i = m.stringIndex == null ? null : m.stringIndex.get(k);
+		else if (integer(k)) i = m.intIndex == null ? null : m.intIndex.get(Std.int((k : Float)));
 		else {
 			var id = mapKey(k);
 			if (id != null) i = m.primitiveIndex == null ? null : m.primitiveIndex.get(id);
 			else i = m.objectIndex == null ? null : m.objectIndex.get(k);
 		}
 		return i == null ? -1 : i;
+	}
+
+	// (a number of 32 bits without a fraction, -0 as 0: SameValueZero's)
+	static inline function integer(k:Dynamic):Bool {
+		if (!isNumber(k)) return false;
+		var n:Float = k;
+		return n >= -2147483648.0 && n <= 2147483647.0 && Std.int(n) == n;
 	}
 
 	static function mapKey(k:Dynamic):String {
@@ -50,6 +58,10 @@ class Collections {
 	static function mapIndexSet(m:JsMap, k:Dynamic, slot:Null<Int>):Void {
 		if (Std.isOfType(k, String)) {
 			if (slot == null) m.stringIndex.remove(k) else MapIndex.strings(m).set(k, slot);
+			return;
+		}
+		if (integer(k)) {
+			if (slot == null) m.intIndex.remove(Std.int((k : Float))) else MapIndex.ints(m).set(Std.int((k : Float)), slot);
 			return;
 		}
 		var id = mapKey(k);
@@ -188,6 +200,11 @@ class MapIndex {
 		return m.primitiveIndex;
 	}
 
+	public static function ints(m:JsMap):haxe.ds.IntMap<Int> {
+		if (m.intIndex == null) m.intIndex = new haxe.ds.IntMap();
+		return m.intIndex;
+	}
+
 	public static function objects(m:JsMap):haxe.ds.ObjectMap<Dynamic, Int> {
 		if (m.objectIndex == null) m.objectIndex = new haxe.ds.ObjectMap();
 		return m.objectIndex;
@@ -196,6 +213,7 @@ class MapIndex {
 	public static function clear(m:JsMap):Void {
 		m.stringIndex = null;
 		m.primitiveIndex = null;
+		m.intIndex = null;
 		m.objectIndex = null;
 	}
 }
