@@ -36,8 +36,15 @@ class Signup implements Markup {
 		</Standard.Themed>;
 	}
 
-	// helder's look, and the card's parts in its tokens
-	public static final look = Look.base.with({
+	// helder's look, and the card's parts in its tokens (made at its first
+	// read: a static's initializer may run before those of the libraries it
+	// calls, whose tables are null then)
+	public static var look(get, never):Look<Dynamic>;
+
+	static var made:Null<Look<Dynamic>> = null;
+
+	static function get_look():Look<Dynamic>
+		return made ??= Look.base.with({
 		parts: {
 			card: t -> {rowGap: 24, padding: 24, borderRadius: t.radiusSurface, borderWidth: 1, borderColor: t.line, background: t.surface},
 			muted: t -> {color: t.fg2},

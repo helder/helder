@@ -344,6 +344,13 @@ class Studio {
 			run(helderCli(), ["run", "--headless", 'examples/$e', "--snap", '$b/$e.png']);
 			if (!FileSystem.exists('$b/$e.png')) throw new Failed('examples/$e: no frame drawn');
 		}
+		// (and their covers, as the site makes them: the studio headless, its
+		// screens' program a story host, whose static inits run in another
+		// order: signup's look read null colour tables there on Linux)
+		for (e in ["signup", "mail"]) {
+			run(helderCli(), ["run", "--headless", "apps/studio", "--stats", '$b/$e-cover.json', "--", FileSystem.fullPath('examples/$e'), "--cover", '$b/$e-cover.png']);
+			if (!FileSystem.exists('$b/$e-cover.png')) throw new Failed('examples/$e: no cover (its screens\' program failed?)');
+		}
 		run(NODE, ["tests/story/host/host.mjs", "project", '$b/screens50']);
 		// (helder.compiler.web's toolchain, as the compiler-web lane builds it: structural edits built in the browser)
 		run(NODE, ["src/helder/compiler/web/build.mjs", "bin/compiler-web"]);
