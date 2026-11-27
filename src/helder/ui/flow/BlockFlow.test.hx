@@ -223,7 +223,7 @@ private class Laid {
 	public function new(doc:helder.dom.Document) {
 		document = doc;
 		fonts.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "Ahem");
-		tree = BoxTree.build(doc, CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}, hints: true}), {contexts: helder.ui.flow.Contexts.all()});
+		tree = BoxTree.build(doc, CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}, hints: true}), {contexts: helder.ui.flow.Contexts.all(), counters: s -> new helder.css.CssCounters(s)});
 	}
 
 	public function layout(width:Float):Int

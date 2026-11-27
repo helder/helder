@@ -30,6 +30,8 @@ typedef DocumentViewOptions = {
 	?font:(url:String) -> Null<Bytes>,
 	?fonts:FontMatch,
 	?contexts:Contexts,
+	// its counters and generated content (BoxTree's: html's CssCounters; an app's, DocumentApp)
+	?counters:CssStyles->helder.css.CssCounting,
 	// what @media matches (default: a screen of the view's size)
 	?media:CssMediaContext,
 	// what vw and vh resolve against (default: the cascade's: on print, the
@@ -127,6 +129,7 @@ class DocumentView {
 	public static function every(options:Null<DocumentViewOptions>):DocumentViewOptions {
 		var o:DocumentViewOptions = options ?? {};
 		if (o.contexts == null) o.contexts = Contexts.all();
+		if (o.counters == null) o.counters = s -> new helder.css.CssCounters(s);
 		return o;
 	}
 
@@ -206,7 +209,7 @@ class DocumentView {
 		// (the elements kept to style again: styled as the tree is made)
 		var w = waiting();
 		if (w.length > 0) styles.forget(w);
-		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg});
+		tree = BoxTree.build(document, styles, {contexts: options.contexts, counters: options.counters, image: image, svg: svg});
 		fonts.inlines.forget();
 		fragments.clear();
 		placedRuns.clear();
