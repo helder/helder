@@ -169,7 +169,10 @@ class CssReftestCheck {
 
 	// (goldens Chromium draws against the test's own words: skipped, why)
 	static final CHROMIUM = [
-		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)"
+		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)",
+		// (drawn differently by Chromium on Linux and macOS: no golden holds on both)
+		"css/CSS2/ui/system-colors-001.xht" => "Highlight is the platform's (macOS's selection colour, Linux's own)",
+		"css/CSS2/fonts/font-weight-017.xht" => "its glyphs' bottom row differs between Linux's and macOS's rasterizers"
 	];
 
 	// (drawn on pages: a print reftest, a paged directory's crash test)

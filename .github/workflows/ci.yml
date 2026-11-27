@@ -332,44 +332,11 @@ jobs:
       - name: The reftests and the noref tests' goldens
         run: bun run test -k css-reftests
         env: {GOLDEN_OUT: bin/css/golden-out}
-      - name: Goldens drawn other ways (an experiment, for now)
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: |
-          base=$(cat bin/css/goldens/current)
-          dirs="css/CSS2/zindex css/CSS2/fonts css/CSS2/tables css/CSS2/text css/CSS2/ui"
-          cat > bin/css/fonts.conf <<'EOF'
-          <?xml version="1.0"?>
-          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-          <fontconfig>
-            <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
-            <match target="pattern"><edit name="antialias" mode="assign"><bool>true</bool></edit><edit name="hinting" mode="assign"><bool>false</bool></edit><edit name="hintstyle" mode="assign"><const>hintnone</const></edit><edit name="rgba" mode="assign"><const>none</const></edit><edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit><edit name="autohint" mode="assign"><bool>false</bool></edit><edit name="embolden" mode="assign"><bool>false</bool></edit></match>
-            <match target="font"><edit name="antialias" mode="assign"><bool>true</bool></edit><edit name="hinting" mode="assign"><bool>false</bool></edit><edit name="hintstyle" mode="assign"><const>hintnone</const></edit><edit name="rgba" mode="assign"><const>none</const></edit><edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit><edit name="autohint" mode="assign"><bool>false</bool></edit><edit name="embolden" mode="assign"><bool>false</bool></edit></match>
-          </fontconfig>
-          EOF
-          fc-match -v "DejaVu Sans" | grep -E "antialias|hint|rgba|lcdfilter|autohint|embolden" || true
-          GOLDEN_DEBUG=1 GOLDENS=$base bin/css/CssReftestCheck $dirs | grep -P '\t' | awk -F'\t' '{n++; if($2>0)f++} END{print "base: " n " failing, " f " with flat pixels off"}' || true
-          variant() {
-            name=$1; shift
-            env "$@" node tests/css/goldens.mjs $dirs | tail -1
-            dir=$(cat bin/css/goldens/current)
-            echo "$name: $dir"
-            GOLDENS=$dir bin/css/CssReftestCheck $dirs | grep -E "^css/CSS2/(zindex|fonts|tables|text|ui) " || true
-            mkdir -p bin/css/variants && cp -R "$dir" "bin/css/variants/$name"
-          }
-          echo "base:"; GOLDENS=$base bin/css/CssReftestCheck $dirs | grep -E "^css/CSS2/(zindex|fonts|tables|text|ui) " || true
-          variant lcd GOLDENS_FLAGS=--disable-lcd-text
-          variant fontconfig FONTCONFIG_FILE=$PWD/bin/css/fonts.conf
-          variant scale2 GOLDENS_SCALE=2
-          variant scale2-fontconfig GOLDENS_SCALE=2 FONTCONFIG_FILE=$PWD/bin/css/fonts.conf
-          echo "$base" > bin/css/goldens/current
       - uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() }}
+        if: ${{ failure() }}
         with:
           name: css-goldens-linux
-          path: |
-            bin/css/golden-out
-            bin/css/variants
+          path: bin/css/golden-out
           retention-days: 7
           if-no-files-found: ignore
       - id: key

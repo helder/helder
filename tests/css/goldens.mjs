@@ -59,18 +59,18 @@ const TYPES = {
   '.woff2': 'font/woff2'
 }
 
-const flags = (process.env.GOLDENS_FLAGS ?? '').split(' ').filter(f => f)
-const scale = Number(process.env.GOLDENS_SCALE ?? 1)
-const browser = await pw.chromium.launch({args: ['--force-color-profile=srgb', '--hide-scrollbars', '--font-render-hinting=none', ...flags]})
+// (grayscale text on every platform: Linux's fontconfig asks for LCD
+// antialiasing, which headless Chromium follows; macOS's has none)
+const browser = await pw.chromium.launch({args: ['--force-color-profile=srgb', '--hide-scrollbars', '--font-render-hinting=none', '--disable-lcd-text']})
 // (the key: WPT's revision, Chromium's version, and how goldens are drawn (this
 // script, the fonts): the same on every machine)
-const drawing = createHash('sha256').update(fs.readFileSync(new URL(import.meta.url))).update(JSON.stringify(fonts)).update(flags.length || scale !== 1 || process.env.FONTCONFIG_FILE ? JSON.stringify([flags, scale, process.env.FONTCONFIG_FILE]) : '').digest('hex').slice(0, 8)
+const drawing = createHash('sha256').update(fs.readFileSync(new URL(import.meta.url))).update(JSON.stringify(fonts)).digest('hex').slice(0, 8)
 const key = `${revision.slice(0, 12)}-chromium-${browser.version()}-${drawing}`
 const out = path.join('bin/css/goldens', key)
 const todo = tests.filter(id => !fs.existsSync(path.join(out, id + '.png')))
 console.log(`goldens.mjs: ${tests.length} noref tests, ${todo.length} to draw, Chromium ${browser.version()}, ${faces.length} faces, ${JSON.stringify(fonts.generic)}`)
 
-const context = await browser.newContext({viewport: {width: 800, height: 600}, deviceScaleFactor: scale})
+const context = await browser.newContext({viewport: {width: 800, height: 600}, deviceScaleFactor: 1})
 await context.route(HOST + '**', route => {
   const url = new URL(route.request().url())
   const face = /^\/__helder\/font\/(\d+)$/.exec(url.pathname)
@@ -155,7 +155,7 @@ async function draw(page, id) {
   await page.addStyleTag({content: '* { -webkit-font-smoothing: antialiased !important }'})
   const file = path.join(out, id + '.png')
   fs.mkdirSync(path.dirname(file), {recursive: true})
-  await page.screenshot({path: file, clip: {x: 0, y: 0, width: 800, height: 600}, animations: 'disabled', scale: 'css'})
+  await page.screenshot({path: file, clip: {x: 0, y: 0, width: 800, height: 600}, animations: 'disabled'})
 }
 
 async function lane(queue) {
