@@ -33,6 +33,8 @@ class Shape {
 	// (a lookup table: a shape of many keys, a dictionary's)
 	var index:Null<Map<String, Int>> = null;
 	var deleted = 0;
+	// (an index among its keys, so its keys' order is not OwnPropertyKeys': 0 not known yet, 1 no, 2 yes)
+	var indexes = 0;
 	// (its children: the first inline, the others by key and attributes)
 	var nextKey:Null<String> = null;
 	var nextAttr = 0;
@@ -52,6 +54,11 @@ class Shape {
 		this.plain = plain;
 		secret = parent == null ? 0 : parent.secret;
 		if (!dict && attrs.length > 0 && attrs[attrs.length - 1] & Attr.PRIVATE != 0) secret++;
+	}
+
+	public function indexed():Bool {
+		if (indexes == 0) indexes = Lambda.exists(keys, k -> k != null && Lib.index(k) >= 0) ? 2 : 1;
+		return indexes == 2;
 	}
 
 	// (the number of slots, deleted ones included)

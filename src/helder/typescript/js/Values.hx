@@ -311,6 +311,13 @@ class Layout {
 	public final plain:Bool;
 	// (an ordinary object's shape of its names: what a spread of an instance makes)
 	var keys:Null<Shape> = null;
+	// (an index or a symbol among its names: Json's, which writes the names in their order)
+	var indexes = 0;
+
+	public function indexed():Bool {
+		if (indexes == 0) indexes = Lambda.exists(names, k -> Lib.index(k) >= 0 || Symbols.isSymbolKey(k)) ? 2 : 1;
+		return indexes == 2;
+	}
 
 	public function ordinary():Null<Shape> return keys != null ? keys : keys = Shapes.literal(names);
 
