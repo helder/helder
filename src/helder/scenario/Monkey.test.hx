@@ -33,9 +33,12 @@ function tests() {
 	Broken.main();
 	var wrong = Hosting.root;
 	People.main();
+	// (its own root: another test file's main, built beside it, gives UiWindow.run its own)
+	var people = Hosting.root;
 	Hosting.on = false;
 	var right = test("a program that holds under a monkey", () -> Monkey.check({
 		from: Monkey.from(plain, crowded),
+		root: people,
 		atoms: [Monkey.atom(names), Monkey.atom(query)]
 	}, {cases: 30, limit: 30}));
 	var outside = test("content outside the window: found, shrunk to the atom's value, written, replayed", () -> {
