@@ -361,18 +361,23 @@ class Phone implements Markup {
 						// (down: the picture shrinking toward its tile with the finger, Flight)
 						shift(0);
 						drop(Math.max(0, g.ty));
-						x.zoom.drag(drop.peek(), h, closed -> if (closed) p.nav.back());
+						// (up: nothing to drag; a flight held at none would be let go by nothing)
+						if (drop.peek() > 0 || x.zoom.holding()) x.zoom.drag(drop.peek(), h, closed -> if (closed) p.nav.back());
 					}
 				case Ended:
 					var dx = shift.peek(), dy = drop.peek();
 					shift(0);
 					drop(0);
 					// (let go: on to the tile or back, with the finger's speed; no picture to fly: by how far, as fast)
-					if (dy > 0 && x.zoom.holding()) x.zoom.release() else if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
+					// (a flight held let go whatever came after: a swipe across still a swipe)
+					var held = x.zoom.holding();
+					if (held) x.zoom.release();
+					if (held && dy > 0) return;
+					if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
 						|| dx > 0 && g.vx > 500) v.previous();
 				case _:
 					shift(0);
-					if (drop.peek() > 0) x.zoom.release();
+					if (x.zoom.holding()) x.zoom.release();
 					drop(0);
 			}
 		}

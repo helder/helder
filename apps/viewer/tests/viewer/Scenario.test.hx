@@ -82,6 +82,16 @@ function tests() {
 		h.frame(1);
 		equals((h.screens[0].failure?.message ?? "").split(" refused")[0], "viewer.NativeFiles");
 	});
+	test("a phone's photo dragged up a little and let go: nothing held, nothing ticking after", () -> {
+		var h = host([scenario({
+			name: "Dragged",
+			size: [390, 844],
+			boot: () -> act(OpenRecent(Sandbox.HOME + "/photo 2.jpg")),
+			steps: [helder.scenario.Steps.drag({x: 195, y: 422}, {dx: 0, dy: -11})]
+		})]);
+		var x = explorer(h, 0), s = h.screens[0];
+		equals([x.full.value, x.zoom.holding(), s.run(() -> helder.ui.Clock.active)], [true, false, false]);
+	});
 	test("a phone's size: the phone's shell", () -> {
 		var h = host([scenario({name: "Phone", size: [390, 844], boot: () -> act(Go(Samples.ROOT))})]);
 		var ui = h.screens[0].ui;
