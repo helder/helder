@@ -165,6 +165,20 @@ class CssShorthands {
 				// (place-content's baseline alone: justify-content start, Align 3 §10.1)
 				var baseline = plain(items[0]).exists(t -> t.match(Keyword("baseline")));
 				set(names[1], items.length > 1 ? items[1] : shorthand == "place-content" && baseline ? [Keyword("start")] : items[0]);
+			// (Sizing 4 §5.1: each side auto? then none or a length; one for both)
+			case "contain-intrinsic-size":
+				var names = CssGrammars.property(shorthand).longhands;
+				var items = [], item = [];
+				for (t in plain(terms)) {
+					item.push(t);
+					if (!t.match(Keyword("auto"))) {
+						items.push(item);
+						item = [];
+					}
+				}
+				if (items.length == 0) return null;
+				set(names[0], items[0]);
+				set(names[1], items.length > 1 ? items[1] : items[0]);
 			case "grid-template":
 				var t = template(plain(terms));
 				if (t == null) return null;
@@ -397,7 +411,7 @@ class CssShorthands {
 				var s0 = sidesOf[0];
 				omitting(['border-$s0-width', 'border-$s0-style', 'border-$s0-color'], 'border-$s0-style');
 			case "flex": '${v("flex-grow")} ${v("flex-shrink")} ${v("flex-basis")}';
-			case "gap" | "grid-gap" | "place-content" | "place-items" | "place-self" | "overflow":
+			case "gap" | "grid-gap" | "place-content" | "place-items" | "place-self" | "overflow" | "contain-intrinsic-size":
 				var names = CssGrammars.property(shorthand).longhands;
 				v(names[0]) == v(names[1]) ? v(names[0]) : '${v(names[0])} ${v(names[1])}';
 			case "flex-flow": omitting(["flex-direction", "flex-wrap"], "flex-direction");

@@ -887,7 +887,18 @@
     "css/filter-effects/parsing/backdrop-filter-parsing-valid.html",
     "css/filter-effects/parsing/filter-computed.html",
     "css/filter-effects/parsing/filter-parsing-invalid.html",
-    "css/filter-effects/parsing/filter-parsing-valid.html"
+    "css/filter-effects/parsing/filter-parsing-valid.html",
+    "css/css-contain/inheritance.html",
+    "css/css-contain/parsing/contain-computed.html",
+    "css/css-contain/parsing/contain-invalid.html",
+    "css/css-contain/parsing/contain-valid.html",
+    "css/css-sizing/contain-intrinsic-size/parsing/contain-intrinsic-size-invalid.html",
+    "css/css-sizing/contain-intrinsic-size/parsing/contain-intrinsic-size-valid.html",
+    "css/css-sizing/contain-intrinsic-size/parsing/contain-intrinsic-size-computed.html",
+    "css/css-contain/content-visibility/inheritance.html",
+    "css/css-contain/content-visibility/parsing/content-visibility-computed.html",
+    "css/css-contain/content-visibility/parsing/content-visibility-invalid.html",
+    "css/css-contain/content-visibility/parsing/content-visibility-valid.html"
   ],
   "properties": {
     "accent-color": {
@@ -15109,6 +15120,176 @@
         ["-10%",21]
       ]
     },
+    "contain": {
+      "inherits": [
+        [false,"none","paint",877]
+      ],
+      "computed": [
+        ["none",null,878],
+        ["strict",null,878],
+        ["content",null,878],
+        ["size",null,878],
+        ["layout",null,878],
+        ["style",null,878],
+        ["paint",null,878],
+        ["size layout",null,878],
+        ["style paint",null,878],
+        ["style layout paint","content",878],
+        ["size style layout paint","strict",878],
+        ["size layout paint","size layout paint",878],
+        ["layout paint",null,878],
+        ["inline-size",null,878],
+        ["inline-size layout style paint",null,878]
+      ],
+      "invalid": [
+        ["auto",879],
+        ["layout layout",879],
+        ["strict layout",879],
+        ["paint strict",879],
+        ["paint layout style paint",879],
+        ["none none",879],
+        ["none strict",879],
+        ["strict strict",879],
+        ["strict none",879],
+        ["strict content",879],
+        ["size layout size",879],
+        ["paint content",879],
+        ["size inline-size",879],
+        ["inline-size inline-size",879]
+      ],
+      "valid": [
+        ["none",null,880],
+        ["strict",null,880],
+        ["content",null,880],
+        ["size",null,880],
+        ["layout",null,880],
+        ["style",null,880],
+        ["paint",null,880],
+        ["layout size","size layout",880],
+        ["paint style","style paint",880],
+        ["layout style paint",null,880],
+        ["layout paint style size","size layout style paint",880],
+        ["inline-size",null,880],
+        ["layout inline-size","inline-size layout",880]
+      ]
+    },
+    "contain-intrinsic-block-size": {
+      "invalid": [
+        ["legacy",881],
+        ["-1px",881],
+        ["1px 1px",881],
+        ["1px none",881],
+        ["auto 1px auto",881],
+        ["20%",881],
+        ["1px auto",881],
+        ["none auto",881]
+      ],
+      "valid": [
+        ["none",null,882],
+        ["1px",null,882],
+        ["2em",null,882],
+        ["auto 1px",null,882],
+        ["auto none",null,882]
+      ]
+    },
+    "contain-intrinsic-height": {
+      "computed": [
+        ["none",null,883],
+        ["1px",null,883],
+        ["auto 1px",null,883],
+        ["auto none",null,883]
+      ],
+      "invalid": [
+        ["legacy",881],
+        ["-1px",881],
+        ["1px 1px",881],
+        ["1px none",881],
+        ["auto 1px auto",881],
+        ["20%",881],
+        ["1px auto",881]
+      ],
+      "valid": [
+        ["none",null,882],
+        ["1px",null,882],
+        ["2em",null,882],
+        ["auto 1px",null,882]
+      ]
+    },
+    "contain-intrinsic-inline-size": {
+      "invalid": [
+        ["legacy",881],
+        ["-1px",881],
+        ["1px 1px",881],
+        ["1px none",881],
+        ["auto 1px auto",881],
+        ["20%",881],
+        ["1px auto",881]
+      ],
+      "valid": [
+        ["none",null,882],
+        ["1px",null,882],
+        ["2em",null,882],
+        ["auto 1px",null,882]
+      ]
+    },
+    "contain-intrinsic-size": {
+      "computed": [
+        ["none",null,883],
+        ["1px",null,883],
+        ["auto 1px",null,883],
+        ["auto 1px auto 1px","auto 1px",883],
+        ["1px auto 1px",null,883],
+        ["5px 5px","5px",883],
+        ["inherit","5px",883]
+      ],
+      "invalid": [
+        ["legacy",881],
+        ["auto legacy",881],
+        ["auto legacy auto",881],
+        ["10%",881],
+        ["2em 3px 5px",881],
+        ["1px 1%",881],
+        ["1px auto auto",881],
+        ["-1px",881],
+        ["auto",881],
+        ["auto 1px 1px auto",881],
+        ["1px 1px auto",881]
+      ],
+      "valid": [
+        ["none",null,882],
+        ["1px",null,882],
+        ["2em 3px",null,882],
+        ["5px 5px","5px",882],
+        ["none none","none",882],
+        ["1px none",null,882],
+        ["none 1px",null,882],
+        ["auto 1px 1px",null,882],
+        ["1px auto 1px",null,882],
+        ["auto 1px auto 1px","auto 1px",882]
+      ]
+    },
+    "contain-intrinsic-width": {
+      "computed": [
+        ["none",null,883],
+        ["1px",null,883],
+        ["auto 1px",null,883]
+      ],
+      "invalid": [
+        ["legacy",881],
+        ["-1px",881],
+        ["1px 1px",881],
+        ["1px none",881],
+        ["auto 1px auto",881],
+        ["20%",881],
+        ["1px auto",881]
+      ],
+      "valid": [
+        ["none",null,882],
+        ["1px",null,882],
+        ["2em",null,882],
+        ["auto 1px",null,882]
+      ]
+    },
     "content": {
       "computed": [
         ["open-quote",null,259],
@@ -15336,6 +15517,28 @@
         ["counters(foo, \"\", initial) \"z\"",479],
         ["counter(foo, inherit) \"z\"",479],
         ["counters(foo, \"\", inherit) \"z\"",479]
+      ]
+    },
+    "content-visibility": {
+      "inherits": [
+        [false,"visible","auto",884]
+      ],
+      "computed": [
+        ["visible",null,885],
+        ["auto",null,885],
+        ["hidden",null,885]
+      ],
+      "invalid": [
+        ["visible auto",886],
+        ["foo-bar",886],
+        ["foo bar baz",886],
+        ["hidden visible",886],
+        ["invisible invisible invisible",886]
+      ],
+      "valid": [
+        ["visible",null,887],
+        ["auto",null,887],
+        ["hidden",null,887]
       ]
     },
     "continue": {

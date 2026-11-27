@@ -942,9 +942,30 @@ counters.value("list-item"); counters.values("section");  // counter() and count
   without them.
 - **Quotes**: `open-quote` and `close-quote` (and the no- ones) keep a
   depth through the document; `quotes: auto` gives English's pairs.
+- **Style containment** (`contain: style`, Contain 2 §3.3): below a
+  contained element (its own counters are outside), an increment or a set
+  of a counter made outside makes a counter of its own, while `counter()`
+  and `counters()` still read outside's; a reversed list's start counts no
+  item inside it; quotes nest inside at the depth they came in with, and
+  the depth comes back when the element ends.
 - **Typed counter properties**: `style.counters(CounterReset)` and the
   like give `{name, value, reversed}`, value null for `reversed()`
   without one.
+
+## Containment
+
+`contain`, `content-visibility` and `contain-intrinsic-size` (with its
+longhands, the logical ones mapped as the others are) are computed values
+like any (`contain`'s sets as `strict` and `content`), and
+`style.containment()` gives the containment that applies (`CssContain`:
+size, inline-size, layout, style, paint): contain's keywords and
+content-visibility's (auto: layout, style and paint; hidden: size too),
+less what Contain 2 §3 says doesn't apply to the box (a box without a
+principal box, an internal table or ruby box, a non-atomic inline: style
+alone; a table: no size containment). `c.stacking` and
+`c.containingBlock` (layout or paint containment) are what the box lane
+reads. content-visibility transitions as display does (allow-discrete:
+what isn't hidden until the end).
 
 ## Counter styles
 

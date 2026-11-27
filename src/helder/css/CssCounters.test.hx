@@ -256,6 +256,28 @@ function tests() {
 			counters.resolveTargets(el -> el.getAttribute("id") == "b" ? 7 : 1);
 			equals(texts(), "7 II 2 Beta Ch. 2 B ");
 		});
+		test("style containment scopes counters and quotes", () -> {
+			// (Contain 2 §3.3: inside, an increment makes a counter of its own; counter() still reads outside's)
+			var lines = generated('<div class=c><p>a</p><section><p>b</p><p>c</p></section><p>d</p></div>', "div { counter-reset: n } p { counter-increment: n } p::before { content: counter(n) counters(n, \".\") } section { contain: style }", ["p"]);
+			equals(lines.join("|"), "11a|11.1b|21.2c|22d");
+			var q = generated('<div><span></span></div>', "div { quotes: 'A' 'Z' '1' '9' } div::before, span::before { content: open-quote } div::after { content: close-quote } span { contain: style }", ["div"]);
+			equals(q.join("|"), "A1Z");
+		});
+		test("containment as it applies", () -> {
+			var doc = Dom.parse('<!doctype html><div id=a style="contain: strict"></div><div id=b style="contain: content"></div><span id=c style="contain: paint layout style"></span><div id=d style="content-visibility: auto"></div><table id=e style="contain: size layout"></table><div id=f style="contain: inline-size"></div><div id=g></div>');
+			var s = CssCascade.styles(doc);
+			function c(id:String)
+				return s.computed(doc.getElementById(id)).containment();
+			equals(c("a") == (CssContain.Size | CssContain.Layout | CssContain.Style | CssContain.Paint : CssContain), true);
+			equals(c("b") == (CssContain.Layout | CssContain.Style | CssContain.Paint : CssContain), true);
+			// (an inline: only style)
+			equals(c("c") == CssContain.Style, true);
+			equals(c("d").stacking && c("d").has(CssContain.Style) && !c("d").has(CssContain.Size), true);
+			// (a table: no size containment)
+			equals(c("e") == CssContain.Layout, true);
+			equals(c("f").has(CssContain.InlineSize) && !c("f").stacking, true);
+			equals(c("g") == CssContain.None && !c("g").containingBlock, true);
+		});
 	});
 }
 

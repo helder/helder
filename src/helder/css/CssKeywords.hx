@@ -128,6 +128,14 @@ enum abstract CssClear(Int) to Int {
 	var Other = -2;
 }
 
+// content-visibility
+enum abstract CssContentVisibility(Int) to Int {
+	var Visible = 0;
+	var Auto = 1;
+	var Hidden = 2;
+	var Other = -2;
+}
+
 // direction
 enum abstract CssDirection(Int) to Int {
 	var Ltr = 0;

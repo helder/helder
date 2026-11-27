@@ -83,6 +83,13 @@ class CssComputed {
 					case Calc(n, type, range): term(Calc(n, type, range), calc, fontSize);
 					case _: t;
 				}];
+			// (Contain 2 §3: the sets strict and content name, as those keywords)
+			case "contain":
+				var words = [for (t in out) switch t {
+					case Keyword(k): k;
+					case _: "";
+				}].join(" ");
+				words == "layout style paint" ? [Keyword("content")] : words == "size layout style paint" ? [Keyword("strict")] : out;
 			case "line-height":
 				[for (t in out) switch t {
 					case Percentage(p): Dimension(p * fontSize / 100, "px");

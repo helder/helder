@@ -304,6 +304,11 @@
     "867": "<!DOCTYPE html>\n<html>\n<head>\n<title>CSS Writing Modes: getComputedStyle().unicodeBidi</title>\n</head>\n<body>\n<div id=\"target\"></div>\n</body>\n</html>\n",
     "870": "<!DOCTYPE html>\n<html>\n<head>\n<title>Inheritance of Filter Effects properties</title>\n</head>\n<body>\n<div id=\"container\">\n  <div id=\"target\"></div>\n</div>\n</body>\n</html>\n",
     "871": "<!DOCTYPE html>\n<html>\n<head>\n<title>Filter Effects Module Level 2: getComputedStyle().backdropFilter</title>\n</head>\n<body>\n<style>\n  #target {\n    color: lime;\n  }\n</style>\n<div id=\"target\"></div>\n</body>\n</html>\n",
-    "874": "<!DOCTYPE html>\n<html>\n<head>\n<title>Filter Effects Module Level 1: getComputedStyle().filter</title>\n</head>\n<body>\n<style>\n  #container {\n    container-type: inline-size;\n    width: 100px;\n  }\n  #target {\n    color: lime;\n  }\n</style>\n<div id=container>\n<div id=\"target\"></div>\n</div>\n</body>\n</html>\n"
+    "874": "<!DOCTYPE html>\n<html>\n<head>\n<title>Filter Effects Module Level 1: getComputedStyle().filter</title>\n</head>\n<body>\n<style>\n  #container {\n    container-type: inline-size;\n    width: 100px;\n  }\n  #target {\n    color: lime;\n  }\n</style>\n<div id=container>\n<div id=\"target\"></div>\n</div>\n</body>\n</html>\n",
+    "877": "<!DOCTYPE html>\n<html>\n<head>\n<title>Inheritance of CSS contain property</title>\n</head>\n<body>\n<div id=\"container\">\n<div id=\"target\"></div>\n</div>\n</body>\n</html>\n",
+    "878": "<!DOCTYPE html>\n<html>\n<head>\n<title>CSS Containment Module Level 3: getComputedStyle().contain</title>\n</head>\n<body>\n<div id=\"target\"></div>\n</body>\n</html>\n",
+    "883": "<!DOCTYPE html>\n<html>\n<head>\n<title>CSS Intrinsic Size Test: intrinsic-size with computed values</title>\n]{1,2}'.\">\n<style>\n#scratch { display: none }\n</style>\n</head>\n<body>\n<div style=\"contain-intrinsic-size: 5px 5px\">\n  <div id=target></div>\n</div>\n<div id=scratch></div>\n</body>\n</html>\n",
+    "884": "<!DOCTYPE html>\n<html>\n<head>\n<title>Content Visibility: content-visibility inheritance</title>\n</head>\n<body>\n<div id=\"container\">\n<div id=\"target\"></div>\n</div>\n</body>\n</html>\n",
+    "885": "<!DOCTYPE html>\n<html>\n<head>\n<title>CSS Content Visibility: content-visibility with computed values</title>\n</head>\n<body>\n<div id=target></div>\n<div id=scratch></div>\n</body>\n</html>\n"
   }
 }

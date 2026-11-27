@@ -356,7 +356,7 @@ const cascadeReport = {}
   cascadeReport.tests = tests.length
 }
 
-// ---- counters.json: css-counter-styles' and css-lists' reftests whose pages read statically (both
+// ---- counters.json: css-counter-styles', css-lists' and css-contain's style containment reftests whose pages read statically (both
 // pages' text compared by CssCountersCheck), and @counter-style's descriptor syntax calls
 const countersReport = {}
 {
@@ -375,9 +375,11 @@ const countersReport = {}
       return `<link rel="stylesheet" href="/${at}">`
     })
   const SYNTAX = new Set(['test_valid_counter_style_descriptor', 'test_invalid_counter_style_descriptor', 'test_counter_style_name'])
-  for (const dir of ['css/css-counter-styles', 'css/css-lists']) for (const file of walk(path.join(root, dir))) {
+  for (const dir of ['css/css-counter-styles', 'css/css-lists', 'css/css-contain']) for (const file of walk(path.join(root, dir))) {
     const rel = path.relative(root, file)
     if (!isTest(rel) || !/\.html?$/.test(rel) || /-(ref|notref)\.html?$/.test(rel) || /\/(support|animations)\//.test(rel)) continue
+    // (css-contain's: style containment's counters and quotes, CssCounters')
+    if (dir === 'css/css-contain' && !/\/(contain-style-counters|contain-style-ol-ordinal|quote-scoping)/.test(rel)) continue
     const text = fs.readFileSync(file, 'utf8')
     const d = describe(rel, text)
     let status

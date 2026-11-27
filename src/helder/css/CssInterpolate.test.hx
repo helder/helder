@@ -78,6 +78,8 @@ function tests() {
 			equals(discrete("display", "none", "block", 0.1), "block");
 			equals(discrete("display", "block", "none", 0.9), "block");
 			equals(discrete("display", "block", "none", 1), "none");
+			equals(discrete("content-visibility", "hidden", "auto", 0.1), "auto");
+			equals(discrete("content-visibility", "visible", "hidden", 0.9), "visible");
 			equals(discrete("float", "left", "right", 0.4), "left");
 			equals(discrete("float", "left", "right", 0.5), "right");
 		});

@@ -6,7 +6,7 @@
     "list": {"inherited": true, "impact": "layout", "properties": ["list-style-image", "list-style-position", "list-style-type", "marker-side"]},
     "table": {"inherited": true, "impact": "layout", "properties": ["border-collapse", "border-spacing", "caption-side", "empty-cells"]},
     "ui": {"inherited": true, "impact": "paint", "properties": ["visibility", "cursor", "pointer-events", "accent-color", "scrollbar-color", "image-orientation"]},
-    "box": {"inherited": false, "impact": "layout", "properties": ["display", "float", "clear", "box-sizing", "width", "height", "min-width", "min-height", "max-width", "max-height", "aspect-ratio", "overflow-x", "overflow-y", "alignment-baseline", "baseline-shift", "baseline-source", "unicode-bidi", "table-layout", "clip", "field-sizing", "max-lines", "continue", "text-overflow"]},
+    "box": {"inherited": false, "impact": "layout", "properties": ["display", "float", "clear", "box-sizing", "width", "height", "min-width", "min-height", "max-width", "max-height", "aspect-ratio", "overflow-x", "overflow-y", "alignment-baseline", "baseline-shift", "baseline-source", "unicode-bidi", "table-layout", "clip", "field-sizing", "max-lines", "continue", "text-overflow", "contain", "content-visibility", "contain-intrinsic-width", "contain-intrinsic-height"]},
     "position": {"inherited": false, "impact": "layout", "properties": ["position", "top", "right", "bottom", "left", "z-index"]},
     "spacing": {"inherited": false, "impact": "layout", "properties": ["margin-top", "margin-right", "margin-bottom", "margin-left", "padding-top", "padding-right", "padding-bottom", "padding-left"]},
     "border": {"inherited": false, "impact": "paint", "properties": ["border-top-width", "border-right-width", "border-bottom-width", "border-left-width", "border-top-style", "border-right-style", "border-bottom-style", "border-left-style", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "border-top-left-radius", "border-top-right-radius", "border-bottom-right-radius", "border-bottom-left-radius", "border-image-source", "border-image-slice", "border-image-width", "border-image-outset", "border-image-repeat"]},
@@ -38,7 +38,7 @@
   },
   "animations": {
     "box-shadow": "value", "box-shadow-color": "value", "box-shadow-offset": "value", "box-shadow-blur": "value", "box-shadow-spread": "value", "box-shadow-position": "discrete",
-    "visibility": "value", "font-weight": "value", "counter-increment": "discrete", "counter-reset": "discrete", "counter-set": "discrete"
+    "visibility": "value", "font-weight": "value", "content-visibility": "discrete", "counter-increment": "discrete", "counter-reset": "discrete", "counter-set": "discrete"
   },
   "enums": {
     "border-top-style": "CssLineStyle", "border-right-style": "CssLineStyle", "border-bottom-style": "CssLineStyle", "border-left-style": "CssLineStyle",

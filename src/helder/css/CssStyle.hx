@@ -134,6 +134,10 @@ class CssStyle extends CssStyleGroups {
 	inline function get_display():CssDisplay
 		return box.display;
 
+	// The containment that applies to the element (contain, content-visibility, its box: CssContain).
+	public function containment():CssContain
+		return CssContain.of(terms(Contain), keyword(ContentVisibility), box.display);
+
 	// position: running(name)'s name (GCPM 3 §2.1: the element leaves the
 	// flow for the margin boxes that name it in element()); else null.
 	public function running():Null<String>
