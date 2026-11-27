@@ -162,7 +162,7 @@ class BlockLines {
 	// width), the boxes behind its items in the order they come)
 	function build(block:Box, space:Space, width:Float, pct:Float, measure:Bool, min = false):Built {
 		var frags = space.fragments;
-		var c = new InlineContent(BoxInline.of(block, width));
+		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
 		var out:Built = {
 			content: c,
 			opened: [],
@@ -368,6 +368,7 @@ class BlockLines {
 				run.starts.resize(left);
 				run.ends.resize(left);
 				run.skew = fonts.oblique ? 0.25 : 0;
+				run.bold = fonts.bold ? embolden(fonts.size) : 0;
 				runX = glyphs.x(g);
 			}
 			var unit = glyphs.cluster(g) - t0;
@@ -383,7 +384,7 @@ class BlockLines {
 		var frags = space.fragments;
 		var own = baseline < 0, height = 0.0;
 		for (mk in list) {
-			var mc = new InlineContent(BoxInline.of(mk, avail));
+			var mc = new InlineContent(BoxInline.of(mk, avail), space.fonts.inlines);
 			var t = mk.first;
 			while (t != null) {
 				if (t.kind == Text) mc.addText(t.text, BoxInline.of(t, avail), t.node, t.offset);
@@ -409,6 +410,12 @@ class BlockLines {
 				text(space, ml, f, mk.first ?? mk, mc, span, ml.x(f), ml.y(f));
 		}
 		return {height: height, baseline: baseline};
+	}
+
+	// (synthesized bold's stroke, as Skia's: 1/24 of the size at 9px to 1/32 at 36px)
+	static function embolden(size:Float):Float {
+		var t = size <= 9 ? 0 : size >= 36 ? 1 : (size - 9) / 27;
+		return size * (1 / 24 + (1 / 32 - 1 / 24) * t);
 	}
 }
 

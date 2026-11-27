@@ -24,6 +24,15 @@ text with, usable on its own.
   version 0 layers with CPAL's palette (Segoe UI Emoji). WOFF and WOFF2
   files read as the fonts they wrap (`parse` and `faceCount` tell them by
   their signature).
+- `FontFaces`: a document's @font-face faces with their descriptors'
+  ranges (`FontFaceDescriptors`: font-weight, font-stretch, font-style and
+  its oblique angles, unicode-range; `auto` the font's own, a variable
+  font's axes' ranges) and CSS Fonts 4 §5.2's matching among a family's
+  faces: stretch, then style, then weight, each the nearest in the spec's
+  order; faces differing in unicode-range alone are one composite face,
+  the last defined first. A face's `unicodeRange` limits it (`FontFile.has`,
+  what `FontSet.faceFor` asks); `FontSet.first` is the first available
+  font, the first whose range has the space, its metrics the set's.
 - `Woff`: WOFF 1.0 and WOFF2 unwrapped into the sfnt (or `.ttc`) they
   carry: WOFF's zlib tables, WOFF2's Brotli stream (`helder.compress`)
   with its glyf and loca rebuilt from their transformed form (points from

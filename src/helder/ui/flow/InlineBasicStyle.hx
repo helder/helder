@@ -12,6 +12,9 @@ class InlineBasicStyle implements InlineStyle {
 	public var weight = 400;
 	public var style:InlineFontStyle = Normal;
 	public var stretch = 100.0;
+	public var angle = 14.0;
+	public var synthesis:InlineSynthesis = All;
+	public var opticalSizing = true;
 	public var variations:Null<Map<String, Float>> = null;
 	public var features:Null<Array<FontFeature>> = null;
 	public var kerning:InlineKerning = Auto;
@@ -120,6 +123,15 @@ class InlineBasicStyle implements InlineStyle {
 
 	public function fontStretch()
 		return stretch;
+
+	public function fontStyleAngle()
+		return angle;
+
+	public function fontSynthesis()
+		return synthesis;
+
+	public function fontOpticalSizing()
+		return opticalSizing;
 
 	public function fontVariations()
 		return variations;

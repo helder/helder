@@ -153,11 +153,20 @@ class CssStyle extends CssStyleGroups {
 	public inline function fontSize():Float
 		return font.fontSize.kind == Px ? font.fontSize.value : 16;
 
-	// The line height in px (lh's); null for normal, the first available
-	// font's metrics, which wait on fonts.
+	// The line height in px (lh's); normal's the first available font's
+	// (CssStyles.metrics), null without fonts.
 	public function lineHeight():Null<Float> {
 		var l = font.lineHeight;
-		return l.kind == Px ? l.value : l.kind == Plain ? l.value * fontSize() : null;
+		return l.kind == Px ? l.value : l.kind == Plain ? l.value * fontSize() : fontMetrics()?.lineHeight;
+	}
+
+	var metrics:Null<CssFontMetrics> = null;
+
+	// The first available font's metrics (CssStyles.metrics: null when no
+	// engine gives them), asked once.
+	public function fontMetrics():Null<CssFontMetrics> {
+		if (metrics != null) return metrics;
+		return metrics = styles.fontMetrics(terms, fontSize());
 	}
 
 	// ---- as text

@@ -9,7 +9,8 @@ using StringTools;
 // What is known when computing without layout: the element's font size
 // (em; font-size's own em is its parent's), the root's (rem), the line
 // heights (lh, rlh: the right one for the property, null for normal), the
-// viewport (vw, vh), its color (currentcolor).
+// viewport (vw, vh), its color (currentcolor), the first available font's
+// metrics (ex, ch, cap, ic) and the root's (rex...), when an engine gives them.
 typedef CssComputeContext = {
 	?fontSize:Float,
 	?parentFontSize:Float,
@@ -17,7 +18,9 @@ typedef CssComputeContext = {
 	?lineHeight:Float,
 	?rootLineHeight:Float,
 	?viewport:{width:Float, height:Float},
-	?color:String
+	?color:String,
+	?metrics:CssFontMetrics,
+	?rootMetrics:CssFontMetrics
 }
 
 // A specified value's terms as computed values (CSS Cascade 4 §4.4):
@@ -33,7 +36,9 @@ class CssComputed {
 			rootFontSize: ctx.rootFontSize ?? 16,
 			lineHeight: ctx.lineHeight,
 			rootLineHeight: ctx.rootLineHeight,
-			viewport: ctx.viewport
+			viewport: ctx.viewport,
+			metrics: ctx.metrics,
+			rootMetrics: ctx.rootMetrics
 		};
 		var out = [for (t in terms) term(t, calc)];
 		return switch property {

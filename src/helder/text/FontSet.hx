@@ -10,6 +10,11 @@ class FontSet {
 	public final size:Float;
 	// italic asked of a face that is not: drawn slanted (GlyphAtlas's oblique)
 	public var oblique = false;
+	// bold asked of a face that is not (font-synthesis-weight): drawn emboldened, its outlines stroked
+	public var bold = false;
+	// the first available font (CSS Fonts 4 §5): the first face whose
+	// unicode-range has the space, its metrics the set's (primary: by default)
+	public var first:FontFile;
 	// OpenType features asked for (FontFeature.parse; null: the default ones)
 	public var features(default, set):Null<Array<FontFeature>> = null;
 	// (the features as one string: FontFeature.key)
@@ -24,6 +29,7 @@ class FontSet {
 		this.emoji = emoji;
 		this.fallbacks = fallbacks == null ? [] : [for (f in fallbacks) if (f != primary) f];
 		this.size = size;
+		first = primary;
 	}
 
 	function set_features(v:Null<Array<FontFeature>>):Null<Array<FontFeature>> {
@@ -45,9 +51,9 @@ class FontSet {
 
 	// the face that has the character (the primary's .notdef when none does)
 	public function faceFor(cp:Int):FontFile {
-		if (primary.glyph(cp) != 0) return primary;
+		if (primary.has(cp)) return primary;
 		for (f in fallbacks)
-			if (f.glyph(cp) != 0) return f;
+			if (f.has(cp)) return f;
 		// (a pictograph shown as an emoji by default: a colour face before the system's other fallbacks)
 		if (emoji != null && cp >= 0x1F300 && cp <= 0x1FAFF) {
 			var f = emoji(cp);
@@ -67,9 +73,9 @@ class FontSet {
 	// the face for a character of an emoji's sequence (with VS16, a modifier,
 	// a joiner, a flag): a colour face that has it first
 	public function emojiFaceFor(cp:Int):FontFile {
-		if (primary.hasColor && primary.glyph(cp) != 0) return primary;
+		if (primary.hasColor && primary.has(cp)) return primary;
 		for (f in fallbacks)
-			if (f.hasColor && f.glyph(cp) != 0) return f;
+			if (f.hasColor && f.has(cp)) return f;
 		if (emoji != null) {
 			var f = emoji(cp);
 			if (f != null) return f;
@@ -81,9 +87,9 @@ class FontSet {
 	public var descent(get, never):Float;
 
 	inline function get_ascent()
-		return primary.ascender * scale(primary);
+		return first.ascender * scale(first);
 
 	// (positive, below the baseline)
 	inline function get_descent()
-		return -primary.descender * scale(primary);
+		return -first.descender * scale(first);
 }

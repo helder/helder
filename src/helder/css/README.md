@@ -670,9 +670,16 @@ styles.pages;                              // @page rules: selectors, declaratio
   parent's size when it is one of the table's (Fonts 4 §2.5), else by
   1.2. lh and rlh are the element's and the root's line height when it
   is a length or a number (the parent's and the initial value's in
-  font-size and line-height); `normal` needs the first available font's
-  metrics, so they stay as written until fonts give them. rem and rlh on
-  the root are its own.
+  font-size and line-height); `normal`'s is the first available font's.
+  ex, ch, cap and ic (and rex, rch, rcap, ric: the root's) are that font's
+  metrics too: `CssStyles.metrics`, a hook an engine with fonts installs
+  (helder.ui's FontMatch.metrics), is asked once per element with its font
+  properties' computed values (`CssFontQuery`: family, size, weight,
+  style, stretch, variation settings, optical sizing) and gives
+  `CssFontMetrics` (x-height, the advance of 0, the cap height, the advance
+  of 水, line-height: normal); the font properties' own units take the
+  parent's, as their em does. Without the hook they stay as written. rem
+  and rlh on the root are its own.
 
 ### Themes compiled at build time
 

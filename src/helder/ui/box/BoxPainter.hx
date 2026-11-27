@@ -288,15 +288,20 @@ class BoxPainter {
 			var placed = new ShapedRun(run.face, run.size);
 			placed.text = run.text;
 			placed.skew = run.skew;
+			placed.bold = run.bold;
 			for (k in 0...run.count) {
 				var gx = x + run.xs[k], gy = baseline + run.ys[k];
 				placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
 			}
 			var paint = Paint.solid(color);
-			if (!Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(placed, paint)) {
+			// (synthesized bold: outlines filled and stroked, not text a painter keeps)
+			if (placed.bold > 0 || !Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(placed, paint)) {
 				glyphs.path.clear();
 				glyphs.addRun(placed);
-				if (!glyphs.path.isEmpty()) p.fill(glyphs.path, paint);
+				if (!glyphs.path.isEmpty()) {
+					p.fill(glyphs.path, paint);
+					if (placed.bold > 0) p.stroke(glyphs.path, new helder.canvas.Stroke(placed.bold), paint);
+				}
 			}
 		}
 		for (d in decorations) decorate(p, d, run, x, baseline, f.width(id), true);

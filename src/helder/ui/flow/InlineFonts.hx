@@ -1,23 +1,37 @@
 package helder.ui.flow;
 
+import helder.text.FontFaces;
+import helder.text.FontFaces.FontFaceDescriptors;
+import helder.text.FontFaces.FontFaceStyle;
+import helder.text.FontFaces.FontStyle;
+import helder.text.FontFaces.Range;
 import helder.text.FontFeature;
 import helder.text.FontFile;
 import helder.text.FontSet;
 import helder.text.SystemFonts;
 import helder.ui.flow.InlineValues;
 
-// The fonts of InlineStyles: font-family's list matched by SystemFonts (the
-// first family it has, the others' faces tried after it for characters it
-// lacks, then the system's fallbacks), the italic and weight asked for (an
-// italic a face does not have drawn oblique), font-feature-settings,
+// The fonts of InlineStyles: font-family's list matched, a family the
+// document's @font-face rules name by FontFaces (CSS Fonts 4 §5.2: its
+// descriptors' ranges, unicode-range's composite faces), the others by
+// SystemFonts (the first family there is, the others' faces tried after it
+// for characters it lacks, then the system's fallbacks). A variable face
+// is the instance the style asks for: wght, wdth, slnt or ital and opsz (at
+// the size, font-optical-sizing: auto) from font-weight, font-stretch,
+// font-style and font-size, font-variation-settings over them. A weight or
+// style the face lacks is synthesized as font-synthesis allows: bold
+// emboldened, italic or oblique slanted. font-feature-settings,
 // font-kerning and font-variant-ligatures as OpenType features. Each set
 // is made once and numbered (id: the shaped-word cache's key), with its
 // metrics as Blink rounds them (ascent, descent and line gap to whole
 // pixels), what line-height: normal and vertical-align read.
 class InlineFonts {
-	public static final shared = new InlineFonts();
+	public static final shared = new InlineFonts(null, null, InlineShaper.shared);
 
 	final fonts:SystemFonts;
+	final faces:Null<FontFaces>;
+	// the shaper of these sets (its cache keyed by their numbers: another InlineFonts' would collide)
+	public final shaper:InlineShaper;
 	final byKey = new Map<String, Int>();
 	final byStyle = new haxe.ds.ObjectMap<InlineStyle, Int>();
 	final sets:Array<FontSet> = [];
@@ -29,13 +43,19 @@ class InlineFonts {
 	var lastStyle:Null<InlineStyle> = null;
 	var lastId = -1;
 	var generation = FontFile.generation;
+	var facesGeneration = 0;
+	// (the first set's number since the last clear)
+	var base = 0;
 
-	public function new(?fonts:SystemFonts)
+	public function new(?fonts:SystemFonts, ?faces:FontFaces, ?shaper:InlineShaper) {
 		this.fonts = fonts == null ? SystemFonts.get() : fonts;
+		this.faces = faces;
+		this.shaper = shaper ?? new InlineShaper();
+	}
 
 	// the number of a style's FontSet (set(id) is the set)
 	public function idOf(style:InlineStyle):Int {
-		if (generation != FontFile.generation) clear();
+		if (generation != FontFile.generation || faces != null && facesGeneration != faces.generation) clear();
 		if (style == lastStyle) return lastId;
 		// (each style object once: styles are interned, so most are seen again; the key only for a style not seen)
 		var known = byStyle.get(style);
@@ -43,15 +63,29 @@ class InlineFonts {
 			lastStyle = style;
 			return lastId = known;
 		}
-		var families = style.fontFamilies(), size = style.fontSize(), weight = style.fontWeight(), slant = style.fontStyle() != Normal;
-		var features = featuresOf(style), variations = style.fontVariations();
-		var key = families.join(",") + "|" + size + "|" + weight + "|" + slant + "|" + (features == null ? "" : FontFeature.key(features)) + "|"
-			+ (variations == null ? "" : [for (k => v in variations) k + "=" + v].join(","));
+		var r:Request = {
+			families: style.fontFamilies(),
+			size: style.fontSize(),
+			weight: style.fontWeight(),
+			stretch: style.fontStretch(),
+			style: switch style.fontStyle() {
+				case InlineFontStyle.Italic: FontStyle.Italic;
+				case InlineFontStyle.Oblique: FontStyle.Oblique(style.fontStyleAngle());
+				case _: FontStyle.Normal;
+			},
+			synthesis: style.fontSynthesis(),
+			optical: style.fontOpticalSizing(),
+			features: featuresOf(style),
+			variations: style.fontVariations()
+		};
+		var key = r.families.join(",") + "|" + r.size + "|" + r.weight + "|" + r.stretch + "|" + Std.string(r.style) + "|" + (r.synthesis : Int) + "|"
+			+ r.optical + "|" + (r.features == null ? "" : FontFeature.key(r.features)) + "|"
+			+ (r.variations == null ? "" : [for (k => v in r.variations) k + "=" + v].join(","));
 		var id = byKey.get(key);
 		if (id == null) {
-			id = sets.length;
+			id = base + sets.length;
 			byKey.set(key, id);
-			add(make(families, size, weight, slant, features, variations));
+			add(make(r));
 		}
 		byStyle.set(style, id);
 		lastStyle = style;
@@ -59,30 +93,32 @@ class InlineFonts {
 	}
 
 	public inline function set(id:Int):FontSet
-		return sets[id];
+		return sets[id - base];
 
 	// the metrics of a set, pixels: above the baseline, below it, the line
 	// gap (each rounded, as Blink rounds them), the x-height
 	public inline function ascent(id:Int):Float
-		return ascents[id];
+		return ascents[id - base];
 
 	public inline function descent(id:Int):Float
-		return descents[id];
+		return descents[id - base];
 
 	public inline function lineGap(id:Int):Float
-		return gaps[id];
+		return gaps[id - base];
 
 	public inline function xHeight(id:Int):Float
-		return xHeights[id];
+		return xHeights[id - base];
 
 	// line-height: normal's
 	public inline function normalLineHeight(id:Int):Float
-		return ascents[id] + descents[id] + gaps[id];
+		return ascents[id - base] + descents[id - base] + gaps[id - base];
 
 	// (a font replaced since: every set made again)
 	function clear() {
 		byKey.clear();
 		byStyle.clear();
+		// (numbers never given twice: the shaper's cache keeps the old ones' words)
+		base += sets.length;
 		sets.resize(0);
 		ascents.resize(0);
 		descents.resize(0);
@@ -90,10 +126,11 @@ class InlineFonts {
 		xHeights.resize(0);
 		lastStyle = null;
 		generation = FontFile.generation;
+		if (faces != null) facesGeneration = faces.generation;
 	}
 
 	function add(set:FontSet) {
-		var f = set.primary, s = set.scale(f);
+		var f = set.first, s = set.scale(f);
 		sets.push(set);
 		ascents.push(Math.round(f.ascender * s));
 		descents.push(Math.round(-f.descender * s));
@@ -110,29 +147,100 @@ class InlineFonts {
 			case _: false;
 		}
 
-	function make(families:Array<String>, size:Float, weight:Int, italic:Bool, features:Null<Array<FontFeature>>, variations:Null<Map<String, Float>>):FontSet {
-		// (each family the system has, in order; a named one it lacks left out)
-		var faces:Array<FontFile> = [];
-		for (family in families) {
+	function make(r:Request):FontSet {
+		// (each family there is, in order: the document's, else the system's; a named one neither has left out)
+		var faces:Array<FontFile> = [], italic = !r.style.match(FontStyle.Normal);
+		// (what the first family's face lacks: synthesized)
+		var lacks:Null<{weight:Float, slanted:Bool}> = null;
+		for (family in r.families) {
 			var quoted = family.length > 1 && family.charAt(0) == '"' && family.charAt(family.length - 1) == '"';
 			var name = quoted ? family.substr(1, family.length - 2) : family;
 			var g = !quoted && generic(name);
-			var f = g ? fonts.match(standIn(name), weight, italic) : fonts.named(name, weight, italic);
+			if (!g && this.faces != null && this.faces.has(name)) {
+				var matched = this.faces.match(name, r.weight, r.stretch, r.style);
+				for (k in 0...matched.length) {
+					var m = matched[k], v = vary(m.file, m.weight, m.stretch, m.angle, m.style, r);
+					if (!faces.contains(v.face)) faces.push(v.face);
+					// (a face of a slanted style, whatever its axes give, or slanted by them: none synthesized)
+					if (k == 0 && lacks == null) lacks = {weight: clamp(r.weight, m.weight), slanted: m.style != FontFaceStyle.Normal || v.slanted};
+				}
+				continue;
+			}
+			var f = g ? fonts.match(standIn(name), r.weight, italic) : fonts.named(name, r.weight, italic);
 			if (f == null) continue;
 			if (!g && f.family.toLowerCase() != name.toLowerCase()) continue;
-			if (variations != null && f.axes.length > 0) f = f.instance(variations);
+			var own = FontFaceDescriptors.of(f), v = vary(f, own.weight, own.stretch, own.angle, own.style, r);
+			f = v.face;
 			if (!faces.contains(f)) faces.push(f);
+			if (lacks == null) lacks = {weight: f.weight, slanted: f.italic && f.axes.length == 0 || v.slanted};
 		}
 		if (faces.length == 0) {
-			var f = fonts.match("sans-serif", weight, italic);
+			var f = fonts.match("sans-serif", r.weight, italic);
 			if (f == null) throw new haxe.Exception("InlineFonts: no font at all");
 			faces.push(f);
+			lacks = {weight: f.weight, slanted: f.italic};
 		}
-		var set = new FontSet(faces[0], faces.slice(1).concat(fonts.fallbacks()), size, fonts.fallbackFor, fonts.emojiFor);
-		set.oblique = italic && !faces[0].italic;
-		if (features != null) set.features = features;
+		var set = new FontSet(faces[0], faces.slice(1).concat(fonts.fallbacks()), r.size, fonts.fallbackFor, fonts.emojiFor);
+		// (the first available font: the first whose unicode-range has the space)
+		for (f in faces)
+			if (inRange(f, " ".code)) {
+				set.first = f;
+				break;
+			}
+		var s:Int = r.synthesis;
+		set.bold = r.weight >= 600 && lacks.weight < 600 && s & InlineSynthesis.Weight != 0;
+		set.oblique = italic && !lacks.slanted && (s & InlineSynthesis.Style != 0 || r.style.match(FontStyle.Oblique(_)) && s & InlineSynthesis.Oblique != 0);
+		if (r.features != null) set.features = r.features;
 		return set;
 	}
+
+	// (a variable face's instance for the request: its axes the style's, as
+	// far as its descriptors' ranges go (a face whose font-style is normal
+	// is not slanted by its axes), font-variation-settings over them; the
+	// face when that is its default. slanted: its slnt or ital set)
+	static function vary(f:FontFile, weight:Range, stretch:Range, angle:Range, style:FontFaceStyle, r:Request):{face:FontFile, slanted:Bool} {
+		var axes = f.axes;
+		if (axes.length == 0) return {face: f, slanted: false};
+		var v = new Map<String, Float>(), plain = true, slanted = false;
+		for (a in axes) {
+			var x = switch a.tag {
+				case "wght": clamp(r.weight, weight);
+				case "wdth": clamp(r.stretch, stretch);
+				case "slnt": switch r.style {
+						case FontStyle.Oblique(deg): -clamp(deg, angle);
+						case FontStyle.Italic if (!hasAxis(f, "ital")): -clamp(14, angle);
+						case _: 0;
+					}
+				case "ital": r.style.match(FontStyle.Italic) && style != FontFaceStyle.Normal ? 1 : 0;
+				case "opsz": r.optical ? r.size : a.def;
+				case _: a.def;
+			}
+			if (r.variations != null && r.variations.exists(a.tag)) x = r.variations.get(a.tag);
+			x = Math.max(a.min, Math.min(a.max, x));
+			if (x != a.def) plain = false;
+			if (a.tag == "slnt" && x != 0 || a.tag == "ital" && x >= 1) slanted = true;
+			v.set(a.tag, x);
+		}
+		// (SystemFonts' instance at a weight: the base face's default asked for again)
+		return {face: plain && !f.varied ? f : f.instance(v), slanted: slanted};
+	}
+
+	static function hasAxis(f:FontFile, tag:String):Bool {
+		for (a in f.axes) if (a.tag == tag) return true;
+		return false;
+	}
+
+	static function inRange(f:FontFile, cp:Int):Bool {
+		var r = f.unicodeRange, i = 0;
+		while (r != null && i < r.length) {
+			if (cp >= r[i] && cp <= r[i + 1]) return true;
+			i += 2;
+		}
+		return r == null;
+	}
+
+	static inline function clamp(v:Float, r:Range):Float
+		return v < r.min ? r.min : v > r.max ? r.max : v;
 
 	// (the generic families SystemFonts has no list for, as FontMatch takes them)
 	static function standIn(name:String):String
@@ -179,4 +287,16 @@ class InlineFonts {
 		}
 		return f.unitsPerEm / 2;
 	}
+}
+
+private typedef Request = {
+	families:Array<String>,
+	size:Float,
+	weight:Int,
+	stretch:Float,
+	style:FontStyle,
+	synthesis:InlineSynthesis,
+	optical:Bool,
+	features:Null<Array<FontFeature>>,
+	variations:Null<Map<String, Float>>
 }

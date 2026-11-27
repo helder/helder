@@ -88,7 +88,8 @@ class InlineContent {
 	public function new(root:InlineStyle, ?fonts:InlineFonts, ?shaper:InlineShaper) {
 		this.root = root;
 		this.fonts = fonts == null ? InlineFonts.shared : fonts;
-		this.shaper = shaper == null ? InlineShaper.shared : shaper;
+		// (the fonts' own: the shaped-word cache is keyed by their sets' numbers)
+		this.shaper = shaper == null ? this.fonts.shaper : shaper;
 		styles.push(root);
 	}
 
