@@ -193,7 +193,11 @@ class PaintOrder {
 		var order = [for (k in 0...c.deferred.length) k];
 		if (order.length > 1) {
 			var at = [for (k in 0...c.deferred.length) rank(f.box(c.deferred[k]))];
-			order.sort((a, b) -> c.z[a] != c.z[b] ? c.z[a] - c.z[b] : at[a] != at[b] ? at[a] - at[b] : a - b);
+			order.sort((a, b) -> {
+				var za = c.z[a], zb = c.z[b];
+				if (za != zb) return za < zb ? -1 : 1;
+				return at[a] != at[b] ? at[a] - at[b] : a - b;
+			});
 		}
 		for (k in order) if (c.z[k] < 0) deferred(c, k);
 		for (k in 0...c.blocks.length) {

@@ -70,6 +70,11 @@ class CssComputed {
 					case Percentage(p): Number(p < 0 ? 0 : p > 100 ? 1 : p / 100, false);
 					case _: t;
 				}];
+			case "z-index":
+				switch out {
+					case [Number(v, _)]: [Number(Math.max(-2147483648, Math.min(2147483647, v)), true)];
+					case _: out;
+				}
 			case "font-weight":
 				[for (t in out) switch t {
 					case Keyword("normal"): Number(400, false);
