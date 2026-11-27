@@ -30,7 +30,8 @@ class Ratio {
 
 	static function natural(box:Box):Float {
 		// (size containment: none, Contain 2 §3.1)
-		if (box.kind != BlockReplaced && box.kind != InlineReplaced || box.image == null || box.style.containment.has(Size)) return Math.NaN;
+		if (box.kind != BlockReplaced && box.kind != InlineReplaced || box.image == null && box.svg == null || box.style.containment.has(Size)) return Math.NaN;
+		if (box.image == null) return box.svg.ratio;
 		var w = box.image.width, h = box.image.height;
 		return w > 0 && h > 0 ? w / h : Math.NaN;
 	}

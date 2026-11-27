@@ -17,6 +17,8 @@ typedef BoxTreeOptions = {
 	?contexts:Contexts,
 	// an image by its URL as written (an <img>'s src, content's url()); null: none
 	?image:(url:String) -> Null<Bitmap>,
+	// an SVG image by its URL as written, where image has none
+	?svg:(url:String) -> Null<helder.canvas.Svg>,
 	// for pages (GCPM 3): running elements out of the flow, string-set's values kept
 	?paged:Bool
 }
@@ -37,6 +39,7 @@ class BoxTree {
 	final styles:CssStyles;
 	final contexts:Contexts;
 	final image:Null<String->Null<Bitmap>>;
+	final svg:Null<String->Null<helder.canvas.Svg>>;
 	// (one BoxStyle a computed style: helder.css shares styles between like elements)
 	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
 	public final counters:CssCounters;
@@ -57,6 +60,7 @@ class BoxTree {
 		this.styles = styles;
 		contexts = options.contexts ?? Contexts.all();
 		image = options.image;
+		svg = options.svg;
 		paged = options.paged ?? false;
 		counters = new CssCounters(styles);
 		var out = [];
@@ -138,8 +142,8 @@ class BoxTree {
 				out.push(make(Break, s, el));
 			case InlineReplaced | BlockReplaced:
 				var b = make(kind, s, el);
-				b.image = load(el.getAttribute(el.localName == "object" ? "data" : "src"));
-				if (b.image == null && el.localName == "object") {
+				if (el.namespaceURI == SVG) b.svg = BoxImages.of(el, styles) else source(b, el.getAttribute(el.localName == "object" ? "data" : "src"));
+				if (b.image == null && b.svg == null && el.localName == "object") {
 					contents(el, s, out);
 					return;
 				}
@@ -177,9 +181,13 @@ class BoxTree {
 		if (html) switch el.localName {
 			case "br": return Break;
 			case "img": return inlineLevel ? InlineReplaced : BlockReplaced;
-			case "object" if (el.hasAttribute("data") && load(el.getAttribute("data")) != null): return inlineLevel ? InlineReplaced : BlockReplaced;
+			case "object" if (el.hasAttribute("data") && (load(el.getAttribute("data")) != null || vector(el.getAttribute("data")) != null)):
+				return inlineLevel ? InlineReplaced : BlockReplaced;
 			case _:
 		}
+		// (an svg element in HTML, outermost: a replaced element, SVG 2 §5.1)
+		if (el.namespaceURI == SVG && el.localName == "svg" && (el.parentElement == null || el.parentElement.namespaceURI != SVG))
+			return inlineLevel ? InlineReplaced : BlockReplaced;
 		return switch s.inner {
 			case BoxStyle.TABLE | BoxStyle.FLEX | BoxStyle.GRID | BoxStyle.TABLE_PART: Container;
 			case BoxStyle.FLOW_ROOT if (inlineLevel): InlineBlock;
@@ -530,7 +538,7 @@ class BoxTree {
 				out.push(b);
 			case Image(Url(url, _)):
 				var b = make(InlineReplaced, s, el, which);
-				b.image = load(url);
+				source(b, url);
 				out.push(b);
 			// (a cross-reference: its text once the targets are resolved; a leader: its fill, repeated by the lines)
 			case Target(target):
@@ -556,7 +564,7 @@ class BoxTree {
 		counters.enter(el, "marker");
 		var kids = parts(el, s, "marker", counters.marker(el));
 		// (a list-style-image that doesn't load: list-style-type's marker, Lists 3 §3.2)
-		if (kids.length == 1 && kids[0].kind == InlineReplaced && kids[0].image == null) {
+		if (kids.length == 1 && kids[0].kind == InlineReplaced && kids[0].image == null && kids[0].svg == null) {
 			var type = s.keyword("list-style-type");
 			kids = type == "none" || type == "" ? [] : parts(el, s, "marker", [Text(counters.formats.marker(counters.value("list-item"), type))]);
 		}
@@ -583,6 +591,17 @@ class BoxTree {
 
 	function load(url:Null<String>):Null<Bitmap>
 		return url == null || url == "" || image == null ? null : image(url);
+
+	function vector(url:Null<String>):Null<helder.canvas.Svg>
+		return url == null || url == "" || svg == null ? null : svg(url);
+
+	// (a replaced box's image: a raster, else an SVG)
+	function source(b:Box, url:Null<String>) {
+		b.image = load(url);
+		if (b.image == null) b.svg = vector(url);
+	}
+
+	static inline var SVG = "http://www.w3.org/2000/svg";
 
 	// The tree, a box a line, indented (tests and the dev tool).
 	public function dump():String {

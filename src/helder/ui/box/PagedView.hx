@@ -95,6 +95,7 @@ class PagedView {
 
 	final options:PagedViewOptions;
 	final images = new Map<String, Null<Bitmap>>();
+	final svgs = new Map<String, Null<helder.canvas.Svg>>();
 
 	public function new(document:Document, ?options:PagedViewOptions) {
 		this.document = document;
@@ -123,7 +124,7 @@ class PagedView {
 			viewport = area;
 		}
 		if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
-		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, paged: true});
+		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg, paged: true});
 		fixed = null;
 		paginate();
 		// (cross-references to the pages their targets are on: the pages again when one's text changed)
@@ -502,7 +503,7 @@ class PagedView {
 		var page = pages[i];
 		var b = page.bleed, m = page.margins;
 		var style = new BoxStyle(page.style.style);
-		Backgrounds.paint(p, style, 0, 0, page.width + 2 * b, page.height + 2 * b, image);
+		Backgrounds.paint(p, style, 0, 0, page.width + 2 * b, page.height + 2 * b, image, null, false, false, false, false, svg);
 		Borders.paint(p, style, b + m[3], b + m[0], page.width - m[1] - m[3], page.height - m[0] - m[2]);
 		if (page.root >= 0) contentOf(i, p, snap);
 		marginsOf(page, p, b, snap);
@@ -514,7 +515,7 @@ class PagedView {
 		var b = page.bleed;
 		p.save();
 		p.translate(b + page.area[0], b + page.area[1]);
-		var painter = new BoxPainter(fragments, new PaintOrder(fragments, page.root, [0.0, 0.0, page.area[2], page.area[3]]), image);
+		var painter = new BoxPainter(fragments, new PaintOrder(fragments, page.root, [0.0, 0.0, page.area[2], page.area[3]]), image, svg);
 		painter.snap = snap;
 		painter.shapes = false;
 		painter.canvasArea = [0.0, 0.0, page.area[2], page.area[3]];
@@ -536,7 +537,7 @@ class PagedView {
 		p.save();
 		p.translate(bleed, bleed);
 		for (f in page.boxes) {
-			var painter = new BoxPainter(fragments, new PaintOrder(fragments, f), image);
+			var painter = new BoxPainter(fragments, new PaintOrder(fragments, f), image, svg);
 			painter.snap = snap;
 			painter.shapes = false;
 			painter.propagate = false;
@@ -630,11 +631,20 @@ class PagedView {
 	}
 
 	function image(url:String):Null<Bitmap> {
-		if (options.image == null) return null;
 		var abs = CssUrl.resolve(options.url, url);
 		if (images.exists(abs)) return images.get(abs);
-		var b = try options.image(abs) catch (_:Dynamic) null;
+		// (a data: URL decoded here; a host's loader for the rest)
+		var b = BoxImages.data(abs) != null ? BoxImages.raster(abs) : options.image == null ? null : try options.image(abs) catch (_:Dynamic) null;
 		images.set(abs, b);
 		return b;
+	}
+
+	// (an SVG image: a data: URL's, or a .svg file read as text)
+	function svg(url:String):Null<helder.canvas.Svg> {
+		var abs = CssUrl.resolve(options.url, url);
+		if (svgs.exists(abs)) return svgs.get(abs);
+		var v = BoxImages.svg(abs, options.load);
+		svgs.set(abs, v);
+		return v;
 	}
 }

@@ -27,6 +27,9 @@ class Box {
 	// the formatting context it establishes for its contents, if any
 	public var context:Null<FormattingContext> = null;
 	public var image:Null<Bitmap> = null;
+	// a replaced element's SVG (an image's, or inline <svg>): drawn as vectors, sized by its natural width,
+	// height and ratio where it has them (Images 3 §4)
+	public var svg:Null<helder.canvas.Svg> = null;
 	// a table box's grid as laid out (its columns, rows, collapsed borders)
 	public var table:Null<TableGrid> = null;
 	public var flags = 0;

@@ -48,8 +48,9 @@ class CssCascade {
 		for (s in CssModule.sheets()) sheets.push({sheet: s, media: null});
 		for (s in o.author ?? []) sheets.push({sheet: s, media: null});
 		var hints = o.hints == true;
-		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, hints ? CssHints.declarations : null,
-			hints ? CssUserAgent.hints() : null);
+		// (SVG's presentation attributes always; HTML's hints when asked)
+		var declared = hints ? el -> CssHints.declarations(el).concat(CssHints.presentation(el)) : CssHints.presentation;
+		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, declared, hints ? CssUserAgent.hints() : null);
 		@:privateAccess styles.sharing = o.share != false;
 		@:privateAccess styles.viewportSize = o.viewport;
 		return styles;

@@ -176,6 +176,18 @@ class CssReftestCheck {
 	];
 
 	// (drawn on pages: a print reftest, a paged directory's crash test)
+	// (a test whose page or references draw SVG: an image's, a background's, inline <svg>)
+	public static function svg(dir:String, t:Dynamic):Bool {
+		var refs:Array<Array<Dynamic>> = t.refs != null ? t.refs : [];
+		for (f in [t.name].concat([for (r in refs) r[0]])) {
+			var src = try File.getContent('${WptPage.wpt}/$dir/$f').toLowerCase() catch (_:Dynamic) "";
+			if (SVG.match(src)) return true;
+		}
+		return false;
+	}
+
+	static final SVG = ~/<svg[\s:>]|\.svg\b|image\/svg\+xml/;
+
 	static function printed(dir:String, t:Dynamic):Bool {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
 		return needs.contains("print") || paged(dir) && t.type == "crash";
@@ -464,6 +476,7 @@ class CssReftestCheck {
 	static function stage(dir:String, t:Dynamic):String {
 		if (dir.startsWith("css/css-gcpm")) return "paged";
 		if (dir.startsWith("css/css-contain")) return "containment";
+		if (svg(dir, t)) return "svg";
 		var short = dir.startsWith("css/CSS2/") ? dir.substr(9) : dir;
 		var s = printed(dir, t) ? null : STAGES.get(short);
 		if (s != null) return s;

@@ -3,6 +3,7 @@
   "modules": {
     "css-cascade-4": ["all"],
     "css-color-4": ["color", "opacity"],
+    "svg-2": ["fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stop-color", "stop-opacity"],
     "css-box-3": ["margin", "margin-top", "margin-right", "margin-bottom", "margin-left", "padding", "padding-top", "padding-right", "padding-bottom", "padding-left"],
     "css-display-3": ["display", "visibility"],
     "css-position-3": ["position", "top", "right", "bottom", "left", "inset", "z-index"],
@@ -89,6 +90,7 @@
       "why": "CSS 2.1's clip: rect(); the spec says it in prose"
     },
     "url-set": {"syntax": "<image-set()>", "why": "cursor's <url-set>: Images 4's image-set() of url()s; webref has no grammar for it"},
+    "paint": {"syntax": "none | <color> | <url> [ none | <color> ]? | context-fill | context-stroke", "why": "SVG 2's <paint>, fill's and stroke's (painting.html): webref has Fill and Stroke 3's, for text and boxes, without colours", "href": "https://w3c.github.io/svgwg/svg2-draft/painting.html#SpecifyingPaint"},
     "font-src-list": {
       "syntax": "<font-src>#",
       "why": "Fonts 4 says it in prose: a list of <font-src>, each parsed on its own"
