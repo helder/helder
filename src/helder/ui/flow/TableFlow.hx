@@ -426,7 +426,7 @@ class TableFlow implements FormattingContext {
 			var s = cell.box.style.model();
 			var v = Lens.resolve(s.width, w, Math.NaN);
 			if (Math.isNaN(v)) continue;
-			if (!s.borderBox) v += bpx(cell.box);
+			if (!s.borderBox) v += bpx(cell.box) + delta(g, cell);
 			var per = (v - g.spacingH * (cell.cols - 1)) / cell.cols;
 			for (c in cell.col...cell.col + cell.cols) if (Math.isNaN(out[c])) out[c] = per;
 		}
