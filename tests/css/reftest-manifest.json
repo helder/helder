@@ -4790,7 +4790,7 @@
 		"css/CSS2/pagination/block-page-break-inside-avoid-7-print.html": {},
 		"css/CSS2/pagination/block-page-break-inside-avoid-8-print.html": {},
 		"css/CSS2/pagination/block-page-break-inside-avoid-9-print.html": {},
-		"css/CSS2/pagination/float-page-break-inside-avoid-1-print.html": {"pending":"tables: 2 pages, the reference 3 (a floated table taller than the page isn't broken in its rows as the in-flow one of its reference is)"},
+		"css/CSS2/pagination/float-page-break-inside-avoid-1-print.html": {},
 		"css/CSS2/pagination/float-page-break-inside-avoid-2-print.html": {},
 		"css/CSS2/pagination/float-page-break-inside-avoid-3-print.html": {},
 		"css/CSS2/pagination/float-page-break-inside-avoid-4-print.html": {},

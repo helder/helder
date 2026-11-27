@@ -9,6 +9,11 @@ import helder.test.Test;
 // after it too.
 function tests() {
 	describe("PagedFloats", () -> {
+		test("a float avoiding a break inside, taller than a page: to the next page whole, broken there where it must", () -> {
+			var v = paged('<div style="height:30px"></div><div style="float:left;break-inside:avoid;width:20px"><div id=a style="height:60px"></div><div id=b style="height:60px"></div></div>');
+			equals(v.layout(), 3);
+			equals([on(v, 0, "a"), on(v, 1, "a"), on(v, 2, "b")], [Math.NaN, 0, 0]);
+		});
 		test("a float that doesn't fit: broken beside its lines, its rest at the next page's top", () -> {
 			var v = paged('<div style="height:30px"></div><p id=p style="margin:0;widows:1;orphans:1">x<br>x<br><span id=f style="float:left;width:20px;height:40px"></span>x<br>x</p>');
 			equals(v.layout(), 2);

@@ -142,11 +142,12 @@ class BlockFlow implements FormattingContext {
 				f = child(b, fs);
 			}
 			// (the next fragmentainer's whole, content before it here: a forced break before it, a float before it
-			// gone there, or it doesn't fit, monolithic or avoiding a break and fitting in one; carried from its
-			// start, a zero exclusion here, its fragment not adopted)
+			// gone there, or it doesn't fit, monolithic or avoiding a break (one taller than a fragmentainer too: a
+			// break before it is better than one inside, as LayoutNG's appeal; broken there only where it must);
+			// carried from its start, a zero exclusion here, its fragment not adopted)
 			if (fr != null && from == null && fr.size < Math.POSITIVE_INFINITY) {
 				var at = space.pageTop + bt + pt + top - cy, h = fmt + frags.height(f);
-				var over = at + h > fr.size + 0.01 && (!breakable || Breaks.avoids(b) && h <= fr.size + 0.01);
+				var over = at + h > fr.size + 0.01 && (!breakable || Breaks.avoids(b));
 				if (at > 0.01 && (ex.pushed || Breaks.forcesBefore(b) || over)) {
 					fr.carry(b, new BreakToken(new haxe.ds.ObjectMap(), null, null));
 					ex.pushed = true;
