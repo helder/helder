@@ -41,6 +41,7 @@ typedef CssCascadeOptions = {
 class CssCascade {
 	public static function styles(doc:Document, ?options:CssCascadeOptions):CssStyles {
 		@:privateAccess CssStyles.printArea = s -> s.pageStyle(0, null, false, false).area();
+		CssResolver.rereads();
 		var o = options ?? {};
 		var sheets:Array<{sheet:CssSheet, media:Null<CssMedia>}> = [];
 		sheets.push({sheet: o.userAgent ?? CssUserAgent.sheet(doc.mode == Quirks), media: null});
