@@ -93,6 +93,7 @@ class TableFlow implements FormattingContext {
 		var g = new Grid();
 		var s = t.style;
 		g.collapse = s.keyword("border-collapse") == "collapse";
+		g.exact = space.exact;
 		if (!g.collapse) switch s.terms("border-spacing") {
 			case [Dimension(h, _), Dimension(v, _)]:
 				g.spacingH = h;
@@ -276,6 +277,7 @@ class TableFlow implements FormattingContext {
 	function collapseBorders(t:Box, g:Grid) {
 		var tg = new TableGrid(g.columns, g.rows.length);
 		tg.collapsing();
+		tg.exact = g.exact;
 		g.borders = tg;
 		var rows = g.rows.length, cols = g.columns;
 		inline function side(b:Box, k:Int):{w:Float, s:String, c:Int} {
@@ -359,19 +361,18 @@ class TableFlow implements FormattingContext {
 	}
 
 	// (the table's border widths in the collapsing model, CSS 2.1 §17.6.2: what of its outer lines'
-	// widest lies outside the grid: a line's width is split in whole pixels, floor(w/2) above it and to
-	// its left, the rest below and to its right; a cell's are the other parts, cellBorders)
+	// widest lies outside the grid, split by TableGrid.half; a cell's are the other parts, cellBorders)
 	static function collapsedEdges(g:Grid):Array<Float> {
 		var tg = g.borders, out = [0.0, 0.0, 0.0, 0.0];
 		if (tg == null) return out;
 		var rows = g.rows.length, cols = g.columns;
 		for (c in 0...cols) {
-			out[0] = Math.max(out[0], Math.floor(tg.hPainted(tg.h(0, c)) / 2));
-			out[2] = Math.max(out[2], Math.ceil(tg.hPainted(tg.h(rows, c)) / 2));
+			out[0] = Math.max(out[0], tg.half(tg.hPainted(tg.h(0, c)), false));
+			out[2] = Math.max(out[2], tg.half(tg.hPainted(tg.h(rows, c)), true));
 		}
 		for (r in 0...rows) {
-			out[3] = Math.max(out[3], Math.floor(tg.vPainted(tg.v(r, 0)) / 2));
-			out[1] = Math.max(out[1], Math.ceil(tg.vPainted(tg.v(r, cols)) / 2));
+			out[3] = Math.max(out[3], tg.half(tg.vPainted(tg.v(r, 0)), false));
+			out[1] = Math.max(out[1], tg.half(tg.vPainted(tg.v(r, cols)), true));
 		}
 		return out;
 	}
@@ -804,12 +805,12 @@ class TableFlow implements FormattingContext {
 	static function cellBorders(g:Grid, cell:Cell):Array<Float> {
 		var tg = g.borders, out = [0.0, 0.0, 0.0, 0.0];
 		for (c in cell.col...cell.col + cell.cols) {
-			out[0] = Math.max(out[0], Math.ceil(tg.hPainted(tg.h(cell.row, c)) / 2));
-			out[2] = Math.max(out[2], Math.floor(tg.hPainted(tg.h(cell.row + cell.rows, c)) / 2));
+			out[0] = Math.max(out[0], tg.half(tg.hPainted(tg.h(cell.row, c)), true));
+			out[2] = Math.max(out[2], tg.half(tg.hPainted(tg.h(cell.row + cell.rows, c)), false));
 		}
 		for (r in cell.row...cell.row + cell.rows) {
-			out[3] = Math.max(out[3], Math.ceil(tg.vPainted(tg.v(r, cell.col)) / 2));
-			out[1] = Math.max(out[1], Math.floor(tg.vPainted(tg.v(r, cell.col + cell.cols)) / 2));
+			out[3] = Math.max(out[3], tg.half(tg.vPainted(tg.v(r, cell.col)), true));
+			out[1] = Math.max(out[1], tg.half(tg.vPainted(tg.v(r, cell.col + cell.cols)), false));
 		}
 		return out;
 	}
@@ -855,6 +856,7 @@ private class Grid {
 	public var spacingH = 0.0;
 	public var spacingV = 0.0;
 	public var collapse = false;
+	public var exact = false;
 	public var borders:Null<TableGrid> = null;
 	// (its header and footer groups: repeated on every page it is on)
 	public var header:Null<Box> = null;

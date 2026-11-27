@@ -14,8 +14,8 @@ import helder.ui.flow.TableFlow;
 // Tables: anonymous table objects, the grid (colspan, rowspan), the auto
 // and fixed width algorithms, border-spacing, row heights and
 // vertical-align in cells, captions, the collapsing border model's
-// winners. Then a property: the columns' widths are at least their
-// min-content and add up to the width given.
+// winners and its lines' halves. Then a property: the columns' widths
+// are at least their min-content and add up to the width given.
 function tests() {
 	describe("TableFlow", () -> {
 		test("anonymous table objects", () -> {
@@ -67,6 +67,15 @@ function tests() {
 			equals(b[0] - a[0], a[2]);
 			equals(rect(v, "t")[0] + 2, a[0]);
 		});
+		test("the collapsing model's lines split in whole pixels, or exactly without a pixel grid", () -> {
+			var html = '<table style="border-collapse:collapse"><tr><td id=a style="padding:3px;border-bottom:1px solid">a</td></tr>'
+				+ '<tr><td id=b style="padding:3px;border-bottom:1px solid">b</td></tr><tr><td id=f style="padding:4px;border-top:2px solid">f</td></tr></table>';
+			var v = view(html);
+			equals([rect(v, "a")[3], rect(v, "b")[1], rect(v, "b")[3], rect(v, "f")[1]], [16.0, 16, 18, 34]);
+			var x = view(html, true);
+			equals([rect(x, "a")[3], rect(x, "b")[1], rect(x, "b")[3], rect(x, "f")[1]], [16.5, 16.5, 17.5, 34]);
+			equals([firstText(v, "b")[1], firstText(x, "b")[1], firstText(v, "f")[1], firstText(x, "f")[1]], [20.0, 20, 39, 39]);
+		});
 		test("the columns take the width given, each its min-content at least", () -> property(COLUMNS, cols -> {
 			var min = 0.0;
 			for (c in cols.list) min += c.min;
@@ -99,17 +108,19 @@ private class Laid {
 	public final document:helder.dom.Document;
 	public final fragments = new Fragments();
 
-	public function new(doc:helder.dom.Document) {
+	public function new(doc:helder.dom.Document, exact = false) {
 		document = doc;
 		var fonts = new FontMatch();
 		fonts.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "Ahem");
 		var tree = BoxTree.build(doc, CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}, hints: true}));
-		tree.root.context.layout(tree.root, new Space(fragments, fonts, 800, 600));
+		var space = new Space(fragments, fonts, 800, 600);
+		space.exact = exact;
+		tree.root.context.layout(tree.root, space);
 	}
 }
 
-private function view(body:String):Laid
-	return new Laid(Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem }</style><body>$body'));
+private function view(body:String, exact = false):Laid
+	return new Laid(Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem }</style><body>$body'), exact);
 
 private function rect(v:Laid, id:String):Array<Float> {
 	var el:Element = v.document.getElementById(id);

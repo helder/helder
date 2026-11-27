@@ -28,6 +28,11 @@ function tests() {
 			equals(shown[0].indexOf(0) > 0 && shown[1][0] == 0 && shown[1][11] == 1, true);
 			equals([for (r in 0...12) shown[0][r] + shown[1][r]], [for (_ in 0...12) 1]);
 		});
+		test("a collapsed-border table on a page: its lines split in exact halves, print having no pixel grid", () -> {
+			var v = paged('<table style="border-collapse:collapse"><tr><td id=a style="padding:0;border-bottom:1px solid">x</td></tr><tr><td id=b style="padding:0">x</td></tr></table>');
+			equals(v.layout(), 1);
+			equals([height(v, 0, "a"), on(v, 0, "b"), height(v, 0, "b")], [10.5, 10.5, 10.5]);
+		});
 		test("a table across pages: between rows, its header and footer on each", () -> {
 			var rows = [for (k in 0...12) '<tr><td id=r$k style="height:10px;padding:0"></td></tr>'].join("");
 			var v = paged('<table style="border-spacing:0"><thead><tr><td id=h style="height:10px;padding:0"></td></tr></thead><tfoot><tr><td id=f style="height:10px;padding:0"></td></tr></tfoot><tbody>$rows</tbody></table>');

@@ -24,8 +24,9 @@ class BoxPainter {
 	// (the states pushed now, innermost last)
 	final stack:Array<Int> = [];
 	// each glyph's origin on a quarter pixel across and a whole one down, as
-	// Skia quantizes subpixel-positioned text (Chromium's); off for a PDF,
-	// whose text keeps layout's places (a tie rounds up, float noise aside)
+	// Skia quantizes subpixel-positioned text (Chromium's), collapsed borders
+	// on whole pixels; off for a PDF, whose text and borders keep layout's
+	// places (a tie rounds up, float noise aside)
 	public var snap = true;
 	// the canvas's background: the area it covers (null: the painter's
 	// whole) and the box it is positioned in (null: the root's fragment);
@@ -182,13 +183,15 @@ class BoxPainter {
 			return c < cols ? g.x[c] : g.x[cols - 1] + g.widths[cols - 1];
 		inline function rowTop(r:Int):Float
 			return r < rows ? g.y[r] : g.y[rows - 1] + g.heights[rows - 1];
+		inline function px(v:Float):Float
+			return snap ? Math.round(v) : v;
 		var path = new Path();
 		// (in a fragmentainer: the lines of the rows here, a horizontal one beside one of them)
 		for (r in 0...rows) for (c in 0...cols + 1) {
 			if (g.hides(r)) continue;
 			var k = g.v(r, c), w = g.vPainted(k);
 			if (w <= 0) continue;
-			var lx = Math.round(x + colLeft(c) - Math.floor(w / 2)), ty = Math.round(y + rowTop(r)), by = Math.round(y + rowTop(r + 1));
+			var lx = px(x + colLeft(c) - g.half(w, false)), ty = px(y + rowTop(r)), by = px(y + rowTop(r + 1));
 			fillRect(p, path, lx, ty, w, by - ty, g.vColor[k]);
 		}
 		for (r in 0...rows + 1) for (c in 0...cols) {
@@ -197,11 +200,11 @@ class BoxPainter {
 			if (w <= 0) continue;
 			var left = 0.0, right = 0.0;
 			for (rr in [r - 1, r]) if (rr >= 0 && rr < rows) {
-				left = Math.max(left, Math.floor(g.vPainted(g.v(rr, c)) / 2));
-				right = Math.max(right, Math.ceil(g.vPainted(g.v(rr, c + 1)) / 2));
+				left = Math.max(left, g.half(g.vPainted(g.v(rr, c)), false));
+				right = Math.max(right, g.half(g.vPainted(g.v(rr, c + 1)), true));
 			}
-			var lx = Math.round(x + colLeft(c) - left), rx = Math.round(x + colLeft(c + 1) + right);
-			var ty = Math.round(y + rowTop(r) - Math.floor(w / 2));
+			var lx = px(x + colLeft(c) - left), rx = px(x + colLeft(c + 1) + right);
+			var ty = px(y + rowTop(r) - g.half(w, false));
 			fillRect(p, path, lx, ty, rx - lx, w, g.hColor[k]);
 		}
 	}
