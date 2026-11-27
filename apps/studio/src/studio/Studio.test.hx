@@ -6,7 +6,7 @@ function tests() {
 	describe("Studio", () -> {
 		#if !(hxmc.target == "wasm32-wasi")
 		test("a source edited on disk, not a story's or a design's: an edit of the history", async(() -> Temp.within("helder-disk", dir -> {
-			Files.save('$dir/app.helder', sys.io.File.getContent("../../tests/studio/design/app.helder"));
+			Files.save('$dir/app.helder', sys.io.File.getContent("../../examples/design/app.helder"));
 			Files.save('$dir/paper.ts', "export const fold = 1;\n");
 			var s = new Studio(dir, {});
 			s.scanDisk();
@@ -57,7 +57,7 @@ function tests() {
 		});
 		test("Share: helder share run on the project, its frames named, the link once it is there", async(() -> {
 			var dir = Temp.dir("helder-share");
-			Files.save('$dir/app.helder', sys.io.File.getContent("../../tests/studio/design/app.helder"));
+			Files.save('$dir/app.helder', sys.io.File.getContent("../../examples/design/app.helder"));
 			// (a stand-in for helder: its lines as helder share prints them, its arguments kept)
 			var cli = '$dir/helder.sh';
 			sys.io.File.saveContent(cli, '#!/bin/sh\necho "$@" > "$dir/args"\necho "\033[1m    release\033[0m 3 files, 1.2 MB"\necho "     shared https://quiet-otter-12.helder.run/ · v1"\n');

@@ -7,7 +7,7 @@ helder.ui, and it opens itself.
 
 ```sh
 bun run helder studio examples/ts-todo     # this checkout; npx helder studio in a project
-bun run helder studio tests/studio/design      # design files alone: nothing built
+bun run helder studio examples/design      # design files alone: nothing built
 bun run helder studio                      # the project in this directory, else a new one
 ```
 
@@ -210,7 +210,7 @@ click flies there).
   the design file's folder, decoded by helder.image (again when the file
   changes); natively (in the browser: marked, not yet).
 - **A project of design files alone** has no program: it opens with no
-  build and no App screen (tests/studio/design). A project with stories and
+  build and no App screen (examples/design). A project with stories and
   design files builds its stories' program as before, its frames drawn
   from the start; one with an entry and no stories, its App.
 - Opening a `.helder` file opens its folder as the project.
@@ -765,14 +765,14 @@ a frame selected, its title selected, its colour changed in the
 inspector, a padding added and undone, an attribute typed in the code
 view, the prompt bar's `/tree`; the files and every edit's span checked,
 the overview, zoomed and selected frames against goldens. Then on
-tests/studio/design (design files alone): both frames drawn with nothing
+examples/design (design files alone): both frames drawn with nothing
 built, the first moved by its caption (snapped to the other's top), the
 title selected, its colour changed (drawn again within 3 frames: in 1 on
 a Mac), undone and redone, resized by its handle (snapped to the frame's
 centre), a second node shift-clicked into the selection and out, the
 title's layer dragged below the input row, both undone (the resize one
 entry), every edit's span and the file checked. Then the file browser
-(tests/studio/files.json: tests/studio/design with an image, a font and code
+(tests/studio/files.json: examples/design with an image, a font and code
 in folders): the folders opened, the image, the font and the code each in
 its view, the image dragged onto the Home frame (the file's `<image>`), a
 file dropped from the system on a folder (headless scripts' `drop`). Then
@@ -832,13 +832,13 @@ runs through shared memory).
 - The App beside stories: one program a project, so a project with
   stories shows them and not its App.
 - Designs in the browser's studio are drawn and edited as on the
-  desktop (tests/studio/design bundled, a new project's); images by path
+  desktop (examples/design bundled, a new project's); images by path
   and `run.snap` of a design are native only, and its files are not
   watched (the page's own copy).
 - In the browser a project's screens are its stories and design frames:
   an App screen (a project without stories) does not run in the preview
   host's worker, so the examples bundled are those with stories
-  (examples/todo, signup, mail) and tests/studio/design.
+  (examples/todo, signup, mail) and examples/design.
 
 - The selected frame's screen is drawn at the canvas' scale in halves up
   to 3, at most 4096 pixels a side, not tiled: deeper zooms scale its

@@ -4,13 +4,13 @@ import helder.test.Test;
 import helder.syntax.Transaction;
 
 // An agent's edit marked on the canvas (Marks): its toast, its frame; the
-// user's own edit none; a new frame rising (natively: a copy of tests/studio/design)
+// user's own edit none; a new frame rising (natively: a copy of examples/design)
 function tests() {
 	describe("Marks", () -> {
 		#if !(hxmc.target == "wasm32-wasi")
 		function studio(dir:String):Studio {
 			helder.cli.TestCommand.mkdirs(dir);
-			sys.io.File.saveContent('$dir/app.helder', sys.io.File.getContent("../../tests/studio/design/app.helder"));
+			sys.io.File.saveContent('$dir/app.helder', sys.io.File.getContent("../../examples/design/app.helder"));
 			return new Studio(dir, {});
 		}
 		test("an agent's patches: one line of the chat's a file, its frame", async(() -> {
