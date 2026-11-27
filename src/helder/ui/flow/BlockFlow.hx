@@ -342,7 +342,9 @@ class BlockFlow implements FormattingContext {
 		// the initial containing block, §10.1)
 		if (box.parent == null) {
 			var ix = -box.marginLeft, iy = -(topPos + topNeg);
-			place(fixed, frag, space, ix, iy, space.width, space.height);
+			repeat(fixed, frag, space, bl + pl, bt + pt, ix, iy);
+			var r = space.repeated;
+			place(fixed, frag, space, ix, iy, r != null ? r.width : space.width, r != null ? r.height : space.height);
 			place(positioned, frag, space, ix, iy, space.width, space.height);
 		} else if (owner)
 			place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb);
@@ -407,9 +409,21 @@ class BlockFlow implements FormattingContext {
 			var b = list.boxes[k];
 			var from = frags.absolute(list.fragments[k]), to = frags.absolute(owner);
 			var sx = from.x - to.x + list.xs[k] - cbx, sy = from.y - to.y + list.ys[k] - cby;
+			if (space.repeated != null && b.style.position == "fixed") space.repeated.places.set(b, {x: sx, y: sy});
 			var f = positionedBox(b, space, sx, sy, cbw, cbh, list.aligns[k]);
 			frags.adopt(owner, f.fragment, cbx + f.x, cby + f.y);
 			k++;
+		}
+	}
+
+	// (a page's fixed boxes its layout didn't come to: at their static place on the page it did, else at x
+	// and y in the root's fragment, its content box's start; cx and cy: the page area there)
+	public static function repeat(list:Positioned, root:Int, space:Space, x:Float, y:Float, cx:Float, cy:Float) {
+		var r = space.repeated;
+		if (r == null) return;
+		for (b in r.boxes) if (list.boxes.indexOf(b) < 0) {
+			var at = r.places.get(b);
+			if (at == null) list.add(b, root, x, y) else list.add(b, root, cx + at.x, cy + at.y);
 		}
 	}
 
