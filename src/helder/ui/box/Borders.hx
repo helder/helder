@@ -245,6 +245,14 @@ class Borders {
 			while (lengths.length < 4) lengths.push(0);
 			var ox = lengths[0], oy = lengths[1], blur = lengths[2], spread = lengths[3];
 			if (color >>> 24 == 0 || inner != insets) continue;
+			// (a painter that draws shadows itself: offered each)
+			if (Std.isOfType(p, ShadowPainter)) {
+				var sp:ShadowPainter = cast p;
+				if (!inner && sp.outerShadow(x0 + ox - spread, y0 + oy - spread, bw + 2 * spread, bh + 2 * spread,
+					r == null ? null : [for (v in r) v > 0 ? Math.max(0, v + spread) : 0], color, blur, ox, oy, spread)) continue;
+				if (inner && sp.innerShadow(x0 + m.border[3], y0 + m.border[0], bw - m.border[1] - m.border[3], bh - m.border[0] - m.border[2],
+					inset(r, m.border[0], m.border[1], m.border[2], m.border[3]), color, blur, ox, oy, spread)) continue;
+			}
 			p.save();
 			var big = new Path();
 			if (!inner) {

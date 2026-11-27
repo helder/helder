@@ -55,6 +55,9 @@ class Box {
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
 	public var cacheHeight = Math.NaN;
+	// (and the fixed height it was laid out at, whether its height was ignored: a flex or grid item's passes)
+	public var cacheFixedHeight = Math.NaN;
+	public var cacheIgnore = false;
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
