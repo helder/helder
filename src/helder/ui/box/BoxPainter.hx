@@ -328,7 +328,7 @@ class BoxPainter {
 	function symbol(p:Painter, id:Int, b:Box, run:ShapedRun, x:Float, baseline:Float, color:Int):Bool {
 		// (the text's box: the marker's, or its text's)
 		var marker = b.kind == Text ? b.parent : b;
-		if (!shapes || b.pseudo != "marker" || marker == null || marker.pseudo != "marker" || run.text == null) return false;
+		if (!shapes || !b.markerPseudo() || marker == null || !marker.markerPseudo() || run.text == null) return false;
 		var type = marker.style.keyword("list-style-type");
 		var symbol = switch type {
 			case "disc": "\u2022";

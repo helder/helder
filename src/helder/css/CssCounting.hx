@@ -15,7 +15,7 @@ interface CssCounting {
 	function strings(el:Element, page:Int = 0, pages:Int = 0):Array<{name:String, value:String}>;
 	function bookmark(el:Element):Null<CssBookmark>;
 	function resolveTargets(pageOf:Element->Int):Void;
-	function marker(el:Element):Null<Array<CssGeneratedPart>>;
+	function marker(el:Element, ?pseudo:String):Null<Array<CssGeneratedPart>>;
 	// a number in a counter style (none, symbols(), a name)
 	function format(v:Int, style:String):String;
 	// a number as a list item's marker in list-style-type's style

@@ -356,9 +356,6 @@ class BlockLines {
 	// (lines from...to: a fragmentainer's part of them)
 	function fragments(l:InlineLayout, built:Built, space:Space, frag:Int, ox:Float, oy:Float, constraints:InlineConstraints, from:Int,
 			to:Int):{height:Float, lines:Int, baseline:Float} {
-		// (where a line at y starts, the floats beside it: an outside marker goes before it)
-		inline function edge(y:Float, h:Float):Float
-			return constraints.lineWidth == null ? 0 : constraints.lineWidth(y, h).offset;
 		var frags = space.fragments, c = built.content, glyphs = l.glyphs;
 		// (an item's box: an inline box's by its Open item, an atomic's by order, text's by its DOM text)
 		// (its place among the opened boxes or the atomics, by item; -1: neither)
@@ -406,7 +403,7 @@ class BlockLines {
 				baseline = top + l.lineBaseline(k);
 			}
 			// (its marker first, the item's first child)
-			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), rtl, l.lineAvailable(k));
+			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), 0, rtl, constraints.width);
 			// (spans made first, outer ones before inner: the boxes' parts on this line, by their Open item;
 			// then everything adopted in the line's order, a span where its first part on the line is, before
 			// what it holds: the tree's order in a line of one direction, as paint and a PDF's text follow it;
@@ -536,7 +533,8 @@ class BlockLines {
 		if (l.lines == 0 && built.markers.length > 0) {
 			var line = frags.add(Fragments.LINE, (cast c.root : BoxInline).box, 0, 0);
 			frags.adopt(frag, line, ox, oy);
-			var h = markers(space, built.markers, line, -1, edge(0, 1), (cast c.root : BoxInline).box.style.rtl, 0);
+			var left = constraints.lineWidth == null ? 0 : constraints.lineWidth(0, 1).offset;
+			var h = markers(space, built.markers, line, -1, left, rtl, 0);
 			frags.resize(line, 0, h.height);
 			frags.setBaseline(line, h.baseline);
 			return {height: h.height, lines: 1, baseline: h.baseline};
@@ -643,7 +641,7 @@ class BlockLines {
 	@:noCompletion public static var checked = 0;
 	@:noCompletion public static var differed = 0;
 
-	// (outside markers: before the first line's start, on its baseline; laid out by the engine alone)
+	// (outside markers: on the first line's baseline, at the block edge even when floats narrow the line)
 	// (baseline -1: the line is the marker's own; its height and baseline given back)
 	function markers(space:Space, list:Array<Box>, line:Int, baseline:Float, left:Float, rtl:Bool, avail:Float):{height:Float, baseline:Float} {
 		var frags = space.fragments;

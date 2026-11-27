@@ -67,6 +67,9 @@ class Box {
 	// Lazy)
 	public static inline var UNSTYLED = 1024;
 
+	public inline function markerPseudo():Bool
+		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";
+
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth(get, set):Float;
 	public var cacheHeight(get, set):Float;

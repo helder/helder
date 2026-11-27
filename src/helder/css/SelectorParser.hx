@@ -76,6 +76,12 @@ class SelectorParser {
 		}
 		while (!c.end()) {
 			if (pseudo != null) {
+				if ((pseudo == Before || pseudo == After) && c.is(Colon) && c.isAt(1, Colon)) {
+					c.skip(2);
+					if (pseudoElement(c.next()) != Marker) return null;
+					pseudo = pseudo == Before ? BeforeMarker : AfterMarker;
+					continue;
+				}
 				// (after a pseudo-element: the user-action pseudo-classes alone)
 				if (!c.is(Colon) || c.isAt(1, Colon)) break;
 				var name = switch c.at(1) {

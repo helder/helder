@@ -199,10 +199,10 @@ class BoxInline implements InlineStyle {
 
 	// (none in a list marker: browsers leave a marker's text unspaced)
 	public function letterSpacing():Float
-		return box.pseudo == "marker" ? 0 : s.px("letter-spacing");
+		return box.markerPseudo() ? 0 : s.px("letter-spacing");
 
 	public function wordSpacing():Float
-		return box.pseudo == "marker" ? 0 : s.px("word-spacing");
+		return box.markerPseudo() ? 0 : s.px("word-spacing");
 
 	public function textTransform():InlineTransform {
 		var v = 0;
@@ -296,10 +296,10 @@ class BoxInline implements InlineStyle {
 
 	// (a list marker's text is its own, at its start whatever its item's alignment)
 	public function textAlign():InlineAlign
-		return alignValue ??= box.pseudo == "marker" ? Start : align(k("text-align-all"), Start);
+		return alignValue ??= box.markerPseudo() ? Start : align(k("text-align-all"), Start);
 
 	public function textAlignLast():InlineAlign
-		return alignLastValue ??= box.pseudo == "marker" ? Auto : align(k("text-align-last"), Auto);
+		return alignLastValue ??= box.markerPseudo() ? Auto : align(k("text-align-last"), Auto);
 
 	// (what the line builder asks each line and each box it places: read once, a style's and a width's)
 	var alignValue:Null<InlineAlign> = null;
@@ -336,7 +336,7 @@ class BoxInline implements InlineStyle {
 	// (none in a list marker's own line: its item's indent is its item's text's)
 	public function textIndent():Float {
 		if (indentValue == indentValue) return indentValue;
-		return indentValue = box.pseudo == "marker" ? 0 : len(box.style.len("text-indent"));
+		return indentValue = box.markerPseudo() ? 0 : len(box.style.len("text-indent"));
 	}
 
 	public function textIndentEachLine():Bool

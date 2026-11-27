@@ -97,7 +97,7 @@ class CssResolver {
 
 	function blockify(v:Array<CssTerm>):Array<CssTerm> {
 		unblockified = null;
-		if (pseudo == "marker") return v;
+		if (pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker") return v;
 		if (!root && !positioned() && keyword(Float) == "none" && !item) return v;
 		var text = CssText.join(v, CssText.term);
 		var to = root && text == "contents" ? "block" : BLOCKIFIED.get(text);
