@@ -116,6 +116,7 @@ class InlineFonts {
 	// (a font replaced since: every set made again)
 	function clear() {
 		byKey.clear();
+		fallbackSets.clear();
 		byStyle.clear();
 		// (numbers never given twice: the shaper's cache keeps the old ones' words)
 		base += sets.length;
@@ -180,7 +181,7 @@ class InlineFonts {
 			faces.push(f);
 			lacks = {weight: f.weight, slanted: f.italic};
 		}
-		var set = new FontSet(faces[0], faces.slice(1).concat(fonts.fallbacks()), r.size, fonts.fallbackFor, fonts.emojiFor);
+		var set = new FontSet(faces[0], faces.slice(1).concat(fallbacksAt(r.weight, italic)), r.size, fonts.fallbackFor, fonts.emojiFor);
 		// (the first available font: the first whose unicode-range has the space)
 		for (f in faces)
 			if (inRange(f, " ".code)) {
@@ -241,6 +242,26 @@ class InlineFonts {
 
 	static inline function clamp(v:Float, r:Range):Float
 		return v < r.min ? r.min : v > r.max ? r.max : v;
+
+	// (the system's fallback faces at a weight and style: each fallback
+	// family's face closest to them, as a browser's fallback keeps the text's
+	// weight and style (bold Arabic in DejaVu Sans Bold), its regular face
+	// where it has no other)
+	final fallbackSets = new Map<String, Array<FontFile>>();
+
+	function fallbacksAt(weight:Int, italic:Bool):Array<FontFile> {
+		var key = weight + (italic ? "i" : "");
+		var out = fallbackSets.get(key);
+		if (out != null) return out;
+		out = [];
+		for (f in fonts.fallbacks()) {
+			var g = weight == 400 && !italic ? f : fonts.named(f.family, weight, italic);
+			if (g == null || g.family.toLowerCase() != f.family.toLowerCase()) g = f;
+			if (!out.contains(g)) out.push(g);
+		}
+		fallbackSets.set(key, out);
+		return out;
+	}
 
 	// (the generic families SystemFonts has no list for, as FontMatch takes them)
 	static function standIn(name:String):String

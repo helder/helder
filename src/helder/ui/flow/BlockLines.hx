@@ -414,8 +414,9 @@ class BlockLines {
 				run.ys.resize(left);
 				run.starts.resize(left);
 				run.ends.resize(left);
-				run.skew = fonts.oblique ? 0.25 : 0;
-				run.bold = fonts.bold ? embolden(fonts.size) : 0;
+				// (per face: a fallback found at the weight or style asked for is not synthesized again)
+				run.skew = fonts.oblique && (face == fonts.primary || !face.italic) ? 0.25 : 0;
+				run.bold = fonts.bold && (face == fonts.primary || face.weight < 600) ? embolden(fonts.size) : 0;
 				if (face.hasColor) run.palette = space.fonts.palette(face, box.style);
 				runX = glyphs.x(g);
 			}
