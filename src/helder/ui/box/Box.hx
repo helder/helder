@@ -22,8 +22,9 @@ class Box {
 	// (offset of text in node's data: generated text has none)
 	public var offset = 0;
 	// (what few boxes have, and layout's state, which text and inline boxes
-	// do without: apart, made when first set, so a box of a long document's
-	// hundreds of thousands holds its tree and little else)
+	// do without: apart, made when first set to other than its default, so a
+	// box of a long document's hundreds of thousands holds its tree and
+	// little else)
 	var extra:Null<BoxExtra> = null;
 	var state:Null<BoxState> = null;
 	// "before", "after", "marker": generated content's
@@ -147,25 +148,25 @@ class Box {
 		return state == null ? Math.NaN : state.cacheWidth;
 
 	inline function set_cacheWidth(v:Float):Float
-		return laid().cacheWidth = v;
+		return state == null && v != v ? v : laid().cacheWidth = v;
 
 	inline function get_cacheHeight():Float
 		return state == null ? Math.NaN : state.cacheHeight;
 
 	inline function set_cacheHeight(v:Float):Float
-		return laid().cacheHeight = v;
+		return state == null && v != v ? v : laid().cacheHeight = v;
 
 	inline function get_cacheFixedHeight():Float
 		return state == null ? Math.NaN : state.cacheFixedHeight;
 
 	inline function set_cacheFixedHeight(v:Float):Float
-		return laid().cacheFixedHeight = v;
+		return state == null && v != v ? v : laid().cacheFixedHeight = v;
 
 	inline function get_cacheIgnore():Bool
 		return state == null ? false : state.cacheIgnore;
 
 	inline function set_cacheIgnore(v:Bool):Bool
-		return laid().cacheIgnore = v;
+		return state == null && !v ? v : laid().cacheIgnore = v;
 
 	inline function get_cacheMore():Null<Array<Float>>
 		return state == null ? null : state.cacheMore;
@@ -183,13 +184,13 @@ class Box {
 		return state == null ? Math.NaN : state.minContent;
 
 	inline function set_minContent(v:Float):Float
-		return laid().minContent = v;
+		return state == null && v != v ? v : laid().minContent = v;
 
 	inline function get_maxContent():Float
 		return state == null ? Math.NaN : state.maxContent;
 
 	inline function set_maxContent(v:Float):Float
-		return laid().maxContent = v;
+		return state == null && v != v ? v : laid().maxContent = v;
 
 	inline function get_inlineCache():Null<Any>
 		return state == null ? null : state.inlineCache;
