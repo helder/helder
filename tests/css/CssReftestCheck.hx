@@ -373,6 +373,12 @@ class CssReftestCheck {
 			var px = Bytes.alloc(w * h * 4);
 			c.readPixels(px, 0, 0, w, h);
 			out.push({width: w, height: h, pixels: px});
+			// (PAGES_OUT: each page saved, a test's and its reference's, to see why)
+			var dir = Sys.getEnv("PAGES_OUT");
+			if (dir != null) {
+				FileSystem.createDirectory(dir);
+				File.saveBytes('$dir/${haxe.io.Path.withoutDirectory(path)}-${i + 1}.png', helder.image.PngEncoder.encode(px, w, h, true));
+			}
 		}
 		if (path.indexOf("-ref") >= 0 || path.indexOf("/reference/") >= 0) drawnPages.set(path, out);
 		return out;
