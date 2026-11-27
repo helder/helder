@@ -56,8 +56,8 @@ class Sticky {
 		var m = s.model();
 		var mt = BlockFlow.res(m.margin[0], pwid), mb = BlockFlow.res(m.margin[2], pwid);
 		var ml = BlockFlow.res(m.margin[3], pwid), mr = BlockFlow.res(m.margin[1], pwid);
-		var top = BlockFlow.auto(s.len("top"), ph), bottom = BlockFlow.auto(s.len("bottom"), ph);
-		var left = BlockFlow.auto(s.len("left"), pw), right = BlockFlow.auto(s.len("right"), pw);
+		var top = BlockFlow.auto(s.inset(0), ph), bottom = BlockFlow.auto(s.inset(2), ph);
+		var left = BlockFlow.auto(s.inset(3), pw), right = BlockFlow.auto(s.inset(1), pw);
 		var dx = 0.0, dy = 0.0;
 		if (!Math.isNaN(top) && at.y < py + top) dy = Math.min(py + top - at.y, Math.max(0, cy1 - (at.y + h + mb)));
 		if (!Math.isNaN(bottom) && at.y + h + dy > py + ph - bottom) dy = Math.max(py + ph - bottom - (at.y + h), Math.min(0, cy0 - (at.y - mt)));

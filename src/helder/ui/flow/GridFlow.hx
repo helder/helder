@@ -73,10 +73,10 @@ class GridFlow implements FormattingContext {
 		var rtl = st.rtl;
 		var g = grid(box, space, w, heightSpec);
 		var items = g.items;
-		var colGap = gap(st, "column-gap", w), rowGap = gap(st, "row-gap", heightSpec);
+		var colGap = gap(st.columnGap, w), rowGap = gap(st.rowGap, heightSpec);
 		// (the columns at the content box's width; then the rows, the items at their columns' widths)
-		var stretchCols = keyword(st, "justify-content") == "normal";
-		var align = keyword(st, "align-content");
+		var stretchCols = st.justifyContent == "normal";
+		var align = st.alignContent;
 		var stretchRows = align == "normal" || align == "stretch";
 		var cols = tracks(g.cols, items, true, w, w, colGap, stretchCols, space, null);
 		for (it in items) {
@@ -94,7 +94,7 @@ class GridFlow implements FormattingContext {
 		if (Math.isNaN(heightSpec) && (stretchRows && h > gridH + 1e-6 || Lambda.exists(g.rows, t -> t.max.match(Fr(_)))))
 			rows = tracks(g.rows, items, false, h, h, rowGap, stretchRows, space, cols);
 		// (the tracks' places: justify-content and align-content in the content box)
-		var colPos = positions(cols, colGap, w, keyword(st, "justify-content"));
+		var colPos = positions(cols, colGap, w, st.justifyContent);
 		var rowPos = positions(rows, rowGap, h, align);
 		var baseline = Math.NaN, firstRow = 0x7fffffff;
 		for (it in items) if (it.row < firstRow) firstRow = it.row;
@@ -103,7 +103,7 @@ class GridFlow implements FormattingContext {
 			var c = it.box, m = c.style.model();
 			var ax = colPos[it.col], aw = colPos[it.col + it.colSpan - 1] + cols[it.col + it.colSpan - 1] - ax;
 			var ay = rowPos[it.row], ah = rowPos[it.row + it.rowSpan - 1] + rows[it.row + it.rowSpan - 1] - ay;
-			var jx = selfOf(c, "justify-self", "justify-items"), jy = selfOf(c, "align-self", "align-items");
+			var jx = selfOf(c, true), jy = selfOf(c, false);
 			var ml = BlockFlow.auto(m.margin[3], aw), mr = BlockFlow.auto(m.margin[1], aw);
 			var mt = BlockFlow.auto(m.margin[0], aw), mb = BlockFlow.auto(m.margin[2], aw);
 			var autoS = Math.isNaN(rtl ? mr : ml), autoE = Math.isNaN(rtl ? ml : mr), autoT = Math.isNaN(mt), autoB = Math.isNaN(mb);
@@ -285,9 +285,9 @@ class GridFlow implements FormattingContext {
 		var bpx = s.border[1] + s.border[3] + BlockFlow.res(s.padding[1], space.width) + BlockFlow.res(s.padding[3], space.width);
 		var bpy = s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], space.width) + BlockFlow.res(s.padding[2], space.width);
 		var colsTemplate = GridTemplate.parse(st, "grid-template-columns", !Math.isNaN(w) ? w : BlockFlow.size(s.maxWidth, space.width, s.borderBox, bpx),
-			BlockFlow.size(s.minWidth, space.width, s.borderBox, bpx), gap(st, "column-gap", w));
+			BlockFlow.size(s.minWidth, space.width, s.borderBox, bpx), gap(st.columnGap, w));
 		var rowsTemplate = GridTemplate.parse(st, "grid-template-rows", !Math.isNaN(h) ? h : BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy),
-			BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy), gap(st, "row-gap", h));
+			BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy), gap(st.rowGap, h));
 		var autoCols = GridTemplate.parse(st, "grid-auto-columns", w, Math.NaN, 0).tracks, autoRows = GridTemplate.parse(st, "grid-auto-rows", h, Math.NaN, 0).tracks;
 		var explicitCols = areas == null ? colsTemplate.tracks.length : Std.int(Math.max(colsTemplate.tracks.length, areas.columns));
 		var explicitRows = areas == null ? rowsTemplate.tracks.length : Std.int(Math.max(rowsTemplate.tracks.length, areas.rows));
@@ -895,7 +895,7 @@ class GridFlow implements FormattingContext {
 		cs.fragmentation = null;
 		var bpx = m.border[1] + m.border[3] + BlockFlow.res(m.padding[1], it.areaW) + BlockFlow.res(m.padding[3], it.areaW);
 		var sw = BlockFlow.size(m.width, it.areaW, m.borderBox, bpx);
-		var jx = selfOf(c, "justify-self", "justify-items");
+		var jx = selfOf(c, true);
 		if (!Math.isNaN(sw)) cs.fixedWidth = sw + bpx else if (jx == "stretch") cs.fixedWidth = room else {
 			intrinsicOf(c, space);
 			cs.fixedWidth = Math.min(c.maxContent, Math.max(room, c.minContent));
@@ -909,7 +909,7 @@ class GridFlow implements FormattingContext {
 	// (on its row's baseline: align-self baseline, no auto margin above or below)
 	static function onBaseline(it:GridItem):Bool {
 		var m = it.box.style.model();
-		return selfOf(it.box, "align-self", "align-items") == "baseline" && !Lens.isAuto(m.margin[0]) && !Lens.isAuto(m.margin[2]);
+		return selfOf(it.box, false) == "baseline" && !Lens.isAuto(m.margin[0]) && !Lens.isAuto(m.margin[2]);
 	}
 
 	// (§11.5's baseline shims: the items on their baselines starting in the same row, the room above each
@@ -973,9 +973,9 @@ class GridFlow implements FormattingContext {
 
 	// (justify-self or align-self, auto its container's -items; normal stretch; flow-start and -end, self-start and
 	// -end are start and end in a grid)
-	static function selfOf(b:Box, self:String, items:String):String {
-		var v = keyword(b.style, self);
-		if (v == "auto" || v == "normal" || v == "" || v == "legacy") v = keyword(b.parent.style, items);
+	static function selfOf(b:Box, justify:Bool):String {
+		var v = justify ? b.style.justifySelf : b.style.alignSelf;
+		if (v == "auto" || v == "normal" || v == "" || v == "legacy") v = justify ? b.parent.style.justifyItems : b.parent.style.alignItems;
 		if (v.startsWith("safe ") || v.startsWith("unsafe ")) v = v.substr(v.indexOf(" ") + 1);
 		if (v.startsWith("legacy ")) v = v.substr(7);
 		return switch v {
@@ -989,20 +989,14 @@ class GridFlow implements FormattingContext {
 
 	// (align-self normal, its own or its container's align-items')
 	static function normal(b:Box):Bool {
-		var v = keyword(b.style, "align-self");
-		if (v == "auto" || v == "normal" || v == "") v = keyword(b.parent.style, "align-items");
+		var v = b.style.alignSelf;
+		if (v == "auto" || v == "normal" || v == "") v = b.parent.style.alignItems;
 		return v == "normal" || v == "" || v == "legacy";
 	}
 
-	static function keyword(s:BoxStyle, p:String):String {
-		var k = s.keyword(p);
-		return k == "" ? CssText.join(s.terms(p), CssText.term) : k;
-	}
-
-	static function gap(s:BoxStyle, p:String, base:Float):Float {
-		if (s.keyword(p) == "normal") return 0;
-		return nanTo(Lens.resolve(s.len(p), base, 0), 0);
-	}
+	// (a gap's length against base: normal (Auto) none)
+	static function gap(l:Len, base:Float):Float
+		return Lens.isAuto(l) ? 0 : nanTo(Lens.resolve(l, base, 0), 0);
 
 	// ---- intrinsic sizes: the columns sized under a min-content and a max-content constraint
 
@@ -1016,7 +1010,7 @@ class GridFlow implements FormattingContext {
 		if (Math.isNaN(w)) w = Ratio.width(box, BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
 		if (!Math.isNaN(w)) min = max = w else {
 			var g = grid(box, space, Math.NaN, Math.NaN);
-			var colGap = gap(box.style, "column-gap", Math.NaN);
+			var colGap = gap(box.style.columnGap, Math.NaN);
 			// (size or inline-size containment: as if it had no items, its explicit tracks and contain-intrinsic-width's,
 			// Contain 2 §3.1)
 			var c = box.style.containment, items = c.has(Size) || c.has(InlineSize) ? [] : g.items;

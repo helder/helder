@@ -415,6 +415,152 @@ class BoxStyle {
 		if (d.outer == Internal && displayInner != TABLE_PART) displayOuter = BLOCK;
 	}
 
+	// ---- flex, alignment, gaps, insets, float and clear: read once (layout
+	// reads them per item and per pass, by name no more)
+
+	var layoutRead = false;
+	var orderValue = 0;
+	var growValue = 0.0;
+	var shrinkValue = 1.0;
+	var basisValue = Len.Auto;
+	var basisWord = "auto";
+	var directionValue = "row";
+	var wrapValue = "nowrap";
+	final aligns:Array<String> = [];
+	var rowGapValue = Len.Auto;
+	var columnGapValue = Len.Auto;
+	final insets:Array<Len> = [];
+	var floatValue = "";
+	var clearValue = "";
+
+	function readLayout() {
+		layoutRead = true;
+		orderValue = Std.int(number("order", 0));
+		growValue = number("flex-grow", 0);
+		shrinkValue = number("flex-shrink", 1);
+		basisWord = keyword("flex-basis");
+		basisValue = len("flex-basis");
+		directionValue = keyword("flex-direction");
+		wrapValue = keyword("flex-wrap");
+		for (p in ALIGNS) {
+			var k = keyword(p);
+			aligns.push(k == "" ? helder.css.CssText.join(terms(p), helder.css.CssText.term) : k);
+		}
+		rowGapValue = keyword("row-gap") == "normal" ? Len.Auto : len("row-gap");
+		columnGapValue = keyword("column-gap") == "normal" ? Len.Auto : len("column-gap");
+		for (s in SIDES) insets.push(len(s));
+		floatValue = keyword("float");
+		clearValue = keyword("clear");
+	}
+
+	static final ALIGNS = ["justify-content", "align-content", "align-items", "align-self", "justify-items", "justify-self"];
+
+	public var order(get, never):Int;
+	public var flexGrow(get, never):Float;
+	public var flexShrink(get, never):Float;
+	// flex-basis: a length or percentage (Auto: auto or a keyword), and its keyword ("": a length's)
+	public var flexBasis(get, never):Len;
+	public var flexBasisKeyword(get, never):String;
+	public var flexDirection(get, never):String;
+	public var flexWrap(get, never):String;
+	// the alignment properties as written (a keyword, else its words: "safe center", "first baseline")
+	public var justifyContent(get, never):String;
+	public var alignContent(get, never):String;
+	public var alignItems(get, never):String;
+	public var alignSelf(get, never):String;
+	public var justifyItems(get, never):String;
+	public var justifySelf(get, never):String;
+	// row-gap and column-gap (Auto: normal)
+	public var rowGap(get, never):Len;
+	public var columnGap(get, never):Len;
+	// float's and clear's keywords
+	public var floatSide(get, never):String;
+	public var clearSide(get, never):String;
+
+	// top, right, bottom or left (0 to 3)
+	public inline function inset(side:Int):Len {
+		if (!layoutRead) readLayout();
+		return insets[side];
+	}
+
+	inline function get_order():Int {
+		if (!layoutRead) readLayout();
+		return orderValue;
+	}
+
+	inline function get_flexGrow():Float {
+		if (!layoutRead) readLayout();
+		return growValue;
+	}
+
+	inline function get_flexShrink():Float {
+		if (!layoutRead) readLayout();
+		return shrinkValue;
+	}
+
+	inline function get_flexBasis():Len {
+		if (!layoutRead) readLayout();
+		return basisValue;
+	}
+
+	inline function get_flexBasisKeyword():String {
+		if (!layoutRead) readLayout();
+		return basisWord;
+	}
+
+	inline function get_flexDirection():String {
+		if (!layoutRead) readLayout();
+		return directionValue;
+	}
+
+	inline function get_flexWrap():String {
+		if (!layoutRead) readLayout();
+		return wrapValue;
+	}
+
+	inline function alignment(k:Int):String {
+		if (!layoutRead) readLayout();
+		return aligns[k];
+	}
+
+	inline function get_justifyContent():String
+		return alignment(0);
+
+	inline function get_alignContent():String
+		return alignment(1);
+
+	inline function get_alignItems():String
+		return alignment(2);
+
+	inline function get_alignSelf():String
+		return alignment(3);
+
+	inline function get_justifyItems():String
+		return alignment(4);
+
+	inline function get_justifySelf():String
+		return alignment(5);
+
+	inline function get_rowGap():Len {
+		if (!layoutRead) readLayout();
+		return rowGapValue;
+	}
+
+	inline function get_columnGap():Len {
+		if (!layoutRead) readLayout();
+		return columnGapValue;
+	}
+
+	inline function get_floatSide():String {
+		if (!layoutRead) readLayout();
+		return floatValue;
+	}
+
+	inline function get_clearSide():String {
+		if (!layoutRead) readLayout();
+		return clearValue;
+	}
+
 	// ---- the box model, read once
 
 	var modelRead = false;

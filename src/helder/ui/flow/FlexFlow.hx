@@ -77,12 +77,12 @@ class FlexFlow implements FormattingContext {
 		var minH = BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy), maxH = BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy);
 		var frags = space.fragments;
 		var frag = frags.add(Fragments.BOX, box, w + bpx, 0);
-		var dir = box.style.keyword("flex-direction");
+		var dir = box.style.flexDirection;
 		var row = dir != "column" && dir != "column-reverse", reverse = dir == "row-reverse" || dir == "column-reverse";
-		var wrap = box.style.keyword("flex-wrap");
+		var wrap = box.style.flexWrap;
 		var wraps = wrap == "wrap" || wrap == "wrap-reverse", wrapReverse = wrap == "wrap-reverse";
 		var rtl = box.style.rtl;
-		var rowGap = gap(box.style, "row-gap", heightSpec), colGap = gap(box.style, "column-gap", w);
+		var rowGap = gap(box.style.rowGap, heightSpec), colGap = gap(box.style.columnGap, w);
 		var mainGap = row ? colGap : rowGap, crossGap = row ? rowGap : colGap;
 		// (the main size: definite or not; a column without a height breaks its lines at its max-height)
 		var mainSize = row ? w : heightSpec;
@@ -157,7 +157,7 @@ class FlexFlow implements FormattingContext {
 			crossUsed = crossSize;
 		}
 		// (align-content: the lines in the cross size; normal and stretch share the free space)
-		var content = logical(keyword(box.style, "align-content"), wrapReverse);
+		var content = logical(keyword(box.style.alignContent), wrapReverse);
 		var free = crossSize - crossUsed;
 		var lineStart = [];
 		var at = 0.0, between = crossGap;
@@ -176,7 +176,7 @@ class FlexFlow implements FormattingContext {
 		}
 		// (each item placed: stretched, then main axis alignment, then cross axis)
 		var baseline = Math.NaN, placed:Array<Item> = [];
-		var justify = logical(keyword(box.style, "justify-content"), reverse);
+		var justify = logical(keyword(box.style.justifyContent), reverse);
 		var innerW = w, innerH = row ? crossSize : mainSize;
 		for (k in 0...lines.length) {
 			var l = lines[k];
@@ -341,9 +341,9 @@ class FlexFlow implements FormattingContext {
 		var it = new Item(b, index);
 		var s = b.style.model(), st = b.style;
 		var cb = w;
-		it.order = Std.int(st.number("order", 0));
-		it.grow = st.number("flex-grow", 0);
-		it.shrink = st.number("flex-shrink", 1);
+		it.order = st.order;
+		it.grow = st.flexGrow;
+		it.shrink = st.flexShrink;
 		var ml = BlockFlow.auto(s.margin[3], cb), mr = BlockFlow.auto(s.margin[1], cb);
 		var mt = BlockFlow.auto(s.margin[0], cb), mb = BlockFlow.auto(s.margin[2], cb);
 		var rtl = b.parent != null && b.parent.style.rtl;
@@ -368,14 +368,14 @@ class FlexFlow implements FormattingContext {
 		it.crossSet = Math.isNaN(crossSet) ? Math.NaN : crossSet + it.edgesCross;
 		it.minCross = nanTo(BlockFlow.size(row ? s.minHeight : s.minWidth, crossBase, s.borderBox, it.edgesCross), 0) + it.edgesCross;
 		it.maxCross = nanTo(BlockFlow.size(row ? s.maxHeight : s.maxWidth, crossBase, s.borderBox, it.edgesCross), Math.POSITIVE_INFINITY) + it.edgesCross;
-		var self = logical(selfOf(b, row), b.parent.style.keyword("flex-wrap") == "wrap-reverse");
+		var self = logical(selfOf(b, row), b.parent.style.flexWrap == "wrap-reverse");
 		it.align = self;
 		// (its cross size for laying it out to measure its main size: set, or stretched in a column)
 		if (!row) it.cross = !it.crossAuto ? it.crossSet : self == "stretch" && it.autoCross == 0 && !Math.isNaN(crossSize) ? clamp(crossSize
 			- it.crossStart - it.crossEnd, it.minCross, it.maxCross) : Math.NaN;
 		// (the flex base size: flex-basis, else its main size, else its content's)
-		var basis = st.keyword("flex-basis");
-		var basisLen = st.len("flex-basis");
+		var basis = st.flexBasisKeyword;
+		var basisLen = st.flexBasis;
 		var base = Math.NaN;
 		var keywordBasis = basis == "content" || basis == "max-content" || basis == "min-content" || basis == "fit-content" || basis == "stretch";
 		if (basis != "auto" && !keywordBasis) {
@@ -487,12 +487,12 @@ class FlexFlow implements FormattingContext {
 	// when it was measured: its row gap or grid rows, a child's height, min,
 	// max or flex basis, through anonymous boxes)
 	static function percentHeights(b:Box):Bool {
-		if (Lens.relative(b.style.len("row-gap")) || b.style.inner == BoxStyle.GRID && percent(b.style.terms("grid-template-rows"))) return true;
+		if (Lens.relative(b.style.rowGap) || b.style.inner == BoxStyle.GRID && percent(b.style.terms("grid-template-rows"))) return true;
 		var c = b.first;
 		while (c != null) {
 			if (c.kind != Text && c.kind != Break && !c.absolute) {
 				var m = c.style.model();
-				if (Lens.relative(m.height) || Lens.relative(m.minHeight) || Lens.relative(m.maxHeight) || Lens.relative(c.style.len("flex-basis"))) return true;
+				if (Lens.relative(m.height) || Lens.relative(m.minHeight) || Lens.relative(m.maxHeight) || Lens.relative(c.style.flexBasis)) return true;
 				if (c.anonymous && percentHeights(c)) return true;
 			}
 			c = c.next;
@@ -582,8 +582,8 @@ class FlexFlow implements FormattingContext {
 
 	// (an alignment property's value: flow-start and flow-end (flex-start and flex-end, their legacy
 	// aliases, Align 3) are the main or cross start and end in a flex container)
-	static function keyword(s:BoxStyle, p:String):String
-		return switch s.keyword(p) {
+	static function keyword(v:String):String
+		return switch v.indexOf(" ") >= 0 ? "" : v {
 			case "flow-start": "flex-start";
 			case "flow-end": "flex-end";
 			case k: k;
@@ -603,8 +603,8 @@ class FlexFlow implements FormattingContext {
 	// (align-self, its auto its container's align-items, normal stretch; self-start and self-end by its
 	// own direction across a column, where the cross axis is the inline one)
 	static function selfOf(b:Box, row:Bool):String {
-		var self = keyword(b.style, "align-self");
-		if (self == "auto" || self == "normal" || self == "") self = keyword(b.parent.style, "align-items");
+		var self = keyword(b.style.alignSelf);
+		if (self == "auto" || self == "normal" || self == "") self = keyword(b.parent.style.alignItems);
 		if (self.startsWith("safe ") || self.startsWith("unsafe ")) self = self.substr(self.indexOf(" ") + 1);
 		if (self == "normal" || self == "") self = "stretch";
 		if (self == "first baseline") self = "baseline";
@@ -627,10 +627,9 @@ class FlexFlow implements FormattingContext {
 		}
 	}
 
-	static function gap(s:BoxStyle, p:String, base:Float):Float {
-		if (s.keyword(p) == "normal") return 0;
-		return nanTo(Lens.resolve(s.len(p), base, 0), 0);
-	}
+	// (a gap's length against base: normal (Auto) none)
+	static function gap(l:Len, base:Float):Float
+		return Lens.isAuto(l) ? 0 : nanTo(Lens.resolve(l, base, 0), 0);
 
 	// ---- intrinsic sizes (a row: its items' side by side, or the largest when wrapping; a column: the largest)
 
@@ -672,10 +671,10 @@ class FlexFlow implements FormattingContext {
 			var w = box.style.intrinsicSize(true) + bpx;
 			return {min: w, max: w};
 		}
-		var dir = box.style.keyword("flex-direction");
+		var dir = box.style.flexDirection;
 		var row = dir != "column" && dir != "column-reverse";
-		var wraps = box.style.keyword("flex-wrap") != "nowrap" && box.style.keyword("flex-wrap") != "";
-		var colGap = gap(box.style, "column-gap", Math.NaN);
+		var wraps = box.style.flexWrap != "nowrap" && box.style.flexWrap != "";
+		var colGap = gap(box.style.columnGap, Math.NaN);
 		// (a single row of a fixed height: an aspect-ratio's stretched item's width that height's through it, §9.8)
 		var bpy = BlockFlow.fixed(s.padding[0]) + BlockFlow.fixed(s.padding[2]) + s.border[0] + s.border[2];
 		var fixedCross = row && !wraps ? BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy) : Math.NaN;
