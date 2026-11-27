@@ -20,6 +20,8 @@ class InlineGlyphs {
 	var rFont = new Vector<Int>(16);
 	var rStart = new Vector<Int>(16);
 	var rCount = new Vector<Int>(16);
+	// (a run with a glyph in a face other than its set's first available font)
+	var rFallback = new Vector<Bool>(16);
 	var gFace = new Vector<Int>(256);
 	var gId = new Vector<Int>(256);
 	var gX = new Vector<Float>(256);
@@ -38,6 +40,10 @@ class InlineGlyphs {
 
 	public inline function runCount(r:Int):Int
 		return rCount[r];
+
+	// whether a run has glyphs in a fallback face (another than its set's first available font)
+	public inline function runFallback(r:Int):Bool
+		return rFallback[r];
 
 	public inline function face(g:Int):FontFile
 		return faces[gFace[g]];
@@ -77,11 +83,16 @@ class InlineGlyphs {
 			rFont = ints(rFont, n);
 			rStart = ints(rStart, n);
 			rCount = ints(rCount, n);
+			var b = new Vector<Bool>(n);
+			Vector.blit(rFallback, 0, b, 0, runs);
+			rFallback = b;
 		}
 		var r = runs++;
 		rFont[r] = k;
 		rStart[r] = count;
 		rCount[r] = 0;
+		rFallback[r] = false;
+		runFirst = fonts.first;
 		return r;
 	}
 
@@ -110,7 +121,10 @@ class InlineGlyphs {
 		gAdvance[g] = advance;
 		gCluster[g] = cluster;
 		rCount[runs - 1]++;
+		if (face != runFirst) rFallback[runs - 1] = true;
 	}
+
+	var runFirst:Null<FontFile> = null;
 
 	var lastFace:Null<FontFile> = null;
 	var lastIndex = -1;
