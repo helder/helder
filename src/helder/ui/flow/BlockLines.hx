@@ -56,7 +56,7 @@ class BlockLines {
 				for (k in 0...floats.length) space.placeFloat(floats[k], oy + (k < tops.length ? tops[k] : 0));
 			}
 			if (space.placeAbsolute != null) {
-				var at = statics(l, InlineFragment.Abspos);
+				var at = absoluteStatics(l, built.absolutes, width, block.style.rtl);
 				for (k in 0...built.absolutes.length) if (k < at.length) space.placeAbsolute(built.absolutes[k], ox + at[k].x, oy + at[k].y);
 			}
 			var r = fragments(l, built, space, frag, ox, oy, constraints);
@@ -94,6 +94,33 @@ class BlockLines {
 	static function statics(l:InlineLayout, kind:InlineFragment):Array<{x:Float, y:Float}> {
 		var out = [];
 		for (f in 0...l.fragments) if (l.kind(f) == kind) out.push({x: l.x(f), y: l.y(f)});
+		return out;
+	}
+
+	// (absolutely positioned boxes' static places: an inline-level one's
+	// where the line has it; one block-level before blockification
+	// (originalDisplay) as a block would be: at the content edge where its
+	// line starts, or where the next one does when in-flow content comes
+	// before it on its line, as LayoutNG has it)
+	static function absoluteStatics(l:InlineLayout, boxes:Array<Box>, width:Float, rtl:Bool):Array<{x:Float, y:Float}> {
+		var out = [], k = 0;
+		for (line in 0...l.lines)
+			for (f in l.lineFragmentStart(line)...l.lineFragmentEnd(line)) {
+				if (l.kind(f) != InlineFragment.Abspos) continue;
+				var box = k < boxes.length ? boxes[k] : null;
+				k++;
+				if (box == null || box.style.css.originalDisplay.outer != Block) {
+					out.push({x: l.x(f), y: l.y(f)});
+					continue;
+				}
+				var before = false;
+				for (g in l.lineFragmentStart(line)...l.lineFragmentEnd(line))
+					switch l.kind(g) {
+						case TextRun | Atomic if (l.item(g) < l.item(f)): before = true;
+						case _:
+					}
+				out.push({x: rtl ? width : 0, y: before ? l.lineTop(line) + l.lineHeight(line) : l.lineTop(line)});
+			}
 		return out;
 	}
 

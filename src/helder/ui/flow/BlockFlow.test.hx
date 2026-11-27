@@ -88,12 +88,14 @@ function tests() {
 		test("absolute and fixed positioning", () -> {
 			var v = view('<div id=cb style="position:relative;width:200px;height:100px;margin-left:10px;padding:5px">x<div id=a style="position:absolute;left:10px;top:20px;width:30px;height:40px"></div>'
 				+ '<div id=b style="position:absolute;right:0;bottom:0;width:20px;height:10px"></div><div id=c style="position:absolute;left:0;right:0;width:100px;margin:0 auto;height:5px"></div>'
-				+ '<div id=s style="position:absolute;height:5px;width:5px"></div><div id=f style="position:fixed;left:3px;top:4px;width:5px;height:5px"></div></div>');
+				+ '<div id=s style="position:absolute;height:5px;width:5px"></div><span id=i style="position:absolute;height:5px;width:5px"></span><div id=f style="position:fixed;left:3px;top:4px;width:5px;height:5px"></div></div>');
 			equals(rect(v, "a"), [20.0, 21, 30, 40]);
 			equals(rect(v, "b"), [200.0, 101, 20, 10]);
 			equals(rect(v, "c")[0], 65.0);
-			// (its static position: where it is met in the line, after the text's 16px)
-			equals(rect(v, "s")[0], 31.0);
+			// (static positions: an inline-level box's where it is met in the line, after the text's 16px;
+			// a block-level one's as a block's: the content edge, below the line the text is on)
+			equals(rect(v, "i")[0], 31.0);
+			equals(rect(v, "s").slice(0, 2), [15.0, 22]);
 			equals(rect(v, "f"), [3.0, 4, 5, 5]);
 		});
 		test("floats placed never overlap, and stay in their containing block when they fit", () -> property(FLOATS, list -> {
