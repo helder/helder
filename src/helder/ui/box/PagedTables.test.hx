@@ -6,7 +6,8 @@ import helder.test.Test;
 // Tables across pages: breaks between rows, the header and footer on
 // each page; a row taller than the page split inside its cells; its
 // border, padding and spacing at a break sliced or cloned; a
-// collapsed-border table's grid per page.
+// collapsed-border table's grid per page; a row's monolithic overflow
+// not carried on under a repeated header.
 function tests() {
 	describe("PagedTables", () -> {
 		test("a row taller than the page: split inside its cells, each at its own break, a finished one empty after", () -> {
@@ -32,6 +33,13 @@ function tests() {
 			var v = paged('<table style="border-collapse:collapse"><tr><td id=a style="padding:0;border-bottom:1px solid">x</td></tr><tr><td id=b style="padding:0">x</td></tr></table>');
 			equals(v.layout(), 1);
 			equals([height(v, 0, "a"), on(v, 0, "b"), height(v, 0, "b")], [10.5, 10.5, 10.5]);
+		});
+		test("a row's monolithic overflow under a repeated header: not carried on, the next row below the header", () -> {
+			var v = paged('<div style="display:table"><div style="display:table-header-group"><div style="height:10px"></div></div>'
+				+ '<div style="display:table-row"><div style="height:75px;contain:size"></div></div>'
+				+ '<div style="display:table-row"><div id=b style="height:10px"></div></div></div>');
+			equals(v.layout(), 2);
+			equals(on(v, 1, "b"), 10.0);
 		});
 		test("a table across pages: between rows, its header and footer on each", () -> {
 			var rows = [for (k in 0...12) '<tr><td id=r$k style="height:10px;padding:0"></td></tr>'].join("");

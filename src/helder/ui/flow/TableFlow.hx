@@ -608,6 +608,9 @@ class TableFlow implements FormattingContext {
 					// (its cells keep room for the footer rows, and for its bottom edges only when cloned: sliced at the break)
 					var s = splitRow(g, r, space, fr, y, clone ? footerH : footerH - edges[2], colX);
 					var going = s.tokens.iterator().hasNext() && s.progress;
+					// (under a repeated header or above a repeated footer, a monolithic overflow not carried on: the row
+					// whole here, past the end, the next after the header there, as LayoutNG's)
+					if (going && (hEnd > 0 || fStart < rows) && overflowOnly(s.tokens)) going = false;
 					split[r] = inside;
 					// (resumed: as tall as its cells' rest; else its height as laid out, the break not taken here: as it
 					// would go on, for the opportunities after it)
@@ -799,6 +802,19 @@ class TableFlow implements FormattingContext {
 			height = Math.max(height, cell.height);
 		}
 		return {height: height, tokens: tokens, progress: progress};
+	}
+
+	// (cells' tokens that only go on with a monolithic box's overflow: no line, no float, nothing past their content)
+	static function overflowOnly(tokens:haxe.ds.ObjectMap<Box, BreakToken>):Bool {
+		var mono = false;
+		for (t in tokens) {
+			if (t.floats.iterator().hasNext()) return false;
+			for (r in t.resumes) {
+				if (r.line == BreakToken.MONO) mono = true;
+				else if (r.line != -1) return false;
+			}
+		}
+		return mono;
 	}
 
 	// (a cell's border widths in the collapsing model: its lines' parts inside it, the widest on each side)
