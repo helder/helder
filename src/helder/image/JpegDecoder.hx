@@ -690,8 +690,9 @@ class JpegDecoder {
 			}
 		}
 		// each component at the image's size
-		var planes = [for (c in components) null];
-		Strips.run(threads, components.length, (from, to) -> for (k in from...to) planes[k] = upsample(components[k]));
+		// (allocated here, not in the strips: ImageMemory is one thread's)
+		var planes = [for (c in components) mem.bytes(width * height)];
+		Strips.run(threads, components.length, (from, to) -> for (k in from...to) upsample(components[k], planes[k]));
 		var rgba = mem.bytes(width * height * 4);
 		var n = components.length;
 		// (jdapimin's guess: JFIF is YCbCr, else Adobe's transform, else
@@ -778,16 +779,15 @@ class JpegDecoder {
 		return {width: o.width, height: o.height, rgba: o.rgba, cmyk: cmyk && n == 4};
 	}
 
-	// the component's samples upsampled to width x height (one byte each)
-	function upsample(c:Component):Bytes {
+	// the component's samples upsampled to width x height into out (one byte each)
+	function upsample(c:Component, out:Bytes) {
 		var stride = c.blocksX * c.bs, src = c.pixels;
 		var rh = Std.int(hmax * bs / (c.h * c.bs)), rv = Std.int(vmax * bs / (c.v * c.bs));
-		var out = mem.bytes(width * height);
 		var cw = c.width, ch = c.height;
 		if (rh == 1 && rv == 1) {
 			for (y in 0...height)
 				out.blit(y * width, src, y * stride, width);
-			return out;
+			return;
 		}
 		// rows at the component's size, horizontally upsampled first
 		inline function at(x:Int, y:Int):Int
@@ -817,7 +817,7 @@ class JpegDecoder {
 				for (x in 0...width)
 					out.set(y * width + x, row[x]);
 			}
-			return out;
+			return;
 		}
 		var line = new Vector<Int>(cw * rh);
 		var srcRow = new Vector<Int>(cw);
@@ -849,7 +849,6 @@ class JpegDecoder {
 			for (x in 0...width)
 				out.set(y * width + x, line[x < cw * rh ? x : cw * rh - 1]);
 		}
-		return out;
 	}
 
 	// EXIF's orientation applied (2-8: mirrored, rotated)

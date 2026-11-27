@@ -15,10 +15,6 @@ final KNOWN:Array<{failure:String, why:String, ?scenario:String}> = [
 		failure: 'grid "Files" in view/main/content/list and the scrollers around it did not move toward their end',
 		scenario: "Found/A grid wheeled to its end twice",
 		why: "helder.ui.VirtualScroll's limit (its extent less its view: 112) short of its layout's (content 686.6 in 568: 118.6), its last 6.6 points out of reach; not diagnosed"
-	},
-	{
-		failure: "Buffer.adopt: no buffer",
-		why: "helder.image.ImageMemory's buffers and views out of step, once in some hundred cases, never alone (GC timing): benmerckx/hxmc#224"
 	}
 ];
 
