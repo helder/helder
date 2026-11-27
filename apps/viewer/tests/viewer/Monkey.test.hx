@@ -18,7 +18,7 @@ final KNOWN:Array<{failure:String, why:String, ?scenario:String}> = [
 	},
 	{
 		failure: "Buffer.adopt: no buffer",
-		why: "helder.image.ImageMemory's buffers and views out of step, once in some hundred cases, never alone (GC timing): hxmc's list"
+		why: "helder.image.ImageMemory's buffers and views out of step, once in some hundred cases, never alone (GC timing): benmerckx/hxmc#224"
 	}
 ];
 

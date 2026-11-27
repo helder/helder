@@ -511,12 +511,24 @@ Found by it, each fixed with a test:
 - in the harness: Steps.settle settled before what layout's events wrote was flushed (an
   onResize's signals, a frame behind); the Sandbox decoded a moved file from its old path.
 
-Open, reported: a Markdown document full size on a phone does not scroll by the wheel (the full
-view's swipe and pinch gestures take it; the desktop's scrolls), the soak's current finding;
-`Buffer.adopt: no buffer` (helder.image.ImageMemory's buffers and views out of step) once in about
-six 60-case runs, never alone (GC timing: an hxmc runtime issue); the photo's image-rect (an
-invisible node) placed from paint, a frame behind a resize. Press-on-pointer-down is not checked:
-no control says it acts on pointer-down.
+Then, each fixed with a test: two players playing at once (a phone's shell made again with a
+file full size pushed its screen twice: the window resized past a phone's width and back); a
+press did not end a wheel's latch (a document opened from a scrolled grid sent its wheel to the
+grid behind it); a sheet's popover kept its old most height as the window resized.
+
+Found scenarios: `apps/viewer/tests/viewer/Found.scenario.hx` keeps what the monkey wrote, each
+replayed with its invariants (Monkey.test.hx's "found" test); what is still open is one list,
+`KNOWN`, each finding its failure's text (the soak leaves out that cause alone), why, and its
+scenario where it has one:
+- a virtual grid's limit 6.6 points short of its layout's at some sizes (its last points out of
+  reach; not diagnosed);
+- `Buffer.adopt: no buffer` (helder.image.ImageMemory's buffers and views out of step) once in some
+  hundred cases, never alone (GC timing: benmerckx/hxmc#224).
+
+Narrowed in the generator instead: a made file's name holds no backslash (haxe.io.Path's
+separator everywhere: whether the viewer mishandles such names on macOS and Linux is open). Also
+open: the photo's image-rect (an invisible node) placed from paint, a frame behind a resize.
+Press-on-pointer-down is not checked: no control says it acts on pointer-down.
 
 Follow-ups: TypeScript programs (a `helder/scenario` monkey), and the invariants left:
 a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
