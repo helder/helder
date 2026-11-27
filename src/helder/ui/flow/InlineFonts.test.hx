@@ -131,6 +131,29 @@ function tests() {
 			// (a line-height given: its leading split in half, unfloored)
 			equals(line(false, 20)[1], ra + Math.floor((20 - ra - rd) / 2));
 			near([line(true, 20)[1]], [a + (20 - a - d) / 2]);
+			// (9pt at 1.3, a paragraph in print: 12px, a 15.6px line; the part
+			// above floored to a whole pixel by default, as Blink's
+			// CalculateLeadingSpace, its exact half with exactMetrics)
+			var nine = made([{family: "I", ahem: false}]);
+			function baseline(exact:Bool):Float {
+				var s = style("I", s -> {
+					s.size = 12;
+					s.height = 12 * 1.3;
+				});
+				var c = new InlineContent(s, nine);
+				c.addText("x", s);
+				c.finish();
+				var cons = new InlineConstraints(1000);
+				cons.exactMetrics = exact;
+				return new InlineLayout().layout(c, cons).lineBaseline(0);
+			}
+			var k12 = 12 / inter.unitsPerEm, a12 = inter.ascender * k12, d12 = -inter.descender * k12;
+			var leading = Math.floor(15.6 * 64) / 64 - Math.round(a12) - Math.round(d12);
+			equals(baseline(false), Math.round(a12) + Math.floor(leading / 2));
+			near([baseline(true)], [a12 + (15.6 - a12 - d12) / 2]);
+			// (whole pixels by default, the exact one between them)
+			var whole = baseline(false), exact = baseline(true);
+			assert(Math.round(whole) == whole && Math.round(exact) != exact, '$whole, $exact');
 			// (the same InlineFonts for both: one is not the other's cache)
 			equals(line(false), [ra + rd + rg, ra + Math.floor(rg / 2), ra + rd + rg, ra, rd]);
 		});
