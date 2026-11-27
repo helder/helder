@@ -8708,7 +8708,7 @@
 		"css/css-fonts/lang-attribute-affects-rendering-002.html": {},
 		"css/css-fonts/lang-attribute-affects-rendering-003.html": {},
 		"css/css-fonts/lang-attribute-affects-rendering-of-second-text-run.html": {"pending":"generated: the same as lang-attribute-affects-rendering-of-second-text-run-ref.html"},
-		"css/css-fonts/language-specific-01.html": {"skip":"chromium: its Lato (support/fonts/Lato-Medium.ttf) is missing at this revision: Linux falls back to the machine's Lato, macOS to DejaVu"},
+		"css/css-fonts/language-specific-01.html": {"skip":"chromium: it asks for css-fonts/support/fonts/Lato-Medium.ttf, which isn't there (WPT has it in /fonts/): Linux's Chromium falls back to the machine's Lato, macOS's to DejaVu"},
 		"css/css-fonts/line-gap-override.html": {"pending":"positioning: 800 pixels differ (by up to 255)"},
 		"css/css-fonts/matching/font-unicode-PUA-primary-font.html": {"pending":"generated: the same as font-unicode-PUA-primary-font-notref.html"},
 		"css/css-fonts/matching/font-unicode-presented-as-emoji-outline.html": {},

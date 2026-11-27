@@ -158,20 +158,33 @@ async function draw(page, id) {
   await page.screenshot({path: file, clip: {x: 0, y: 0, width: 800, height: 600}, animations: 'disabled'})
 }
 
-async function lane(queue) {
+// (a page, its initial fonts set: Chromium takes them once a page)
+async function open() {
   const page = await context.newPage()
-  // (the initial font, once a page: Chromium takes them once)
   const cdp = await context.newCDPSession(page)
   await cdp.send('Page.setFontFamilies', {
     fontFamilies: {standard: fonts.generic.serif, serif: fonts.generic.serif, sansSerif: fonts.generic['sans-serif'], fixed: fonts.generic.monospace,
       cursive: fonts.generic.serif, fantasy: fonts.generic.serif}
   })
+  return page
+}
+
+// (a page that never settles fails after LIMIT, its page given up for a new one)
+const LIMIT = 30000
+async function lane(queue) {
+  let page = await open()
   for (let id; (id = queue.shift()) !== undefined;) {
+    let timer
+    const limit = new Promise((_, fail) => timer = setTimeout(() => fail(new Error(`no picture after ${LIMIT / 1000} s`)), LIMIT))
     try {
-      await draw(page, id)
+      await Promise.race([draw(page, id), limit])
     } catch (e) {
       failed++
       console.error(`goldens.mjs: ${id}: ${String(e.message ?? e).split('\n')[0]}`)
+      page.close().catch(() => {})
+      page = await open()
+    } finally {
+      clearTimeout(timer)
     }
     if (++done % 250 === 0) console.log(`goldens.mjs: ${done} of ${todo.length}`)
   }
