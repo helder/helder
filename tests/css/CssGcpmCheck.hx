@@ -170,9 +170,10 @@ class CssGcpmCheck {
 	static function margins(styles:CssStyles, index:Int, strings:CssRunning<String>):Array<String>
 		return [for (box in BOXES) margin(styles, index, box, strings)].filter(t -> t != null);
 
-	// (a margin box's content on a page: strings, string() as the page has it, the page counter)
+	// (a margin box's content on a page, numbered from 1 (its index from 0, :first's 0; page 2 a left one):
+	// strings, string() as the page has it, the page counter)
 	static function margin(styles:CssStyles, index:Int, box:String, strings:CssRunning<String>):Null<String> {
-		var s = styles.marginBoxStyle(index, null, index % 2 == 0, false, box);
+		var s = styles.marginBoxStyle(index - 1, null, index % 2 == 0, false, box);
 		var items = s == null ? null : CssItems.content(s.terms(Content));
 		if (items == null) return null;
 		var b = new StringBuf();

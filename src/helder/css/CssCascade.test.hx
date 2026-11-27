@@ -273,6 +273,9 @@ function tests() {
 			// (size: auto, the printer's: the print medium's page)
 			var a = styles('<div id=d></div>', "@page { size: auto; margin: 0 } div { width: 100vw }", {media: media});
 			equals(text(a, "d", "width"), "480px");
+			// (the first page's, index 0, :first's margins, not the second's)
+			var first = styles('<div id=d></div>', "@page { margin: 100px } @page :first { margin: 0 } div { width: 100vw }", {media: media});
+			equals(text(first, "d", "width"), "793.701px");
 			// (a viewport given, or a screen's: as it is)
 			var g = styles('<div id=d></div>', css, {media: media, viewport: {width: 100, height: 40}});
 			equals(text(g, "d", "width"), "100px");
