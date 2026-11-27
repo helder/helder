@@ -14,7 +14,7 @@ class SystemFonts {
 
 	final faces:Array<FaceInfo> = [];
 	final loaded = new Map<String, FontFile>();
-	// (a file's bytes, read once for all its faces: a collection's faces share them, Apple Color Emoji's 183 MB among them)
+	// (a file's bytes, once for all its faces: a collection's faces share them, Apple Color Emoji's 183 MB among them)
 	final files = new Map<String, haxe.io.Bytes>();
 	var scanned = false;
 
@@ -334,9 +334,14 @@ class SystemFonts {
 
 	function bytes(path:String):haxe.io.Bytes {
 		var b = files.get(path);
-		if (b == null) files.set(path, b = sys.io.File.getBytes(path));
+		if (b == null) files.set(path, b = read(path));
 		return b;
 	}
+
+	// (a face kept's file mapped, not copied into the heap: only the pages its glyphs and tables are read from
+	// resident, clean and the file's; mapped once and kept, never unmapped, so never rewritten while it is)
+	static function read(path:String):haxe.io.Bytes
+		return #if (target.name == "hxmc") hxmc.MappedFile.bytes(path) #else sys.io.File.getBytes(path) #end;
 
 	// --- discovery ---
 

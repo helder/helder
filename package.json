@@ -105,7 +105,7 @@
     "site:visuals": "node site/visuals.mjs"
   },
   "dependencies": {
-    "@hxmc/cli": "0.1.0-nightly.20261127.1956dfe"
+    "@hxmc/cli": "0.1.0-nightly.20261127.caf165c"
   },
   "peerDependencies": {
     "typescript": ">=7.1.0-0"
@@ -113,7 +113,7 @@
   "devDependencies": {
     "@csstools/css-parser-algorithms": "4.0.3",
     "@csstools/css-tokenizer": "4.0.3",
-    "@hxmc/source": "0.1.0-nightly.20261127.1956dfe",
+    "@hxmc/source": "0.1.0-nightly.20261127.caf165c",
     "@lukeed/html": "1.0.2",
     "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
     "lightningcss": "1.33.0",
