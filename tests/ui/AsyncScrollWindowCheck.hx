@@ -58,7 +58,7 @@ class AsyncScrollWindowCheck {
 			var o = c.offsets(list);
 			offsets.push(o == null ? -1 : o.y);
 		};
-		var blocked = false, flung = 0.0, injected = 0;
+		var blocked = false, primed = false, flung = 0.0, injected = 0;
 		App.run(() -> {
 			step++;
 			if (step == 10) {
@@ -68,16 +68,27 @@ class AsyncScrollWindowCheck {
 					touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
 				touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
 			}
-			if (step > 12 && !blocked && !c.moving()) {
+			if (step > 12 && !primed && !c.moving()) {
+				// (the compositor scrolls no farther than what the program's last frame recorded (#479): the list
+				// recorded again around what is seen, a viewport each way as at first, so the block's scroll fits)
+				var cl = @:privateAccess list.contentLayer;
+				if (cl != null) @:privateAccess {
+					cl.recordedAt = -1;
+					cl.x0 = cl.y0 = cl.x1 = cl.y1 = 0;
+				}
+				primed = true;
+				w.ui.requestFrame();
+			} else if (primed && !blocked && !c.moving()) {
 				// (the program busy, its fling at rest: scroll input injected meanwhile where
 				// the system's comes in, or a fling of its own where none can be yet)
 				blocked = true;
 				flung = list.scrollY;
 				if (!Inject.supported) {
+					// (gentler than the first: about 150 points while blocked, within what was recorded)
 					var t = Timer.stamp() * 1000;
 					for (i in 0...8)
-						touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
-					touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
+						touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 8, t + i * 16);
+					touch(w, PointerUp, 200, 250 - 7 * 8, t + 8 * 16);
 				}
 				#if (!helder.os || helder.os == "macos" || helder.os == "ios" || helder.os == "windows" || helder.os == "linux")
 				var l = c.layers;
@@ -112,7 +123,10 @@ class AsyncScrollWindowCheck {
 				if (Inject.supported) check("input injected meanwhile", injected > 10, injected + " events");
 				// (Wayland's system layers: each commit's frame callback, which a headless weston answers every other refresh)
 				var slow = Sys.getEnv("WAYLAND_DISPLAY") != null && c.layers != null;
-				check("frames presented while the program was blocked for 300 ms", during.length >= (slow ? 6 : 10), during.length + " frames");
+				// (X11's and Windows' wheel: a notch a jump of 40 points, one a frame; held at the edge of the viewport
+				// recorded past what is seen after some 7 of them, frames presented only as it moves)
+				var notches = Inject.supported && #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64") false #else true #end;
+				check("frames presented while the program was blocked for 300 ms", during.length >= (slow || notches ? 6 : 10), during.length + " frames");
 				check("at the display's pace", gaps.length > 0 && median < (slow ? 0.05 : 0.03), "median gap " + Math.round(median * 10000) / 10 + " ms");
 				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]] && offsets[during[0]] >= flung;
 				check("the offset advancing", advancing, during.length > 0 ? flung + ": " + offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
