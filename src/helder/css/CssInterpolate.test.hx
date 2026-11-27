@@ -55,6 +55,12 @@ function tests() {
 			equals(at("filter", "none", "blur(10px)", -1), "blur(0px)");
 			equals(at("filter", "blur(1px)", "opacity(0)", 0.5), null);
 		});
+		test("font-palette: a palette-mix() of the two, the ends their own", () -> {
+			equals(at("font-palette", "light", "dark", 0.3), "palette-mix(light 70%, dark 30%)");
+			equals(at("font-palette", "light", "dark", 0), "light");
+			equals(at("font-palette", "light", "dark", 1), "dark");
+			equals(at("font-palette", "normal", "normal", 0.5), "normal");
+		});
 		test("spacing: normal as 0", () -> {
 			equals(at("letter-spacing", "normal", "10px", 0.3), "3px");
 			equals(at("letter-spacing", "normal", "10px", 0), "normal");
@@ -79,7 +85,9 @@ function tests() {
 			equals(discrete("display", "block", "none", 0.9), "block");
 			equals(discrete("display", "block", "none", 1), "none");
 			equals(discrete("content-visibility", "hidden", "auto", 0.1), "auto");
+			equals(discrete("content-visibility", "hidden", "auto", 0), "hidden");
 			equals(discrete("content-visibility", "visible", "hidden", 0.9), "visible");
+			equals(discrete("content-visibility", "visible", "hidden", 1), "hidden");
 			equals(discrete("float", "left", "right", 0.4), "left");
 			equals(discrete("float", "left", "right", 0.5), "right");
 		});

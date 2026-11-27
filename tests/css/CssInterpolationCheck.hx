@@ -7,6 +7,7 @@ import helder.css.CssShorthands;
 import helder.css.CssStyle;
 import helder.css.CssStyles;
 import helder.css.CssTransition;
+import helder.css.CssText;
 import helder.css.CssValues;
 import helder.dom.Dom;
 import helder.dom.Document;
@@ -114,7 +115,16 @@ class CssInterpolationCheck {
 			var names = CssShorthands.isShorthand(prop) ? CssShorthands.longhands(prop) : [prop];
 			var ids = [for (n in names) CssProperties.of(n)].filter(p -> p != null);
 			if (kind != "interpolation") {
-				var moving = [for (p in ids) if (CssInterpolate.values(p, CssTransition.resolved(sa, p), CssTransition.resolved(sb, p), 0.5) != null) CssProperties.name(p)];
+				// (a longhand alike at both ends says nothing; every one alike, ends written apart, says one end wasn't read)
+				var alike = 0, moving = [];
+				for (p in ids) {
+					var x = CssTransition.resolved(sa, p), y = CssTransition.resolved(sb, p);
+					if (CssText.join(x, CssText.term) == CssText.join(y, CssText.term)) alike++;
+					else if (CssInterpolate.values(p, x, y, 0.5) != null) moving.push(CssProperties.name(p));
+				}
+				inline function unread(v:String):Bool
+					return v != "@neutral" && !~/^(initial|inherit|unset|revert)$/.match(v) && CssValues.read(prop, helder.css.Css.values(v)) == null;
+				if (alike == ids.length && (unread(from) || unread(to))) return [{key: '$kind $head', why: 'an end not read: both compute alike'}];
 				// (allow-discrete or not, a value that interpolates here is wrong)
 				return [{key: '$kind $head', why: moving.length == 0 ? null : 'interpolates (${moving.join(", ")})'}];
 			}

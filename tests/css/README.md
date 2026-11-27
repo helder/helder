@@ -147,22 +147,20 @@ pass):
 
 
 <!-- values -->
-19641 of 19941 required (98.5%): checkpoint 1's progress; 300 pending, our gaps; 9737 skipped, not checkpoint 1's.
+19924 of 20206 required (98.6%): checkpoint 1's progress; 282 pending, our gaps; 9738 skipped, not checkpoint 1's.
 
 | Pending, by the stage that clears them | Cases |
 | --- | --- |
 | layout | 255 |
-| values | 45 |
+| values | 27 |
 
 | Pending because | Cases |
 | --- | --- |
 | layout: grid tracks' sizes | 183 |
 | layout: getComputedStyle's resolved value (the used one) | 39 |
 | layout: percentages of the containing block | 27 |
-| values: WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value) | 12 |
 | values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands | 9 |
 | layout: the font's own metrics | 6 |
-| values: WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest) | 6 |
 | values: Align 3's `[ first | last ]? && baseline` takes `baseline last` | 5 |
 | values: Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects | 5 |
 | values: WPT's computed gradients in cursor: its expected texts drop a parenthesis, and cursor's grammar has image-set() of URLs, not <image> | 3 |
@@ -174,7 +172,7 @@ pass):
 | --- | --- |
 | out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5035 |
 | outdated fixture: css-parsing-tests leaves lab() and lch() unclamped (WPT and Color 4: L in its range, C at least 0) | 2760 |
-| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 614 |
+| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 615 |
 | outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept) | 488 |
 | outdated fixture: css-parsing-tests keeps rgb()'s fractions (WPT: rounded) | 468 |
 | out of scope: container query units (@container is deferred) | 85 |
@@ -200,16 +198,17 @@ pass):
 | css-break-3 | 96 | 0 | 0 |
 | css-cascade-4 | 10 | 0 | 0 |
 | css-color-4 | 5831 | 3 | 5016 |
+| css-contain-2 | 55 | 0 | 0 |
 | css-content-3 | 235 | 0 | 12 |
 | css-display-3 | 281 | 0 | 12 |
 | css-flexbox-1 | 251 | 0 | 51 |
-| css-fonts-4 | 803 | 6 | 86 |
+| css-fonts-4 | 950 | 6 | 87 |
 | css-forms-1 | 11 | 0 | 0 |
 | css-grid-1 | 1021 | 183 | 3 |
 | css-images-3 | 123 | 5 | 9 |
 | css-inline-3 | 149 | 3 | 3 |
 | css-lists-3 | 224 | 0 | 9 |
-| css-logical-1 | 582 | 39 | 6 |
+| css-logical-1 | 582 | 21 | 6 |
 | css-masking-1 | 12 | 0 | 0 |
 | css-overflow-3 | 55 | 0 | 0 |
 | css-overflow-4 | 89 | 0 | 0 |
@@ -218,7 +217,7 @@ pass):
 | css-position-3 | 125 | 0 | 131 |
 | css-scrollbars-1 | 30 | 0 | 0 |
 | css-sizing-3 | 369 | 13 | 218 |
-| css-sizing-4 | 40 | 0 | 0 |
+| css-sizing-4 | 121 | 0 | 0 |
 | css-tables-3 | 45 | 0 | 0 |
 | css-text-3 | 427 | 0 | 55 |
 | css-text-4 | 84 | 0 | 0 |
@@ -520,7 +519,7 @@ doesn't pass):
   interpolation-manifest.json's `pending` says why.
 
 <!-- interpolation -->
-3417 of 4373 cases pass.
+3500 of 4456 cases pass.
 
 | Pending because | Cases |
 | --- | --- |
@@ -543,11 +542,11 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 
 ### Values
 
-44341 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21617 rows for 297 in-scope properties from 877 files (432 duplicates dropped), 10472 calls on 340 properties out of scope (most: position-area 2925, clip-path 341, shape-outside 271, offset-path 208, font-palette 180, will-change 171, mask 159, animation-timing-function 125), and 307 not read statically:
+41643 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21883 rows for 305 in-scope properties from 894 files (380 duplicates dropped), 9743 calls on 332 properties out of scope (most: position-area 2541, clip-path 341, shape-outside 271, offset-path 208, will-change 171, mask 159, animation-timing-function 125, animation-range 111), and 316 not read statically:
 
 | Why not read | Calls |
 | --- | --- |
-| a name not bound to a literal | 273 |
+| a name not bound to a literal | 282 |
 | in a helper | 19 |
 | a loop over what it can't read | 14 |
 | undefined in a template | 1 |
@@ -561,16 +560,17 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 | css-break-3 | 6 | 35 | 18 | 37 | 0 | 6 |
 | css-cascade-4 | 1 | 3 | 7 | 0 | 0 | 0 |
 | css-color-4 | 2 | 2028 | 1113 | 7707 | 0 | 2 |
+| css-contain-2 | 2 | 16 | 19 | 18 | 0 | 2 |
 | css-content-3 | 4 | 88 | 113 | 43 | 0 | 3 |
 | css-display-3 | 2 | 117 | 57 | 117 | 0 | 2 |
 | css-flexbox-1 | 8 | 103 | 77 | 88 | 28 | 6 |
-| css-fonts-4 | 26 | 322 | 321 | 233 | 0 | 19 |
+| css-fonts-4 | 27 | 385 | 341 | 298 | 0 | 19 |
 | css-forms-1 | 1 | 2 | 7 | 2 | 0 | 0 |
 | css-grid-1 | 15 | 375 | 338 | 424 | 60 | 10 |
 | css-images-3 | 3 | 60 | 38 | 36 | 0 | 3 |
 | css-inline-3 | 5 | 59 | 34 | 58 | 0 | 4 |
 | css-lists-3 | 7 | 93 | 59 | 75 | 1 | 5 |
-| css-logical-1 | 52 | 226 | 192 | 168 | 12 | 29 |
+| css-logical-1 | 52 | 216 | 192 | 160 | 12 | 29 |
 | css-masking-1 | 1 | 3 | 4 | 4 | 0 | 1 |
 | css-overflow-3 | 3 | 15 | 9 | 29 | 0 | 2 |
 | css-overflow-4 | 5 | 42 | 38 | 5 | 0 | 4 |
@@ -579,7 +579,7 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 | css-position-3 | 7 | 97 | 103 | 46 | 4 | 6 |
 | css-scrollbars-1 | 2 | 11 | 17 | 0 | 0 | 2 |
 | css-sizing-3 | 7 | 222 | 282 | 89 | 0 | 7 |
-| css-sizing-4 | 1 | 14 | 11 | 14 | 0 | 1 |
+| css-sizing-4 | 6 | 41 | 51 | 28 | 0 | 1 |
 | css-tables-3 | 5 | 12 | 14 | 14 | 0 | 5 |
 | css-text-3 | 17 | 167 | 151 | 147 | 0 | 17 |
 | css-text-4 | 2 | 36 | 20 | 26 | 0 | 2 |

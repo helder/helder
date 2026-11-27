@@ -44,6 +44,8 @@ class CssInterpolate {
 			case "filter" | "backdrop-filter": filters(a, b, t);
 			case "aspect-ratio": ratio(a, b, t);
 			case "font-style": terms(oblique(a), oblique(b), t);
+			// (Fonts 4 §9.3: a palette-mix() of the two, the end's share p; each end its own)
+			case "font-palette": t <= 0 || CssText.join(a, CssText.term) == CssText.join(b, CssText.term) ? a : t >= 1 ? b : [Func("palette-mix", a.concat([Delim(",")]).concat(b).concat([Percentage(t * 100)]))];
 			case "background-position" | "object-position" | "transform-origin" | "background-size": list(a, b, t, true);
 			// (one value of a pair is both)
 			case "border-top-left-radius" | "border-top-right-radius" | "border-bottom-right-radius" | "border-bottom-left-radius" | "border-spacing":
@@ -144,11 +146,13 @@ class CssInterpolate {
 	// stays what isn't none, content-visibility what isn't hidden
 	// (Transitions 2 §3.3, Contain 2 §4.1).
 	public static function discrete(p:CssProperty, a:Array<CssTerm>, b:Array<CssTerm>, t:Float):Array<CssTerm> {
-		var gone = p == Display ? "none" : p == ContentVisibility ? "hidden" : null;
-		if (gone != null) {
-			if (word(a) == gone && word(b) != gone) return b;
-			if (word(b) == gone && word(a) != gone) return t >= 1 ? b : a;
+		if (p == Display) {
+			if (word(a) == "none" && word(b) != "none") return b;
+			if (word(b) == "none" && word(a) != "none") return t >= 1 ? b : a;
 		}
+		// (Contain 2 §4.1: between hidden and another, the other inside the interval, each end its own)
+		if (p == ContentVisibility && (word(a) == "hidden") != (word(b) == "hidden"))
+			return t <= 0 ? a : t >= 1 ? b : word(a) == "hidden" ? b : a;
 		return t < 0.5 ? a : b;
 	}
 

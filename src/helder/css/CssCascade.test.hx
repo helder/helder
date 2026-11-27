@@ -282,6 +282,14 @@ function tests() {
 			var screen = styles('<div id=d></div>', css, {media: {type: "screen", width: 300.0, height: 200.0, resolution: 1.0, color: 8}});
 			equals(text(screen, "d", "width"), "300px");
 		});
+		test("palette-mix() as Fonts 4 serializes it", () -> {
+			var s = styles('<p id=a style="font-palette: palette-mix(in oklab, 30% light, dark)"></p><p id=b style="font-palette: palette-mix(in hsl shorter hue, dark 50%, light, --foo)"></p><p id=c style="font-palette: palette-mix(in lch longer hue, dark calc(50%), light)"></p><p id=d style="font-palette: palette-mix(in srgb, dark 100%)"></p>', "");
+			equals(text(s, "a", "font-palette"), "palette-mix(light 30%, dark 70%)");
+			equals(text(s, "b", "font-palette"), "palette-mix(in hsl, dark 50%, light 25%, --foo 25%)");
+			// (computed: its calc() resolved, then the two at 50% left out)
+			equals(text(s, "c", "font-palette"), "palette-mix(in lch longer hue, dark, light)");
+			equals(text(s, "d", "font-palette"), "palette-mix(in srgb, dark)");
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

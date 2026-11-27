@@ -3,7 +3,8 @@
 // (+, -, *, ?:, ||, templates, members, spreads, join()), names bound once
 // to one, and loops over a list it can read (`for (const x of list)`,
 // `list.forEach(x => ...)`, destructured or not), a call taken once per
-// item. What it can't read is reported with why.
+// item, an if's branch only for the items its test picks. What it can't
+// read is reported with why.
 
 const PUNCT = ['>>>=', '...', '===', '!==', '**=', '<<=', '>>=', '>>>', '&&=', '||=', '??=',
   '=>', '==', '!=', '<=', '>=', '&&', '||', '??', '?.', '++', '--', '+=', '-=', '*=', '/=', '%=',
@@ -424,13 +425,32 @@ function loops(t) {
   return out
 }
 
+// (each `if (test) then else alternative`: the test's tokens and each
+// branch's, so that a loop item takes only the branch its test picks)
+function ifs(t) {
+  const out = []
+  // (a statement's last token: an if's with its else, else statementEnd's)
+  const end = k => {
+    if (t[k]?.value !== 'if' || !isPunct(t[k + 1], '(')) return statementEnd(t, k)
+    const head = closing(t, k + 1), then = end(head + 1)
+    return t[then + 1]?.value === 'else' ? end(then + 2) : then
+  }
+  for (let k = 0; k + 2 < t.length; k++) {
+    if (t[k].value !== 'if' || !isPunct(t[k + 1], '(')) continue
+    const head = closing(t, k + 1), then = end(head + 1)
+    const alt = t[then + 1]?.value === 'else' ? [then + 2, end(then + 2) + 1] : null
+    out.push({test: [k + 2, head], then: [head + 1, then + 1], alt})
+  }
+  return out
+}
+
 // Every call of one of `names` in src, once per loop item and per call of
 // the helper it is in (a named function, its parameters bound to the
 // call's arguments): {name, args, at}, or {name, args, errors: [{index,
 // why}], at} for the arguments it couldn't read.
 export function calls(src, names) {
   const t = tokenize(src)
-  const env = bindings(src, t), all = loops(t)
+  const env = bindings(src, t), all = loops(t), branches = ifs(t)
   const helpers = []
   for (let k = 0; k + 2 < t.length; k++) {
     if (t[k].value !== 'function' || t[k + 1].type !== 'name' || !isPunct(t[k + 2], '(')) continue
@@ -487,6 +507,20 @@ export function calls(src, names) {
           return [{why: "a loop over what it can't read"}]
         }
       })
+    // (an if around it: the items its test sends this way; a test it can't read, all)
+    for (const b of branches) {
+      const inThen = b.then[0] <= k && k < b.then[1], inAlt = b.alt && b.alt[0] <= k && k < b.alt[1]
+      if (!inThen && !inAlt) continue
+      bases = bases.filter(s => {
+        if (s.why) return true
+        try {
+          return !!evaluate(t, b.test[0], b.test[1], s.scope) === inThen
+        } catch (e) {
+          if (!(e instanceof Unreadable)) throw e
+          return true
+        }
+      })
+    }
     return bases
   }
   const out = []
