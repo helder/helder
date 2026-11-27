@@ -173,20 +173,12 @@ class CssInterpolate {
 
 	static final LEGACY = ["rgb", "hsl", "hwb"];
 
-	// (a system colour as a light page's: what browsers give)
+	// (a system colour as a light page's: CssColors.system)
 	static function system(c:CssColorValue):CssColorValue {
 		if (c.c.length >= 3 || c.keyword == null) return c;
-		var rgb = SYSTEM.get(c.keyword);
-		return rgb == null ? c : {space: "rgb", c: rgb, alpha: c.alpha};
+		var s = CssColors.system(c.keyword);
+		return s == null ? c : {space: "rgb", c: s.slice(0, 3), alpha: c.alpha * s[3]};
 	}
-
-	static final SYSTEM:Map<String, Array<Float>> = [
-		"canvastext" => [0, 0, 0], "canvas" => [255, 255, 255], "linktext" => [0, 0, 238], "visitedtext" => [85, 26, 139],
-		"activetext" => [255, 0, 0], "buttonface" => [240, 240, 240], "buttontext" => [0, 0, 0], "buttonborder" => [118, 118, 118],
-		"field" => [255, 255, 255], "fieldtext" => [0, 0, 0], "graytext" => [109, 109, 109], "highlight" => [0, 120, 215],
-		"highlighttext" => [255, 255, 255], "mark" => [255, 255, 0], "marktext" => [0, 0, 0], "selecteditem" => [0, 120, 215],
-		"selecteditemtext" => [255, 255, 255], "accentcolor" => [0, 120, 215], "accentcolortext" => [255, 255, 255]
-	];
 
 	// (a colour in Oklab: L 0 to 1, a and b)
 	static function oklab(c:CssColorValue):Array<Float> {

@@ -32,6 +32,12 @@ function tests() {
 			equals(face("a"), "Ahem");
 			equals(face("b") == "Ahem", false);
 		});
+		test("links in LinkText, system colours as a light page's", () -> {
+			var c = draw('<a href="x" style="display:block;width:4px;height:4px;border:3px solid"></a><a style="display:block;width:4px;height:4px;border:3px solid"></a><div style="width:4px;height:4px;background:VisitedText"></div>');
+			equals(at(c, 1, 1), 0x0000EEFF);
+			equals(at(c, 1, 11), 0x000000FF);
+			equals(at(c, 1, 21), 0x551A8BFF);
+		});
 		test("a document styled through a CSS module", () -> {
 			final view = helder.css.CssModule.load("helder/css/test-modules/view.module.css");
 			var c = draw('<div class="${view.box}"></div><div class="${view.wide}"></div>');
