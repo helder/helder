@@ -84,7 +84,8 @@ class CssStyles {
 	final pseudos = new Map<String, CssRuleIndex<Rule>>();
 	final bloom = new CssBloom();
 	final cache = new ObjectMap<Element, CssStyle>();
-	final pseudoCache = new ObjectMap<Element, Map<String, CssStyle>>();
+	// (a map a pseudo-element, not a map an element: a sheet's *::before matches every element of a long document)
+	final pseudoCache = new Map<String, ObjectMap<Element, CssStyle>>();
 	final shared = new IntMap<Array<Shared>>();
 	final styleTable = new IntMap<Array<CssStyle>>();
 	var order = 0;
@@ -171,10 +172,10 @@ class CssStyles {
 	// The element's style, or one of its pseudo-elements' ("before", "after", "marker").
 	public function computed(el:Element, ?pseudo:String):CssStyle {
 		if (pseudo != null) {
-			var m = pseudoCache.get(el);
-			if (m == null) pseudoCache.set(el, m = new Map());
-			var s = m.get(pseudo);
-			if (s == null) m.set(pseudo, s = style(el, pseudo, computed(el), false));
+			var m = pseudoCache.get(pseudo);
+			if (m == null) pseudoCache.set(pseudo, m = new ObjectMap());
+			var s = m.get(el);
+			if (s == null) m.set(el, s = style(el, pseudo, computed(el), false));
 			return s;
 		}
 		var s = cache.get(el);
@@ -210,7 +211,7 @@ class CssStyles {
 	public function forget(elements:Iterable<Element>) {
 		for (el in elements) {
 			cache.remove(el);
-			pseudoCache.remove(el);
+			for (m in pseudoCache) m.remove(el);
 		}
 		candidates.resize(0);
 		twins.clear();
@@ -223,7 +224,7 @@ class CssStyles {
 	// was then), what it is styled again with.
 	public function drop(el:Element) {
 		cache.remove(el);
-		pseudoCache.remove(el);
+		for (m in pseudoCache) m.remove(el);
 	}
 
 	// Every selector of the rules in effect (pseudo-elements' too), for a

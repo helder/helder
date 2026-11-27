@@ -588,7 +588,7 @@ class LineBuilder {
 			var w = advance(i, from, to, x) + (st == HANG ? 0 : expansion * opportunities(i, from, to));
 			if (kind != InlineContent.ITEM) {
 				// (a tab: a fragment of its own, as Blink's control items)
-				if (textItem != item || kind == InlineContent.TAB || c.pieceKind(i - 1) == InlineContent.TAB) {
+				if (textItem != item || kind == InlineContent.TAB || i > 0 && c.pieceKind(i - 1) == InlineContent.TAB) {
 					textFragment = fragment(TextRun, item, x, 0, cur);
 					textItem = item;
 					o.fStart[textFragment] = from;
@@ -898,7 +898,7 @@ class LineBuilder {
 				case _:
 					var i = vPiece[v], item = c.pieceItem(i), kind = c.pieceKind(i);
 					if (kind != InlineContent.ITEM) {
-						if (textItem != item || textSlot != s || kind == InlineContent.TAB || c.pieceKind(i - 1) == InlineContent.TAB) {
+						if (textItem != item || textSlot != s || kind == InlineContent.TAB || i > 0 && c.pieceKind(i - 1) == InlineContent.TAB) {
 							textFragment = fragment(TextRun, item, x, 0, s);
 							textItem = item;
 							textSlot = s;
