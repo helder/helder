@@ -529,9 +529,10 @@ private class Wake {
 
 // (helder.view's graph on this loop: a write flushes when the task running
 // ends, Solid 2's microtask; a coroutine computation runs as a task started
-// now, cancelled when its run is superseded; kept: nothing names it, and
-// full DCE would drop its __init__ with it)
-@:keep
+// now, cancelled when its run is superseded). Each installed by a static's
+// initializer that full DCE keeps only where the program uses that part of
+// the graph (@:ifFeature: a program with no coroutine computation links no
+// tasks for one)
 private class GraphHooks implements IDispatchObject {
 	final f:Void->Void;
 
@@ -548,19 +549,32 @@ private class GraphHooks implements IDispatchObject {
 
 	var queued = false;
 
-	static function __init__() {
+	// (hxmc runs a class's static initializers at startup only for a class
+	// with an __init__; DCE keeps this one with the class, so only where a
+	// feature below is used)
+	static function __init__()
+		flushes = null;
+
+	@:ifFeature("helder.view.graph.Scheduler.later")
+	static final scheduler = {
 		helder.view.graph.Scheduler.later = f -> {
 			if (flushes == null) flushes = new GraphHooks(f);
 			if (flushes.queued) return;
 			flushes.queued = true;
 			Loop.current().dispatch(flushes);
 		};
+		true;
+	};
+
+	@:ifFeature("helder.view.graph.CoroutineRun.new")
+	static final coroutines = {
 		helder.view.graph.Coroutines.start = (body, ok, fail) -> {
 			var t = new Task<Dynamic>(null, Loop.current().context(), @:coroutine function(_) return body(), false);
 			t.onCompletion((r, e) -> if (e != null) fail(e) else ok(r));
 			t.onDispatch();
 			() -> t.cancel();
 		};
-	}
+		true;
+	};
 }
 
