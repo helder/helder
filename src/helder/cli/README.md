@@ -416,6 +416,19 @@ access). helder.build lists it on https://helder.build/explore when
 `run.listed` is true. `helder share` does the same without an account:
 unlisted, at a random name, for a week.
 
+A web build names no machine's directories: it goes to helder.run, where
+anyone can read it. Every web build passes `-D hxmc.paths` (Entry.args).
+The program's strings then name a source by label, as hxmc writes them:
+`<helder>/` for helder's sources, `<project>/` for the project's (its
+main's folder for TypeScript), `<hxmc>/` for hxmc's std and `<lib>/` for
+another class path. That covers a check's `file:line`, a call stack's
+files, a macro's strings and a live literal's id
+(`<project>/pong.tsx:13:47:color`). The literal tables are written with
+the same ids, so the patches a live share sends still match. The cli lane
+checks it: pong copied out of the repository, built as a release and as a
+live share builds it, has no `/Users/`, `/home/` or `C:\Users` in its
+files (tests/cli/homeless.mjs).
+
 A project the studio has open has a frames file (`bin/studio/<project>/frames.hframes`,
 or `--frames <file>`): it goes up with the release, made portable (the
 fonts it refers to by their files stored with it), and the share's link is

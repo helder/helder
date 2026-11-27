@@ -132,6 +132,30 @@ class Cli {
 		// (helder.text's page ships helder's Inter, whatever machine built it)
 		if (!File.getContent("bin/web/Counter.html").contains('"fonts/Inter.ttf"') || !FileSystem.exists("bin/web/fonts/Inter.ttf"))
 			throw new Failed("helder build --target web: no fonts/Inter.ttf in the page");
+		// (a web build is published: it names no machine's directories (-D
+		// hxmc.paths: <helder>, <project>, <hxmc>). Pong copied out of the
+		// repository, as a user's project is, built as a release and as a live
+		// share builds it, a dev build with its live literals' ids)
+		var away = '$tmp/helder-paths-${Std.random(1 << 30)}';
+		copy("tests/scenario/fixtures/pong", away);
+		// (its tsconfig as helder new and the studio write it: helder's modules here)
+		var src = FileSystem.fullPath("src/helder").split("\\").join("/");
+		File.saveContent('$away/tsconfig.json', haxe.Json.stringify({
+			compilerOptions: {paths: {"helder/*": ['$src/*/index.d.ts', '$src/*/index.ts', '$src/*.ts']}},
+			"extends": '$src/typescript/tsconfig.json'
+		}, null, "\t"));
+		try {
+			run(h, ["build", "--target", "web", away, "-o", '$away/out/pong.wasm']);
+			var said = output(h, ["share", away, "--live", "--dry-run", "--no-screenshot"]);
+			var release = ~/release [^\n]* · (\S+)/;
+			if (!release.match(new EReg(String.fromCharCode(27) + "\\[[0-9;]*m", "g").replace(said, ""))) throw new Failed('helder share --live --dry-run: no release line\n$said');
+			var shared = release.matched(1);
+			for (dir in ['$away/out', shared]) run(NODE, ["tests/cli/homeless.mjs", dir, FileSystem.fullPath(away), FileSystem.fullPath(".")]);
+		} catch (e:Failed) {
+			removeTree(away);
+			throw e;
+		}
+		removeTree(away);
 		expect(h, ["run", "tests/cli/tally", "--", "3"], new Map(), "v1 count=3");
 		rmrf("bin/cli/project");
 		copy("tests/cli/project", "bin/cli/project");

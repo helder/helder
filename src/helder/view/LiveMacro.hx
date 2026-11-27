@@ -78,6 +78,7 @@ class LiveMacro {
 	}
 
 	static function slot(full:String, c:{content:String, hash:String}, start:Int, end:Int, form:String, kind:String, fn:String, value:Expr):Expr {
+		Live.paths(Context.definedValue("hxmc.paths"));
 		var id = Live.id(full, c.content, start, kind), anchor = Live.anchor(c.content, start, end);
 		var table = Context.definedValue("helder.literals");
 		if (table != null && table != "" && table != "1") {

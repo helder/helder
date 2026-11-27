@@ -19,5 +19,14 @@ function tests() {
 			equals(Live.fixed("onPress"), true);
 			equals(Live.fixed("padding-top"), false);
 		});
+		test("ids name a web build's files by label, as hxmc's -D hxmc.paths does", () -> {
+			var src = "a\n  color=\"#fff\"";
+			Live.paths("/home/ann/pong=<project>,/home/ann/pong/node_modules/helder/src=<helder>");
+			equals(Live.id("/home/ann/pong/pong.tsx", src, 10, "color"), "<project>/pong.tsx:2:9:color");
+			equals(Live.id("/home/ann/pong/node_modules/helder/src/helder/ui/Bar.hx", src, 0, "number"), "<helder>/helder/ui/Bar.hx:1:1:number");
+			equals(Live.id("C:\\Users\\ann\\x.tsx", src, 0, "text"), "C:\\Users\\ann\\x.tsx:1:1:text");
+			Live.paths(null);
+			equals(Live.id("/home/ann/pong/pong.tsx", src, 0, "color"), "/home/ann/pong/pong.tsx:1:1:color");
+		});
 	});
 }

@@ -45,7 +45,45 @@ class Live {
 	// a literal's id: <file>:<line>:<column>:<kind>
 	public static function id(file:String, content:String, start:Int, kind:String):String {
 		var p = lineColumn(content, start);
-		return file + ":" + p.line + ":" + p.column + ":" + kind;
+		return shown(file) + ":" + p.line + ":" + p.column + ":" + kind;
+	}
+
+	// a web build's -D hxmc.paths (helder.cli.Entry): its ids name a file as
+	// the program's strings do, by label (<project>/app.tsx), as hxmc's
+	// Lower.shown names them: the program's ids and the table's the same,
+	// and no one reading a share learns where it was built
+	public static function paths(define:Null<String>) {
+		if (define == pathsOf) return;
+		pathsOf = define;
+		dirs = [];
+		if (define != null)
+			for (pair in define.split(",")) {
+				var eq = pair.lastIndexOf("=");
+				if (eq <= 0) continue;
+				var dir = haxe.io.Path.removeTrailingSlashes(pair.substr(0, eq)), label = pair.substr(eq + 1);
+				var all = [dir];
+				#if sys
+				if (!haxe.io.Path.isAbsolute(dir)) all.push(haxe.io.Path.removeTrailingSlashes(sys.FileSystem.absolutePath(dir)));
+				#end
+				for (d in all.copy())
+					for (other in [d.split("\\").join("/"), d.split("/").join("\\")])
+						if (!all.contains(other)) all.push(other);
+				for (d in all) dirs.push({dir: d, label: label});
+			}
+		dirs.sort((a, b) -> b.dir.length - a.dir.length);
+	}
+
+	static var pathsOf:Null<String> = null;
+	static var dirs:Array<{dir:String, label:String}> = [];
+
+	// a path as the program names it (paths' labels in front)
+	public static function shown(s:String):String {
+		for (p in dirs) {
+			if (s.indexOf(p.dir) < 0) continue;
+			s = s.split(p.dir + "/").join(p.label + "/").split(p.dir + "\\").join(p.label + "/");
+			if (s == p.dir) s = p.label;
+		}
+		return s;
 	}
 
 	// a literal's anchor: its line's source, the literal and the line's other values left out
