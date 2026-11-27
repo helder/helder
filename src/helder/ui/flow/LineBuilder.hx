@@ -23,6 +23,8 @@ class LineBuilder {
 	// a line's flags
 	public static inline var FORCED = 1;
 	public static inline var HYPHENATED = 2;
+	// (an overflow-wrap cut ends it: where floats are, a line moves down before it cuts)
+	public static inline var CUT = 4;
 	static inline var EPSILON = 1e-4;
 	// (a piece on the line being built: removed, hanging)
 	static inline var REMOVED = 1;
@@ -68,12 +70,21 @@ class LineBuilder {
 			var indented = first || eachLine && afterForced;
 			var x0 = indented != hanging ? indent : 0.0;
 			var off = 0.0, avail = cons.width;
-			if (cons.lineWidth != null) {
-				var r = cons.lineWidth(y, strut);
-				off = r.offset;
-				avail = r.width;
+			while (true) {
+				if (cons.lineWidth != null) {
+					var r = cons.lineWidth(y, strut);
+					off = r.offset;
+					avail = r.width;
+				}
+				breakLine(p, u, x0, avail);
+				// (shortened by floats and its first piece not fitting, but by a cut: down to where the floats
+				// change, until it fits or they end, CSS 2.1 §9.5)
+				var narrowed = cons.lineWidth != null && (avail < cons.width - EPSILON || off != 0);
+				if (!narrowed || endUsed <= avail + EPSILON && endFlags & CUT == 0) break;
+				var next = cons.floatEdge != null ? cons.floatEdge(y) : y + 1;
+				if (!(next > y) || next == Math.POSITIVE_INFINITY) break;
+				y = next;
 			}
-			breakLine(p, u, x0, avail);
 			// (line-clamp: its last line, more after it, ends in an ellipsis)
 			clamped = clamp > 0 && out.lines == clamp - 1 && endP < c.pieces;
 			var h = build(p, u, y, x0, avail, off);
@@ -181,6 +192,11 @@ class LineBuilder {
 						fitP = i;
 						fitUsed = used;
 						fitFlags = hy > 0 ? HYPHENATED : 0;
+						// (min-content: every opportunity taken, though a negative indent leaves room)
+						if (minimum) {
+							end(fitP, startOf(fitP), fitFlags, fitUsed);
+							return;
+						}
 					} else if (x - trailing <= avail + EPSILON) {
 						overP = i;
 						overUsed = used;
@@ -244,7 +260,7 @@ class LineBuilder {
 			// (a tab or a space that does not hang, overflowing: before it)
 			var k = c.pieceKind(i);
 			if (cuts && any && (k == InlineContent.TAB || k == InlineContent.SPACE) && f & InlineContent.HANGS == 0 && x + w > avail + EPSILON) {
-				end(i, from, 0, x - trailing);
+				end(i, from, CUT, x - trailing);
 				return;
 			}
 			if (cuts && c.pieceKind(i) == InlineContent.WORD && x + w > avail + EPSILON) {
@@ -262,16 +278,16 @@ class LineBuilder {
 						} else break;
 					}
 				if (best > 0) {
-					end(i, best, 0, x + bestW);
+					end(i, best, CUT, x + bestW);
 					return;
 				}
 				// (nothing of it fits: its first cluster, as Blink keeps it; one cluster: before it, if the line has something)
 				if (firstCut > 0) {
-					end(i, firstCut, 0, x + firstW);
+					end(i, firstCut, CUT, x + firstW);
 					return;
 				}
 				if (any) {
-					end(i, from, 0, x - trailing);
+					end(i, from, CUT, x - trailing);
 					return;
 				}
 			}
@@ -470,6 +486,17 @@ class LineBuilder {
 		return f;
 	}
 
+	// (an Open's or a Close's side of its box has a margin, border or padding
+	// that is not zero, whatever they add up to: what keeps a line from being
+	// empty, CSS 2.1 §9.4.2)
+	function edged(item:Int):Bool {
+		var open = c.kind(item) == Open, b = open ? item : c.box(item);
+		if (b < 0) return false;
+		var st = c.styles[c.styleOf(b)];
+		return open ? st.marginStart() != 0 || st.borderStart() != 0 || st.paddingStart() != 0 : st.marginEnd() != 0 || st.borderEnd() != 0
+			|| st.paddingEnd() != 0;
+	}
+
 	// (what placeLogical and placeVisual leave: whether the line has content, its hanging width)
 	var lineFilled = false;
 	var lineTrailing = 0.0;
@@ -542,7 +569,7 @@ class LineBuilder {
 						fragment(BoxStart, item, x, w, b);
 						sLeft[b] = x + s.marginStart();
 						cur = b;
-						if (w > 0) filled = true;
+						if (edged(item)) filled = true;
 					case Close:
 						var b = cur;
 						while (b > 0 && sOpen[b] != c.box(item))
@@ -553,7 +580,7 @@ class LineBuilder {
 							sRight[b] = x + w - c.styles[c.styleOf(c.box(item))].marginEnd();
 							cur = sParent[b];
 						}
-						if (w > 0) filled = true;
+						if (edged(item)) filled = true;
 					case Atomic:
 						var a = slot(item, cur, c.styleOf(item), ATOMIC);
 						var f = fragment(Atomic, item, x + s.marginStart(), c.atomicWidth(item), a);
@@ -699,7 +726,7 @@ class LineBuilder {
 						sSpan[b] = fragment(BoxSpan, item, x, 0, b);
 						sLeaves[b] = leaves;
 						cur = b;
-						if (w > 0) filled = true;
+						if (edged(item)) filled = true;
 					case Close:
 						var b = cur;
 						while (b > 0 && sOpen[b] != c.box(item))
@@ -711,7 +738,7 @@ class LineBuilder {
 						}
 						var iso = c.isolateLevel(item);
 						if (iso >= 0) leaf(CONTROL_LEAF, -1, 0, 0, iso, 0, cur, false);
-						if (w > 0) filled = true;
+						if (edged(item)) filled = true;
 					case Atomic:
 						if (slots == sLeaves.length) {
 							sFirst = ints(sFirst, slots * 2);
