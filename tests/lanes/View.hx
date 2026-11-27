@@ -135,6 +135,13 @@ class View {
 		// (Linux: a window in Xvfb; elsewhere the desktop's own)
 		var linux = Sys.systemName() == "Linux";
 		var xvfb = linux ? '$XVFB -a -s "-screen 0 640x480x24"' : "";
+		// (the goldens' faces and raster elsewhere too: DejaVu 2.37 alone, drawn by helder's engine as FreeType draws
+		// them on Linux; a Mac's Core Text drew lighter text on dark)
+		if (!linux) {
+			run(NODE, ["tests/dejavu.mjs"]);
+			Sys.putEnv("HELDER_FONT_DIRS", sys.FileSystem.fullPath("bin/fonts/dejavu-2.37"));
+			Sys.putEnv("HELDER_TEXT_ENGINE", "helder");
+		}
 		shell('$gpu $b/UiDrawCheck tests/ui/draw.png $b/draw.png$bless');
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/UiDrawCheck tests/ui/draw.png $b/window.png --window');
 		shell('$gpu $b/TodoCheck tests/ui/todo.png $b/todo.png$bless');
@@ -164,9 +171,13 @@ class View {
 		if (GFX_TARGET.startsWith("macos-") && !linux) shell('$b/SystemLayersWindowCheck');
 		// (the system's Liquid Glass, macOS 26: its views in the layer tree, kept in the background)
 		if (GFX_TARGET.startsWith("macos-") && !linux) shell('HELDER_BACKGROUND=1 $b/GlassWindowCheck');
+		if (!linux) {
+			Sys.putEnv("HELDER_FONT_DIRS", "");
+			Sys.putEnv("HELDER_TEXT_ENGINE", "");
+			return;
+		}
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
-		if (!linux) return;
 		shell('$xvfb $b/ClipboardCheck');
 		shell('$xvfb $b/KeyInputCheck');
 		// (AT-SPI: the window's tree read by another process through libatspi,
