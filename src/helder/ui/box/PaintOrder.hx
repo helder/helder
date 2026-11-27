@@ -332,10 +332,7 @@ class PaintOrder {
 	}
 
 	public static function hasBackground(b:Box):Bool
-		return b.style.color("background-color") >>> 24 != 0 || switch b.style.terms("background-image") {
-			case [Keyword("none")] | []: false;
-			case _: true;
-		}
+		return b.style.backgroundColor >>> 24 != 0 || b.style.background != null;
 
 	function step(kind:Int, frag:Int, x:Float, y:Float) {
 		steps[count] = kind;

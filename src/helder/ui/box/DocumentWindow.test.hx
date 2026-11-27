@@ -26,10 +26,10 @@ function tests() {
 			var v = live('<style>@media (min-width: 250px) { p { color: #f00 } }</style><p id=p>x</p>');
 			var s = v.styles;
 			v.layout(320, 200);
-			equals(v.boxesOf(el(v, "p"))[0].style.color("color"), 0xFFFF0000);
+			equals(v.boxesOf(el(v, "p"))[0].style.text.colour, 0xFFFF0000);
 			v.layout(200, 200);
 			equals(v.styles == s, true);
-			equals(v.boxesOf(el(v, "p"))[0].style.color("color"), 0xFF000000);
+			equals(v.boxesOf(el(v, "p"))[0].style.text.colour, 0xFF000000);
 			var w = live('<style>body { margin: 0 } p { width: 50vw }</style><p id=p>x</p>');
 			w.layout(320, 200);
 			equals(w.fragments.width(w.fragmentOf(w.boxesOf(el(w, "p"))[0])), 160.0);

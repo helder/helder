@@ -203,7 +203,7 @@ class FontMatch {
 	public function palette(face:FontFile, style:BoxStyle):Null<Array<Int>> {
 		var c = face.colr;
 		if (c == null || c.palettes.length == 0) return null;
-		var terms = style.terms("font-palette");
+		var terms = style.rare.fontPalette;
 		if (terms.length == 0 || terms[0].match(Keyword("normal"))) return null;
 		var family = (face.alias ?? face.family).toLowerCase(), key = face.id + "|" + Std.string(terms) + "|" + family;
 		if (palettes.exists(key)) return palettes.get(key);
@@ -321,7 +321,7 @@ class FontMatch {
 	// normal as the inline layout has it
 	public function metrics(q:CssFontQuery):CssFontMetrics {
 		var s = new helder.ui.flow.InlineBasicStyle();
-		s.families = BoxStyle.familiesOf(q.family);
+		s.families = CssBoxStyle.familiesOf(q.family);
 		s.size = q.size;
 		s.weight = switch q.weight {
 			case [Number(v, _)]: Std.int(v);

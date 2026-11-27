@@ -38,7 +38,7 @@ class HitTest {
 			if (step == PaintOrder.OUTLINE || step == PaintOrder.BORDERS) continue;
 			var id = order.fragments[k];
 			var b = f.box(id);
-			if (!b.style.visible || b.style.keyword("pointer-events") == "none") continue;
+			if (!b.style.visible || b.style.rare.pointerEvents == "none") continue;
 			var st = order.stateOf[k];
 			if (!local(f, order, st, scrolls)) continue;
 			var px = xs[st], py = ys[st];

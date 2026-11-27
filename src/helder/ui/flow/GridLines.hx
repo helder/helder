@@ -25,7 +25,8 @@ class GridLines {
 
 	// An item's start line (AUTO: placed automatically) and span.
 	public function resolve(st:BoxStyle, p:String):{start:Int, span:Int} {
-		var s = GridLine.of(st.terms('$p-start')), e = GridLine.of(st.terms('$p-end'));
+		var k = p == "grid-row" ? 0 : 2;
+		var s = GridLine.of(st.rare.gridLines[k]), e = GridLine.of(st.rare.gridLines[k + 1]);
 		if (s.span && e.span) e = GridLine.NONE;
 		if (s.definite && e.definite) {
 			var a = line(s, false), b = line(e, true);
@@ -48,7 +49,8 @@ class GridLines {
 	// An absolutely positioned item's lines (AUTO: its padding edge's): as resolve's, a span from a line
 	// that's there, but no implicit ones made.
 	public function lines(st:BoxStyle, p:String):{from:Int, to:Int} {
-		var s = GridLine.of(st.terms('$p-start')), e = GridLine.of(st.terms('$p-end'));
+		var k = p == "grid-row" ? 0 : 2;
+		var s = GridLine.of(st.rare.gridLines[k]), e = GridLine.of(st.rare.gridLines[k + 1]);
 		var a = s.definite ? line(s, false) : AUTO, b = e.definite ? line(e, true) : AUTO;
 		if (a != AUTO && b == AUTO && e.span) b = reach(e, a, true);
 		if (b != AUTO && a == AUTO && s.span) a = reach(s, b, false);

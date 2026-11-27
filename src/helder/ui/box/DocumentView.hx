@@ -817,7 +817,7 @@ class DocumentView {
 	function swap(b:Box, el:Element, old:CssStyle, now:CssStyle, swaps:ObjectMap<BoxStyle, BoxStyle>, relayout:Bool) {
 		if (b.style.css == old) {
 			var s = swaps.get(b.style);
-			if (s == null) swaps.set(b.style, s = b.style.restyled(now));
+			if (s == null) swaps.set(b.style, s = CssBoxStyle.of(b.style).restyled(now));
 			b.restyle(s);
 			// (the lines it is in keep its old inline style: built again)
 			var p:Null<Box> = b;

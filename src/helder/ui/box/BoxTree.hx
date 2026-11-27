@@ -46,7 +46,7 @@ class BoxTree {
 	final image:Null<String->Null<Bitmap>>;
 	final svg:Null<String->Null<helder.canvas.Svg>>;
 	// (one BoxStyle a computed style: helder.css shares styles between like elements)
-	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
+	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, CssBoxStyle>();
 	public final counters:helder.css.CssCounting;
 	// paged: each running element (its name, its boxes, where it was: a RUNNING holder, null when inline-level)
 	public final running:Array<{name:String, box:Box, holder:Null<Box>}> = [];
@@ -176,10 +176,10 @@ class BoxTree {
 		return changed;
 	}
 
-	function style(el:Element):BoxStyle {
+	function style(el:Element):CssBoxStyle {
 		var css = styles.computed(el);
 		var s = cache.get(css);
-		if (s == null) cache.set(css, s = new BoxStyle(css));
+		if (s == null) cache.set(css, s = new CssBoxStyle(css));
 		return s;
 	}
 
@@ -439,7 +439,7 @@ class BoxTree {
 		// (its combining marks: a letter is its grapheme cluster)
 		while (i < n && mark(code(text, i))) i += width(text, i);
 		while (i < n && Punctuation.is(code(text, i))) i += width(text, i);
-		var s = new BoxStyle(styles.computed(el, "first-letter"));
+		var s = new CssBoxStyle(styles.computed(el, "first-letter"));
 		var box = make(s.floating ? Block : Inline, s, el, "first-letter");
 		var letter = make(Text, s, nodeOf(t));
 		letter.text = text.substring(start, i);
@@ -546,7 +546,7 @@ class BoxTree {
 		var t = make(Container, s, el, pseudo);
 		var above = [], below = [], rest = [];
 		for (k in kids)
-			if (partOf(k) == BoxStyle.CAPTION) (k.style.keyword("caption-side") == "bottom" ? below : above).push(k) else rest.push(k);
+			if (partOf(k) == BoxStyle.CAPTION) (k.style.rare.captionSide == "bottom" ? below : above).push(k) else rest.push(k);
 		runs(t, rest, k -> switch partOf(k) {
 			case BoxStyle.ROW_GROUP | BoxStyle.HEADER_GROUP | BoxStyle.FOOTER_GROUP | BoxStyle.ROW | BoxStyle.COLUMN_GROUP | BoxStyle.COLUMN: true;
 			case _: false;
@@ -632,7 +632,7 @@ class BoxTree {
 	function pseudo(el:Element, which:String, out:Array<Box>) {
 		var css = styles.computed(el, which);
 		if (css.generated() == null) return;
-		var s = new BoxStyle(css);
+		var s = new CssBoxStyle(css);
 		if (s.none) return;
 		counters.enter(el, which);
 		var mark = s.listItem ? marker(el, s, which + "::marker") : null;
@@ -692,7 +692,7 @@ class BoxTree {
 	// A list item's ::marker (CssCounters': its content, else list-style-image, else
 	// list-style-type's text for its list-item counter).
 	function marker(el:Element, item:BoxStyle, which = "marker"):Null<Box> {
-		var s = new BoxStyle(styles.computed(el, which));
+		var s = new CssBoxStyle(styles.computed(el, which));
 		counters.enter(el, which);
 		var kids = parts(el, s, which, counters.marker(el, which));
 		// (a list-style-image that doesn't load: list-style-type's marker, Lists 3 §3.2)
@@ -704,7 +704,7 @@ class BoxTree {
 		if (kids.length == 0) return null;
 		var b = make(Inline, s, el, which);
 		for (k in kids) b.append(k);
-		if ((item.outer != BoxStyle.INLINE || item.inner == BoxStyle.FLOW_ROOT) && item.keyword("list-style-position") != "inside") b.flags |= Box.OUTSIDE;
+		if ((item.outer != BoxStyle.INLINE || item.inner == BoxStyle.FLOW_ROOT) && CssBoxStyle.of(item).keyword("list-style-position") != "inside") b.flags |= Box.OUTSIDE;
 		return b;
 	}
 

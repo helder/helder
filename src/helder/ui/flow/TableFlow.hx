@@ -91,13 +91,13 @@ class TableFlow implements FormattingContext {
 	function grid(t:Box, space:Space):Grid {
 		var g = new Grid();
 		var s = t.style;
-		g.collapse = s.keyword("border-collapse") == "collapse";
+		g.collapse = s.rare.borderCollapse;
 		g.exact = space.exact;
-		if (!g.collapse) switch s.terms("border-spacing") {
-			case [Dimension(h, _), Dimension(v, _)]:
+		if (!g.collapse) switch s.rare.borderSpacing {
+			case [h, v]:
 				g.spacingH = h;
 				g.spacingV = v;
-			case [Dimension(h, _)]:
+			case [h]:
 				g.spacingH = g.spacingV = h;
 			case _:
 		}
@@ -278,7 +278,7 @@ class TableFlow implements FormattingContext {
 		inline function side(b:Box, k:Int):{w:Float, s:String, c:Int} {
 			var st = b.style.model();
 			var name = SIDES[k];
-			return {w: st.border[k], s: b.style.keyword('border-$name-style'), c: b.style.color('border-$name-color')};
+			return {w: st.border[k], s: b.style.borderStyle(k), c: b.style.borderColor(k)};
 		}
 		function h(line:Int, from:Int, to:Int, b:Box, k:Int) {
 			var e = side(b, k);
@@ -475,7 +475,7 @@ class TableFlow implements FormattingContext {
 		var spec = Lens.resolve(ts.width, cb, Math.NaN);
 		if (!ts.borderBox && !Math.isNaN(spec)) spec += edges[1] + edges[3];
 		// (table-layout: fixed with a width: the columns' widths, not their content, §17.5.2.1)
-		var fixed = t.style.keyword("table-layout") == "fixed" && !Math.isNaN(spec);
+		var fixed = t.style.rare.tableLayout == "fixed" && !Math.isNaN(spec);
 		if (fixed) minW = outerH;
 		var w:Float;
 		if (!Math.isNaN(space.fixedWidth)) w = space.fixedWidth else if (!Math.isNaN(spec)) w = Math.max(spec, minW) else {
@@ -529,7 +529,7 @@ class TableFlow implements FormattingContext {
 			for (r in cell.row...cell.row + cell.rows) have += rowH[r];
 			if (cell.height > have) rowH[cell.row + cell.rows - 1] += cell.height - have;
 		}
-		for (r in 0...rows) if (g.rows[r].style.keyword("visibility") == "collapse") rowH[r] = 0;
+		for (r in 0...rows) if (g.rows[r].style.rare.visibility == "collapse") rowH[r] = 0;
 		var edgesV = edges[0] + edges[2] + g.spacingV * (rows + 1);
 		var gridH = edgesV;
 		for (h in rowH) gridH += h;
@@ -545,7 +545,7 @@ class TableFlow implements FormattingContext {
 		var shown = [for (_ in 0...rows) true];
 		// (in a fragmentainer: where the table box starts in it; box-decoration-break: clone, each fragment its border,
 		// padding and spacing whole, the bottom ones' room kept as it is)
-		var tableTop = 0.0, clone = t.style.keyword("box-decoration-break") == "clone";
+		var tableTop = 0.0, clone = t.style.rare.boxDecorationBreak == "clone";
 		// (rows broken inside here, their cells at their top)
 		var split = [for (_ in 0...rows) false];
 		var resumed = false, broken = false;
@@ -575,7 +575,7 @@ class TableFlow implements FormattingContext {
 			}
 			// (resumed: its top border, padding and spacing were in the fragmentainer before, sliced)
 			var y = space.pageTop;
-			if (!resumed) for (k in wrapper.children()) if (k != t && k.style.keyword("caption-side") != "bottom") {
+			if (!resumed) for (k in wrapper.children()) if (k != t && k.style.rare.captionSide != "bottom") {
 				var f = flow.child(k, space.child(w, Math.NaN));
 				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
 			} else if (k == t) break;
@@ -742,7 +742,7 @@ class TableFlow implements FormattingContext {
 				frags.adopt(wf, tf, 0, wy);
 				if (rows > 0) baseline = wy + rowY[0] + baselines[0];
 				wy += gridH;
-			} else if (resumed && k.style.keyword("caption-side") != "bottom" || broken && k.style.keyword("caption-side") == "bottom") {
+			} else if (resumed && k.style.rare.captionSide != "bottom" || broken && k.style.rare.captionSide == "bottom") {
 				// (a caption above where it doesn't start, below where it doesn't end: none)
 			} else {
 				// (a caption: a block in the table's width)

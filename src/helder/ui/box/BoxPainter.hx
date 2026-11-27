@@ -220,17 +220,12 @@ class BoxPainter {
 	// (how far past its border box a box paints: its shadows' and its outline's reach)
 	@:allow(helder.ui.box.PaintOrder, helder.ui.box.Fragments) static function reach(s:BoxStyle):Float {
 		var r = 0.0;
-		if (s.keyword("outline-style") != "none") r = s.px("outline-width") + Math.abs(s.px("outline-offset"));
-		var t = s.terms("box-shadow");
-		if (t.length > 1) {
+		var st = s.outlineStyle;
+		if (st != "none" && st != "") r = s.outlineWidth + Math.abs(s.outlineOffset);
+		var list = s.shadows;
+		if (list != null) for (one in list) {
 			var sum = 0.0;
-			for (x in t) switch x {
-				case Dimension(v, _): sum += Math.abs(v);
-				case Delim(","):
-					r = Math.max(r, sum * 2);
-					sum = 0;
-				case _:
-			}
+			for (v in one.lengths) sum += Math.abs(v);
 			r = Math.max(r, sum * 2);
 		}
 		return r;
@@ -280,7 +275,7 @@ class BoxPainter {
 		if (b.kind == TableWrapper) return;
 		var s = b.style, w = f.width(id), h = f.height(id);
 		// (an empty cell's, under empty-cells: hide in the separated borders model: nothing, §17.6.1.1)
-		if (b.flags & (Box.EMPTY | Box.COLLAPSED) == Box.EMPTY && s.keyword("empty-cells") == "hide") return;
+		if (b.flags & (Box.EMPTY | Box.COLLAPSED) == Box.EMPTY && s.rare.emptyCells == "hide") return;
 		var part = s.part;
 		Borders.shadows(p, s, x, y, w, h, false);
 		var cells = part == BoxStyle.ROW || part == BoxStyle.ROW_GROUP || part == BoxStyle.COLUMN || part == BoxStyle.COLUMN_GROUP ? gridCells(id, b, x, y, w, h) : null;
@@ -393,7 +388,7 @@ class BoxPainter {
 		// (an SVG as its paths, on whole pixels as an image is: an image's in black, its own document's colour; an inline one's paint is the cascade's)
 		if (b.svg != null) {
 			var own = b.flags & Box.INLINE_SVG != 0;
-			b.svg.paint(p, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, own ? b.style.color("color") : 0xFF000000);
+			b.svg.paint(p, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, own ? b.style.text.colour : 0xFF000000);
 			return;
 		}
 		p.drawImage(img, 0, 0, img.width, img.height, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, PLAIN, true);
@@ -443,7 +438,7 @@ class BoxPainter {
 		if (run == null) return;
 		var s = b.style;
 		var baseline = y + f.baseline(id);
-		var color = s.color("color");
+		var color = s.text.colour;
 		if (symbol(p, id, b, run, x, baseline, color)) return;
 		var decorations = decorating(b);
 		// (underlines and overlines under the text, line-throughs over it)
@@ -497,29 +492,25 @@ class BoxPainter {
 	}
 
 	static final NONE:Array<BoxStyle> = [];
+	static final LINES = ["underline", "overline", "line-through"];
 
 	function decorate(p:Painter, d:BoxStyle, run:ShapedRun, x:Float, baseline:Float, width:Float, over:Bool) {
-		var color = switch d.terms("text-decoration-color") {
-			case [Color(c)]: BoxStyle.argb(c, d.color("color"));
-			case _: d.color("color");
-		}
+		var t = d.text, color = t.decorationColour;
 		if (color >>> 24 == 0 || width <= 0) return;
 		var u = FontMatch.underline(run.face, run.size), strike = FontMatch.strikeout(run.face, run.size);
 		// (auto: a tenth of the font size, as Chromium's; from-font: the font's own)
 		var auto = run.size / 10;
-		var given = switch d.terms("text-decoration-thickness") {
-			case [Dimension(v, _)]: v;
-			case [Percentage(v)]: v * run.size / 100;
-			case [Keyword("from-font")]: over ? strike.thickness : u.thickness;
-			case _: auto;
-		}
+		var given = d.rare.fromFont ? (over ? strike.thickness : u.thickness) : t.decorationThickness == t.decorationThickness ? t.decorationThickness : auto;
 		var thickness = Math.max(1, Math.floor(given));
-		var style = d.keyword("text-decoration-style");
-		for (t in d.terms("text-decoration-line")) {
-			var line = switch t {
-				case Keyword(k): k;
-				case _: continue;
-			}
+		var style = switch t.decorationStyle {
+			case Double: "double";
+			case Dotted: "dotted";
+			case Dashed: "dashed";
+			case Wavy: "wavy";
+			case _: "solid";
+		}
+		for (line in LINES) {
+			if (t.decoration & (line == "underline" ? helder.ui.flow.InlineValues.InlineDecoration.Underline : line == "overline" ? helder.ui.flow.InlineValues.InlineDecoration.Overline : helder.ui.flow.InlineValues.InlineDecoration.LineThrough) == 0) continue;
 			if ((line == "line-through") != over) continue;
 			var top = switch line {
 				case "underline": baseline + Math.max(1, Math.round(u.offset - given / 2));

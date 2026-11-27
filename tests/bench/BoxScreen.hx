@@ -80,7 +80,7 @@ class BoxStyles {
 			// (a CssStyle reads its CssStyles: text-indent's terms interned there, font metrics: an empty one, no
 			// sheet, no element)
 			var css = @:privateAccess new CssStyle(host, groups, new Map());
-			var s = new BoxStyle(css);
+			var s = new helder.ui.box.CssBoxStyle(css);
 			index.set(s, styles.length);
 			styles.push(s);
 		}

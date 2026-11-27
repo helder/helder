@@ -59,7 +59,7 @@ function tests() {
 			var doc = Dom.parse('<!doctype html><p id=a style=\'font-family: "serif"\'>a</p><p id=b style="font-family: serif">b</p>');
 			var styles = helder.css.CssCascade.styles(doc);
 			function face(id:String)
-				return fonts.face(new BoxStyle(styles.computed(doc.getElementById(id)))).family;
+				return fonts.face(new CssBoxStyle(styles.computed(doc.getElementById(id)))).family;
 			equals(face("a"), "Ahem");
 			equals(face("b") == "Ahem", false);
 		});

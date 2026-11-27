@@ -17,19 +17,19 @@ function tests() {
 			var a = el(v, "a");
 			a.setState(ElementState.HOVER, true);
 			equals(v.update(), DocumentView.PAINT);
-			equals(v.boxesOf(a)[0].style.color("color"), 0xFFFF0000);
+			equals(v.boxesOf(a)[0].style.text.colour, 0xFFFF0000);
 			// (its text's run: the element's style)
-			equals(v.boxesOf(a.firstChild)[0].style.color("color"), 0xFFFF0000);
+			equals(v.boxesOf(a.firstChild)[0].style.text.colour, 0xFFFF0000);
 			a.setState(ElementState.HOVER, false);
 			equals(v.update(), DocumentView.PAINT);
-			equals(v.boxesOf(a.firstChild)[0].style.color("color"), 0xFF0000FF);
+			equals(v.boxesOf(a.firstChild)[0].style.text.colour, 0xFF0000FF);
 			equals(v.update(), DocumentView.NOTHING);
 		});
 		test("an inherited colour reaches the children", () -> {
 			var v = live('<style>div:hover { color: #0f0 }</style><div id=d><p id=p>x</p></div>');
 			el(v, "d").setState(ElementState.HOVER, true);
 			equals(v.update(), DocumentView.PAINT);
-			equals(v.boxesOf(el(v, "p"))[0].style.color("color"), 0xFF00FF00);
+			equals(v.boxesOf(el(v, "p"))[0].style.text.colour, 0xFF00FF00);
 		});
 		test("a width lays out again as a fresh layout does", () -> {
 			var html = '<style>body { margin: 0; font: 10px/1 Ahem } .w { width: 50px } #b:hover { width: 120px }</style><div id=a class=w>aa aa</div><div id=b class=w>bb bb bb</div><p>after</p>';
@@ -76,7 +76,7 @@ function tests() {
 			var b = v.boxesOf(el(v, "b"))[0];
 			v.layout(200, 200);
 			equals(v.boxesOf(el(v, "b"))[0] == b, true);
-			equals(v.boxesOf(el(v, "a"))[0].style.color("color"), 0xFFFF0000);
+			equals(v.boxesOf(el(v, "a"))[0].style.text.colour, 0xFFFF0000);
 		});
 		test("a display a query changes remakes its block alone", () -> {
 			var html = '<style>body { margin: 0; font: 10px/1 Ahem } @media (max-width: 250px) { span { display: block } }</style><div id=a>w <span>x</span> y</div><div id=b>z</div>';
