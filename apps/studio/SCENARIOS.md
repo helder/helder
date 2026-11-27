@@ -495,13 +495,28 @@ cut short, empty files, folders), files in the Sandbox's memory, under a HELDER_
 Its failures land in apps/viewer/bin/fuzz. `checks`: each case's files the Sandbox's (a probe of 60 cases first, no steps), and media's (one
 player at most playing, the viewer's, its file shown in it; a test plays the clip and closes it).
 
-Found by it: a decode's key cut a file name at a line break (Null Access opening it); a touch
-menu taller than the window ran off it (its last choices out of reach: the viewer's View options
-on a phone held sideways); a code view's caret blinked on the wall's clock, not its screen's (a
-still's phase the wall's; a scenario never settled). Open: `Buffer.adopt: no buffer`
-(helder.image.ImageMemory's buffers and views out of step) once in about six 60-case runs, never
-alone (GC timing: an hxmc runtime issue, reported, not fixed). Press-on-pointer-down is not
-checked: no control says it acts on pointer-down.
+Found by it, each fixed with a test:
+- a decode's key cut a file name at a line break (Null Access opening it);
+- a touch menu, and a drawn menu, taller than the window ran off it (their last items out of
+  reach: the viewer's View options on a phone held sideways); a touch menu stayed placed for the
+  old size after a resize (now dismissed, as the platforms' menus are);
+- a sheet open as the window resized kept its old height (444 points above the top of a phone
+  turned);
+- a code view's caret blinked on the wall's clock, not its screen's (a still's phase the wall's;
+  a scenario never settled);
+- a closed viewer's animated GIF went on stepping every frame behind the folder;
+- a phone's photo dragged up a little and let go stayed held by its flight, stepping for good;
+- the inspector had no scroller (its details cut off in a short window, laid out past a phone's
+  sheet);
+- in the harness: Steps.settle settled before what layout's events wrote was flushed (an
+  onResize's signals, a frame behind); the Sandbox decoded a moved file from its old path.
+
+Open, reported: a Markdown document full size on a phone does not scroll by the wheel (the full
+view's swipe and pinch gestures take it; the desktop's scrolls), the soak's current finding;
+`Buffer.adopt: no buffer` (helder.image.ImageMemory's buffers and views out of step) once in about
+six 60-case runs, never alone (GC timing: an hxmc runtime issue); the photo's image-rect (an
+invisible node) placed from paint, a frame behind a resize. Press-on-pointer-down is not checked:
+no control says it acts on pointer-down.
 
 Follow-ups: TypeScript programs (a `helder/scenario` monkey), and the invariants left:
 a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
