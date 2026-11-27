@@ -875,8 +875,8 @@ class DocumentBench {
 		var links = [];
 		var f = v.fragments;
 		for (id in 0...f.count) {
-			var b = f.box(id);
-			if (b.node == null || b.node.nodeType != helder.dom.Node.TEXT_NODE || b.node.parentNode == null || b.node.parentNode.nodeName != "A") continue;
+			var n = helder.ui.box.BoxTree.nodeOf(f.box(id));
+			if (n == null || n.nodeType != helder.dom.Node.TEXT_NODE || n.parentNode == null || n.parentNode.nodeName != "A") continue;
 			var p = f.absolute(id);
 			if (p.y > 20 && p.y < h - 40 && f.width(id) > 4) links.push([p.x + 2, p.y + f.height(id) / 2]);
 			if (links.length >= 12) break;

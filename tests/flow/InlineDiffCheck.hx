@@ -1,6 +1,5 @@
 import haxe.Json;
-import helder.dom.Document;
-import helder.dom.Node;
+import helder.ui.box.Box;
 import helder.ui.flow.InlineBasicStyle;
 import helder.ui.flow.InlineConstraints;
 import helder.ui.flow.InlineContent;
@@ -24,29 +23,29 @@ class InlineDiffCheck {
 	}
 
 	static function layout(c:Dynamic):Dynamic {
-		var doc = new Document();
-		var ids = new Map<Node, String>();
+		// (each item's source a box of its own: what tells its fragments apart)
+		var ids = new haxe.ds.ObjectMap<Box, String>();
 		var root = style(c.style);
 		var content = new InlineContent(root);
 		function add(nodes:Array<Dynamic>, parent:InlineBasicStyle) {
 			for (n in nodes)
 				switch (n.kind : String) {
 					case "text":
-						var t = doc.createTextNode(n.text);
+						var t = new Box(Text, null);
 						ids.set(t, n.id);
 						content.addText(n.text, parent, t);
 					case "box":
-						var e = doc.createElement("span"), s = style(n.style);
+						var e = new Box(Inline, null), s = style(n.style);
 						ids.set(e, n.id);
 						content.openBox(s, e);
 						add(n.children, s);
 						content.closeBox(e);
 					case "atomic":
-						var e = doc.createElement("span");
+						var e = new Box(InlineBlock, null);
 						ids.set(e, n.id);
 						content.addAtomic(n.width, n.height, Math.NaN, style(n.style), e);
 					case "br":
-						content.addBreak(doc.createElement("br"), parent);
+						content.addBreak(new Box(Break, null), parent);
 				}
 		}
 		add(c.children, root);

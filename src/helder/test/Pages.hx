@@ -28,7 +28,7 @@ function find(v:PagedView, page:Int, id:String):Int {
 	while (stack.length > 0) {
 		var k = stack.pop();
 		if (k < 0) continue;
-		if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return k;
+		if (f.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(f.box(k)) == el) return k;
 		var c = f.first(k);
 		while (c >= 0) {
 			stack.push(c);

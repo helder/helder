@@ -118,7 +118,7 @@ class BoxConformanceCheck {
 		view.layout(100000, 100000);
 		var frags = view.fragments;
 		function boxOf(el:Element):Int {
-			for (k in 0...frags.count) if (frags.kind(k) == Fragments.BOX && frags.box(k).node == el && boxIn(frags, k, view.root)) return k;
+			for (k in 0...frags.count) if (frags.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(frags.box(k)) == el && boxIn(frags, k, view.root)) return k;
 			return -1;
 		}
 		var want:Array<Array<Float>> = Reflect.field(f.variants, variant);

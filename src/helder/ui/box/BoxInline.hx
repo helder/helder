@@ -295,14 +295,10 @@ class BoxInline implements InlineStyle {
 		}
 
 	public function lang():Null<String> {
-		var n = box.node;
-		while (n != null) {
-			if (n.nodeType == helder.dom.Node.ELEMENT_NODE) {
-				var el:helder.dom.Element = cast n;
-				var l = el.getAttribute("lang") ?? el.getAttributeNS("http://www.w3.org/XML/1998/namespace", "lang");
-				if (l != null) return l;
-			}
-			n = n.parentNode;
+		var b = box;
+		while (b != null) {
+			if (b.lang != null) return b.lang;
+			b = b.parent;
 		}
 		return null;
 	}

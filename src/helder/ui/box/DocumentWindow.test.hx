@@ -108,7 +108,7 @@ private function geometry(v:DocumentView):String {
 	function walk(id:Int, x:Float, y:Float) {
 		var ax = x + f.x(id), ay = y + f.y(id);
 		var b = f.box(id);
-		if (f.kind(id) != Fragments.LINE) out.push('${b.node == null ? "-" : b.node.nodeName} $ax,$ay ${f.width(id)}x${f.height(id)}');
+		if (f.kind(id) != Fragments.LINE) out.push('${BoxTree.nodeOf(b) == null ? "-" : BoxTree.nodeOf(b).nodeName} $ax,$ay ${f.width(id)}x${f.height(id)}');
 		var c = f.first(id);
 		while (c >= 0) {
 			walk(c, ax, ay);

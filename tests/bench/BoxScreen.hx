@@ -246,7 +246,7 @@ class BoxNode extends helder.ui.Node {
 		this.root = root;
 		this.contexts = contexts;
 		onWheel = wheeled;
-		onPointerMove = e -> if (onHover != null && order != null) onHover(HitTest.box(fragments, order, e.localX, e.localY, scrolls));
+		onPointerMove = e -> if (onHover != null && order != null) onHover(HitTest.at(fragments, order, e.localX, e.localY, scrolls)?.box);
 		onPointerLeave = _ -> if (onHover != null) onHover(null);
 	}
 
@@ -357,7 +357,7 @@ class BoxNode extends helder.ui.Node {
 	// (the innermost scroll container under the wheel that can move: moved, within its content's extent)
 	function wheeled(e:helder.ui.Event) {
 		if (order == null) return;
-		var b = HitTest.box(fragments, order, e.localX, e.localY, scrolls);
+		var b = HitTest.at(fragments, order, e.localX, e.localY, scrolls)?.box;
 		while (b != null) {
 			if (b.style.scrolls && b.parent != null && b.parent.parent != null && scrollBy(b, e.deltaX, e.deltaY)) {
 				layerChanged();
