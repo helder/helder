@@ -62,8 +62,8 @@ class Geometry {
 			var b = f.box(id), kind = f.kind(id);
 			var p = kind == Fragments.LINE ? null : path(b, paths);
 			if (p != null && kind == Fragments.TEXT) {
-				// (a fragment's range is of the node's data; the box's text from its offset in it)
-				var s = trim(b.text, f.start(id) - b.offset, f.end(id) - b.offset);
+				// (a fragment's range is of its box's text; that text from its offset in the node's data)
+				var s = trim(b.text, f.start(id), f.end(id));
 				entry(p).text.push([x, y, f.width(id), f.height(id), b.offset + s[0], b.offset + s[1]]);
 			} else if (p != null && b.kind != Text && b.kind != Break) {
 				var r = [x, y, f.width(id), f.height(id)], e = entry(p);
@@ -84,10 +84,11 @@ class Geometry {
 	static function path(b:Box, paths:ObjectMap<Node, String>):Null<String> {
 		// (the first letter's text is its ::first-letter's, as Blink has it)
 		var which = b.pseudo ?? (b.kind == Text && b.parent != null && b.parent.pseudo == "first-letter" ? "first-letter" : null);
-		if (which == null) return b.node == null ? null : paths.get(b.node);
+		var node = BoxTree.nodeOf(b);
+		if (which == null) return node == null ? null : paths.get(node);
 		var a = b;
-		while (a != null && (a.node == null || a.node.nodeType != Node.ELEMENT_NODE)) a = a.parent;
-		return a == null || paths.get(a.node) == null ? null : '${paths.get(a.node)}>::$which';
+		while (a != null && ((node = BoxTree.nodeOf(a)) == null || node.nodeType != Node.ELEMENT_NODE)) a = a.parent;
+		return a == null || paths.get(node) == null ? null : '${paths.get(node)}>::$which';
 	}
 
 	static function union(a:Array<Float>, b:Array<Float>) {

@@ -528,19 +528,19 @@ GEOMETRY_TOLERANCE=1 bin/css/CssGeometryCheck floats   # the snapshots kept: no 
   browser for the process, `geometry.mjs --serve`) is the hook for others.
   100 cases in about 2 s; a failure is shrunk to its smallest page.
 
-At WPT's revision of the reftests, Chromium 141 (2026-11-28): 6,923 of
-8,710 tests match. Of the 7,142 passing reftests 6,302 match; the 840 that
+At WPT's revision of the reftests, Chromium 141 (2026-11-28): 7,043 of
+8,710 tests match. Of the 7,382 passing reftests 6,493 match; the 889 that
 don't are differences the reftest can't see, since the test and its
 reference are both drawn by helder: punctuation no bundled font has
 (first-letter-punctuation-*, 219: Chromium takes a macOS font), outside
-list markers (about 160: Chromium's box is the glyph alone, 3.5 px
-further left), fonts' matching and synthesis (about 140), a block holding
-only zero-size text collapsing through (70, its parent 16 px short),
-table-column boxes (0 wide here), iframes (no nested document), and tests
-Chromium itself fails (floats-rule3-outside-*). Of the 1,568 pending ones,
-947 differ and 621 match: those fail on paint alone. Snapshots of every
-test take about 150 s (two pages); with them kept, the comparison takes
-11 s (1.3 ms a test).
+list markers (200: Chromium's box is the glyph alone, 3.5 px further
+left), fonts' matching and synthesis (about 140), a block holding only
+zero-size text collapsing through (70, its parent 16 px short),
+table-column boxes (about 50, 0 wide here), iframes (12, no nested
+document), and tests Chromium itself fails (floats-rule3-outside-*). Of
+the 1,328 pending ones, 778 differ and 550 match: those fail on paint
+alone. Snapshots of every test take about 150 s (two pages); with them
+kept, the comparison takes 12 s (1.4 ms a test).
 
 ## GCPM
 
