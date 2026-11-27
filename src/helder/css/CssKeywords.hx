@@ -157,6 +157,13 @@ enum abstract CssFieldSizing(Int) to Int {
 	var Other = -2;
 }
 
+// fill-rule
+enum abstract CssFillRule(Int) to Int {
+	var Nonzero = 0;
+	var Evenodd = 1;
+	var Other = -2;
+}
+
 // flex-direction
 enum abstract CssFlexDirection(Int) to Int {
 	var Row = 0;
@@ -392,6 +399,14 @@ enum abstract CssScrollbarWidth(Int) to Int {
 	var Auto = 0;
 	var Thin = 1;
 	var None = 2;
+	var Other = -2;
+}
+
+// stroke-linecap
+enum abstract CssStrokeLinecap(Int) to Int {
+	var Butt = 0;
+	var Round = 1;
+	var Square = 2;
 	var Other = -2;
 }
 

@@ -36,7 +36,19 @@ sys.io.File.saveBytes("page.png", canvas.toPng());
   until their contexts come, noted in `BoxTree.pending`), `TableWrapper`, `Text` (a text node's
   run, its DOM text as is: white space is the inline layout's),
   `InlineReplaced` and `BlockReplaced` (`<img>`, an `<object>` of an image:
-  its bitmap from the caller's loader), `Break` (`<br>`).
+  its bitmap from the caller's loader; an SVG image, `Box.svg`, and an
+  HTML document's outermost `<svg>`), `Break` (`<br>`).
+- SVG (`BoxImages`): data: URLs decoded (rasters and SVG), a `.svg` file
+  read as text by the view's `load`, inline `<svg>` built from the DOM
+  with each element's paint as the cascade computed it (helder.css takes
+  SVG 2's paint properties and their presentation attributes; an outer
+  svg's width and height are CSS's). All are drawn by `Svg.paint` as paths,
+  on whole pixels, clipped to the box: vectors in a PDF. An SVG image
+  (`<img>`, `url()`) is its own document, so its currentColor is black.
+  Sizes as Images 3 says: natural width, height and ratio where given,
+  a ratio alone the available width (backgrounds: contained in the area),
+  else 300 by 150. Outside list markers lay out an image as well as
+  text, 7 before the line (Chromium's padding).
 - Anonymous boxes (§9.2.1.1): an inline-level run beside a block goes in
   an anonymous block (a run of collapsible white space alone dropped);
   an inline box holding a block is split around it, its parts' start and

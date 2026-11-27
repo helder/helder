@@ -20,7 +20,7 @@ class Backgrounds {
 	// The background of a box at (x, y, w, h) (its border box); area: where it is painted
 	// instead of its clip box (the canvas's), positioned from the box all the same.
 	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, image:String->Null<Bitmap>, ?area:Array<Float>,
-			noLeft = false, noRight = false, noTop = false, noBottom = false) {
+			noLeft = false, noRight = false, noTop = false, noBottom = false, ?svg:String->Null<helder.canvas.Svg>) {
 		var color = s.color("background-color");
 		var images = split(s.terms("background-image"));
 		var none = images.length == 1 && (images[0].length == 0 || images[0][0].match(Keyword("none")));
@@ -75,11 +75,12 @@ class Backgrounds {
 		while (k-- > 0) {
 			var img = images[k];
 			if (img.length != 1) continue;
-			var bitmap:Null<Bitmap> = null, gradient:Null<CssTerm> = null;
+			var bitmap:Null<Bitmap> = null, gradient:Null<CssTerm> = null, vector:Null<helder.canvas.Svg> = null;
 			switch img[0] {
 				case Url(url, _):
 					bitmap = image(url);
-					if (bitmap == null || bitmap.width == 0 || bitmap.height == 0) continue;
+					if (bitmap == null && svg != null) vector = svg(url);
+					if (vector == null && (bitmap == null || bitmap.width == 0 || bitmap.height == 0)) continue;
 				case Func(_, _): gradient = img[0];
 				case _: continue;
 			}
@@ -87,8 +88,13 @@ class Backgrounds {
 			var o = box(word(at(origins, k), "padding-box"));
 			if (word(at(attachments, k), "scroll") == "fixed") o = {x: 0, y: 0, w: p.width, h: p.height, r: null};
 			if (o.w <= 0 || o.h <= 0) continue;
-			var iw = bitmap == null ? Math.NaN : bitmap.width * 1.0, ih = bitmap == null ? Math.NaN : bitmap.height * 1.0;
-			var tile = size(at(sizes, k), o.w, o.h, iw, ih);
+			var iw = bitmap == null ? Math.NaN : bitmap.width * 1.0, ih = bitmap == null ? Math.NaN : bitmap.height * 1.0, ratio = iw / ih;
+			if (vector != null) {
+				iw = vector.naturalWidth;
+				ih = vector.naturalHeight;
+				ratio = vector.ratio;
+			}
+			var tile = size(at(sizes, k), o.w, o.h, iw, ih, ratio);
 			var rep = at(repeats, k);
 			var rx = word([rep[0]], "repeat"), ry = rep.length > 1 ? word([rep[1]], "repeat") : rx;
 			if (rx == "repeat-x") {
@@ -100,7 +106,7 @@ class Backgrounds {
 			}
 			if (rx == "round") tile.w = o.w / Math.max(1, Math.round(o.w / tile.w));
 			if (ry == "round") tile.h = o.h / Math.max(1, Math.round(o.h / tile.h));
-			if (rx == "round" && ry != "round" && Math.isNaN(ih) == false && sizeAuto(at(sizes, k), 1)) tile.h = tile.w * ih / iw;
+			if (rx == "round" && ry != "round" && !Math.isNaN(ratio) && sizeAuto(at(sizes, k), 1)) tile.h = tile.w / ratio;
 			if (tile.w <= 0 || tile.h <= 0) continue;
 			var px = o.x + Lens.resolve(BoxStyle.toLen(at(xs, k)), o.w - tile.w, 0);
 			var py = o.y + Lens.resolve(BoxStyle.toLen(at(ys, k)), o.h - tile.h, 0);
@@ -125,7 +131,22 @@ class Backgrounds {
 			p.clip(clipPath(c));
 			var cx0 = area != null ? area[0] : c.x, cy0 = area != null ? area[1] : c.y;
 			var cx1 = area != null ? area[0] + area[2] : c.x + c.w, cy1 = area != null ? area[1] + area[3] : c.y + c.h;
-			if (gradient != null && rx == "no-repeat" && ry == "no-repeat") {
+			if (vector != null) {
+				// (an SVG's tiles each its paths: vectors in a PDF)
+				var stepX = tile.w + gapX, stepY = tile.h + gapY;
+				var sx = rx == "no-repeat" ? px : px - Math.ceil((px - cx0) / stepX) * stepX;
+				var ty = ry == "no-repeat" ? py : py - Math.ceil((py - cy0) / stepY) * stepY;
+				while (ty < cy1) {
+					var tx = sx;
+					while (tx < cx1) {
+						vector.paint(p, tx, ty, tile.w, tile.h, 0xFF000000);
+						if (rx == "no-repeat") break;
+						tx += stepX;
+					}
+					if (ry == "no-repeat") break;
+					ty += stepY;
+				}
+			} else if (gradient != null && rx == "no-repeat" && ry == "no-repeat") {
 				var shader = Gradients.shader(gradient, px, py, tile.w, tile.h);
 				if (shader != null) {
 					var path = new Path();
@@ -180,21 +201,32 @@ class Backgrounds {
 	static function sizeAuto(t:Array<CssTerm>, axis:Int):Bool
 		return t.length <= axis || t[axis].match(Keyword("auto"));
 
-	// (a layer's size, §3.9: auto from the image's own size and ratio; a gradient's is the area's)
-	static function size(t:Array<CssTerm>, aw:Float, ah:Float, iw:Float, ih:Float):{w:Float, h:Float} {
-		var intrinsic = !Math.isNaN(iw);
+	// (a layer's size, §3.9, by Images 3 §5.2's default sizing: auto from the
+	// image's natural width, height and ratio, whichever it has (an SVG may
+	// have a ratio alone); a gradient's, with none, is the area's)
+	static function size(t:Array<CssTerm>, aw:Float, ah:Float, iw:Float, ih:Float, ratio:Float):{w:Float, h:Float} {
+		var r = Math.isNaN(ratio) || ratio <= 0 || !Math.isFinite(ratio) ? Math.NaN : ratio;
 		switch t {
 			case [Keyword("contain")] | [Keyword("cover")]:
-				if (!intrinsic) return {w: aw, h: ah};
-				var sc = t[0].match(Keyword("contain")) ? Math.min(aw / iw, ah / ih) : Math.max(aw / iw, ah / ih);
-				return {w: iw * sc, h: ih * sc};
+				if (Math.isNaN(r)) return {w: aw, h: ah};
+				var wide = aw / ah > r;
+				return t[0].match(Keyword("contain")) == wide ? {w: ah * r, h: ah} : {w: aw, h: aw / r};
 			case _:
 		}
 		var w = t.length > 0 && !t[0].match(Keyword("auto")) ? Transforms.length(t[0], aw) : Math.NaN;
 		var h = t.length > 1 && !t[1].match(Keyword("auto")) ? Transforms.length(t[1], ah) : Math.NaN;
-		if (Math.isNaN(w) && Math.isNaN(h)) return intrinsic ? {w: iw, h: ih} : {w: aw, h: ah};
-		if (Math.isNaN(w)) w = intrinsic ? h * iw / ih : aw;
-		if (Math.isNaN(h)) h = intrinsic ? w * ih / iw : ah;
+		if (Math.isNaN(w) && Math.isNaN(h)) {
+			if (!Math.isNaN(iw) && !Math.isNaN(ih)) return {w: iw, h: ih};
+			if (!Math.isNaN(r)) {
+				if (!Math.isNaN(iw)) return {w: iw, h: iw / r};
+				if (!Math.isNaN(ih)) return {w: ih * r, h: ih};
+				// (a ratio alone: contained in the area)
+				return aw / ah > r ? {w: ah * r, h: ah} : {w: aw, h: aw / r};
+			}
+			return {w: Math.isNaN(iw) ? aw : iw, h: Math.isNaN(ih) ? ah : ih};
+		}
+		if (Math.isNaN(w)) w = !Math.isNaN(r) ? h * r : Math.isNaN(iw) ? aw : iw;
+		if (Math.isNaN(h)) h = !Math.isNaN(r) ? w / r : Math.isNaN(ih) ? ah : ih;
 		return {w: w, h: h};
 	}
 }

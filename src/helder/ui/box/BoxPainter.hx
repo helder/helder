@@ -20,6 +20,7 @@ class BoxPainter {
 	final f:Fragments;
 	final order:PaintOrder;
 	final image:String->Null<Bitmap>;
+	final svg:Null<String->Null<helder.canvas.Svg>>;
 	final glyphs = new Glyphs();
 	// (the states pushed now, innermost last)
 	final stack:Array<Int> = [];
@@ -40,10 +41,11 @@ class BoxPainter {
 	public var propagate = true;
 	public var canvasBox:Null<Array<Float>> = null;
 
-	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>) {
+	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>, ?svg:String->Null<helder.canvas.Svg>) {
 		f = fragments;
 		this.order = order;
 		this.image = image;
+		this.svg = svg;
 	}
 
 	public function paint(p:Painter) {
@@ -68,7 +70,7 @@ class BoxPainter {
 				case PaintOrder.BORDERS:
 					if (s.visible) collapsed(p, id, b, x, y);
 				case PaintOrder.REPLACED:
-					if (s.visible && b.image != null) replaced(p, id, b, x, y);
+					if (s.visible && (b.image != null || b.svg != null)) replaced(p, id, b, x, y);
 				case PaintOrder.OUTLINE:
 					if (s.visible) {
 						var w = f.width(id), h = f.height(id);
@@ -147,7 +149,7 @@ class BoxPainter {
 		}
 		// (a block's fragment in a fragmentainer: its start or end in another, box-decoration-break: slice)
 		var noTop = f.start(id) == Box.NO_START, noBottom = f.end(id) == Box.NO_END;
-		if (b != order.canvas || !propagate) Backgrounds.paint(p, s, x, y, w, h, image, null, false, false, noTop, noBottom);
+		if (b != order.canvas || !propagate) Backgrounds.paint(p, s, x, y, w, h, image, null, false, false, noTop, noBottom, svg);
 		if (cells != null) p.restore();
 		Borders.shadows(p, s, x, y, w, h, true);
 		// (rows, columns and their groups have no borders of their own but collapsed; collapsed ones are the table's)
@@ -226,7 +228,7 @@ class BoxPainter {
 		for (k in 0...order.count) if (f.box(order.fragments[k]) == b && order.steps[k] == PaintOrder.BACKGROUND) {
 			var id = order.fragments[k];
 			var at = canvasBox ?? [order.xs[k], order.ys[k], f.width(id), f.height(id)];
-			Backgrounds.paint(p, b.style, at[0], at[1], at[2], at[3], image, canvasArea ?? [0.0, 0.0, p.width * 1.0, p.height * 1.0]);
+			Backgrounds.paint(p, b.style, at[0], at[1], at[2], at[3], image, canvasArea ?? [0.0, 0.0, p.width * 1.0, p.height * 1.0], false, false, false, false, svg);
 			return;
 		}
 	}
@@ -234,7 +236,7 @@ class BoxPainter {
 	function span(p:Painter, id:Int, x:Float, y:Float) {
 		var b = f.box(id), s = b.style, w = f.width(id), h = f.height(id);
 		var noLeft = f.start(id) == Box.NO_START, noRight = f.end(id) == Box.NO_END;
-		Backgrounds.paint(p, s, x, y, w, h, image, null, noLeft, noRight);
+		Backgrounds.paint(p, s, x, y, w, h, image, null, noLeft, noRight, false, false, svg);
 		Borders.paint(p, s, x, y, w, h, noLeft, noRight);
 	}
 
@@ -247,6 +249,12 @@ class BoxPainter {
 		var dw = f.width(id) - s.border[1] - s.border[3] - pl - pr, dh = f.height(id) - s.border[0] - s.border[2] - pt - pb;
 		if (dw <= 0 || dh <= 0) return;
 		var x0 = Math.round(dx), y0 = Math.round(dy);
+		// (an SVG as its paths, on whole pixels as an image is: an image's in black, its own document's colour; an inline one's paint is the cascade's)
+		if (b.svg != null) {
+			var own = b.node != null && (cast b.node : helder.dom.Element).namespaceURI == "http://www.w3.org/2000/svg";
+			b.svg.paint(p, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, own ? b.style.color("color") : 0xFF000000);
+			return;
+		}
 		p.drawImage(img, 0, 0, img.width, img.height, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, PLAIN, true);
 	}
 

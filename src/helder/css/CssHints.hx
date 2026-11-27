@@ -57,6 +57,34 @@ class CssHints {
 		return Std.int(negative ? -v : v);
 	}
 
+	// SVG's presentation attributes (SVG 2 §6.6) of the properties helder has:
+	// declarations as the hints are, an author's rule of specificity zero
+	// (an SVG element's style attribute and the sheets' rules over them).
+	// Whether HTML's hints are taken or not.
+	public static function presentation(el:Element):Array<CssDeclared> {
+		if (el.namespaceURI != SVG) return [];
+		var css = new StringBuf();
+		for (name in PRESENTATION) {
+			var v = el.getAttribute(name);
+			if (v != null && v.indexOf(";") < 0) css.add('$name: $v;');
+		}
+		// (an svg element's width and height: its box's, SVG 2 §8.2's geometry properties, a number as px)
+		if (el.localName == "svg") for (name in ["width", "height"]) {
+			var v = el.getAttribute(name);
+			if (v == null || v.indexOf(";") >= 0) continue;
+			v = v.trim();
+			css.add('$name: ${~/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.match(v) ? v + "px" : v};');
+		}
+		var text = css.toString();
+		return text == "" ? [] : CssSheet.attribute(text);
+	}
+
+	static inline var SVG = "http://www.w3.org/2000/svg";
+	static final PRESENTATION = [
+		"fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit",
+		"stroke-dasharray", "stroke-dashoffset", "stop-color", "stop-opacity", "color", "opacity", "visibility", "display"
+	];
+
 	public static function declarations(el:Element):Array<CssDeclared> {
 		if (el.namespaceURI != HTML) return [];
 		var css = new StringBuf();

@@ -74,68 +74,68 @@ class CssFontGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 108: fontFamily = intern.terms(t);
-			case 109: fontFeatureSettings = intern.terms(t);
-			case 110: fontKerning = cast keyword(p, t);
-			case 111: fontLanguageOverride = intern.terms(t);
-			case 112: fontOpticalSizing = cast keyword(p, t);
-			case 113: fontPalette = intern.terms(t);
-			case 114: fontSize = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 115: fontSizeAdjust = intern.terms(t);
-			case 116: fontStyle = intern.terms(t);
-			case 117: fontSynthesisPosition = cast keyword(p, t);
-			case 118: fontSynthesisSmallCaps = cast keyword(p, t);
-			case 119: fontSynthesisStyle = cast keyword(p, t);
-			case 120: fontSynthesisWeight = cast keyword(p, t);
-			case 121: fontVariantAlternates = intern.terms(t);
-			case 122: fontVariantCaps = cast keyword(p, t);
-			case 123: fontVariantEastAsian = intern.terms(t);
-			case 124: fontVariantEmoji = cast keyword(p, t);
-			case 125: fontVariantLigatures = intern.terms(t);
-			case 126: fontVariantNumeric = intern.terms(t);
-			case 127: fontVariantPosition = cast keyword(p, t);
-			case 128: fontVariationSettings = intern.terms(t);
-			case 129: {fontWeight = number(p, t, false); fontWeightKeyword = numberKeyword(p, t);}
-			case 130: fontWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 156: lineHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 111: fontFamily = intern.terms(t);
+			case 112: fontFeatureSettings = intern.terms(t);
+			case 113: fontKerning = cast keyword(p, t);
+			case 114: fontLanguageOverride = intern.terms(t);
+			case 115: fontOpticalSizing = cast keyword(p, t);
+			case 116: fontPalette = intern.terms(t);
+			case 117: fontSize = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 118: fontSizeAdjust = intern.terms(t);
+			case 119: fontStyle = intern.terms(t);
+			case 120: fontSynthesisPosition = cast keyword(p, t);
+			case 121: fontSynthesisSmallCaps = cast keyword(p, t);
+			case 122: fontSynthesisStyle = cast keyword(p, t);
+			case 123: fontSynthesisWeight = cast keyword(p, t);
+			case 124: fontVariantAlternates = intern.terms(t);
+			case 125: fontVariantCaps = cast keyword(p, t);
+			case 126: fontVariantEastAsian = intern.terms(t);
+			case 127: fontVariantEmoji = cast keyword(p, t);
+			case 128: fontVariantLigatures = intern.terms(t);
+			case 129: fontVariantNumeric = intern.terms(t);
+			case 130: fontVariantPosition = cast keyword(p, t);
+			case 131: fontVariationSettings = intern.terms(t);
+			case 132: {fontWeight = number(p, t, false); fontWeightKeyword = numberKeyword(p, t);}
+			case 133: fontWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 159: lineHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 108: fontFamily;
-			case 109: fontFeatureSettings;
-			case 110: (fontKerning : Int) >= 0 ? CssProperties.keywordTerms(p, fontKerning) : others.get(p);
-			case 111: fontLanguageOverride;
-			case 112: (fontOpticalSizing : Int) >= 0 ? CssProperties.keywordTerms(p, fontOpticalSizing) : others.get(p);
-			case 113: fontPalette;
-			case 114: fontSize.id < 0 ? others.get(p) : fontSize.terms;
-			case 115: fontSizeAdjust;
-			case 116: fontStyle;
-			case 117: (fontSynthesisPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisPosition) : others.get(p);
-			case 118: (fontSynthesisSmallCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisSmallCaps) : others.get(p);
-			case 119: (fontSynthesisStyle : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisStyle) : others.get(p);
-			case 120: (fontSynthesisWeight : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisWeight) : others.get(p);
-			case 121: fontVariantAlternates;
-			case 122: (fontVariantCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantCaps) : others.get(p);
-			case 123: fontVariantEastAsian;
-			case 124: (fontVariantEmoji : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantEmoji) : others.get(p);
-			case 125: fontVariantLigatures;
-			case 126: fontVariantNumeric;
-			case 127: (fontVariantPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantPosition) : others.get(p);
-			case 128: fontVariationSettings;
-			case 129: fontWeightKeyword >= 0 ? CssProperties.keywordTerms(p, fontWeightKeyword) : fontWeightKeyword == -2 ? others.get(p) : [Number(fontWeight, false)];
-			case 130: fontWidth.id < 0 ? others.get(p) : fontWidth.terms;
-			case 156: lineHeight.id < 0 ? others.get(p) : lineHeight.terms;
+			case 111: fontFamily;
+			case 112: fontFeatureSettings;
+			case 113: (fontKerning : Int) >= 0 ? CssProperties.keywordTerms(p, fontKerning) : others.get(p);
+			case 114: fontLanguageOverride;
+			case 115: (fontOpticalSizing : Int) >= 0 ? CssProperties.keywordTerms(p, fontOpticalSizing) : others.get(p);
+			case 116: fontPalette;
+			case 117: fontSize.id < 0 ? others.get(p) : fontSize.terms;
+			case 118: fontSizeAdjust;
+			case 119: fontStyle;
+			case 120: (fontSynthesisPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisPosition) : others.get(p);
+			case 121: (fontSynthesisSmallCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisSmallCaps) : others.get(p);
+			case 122: (fontSynthesisStyle : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisStyle) : others.get(p);
+			case 123: (fontSynthesisWeight : Int) >= 0 ? CssProperties.keywordTerms(p, fontSynthesisWeight) : others.get(p);
+			case 124: fontVariantAlternates;
+			case 125: (fontVariantCaps : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantCaps) : others.get(p);
+			case 126: fontVariantEastAsian;
+			case 127: (fontVariantEmoji : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantEmoji) : others.get(p);
+			case 128: fontVariantLigatures;
+			case 129: fontVariantNumeric;
+			case 130: (fontVariantPosition : Int) >= 0 ? CssProperties.keywordTerms(p, fontVariantPosition) : others.get(p);
+			case 131: fontVariationSettings;
+			case 132: fontWeightKeyword >= 0 ? CssProperties.keywordTerms(p, fontWeightKeyword) : fontWeightKeyword == -2 ? others.get(p) : [Number(fontWeight, false)];
+			case 133: fontWidth.id < 0 ? others.get(p) : fontWidth.terms;
+			case 159: lineHeight.id < 0 ? others.get(p) : lineHeight.terms;
 			case _: throw 'not in font: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 114: fontSize;
-			case 130: fontWidth;
-			case 156: lineHeight;
+			case 117: fontSize;
+			case 133: fontWidth;
+			case 159: lineHeight;
 			case _: null;
 		}
 
@@ -147,22 +147,22 @@ class CssFontGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 110: fontKerning;
-			case 112: fontOpticalSizing;
-			case 117: fontSynthesisPosition;
-			case 118: fontSynthesisSmallCaps;
-			case 119: fontSynthesisStyle;
-			case 120: fontSynthesisWeight;
-			case 122: fontVariantCaps;
-			case 124: fontVariantEmoji;
-			case 127: fontVariantPosition;
-			case 129: fontWeightKeyword;
+			case 113: fontKerning;
+			case 115: fontOpticalSizing;
+			case 120: fontSynthesisPosition;
+			case 121: fontSynthesisSmallCaps;
+			case 122: fontSynthesisStyle;
+			case 123: fontSynthesisWeight;
+			case 125: fontVariantCaps;
+			case 127: fontVariantEmoji;
+			case 130: fontVariantPosition;
+			case 132: fontWeightKeyword;
 			case _: -1;
 		}
 
 	override function numberOf(p:CssProperty):Float
 		return switch (p : Int) {
-			case 129: fontWeight;
+			case 132: fontWeight;
 			case _: Math.NaN;
 		}
 
@@ -295,31 +295,31 @@ class CssInheritedTextGroup extends CssGroup {
 		switch (p : Int) {
 			case 83: color = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
 			case 97: direction = cast keyword(p, t);
-			case 154: letterSpacing = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 247: wordSpacing = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 221: textIndent = intern.terms(t);
-			case 212: textAlignAll = intern.terms(t);
-			case 213: textAlignLast = cast keyword(p, t);
-			case 222: textJustify = intern.terms(t);
-			case 225: textTransform = intern.terms(t);
-			case 243: whiteSpaceCollapse = cast keyword(p, t);
-			case 228: textWrapMode = cast keyword(p, t);
-			case 229: textWrapStyle = cast keyword(p, t);
-			case 246: wordBreak = cast keyword(p, t);
-			case 155: lineBreak = cast keyword(p, t);
-			case 188: overflowWrap = cast keyword(p, t);
-			case 142: hyphens = cast keyword(p, t);
-			case 210: tabSize = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 218: textEmphasisColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
-			case 219: textEmphasisPosition = intern.terms(t);
-			case 220: textEmphasisStyle = intern.terms(t);
-			case 224: textShadow = intern.terms(t);
-			case 227: textUnderlinePosition = intern.terms(t);
-			case 226: textUnderlineOffset = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 202: quotes = intern.terms(t);
+			case 157: letterSpacing = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 260: wordSpacing = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 234: textIndent = intern.terms(t);
+			case 225: textAlignAll = intern.terms(t);
+			case 226: textAlignLast = cast keyword(p, t);
+			case 235: textJustify = intern.terms(t);
+			case 238: textTransform = intern.terms(t);
+			case 256: whiteSpaceCollapse = cast keyword(p, t);
+			case 241: textWrapMode = cast keyword(p, t);
+			case 242: textWrapStyle = cast keyword(p, t);
+			case 259: wordBreak = cast keyword(p, t);
+			case 158: lineBreak = cast keyword(p, t);
+			case 191: overflowWrap = cast keyword(p, t);
+			case 145: hyphens = cast keyword(p, t);
+			case 223: tabSize = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 231: textEmphasisColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
+			case 232: textEmphasisPosition = intern.terms(t);
+			case 233: textEmphasisStyle = intern.terms(t);
+			case 237: textShadow = intern.terms(t);
+			case 240: textUnderlinePosition = intern.terms(t);
+			case 239: textUnderlineOffset = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 205: quotes = intern.terms(t);
 			case 24: blockEllipsis = intern.terms(t);
-			case 183: orphans = number(p, t, true);
-			case 244: widows = number(p, t, true);
+			case 186: orphans = number(p, t, true);
+			case 257: widows = number(p, t, true);
 			case _:
 		}
 	}
@@ -328,69 +328,69 @@ class CssInheritedTextGroup extends CssGroup {
 		return switch (p : Int) {
 			case 83: color.id < 0 ? others.get(p) : color.terms;
 			case 97: (direction : Int) >= 0 ? CssProperties.keywordTerms(p, direction) : others.get(p);
-			case 154: letterSpacing.id < 0 ? others.get(p) : letterSpacing.terms;
-			case 247: wordSpacing.id < 0 ? others.get(p) : wordSpacing.terms;
-			case 221: textIndent;
-			case 212: textAlignAll;
-			case 213: (textAlignLast : Int) >= 0 ? CssProperties.keywordTerms(p, textAlignLast) : others.get(p);
-			case 222: textJustify;
-			case 225: textTransform;
-			case 243: (whiteSpaceCollapse : Int) >= 0 ? CssProperties.keywordTerms(p, whiteSpaceCollapse) : others.get(p);
-			case 228: (textWrapMode : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapMode) : others.get(p);
-			case 229: (textWrapStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapStyle) : others.get(p);
-			case 246: (wordBreak : Int) >= 0 ? CssProperties.keywordTerms(p, wordBreak) : others.get(p);
-			case 155: (lineBreak : Int) >= 0 ? CssProperties.keywordTerms(p, lineBreak) : others.get(p);
-			case 188: (overflowWrap : Int) >= 0 ? CssProperties.keywordTerms(p, overflowWrap) : others.get(p);
-			case 142: (hyphens : Int) >= 0 ? CssProperties.keywordTerms(p, hyphens) : others.get(p);
-			case 210: tabSize.id < 0 ? others.get(p) : tabSize.terms;
-			case 218: textEmphasisColor.id < 0 ? others.get(p) : textEmphasisColor.terms;
-			case 219: textEmphasisPosition;
-			case 220: textEmphasisStyle;
-			case 224: textShadow;
-			case 227: textUnderlinePosition;
-			case 226: textUnderlineOffset.id < 0 ? others.get(p) : textUnderlineOffset.terms;
-			case 202: quotes;
+			case 157: letterSpacing.id < 0 ? others.get(p) : letterSpacing.terms;
+			case 260: wordSpacing.id < 0 ? others.get(p) : wordSpacing.terms;
+			case 234: textIndent;
+			case 225: textAlignAll;
+			case 226: (textAlignLast : Int) >= 0 ? CssProperties.keywordTerms(p, textAlignLast) : others.get(p);
+			case 235: textJustify;
+			case 238: textTransform;
+			case 256: (whiteSpaceCollapse : Int) >= 0 ? CssProperties.keywordTerms(p, whiteSpaceCollapse) : others.get(p);
+			case 241: (textWrapMode : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapMode) : others.get(p);
+			case 242: (textWrapStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textWrapStyle) : others.get(p);
+			case 259: (wordBreak : Int) >= 0 ? CssProperties.keywordTerms(p, wordBreak) : others.get(p);
+			case 158: (lineBreak : Int) >= 0 ? CssProperties.keywordTerms(p, lineBreak) : others.get(p);
+			case 191: (overflowWrap : Int) >= 0 ? CssProperties.keywordTerms(p, overflowWrap) : others.get(p);
+			case 145: (hyphens : Int) >= 0 ? CssProperties.keywordTerms(p, hyphens) : others.get(p);
+			case 223: tabSize.id < 0 ? others.get(p) : tabSize.terms;
+			case 231: textEmphasisColor.id < 0 ? others.get(p) : textEmphasisColor.terms;
+			case 232: textEmphasisPosition;
+			case 233: textEmphasisStyle;
+			case 237: textShadow;
+			case 240: textUnderlinePosition;
+			case 239: textUnderlineOffset.id < 0 ? others.get(p) : textUnderlineOffset.terms;
+			case 205: quotes;
 			case 24: blockEllipsis;
-			case 183: others != null && others.exists(p) ? others.get(p) : [Number(orphans, true)];
-			case 244: others != null && others.exists(p) ? others.get(p) : [Number(widows, true)];
+			case 186: others != null && others.exists(p) ? others.get(p) : [Number(orphans, true)];
+			case 257: others != null && others.exists(p) ? others.get(p) : [Number(widows, true)];
 			case _: throw 'not in inheritedText: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 154: letterSpacing;
-			case 247: wordSpacing;
-			case 210: tabSize;
-			case 226: textUnderlineOffset;
+			case 157: letterSpacing;
+			case 260: wordSpacing;
+			case 223: tabSize;
+			case 239: textUnderlineOffset;
 			case _: null;
 		}
 
 	override function rgbaOf(p:CssProperty):Null<CssRgba>
 		return switch (p : Int) {
 			case 83: color;
-			case 218: textEmphasisColor;
+			case 231: textEmphasisColor;
 			case _: null;
 		}
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
 			case 97: direction;
-			case 213: textAlignLast;
-			case 243: whiteSpaceCollapse;
-			case 228: textWrapMode;
-			case 229: textWrapStyle;
-			case 246: wordBreak;
-			case 155: lineBreak;
-			case 188: overflowWrap;
-			case 142: hyphens;
+			case 226: textAlignLast;
+			case 256: whiteSpaceCollapse;
+			case 241: textWrapMode;
+			case 242: textWrapStyle;
+			case 259: wordBreak;
+			case 158: lineBreak;
+			case 191: overflowWrap;
+			case 145: hyphens;
 
 			case _: -1;
 		}
 
 	override function numberOf(p:CssProperty):Float
 		return switch (p : Int) {
-			case 183: orphans;
-			case 244: widows;
+			case 186: orphans;
+			case 257: widows;
 			case _: Math.NaN;
 		}
 
@@ -481,20 +481,20 @@ class CssListGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 157: listStyleImage = intern.terms(t);
-			case 158: listStylePosition = cast keyword(p, t);
-			case 159: listStyleType = intern.terms(t);
-			case 168: markerSide = cast keyword(p, t);
+			case 160: listStyleImage = intern.terms(t);
+			case 161: listStylePosition = cast keyword(p, t);
+			case 162: listStyleType = intern.terms(t);
+			case 171: markerSide = cast keyword(p, t);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 157: listStyleImage;
-			case 158: (listStylePosition : Int) >= 0 ? CssProperties.keywordTerms(p, listStylePosition) : others.get(p);
-			case 159: listStyleType;
-			case 168: (markerSide : Int) >= 0 ? CssProperties.keywordTerms(p, markerSide) : others.get(p);
+			case 160: listStyleImage;
+			case 161: (listStylePosition : Int) >= 0 ? CssProperties.keywordTerms(p, listStylePosition) : others.get(p);
+			case 162: listStyleType;
+			case 171: (markerSide : Int) >= 0 ? CssProperties.keywordTerms(p, markerSide) : others.get(p);
 			case _: throw 'not in list: ' + CssProperties.name(p);
 		}
 
@@ -512,8 +512,8 @@ class CssListGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 158: listStylePosition;
-			case 168: markerSide;
+			case 161: listStylePosition;
+			case 171: markerSide;
 
 			case _: -1;
 		}
@@ -656,12 +656,12 @@ class CssUiGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 242: visibility = cast keyword(p, t);
+			case 255: visibility = cast keyword(p, t);
 			case 96: cursor = intern.terms(t);
-			case 200: pointerEvents = cast keyword(p, t);
+			case 203: pointerEvents = cast keyword(p, t);
 			case 5: accentColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
-			case 207: scrollbarColor = intern.terms(t);
-			case 143: imageOrientation = intern.terms(t);
+			case 210: scrollbarColor = intern.terms(t);
+			case 146: imageOrientation = intern.terms(t);
 			case 4: helderScrollbar = cast keyword(p, t);
 			case _:
 		}
@@ -669,12 +669,12 @@ class CssUiGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 242: (visibility : Int) >= 0 ? CssProperties.keywordTerms(p, visibility) : others.get(p);
+			case 255: (visibility : Int) >= 0 ? CssProperties.keywordTerms(p, visibility) : others.get(p);
 			case 96: cursor;
-			case 200: (pointerEvents : Int) >= 0 ? CssProperties.keywordTerms(p, pointerEvents) : others.get(p);
+			case 203: (pointerEvents : Int) >= 0 ? CssProperties.keywordTerms(p, pointerEvents) : others.get(p);
 			case 5: accentColor.id < 0 ? others.get(p) : accentColor.terms;
-			case 207: scrollbarColor;
-			case 143: imageOrientation;
+			case 210: scrollbarColor;
+			case 146: imageOrientation;
 			case 4: (helderScrollbar : Int) >= 0 ? CssProperties.keywordTerms(p, helderScrollbar) : others.get(p);
 			case _: throw 'not in ui: ' + CssProperties.name(p);
 		}
@@ -693,8 +693,8 @@ class CssUiGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 242: visibility;
-			case 200: pointerEvents;
+			case 255: visibility;
+			case 203: pointerEvents;
 			case 4: helderScrollbar;
 
 			case _: -1;
@@ -726,6 +726,134 @@ class CssUiGroup extends CssGroup {
 		h = h * 31 + intern.id(scrollbarColor);
 		h = h * 31 + intern.id(imageOrientation);
 		h = h * 31 + (helderScrollbar : Int);
+		return h;
+	}
+}
+
+// Inherited: fill, fill-opacity, fill-rule, stroke, stroke-width, stroke-opacity, stroke-linecap, stroke-linejoin, stroke-miterlimit, stroke-dasharray, stroke-dashoffset.
+class CssSvgGroup extends CssGroup {
+	public var fill(default, null):Array<CssTerm>;
+	public var fillOpacity(default, null):CssLength;
+	public var fillRule(default, null):CssFillRule;
+	public var stroke(default, null):Array<CssTerm>;
+	public var strokeWidth(default, null):Array<CssTerm>;
+	public var strokeOpacity(default, null):CssLength;
+	public var strokeLinecap(default, null):CssStrokeLinecap;
+	public var strokeLinejoin(default, null):Array<CssTerm>;
+	public var strokeMiterlimit(default, null):Float;
+	public var strokeDasharray(default, null):Array<CssTerm>;
+	public var strokeDashoffset(default, null):CssLength;
+
+	@:allow(helder.css)
+	function new() {}
+
+	override function copy():CssGroup {
+		var g = new CssSvgGroup();
+		g.fill = fill;
+		g.fillOpacity = fillOpacity;
+		g.fillRule = fillRule;
+		g.stroke = stroke;
+		g.strokeWidth = strokeWidth;
+		g.strokeOpacity = strokeOpacity;
+		g.strokeLinecap = strokeLinecap;
+		g.strokeLinejoin = strokeLinejoin;
+		g.strokeMiterlimit = strokeMiterlimit;
+		g.strokeDasharray = strokeDasharray;
+		g.strokeDashoffset = strokeDashoffset;
+		g.others = others;
+		return g;
+	}
+
+	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
+		forget(p);
+		switch (p : Int) {
+			case 101: fill = intern.terms(t);
+			case 102: fillOpacity = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 103: fillRule = cast keyword(p, t);
+			case 215: stroke = intern.terms(t);
+			case 222: strokeWidth = intern.terms(t);
+			case 221: strokeOpacity = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 218: strokeLinecap = cast keyword(p, t);
+			case 219: strokeLinejoin = intern.terms(t);
+			case 220: strokeMiterlimit = number(p, t, false);
+			case 216: strokeDasharray = intern.terms(t);
+			case 217: strokeDashoffset = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case _:
+		}
+	}
+
+	override public function terms(p:CssProperty):Array<CssTerm>
+		return switch (p : Int) {
+			case 101: fill;
+			case 102: fillOpacity.id < 0 ? others.get(p) : fillOpacity.terms;
+			case 103: (fillRule : Int) >= 0 ? CssProperties.keywordTerms(p, fillRule) : others.get(p);
+			case 215: stroke;
+			case 222: strokeWidth;
+			case 221: strokeOpacity.id < 0 ? others.get(p) : strokeOpacity.terms;
+			case 218: (strokeLinecap : Int) >= 0 ? CssProperties.keywordTerms(p, strokeLinecap) : others.get(p);
+			case 219: strokeLinejoin;
+			case 220: others != null && others.exists(p) ? others.get(p) : [Number(strokeMiterlimit, false)];
+			case 216: strokeDasharray;
+			case 217: strokeDashoffset.id < 0 ? others.get(p) : strokeDashoffset.terms;
+			case _: throw 'not in svg: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 102: fillOpacity;
+			case 221: strokeOpacity;
+			case 217: strokeDashoffset;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+			case 103: fillRule;
+			case 218: strokeLinecap;
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+			case 220: strokeMiterlimit;
+			case _: Math.NaN;
+		}
+
+	override function same(o:CssGroup):Bool {
+		var g:CssSvgGroup = cast o;
+		return fill == g.fill
+			&& fillOpacity == g.fillOpacity
+			&& fillRule == g.fillRule
+			&& stroke == g.stroke
+			&& strokeWidth == g.strokeWidth
+			&& strokeOpacity == g.strokeOpacity
+			&& strokeLinecap == g.strokeLinecap
+			&& strokeLinejoin == g.strokeLinejoin
+			&& (strokeMiterlimit == g.strokeMiterlimit || strokeMiterlimit != strokeMiterlimit && g.strokeMiterlimit != g.strokeMiterlimit)
+			&& strokeDasharray == g.strokeDasharray
+			&& strokeDashoffset == g.strokeDashoffset && sameOthers(g);
+	}
+
+	override function hash(intern:CssIntern):Int {
+		var h = 17;
+		h = h * 31 + intern.id(fill);
+		h = h * 31 + fillOpacity.id;
+		h = h * 31 + (fillRule : Int);
+		h = h * 31 + intern.id(stroke);
+		h = h * 31 + intern.id(strokeWidth);
+		h = h * 31 + strokeOpacity.id;
+		h = h * 31 + (strokeLinecap : Int);
+		h = h * 31 + intern.id(strokeLinejoin);
+		h = h * 31 + CssGroup.floatHash(strokeMiterlimit);
+		h = h * 31 + intern.id(strokeDasharray);
+		h = h * 31 + strokeDashoffset.id;
 		return h;
 	}
 }
@@ -800,28 +928,28 @@ class CssBoxGroup extends CssGroup {
 		forget(p);
 		switch (p : Int) {
 			case 98: display = intern.display(t);
-			case 107: float = cast keyword(p, t);
+			case 110: float = cast keyword(p, t);
 			case 81: clear = cast keyword(p, t);
 			case 76: boxSizing = cast keyword(p, t);
-			case 245: width = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 141: height = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 177: minWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 175: minHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 173: maxWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 170: maxHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 258: width = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 144: height = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 180: minWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 178: minHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 176: maxWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 173: maxHeight = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case 11: aspectRatio = intern.terms(t);
-			case 189: overflowX = cast keyword(p, t);
-			case 190: overflowY = cast keyword(p, t);
+			case 192: overflowX = cast keyword(p, t);
+			case 193: overflowY = cast keyword(p, t);
 			case 9: alignmentBaseline = cast keyword(p, t);
 			case 22: baselineShift = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case 23: baselineSource = cast keyword(p, t);
-			case 240: unicodeBidi = cast keyword(p, t);
-			case 211: tableLayout = cast keyword(p, t);
+			case 253: unicodeBidi = cast keyword(p, t);
+			case 224: tableLayout = cast keyword(p, t);
 			case 82: clip = intern.terms(t);
 			case 100: fieldSizing = cast keyword(p, t);
-			case 172: maxLines = intern.terms(t);
+			case 175: maxLines = intern.terms(t);
 			case 92: continues = intern.terms(t);
-			case 223: textOverflow = intern.terms(t);
+			case 236: textOverflow = intern.terms(t);
 			case 85: contain = intern.terms(t);
 			case 91: contentVisibility = cast keyword(p, t);
 			case 89: containIntrinsicWidth = intern.terms(t);
@@ -833,28 +961,28 @@ class CssBoxGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 98: display.terms;
-			case 107: (float : Int) >= 0 ? CssProperties.keywordTerms(p, float) : others.get(p);
+			case 110: (float : Int) >= 0 ? CssProperties.keywordTerms(p, float) : others.get(p);
 			case 81: (clear : Int) >= 0 ? CssProperties.keywordTerms(p, clear) : others.get(p);
 			case 76: (boxSizing : Int) >= 0 ? CssProperties.keywordTerms(p, boxSizing) : others.get(p);
-			case 245: width.id < 0 ? others.get(p) : width.terms;
-			case 141: height.id < 0 ? others.get(p) : height.terms;
-			case 177: minWidth.id < 0 ? others.get(p) : minWidth.terms;
-			case 175: minHeight.id < 0 ? others.get(p) : minHeight.terms;
-			case 173: maxWidth.id < 0 ? others.get(p) : maxWidth.terms;
-			case 170: maxHeight.id < 0 ? others.get(p) : maxHeight.terms;
+			case 258: width.id < 0 ? others.get(p) : width.terms;
+			case 144: height.id < 0 ? others.get(p) : height.terms;
+			case 180: minWidth.id < 0 ? others.get(p) : minWidth.terms;
+			case 178: minHeight.id < 0 ? others.get(p) : minHeight.terms;
+			case 176: maxWidth.id < 0 ? others.get(p) : maxWidth.terms;
+			case 173: maxHeight.id < 0 ? others.get(p) : maxHeight.terms;
 			case 11: aspectRatio;
-			case 189: (overflowX : Int) >= 0 ? CssProperties.keywordTerms(p, overflowX) : others.get(p);
-			case 190: (overflowY : Int) >= 0 ? CssProperties.keywordTerms(p, overflowY) : others.get(p);
+			case 192: (overflowX : Int) >= 0 ? CssProperties.keywordTerms(p, overflowX) : others.get(p);
+			case 193: (overflowY : Int) >= 0 ? CssProperties.keywordTerms(p, overflowY) : others.get(p);
 			case 9: (alignmentBaseline : Int) >= 0 ? CssProperties.keywordTerms(p, alignmentBaseline) : others.get(p);
 			case 22: baselineShift.id < 0 ? others.get(p) : baselineShift.terms;
 			case 23: (baselineSource : Int) >= 0 ? CssProperties.keywordTerms(p, baselineSource) : others.get(p);
-			case 240: (unicodeBidi : Int) >= 0 ? CssProperties.keywordTerms(p, unicodeBidi) : others.get(p);
-			case 211: (tableLayout : Int) >= 0 ? CssProperties.keywordTerms(p, tableLayout) : others.get(p);
+			case 253: (unicodeBidi : Int) >= 0 ? CssProperties.keywordTerms(p, unicodeBidi) : others.get(p);
+			case 224: (tableLayout : Int) >= 0 ? CssProperties.keywordTerms(p, tableLayout) : others.get(p);
 			case 82: clip;
 			case 100: (fieldSizing : Int) >= 0 ? CssProperties.keywordTerms(p, fieldSizing) : others.get(p);
-			case 172: maxLines;
+			case 175: maxLines;
 			case 92: continues;
-			case 223: textOverflow;
+			case 236: textOverflow;
 			case 85: contain;
 			case 91: (contentVisibility : Int) >= 0 ? CssProperties.keywordTerms(p, contentVisibility) : others.get(p);
 			case 89: containIntrinsicWidth;
@@ -864,12 +992,12 @@ class CssBoxGroup extends CssGroup {
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 245: width;
-			case 141: height;
-			case 177: minWidth;
-			case 175: minHeight;
-			case 173: maxWidth;
-			case 170: maxHeight;
+			case 258: width;
+			case 144: height;
+			case 180: minWidth;
+			case 178: minHeight;
+			case 176: maxWidth;
+			case 173: maxHeight;
 			case 22: baselineShift;
 			case _: null;
 		}
@@ -882,15 +1010,15 @@ class CssBoxGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 107: float;
+			case 110: float;
 			case 81: clear;
 			case 76: boxSizing;
-			case 189: overflowX;
-			case 190: overflowY;
+			case 192: overflowX;
+			case 193: overflowY;
 			case 9: alignmentBaseline;
 			case 23: baselineSource;
-			case 240: unicodeBidi;
-			case 211: tableLayout;
+			case 253: unicodeBidi;
+			case 224: tableLayout;
 			case 100: fieldSizing;
 			case 91: contentVisibility;
 
@@ -995,33 +1123,33 @@ class CssPositionGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 201: position = cast keyword(p, t);
-			case 230: top = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 203: right = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 204: position = cast keyword(p, t);
+			case 243: top = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 206: right = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case 68: bottom = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 153: left = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 248: {zIndex = number(p, t, true); zIndexKeyword = numberKeyword(p, t);}
+			case 156: left = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 261: {zIndex = number(p, t, true); zIndexKeyword = numberKeyword(p, t);}
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 201: (position : Int) >= 0 ? CssProperties.keywordTerms(p, position) : others.get(p);
-			case 230: top.id < 0 ? others.get(p) : top.terms;
-			case 203: right.id < 0 ? others.get(p) : right.terms;
+			case 204: (position : Int) >= 0 ? CssProperties.keywordTerms(p, position) : others.get(p);
+			case 243: top.id < 0 ? others.get(p) : top.terms;
+			case 206: right.id < 0 ? others.get(p) : right.terms;
 			case 68: bottom.id < 0 ? others.get(p) : bottom.terms;
-			case 153: left.id < 0 ? others.get(p) : left.terms;
-			case 248: zIndexKeyword >= 0 ? CssProperties.keywordTerms(p, zIndexKeyword) : zIndexKeyword == -2 ? others.get(p) : [Number(zIndex, true)];
+			case 156: left.id < 0 ? others.get(p) : left.terms;
+			case 261: zIndexKeyword >= 0 ? CssProperties.keywordTerms(p, zIndexKeyword) : zIndexKeyword == -2 ? others.get(p) : [Number(zIndex, true)];
 			case _: throw 'not in position: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 230: top;
-			case 203: right;
+			case 243: top;
+			case 206: right;
 			case 68: bottom;
-			case 153: left;
+			case 156: left;
 			case _: null;
 		}
 
@@ -1033,14 +1161,14 @@ class CssPositionGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 201: position;
-			case 248: zIndexKeyword;
+			case 204: position;
+			case 261: zIndexKeyword;
 			case _: -1;
 		}
 
 	override function numberOf(p:CssProperty):Float
 		return switch (p : Int) {
-			case 248: zIndex;
+			case 261: zIndex;
 			case _: Math.NaN;
 		}
 
@@ -1097,41 +1225,41 @@ class CssSpacingGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 167: marginTop = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 166: marginRight = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 162: marginBottom = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 165: marginLeft = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 198: paddingTop = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 197: paddingRight = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 193: paddingBottom = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 196: paddingLeft = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 170: marginTop = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 169: marginRight = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 165: marginBottom = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 168: marginLeft = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 201: paddingTop = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 200: paddingRight = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 196: paddingBottom = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 199: paddingLeft = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 167: marginTop.id < 0 ? others.get(p) : marginTop.terms;
-			case 166: marginRight.id < 0 ? others.get(p) : marginRight.terms;
-			case 162: marginBottom.id < 0 ? others.get(p) : marginBottom.terms;
-			case 165: marginLeft.id < 0 ? others.get(p) : marginLeft.terms;
-			case 198: paddingTop.id < 0 ? others.get(p) : paddingTop.terms;
-			case 197: paddingRight.id < 0 ? others.get(p) : paddingRight.terms;
-			case 193: paddingBottom.id < 0 ? others.get(p) : paddingBottom.terms;
-			case 196: paddingLeft.id < 0 ? others.get(p) : paddingLeft.terms;
+			case 170: marginTop.id < 0 ? others.get(p) : marginTop.terms;
+			case 169: marginRight.id < 0 ? others.get(p) : marginRight.terms;
+			case 165: marginBottom.id < 0 ? others.get(p) : marginBottom.terms;
+			case 168: marginLeft.id < 0 ? others.get(p) : marginLeft.terms;
+			case 201: paddingTop.id < 0 ? others.get(p) : paddingTop.terms;
+			case 200: paddingRight.id < 0 ? others.get(p) : paddingRight.terms;
+			case 196: paddingBottom.id < 0 ? others.get(p) : paddingBottom.terms;
+			case 199: paddingLeft.id < 0 ? others.get(p) : paddingLeft.terms;
 			case _: throw 'not in spacing: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 167: marginTop;
-			case 166: marginRight;
-			case 162: marginBottom;
-			case 165: marginLeft;
-			case 198: paddingTop;
-			case 197: paddingRight;
-			case 193: paddingBottom;
-			case 196: paddingLeft;
+			case 170: marginTop;
+			case 169: marginRight;
+			case 165: marginBottom;
+			case 168: marginLeft;
+			case 201: paddingTop;
+			case 200: paddingRight;
+			case 196: paddingBottom;
+			case 199: paddingLeft;
 			case _: null;
 		}
 
@@ -1510,39 +1638,39 @@ class CssOutlineGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 184: outlineColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
-			case 186: outlineStyle = cast keyword(p, t);
-			case 187: outlineWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 185: outlineOffset = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 187: outlineColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
+			case 189: outlineStyle = cast keyword(p, t);
+			case 190: outlineWidth = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 188: outlineOffset = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 184: outlineColor.id < 0 ? others.get(p) : outlineColor.terms;
-			case 186: (outlineStyle : Int) >= 0 ? CssProperties.keywordTerms(p, outlineStyle) : others.get(p);
-			case 187: outlineWidth.id < 0 ? others.get(p) : outlineWidth.terms;
-			case 185: outlineOffset.id < 0 ? others.get(p) : outlineOffset.terms;
+			case 187: outlineColor.id < 0 ? others.get(p) : outlineColor.terms;
+			case 189: (outlineStyle : Int) >= 0 ? CssProperties.keywordTerms(p, outlineStyle) : others.get(p);
+			case 190: outlineWidth.id < 0 ? others.get(p) : outlineWidth.terms;
+			case 188: outlineOffset.id < 0 ? others.get(p) : outlineOffset.terms;
 			case _: throw 'not in outline: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 187: outlineWidth;
-			case 185: outlineOffset;
+			case 190: outlineWidth;
+			case 188: outlineOffset;
 			case _: null;
 		}
 
 	override function rgbaOf(p:CssProperty):Null<CssRgba>
 		return switch (p : Int) {
-			case 184: outlineColor;
+			case 187: outlineColor;
 			case _: null;
 		}
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 186: outlineStyle;
+			case 189: outlineStyle;
 
 			case _: -1;
 		}
@@ -1594,38 +1722,38 @@ class CssDecorationGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 215: textDecorationLine = intern.terms(t);
-			case 216: textDecorationStyle = cast keyword(p, t);
-			case 214: textDecorationColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
-			case 217: textDecorationThickness = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 228: textDecorationLine = intern.terms(t);
+			case 229: textDecorationStyle = cast keyword(p, t);
+			case 227: textDecorationColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
+			case 230: textDecorationThickness = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 215: textDecorationLine;
-			case 216: (textDecorationStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textDecorationStyle) : others.get(p);
-			case 214: textDecorationColor.id < 0 ? others.get(p) : textDecorationColor.terms;
-			case 217: textDecorationThickness.id < 0 ? others.get(p) : textDecorationThickness.terms;
+			case 228: textDecorationLine;
+			case 229: (textDecorationStyle : Int) >= 0 ? CssProperties.keywordTerms(p, textDecorationStyle) : others.get(p);
+			case 227: textDecorationColor.id < 0 ? others.get(p) : textDecorationColor.terms;
+			case 230: textDecorationThickness.id < 0 ? others.get(p) : textDecorationThickness.terms;
 			case _: throw 'not in decoration: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 217: textDecorationThickness;
+			case 230: textDecorationThickness;
 			case _: null;
 		}
 
 	override function rgbaOf(p:CssProperty):Null<CssRgba>
 		return switch (p : Int) {
-			case 214: textDecorationColor;
+			case 227: textDecorationColor;
 			case _: null;
 		}
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 216: textDecorationStyle;
+			case 229: textDecorationStyle;
 
 			case _: -1;
 		}
@@ -1697,46 +1825,46 @@ class CssContainerGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 103: flexDirection = cast keyword(p, t);
-			case 106: flexWrap = intern.terms(t);
+			case 106: flexDirection = cast keyword(p, t);
+			case 109: flexWrap = intern.terms(t);
 			case 6: alignContent = intern.terms(t);
 			case 7: alignItems = intern.terms(t);
-			case 150: justifyContent = intern.terms(t);
-			case 151: justifyItems = intern.terms(t);
-			case 205: rowGap = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 153: justifyContent = intern.terms(t);
+			case 154: justifyItems = intern.terms(t);
+			case 208: rowGap = intern.length(t) ?? other(p, t, CssLength.OTHER);
 			case 84: columnGap = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 139: gridTemplateColumns = intern.terms(t);
-			case 140: gridTemplateRows = intern.terms(t);
-			case 138: gridTemplateAreas = intern.terms(t);
-			case 131: gridAutoColumns = intern.terms(t);
-			case 133: gridAutoRows = intern.terms(t);
-			case 132: gridAutoFlow = intern.terms(t);
+			case 142: gridTemplateColumns = intern.terms(t);
+			case 143: gridTemplateRows = intern.terms(t);
+			case 141: gridTemplateAreas = intern.terms(t);
+			case 134: gridAutoColumns = intern.terms(t);
+			case 136: gridAutoRows = intern.terms(t);
+			case 135: gridAutoFlow = intern.terms(t);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 103: (flexDirection : Int) >= 0 ? CssProperties.keywordTerms(p, flexDirection) : others.get(p);
-			case 106: flexWrap;
+			case 106: (flexDirection : Int) >= 0 ? CssProperties.keywordTerms(p, flexDirection) : others.get(p);
+			case 109: flexWrap;
 			case 6: alignContent;
 			case 7: alignItems;
-			case 150: justifyContent;
-			case 151: justifyItems;
-			case 205: rowGap.id < 0 ? others.get(p) : rowGap.terms;
+			case 153: justifyContent;
+			case 154: justifyItems;
+			case 208: rowGap.id < 0 ? others.get(p) : rowGap.terms;
 			case 84: columnGap.id < 0 ? others.get(p) : columnGap.terms;
-			case 139: gridTemplateColumns;
-			case 140: gridTemplateRows;
-			case 138: gridTemplateAreas;
-			case 131: gridAutoColumns;
-			case 133: gridAutoRows;
-			case 132: gridAutoFlow;
+			case 142: gridTemplateColumns;
+			case 143: gridTemplateRows;
+			case 141: gridTemplateAreas;
+			case 134: gridAutoColumns;
+			case 136: gridAutoRows;
+			case 135: gridAutoFlow;
 			case _: throw 'not in container: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 205: rowGap;
+			case 208: rowGap;
 			case 84: columnGap;
 			case _: null;
 		}
@@ -1749,7 +1877,7 @@ class CssContainerGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 103: flexDirection;
+			case 106: flexDirection;
 
 			case _: -1;
 		}
@@ -1833,38 +1961,38 @@ class CssItemGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 104: flexGrow = number(p, t, false);
-			case 105: flexShrink = number(p, t, false);
-			case 102: flexBasis = intern.length(t) ?? other(p, t, CssLength.OTHER);
-			case 182: order = number(p, t, true);
+			case 107: flexGrow = number(p, t, false);
+			case 108: flexShrink = number(p, t, false);
+			case 105: flexBasis = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case 185: order = number(p, t, true);
 			case 8: alignSelf = intern.terms(t);
-			case 152: justifySelf = intern.terms(t);
-			case 137: gridRowStart = intern.terms(t);
-			case 136: gridRowEnd = intern.terms(t);
-			case 135: gridColumnStart = intern.terms(t);
-			case 134: gridColumnEnd = intern.terms(t);
+			case 155: justifySelf = intern.terms(t);
+			case 140: gridRowStart = intern.terms(t);
+			case 139: gridRowEnd = intern.terms(t);
+			case 138: gridColumnStart = intern.terms(t);
+			case 137: gridColumnEnd = intern.terms(t);
 			case _:
 		}
 	}
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 104: others != null && others.exists(p) ? others.get(p) : [Number(flexGrow, false)];
-			case 105: others != null && others.exists(p) ? others.get(p) : [Number(flexShrink, false)];
-			case 102: flexBasis.id < 0 ? others.get(p) : flexBasis.terms;
-			case 182: others != null && others.exists(p) ? others.get(p) : [Number(order, true)];
+			case 107: others != null && others.exists(p) ? others.get(p) : [Number(flexGrow, false)];
+			case 108: others != null && others.exists(p) ? others.get(p) : [Number(flexShrink, false)];
+			case 105: flexBasis.id < 0 ? others.get(p) : flexBasis.terms;
+			case 185: others != null && others.exists(p) ? others.get(p) : [Number(order, true)];
 			case 8: alignSelf;
-			case 152: justifySelf;
-			case 137: gridRowStart;
-			case 136: gridRowEnd;
-			case 135: gridColumnStart;
-			case 134: gridColumnEnd;
+			case 155: justifySelf;
+			case 140: gridRowStart;
+			case 139: gridRowEnd;
+			case 138: gridColumnStart;
+			case 137: gridColumnEnd;
 			case _: throw 'not in item: ' + CssProperties.name(p);
 		}
 
 	override function lengthOf(p:CssProperty):Null<CssLength>
 		return switch (p : Int) {
-			case 102: flexBasis;
+			case 105: flexBasis;
 			case _: null;
 		}
 
@@ -1883,9 +2011,9 @@ class CssItemGroup extends CssGroup {
 
 	override function numberOf(p:CssProperty):Float
 		return switch (p : Int) {
-			case 104: flexGrow;
-			case 105: flexShrink;
-			case 182: order;
+			case 107: flexGrow;
+			case 108: flexShrink;
+			case 185: order;
 			case _: Math.NaN;
 		}
 
@@ -1955,7 +2083,7 @@ class CssContentGroup extends CssGroup {
 			case 94: counterReset = intern.terms(t);
 			case 93: counterIncrement = intern.terms(t);
 			case 95: counterSet = intern.terms(t);
-			case 209: stringSet = intern.terms(t);
+			case 214: stringSet = intern.terms(t);
 			case 26: bookmarkLabel = intern.terms(t);
 			case 27: {bookmarkLevel = number(p, t, true); bookmarkLevelKeyword = numberKeyword(p, t);}
 			case 28: bookmarkState = cast keyword(p, t);
@@ -1969,7 +2097,7 @@ class CssContentGroup extends CssGroup {
 			case 94: counterReset;
 			case 93: counterIncrement;
 			case 95: counterSet;
-			case 209: stringSet;
+			case 214: stringSet;
 			case 26: bookmarkLabel;
 			case 27: bookmarkLevelKeyword >= 0 ? CssProperties.keywordTerms(p, bookmarkLevelKeyword) : bookmarkLevelKeyword == -2 ? others.get(p) : [Number(bookmarkLevel, true)];
 			case 28: (bookmarkState : Int) >= 0 ? CssProperties.keywordTerms(p, bookmarkState) : others.get(p);
@@ -2056,7 +2184,7 @@ class CssPagedGroup extends CssGroup {
 			case 77: breakAfter = cast keyword(p, t);
 			case 79: breakInside = cast keyword(p, t);
 			case 69: boxDecorationBreak = cast keyword(p, t);
-			case 199: page = intern.terms(t);
+			case 202: page = intern.terms(t);
 			case _:
 		}
 	}
@@ -2067,7 +2195,7 @@ class CssPagedGroup extends CssGroup {
 			case 77: (breakAfter : Int) >= 0 ? CssProperties.keywordTerms(p, breakAfter) : others.get(p);
 			case 79: (breakInside : Int) >= 0 ? CssProperties.keywordTerms(p, breakInside) : others.get(p);
 			case 69: (boxDecorationBreak : Int) >= 0 ? CssProperties.keywordTerms(p, boxDecorationBreak) : others.get(p);
-			case 199: page;
+			case 202: page;
 			case _: throw 'not in paged: ' + CssProperties.name(p);
 		}
 
@@ -2180,25 +2308,25 @@ class CssEffectsGroup extends CssGroup {
 	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
 		forget(p);
 		switch (p : Int) {
-			case 181: opacity = number(p, t, false);
-			case 231: transform = intern.terms(t);
-			case 233: transformOrigin = intern.terms(t);
-			case 232: transformBox = cast keyword(p, t);
-			case 239: translate = intern.terms(t);
-			case 204: rotate = intern.terms(t);
-			case 206: scale = intern.terms(t);
-			case 101: filter = intern.terms(t);
+			case 184: opacity = number(p, t, false);
+			case 244: transform = intern.terms(t);
+			case 246: transformOrigin = intern.terms(t);
+			case 245: transformBox = cast keyword(p, t);
+			case 252: translate = intern.terms(t);
+			case 207: rotate = intern.terms(t);
+			case 209: scale = intern.terms(t);
+			case 104: filter = intern.terms(t);
 			case 12: backdropFilter = intern.terms(t);
-			case 178: mixBlendMode = cast keyword(p, t);
-			case 149: isolation = cast keyword(p, t);
+			case 181: mixBlendMode = cast keyword(p, t);
+			case 152: isolation = cast keyword(p, t);
 			case 70: boxShadow = intern.terms(t);
 			case 72: boxShadowColor = intern.terms(t);
 			case 73: boxShadowOffset = intern.terms(t);
 			case 71: boxShadowBlur = intern.terms(t);
 			case 75: boxShadowSpread = intern.terms(t);
 			case 74: boxShadowPosition = intern.terms(t);
-			case 179: objectFit = intern.terms(t);
-			case 180: objectPosition = intern.terms(t);
+			case 182: objectFit = intern.terms(t);
+			case 183: objectPosition = intern.terms(t);
 			case 0: helderBackdrop = cast keyword(p, t);
 			case 1: helderMaterial = intern.terms(t);
 			case 2: helderMaterialSpacing = intern.length(t) ?? other(p, t, CssLength.OTHER);
@@ -2209,25 +2337,25 @@ class CssEffectsGroup extends CssGroup {
 
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
-			case 181: others != null && others.exists(p) ? others.get(p) : [Number(opacity, false)];
-			case 231: transform;
-			case 233: transformOrigin;
-			case 232: (transformBox : Int) >= 0 ? CssProperties.keywordTerms(p, transformBox) : others.get(p);
-			case 239: translate;
-			case 204: rotate;
-			case 206: scale;
-			case 101: filter;
+			case 184: others != null && others.exists(p) ? others.get(p) : [Number(opacity, false)];
+			case 244: transform;
+			case 246: transformOrigin;
+			case 245: (transformBox : Int) >= 0 ? CssProperties.keywordTerms(p, transformBox) : others.get(p);
+			case 252: translate;
+			case 207: rotate;
+			case 209: scale;
+			case 104: filter;
 			case 12: backdropFilter;
-			case 178: (mixBlendMode : Int) >= 0 ? CssProperties.keywordTerms(p, mixBlendMode) : others.get(p);
-			case 149: (isolation : Int) >= 0 ? CssProperties.keywordTerms(p, isolation) : others.get(p);
+			case 181: (mixBlendMode : Int) >= 0 ? CssProperties.keywordTerms(p, mixBlendMode) : others.get(p);
+			case 152: (isolation : Int) >= 0 ? CssProperties.keywordTerms(p, isolation) : others.get(p);
 			case 70: boxShadow;
 			case 72: boxShadowColor;
 			case 73: boxShadowOffset;
 			case 71: boxShadowBlur;
 			case 75: boxShadowSpread;
 			case 74: boxShadowPosition;
-			case 179: objectFit;
-			case 180: objectPosition;
+			case 182: objectFit;
+			case 183: objectPosition;
 			case 0: (helderBackdrop : Int) >= 0 ? CssProperties.keywordTerms(p, helderBackdrop) : others.get(p);
 			case 1: helderMaterial;
 			case 2: helderMaterialSpacing.id < 0 ? others.get(p) : helderMaterialSpacing.terms;
@@ -2249,9 +2377,9 @@ class CssEffectsGroup extends CssGroup {
 
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
-			case 232: transformBox;
-			case 178: mixBlendMode;
-			case 149: isolation;
+			case 245: transformBox;
+			case 181: mixBlendMode;
+			case 152: isolation;
 			case 0: helderBackdrop;
 
 			case _: -1;
@@ -2259,7 +2387,7 @@ class CssEffectsGroup extends CssGroup {
 
 	override function numberOf(p:CssProperty):Float
 		return switch (p : Int) {
-			case 181: opacity;
+			case 184: opacity;
 			case _: Math.NaN;
 		}
 
@@ -2319,6 +2447,77 @@ class CssEffectsGroup extends CssGroup {
 	}
 }
 
+// Not inherited: stop-color, stop-opacity.
+class CssSvgStopGroup extends CssGroup {
+	public var stopColor(default, null):CssRgba;
+	public var stopOpacity(default, null):CssLength;
+
+	@:allow(helder.css)
+	function new() {}
+
+	override function copy():CssGroup {
+		var g = new CssSvgStopGroup();
+		g.stopColor = stopColor;
+		g.stopOpacity = stopOpacity;
+		g.others = others;
+		return g;
+	}
+
+	override function set(p:CssProperty, t:Array<CssTerm>, intern:CssIntern) {
+		forget(p);
+		switch (p : Int) {
+			case 212: stopColor = intern.rgba(t) ?? other(p, t, CssRgba.OTHER);
+			case 213: stopOpacity = intern.length(t) ?? other(p, t, CssLength.OTHER);
+			case _:
+		}
+	}
+
+	override public function terms(p:CssProperty):Array<CssTerm>
+		return switch (p : Int) {
+			case 212: stopColor.id < 0 ? others.get(p) : stopColor.terms;
+			case 213: stopOpacity.id < 0 ? others.get(p) : stopOpacity.terms;
+			case _: throw 'not in svgStop: ' + CssProperties.name(p);
+		}
+
+	override function lengthOf(p:CssProperty):Null<CssLength>
+		return switch (p : Int) {
+			case 213: stopOpacity;
+			case _: null;
+		}
+
+	override function rgbaOf(p:CssProperty):Null<CssRgba>
+		return switch (p : Int) {
+			case 212: stopColor;
+			case _: null;
+		}
+
+	override function keywordOf(p:CssProperty):Int
+		return switch (p : Int) {
+
+
+			case _: -1;
+		}
+
+	override function numberOf(p:CssProperty):Float
+		return switch (p : Int) {
+
+			case _: Math.NaN;
+		}
+
+	override function same(o:CssGroup):Bool {
+		var g:CssSvgStopGroup = cast o;
+		return stopColor == g.stopColor
+			&& stopOpacity == g.stopOpacity && sameOthers(g);
+	}
+
+	override function hash(intern:CssIntern):Int {
+		var h = 17;
+		h = h * 31 + stopColor.id;
+		h = h * 31 + stopOpacity.id;
+		return h;
+	}
+}
+
 // Not inherited: appearance, user-select, scrollbar-width, transition-property, transition-duration, transition-timing-function, transition-delay, transition-behavior.
 class CssControlGroup extends CssGroup {
 	public var appearance(default, null):CssAppearance;
@@ -2351,13 +2550,13 @@ class CssControlGroup extends CssGroup {
 		forget(p);
 		switch (p : Int) {
 			case 10: appearance = cast keyword(p, t);
-			case 241: userSelect = cast keyword(p, t);
-			case 208: scrollbarWidth = cast keyword(p, t);
-			case 237: transitionProperty = intern.terms(t);
-			case 236: transitionDuration = intern.terms(t);
-			case 238: transitionTimingFunction = intern.terms(t);
-			case 235: transitionDelay = intern.terms(t);
-			case 234: transitionBehavior = intern.terms(t);
+			case 254: userSelect = cast keyword(p, t);
+			case 211: scrollbarWidth = cast keyword(p, t);
+			case 250: transitionProperty = intern.terms(t);
+			case 249: transitionDuration = intern.terms(t);
+			case 251: transitionTimingFunction = intern.terms(t);
+			case 248: transitionDelay = intern.terms(t);
+			case 247: transitionBehavior = intern.terms(t);
 			case _:
 		}
 	}
@@ -2365,13 +2564,13 @@ class CssControlGroup extends CssGroup {
 	override public function terms(p:CssProperty):Array<CssTerm>
 		return switch (p : Int) {
 			case 10: (appearance : Int) >= 0 ? CssProperties.keywordTerms(p, appearance) : others.get(p);
-			case 241: (userSelect : Int) >= 0 ? CssProperties.keywordTerms(p, userSelect) : others.get(p);
-			case 208: (scrollbarWidth : Int) >= 0 ? CssProperties.keywordTerms(p, scrollbarWidth) : others.get(p);
-			case 237: transitionProperty;
-			case 236: transitionDuration;
-			case 238: transitionTimingFunction;
-			case 235: transitionDelay;
-			case 234: transitionBehavior;
+			case 254: (userSelect : Int) >= 0 ? CssProperties.keywordTerms(p, userSelect) : others.get(p);
+			case 211: (scrollbarWidth : Int) >= 0 ? CssProperties.keywordTerms(p, scrollbarWidth) : others.get(p);
+			case 250: transitionProperty;
+			case 249: transitionDuration;
+			case 251: transitionTimingFunction;
+			case 248: transitionDelay;
+			case 247: transitionBehavior;
 			case _: throw 'not in control: ' + CssProperties.name(p);
 		}
 
@@ -2390,8 +2589,8 @@ class CssControlGroup extends CssGroup {
 	override function keywordOf(p:CssProperty):Int
 		return switch (p : Int) {
 			case 10: appearance;
-			case 241: userSelect;
-			case 208: scrollbarWidth;
+			case 254: userSelect;
+			case 211: scrollbarWidth;
 
 			case _: -1;
 		}
@@ -2429,7 +2628,7 @@ class CssControlGroup extends CssGroup {
 }
 
 class CssGroups {
-	public static inline var COUNT = 18;
+	public static inline var COUNT = 20;
 
 	public static function make(group:Int):CssGroup
 		return switch group {
@@ -2438,23 +2637,25 @@ class CssGroups {
 			case 2: new CssListGroup();
 			case 3: new CssTableGroup();
 			case 4: new CssUiGroup();
-			case 5: new CssBoxGroup();
-			case 6: new CssPositionGroup();
-			case 7: new CssSpacingGroup();
-			case 8: new CssBorderGroup();
-			case 9: new CssBackgroundGroup();
-			case 10: new CssOutlineGroup();
-			case 11: new CssDecorationGroup();
-			case 12: new CssContainerGroup();
-			case 13: new CssItemGroup();
-			case 14: new CssContentGroup();
-			case 15: new CssPagedGroup();
-			case 16: new CssEffectsGroup();
-			case 17: new CssControlGroup();
+			case 5: new CssSvgGroup();
+			case 6: new CssBoxGroup();
+			case 7: new CssPositionGroup();
+			case 8: new CssSpacingGroup();
+			case 9: new CssBorderGroup();
+			case 10: new CssBackgroundGroup();
+			case 11: new CssOutlineGroup();
+			case 12: new CssDecorationGroup();
+			case 13: new CssContainerGroup();
+			case 14: new CssItemGroup();
+			case 15: new CssContentGroup();
+			case 16: new CssPagedGroup();
+			case 17: new CssEffectsGroup();
+			case 18: new CssSvgStopGroup();
+			case 19: new CssControlGroup();
 			case _: throw 'no group ' + group;
 		}
 
-	static final INHERITED = [true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false];
+	static final INHERITED = [true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
 
 	public static inline function inherited(group:Int):Bool
 		return INHERITED[group];
@@ -2468,6 +2669,7 @@ class CssStyleGroups {
 	public var list(default, null):CssListGroup;
 	public var table(default, null):CssTableGroup;
 	public var ui(default, null):CssUiGroup;
+	public var svg(default, null):CssSvgGroup;
 	public var box(default, null):CssBoxGroup;
 	public var position(default, null):CssPositionGroup;
 	public var spacing(default, null):CssSpacingGroup;
@@ -2480,6 +2682,7 @@ class CssStyleGroups {
 	public var content(default, null):CssContentGroup;
 	public var paged(default, null):CssPagedGroup;
 	public var effects(default, null):CssEffectsGroup;
+	public var svgStop(default, null):CssSvgStopGroup;
 	public var control(default, null):CssControlGroup;
 
 	function group(i:Int):CssGroup
@@ -2489,19 +2692,21 @@ class CssStyleGroups {
 			case 2: list;
 			case 3: table;
 			case 4: ui;
-			case 5: box;
-			case 6: position;
-			case 7: spacing;
-			case 8: border;
-			case 9: background;
-			case 10: outline;
-			case 11: decoration;
-			case 12: container;
-			case 13: item;
-			case 14: content;
-			case 15: paged;
-			case 16: effects;
-			case 17: control;
+			case 5: svg;
+			case 6: box;
+			case 7: position;
+			case 8: spacing;
+			case 9: border;
+			case 10: background;
+			case 11: outline;
+			case 12: decoration;
+			case 13: container;
+			case 14: item;
+			case 15: content;
+			case 16: paged;
+			case 17: effects;
+			case 18: svgStop;
+			case 19: control;
 			case _: throw 'no group ' + i;
 		}
 
@@ -2512,19 +2717,21 @@ class CssStyleGroups {
 			case 2: list = cast g;
 			case 3: table = cast g;
 			case 4: ui = cast g;
-			case 5: box = cast g;
-			case 6: position = cast g;
-			case 7: spacing = cast g;
-			case 8: border = cast g;
-			case 9: background = cast g;
-			case 10: outline = cast g;
-			case 11: decoration = cast g;
-			case 12: container = cast g;
-			case 13: item = cast g;
-			case 14: content = cast g;
-			case 15: paged = cast g;
-			case 16: effects = cast g;
-			case 17: control = cast g;
+			case 5: svg = cast g;
+			case 6: box = cast g;
+			case 7: position = cast g;
+			case 8: spacing = cast g;
+			case 9: border = cast g;
+			case 10: background = cast g;
+			case 11: outline = cast g;
+			case 12: decoration = cast g;
+			case 13: container = cast g;
+			case 14: item = cast g;
+			case 15: content = cast g;
+			case 16: paged = cast g;
+			case 17: effects = cast g;
+			case 18: svgStop = cast g;
+			case 19: control = cast g;
 			case _:
 		}
 }

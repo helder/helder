@@ -19,12 +19,24 @@ import helder.image.Image;
 // (of an element or a symbol, its viewBox fitted, clipped to its
 // viewport, as a nested svg is); clip-path (a clipPath's shapes, in user
 // units); presentation attributes, style="" and the inherited ones passed
-// down. Not drawn: text, images, patterns (a pattern paint draws
-// nothing), masks, filters, markers; defs, title and the like are skipped.
+// down; lengths in percentages of the viewport. Not drawn: text, images,
+// patterns (a pattern paint draws nothing), masks, filters, markers, a
+// <style> element's rules; defs, title and the like are skipped. paint
+// draws it into any Painter as paths (a PDF's vectors), sized as CSS
+// sizes an image (naturalWidth, naturalHeight, ratio).
 class Svg {
 	// the intrinsic size: width and height, else the viewBox's, else 300 by 150
 	public final width:Float;
 	public final height:Float;
+	// its natural size as CSS sizes a replaced element (Images 3 §4): width
+	// and height where given as absolute lengths (NaN: none), the ratio of
+	// both, else the viewBox's (NaN: none)
+	// (read's: the element, to parse again at another viewport's size, its percentages resolved there)
+	var source:Null<Xml> = null;
+	var sized:Null<{w:Float, h:Float, root:SvgGroup}> = null;
+	public var naturalWidth(default, null) = Math.NaN;
+	public var naturalHeight(default, null) = Math.NaN;
+	public var ratio(default, null) = Math.NaN;
 
 	final viewBox:Null<{x:Float, y:Float, w:Float, h:Float}>;
 	// preserveAspectRatio: align (0, 0.5 or 1 on each axis; null: none) and slice
@@ -56,6 +68,11 @@ class Svg {
 		for (e in doc.elements())
 			if (local(e.nodeName) == "svg") el = e;
 		if (el == null) throw "Svg: no svg element";
+		return of(el);
+	}
+
+	// an svg element's drawing (a document's own, built as XML)
+	public static function of(el:Xml):Svg {
 		var vb:Null<{x:Float, y:Float, w:Float, h:Float}> = null;
 		var v = el.get("viewBox");
 		if (v != null) {
@@ -84,7 +101,12 @@ class Svg {
 			}
 		}
 		var root = new SvgParse(el, vb != null ? vb.w : w, vb != null ? vb.h : h).root(el);
-		return new Svg(w, h, vb, ax, ay, slice, root);
+		var svg = new Svg(w, h, vb, ax, ay, slice, root);
+		svg.source = el;
+		svg.naturalWidth = length(el.get("width"));
+		svg.naturalHeight = length(el.get("height"));
+		svg.ratio = !Math.isNaN(svg.naturalWidth) && !Math.isNaN(svg.naturalHeight) && svg.naturalHeight > 0 ? svg.naturalWidth / svg.naturalHeight : vb != null ? vb.w / vb.h : Math.NaN;
+		return svg;
 	}
 
 	// an element's name without its namespace prefix
@@ -93,11 +115,22 @@ class Svg {
 		return i < 0 ? name : name.substr(i + 1);
 	}
 
+	// (an absolute length in px: a number, or with px, in, cm, mm, pt, pc; NaN for a percentage, auto or none)
 	static function length(s:Null<String>):Float {
 		if (s == null) return Math.NaN;
-		s = StringTools.trim(s);
-		if (StringTools.endsWith(s, "%")) return Math.NaN;
-		return Std.parseFloat(s);
+		s = StringTools.trim(s).toLowerCase();
+		var r = ~/^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)(px|in|cm|mm|pt|pc|q)?$/;
+		if (!r.match(s)) return Math.NaN;
+		var v = Std.parseFloat(r.matched(1));
+		return v * switch r.matched(4) {
+			case "in": 96;
+			case "cm": 96 / 2.54;
+			case "mm": 96 / 25.4;
+			case "q": 96 / 101.6;
+			case "pt": 96 / 72;
+			case "pc": 16;
+			case _: 1;
+		};
 	}
 
 	#if !macro
@@ -105,22 +138,44 @@ class Svg {
 	// default), currentColor painted color (black)
 	public function render(?width:Int, ?height:Int, color:Color = Color.BLACK):Image {
 		var w:Int = width != null ? width : Std.int(Math.ceil(this.width)), h:Int = height != null ? height : Std.int(Math.ceil(this.height));
-		var canvas = new SvgCanvas(w, h, color);
-		// the viewport: the viewBox fitted (or the user units at the intrinsic size)
-		var m = new Matrix();
-		if (viewBox != null) {
-			var sx = w / viewBox.w, sy = h / viewBox.h;
-			if (alignX == null) m = new Matrix(sx, 0, 0, sy, -viewBox.x * sx, -viewBox.y * sy) else {
-				var s = slice ? Math.max(sx, sy) : Math.min(sx, sy);
-				var tx = (w - viewBox.w * s) * alignX, ty = (h - viewBox.h * s) * alignY;
-				m = new Matrix(s, 0, 0, s, tx - viewBox.x * s, ty - viewBox.y * s);
-			}
-		} else
-			m = new Matrix(w / this.width, 0, 0, h / this.height, 0, 0);
-		canvas.group(root, m);
-		var img = canvas.image();
+		var canvas = new Canvas(w, h);
+		new SvgCanvas(canvas, color).group(root, viewport(0, 0, w, h));
+		var img = canvas.bitmap.toImage();
 		img.drawing = {svg: this, color: color};
 		return img;
+	}
+
+	// The drawing into a painter, in the w by h box at x, y of its current
+	// transform's units, clipped to it (an outermost svg's overflow is
+	// hidden): as paths and paints, a PDF's vectors. currentColor painted
+	// color (0xAARRGGBB).
+	public function paint(p:Painter, x:Float, y:Float, w:Float, h:Float, color:Int) {
+		if (w <= 0 || h <= 0) return;
+		p.save();
+		var box = new Path();
+		box.rect(x, y, w, h);
+		p.clip(box);
+		// (no viewBox: user units as the box's, the viewport clipping them, SVG 2 §8.2; percentages of the box)
+		if (viewBox == null) {
+			var r = root;
+			if (source != null && (w != width || h != height)) {
+				if (sized == null || sized.w != w || sized.h != h) sized = {w: w, h: h, root: new SvgParse(source, w, h).root(source)};
+				r = sized.root;
+			}
+			new SvgCanvas(p, color).group(r, new Matrix(1, 0, 0, 1, x, y));
+		} else
+			new SvgCanvas(p, color).group(root, viewport(x, y, w, h));
+		p.restore();
+	}
+
+	// (the viewport: the viewBox fitted, or the user units at the intrinsic size)
+	function viewport(x:Float, y:Float, w:Float, h:Float):Matrix {
+		if (viewBox == null) return new Matrix(w / width, 0, 0, h / height, x, y);
+		var sx = w / viewBox.w, sy = h / viewBox.h;
+		if (alignX == null) return new Matrix(sx, 0, 0, sy, x - viewBox.x * sx, y - viewBox.y * sy);
+		var s = slice ? Math.max(sx, sy) : Math.min(sx, sy);
+		var tx = (w - viewBox.w * s) * alignX, ty = (h - viewBox.h * s) * alignY;
+		return new Matrix(s, 0, 0, s, x + tx - viewBox.x * s, y + ty - viewBox.y * s);
 	}
 	#end
 }
@@ -591,17 +646,27 @@ class SvgParse {
 		return Math.isNaN(f) ? 0 : f;
 	}
 
+	// (a length, a percentage of the viewport's width (axis 0), height (1) or
+	// normalized diagonal (2), SVG 2 §8.9)
+	function len(s:Null<String>, axis:Int):Float {
+		if (s == null) return 0;
+		s = StringTools.trim(s);
+		if (!StringTools.endsWith(s, "%")) return num(s);
+		var base = axis == 0 ? viewW : axis == 1 ? viewH : Math.sqrt((viewW * viewW + viewH * viewH) / 2);
+		return num(s.substr(0, s.length - 1)) * base / 100;
+	}
+
 	// a shape element's path (null: not one)
-	static function shape(name:String, el:Xml):Null<Array<Float>> {
+	function shape(name:String, el:Xml):Null<Array<Float>> {
 		var p:Array<Float> = [];
 		switch name {
 			case "path":
 				var d = el.get("d");
 				return d == null ? null : pathData(d);
 			case "rect":
-				var x = num(el.get("x")), y = num(el.get("y")), w = num(el.get("width")), h = num(el.get("height"));
+				var x = len(el.get("x"), 0), y = len(el.get("y"), 1), w = len(el.get("width"), 0), h = len(el.get("height"), 1);
 				if (w <= 0 || h <= 0) return null;
-				var rx = el.get("rx") == null ? Math.NaN : num(el.get("rx")), ry = el.get("ry") == null ? Math.NaN : num(el.get("ry"));
+				var rx = el.get("rx") == null ? Math.NaN : len(el.get("rx"), 0), ry = el.get("ry") == null ? Math.NaN : len(el.get("ry"), 1);
 				if (Math.isNaN(rx)) rx = Math.isNaN(ry) ? 0 : ry;
 				if (Math.isNaN(ry)) ry = rx;
 				rx = Math.min(Math.max(rx, 0), w / 2);
@@ -626,8 +691,8 @@ class SvgParse {
 					p.push(3);
 				}
 			case "circle" | "ellipse":
-				var cx = num(el.get("cx")), cy = num(el.get("cy"));
-				var rx = name == "circle" ? num(el.get("r")) : num(el.get("rx")), ry = name == "circle" ? rx : num(el.get("ry"));
+				var cx = len(el.get("cx"), 0), cy = len(el.get("cy"), 1);
+				var rx = name == "circle" ? len(el.get("r"), 2) : len(el.get("rx"), 0), ry = name == "circle" ? rx : len(el.get("ry"), 1);
 				if (name == "ellipse") {
 					if (el.get("rx") == null) rx = ry;
 					if (el.get("ry") == null) ry = rx;
@@ -635,8 +700,8 @@ class SvgParse {
 				if (rx <= 0 || ry <= 0) return null;
 				ellipse(p, cx, cy, rx, ry);
 			case "line":
-				p.push(0); p.push(num(el.get("x1"))); p.push(num(el.get("y1")));
-				p.push(1); p.push(num(el.get("x2"))); p.push(num(el.get("y2")));
+				p.push(0); p.push(len(el.get("x1"), 0)); p.push(len(el.get("y1"), 1));
+				p.push(1); p.push(len(el.get("x2"), 0)); p.push(len(el.get("y2"), 1));
 			case "polyline" | "polygon":
 				var n = numbers(el.get("points") ?? "");
 				if (n.length < 2) return null;
@@ -818,19 +883,28 @@ class SvgParse {
 }
 
 #if !macro
-// A drawing's groups and shapes on helder.canvas (its CPU rasterizer:
-// analytic coverage, strokes as outlines, gradients, clips as masks, a
-// group's or a shape's opacity as a layer)
+// A drawing's groups and shapes on any of helder.canvas's painters (the
+// CPU's, a PDF's paths, the GPU's), under the painter's transform when
+// drawn: strokes as outlines, gradients, clips, a group's or a shape's
+// opacity as a layer
 class SvgCanvas {
-	final canvas:helder.canvas.Canvas;
+	final canvas:Painter;
+	final base:Matrix;
 	final current:Int;
 	final path = new helder.canvas.Path();
 	final paint = new helder.canvas.Paint();
 	final line = new helder.canvas.Stroke();
 
-	public function new(width:Int, height:Int, current:Int) {
-		canvas = new helder.canvas.Canvas(width, height);
+	public function new(canvas:Painter, current:Int) {
+		this.canvas = canvas;
+		base = canvas.matrix.clone();
 		this.current = current;
+	}
+
+	// (m in the painter's units, under its transform)
+	inline function set(m:Matrix) {
+		var t = base.clone().multiply(m);
+		canvas.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
 	}
 
 	// path commands (0 move, 1 line, 2 cubic, 3 close: Svg's, helder.ui's Path's) as a canvas path, into out
@@ -873,7 +947,7 @@ class SvgCanvas {
 			var clip = new helder.canvas.Path(), one = new helder.canvas.Path();
 			for (c in g.clip)
 				clip.addPath(into(c.path, one), mm.clone().multiply(c.matrix));
-			canvas.resetTransform();
+			set(new Matrix());
 			canvas.clip(clip, g.clip[0].evenOdd);
 		}
 		if (g.opacity < 1) canvas.saveLayer(g.opacity);
@@ -893,7 +967,7 @@ class SvgCanvas {
 		var own = s.opacity < 1 && fill != None && stroke != None;
 		var alpha = own ? 1.0 : s.opacity;
 		if (own) canvas.saveLayer(s.opacity);
-		canvas.setTransform(mm.a, mm.b, mm.c, mm.d, mm.e, mm.f);
+		set(mm);
 		into(s.path, path);
 		if (fill != None && paintWith(fill, st.fillOpacity * alpha, s.path)) canvas.fill(path, paint, st.evenOdd);
 		if (stroke != None && paintWith(stroke, st.strokeOpacity * alpha, s.path)) {
@@ -975,8 +1049,5 @@ class SvgCanvas {
 		return [x0, y0, x1, y1];
 	}
 
-	// straight RGBA8
-	public function image():Image
-		return canvas.bitmap.toImage();
 }
 #end

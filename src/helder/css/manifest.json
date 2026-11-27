@@ -4,11 +4,11 @@
   "sha256": "18b474d16c2686f3aa45fa535ab418f4079bf97e82a80c9d3ed1f83de7512c58",
   "license": "MIT",
   "counts": {
-    "properties": 317,
-    "types": 308,
+    "properties": 330,
+    "types": 309,
     "primitives": 22,
     "descriptors": 72,
-    "out": 511
+    "out": 498
   },
   "out": {
     "-webkit- aliases and WebKit's compat properties": 68,
@@ -25,7 +25,7 @@
     "round displays: not paged media": 1,
     "masking: not in checkpoint 1 (CSS 2.1's clip is)": 19,
     "color schemes and forced colors: not in checkpoint 1": 4,
-    "SVG's presentation properties: SVG content, not CSS boxes": 23,
+    "SVG's presentation properties: SVG content, not CSS boxes": 19,
     "filters: not in checkpoint 1": 4,
     "multicol: deferred": 11,
     "gap decorations (Gaps 1): not in checkpoint 1": 38,
@@ -34,7 +34,7 @@
     "speech: not visual": 19,
     "Inline 3 beyond CSS 2.1's line-height and vertical-align: not in checkpoint 1": 9,
     "HDR: not in checkpoint 1": 1,
-    "fill and stroke of text and boxes: not in checkpoint 1": 26,
+    "fill and stroke of text and boxes: not in checkpoint 1": 17,
     "masonry (Grid 3): not in checkpoint 1": 1,
     "Flexbox 2: not in checkpoint 1": 1,
     "page floats beyond CSS 2.1's: not in checkpoint 1": 3,

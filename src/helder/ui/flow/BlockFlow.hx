@@ -841,6 +841,11 @@ class BlockFlow implements FormattingContext {
 	public static function replacedSize(box:Box, cbw:Float, cbh:Float, bpx:Float, bpy:Float):{w:Float, h:Float} {
 		var s = box.style.model();
 		var iw = box.image == null ? 0.0 : box.image.width, ih = box.image == null ? 0.0 : box.image.height;
+		if (box.svg != null) {
+			var n = natural(box.svg, cbw - bpx);
+			iw = n.w;
+			ih = n.h;
+		}
 		// (size containment: no natural size but contain-intrinsic-size's, no natural ratio, Contain 2 §3.1)
 		if (box.style.containment.has(Size)) {
 			iw = box.style.intrinsicSize(true);
@@ -862,6 +867,19 @@ class BlockFlow implements FormattingContext {
 		if (!Math.isNaN(maxH) && h > maxH) h = maxH;
 		if (!Math.isNaN(minH) && h < minH) h = minH;
 		return {w: Math.max(0, w), h: Math.max(0, h)};
+	}
+
+	// (an SVG's natural size where it has one, else its ratio's at the
+	// available width, else 300 by 150: CSS 2.1 §10.3.2's and Images 3's
+	// default object size)
+	static function natural(svg:helder.canvas.Svg, available:Float):{w:Float, h:Float} {
+		var w = svg.naturalWidth, h = svg.naturalHeight, r = svg.ratio;
+		if (!Math.isNaN(w) && !Math.isNaN(h)) return {w: w, h: h};
+		if (!Math.isNaN(w)) return {w: w, h: Math.isNaN(r) ? 150 : w / r};
+		if (!Math.isNaN(h)) return {w: Math.isNaN(r) ? 300 : h * r, h: h};
+		if (Math.isNaN(r)) return {w: 300, h: 150};
+		var aw = Math.isNaN(available) || !Math.isFinite(available) ? 300 : Math.max(0, available);
+		return {w: aw, h: aw / r};
 	}
 
 	// ---- intrinsic sizes (min-content and max-content, border box)

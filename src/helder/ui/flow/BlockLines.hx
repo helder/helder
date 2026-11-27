@@ -483,9 +483,15 @@ class BlockLines {
 		var own = baseline < 0, height = 0.0;
 		for (mk in list) {
 			var mc = new InlineContent(BoxInline.of(mk, avail), space.fonts.inlines);
-			var t = mk.first;
+			var t = mk.first, laid = [];
 			while (t != null) {
 				if (t.kind == Text) mc.addText(t.text, BoxInline.of(t, avail), t.node, t.offset);
+				// (list-style-image's image: laid out as a line's atomic is)
+				else if (t.kind == InlineReplaced) {
+					var f = flow.child(t, space.child(avail, avail));
+					laid.push(f);
+					mc.addAtomic(frags.width(f), frags.height(f), Math.NaN, BoxInline.of(t, avail), t.node);
+				}
 				t = t.next;
 			}
 			mc.finish();
@@ -502,10 +508,16 @@ class BlockLines {
 				height = Math.max(height, ml.lineHeight(0));
 			}
 			var span = frags.add(Fragments.SPAN, mk, w, ml.lineHeight(0));
-			frags.adopt(line, span, rtl ? left + avail : left - w, own ? 0 : baseline - mb);
+			// (an image's: 7 before the line, as Chromium's marker padding; a text's own space does that)
+			var gap = laid.length > 0 ? 7 : 0;
+			frags.adopt(line, span, rtl ? left + avail + gap : left - w - gap, own ? 0 : baseline - mb);
 			frags.setBaseline(span, mb);
-			for (f in ml.lineFragmentStart(0)...ml.lineFragmentEnd(0)) if (ml.kind(f) == TextRun)
-				text(space, ml, f, mk.first ?? mk, mc, span, ml.x(f), ml.y(f));
+			var atomic = 0;
+			for (f in ml.lineFragmentStart(0)...ml.lineFragmentEnd(0)) switch ml.kind(f) {
+				case TextRun: text(space, ml, f, mk.first ?? mk, mc, span, ml.x(f), ml.y(f));
+				case Atomic if (atomic < laid.length): frags.adopt(span, laid[atomic++], ml.x(f), ml.y(f));
+				case _:
+			}
 		}
 		return {height: height, baseline: baseline};
 	}

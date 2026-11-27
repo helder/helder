@@ -53,6 +53,7 @@ class DocumentView {
 
 	final options:DocumentViewOptions;
 	final images = new Map<String, Null<Bitmap>>();
+	final svgs = new Map<String, Null<helder.canvas.Svg>>();
 	var viewWidth = 0.0;
 	var viewHeight = 0.0;
 
@@ -91,7 +92,7 @@ class DocumentView {
 			styles.metrics = fonts.metrics;
 			if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
 			fonts.fontPalettes(styles.fontPaletteValues);
-			tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image});
+			tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg});
 			fragments.clear();
 		}
 		viewWidth = width;
@@ -111,7 +112,7 @@ class DocumentView {
 	public function paint(p:Painter) {
 		p.clear(options.background ?? 0xFFFFFFFF);
 		if (order == null) return;
-		new BoxPainter(fragments, order, image).paint(p);
+		new BoxPainter(fragments, order, image, svg).paint(p);
 	}
 
 	// What is at (x, y): a text node and the offset there, or an element (offset -1).
@@ -175,11 +176,20 @@ class DocumentView {
 	}
 
 	function image(url:String):Null<Bitmap> {
-		if (options.image == null) return null;
 		var abs = CssUrl.resolve(options.url, url);
 		if (images.exists(abs)) return images.get(abs);
-		var b = try options.image(abs) catch (_:Dynamic) null;
+		// (a data: URL decoded here; a host's loader for the rest)
+		var b = BoxImages.data(abs) != null ? BoxImages.raster(abs) : options.image == null ? null : try options.image(abs) catch (_:Dynamic) null;
 		images.set(abs, b);
 		return b;
+	}
+
+	// (an SVG image: a data: URL's, or a .svg file read as text)
+	function svg(url:String):Null<helder.canvas.Svg> {
+		var abs = CssUrl.resolve(options.url, url);
+		if (svgs.exists(abs)) return svgs.get(abs);
+		var v = BoxImages.svg(abs, options.load);
+		svgs.set(abs, v);
+		return v;
 	}
 }
