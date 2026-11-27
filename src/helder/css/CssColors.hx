@@ -29,6 +29,29 @@ class CssColors {
 		"threedshadow", "window", "windowframe", "windowtext"
 	];
 
+	// A system colour as a light page's, as Chromium's light scheme has it:
+	// [r, g, b] 0 to 255, then alpha 0 to 1; null for another keyword.
+	public static function system(keyword:String):Null<Array<Float>>
+		return SYSTEM_RGBA.get(keyword.toLowerCase());
+
+	static final SYSTEM_RGBA:Map<String, Array<Float>> = {
+		var m = new Map<String, Array<Float>>();
+		for (entry in [
+			"canvas 255 255 255", "canvastext 0 0 0", "linktext 0 0 238", "visitedtext 85 26 139", "activetext 255 0 0", "buttonface 239 239 239",
+			"buttontext 0 0 0", "buttonborder 0 0 0", "field 255 255 255", "fieldtext 0 0 0", "graytext 128 128 128", "highlight 128 188 254 0.6",
+			"highlighttext 0 0 0", "mark 255 255 0", "marktext 0 0 0", "selecteditem 179 215 255", "selecteditemtext 0 0 0", "accentcolor 0 0 0",
+			"accentcolortext 0 0 0", "activeborder 0 0 0", "activecaption 0 0 0", "appworkspace 255 255 255", "background 255 255 255",
+			"buttonhighlight 239 239 239", "buttonshadow 239 239 239", "captiontext 0 0 0", "inactiveborder 0 0 0", "inactivecaption 255 255 255",
+			"inactivecaptiontext 128 128 128", "infobackground 255 255 255", "infotext 0 0 0", "menu 255 255 255", "menutext 0 0 0",
+			"scrollbar 255 255 255", "threeddarkshadow 0 0 0", "threedface 239 239 239", "threedhighlight 0 0 0", "threedlightshadow 0 0 0",
+			"threedshadow 0 0 0", "window 255 255 255", "windowframe 0 0 0", "windowtext 0 0 0"
+		]) {
+			var p = entry.split(" ");
+			m.set(p[0], [for (k in 1...p.length) Std.parseFloat(p[k])].concat(p.length == 4 ? [1.0] : []));
+		}
+		m;
+	};
+
 	// Whether parse reads this value: a hash, a keyword, or one of Color 4's
 	// functions without `from` (color-mix(), relative colours and the rest
 	// are left to the grammar).

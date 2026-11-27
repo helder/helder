@@ -250,11 +250,12 @@ class BoxStyle {
 			var v = Math.round((Math.isNaN(x) ? 0 : x) * 255);
 			return v < 0 ? 0 : v > 255 ? 255 : v;
 		}
-		// (system colours: the light scheme's canvas white, the rest as their text, black)
+		// (system colours: the light scheme's, CssColors.system)
 		if (c.keyword != null && c.keyword != "currentcolor") switch c.keyword {
 			case "transparent": return 0;
-			case "canvas" | "field" | "buttonface" | "window": return (byte(c.a) << 24) | 0xFFFFFF;
-			case _: if (c.r == 0 && c.g == 0 && c.b == 0) return (byte(c.a) << 24);
+			case k:
+				var s = CssColors.system(k);
+				if (s != null) return (byte(c.a * s[3]) << 24) | (Std.int(s[0]) << 16) | (Std.int(s[1]) << 8) | Std.int(s[2]);
 		}
 		return (byte(c.a) << 24) | (byte(c.r) << 16) | (byte(c.g) << 8) | byte(c.b);
 	}
@@ -263,8 +264,10 @@ class BoxStyle {
 		switch c.keyword {
 			case "currentcolor": return current;
 			case "transparent": return 0;
-			case "canvas": return 0xFFFFFFFF;
-			case _:
+			case null:
+			case k:
+				var s = CssColors.system(k);
+				if (s != null) return (Math.round(s[3] * c.alpha * 255) << 24) | (Std.int(s[0]) << 16) | (Std.int(s[1]) << 8) | Std.int(s[2]);
 		}
 		var rgb:Array<Float> = switch c.space {
 			case "rgb" | "hsl" | "hwb": CssColors.srgb(c);
