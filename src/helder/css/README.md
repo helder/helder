@@ -576,7 +576,11 @@ styles.pages;                              // @page rules: selectors, declaratio
   section's CSS, made by `ua.mjs` from whatwg/html at a pinned revision,
   `:heading` as h1 to h6; quirks mode's rules on top in quirks mode;
   print.css: an A4 page with 75px margins and headings as bookmarks, as
-  WeasyPrint has them), the user's, then the document's `<style>` and
+  WeasyPrint has them; `ua/*.css`, parsed when first asked;
+  `CssUserAgentTheme` has them compiled at build time, for a program
+  styled by compiled sheets alone with `CssCascade.themed`, which then
+  links no parser; `ua/app.css` is helder.ui's defaults for app trees, a
+  draft for the port: `ua/README.md`), the user's, then the document's `<style>` and
   `<link rel=stylesheet>` elements (their `media`, a `<base href>`), then
   `author`'s. A sheet's declarations are compiled once: validated against
   their grammars (invalid ones dropped), shorthands expanded to their

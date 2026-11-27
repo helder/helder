@@ -1,0 +1,101 @@
+/* helder.ui's defaults for app trees, as CSS: a draft for the port of
+   helder.ui onto helder.dom (engine plan, step 5), so that the port
+   changes no app's look. The elements are the markup vocabulary's
+   (src/helder/view/Vocabulary.hx); each rule says where its default lives
+   today. What CSS can't say yet is listed in README.md beside this file. */
+
+/* Style.hx's field defaults: every node a column flex box (Style.hx:36-41),
+   border-box sizes (Layout.hx:9-10), no margins or padding, nothing drawn;
+   every node a containing block for its absolute children (Position.hx:6)
+   and its min sizes automatic as a flex item's (Layout.hx:372-410). A border
+   width alone draws solid in transparent (Style.hx:166-169). */
+* {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid transparent;
+  border-radius: 0;
+  min-width: auto;
+  min-height: auto;
+  flex: 0 1 auto;
+  align-items: stretch;
+  justify-items: stretch;
+  gap: 0;
+  text-decoration-thickness: 0.1em;
+  scrollbar-width: auto;
+}
+
+/* The root's text and the window behind it (Style.hx:15-19: sans-serif
+   14px, weight 400, line height 1.25 as a multiple, black; overflowWrap
+   BreakWord, Node.hx:1007; the root's cursor Default, Cursor.hx; the
+   window's clear colour, UiWindow.hx:130; scrollbar thumb, Ui.hx:173) */
+:root {
+  font-family: sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #000;
+  overflow-wrap: break-word;
+  cursor: default;
+  background-color: #f4f4f5;
+  scrollbar-color: rgb(0 0 0 / 0.35) transparent;
+}
+
+/* Text: <text> and the HTML names built on it (Vocabulary.hx:22-50) are a
+   box whose text runs make one paragraph (TextNode.hx:84-104); inside one,
+   they are its inline runs. h1-h6, strong, em and code have no look of
+   their own beyond Look.base's slots (Base.hx:73-81), which is a theme. */
+text, p, h1, h2, h3, h4, h5, h6, label, legend, a, strong, em, code, span {
+  display: block;
+}
+:is(text, p, h1, h2, h3, h4, h5, h6, label, legend, a, strong, em, code, span)
+  :is(text, p, h1, h2, h3, h4, h5, h6, label, legend, a, strong, em, code, span) {
+  display: inline;
+  position: static;
+}
+
+/* <scroll>: scrolls (NodeRenderer.hx:117-120); its bars take no room, overlay (README.md) */
+scroll {
+  overflow: scroll;
+}
+
+/* <image> and <icon>: replaced, filled, centred (ImageNode.hx:16-23) */
+image, icon {
+  object-fit: fill;
+  object-position: 50% 50%;
+}
+
+/* <field> and <textarea>: clipped, a text cursor (EditableText.hx:258-263),
+   fixed sizing (Style.hx:201); a textarea 3 rows (TextArea.hx:15) */
+field, textarea {
+  overflow: hidden;
+  cursor: text;
+  field-sizing: fixed;
+}
+
+/* <glass>: a capsule (Glass.hx:20, 32-35); the material is ours (README.md) */
+glass {
+  border-radius: 10000px;
+}
+
+/* hidden: none (NodeRenderer.hx:491-494) */
+[hidden] {
+  display: none;
+}
+
+/* The window's focus ring, outlineStyle Auto (Ui.hx:169-172, 1363-1367),
+   text selection (Ui.hx:2046), placeholders (EditableText.hx:57-60) */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+::selection {
+  background-color: rgb(59 130 246 / 0.3);
+}
+::placeholder {
+  color: rgb(0 0 0 / 0.4);
+}
