@@ -1652,6 +1652,33 @@ viewer's main screen: `tests/ui/AtspiCheck.hx`). On macOS, Windows
 and Linux the tree is built only once a client first asks for it, so a
 program nobody reads pays nothing for it.
 
+## Fast nodes
+
+`helder.ui.fast` is the port's next layer: nodes that are the CSS
+engine's boxes made from code, with no element, selector or cascade
+behind them. A `Style` is an immutable value, interned (`Style.of`; equal
+styles are one object), with its state variants in it (`hover`,
+`pressed`, `focus`, `disabled`, `selected`, `checked`, and `group:` for
+the nearest ancestor marked `group`) and colours as `Theme` tokens. A
+node's style is resolved into the box tree's typed `BoxStyle` once for
+each state, parent text and theme it meets, so a thousand rows of one
+style in one state are one resolve. Only the text's values inherit.
+
+```haxe
+final row = Style.of({flexDirection: Row, columnGap: 8, padding: [4, 6], hover: {background: Theme.token("hover")}});
+final list = new Node(Style.of({rowGap: 2}));
+list.append(new TextNode("Buy milk"));
+final tree = new Tree(list, new Theme(["hover" => [0xFFF4F4F5, 0xFF27272A]]));
+```
+
+A `Tree` is the helder.ui node that hosts one: the engine's block, flex
+and inline layout, its paint order and reused display-list spans, hit
+testing, hover, press and wheel scrolling. A view is a column flex
+container, as `ua/app.css` has it; a text is a block of one paragraph.
+Grid and tables are not linked (a grid lays out as flex for now), and an
+app of fast nodes alone links no helder.dom and no cascade, matcher or CSS
+parser (the `fast-probe` lane checks its symbols).
+
 ## Hosts, canvases and documents
 
 A `Ui` is a tree's host: its size and scale (the display's pixels per UI

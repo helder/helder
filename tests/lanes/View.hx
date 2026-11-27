@@ -11,6 +11,7 @@ class View {
 		{name: "view", about: "helder.view on Eval, natively and as JavaScript", run: view},
 		{name: "view-stores", about: "helder.view's graph tests through stores (atoms)", run: viewStores},
 		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup", run: ui},
+		{name: "fast-probe", about: "fast nodes as an app has them (tests/ui/FastProbe.hx, -dce full with symbols): laid out, no helder.dom, cascade, matcher or CSS parser in its symbols; with a DocumentNode beside it (-D fast.island) they are: the check's control", run: fastProbe},
 		{name: "layout-conformance", about: "flexbox and grid against Taffy's fixtures", run: layoutConformance},
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
@@ -43,6 +44,32 @@ class View {
 		interp(cp, "UiCheck");
 		interp(cp, "MarkupCheck");
 		interp(cp.concat(cps([guideTestSource()])), "GuideCheck");
+	}
+
+	// (what a fast app must not link, and what it must: its layout and paint)
+	static final FAST_NONE = ["helder_dom_", "helder_css_CssStyles", "helder_css_CssResolver", "helder_css_CssMatcher", "helder_css_CssRuleIndex", "helder_css_CssBloom",
+		"helder_css_Tokenizer", "helder_css_Parser", "helder_css_SelectorParser", "helder_css_CssData", "helder_css_CssShorthands", "helder_css_CssComputed",
+		"helder_ui_flow_GridFlow", "helder_ui_flow_TableFlow"];
+	static final FAST_MUST = ["helder_ui_flow_BlockFlow", "helder_ui_flow_FlexFlow", "helder_ui_flow_InlineLayout", "helder_ui_box_BoxPainter", "helder_ui_fast_Tree"];
+
+	static function fastProbe() {
+		if (Sys.systemName() == "Windows") return;
+		for (island in [false, true]) {
+			var out = 'bin/ui/FastProbe${island ? "-island" : ""}';
+			exe(out, cps(["src", "tests/ui"]).concat(["-main", "FastProbe", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"])
+				.concat(island ? ["-D", "fast.island"] : []));
+			var got = StringTools.trim(output(exePath(out, HOST), ["layout"]));
+			var expected = "laid out 480x";
+			if (!got.startsWith(expected) || got.indexOf("3 rows 3 items left") < 0) throw new Failed('$out: "$got", expected "$expected... 3 rows 3 items left"');
+			var symbols = output("nm", [exePath(out, HOST)]).split("\n");
+			function linked(names:Array<String>)
+				return [for (p in names) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
+			var none = linked(FAST_NONE), must = linked(FAST_MUST);
+			if (must.length < FAST_MUST.length) throw new Failed('$out: without ${[for (m in FAST_MUST) if (!must.contains(m)) m].join(", ")}');
+			if (!island && none.length > 0) throw new Failed('$out links ${none.join(", ")}');
+			if (island && none.length < 8) throw new Failed('$out: the island links only ${none.join(", ")}: the check checks nothing');
+			Sys.println('$out: $got; ${Math.round(FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols; ${none.length == 0 ? "no DOM or cascade" : "links " + none.join(", ")}');
+		}
 	}
 
 	static function guideTestSource():String {

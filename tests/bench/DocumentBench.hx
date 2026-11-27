@@ -126,10 +126,14 @@ class DocumentBench {
 	}
 
 	static function engine(doc:Null<DocumentNode>):Array<Float>
-		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : [0, 0, 0];
+		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : fastTree != null ? [0,
+			fastTree.layoutMs, fastTree.paintMs] : [0, 0, 0];
 
 	static function spansOf(doc:Null<DocumentNode>):helder.ui.box.PaintSpans
-		return doc != null ? @:privateAccess doc.view.spans : boxNode != null ? @:privateAccess boxNode.spans : new helder.ui.box.PaintSpans();
+		return doc != null ? @:privateAccess doc.view.spans : boxNode != null ? @:privateAccess boxNode.spans : fastTree != null ? @:privateAccess fastTree.spans : new helder.ui.box.PaintSpans();
+
+	// (the fast variant's tree, its engine work)
+	static var fastTree:Null<helder.ui.fast.Tree> = null;
 
 	// (the box variant's node, its engine work: BoxScreen's)
 	static var boxNode:Null<BoxScreen.BoxNode> = null;
@@ -392,6 +396,7 @@ class DocumentBench {
 		addRows("add 1,000 rows", mountDoc, x -> appendRows(x.keep, byTag(x.keep, "list"), rowsAdded));
 		Sys.println(haxe.Json.stringify({screen: screen, mirror: m.nodes, hovers: m.hovers}));
 		boxes(w, h, m, rowsAdded, field);
+		fast(w, h, m, rowsAdded, field);
 		snapshots(w, h, mount, mountDoc);
 	}
 
@@ -480,6 +485,59 @@ class DocumentBench {
 		step(s.ui, null);
 		sys.io.File.saveBytes('bin/document-bench/$screen-boxes.png', crop(w, h));
 		boxNode = null;
+	}
+
+	// ---- the fast variant: fast nodes (helder.ui.fast), each styled by a Style typed from helder.ui's look (FastMirror): no DOM, no cascade
+
+	static function fast(w:Int, h:Int, m:Mirror, rowsAdded:Array<MirrorNode>, field:String) {
+		variant = "fast";
+		function build(n:MirrorNode, tags:Map<String, helder.ui.fast.Node>):helder.ui.fast.Node {
+			// (its style made with the mirror: an app's are constants, made once)
+			var style = n.style ?? helder.ui.fast.Style.none;
+			var made:helder.ui.fast.Node = n.text != null ? new helder.ui.fast.TextNode(n.text, style) : new helder.ui.fast.Node(style);
+			if (n.text == null) for (c in n.children) made.append(build(c, tags));
+			if (!tags.exists(n.tag)) tags.set(n.tag, made);
+			return made;
+		}
+		function mountFast():{ui:Ui, doc:Null<DocumentNode>, keep:Map<String, helder.ui.fast.Node>} {
+			var ui = new Ui(new DrawText(), w, h);
+			var tags = new Map();
+			var tree = new helder.ui.fast.Tree(build(m.root, tags));
+			tree.style.flexGrow = 1;
+			ui.root.append(tree);
+			fastTree = tree;
+			return {ui: ui, doc: null, keep: tags};
+		}
+		var made = first("first frame (20 rows)", mountFast);
+		var ui = made.ui, tags = made.keep, tree = fastTree;
+		var list = tags.get("list");
+		function addTo(list:helder.ui.fast.Node) {
+			var t = new Map();
+			for (r in rowsAdded) list.append(build(r, t));
+		}
+		addTo(list);
+		step(ui, null);
+		var box = tree.rectOf(list);
+		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
+		var rows = list.children().slice(0, 12);
+		run("hover over rows", ui, null, 120, i -> {
+			var r = tree.rectOf(rows[i % rows.length]);
+			ui.pointerMove(r[0] + 20, r[1] + r[3] / 2);
+		});
+		var text = new helder.ui.fast.TextNode(" ");
+		tags.get(field).append(text);
+		step(ui, null);
+		run("type into a field", ui, null, Std.parseInt(Sys.getEnv("TYPES") ?? "60"), i -> text.text = (text.text.length > 40 ? " " : text.text) + String.fromCharCode(97 + i % 26));
+		run("resize the window", ui, null, Std.parseInt(Sys.getEnv("RESIZES") ?? "40"), i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
+		run("drag-resize (a new width each frame)", ui, null, Std.parseInt(Sys.getEnv("DRAGS") ?? "40"), i -> ui.resize(w - 1 - i % 200, h));
+		ui.resize(w, h);
+		step(ui, null);
+		addRows("add 1,000 rows", mountFast, x -> addTo(x.keep.get("list")));
+		sys.FileSystem.createDirectory("bin/document-bench");
+		var s = mountFast();
+		step(s.ui, null);
+		sys.io.File.saveBytes('bin/document-bench/$screen-fast.png', crop(w, h));
+		fastTree = null;
 	}
 
 	// (each document's elements' computed styles by tag, class and the parent's style ("|h": hovered, where a
@@ -679,7 +737,7 @@ class DocumentBench {
 	static function mirror(ui:Ui):Mirror {
 		var rules = new Map<String, String>(), count = 0, hovers = 0;
 		// (each kind of node's look hovered, probed once: its slot, variant, size and state)
-		var kinds = new Map<String, Null<String>>();
+		var kinds = new Map<String, Null<String>>(), fastKinds = new Map<String, Null<helder.ui.fast.Style.StyleProps>>();
 		function node(n:Node):MirrorNode {
 			count++;
 			var tag = n.tag == "textfield" ? "field" : n.tag == null || n.tag == "" ? "view" : n.tag;
@@ -710,7 +768,14 @@ class DocumentBench {
 			}
 			if (classes.length > 0) attrs.push(["class", classes.join(" ")]);
 			var text = Std.isOfType(n, TextNode) ? (cast n : TextNode).text : null;
-			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)]};
+			// (the fast variant's: its look as a fast style, hovered as a variant)
+			var hover = null;
+			if (n.slot != null) {
+				var kind = '${n.slot}-${n.variant}-${n.size}-${n.attr("data-state")}';
+				if (!fastKinds.exists(kind)) fastKinds.set(kind, FastMirror.hovered(ui, n));
+				hover = fastKinds.get(kind);
+			}
+			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)], style: helder.ui.fast.Style.of(FastMirror.props(n, hover))};
 		}
 		var root:MirrorNode = {tag: "root", attrs: [], text: null, children: [for (c in ui.root.children) node(c)]};
 		return {root: root, rules: rules, nodes: count, hovers: hovers};
@@ -935,5 +1000,5 @@ class DocumentBench {
 }
 
 // (a helder.ui tree as the elements to make: tag, attributes, text, children)
-private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>};
+private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>, ?style:helder.ui.fast.Style};
 private typedef Mirror = {root:MirrorNode, rules:Map<String, String>, nodes:Int, hovers:Int};

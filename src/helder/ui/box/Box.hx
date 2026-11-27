@@ -344,13 +344,43 @@ class Box {
 	inline function set_through(v:Bool):Bool
 		return state == null && !v ? v : laid().through = v;
 
-	@:allow(helder.ui.box) function restyle(s:BoxStyle)
+	@:allow(helder.ui.box, helder.ui.fast) function restyle(s:BoxStyle)
 		style = s;
 
 	public function append(child:Box) {
 		child.parent = this;
 		if (last == null) first = child else last.next = child;
 		last = child;
+	}
+
+	// child before another of its children (null: last)
+	public function insert(child:Box, before:Null<Box>) {
+		if (before == null) {
+			append(child);
+			return;
+		}
+		child.parent = this;
+		child.next = before;
+		if (first == before) first = child else {
+			var k = first;
+			while (k.next != before) k = k.next;
+			k.next = child;
+		}
+	}
+
+	// it out of its parent
+	public function remove() {
+		var p = parent;
+		if (p == null) return;
+		var prev:Null<Box> = null, k = p.first;
+		while (k != this) {
+			prev = k;
+			k = k.next;
+		}
+		if (prev == null) p.first = next else prev.next = next;
+		if (p.last == this) p.last = prev;
+		parent = null;
+		next = null;
 	}
 
 	public var anonymous(get, never):Bool;
