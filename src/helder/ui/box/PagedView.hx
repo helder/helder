@@ -23,6 +23,8 @@ import helder.ui.flow.Breaks;
 import helder.ui.flow.Contexts;
 import helder.ui.flow.Space;
 
+using StringTools;
+
 typedef PagedViewOptions = {
 	// the document's URL: what links, images and fonts resolve against
 	?url:String,
@@ -51,6 +53,8 @@ typedef PagedViewOptions = {
 // none).
 typedef Page = {
 	index:Int,
+	// its page type's name (the page property; null: none)
+	name:Null<String>,
 	width:Float,
 	height:Float,
 	bleed:Float,
@@ -136,11 +140,13 @@ class PagedView {
 		do {
 			// (the first page a right one left to right, a left one right to left)
 			var left = (i % 2 == 1) != rtl;
+			// (its name: the page property of what it starts with, a blank page's the next one's)
+			var name = token != null ? token.name : root != null ? Breaks.first(root) : null;
 			if (token != null && token.side != null && (token.side == "left") != left) {
-				pages.push(pageOf(i++, left, true));
+				pages.push(pageOf(i++, left, true, name));
 				continue;
 			}
-			var page = pageOf(i++, left, false);
+			var page = pageOf(i++, left, false, name);
 			if (root != null) {
 				var w = page.area[2], h = page.area[3];
 				var breaks = new Breaks(h, token);
@@ -243,7 +249,7 @@ class PagedView {
 	// (a margin box with content, null without: its text, counter(page) and counter(pages), string() and
 	// element() as the page has them, images; text beside a running element's blocks in blocks of its own)
 	function marginBox(page:Page, name:String, strings:CssRunning<String>, running:CssRunning<Box>, number:Int):Null<Box> {
-		var css = styles.marginBoxStyle(page.index, null, page.left, page.blank, name);
+		var css = styles.marginBoxStyle(page.index, page.name, page.left, page.blank, name);
 		var items = css == null ? null : CssItems.content(css.terms(Content));
 		if (items == null) return null;
 		var s = new BoxStyle(css);
@@ -299,14 +305,15 @@ class PagedView {
 	}
 
 	// (a page's style, size, margins and page area: auto margins none, percentages of the page's width and height)
-	function pageOf(index:Int, left:Bool, blank:Bool):Page {
-		var style = styles.pageStyle(index, null, left, blank);
+	function pageOf(index:Int, left:Bool, blank:Bool, ?name:String):Page {
+		var style = styles.pageStyle(index, name, left, blank);
 		var m = new BoxStyle(style.style).model();
 		var margins = [for (k in 0...4) BlockFlow.auto(m.margin[k], k % 2 == 0 ? style.height : style.width)];
 		margins = [for (v in margins) Math.isNaN(v) ? 0.0 : v];
 		var inset = [for (k in 0...4) margins[k] + m.border[k] + BlockFlow.res(m.padding[k], k % 2 == 0 ? style.height : style.width)];
 		return {
 			index: index,
+			name: name,
 			width: style.width,
 			height: style.height,
 			bleed: style.bleed,
@@ -379,14 +386,61 @@ class PagedView {
 		// (page labels: the page counter, a range each time it doesn't go on by one)
 		var last = -1;
 		for (page in pages) {
-			if (page.number != last + 1) doc.label(page.index, "D", "", page.number);
+			if (page.number != last + 1) doc.label(page.index, "decimal", "", page.number);
 			last = page.number;
 		}
 		for (i in 0...pages.length) {
 			var page = pages[i];
 			paint(i, doc.newPage(Math.round(page.width + 2 * page.bleed), Math.round(page.height + 2 * page.bleed)), false);
 		}
+		outline(doc);
 		return PdfWriter.write(doc);
+	}
+
+	// (the PDF's outline from the bookmarks, its links from <a href> (to a URI, or to an element's id, an
+	// anchor there): at their elements' first boxes, in page units)
+	function outline(doc:PdfDocument) {
+		var first = new haxe.ds.ObjectMap<helder.dom.Element, {page:Int, x:Float, y:Float}>();
+		var links:Array<{el:helder.dom.Element, page:Int, x:Float, y:Float, w:Float, h:Float}> = [];
+		for (page in pages) {
+			if (page.root < 0) continue;
+			var ox = page.bleed + page.area[0], oy = page.bleed + page.area[1];
+			function walk(k:Int) {
+				var kind = fragments.kind(k), node = fragments.box(k).node;
+				if ((kind == Fragments.BOX || kind == Fragments.SPAN) && node != null && node.nodeType == helder.dom.Node.ELEMENT_NODE) {
+					var el:helder.dom.Element = cast node;
+					var at = fragments.absolute(k);
+					if (!first.exists(el)) first.set(el, {page: page.index, x: ox + at.x, y: oy + at.y});
+					if (el.localName == "a" && el.hasAttribute("href"))
+						links.push({el: el, page: page.index, x: ox + at.x, y: oy + at.y, w: fragments.width(k), h: fragments.height(k)});
+				}
+				var c = fragments.first(k);
+				while (c >= 0) {
+					walk(c);
+					c = fragments.next(c);
+				}
+			}
+			walk(page.root);
+		}
+		for (b in tree.bookmarks) {
+			var at = first.get(b.element);
+			if (at != null) doc.bookmark(b.bookmark.label, b.bookmark.level, at.page, at.y);
+		}
+		var targets = new Map<String, Bool>();
+		for (l in links) {
+			var href = l.el.getAttribute("href");
+			if (href.startsWith("#")) {
+				var name = StringTools.urlDecode(href.substr(1));
+				doc.linkTo(l.page, l.x, l.y, l.w, l.h, name);
+				targets.set(name, true);
+			} else
+				doc.link(l.page, l.x, l.y, l.w, l.h, CssUrl.resolve(options.url, href));
+		}
+		for (name in targets.keys()) {
+			var el = document.getElementById(name);
+			var at = el == null ? null : first.get(el);
+			if (at != null) doc.anchor(name, at.page, at.x, at.y);
+		}
 	}
 
 	function image(url:String):Null<Bitmap> {

@@ -44,6 +44,8 @@ class BoxTree {
 	public final running:Array<{name:String, box:Box, holder:Null<Box>}> = [];
 	// paged: each element's string-set values, evaluated where the walk meets it
 	public final strings = new haxe.ds.ObjectMap<Element, Array<{name:String, value:String}>>();
+	// paged: the elements with bookmarks (bookmark-level, -label, -state), in document order
+	public final bookmarks:Array<{element:Element, bookmark:helder.css.CssCounters.CssBookmark}> = [];
 	// each cross-reference's text box (target-counter(), target-counters(), target-text()), resolveTargets' to fill
 	public final targets:Array<{box:Box, target:helder.css.CssCounters.CssTarget}> = [];
 	final paged:Bool;
@@ -106,6 +108,8 @@ class BoxTree {
 		if (paged) {
 			var set = counters.strings(el);
 			if (set.length > 0) strings.set(el, set);
+			var mark = counters.bookmark(el);
+			if (mark != null) bookmarks.push({element: el, bookmark: mark});
 		}
 		// (a running element: its boxes kept apart for the margin boxes, a holder where it was when block-level)
 		var name = paged ? s.css.running() : null;

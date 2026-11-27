@@ -12,9 +12,12 @@ class BreakToken {
 	public final resumes:ObjectMap<Box, Resume>;
 	// a forced break's page side ("left", "right": the next page is that side, a blank one between if not)
 	public final side:Null<String>;
+	// the next page's name (the page property of what it starts with; null: none)
+	public final name:Null<String>;
 
-	public function new(resumes:ObjectMap<Box, Resume>, side:Null<String>) {
+	public function new(resumes:ObjectMap<Box, Resume>, side:Null<String>, name:Null<String>) {
 		this.resumes = resumes;
 		this.side = side;
+		this.name = name;
 	}
 }

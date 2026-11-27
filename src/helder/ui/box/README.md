@@ -189,10 +189,24 @@ File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
   a caption above on the first page, below on the last; not between rows
   a cell spans; a row group's or the table's break-inside: avoid ranks
   those breaks lower, a row's break-before and -after count.
-- Not yet: named pages (`page`) and pages of other sizes in one document;
-  a table row taller than a page broken inside its cells; floats, absolutely positioned and fixed boxes split or repeated across
-  pages; monolithic content taller than a page pushing what follows;
-  `box-decoration-break: clone`; bookmarks and links in the PDF.
+- Named pages (Paged Media 3 §5.1): a box's used page name its `page`,
+  auto its parent's; siblings of different names a forced break between
+  (through block containers only: a flex, grid or table container's items
+  don't give it theirs); each page its name's @page style and size (a
+  blank page the next one's), so pages may differ in size.
+- `box-decoration-break: clone`: each fragment its border and padding
+  whole, room for the bottom ones kept below its content on each page
+  (`Space.reserve`).
+- The PDF: an outline from `bookmark-level` and `bookmark-label`
+  (helder.css's CssCounters.bookmark, HTML's headings by default), links
+  from `<a href>` (a URI resolved against the document's, or `#id`: to an
+  anchor at that element), each at its element's first box.
+- Not yet: a table row taller than a page broken inside its cells;
+  floats and absolutely positioned boxes split across pages (they go
+  where they start; the inline lane's resume entry point, #370, for floats
+  beside lines across a break), fixed boxes repeated on every page; flex
+  and grid lines and rows across pages; monolithic content taller than a
+  page pushing what follows.
 
 ## Fonts
 

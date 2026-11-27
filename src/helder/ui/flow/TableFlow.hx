@@ -566,7 +566,7 @@ class TableFlow implements FormattingContext {
 				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
 			} else if (k == t) break;
 			for (r in 0...hEnd) y += rowH[r] + g.spacingV;
-			var footerH = edges[2];
+			var footerH = edges[2] + space.reserve;
 			for (r in fStart...rows) footerH += rowH[r] + g.spacingV;
 			var end = fStart, prev = y;
 			for (r in r0...fStart) {

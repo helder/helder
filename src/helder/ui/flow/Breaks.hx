@@ -2,6 +2,7 @@ package helder.ui.flow;
 
 import haxe.ds.ObjectMap;
 import helder.ui.box.Box;
+import helder.ui.box.BoxStyle;
 import helder.ui.flow.Fragmentation.Resume;
 
 // A fragmentainer's breaks (CSS Fragmentation 3 §4), as LayoutNG chooses
@@ -47,6 +48,8 @@ class Breaks implements Fragmentation {
 		if (before == null) return leading({box: box, child: after, line: -1, bottom: bottom, appeal: LAST, forced: null, keep: true});
 		var a = ending(before), b = starting(after);
 		var forced = Breaks.forced(a) ? a : Breaks.forced(b) ? b : null;
+		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between)
+		if (forced == null && ending(before, true) != starting(after, true)) forced = "page";
 		var appeal = a == "avoid" || a == "avoid-page" || b == "avoid" || b == "avoid-page" ? AVOID : PERFECT;
 		return offer({box: box, child: after, line: -1, bottom: bottom, appeal: inside(box, appeal), forced: forced, keep: false});
 	}
@@ -123,7 +126,7 @@ class Breaks implements Fragmentation {
 			b = b.parent;
 		}
 		var side = p.forced == "left" || p.forced == "verso" ? "left" : p.forced == "right" || p.forced == "recto" ? "right" : null;
-		return new BreakToken(resumes, side);
+		return new BreakToken(resumes, side, p.child != null ? first(p.child) : named(p.box));
 	}
 
 	// (the block size a box's content took up to the break, in this fragmentainer and the ones before)
@@ -150,8 +153,41 @@ class Breaks implements Fragmentation {
 
 	static inline var NESTING = 16;
 
-	// (break-after of a box, else of its last in-flow child, inward: a forced one wins, then avoid; break-before the same from its first)
-	static function ending(b:Box):String {
+	// A box's used page name (its page property, auto its parent's; null: none).
+	public static function named(b:Null<Box>):Null<String> {
+		while (b != null) {
+			var v = b.style.keyword("page");
+			if (v != "" && v != "auto") return v;
+			b = b.parent;
+		}
+		return null;
+	}
+
+	// The page name a box starts with: its first in-flow block descendant's, inward through block containers
+	// (a flex, grid or table container's items don't give it theirs).
+	public static function first(b:Box):Null<String> {
+		if (!container(b)) return named(b);
+		var c = b.first;
+		while (c != null && (c.floating || c.absolute || !c.blockLevel)) c = c.next;
+		return c == null ? named(b) : first(c);
+	}
+
+	static function last(b:Box):Null<String> {
+		if (!container(b)) return named(b);
+		var c = b.last;
+		while (c != null && (c.floating || c.absolute || !c.blockLevel)) c = previous(c);
+		return c == null ? named(b) : last(c);
+	}
+
+	static inline function container(b:Box):Bool {
+		var inner = b.style.inner;
+		return b.kind != TableWrapper && inner != BoxStyle.FLEX && inner != BoxStyle.GRID && inner != BoxStyle.TABLE;
+	}
+
+	// (break-after of a box, else of its last in-flow child, inward: a forced one wins, then avoid; break-before the same from its first;
+	// pages: the page names there instead)
+	static function ending(b:Box, ?pages:Bool):String {
+		if (pages) return last(b) ?? "";
 		var v = value(b, "after");
 		if (forced(v)) return v;
 		var c = b.last;
@@ -161,7 +197,8 @@ class Breaks implements Fragmentation {
 		return forced(inner) || v == "auto" ? inner : v;
 	}
 
-	static function starting(b:Box):String {
+	static function starting(b:Box, ?pages:Bool):String {
+		if (pages) return first(b) ?? "";
 		var v = value(b, "before");
 		if (forced(v)) return v;
 		var c = b.first;

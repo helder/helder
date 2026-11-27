@@ -57,11 +57,16 @@ class BlockFlow implements FormattingContext {
 		// (in a fragmentainer, resumed: its start's border, padding and margin were in the one before, box-decoration-break: slice)
 		var fr = space.fragmentation;
 		var resume = fr != null ? fr.resume(box) : null;
+		// (box-decoration-break: clone, each fragment its border and padding whole; its bottom ones kept room for in each)
+		var clone = fr != null && box.style.keyword("box-decoration-break") == "clone";
 		if (resume != null) {
-			bt = 0;
-			pt = 0;
+			if (!clone) {
+				bt = 0;
+				pt = 0;
+			}
 			mt = 0;
 		}
+		var reserve = fr == null ? 0.0 : space.reserve + (clone ? bb + pb : 0);
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var w = width(box, s, space, bpx);
 		var root = formattingRoot(box);
@@ -120,6 +125,7 @@ class BlockFlow implements FormattingContext {
 			var ls = childSpace(w);
 			ls.fragmentation = fr;
 			ls.pageTop = space.pageTop + bt + pt;
+			ls.reserve = reserve;
 			ls.lineWidth = (ly, lh) -> {
 				if (ex.empty) return null;
 				var b = ex.band(by + ly, lh, cx, cx + w);
@@ -171,7 +177,8 @@ class BlockFlow implements FormattingContext {
 					continue;
 				}
 				// (class A: between it and the in-flow sibling before it)
-				if (fr != null && fr.between(box, prev, c, space.pageTop + bt + pt + (prev == null && !atTop && !truncate && fr.resume(c) == null ? y + Math.max(pos, predict(c, w).pos) : y))) {
+				if (fr != null && fr.between(box, prev, c, reserve + space.pageTop + bt + pt + (prev == null && !atTop && !truncate && fr.resume(c) == null ? y
+					+ Math.max(pos, predict(c, w).pos) : y))) {
 					broken = true;
 					break;
 				}
@@ -221,6 +228,7 @@ class BlockFlow implements FormattingContext {
 				if (fr != null) {
 					space2.fragmentation = fr;
 					space2.pageTop = space.pageTop + bt + pt + py;
+					space2.reserve = reserve;
 				}
 				var cf = child(c, space2);
 				if (truncate) {
@@ -269,12 +277,14 @@ class BlockFlow implements FormattingContext {
 		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
 		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
 		if (broken) {
-			bb = 0;
-			pb = 0;
+			if (!clone) {
+				bb = 0;
+				pb = 0;
+			}
 			mb = 0;
 			bpy = pt + pb + bt + bb;
 			bottomCollapses = false;
-			y = Math.max(y, fr.size - space.pageTop - bt - pt);
+			y = Math.max(y, fr.size - space.pageTop - bt - pt - (clone ? bb + pb : 0));
 			if (!autoHeight) heightSpec = y;
 		}
 		var content = 0.0;
@@ -302,7 +312,7 @@ class BlockFlow implements FormattingContext {
 		box.bottomPositive = bottomPos;
 		box.bottomNegative = bottomNeg;
 		frags.resize(frag, w + bpx, h + bpy);
-		if (resume != null || broken) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
+		if (!clone && (resume != null || broken)) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
 		// (a scroll container's too: its last line's, as CSS Align 3 and browsers have it now, not CSS 2.1's bottom edge)
 		if (!Math.isNaN(baseline)) frags.setBaseline(frag, bt + pt + baseline);
 		// (the absolutely positioned boxes this is the containing block of: its padding box, the root's
