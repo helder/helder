@@ -507,8 +507,30 @@ CssValues.compute("width", CssValues.parse("width", "2em"), {fontSize: 20}); // 
   with lab()'s L clamped to its range, lch()'s C to at least 0 and a hue
   in [0, 360); a math function as calc() of its value there, and one to
   resolve when computed (sign(1em - 10px)) kept, the colour then in the
-  modern syntax. color-mix(), relative colours, light-dark() and the rest
-  of Color 5 match their grammar only.
+  modern syntax.
+  - Color 5's relative colours (`rgb(from <color> r g b / alpha)`, and
+    the same for hsl(), hwb(), lab(), lch(), oklab(), oklch() and
+    color()): each channel keyword is a number in math functions
+    (`CssCalc`'s `Word`, bound when resolved).
+  - Specified value: as written (rgba() as rgb(), the origin as its own
+    specified value, a math function canonical).
+  - Computed value: resolved against the origin converted into the
+    colour's space (`CssColorSpace`: every space to and from XYZ, Color
+    4's sample code).
+    - A missing component is carried to its analogous one (§12.4), and
+      also a pair (Lab's a and b as a polar space's chroma and hue; one
+      polar space's two non-hue components as another's).
+    - A powerless hue is missing, its colour achromatic.
+  - Serialization: rgb(), hsl() and hwb() as color(srgb) (hsl() and hwb()
+    with a component missing in their own), the others in their
+    function.
+  - Of currentcolor: kept as written until used, where the element's
+    colour resolves it (`CssRgba.resolve`), and in `color` itself the
+    inherited colour.
+  - color-mix(), light-dark(), alpha() and the rest of Color 5 match
+    their grammar only.
+- `CssColorSpace`: a colour's components from one space to another.
+  rec2020 is Color 4's current gamma of 2.4.
 - `CssCanonical`: the shortest of equivalent forms where the property's
   spec says: sides as few as say the same (`{1,4}`, `a b?`), Display 3's
   short displays, `first baseline` as `baseline`, a counter's default

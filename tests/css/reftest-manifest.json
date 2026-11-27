@@ -8556,7 +8556,7 @@
 		"css/css-fonts/font-palette-mix.html": {},
 		"css/css-fonts/font-palette-non-ident-font-family.html": {},
 		"css/css-fonts/font-palette-relative-color-crash.html": {},
-		"css/css-fonts/font-palette-values-relative-colors.html": {"pending":"generated: 2401 pixels differ (by up to 255)"},
+		"css/css-fonts/font-palette-values-relative-colors.html": {},
 		"css/css-fonts/font-palette.html": {},
 		"css/css-fonts/font-size-adjust-001.html": {"pending":"positioning: 4250 pixels differ (by up to 255)"},
 		"css/css-fonts/font-size-adjust-002.html": {"pending":"positioning: 15000 pixels differ (by up to 255)"},

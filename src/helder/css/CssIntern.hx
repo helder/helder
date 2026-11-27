@@ -48,9 +48,15 @@ class CssIntern {
 			case Color(c):
 				b.add('c${c.space}${c.c.join(",")}/${c.alpha}${c.keyword ?? ""}');
 				for (p in c.parts ?? []) {
-					b.add('(${p.v} ${p.kind}');
+					b.add('(${p.v} ${p.kind}${p.word ?? ""}');
 					if (p.expr != null) node(b, p.expr);
 					b.add(")");
+				}
+				// (a relative colour's origin)
+				if (c.from != null) {
+					b.add("<");
+					term(b, Color(c.from));
+					b.add(">");
 				}
 			case Calc(n, type, range):
 				b.add('C$type${range == null ? "" : '${range.min},${range.max}${range.unit}'}');

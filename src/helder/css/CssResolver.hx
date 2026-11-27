@@ -1,6 +1,7 @@
 package helder.css;
 
 import haxe.ds.IntMap;
+import helder.css.CssColors;
 import helder.css.CssComputed;
 import helder.css.CssProperty;
 import helder.css.CssSheet;
@@ -262,11 +263,18 @@ class CssResolver {
 				return [Number(k == "bolder" ? bolder(w) : lighter(w), false)];
 			case _:
 		}
-		// (currentcolor in color itself is the inherited colour, Color 4 §3.3)
+		// (currentcolor in color itself is the inherited colour, Color 4 §3.3; a relative colour's too)
 		if (p == Color && Lambda.exists(t, x -> switch x {
 			case Color(c): c.keyword == "currentcolor";
 			case _: false;
 		})) return inherit(p);
+		if (p == Color && t.length == 1) switch t[0] {
+			case Color(c) if (c.from != null && CssColors.absolute(c) == null):
+				var pc = parent?.color(Color);
+				var inherited:CssColorValue = pc == null || pc.keyword != null ? {space: "rgb", c: [0, 0, 0], alpha: 1} : {space: "srgb", c: [pc.r, pc.g, pc.b], alpha: pc.a};
+				t = [Color(CssColors.current(c, inherited))];
+			case _:
+		}
 		var name = CssProperties.name(p);
 		return CssComputed.terms(name, CssCanonical.terms(name, t), context(p));
 	}

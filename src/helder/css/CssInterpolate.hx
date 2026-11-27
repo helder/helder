@@ -181,6 +181,7 @@ class CssInterpolate {
 
 	// (a system colour as a light page's: CssColors.system)
 	static function system(c:CssColorValue):CssColorValue {
+		if (c.from != null) return CssColors.absolute(c) ?? c;
 		if (c.c.length >= 3 || c.keyword == null) return c;
 		var s = CssColors.system(c.keyword);
 		return s == null ? c : {space: "rgb", c: s.slice(0, 3), alpha: c.alpha * s[3]};

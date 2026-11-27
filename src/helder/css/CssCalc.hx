@@ -44,12 +44,37 @@ class CssCalc {
 		return FUNCTIONS.contains(Css.lower(name));
 
 	// A math function's tree, null when it is not one (a syntax error).
-	public static function parse(v:CssValue):Null<CssCalcNode> {
-		return switch v {
-			case Function(name, values, _, _) if (isMath(name)): try function_(Css.lower(name), values) catch (e:Bad) null;
-			case _: null;
+	// channels: the identifiers that are numbers to come (a relative colour's
+	// r, g, b, alpha...), each a Word in the tree until bound.
+	public static function parse(v:CssValue, ?channels:Array<String>):Null<CssCalcNode> {
+		var outer = words;
+		words = channels;
+		try {
+			var n = switch v {
+				case Function(name, values, _, _) if (isMath(name)): try function_(Css.lower(name), values) catch (e:Bad) null;
+				case _: null;
+			}
+			words = outer;
+			return n;
+		} catch (e:haxe.Exception) {
+			words = outer;
+			throw e;
 		}
 	}
+
+	static var words:Null<Array<String>> = null;
+
+	// The tree with its channels' Words as the numbers given.
+	public static function bind(n:CssCalcNode, values:Map<String, Float>):CssCalcNode
+		return switch n {
+			case Word(w) if (values.exists(w)): Value(values[w], "");
+			case Value(_, _) | Word(_): n;
+			case Sum(xs): Sum([for (x in xs) bind(x, values)]);
+			case Product(xs): Product([for (x in xs) bind(x, values)]);
+			case Negate(x): Negate(bind(x, values));
+			case Invert(x): Invert(bind(x, values));
+			case Fn(name, args): Fn(name, [for (a in args) bind(a, values)]);
+		}
 
 	static function function_(name:String, values:Array<CssValue>):CssCalcNode {
 		if (name == "calc") return sum(new Reader(values), true);
@@ -74,11 +99,11 @@ class CssCalc {
 			if (r.done()) break;
 			if (!r.comma()) throw new Bad();
 		}
-		var n = args.length, words = args.filter(a -> a.match(Word(_))).length;
+		var n = args.length, words = args.filter(keyword).length;
 		var ok = switch name {
 			case "min" | "max" | "hypot": n >= 1;
 			case "clamp": n == 3;
-			case "round": n - (args[0].match(Word(_)) ? 1 : 0) >= 1 && n - (args[0].match(Word(_)) ? 1 : 0) <= 2;
+			case "round": n - (keyword(args[0]) ? 1 : 0) >= 1 && n - (keyword(args[0]) ? 1 : 0) <= 2;
 			case "mod" | "rem" | "atan2" | "pow": n == 2;
 			case "log": n == 1 || n == 2;
 			case _: n == 1;
@@ -143,6 +168,7 @@ class CssCalc {
 							case "infinity": Value(Math.POSITIVE_INFINITY, "");
 							case "-infinity": Value(Math.NEGATIVE_INFINITY, "");
 							case "nan": Value(Math.NaN, "");
+							case w if (words != null && words.contains(w)): Word(w);
 							case _: throw new Bad();
 						}
 					case _: throw new Bad();
@@ -196,7 +222,7 @@ class CssCalc {
 				}
 				t;
 			case Fn(name, args):
-				var ts = [for (a in args) if (!a.match(Word(_))) type(a, pct)];
+				var ts = [for (a in args) if (!keyword(a)) type(a, pct)];
 				if (ts.contains(null)) return null;
 				switch name {
 					// (round() without a step: of a number only)
@@ -399,7 +425,9 @@ class CssCalc {
 			case Word("none"):
 				clampNone.push(vals.length);
 				vals.push(Math.NaN);
-			case Word(w): strategy = w;
+			case Word(w) if (STRATEGIES.contains(w)): strategy = w;
+			// (a channel not bound yet)
+			case Word(_): return null;
 			case Value(v, u):
 				if (unit == null || unit == "" && name == "pow") unit = u;
 				// (args of several units: mixed only for the trigonometric ones' numbers and angles)
@@ -469,6 +497,15 @@ class CssCalc {
 			case _: null;
 		}
 	}
+
+	static final STRATEGIES = ["nearest", "up", "down", "to-zero", "line-width"];
+
+	// (round()'s strategy or clamp()'s none, not a channel)
+	static function keyword(n:CssCalcNode):Bool
+		return switch n {
+			case Word(w): w == "none" || STRATEGIES.contains(w);
+			case _: false;
+		}
 
 	// §10.10's order of a sum's terms: numbers, percentages, dimensions by unit, then the rest
 	static function sort(xs:Array<CssCalcNode>):Array<CssCalcNode> {

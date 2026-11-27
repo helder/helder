@@ -180,6 +180,13 @@ function tests() {
 			// (direction from var(), then the mapping)
 			equals(text(s, "c", "margin-left"), "5px");
 		});
+		test("relative colours of currentcolor: resolved when used, in color itself the inherited colour", () -> {
+			var s = styles('<div id=d style="color: rgb(255, 0, 0)"><p id=p>a</p></div>', "p { color: rgb(from currentcolor calc(r / 2) g b); background-color: rgb(from currentcolor r g b / 0.5) }");
+			var p = s.computed(s.document.getElementById("p"));
+			equals(text(s, "p", "color"), "color(srgb 0.5 0 0)");
+			equals(p.color(Color).r, 0.5);
+			equals([p.color(BackgroundColor).r, p.color(BackgroundColor).a], [0.5, 0.5]);
+		});
 		test("typed values", () -> {
 			var s = styles('<div id=d style="color: rgb(255, 0, 0); font: bold 20px/1.5 Georgia, serif"><p id=p>a</p><span id=s>b</span></div>',
 				"p { position: absolute; width: 50%; margin-top: 2em; border-top: 3px solid; opacity: 0.5; z-index: 2; background: url(a.png) no-repeat, linear-gradient(red, blue); counter-reset: x 3 y; display: flex } p::before { content: 'a' counter(x, roman) attr(id) open-quote }");

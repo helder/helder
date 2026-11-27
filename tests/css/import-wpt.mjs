@@ -100,10 +100,11 @@ for (const file of walk(path.join(root, 'css'))) {
       case 'test_invalid_value': add(key, 'invalid', [...custom, a[1], f]); break
       case 'test_computed_value': add(key, 'computed', [...custom, a[1], expected, f]); break
       case 'test_shorthand_value': add(key, 'shorthand', [a[1], a[2], f]); break
+      // (color-testcommon.js's epsilon when the test gives none: 0.01)
       case 'fuzzy_test_valid_color': case 'fuzzy_test_valid_color_property':
-        add(key, 'valid', [...custom, a[1], expected, f, ...a[3] != null ? [a[3]] : []]); break
+        add(key, 'valid', [...custom, a[1], expected, f, a[3] ?? 0.01]); break
       case 'fuzzy_test_computed_color': case 'fuzzy_test_computed_color_property':
-        add(key, 'computed', [...custom, a[1], expected, f, ...a[3] != null ? [a[3]] : []]); break
+        add(key, 'computed', [...custom, a[1], expected, f, a[3] ?? 0.01]); break
       case 'assert_inherited': add(key, 'inherits', [true, a[1] ?? null, a[2] ?? null, f]); break
       case 'assert_not_inherited': add(key, 'inherits', [false, a[1] ?? null, a[2] ?? null, f]); break
     }

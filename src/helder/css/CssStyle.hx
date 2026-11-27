@@ -216,7 +216,11 @@ class CssStyle extends CssStyleGroups {
 			parentFontSize: fontSize(),
 			rootFontSize: styles.rootFontSize(),
 			viewport: {width: media.width, height: media.height},
-			color: CssValues.written("color", terms(Color), {})
+			color: CssValues.written("color", terms(Color), {}),
+			currentColor: switch terms(Color) {
+				case [Color(c)]: CssColors.absolute(c);
+				case _: null;
+			}
 		};
 	}
 }

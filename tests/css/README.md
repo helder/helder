@@ -126,12 +126,14 @@ pass):
 - `CssValuesCheck.hx`: the values' coverage gate, as the layout
   conformance's. Every case of values.json and the colour files is run.
   valid: the value parses and serializes to the expected text (any of a
-  list; numbers within the row's epsilon); invalid: it doesn't parse;
+  list; numbers within the row's epsilon, a fuzzy colour test's 0.01 when
+  it gives none, as color-testcommon.js); invalid: it doesn't parse;
   computed: it computes to the expected text in the default context
   (16px fonts, an 800x600 viewport, black text); inherits: the table's
   flag, the initial value computed; shorthand: each longhand's value.
   `values-manifest.json` sorts those that don't pass, each group with why:
-  - `skip`: not checkpoint 1's: out of scope (Color 5 and 6, Values 5's
+  - `skip`: not checkpoint 1's: out of scope (Color 5 and 6 but
+    relative colours, which are in scope, Values 5's
     functions, url()'s request modifiers, Transforms 2, Grid 3, Flexbox 2,
     drafts' values), whether they pass or not; and an outdated fixture,
     css-parsing-tests where it and WPT (and the current Color 4) disagree:
@@ -147,32 +149,33 @@ pass):
 
 
 <!-- values -->
-19924 of 20206 required (98.6%): checkpoint 1's progress; 282 pending, our gaps; 9738 skipped, not checkpoint 1's.
+22580 of 22876 required (98.7%): checkpoint 1's progress; 296 pending, our gaps; 7075 skipped, not checkpoint 1's.
 
 | Pending, by the stage that clears them | Cases |
 | --- | --- |
 | layout | 255 |
-| values | 27 |
+| values | 24 |
+| cascade | 17 |
 
 | Pending because | Cases |
 | --- | --- |
 | layout: grid tracks' sizes | 183 |
 | layout: getComputedStyle's resolved value (the used one) | 39 |
 | layout: percentages of the containing block | 27 |
+| cascade: the test sets the element's color from a script (target.style.color), which a static read doesn't see | 17 |
 | values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands | 9 |
 | layout: the font's own metrics | 6 |
 | values: Align 3's `[ first | last ]? && baseline` takes `baseline last` | 5 |
 | values: Images 3's grammar still has `<angle> || flip`, which browsers dropped and WPT rejects | 5 |
 | values: WPT's computed gradients in cursor: its expected texts drop a parenthesis, and cursor's grammar has image-set() of URLs, not <image> | 3 |
-| values: rgb() with none as color(srgb): WPT wants 8 digits here, 6 everywhere else (followed) | 3 |
 | values: WPT disagrees with itself: translateX() as written in one file, scalex() lowercase in the others (followed) | 1 |
 | values: its initial value: WPT has Text Decoration 4's auto, checkpoint 1's table 3's over right | 1 |
 
 | Skipped because | Cases |
 | --- | --- |
-| out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 5035 |
 | outdated fixture: css-parsing-tests leaves lab() and lch() unclamped (WPT and Color 4: L in its range, C at least 0) | 2760 |
-| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 615 |
+| out of scope: Color 5 and 6 (color-mix(), light-dark(), contrast-color(), alpha()); checkpoint 1 is Color 4 and Color 5's relative colours | 2371 |
+| out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set()) | 617 |
 | outdated fixture: css-parsing-tests resolves none in hsl() and hwb() (WPT: kept) | 488 |
 | outdated fixture: css-parsing-tests keeps rgb()'s fractions (WPT: rounded) | 468 |
 | out of scope: container query units (@container is deferred) | 85 |
@@ -186,18 +189,17 @@ pass):
 | out of scope: Grid 3's grid-lanes (masonry) | 12 |
 | out of scope: Images 5's object-fit pairs | 9 |
 | out of scope: writing modes (deferred): the test's page is vertical | 9 |
-| out of scope: Color 5 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4 | 1 |
 
 | Module | Required | Pending | Skipped |
 | --- | --- | --- | --- |
 | colors | 4326 | 0 | 3735 |
 | compositing-2 | 43 | 0 | 0 |
 | css-align-3 | 738 | 5 | 18 |
-| css-backgrounds-3 | 1500 | 9 | 269 |
+| css-backgrounds-3 | 1502 | 26 | 250 |
 | css-box-3 | 202 | 6 | 6 |
 | css-break-3 | 96 | 0 | 0 |
 | css-cascade-4 | 10 | 0 | 0 |
-| css-color-4 | 5831 | 3 | 5016 |
+| css-color-4 | 8485 | 0 | 2372 |
 | css-contain-2 | 55 | 0 | 0 |
 | css-content-3 | 235 | 0 | 12 |
 | css-display-3 | 281 | 0 | 12 |
@@ -542,7 +544,7 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 
 ### Values
 
-41643 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21883 rows for 305 in-scope properties from 894 files (380 duplicates dropped), 9743 calls on 332 properties out of scope (most: position-area 2541, clip-path 341, shape-outside 271, offset-path 208, will-change 171, mask 159, animation-timing-function 125, animation-range 111), and 316 not read statically:
+41643 calls of the helpers read in 97 directories of css/ (a loop's items and a helper's calls each one); 21890 rows for 305 in-scope properties from 894 files (373 duplicates dropped), 9743 calls on 332 properties out of scope (most: position-area 2541, clip-path 341, shape-outside 271, offset-path 208, will-change 171, mask 159, animation-timing-function 125, animation-range 111), and 316 not read statically:
 
 | Why not read | Calls |
 | --- | --- |
@@ -559,7 +561,7 @@ At WPT bc5ea7a9006b, made by import-wpt.mjs.
 | css-box-3 | 10 | 97 | 75 | 26 | 8 | 8 |
 | css-break-3 | 6 | 35 | 18 | 37 | 0 | 6 |
 | css-cascade-4 | 1 | 3 | 7 | 0 | 0 | 0 |
-| css-color-4 | 2 | 2028 | 1113 | 7707 | 0 | 2 |
+| css-color-4 | 2 | 2028 | 1113 | 7714 | 0 | 2 |
 | css-contain-2 | 2 | 16 | 19 | 18 | 0 | 2 |
 | css-content-3 | 4 | 88 | 113 | 43 | 0 | 3 |
 | css-display-3 | 2 | 117 | 57 | 117 | 0 | 2 |

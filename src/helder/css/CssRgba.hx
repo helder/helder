@@ -6,6 +6,7 @@ import helder.css.CssTerm;
 // A computed colour as sRGB floats (0 to 1, alpha too), or a keyword
 // (currentcolor, kept as such: it's the element's color when used;
 // auto). Interned per document.
+@:allow(helder.css.CssColorSpace)
 class CssRgba {
 	public static final OTHER = new CssRgba(null, 0, 0, 0, 0, []);
 
@@ -16,6 +17,7 @@ class CssRgba {
 	public final a:Float;
 	public final terms:Array<CssTerm>;
 	@:allow(helder.css) var id = -1;
+	var pending:Null<CssColorValue> = null;
 
 	function new(keyword:Null<String>, r:Float, g:Float, b:Float, a:Float, terms:Array<CssTerm>) {
 		this.keyword = keyword;
@@ -29,6 +31,18 @@ class CssRgba {
 	@:allow(helder.css)
 	static function of(t:Array<CssTerm>):Null<CssRgba>
 		return t.length != 1 ? null : switch t[0] {
+			// (a relative colour: resolved, else of currentcolor, resolved with it)
+			case Color(c) if (c.from != null):
+				var a = CssColors.absolute(c);
+				// (its terms the relative colour's: what's written)
+				if (a != null) {
+					var rgb = srgb(a);
+					new CssRgba(null, rgb[0], rgb[1], rgb[2], Math.isNaN(a.alpha) ? 0 : a.alpha, t);
+				} else {
+					var r = new CssRgba("currentcolor", 0, 0, 0, 0, t);
+					r.pending = c;
+					r;
+				}
 			case Color(c) if (c.keyword == "currentcolor"): new CssRgba("currentcolor", 0, 0, 0, 0, t);
 			case Color(c) if (c.c.length == 3):
 				var rgb = srgb(c);
@@ -89,10 +103,9 @@ class CssRgba {
 	static function signed(c:Float, e:Float):Float
 		return (c < 0 ? -1 : 1) * Math.pow(Math.abs(c), e);
 
-	static function rec2020(c:Float):Float {
-		var a = 1.09929682680944, b = 0.018053968510807, x = Math.abs(c);
-		return x < b * 4.5 ? c / 4.5 : (c < 0 ? -1 : 1) * Math.pow((x + a - 1) / a, 1 / 0.45);
-	}
+	// (Color 4's rec2020: a gamma of 2.4, BT.1886's, no longer BT.2020's curve)
+	static function rec2020(c:Float):Float
+		return signed(c, 2.4);
 
 	// (Lab to XYZ, D50)
 	static function lab(l:Float, a:Float, b:Float):Array<Float> {
@@ -158,6 +171,9 @@ class CssRgba {
 		return keyword == "currentcolor";
 
 	// This colour, currentcolor as the given one.
-	public inline function resolve(color:CssRgba):CssRgba
-		return current ? color : this;
+	public function resolve(color:CssRgba):CssRgba {
+		if (pending == null) return current ? color : this;
+		var a = CssColors.absolute(pending, {space: "srgb", c: [color.r, color.g, color.b], alpha: color.a});
+		return a == null ? color : of([Color(a)]);
+	}
 }
