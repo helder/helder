@@ -27,7 +27,7 @@ class AppUaCheck {
 	static function main() {
 		var report = new StringBuf();
 		report.add("# app.css against helder.ui\n\nEach node of each screen, the properties both have: what helder.ui gives it today, and what the mirror computes with app.css (bun run test css-app).\n");
-		var total = 0, differing = 0;
+		var total = 0, differing = 0, decided = 0;
 		for (screen in [
 			{name: "todo", width: 480, height: 560, mount: (ui:Ui) -> {
 				ui.theme = Todo.sheet;
@@ -55,6 +55,11 @@ class AppUaCheck {
 					total++;
 					var c = css.get(name);
 					if (same(v, c)) continue;
+					// (decided, ENGINE.md: <text> and the names on it a block, its runs inline, where helder.ui has a flex box)
+					if (name == "display" && v == "flex" && (c == "block" || c == "inline") && TEXT.contains(p.el.localName)) {
+						decided++;
+						continue;
+					}
 					differing++;
 					if (!by.exists(name)) by.set(name, []);
 					by[name].push('${p.path}: helder ${v}, css ${c}');
@@ -68,7 +73,8 @@ class AppUaCheck {
 		}
 		sys.FileSystem.createDirectory("bin/css");
 		File.saveContent("bin/css/app-ua.md", report.toString());
-		Sys.println('css-app: $differing of $total values differ (bin/css/app-ua.md)');
+		report.add('\nDecided, not counted (ENGINE.md): $decided text elements a block (their runs inline) where helder.ui has a flex box.\n');
+		Sys.println('css-app: $differing of $total values differ, $decided text displays as decided (bin/css/app-ua.md)');
 	}
 
 	// (a node as an element: its tag (a field's textfield as the markup's field), attributes, its own style, its text)
@@ -90,6 +96,7 @@ class AppUaCheck {
 	}
 
 	static final DEFAULTS = new Node().style;
+	static final TEXT = ["text", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "legend", "a", "strong", "em", "code", "span"];
 
 	// (the node's Style values that aren't its defaults: its rules' and its own, as CSS)
 	static function declarations(n:Node):String {

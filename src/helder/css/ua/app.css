@@ -29,10 +29,11 @@
   scrollbar-width: auto;
 }
 
-/* The root's text and the window behind it (Style.hx:15-19: sans-serif
-   14px, weight 400, line height 1.25 as a multiple, black; overflowWrap
-   BreakWord, Node.hx:1007; the root's cursor Default, Cursor.hx; the
-   window's clear colour, UiWindow.hx:130; scrollbar thumb, Ui.hx:173) */
+/* The root's text (Style.hx:15-19: sans-serif 14px, weight 400, line
+   height 1.25 as a multiple, black; overflowWrap BreakWord, Node.hx:1007;
+   the root's cursor Default, Cursor.hx; scrollbar thumb, Ui.hx:173). No
+   background: the window keeps its clear colour (UiWindow.hx:130), as
+   ENGINE.md decides. */
 :root {
   font-family: sans-serif;
   font-size: 14px;
@@ -41,7 +42,6 @@
   color: #000;
   overflow-wrap: break-word;
   cursor: default;
-  background-color: #f4f4f5;
   scrollbar-color: rgb(0 0 0 / 0.35) transparent;
 }
 
