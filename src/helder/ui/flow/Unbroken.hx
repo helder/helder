@@ -1,5 +1,6 @@
 package helder.ui.flow;
 
+import haxe.ds.ObjectMap;
 import helder.ui.box.Box;
 import helder.ui.flow.Fragmentation.Deferred;
 import helder.ui.flow.Fragmentation.Resume;
@@ -41,4 +42,17 @@ class Unbroken implements Fragmentation {
 
 	public function defer(d:Deferred)
 		outer.defer(d);
+
+	// (a parallel flow laid out whole too: where it resumes the outer's)
+	public function parallel(box:Box, child:Box):Null<Breaks> {
+		var r = outer.resume(box);
+		if (r != null && r.parallel != null) {
+			var t = r.parallel.get(child);
+			return t == null ? null : new Breaks(Math.POSITIVE_INFINITY, t);
+		}
+		return new Breaks(Math.POSITIVE_INFINITY, null);
+	}
+
+	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
+		return false;
 }

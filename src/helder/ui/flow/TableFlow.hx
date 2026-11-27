@@ -1,5 +1,6 @@
 package helder.ui.flow;
 
+import haxe.ds.ObjectMap;
 import helder.dom.Element;
 import helder.ui.box.Box;
 import helder.ui.box.BoxKind;
@@ -546,12 +547,23 @@ class TableFlow implements FormattingContext {
 		// (in a fragmentainer: its header rows, the body rows from where it resumes to where it breaks, its
 		// footer rows; captions above only where it starts, below only where it ends)
 		var shown = [for (_ in 0...rows) true];
+		// (rows broken inside here, their cells at their top)
+		var split = [for (_ in 0...rows) false];
 		var resumed = false, broken = false;
 		var fr = space.fragmentation;
 		if (fr != null) {
 			var hEnd = 0, fStart = rows;
 			while (hEnd < rows && g.header != null && g.rowGroups[hEnd] == g.header) hEnd++;
 			while (fStart > hEnd && g.footer != null && g.rowGroups[fStart - 1] == g.footer) fStart--;
+			// (a header or footer repeated only when it takes no more than a quarter of the fragmentainer, as
+			// LayoutNG's; else its rows are the body's, broken as they are)
+			inline function rowsH(a:Int, b:Int):Float {
+				var h = 0.0;
+				for (r in a...b) h += rowH[r] + g.spacingV;
+				return h;
+			}
+			if (rowsH(0, hEnd) > fr.size / 4) hEnd = 0;
+			if (rowsH(fStart, rows) > fr.size / 4) fStart = rows;
 			var r0 = hEnd;
 			if (fr.resume(wrapper) != null) {
 				resumed = true;
@@ -577,6 +589,26 @@ class TableFlow implements FormattingContext {
 					broken = true;
 					break;
 				}
+				// (a row past the fragmentainer's end, or resumed inside: its cells broken in parallel, each at its own
+				// break, the row to the fragmentainer's end; not one a cell spans into or out of)
+				var row = g.rows[r], at = fr.resume(row);
+				var inside = r == r0 && at != null && at.parallel != null;
+				if ((inside || y + rowH[r] + footerH > fr.size + 0.01) && !Lambda.exists(g.cells, c -> c.rows > 1 && c.row <= r && c.row + c.rows > r)) {
+					var s = splitRow(g, r, space, fr, y, footerH, colX);
+					var going = s.tokens.iterator().hasNext() && s.progress;
+					split[r] = inside;
+					// (resumed: as tall as its cells' rest; else its height as laid out, the break not taken here: as it
+					// would go on, for the opportunities after it)
+					if (inside) rowH[r] = s.height else rowH[r] = Math.max(rowH[r], s.height);
+					if (going && (fr.split(row, s.tokens, y + s.height + footerH) || fr.stopped)) {
+						split[r] = true;
+						rowH[r] = Math.max(s.height, fr.size - footerH - y);
+						end = r + 1;
+						broken = true;
+						fr.placed(y + rowH[r] + footerH);
+						break;
+					}
+				}
 				prev = y + rowH[r];
 				fr.placed(prev + footerH);
 				y = prev + g.spacingV;
@@ -601,6 +633,10 @@ class TableFlow implements FormattingContext {
 		for (r in 0...rows) {
 			tg.y.push(rowY[r]);
 			tg.heights.push(rowH[r]);
+		}
+		if (fr != null) {
+			tg.shown = shown;
+			tg.previous = t.table;
 		}
 		t.table = tg;
 		tg.fragment = tf;
@@ -662,7 +698,7 @@ class TableFlow implements FormattingContext {
 			if (!shown[cell.row]) continue;
 			var f = cell.fragment;
 			var h = rowY[cell.row + cell.rows] - g.spacingV - rowY[cell.row];
-			var shift = switch valign(cell.box) {
+			var shift = split[cell.row] ? 0.0 : switch valign(cell.box) {
 				case "top": 0.0;
 				case "bottom": h - cell.height;
 				case "middle": (h - cell.height) / 2;
@@ -703,6 +739,47 @@ class TableFlow implements FormattingContext {
 		frags.resize(wf, w, wy);
 		if (!Math.isNaN(baseline)) frags.setBaseline(wf, baseline);
 		return wf;
+	}
+
+	// (a row's cells laid out from its top in the fragmentainer, each a parallel flow with its own breaks (one
+	// that ended before: an empty continuation); their tallest's height, the tokens of those that go on, whether
+	// any made progress (none: a break inside would take nothing of it, the row goes whole))
+	function splitRow(g:Grid, r:Int, space:Space, fr:Fragmentation, top:Float, reserve:Float, colX:Array<Float>):{height:Float, tokens:ObjectMap<Box, BreakToken>,
+			progress:Bool} {
+		var frags = space.fragments, tokens = new ObjectMap<Box, BreakToken>(), height = 0.0, progress = false;
+		for (cell in g.cells) if (cell.row == r) {
+			var cw = colX[cell.col + cell.cols] - colX[cell.col] - g.spacingH;
+			var sub = fr.parallel(g.rows[r], cell.box);
+			var f:Int;
+			if (sub == null) {
+				f = frags.add(Fragments.BOX, cell.box, cw, 0);
+				frags.setRange(f, Box.NO_START, 0);
+			} else {
+				function lay():Int {
+					var cs = space.child(cw, Math.NaN);
+					cs.fixedWidth = cw;
+					if (g.collapse) cs.borders = cellBorders(g, cell);
+					cs.fragmentation = sub;
+					cs.pageTop = top;
+					cs.reserve = reserve;
+					cell.box.cacheFragment = -1;
+					return flow.child(cell.box, cs);
+				}
+				f = lay();
+				if (sub.decide()) f = lay();
+				var t = sub.token();
+				// (progress: a cell ended here, or took more of its content than before)
+				var was = fr.resume(g.rows[r]), before = was != null && was.parallel != null ? was.parallel.get(cell.box) : null;
+				var had = before == null ? 0.0 : before.resumes.get(cell.box).consumed;
+				if (t == null || t.resumes.get(cell.box).consumed > had + 0.01) progress = true;
+				if (t != null) tokens.set(cell.box, t);
+				for (d in sub.deferred) fr.defer(d);
+			}
+			cell.fragment = f;
+			cell.height = frags.height(f);
+			height = Math.max(height, cell.height);
+		}
+		return {height: height, tokens: tokens, progress: progress};
 	}
 
 	// (a cell's border widths in the collapsing model: its lines' parts inside it, the widest on each side)

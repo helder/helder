@@ -1,5 +1,6 @@
 package helder.ui.flow;
 
+import haxe.ds.ObjectMap;
 import helder.ui.box.Box;
 
 // A fragmentainer flow is laid out in (CSS Fragmentation 3): what block
@@ -43,6 +44,14 @@ interface Fragmentation {
 	// containing block broken across them, or the box not fitting in this
 	// one
 	function defer(d:Deferred):Void;
+	// a parallel flow in box (a table cell beside the others in its row):
+	// its own breaks in this fragmentainer, from its token in box's resume;
+	// null: it ended in a fragmentainer before
+	function parallel(box:Box, child:Box):Null<Breaks>;
+	// box broken inside, its parallel flows each at its own break (tokens:
+	// those that go on), what is before the break ending at bottom; true:
+	// break here (box resumes with the tokens, BreakToken.SPLIT)
+	function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool;
 }
 
 // An absolutely positioned box deferred: its static place (x, y) in its
@@ -68,6 +77,8 @@ typedef Resume = {
 	child:Null<Box>,
 	line:Int,
 	from:Null<InlineBreak>,
+	// (broken inside: its parallel flows' tokens, by box)
+	?parallel:ObjectMap<Box, BreakToken>,
 	consumed:Float,
 	forced:Bool
 }

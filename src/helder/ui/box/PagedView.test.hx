@@ -89,6 +89,25 @@ function tests() {
 			// (20px down the page: 6 lines of 10px before its end)
 			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [6, 4]);
 		});
+		test("a row taller than the page: split inside its cells, each at its own break, a finished one empty after", () -> {
+			var lines = [for (k in 0...10) "x"].join("<br>");
+			var v = paged('<table style="border-spacing:0"><tr><td id=a style="padding:0;widows:1;orphans:1">$lines</td><td id=b style="padding:0">x</td></tr></table>');
+			equals(v.layout(), 2);
+			equals([lineCount(v, 0, "a"), lineCount(v, 1, "a"), lineCount(v, 0, "b"), lineCount(v, 1, "b")], [8, 2, 1, 0]);
+			// (the row to the page's end, then as tall as its cells' rest)
+			equals([height(v, 0, "a"), height(v, 1, "b")], [80.0, 20]);
+		});
+		test("a collapsed-border table across pages: each page's fragment its own grid, its rows' lines only", () -> {
+			var rows = [for (k in 0...12) '<tr><td style="height:10px;padding:0;border:1px solid"></td></tr>'].join("");
+			var v = paged('<table id=t style="border-collapse:collapse">$rows</table>');
+			equals(v.layout(), 2);
+			var shown = [for (p in 0...2) {
+				var k = grid(v, p), g = TableGrid.of(v.fragments.box(k).table, k);
+				[for (r in 0...12) g.hides(r) ? 0 : 1];
+			}];
+			equals(shown[0].indexOf(0) > 0 && shown[1][0] == 0 && shown[1][11] == 1, true);
+			equals([for (r in 0...12) shown[0][r] + shown[1][r]], [for (_ in 0...12) 1]);
+		});
 		test("content starting past the page's end, its margin: on the next page", () -> {
 			var v = paged('<div id=a style="margin-top:120px">a</div>');
 			equals(v.layout(), 2);
@@ -205,6 +224,21 @@ private function find(v:PagedView, page:Int, id:String):Int {
 private function on(v:PagedView, page:Int, id:String):Float {
 	var k = find(v, page, id);
 	return k < 0 ? Math.NaN : v.fragments.absolute(k).y;
+}
+
+// (a page's table fragment: the one whose box has a grid)
+private function grid(v:PagedView, page:Int):Int {
+	var f = v.fragments, stack = [v.pages[page].root];
+	while (stack.length > 0) {
+		var k = stack.pop();
+		if (f.kind(k) == Fragments.BOX && f.box(k).table != null) return k;
+		var c = f.first(k);
+		while (c >= 0) {
+			stack.push(c);
+			c = f.next(c);
+		}
+	}
+	return -1;
 }
 
 private function x(v:PagedView, page:Int, id:String):Float {

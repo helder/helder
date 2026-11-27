@@ -11,6 +11,8 @@ import helder.ui.flow.Fragmentation.Resume;
 class BreakToken {
 	// (a Resume's line past its box's content: only its height left)
 	public static inline var PAST = -2;
+	// (a Resume's line where its parallel flows were broken, each at its own break)
+	public static inline var SPLIT = -3;
 
 	public final resumes:ObjectMap<Box, Resume>;
 	// a forced break's page side ("left", "right": the next page is that side, a blank one between if not)
