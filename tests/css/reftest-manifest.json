@@ -21,7 +21,7 @@
 		"css/CSS2/abspos/static-fixed-inside-abspos.html": {},
 		"css/CSS2/abspos/static-inside-float-inside-inline.html": {},
 		"css/CSS2/abspos/static-inside-inline-001.html": {},
-		"css/CSS2/abspos/static-inside-inline-002.html": {"pending":"positioning: 15000 pixels differ (by up to 255)"},
+		"css/CSS2/abspos/static-inside-inline-002.html": {},
 		"css/CSS2/abspos/static-inside-inline-003.html": {},
 		"css/CSS2/abspos/static-inside-inline-block.html": {},
 		"css/CSS2/abspos/table-caption-is-containing-block-001.html": {},
