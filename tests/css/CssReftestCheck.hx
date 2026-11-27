@@ -446,6 +446,7 @@ class CssReftestCheck {
 
 	static function stage(dir:String, t:Dynamic):String {
 		if (dir.startsWith("css/css-gcpm")) return "paged";
+		if (dir.startsWith("css/css-contain")) return "containment";
 		var short = dir.startsWith("css/CSS2/") ? dir.substr(9) : dir;
 		var s = printed(dir, t) ? null : STAGES.get(short);
 		if (s != null) return s;

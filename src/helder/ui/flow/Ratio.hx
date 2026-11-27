@@ -29,7 +29,8 @@ class Ratio {
 	}
 
 	static function natural(box:Box):Float {
-		if (box.kind != BlockReplaced && box.kind != InlineReplaced || box.image == null) return Math.NaN;
+		// (size containment: none, Contain 2 §3.1)
+		if (box.kind != BlockReplaced && box.kind != InlineReplaced || box.image == null || box.style.containment.has(Size)) return Math.NaN;
 		var w = box.image.width, h = box.image.height;
 		return w > 0 && h > 0 ? w / h : Math.NaN;
 	}

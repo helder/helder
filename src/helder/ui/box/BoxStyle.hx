@@ -1,6 +1,7 @@
 package helder.ui.box;
 
 import helder.css.CssColors;
+import helder.css.CssContain;
 import helder.css.CssDisplay;
 import helder.css.CssLength;
 import helder.css.CssProperties;
@@ -472,7 +473,8 @@ class BoxStyle {
 		if (traits < 0) {
 			positionWord = keyword("position");
 			var f = keyword("float"), x = keyword("overflow-x"), y = keyword("overflow-y"), v = keyword("visibility"), c = keyword("white-space-collapse");
-			traits = (f == "left" || f == "right" ? FLOATING : 0) | ((x != "visible" && x != "") || (y != "visible" && y != "") ? CLIPS : 0)
+			// (paint containment clips as overflow does, to the padding box, Contain 2 §3.4)
+			traits = (f == "left" || f == "right" ? FLOATING : 0) | ((x != "visible" && x != "") || (y != "visible" && y != "") || containment.has(Paint) ? CLIPS : 0)
 				| (keyword("direction") == "rtl" ? RTL : 0) | (v != "hidden" && v != "collapse" ? VISIBLE : 0) | (c == "collapse" || c == "" ? COLLAPSE : 0)
 				| (c != "collapse" ? BREAKS : 0) | (keyword("text-wrap-mode") != "nowrap" ? WRAPS : 0);
 		}
@@ -532,7 +534,36 @@ class BoxStyle {
 	// a stacking context of its own (CSS 2.1 §9.9.1, Color 4's opacity, Transforms 1)
 	public function stacking():Bool
 		return positioned && zIndex() != null || opacity < 1 || keyword("transform") != "none" && terms("transform").length > 0
-			|| keyword("position") == "fixed";
+			|| keyword("position") == "fixed" || containment.stacking;
+
+	// ---- containment (CSS Containment 2)
+
+	var contained = -1;
+
+	// what applies (CssContain: contain's, content-visibility's), read once; an anonymous box none
+	public var containment(get, never):CssContain;
+
+	function get_containment():CssContain {
+		if (contained < 0) contained = anonymous ? 0 : css.containment();
+		return contained;
+	}
+
+	// contain-intrinsic-width or -height's length, size containment's size (Sizing 4 §5.4; none: 0; auto: its
+	// length, the last remembered size not kept)
+	public function intrinsicSize(width:Bool):Float {
+		for (t in terms(width ? "contain-intrinsic-width" : "contain-intrinsic-height")) switch t {
+			case Dimension(v, _): return v;
+			case Number(v, _): return v;
+			case _:
+		}
+		return 0;
+	}
+
+	// content-visibility: hidden, its contents not laid out nor painted, Contain 2 §4
+	public var hidden(get, never):Bool;
+
+	inline function get_hidden():Bool
+		return !anonymous && keyword("content-visibility") == "hidden";
 
 	// ---- the font
 

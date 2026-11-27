@@ -121,6 +121,11 @@ function tests() {
 			equals(f.layout(), 2);
 			equals(on(f, 1, "c"), 0.0);
 		});
+		test("layout containment: monolithic, the next page's whole", () -> {
+			var v = paged('<div style="height:40px"></div><div id=a style="contain:layout"><div style="height:30px"></div><div style="height:30px"></div></div>');
+			equals(v.layout(), 2);
+			equals([on(v, 0, "a"), on(v, 1, "a"), height(v, 1, "a")], [Math.NaN, 0, 60]);
+		});
 		test("content starting past the page's end, its margin: on the next page", () -> {
 			var v = paged('<div id=a style="margin-top:120px">a</div>');
 			equals(v.layout(), 2);
