@@ -8028,7 +8028,7 @@
 		"css/CSS2/visuren/bidi-table-001.xht": {"pending":"tables: 2000 pixels differ from Chromium's"},
 		"css/CSS2/visuren/bidi-table-002.xht": {"pending":"tables: 1728 pixels differ from Chromium's"},
 		"css/CSS2/visuren/bidi-unicode-bidi-001.xht": {},
-		"css/CSS2/visuren/bidi-unicode-bidi-003.xht": {"pending":"generated: 78 pixels differ from Chromium's"},
+		"css/CSS2/visuren/bidi-unicode-bidi-003.xht": {},
 		"css/CSS2/visuren/bidi-unicode-bidi-004.xht": {},
 		"css/CSS2/visuren/box-offsets-abs-pos-001.xht": {},
 		"css/CSS2/visuren/box-offsets-rel-pos-001.xht": {},
