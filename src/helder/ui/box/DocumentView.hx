@@ -95,6 +95,8 @@ class DocumentView {
 	var lined:Null<Array<Box>> = null;
 	var placed:Null<ObjectMap<Box, Int>> = null;
 	var whole = 0;
+	// (the glyph runs a window's paints placed: kept while the fragments are)
+	final placedRuns = new BoxPainter.PlacedRuns();
 	var sticky = false;
 
 	public function new(document:Document, cascade:DocumentCascade, ?options:DocumentViewOptions) {
@@ -159,6 +161,7 @@ class DocumentView {
 	function build() {
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg});
 		fragments.clear();
+		placedRuns.clear();
 		owners = null;
 		// (whether any box sticks: Sticky.apply walks every fragment)
 		sticky = false;
@@ -181,11 +184,13 @@ class DocumentView {
 	// layout's, and everything laid out afresh)
 	function lay():Int {
 		lined = null;
+		textIndex = null;
 		placed = null;
 		var r = tree.root;
 		if (r == null) return root = -1;
 		if (fragments.count > 3 * whole + 4096) {
 			fragments.clear();
+			placedRuns.clear();
 			forget(r);
 		}
 		var fresh = fragments.count == 0;
@@ -410,6 +415,10 @@ class DocumentView {
 		p.clear(options.background ?? 0xFFFFFFFF);
 		if (order == null) return;
 		var bp = new BoxPainter(fragments, order, image, svg);
+		if (area != null) {
+			placedRuns.next();
+			bp.placedRuns = placedRuns;
+		}
 		bp.scrolls = scrolls;
 		if (area != null) {
 			bp.area = area;
@@ -461,45 +470,90 @@ class DocumentView {
 	// the point, else of the block nearest it above or below; null: no text.
 	// Transforms aside.
 	public function position(x:Float, y:Float):Null<{node:Node, offset:Int}> {
-		var best:Null<Box> = null, bestOrigin = null, far = Math.POSITIVE_INFINITY;
-		for (b in texts()) {
-			var id = b.lines.fragment, o = fragments.absolute(id);
-			var dy = y < o.y ? o.y - y : y > o.y + fragments.height(id) ? y - o.y - fragments.height(id) : 0.0;
-			var dx = x < o.x ? o.x - x : x > o.x + fragments.width(id) ? x - o.x - fragments.width(id) : 0.0;
+		var blocks = texts(), ix = index();
+		if (blocks.length == 0) return null;
+		var best = -1, far = Math.POSITIVE_INFINITY;
+		inline function consider(k:Int) {
+			var dy = y < ix.y0[k] ? ix.y0[k] - y : y > ix.y1[k] ? y - ix.y1[k] : 0.0;
+			var dx = x < ix.x0[k] ? ix.x0[k] - x : x > ix.x1[k] ? x - ix.x1[k] : 0.0;
 			// (inside: the innermost, the last in the tree's order; else the nearest, down then across)
 			var d = dy * 1e4 + dx;
-			if (d <= far) {
+			if (d < far || d == far && k > best) {
 				far = d;
-				best = b;
-				bestOrigin = o;
+				best = k;
 			}
 		}
-		return best == null ? null : best.lines.hit(x - bestOrigin.x, y - bestOrigin.y);
+		// (the bucket the point is in, then rings of buckets around it until one beyond the nearest found)
+		var at = Std.int(Math.max(0, Math.min(ix.buckets.length - 1, Math.floor(y / BUCKET)))), r = 0;
+		while (r <= ix.buckets.length) {
+			for (b in [at - r, at + r]) if (b >= 0 && b < ix.buckets.length && (r > 0 || b == at)) for (k in ix.buckets[b]) consider(k);
+			if (best >= 0 && far / 1e4 < r * BUCKET) break;
+			r++;
+		}
+		var o = blocks[best].lines;
+		return o.hit(x - ix.x0[best], y - ix.y0[best]);
+	}
+
+	// (the text blocks' places, absolute: each block in the buckets of BUCKET px its lines cover; each text's block)
+	static inline var BUCKET = 256;
+	var textIndex:Null<TextIndex> = null;
+
+	function index():TextIndex {
+		if (textIndex != null) return textIndex;
+		var blocks = texts(), ix = new TextIndex();
+		var tall = 0.0;
+		for (k in 0...blocks.length) {
+			var id = blocks[k].lines.fragment, o = fragments.absolute(id);
+			ix.x0.push(o.x);
+			ix.y0.push(o.y);
+			ix.x1.push(o.x + fragments.width(id));
+			ix.y1.push(o.y + fragments.height(id));
+			tall = Math.max(tall, o.y + fragments.height(id));
+			ix.of.set(blocks[k], k);
+		}
+		var n = Std.int(Math.ceil(tall / BUCKET)) + 1;
+		for (_ in 0...n) ix.buckets.push([]);
+		for (k in 0...blocks.length) {
+			var b0 = Std.int(Math.max(0, Math.floor(ix.y0[k] / BUCKET))), b1 = Std.int(Math.min(n - 1, Math.floor(ix.y1[k] / BUCKET)));
+			for (b in b0...b1 + 1) ix.buckets[b].push(k);
+		}
+		return textIndex = ix;
+	}
+
+	// (the block whose lines hold a DOM text: up from its runs to the nearest block with lines; -1: none)
+	function blockOf(node:Node):Int {
+		var ix = index();
+		for (b in boxesOf(node)) {
+			var p:Null<Box> = b;
+			while (p != null) {
+				var k = ix.of.get(p);
+				if (k != null) return k;
+				p = p.parent;
+			}
+		}
+		return -1;
 	}
 
 	// The caret at a DOM position (a text node and an offset in it) in the
 	// document, its line's height; null: not in any lines. Transforms aside.
 	public function caret(node:Node, offset:Int):Null<{x:Float, y:Float, height:Float}> {
-		for (b in texts()) {
-			var u = b.lines.unitOf(node, offset);
-			if (u < 0) continue;
-			var c = b.lines.caret(u), o = fragments.absolute(b.lines.fragment);
-			return {x: o.x + c.x, y: o.y + c.y, height: c.height};
-		}
-		return null;
+		var k = blockOf(node);
+		if (k < 0) return null;
+		var b = texts()[k], u = b.lines.unitOf(node, offset);
+		if (u < 0) return null;
+		var c = b.lines.caret(u), ix = index();
+		return {x: ix.x0[k] + c.x, y: ix.y0[k] + c.y, height: c.height};
 	}
 
 	// The rectangles a selection from one DOM position to another covers in
 	// the document: each line's selected runs, the line's height, block by
 	// block in the box tree's order. Transforms aside.
-	public function selection(from:{node:Node, offset:Int}, to:{node:Node, offset:Int}):Array<{x:Float, y:Float, width:Float, height:Float}> {
-		var blocks = texts();
-		var b0 = -1, u0 = -1, b1 = -1, u1 = -1;
-		for (k in 0...blocks.length) {
-			if (b0 < 0 && (u0 = blocks[k].lines.unitOf(from.node, from.offset)) >= 0) b0 = k;
-			if (b1 < 0 && (u1 = blocks[k].lines.unitOf(to.node, to.offset)) >= 0) b1 = k;
-		}
-		if (b0 < 0 || b1 < 0) return [];
+	public function selection(from:{node:Node, offset:Int}, to:{node:Node, offset:Int}, top = Math.NEGATIVE_INFINITY,
+			bottom = Math.POSITIVE_INFINITY):Array<{x:Float, y:Float, width:Float, height:Float}> {
+		var blocks = texts(), ix = index();
+		var b0 = blockOf(from.node), b1 = blockOf(to.node);
+		var u0 = b0 < 0 ? -1 : blocks[b0].lines.unitOf(from.node, from.offset), u1 = b1 < 0 ? -1 : blocks[b1].lines.unitOf(to.node, to.offset);
+		if (b0 < 0 || b1 < 0 || u0 < 0 || u1 < 0) return [];
 		if (b1 < b0 || b1 == b0 && u1 < u0) {
 			var t = b0, v = u0;
 			b0 = b1;
@@ -508,10 +562,12 @@ class DocumentView {
 			u1 = v;
 		}
 		var out = [];
+		// (top...bottom: the blocks there alone, what is seen of a long selection)
 		for (k in b0...b1 + 1) {
-			var l = blocks[k].lines, o = fragments.absolute(l.fragment);
+			if (ix.y1[k] < top || ix.y0[k] > bottom) continue;
+			var l = blocks[k].lines;
 			for (r in l.selection(k == b0 ? u0 : 0, k == b1 ? u1 : l.content.text.length))
-				out.push({x: o.x + r.x, y: o.y + r.y, width: r.width, height: r.height});
+				out.push({x: ix.x0[k] + r.x, y: ix.y0[k] + r.y, width: r.width, height: r.height});
 		}
 		return out;
 	}
@@ -521,14 +577,13 @@ class DocumentView {
 		if (lined != null) return lined;
 		var out = lined = [];
 		if (tree == null || tree.root == null || root < 0) return out;
-		var stack = [tree.root];
-		while (stack.length > 0) {
-			var b = stack.pop();
+		// (in tree order: a box, its children, then its next sibling)
+		var b:Null<Box> = tree.root;
+		while (b != null) {
 			if (b.lines != null && b.lines.fragment < fragments.count && fragments.box(b.lines.fragment) == b) out.push(b);
-			var at = stack.length, c = b.first;
-			while (c != null) {
-				stack.insert(at, c);
-				c = c.next;
+			if (b.first != null) b = b.first else {
+				while (b != null && b.next == null) b = b.parent;
+				b = b == null ? null : b.next;
 			}
 		}
 		return out;
@@ -551,4 +606,16 @@ class DocumentView {
 		svgs.set(abs, v);
 		return v;
 	}
+}
+
+// (DocumentView's text blocks' places: absolute bounds by block, the blocks in each bucket of rows, each block's number)
+private class TextIndex {
+	public final x0:Array<Float> = [];
+	public final y0:Array<Float> = [];
+	public final x1:Array<Float> = [];
+	public final y1:Array<Float> = [];
+	public final buckets:Array<Array<Int>> = [];
+	public final of = new ObjectMap<Box, Int>();
+
+	public function new() {}
 }
