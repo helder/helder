@@ -503,9 +503,15 @@ class Brotli {
 	static var words:Null<Bytes> = null;
 
 	static function dictionary():Bytes {
-		if (words == null) words = helder.asset.Asset.embed("helder/compress/dictionary.bin");
+		if (words == null) words = embedded();
 		return words;
 	}
+
+	// (its bytes built in by Asset.embed's macro, not by a call of Asset.embed:
+	// that would link Asset, whose loads are helder.async's, into every program
+	// that reads a font, a page's too: tests/web/links.mjs)
+	static macro function embedded():haxe.macro.Expr
+		return helder.asset.AssetMacro.embed("helder/compress/dictionary.bin");
 
 	// (RFC 7932's tables)
 	static final CL_ORDER = [1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15];
