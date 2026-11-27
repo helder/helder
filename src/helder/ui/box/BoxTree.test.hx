@@ -110,7 +110,7 @@ function tests() {
 		}, {cases: 200}));
 		test("the text runs are the document's text, in order", () -> property(MARKUP, html -> {
 			var doc = Dom.parse('<!doctype html><body>$html');
-			var t = BoxTree.build(doc, CssCascade.styles(doc));
+			var t = BoxTree.build(doc, CssCascade.styles(doc), {contexts: helder.ui.flow.Contexts.all()});
 			var text = new StringBuf();
 			function walk(b:Box) {
 				if (b.kind == Text && b.pseudo == null) text.add(b.text);
@@ -140,7 +140,7 @@ private function squash(s:String):String
 
 private function build(body:String, ?image:String->Null<helder.canvas.Bitmap>):BoxTree {
 	var doc = Dom.parse('<!doctype html><body>$body');
-	return BoxTree.build(doc, CssCascade.styles(doc), {image: image});
+	return BoxTree.build(doc, CssCascade.styles(doc), {contexts: helder.ui.flow.Contexts.all(), image: image});
 }
 
 private function tree(body:String):String

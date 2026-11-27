@@ -1,5 +1,4 @@
 import helder.canvas.Canvas;
-import helder.css.CssCascade;
 import helder.css.CssTheme;
 import helder.css.CssUserAgentTheme;
 import helder.dom.Document;
@@ -29,11 +28,10 @@ class EngineProbe {
 		row.append(el("view", "check"), el("text", "label", "Task 1"));
 		list.append(row);
 		root.append(list);
-		var sheets = [CssUserAgentTheme.app(), CssTheme.file("../bench/document/todo-app.css")];
 		#if css.parse
-		var view = new DocumentView(doc, DocumentView.htmlCascade, {userAgent: sheets[0], author: [sheets[1]]});
+		var view = DocumentView.html(doc, {userAgent: CssUserAgentTheme.app(), author: [CssTheme.file("../bench/document/todo-app.css")]});
 		#else
-		var view = new DocumentView(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));
+		var view = helder.ui.box.DocumentApp.view(doc, [CssUserAgentTheme.app(), CssTheme.file("../bench/document/todo-app.css")]);
 		#end
 		var canvas = new Canvas(480, 560);
 		view.layout(480, 560);

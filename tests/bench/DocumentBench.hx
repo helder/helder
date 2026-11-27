@@ -251,6 +251,8 @@ class DocumentBench {
 			if (!declared) Mail.declare();
 			declared = true;
 			var app = new Mail();
+			// (light, whatever the machine's appearance: the screen's sheet is checked in)
+			app.dark(false);
 			if (n > 0) app.messages(messages(n));
 			var root = new Node();
 			root.theme = Mail.sheet;
@@ -432,10 +434,9 @@ class DocumentBench {
 
 	// (the engine's screen as an app has it: its tree built in code, styled by
 	// app.css and the screen's sheet, both compiled at build time: no parser)
-	static function engineNode(d:Document):DocumentNode {
-		var sheets = [CssUserAgentTheme.app(), screen == "todo" ? CssTheme.file("document/todo.css") : CssTheme.file("document/mail.css")];
-		return new DocumentNode(d, (doc, media, _) -> CssCascade.themed(doc, sheets, {media: media}));
-	}
+	static function engineNode(d:Document):DocumentNode
+		return screen == "todo" ? helder.ui.box.DocumentApp.node(d, [CssUserAgentTheme.app(), CssTheme.file("document/todo.css")])
+			: helder.ui.box.DocumentApp.node(d, [CssUserAgentTheme.app(), CssTheme.file("document/mail.css")]);
 
 	static function build(m:Mirror):Document {
 		var d = new Document();
@@ -585,6 +586,8 @@ class DocumentBench {
 				if (!declared) Mail.declare();
 				declared = true;
 				var app = new Mail();
+				// (light, whatever the machine's appearance: the screen's sheet is checked in)
+				app.dark(false);
 				app.messages(mailMessages(1020));
 				var root = new Node();
 				root.theme = Mail.sheet;
@@ -617,6 +620,8 @@ class DocumentBench {
 		if (!declared) Mail.declare();
 		declared = true;
 		var app = new Mail();
+		// (light, whatever the machine's appearance: the screen's sheet is checked in)
+		app.dark(false);
 		app.messages(mailMessages(n));
 		var root = new Node();
 		root.theme = Mail.sheet;

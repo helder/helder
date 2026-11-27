@@ -1,9 +1,8 @@
-import helder.css.CssCascade;
 import helder.css.CssTheme;
 import helder.css.CssUserAgentTheme;
 import helder.dom.Document;
 import helder.dom.Element;
-import helder.ui.box.DocumentNode;
+import helder.ui.box.DocumentApp;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.view.*;
@@ -11,7 +10,8 @@ import helder.view.*;
 // examples/todo's screen on the CSS engine as an app would have it, in a
 // window: its tree built in code (helder.dom, no parser), styled by sheets
 // compiled at build time (app.css, the user agent's; todo-app.css, its
-// look), so that no CSS, HTML or XML parser is linked. What the engine
+// look), so that no CSS, HTML or XML parser is linked, laid out by the
+// formatting contexts those sheets can make (DocumentApp). What the engine
 // costs an app beside examples/todo (the size lane's engine).
 class TodoDocument implements Markup {
 	static function main() {
@@ -36,8 +36,7 @@ class TodoDocument implements Markup {
 		}
 		root.append(list);
 		root.append(el("text", "footer", "20 items left"));
-		var sheets = [CssUserAgentTheme.app(), CssTheme.file("todo-app.css")];
-		var node = new DocumentNode(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));
+		var node = DocumentApp.node(doc, [CssUserAgentTheme.app(), CssTheme.file("todo-app.css")]);
 		UiWindow.run(<Surface title="Todo" width={480} height={560}><view flexGrow={1}>{node}</view></Surface>);
 	}
 }

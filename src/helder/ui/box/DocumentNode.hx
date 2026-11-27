@@ -72,7 +72,7 @@ class DocumentNode extends helder.ui.Node {
 
 	// A document styled as HTML is (DocumentView.html's cascade).
 	public static function html(document:Document, ?options:DocumentViewOptions):DocumentNode
-		return new DocumentNode(document, DocumentView.htmlCascade, options);
+		return new DocumentNode(document, DocumentView.htmlCascade, DocumentView.every(options));
 
 	public var document(get, never):Document;
 

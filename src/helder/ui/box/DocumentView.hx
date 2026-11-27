@@ -115,12 +115,20 @@ class DocumentView {
 		this.document = document;
 		this.cascade = cascade;
 		this.options = options ?? {};
+		if (this.options.contexts == null) throw "DocumentView: no formatting contexts (DocumentView.html's: every one; an app's: DocumentApp)";
 		fonts = this.options.fonts ?? new FontMatch();
 	}
 
-	// A document styled as HTML is: DocumentCascade's HTML cascade.
+	// A document styled as HTML is: DocumentCascade's HTML cascade, every formatting context.
 	public static function html(doc:Document, ?options:DocumentViewOptions):DocumentView
-		return new DocumentView(doc, htmlCascade, options);
+		return new DocumentView(doc, htmlCascade, every(options));
+
+	// (the options with every formatting context, unless they name theirs)
+	public static function every(options:Null<DocumentViewOptions>):DocumentViewOptions {
+		var o:DocumentViewOptions = options ?? {};
+		if (o.contexts == null) o.contexts = Contexts.all();
+		return o;
+	}
 
 	public static function htmlCascade(document:Document, media:CssMediaContext, options:DocumentViewOptions):CssStyles
 		return CssCascade.styles(document, {
@@ -469,7 +477,7 @@ class DocumentView {
 			space.lazy = lazy;
 		} else
 			lazy = null;
-		var f = (r.context ?? Contexts.all().flow).layout(r, space);
+		var f = (r.context ?? options.contexts.flow).layout(r, space);
 		var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)

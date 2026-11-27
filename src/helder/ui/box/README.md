@@ -168,9 +168,16 @@ alone, and links no CSS, HTML or XML parser (tests/css/EngineProbe.hx,
 the size lane's engine):
 
 ```haxe
-var sheets = [CssUserAgentTheme.app(), CssTheme.file("app.css")];
-var app = new DocumentNode(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));
+var app = DocumentApp.node(doc, [CssUserAgentTheme.app(), CssTheme.file("app.css")]);
 ```
+
+`DocumentApp` (a macro) also chooses the formatting contexts: it reads the
+sheets when the program is compiled and links only those whose display
+values they set (block flow always; flex, grid, table), so an app whose
+sheets never say grid links no GridFlow. A sheet it can't read, an
+`@import` or a display through `var()` gives every context; the HTML
+entry points (`html`, `render`, `png`, PagedView) take every one
+(`Contexts.all()`). BoxTree has no default: the caller's contexts.
 
 - Paint: `UiPainter` is helder.canvas's Painter on helder.ui's Canvas,
   so BoxPainter stays the one painter: rectangles, rounded ones and

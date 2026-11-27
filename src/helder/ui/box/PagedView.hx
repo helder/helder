@@ -124,7 +124,7 @@ class PagedView {
 			viewport = area;
 		}
 		if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
-		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg, paged: true});
+		tree = BoxTree.build(document, styles, {contexts: options.contexts ?? Contexts.all(), image: image, svg: svg, paged: true});
 		fixed = null;
 		paginate();
 		// (cross-references to the pages their targets are on: the pages again when one's text changed)
