@@ -142,7 +142,7 @@ the css-paged lane checks a screen-only program's symbols).
 var view = new PagedView(doc, {url: url, load: load, image: image});
 var count = view.layout();         // the pages, view.pages[i]
 view.paint(0, canvas);             // a page on a Painter
-File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
+File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text, in points
 ```
 
 - Each page's style is the @page cascade's (`styles.pageStyle(index,

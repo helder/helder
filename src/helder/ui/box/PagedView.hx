@@ -80,7 +80,7 @@ typedef Page = {
 // a fragmentainer (Breaks: break opportunities, forced breaks, avoid,
 // orphans and widows; BreakToken: where the next page resumes), each
 // page painted on its own (its background, its content), all of them a
-// PDF with real text.
+// PDF with real text (its pages in points: A4 595 by 842).
 //
 //   var view = new PagedView(doc);
 //   var count = view.layout();
@@ -558,16 +558,24 @@ class PagedView {
 			if (page.number != last + 1) doc.label(page.index, "decimal", "", page.number);
 			last = page.number;
 		}
+		// (pages in points, PDF's unit, drawn in CSS pixels: 96 of them an inch, 72 points)
 		for (i in 0...pages.length) {
 			var page = pages[i];
-			paint(i, doc.newPage(Math.round(page.width + 2 * page.bleed), Math.round(page.height + 2 * page.bleed)), false);
+			var p = doc.newPage(Math.round((page.width + 2 * page.bleed) * PT), Math.round((page.height + 2 * page.bleed) * PT));
+			p.scale(PT, PT);
+			paint(i, p, false);
 		}
 		outline(doc);
-		return PdfWriter.write(doc);
+		var w = new PdfWriter();
+		// (what is rasterised at the resolution it had in pixels)
+		w.fallbackScale /= PT;
+		return w.document(doc);
 	}
 
+	static inline var PT = 0.75;
+
 	// (the PDF's outline from the bookmarks, its links from <a href> (to a URI, or to an element's id, an
-	// anchor there): at their elements' first boxes, in page units)
+	// anchor there): at their elements' first boxes, in points)
 	function outline(doc:PdfDocument) {
 		var first = new haxe.ds.ObjectMap<helder.dom.Element, {page:Int, x:Float, y:Float}>();
 		var links:Array<{el:helder.dom.Element, page:Int, x:Float, y:Float, w:Float, h:Float}> = [];
@@ -593,22 +601,22 @@ class PagedView {
 		}
 		for (b in tree.bookmarks) {
 			var at = first.get(b.element);
-			if (at != null) doc.bookmark(b.bookmark.label, b.bookmark.level, at.page, at.y);
+			if (at != null) doc.bookmark(b.bookmark.label, b.bookmark.level, at.page, at.y * PT);
 		}
 		var targets = new Map<String, Bool>();
 		for (l in links) {
 			var href = l.el.getAttribute("href");
 			if (href.startsWith("#")) {
 				var name = StringTools.urlDecode(href.substr(1));
-				doc.linkTo(l.page, l.x, l.y, l.w, l.h, name);
+				doc.linkTo(l.page, l.x * PT, l.y * PT, l.w * PT, l.h * PT, name);
 				targets.set(name, true);
 			} else
-				doc.link(l.page, l.x, l.y, l.w, l.h, CssUrl.resolve(options.url, href));
+				doc.link(l.page, l.x * PT, l.y * PT, l.w * PT, l.h * PT, CssUrl.resolve(options.url, href));
 		}
 		for (name in targets.keys()) {
 			var el = document.getElementById(name);
 			var at = el == null ? null : first.get(el);
-			if (at != null) doc.anchor(name, at.page, at.x, at.y);
+			if (at != null) doc.anchor(name, at.page, at.x * PT, at.y * PT);
 		}
 	}
 
