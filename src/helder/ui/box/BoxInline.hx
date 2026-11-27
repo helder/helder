@@ -296,10 +296,21 @@ class BoxInline implements InlineStyle {
 
 	// (a list marker's text is its own, at its start whatever its item's alignment)
 	public function textAlign():InlineAlign
-		return box.pseudo == "marker" ? Start : align(k("text-align-all"), Start);
+		return alignValue ??= box.pseudo == "marker" ? Start : align(k("text-align-all"), Start);
 
 	public function textAlignLast():InlineAlign
-		return box.pseudo == "marker" ? Auto : align(k("text-align-last"), Auto);
+		return alignLastValue ??= box.pseudo == "marker" ? Auto : align(k("text-align-last"), Auto);
+
+	// (what the line builder asks each line and each box it places: read once, a style's and a width's)
+	var alignValue:Null<InlineAlign> = null;
+	var alignLastValue:Null<InlineAlign> = null;
+	var justifyValue:Null<InlineJustify> = null;
+	var indentValue = Math.NaN;
+	var indentFlags = -1;
+	var overflowValue:Null<InlineTextOverflow> = null;
+	var clampValue = -1;
+	var verticalValue:Null<InlineVerticalAlign> = null;
+	var edgesValue:Null<Array<Float>> = null;
 
 	static function align(v:String, fallback:InlineAlign):InlineAlign
 		return switch v {
@@ -315,7 +326,7 @@ class BoxInline implements InlineStyle {
 		}
 
 	public function textJustify():InlineJustify
-		return switch k("text-justify") {
+		return justifyValue ??= switch k("text-justify") {
 			case "none": None;
 			case "inter-word": InterWord;
 			case "inter-character": InterCharacter;
@@ -323,29 +334,40 @@ class BoxInline implements InlineStyle {
 		}
 
 	// (none in a list marker's own line: its item's indent is its item's text's)
-	public function textIndent():Float
-		return box.pseudo == "marker" ? 0 : len(box.style.len("text-indent"));
-
-	public function textIndentEachLine():Bool
-		return s.terms("text-indent").contains(Keyword("each-line"));
-
-	public function textIndentHanging():Bool
-		return s.terms("text-indent").contains(Keyword("hanging"));
-
-	public function textOverflow():InlineTextOverflow {
-		if (!s.clips) return Clip;
-		var t = s.terms("text-overflow");
-		return t.length > 0 && t[t.length - 1].match(Keyword("ellipsis")) ? Ellipsis : Clip;
+	public function textIndent():Float {
+		if (indentValue == indentValue) return indentValue;
+		return indentValue = box.pseudo == "marker" ? 0 : len(box.style.len("text-indent"));
 	}
 
-	public function lineClamp():Int
-		return switch s.terms("line-clamp") {
+	public function textIndentEachLine():Bool
+		return indent() & 1 != 0;
+
+	public function textIndentHanging():Bool
+		return indent() & 2 != 0;
+
+	function indent():Int {
+		if (indentFlags >= 0) return indentFlags;
+		var t = s.terms("text-indent");
+		return indentFlags = (t.contains(Keyword("each-line")) ? 1 : 0) | (t.contains(Keyword("hanging")) ? 2 : 0);
+	}
+
+	public function textOverflow():InlineTextOverflow {
+		if (overflowValue != null) return overflowValue;
+		if (!s.clips) return overflowValue = Clip;
+		var t = s.terms("text-overflow");
+		return overflowValue = t.length > 0 && t[t.length - 1].match(Keyword("ellipsis")) ? Ellipsis : Clip;
+	}
+
+	public function lineClamp():Int {
+		if (clampValue >= 0) return clampValue;
+		return clampValue = switch s.terms("line-clamp") {
 			case [Number(n, _)]: Std.int(n);
 			case _: 0;
 		}
+	}
 
 	public function verticalAlign():InlineVerticalAlign
-		return switch box.style.verticalAlign().kind {
+		return verticalValue ??= switch box.style.verticalAlign().kind {
 			case "sub": Sub;
 			case "super": Super;
 			case "text-top": TextTop;
@@ -377,40 +399,52 @@ class BoxInline implements InlineStyle {
 		return box.flags & Box.NO_END == 0;
 
 	public function marginStart():Float
-		return starts() ? len(s.margin[startSide()]) : 0;
+		return edges()[0];
 
 	public function marginEnd():Float
-		return ends() ? len(s.margin[endSide()]) : 0;
+		return edges()[1];
 
 	public function borderStart():Float
-		return starts() ? s.border[startSide()] : 0;
+		return edges()[2];
 
 	public function borderEnd():Float
-		return ends() ? s.border[endSide()] : 0;
+		return edges()[3];
 
 	public function paddingStart():Float
-		return starts() ? len(s.padding[startSide()]) : 0;
+		return edges()[4];
 
 	public function paddingEnd():Float
-		return ends() ? len(s.padding[endSide()]) : 0;
+		return edges()[5];
 
 	public function marginTop():Float
-		return len(s.margin[0]);
+		return edges()[6];
 
 	public function marginBottom():Float
-		return len(s.margin[2]);
+		return edges()[7];
 
 	public function borderTop():Float
-		return s.border[0];
+		return edges()[8];
 
 	public function borderBottom():Float
-		return s.border[2];
+		return edges()[9];
 
 	public function paddingTop():Float
-		return len(s.padding[0]);
+		return edges()[10];
 
 	public function paddingBottom():Float
-		return len(s.padding[2]);
+		return edges()[11];
+
+	// (its margins, borders and paddings: start, end, then top and bottom each)
+	function edges():Array<Float> {
+		if (edgesValue != null) return edgesValue;
+		var st = starts(), en = ends();
+		return edgesValue = [
+			st ? len(s.margin[startSide()]) : 0, en ? len(s.margin[endSide()]) : 0,
+			st ? s.border[startSide()] : 0, en ? s.border[endSide()] : 0,
+			st ? len(s.padding[startSide()]) : 0, en ? len(s.padding[endSide()]) : 0,
+			len(s.margin[0]), len(s.margin[2]), s.border[0], s.border[2], len(s.padding[0]), len(s.padding[2])
+		];
+	}
 
 	public function textDecoration():InlineDecoration {
 		var v = 0;

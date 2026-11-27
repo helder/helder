@@ -64,9 +64,10 @@ class BlockLines {
 		if (shift > 0) block.flags |= Box.SLICED;
 		oy -= shift;
 		// (the function, not the space's field: the lines are laid out again for hit testing, the space gone on)
-		var lineWidth = space.lineWidth;
+		var lineWidth = space.lineWidth, narrowed = false;
 		var constraints = new InlineConstraints(width, lineWidth == null ? null : (y, h) -> {
 			var lw = lineWidth(oy + y, h);
+			if (lw != null) narrowed = true;
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
 		constraints.exactMetrics = space.exact;
@@ -151,8 +152,10 @@ class BlockLines {
 			var r = fragments(l, built, space, frag, ox, oy, constraints, 0, last);
 			if (fr == null) {
 				c.compact();
-				// (a hit test's lines have their glyphs)
+				// (a hit test's lines have their glyphs; no floats beside them: no callback kept, nor the layout's
+				// space it reaches, which a long document's blocks would each hold till their next layout)
 				constraints.lazyText = false;
+				if (!narrowed) constraints.lineWidth = null;
 				block.lines = new BlockText(c, constraints, frag, ox, oy);
 			}
 			depth--;
@@ -257,17 +260,7 @@ class BlockLines {
 		var frags = space.fragments;
 		var relative = widthRelative(block, true);
 		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
-		var out:Built = {
-			content: c,
-			opened: [],
-			atomics: [],
-			laid: [],
-			floats: [],
-			absolutes: [],
-			markers: [],
-			leaders: [],
-			texts: []
-		};
+		var out = new Built(c);
 		var runs:Array<Box> = [];
 		function walk(b:Box) {
 			var k = b.first;
@@ -371,13 +364,7 @@ class BlockLines {
 		var frags = space.fragments, c = built.content, glyphs = l.glyphs;
 		// (an item's box: an inline box's by its Open item, an atomic's by order, text's by its DOM text)
 		// (its place among the opened boxes or the atomics, by item; -1: neither)
-		var slot = [], nextOpen = 0, nextAtomic = 0;
-		slot.resize(c.items);
-		for (i in 0...c.items) slot[i] = switch c.kind(i) {
-			case Open: nextOpen++;
-			case Atomic: nextAtomic++;
-			case _: -1;
-		}
+		var slot = built.slots();
 		inline function openBox(i:Int):Null<Box>
 			return slot[i] >= 0 && slot[i] < built.opened.length ? built.opened[slot[i]] : null;
 		inline function atomicFrag(i:Int):Int
@@ -692,6 +679,7 @@ class BlockLines {
 			for (p in 0...mc.pieces) w += mc.pieceWidth(p);
 			var mcons = new InlineConstraints(w);
 			mcons.exactMetrics = space.exact;
+			mcons.lazyText = true;
 			var ml = markerLayout.layout(mc, mcons);
 			if (ml.lines == 0) continue;
 			var mb = ml.lineBaseline(0);
@@ -721,15 +709,32 @@ class BlockLines {
 	}
 }
 
-private typedef Built = {
-	content:InlineContent,
-	opened:Array<Box>,
-	atomics:Array<Box>,
-	laid:Array<Int>,
-	floats:Array<Box>,
-	absolutes:Array<Box>,
-	markers:Array<Box>,
-	leaders:Array<Box>,
+private class Built {
+	public final content:InlineContent;
+	public var opened:Array<Box> = [];
+	public var atomics:Array<Box> = [];
+	public var laid:Array<Int> = [];
+	public var floats:Array<Box> = [];
+	public var absolutes:Array<Box> = [];
+	public var markers:Array<Box> = [];
+	public var leaders:Array<Box> = [];
 	// (each item's text run: null for the items not text, and generated text's)
-	texts:Array<Null<Box>>
+	public final texts:Array<Null<Box>> = [];
+	var slotted:Null<Array<Int>> = null;
+
+	public function new(content:InlineContent)
+		this.content = content;
+
+	// (each item's place among the opened boxes or the atomics; -1: neither): made once
+	public function slots():Array<Int> {
+		if (slotted != null) return slotted;
+		var c = content, out = [], open = 0, atomic = 0;
+		out.resize(c.items);
+		for (i in 0...c.items) out[i] = switch c.kind(i) {
+			case Open: open++;
+			case Atomic: atomic++;
+			case _: -1;
+		}
+		return slotted = out;
+	}
 }

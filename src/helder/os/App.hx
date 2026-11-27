@@ -288,16 +288,19 @@ class App {
 	// garbage a frame promoted grows the heap to what a late collection takes
 	// seconds over; a garbage collector's own trigger waits for the heap to fill.
 	// Frames that never end early (a drag, a live resize) get one between them
-	// at twice that, paced by what they allocate, not in the middle of one)
+	// at twice that, paced by what they allocate, not in the middle of one, nor
+	// right after a long one)
 	static inline var IDLE_BYTES = 256.0 * 1024 * 1024;
 	static inline var EARLY = 0.004;
+	static inline var LONG = 0.05;
 	static var allocatedAt = 0.0;
 	static var leftLive = 0.0;
 
 	static function collectIdle(started:Float) {
 		#if (target.name == "hxmc")
-		var allocated = hxmc.GcStats.bytesAllocated(), due = Math.max(IDLE_BYTES, leftLive);
-		if (allocated - allocatedAt < (haxe.Timer.stamp() - started > EARLY ? 2 * due : due)) return;
+		// (after a long turn not at once: its pause would add to it, the next shorter one's would not)
+		var allocated = hxmc.GcStats.bytesAllocated(), due = Math.max(IDLE_BYTES, leftLive), took = haxe.Timer.stamp() - started;
+		if (allocated - allocatedAt < (took <= EARLY ? due : took <= LONG ? 2 * due : 4 * due)) return;
 		hxmc.NativeGc.collect(true);
 		allocatedAt = hxmc.GcStats.bytesAllocated();
 		leftLive = hxmc.GcStats.liveBytes();

@@ -86,7 +86,18 @@ class DocumentView {
 	public var styles(default, null):Null<CssStyles> = null;
 	public var tree(default, null):Null<BoxTree> = null;
 	public var root(default, null) = -1;
-	public var order(default, null):Null<PaintOrder> = null;
+	// (made when first asked for after a layout, by paint or a hit test: a layout alone, a test's or a
+	// position query's, makes none)
+	@:isVar public var order(get, null):Null<PaintOrder> = null;
+	var orderDue = false;
+
+	function get_order():Null<PaintOrder> {
+		if (orderDue) {
+			orderDue = false;
+			order = root < 0 ? null : new PaintOrder(fragments, root, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null);
+		}
+		return order;
+	}
 
 	final options:DocumentViewOptions;
 	final cascade:DocumentCascade;
@@ -192,7 +203,7 @@ class DocumentView {
 		if (width != viewWidth && tree != null && tree.root != null) {
 			fragments.clear();
 			placedRuns.clear();
-			uncacheAll(tree.root);
+			Box.forgetFragments();
 		}
 		viewWidth = width;
 		viewHeight = height;
@@ -249,10 +260,11 @@ class DocumentView {
 	// left. A short one's is the whole document's.
 	public function paints(top:Float, bottom:Float) {
 		if (!long() || root < 0) return;
-		var w = order != null ? order.window : null, m = Math.max(bottom - top, 1) * 2;
+		var last = @:bypassAccessor order, w = last != null && !orderDue ? last.window : null, m = Math.max(bottom - top, 1) * 2;
 		if (w != null && w[0] > Math.NEGATIVE_INFINITY && w[0] <= top - m / 2 && w[1] >= bottom + m / 2) return;
 		window = [top - m, bottom + m];
-		order = new PaintOrder(fragments, root, null, order != null ? order.count : 0, window);
+		orderDue = false;
+		order = new PaintOrder(fragments, root, null, last != null ? last.count : 0, window);
 	}
 
 	// (a long document's paint order's window: Math's infinities till a paint asks)
@@ -512,7 +524,7 @@ class DocumentView {
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
 		if (sticky && (options.media == null || options.media.type != "print")) helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
-		order = new PaintOrder(fragments, f, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null);
+		orderDue = true;
 		if (fresh) whole = fragments.count;
 		return root = f;
 	}
@@ -531,20 +543,6 @@ class DocumentView {
 			}
 		}
 		return n;
-	}
-
-	// (every box's fragment let go, its intrinsic sizes and inline content kept)
-	static function uncacheAll(b:Box) {
-		var stack = [b];
-		while (stack.length > 0) {
-			var x = stack.pop();
-			x.uncache();
-			var c = x.first;
-			while (c != null) {
-				stack.push(c);
-				c = c.next;
-			}
-		}
 	}
 
 	// (every box's layout cache let go)
@@ -599,6 +597,7 @@ class DocumentView {
 			case LAYOUT:
 				lay();
 			case ORDER:
+				orderDue = false;
 				order = new PaintOrder(fragments, root);
 			case _:
 		}
