@@ -62,6 +62,14 @@ class Builtins {
 	static function method(target:JsObject, name:String, arity:Int, fn:(Dynamic, Array<Dynamic>, Dynamic) -> Dynamic):Void
 		target.setOwn(name, native(Symbols.functionName(name), arity, fn), Attr.HIDDEN);
 
+	// a method reading at most three arguments, each by its place: its fixed
+	// entry (JsFunction.fixed, what Lib.call0...3 call: no list), the list's form made from it
+	static function fixed(target:JsObject, name:String, arity:Int, fn:(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic):Void {
+		var f = native(Symbols.functionName(name), arity, (t, a, _) -> fn(t, arg(a, 0), arg(a, 1), arg(a, 2)));
+		f.fixed = fn;
+		target.setOwn(name, f, Attr.HIDDEN);
+	}
+
 	static function getter(target:JsObject, name:String, fn:Dynamic->Dynamic):Void
 		target.setOwn(name, new Accessor(native("get " + Symbols.functionName(name), 0, (t, _, _) -> fn(t)), null), Attr.HIDDEN);
 
@@ -296,7 +304,7 @@ class Builtins {
 		poison.extensible = false;
 		for (name in ["caller", "arguments"]) p.setOwn(name, new Accessor(poison, poison), Attr.HIDDEN);
 		method(p, "call", 1, (t, a, _) -> call(t, arg(a, 0), a.slice(1)));
-		method(p, "apply", 2, (t, a, _) -> call(t, arg(a, 0), arg(a, 1) == null || arg(a, 1) == undef() ? [] : arrayLikeList(arg(a, 1))));
+		fixed(p, "apply", 2, (t, a0:Dynamic, a1:Dynamic, _) -> call(t, a0, a1 == null || a1 == undef() ? [] : arrayLikeList(a1)));
 		method(p, "bind", 1, (t, a, _) -> {
 			var target:JsFunction = callback(t);
 			var self = arg(a, 0);
@@ -306,14 +314,14 @@ class Builtins {
 			f.setOwn(boundTarget, target, Attr.HIDDEN);
 			return f;
 		});
-		method(p, "toString", 0, (t, _, _) -> {
+		fixed(p, "toString", 0, (t, _, _, _) -> {
 			if (!Std.isOfType(t, JsFunction)) error("TypeError", "Function.prototype.toString requires that 'this' be a Function");
 			var f:JsFunction = cast t;
 			return (f.kind >= JsFunction.BASE ? "class " + f.name + " { }" : "function " + f.name + "() { [native code] }");});
-		method(p, Symbols.hasInstance, 1, (t, a, _) -> {
+		fixed(p, Symbols.hasInstance, 1, (t, a0:Dynamic, _, _) -> {
 			if (!Std.isOfType(t, JsFunction)) return false;
 			var p = get(t, "prototype");
-			var v = arg(a, 0);
+			var v = a0;
 			if (!isObject(v) || !isObject(p)) return false;
 			var o = prototypeOf(v);
 			while (o != null) {
@@ -334,13 +342,13 @@ class Builtins {
 			var o = wrap(v);
 			o.proto = protoFrom(nt, NumberProto);
 			return o;});
-		method(c, "isNaN", 1, (_, a, _) -> isNumber(arg(a, 0)) && Math.isNaN(arg(a, 0)));
-		method(c, "isFinite", 1, (_, a, _) -> isNumber(arg(a, 0)) && Math.isFinite(arg(a, 0)));
-		method(c, "isInteger", 1, (_, a, _) -> {
-			var v = arg(a, 0);
+		fixed(c, "isNaN", 1, (_, a0:Dynamic, _, _) -> isNumber(a0) && Math.isNaN(a0));
+		fixed(c, "isFinite", 1, (_, a0:Dynamic, _, _) -> isNumber(a0) && Math.isFinite(a0));
+		fixed(c, "isInteger", 1, (_, a0:Dynamic, _, _) -> {
+			var v = a0;
 			return isNumber(v) && Math.isFinite(v) && Math.ffloor(v) == v;});
-		method(c, "isSafeInteger", 1, (_, a, _) -> {
-			var v = arg(a, 0);
+		fixed(c, "isSafeInteger", 1, (_, a0:Dynamic, _, _) -> {
+			var v = a0;
 			return isNumber(v) && Math.isFinite(v) && Math.ffloor(v) == v && Math.abs(v) <= 9007199254740991.0;});
 		constant(c, "NaN", Math.NaN);
 		constant(c, "POSITIVE_INFINITY", Math.POSITIVE_INFINITY);
@@ -350,7 +358,7 @@ class Builtins {
 		constant(c, "EPSILON", 2.220446049250313e-16);
 		constant(c, "MAX_VALUE", 1.7976931348623157e308);
 		constant(c, "MIN_VALUE", 5e-324);
-		method(p, "valueOf", 0, (t, _, _) -> primitive(t, "number"));
+		fixed(p, "valueOf", 0, (t, _, _, _) -> primitive(t, "number"));
 	}
 
 	static function setupBoolean():Void {
@@ -362,8 +370,8 @@ class Builtins {
 			var o = wrap(v);
 			o.proto = protoFrom(nt, BooleanProto);
 			return o;});
-		method(p, "toString", 0, (t, _, _) -> primitive(t, "boolean") ? "true" : "false");
-		method(p, "valueOf", 0, (t, _, _) -> primitive(t, "boolean"));
+		fixed(p, "toString", 0, (t, _, _, _) -> primitive(t, "boolean") ? "true" : "false");
+		fixed(p, "valueOf", 0, (t, _, _, _) -> primitive(t, "boolean"));
 	}
 
 	static function setupSymbol():Void {
@@ -372,17 +380,17 @@ class Builtins {
 			if (nt != undef()) error("TypeError", "Symbol is not a constructor");
 			return Symbols.create(arg(a, 0) == undef() ? undef() : Seed.text(arg(a, 0)));});
 		for (name in ["iterator", "asyncIterator", "hasInstance", "toPrimitive", "toStringTag", "isConcatSpreadable", "match", "matchAll", "replace", "search", "split", "species", "unscopables", "dispose", "asyncDispose"]) constant(c, name, Symbols.wellKnown(name));
-		method(c, "for", 1, (_, a, _) -> Symbols.symbolFor(Seed.text(arg(a, 0))));
-		method(c, "keyFor", 1, (_, a, _) -> {
-			var s = arg(a, 0);
+		fixed(c, "for", 1, (_, a0:Dynamic, _, _) -> Symbols.symbolFor(Seed.text(a0)));
+		fixed(c, "keyFor", 1, (_, a0:Dynamic, _, _) -> {
+			var s = a0;
 			if (!Std.isOfType(s, Symbols.JsSymbol)) error("TypeError", Seed.text(s) + " is not a symbol");
 			for (k => v in Symbols.registry) if (v == s) return k;
 			return undef();});
-		method(p, "toString", 0, (t, _, _) -> Symbols.text(primitive(t, "symbol")));
-		method(p, "valueOf", 0, (t, _, _) -> primitive(t, "symbol"));
+		fixed(p, "toString", 0, (t, _, _, _) -> Symbols.text(primitive(t, "symbol")));
+		fixed(p, "valueOf", 0, (t, _, _, _) -> primitive(t, "symbol"));
 		getter(p, "description", t -> (primitive(t, "symbol") : Symbols.JsSymbol).description);
 		p.setOwn(Symbols.toStringTag, "Symbol", Attr.HIDDEN | Attr.READONLY);
-		method(p, Symbols.toPrimitive, 1, (t, _, _) -> primitive(t, "symbol"));
+		fixed(p, Symbols.toPrimitive, 1, (t, _, _, _) -> primitive(t, "symbol"));
 	}
 
 	// Errors
@@ -419,15 +427,15 @@ class Builtins {
 			});
 			if (name == "Error") {
 				base = c;
-				method(c, "isError", 1, (_, a, _) -> Std.isOfType(arg(a, 0), JsError));
+				fixed(c, "isError", 1, (_, a0:Dynamic, _, _) -> Std.isOfType(a0, JsError));
 				c.setOwn("stackTraceLimit", (Frames.MAX : Float), 0);
 				// (constructorOpt, the frames above a function left out, is not: the stack is from here)
-				method(c, "captureStackTrace", 1, (_, a, _) -> {
-					var o = arg(a, 0);
+				fixed(c, "captureStackTrace", 1, (_, a0:Dynamic, _, _) -> {
+					var o = a0;
 					if (!isObject(o)) error("TypeError", "Invalid argument");
 					put(o, "stack", errorText(o) + Frames.text(Frames.capture(), Frames.site, Async.awaits(), stackTraceLimit()));
 					return undef();});
-				method(p, "toString", 0, (t, _, _) -> {
+				fixed(p, "toString", 0, (t, _, _, _) -> {
 					if (!isObject(t)) error("TypeError", "Error.prototype.toString called on non-object");
 					return errorText(t);});
 			}
@@ -474,9 +482,9 @@ class Builtins {
 
 	// Iterators
 	static function setupIterators():Void {
-		method(IteratorProto, Symbols.iterator, 0, (t, _, _) -> t);
+		fixed(IteratorProto, Symbols.iterator, 0, (t, _, _, _) -> t);
 		for (p in [ArrayIteratorProto, MapIteratorProto, SetIteratorProto, StringIteratorProto])
-			method(p, "next", 0, (t, _, _) -> {
+			fixed(p, "next", 0, (t, _, _, _) -> {
 				if (!Std.isOfType(t, JsIterator)) error("TypeError", "next method called on incompatible receiver " + Seed.text(t));
 				return iteratorNext(t);});
 		ArrayIteratorProto.setOwn(Symbols.toStringTag, "Array Iterator", Attr.HIDDEN | Attr.READONLY);

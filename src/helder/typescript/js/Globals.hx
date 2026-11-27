@@ -169,9 +169,9 @@ class Globals {
 		constant(math, "SQRT2", Math.sqrt(2));
 		constant(math, "SQRT1_2", Math.sqrt(0.5));
 		for (name in ["abs", "floor", "ceil", "trunc", "round", "sqrt", "cbrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "expm1", "log", "log1p", "log2", "log10", "sign", "fround", "f16round", "clz32", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh"])
-			method(math, name, 1, (_, a, _) -> Numbers.math(name, Seed.numeric(arg(a, 0)), 0));
-		for (name in ["pow", "atan2", "imul"]) method(math, name, 2, (_, a, _) -> name == "imul" ? toInt32(arg(a, 0)) * toInt32(arg(a, 1)) : Numbers.math(name, Seed.numeric(arg(a, 0)), Seed.numeric(arg(a, 1))));
-		method(math, "random", 0, (_, _, _) -> Math.random());
+			fixed(math, name, 1, (_, a0:Dynamic, _, _) -> Numbers.math(name, Seed.numeric(a0), 0));
+		for (name in ["pow", "atan2", "imul"]) fixed(math, name, 2, (_, a0:Dynamic, a1:Dynamic, _) -> name == "imul" ? toInt32(a0) * toInt32(a1) : Numbers.math(name, Seed.numeric(a0), Seed.numeric(a1)));
+		fixed(math, "random", 0, (_, _, _, _) -> Math.random());
 		for (name in ["min", "max", "hypot"]) method(math, name, 2, (_, a, _) -> {
 			var values = [for (v in a) Seed.numeric(v)];
 			if (name == "hypot") {
@@ -207,15 +207,15 @@ class Globals {
 			if (arg(a, 0) != true) error("Test262Error", arg(a, 1) == undef() ? "Expected true but got " + Seed.text(arg(a, 0)) : Seed.text(arg(a, 1)));
 			return undef();});
 		globals.set("assert", assert);
-		method(assert, "sameValue", 2, (_, a, _) -> {
-			if (!sameValue(arg(a, 0), arg(a, 1))) error("Test262Error", (arg(a, 2) == undef() ? "" : Seed.text(arg(a, 2)) + " ") + "Expected SameValue(" + Inspect.format([arg(a, 0)]) + ", " + Inspect.format([arg(a, 1)]) + ") to be true");
+		fixed(assert, "sameValue", 2, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			if (!sameValue(a0, a1)) error("Test262Error", (a2 == undef() ? "" : Seed.text(a2) + " ") + "Expected SameValue(" + Inspect.format([a0]) + ", " + Inspect.format([a1]) + ") to be true");
 			return undef();});
-		method(assert, "notSameValue", 2, (_, a, _) -> {
-			if (sameValue(arg(a, 0), arg(a, 1))) error("Test262Error", (arg(a, 2) == undef() ? "" : Seed.text(arg(a, 2)) + " ") + "Expected SameValue to be false");
+		fixed(assert, "notSameValue", 2, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			if (sameValue(a0, a1)) error("Test262Error", (a2 == undef() ? "" : Seed.text(a2) + " ") + "Expected SameValue to be false");
 			return undef();});
-		method(assert, "throws", 2, (_, a, _) -> {
-			var expected = arg(a, 0);
-			var f = callback(arg(a, 1));
+		fixed(assert, "throws", 2, (_, a0:Dynamic, a1:Dynamic, _) -> {
+			var expected = a0;
+			var f = callback(a1);
 			var caught = false;
 			try call(f, undef(), []) catch (e:Dynamic) {
 				caught = true;
@@ -224,15 +224,15 @@ class Globals {
 			if (!caught) error("Test262Error", "Expected a " + Seed.text(get(expected, "name")) + " to be thrown but no exception was thrown at all");
 			return undef();
 		});
-		method(assert, "compareArray", 2, (_, a, _) -> {
-			var x = arg(a, 0), y = arg(a, 1);
+		fixed(assert, "compareArray", 2, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			var x = a0, y = a1;
 			var same = lengthOf(x) == lengthOf(y);
 			var i:Float = 0;
 			while (same && i < lengthOf(x)) {
 				if (!sameValue(get(x, i), get(y, i))) same = false;
 				i++;
 			}
-			if (!same) error("Test262Error", "Actual " + Inspect.format([x]) + " and expected " + Inspect.format([y]) + " should have the same contents. " + (arg(a, 2) == undef() ? "" : Seed.text(arg(a, 2))));
+			if (!same) error("Test262Error", "Actual " + Inspect.format([x]) + " and expected " + Inspect.format([y]) + " should have the same contents. " + (a2 == undef() ? "" : Seed.text(a2)));
 			return undef();
 		});
 		globals.set("$EXPECT_ASYNC", native("$EXPECT_ASYNC", 0, (_, _, _) -> {
@@ -246,7 +246,7 @@ class Globals {
 		globals.set("$ERROR", native("$ERROR", 1, (_, a, _) -> error("Test262Error", Seed.text(arg(a, 0)))));
 		globals.set("$DONOTEVALUATE", native("$DONOTEVALUATE", 0, (_, _, _) -> error("Test262Error", "Test262: This statement should not be evaluated.")));
 		var harness = new JsObject(ObjectProto);
-		method(harness, "detachArrayBuffer", 1, (_, a, _) -> Buffers.detach(arg(a, 0)));
+		fixed(harness, "detachArrayBuffer", 1, (_, a0:Dynamic, _, _) -> Buffers.detach(a0));
 		globals.set("$262", harness);
 		var globalObject = new JsObject(ObjectProto);
 		globals.set("globalThis", globalObject);
@@ -272,10 +272,10 @@ class Globals {
 		method(reflect, "set", 3, (_, a, _) -> {
 			var o = target(a, "set");
 			return setResult(o, key(arg(a, 1)), arg(a, 2), a.length > 3 ? a[3] : o);});
-		method(reflect, "apply", 3, (_, a, _) -> {
-			if (!isCallable(arg(a, 0))) error("TypeError", "Function.prototype.apply was called on " + Seed.text(Inspect.inspect(arg(a, 0))) + ", which is " + Seed.typeOf(arg(a, 0)) + " and not a function");
-			if (!isObject(arg(a, 2))) error("TypeError", "CreateListFromArrayLike called on non-object");
-			return call(arg(a, 0), arg(a, 1), arrayLikeList(arg(a, 2)));});
+		fixed(reflect, "apply", 3, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			if (!isCallable(a0)) error("TypeError", "Function.prototype.apply was called on " + Seed.text(Inspect.inspect(a0)) + ", which is " + Seed.typeOf(a0) + " and not a function");
+			if (!isObject(a2)) error("TypeError", "CreateListFromArrayLike called on non-object");
+			return call(a0, a1, arrayLikeList(a2));});
 		method(reflect, "construct", 2, (_, a, _) -> {
 			var nt = a.length > 2 ? a[2] : arg(a, 0);
 			if (!isConstructor(arg(a, 0))) error("TypeError", describe(arg(a, 0)) + " is not a constructor");

@@ -88,16 +88,16 @@ class Arrays {
 		var unscopables = new JsObject(null);
 		for (name in ["at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values"]) unscopables.setOwn(name, true);
 		p.setOwn("\x00@@unscopables", unscopables, Attr.HIDDEN | Attr.READONLY);
-		method(c, "isArray", 1, (_, a, _) -> Exotics.isArray(arg(a, 0)));
+		fixed(c, "isArray", 1, (_, a0:Dynamic, _, _) -> Exotics.isArray(a0));
 		method(c, "of", 0, (_, a, _) -> array(a.copy()));
-		method(c, "from", 1, (_, a, _) -> {
-			var source = arg(a, 0);
-			var f = arg(a, 1);
+		fixed(c, "from", 1, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			var source = a0;
+			var f = a1;
 			var mapped = !same(f, undef());
 			if (mapped) callback(f);
 			if (source == null || same(source, undef())) error("TypeError", Seed.text(source) + " is not iterable");
 			var values = getKey(source, Symbols.iterator, source) != undef() ? toList(source) : arrayLikeList(toObject(source));
-			if (mapped) for (i in 0...values.length) values[i] = call2(f, arg(a, 2), values[i], i);
+			if (mapped) for (i in 0...values.length) values[i] = call2(f, a2, values[i], i);
 			return array(values);
 		});
 		method(p, "push", 1, (t, a, _) -> {
@@ -120,7 +120,7 @@ class Arrays {
 			put(o, "length", n);
 			return n;
 		});
-		method(p, "pop", 0, (t, _, _) -> {
+		fixed(p, "pop", 0, (t, _, _, _) -> {
 			if (Std.isOfType(t, JsArray) && (t : JsArray).nums != null && (t : JsArray).nums.length > 0) {
 				var arr:JsArray = cast t;
 				arr.length--;
@@ -136,7 +136,7 @@ class Arrays {
 			deleteAt(o, n - 1);
 			put(o, "length", n - 1);
 			return v;});
-		method(p, "shift", 0, (t, _, _) -> {
+		fixed(p, "shift", 0, (t, _, _, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
 			if (n == 0) {
@@ -177,17 +177,17 @@ class Arrays {
 			for (j in 0...count) setAt(o, j, a[j]);
 			put(o, "length", n + count);
 			return n + count;});
-		method(p, "join", 1, (t, a, _) -> join(toObject(t), same(arg(a, 0), undef()) ? "," : Seed.text(arg(a, 0))));
-		method(p, "toString", 0, (t, _, _) -> {
+		fixed(p, "join", 1, (t, a0:Dynamic, _, _) -> join(toObject(t), same(a0, undef()) ? "," : Seed.text(a0)));
+		fixed(p, "toString", 0, (t, _, _, _) -> {
 			var o = toObject(t);
 			var j = get(o, "join");
 			return isCallable(j) ? call(j, o, []) : objectToString(o);});
-		method(p, "toLocaleString", 0, (t, _, _) -> join(toObject(t), ","));
-		method(p, "slice", 2, (t, a, _) -> {
+		fixed(p, "toLocaleString", 0, (t, _, _, _) -> join(toObject(t), ","));
+		fixed(p, "slice", 2, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var start = relative(arg(a, 0), n);
-			var end = same(arg(a, 1), undef()) ? n : relative(arg(a, 1), n);
+			var start = relative(a0, n);
+			var end = same(a1, undef()) ? n : relative(a1, n);
 			var out = new JsArray(ArrayProto);
 			var i = start;
 			var k:Float = 0;
@@ -198,18 +198,18 @@ class Arrays {
 			}
 			out.length = Math.max(k, 0);
 			return out;});
-		method(p, "at", 1, (t, a, _) -> {
+		fixed(p, "at", 1, (t, a0:Dynamic, _, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var i = toIntegerOrInfinity(arg(a, 0));
+			var i = toIntegerOrInfinity(a0);
 			if (i < 0) i += n;
 			return i < 0 || i >= n ? undef() : get(o, i);});
-		method(p, "indexOf", 1, (t, a, _) -> {
+		fixed(p, "indexOf", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var i = same(arg(a, 1), undef()) ? 0 : toIntegerOrInfinity(arg(a, 1));
+			var i = same(a1, undef()) ? 0 : toIntegerOrInfinity(a1);
 			if (i < 0) i = Math.max(i + n, 0);
-			var x = arg(a, 0);
+			var x = a0;
 			while (i < n) {
 				if (hasAt(o, i) && Seed.strictEq(get(o, i), x)) return i;
 				i++;
@@ -226,20 +226,20 @@ class Arrays {
 				i--;
 			}
 			return -1;});
-		method(p, "includes", 1, (t, a, _) -> {
+		fixed(p, "includes", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var i = same(arg(a, 1), undef()) ? 0 : toIntegerOrInfinity(arg(a, 1));
+			var i = same(a1, undef()) ? 0 : toIntegerOrInfinity(a1);
 			if (i < 0) i = Math.max(i + n, 0);
-			var x = arg(a, 0);
+			var x = a0;
 			while (i < n) {
 				if (sameValueZero(get(o, i), x)) return true;
 				i++;
 			}
 			return false;});
 		// (each its own function: the loop runs per element)
-		method(p, "map", 1, (t, a, _) -> {
-			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+		fixed(p, "map", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(a0), self = a1;
 			var out = new JsArray(ArrayProto);
 			out.length = n;
 			var i:Float = 0;
@@ -251,8 +251,8 @@ class Arrays {
 				i++;
 			}
 			return out;});
-		method(p, "filter", 1, (t, a, _) -> {
-			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+		fixed(p, "filter", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(a0), self = a1;
 			var out = new JsArray(ArrayProto);
 			var i:Float = 0;
 			while (i < n) {
@@ -263,8 +263,8 @@ class Arrays {
 				i++;
 			}
 			return out;});
-		method(p, "forEach", 1, (t, a, _) -> {
-			var o = toObject(t), n = lengthOf(o), f = callback(arg(a, 0)), self = arg(a, 1);
+		fixed(p, "forEach", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
+			var o = toObject(t), n = lengthOf(o), f = callback(a0), self = a1;
 			var i:Float = 0;
 			while (i < n) {
 				if (hasAt(o, i)) {
@@ -300,7 +300,7 @@ class Arrays {
 			if (!ready) error("TypeError", "Reduce of empty array with no initial value");
 			return acc;
 		});
-		method(p, "reverse", 0, (t, _, _) -> {
+		fixed(p, "reverse", 0, (t, _, _, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
 			var left:Float = 0;
@@ -313,16 +313,16 @@ class Arrays {
 				left++;
 			}
 			return o;});
-		method(p, "toReversed", 0, (t, _, _) -> {
+		fixed(p, "toReversed", 0, (t, _, _, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
 			return array([for (i in 0...Std.int(n)) get(o, n - 1 - i)]);});
-		method(p, "fill", 1, (t, a, _) -> {
+		fixed(p, "fill", 1, (t, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var i = relative(arg(a, 1), n);
-			var end = same(arg(a, 2), undef()) ? n : relative(arg(a, 2), n);
-			while (i < end) setAt(o, i++, arg(a, 0));
+			var i = relative(a1, n);
+			var end = same(a2, undef()) ? n : relative(a2, n);
+			while (i < end) setAt(o, i++, a0);
 			return o;});
 		method(p, "concat", 1, (t, a, _) -> {
 			var out = new JsArray(ArrayProto);
@@ -342,8 +342,8 @@ class Arrays {
 			}
 			return out;
 		});
-		method(p, "keys", 0, (t, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "keys"));
-		method(p, "entries", 0, (t, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "entries"));
+		fixed(p, "keys", 0, (t, _, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "keys"));
+		fixed(p, "entries", 0, (t, _, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "entries"));
 		var values = native("values", 0, (t, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "values"));
 		p.setOwn("values", values, Attr.HIDDEN);
 		p.setOwn(Symbols.iterator, values, Attr.HIDDEN);
@@ -395,8 +395,8 @@ class Arrays {
 			put(o, "length", n + delta);
 			return removed;
 		});
-		for (name in ["sort", "toSorted"]) method(p, name, 1, (t, a, _) -> {
-			var cmp = arg(a, 0);
+		for (name in ["sort", "toSorted"]) fixed(p, name, 1, (t, a0:Dynamic, _, _) -> {
+			var cmp = a0;
 			if (!same(cmp, undef())) callback(cmp);
 			var o = toObject(t);
 			var n = lengthOf(o);
@@ -418,10 +418,10 @@ class Arrays {
 			if (name == "sort") while (k < n) deleteAt(target, k++);
 			return target;
 		});
-		method(p, "copyWithin", 2, (t, a, _) -> {
+		fixed(p, "copyWithin", 2, (t, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var target = relative(arg(a, 0), n), start = relative(arg(a, 1), n), end = same(arg(a, 2), undef()) ? n : relative(arg(a, 2), n);
+			var target = relative(a0, n), start = relative(a1, n), end = same(a2, undef()) ? n : relative(a2, n);
 			var count = Math.min(end - start, n - target);
 			var direction:Float = 1;
 			if (start < target && target < start + count) {
@@ -436,30 +436,30 @@ class Arrays {
 				count--;
 			}
 			return o;});
-		method(p, "flat", 0, (t, a, _) -> {
+		fixed(p, "flat", 0, (t, a0:Dynamic, _, _) -> {
 			var o = toObject(t);
 			var out = new JsArray(ArrayProto);
-			var depth = same(arg(a, 0), undef()) ? 1 : Math.max(toIntegerOrInfinity(arg(a, 0)), 0);
+			var depth = same(a0, undef()) ? 1 : Math.max(toIntegerOrInfinity(a0), 0);
 			flatten(out, o, depth + 1);
 			return out;});
-		method(p, "flatMap", 1, (t, a, _) -> {
+		fixed(p, "flatMap", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t);
-			var f = callback(arg(a, 0));
+			var f = callback(a0);
 			var out = new JsArray(ArrayProto);
 			var n = lengthOf(o);
 			var i:Float = 0;
 			while (i < n) {
-				if (hasAt(o, i)) flatten(out, call3(f, arg(a, 1), get(o, i), i, o), 1);
+				if (hasAt(o, i)) flatten(out, call3(f, a1, get(o, i), i, o), 1);
 				i++;
 			}
 			return out;});
-		method(p, "with", 2, (t, a, _) -> {
+		fixed(p, "with", 2, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var i = toIntegerOrInfinity(arg(a, 0));
+			var i = toIntegerOrInfinity(a0);
 			if (i < 0) i += n;
-			if (i < 0 || i >= n) error("RangeError", "Invalid index : " + Seed.text(arg(a, 0)));
-			return array([for (j in 0...Std.int(n)) j == i ? arg(a, 1) : get(o, j)]);});
+			if (i < 0 || i >= n) error("RangeError", "Invalid index : " + Seed.text(a0));
+			return array([for (j in 0...Std.int(n)) j == i ? a1 : get(o, j)]);});
 	}
 
 	static function join(o:Dynamic, sep:String):String {

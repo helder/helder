@@ -399,6 +399,16 @@ class JsFunction extends JsObject {
 	public var impl:Dynamic;
 	// a built-in: (this, args, newTarget) -> result
 	public var native:(Dynamic, Array<Dynamic>, Dynamic) -> Dynamic;
+	// (a built-in reading at most three arguments by their places: called without
+	// a list, the missing ones undefined; Builtins.fixed)
+	public var fixed:(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic = null;
+	// (impl as the closure it is, by its arity (no rest): Lib.call's, converted
+	// from Dynamic once here rather than at each call)
+	public var impl0:Dynamic->Dynamic = null;
+	public var impl1:(Dynamic, Dynamic) -> Dynamic = null;
+	public var impl2:(Dynamic, Dynamic, Dynamic) -> Dynamic = null;
+	public var impl3:(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic = null;
+	public var impl4:(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic = null;
 	public var arity:Int;
 	public var rest:Bool;
 	public var deletedSpecial:Map<String, Bool> = null;
