@@ -15,7 +15,11 @@ class Text {
 
 	static function text() {
 		mkdirs("bin");
+		// (the faces its checks name on every machine, none of the system's: DejaVu 2.37, as CI's fonts-dejavu-core)
+		run(NODE, ["tests/dejavu.mjs"]);
+		Sys.putEnv("HELDER_FONT_DIRS", sys.FileSystem.fullPath("bin/fonts/dejavu-2.37"));
 		interp(cps(["src", "tests/text", "tests/gfx"]), "TextCheck", BLESS ? ["--bless"] : []);
+		Sys.putEnv("HELDER_FONT_DIRS", "");
 	}
 
 	// (Windows and macOS; a Windows target from Linux under Wine; macOS: a HEIC made by sips)

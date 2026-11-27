@@ -105,6 +105,10 @@ class View {
 	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
+		// (the goldens' faces on every machine, none of the system's: DejaVu 2.37, as CI's fonts-dejavu-core; a Mac's
+		// Helvetica and its own Inter drew them otherwise)
+		run(NODE, ["tests/dejavu.mjs"]);
+		Sys.putEnv("HELDER_FONT_DIRS", sys.FileSystem.fullPath("bin/fonts/dejavu-2.37"));
 		var programs = ["UiDrawCheck", "TodoCheck", "BoxCheck", "EmojiCheck", "ControlsGallery", "SnapCheck", "GlassCheck"];
 		// (-D helder.headless: no window code, static on Linux)
 		var soft = ["-D", "helder.soft", "-D", "helder.headless", "-D", 'hxmc.target=$HOST'];
@@ -119,6 +123,7 @@ class View {
 		shell('$b/GlassCheck tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
+		Sys.putEnv("HELDER_FONT_DIRS", "");
 	}
 
 	static function uiDraw() {

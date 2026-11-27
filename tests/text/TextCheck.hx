@@ -60,7 +60,8 @@ class TextCheck {
 		}
 		// CFF outlines: Inter (fonts-inter), an OpenType font with cubic curves
 		var inter = fonts.match("Inter");
-		if (inter == null || inter.family != "Inter") Sys.println("TextCheck: no Inter: CFF checks skipped") else {
+		// (fonts-inter's is CFF; an Inter of TrueType outlines (a Mac's variable one) isn't the one these expect)
+		if (inter == null || inter.family != "Inter" || inter.trueType) Sys.println("TextCheck: no Inter of CFF outlines: CFF checks skipped") else {
 			cff(inter);
 			features(sans, inter);
 			sample(inter, fonts, here + "/sample-cff.png", bless);
