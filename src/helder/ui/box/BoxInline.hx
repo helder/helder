@@ -250,8 +250,9 @@ class BoxInline implements InlineStyle {
 			case _: Auto;
 		}
 
+	// (none in a list marker's own line: its item's indent is its item's text's)
 	public function textIndent():Float
-		return len(box.style.len("text-indent"));
+		return box.pseudo == "marker" ? 0 : len(box.style.len("text-indent"));
 
 	public function textIndentEachLine():Bool
 		return s.terms("text-indent").contains(Keyword("each-line"));

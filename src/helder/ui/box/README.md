@@ -114,7 +114,15 @@ helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
   shaded as Chromium shades them), text with its decorations from every
   decorating box (underline, overline, line-through; solid, double,
   dotted, dashed), images, outlines. Boxes are snapped to whole pixels,
-  as browsers paint them.
+  as browsers paint them; glyph origins to quarter pixels across and
+  whole ones down, as Skia quantizes subpixel-positioned text
+  (`BoxPainter.snap`, off for a PDF). Decorations as Chromium draws
+  them: auto thickness a tenth of the font size; an underline around the
+  post table's position (FreeType's centre), a line-through above the
+  OS/2 table's strikeout position by that thickness. A list marker's
+  disc, circle or square is laid out as its text and drawn as a shape of
+  the font's ascent (Chromium's), inside at its text's start, outside
+  before the line by two thirds of the ascent and 7.
 - `HitTest.at` walks the same order backwards, through the transforms and
   clips: over text, the DOM position nearest the point from its block's
   lines (InlineLayout's hit testing: a glyph's nearer half by its

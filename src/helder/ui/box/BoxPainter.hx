@@ -23,6 +23,10 @@ class BoxPainter {
 	final glyphs = new Glyphs();
 	// (the states pushed now, innermost last)
 	final stack:Array<Int> = [];
+	// each glyph's origin on a quarter pixel across and a whole one down, as
+	// Skia quantizes subpixel-positioned text (Chromium's); off for a PDF,
+	// whose text keeps layout's places (a tie rounds up, float noise aside)
+	public var snap = true;
 
 	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>) {
 		f = fragments;
@@ -223,6 +227,43 @@ class BoxPainter {
 
 	static final PLAIN = new Paint();
 
+	// (a list marker's disc, circle or square: laid out as its text, drawn as
+	// Chromium draws it, a shape of the font's ascent a: two thirds of it
+	// halved, three halves of the rest below the text's top; at the text's
+	// start inside its item, two thirds of a and 7 before the line outside)
+	function symbol(p:Painter, id:Int, b:Box, run:ShapedRun, x:Float, baseline:Float, color:Int):Bool {
+		// (the text's box: the marker's, or its text's)
+		var marker = b.kind == Text ? b.parent : b;
+		if (b.pseudo != "marker" || marker == null || marker.pseudo != "marker" || run.text == null) return false;
+		var type = marker.style.keyword("list-style-type");
+		var symbol = switch type {
+			case "disc": "\u2022";
+			case "circle": "\u25E6";
+			case "square": "\u25AA";
+			case _: return false;
+		}
+		if (StringTools.trim(run.text) != symbol) return false;
+		if (color >>> 24 == 0) return true;
+		var a = Math.round(FontMatch.ascent(run.face, run.size)), offset = Std.int(a * 2 / 3), size = Std.int((offset + 1) / 2);
+		// (outside: from the line's start, its marker span's end: whatever its text's trailing space)
+		var span = f.parent(id);
+		var start = span >= 0 && f.kind(span) == Fragments.SPAN ? x - f.x(id) + f.width(span) : x + f.width(id);
+		var x0 = Math.round(marker.flags & Box.OUTSIDE != 0 ? start - offset - 7 : x), y0 = Math.round(baseline) - a + Std.int(3 * (a - offset) / 2);
+		var path = new Path();
+		switch type {
+			case "square":
+				path.rect(x0, y0, size, size);
+				p.fill(path, Paint.solid(color));
+			case "circle":
+				path.ellipse(x0 + size / 2, y0 + size / 2, size / 2 - 0.5, size / 2 - 0.5, 0, 0, 2 * Math.PI);
+				p.stroke(path, new helder.canvas.Stroke(), Paint.solid(color));
+			case _:
+				path.ellipse(x0 + size / 2, y0 + size / 2, size / 2, size / 2, 0, 0, 2 * Math.PI);
+				p.fill(path, Paint.solid(color));
+		}
+		return true;
+	}
+
 	function text(p:Painter, id:Int, b:Box, x:Float, y:Float) {
 		var r = f.run(id);
 		if (r < 0) return;
@@ -230,6 +271,7 @@ class BoxPainter {
 		var s = b.style;
 		var baseline = y + f.baseline(id);
 		var color = s.color("color");
+		if (symbol(p, id, b, run, x, baseline, color)) return;
 		var decorations = decorating(b);
 		// (underlines and overlines under the text, line-throughs over it)
 		for (d in decorations) decorate(p, d, run, x, baseline, f.width(id), false);
@@ -237,7 +279,10 @@ class BoxPainter {
 			var placed = new ShapedRun(run.face, run.size);
 			placed.text = run.text;
 			placed.skew = run.skew;
-			for (k in 0...run.count) placed.push(run.ids[k], x + run.xs[k], baseline + run.ys[k], run.starts[k], run.ends[k]);
+			for (k in 0...run.count) {
+				var gx = x + run.xs[k], gy = baseline + run.ys[k];
+				placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
+			}
 			var paint = Paint.solid(color);
 			if (!Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(placed, paint)) {
 				glyphs.path.clear();
@@ -268,13 +313,16 @@ class BoxPainter {
 			case _: d.color("color");
 		}
 		if (color >>> 24 == 0 || width <= 0) return;
-		var u = FontMatch.underline(run.face, run.size);
-		var thickness = switch d.terms("text-decoration-thickness") {
+		var u = FontMatch.underline(run.face, run.size), strike = FontMatch.strikeout(run.face, run.size);
+		// (auto: a tenth of the font size, as Chromium's; from-font: the font's own)
+		var auto = run.size / 10;
+		var given = switch d.terms("text-decoration-thickness") {
 			case [Dimension(v, _)]: v;
 			case [Percentage(v)]: v * run.size / 100;
-			case _: u.thickness;
+			case [Keyword("from-font")]: over ? strike.thickness : u.thickness;
+			case _: auto;
 		}
-		thickness = Math.max(1, Math.round(thickness));
+		var thickness = Math.max(1, Math.floor(given));
 		var style = d.keyword("text-decoration-style");
 		for (t in d.terms("text-decoration-line")) {
 			var line = switch t {
@@ -283,9 +331,10 @@ class BoxPainter {
 			}
 			if ((line == "line-through") != over) continue;
 			var top = switch line {
-				case "underline": baseline + Math.max(1, Math.round(u.offset));
+				case "underline": baseline + Math.max(1, Math.round(u.offset - given / 2));
 				case "overline": baseline - FontMatch.ascent(run.face, run.size);
-				case "line-through": baseline - Math.round(FontMatch.xHeight(run.face, run.size) / 2) - Math.floor(thickness / 2);
+				// (Chromium's: the font's strikeout position the stroke's bottom, auto's thickness above it)
+				case "line-through": baseline - Math.round(strike.offset + auto);
 				case _: continue;
 			}
 			var path = new Path();

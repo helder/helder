@@ -163,13 +163,30 @@ class FontMatch {
 		return v == 0 ? size / 2 : v * size / f.unitsPerEm;
 	}
 
-	// the underline's offset below the baseline and its thickness (the post table's), in px
+	// the line-through's top above the baseline and its thickness, in px:
+	// the OS/2 table's strikeout (yStrikeoutPosition, yStrikeoutSize), as
+	// Chromium reads it; else half the x-height and the underline's
+	public static function strikeout(f:FontFile, size:Float):{offset:Float, thickness:Float} {
+		var os2 = f.table("OS/2");
+		var scale = size / f.unitsPerEm;
+		if (os2 != null && os2.length >= 30) {
+			var thick = os2.get(26) << 8 | os2.get(27), pos = os2.get(28) << 8 | os2.get(29);
+			if (pos > 32767) pos -= 65536;
+			if (thick > 0 && pos > 0) return {offset: pos * scale, thickness: Math.max(1, thick * scale)};
+		}
+		var u = underline(f, size);
+		return {offset: xHeight(f, size) / 2 + u.thickness / 2, thickness: u.thickness};
+	}
+
+	// the underline's centre below the baseline and its thickness (the post
+	// table's: its position the stroke's top, FreeType's centre half its
+	// thickness lower, which Chromium draws around), in px
 	public static function underline(f:FontFile, size:Float):{offset:Float, thickness:Float} {
 		var post = f.table("post");
 		var scale = size / f.unitsPerEm;
 		if (post == null || post.length < 12) return {offset: size / 10, thickness: Math.max(1, size / 16)};
 		var pos = (post.get(8) << 8 | post.get(9)), thick = post.get(10) << 8 | post.get(11);
 		if (pos > 32767) pos -= 65536;
-		return {offset: -pos * scale, thickness: Math.max(1, thick * scale)};
+		return {offset: (-pos + thick / 2) * scale, thickness: Math.max(1, thick * scale)};
 	}
 }
