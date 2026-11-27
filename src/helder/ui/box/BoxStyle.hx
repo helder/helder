@@ -34,6 +34,16 @@ class BoxStyle {
 
 	// (how far it paints past its box, BoxPainter.reach's: kept once known; NaN until then)
 	@:allow(helder.ui.box) var reach = Math.NaN;
+	// (whether it draws text decorations: text-decoration-line not none; read once)
+	var decorating = -1;
+
+	public function decorates():Bool {
+		if (decorating < 0) {
+			var lines = terms("text-decoration-line");
+			decorating = lines.length > 0 && !lines[0].match(Keyword("none")) ? 1 : 0;
+		}
+		return decorating == 1;
+	}
 
 	public function anonymousChild():BoxStyle
 		return new BoxStyle(css, true);

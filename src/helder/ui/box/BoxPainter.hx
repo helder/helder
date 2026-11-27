@@ -44,6 +44,9 @@ class BoxPainter {
 	// painter's whole): what is outside it is skipped, as outside the
 	// painter (a window's view of a long document)
 	public var area:Null<Array<Float>> = null;
+	// the glyph runs placed, kept by the fragments' run each was placed from
+	// (a view's, for the painters that keep what they are given: UiPainter); null: none kept
+	public var placedRuns:Null<PlacedRuns> = null;
 	// scroll containers' offsets (x, y) by their element: what they hold
 	// moved back by them (PaintOrder.scroller); null: none scrolled
 	public var scrolls:Null<haxe.ds.ObjectMap<helder.dom.Node, Array<Float>>> = null;
@@ -84,7 +87,8 @@ class BoxPainter {
 				y -= shifts[2 * st + 1];
 			}
 			if (cull && !order.transformed[order.stateOf[k - 1]] && (y > ay1 || x > ax1 || y + f.height(id) < ay0 || x + f.width(id) < ax0)) {
-				var r = reach(f.box(id).style);
+				var st = f.box(id).style, r = st.reach;
+				if (r != r) r = st.reach = reach(st);
 				if (r == 0 || y - r > ay1 || x - r > ax1 || y + f.height(id) + r < ay0 || x + f.width(id) + r < ax0) continue;
 			}
 			if (shifted) {
@@ -366,14 +370,20 @@ class BoxPainter {
 		// (underlines and overlines under the text, line-throughs over it)
 		for (d in decorations) decorate(p, d, run, x, baseline, f.width(id), false);
 		if (color >>> 24 != 0) {
-			var placed = new ShapedRun(run.face, run.size);
-			placed.text = run.text;
-			placed.skew = run.skew;
-			placed.bold = run.bold;
-			placed.palette = run.palette;
-			for (k in 0...run.count) {
-				var gx = x + run.xs[k], gy = baseline + run.ys[k];
-				placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
+			// (placed before at the same place: the same, a window's repaint allocating none)
+			var placed = placedRuns != null && placedRuns.runs[r] != null && placedRuns.xs[r] == x && placedRuns.ys[r] == baseline && placedRuns.snapped[r] == snap ? placedRuns.runs[r] : null;
+			if (placed != null) placedRuns.touch(r);
+			if (placed == null) {
+				placed = new ShapedRun(run.face, run.size);
+				placed.text = run.text;
+				placed.skew = run.skew;
+				placed.bold = run.bold;
+				placed.palette = run.palette;
+				for (k in 0...run.count) {
+					var gx = x + run.xs[k], gy = baseline + run.ys[k];
+					placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
+				}
+				if (placedRuns != null) placedRuns.keep(r, placed, x, baseline, snap);
 			}
 			var paint = Paint.solid(color);
 			// (synthesized bold: outlines filled and stroked, not text a painter keeps)
@@ -393,16 +403,20 @@ class BoxPainter {
 	// (the decorating boxes around a text: its ancestors up to the first that
 	// stops propagation, an atomic inline, a float or absolutely positioned box)
 	static function decorating(b:Box):Array<BoxStyle> {
-		var out = [];
+		var out = NONE;
 		var a = b.kind == Text ? b.parent : b;
 		while (a != null) {
-			var lines = a.style.terms("text-decoration-line");
-			if (lines.length > 0 && !lines[0].match(Keyword("none"))) out.push(a.style);
+			if (a.style.decorates()) {
+				if (out == NONE) out = [];
+				out.push(a.style);
+			}
 			if (a.kind == InlineBlock || a.kind == Container || a.style.floating || a.style.absolute) break;
 			a = a.parent;
 		}
 		return out;
 	}
+
+	static final NONE:Array<BoxStyle> = [];
 
 	function decorate(p:Painter, d:BoxStyle, run:ShapedRun, x:Float, baseline:Float, width:Float, over:Bool) {
 		var color = switch d.terms("text-decoration-color") {
@@ -452,5 +466,51 @@ class BoxPainter {
 			}
 			p.fill(path, Paint.solid(color));
 		}
+	}
+}
+
+// (BoxPainter.placedRuns: by the fragments' run index, its run placed, where
+// and whether snapped; kept while placed in this paint or the last: next)
+class PlacedRuns {
+	public final runs:Array<Null<ShapedRun>> = [];
+	public final xs:Array<Float> = [];
+	public final ys:Array<Float> = [];
+	public final snapped:Array<Bool> = [];
+	final stamps:Array<Int> = [];
+	var kept:Array<Int> = [];
+	var stamp = 1;
+
+	public function new() {}
+
+	public function keep(r:Int, run:ShapedRun, x:Float, y:Float, snap:Bool) {
+		runs[r] = run;
+		xs[r] = x;
+		ys[r] = y;
+		snapped[r] = snap;
+		touch(r);
+	}
+
+	// (r placed again in this paint)
+	public function touch(r:Int) {
+		if (stamps[r] == stamp) return;
+		stamps[r] = stamp;
+		kept.push(r);
+	}
+
+	// a paint begins: the runs neither it nor the last placed let go
+	public function next() {
+		stamp++;
+		var still = [];
+		for (r in kept) if (stamps[r] >= stamp - 1) still.push(r) else runs[r] = null;
+		kept = still;
+	}
+
+	public function clear() {
+		runs.resize(0);
+		xs.resize(0);
+		ys.resize(0);
+		snapped.resize(0);
+		stamps.resize(0);
+		kept = [];
 	}
 }

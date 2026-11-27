@@ -53,8 +53,19 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 	var drawn = new ObjectMap<Bitmap, Image>();
 	// (the CPU's drawings by what they draw, kept while drawn in each paint: a repaint draws none again)
 	var rastered = new Map<String, Image>();
+	// (the paragraphs made of glyph runs, kept while given in each frame's paints)
+	var paragraphs = new ObjectMap<ShapedRun, RunParagraph>();
+	var oldParagraphs = new ObjectMap<ShapedRun, RunParagraph>();
 	var redrawn = new Map<String, Image>();
 
+	static inline var THIN = 2.5;
+
+	// (one subpath of four lines: a move, three lines, a close)
+	static function quad(p:Path):Bool {
+		if (p.verbCount < 4 || p.verbCount > 5 || p.pointCount != 8) return false;
+		for (i in 1...4) if (p.verbs[i] != Path.LINE) return false;
+		return p.verbs[0] == Path.MOVE && (p.verbCount == 4 || p.verbs[4] == Path.CLOSE);
+	}
 	static inline var CLIP = 0;
 	static inline var GROUP = 1;
 	static inline var TRANSFORM = 2;
@@ -79,9 +90,13 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		rasters = rasterPixels = 0;
 	}
 
-	// ... and ends: what was pushed popped, the images not drawn let go
+	// ... and ends: what was pushed popped, the images and paragraphs not drawn let go
 	public function end() {
 		restoreToCount(0);
+		var pg = oldParagraphs;
+		oldParagraphs = paragraphs;
+		paragraphs = pg;
+		paragraphs.clear();
 		var was = images;
 		images = drawn;
 		drawn = was;
@@ -179,6 +194,26 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 				canvas.rect(r.x, r.y, r.w, r.h, r.radius, color, 0, Color.TRANSPARENT, r.corners);
 				return;
 			}
+			// (several rectangles apart, as a dotted or dashed line's: each its rect)
+			if (r != null && !evenOdd && r.radius == 0) {
+				var all = [r], next = r.next;
+				while (next >= 0) {
+					var q = shape(path, next);
+					if (q == null || q.radius > 0) break;
+					all.push(q);
+					next = q.next;
+				}
+				// (apart: overlapping ones would blend twice where a fill covers once)
+				var apart = next < 0 && all.length > 1 && all.length <= 256;
+				if (apart) for (i in 0...all.length) for (j in i + 1...all.length) {
+					var a = all[i], b = all[j];
+					if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) apart = false;
+				}
+				if (apart) {
+					for (q in all) canvas.rect(q.x, q.y, q.w, q.h, 0, color, 0, Color.TRANSPARENT);
+					return;
+				}
+			}
 			// (a ring: a box's border, every side one colour)
 			if (r != null && evenOdd) {
 				var i = shape(path, r.next);
@@ -191,11 +226,30 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 			}
 		}
 		var b = bounds(path);
+		// (a border's side mitred at its corners, no thicker than THIN: its band, a corner pixel the later
+		// side's; drawn on the CPU it would be a raster a side at every place it is painted)
+		if (paint.shader == null && paint.blend == null && quad(path) && Math.min(b[2] - b[0], b[3] - b[1]) <= THIN) {
+			var color = colorOf(paint);
+			if (color.a > 0) canvas.rect(b[0], b[1], b[2] - b[0], b[3] - b[1], 0, color, 0, Color.TRANSPARENT);
+			return;
+		}
 		raster(b[0], b[1], b[2], b[3], c -> c.fill(path, paint, evenOdd), keyOf(path) + (evenOdd ? "e" : "n") + keyOfPaint(paint));
 	}
 
 	public function stroke(path:Path, style:Stroke, paint:Paint) {
 		if (path.verbCount == 0) return;
+		// (a rectangle's, a rounded one's or a circle's outline, solid: the Canvas's ring, its border the stroke's
+		// width, centred on the path; a list marker's circle)
+		if (paint.shader == null && paint.blend == null && style.dash == null) {
+			var r = shape(path, 0), w = style.width;
+			if (r != null && r.next < 0 && w > 0) {
+				var h = w / 2, c = r.corners;
+				canvas.rect(r.x - h, r.y - h, r.w + w, r.h + w, r.radius > 0 ? r.radius + h : 0, Color.TRANSPARENT, w, colorOf(paint),
+					c == null ? null : new Corners(c.topLeft > 0 ? c.topLeft + h : 0, c.topRight > 0 ? c.topRight + h : 0, c.bottomRight > 0 ? c.bottomRight + h : 0,
+						c.bottomLeft > 0 ? c.bottomLeft + h : 0));
+				return;
+			}
+		}
 		var b = bounds(path), e = style.width * 2 + 1;
 		var d = style.dash == null ? "" : Std.string(style.dash);
 		raster(b[0] - e, b[1] - e, b[2] + e, b[3] + e, c -> c.stroke(path, style, paint),
@@ -230,17 +284,33 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		var x0 = run.xs[0], base = run.ys[0], right = x0;
 		for (k in 0...n) if (run.xs[k] > right) right = run.xs[k];
 		var w = right - x0 + run.size;
+		// (a run given again, a view's kept one: its paragraph again)
+		var kept = paragraphs.get(run) ?? oldParagraphs.get(run);
+		if (kept != null) {
+			paragraphs.set(run, kept);
+			canvas.text(kept, x0, base, w, Left, color);
+			return true;
+		}
 		var p = new RunParagraph(w, run.size, w, 0, run.size, [{top: 0, baseline: 0, width: w, height: run.size, start: 0, end: n}]);
 		var oblique = run.skew != 0;
+		// (each column its size at once: no growth push by push)
+		p.faces.resize(n);
+		p.ids.resize(n);
+		p.xs.resize(n);
+		p.dys.resize(n);
+		p.sizes.resize(n);
+		p.obliques.resize(n);
+		p.spans.resize(n);
 		for (k in 0...n) {
-			p.faces.push(run.face);
-			p.ids.push(run.ids[k]);
-			p.xs.push(run.xs[k] - x0);
-			p.dys.push(run.ys[k] - base);
-			p.sizes.push(run.size);
-			p.obliques.push(oblique);
-			p.spans.push(-1);
+			p.faces[k] = run.face;
+			p.ids[k] = run.ids[k];
+			p.xs[k] = run.xs[k] - x0;
+			p.dys[k] = run.ys[k] - base;
+			p.sizes[k] = run.size;
+			p.obliques[k] = oblique;
+			p.spans[k] = -1;
 		}
+		paragraphs.set(run, p);
 		canvas.text(p, x0, base, w, Left, color);
 		return true;
 	}
@@ -310,7 +380,8 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 	static function keyOf(p:Path):String {
 		var b = new StringBuf();
 		for (i in 0...p.verbCount) b.addChar(48 + p.verbs[i]);
-		for (i in 0...p.pointCount * 2) {
+		// (pointCount: the floats, two a point)
+		for (i in 0...p.pointCount) {
 			b.addChar(32);
 			b.add(Math.round(p.points[i] * 64));
 		}
@@ -364,7 +435,7 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		var x0 = Math.POSITIVE_INFINITY, y0 = Math.POSITIVE_INFINITY, x1 = Math.NEGATIVE_INFINITY, y1 = Math.NEGATIVE_INFINITY;
 		var pts = p.points;
 		var i = 0;
-		while (i < p.pointCount * 2) {
+		while (i < p.pointCount) {
 			var x = pts[i], y = pts[i + 1];
 			if (x < x0) x0 = x;
 			if (x > x1) x1 = x;
@@ -399,7 +470,8 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 			if (y > y1) y1 = y;
 		}
 		if (x1 - x0 <= 0 || y1 - y0 <= 0) return null;
-		var e = 1e-3 * Math.max(1, Math.max(x1 - x0, y1 - y0));
+		// (a thousandth of a pixel: a tall box's rounded corners are not on two sides at once)
+		var e = 1e-3;
 		// (each point's sides: 1 left, 2 top, 4 right, 8 bottom)
 		inline function side(x:Float, y:Float):Int
 			return (Math.abs(x - x0) <= e ? 1 : 0) | (Math.abs(y - y0) <= e ? 2 : 0) | (Math.abs(x - x1) <= e ? 4 : 0) | (Math.abs(y - y1) <= e ? 8 : 0);
@@ -440,8 +512,9 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		// (the close: back along a side)
 		var sx = pts[start * 2], sy = pts[start * 2 + 1];
 		if (Math.abs(sx - px) > e && Math.abs(sy - py) > e) return null;
+		// (curves' points carry float noise: radii to a millionth)
 		inline function fin(v:Float):Float
-			return v == Math.POSITIVE_INFINITY ? 0 : v;
+			return v == Math.POSITIVE_INFINITY ? 0 : Math.round(v * 1e6) / 1e6;
 		var c = new Corners(fin(tl), fin(tr), fin(br), fin(bl));
 		var same = c.topLeft == c.topRight && c.topLeft == c.bottomRight && c.topLeft == c.bottomLeft;
 		return {
