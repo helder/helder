@@ -75,6 +75,8 @@ class Box {
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
+	// (its inline content as BlockLines built it, kept while its text and styles stay: BlockLines' Built)
+	public var inlineCache:Null<Any> = null;
 	// (its lines' last layout, kept for hit testing, carets and selection)
 	public var lines:Null<helder.ui.flow.BlockText> = null;
 	// (its used side margins; the margins that collapse through its top and
