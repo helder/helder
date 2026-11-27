@@ -41,6 +41,8 @@ typedef PagedViewOptions = {
 	?font:(url:String) -> Null<Bytes>,
 	?fonts:FontMatch,
 	?contexts:Contexts,
+	// its counters and generated content (default CssCounters: pages have their numbers)
+	?counters:helder.css.CssStyles->helder.css.CssCounting,
 	// the user's style sheets (defaults under the author's: a page size)
 	?user:Array<CssSheet>,
 	// what @media matches (default: print, an A4 page, CssMedia.PRINT: not
@@ -124,7 +126,7 @@ class PagedView {
 			viewport = area;
 		}
 		if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
-		tree = BoxTree.build(document, styles, {contexts: options.contexts ?? Contexts.all(), image: image, svg: svg, paged: true});
+		tree = BoxTree.build(document, styles, {contexts: options.contexts ?? Contexts.all(), counters: options.counters ?? s -> new helder.css.CssCounters(s), image: image, svg: svg, paged: true});
 		fixed = null;
 		paginate();
 		// (cross-references to the pages their targets are on: the pages again when one's text changed)
@@ -427,8 +429,8 @@ class PagedView {
 		}
 		for (item in items) switch item {
 			case Text(t): text.add(t);
-			case Counter("page", style): text.add(tree.counters.formats.format(number, style));
-			case Counter("pages", style): text.add(tree.counters.formats.format(pages.length, style));
+			case Counter("page", style): text.add(tree.counters.format(number, style));
+			case Counter("pages", style): text.add(tree.counters.format(pages.length, style));
 			case StringValue(n, which): text.add(strings.value(n, which) ?? "");
 			case RunningElement(n, which):
 				var b = running.value(n, which);

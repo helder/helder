@@ -17,6 +17,9 @@ typedef BoxTreeOptions = {
 	// one; an app's, DocumentApp: what its sheets can make), the caller's so
 	// that a program links only those
 	?contexts:Contexts,
+	// its counters and generated content (CssCounters; CssNoCounters for an
+	// app whose sheets set none, DocumentApp), the caller's as contexts are
+	?counters:CssStyles->helder.css.CssCounting,
 	// an image by its URL as written (an <img>'s src, content's url()); null: none
 	?image:(url:String) -> Null<Bitmap>,
 	// an SVG image by its URL as written, where image has none
@@ -44,7 +47,7 @@ class BoxTree {
 	final svg:Null<String->Null<helder.canvas.Svg>>;
 	// (one BoxStyle a computed style: helder.css shares styles between like elements)
 	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
-	public final counters:CssCounters;
+	public final counters:helder.css.CssCounting;
 	// paged: each running element (its name, its boxes, where it was: a RUNNING holder, null when inline-level)
 	public final running:Array<{name:String, box:Box, holder:Null<Box>}> = [];
 	// paged: each element's string-set values, evaluated where the walk meets it
@@ -64,7 +67,7 @@ class BoxTree {
 		image = options.image;
 		svg = options.svg;
 		paged = options.paged ?? false;
-		counters = new CssCounters(styles);
+		counters = options.counters != null ? options.counters(styles) : throw "BoxTree: no counters (CssCounters, or an app's: DocumentApp)";
 		var out = [];
 		var el = doc.documentElement;
 		if (el != null) generate(el, out);
@@ -653,7 +656,7 @@ class BoxTree {
 		// (a list-style-image that doesn't load: list-style-type's marker, Lists 3 §3.2)
 		if (kids.length == 1 && kids[0].kind == InlineReplaced && kids[0].image == null && kids[0].svg == null) {
 			var type = s.keyword("list-style-type");
-			kids = type == "none" || type == "" ? [] : parts(el, s, "marker", [Text(counters.formats.marker(counters.value("list-item"), type))]);
+			kids = type == "none" || type == "" ? [] : parts(el, s, "marker", [Text(counters.listMarker(counters.value("list-item"), type))]);
 		}
 		counters.exit(el, "marker");
 		if (kids.length == 0) return null;
