@@ -28,6 +28,7 @@ function tests() {
 			equals(processed(["a \n b"]), "a b");
 			equals(processed(["日\n本"]), "日本");
 			equals(processed(["한\n국"]), "한 국");
+			equals(processed(["\u{1FAE8}\n\u{1FAE8}"]), "\u{1FAE8} \u{1FAE8}");
 		});
 		test("pre: everything kept, newlines forced breaks", () -> {
 			var c = content(s -> s.addText("a  \n b", ahem(s -> s.collapse = Preserve)));

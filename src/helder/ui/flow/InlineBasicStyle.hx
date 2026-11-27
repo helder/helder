@@ -19,6 +19,7 @@ class InlineBasicStyle implements InlineStyle {
 	public var features:Null<Array<FontFeature>> = null;
 	public var kerning:InlineKerning = Auto;
 	public var ligatures:InlineLigatures = Normal;
+	public var emoji:InlineEmoji = Normal;
 	public var colour = 0xFF000000;
 	public var height = Math.NaN;
 	public var letters = 0.0;
@@ -144,6 +145,9 @@ class InlineBasicStyle implements InlineStyle {
 
 	public function fontLigatures()
 		return ligatures;
+
+	public function fontEmoji()
+		return emoji;
 
 	public function color()
 		return colour;

@@ -136,6 +136,14 @@ enum abstract InlineSynthesis(Int) from Int to Int {
 	var All = 7;
 }
 
+// font-variant-emoji (helder.text.FontSet's presentations, in its order)
+enum abstract InlineEmoji(Int) to Int {
+	var Normal = 0;
+	var Text = 1;
+	var Emoji = 2;
+	var Unicode = 3;
+}
+
 // font-variant-ligatures, added up (what is turned off or on; 0: normal)
 enum abstract InlineLigatures(Int) from Int to Int {
 	var Normal = 0;
