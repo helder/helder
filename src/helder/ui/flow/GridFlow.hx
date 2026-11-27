@@ -193,7 +193,9 @@ class GridFlow implements FormattingContext {
 			(a.style.position == "fixed" ? fixed : positioned).add(a, frag, bl + pl + (rtl ? w : 0), bt + pt);
 		}
 		if (box.parent == null) {
-			flow.place(fixed, frag, space, -box.marginLeft, 0, space.width, space.height);
+			BlockFlow.repeat(fixed, frag, space, bl + pl, bt + pt, -box.marginLeft, 0);
+			var r = space.repeated;
+			flow.place(fixed, frag, space, -box.marginLeft, 0, r != null ? r.width : space.width, r != null ? r.height : space.height);
 			flow.place(positioned, frag, space, -box.marginLeft, 0, space.width, space.height);
 		} else if (owner)
 			flow.place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb);

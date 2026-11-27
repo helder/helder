@@ -20,6 +20,7 @@ import helder.dom.Document;
 import helder.ui.flow.BlockFlow;
 import helder.ui.flow.BreakToken;
 import helder.ui.flow.Breaks;
+import helder.ui.flow.Repeated;
 import helder.ui.flow.Contexts;
 import helder.ui.flow.Space;
 
@@ -119,6 +120,7 @@ class PagedView {
 		}
 		if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, paged: true});
+		fixed = null;
 		paginate();
 		// (cross-references to the pages their targets are on: the pages again when one's text changed)
 		if (tree.targets.length > 0 && tree.resolve(pageWith)) {
@@ -157,6 +159,23 @@ class PagedView {
 			}
 			pages.push(page);
 		} while (token != null && i < (options.limit ?? LIMIT));
+	}
+
+	// (the document's fixed boxes, repeated on every page: those not in another, nor running)
+	var fixed:Null<Repeated> = null;
+
+	static function fixedOf(b:Box, out:Array<Box>):Array<Box> {
+		if (b.flags & Box.RUNNING != 0) return out;
+		if (b.parent != null && b.style.position == "fixed") {
+			out.push(b);
+			return out;
+		}
+		var c = b.first;
+		while (c != null) {
+			fixedOf(c, out);
+			c = c.next;
+		}
+		return out;
 	}
 
 	// (the page, from 1, an element's first box is on; 0: none)
@@ -296,6 +315,7 @@ class PagedView {
 	function content(root:Box, breaks:Breaks, w:Float, h:Float, first:Bool):Int {
 		var space = new Space(fragments, fonts, w, h);
 		space.fragmentation = breaks;
+		space.repeated = fixed ??= new Repeated(fixedOf(root, []), w, h);
 		var mt = first ? BlockFlow.auto(root.style.model().margin[0], w) : 0.0;
 		space.pageTop = Math.isNaN(mt) ? 0 : mt;
 		var f = (root.context ?? Contexts.all().flow).layout(root, space);

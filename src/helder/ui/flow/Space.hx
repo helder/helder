@@ -42,6 +42,8 @@ class Space {
 	// the absolutely positioned boxes for the nearest positioned ancestor, and the fixed ones for the root
 	public var positioned:Null<Positioned> = null;
 	public var fixed:Null<Positioned> = null;
+	// a page's fixed boxes: the root places those its layout didn't come to as well
+	public var repeated:Null<Repeated> = null;
 	// the fragmentainer an in-flow box is laid out in (null: none, one
 	// continuous flow) and its border box's top there; not passed on by
 	// child(): floats, absolutely positioned boxes, atomics and table

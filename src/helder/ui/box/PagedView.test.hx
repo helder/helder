@@ -52,6 +52,11 @@ function tests() {
 			equals(v.layout(), 2);
 			equals([on(v, 1, "f"), on(v, 1, "b")], [0.0, 0]);
 		});
+		test("a fixed box: on every page, against its page area", () -> {
+			var v = paged('<div style="height:60px"></div><div style="height:60px"></div><div id=f style="position:fixed;bottom:0;right:0;width:10px;height:10px"></div><div style="height:60px"></div>');
+			equals(v.layout(), 3);
+			for (k in 0...3) equals([x(v, k, "f"), on(v, k, "f")], [170.0, 70]);
+		});
 		test("content starting past the page's end, its margin: on the next page", () -> {
 			var v = paged('<div id=a style="margin-top:120px">a</div>');
 			equals(v.layout(), 2);
@@ -168,6 +173,11 @@ private function find(v:PagedView, page:Int, id:String):Int {
 private function on(v:PagedView, page:Int, id:String):Float {
 	var k = find(v, page, id);
 	return k < 0 ? Math.NaN : v.fragments.absolute(k).y;
+}
+
+private function x(v:PagedView, page:Int, id:String):Float {
+	var k = find(v, page, id);
+	return k < 0 ? Math.NaN : v.fragments.absolute(k).x;
 }
 
 private function height(v:PagedView, page:Int, id:String):Float {
