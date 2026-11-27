@@ -1,11 +1,13 @@
 package helder.css;
 
+import helder.css.CssProperty;
 import helder.css.CssResolver;
 import helder.css.CssSheet;
 
 // A page's style and its descriptors (Paged Media 3 §5, §7): the page
 // context's computed style (its margins, counters, fonts...), the page
-// box's size in px (auto: A4), bleed in px, marks, orientation.
+// box's size in px (auto: the print medium's page, else A4), bleed in
+// px, marks, orientation.
 class CssPage {
 	public final style:CssStyle;
 	public final width:Float;
@@ -15,6 +17,19 @@ class CssPage {
 	public final cross:Bool;
 	// upright, rotate-left, rotate-right
 	public final orientation:String;
+
+	// The page area's size: the page box less its margins (percentages of
+	// its width and height, Paged Media 3 §3.2.3; auto as 0).
+	public function area():{width:Float, height:Float} {
+		inline function margin(p:CssProperty, basis:Float):Float {
+			var v = style.resolve(p, basis);
+			return Math.isNaN(v) ? 0 : v;
+		}
+		return {
+			width: Math.max(0, width - margin(MarginLeft, width) - margin(MarginRight, width)),
+			height: Math.max(0, height - margin(MarginTop, height) - margin(MarginBottom, height))
+		};
+	}
 
 	@:allow(helder.css)
 	function new(style:CssStyle, width:Float, height:Float, bleed:Float, crop:Bool, cross:Bool, orientation:String) {
@@ -131,7 +146,7 @@ class CssPages {
 				var n = Css.lower(d.name);
 				var v = [for (x in d.value) if (!x.match(Token(_.kind => Whitespace))) x];
 				var ok = switch n {
-					case "size": size(v, style) != null;
+					case "size": size(v, style, SIZES["a4"]) != null;
 					case "bleed": bleed(v, style) != null || keyword(v) == "auto";
 					case "marks": marks(v) != null;
 					case "page-orientation": ["upright", "rotate-left", "rotate-right"].contains(keyword(v));
@@ -145,8 +160,11 @@ class CssPages {
 					found.set(n, {value: v, rank: rank, specificity: m.specificity, order: order});
 			}
 		}
-		var dims = found.exists("size") ? size(found["size"].value, style) : null;
-		if (dims == null) dims = SIZES["a4"];
+		// (auto: the printer's page, the print medium's size; else A4)
+		var media = styles.media;
+		var auto = media.type == "print" ? [media.width, media.height] : SIZES["a4"];
+		var dims = found.exists("size") ? size(found["size"].value, style, auto) : null;
+		if (dims == null) dims = auto;
 		var m = found.exists("marks") ? marks(found["marks"].value) : null;
 		var crop = m != null && m.crop, cross = m != null && m.cross;
 		// (bleed: auto is 6pt with crop marks, else 0)
@@ -156,8 +174,8 @@ class CssPages {
 	}
 
 	// (<length [0,∞]>{1,2} | auto | [ <page-size> || [ portrait | landscape ] ])
-	static function size(v:Array<CssValue>, style:CssStyle):Null<Array<Float>> {
-		if (v.length == 1 && keyword(v) == "auto") return SIZES["a4"];
+	static function size(v:Array<CssValue>, style:CssStyle, auto:Array<Float>):Null<Array<Float>> {
+		if (v.length == 1 && keyword(v) == "auto") return auto;
 		var lengths = [for (x in v) length(x, style)];
 		if (v.length >= 1 && v.length <= 2 && !lengths.contains(null)) {
 			for (l in lengths) if (l < 0) return null;
@@ -171,7 +189,7 @@ class CssPages {
 			case _: return null;
 		}
 		if (page == null && orientation == null) return null;
-		var d = page ?? SIZES["a4"];
+		var d = page ?? auto;
 		var w = Math.min(d[0], d[1]), h = Math.max(d[0], d[1]);
 		return orientation == "landscape" ? [h, w] : orientation == "portrait" ? [w, h] : d;
 	}

@@ -26,6 +26,9 @@ typedef DocumentViewOptions = {
 	?contexts:Contexts,
 	// what @media matches (default: a screen of the view's size)
 	?media:CssMediaContext,
+	// what vw and vh resolve against (default: the cascade's: on print, the
+	// first page's area; else media's size); a paged host gives the page area
+	?viewport:{width:Float, height:Float},
 	// the canvas under the root's background (default white)
 	?background:Int
 }
@@ -79,6 +82,7 @@ class DocumentView {
 		if (styles == null || width != viewWidth || height != viewHeight) {
 			styles = CssCascade.styles(document, {
 				media: options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8},
+				viewport: options.viewport,
 				load: options.load,
 				url: options.url,
 				hints: true
