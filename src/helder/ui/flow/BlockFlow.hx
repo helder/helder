@@ -729,10 +729,11 @@ class BlockFlow implements FormattingContext {
 		var left = auto(b.style.len("left"), cbw), right = auto(b.style.len("right"), cbw);
 		var top = auto(b.style.len("top"), cbh), bottom = auto(b.style.len("bottom"), cbh);
 		var ml = auto(s.margin[3], cbw), mr = auto(s.margin[1], cbw), mt = auto(s.margin[0], cbw), mb = auto(s.margin[2], cbw);
-		var w = b.kind == BlockReplaced || b.kind == InlineReplaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
+		var replaced = b.kind == BlockReplaced || b.kind == InlineReplaced;
+		var w = replaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
 		var minW = size(s.minWidth, cbw, s.borderBox, bpx), maxW = size(s.maxWidth, cbw, s.borderBox, bpx);
 		var rtl = b.parent != null && b.parent.style.rtl;
-		var ratio = b.kind != BlockReplaced && b.kind != InlineReplaced && !Math.isNaN(Ratio.of(b));
+		var ratio = !replaced && !Math.isNaN(Ratio.of(b));
 		// (an aspect-ratio's auto width: its height's through it, the height set or what top and bottom leave,
 		// unless left and right give the width)
 		if (ratio && Math.isNaN(w) && (Math.isNaN(left) || Math.isNaN(right))) {
@@ -745,7 +746,7 @@ class BlockFlow implements FormattingContext {
 			if (b.context != null) b.context.intrinsic(b, space) else intrinsic(b, space);
 			return Math.min(Math.max(b.minContent, avail), b.maxContent) - bpx;
 		}
-		function horizontal(w:Float):Float {
+		function horizontal(w:Float):{x:Float, w:Float} {
 			var l = left, r = right, a = ml, c = mr;
 			if (Math.isNaN(l) && Math.isNaN(w) && Math.isNaN(r)) {
 				if (Math.isNaN(a)) a = 0;
@@ -799,45 +800,43 @@ class BlockFlow implements FormattingContext {
 					w = Math.max(0, cbw - l - r - a - c - bpx);
 				}
 			}
-			ml = a;
-			mr = c;
-			left = l;
-			return Math.max(0, w);
+			return {x: l + a, w: Math.max(0, w)};
 		}
+		// Re-solve with the original insets and margins after a min/max constraint.
 		var used = horizontal(w);
-		if (!Math.isNaN(maxW) && used > maxW) used = horizontal(maxW);
-		if (!Math.isNaN(minW) && used < minW) used = horizontal(minW);
+		if (!Math.isNaN(maxW) && used.w > maxW) used = horizontal(maxW);
+		if (!Math.isNaN(minW) && used.w < minW) used = horizontal(minW);
 		var cs = space.child(cbw, cbh);
-		cs.fixedWidth = used + bpx;
+		cs.fixedWidth = used.w + bpx;
 		cs.exclusions = null;
 		cs.left = 0;
 		cs.top = 0;
+		var stretch = !replaced && !ratio && Math.isNaN(size(s.height, cbh, s.borderBox, bpy)) && !Math.isNaN(top) && !Math.isNaN(bottom);
+		if (stretch) {
+			var available = cbh - top - bottom - (Math.isNaN(mt) ? 0 : mt) - (Math.isNaN(mb) ? 0 : mb) - bpy;
+			cs.fixedHeight = clampHeight(s, cbh, bpy, Math.max(0, available)) + bpy;
+		}
 		b.uncache();
 		var f = child(b, cs);
 		var frags = space.fragments;
-		// (vertical: the height its content gave, or what top and bottom leave)
-		var h = frags.height(f) - bpy;
-		var spec = size(s.height, cbh, s.borderBox, bpy);
-		// (an aspect-ratio's height, through it from its width, as set)
-		if (ratio && Math.isNaN(spec)) spec = h;
+		// A table wrapper's layout determines its intrinsic height before it is stretched.
+		if (stretch && b.kind == TableWrapper) frags.resize(f, frags.width(f), cs.fixedHeight);
+		var h = frags.height(f);
 		var t = top, bt = bottom, a = mt, c = mb;
 		if (Math.isNaN(t) && Math.isNaN(bt)) {
 			if (Math.isNaN(a)) a = 0;
 			t = sy;
-			if (align != null) t += (align[3] - (h + bpy + a + (Math.isNaN(c) ? 0 : c))) * align[5];
-		} else if (!Math.isNaN(t) && !Math.isNaN(bt) && !Math.isNaN(spec)) {
-			var rest = cbh - t - bt - spec - bpy;
+			if (align != null) t += (align[3] - (h + a + (Math.isNaN(c) ? 0 : c))) * align[5];
+		} else if (!Math.isNaN(t) && !Math.isNaN(bt)) {
+			var rest = cbh - t - bt - h;
 			// (equal auto margins, negative too: §10.6.4 has no rule against it, unlike §10.3.7)
 			if (Math.isNaN(a) && Math.isNaN(c)) a = rest / 2 else if (Math.isNaN(a)) a = rest - c;
 		} else {
 			if (Math.isNaN(a)) a = 0;
 			if (Math.isNaN(c)) c = 0;
-			if (Math.isNaN(t) && !Math.isNaN(bt)) t = cbh - bt - a - c - h - bpy else if (!Math.isNaN(t) && !Math.isNaN(bt) && Math.isNaN(spec)) {
-				var stretched = clampHeight(s, cbh, bpy, Math.max(0, cbh - t - bt - a - c - bpy));
-				frags.resize(f, frags.width(f), stretched + bpy);
-			}
+			if (Math.isNaN(t)) t = cbh - bt - a - c - h;
 		}
-		return {fragment: f, x: left + ml, y: t + a};
+		return {fragment: f, x: used.x, y: t + a};
 	}
 
 	// (how far a fragment's content reaches down from its top: its border box, what overflows it unless it clips)
