@@ -112,6 +112,12 @@ abstract class Functions extends Core {
 
 	function declareLocal(name:Node, value:Ex) env.set(name.text, bind(name, TRef(RAny), any(value)));
 
+	// (a local of its type's representation, the value checked into it)
+	function declareTyped(name:Node, value:Ex) {
+		var t = reps.rep(name.tsType);
+		env.set(name.text, bind(name, t, store(value, t)));
+	}
+
 	// (a function's plain parameters' names, by name)
 	function parameterNames(n:Null<Node>):Map<String, Node> {
 		var names:Map<String, Node> = [];
@@ -135,9 +141,13 @@ abstract class Functions extends Core {
 
 	// Binds a declaration pattern to a value: object patterns read properties
 	// (null and undefined throw), array patterns step the value's iterator.
-	function bindPattern(pattern:Node, value:Ex, declare:(Node, Ex) -> Void) {
+	// typed: declare is declareLocal, and the value is what its type says,
+	// not a regular expression's match (whose groups may be undefined): its
+	// names, and the names of its elements and properties, bound typed
+	function bindPattern(pattern:Node, value:Ex, declare:(Node, Ex) -> Void, typed = false) {
+		function inner(e:Node) return typed && e.name().kind == KindIdentifier;
 		switch (pattern.kind) {
-			case KindIdentifier: declare(pattern, value);
+			case KindIdentifier: typed ? declareTyped(pattern, value) : declare(pattern, value);
 			case KindObjectBindingPattern:
 				var v = b.temp(any(value));
 				b.runtime("libRequireObject", [v]);
@@ -149,7 +159,7 @@ abstract class Functions extends Core {
 					}
 					var key = b.temp(any(propertyKey(e.propertyName() == null ? e.name() : e.propertyName())));
 					used.push(key);
-					bindPattern(e.name(), withDefault(b.runtime("libGet", [v, key]), e.initializer()), declare);
+					bindPattern(e.name(), withDefault(b.runtime("libGet", [v, key]), e.initializer()), declare, inner(e));
 				}
 			case KindArrayBindingPattern:
 				var it = arrayPattern(value);
@@ -163,7 +173,7 @@ abstract class Functions extends Core {
 						bindPattern(e.name(), it.rest(), declare);
 						continue;
 					}
-					bindPattern(e.name(), withDefault(it.step(), e.initializer()), declare);
+					bindPattern(e.name(), withDefault(it.step(), e.initializer()), declare, inner(e));
 				}
 				it.close();
 			case _: fail(pattern, "unsupported binding pattern");
@@ -172,29 +182,42 @@ abstract class Functions extends Core {
 
 	// An array pattern's iterator: a step for each element, none past its
 	// end, and closed (its return called) when the pattern is done with it
-	// before its end.
+	// before its end. A plain array (Array.prototype's iterator, frozen) is
+	// stepped by index, as its iterator would: no iterator made.
 	function arrayPattern(value:Ex):{step:() -> Ex, rest:() -> Ex, close:() -> Void} {
-		var it = b.runtime("libIterator", [any(value)]);
+		var o = b.temp(any(value));
+		var plain = b.temp(b.runtime("libPlainArray", [o]));
+		var it = b.local("iterator", TRef(RAny));
+		b.out.push(SSet(it, b.runtime("getUndefined", [])));
+		b.out.push(SIf(ENot(plain), b.block(() -> b.out.push(SSet(it, b.runtime("libIterator", [o])))), new Vector(0)));
+		var index = b.local("index", TF64);
+		b.out.push(SSet(index, EF64(0)));
 		var done = b.local("done", TBool);
 		b.out.push(SSet(done, bool(false)));
 		return {
 			step: () -> {
 				var v = b.local("element", TRef(RAny));
 				b.out.push(SSet(v, b.runtime("getUndefined", [])));
-				b.out.push(SIf(ENot(ELocal(done)), b.block(() -> {
-					var x = b.runtime("libIterate", [it]);
+				b.out.push(SIf(ENot(ELocal(done)), b.block(() -> b.out.push(SIf(plain, b.block(() -> {
+					b.out.push(SIf(EBin(FLt, ELocal(index), reps.arrayLength(b, o)), b.block(() -> {
+						b.out.push(SSet(v, reps.arrayGet(b, o, ELocal(index))));
+						b.out.push(SSet(index, EBin(FAdd, ELocal(index), EF64(1))));
+					}), Vector.fromArrayCopy([SSet(done, bool(true))])));
+				}), b.block(() -> {
+					var x = b.runtime("libIterate", [ELocal(it)]);
 					b.out.push(SIf(b.runtime("libFinished", [x]), Vector.fromArrayCopy([SSet(done, bool(true))]), Vector.fromArrayCopy([SSet(v, x)])));
-				}), new Vector(0)));
+				})))), new Vector(0)));
 				ELocal(v);
 			},
 			rest: () -> {
 				var r = b.local("rest", TRef(RAny));
 				b.out.push(SIf(ELocal(done), b.block(() -> b.out.push(SSet(r, b.runtime("libArray", [pack([])])))),
-					b.block(() -> b.out.push(SSet(r, b.runtime("libRestArray", [it]))))));
+					b.block(() -> b.out.push(SIf(plain, b.block(() -> b.out.push(SSet(r, b.runtime("libArrayRest", [o, ELocal(index)])))),
+						b.block(() -> b.out.push(SSet(r, b.runtime("libRestArray", [ELocal(it)])))))))));
 				b.out.push(SSet(done, bool(true)));
 				ELocal(r);
 			},
-			close: () -> b.out.push(SIf(ENot(ELocal(done)), b.block(() -> b.runtime("libIteratorClose", [it, bool(false)])), new Vector(0)))
+			close: () -> b.out.push(SIf(ELocal(done), new Vector(0), Vector.fromArrayCopy([SIf(plain, new Vector(0), b.block(() -> b.runtime("libIteratorClose", [ELocal(it), bool(false)])))])))
 		};
 	}
 

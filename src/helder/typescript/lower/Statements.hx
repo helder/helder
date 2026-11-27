@@ -116,9 +116,17 @@ abstract class Statements extends Functions {
 				var loopNode = n;
 				var oldEnv = env;
 				env = env.copy();
-				var input = expr(loopNode.expression());
-				if (n.kind == KindForInStatement) input = b.runtime("libForInKeys", [any(input)]);
 				var awaiting = n.kind == KindForOfStatement && loopNode.awaitModifier() != null;
+				var table = n.kind == KindForOfStatement && !awaiting ? mapTable(loopNode.expression()) : null;
+				var input = table != null ? b.temp(any(expr(table.map))) : expr(loopNode.expression());
+				if (n.kind == KindForInStatement) input = b.runtime("libForInKeys", [any(input)]);
+				var mapFast = null, slot = null;
+				if (table != null) {
+					mapFast = b.local("table", TBool);
+					b.out.push(SSet(mapFast, b.runtime("libPlainMap", [input, bool(table.isSet)])));
+					slot = b.local("slot", TI32);
+					b.out.push(SSet(slot, EInt(0)));
+				}
 				// (an array whose iteration is the built-in one: stepped by index, as its iterator would)
 				var indexed = n.kind == KindForOfStatement && !awaiting && types.isArray(loopNode.expression().tsType);
 				var fast = null, index = null;
@@ -137,8 +145,13 @@ abstract class Statements extends Functions {
 				var closing = n.kind == KindForOfStatement && !awaiting && !indexed;
 				var inside = closing ? b.local("inside", TBool) : null;
 				if (closing) b.out.push(SSet(inside, bool(false)));
-				var open = b.block(() -> b.out.push(SSet(iterator, b.runtime(awaiting ? "libAsyncIterator" : "libIterator", [any(input)]))));
-				if (indexed) {
+				var open = b.block(() -> b.out.push(SSet(iterator, b.runtime(awaiting ? "libAsyncIterator" : "libIterator",
+					[table != null && table.method != null ? b.runtime("libCallMethod", [input, EStr(table.method), pack([])]) : any(input)]))));
+				if (table != null) {
+					b.out.push(SSet(iterator, b.runtime("getUndefined", [])));
+					b.out.push(SIf(ENot(ELocal(mapFast)), open, new Vector(0)));
+				}
+				else if (indexed) {
 					b.out.push(SSet(iterator, b.runtime("getUndefined", [])));
 					b.out.push(SIf(ENot(ELocal(fast)), open, new Vector(0)));
 				}
@@ -147,11 +160,47 @@ abstract class Statements extends Functions {
 				// (`const x of xs` over numbers: x a number, read unboxed from a number array)
 				var numbers = indexed && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0 && init.declarations()[0].name().kind == KindIdentifier
 					&& types.isNumber(loopNode.expression().tsType.element) && reps.rep(init.declarations()[0].name().tsType) == TF64;
+				// (`const [k, v]` of entries: k and v from the table, no pair made)
+				var pair = table != null && table.kind == "entries" && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0
+					&& plainPair(init.declarations()[0].name());
 				function iterate() loop(labels, loopNode.statement(), () -> {
-					var value:Ex;
+					var value:Ex = null;
 					// (each step at the binding, as V8 names it)
 					if (lines) at(init.kind == KindVariableDeclarationList ? init.declarations()[0].name() : init);
-					if (indexed) {
+					var key = null, entry = null;
+					if (table != null) {
+						var l = b.local("element", TRef(RAny));
+						if (pair) {
+							key = b.local("key", TRef(RAny));
+							entry = b.local("value", TRef(RAny));
+						}
+						b.out.push(SIf(ELocal(mapFast), b.block(() -> {
+							var i = b.temp(b.runtime("libMapNext", [input, ELocal(slot)]));
+							b.out.push(SIf(EBin(Lt, i, EInt(0)), Vector.fromArrayCopy([SBreak]), new Vector(0)));
+							b.out.push(SSet(slot, EBin(Add, i, EInt(1))));
+							var k = b.runtime("libMapKey", [input, i]);
+							if (pair) {
+								b.out.push(SSet(key, k));
+								b.out.push(SSet(entry, b.runtime("libMapValue", [input, i])));
+							}
+							else b.out.push(SSet(l, table.kind == "entries" ? b.runtime("libArray", [pack([k, b.runtime("libMapValue", [input, i])])])
+								: table.kind == "keys" || table.isSet ? k : b.runtime("libMapValue", [input, i])));
+						}), b.block(() -> {
+							b.out.push(SSet(inside, bool(false)));
+							var v = b.runtime("libIterate", [ELocal(iterator)]);
+							b.out.push(SIf(b.runtime("libFinished", [v]), Vector.fromArrayCopy([SBreak]), new Vector(0)));
+							b.out.push(SSet(inside, bool(true)));
+							if (pair) {
+								var it = arrayPattern(v);
+								b.out.push(SSet(key, it.step()));
+								if (init.declarations()[0].name().elements().length > 1) b.out.push(SSet(entry, it.step()));
+								it.close();
+							}
+							else b.out.push(SSet(l, v));
+						})));
+						value = ELocal(l);
+					}
+					else if (indexed) {
 						var l = b.local("element", numbers ? TF64 : TRef(RAny));
 						b.out.push(SIf(ELocal(fast), b.block(() -> {
 							b.out.push(SIf(EBin(FGe, EConv(L2F, ELocal(index)), reps.arrayLength(b, input)), Vector.fromArrayCopy([SBreak]), new Vector(0)));
@@ -177,7 +226,11 @@ abstract class Statements extends Functions {
 						b.out.push(SIf(b.runtime("libFinished", [value]), Vector.fromArrayCopy([SBreak]), new Vector(0)));
 						if (closing) b.out.push(SSet(inside, bool(true)));
 					}
-					if (init.kind != KindVariableDeclarationList) assignTarget(init, () -> value);
+					if (pair) {
+						var names = init.declarations()[0].name().elements();
+						for (i in 0...names.length) if (names[i].kind != KindOmittedExpression && names[i].name() != null) declareTyped(names[i].name(), ELocal(i == 0 ? key : entry));
+					}
+					else if (init.kind != KindVariableDeclarationList) assignTarget(init, () -> value);
 					else {
 						var declaration = init.declarations()[0];
 						if (init.flags & NodeFlags.BlockScoped == 0) bindPattern(declaration.name(), value, (id, v) -> {
@@ -185,7 +238,7 @@ abstract class Statements extends Functions {
 							set(binding, v);
 							env.set(id.text, binding);});
 						else if (numbers) env.set(declaration.name().text, bind(declaration.name(), TF64, value));
-						else bindPattern(declaration.name(), value, declareLocal);
+						else bindPattern(declaration.name(), value, declareLocal, typedElements(loopNode.expression(), declaration.name()));
 					}
 				}, null, null);
 				if (closing) protect(iterate, threw -> b.out.push(SIf(ELocal(inside), b.block(() -> b.runtime("libIteratorClose", [ELocal(iterator), ELocal(threw)])), new Vector(0))));
@@ -202,6 +255,39 @@ abstract class Statements extends Functions {
 			case KindContinueStatement: jump(n, false);
 			case _: fail(n, "unsupported statement " + n.kind.toString());
 		}
+	}
+
+	// a for-of over a Map or Set its table can step: the collection itself,
+	// or its keys(), values() or entries() (its built-in methods are frozen)
+	function mapTable(e:Node):Null<{map:Node, isSet:Bool, method:Null<String>, kind:String}> {
+		e = strip(e);
+		var c = types.collection(e.tsType);
+		if (c != null) return {map: e, isSet: c == "Set", method: null, kind: c == "Set" ? "values" : "entries"};
+		if (e.kind != KindCallExpression || (e.arguments() ?? []).length != 0 || e.questionDotToken() != null) return null;
+		var callee = strip(e.expression());
+		if (callee.kind != KindPropertyAccessExpression || !plainAccess(callee) || callee.name().kind != KindIdentifier) return null;
+		var name = callee.name().text;
+		c = types.collection(callee.expression().tsType);
+		if (c == null || (name != "keys" && name != "values" && name != "entries")) return null;
+		return {map: callee.expression(), isSet: c == "Set", method: name, kind: name};
+	}
+
+	// (an array pattern of at most two plain names)
+	static function plainPair(p:Node):Bool {
+		if (p.kind != KindArrayBindingPattern || p.elements().length > 2) return false;
+		for (e in p.elements()) if (e.kind != KindOmittedExpression && (e.name() == null || e.name().kind != KindIdentifier || e.initializer() != null || e.dotDotDotToken() != null)) return false;
+		return true;
+	}
+
+	// (a for-of's binding typed (Functions.bindPattern): an array's element
+	// not a match, a name of any iterable's, a Map's or an entries()' pair)
+	function typedElements(iterated:Node, name:Node):Bool {
+		var t = iterated.tsType;
+		if (types.isArray(t)) return !types.isMatch(t.element);
+		if (name.kind == KindIdentifier || types.collection(t) == "Map") return true;
+		var call = strip(iterated);
+		return call.kind == KindCallExpression && call.expression().kind == KindPropertyAccessExpression && call.expression().name().text == "entries"
+			&& (call.arguments() ?? []).length == 0 && (types.isArray(call.expression().expression().tsType) || types.collection(call.expression().expression().tsType) != null);
 	}
 
 	// (enum and namespace declarations merge into an existing object of the same name)
@@ -485,7 +571,9 @@ abstract class Statements extends Functions {
 			var e = d.initializer() == null ? (slot != null && d.name().kind == KindIdentifier ? placeholder(slot) : b.runtime("getUndefined", [])) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
 			if (d.name().kind != KindIdentifier) {
 				var scoped = n.flags & NodeFlags.BlockScoped != 0;
-				bindPattern(d.name(), e, !scoped ? (id, v) -> set(functionVars.get(id.text), v) : top || predeclared ? (id, v) -> set(get(id.text, id), v) : declareLocal);
+				var local = scoped && !top && !predeclared;
+				bindPattern(d.name(), e, !scoped ? (id, v) -> set(functionVars.get(id.text), v) : !local ? (id, v) -> set(get(id.text, id), v) : declareLocal,
+					local && d.initializer() != null && !loose(d.initializer()) && !types.isMatch(d.initializer().tsType));
 				continue;
 			}
 			var name = d.name().text;

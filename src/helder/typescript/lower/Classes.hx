@@ -26,10 +26,14 @@ class ClassLayout {
 	// globals holding its prototype and its instances' runtime Layout
 	public var init:Null<hxmc.ir.Ir.FuncInfo> = null;
 	public final methods:Map<String, hxmc.ir.Ir.FuncInfo> = [];
+	// its accessors on typed `this` (direct functions), by name
+	public final getters:Map<String, hxmc.ir.Ir.FuncInfo> = [];
+	public final setters:Map<String, hxmc.ir.Ir.FuncInfo> = [];
 	public var prototype = -1;
 	public var layout = -1;
-	// (the members named on its prototype: methods, accessors)
+	// (the members named on its prototype: methods, accessors; those with a body)
 	public final members:Map<String, Node> = [];
+	public final concrete:Map<String, Bool> = [];
 
 	public function new(node, name, index, parent) {
 		this.node = node;
@@ -56,6 +60,24 @@ class ClassLayout {
 		var c = this;
 		while (c != null) {
 			if (c.members.exists(name) || c.own.contains(name)) return c.methods.get(name);
+			c = c.parent;
+		}
+		return null;
+	}
+
+	// the direct getter or setter an instance of this class runs for
+	// `name`, or null (a field, a method, the other half alone, one it does
+	// not have: the runtime's way)
+	public function getter(name:String):Null<hxmc.ir.Ir.FuncInfo> return accessor(name, true);
+
+	public function setter(name:String):Null<hxmc.ir.Ir.FuncInfo> return accessor(name, false);
+
+	function accessor(name:String, get:Bool):Null<hxmc.ir.Ir.FuncInfo> {
+		var c = this;
+		while (c != null) {
+			if (c.own.contains(name)) return null;
+			var f = (get ? c.getters : c.setters).get(name);
+			if (f != null || c.concrete.exists(name)) return f;
 			c = c.parent;
 		}
 		return null;
@@ -94,6 +116,11 @@ class Classes {
 			&& m.asteriskToken() == null && !m.modifiers().exists(x -> x.kind == KindStaticKeyword || x.kind == KindAsyncKeyword)
 			&& !Core.usesArguments(m.body());
 
+	// a getter or setter compiled as a direct function: plain name, not static
+	public static function directAccessor(m:Node):Bool
+		return (m.kind == KindGetAccessor || m.kind == KindSetAccessor) && m.body() != null && (m.name().kind == KindIdentifier || m.name().kind == KindStringLiteral)
+			&& !m.modifiers().exists(x -> x.kind == KindStaticKeyword) && !Core.usesArguments(m.body());
+
 	function layout(n:Node):Null<ClassLayout> {
 		if (n.modifiers().exists(m -> m.kind == KindDeclareKeyword)) return null;
 		var parent:Null<ClassLayout> = null;
@@ -110,7 +137,10 @@ class Classes {
 		var c = new ClassLayout(n, n.name().text, all.length, parent);
 		for (m in n.members()) if ((m.kind == KindMethodDeclaration || m.kind == KindGetAccessor || m.kind == KindSetAccessor)
 			&& !m.modifiers().exists(x -> x.kind == KindStaticKeyword) && m.name().kind != KindPrivateIdentifier && m.name().kind != KindComputedPropertyName)
+		{
 			c.members.set(m.name().text, m);
+			if (m.body() != null) c.concrete.set(m.name().text, true);
+		}
 		function field(name:Node):Bool {
 			if (name.kind != KindIdentifier && name.kind != KindStringLiteral) return false;
 			if (c.declares(name.text)) return false;

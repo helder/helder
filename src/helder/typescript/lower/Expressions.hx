@@ -195,7 +195,7 @@ abstract class Expressions extends Statements {
 				b.runtime("libGet", [any(obj), any(key)]);
 			case KindObjectLiteralExpression: objectLiteral(n);
 			case KindPropertyAccessExpression if (n.expression().kind == KindSuperKeyword):
-				b.runtime("libSuperGet", [read(get("%home", n)), thisValue(), EStr(n.name().text)]);
+				layoutSuperGet(n) ?? b.runtime("libSuperGet", [read(get("%home", n)), thisValue(), EStr(n.name().text)]);
 			case KindPropertyAccessExpression if (n.name().kind == KindPrivateIdentifier):
 				var a = expr(n.expression());
 				chainCheck(n, a);
@@ -207,6 +207,16 @@ abstract class Expressions extends Statements {
 			case KindPropertyAccessExpression if (n.name().text == "length" && plainAccess(n) && types.isArray(n.expression().tsType)):
 				typedOperations++;
 				reps.arrayLength(b, b.temp(expr(n.expression())));
+			case KindPropertyAccessExpression if (n.name().text == "size" && plainAccess(n) && types.collection(n.expression().tsType) != null):
+				// (Map's and Set's size on a plain one: its count)
+				typedOperations++;
+				var o = b.temp(any(expr(n.expression())));
+				var l = b.local("size", TF64);
+				b.out.push(SIf(b.runtime("libPlainMap", [o, bool(types.collection(n.expression().tsType) == "Set")]), b.block(() -> b.out.push(SSet(l, b.runtime("libMapSize", [o])))),
+					b.block(() -> b.out.push(SSet(l, b.coerce(reps.siteGet(b, o, "size"), TF64))))));
+				ELocal(l);
+			case KindPropertyAccessExpression if (layoutAccessor(n, true) != null):
+				layoutGet(n, layoutAccessor(n, true), b.temp(expr(n.expression())));
 			case KindPropertyAccessExpression if (layoutField(n) != null):
 				typedOperations++;
 				reps.fieldGet(b, layoutField(n), b.temp(expr(n.expression())), n.name().text, where());
@@ -286,6 +296,15 @@ abstract class Expressions extends Statements {
 			return {
 				read: () -> reps.arrayGet(b, obj, key),
 				write: (e) -> numbers && Ir.typeOf(e) == TF64 ? reps.arraySetNumber(b, obj, key, e) : reps.arraySet(b, obj, key, e)
+			};
+		}
+		var getter = layoutAccessor(n, true), setter = layoutAccessor(n, false);
+		if (getter != null || setter != null) {
+			var obj = b.temp(expr(n.expression()));
+			var name = n.name().text;
+			return {
+				read: () -> getter != null ? layoutGet(n, getter, obj) : reps.siteGet(b, any(obj), name),
+				write: (e) -> setter != null ? layoutSet(n, setter, obj, e) : reps.sitePut(b, any(obj), name, e)
 			};
 		}
 		var field = layoutField(n);
@@ -396,7 +415,7 @@ abstract class Expressions extends Statements {
 			b.out.push(SIf(right, rhs, lhs));
 			return ELocal(l);
 		}
-		if (op == KindInstanceOfKeyword) return b.runtime("libInstanceOf", [any(a), any(expr(x.right()))]);
+		if (op == KindInstanceOfKeyword) return layoutInstanceOf(a, strip(x.right())) ?? b.runtime("libInstanceOf", [any(a), any(expr(x.right()))]);
 		return operate(op, a, numericOperator(op, n) ? numeric(x.right(), false, coerce) : expr(x.right()), n);
 	}
 
@@ -1268,6 +1287,8 @@ abstract class Expressions extends Statements {
 		var method = layoutCall(n, inner, actual);
 		if (method != null) return method;
 		if ((inner.kind == KindPropertyAccessExpression || inner.kind == KindElementAccessExpression) && inner.expression().kind == KindSuperKeyword) {
+			var direct = layoutSuperCall(n, inner, actual);
+			if (direct != null) return direct;
 			var key = inner.kind == KindPropertyAccessExpression ? EStr(inner.name().text) : any(expr(inner.argumentExpression()));
 			return b.runtime("libSuperCall", [read(get("%home", n)), thisValue(), key, argumentList(actual)]);
 		}
@@ -1395,7 +1416,8 @@ abstract class Expressions extends Statements {
 
 	// ---- built-ins' methods called directly on a receiver of a known type (js.Direct)
 
-	static final directs = ["Map.get" => 1, "Map.has" => 1, "Map.set" => 2, "Set.has" => 1, "Set.add" => 1, "Array.includes" => 1, "Array.indexOf" => 1];
+	static final directs = ["Map.get" => 1, "Map.has" => 1, "Map.set" => 2, "Map.delete" => 1, "Set.has" => 1, "Set.add" => 1, "Set.delete" => 1, "Array.includes" => 1,
+		"Array.indexOf" => 1, "Array.push" => 1];
 
 	function directCall(n:Node, callee:Node, actual:Array<Node>):Null<Ex> {
 		var inner = strip(callee);
@@ -1407,10 +1429,18 @@ abstract class Expressions extends Statements {
 		typedOperations++;
 		var o = b.temp(any(expr(inner.expression())));
 		var args = [for (a in actual) b.temp(any(expr(a)))];
-		var ty = name == "includes" || name == "has" ? TBool : name == "indexOf" ? TF64 : TRef(RAny);
+		var ty = name == "includes" || name == "has" || name == "delete" ? TBool : name == "indexOf" || name == "push" ? TF64 : TRef(RAny);
 		var result = b.local("direct", ty);
 		var plain = kind == "Array" ? b.runtime("libPlainArray", [o]) : b.runtime("libPlainMap", [o, bool(kind == "Set")]);
+		var slow = b.block(() -> b.out.push(SSet(result, b.coerce(b.runtime("libCallAt" + args.length, [o, reps.site(name)].concat(args)), ty))));
+		if (key == "Array.push") {
+			// (-1: not pushed its fast way)
+			b.out.push(SIf(plain, b.block(() -> b.out.push(SSet(result, b.runtime("libArrayPush", [o, args[0]])))), Vector.fromArrayCopy([SSet(result, EF64(-1))])));
+			b.out.push(SIf(EBin(FLt, ELocal(result), EF64(0)), slow, new Vector(0)));
+			return ELocal(result);
+		}
 		var fast = b.block(() -> b.out.push(SSet(result, switch key {
+			case "Map.delete" | "Set.delete": b.runtime("libMapDelete", [o, args[0]]);
 			case "Map.get": b.runtime("libMapGet", [o, args[0]]);
 			case "Map.has" | "Set.has": b.runtime("libMapHas", [o, args[0]]);
 			case "Map.set": b.runtime("libMapSet", [o, args[0], args[1]]);
@@ -1418,7 +1448,6 @@ abstract class Expressions extends Statements {
 			case "Array.includes": b.runtime("libArrayIncludes", [o, args[0]]);
 			case _: b.runtime("libArrayIndexOf", [o, args[0]]);
 		})));
-		var slow = b.block(() -> b.out.push(SSet(result, b.coerce(b.runtime("libCallAt" + args.length, [o, reps.site(name)].concat(args)), ty))));
 		b.out.push(SIf(plain, fast, slow));
 		return ELocal(result);
 	}
