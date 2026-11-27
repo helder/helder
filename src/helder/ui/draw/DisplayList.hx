@@ -87,6 +87,7 @@ class DisplayList implements TextureCanvas {
 	// forgets the calls and their resources, its arrays kept
 	public function clear() {
 		take = ++takes;
+		oldTake = -1;
 		for (i in 0...nr)
 			resources[i] = null;
 		ni = nf = nr = length = layers = live = slots = 0;
@@ -97,6 +98,7 @@ class DisplayList implements TextureCanvas {
 
 	// begins a recording, the one before kept until done
 	public function begin() {
+		oldTake = take;
 		take = ++takes;
 		var i = oldInts, f = oldFloats, r = oldResources, v = oldVersions;
 		oldInts = ints;
@@ -119,6 +121,68 @@ class DisplayList implements TextureCanvas {
 		for (i in 0...oldNr)
 			oldResources[i] = null;
 		oldNi = oldNr = 0;
+		oldTake = -1;
+	}
+
+	// (the recording before's take: what a span of it was recorded in)
+	var oldTake = -1;
+
+	// Where it records now: a span's start or end (its ints', floats' and
+	// resources' counts; take: the recording's), what a painter keeps of
+	// what it recorded to copy it into the next recording (copySpan).
+	public inline function markInts():Int
+		return ni;
+
+	public inline function markFloats():Int
+		return nf;
+
+	public inline function markResources():Int
+		return nr;
+
+	// A span of the recording before this one (take: the one it was recorded
+	// in; its ints, floats and resources from...to) copied in, what its calls
+	// take renumbered: a painter's unchanged part drawn again without
+	// painting it (Chromium's subsequences). Only drawing calls and clips:
+	// false, nothing copied, where it holds what a copy must keep track of
+	// (a node's entry, a layer, an image, a pass, a texture, a transform or
+	// a translation, the culls), or the recording before isn't take's.
+	public function copySpan(take:Int, i0:Int, i1:Int, f0:Int, f1:Int, r0:Int, r1:Int):Bool {
+		if (take != oldTake || i1 > oldNi || r1 > oldNr || i0 > i1) return false;
+		var o = oldInts, i = i0;
+		while (i < i1) {
+			var op:Op = o[i];
+			switch op {
+				case RECT | SHADOW | INSET_SHADOW | PATH | TEXT | TEXT_SHADOW | PUSH_CLIP | POP_CLIP | PUSH_OPACITY | PUSH_GROUP | POP_OPACITY:
+				case _:
+					return false;
+			}
+			i += size(op);
+		}
+		var w = oldFloats, dr = nr - r0;
+		for (j in f0...f1)
+			float(w[j]);
+		for (j in r0...r1) {
+			if (nr == resources.length) {
+				resources.push(oldResources[j]);
+				versions.push(oldVersions[j]);
+			} else {
+				resources[nr] = oldResources[j];
+				versions[nr] = oldVersions[j];
+			}
+			nr++;
+		}
+		i = i0;
+		while (i < i1) {
+			var op:Op = o[i], ki = size(op), r = refs(op);
+			int(op);
+			for (j in 1...ki) {
+				var x = o[i + j];
+				int(r >> j & 1 != 0 && x >= 0 ? x + dr : x);
+			}
+			if ((op : Int) <= (PASS : Int)) length++;
+			i += ki;
+		}
+		return true;
 	}
 
 	inline function unturn() {

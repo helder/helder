@@ -415,6 +415,162 @@ class BoxStyle {
 		if (d.outer == Internal && displayInner != TABLE_PART) displayOuter = BLOCK;
 	}
 
+	// ---- paint's: the background, the corners' radii, the borders' styles and
+	// colours, box shadows and the outline, read once (paint reads them per
+	// box and per frame, its terms parsed no more)
+
+	var paintRead = false;
+	var bgColor = 0;
+	var bgParts:Null<BackgroundParts> = null;
+	var bgClip = "border-box";
+	var radiusTerms:Null<Array<CssTerm>> = null;
+	final sideStyles:Array<String> = [];
+	final sideColors:Array<Int> = [];
+	var shadowList:Null<Array<BoxShadow>> = null;
+	var outlineStyleValue = "";
+	var outlineWidthValue = 0.0;
+	var outlineOffsetValue = 0.0;
+	var outlineColorValue = 0;
+
+	function readPaint() {
+		paintRead = true;
+		bgColor = color("background-color");
+		var images = BackgroundParts.split(terms("background-image"));
+		if (!(images.length == 1 && (images[0].length == 0 || images[0][0].match(Keyword("none"))))) bgParts = new BackgroundParts(this, images);
+		// (the colour's clip: the bottom layer's)
+		var clips = bgParts != null ? bgParts.clips : BackgroundParts.split(terms("background-clip"));
+		bgClip = switch clips[(images.length - 1) % clips.length] {
+			case [Keyword(k)]: k;
+			case _: "border-box";
+		}
+		var r = [], any = false;
+		for (c in CORNERS) switch terms('border-$c-radius') {
+			case [a, b]:
+				r.push(a);
+				r.push(b);
+				if (!zero(a) || !zero(b)) any = true;
+			case [a]:
+				r.push(a);
+				r.push(a);
+				if (!zero(a)) any = true;
+			case _:
+				r.push(Number(0, true));
+				r.push(Number(0, true));
+		}
+		if (any) radiusTerms = r;
+		for (side in SIDES) {
+			sideStyles.push(keyword('border-$side-style'));
+			sideColors.push(color('border-$side-color'));
+		}
+		var shadow = terms("box-shadow");
+		if (shadow.length > 0 && !shadow[0].match(Keyword("none"))) {
+			var list = [], current = color("color");
+			var one = new BoxShadow();
+			list.push(one);
+			for (t in shadow) switch t {
+				case Delim(","):
+					one = new BoxShadow();
+					list.push(one);
+				case Color(c): one.color = argb(c, current);
+				case Keyword("inset"): one.inset = true;
+				case Dimension(v, _): one.lengths.push(v);
+				case _:
+			}
+			for (o in list) {
+				if (o.color == -1) o.color = current;
+				while (o.lengths.length < 4) o.lengths.push(0);
+			}
+			shadowList = list;
+		}
+		outlineStyleValue = keyword("outline-style");
+		if (outlineStyleValue != "none" && outlineStyleValue != "") {
+			outlineWidthValue = px("outline-width");
+			outlineOffsetValue = px("outline-offset");
+			outlineColorValue = switch terms("outline-color") {
+				case [Keyword("auto" | "invert")]: color("color");
+				case _: color("outline-color");
+			}
+		}
+	}
+
+	static function zero(t:CssTerm):Bool
+		return switch t {
+			case Dimension(v, _) | Number(v, _) | Percentage(v): v == 0;
+			case _: false;
+		}
+
+	static final CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"];
+
+	// background-color, and its layers' lists apart (null: no image)
+	public var backgroundColor(get, never):Int;
+	public var background(get, never):Null<BackgroundParts>;
+	// (the background colour's clip box: the bottom layer's background-clip)
+	public var backgroundClip(get, never):String;
+	// the corners' radii as written, horizontal and vertical each, top-left first (null: square corners)
+	public var radii(get, never):Null<Array<CssTerm>>;
+	// box-shadow's shadows, the first on top (null: none)
+	public var shadows(get, never):Null<Array<BoxShadow>>;
+	public var outlineStyle(get, never):String;
+	public var outlineWidth(get, never):Float;
+	public var outlineOffset(get, never):Float;
+	public var outlineColor(get, never):Int;
+
+	// a side's border style and colour (top, right, bottom, left)
+	public inline function borderStyle(side:Int):String {
+		if (!paintRead) readPaint();
+		return sideStyles[side];
+	}
+
+	public inline function borderColor(side:Int):Int {
+		if (!paintRead) readPaint();
+		return sideColors[side];
+	}
+
+	inline function get_backgroundColor():Int {
+		if (!paintRead) readPaint();
+		return bgColor;
+	}
+
+	inline function get_backgroundClip():String {
+		if (!paintRead) readPaint();
+		return bgClip;
+	}
+
+	inline function get_background():Null<BackgroundParts> {
+		if (!paintRead) readPaint();
+		return bgParts;
+	}
+
+	inline function get_radii():Null<Array<CssTerm>> {
+		if (!paintRead) readPaint();
+		return radiusTerms;
+	}
+
+	inline function get_shadows():Null<Array<BoxShadow>> {
+		if (!paintRead) readPaint();
+		return shadowList;
+	}
+
+	inline function get_outlineStyle():String {
+		if (!paintRead) readPaint();
+		return outlineStyleValue;
+	}
+
+	inline function get_outlineWidth():Float {
+		if (!paintRead) readPaint();
+		return outlineWidthValue;
+	}
+
+	inline function get_outlineOffset():Float {
+		if (!paintRead) readPaint();
+		return outlineOffsetValue;
+	}
+
+	inline function get_outlineColor():Int {
+		if (!paintRead) readPaint();
+		return outlineColorValue;
+	}
+
 	// ---- flex, alignment, gaps, insets, float and clear: read once (layout
 	// reads them per item and per pass, by name no more)
 
@@ -754,8 +910,13 @@ class BoxStyle {
 
 	public var opacity(get, never):Float;
 
-	function get_opacity():Float
-		return number("opacity", 1);
+	// (read once: every paint order asks every context)
+	var opacityValue = Math.NaN;
+
+	function get_opacity():Float {
+		if (opacityValue != opacityValue) opacityValue = number("opacity", 1);
+		return opacityValue;
+	}
 
 	public var visible(get, never):Bool;
 
@@ -867,4 +1028,44 @@ class BoxStyle {
 
 	inline function get_wraps():Bool
 		return trait(WRAPS);
+}
+
+// A box's background layers' lists, each split at its commas once
+// (Backgrounds 3 §2: a list's values repeat to the images' count).
+class BackgroundParts {
+	public final images:Array<Array<CssTerm>>;
+	public final clips:Array<Array<CssTerm>>;
+	public final origins:Array<Array<CssTerm>>;
+	public final sizes:Array<Array<CssTerm>>;
+	public final repeats:Array<Array<CssTerm>>;
+	public final xs:Array<Array<CssTerm>>;
+	public final ys:Array<Array<CssTerm>>;
+	public final attachments:Array<Array<CssTerm>>;
+
+	public function new(s:BoxStyle, images:Array<Array<CssTerm>>) {
+		this.images = images;
+		clips = split(s.terms("background-clip"));
+		origins = split(s.terms("background-origin"));
+		sizes = split(s.terms("background-size"));
+		repeats = split(s.terms("background-repeat"));
+		xs = split(s.terms("background-position-x"));
+		ys = split(s.terms("background-position-y"));
+		attachments = split(s.terms("background-attachment"));
+	}
+
+	// (a list's items at its commas)
+	public static function split(t:Array<CssTerm>):Array<Array<CssTerm>> {
+		var out:Array<Array<CssTerm>> = [[]];
+		for (x in t) if (x.match(Delim(","))) out.push([]) else out[out.length - 1].push(x);
+		return out;
+	}
+}
+
+// One of box-shadow's shadows: its colour, inset, and its x and y offsets, blur and spread.
+class BoxShadow {
+	public var color = -1;
+	public var inset = false;
+	public final lengths:Array<Float> = [];
+
+	public function new() {}
 }

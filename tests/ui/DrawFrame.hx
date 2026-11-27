@@ -78,6 +78,8 @@ class DrawFrame {
 	}
 
 	// the ui painted on background (opaque), its pixels read into out (a new buffer when not given)
+	public static final PHASES = [0.0, 0.0, 0.0];
+
 	public function draw(ui:Ui, ?out:Bytes, background:helder.gfx.Color = helder.gfx.Color.WHITE):Bytes
 		return paint(c -> ui.paint(c), out, background);
 
@@ -93,15 +95,22 @@ class DrawFrame {
 		#if !helder.soft
 		var c = pass.colors[0].clear;
 		helder.gfx.ColorTarget.ClearValue.set(pass.colors[0], background.r / 255, background.g / 255, background.b / 255, c == null ? 1 : c.w);
+		var t0 = haxe.Timer.stamp();
 		var enc = device.beginFrame();
 		renderer.begin(width, height);
 		f(renderer);
+		var t1 = haxe.Timer.stamp();
 		renderer.prepare(enc);
 		enc.beginPass(pass);
 		renderer.end(enc);
 		enc.endPass();
+		var t2 = haxe.Timer.stamp();
 		device.readPixels(pixels);
 		device.endFrame();
+		var t3 = haxe.Timer.stamp();
+		PHASES[0] += t1 - t0;
+		PHASES[1] += t2 - t1;
+		PHASES[2] += t3 - t2;
 		#end
 		return pixels;
 	}

@@ -16,19 +16,10 @@ class Borders {
 	// bottom-right, bottom-left, x and y each; scaled down where they
 	// would overlap (§5.5). Null: square corners.
 	public static function radii(s:BoxStyle, w:Float, h:Float):Null<Array<Float>> {
-		var r = [];
+		var t = s.radii;
+		if (t == null) return null;
+		var r = [for (k in 0...8) Transforms.length(t[k], k & 1 == 0 ? w : h)];
 		var any = false;
-		for (c in CORNERS) switch s.terms('border-$c-radius') {
-			case [a, b]:
-				r.push(Transforms.length(a, w));
-				r.push(Transforms.length(b, h));
-			case [a]:
-				r.push(Transforms.length(a, w));
-				r.push(Transforms.length(a, h));
-			case _:
-				r.push(0);
-				r.push(0);
-		}
 		for (v in r) if (v > 0) any = true;
 		if (!any) return null;
 		var f = 1.0;
@@ -73,10 +64,11 @@ class Borders {
 	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, noLeft = false, noRight = false, noTop = false,
 			noBottom = false) {
 		var m = s.model();
-		var widths = [noTop ? 0 : m.border[0], noRight ? 0 : m.border[1], noBottom ? 0 : m.border[2], noLeft ? 0 : m.border[3]];
-		if (widths[0] + widths[1] + widths[2] + widths[3] == 0) return;
-		var styles = [for (k in 0...4) s.keyword('border-${SIDES[k]}-style')];
-		var colors = [for (k in 0...4) s.color('border-${SIDES[k]}-color')];
+		var t = noTop ? 0 : m.border[0], r = noRight ? 0 : m.border[1], b = noBottom ? 0 : m.border[2], l = noLeft ? 0 : m.border[3];
+		if (t + r + b + l == 0) return;
+		var widths = [t, r, b, l];
+		var styles = [for (k in 0...4) s.borderStyle(k)];
+		var colors = [for (k in 0...4) s.borderColor(k)];
 		var x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h);
 		draw(p, x0, y0, x1 - x0, y1 - y0, widths, styles, colors, radii(s, x1 - x0, y1 - y0));
 	}
@@ -189,15 +181,12 @@ class Borders {
 
 	// The outline outside the border box (x, y, w, h), its offset apart.
 	public static function outline(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float) {
-		var st = s.keyword("outline-style");
+		var st = s.outlineStyle;
 		if (st == "none" || st == "") return;
-		var ow = s.px("outline-width");
+		var ow = s.outlineWidth;
 		if (ow <= 0) return;
-		var off = s.px("outline-offset");
-		var c = switch s.terms("outline-color") {
-			case [Keyword("auto" | "invert")]: s.color("color");
-			case _: s.color("outline-color");
-		}
+		var off = s.outlineOffset;
+		var c = s.outlineColor;
 		if (st == "auto") st = "solid";
 		var x0 = Math.round(x) - off - ow, y0 = Math.round(y) - off - ow;
 		var x1 = Math.round(x + w) + off + ow, y1 = Math.round(y + h) + off + ow;
@@ -226,23 +215,14 @@ class Borders {
 	// Box shadows (§7.1): outer ones outside the border box (under the background), or inset ones inside
 	// the padding box (over it); the first on top.
 	public static function shadows(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, insets:Bool) {
-		var terms = s.terms("box-shadow");
-		if (terms.length == 0 || terms[0].match(Keyword("none"))) return;
-		var list:Array<Array<CssTerm>> = [[]];
-		for (t in terms) if (t.match(Delim(","))) list.push([]) else list[list.length - 1].push(t);
+		var list = s.shadows;
+		if (list == null) return;
 		var x0 = Math.round(x), y0 = Math.round(y), bw = Math.round(x + w) - x0, bh = Math.round(y + h) - y0;
 		var r = radii(s, bw, bh);
 		var m = s.model();
 		var k = list.length;
 		while (k-- > 0) {
-			var color = s.color("color"), inner = false, lengths = [];
-			for (t in list[k]) switch t {
-				case Color(c): color = BoxStyle.argb(c, s.color("color"));
-				case Keyword("inset"): inner = true;
-				case Dimension(v, _): lengths.push(v);
-				case _:
-			}
-			while (lengths.length < 4) lengths.push(0);
+			var one = list[k], color = one.color, inner = one.inset, lengths = one.lengths;
 			var ox = lengths[0], oy = lengths[1], blur = lengths[2], spread = lengths[3];
 			if (color >>> 24 == 0 || inner != insets) continue;
 			// (a painter that draws shadows itself: offered each)
