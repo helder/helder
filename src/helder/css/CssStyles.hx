@@ -37,6 +37,8 @@ class CssStyles {
 	var fixedViewport = false;
 	// (the elements a declaration with a viewport unit styled: what another size styles again)
 	final viewported = new ObjectMap<Element, Bool>();
+	// (the rules each resize found changing that skipped elements: what rematch matches in them)
+	final skipped:Array<CssRuleIndex<Bool>> = [];
 
 	// What viewport units resolve against: the cascade's `viewport`, else
 	// on print the first page's area (its @page size less its margins),
@@ -271,6 +273,7 @@ class CssStyles {
 		for (s in sheets) within(s.sheet.rules, s.media != null && s.media.matches(other) != s.media.matches(media));
 		var out = new ObjectMap<Element, Bool>();
 		if (n > 0) changed.walk(document, (el, found) -> if (found.length > 0) out.set(el, true), null, skip);
+		if (n > 0 && skip != null) skipped.push(changed);
 		var r = document.documentElement, was = r == null ? null : cache.get(r);
 		media = other;
 		if (!fixedViewport) viewportSize = null;
@@ -295,6 +298,20 @@ class CssStyles {
 		for (el in list) viewported.remove(el);
 		return list;
 	}
+
+	// Of the elements in el, itself too, those a rule the resizes that
+	// skipped them (their skip) found changing matches: what they left to
+	// style again there, but for what inherits and viewport units (those
+	// resize gave).
+	public function rematch(el:Element):Array<Element> {
+		var out = [];
+		for (c in skipped) c.walk(el, (e, found) -> if (found.length > 0) out.push(e));
+		return out;
+	}
+
+	// (what the resizes skipped styled again: their rules let go)
+	public function settle()
+		skipped.resize(0);
 
 	// (the rules indexed again for the media: the styles worked out so far kept, those of the elements the
 	// changed rules match let go by the caller)

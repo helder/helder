@@ -123,6 +123,30 @@ function tests() {
 			fresh.layout(100, 200);
 			equals(geometry(v), geometry(fresh));
 		});
+		test("a long document in a block of its own, a flex row's item, laid out to a cut too", () -> {
+			var html = '<style>body { margin: 0; font: 10px/1 Ahem; display: flex } #menu { position: fixed; width: 20px } #spec { overflow: hidden; flex-grow: 1; flex-basis: 0 } section { margin: 4px 0 } @media (max-width: 110px) { body { display: block } #spec { line-height: 1.5 } p { margin: 2px 0 } }</style><div id=menu>m</div><div id=spec>'
+				+ [for (i in 0...3000) '<section id=s$i><p>a$i bb cc</p><p>dd ee ff gg hh</p><p>ii</p><p>jj kk</p><p>ll</p><p>mm nn oo</p><p>pp</p><p>qq rr</p></section>'].join("") + '</div>';
+			var v = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			v.upTo(200);
+			v.layout(120, 200);
+			equals(v.partial, true);
+			equals(laid(v) < 400, true);
+			// (across the query: the body a block, the cut in the block of its own; what is past it styled as the tree
+			// is made, by what the query's rules match there and what they inherit)
+			v.layout(100, 200);
+			equals(v.partial, true);
+			equals(laid(v) < 400, true);
+			v.finish();
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			fresh.layout(100, 200);
+			equals(geometry(v), geometry(fresh));
+			v.upTo(200);
+			v.layout(120, 200);
+			equals(v.partial, true);
+			v.finish();
+			fresh.layout(120, 200);
+			equals(geometry(v), geometry(fresh));
+		});
 	});
 }
 
