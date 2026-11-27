@@ -189,9 +189,9 @@ class BoxInline implements InlineStyle {
 	public function textIndentHanging():Bool
 		return t.indentHanging;
 
-	// (an ellipsis where the block clips)
+	// (an ellipsis where the block clips, or cuts its lines)
 	public function textOverflow():InlineTextOverflow
-		return s.clips ? t.textOverflowEnd : Clip;
+		return s.cuts() ? t.textOverflowEnd : Clip;
 
 	public function lineClamp():Int
 		return t.clamp;

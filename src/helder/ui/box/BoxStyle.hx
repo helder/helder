@@ -486,6 +486,8 @@ class BoxStyle {
 	static inline var MOVED = 512;
 	static inline var STACKS = 1024;
 	static inline var CONTENT_HIDDEN = 2048;
+	// (its lines cut with an ellipsis without clipping: a fast text's, whose lines alone are in it)
+	static inline var CUTS = 4096;
 
 	inline function trait(bit:Int):Bool {
 		if (traits < 0) traits = readTraits();
@@ -559,6 +561,10 @@ class BoxStyle {
 
 	inline function get_clips():Bool
 		return trait(CLIPS);
+
+	// (its lines' text-overflow applies: it clips, or cuts them without)
+	public inline function cuts():Bool
+		return trait(CLIPS | CUTS);
 
 	public var rtl(get, never):Bool;
 
