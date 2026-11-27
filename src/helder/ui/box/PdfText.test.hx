@@ -42,6 +42,16 @@ function tests() {
 			var pdf = PagedView.toPdf(page(t), {fonts: fonts()});
 			equals(Pdf.text(Pdf.open(pdf).pages[0]).trim(), t);
 		}, {cases: 100}));
+		test("a right-to-left run that reads the same backwards: each letter's box where it was drawn", () -> {
+			for (t in ["\u05D0\u05D0", "\u05D0\u05D1\u05D0", "a \u05D0\u05D0 b"]) {
+				var v = new PagedView(Dom.parse(page(t)), {fonts: fonts()});
+				var runs = Pdf.runs(Pdf.open(v.pdf()).pages[0]);
+				var d = new helder.canvas.doc.Document(), p = d.newPage(1500, 75);
+				p.scale(0.75, 0.75);
+				v.paint(0, p, false);
+				for (op in p.ops) if (op.kind == Text) boxes(runs[0], op);
+			}
+		});
 		test("each character's box from Pdf.runs where its glyph was drawn", () -> property(texts, t -> {
 			var v = new PagedView(Dom.parse(page(t)), {fonts: fonts()});
 			var runs = Pdf.runs(Pdf.open(v.pdf()).pages[0]);

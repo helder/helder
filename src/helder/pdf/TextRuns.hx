@@ -64,7 +64,8 @@ class TextRuns {
 		if (actual != "") gap(gs[0].f, gs[0].m, actual);
 		var forward = [for (g in gs) g.u].join(""), backward = [for (k in 0...gs.length) gs[gs.length - 1 - k].u].join("");
 		if (actual != "" && (forward == actual || backward == actual)) {
-			var at = length, back = forward != actual;
+			// (both: a run that reads the same either way, "אא": backwards if it is written right to left)
+			var at = length, back = forward != actual || backward == actual && rtl(actual);
 			for (k in 0...gs.length) {
 				var g = gs[back ? gs.length - 1 - k : k];
 				glyphs.push(box(g.f, g.m, g.w, at, at + g.u.length));
@@ -86,6 +87,21 @@ class TextRuns {
 		length += actual.length;
 		var z = gs[gs.length - 1];
 		moved(z.f, z.m, z.w);
+	}
+
+	// (whether the text's first strong character is right to left)
+	static function rtl(s:String):Bool {
+		var i = 0;
+		while (i < s.length) {
+			var c = StringTools.fastCodeAt(s, i++);
+			if (c >= 0xD800 && c < 0xDC00 && i < s.length) c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(s, i++) - 0xDC00);
+			switch helder.text.Bidi.classOf(c) {
+				case helder.text.Bidi.L: return false;
+				case helder.text.Bidi.R | helder.text.Bidi.AL: return true;
+				case _:
+			}
+		}
+		return false;
 	}
 
 	// (a new run where the line moved off its baseline or turned, a space at a gap along it)
