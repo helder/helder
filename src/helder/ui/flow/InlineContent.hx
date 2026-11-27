@@ -584,6 +584,52 @@ class InlineContent {
 		pWidth = floats(pWidth, m);
 	}
 
+	// Its columns cut to what they hold (they grow by doubling, from 16 items
+	// and 64 units): a long document keeps one a block, for its lines' hit
+	// tests and its later layouts.
+	public function compact() {
+		if (iKind.length > items) {
+			var m = items;
+			iKind = fit(iKind, m);
+			iStart = fit(iStart, m);
+			iEnd = fit(iEnd, m);
+			iStyle = fit(iStyle, m);
+			iBox = fit(iBox, m);
+			iMatch = fit(iMatch, m);
+			iLevel = fit(iLevel, m);
+			iFont = fit(iFont, m);
+			iParent = fit(iParent, m);
+			iDepth = fit(iDepth, m);
+			iFlags = fit(iFlags, m);
+			iWidth = fit(iWidth, m);
+			iHeight = fit(iHeight, m);
+			iBaseline = fit(iBaseline, m);
+			iLetter = fit(iLetter, m);
+			iWord = fit(iWord, m);
+			iSource = fit(iSource, m);
+		}
+		if (pKind.length > pieces) {
+			var m = pieces;
+			pKind = fit(pKind, m);
+			pStart = fit(pStart, m);
+			pEnd = fit(pEnd, m);
+			pItem = fit(pItem, m);
+			pBreak = fit(pBreak, m);
+			pEntry = fit(pEntry, m);
+			pWidth = fit(pWidth, m);
+		}
+		var n = text.length;
+		if (offsets.length > n + 1) offsets = fit(offsets, n + 1);
+		if (levels.length > n + 1) levels = levels.sub(0, n + 1);
+		if (breaks.length > n + 1) breaks = breaks.sub(0, n + 1);
+	}
+
+	static function fit<T>(v:Vector<T>, n:Int):Vector<T> {
+		var w = new Vector<T>(n);
+		Vector.blit(v, 0, w, 0, n);
+		return w;
+	}
+
 	static function ints(v:Vector<Int>, n:Int):Vector<Int> {
 		var w = new Vector<Int>(n);
 		Vector.blit(v, 0, w, 0, v.length);

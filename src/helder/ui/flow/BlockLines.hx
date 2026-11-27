@@ -27,6 +27,8 @@ class BlockLines {
 	// (a block's leaders filled: built as they are)
 	var filling = false;
 	final markerLayout = new InlineLayout();
+	static final NO_BOXES:Array<Box> = [];
+	static final NO_FRAGMENTS:Array<Int> = [];
 
 	public function new(flow:BlockFlow)
 		this.flow = flow;
@@ -132,7 +134,10 @@ class BlockLines {
 					if (k < at.length && at[k].y < end) space.placeAbsolute(built.absolutes[k], ox + at[k].x, oy + at[k].y);
 			}
 			var r = fragments(l, built, space, frag, ox, oy, constraints, 0, last);
-			if (fr == null) block.lines = new BlockText(c, constraints, frag, ox, oy);
+			if (fr == null) {
+				c.compact();
+				block.lines = new BlockText(c, constraints, frag, ox, oy);
+			}
 			depth--;
 			// (broken inside a line: its content to the fragmentainer's end, the rest of the line's overflow)
 			var h = r.height - shift;
@@ -244,18 +249,15 @@ class BlockLines {
 			absolutes: [],
 			markers: [],
 			leaders: [],
-			texts: new haxe.ds.ObjectMap<Node, Array<Box>>()
+			texts: []
 		};
+		var runs:Array<Box> = [];
 		function walk(b:Box) {
 			var k = b.first;
 			while (k != null) {
 				switch k.kind {
 					case Text:
-						if (k.node != null) {
-							var list = out.texts.get(k.node);
-							if (list == null) out.texts.set(k.node, list = []);
-							list.push(k);
-						}
+						if (k.node != null) runs.push(k);
 						// (a leader: one fill, unless the lines just filled it)
 						if (k.flags & Box.LEADER != 0) {
 							if (!filling) k.text = k.fill;
@@ -302,10 +304,32 @@ class BlockLines {
 		}
 		walk(block);
 		c.finish();
+		// (each text item's run: the runs come in the items' order, a DOM text's ::first-letter's and the
+		// rest told apart by the offset of the item's first unit)
+		var t = 0;
+		for (i in 0...c.items) {
+			var source = c.kind(i) == Text ? c.source(i) : null;
+			if (source == null) {
+				out.texts.push(null);
+				continue;
+			}
+			var at = c.end(i) > c.start(i) ? c.domOffset(c.start(i)) : -1, k = t;
+			while (k < runs.length && (runs[k].node != source || at >= 0 && at >= runs[k].offset + runs[k].text.length && k + 1 < runs.length && runs[k + 1].node == source))
+				k++;
+			if (k < runs.length) t = k;
+			out.texts.push(k < runs.length ? runs[k] : null);
+		}
 		// (what a later layout and the sizes' questions take again: the same at any width; a live
 		// document's changes let it go, DocumentView.stale)
-		if (!space.exact && !relative && out.atomics.length == 0 && out.floats.length == 0 && out.leaders.length == 0 && out.absolutes.length == 0)
+		if (!space.exact && !relative && out.atomics.length == 0 && out.floats.length == 0 && out.leaders.length == 0 && out.absolutes.length == 0) {
+			// (a block each keeps one: the empty lists shared, the content cut to size)
+			out.atomics = out.floats = out.absolutes = out.leaders = NO_BOXES;
+			out.laid = NO_FRAGMENTS;
+			if (out.opened.length == 0) out.opened = NO_BOXES;
+			if (out.markers.length == 0) out.markers = NO_BOXES;
+			c.compact();
 			block.inlineCache = out;
+		}
 		return out;
 	}
 
@@ -337,16 +361,8 @@ class BlockLines {
 			case _:
 		}
 		function textBox(i:Int):Box {
-			var source = c.source(i);
-			var list = source != null ? built.texts.get(source) : null;
-			if (list != null) {
-				if (list.length == 1) return list[0];
-				// (the run whose part of the DOM text the item's first unit is from)
-				var at = c.end(i) > c.start(i) ? c.domOffset(c.start(i)) : -1;
-				for (b in list) if (at >= b.offset && at < b.offset + b.text.length) return b;
-				return list[0];
-			}
-			return (cast c.style(i) : BoxInline).box;
+			var b = i < built.texts.length ? built.texts[i] : null;
+			return b != null ? b : (cast c.style(i) : BoxInline).box;
 		}
 		var root = (cast c.root : BoxInline).box, rtl = root.style.rtl, align = root.style.keyword("text-align");
 		var startAligned = align == "" || align == "start" || align == "justify" || align == (rtl ? "right" : "left");
@@ -591,6 +607,6 @@ private typedef Built = {
 	absolutes:Array<Box>,
 	markers:Array<Box>,
 	leaders:Array<Box>,
-	// (a DOM text's runs: one, or its ::first-letter's and the rest)
-	texts:haxe.ds.ObjectMap<Node, Array<Box>>
+	// (each item's text run: null for the items not text, and generated text's)
+	texts:Array<Null<Box>>
 }

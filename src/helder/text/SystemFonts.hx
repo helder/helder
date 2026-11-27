@@ -14,6 +14,8 @@ class SystemFonts {
 
 	final faces:Array<FaceInfo> = [];
 	final loaded = new Map<String, FontFile>();
+	// (a file's bytes, read once for all its faces: a collection's faces share them, Apple Color Emoji's 183 MB among them)
+	final files = new Map<String, haxe.io.Bytes>();
 	var scanned = false;
 
 	public static final GENERIC = [
@@ -181,7 +183,7 @@ class SystemFonts {
 		if (!loaded.exists(key)) {
 			var f:Null<FontFile> = null;
 			try {
-				var data = sys.io.File.getBytes(path);
+				var data = bytes(path);
 				if (index >= 0) f = FontFile.parse(data, index) else for (i in 0...FontFile.faceCount(data)) {
 					var g = try FontFile.parse(data, i) catch (e:Dynamic) null;
 					if (g != null && (cp < 0 || g.glyph(cp) != 0)) {
@@ -324,10 +326,16 @@ class SystemFonts {
 		var key = fi.path + "#" + fi.index;
 		if (loaded.exists(fi.path)) return loaded.get(fi.path);
 		if (loaded.exists(key)) return loaded.get(key);
-		var f = try FontFile.parse(sys.io.File.getBytes(fi.path), fi.index) catch (e:Dynamic) null;
+		var f = try FontFile.parse(bytes(fi.path), fi.index) catch (e:Dynamic) null;
 		if (f != null) f.path = fi.path;
 		loaded.set(key, f);
 		return f;
+	}
+
+	function bytes(path:String):haxe.io.Bytes {
+		var b = files.get(path);
+		if (b == null) files.set(path, b = sys.io.File.getBytes(path));
+		return b;
 	}
 
 	// --- discovery ---
