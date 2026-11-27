@@ -3,7 +3,7 @@
 // tags: 3d, pbr, docs
 // demo: canvas 640x400
 import helder.math.Quat;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.gfx.*;
 import helder.math.Vec3;
 import helder.math.Vec4;
@@ -26,7 +26,7 @@ class Materials {
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		var renderer = new Renderer(device);
-		var env = Environment.fromImage(device, "image/png", Asset.embed("examples/showroom/panorama.png"));
+		var env = Environment.fromImage(device, "image/png", Embed.bytes("examples/showroom/panorama.png"));
 		if (env != null) renderer.use(env);
 
 		var world = new World("materials");

@@ -3,7 +3,7 @@
 // tags: 3d, text, geometry, docs
 // demo: canvas 640x400
 import helder.math.Quat;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.gfx.*;
 import helder.math.Vec3;
 import helder.math.Vec4;
@@ -30,7 +30,7 @@ class TextDemo {
 		renderer.use(new Shadows(device, 2048));
 		var world = new World("text");
 		// #region text
-		var font = FontFile.parse(Asset.embed("helder/text/fonts/Inter.ttf"));
+		var font = FontFile.parse(Embed.bytes("helder/text/fonts/Inter.ttf"));
 		var word = world.node("word");
 		word.position = new Vec3(-0.6, 0.55, 0);
 		Text3D.attach(word, new Text3D(device, font, "helder", {size: 1.1, depth: 0.3, bevelSize: 0.025, lit: true, castShadows: true,

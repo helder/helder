@@ -1,6 +1,6 @@
 import helder.gfx.Color;
 import Model;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.text.FontFile;
 import helder.ui.*;
 import helder.ui.controls.Look;
@@ -33,7 +33,7 @@ class Start implements Markup {
 			about: "A neutral grotesk for screens by Rasmus Andersson, its outlines as they are.",
 			family: "Inter",
 			license: "SIL Open Font License 1.1",
-			file: () -> Asset.embed("fonts/Inter.ttf")
+			file: () -> Embed.bytes("fonts/Inter.ttf")
 		},
 		{
 			id: "hanken",
@@ -41,7 +41,7 @@ class Start implements Markup {
 			about: "A friendly geometric grotesk by Alfredo Marco Pradil, its outlines as they are.",
 			family: "Hanken Grotesk",
 			license: "SIL Open Font License 1.1",
-			file: () -> Asset.embed("fonts/HankenGrotesk-Regular.ttf")
+			file: () -> Embed.bytes("fonts/HankenGrotesk-Regular.ttf")
 		},
 		{
 			id: "geist",
@@ -49,7 +49,7 @@ class Start implements Markup {
 			about: "A monospace by Vercel, every letter as wide as the next, its outlines as they are.",
 			family: "Geist Mono",
 			license: "SIL Open Font License 1.1",
-			file: () -> Asset.embed("fonts/GeistMono-Regular.ttf")
+			file: () -> Embed.bytes("fonts/GeistMono-Regular.ttf")
 		}
 	];
 

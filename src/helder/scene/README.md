@@ -136,7 +136,7 @@ _anisotropy with their maps ([Materials](#the-gltf-material-extensions));
 alphaMode MASK is cut out at alphaCutoff. `GltfNodes.build(doc, world, ?parent, ?scene, ?mesh)` makes the node
 hierarchy (TRS or matrices, cameras); `GltfScene` makes the GPU meshes and
 materials once and `instantiate(world)` copies the hierarchy into a world.
-helder.asset's `Asset.embed(path)` builds a file into the code itself.
+helder.asset's `Embed.bytes(path)` builds a file into the code itself.
 
 ### Models
 
@@ -176,7 +176,7 @@ haxe -cp src \
 ```
 
 ```haxe
-PackedModel.read(Asset.embed("level.hxm3d"), device).instantiate(world);
+PackedModel.read(Embed.bytes("level.hxm3d"), device).instantiate(world);
 ```
 
 A packed model needs no glTF reader or JSON at run time (73 KB less
@@ -288,7 +288,7 @@ the same frame).
 
 ```haxe
 var renderer = new Renderer(device);
-new GltfScene(Gltf.parse(Asset.embed("sample.glb")), device).instantiate(world);
+new GltfScene(Gltf.parse(Embed.bytes("sample.glb")), device).instantiate(world);
 // in the frame:
 renderer.draw(enc, world, camera);   // one pass into the frame
 ```
@@ -1480,7 +1480,7 @@ and WebGL2.
 ## Text in the world
 
 ```haxe
-var font = FontFile.parse(Asset.embed("fonts/Inter.ttf"));
+var font = FontFile.parse(Embed.bytes("fonts/Inter.ttf"));
 var label = Text3D.attach(world.node("score"), new Text3D(device, font, "0", {size: 0.3, billboard: true}));
 label.text = Std.string(score);   // its glyphs made again: a change, not a frame
 

@@ -3,7 +3,7 @@
 // tags: 3d, gltf, pbr, ibl, hdr, assets
 // demo: canvas 960x600
 // data: models
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.async.Async;
 import helder.async.Fetch;
 import helder.scene.debug.FrameStats;
@@ -55,9 +55,9 @@ class GltfShowcase implements Markup {
 		helder.image.Image.decodeInBrowser = true;
 		// (Showcase.ENVIRONMENTS' atlases, in order, in the module itself: 350 KB)
 		var envs = [
-			Asset.embed("environments/studio_small_09.png"),
-			Asset.embed("environments/venice_sunset.png"),
-			Asset.embed("environments/kloofendal_48d_partly_cloudy_puresky.png")
+			Embed.bytes("environments/studio_small_09.png"),
+			Embed.bytes("environments/venice_sunset.png"),
+			Embed.bytes("environments/kloofendal_48d_partly_cloudy_puresky.png")
 		];
 		var t0 = Sys.time(), last = -1.0, firstFrame = -1.0, loaded = 0.0, bytes = 0, printed = 0.0;
 		// (the second argument: the model to start with, by name)

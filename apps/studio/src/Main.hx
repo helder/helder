@@ -115,9 +115,9 @@ class Main implements Markup {
 	public static function fonts() {
 		var f = helder.text.SystemFonts.get();
 		for (b in [
-			helder.asset.Asset.embed("fonts/HankenGrotesk-Regular.ttf"),
-			helder.asset.Asset.embed("fonts/HankenGrotesk-Medium.ttf"),
-			helder.asset.Asset.embed("fonts/GeistMono-Regular.ttf")
+			helder.asset.Embed.bytes("fonts/HankenGrotesk-Regular.ttf"),
+			helder.asset.Embed.bytes("fonts/HankenGrotesk-Medium.ttf"),
+			helder.asset.Embed.bytes("fonts/GeistMono-Regular.ttf")
 		])
 			try f.add(b) catch (_:Dynamic) {}
 	}

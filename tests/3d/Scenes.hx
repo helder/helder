@@ -1,7 +1,7 @@
 import helder.math.Vec4;
 import helder.gfx.*;
 import helder.math.Vec3;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.asset.Assets;
 import helder.scene.*;
 import helder.scene.gltf.*;
@@ -281,7 +281,7 @@ class Scenes {
 					var model = Model.of("textured.glb");
 					model.instantiate(world, device).find(model.nodes.crate);
 				} else
-					PackedModel.read(name == "packedbc" ? Asset.embed("bin/3d/textured.bc.hxm3d") : Asset.embed("bin/3d/textured.astc.hxm3d"), device).instantiate(world)
+					PackedModel.read(name == "packedbc" ? Embed.bytes("bin/3d/textured.bc.hxm3d") : Embed.bytes("bin/3d/textured.astc.hxm3d"), device).instantiate(world)
 						.find("crate");
 				crate.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				var floor = world.node("floor");
@@ -364,7 +364,7 @@ class Scenes {
 				var r = new Renderer(device).use(new Skinning(device)).use(new Shadows(device, 512));
 				renderer = r;
 				var world = new World();
-				var model = PackedModel.read(Asset.embed("bin/3d/skinned.hxm3d"), device);
+				var model = PackedModel.read(Embed.bytes("bin/3d/skinned.hxm3d"), device);
 				var made = [];
 				model.instantiate(world, null, made);
 				var animator = new helder.scene.anim.Animator(made);
@@ -383,7 +383,7 @@ class Scenes {
 				var r = new Renderer(device).use(new NormalMaps(device));
 				renderer = r;
 				var world = new World();
-				var tiles = PackedModel.read(Asset.embed("bin/3d/normals.hxm3d"), device).instantiate(world).find("tiles");
+				var tiles = PackedModel.read(Embed.bytes("bin/3d/normals.hxm3d"), device).instantiate(world).find("tiles");
 				tiles.rotation = helder.math.Quat.fromEuler(0.5, 0.7, 0);
 				var floor = world.node("floor");
 				floor.position = new Vec3(0, -1.1, 0);
@@ -425,7 +425,7 @@ class Scenes {
 				enc -> r.draw(enc, world, camera);
 			case "environment":
 				Images.decode = Images.png;
-				var env = Environment.fromImage(device, "image/png", Asset.embed("panorama.png"));
+				var env = Environment.fromImage(device, "image/png", Embed.bytes("panorama.png"));
 				var r = new Renderer(device).use(env);
 				renderer = r;
 				var world = new World();
@@ -472,7 +472,7 @@ class Scenes {
 					right = model.instantiate(world, device);
 				} else {
 					// (packed at build time: bin/3d/morph.hxm3d, morph.png's frame)
-					var model = PackedModel.read(Asset.embed("bin/3d/morph.hxm3d"), device);
+					var model = PackedModel.read(Embed.bytes("bin/3d/morph.hxm3d"), device);
 					left = model.instantiate(world, null, made);
 					var animator = new helder.scene.anim.Animator(made);
 					animator.play(model.clip("breathe"));
@@ -495,7 +495,7 @@ class Scenes {
 				var r = new Renderer(device);
 				renderer = r;
 				var world = new World();
-				var model = PackedModel.read(Asset.embed("bin/3d/sample.hxm3d"), device);
+				var model = PackedModel.read(Embed.bytes("bin/3d/sample.hxm3d"), device);
 				model.instantiate(world);
 				var camera = Camera.first(world);
 				// (packed with its trees, Pack --bvh: each the tree made from its data)
@@ -724,7 +724,7 @@ class Scenes {
 				// test, KHR_materials_clearcoat's; lit by a prefiltered studio, from the front)
 				Images.decode = Images.common;
 				var r = new Renderer(device).use(new NormalMaps(device));
-				var env = Environment.prefiltered(device, "image/png", Asset.embed("studio-ibl.png"), 6);
+				var env = Environment.prefiltered(device, "image/png", Embed.bytes("studio-ibl.png"), 6);
 				env.intensity = 6.055;
 				env.background = false;
 				r.use(env);

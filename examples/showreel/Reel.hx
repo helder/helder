@@ -116,9 +116,9 @@ class Reel {
 		loaded = true;
 		var f = helder.text.SystemFonts.get();
 		for (b in [
-			helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"),
-			helder.asset.Asset.embed("fonts/InterDisplay.ttf"),
-			helder.asset.Asset.embed("helder/ui/code/fonts/JetBrainsMono-Regular.ttf")
+			helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"),
+			helder.asset.Embed.bytes("fonts/InterDisplay.ttf"),
+			helder.asset.Embed.bytes("helder/ui/code/fonts/JetBrainsMono-Regular.ttf")
 		])
 			try f.add(b) catch (_:Dynamic) {}
 	}

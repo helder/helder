@@ -10,7 +10,7 @@ Decompression in pure Haxe, for untrusted input.
   a loop, a read past the input or memory past the bound. As the
   reference decoder does, it refuses a stream cut short, padding bits set
   and data after the stream. The static dictionary (`dictionary.bin`,
-  122,784 bytes, RFC 7932's SHA-256) is built in with `Asset.embed`;
+  122,784 bytes, RFC 7932's SHA-256) is built in with `Embed.bytes`;
   `BrotliTables.hx` holds the context lookup table and the 121 word
   transforms. Both are written by `generate.mjs` from the brotli
   reference at a pinned revision (MIT, `LICENSE-brotli.txt`).

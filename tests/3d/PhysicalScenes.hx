@@ -1,5 +1,5 @@
 import haxe.io.Bytes;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.gfx.*;
 import helder.math.Vec2;
 import helder.math.Vec3;
@@ -36,7 +36,7 @@ class PhysicalScenes {
 		var hdr = name == "transmission" || name == "khrvolume";
 		var r = new Renderer(device, hdr, 1, hdr).use(new NormalMaps(device));
 		Scenes.renderer = r;
-		var env = Environment.prefiltered(device, "image/png", Asset.embed("studio-ibl.png"), 6);
+		var env = Environment.prefiltered(device, "image/png", Embed.bytes("studio-ibl.png"), 6);
 		env.intensity = 6.055;
 		env.background = false;
 		r.use(env);

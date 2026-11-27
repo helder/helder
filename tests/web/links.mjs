@@ -1,8 +1,9 @@
 // A plain UI program links no helder.async but Errors (tests/lanes/View.hx,
 // web): helder.ui and helder.view never name the rest, which is the loop's,
 // its I/O and sockets; a program that does not use it neither imports
-// helder_async (wasm) nor holds its classes (JavaScript). #293 and a change
-// after #326 broke it unseen until the browser lanes could not load a page.
+// helder_async (wasm) nor holds its classes (JavaScript). #293 and #376 (a
+// call of Asset.embed: Embed.bytes links nothing) broke it unseen until the
+// browser lanes could not load a page.
 //
 //   node tests/web/links.mjs <file.wasm | file.js>...
 import fs from 'node:fs'

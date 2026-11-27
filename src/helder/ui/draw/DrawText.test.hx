@@ -34,7 +34,7 @@ function tests() {
 		test("hyphens: auto by the font's language, a paragraph kept laid out again when they change", () -> {
 			helder.text.Hyphenation.add(helder.text.hyphenation.Nl.patterns());
 			var fonts = new SystemFonts();
-			fonts.add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+			fonts.add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 			var text = new DrawText(fonts);
 			function font(hyphens:Hyphens, ?lang:String)
 				return new Font("Inter", 16, 400, false, 1.25, 0, 0, Normal, null, "", hyphens, lang);

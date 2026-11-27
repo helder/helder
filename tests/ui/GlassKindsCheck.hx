@@ -33,7 +33,7 @@ class GlassKindsCheck {
 
 	// the bands, and (glass) the kinds over them: each kind's name and node
 	public static function build(root:Node, glass = true):Array<{name:String, node:Node}> {
-		helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
 		function band(top:Float, h:Float):Node {
 			var b = new Node();

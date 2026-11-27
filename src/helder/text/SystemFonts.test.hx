@@ -11,7 +11,7 @@ function tests() {
 		sys.FileSystem.createDirectory(dir);
 		test("a font's family, weight and axis", () -> {
 			var p = dir + "/helder-faceinfo-" + Std.random(1 << 30) + ".ttf";
-			sys.io.File.saveBytes(p, helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+			sys.io.File.saveBytes(p, helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 			var f = FaceInfo.read(p);
 			sys.FileSystem.deleteFile(p);
 			equals(f.length, 1);

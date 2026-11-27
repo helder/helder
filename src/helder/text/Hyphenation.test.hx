@@ -54,7 +54,7 @@ function tests() {
 		}));
 	});
 	describe("TextLayout, hyphens auto", () -> {
-		var inter = FontFile.parse(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		var inter = FontFile.parse(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 		var set = new FontSet(inter, [], 16);
 		// (each line's text, "-" where a hyphen is shown at its end)
 		function lines(l:TextLayout):Array<String>

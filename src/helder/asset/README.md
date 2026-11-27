@@ -37,7 +37,7 @@ if (icon.ready) draw(icon.peek());
 | `Asset.sound(path)` | the file's bytes (a WAV decoded by `helder.os.audio.Wav.decode`, for `Sfx`) |
 | `Asset.bytes(path)` | the file's bytes |
 | `Asset.strings(folder)` | a folder of [localized strings](../os/README.md#string-catalogues), with typed Haxe accessors |
-| `Asset.embed(path)` | the bytes built into the code itself, there at once (small files; not bundled, not reloaded) |
+| `Embed.bytes(path)` | the bytes built into the code itself, there at once (small files; not bundled, not reloaded); it links nothing of Asset (`Asset.embed`, its old name, does) |
 
 Each returns a handle at once, its load started: one per kind and path
 (the same handle each time). `load()` is a coroutine: it returns the value

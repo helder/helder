@@ -7,7 +7,7 @@ import helder.gfx.*;
 import helder.math.Vec3;
 import helder.math.Vec4;
 import helder.os.*;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.asset.Assets;
 import helder.scene.*;
 import helder.scene.anim.*;
@@ -31,7 +31,7 @@ class Showroom {
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		var renderer = new Renderer(device).use(new NormalMaps(device)).use(Shadows.cascaded(device, 1024, 6));
-		var env = Environment.fromImage(device, "image/png", Asset.embed("panorama.png"));
+		var env = Environment.fromImage(device, "image/png", Embed.bytes("panorama.png"));
 		if (env != null) renderer.use(env);
 		var world = new World();
 		var floor = world.node("floor");

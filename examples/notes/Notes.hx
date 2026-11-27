@@ -355,7 +355,7 @@ class Notes implements Markup {
 		</view>;
 
 	static function main() {
-		try helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf")) catch (_:Dynamic) {}
+		try helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf")) catch (_:Dynamic) {}
 		var focused = false;
 		helder.ui.Clock.add(_ -> {
 			if (!focused && app != null && app.ui != null) {

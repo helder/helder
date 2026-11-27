@@ -1,7 +1,7 @@
 // title: Video
 // summary: A clip played by the system's decoders in a <video>: a tap plays and pauses it, the time beside
 // tags: media, ui
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.media.MemorySource;
 import helder.media.ui.VideoNode;
 import helder.ui.UiWindow;
@@ -19,7 +19,7 @@ class Clip implements Markup {
 		var node:Null<VideoNode> = null, time = signal("0.0 s"), error = signal("");
 		UiWindow.run(<Surface title="Clip" width={480} height={320} background="#111111" dark={true}>
 			<view flexGrow={1} padding={16} rowGap={12}>
-				<video src={new MemorySource(Asset.embed("clip.mp4"))} flexGrow={1} autoPlay={true} loop={true} muted={true}
+				<video src={new MemorySource(Embed.bytes("clip.mp4"))} flexGrow={1} autoPlay={true} loop={true} muted={true}
 					onTime={t -> time(Std.string(Math.round(t * 10) / 10) + " s")} onError={e -> error(e)} ref={v -> node = v}/>
 				<view flexDirection="row" columnGap={12} alignItems="center">
 					<button padding="6 14" borderRadius={6} background="#27272a" color="#fafafa"

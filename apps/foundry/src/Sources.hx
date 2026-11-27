@@ -1,5 +1,5 @@
 import Model;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.text.FontFile;
 import helder.text.SystemFonts;
 
@@ -29,9 +29,9 @@ class Sources {
 		var id = (pen ? "pen:" : "outline:") + key, hit = kept.get(id);
 		if (hit != null) return hit;
 		var font = switch key {
-			case "inter": FontFile.parse(Asset.embed("fonts/Inter.ttf"));
-			case "hanken grotesk": FontFile.parse(Asset.embed("fonts/HankenGrotesk-Regular.ttf"));
-			case "geist mono": FontFile.parse(Asset.embed("fonts/GeistMono-Regular.ttf"));
+			case "inter": FontFile.parse(Embed.bytes("fonts/Inter.ttf"));
+			case "hanken grotesk": FontFile.parse(Embed.bytes("fonts/HankenGrotesk-Regular.ttf"));
+			case "geist mono": FontFile.parse(Embed.bytes("fonts/GeistMono-Regular.ttf"));
 			case _:
 				var f = SystemFonts.get().match(name);
 				if (f == null || f.family.toLowerCase() != key) throw 'No font named "$name" (sources.list names them)';

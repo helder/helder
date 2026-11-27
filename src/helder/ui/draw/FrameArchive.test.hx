@@ -147,7 +147,7 @@ function tests() {
 			{name: "shadows", w: 360, h: 260, mount: root -> Render.render(Fixture.shadows(), root)},
 			// (a font of no file, an app's own: stored in the file)
 			{name: "own font", w: 300, h: 80, mount: root -> {
-				helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+				helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 				Render.render(Fixture.own(), root);
 			}}
 		];

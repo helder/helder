@@ -48,7 +48,7 @@ class SurfaceCheck implements Markup {
 		// (the last click's uv and normal's z: a struct local a closure assigns is not supported)
 		var click:Array<Float> = [-1, -1, 0];
 		var label = signal("one");
-		var face = helder.text.FontFile.parse(helder.asset.Asset.embed("tests/canvas/fonts/DejaVuSans-canvas.ttf"));
+		var face = helder.text.FontFile.parse(helder.asset.Embed.bytes("tests/canvas/fonts/DejaVuSans-canvas.ttf"));
 		var path = new helder.scene.render.Lines(4, {width: 3});
 		var touches:Array<String> = [];
 		var orbit:Null<helder.scene.view.OrbitControls> = null;

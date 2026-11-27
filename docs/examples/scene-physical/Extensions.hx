@@ -3,7 +3,7 @@
 // tags: 3d, pbr, gltf, docs
 // demo: canvas 640x400
 import helder.math.Quat;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.gfx.*;
 import helder.math.Vec3;
 import helder.math.Vec4;
@@ -33,7 +33,7 @@ class Extensions {
 		renderer.use(new Physical());
 		renderer.use(new Transmission(device));
 		// #endregion
-		var env = Environment.fromImage(device, "image/png", Asset.embed("examples/showroom/panorama.png"));
+		var env = Environment.fromImage(device, "image/png", Embed.bytes("examples/showroom/panorama.png"));
 		if (env != null) renderer.use(env);
 		var post = new PostProcess(device, RGBA8, true);
 		renderer.post = post;

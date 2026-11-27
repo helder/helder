@@ -129,7 +129,7 @@ class Shell implements Markup {
 	public static function fallbackFont() {
 		var fonts = helder.text.SystemFonts.get();
 		// (the faces found first: a match loads and parses the system's font, tens of ms, only to know there is one)
-		if (fonts.families().length == 0 && fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
+		if (fonts.families().length == 0 && fonts.match("sans-serif") == null) fonts.add(helder.asset.Embed.bytes("fonts/DejaVuSans-viewer.ttf"));
 	}
 
 	#if (hxmc.target != "wasm32-wasi")
@@ -643,7 +643,7 @@ class Shell implements Markup {
 			onPress={_ -> viewer.aboutOpen(false)}>
 			<view tag="about" width={340} padding={20} rowGap={6} borderRadius={12} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
 				alignItems="center" boxShadow="0 8px 30px rgba(0, 0, 0, 0.25)">
-				<image src={helder.image.Image.decode(helder.asset.Asset.embed("about-icon.png"))} width={72} height={72}/>
+				<image src={helder.image.Image.decode(helder.asset.Embed.bytes("about-icon.png"))} width={72} height={72}/>
 				<text tag="about-name" fontSize={18} color={Look.ref.fg}>Viewer</text>
 				<text tag="about-version" color={Look.ref.fg3}>{"Version " + Version.NAME}</text>
 				<text color={Look.ref.fg2} textAlign="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
