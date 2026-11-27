@@ -162,6 +162,8 @@ class BlockFlow implements FormattingContext {
 			space.height, s.borderBox, bpy + gone);
 		var w = width(box, s, space, bpx, bpy, heightSpec);
 		var root = formattingRoot(box);
+		// (a formatting context of its own a cut doesn't go into)
+		var apart = root && box.parent != null && !cutInto(box);
 		// (an aspect-ratio's auto height: its width's through it, within min and max, and no less than its
 		// content unless it clips or has a min-height, that within its max, its max-width's through it too)
 		var floor = Math.NaN;
@@ -211,8 +213,9 @@ class BlockFlow implements FormattingContext {
 			cs.positioned = positioned;
 			cs.fixed = fixed;
 			cs.left = cx;
-			// (the root's formatting context's blocks alone cut: their tops are the document's)
-			cs.lazy = root && box.parent != null ? null : space.lazy;
+			// (the root's formatting context's blocks alone cut, and those of the ones it goes into: their tops are the
+			// document's)
+			cs.lazy = apart ? null : space.lazy;
 			return cs;
 		}
 		function absolute(b:Box, x:Float, y:Float)
@@ -374,7 +377,7 @@ class BlockFlow implements FormattingContext {
 			// (prev: the in-flow sibling before; last: any, a float too)
 			var prev:Null<Box> = null, last:Null<Box> = null;
 			// (a long document laid out to a cut: what is past it, or after a child cut short, not yet, Lazy)
-			var lazy = fr == null && !(root && box.parent != null) ? space.lazy : null, cutAfter = false;
+			var lazy = fr == null && !apart ? space.lazy : null, cutAfter = false;
 			while (c != null) {
 				if (fr != null && fr.stopped) {
 					broken = true;
@@ -879,6 +882,16 @@ class BlockFlow implements FormattingContext {
 		// (layout and paint containment: an independent formatting context, Contain 2 §3.2, §3.4)
 		return scrollContainer(s) || s.inner == BoxStyle.FLOW_ROOT || box.floating || box.absolute || s.containment.has(Layout) || s.containment.has(Paint)
 			|| box.parent.kind == Container && (inner == BoxStyle.FLEX || inner == BoxStyle.GRID);
+	}
+
+	// (a formatting context's root a long document's cut goes into: an in-flow block in a block's flow or a flex
+	// row's item (where FlexFlow passes the cut on), as tall as its content wherever it can scroll, its
+	// children's tops the document's still; a whole specification in a div with overflow: hidden, as ecmarkup's)
+	@:allow(helder.ui.box) static function cutInto(box:Box):Bool {
+		var p = box.parent;
+		if (box.kind != Block || box.floating || box.absolute || p == null || p.kind != Block && p.kind != Container) return false;
+		var m = box.style.model();
+		return !box.style.scrollContainer || Lens.isAuto(m.height) && Lens.isAuto(m.maxHeight);
 	}
 
 	// The content width, the used side margins on the box (§10.3.3; shrink-to-fit §10.3.9).

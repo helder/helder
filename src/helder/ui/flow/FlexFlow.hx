@@ -35,7 +35,13 @@ class FlexFlow implements FormattingContext {
 		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null;
 		var cached = reusable ? BlockFlow.hit(box, key, space) : -1;
 		if (cached >= 0) return cached;
+		var cuts = space.lazy != null ? space.lazy.count : 0;
 		var f = container(box, space);
+		// (cut short by a lazy layout: not kept, laid out again as the cut moves on)
+		if (space.lazy != null && space.lazy.count != cuts) {
+			box.uncache();
+			return f;
+		}
 		BlockFlow.keep(box, key, space, reusable ? f : -1);
 		return f;
 	}
@@ -94,6 +100,12 @@ class FlexFlow implements FormattingContext {
 				items.push(item(c, row, w, heightSpec, crossSize, !wraps, space, index++));
 			c = c.next;
 		}
+		// (a long document's cut into the items of a single row, each at the content's top: their tops the
+		// document's, as a block's children's; a sidebar and the document beside it, as ecmarkup's body)
+		if (space.lazy != null && row && !wraps && fr == null)
+			for (it in items)
+				if (it.autoCross == 0 && (it.align == "stretch" || it.align == "flex-start" || it.align == "start" || it.align == "self-start"
+					|| it.align == "normal")) it.top = space.top + bt + pt + it.crossStart;
 		items.sort((a, b) -> a.order != b.order ? a.order - b.order : a.index - b.index);
 		// (lines: one when not wrapping, else as many items as fit, each at least one)
 		var lines:Array<Array<Item>> = [];
@@ -275,6 +287,7 @@ class FlexFlow implements FormattingContext {
 		}
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!Math.isNaN(baseline)) frags.setBaseline(frag, baseline);
+		if (space.lazy != null) for (it in items) if (it.cuts != null) space.lazy.put(it.cuts);
 		// (its margins for its parent: a flex container's don't collapse with its items')
 		var mt = resume != null ? 0 : BlockFlow.res(s.margin[0], cb), mb = broken ? 0 : BlockFlow.res(s.margin[2], cb);
 		box.topPositive = mt > 0 ? mt : 0;
@@ -378,15 +391,19 @@ class FlexFlow implements FormattingContext {
 			var through = row ? Ratio.width(b, cross - it.edgesCross, bpx, bpy) : Ratio.height(b, cross - it.edgesCross, bpx, bpy);
 			if (!Math.isNaN(through)) base = through + it.edgesMain;
 		}
-		var content = contentMain(it, row, space, crossSize);
+		// (its content measured where its basis or its auto min is its content's: a whole document in an item, its
+		// basis set and clipping, not laid out for it)
+		var content:Null<{min:Float, max:Float}> = null;
+		function sizes()
+			return content != null ? content : content = contentMain(it, row, space, crossSize);
 		// (content and max-content its max-content size, min-content its min, fit-content the room within them,
 		// stretch the room)
 		var room = nanTo(mainBase, Math.POSITIVE_INFINITY) - it.mainStart - it.mainEnd;
 		if (Math.isNaN(base)) base = switch basis {
-			case "min-content": content.min;
-			case "fit-content": Math.min(Math.max(content.min, room), content.max);
+			case "min-content": sizes().min;
+			case "fit-content": Math.min(Math.max(sizes().min, room), sizes().max);
 			case "stretch" if (room < Math.POSITIVE_INFINITY): room;
-			case _: content.max;
+			case _: sizes().max;
 		}
 		base = Math.max(base, it.edgesMain);
 		it.basis = base;
@@ -394,7 +411,7 @@ class FlexFlow implements FormattingContext {
 		var minLen = row ? s.minWidth : s.minHeight, maxLen = row ? s.maxWidth : s.maxHeight;
 		var minMain = BlockFlow.size(minLen, mainBase, s.borderBox, it.edgesMain);
 		if (Math.isNaN(minMain)) {
-			minMain = st.clips ? 0 : content.min - it.edgesMain;
+			minMain = st.clips ? 0 : sizes().min - it.edgesMain;
 			if (!Math.isNaN(mainSet)) minMain = Math.min(minMain, mainSet);
 		}
 		var maxMain = BlockFlow.size(maxLen, mainBase, s.borderBox, it.edgesMain);
@@ -451,11 +468,19 @@ class FlexFlow implements FormattingContext {
 		var cs = space.child(row ? mainSize : (Math.isNaN(crossSize) ? space.width : crossSize), row ? crossSize : mainSize);
 		cs.fragmentation = null;
 		cs.fixedWidth = fw;
+		var lazy = Math.isNaN(it.top) ? null : space.lazy, cuts = lazy != null ? lazy.count : 0;
+		if (lazy != null) {
+			cs.lazy = lazy;
+			cs.top = it.top;
+		}
 		if (row) {
 			if (!Math.isNaN(cross)) cs.fixedHeight = cross;
 		} else
 			cs.fixedHeight = it.main;
-		return child(b, cs);
+		var f = child(b, cs);
+		// (its cuts its last layout's: put back once every item is laid out, in their order)
+		if (lazy != null) it.cuts = lazy.take(cuts);
+		return f;
 	}
 
 	// (whether something takes a percentage of the box's height, indefinite
@@ -735,6 +760,9 @@ private class Item {
 	public var frozen = false;
 	public var violation = 0.0;
 	public var frag = -1;
+	// (where a long document's cut goes into it: its top in the document, NaN: not; the cuts its layout made)
+	public var top = Math.NaN;
+	public var cuts:Null<Array<Box>> = null;
 	// (its place in the content box, and its line)
 	public var x = 0.0;
 	public var y = 0.0;

@@ -4,11 +4,12 @@ import helder.ui.box.Box;
 
 // A long document laid out from its top to a bottom it is cut at (what
 // is seen, then further a slice at a time): the root's formatting
-// context's children from the first whose top is past bottom, or not
-// styled yet (Box.UNSTYLED: a resize's restyle comes to it later), not
-// laid out, nor what comes after them in each block around them. What is
-// laid out is exact: nothing estimated, a block around a cut only as tall
-// as what is laid out of it.
+// context's children (and those of the contexts it goes into: an in-flow
+// block's of its own, a flex row's items, BlockFlow.cutInto) from the
+// first whose top is past bottom, or not styled yet (Box.UNSTYLED: a
+// resize's restyle comes to it later), not laid out, nor what comes after
+// them in each block around them. What is laid out is exact: nothing
+// estimated, a block around a cut only as tall as what is laid out of it.
 class Lazy {
 	public var bottom = 0.0;
 	// (each cut's block and its first child not laid out, innermost first: what is left, in the document's order)
@@ -68,6 +69,27 @@ class Lazy {
 		at = Math.min(at, top);
 		stop(block, child);
 		return true;
+	}
+
+	// (the cuts from the nth on taken out, block and rest after each other, to put back: a flex item's, whose
+	// layout can be made again)
+	public function take(n:Int):Array<Box> {
+		var out = [];
+		for (k in n...blocks.length) {
+			out.push(blocks[k]);
+			out.push(rests[k]);
+		}
+		blocks.resize(n);
+		rests.resize(n);
+		return out;
+	}
+
+	public function put(cuts:Array<Box>) {
+		var k = 0;
+		while (k < cuts.length) {
+			stop(cuts[k], cuts[k + 1]);
+			k += 2;
+		}
 	}
 
 	// The layout of block stopped before child, a cut in what came before it.

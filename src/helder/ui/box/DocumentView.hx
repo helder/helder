@@ -178,6 +178,7 @@ class DocumentView {
 		var media = options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8};
 		// (at another size where only viewport units read it: the elements they styled, styled again, the
 		// boxes and their kept content stay)
+		var resizedWidth = width != viewWidth;
 		var resized = styles != null && (width != viewWidth || height != viewHeight) && !styles.holds(media);
 		// (what is past the cut not matched now: styled again before it is laid out, Box.UNSTYLED)
 		var tail = resized ? tail() : null;
@@ -198,16 +199,10 @@ class DocumentView {
 				changes = new DocumentChanges(document, styles);
 			}
 		}
-		// (at another width nearly every box is laid out again: the fragments before let go at once, not kept for
-		// the cache till they are three layouts' worth; the boxes' intrinsic sizes and inline content kept)
-		if (width != viewWidth && tree != null && tree.root != null) {
-			fragments.clear();
-			placedRuns.clear();
-			Box.forgetFragments();
-		}
 		viewWidth = width;
 		viewHeight = height;
 		if (restyled != null) {
+			// (before the fragments go: the cut it leaves for later is the last layout's)
 			if (restyle(later(restyled), NOTHING) == TREE) build();
 			// (the rules in effect may be others now: the tracker's selectors made again)
 			if (changes != null) {
@@ -215,16 +210,21 @@ class DocumentView {
 				changes = new DocumentChanges(document, styles);
 			}
 		}
+		// (at another width nearly every box is laid out again: the fragments before let go at once, not kept for
+		// the cache till they are three layouts' worth; the boxes' intrinsic sizes and inline content kept)
+		if (resizedWidth && tree != null && tree.root != null && fragments.count > 0) {
+			fragments.clear();
+			placedRuns.clear();
+			Box.forgetFragments();
+			root = -1;
+			tailOf = null;
+		}
 		return lay();
 	}
 
 	// (the box tree made from the styles, nothing of the last one's layout kept)
 	function build() {
-		// (the elements kept to style again: styled as the tree is made)
-		var w = [];
-		for (b in unstyled) elementsOf(b, w);
-		unstyled.resize(0);
-		if (w.length > 0) styles.forget(w);
+		if (unstyled.length > 0) resume();
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, counters: options.counters, image: image, svg: svg});
 		fonts.inlines.forget();
 		fragments.clear();
@@ -397,13 +397,16 @@ class DocumentView {
 			// (into the block straddling it, where it is of the same formatting context)
 			if (last < 0) break;
 			var b = fragments.box(last);
-			if (b.kind != Block || helder.ui.flow.BlockFlow.formattingRoot(b)) break;
+			if (b.kind != Block || helder.ui.flow.BlockFlow.formattingRoot(b) && !helder.ui.flow.BlockFlow.cutInto(b)) break;
 			top += fragments.y(last);
 			f = last;
 		}
 		out.reverse();
 		return out;
 	}
+
+	// (the elements to style again left with the boxes postponed: what their rules' matches don't give)
+	final waiting:Array<Element> = [];
 
 	// (a box past the cut to style again before it is laid out)
 	function postpone(b:Box) {
@@ -441,7 +444,44 @@ class DocumentView {
 		while (e != null && (b = tail.get(e)) == null) e = e.parentElement;
 		if (b == null) return false;
 		postpone(b);
+		waiting.push(el);
 		return true;
+	}
+
+	// (what was postponed styled again, the tree to be made: the elements in it the rules the resizes changed
+	// match, those left with it and what they pass down, not every one in it)
+	function resume() {
+		var els = waiting.copy();
+		for (b in unstyled) {
+			b.flags &= ~Box.UNSTYLED;
+			if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE) for (el in styles.rematch(cast b.node)) els.push(el);
+		}
+		unstyled.resize(0);
+		waiting.resize(0);
+		styles.settle();
+		var olds = new ObjectMap<Element, CssStyle>();
+		for (el in els) {
+			var o = styles.cached(el);
+			if (o != null) olds.set(el, o);
+		}
+		styles.forget(els);
+		var k = 0;
+		while (k < els.length) {
+			var el = els[k++], old = olds.get(el);
+			if (old == null) continue;
+			var now = styles.computed(el);
+			if (now == old || !old.passesDown(now)) continue;
+			var ch = el.firstElementChild;
+			while (ch != null) {
+				var o = styles.cached(ch);
+				if (o != null && !olds.exists(ch)) {
+					olds.set(ch, o);
+					styles.drop(ch);
+					els.push(ch);
+				}
+				ch = ch.nextElementSibling;
+			}
+		}
 	}
 
 	// (the elements of a box (its element and what is in it), in tree order)
@@ -469,6 +509,10 @@ class DocumentView {
 			elementsOf(unstyled[k++], els);
 		}
 		unstyled.splice(0, k);
+		if (unstyled.length == 0) {
+			waiting.resize(0);
+			styles.settle();
+		}
 		if (restyle(els, NOTHING) == TREE) build();
 		return true;
 	}
