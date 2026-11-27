@@ -14,6 +14,7 @@ import helder.ui.box.Len;
 // root), relative offsets (§9.4.3), and lines (BlockLines, through the
 // inline lane's engine). Results are cached on the box by the constraint
 // space they were laid out in.
+@:allow(helder.ui.flow.FlexFlow)
 class BlockFlow implements FormattingContext {
 	final lines:BlockLines;
 
@@ -25,7 +26,8 @@ class BlockFlow implements FormattingContext {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
 		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
+		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null
+			&& Math.isNaN(space.fixedHeight) && !space.ignoreHeight;
 		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
 		box.cacheWidth = key;
@@ -62,7 +64,8 @@ class BlockFlow implements FormattingContext {
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var w = width(box, s, space, bpx);
 		var root = formattingRoot(box);
-		var heightSpec = size(s.height, space.height, s.borderBox, bpy);
+		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : size(s.height,
+			space.height, s.borderBox, bpy);
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var pctBase = heightSpec;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
@@ -284,7 +287,7 @@ class BlockFlow implements FormattingContext {
 			content = Math.max(0, y + pos + neg);
 		// (a formatting context's root's auto height takes its floats in, §10.6.7)
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
-		var h = clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
+		var h = space.ignoreHeight ? Math.max(0, autoHeight ? content : heightSpec) : clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
 		box.through = false;
 		// (its top and bottom margins adjoin: no content, border or padding, a zero or auto height, §8.3.1)
 		if (atTop && empty && !root && bb == 0 && pb == 0 && (autoHeight || heightSpec == 0) && h == 0) {
@@ -370,14 +373,14 @@ class BlockFlow implements FormattingContext {
 			var b = list.boxes[k];
 			var from = frags.absolute(list.fragments[k]), to = frags.absolute(owner);
 			var sx = from.x - to.x + list.xs[k] - cbx, sy = from.y - to.y + list.ys[k] - cby;
-			var f = positionedBox(b, space, sx, sy, cbw, cbh);
+			var f = positionedBox(b, space, sx, sy, cbw, cbh, list.aligns[k]);
 			frags.adopt(owner, f.fragment, cbx + f.x, cby + f.y);
 			k++;
 		}
 	}
 
 	// (its border box's place in its containing block, given its static place there: CSS 2.1's equations)
-	function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float):{fragment:Int, x:Float, y:Float} {
+	function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float, ?align:Array<Float>):{fragment:Int, x:Float, y:Float} {
 		var s = b.style.model();
 		var pl = res(s.padding[3], cbw), pr = res(s.padding[1], cbw), pt = res(s.padding[0], cbw), pb = res(s.padding[2], cbw);
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
@@ -396,7 +399,10 @@ class BlockFlow implements FormattingContext {
 			if (Math.isNaN(l) && Math.isNaN(w) && Math.isNaN(r)) {
 				if (Math.isNaN(a)) a = 0;
 				if (Math.isNaN(c)) c = 0;
-				if (rtl) {
+				if (align != null) {
+					w = shrink(cbw - sx - a - c);
+					l = sx + (align[2] - (w + bpx + a + c)) * align[4];
+				} else if (rtl) {
 					r = cbw - sx;
 					w = shrink(cbw - r - a - c);
 					l = cbw - r - a - c - w - bpx;
@@ -427,7 +433,7 @@ class BlockFlow implements FormattingContext {
 					w = shrink(cbw - r - a - c);
 					l = cbw - r - a - c - w - bpx;
 				} else if (Math.isNaN(l) && Math.isNaN(r)) {
-					if (rtl) {
+					if (align != null) l = sx + (align[2] - (w + bpx + a + c)) * align[4] else if (rtl) {
 						r = cbw - sx;
 						l = cbw - r - a - c - w - bpx;
 					} else
@@ -463,6 +469,7 @@ class BlockFlow implements FormattingContext {
 		if (Math.isNaN(t) && Math.isNaN(bt)) {
 			if (Math.isNaN(a)) a = 0;
 			t = sy;
+			if (align != null) t += (align[3] - (h + bpy + a + (Math.isNaN(c) ? 0 : c))) * align[5];
 		} else if (!Math.isNaN(t) && !Math.isNaN(bt) && !Math.isNaN(spec)) {
 			var rest = cbh - t - bt - spec - bpy;
 			// (equal auto margins, negative too: §10.6.4 has no rule against it, unlike §10.3.7)
@@ -561,6 +568,9 @@ class BlockFlow implements FormattingContext {
 		var pl = res(s.padding[3], cb), pr = res(s.padding[1], cb), pt = res(s.padding[0], cb), pb = res(s.padding[2], cb);
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
 		var size = replacedSize(box, space.width, space.height, bpx, bpy);
+		// (a flex item's sizes: flexed or stretched)
+		if (!Math.isNaN(space.fixedWidth)) size = {w: Math.max(0, space.fixedWidth - bpx), h: size.h};
+		if (!Math.isNaN(space.fixedHeight)) size = {w: size.w, h: Math.max(0, space.fixedHeight - bpy)};
 		var ml = auto(s.margin[3], cb), mr = auto(s.margin[1], cb);
 		if (box.blockLevel && !box.floating && !box.absolute) solve(box, size.w, ml, mr, cb, bpx, box.parent != null && box.parent.style.rtl) else {
 			box.marginLeft = Math.isNaN(ml) ? 0 : ml;
@@ -608,24 +618,10 @@ class BlockFlow implements FormattingContext {
 		}
 		if (!Math.isNaN(w)) {
 			min = max = w;
-		} else if (box.kind == BlockReplaced || box.kind == InlineReplaced) {
-			min = max = replacedSize(box, Math.NaN, Math.NaN, 0, 0).w + bpx;
-		} else if (box.first != null && !box.first.blockLevel) {
-			var r = lines.intrinsic(box, space);
-			min = r.min + bpx;
-			max = r.max + bpx;
 		} else {
-			var c = box.first;
-			while (c != null) {
-				if (c.context != null) c.context.intrinsic(c, space) else intrinsic(c, space);
-				var cs = c.style.model();
-				var m = fixed(cs.margin[1]) + fixed(cs.margin[3]);
-				min = Math.max(min, c.minContent + m);
-				max = Math.max(max, c.maxContent + m);
-				c = c.next;
-			}
-			min += bpx;
-			max += bpx;
+			var c = contentSizes(box, space);
+			min = c.min;
+			max = c.max;
 		}
 		switch s.maxWidth {
 			case Px(v):
@@ -643,6 +639,32 @@ class BlockFlow implements FormattingContext {
 		}
 		box.minContent = min;
 		box.maxContent = Math.max(min, max);
+	}
+
+	// Its content's min- and max-content border-box widths, its own width, min and max aside (a flex
+	// item's content size suggestion); not cached.
+	public function contentSizes(box:Box, space:Space):{min:Float, max:Float} {
+		var s = box.style.model();
+		var bpx = fixed(s.padding[1]) + fixed(s.padding[3]) + s.border[1] + s.border[3];
+		if (box.kind == BlockReplaced || box.kind == InlineReplaced) {
+			var w = replacedSize(box, Math.NaN, Math.NaN, 0, 0).w + bpx;
+			return {min: w, max: w};
+		}
+		if (box.first != null && !box.first.blockLevel) {
+			var r = lines.intrinsic(box, space);
+			return {min: r.min + bpx, max: r.max + bpx};
+		}
+		var min = 0.0, max = 0.0;
+		var c = box.first;
+		while (c != null) {
+			if (c.context != null) c.context.intrinsic(c, space) else intrinsic(c, space);
+			var cs = c.style.model();
+			var m = fixed(cs.margin[1]) + fixed(cs.margin[3]);
+			min = Math.max(min, c.minContent + m);
+			max = Math.max(max, c.maxContent + m);
+			c = c.next;
+		}
+		return {min: min + bpx, max: max + bpx};
 	}
 
 	// ---- lengths

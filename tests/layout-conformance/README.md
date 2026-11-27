@@ -38,4 +38,20 @@ node tests/layout-conformance/import-taffy.mjs ../taffy
 BLESS=1 bun run test layout-conformance
 ```
 
+The same fixtures run through helder's CSS engine too (helder.ui.box,
+helder.ui.flow: one source of truth for both layouts), natively:
+
+```sh
+bun run test box-conformance [ids...]   # BLESS=1: box-manifest.json; SHOW=1: each failing case
+```
+
+`BoxConformanceCheck.hx` makes each fixture the page Taffy's gentest gave
+Chrome: a div a node with Taffy's defaults (display flex, position
+relative, its `border-<side>` solid), text in Ahem 10px/1 (broken at its
+zero-width spaces), the root at the start of a max-content flex row; lays
+it out with DocumentView and compares each node's border box to Chrome's,
+rounded as the fixture says, in all four variants (box-sizing and
+direction are CSS's there). `box-manifest.json` gates it as manifest.json
+does helder.ui's. The css-reftests lane's whole run includes it.
+
 The fixtures are Taffy's, MIT licensed (`TAFFY-LICENSE`).

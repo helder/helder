@@ -460,6 +460,8 @@ class CssReftestCheck {
 			if (dir.indexOf("margin-boxes") >= 0 || ~/@(top|bottom|left|right)-|counter\(pages?\)|string-set|string\(/.match(src)) return "margin boxes";
 			if (~/[;{\s"']page\s*:\s*[a-z][a-z0-9_-]*\s*[;}"']/.match(src) || t.name.indexOf("page-name") >= 0) return "named pages";
 			if (~/position\s*:\s*fixed/.match(src)) return "positioning";
+			// (flex and grid containers are monolithic on pages yet: their lines and rows not broken)
+			if (~/display\s*:\s*(inline-)?(flex|grid)/.match(src)) return "paged";
 		}
 		if (~/display\s*:\s*(inline-)?table|<table/.match(src)) return "tables";
 		if (~/float\s*:\s*(left|right)|clear\s*:/.match(src)) return "floats";

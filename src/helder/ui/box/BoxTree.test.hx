@@ -43,10 +43,11 @@ function tests() {
 		test("inline blocks, replaced elements, containers", () -> {
 			var t = build('<span style="display:inline-block">a</span><img src=x.png><div style="display:flex">b</div><br>', url -> new helder.canvas.Bitmap(3, 4));
 			var kinds = [for (b in t.root.first.children()) [for (c in b.children()) c.kind.toString()]];
-			equals(Std.string(kinds), "[[InlineBlock,InlineReplaced],[Text],[Break]]");
+			// (a flex container's text: an anonymous block, its item)
+			equals(Std.string(kinds), "[[InlineBlock,InlineReplaced],[Block],[Break]]");
 			equals(t.root.first.children()[1].kind, Container);
 			equals(t.root.first.first.last.image.height, 4);
-			equals(t.pending.length, 1);
+			equals(t.pending.length, 0);
 		});
 		test("generated content: strings, attr(), counters, quotes", () -> {
 			var t = build('<style>ol { counter-reset: n } li { counter-increment: n } li::before { content: counter(n, upper-roman) "." attr(id) } q::before { content: open-quote } q::after { content: close-quote }</style><ol><li id=a>x</li><li id=b>y</li></ol><q>z</q>');

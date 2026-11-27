@@ -405,19 +405,19 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
-on every machine: 8,268 drawn, 6,490 pass, 145 skipped.
+on every machine: 8,781 drawn, 6,930 pass, 145 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 5,055 | 697 | 3 |
-| noref against goldens | 1,286 | 922 | 142 |
-| print reftests on pages | 149 | 159 | 0 |
+| reftests and crash tests | 5,480 | 777 | 3 |
+| noref against goldens | 1,306 | 906 | 142 |
+| print reftests on pages | 144 | 168 | 0 |
 
-The noref tests pending by stage: tables 497, generated 256, inline 39,
-ui 39, fonts 37, positioning 21, paged 20, floats 13.
+The noref tests pending by stage: tables 495, generated 256, inline 39,
+ui 38, fonts 25, positioning 20, paged 20, floats 13.
 
-The print reftests pending by stage: named pages 47, generated 32,
-margin boxes 31, positioning 26, tables 16, floats 7.
+The print reftests pending by stage: named pages 46, margin boxes 31,
+paged 27, positioning 24, generated 17, tables 16, floats 7.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane
@@ -429,26 +429,26 @@ draws them (5,752 drawn in about 30 s, 3 skipped: css-break's, in columns):
 | CSS2/abspos | 14 | 25 |
 | CSS2/backgrounds | 312 | 333 |
 | CSS2/bidi-text | 30 | 34 |
-| CSS2/borders | 488 | 504 |
+| CSS2/borders | 500 | 504 |
 | CSS2/box | 4 | 9 |
 | CSS2/box-display | 81 | 86 |
 | CSS2/cascade | 24 | 31 |
 | CSS2/cascade-import | 0 | 1 |
 | CSS2/colors | 19 | 19 |
-| CSS2/css1 | 141 | 164 |
+| CSS2/css1 | 148 | 164 |
 | CSS2/css21-errata | 4 | 9 |
 | CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
 | CSS2/floats | 81 | 112 |
 | CSS2/floats-clear | 178 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
-| CSS2/fonts | 137 | 159 |
+| CSS2/fonts | 141 | 159 |
 | CSS2/generated-content | 185 | 205 |
-| CSS2/linebox | 172 | 192 |
+| CSS2/linebox | 180 | 192 |
 | CSS2/lists | 155 | 155 |
-| CSS2/margin-padding-clear | 646 | 683 |
+| CSS2/margin-padding-clear | 666 | 683 |
 | CSS2/media | 17 | 17 |
-| CSS2/normal-flow | 622 | 696 |
-| CSS2/positioning | 431 | 513 |
+| CSS2/normal-flow | 640 | 696 |
+| CSS2/positioning | 437 | 513 |
 | CSS2/sec5 | 22 | 23 |
 | CSS2/selectors | 447 | 467 |
 | CSS2/stacking-context | 1 | 3 |
@@ -457,17 +457,28 @@ draws them (5,752 drawn in about 30 s, 3 skipped: css-break's, in columns):
 | CSS2/text | 301 | 376 |
 | CSS2/text/crashtests | 1 | 1 |
 | CSS2/ui | 40 | 52 |
-| CSS2/values | 11 | 25 |
-| CSS2/visudet | 19 | 37 |
+| CSS2/values | 16 | 25 |
+| CSS2/visudet | 22 | 37 |
 | CSS2/visudet/crashtests | 1 | 1 |
 | CSS2/visufx | 4 | 49 |
 | CSS2/visufx/crashtests | 1 | 1 |
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 5055 | 5752 |
+| css-fonts | 216 | 318 |
+| css-fonts/matching | 2 | 3 |
+| css-fonts/math-script-level-and-math-style | 2 | 10 |
+| css-fonts/variations | 11 | 11 |
+| css-values | 97 | 130 |
+| css-values/animations | 1 | 1 |
+| css-values/calc-size | 5 | 18 |
+| css-values/crashtests | 2 | 2 |
+| css-values/urls/cross-origin | 3 | 6 |
+| css-values/urls/integrity | 3 | 5 |
+| css-values/urls/referrer-policy/no-referrer | 0 | 1 |
+| all | 5480 | 6257 |
 
-Pending by stage: positioning 202, generated content 186, inline 122, tables 78, floats 75, fonts 22, ui 12.
+Pending by stage: generated content 269, positioning 203, inline 114, tables 81, floats 80, fonts 18, ui 12.
 
 ## GCPM
 
