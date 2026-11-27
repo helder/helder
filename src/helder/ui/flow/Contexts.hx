@@ -20,6 +20,7 @@ class Contexts {
 		var c = new Contexts(flow);
 		c.table = new TableFlow(flow);
 		c.flex = new FlexFlow(flow);
+		c.grid = new GridFlow(flow);
 		return c;
 	}
 
