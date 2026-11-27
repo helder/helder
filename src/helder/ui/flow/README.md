@@ -518,6 +518,13 @@ Not yet: percentages in heights inside cells, `visibility: collapse`
 columns, a table's header and footer repeated across pages (the paged
 host's).
 
+- In a fragmentainer a table is laid out whole, then sliced: breaks are
+  offered between body rows (the row group the box, so its break-inside
+  counts; none where a cell spans the two rows), each fragment holding the
+  header rows, its body rows and the footer rows, re-stacked; its top
+  captions where it starts, bottom ones where it ends. A row taller than
+  a page stays whole (it overflows).
+
 ## A block container's lines
 
 `BlockLines` is the box tree's side of the inline formatting context: it

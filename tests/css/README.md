@@ -405,19 +405,19 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
-on every machine: 8,781 drawn, 6,930 pass, 145 skipped.
+on every machine: 8,781 drawn, 6,944 pass, 145 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 5,480 | 777 | 3 |
+| reftests and crash tests | 5,492 | 765 | 3 |
 | noref against goldens | 1,306 | 906 | 142 |
-| print reftests on pages | 144 | 168 | 0 |
+| print reftests on pages | 146 | 166 | 0 |
 
 The noref tests pending by stage: tables 495, generated 256, inline 39,
 ui 38, fonts 25, positioning 20, paged 20, floats 13.
 
-The print reftests pending by stage: named pages 46, margin boxes 31,
-paged 27, positioning 24, generated 17, tables 16, floats 7.
+The print reftests pending by stage: named pages 46, paged 32, margin
+boxes 28, positioning 24, generated 17, tables 12, floats 7.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane
@@ -465,7 +465,7 @@ draws them (5,752 drawn in about 30 s, 3 skipped: css-break's, in columns):
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| css-fonts | 216 | 318 |
+| css-fonts | 228 | 318 |
 | css-fonts/matching | 2 | 3 |
 | css-fonts/math-script-level-and-math-style | 2 | 10 |
 | css-fonts/variations | 11 | 11 |
@@ -476,9 +476,9 @@ draws them (5,752 drawn in about 30 s, 3 skipped: css-break's, in columns):
 | css-values/urls/cross-origin | 3 | 6 |
 | css-values/urls/integrity | 3 | 5 |
 | css-values/urls/referrer-policy/no-referrer | 0 | 1 |
-| all | 5480 | 6257 |
+| all | 5492 | 6257 |
 
-Pending by stage: generated content 269, positioning 203, inline 114, tables 81, floats 80, fonts 18, ui 12.
+Pending by stage: generated content 257, positioning 203, inline 114, tables 81, floats 80, fonts 18, ui 12.
 
 ## GCPM
 

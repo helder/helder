@@ -31,12 +31,15 @@ class TableFlow implements FormattingContext {
 
 	public function layout(wrapper:Box, space:Space):Int {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
-		if (wrapper.cacheFragment >= 0 && wrapper.cacheWidth == key && (wrapper.cacheHeight == space.height || Math.isNaN(wrapper.cacheHeight) && Math.isNaN(space.height)))
+		// (in a fragmentainer: laid out afresh, its rows sliced where it breaks)
+		var paged = space.fragmentation != null;
+		if (!paged && wrapper.cacheFragment >= 0 && wrapper.cacheWidth == key && (wrapper.cacheHeight == space.height || Math.isNaN(wrapper.cacheHeight)
+			&& Math.isNaN(space.height)))
 			return wrapper.cacheFragment;
 		var f = place(wrapper, space);
 		wrapper.cacheWidth = key;
 		wrapper.cacheHeight = space.height;
-		wrapper.cacheFragment = f;
+		wrapper.cacheFragment = paged ? -1 : f;
 		return f;
 	}
 
@@ -125,6 +128,8 @@ class TableFlow implements FormattingContext {
 			c = c.next;
 		}
 		var groups = (header != null ? [header] : []).concat(middle).concat(footer != null ? [footer] : []);
+		g.header = header;
+		g.footer = footer;
 		for (group in groups) {
 			var rows = group.style.part == BoxStyle.ROW ? [group] : group.children();
 			var first = g.rows.length;
@@ -538,12 +543,53 @@ class TableFlow implements FormattingContext {
 			for (r in 0...rows) rowH[r] += total > 0 ? extra * rowH[r] / total : extra / rows;
 			gridH = specH;
 		}
+		// (in a fragmentainer: its header rows, the body rows from where it resumes to where it breaks, its
+		// footer rows; captions above only where it starts, below only where it ends)
+		var shown = [for (_ in 0...rows) true];
+		var resumed = false, broken = false;
+		var fr = space.fragmentation;
+		if (fr != null) {
+			var hEnd = 0, fStart = rows;
+			while (hEnd < rows && g.header != null && g.rowGroups[hEnd] == g.header) hEnd++;
+			while (fStart > hEnd && g.footer != null && g.rowGroups[fStart - 1] == g.footer) fStart--;
+			var r0 = hEnd;
+			if (fr.resume(wrapper) != null) {
+				resumed = true;
+				for (r in hEnd...fStart) {
+					var at = fr.resume(g.rowGroups[r] ?? t);
+					if (at != null && at.child == g.rows[r]) r0 = r;
+				}
+			}
+			var y = space.pageTop + edges[0] + g.spacingV;
+			if (!resumed) for (k in wrapper.children()) if (k != t && k.style.keyword("caption-side") != "bottom") {
+				var f = flow.child(k, space.child(w, Math.NaN));
+				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
+			} else if (k == t) break;
+			for (r in 0...hEnd) y += rowH[r] + g.spacingV;
+			var footerH = edges[2];
+			for (r in fStart...rows) footerH += rowH[r] + g.spacingV;
+			var end = fStart, prev = y;
+			for (r in r0...fStart) {
+				// (between rows: not where a cell spans them)
+				if (r > r0 && !Lambda.exists(g.cells, c -> c.row < r && c.row + c.rows > r)
+					&& (fr.between(g.rowGroups[r] ?? t, g.rows[r - 1], g.rows[r], prev + footerH) || fr.stopped)) {
+					end = r;
+					broken = true;
+					break;
+				}
+				prev = y + rowH[r];
+				fr.placed(prev + footerH);
+				y = prev + g.spacingV;
+			}
+			for (r in hEnd...fStart) shown[r] = r >= r0 && r < end;
+		}
 		var rowY = [], y = edges[0] + g.spacingV;
 		for (r in 0...rows) {
 			rowY.push(y);
-			y += rowH[r] + g.spacingV;
+			if (shown[r]) y += rowH[r] + g.spacingV;
 		}
 		rowY.push(y);
+		if (fr != null) gridH = y + edges[2];
 		// (fragments: the table box; its column groups and columns, row groups, rows and cells, in
 		// the order their backgrounds paint, §17.5.1)
 		var tf = frags.add(Fragments.BOX, t, w, gridH);
@@ -589,13 +635,22 @@ class TableFlow implements FormattingContext {
 				groupBox = group;
 				groupFrag = -1;
 				if (group != null) {
-					var end = r;
-					while (end < rows && g.rowGroups[end] == group) end++;
+					var end = r, any = false;
+					while (end < rows && g.rowGroups[end] == group) {
+						if (shown[end]) any = true;
+						end++;
+					}
 					groupTop = rowY[r];
-					groupFrag = frags.add(Fragments.BOX, group, colX[cols] - g.spacingH - colX[0], rowY[end] - g.spacingV - rowY[r]);
-					frags.adopt(tf, groupFrag, colX[0], rowY[r]);
+					if (any) {
+						groupFrag = frags.add(Fragments.BOX, group, colX[cols] - g.spacingH - colX[0], rowY[end] - g.spacingV - rowY[r]);
+						frags.adopt(tf, groupFrag, colX[0], rowY[r]);
+					}
 					group.flags |= mark;
 				}
+			}
+			if (!shown[r]) {
+				rowFrags.push(-1);
+				continue;
 			}
 			var row = g.rows[r];
 			row.flags |= mark;
@@ -604,6 +659,7 @@ class TableFlow implements FormattingContext {
 			rowFrags.push(rf);
 		}
 		for (cell in g.cells) {
+			if (!shown[cell.row]) continue;
 			var f = cell.fragment;
 			var h = rowY[cell.row + cell.rows] - g.spacingV - rowY[cell.row];
 			var shift = switch valign(cell.box) {
@@ -633,6 +689,8 @@ class TableFlow implements FormattingContext {
 				frags.adopt(wf, tf, 0, wy);
 				if (rows > 0) baseline = wy + rowY[0] + baselines[0];
 				wy += gridH;
+			} else if (resumed && k.style.keyword("caption-side") != "bottom" || broken && k.style.keyword("caption-side") == "bottom") {
+				// (a caption above where it doesn't start, below where it doesn't end: none)
 			} else {
 				// (a caption: a block in the table's width)
 				var f = flow.child(k, space.child(w, Math.NaN));
@@ -703,6 +761,9 @@ private class Grid {
 	public var spacingV = 0.0;
 	public var collapse = false;
 	public var borders:Null<TableGrid> = null;
+	// (its header and footer groups: repeated on every page it is on)
+	public var header:Null<Box> = null;
+	public var footer:Null<Box> = null;
 
 	public function new() {}
 

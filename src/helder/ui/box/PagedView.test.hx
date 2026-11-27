@@ -75,6 +75,15 @@ function tests() {
 			var t = texts(v, 0, false).join("");
 			equals([t.indexOf("B") >= 0, t.indexOf(".2") >= 0, t.split(".").length > 10], [true, true, true]);
 		});
+		test("a table across pages: between rows, its header and footer on each", () -> {
+			var rows = [for (k in 0...12) '<tr><td id=r$k style="height:10px;padding:0"></td></tr>'].join("");
+			var v = paged('<table style="border-spacing:0"><thead><tr><td id=h style="height:10px;padding:0"></td></tr></thead><tfoot><tr><td id=f style="height:10px;padding:0"></td></tr></tfoot><tbody>$rows</tbody></table>');
+			equals(v.layout(), 2);
+			// (80px a page: the header, six rows, the footer)
+			equals([on(v, 0, "h"), on(v, 0, "r5"), on(v, 0, "f")], [0.0, 60, 70]);
+			equals([on(v, 1, "h"), on(v, 1, "r6"), on(v, 1, "r11"), on(v, 1, "f")], [0.0, 10, 60, 70]);
+			equals(on(v, 0, "r6"), Math.NaN);
+		});
 		test("a margin at an unforced break truncated, kept at a forced one", () -> {
 			var v = paged('<div style="height:70px"></div><div id=a style="margin-top:20px;height:20px"></div><div id=b style="margin-top:20px;break-before:page">b</div>');
 			equals(v.layout(), 3);
