@@ -59,7 +59,8 @@ class WptPage {
 	}
 
 	public static function url(path:String):String {
-		var abs = FileSystem.fullPath(path), root = FileSystem.fullPath(wpt) + "/";
+		// (forward slashes: Windows' full paths have backslashes, which no URL resolves against)
+		var abs = FileSystem.fullPath(path).split("\\").join("/"), root = FileSystem.fullPath(wpt).split("\\").join("/") + "/";
 		return abs.startsWith(root) ? HOST + abs.substr(root.length) : "file://" + abs;
 	}
 
