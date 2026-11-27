@@ -22,6 +22,12 @@ function tests() {
 			equals([page.width, page.height], [595.0, 842]);
 			equals(pdf.toString().indexOf("/Rect [0 827 30 842]") > 0, true);
 		});
+		test("page-orientation rotates the PDF page and its link rectangle", () -> {
+			var pdf = PagedView.toPdf('<!doctype html><style>@page { size: 200px 100px; margin: 0; page-orientation: rotate-right } body { margin: 0 }</style><a href="https://example.com/" style="display:block;width:20px;height:12px"></a>');
+			var page = helder.pdf.Pdf.open(pdf).pages[0];
+			equals([page.width, page.height], [75.0, 150]);
+			equals(pdf.toString().indexOf("/Rect [66 135 75 150]") > 0, true);
+		});
 		// (blocks of a line each of a line-height: whole, a line not broken; an empty block of a height is, as Chromium's)
 		test("blocks: a page each that fits, the page area's height", () -> {
 			var v = paged('<div id=a style="line-height:50px">a</div><div id=b style="line-height:50px">b</div><div id=c style="line-height:20px">c</div>');
