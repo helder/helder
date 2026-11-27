@@ -172,6 +172,32 @@ class Inject {
 		});
 		return true;
 	}
+
+	// one mouse event at x, y points of w's content (type: NSEvent's, 1 the
+	// left button down, 2 up, 6 dragged, 5 moved), posted to the
+	// application's own queue as a mouse's come (a drag's many queue
+	// between frames); false, nothing sent, where not supported
+	public static function mouse(w:helder.os.Window, x:Float, y:Float, type:Int):Bool {
+		if (!supported) return false;
+		var view = w.surface.handle;
+		helder.os.OsThread.get(() -> {
+			var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC;
+			var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
+			var win = M.id(view, O.sel("window")), app = M.id(O.cls("NSApplication"), O.sel("sharedApplication"));
+			var n = M.i(win, O.sel("windowNumber"));
+			var c = M.rect(M.id(win, O.sel("contentView")), O.sel("frame"));
+			var loc:Ptr<helder.os.apple.objc.CGPoint> = LibC.malloc(16);
+			loc.value.x = x;
+			loc.value.y = c.size.height - y;
+			M.vPtrBool(app, O.sel("postEvent:atStart:"), MouseMsg.mouse(O.cls("NSEvent"),
+				O.sel("mouseEventWithType:location:modifierFlags:timestamp:windowNumber:context:eventNumber:clickCount:pressure:"), type, loc.value, 0,
+				M.f(M.id(O.cls("NSProcessInfo"), O.sel("processInfo")), O.sel("systemUptime")), n, Ptr.nil(), 0, 1, type == 2 ? 0.0 : 1.0), false);
+			LibC.free(loc);
+			helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
+			true;
+		});
+		return true;
+	}
 	#end
 }
 

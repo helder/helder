@@ -50,7 +50,6 @@ class DocumentNode extends helder.ui.Node {
 	var focusedElement:Null<Element> = null;
 	var anchor:Null<DomPosition> = null;
 	var dragged = false;
-	var selected:Null<Array<{x:Float, y:Float, width:Float, height:Float}>> = null;
 	var hooked:Null<helder.ui.Ui> = null;
 
 	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
@@ -99,7 +98,6 @@ class DocumentNode extends helder.ui.Node {
 		var redo = view.update();
 		if (redo == DocumentView.NOTHING) return;
 		stats.restyled(Timer.stamp() - t0, redo);
-		selected = null;
 		if (redo >= DocumentView.LAYOUT) {
 			docHeight = heightOf();
 			markDirty();
@@ -131,8 +129,7 @@ class DocumentNode extends helder.ui.Node {
 			laidWidth = w;
 			laidHeight = h;
 			docHeight = heightOf();
-			selected = null;
-		}
+			}
 		return new Size(w, Math.isNaN(knownHeight) ? Math.max(docHeight, h) : knownHeight);
 	}
 
@@ -164,9 +161,9 @@ class DocumentNode extends helder.ui.Node {
 		view.paint(painter, [x0 - x, y0 - y, x1 - x, y1 - y]);
 		painter.end();
 		if (selection != null) {
-			selected ??= view.selection(selection.from, selection.to);
+			// (the selection's rectangles where it is seen alone: a long one's lines elsewhere not asked for)
 			var c = ui.selectionColor;
-			for (r in selected) if (r.y + r.height >= y0 - y && r.y <= y1 - y) canvas.rect(r.x, r.y, r.width, r.height, 0, c, 0, 0);
+			for (r in view.selection(selection.from, selection.to, y0 - y, y1 - y)) canvas.rect(r.x, r.y, r.width, r.height, 0, c, 0, 0);
 		}
 		canvas.translate(-x, -y);
 		stats.painted(Timer.stamp() - t0, painter.rasters);
@@ -232,7 +229,6 @@ class DocumentNode extends helder.ui.Node {
 	// (a scroll container in the document scrolled: the event kept from the scrollers around the node)
 	function wheeled(e:Event) {
 		if (view.scrollBy(e.localX, e.localY, e.deltaX, e.deltaY) == null) return;
-		selected = null;
 		layerChanged();
 		ui.requestFrame();
 		e.preventDefault();
@@ -277,7 +273,6 @@ class DocumentNode extends helder.ui.Node {
 	// (the selection from one position to another, painted again; null: none)
 	function setSelection(from:Null<DomPosition>, to:Null<DomPosition>) {
 		selection = from == null || to == null ? null : {from: from, to: to};
-		selected = null;
 		layerChanged();
 		if (ui != null) ui.requestFrame();
 	}

@@ -250,8 +250,37 @@ class App {
 		while (turn(onFrame, onEvent)) {}
 	}
 
-	// one turn of the loop: false once it has ended
+	// one turn of the loop: false once it has ended; a turn done early, after
+	// enough was allocated, a full collection after it (collectIdle)
 	@:allow(helder.os) static function turn(onFrame:Void->Void, onEvent:Event->Void):Bool {
+		var started = haxe.Timer.stamp();
+		var going = turnOnce(onFrame, onEvent);
+		if (going) collectIdle(started);
+		return going;
+	}
+
+	// (a collection between frames: as a frame ends early, once what was
+	// allocated since the last one reaches the larger of IDLE_BYTES and what
+	// that one left live, the heap is collected and its pages returned, before
+	// garbage a frame promoted grows the heap to what a late collection takes
+	// seconds over; a garbage collector's own trigger waits for the heap to fill)
+	static inline var IDLE_BYTES = 256.0 * 1024 * 1024;
+	static inline var EARLY = 0.004;
+	static var allocatedAt = 0.0;
+	static var leftLive = 0.0;
+
+	static function collectIdle(started:Float) {
+		#if (target.name == "hxmc")
+		if (haxe.Timer.stamp() - started > EARLY) return;
+		var allocated = hxmc.GcStats.bytesAllocated();
+		if (allocated - allocatedAt < Math.max(IDLE_BYTES, leftLive)) return;
+		hxmc.NativeGc.collect(true);
+		allocatedAt = hxmc.GcStats.bytesAllocated();
+		leftLive = hxmc.GcStats.liveBytes();
+		#end
+	}
+
+	static function turnOnce(onFrame:Void->Void, onEvent:Event->Void):Bool {
 		#if hxmc.dev
 		// (hxmc dev: the dev server's messages; a build that handed over ends here)
 		if (!helder.dev.Hot.poll()) running = false;

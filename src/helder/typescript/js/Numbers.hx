@@ -471,8 +471,13 @@ class Numbers {
 		return value < 0 ? -rounded : rounded;
 	}
 
-	public static function round(a:Float):Float
-		return if (a == 0) a; else if (a < 0 && a >= -0.5) -0.0; else if (!Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) a; else Math.ffloor(a + 0.5);
+	public static function round(a:Float):Float {
+		if (a == 0 || !Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) return a;
+		if (a < 0 && a >= -0.5) return -0.0;
+		// Compare the fraction without rounding a + 0.5 first.
+		var lower = Math.ffloor(a);
+		return a - lower < 0.5 ? lower : lower + 1;
+	}
 
 	public static function math(name:String, a:Float, b:Float):Float {
 		return switch (name) {
@@ -509,9 +514,9 @@ class Numbers {
 				if (Math.pow(10, n) == a) n; else r;
 			case "sign":
 				Math.isNaN(a) || a == 0 ? a : a < 0 ? -1 : 1;
-			case "sinh": (Math.exp(a) - Math.exp(-a)) / 2;
+			case "sinh": a == 0 ? a : (Math.exp(a) - Math.exp(-a)) / 2;
 			case "cosh": (Math.exp(a) + Math.exp(-a)) / 2;
-			case "tanh": if (a > 20) 1; else if (a < -20) -1; else {
+			case "tanh": if (a == 0) a; else if (a > 20) 1; else if (a < -20) -1; else {
 					var e = Math.exp(2 * a);
 					(e - 1) / (e + 1);
 				};

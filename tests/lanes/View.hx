@@ -15,7 +15,8 @@ class View {
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer against golden images", run: uiDraw},
-		{name: "ui-web", about: "helder.ui as wasm32-wasi in headless Chromium", run: uiWeb}
+		{name: "ui-web", about: "helder.ui as wasm32-wasi in headless Chromium", run: uiWeb},
+		{name: "document-window", about: "the HTML Standard in a real window (DocumentNode): the wheel, jumps, anchors, the thumb and text dragged, each step's frame in a budget, the live heap flat (fetched into bin/bench/html)", run: documentWindow}
 	];
 
 	static function view() {
@@ -169,6 +170,19 @@ class View {
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/LinuxAccessCheck & p=$$!; $b/AtspiCheck fixture; s=$$?; wait $$p && exit $$s\'');
 		for (screen in ACCESS_SCREENS)
 			shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/AccessApp ${screen[0]} & p=$$!; $b/AtspiCheck ${screen.join(" ")}; s=$$?; kill $$p; exit $$s\'');
+	}
+
+	// (a window in the background; HELDER_TEST_INPUT=1 adds --real: the drags posted to its own queue at a mouse's pace)
+	static function documentWindow() {
+		run(NODE, ["tests/bench/pages.mjs"]);
+		var b = 'bin/ui/$GFX_TARGET/DocumentWindowCheck';
+		native(b, cps(["src", "tests/ui"]).concat(["-main", "DocumentWindowCheck"]), GFX_TARGET);
+		var linux = Sys.systemName() == "Linux";
+		var pre = linux ? 'LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a -s "-screen 0 1280x1024x24" ' : "HELDER_BACKGROUND=1 ";
+		shell('$pre${exePath(b, GFX_TARGET)} bin/bench/html/html-spec.html bin/bench/html/html-spec-sheets.json');
+		// (--front: shown over the other windows, not made key, as a window in use presents; HELDER_TEST_FRONT=1)
+		if (Sys.getEnv("HELDER_TEST_INPUT") == "1")
+			shell('${pre}THUMB_HZ=250 THUMB_S=20 ${exePath(b, GFX_TARGET)} bin/bench/html/html-spec.html bin/bench/html/html-spec-sheets.json --real${Sys.getEnv("HELDER_TEST_FRONT") == "1" ? " --front" : ""}');
 	}
 
 	static function uiWeb() {
