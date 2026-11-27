@@ -120,6 +120,8 @@ class SelectorPrinter {
 			case Before: "before";
 			case After: "after";
 			case Marker: "marker";
+			case BeforeMarker: "before::marker";
+			case AfterMarker: "after::marker";
 			case FirstLine: "first-line";
 			case FirstLetter: "first-letter";
 			case Placeholder: "placeholder";

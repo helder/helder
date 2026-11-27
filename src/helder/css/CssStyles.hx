@@ -177,7 +177,14 @@ class CssStyles {
 			var m = pseudoCache.get(pseudo);
 			if (m == null) pseudoCache.set(pseudo, m = new ObjectMap());
 			var s = m.get(el);
-			if (s == null) m.set(el, s = style(el, pseudo, computed(el), false));
+			if (s == null) {
+				var parent = switch pseudo {
+					case "before::marker": computed(el, "before");
+					case "after::marker": computed(el, "after");
+					case _: computed(el);
+				}
+				m.set(el, s = style(el, pseudo, parent, false));
+			}
 			return s;
 		}
 		var s = cache.get(el);
@@ -904,6 +911,8 @@ class CssStyles {
 			case Before: "before";
 			case After: "after";
 			case Marker: "marker";
+			case BeforeMarker: "before::marker";
+			case AfterMarker: "after::marker";
 			case FirstLine: "first-line";
 			case FirstLetter: "first-letter";
 			case FootnoteCall: "footnote-call";

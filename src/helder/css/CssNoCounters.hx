@@ -27,7 +27,7 @@ class CssNoCounters implements CssCounting {
 
 	public function resolveTargets(pageOf:Element->Int) {}
 
-	public function marker(el:Element):Null<Array<CssGeneratedPart>>
+	public function marker(el:Element, ?pseudo:String):Null<Array<CssGeneratedPart>>
 		return null;
 
 	public function format(v:Int, style:String):String

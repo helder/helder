@@ -48,7 +48,7 @@ class CssSelector {
 		for (c in compounds)
 			for (p in c)
 				s = s.add(CssSpecificity.of(p));
-		if (pseudo != null) s = s.add(CssSpecificity.make(0, 0, 1));
+		if (pseudo != null) s = s.add(CssSpecificity.make(0, 0, pseudo == BeforeMarker || pseudo == AfterMarker ? 2 : 1));
 		return new CssSelector(compounds, combinators, relative, pseudo, s, ancestorHashes(compounds, combinators), isLocal(compounds, combinators, relative),
 			bucketOf(compounds[compounds.length - 1]));
 	}
@@ -266,6 +266,8 @@ enum CssPseudoElement {
 	// shadow trees': parsed, never matching
 	Slotted(list:Array<CssSelector>);
 	Part(names:Array<String>);
+	BeforeMarker;
+	AfterMarker;
 }
 
 // what @namespace declares: prefix to URI, and the default (null: none)

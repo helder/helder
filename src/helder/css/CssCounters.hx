@@ -303,8 +303,8 @@ class CssCounters implements CssCounting {
 	public function listMarker(v:Int, type:String):String
 		return formats.marker(v, type);
 
-	public function marker(el:Element):Null<Array<CssGeneratedPart>> {
-		var s = styles.computed(el, "marker");
+	public function marker(el:Element, ?pseudo:String):Null<Array<CssGeneratedPart>> {
+		var s = styles.computed(el, pseudo ?? "marker");
 		if (s.keyword(Content) == "none") return null;
 		var items = s.generated();
 		if (items != null) return resolve(items, el, s);

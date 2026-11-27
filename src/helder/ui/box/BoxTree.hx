@@ -141,13 +141,16 @@ class BoxTree {
 			for (p in [helder.css.CssProperty.CounterIncrement, helder.css.CssProperty.CounterSet]) for (n in names(s.css.terms(p))) if (reads(n)) outside = true;
 			// (generated content that reads a counter)
 			for (which in ["before", "after"])
-				if (!outside && styles.hasPseudo(e, which))
-					for (t in styles.computed(e, which).terms(helder.css.CssProperty.Content)) switch t {
+				if (!outside && styles.hasPseudo(e, which)) {
+					var pseudo = styles.computed(e, which);
+					if (pseudo.box.display.listItem && reads("list-item")) outside = true;
+					for (t in pseudo.terms(helder.css.CssProperty.Content)) switch t {
 						case Func("counter" | "counters", args):
 							for (n in names(args)) if (reads(n)) outside = true;
 						case Func("target-counter" | "target-counters", _): outside = true;
 						case _:
 					}
+				}
 			var c = e.firstElementChild;
 			while (c != null && !outside) {
 				if (walk(c)) outside = true;
@@ -238,6 +241,8 @@ class BoxTree {
 				out.push(b);
 			case Inline:
 				var kids = [];
+				var mark = s.listItem ? marker(el, s) : null;
+				if (mark != null) kids.push(mark);
 				contents(el, s, kids);
 				split(el, s, orphans(kids, s, true), out);
 			case Container if (s.inner == BoxStyle.TABLE):
@@ -253,7 +258,7 @@ class BoxTree {
 			case _:
 				var b = make(kind, s, el);
 				var kids = [];
-				var marker = s.listItem ? marker(el) : null;
+				var marker = s.listItem ? marker(el, s) : null;
 				if (marker != null && marker.flags & Box.OUTSIDE == 0) kids.push(marker);
 				contents(el, s, kids);
 				fill(b, orphans(kids, s, false));
@@ -596,8 +601,10 @@ class BoxTree {
 		var s = new BoxStyle(css);
 		if (s.none) return;
 		counters.enter(el, which);
+		var mark = s.listItem ? marker(el, s, which + "::marker") : null;
 		var kids = parts(el, s, which, counters.content(el, which));
 		counters.exit(el, which);
+		if (mark != null && mark.flags & Box.OUTSIDE == 0) kids.unshift(mark);
 		kids = orphans(kids, s, s.outer == BoxStyle.INLINE);
 		var kind:BoxKind = s.contents ? Inline : kindOf(el, s);
 		if (kind == Break || kind == InlineReplaced || kind == BlockReplaced) kind = s.outer == BoxStyle.INLINE ? Inline : Block;
@@ -614,6 +621,7 @@ class BoxTree {
 		} else {
 			var b = make(kind, s, el, which);
 			fill(b, kids);
+			if (mark != null && mark.flags & Box.OUTSIDE != 0) placeOutside(b, mark);
 			out.push(b);
 		}
 	}
@@ -649,28 +657,33 @@ class BoxTree {
 
 	// A list item's ::marker (CssCounters': its content, else list-style-image, else
 	// list-style-type's text for its list-item counter).
-	function marker(el:Element):Null<Box> {
-		var s = new BoxStyle(styles.computed(el, "marker"));
-		counters.enter(el, "marker");
-		var kids = parts(el, s, "marker", counters.marker(el));
+	function marker(el:Element, item:BoxStyle, which = "marker"):Null<Box> {
+		var s = new BoxStyle(styles.computed(el, which));
+		counters.enter(el, which);
+		var kids = parts(el, s, which, counters.marker(el, which));
 		// (a list-style-image that doesn't load: list-style-type's marker, Lists 3 §3.2)
 		if (kids.length == 1 && kids[0].kind == InlineReplaced && kids[0].image == null && kids[0].svg == null) {
 			var type = s.keyword("list-style-type");
-			kids = type == "none" || type == "" ? [] : parts(el, s, "marker", [Text(counters.listMarker(counters.value("list-item"), type))]);
+			kids = type == "none" || type == "" ? [] : parts(el, s, which, [Text(counters.listMarker(counters.value("list-item"), type))]);
 		}
-		counters.exit(el, "marker");
+		counters.exit(el, which);
 		if (kids.length == 0) return null;
-		var b = make(Inline, s, el, "marker");
+		var b = make(Inline, s, el, which);
 		for (k in kids) b.append(k);
-		if (style(el).keyword("list-style-position") != "inside") b.flags |= Box.OUTSIDE;
+		if ((item.outer != BoxStyle.INLINE || item.inner == BoxStyle.FLOW_ROOT) && item.keyword("list-style-position") != "inside") b.flags |= Box.OUTSIDE;
 		return b;
 	}
 
 	// (an outside marker goes in the first line: the first descendant block of inline content)
 	function placeOutside(b:Box, marker:Box) {
 		var at = b;
-		while (at.first != null && at.first.kind == Block) at = at.first;
-		if (at.first != null && at.first.blockLevel) return;
+		while (true) {
+			var first = at.first;
+			while (first != null && outOfFlow(first)) first = first.next;
+			if (first == null || !first.blockLevel) break;
+			if (first.kind != Block) return;
+			at = first;
+		}
 		@:privateAccess {
 			marker.parent = at;
 			marker.next = at.first;

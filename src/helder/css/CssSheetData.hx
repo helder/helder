@@ -614,6 +614,8 @@ private class Reader extends CssPacked {
 			case 9: CssPseudoElement.FootnoteCall;
 			case 10: CssPseudoElement.FootnoteMarker;
 			case 11: CssPseudoElement.Slotted(list(selector));
+			case 13: CssPseudoElement.BeforeMarker;
+			case 14: CssPseudoElement.AfterMarker;
 			case _: CssPseudoElement.Part(list(str));
 		}
 
