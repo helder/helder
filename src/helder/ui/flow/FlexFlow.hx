@@ -287,7 +287,7 @@ class FlexFlow implements FormattingContext {
 			flow.place(fixed, frag, space, -box.marginLeft, 0, r != null ? r.width : space.width, r != null ? r.height : space.height);
 			flow.place(positioned, frag, space, -box.marginLeft, 0, space.width, space.height);
 		} else if (owner)
-			flow.place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb);
+			flow.place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb, resume != null || broken);
 		return frag;
 	}
 
