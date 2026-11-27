@@ -196,6 +196,70 @@ A scroll's paint (the page laid out whole, drawn offscreen a frame at a
 time): a wheel's frame (60 px) allocates nothing at the median; a
 thumb's jump (20,000 px) 1.0 MB, where it was 4.1 MB.
 
+## More documents (2026-11-27)
+
+Four more long pages (tests/bench/pages.mjs fetches them), each measured
+as the HTML Standard above: served locally, a 1280 × 800 viewport,
+Chromium 149 through Playwright and Ladybird 2026.47.8 through its
+WebDriver, the median of 3 page loads (a relayout: the first at 900 px
+and the least of 3 in a run); helder one run of the same probe
+(DocumentView laid out whole, as a browser's load is). Memory is the
+content process's RSS after load (footprint in brackets).
+
+| | helder | Chromium 149 | Ladybird 2026.47.8 |
+| --- | ---: | ---: | ---: |
+| **The ECMAScript spec, one page** (184,707 elements, 1.27 M px tall) | | | |
+| load: parsed, styled and laid out whole | 1,040 ms | 1,855 ms | 2,793 ms |
+| a forced relayout at 900 px, first / least of 3 | 384 / 118 ms | 130 / 102 ms | 193 / 78 ms |
+| a real resize, 1280 → 900, the whole document | 688 ms | 786 ms | 664 ms |
+| RSS after load | 451 MB | 1,072 (977) MB | 1,555 (1,326) MB |
+| **War and Peace, Gutenberg's** (14,900 elements, 701,150 px) | | | |
+| load | 394 ms | 429 ms | 468 ms |
+| a forced relayout at 900 px, first / least of 3 | 113 / 0 ms | 121 / 89 ms | 113 / 113 ms |
+| a real resize, 1280 → 900 | 101 ms | 109 ms | 104 ms |
+| RSS after load | 204 MB | 376 (300) MB | 792 (727) MB |
+| **Japanese pitch accent, Wikipedia's** (25,849 elements) | | | |
+| load | 224 ms | 295 ms | 303 ms |
+| a forced relayout at 900 px, first / least of 3 | 90 / 31 ms | 30 / 10 ms | 37 / 4 ms |
+| a real resize, 1280 → 900 | 97 ms | 50 ms | 55 ms |
+| RSS after load | 114 MB | 197 (103) MB | 241 (183) MB |
+| **WebKit's chapter-reflow** (134 elements; a column's width set 280, 300, 290 px) | | | |
+| load | 14 ms | 10 ms | |
+| a run of three widths not laid out before | 1.17 ms | 0.99 ms | 3.90 ms |
+| a run of the same three widths again | 0.02 ms | 1.20 ms | 4.10 ms |
+| RSS after load | 25 MB | 87 (20) MB | 78 (32) MB |
+
+War and Peace's least relayout at 900 px is the layout cache's: nothing
+changed since the first, and it keeps the layout at that width, as it
+keeps chapter-reflow's three widths. Japanese pitch accent's resize
+crosses a media query that changes a display, and the box tree is made
+whole again: BoxTree.rebuild declines the blocks around it because
+counters are counted in them (CSS lists). Rebuilding around counters
+would bring it toward the browsers' 50 ms.
+
+In a window (the document-window lane: each page laid out to what is
+seen, the rest in slices; 26 resizes, the wheel, jumps, anchors, the
+thumb and text dragged, each step's frame within 400 ms):
+
+| | steps | slowest frame | resizes: median / worst |
+| --- | ---: | ---: | ---: |
+| the HTML Standard | 767 | 335 ms | 63 / 303 ms |
+| Telemann's vocal works (Wikipedia's longest) | 757 | 73 ms | 46 / 73 ms |
+| the ECMAScript spec | 767 | 372 ms | 77 / 372 ms |
+| War and Peace | 769 | 180 ms | 134 / 180 ms |
+| WebKit's chapter-reflow | 726 | 22 ms | 8 / 21 ms |
+| Japanese pitch accent | 767 | 73 ms | 44 / 73 ms |
+
+The ECMAScript spec put the whole document in one block with
+`overflow: hidden` (#spec-container), a flex item beside the menu above
+1000 px: the cut went into neither, so each resize laid it out whole
+(a resize across 1000 px 702 ms, over the budget). The cut now goes into
+an in-flow block of its own and a flex row's items, and a resize's
+restyle of what is past the cut, where the box tree is made again,
+styles what the changed rules match there, not all of it: 702 → 160 ms
+across 1000 px, to what is seen (a frame at a scroll of 400,000 px, its
+anchor laid out exactly with all above it: 372 ms).
+
 ## Is it worth it
 
 - Wins: scrolling costs the engine nothing (the compositor moves the
