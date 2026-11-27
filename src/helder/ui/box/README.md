@@ -184,8 +184,13 @@ File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
   a page and dropping its fragments once its margin boxes are known,
   keeping only the break tokens of a first pass, is a later optimisation;
   tokens hold boxes, never fragments, to keep it open.
-- Not yet: named pages (`page`) and pages of other sizes in one document; tables broken between rows;
-  floats, absolutely positioned and fixed boxes split or repeated across
+- Tables break between rows (TableFlow): each page its header rows,
+  its run of body rows and its footer rows (thead and tfoot repeated),
+  a caption above on the first page, below on the last; not between rows
+  a cell spans; a row group's or the table's break-inside: avoid ranks
+  those breaks lower, a row's break-before and -after count.
+- Not yet: named pages (`page`) and pages of other sizes in one document;
+  a table row taller than a page broken inside its cells; floats, absolutely positioned and fixed boxes split or repeated across
   pages; monolithic content taller than a page pushing what follows;
   `box-decoration-break: clone`; bookmarks and links in the PDF.
 
