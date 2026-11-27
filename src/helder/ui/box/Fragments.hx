@@ -38,7 +38,11 @@ class Fragments {
 	public function clear() {
 		count = 0;
 		runs.resize(0);
+		generation++;
 	}
+
+	// (how many times cleared: a fragment kept by its id is of this generation's or gone)
+	public var generation(default, null) = 0;
 
 	var capacity = 0;
 

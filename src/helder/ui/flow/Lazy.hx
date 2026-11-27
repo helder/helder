@@ -66,6 +66,16 @@ class Lazy {
 		}
 	}
 
+	// A block skipped before given its fragment again (Box.skipped), where
+	// it stays outside the window: whether it was.
+	public function again(box:Box, top:Float, height:Float):Bool {
+		if (top <= bottom && top + height >= this.top) return false;
+		boxes.push(box);
+		tops.push(top);
+		heights.push(height);
+		return true;
+	}
+
 	// Whether a block the last layout skipped is in top...bottom.
 	public function skipped(top:Float, bottom:Float):Bool
 		return first(top, bottom) >= 0;

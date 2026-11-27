@@ -17,6 +17,8 @@ class DocumentWindowCheck {
 	static inline var STALL = 3.0;
 	// (a step's frame, ms: a far jump records the page there afresh, a collection may land in it)
 	static inline var BUDGET = 400;
+	// (frames in a row a drag may show what it brings into view not laid out yet)
+	static inline var BLANK = 3;
 	static var last = Timer.stamp();
 	static var stepName = "start";
 	// (once the steps begin: the load's layout is a few seconds of its own)
@@ -109,7 +111,7 @@ class DocumentWindowCheck {
 		// loop running as a window's does, its frames timed (HELDER_TEST_INPUT=1: Inject))
 		if (a.indexOf("--real") >= 0) return real(w, node, scroller);
 		var k = -1, frame = 0, slow:Array<String> = [], worst = 0.0, at = Timer.stamp();
-		var layoutAt = 0.0, paintAt = 0.0, gcAt = 0.0, resizes:Array<Float> = [], seen = 0;
+		var layoutAt = 0.0, paintAt = 0.0, gcAt = 0.0, resizes:Array<Float> = [], seen = 0, unlaid:Array<String> = [];
 		// (the heap's live bytes as the steps go: it should stay flat over repeated drags)
 		var heaps = [];
 		Sys.println('DocumentWindowCheck: loaded in ${Math.round((Timer.stamp() - t0) * 1000)} ms, ${anchors.length} anchors, ${steps.length} steps');
@@ -144,8 +146,16 @@ class DocumentWindowCheck {
 					steps[k].run();
 				}
 			}
-			if (w.needsFrame() || k < steps.length) w.frame();
+			var drew = w.needsFrame() || k < steps.length;
+			if (drew) w.frame();
 			w.device.settle();
+			// (a frame drawn as the window is resized or the thumb dragged: what it shows laid out)
+			if (drew && k >= 0 && k < steps.length && (StringTools.startsWith(steps[k].name, "resize ") || StringTools.startsWith(steps[k].name, "thumb"))) {
+				var top = scroller.scrollY - (node.absY - scroller.absY);
+				if (node.view.unlaid(top, top + scroller.height)) {
+					unlaid.push(steps[k].name);
+				}
+			}
 			if (k >= steps.length) {
 				// (the live heap after the steps against once the resizes, the jumps and the thumb's drag have been
 				// across the document at its widths, the fonts it shows loaded (a long one is laid out where it is
@@ -161,7 +171,8 @@ class DocumentWindowCheck {
 				var t1 = Timer.stamp();
 				v.layout(900, 768);
 				Sys.println('DocumentWindowCheck: the whole document laid out at 900 wide: ${Math.round((Timer.stamp() - t1) * 1000)} ms');
-				var ok = slow.length == 0 && flat;
+				Sys.println('DocumentWindowCheck: frames drawn resizing or dragging the thumb with what is seen not laid out: ${unlaid.length == 0 ? "none" : unlaid.length + " (" + unlaid.slice(0, 5).join(", ") + ")"}');
+				var ok = slow.length == 0 && flat && unlaid.length == 0;
 				Sys.println('DocumentWindowCheck: ${ok ? "ok" : "FAIL"}');
 				w.close();
 				Sys.exit(ok ? 0 : 1);
@@ -188,6 +199,8 @@ class DocumentWindowCheck {
 	}
 
 	static var thumbX = 0.0;
+	static var scrollTo = -1.0;
+	static var resizeTo:Null<Array<Int>> = null;
 	static var rssLoaded = 0.0;
 	static var rssMost = 0.0;
 
@@ -255,6 +268,37 @@ class DocumentWindowCheck {
 			}
 			Inject.mouse(w.window, tx, ty, 2);
 			Sys.sleep(0.5);
+			// (the thumb pressed, dragged a third down and held there for HELD_S seconds, moved a little at THUMB_HZ, never
+			// let go: what it brings into view laid out as it does, not when the button is up)
+			phase = "thumb held";
+			Inject.mouse(w.window, tx, ty, 5);
+			Inject.mouse(w.window, tx, ty, 1);
+			for (k in 0...60) {
+				Inject.mouse(w.window, tx, ty + k * 4, 6);
+				Sys.sleep(1 / hz);
+			}
+			var held = Std.parseFloat(Sys.getEnv("HELD_S") ?? "5"), h0 = Timer.stamp(), j = 0;
+			while (Timer.stamp() - h0 < held) {
+				Inject.mouse(w.window, tx, ty + 240 + (j++ % 8) * 3, 6);
+				Sys.sleep(1 / hz);
+			}
+			Inject.mouse(w.window, tx, ty + 240, 2);
+			Sys.sleep(0.5);
+			// (a live resize for RESIZE_S seconds, narrower and back a step every 8 ms, in the middle of the document: as
+			// an edge held, the window resized on the main thread and its frames drawn from AppKit's resize callback,
+			// App.run's turn not running between them; what each width shows laid out as it does)
+			scrollTo = 600000;
+			Sys.sleep(0.3);
+			phase = "live resize";
+			var sc = w.window.scale, cw = Std.int(w.window.width / sc), ch = Std.int(w.window.height / sc);
+			var secs = Std.parseFloat(Sys.getEnv("RESIZE_S") ?? "5"), r0 = Timer.stamp(), m = 0;
+			while (Timer.stamp() - r0 < secs) {
+				var k = m++ % 120, d = k < 60 ? k : 120 - k;
+				resizeTo = [cw - d * 5, ch - d * 2, 1];
+				Sys.sleep(0.008);
+			}
+			resizeTo = [cw, ch, 0];
+			Sys.sleep(0.5);
 			// (text selected by a drag across the page, three times)
 			phase = "select drag";
 			for (r in 0...Std.parseInt(Sys.getEnv("SELECTS") ?? "3")) {
@@ -271,10 +315,25 @@ class DocumentWindowCheck {
 			Sys.sleep(1);
 			done = true;
 		});
+		var blankRun = 0, blankMost = 0, blankFrames = 0, widths = new Map<Int, Bool>();
 		var lastFrame = Timer.stamp(), gaps = new Map<String, Array<Float>>(), allocs = new Map<String, Array<Float>>(), was = phase, bytes = hxmc.GcStats.bytesAllocated();
 		App.run(() -> {
 			var now = Timer.stamp();
 			last = now;
+			// (what the drags' thread asked of the window: a scroll, a size in a live resize, set on the main thread,
+			// as AppKit's loop does: the frames then drawn from its resize callback, this one entered again)
+			if (scrollTo >= 0) {
+				w.ui.scrollTo(scroller, 0, scrollTo);
+				scrollTo = -1;
+			}
+			var r = resizeTo;
+			if (r != null) {
+				resizeTo = null;
+				helder.os.OsThread.run(() -> {
+					w.window.surface.resizing = r[2] == 1;
+					w.window.resize(r[0], r[1]);
+				});
+			}
 			if (count++ > 30) {
 				ready = true;
 				armed = true;
@@ -296,9 +355,22 @@ class DocumentWindowCheck {
 				if (count % 200 == 0) heaps.push(Math.round(hxmc.GcStats.liveBytes() / 1048576));
 			}
 			lastFrame = now;
-			if (w.needsFrame()) w.frame();
+			var drew = w.needsFrame();
+			if (drew) w.frame();
 			w.device.settle();
+			// (a frame drawn while the thumb is dragged: what it shows laid out, within BLANK frames)
+			if (drew && phase == "live resize") widths.set(w.window.width, true);
+			if (drew && (StringTools.startsWith(phase, "thumb") || phase == "live resize")) {
+				var top = scroller.scrollY - (node.absY - scroller.absY);
+				if (node.view.unlaid(top, top + scroller.height)) {
+					blankRun++;
+					blankFrames++;
+					if (blankRun > blankMost) blankMost = blankRun;
+				} else
+					blankRun = 0;
+			}
 			if (done) {
+				Sys.println('DocumentWindowCheck --real: the node allocated ${Math.round(node.stats.layoutBytes / 1048576)} MB laying out (${node.stats.layouts} times), ${Math.round(node.stats.paintBytes / 1048576)} MB painting (${node.stats.paints} times)');
 				for (k => al in allocs) {
 					var sum = 0.0;
 					for (v in al) sum += v;
@@ -316,7 +388,11 @@ class DocumentWindowCheck {
 				for (k => g in gaps) worst = Math.max(worst, g[g.length - 1]);
 				// (RSS through the drag bounded: garbage collected before it piles up, not seconds late)
 				var bounded = rssMost <= rssLoaded * 1.5;
-				var ok = worst < 1500 && bounded;
+				var sizes = [for (k in widths.keys()) k];
+				sizes.sort(Reflect.compare);
+				Sys.println('DocumentWindowCheck --real: the live resize drew ${sizes.length} widths, ${sizes.length > 0 ? sizes[0] + " to " + sizes[sizes.length - 1] : "none"}');
+				Sys.println('DocumentWindowCheck --real: frames drawn with what is seen not laid out while the thumb is dragged or the window resized: $blankFrames, $blankMost in a row at most');
+				var ok = worst < 1500 && bounded && blankMost <= BLANK;
 				Sys.println('DocumentWindowCheck --real: ${ok ? "ok" : "FAIL"} (worst turn ${Math.round(worst)} ms; RSS ${Math.round(rssLoaded)} MB loaded, ${Math.round(rssMost)} MB the most in the drag${bounded ? "" : ", over 1.5 times"})');
 				w.close();
 				Sys.exit(ok ? 0 : 1);

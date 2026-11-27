@@ -237,7 +237,7 @@ class CssStyles {
 	// a rule inside it matches, the rules indexed again for it. Null where
 	// it can't be: another media type, the root's font size or line height
 	// changed (rem everywhere): a cascade of its own then.
-	public function resize(other:CssMediaContext):Null<Array<Element>> {
+	public function resize(other:CssMediaContext, ?skip:Element->Bool):Null<Array<Element>> {
 		if (other.type != media.type || other.resolution != media.resolution || other.color != media.color || media.type == "print") return null;
 		// (the rules inside the queries that change: what they match is styled again)
 		var changed = new CssRuleIndex<Bool>(), n = 0;
@@ -256,7 +256,7 @@ class CssStyles {
 		if (hintSheet != null) within(hintSheet.rules, false);
 		for (s in sheets) within(s.sheet.rules, s.media != null && s.media.matches(other) != s.media.matches(media));
 		var out = new ObjectMap<Element, Bool>();
-		if (n > 0) changed.walk(document, (el, found) -> if (found.length > 0) out.set(el, true));
+		if (n > 0) changed.walk(document, (el, found) -> if (found.length > 0) out.set(el, true), null, skip);
 		var r = document.documentElement, was = r == null ? null : cache.get(r);
 		media = other;
 		if (!fixedViewport) viewportSize = null;
