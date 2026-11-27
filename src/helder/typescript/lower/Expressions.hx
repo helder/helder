@@ -933,7 +933,24 @@ abstract class Expressions extends Statements {
 	}
 
 	// n's value for a slot of type t: a number array's element read unboxed for a number's
-	function valueFor(n:Node, t:Ty):Ex return t == TF64 ? numeric(n, true) : expr(n);
+	function valueFor(n:Node, t:Ty):Ex return t == TF64 ? numeric(n, true) : instanceFor(n, t) ?? expr(n);
+
+	// (an array's element into a slot of a class, a typed class's or an
+	// array: Reps.arrayGetAs, the class tested first; else null)
+	function instanceFor(n:Node, t:Ty):Null<Ex> {
+		var inner = strip(n);
+		var c = switch t {
+			case TRef(RObj(c)): c;
+			case _: return null;
+		}
+		if (!arrayElement(inner)) return null;
+		expressions++;
+		typed++;
+		typedOperations++;
+		var obj = b.temp(expr(inner.expression()));
+		var k = intOf(inner.argumentExpression()) ?? b.temp(number(expr(inner.argumentExpression())));
+		return reps.arrayGetAs(b, obj, k, c, g -> store(g, t), naturalOf(inner.argumentExpression()));
+	}
 
 	// n's value where a number is wanted (slot: a typed slot's, its check
 	// where it is none; else as ToNumber makes one): a number array's element
@@ -968,7 +985,7 @@ abstract class Expressions extends Statements {
 		typedOperations++;
 		var obj = b.temp(expr(inner.expression()));
 		var k = intOf(inner.argumentExpression()) ?? b.temp(number(expr(inner.argumentExpression())));
-		return reps.arrayGetNumber(b, obj, k, g -> slot ? store(g, TF64) : number(g));
+		return reps.arrayGetNumber(b, obj, k, g -> slot ? store(g, TF64) : number(g), naturalOf(inner.argumentExpression()));
 	}
 
 	// (an operator that makes its operands numbers: arithmetic, the bitwise

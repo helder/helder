@@ -92,7 +92,7 @@ abstract class Statements extends Functions {
 				if (counter != null) {
 					count = b.local(counter.name.text, TI64);
 					b.out.push(SSet(count, counter.start));
-					env.set(counter.name.text, {ty: TF64, int: count});
+					env.set(counter.name.text, {ty: TF64, int: count, natural: counter.natural});
 				}
 				else if (f.initializer() != null) {
 					if (f.initializer().kind == KindVariableDeclarationList) variableList(f.initializer(), false); else expr(f.initializer());
@@ -160,6 +160,13 @@ abstract class Statements extends Functions {
 				// (`const x of xs` over numbers: x a number, read unboxed from a number array)
 				var numbers = indexed && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0 && init.declarations()[0].name().kind == KindIdentifier
 					&& types.isNumber(loopNode.expression().tsType.element) && reps.rep(init.declarations()[0].name().tsType) == TF64;
+				// (`const x of xs` over instances of a class: x typed, read with its class tested first)
+				var instance:Null<ClassInfo> = null;
+				if (indexed && !numbers && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0 && init.declarations()[0].name().kind == KindIdentifier
+					&& typedElements(loopNode.expression(), init.declarations()[0].name())) switch reps.rep(init.declarations()[0].name().tsType) {
+						case TRef(RObj(c)): instance = c;
+						case _:
+					}
 				// (`const [k, v]` of entries: k and v from the table, no pair made)
 				var pair = table != null && table.kind == "entries" && init.kind == KindVariableDeclarationList && init.flags & NodeFlags.BlockScoped != 0
 					&& plainPair(init.declarations()[0].name());
@@ -201,15 +208,19 @@ abstract class Statements extends Functions {
 						value = ELocal(l);
 					}
 					else if (indexed) {
-						var l = b.local("element", numbers ? TF64 : TRef(RAny));
+						var t = numbers ? TF64 : instance != null ? TRef(RObj(instance)) : TRef(RAny);
+						var l = b.local("element", t);
 						b.out.push(SIf(ELocal(fast), b.block(() -> {
 							b.out.push(SIf(EBin(FGe, EConv(L2F, ELocal(index)), reps.arrayLength(b, input)), Vector.fromArrayCopy([SBreak]), new Vector(0)));
-							b.out.push(SSet(l, numbers ? reps.arrayGetNumber(b, input, ELocal(index), g -> store(g, TF64)) : reps.arrayGet(b, input, b.temp(EConv(L2F, ELocal(index))))));
+							// (the index counts up from 0: never below it)
+							b.out.push(SSet(l, numbers ? reps.arrayGetNumber(b, input, ELocal(index), g -> store(g, TF64), true)
+								: instance != null ? reps.arrayGetAs(b, input, ELocal(index), instance, g -> store(g, t), true)
+								: reps.arrayGet(b, input, b.temp(EConv(L2F, ELocal(index))))));
 							b.out.push(SSet(index, EBin(LAdd, ELocal(index), EConv(I2L, EInt(1)))));
 						}), b.block(() -> {
 							var v = b.runtime("libIterate", [ELocal(iterator)]);
 							b.out.push(SIf(b.runtime("libFinished", [v]), Vector.fromArrayCopy([SBreak]), new Vector(0)));
-							b.out.push(SSet(l, numbers ? store(v, TF64) : v));
+							b.out.push(SSet(l, numbers || instance != null ? store(v, t) : v));
 						})));
 						value = ELocal(l);
 					}
@@ -568,7 +579,7 @@ abstract class Statements extends Functions {
 			var slot = d.name().kind != KindIdentifier ? null : n.flags & NodeFlags.BlockScoped == 0 ? functionVars.get(d.name().text)?.ty : top || predeclared ? env.get(d.name().text)?.ty : bindingType(d);
 			// (none given, a typed slot's placeholder: TypeScript's definite
 			// assignment has it written before it is read, as a var's)
-			var e = d.initializer() == null ? (slot != null && d.name().kind == KindIdentifier ? placeholder(slot) : b.runtime("getUndefined", [])) : slot == TF64 ? numeric(d.initializer(), true) : named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
+			var e = d.initializer() == null ? (slot != null && d.name().kind == KindIdentifier ? placeholder(slot) : b.runtime("getUndefined", [])) : slot == TF64 ? numeric(d.initializer(), true) : (slot != null && d.name().kind == KindIdentifier ? instanceFor(d.initializer(), slot) : null) ?? named(d.initializer(), d.name().kind == KindIdentifier ? d.name().text : null);
 			if (d.name().kind != KindIdentifier) {
 				var scoped = n.flags & NodeFlags.BlockScoped != 0;
 				var local = scoped && !top && !predeclared;
@@ -599,7 +610,8 @@ abstract class Statements extends Functions {
 	// 2^53, where a double's steps stop being one, only after 2^52 steps. It
 	// is read as a number (L2F), and as an integer where that is faster
 	// (an index, a remainder: intOf).
-	function intCounter(f:Node):Null<{name:Node, start:Ex, step:Int}> {
+	// (natural: never below 0, starting at 0 or above and counting up: an index's lower bound holds)
+	function intCounter(f:Node):Null<{name:Node, start:Ex, step:Int, natural:Bool}> {
 		var init = f.initializer(), inc = f.incrementor();
 		if (init == null || inc == null || init.kind != KindVariableDeclarationList || init.flags & NodeFlags.BlockScoped == 0 || b.resumable != null || sharing) return null;
 		var ds = init.declarations();
@@ -621,7 +633,7 @@ abstract class Statements extends Functions {
 		}
 		if (target == null || strip(target).kind != KindIdentifier || strip(target).text != name.text) return null;
 		if (writes(f.condition(), name.text) || writes(f.statement(), name.text)) return null;
-		return {name: name, start: start, step: step};
+		return {name: name, start: start, step: step, natural: step == 1 && natural(ds[0].initializer())};
 	}
 
 	// (an integer expression as an Int64, built of no statement: a literal, a counter, one plus or minus a literal)
@@ -645,6 +657,20 @@ abstract class Statements extends Functions {
 			case _: return null;
 		}
 	}
+
+	// (an intExpr never below 0: a literal, a natural counter, one plus a literal)
+	function natural(n:Node):Bool {
+		n = strip(n);
+		return switch n.kind {
+			case KindNumericLiteral: Std.parseFloat(n.text) >= 0;
+			case KindIdentifier: env.exists(n.text) && env.get(n.text).natural == true;
+			case KindBinaryExpression if (n.operatorToken().kind == KindPlusToken): natural(n.left()) && natural(n.right());
+			case _: false;
+		}
+	}
+
+	// whether n is a natural counter (intOf's, never below 0)
+	function naturalOf(n:Node):Bool return intOf(n) != null && natural(n);
 
 	// a counter's value as an Int64, where n is one (else null)
 	function intOf(n:Node):Null<Ex> {

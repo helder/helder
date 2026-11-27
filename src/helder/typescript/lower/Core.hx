@@ -17,7 +17,7 @@ import helder.typescript.js.Lines;
 // closure), or a plain local; `outer`: an enclosing function's plain local,
 // which no closure can see (Captures); `int`: a loop's counter, a number
 // held as an Int64 (Statements.intCounter), written only by its loop's step
-typedef Binding = {ty:Ty, ?cell:Ex, ?global:Int, ?local:Local, ?outer:String, ?buffer:Local, ?int:Local};
+typedef Binding = {ty:Ty, ?cell:Ex, ?global:Int, ?local:Local, ?outer:String, ?buffer:Local, ?int:Local, ?natural:Bool};
 
 // A source file's top-level scope: its bindings (globals), direct functions
 // and exports. Imports alias the exporting module's bindings, so they are live.
@@ -477,5 +477,7 @@ abstract class Core {
 	abstract function parameterProperties():Void;
 	abstract function call(n:Node):Ex;
 	abstract function valueFor(n:Node, t:Ty):Ex;
+	abstract function instanceFor(n:Node, t:Ty):Null<Ex>;
+	abstract function naturalOf(n:Node):Bool;
 	abstract function numeric(n:Node, slot:Bool, coerce:Bool = true):Ex;
 }
