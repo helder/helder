@@ -903,6 +903,17 @@ class Lib {
 		return a;
 	}
 
+	static var stepShape:Shape = null;
+
+	// an iterator's result, {value, done}: its shape made once
+	public static function iterResult(value:Dynamic, done:Bool):Dynamic {
+		var o = new JsObject(Builtins.ObjectProto);
+		if (stepShape == null) stepShape = Shapes.literal(["value", "done"]);
+		o.shape = stepShape;
+		o.slots = [value, done];
+		return o;
+	}
+
 	public static function object(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
 		var o = new JsObject(Builtins.ObjectProto);
 		for (i in 0...keys.length) defineOwn(o, key(keys[i]), values[i]);

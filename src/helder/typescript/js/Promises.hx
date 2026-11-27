@@ -505,7 +505,7 @@ class Promises {
 		}
 		// (return() on a finished generator awaits its value)
 		if (g.finished && request.mode == 2) {
-			then(resolved(request.value), host(x -> finish(p -> resolve(p, object(["value", "done"], [x, true])))), host(e -> finish(p -> reject(p, e))), null);
+			then(resolved(request.value), host(x -> finish(p -> resolve(p, iterResult(x, true)))), host(e -> finish(p -> reject(p, e))), null);
 			return;
 		}
 		run(request.value, request.mode);
@@ -521,7 +521,7 @@ class Promises {
 			var r = next(it);
 			var p = create(PromiseProto);
 			var done = Seed.truth(get(r, "done"));
-			then(resolved(get(r, "value")), host(v -> resolve(p, object(["value", "done"], [v, done]))), host(e -> reject(p, e)), null);
+			then(resolved(get(r, "value")), host(v -> resolve(p, iterResult(v, done))), host(e -> reject(p, e)), null);
 			return p;
 		}), Attr.HIDDEN);
 		return wrapper;

@@ -468,10 +468,16 @@ class Arrays {
 		var i:Float = 0;
 		if (cycle.indexOf(o) >= 0) return "";
 		cycle.push(o);
+		// (an array without own properties' elements read as they are, a hole
+		// or one past them by get: a property of its shape is an accessor's)
+		var a:JsArray = Std.isOfType(o, JsArray) && (o : JsArray).shape == Shapes.array ? o : null;
 		try {
 			while (i < n) {
 				if (i > 0) b.add(sep);
-				var v = get(o, i++);
+				var k = Std.int(i);
+				var v:Dynamic = a == null ? hole : a.nums != null ? (k < a.nums.length ? a.nums[k] : hole) : k < a.items.length ? a.items[k] : hole;
+				if (same(v, hole)) v = get(o, i);
+				i++;
 				if (v != null && !same(v, undef())) b.add(Seed.text(v));
 			}
 		}

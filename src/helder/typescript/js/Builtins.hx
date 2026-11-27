@@ -497,9 +497,9 @@ class Builtins {
 		var v = it.finished ? finished : iteratorStep(it);
 		if (v == finished) {
 			it.finished = true;
-			return object(["value", "done"], [undef(), true]);
+			return iterResult(undef(), true);
 		}
-		return object(["value", "done"], [v, false]);
+		return iterResult(v, false);
 	}
 
 	public static function iteratorStep(it:JsIterator):Dynamic {
