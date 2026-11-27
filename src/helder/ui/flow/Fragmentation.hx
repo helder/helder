@@ -24,6 +24,10 @@ interface Fragmentation {
 	// the line's break (where its lines resume); true: break here. Line
 	// first: the first here, at bottom (as before null)
 	function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool;
+	// past box's content, its height going on, the fragmentainer's end at
+	// bottom; true: break here, the rest of its height in the next (resumed
+	// at line BreakToken.PAST)
+	function after(box:Box, bottom:Float):Bool;
 	// a float placed, its margin box ending at bottom: content before the
 	// break opportunities after it (a float is whole: one that doesn't fit
 	// takes the break before it, its line's or its own)
@@ -34,6 +38,26 @@ interface Fragmentation {
 	// whether layout stops: a break was taken (or a probe went past the
 	// end): containers place nothing more
 	var stopped(get, never):Bool;
+	// an absolutely positioned box its host lays out once the content is
+	// in fragmentainers (LayoutNG's out-of-flow fragmentation): its
+	// containing block broken across them, or the box not fitting in this
+	// one
+	function defer(d:Deferred):Void;
+}
+
+// An absolutely positioned box deferred: its static place (x, y) in its
+// containing block, that at cbx, cby in its owner's fragment here, cbw by
+// cbh here; an alignment in an area (Positioned's).
+typedef Deferred = {
+	box:Box,
+	owner:Box,
+	x:Float,
+	y:Float,
+	cbx:Float,
+	cby:Float,
+	cbw:Float,
+	cbh:Float,
+	align:Null<Array<Float>>
 }
 
 // Where a box resumes: at a child (laid out from its start, its top

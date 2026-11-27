@@ -17,11 +17,14 @@ import helder.css.CssSheet;
 import helder.css.CssStyles;
 import helder.css.CssUrl;
 import helder.dom.Document;
+import helder.ui.box.Len.Lens;
 import helder.ui.flow.BlockFlow;
 import helder.ui.flow.BreakToken;
 import helder.ui.flow.Breaks;
 import helder.ui.flow.Repeated;
 import helder.ui.flow.Contexts;
+import helder.ui.flow.Fragmentation.Deferred;
+import helder.ui.flow.Positioned;
 import helder.ui.flow.Space;
 
 using StringTools;
@@ -139,6 +142,7 @@ class PagedView {
 		var rtl = root != null && root.style.rtl;
 		var token:Null<BreakToken> = null;
 		var i = 0;
+		var deferred:Array<{d:Deferred, page:Int}> = [];
 		do {
 			// (the first page a right one left to right, a left one right to left)
 			var left = (i % 2 == 1) != rtl;
@@ -156,9 +160,148 @@ class PagedView {
 				if (breaks.decide()) f = content(root, breaks, w, h, token == null);
 				page.root = f;
 				token = breaks.token();
+				for (d in breaks.deferred) deferred.push({d: d, page: pages.length});
 			}
 			pages.push(page);
 		} while (token != null && i < (options.limit ?? LIMIT));
+		if (root != null) positioned(deferred);
+	}
+
+	// (the absolutely positioned boxes deferred: each in its containing block stitched across the pages (its
+	// fragments' padding boxes one after the other, as the pages' areas are; the initial containing block the
+	// first page's area at the flow's start), then laid out from the page its top is on and broken across the
+	// pages after as it needs, pages added for it; the boxes deferred in its layout after it)
+	function positioned(queue:Array<{d:Deferred, page:Int}>) {
+		if (queue.length == 0) return;
+		var flow:BlockFlow = cast (options.contexts ?? Contexts.all()).flow;
+		var k = 0;
+		while (k < queue.length && k < (options.limit ?? LIMIT)) {
+			var e = queue[k++], d = e.d;
+			var cb = containing(d, e.page);
+			if (cb == null) continue;
+			var space = new Space(fragments, fonts, cb.w, cb.h);
+			// (its fixed descendants: on every page already)
+			space.fixed = new Positioned();
+			var at = flow.positionedBox(d.box, space, cb.sx, cb.sy, cb.w, cb.h, d.align);
+			var x = cb.x + at.x, height = fragments.height(at.fragment);
+			var p = pageAt(cb.top + at.y);
+			var o = cb.top + at.y - top(p);
+			if (o + height <= pages[p].area[3] + 0.01) {
+				adopt(p, at.fragment, x, o);
+				continue;
+			}
+			// (broken: its height as set or stretched kept, its content's otherwise)
+			var st = d.box.style, fixedHeight = !Lens.isAuto(st.model().height) || !Lens.isAuto(st.len("top")) && !Lens.isAuto(st.len("bottom"));
+			var token:Null<BreakToken> = null, first = true;
+			while (true) {
+				var breaks = new Breaks(pages[p].area[3], token);
+				function lay():Int {
+					var cs = new Space(fragments, fonts, cb.w, cb.h);
+					cs.fixed = new Positioned();
+					cs.fixedWidth = fragments.width(at.fragment);
+					if (fixedHeight) cs.fixedHeight = height;
+					cs.fragmentation = breaks;
+					cs.pageTop = first ? o : 0;
+					d.box.cacheFragment = -1;
+					return flow.child(d.box, cs);
+				}
+				var f = lay();
+				if (breaks.decide()) f = lay();
+				adopt(p, f, x, first ? o : 0);
+				for (n in breaks.deferred) queue.push({d: n, page: p});
+				token = breaks.token();
+				if (token == null || p + 1 >= (options.limit ?? LIMIT)) break;
+				p = pageAt(top(p) + pages[p].area[3] + 0.5);
+				first = false;
+			}
+		}
+	}
+
+	// (a deferred box's containing block in the flow: its left and top, width and height; the box's static place in it)
+	function containing(d:Deferred, page:Int):Null<{x:Float, top:Float, w:Float, h:Float, sx:Float, sy:Float}> {
+		if (d.owner == tree.root) return {x: 0, top: 0, w: pages[0].area[2], h: pages[0].area[3], sx: d.x, sy: top(page) + d.y};
+		var found:Array<{page:Int, f:Int}> = [];
+		for (q in pages) if (q.root >= 0 && !q.blank) {
+			var f = fragmentOf(q.root, d.owner);
+			if (f >= 0) found.push({page: q.index, f: f});
+		}
+		if (found.length == 0) return null;
+		var here = found[0];
+		for (h in found) if (h.page == page) here = h;
+		var ah = fragments.absolute(here.f);
+		if (found.length == 1) return {x: ah.x + d.cbx, top: top(here.page) + ah.y + d.cby, w: d.cbw, h: d.cbh, sx: d.x, sy: d.y};
+		// (broken: its padding boxes stitched, its border where it isn't sliced)
+		var s = d.owner.style.model(), a = found[0], z = found[found.length - 1];
+		var a0 = fragments.absolute(a.f), az = fragments.absolute(z.f);
+		var x = a0.x + s.border[3];
+		var y0 = top(a.page) + a0.y + (fragments.start(a.f) == Box.NO_START ? 0 : s.border[0]);
+		var y1 = top(z.page) + az.y + fragments.height(z.f) - (fragments.end(z.f) == Box.NO_END ? 0 : s.border[2]);
+		return {
+			x: x,
+			top: y0,
+			w: fragments.width(a.f) - s.border[1] - s.border[3],
+			h: Math.max(0, y1 - y0),
+			sx: ah.x + d.cbx + d.x - x,
+			sy: top(page) + ah.y + d.cby + d.y - y0
+		};
+	}
+
+	function fragmentOf(k:Int, box:Box):Int {
+		if (fragments.kind(k) == Fragments.BOX && fragments.box(k) == box) return k;
+		var c = fragments.first(k);
+		while (c >= 0) {
+			var f = fragmentOf(c, box);
+			if (f >= 0) return f;
+			c = fragments.next(c);
+		}
+		return -1;
+	}
+
+	// (where a page's area starts in the flow: the areas of the pages with content before it one after the other)
+	function top(p:Int):Float {
+		var t = 0.0;
+		for (q in pages) if (q.index < p && !q.blank) t += q.area[3];
+		return t;
+	}
+
+	// (the page with content a flow offset is on; pages added past the last for it)
+	function pageAt(y:Float):Int {
+		var t = 0.0, last = -1;
+		for (q in pages) if (!q.blank) {
+			if (y < t + q.area[3]) return q.index;
+			t += q.area[3];
+			last = q.index;
+		}
+		var rtl = tree.root.style.rtl;
+		while (pages.length < (options.limit ?? LIMIT)) {
+			var i = pages.length, prev = pages[pages.length - 1];
+			var page = pageOf(i, (i % 2 == 1) != rtl, false, prev.name);
+			page.root = fragments.add(Fragments.BOX, tree.root, page.area[2], 0);
+			pages.push(page);
+			repeat(i);
+			if (y < t + page.area[3]) return i;
+			t += page.area[3];
+		}
+		return pages.length - 1;
+	}
+
+	// (the fixed boxes on a page added for absolutely positioned ones: as every page has them)
+	function repeat(p:Int) {
+		if (fixed == null) return;
+		var flow:BlockFlow = cast (options.contexts ?? Contexts.all()).flow;
+		for (b in fixed.boxes) {
+			var at = fixed.places.get(b) ?? {x: 0.0, y: 0.0};
+			var space = new Space(fragments, fonts, fixed.width, fixed.height);
+			space.fixed = new Positioned();
+			var f = flow.positionedBox(b, space, at.x, at.y, fixed.width, fixed.height);
+			adopt(p, f.fragment, f.x, f.y);
+		}
+	}
+
+	// (a fragment on a page at x, y in its area)
+	function adopt(p:Int, f:Int, x:Float, y:Float) {
+		var r = pages[p].root;
+		fragments.adopt(r, f, x - fragments.x(r), y - fragments.y(r));
 	}
 
 	// (the document's fixed boxes, repeated on every page: those not in another, nor running)
