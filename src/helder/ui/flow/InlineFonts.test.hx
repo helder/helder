@@ -69,5 +69,41 @@ function tests() {
 			var s = set(made([{family: "U", ahem: false, ranges: "U+61-7A"}, {family: "U", ahem: true, ranges: "U+41-5A"}]), style("U", s -> {}));
 			equals([s.faceFor("A".code).family, s.faceFor("a".code).family], ["Ahem", "Inter"]);
 		});
+		test("line-height: normal holds the fallback faces a line's text is in (line-height-205)", () -> {
+			// (A and the space in Ahem, the first available font; b in Inter, taller and deeper)
+			var f = made([
+				{family: "AB", ahem: true, ranges: "U+20,U+41"},
+				{family: "AB", ahem: false, ranges: "U+62"},
+				{family: "A", ahem: true},
+				{family: "B", ahem: false}
+			]);
+			function line(build:InlineContent->Void, root:InlineBasicStyle):Array<Float> {
+				var c = new InlineContent(root, f);
+				build(c);
+				c.finish();
+				var l = new InlineLayout().layout(c, new InlineConstraints(1000));
+				return [l.lines, l.lineHeight(0), l.lineBaseline(0)];
+			}
+			function big(family:String, ?change:InlineBasicStyle->Void)
+				return style(family, s -> {
+					s.size = 100;
+					if (change != null) change(s);
+				});
+			var both = line(c -> c.addText("Ab", big("AB")), big("AB"));
+			// (as one span in each face: Inter's ascent and descent, past Ahem's 80 and 20)
+			var spans = line(c -> {
+				c.openBox(big("A"));
+				c.addText("A", big("A"));
+				c.closeBox();
+				c.openBox(big("B"));
+				c.addText("b", big("B"));
+				c.closeBox();
+			}, big("AB"));
+			equals(both, spans);
+			assert(both[1] > 100, "taller than Ahem's 100");
+			// (Ahem's alone without the b, and at a line-height given: the fallback's metrics left out)
+			equals(line(c -> c.addText("AA", big("AB")), big("AB"))[1], 100.0);
+			equals(line(c -> c.addText("Ab", big("AB", s -> s.height = 50)), big("AB", s -> s.height = 50))[1], 50.0);
+		});
 	});
 }

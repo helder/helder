@@ -164,7 +164,10 @@ pieces.
   atomic on the line, each with its layout bounds (a box's font's ascent
   and descent and its half-leading, the part above floored to a pixel as
   Blink's; an atomic's margin box, its baseline its own or its bottom
-  margin edge). A box is aligned once its children are in it: its
+  margin edge). At line-height: normal, each fallback face a box's text on
+  the line is drawn in (any face but its first available font) adds its
+  own ascent, descent and line gap to the box's bounds, as Blink's
+  AccumulateUsedFonts. A box is aligned once its children are in it: its
   vertical-align shift from its parent's baseline (sub and super by the
   parent's size, text-top, text-bottom and middle by its subtree's
   extent, lengths and percentages of its line height; in Blink's

@@ -449,6 +449,22 @@ class LineBuilder {
 	static inline function leadingAbove(leading:Float):Float
 		return Math.floor(half(leading));
 
+	// (line-height: normal's layout bounds of each face a run's glyphs are in
+	// other than its first available font, its own ascent, descent and line
+	// gap, as Blink's AccumulateUsedFonts: CSS 2.1 §10.8.1, CSS Inline 3 §4.3)
+	function usedFonts(s:Int, r:Int) {
+		var g = out.glyphs, set = g.runFonts(r), last = set.first;
+		for (i in g.runStart(r)...g.runStart(r) + g.runCount(r)) {
+			var face = g.face(i);
+			if (face == last || face == set.first) continue;
+			last = face;
+			var k = set.scale(face);
+			var a = Math.round(face.ascender * k), d = Math.round(-face.descender * k), gap = Math.round(face.lineGap * k);
+			var above = leadingAbove(gap);
+			contribute(s, a + above, d + gap - above);
+		}
+	}
+
 	// (bounds above and below a slot's baseline into its subtree's extent)
 	inline function contribute(s:Int, above:Float, below:Float) {
 		if (above > sTop[s]) sTop[s] = above;
@@ -1024,17 +1040,20 @@ class LineBuilder {
 		var height = 0.0, baseline = 0.0;
 		for (s in 0...slots)
 			metrics(s);
-		// (text in its own style where it differs from its box's)
+		// (text in its own style where it differs from its box's; at
+		// line-height: normal, each fallback face its glyphs are in too)
 		for (f in o.lFirst[k]...o.fragments)
 			if (o.fKind[f] == TextRun) {
-				var item = o.fItem[f], s = fSlot[f];
+				var item = o.fItem[f], s = fSlot[f], st = c.styles[c.styleOf(item)];
 				if (c.styleOf(item) != sStyle[s]) {
-					var st = c.styles[c.styleOf(item)], fi = c.font(item);
+					var fi = c.font(item);
 					var a = c.fonts.ascent(fi), d = c.fonts.descent(fi), lh = st.lineHeight();
 					if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(fi);
 					var leading = lu(lh) - (a + d), above = leadingAbove(leading);
 					contribute(s, a + above, d + leading - above);
 				}
+				var r = o.fRun[f];
+				if (r >= 0 && o.glyphs.runFallback(r) && Math.isNaN(st.lineHeight())) usedFonts(s, r);
 			}
 		// (innermost first: each one's shift from its subtree, its subtree into its parent's)
 		var s = slots - 1;
