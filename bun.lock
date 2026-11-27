@@ -5,12 +5,12 @@
     "": {
       "name": "helder",
       "dependencies": {
-        "@hxmc/cli": "0.1.0-nightly.20261126.b0f4f9c",
+        "@hxmc/cli": "0.1.0-nightly.20261127.1956dfe",
       },
       "devDependencies": {
         "@csstools/css-parser-algorithms": "4.0.3",
         "@csstools/css-tokenizer": "4.0.3",
-        "@hxmc/source": "0.1.0-nightly.20261126.b0f4f9c",
+        "@hxmc/source": "0.1.0-nightly.20261127.1956dfe",
         "@lukeed/html": "1.0.2",
         "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
         "lightningcss": "1.33.0",
@@ -34,21 +34,21 @@
 
     "@csstools/css-tokenizer": ["@csstools/css-tokenizer@4.0.3", "", {}, "sha512-gdkFe/Z4KU1q8Y5S3GYScXGcOnO56dgWwIs5+97Ij1VIKISItOIUlCXUq4VLbdnRclF+SSQ49sLsn3KeV111AA=="],
 
-    "@hxmc/cli": ["@hxmc/cli@0.1.0-nightly.20261126.b0f4f9c", "", { "optionalDependencies": { "@hxmc/darwin-arm64": "0.1.0-nightly.20261126.b0f4f9c", "@hxmc/darwin-x64": "0.1.0-nightly.20261126.b0f4f9c", "@hxmc/linux-arm64": "0.1.0-nightly.20261126.b0f4f9c", "@hxmc/linux-x64": "0.1.0-nightly.20261126.b0f4f9c", "@hxmc/win32-arm64": "0.1.0-nightly.20261126.b0f4f9c", "@hxmc/win32-x64": "0.1.0-nightly.20261126.b0f4f9c" }, "os": [ "linux", "win32", "darwin", ], "hasInstallScript": true, "bin": { "haxe": "hxmc/bootstrap/haxe", "hxmc": "hxmc/bootstrap/haxe" } }, "sha512-46NqK7AQH98ZJXqTajzYk+srBdw1saZQXDvnRRQCX1T8O5Nn+MD0c9v2GiLlftjCVXVDPgS1au1+3cusAlyrLw=="],
+    "@hxmc/cli": ["@hxmc/cli@0.1.0-nightly.20261127.1956dfe", "", { "optionalDependencies": { "@hxmc/darwin-arm64": "0.1.0-nightly.20261127.1956dfe", "@hxmc/darwin-x64": "0.1.0-nightly.20261127.1956dfe", "@hxmc/linux-arm64": "0.1.0-nightly.20261127.1956dfe", "@hxmc/linux-x64": "0.1.0-nightly.20261127.1956dfe", "@hxmc/win32-arm64": "0.1.0-nightly.20261127.1956dfe", "@hxmc/win32-x64": "0.1.0-nightly.20261127.1956dfe" }, "os": [ "linux", "win32", "darwin", ], "hasInstallScript": true, "bin": { "haxe": "hxmc/bootstrap/haxe", "hxmc": "hxmc/bootstrap/haxe" } }, "sha512-R5jpCY55o4ny2YsE4RUQ0IM6drFUJNgTeomR/jhxZiD2YNsvsPMGICDY34hIstMvwpNcM5uL8AizE4zZxN8M0A=="],
 
-    "@hxmc/darwin-arm64": ["@hxmc/darwin-arm64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "darwin", "cpu": "arm64" }, "sha512-65ZKIgUcVPf7O9NMsQJRQkwVFcgUS9sEWvWKvYsMNRtAPZWwr+TWYR+6sUGCcfXfzn1VivQnnkeOzyAvJ5Tb+Q=="],
+    "@hxmc/darwin-arm64": ["@hxmc/darwin-arm64@0.1.0-nightly.20261127.1956dfe", "", { "os": "darwin", "cpu": "arm64" }, "sha512-nAsXHOx1XxI0hsdfjPdjqLH9GQwSE35q/NcTTEMqJW2l0NrQ+ywMEH/XiIU4ShH7iazXA5oku9SoRVgJe8bc4w=="],
 
-    "@hxmc/darwin-x64": ["@hxmc/darwin-x64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "darwin", "cpu": "x64" }, "sha512-bPsM++DcVfr+JFzHdb29uvsjbHZOwbtwVbagMUjV71NUG8N8J8kgG3Ag9DLlc1Hk1i8neiFMHkTkmjBwX0Ns0w=="],
+    "@hxmc/darwin-x64": ["@hxmc/darwin-x64@0.1.0-nightly.20261127.1956dfe", "", { "os": "darwin", "cpu": "x64" }, "sha512-OdDCMitnJihe2ORMsDlIOcHq+JlR7QZ+ZnVmYVsYsiV2h4HFWnBZe0fad7W2+TDt/wBpn8Rt1jXyrrqMl36lWg=="],
 
-    "@hxmc/linux-arm64": ["@hxmc/linux-arm64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "linux", "cpu": "arm64" }, "sha512-4H/XBRM3jMumau1ZlWu08ypw0XJ4ukUxGKbSON7s/NrJVyQ0ygQU8Xndr+MlAA6H6hHb0kwroCHwJYEdUUvLMQ=="],
+    "@hxmc/linux-arm64": ["@hxmc/linux-arm64@0.1.0-nightly.20261127.1956dfe", "", { "os": "linux", "cpu": "arm64" }, "sha512-Sl9gEehoWLS1z+ltam48dkmF3ASDUr4A2dCAFbNWDzEFBrZPfQYUBr9QTWu/1gAcAGFMWNzr8xldShD46ygo4Q=="],
 
-    "@hxmc/linux-x64": ["@hxmc/linux-x64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "linux", "cpu": "x64" }, "sha512-MLrV5tWoUNLcpscNxkFimZAoK3W7ITLA9Kzrgk1b71qkEsgqZK5DpkQR81FLn/XFWz1OWD89Rf8DAMejAIPrMg=="],
+    "@hxmc/linux-x64": ["@hxmc/linux-x64@0.1.0-nightly.20261127.1956dfe", "", { "os": "linux", "cpu": "x64" }, "sha512-aREnFKTvKsNTTR0ENfGZMkBDEDPy/opmE5eYGjHf1cYfX8Zz0EJEFnpYKvJZkiKY4W3kw2WoVgrQzFU787zjEQ=="],
 
-    "@hxmc/source": ["@hxmc/source@0.1.0-nightly.20261126.b0f4f9c", "", { "peerDependencies": { "@hxmc/cli": "0.1.0-nightly.20261126.b0f4f9c" }, "bin": { "hxmc-rebuild": "hxmc/bootstrap/hxmc-rebuild" } }, "sha512-z8VSddOPqrY3KKpYJG9YIMdXOh6GrVFOe3QLMCm9n3/UuICVPkF/w6Pf6FSTVVodGs3BiA5lYFirCxplHVMbBA=="],
+    "@hxmc/source": ["@hxmc/source@0.1.0-nightly.20261127.1956dfe", "", { "peerDependencies": { "@hxmc/cli": "0.1.0-nightly.20261127.1956dfe" }, "bin": { "hxmc-rebuild": "hxmc/bootstrap/hxmc-rebuild" } }, "sha512-qGrdNG6mRonf1m2B5wXWDTszZzlw5jmDoXVDP7gWhxefxn+yWPO2V1fCrF3wcuhX2R17S7q5f1G71sNktjT+yQ=="],
 
-    "@hxmc/win32-arm64": ["@hxmc/win32-arm64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "win32", "cpu": "arm64" }, "sha512-CzdjIomd9gXPUTMy5BuFKW0E6hQED86AzWPYXOjz7QzaYdGeWCcdP3fQWGnOZVCuiPs+QpXeSZ8Ra8utRhxoKg=="],
+    "@hxmc/win32-arm64": ["@hxmc/win32-arm64@0.1.0-nightly.20261127.1956dfe", "", { "os": "win32", "cpu": "arm64" }, "sha512-BIkbuK86jxIxr5l1FOUzD/wjIBwV01rsTZPmuDWavT9IRoVmLfvG3i10Nq+T54DUn+dKnArHbReKjDzUp3gS0Q=="],
 
-    "@hxmc/win32-x64": ["@hxmc/win32-x64@0.1.0-nightly.20261126.b0f4f9c", "", { "os": "win32", "cpu": "x64" }, "sha512-x6xj6PSNxCoWXasgByeJeV9J/K3rPUahSFumIO8PzCDUAugxe2UB5R3aZrIvH6mzBuKaTlI2cUhDHiIxIJHcpQ=="],
+    "@hxmc/win32-x64": ["@hxmc/win32-x64@0.1.0-nightly.20261127.1956dfe", "", { "os": "win32", "cpu": "x64" }, "sha512-9Nk8HvDpCFXU4eOqvCHavQkvlIszuNKPvTJzMQ5l/d70oHkIbOneSkt4t23QftIoQuEpuOcUE55XDmSeh9QkNA=="],
 
     "@lukeed/html": ["@lukeed/html@1.0.2", "", { "dependencies": { "entities": "^8.1.0" } }, "sha512-WjYr6icU/YuTzjrMsF0mejoxM3BeJxbj433cGySiOn6YM6vgZG21PfJQn1zO4G4L8kgF54ddDgfKtCZfFZQ7ag=="],
 
