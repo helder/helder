@@ -91,6 +91,11 @@ class Box {
 	// (its content box's width and height when its contents were last laid out: a lazy layout's estimate)
 	public var laidWidth(get, set):Float;
 	public var laidHeight(get, set):Float;
+	// (the fragment a lazy layout last gave it skipped, at the cache's key and the fragments' generation it was
+	// made in: given again while it stays skipped; -1: none)
+	public var skipped(get, set):Int;
+	public var skippedKey(get, set):Float;
+	public var skippedIn(get, set):Int;
 	public var minContent(get, set):Float;
 	public var maxContent(get, set):Float;
 	// (its inline content as BlockLines built it, kept while its text and styles stay: BlockLines' Built)
@@ -195,6 +200,24 @@ class Box {
 
 	inline function set_laidWidth(v:Float):Float
 		return laid().laidWidth = v;
+
+	inline function get_skipped():Int
+		return state == null ? -1 : state.skipped;
+
+	inline function set_skipped(v:Int):Int
+		return state == null && v == -1 ? v : laid().skipped = v;
+
+	inline function get_skippedKey():Float
+		return state == null ? Math.NaN : state.skippedKey;
+
+	inline function set_skippedKey(v:Float):Float
+		return laid().skippedKey = v;
+
+	inline function get_skippedIn():Int
+		return state == null ? -1 : state.skippedIn;
+
+	inline function set_skippedIn(v:Int):Int
+		return laid().skippedIn = v;
 
 	inline function get_laidHeight():Float
 		return state == null ? Math.NaN : state.laidHeight;
@@ -348,6 +371,9 @@ private class BoxState {
 	public var cacheFragment = -1;
 	public var laidWidth = Math.NaN;
 	public var laidHeight = Math.NaN;
+	public var skipped = -1;
+	public var skippedKey = Math.NaN;
+	public var skippedIn = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
 	public var inlineCache:Null<Any> = null;

@@ -155,7 +155,14 @@ class DocumentView {
 		// (at another size where only viewport units read it: the elements they styled, styled again, the
 		// boxes and their kept content stay)
 		var resized = styles != null && (width != viewWidth || height != viewHeight) && !styles.holds(media);
-		var restyled = resized ? styles.resize(media) : null;
+		// (what a block a lazy layout skipped holds not matched now: the block styled again whole when laid out)
+		var blocks = new ObjectMap<Element, Box>();
+		if (resized && lazy != null) for (b in lazy.boxes) if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE) blocks.set(cast b.node, b);
+		var restyled = resized ? styles.resize(media, el -> {
+			var b = blocks.get(el);
+			if (b != null) unstyled.set(b, true);
+			b != null;
+		}) : null;
 		if (styles == null || resized && restyled == null) {
 			styles = cascade(document, media, options);
 			// (ex, ch, cap, ic and line-height: normal from the first available font, as styles compute)
@@ -265,6 +272,11 @@ class DocumentView {
 	public function within(top:Float, bottom:Float)
 		window = [top, bottom];
 
+	// Whether the last layout skipped a block in top...bottom: what a frame
+	// showing it would show without its contents.
+	public function unlaid(top:Float, bottom:Float):Bool
+		return lazy != null && lazy.skipped(top, bottom);
+
 	// whether the last layout skipped some of it
 	public var partial(get, never):Bool;
 
@@ -307,8 +319,23 @@ class DocumentView {
 
 	// How far an anchor's block moved since anchor gave it (0: it isn't laid out now).
 	public function moved(a:DocumentAnchor):Float {
-		var f = fragmentOf(a.box);
-		return f >= 0 ? fragments.absolute(f).y - a.y : 0;
+		// (down from the root through its ancestors' fragments: a frame's anchor without every fragment mapped)
+		var path = [], b = a.box;
+		while (b != null) {
+			path.push(b);
+			b = b.parent;
+		}
+		var f = root;
+		if (f < 0 || fragments.box(f) != path[path.length - 1]) return 0;
+		var y = fragments.y(f), k = path.length - 1;
+		while (--k >= 0) {
+			var c = fragments.first(f);
+			while (c >= 0 && !(fragments.kind(c) == Fragments.BOX && fragments.box(c) == path[k])) c = fragments.next(c);
+			if (c < 0) return 0;
+			f = c;
+			y += fragments.y(f);
+		}
+		return y - a.y;
 	}
 
 	// A box laid out where a lazy layout skipped it (a link's target): the
@@ -376,17 +403,41 @@ class DocumentView {
 		var out = [];
 		for (list in pending) for (el in list) out.push(el);
 		pending.clear();
+		for (b in unstyled.keys()) elementsOf(b, out);
+		unstyled.clear();
 		return out;
 	}
+
+	// (the elements of a block kept to style again whole, in tree order)
+	static function elementsOf(b:Box, out:Array<Element>) {
+		var el:Element = cast b.node, stack:Array<Node> = [el];
+		while (stack.length > 0) {
+			var n = stack.pop();
+			if (n.nodeType != Node.ELEMENT_NODE) continue;
+			out.push(cast n);
+			var c = n.lastChild;
+			while (c != null) {
+				stack.push(c);
+				c = c.previousSibling;
+			}
+		}
+	}
+
+	// (the blocks a resize's changed rules weren't matched in, while skipped: styled again whole when laid out)
+	final unstyled = new ObjectMap<Box, Bool>();
 
 	// (laid out at the view's size from the cache; the fragments of the layouts
 	// before it, kept for the cache, dropped once they are a few times a whole
 	// layout's, and everything laid out afresh; the elements kept to style
 	// again in the blocks it will lay out styled first)
 	function lay():Int {
-		if (pending.keys().hasNext() && lazy != null && window != null) {
+		if ((pending.keys().hasNext() || unstyled.keys().hasNext()) && lazy != null && window != null) {
 			var due = [];
 			for (b in lazy.within(window[0], window[1])) {
+				if (unstyled.exists(b)) {
+					unstyled.remove(b);
+					elementsOf(b, due);
+				}
 				var list = pending.get(b);
 				if (list == null) continue;
 				pending.remove(b);

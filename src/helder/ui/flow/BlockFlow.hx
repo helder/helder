@@ -34,14 +34,27 @@ class BlockFlow implements FormattingContext {
 		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null && (ex == null || ex.empty || clear && box.flags & Box.UNFLOATED != 0);
 		var cached = reusable ? hit(box, key, space) : -1;
 		if (cached >= 0) return cached;
-		var floats = ex == null ? 0 : ex.count, skipped = space.lazy != null ? space.lazy.count : 0;
+		var lazy = space.lazy, frags = space.fragments;
+		// (skipped before at this width and still outside the window: the same fragment)
+		if (lazy != null && box.skipped >= 0 && box.skippedKey == key && box.skippedIn == frags.generation && reusable
+			&& lazy.again(box, space.top, frags.height(box.skipped)))
+			return box.skipped;
+		var floats = ex == null ? 0 : ex.count, skipped = lazy != null ? lazy.count : 0;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
 		if (clear && (ex == null || ex.count == floats)) box.flags |= Box.UNFLOATED else box.flags &= ~Box.UNFLOATED;
-		// (some of it skipped by a lazy layout: not kept, laid out again where it is seen)
-		if (space.lazy != null && space.lazy.count != skipped) {
+		// (some of it skipped by a lazy layout: not kept, laid out again where it is seen; skipped itself, its
+		// fragment kept for the next layout that skips it)
+		if (lazy != null && lazy.count != skipped) {
 			box.uncache();
+			if (lazy.count == skipped + 1 && lazy.boxes[skipped] == box) {
+				box.skipped = f;
+				box.skippedKey = key;
+				box.skippedIn = frags.generation;
+			} else
+				box.skipped = -1;
 			return f;
 		}
+		box.skipped = -1;
 		keep(box, key, space, space.fragmentation == null ? f : -1);
 		return f;
 	}
@@ -106,6 +119,7 @@ class BlockFlow implements FormattingContext {
 			box.laidWidth = space.fragments.width(f);
 			box.laidHeight = space.fragments.height(f);
 			box.flags |= Box.KEPT;
+			box.skipped = -1;
 			return f;
 		}
 		var m = box.style.model(), cb = space.width;
@@ -117,7 +131,11 @@ class BlockFlow implements FormattingContext {
 		box.bottomPositive = mb > 0 ? mb : 0;
 		box.bottomNegative = mb < 0 ? mb : 0;
 		box.through = false;
-		return space.fragments.add(Fragments.BOX, box, box.laidWidth > 0 ? box.laidWidth : cb, h);
+		var f = space.fragments.add(Fragments.BOX, box, box.laidWidth > 0 ? box.laidWidth : cb, h);
+		box.skipped = f;
+		box.skippedKey = cb;
+		box.skippedIn = space.fragments.generation;
+		return f;
 	}
 
 	// ---- block containers

@@ -257,6 +257,8 @@ class PaintOrder {
 		while (k >= 0) {
 			var kx = x + f.x(k), ky = y + f.y(k);
 			switch f.kind(k) {
+				// (a block a lazy layout skipped: nothing of it painted, its background never seen without its text)
+				case Fragments.BOX if (f.box(k).skipped == k && f.box(k).skippedIn == f.generation):
 				case Fragments.BOX:
 					var b = f.box(k);
 					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else if (b.floating) {

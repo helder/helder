@@ -51,10 +51,9 @@ class DocumentNode extends helder.ui.Node {
 	var anchor:Null<DomPosition> = null;
 	var dragged = false;
 	var hooked:Null<helder.ui.Ui> = null;
-	// (the scroll's top where it was last laid out, and when)
+	// (the scroll's top where it was last laid out; how many times this frame's settles asked)
 	var lastTop = 0.0;
-	var lastReveal = 0.0;
-	static inline var LEAP = 0.032;
+	var rounds = 0;
 
 	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
 	public function new(document:Document, cascade:DocumentView.DocumentCascade, ?options:DocumentViewOptions) {
@@ -96,6 +95,7 @@ class DocumentNode extends helder.ui.Node {
 	}
 
 	function flush() {
+		rounds = 0;
 		if (view.styles == null) return;
 		view.watch();
 		var t0 = Timer.stamp();
@@ -110,31 +110,39 @@ class DocumentNode extends helder.ui.Node {
 				ui.requestFrame();
 			}
 		}
-		uncover();
+	}
+
+	// (Ui.update's, after its layout, the input of the frame read and the scroll where it shows it: what it
+	// brings into view laid out before the frame is drawn, a drag's or a live resize's as any)
+	@:allow(helder.ui.Ui) override function settle():Bool
+		return uncover();
+
+	override function attach(u:Null<helder.ui.Ui>) {
+		if (ui != null && ui != u) ui.settlers.remove(this);
+		super.attach(u);
+		if (u != null && u.settlers.indexOf(this) < 0) u.settlers.push(this);
 	}
 
 	// (a long document laid out lazily: what the scroll brings near that it skipped, laid out, what was at the
 	// scroll's top kept there)
-	function uncover() {
-		if (!view.partial) return;
+	function uncover():Bool {
+		if (!view.partial) return false;
 		var w = scrolled();
-		if (w == null) return;
-		var t0 = Timer.stamp();
+		if (w == null) return false;
+		// (a frame's settles after its first: only what is seen itself, where it isn't laid out yet)
+		if (rounds++ > 0 && !view.unlaid(w.top, w.top + w.height)) return false;
+		var t0 = Timer.stamp(), b0 = DocumentStats.bytes();
 		// (a screen around what is seen; what is seen alone where the scroll leaps, a thumb's drag: what it
-		// passes isn't seen again, laid out every LEAP s at most meanwhile, a frame asked for the rest)
+		// passes isn't seen again. Before the frame is drawn: no box seen without its contents)
 		var leaps = Math.abs(w.top - lastTop) > 2 * w.height;
-		if (leaps && t0 - lastReveal < LEAP) {
-			ui.requestFrame();
-			return;
-		}
 		lastTop = w.top;
 		var moved = view.reveal(w.top - (leaps ? 0 : w.height), w.top + w.height + (leaps ? 0 : w.height), w.top);
-		lastReveal = t0;
-		if (moved == null) return;
-		stats.laid(Timer.stamp() - t0);
+		if (moved == null) return false;
+		stats.laid(Timer.stamp() - t0, DocumentStats.bytes() - b0);
 		docHeight = heightOf();
 		markDirty();
 		keep(w.scroller, moved);
+		return true;
 	}
 
 	// (the scroller around it, and the part of the document it shows: its top and height)
@@ -200,7 +208,7 @@ class DocumentNode extends helder.ui.Node {
 		var w = ui.walk;
 		var x0 = Math.max(w.x0, x), y0 = Math.max(w.y0, y), x1 = Math.min(w.x1, x + width), y1 = Math.min(w.y1, y + height);
 		if (x1 <= x0 || y1 <= y0) return;
-		var t0 = Timer.stamp();
+		var t0 = Timer.stamp(), b0 = DocumentStats.bytes();
 		canvas.translate(x, y);
 		painter.begin(canvas, Math.ceil(width), Math.ceil(height), ui.scale, x0 - x, y0 - y, x1 - x, y1 - y);
 		view.paint(painter, [x0 - x, y0 - y, x1 - x, y1 - y]);
@@ -211,7 +219,7 @@ class DocumentNode extends helder.ui.Node {
 			for (r in view.selection(selection.from, selection.to, y0 - y, y1 - y)) canvas.rect(r.x, r.y, r.width, r.height, 0, c, 0, 0);
 		}
 		canvas.translate(-x, -y);
-		stats.painted(Timer.stamp() - t0, painter.rasters);
+		stats.painted(Timer.stamp() - t0, painter.rasters, DocumentStats.bytes() - b0);
 	}
 
 	// ---- input
@@ -464,6 +472,9 @@ class DocumentStats {
 	public var lastRedo(default, null) = 0;
 	public var layouts(default, null) = 0;
 	public var layoutMs(default, null) = 0.0;
+	// (what the layouts and the paints allocated, in bytes: where a garbage collector knows; else 0)
+	public var layoutBytes(default, null) = 0.0;
+	public var paintBytes(default, null) = 0.0;
 	public var lastLayout(default, null) = 0.0;
 	public var paints(default, null) = 0;
 	public var paintMs(default, null) = 0.0;
@@ -475,7 +486,7 @@ class DocumentStats {
 
 	public function reset() {
 		restyles = layouts = paints = rasters = 0;
-		restyleMs = layoutMs = paintMs = lastRestyle = lastLayout = lastPaint = 0;
+		restyleMs = layoutMs = paintMs = lastRestyle = lastLayout = lastPaint = layoutBytes = paintBytes = 0;
 	}
 
 	@:allow(helder.ui.box.DocumentNode) function restyled(s:Float, redo:Int) {
@@ -484,14 +495,19 @@ class DocumentStats {
 		lastRedo = redo;
 	}
 
-	@:allow(helder.ui.box.DocumentNode) function laid(s:Float) {
+	@:allow(helder.ui.box.DocumentNode) function laid(s:Float, bytes = 0.0) {
 		layouts++;
 		layoutMs += lastLayout = s * 1000;
+		layoutBytes += bytes;
 	}
 
-	@:allow(helder.ui.box.DocumentNode) function painted(s:Float, r:Int) {
+	@:allow(helder.ui.box.DocumentNode) function painted(s:Float, r:Int, bytes = 0.0) {
 		paints++;
 		paintMs += lastPaint = s * 1000;
 		rasters += r;
+		paintBytes += bytes;
 	}
+
+	@:allow(helder.ui.box.DocumentNode) static inline function bytes():Float
+		return #if (target.name == "hxmc") hxmc.GcStats.bytesAllocated() #else 0 #end;
 }

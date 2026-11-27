@@ -135,8 +135,9 @@ class CssRuleIndex<T> {
 
 	// every element under root (itself not, unless an element) in tree
 	// order with the entries it matches, the Bloom filter kept as it goes:
-	// f's array is reused, copy what is kept
-	public function walk(root:Node, f:(Element, Array<CssIndexed<T>>) -> Void, ?scope:Element) {
+	// f's array is reused, copy what is kept; those skip is true of left
+	// out, and what is in them
+	public function walk(root:Node, f:(Element, Array<CssIndexed<T>>) -> Void, ?scope:Element, ?skip:Element->Bool) {
 		var bloom = CssBloom.of(root.nodeType == Node.ELEMENT_NODE ? cast root : null), out = [];
 		function visit(el:Element) {
 			out.resize(0);
@@ -147,7 +148,7 @@ class CssRuleIndex<T> {
 		var n = root.nodeType == Node.ELEMENT_NODE ? root : root.firstChild;
 		var entered:Array<Element> = [];
 		while (n != null) {
-			if (n.nodeType == Node.ELEMENT_NODE) {
+			if (n.nodeType == Node.ELEMENT_NODE && (skip == null || !skip(cast n))) {
 				var el:Element = cast n;
 				visit(el);
 				if (el.firstChild != null) {
