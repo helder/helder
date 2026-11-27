@@ -83,7 +83,12 @@ tree without an object per fragment: a fragment is an id; its kind
 (`BOX`, `LINE`, `SPAN`: an inline box's part on a line, `TEXT`), box,
 parent, first child and next sibling, place in its parent's border box,
 size, baseline, text range (a span's edges), glyph run. Glyph runs are
-helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
+helder.canvas's `ShapedRun`s, what paint and PdfWriter draw. Each run's
+text is its inline content's whole text, and each glyph has its cluster's
+characters (a ligature's several), so PdfWriter sees a line's runs as one
+text: a run of the other direction becomes an ActualText span, and a PDF
+reader gets the characters in logical order (`ShapedRun.shown()`: a run's
+own characters).
 
 ## Paint and hit testing
 

@@ -90,10 +90,12 @@ class HitTest {
 	static function offset(f:Fragments, id:Int, x:Float):Int {
 		var r = f.run(id), start = f.start(id), end = f.end(id);
 		if (r < 0) return start;
-		var run = f.runs[r];
+		var run = f.runs[r], base = 0x7FFFFFFF;
+		// (its characters' offsets are in its content's whole text: the fragment's first the smallest)
+		for (k in 0...run.count) if (run.starts[k] < base) base = run.starts[k];
 		for (k in 0...run.count) {
 			var gx = run.xs[k], next = k + 1 < run.count ? run.xs[k + 1] : f.width(id);
-			if (x < (gx + next) / 2) return clamp(start + run.starts[k], start, end);
+			if (x < (gx + next) / 2) return clamp(start + run.starts[k] - base, start, end);
 		}
 		return end;
 	}
