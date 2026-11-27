@@ -481,6 +481,67 @@ draws them (5,752 drawn in about 30 s, 3 skipped: css-break's, in columns):
 
 Pending by stage: generated content 257, positioning 203, inline 114, tables 81, floats 80, fonts 18, ui 12.
 
+## Geometry
+
+The reftests' pages laid out by helder.ui.box against Chromium's layout
+of them, box by box (the css-geometry lane, not a gate): where a pending
+test's layout first goes wrong, instead of how many pixels differ.
+
+```sh
+bun run test css-geometry                       # every test, then the property; bin/css/geometry/report.md
+bun run test css-geometry tables/fixed-table    # those alone: a few print their differences
+GEOMETRY_TOLERANCE=1 bin/css/CssGeometryCheck floats   # the snapshots kept: no browser
+```
+
+- `geometry.mjs` loads each test CssReftestCheck draws on a screen in
+  headless Chromium as goldens.mjs does (its flags, fonts, 800 by 600,
+  WPT's URL; that setup is copied, since goldens.mjs's own text keys the
+  goldens) and takes `DOMSnapshot.captureSnapshot`: each element's border
+  box, an inline element's rectangles a line (`getClientRects`, without
+  the anonymous blocks around the blocks in it), each text node's text
+  boxes with their range of its data, `::before`, `::after`, `::marker`
+  and `::first-letter` under their element; every node named by its DOM
+  path (`html>body>table>tbody>tr[1]>td[2]`, `[n]` where siblings share
+  a name). Transformed subtrees are left out (their boxes aren't where
+  layout put them), as are SVG's insides, `<br>` and shadow trees. Kept
+  as JSON under bin/css/geometry/<WPT revision>-chromium-<version>-<hash
+  of the script and fonts>/, the directory in `current`: a snapshot there
+  is never taken again.
+- `CssGeometryCheck.hx` lays each page out natively (`DocumentView`,
+  `WptPage`'s options) and reads its fragments as the same shape
+  (`helder.ui.box.Geometry`: a box's fragments in page coordinates, an
+  inline box's one a line, anonymous boxes left out), then compares
+  (`GeometryDiff`): nodes matched by path, each rectangle within 0.5 px
+  (`GEOMETRY_TOLERANCE`), a text node's fragments as lines (those touching
+  on a line one) with their ranges, white space at a range's ends left
+  out (generated text's ranges not compared). The likely cause (`first`)
+  is found from the root down: the first child off from where its parent
+  puts it, earlier siblings matching, until a node is itself moved or
+  none of its children differ; its delta per edge (helder's minus
+  Chromium's: x, y, w, h), then the next differences in tree order, then
+  the nodes on one side only. Writes bin/css/geometry/report.md (counts
+  against the reftests' results, a line a test) and
+  bin/css/geometry/results/<test>.json.
+- `GeometryProperty.hx` holds generated nested blocks (widths, heights,
+  margins, padding, borders, lines of Ahem) against Chromium as a
+  helder.test property: `Chromium.compare(html)` (`Chromium.hx`, one
+  browser for the process, `geometry.mjs --serve`) is the hook for others.
+  100 cases in about 2 s; a failure is shrunk to its smallest page.
+
+At WPT's revision of the reftests, Chromium 141 (2026-11-28): 6,923 of
+8,710 tests match. Of the 7,142 passing reftests 6,302 match; the 840 that
+don't are differences the reftest can't see, since the test and its
+reference are both drawn by helder: punctuation no bundled font has
+(first-letter-punctuation-*, 219: Chromium takes a macOS font), outside
+list markers (about 160: Chromium's box is the glyph alone, 3.5 px
+further left), fonts' matching and synthesis (about 140), a block holding
+only zero-size text collapsing through (70, its parent 16 px short),
+table-column boxes (0 wide here), iframes (no nested document), and tests
+Chromium itself fails (floats-rule3-outside-*). Of the 1,568 pending ones,
+947 differ and 621 match: those fail on paint alone. Snapshots of every
+test take about 150 s (two pages); with them kept, the comparison takes
+11 s (1.3 ms a test).
+
 ## GCPM
 
 WPT's css-gcpm tests (visual, paged, without references: what passes is
