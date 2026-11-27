@@ -183,6 +183,11 @@ class CssStyle extends CssStyleGroups {
 		return p == null ? [] : terms(p);
 	}
 
+	// A longhand's computed value as text (text's, without its shorthands,
+	// aliases and custom properties: no grammar or shorthand linked for it)
+	public function written(p:CssProperty):String
+		return CssValues.written(CssProperties.name(p), terms(p), context());
+
 	public function text(property:String):String {
 		if (StringTools.startsWith(property, "--")) {
 			var v = customs.get(property);

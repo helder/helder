@@ -182,7 +182,7 @@ class FontMatch {
 						var entry = switch pair[0] {
 							case Token(_.kind => Number(n, true, _)): Std.int(n);
 							case Function(_):
-								switch helder.css.CssValues.read("z-index", [pair[0]]) {
+								switch helder.css.CssValues.reading("z-index", [pair[0]]) {
 									case Terms(t): switch helder.css.CssComputed.terms("z-index", t, helder.css.CssValues.DEFAULT) {
 											case [Number(n, _)]: Std.int(n);
 											case _: -1;
@@ -191,7 +191,7 @@ class FontMatch {
 								}
 							case _: -1;
 						}
-						var color = switch helder.css.CssValues.read("color", pair.slice(1)) {
+						var color = switch helder.css.CssValues.reading("color", pair.slice(1)) {
 							case Terms(t): helder.css.CssRgba.argb(helder.css.CssComputed.terms("color", helder.css.CssCanonical.terms("color", t), helder.css.CssValues.DEFAULT));
 							case _: null;
 						}

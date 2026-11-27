@@ -106,7 +106,7 @@ class BoxImages {
 						c.keyword != null ? null : 'rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${c.a})';
 					case _: null;
 				}
-			case _: ~/(\d)px\b/g.replace(s.text(name), "$1");
+			case _: ~/(\d)px\b/g.replace(s.written(p), "$1");
 		}
 	}
 

@@ -160,9 +160,8 @@ class CssResolver {
 				var v = substitute(c.d.values ?? []);
 				// (invalid at computed-value time: as unset)
 				if (v == null) return defaulted(p);
-				var declared = c.d.property;
 				// (a logical longhand's value read as it was declared)
-				var spec = c.d.shorthand != null ? fromShorthand(c.d.shorthand, declared, v) : read(declared, v);
+				var spec = rereader == null ? null : rereader(c.d.property, c.d.shorthand, v);
 				switch spec {
 					case null: defaulted(p);
 					// (a CSS-wide keyword substituted is that keyword where the declaration stands)
@@ -201,6 +200,17 @@ class CssResolver {
 	static function origin(rank:Int):Int
 		return rank <= 2 ? rank : 5 - rank;
 
+	// (a value with var() read again by its grammar once substituted:
+	// installed where such values can be, CssCascade.styles and a compiled
+	// sheet that has one (CssTheme, CssModule), so that a program whose
+	// sheets have none links no grammar matcher)
+	static var rereader:Null<(property:String, shorthand:Null<String>, values:Array<CssValue>) -> Null<CssSpecified>> = null;
+
+	public static function rereads() {
+		rereader = (p, shorthand, v) -> shorthand != null ? fromShorthand(shorthand, p, v) : read(p, v);
+		CssValues.reading = CssValues.read;
+	}
+
 	// (a substituted value read once for every element that has it)
 	static function read(p:String, v:Array<CssValue>):Null<CssSpecified> {
 		var key = p + ":" + Css.serialize(v);
@@ -212,7 +222,7 @@ class CssResolver {
 
 	static final READS = new Map<String, Null<CssSpecified>>();
 
-	function fromShorthand(shorthand:String, p:String, v:Array<CssValue>):Null<CssSpecified> {
+	static function fromShorthand(shorthand:String, p:String, v:Array<CssValue>):Null<CssSpecified> {
 		var s = read(shorthand, v);
 		return switch s {
 			case Terms(t):
