@@ -42,14 +42,16 @@ import helder.scenario.Steps.Step;
 //   sealed, helder.os.Seal: its trash, places, stores' files, an app's real
 //   files refused, a refusal its failure even when the program catches it)
 // - sizes: no NaN, infinite or negative box, offset or content size
-// - window: what is shown, outside every clipping box, laid out inside the
+// - window: what is shown and draws (content, a background), outside every
+//   clipping box, laid out inside the
 //   window (its layout's box: a transform's move, a sheet at a detent, is
 //   the program's own)
 // - settles: after each step its clock comes to rest (no frame asked for,
 //   nothing animating, no timer due within a second) within a minute
 // - steady: settled, a frame later nothing has moved and none is asked for
-// - scrolls: a scroller wheeled to its end is at its end, its last row
-//   shown; to its start at 0
+// - scrolls: a wheel to an end moves a scroller under it that way (the
+//   innermost, or one around it: nested scrolling), unless all are there;
+//   the innermost at its end, its last row shown
 // - kept: idle time moves no scroll position and makes no node again;
 //   typing moves no scroller around another field (but to its new end,
 //   its content shorter) and keeps the field it types into
@@ -287,7 +289,8 @@ class Monkey {
 			}
 		}
 		if (on("window")) for (n in now.nodes) {
-			if (n.clipped || !n.shown) continue;
+			// (what draws: its content (a text, an image), else a background; an empty box draws nothing)
+			if (n.clipped || !n.shown || !(n.node.hasContent() || n.node.style.background.a > 0)) continue;
 			// (its layout's box: a transform's move is the program's own (a sheet at a detent, a drawer), not an overflow)
 			var b = n.laid, e = 0.5;
 			if (b.x < -e || b.y < -e || b.x + b.width > s.ui.width + e || b.y + b.height > s.ui.height + e) {
@@ -310,19 +313,24 @@ class Monkey {
 			}
 		}
 		if (after != null && on("scrolls") && after.step.kind == "scroll" && (after.step.to == "end" || after.step.to == "start")) {
-			var v = after.before.target(after.step);
-			if (v != null) {
-				var end = after.step.to == "end", sv = s.view(v.node);
-				if (sv != null && sv.scrollsY) {
-					var far = Math.max(0, sv.contentHeight - sv.height);
-					if (Math.abs(sv.offsetY - (end ? far : 0)) > 1) fail("scrolls", '${at(after)}${describe(v.node)} is scrolled to ${r(sv.offsetY)}, not its ${end ? "end" : "start"} (${r(end ? far : 0)}: ${r(sv.contentHeight)} of content, ${r(sv.height)} shown)');
-					else if (end) {
-						var last = s.last(v.node);
-						if (last != null) {
-							var lb = last.windowBounds();
-							if (lb.y + lb.height > sv.y + sv.height + 1) fail("scrolls", '${at(after)}${describe(v.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
-						}
-					}
+			var end = after.step.to == "end", under = after.before.under(after.step);
+			// (nested scrollers: the wheel may go to one around the innermost first, by design (a large
+			// title collapsing): one of those under it moves that way, unless all are there already)
+			var moved = false, there = true, inner:Null<{node:Node, offsetY:Float}> = null;
+			for (v in under) {
+				var sv = s.view(v.node);
+				if (sv == null) continue;
+				var far = Math.max(0, sv.contentHeight - sv.height);
+				if (end ? sv.offsetY > v.offsetY + 0.5 : sv.offsetY < v.offsetY - 0.5) moved = true;
+				if (Math.abs(v.offsetY - (end ? Math.max(0, v.contentHeight - v.height) : 0)) > 1) there = false;
+				inner = v;
+			}
+			if (inner != null && !moved && !there) fail("scrolls", '${at(after)}${describe(inner.node)} and the scrollers around it did not move toward their ${end ? "end" : "start"}');
+			else if (inner != null && end) {
+				var sv = s.view(inner.node), last = s.last(inner.node);
+				if (sv != null && last != null && Math.abs(sv.offsetY - Math.max(0, sv.contentHeight - sv.height)) <= 1) {
+					var lb = last.windowBounds();
+					if (lb.y + lb.height > sv.y + sv.height + 1) fail("scrolls", '${at(after)}${describe(inner.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
 				}
 			}
 		}
@@ -879,18 +887,17 @@ private class Snapshot {
 	public function box(n:Node):Null<helder.os.Rect>
 		return boxes.get(n);
 
-	// (the scroller a scroll step wheels: the innermost one under its point, as it was)
-	public function target(s:Step):Null<{node:Node}> {
-		var p:Dynamic = s.query;
+	// (the scrollers a scroll step's point is in, as they were, the outermost first)
+	public function under(s:Step):Array<{node:Node, offsetY:Float, contentHeight:Float, height:Float}> {
+		var p:Dynamic = s.query, out = [];
 		if (!Std.isOfType(p, String) && p != null && Reflect.hasField(p, "x")) {
-			var found = null;
 			for (v in views)
-				if (p.x >= v.x && p.y >= v.y && p.x < v.x + v.width && p.y < v.y + v.height) found = v;
-			return found == null ? null : {node: found.node};
-		}
-		for (v in views)
-			if (v.node.semantics?.label == p) return {node: v.node};
-		return null;
+				if (v.scrollsY && p.x >= v.x && p.y >= v.y && p.x < v.x + v.width && p.y < v.y + v.height) out.push(v);
+		} else for (v in views)
+			if (v.scrollsY && v.node.semantics?.label == p) out.push(v);
+		// (outermost first: each contains the next)
+		out.sort((a, b) -> a.node.contains(b.node) ? -1 : b.node.contains(a.node) ? 1 : 0);
+		return [for (v in out) {node: v.node, offsetY: v.offsetY, contentHeight: v.contentHeight, height: v.height}];
 	}
 }
 
