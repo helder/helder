@@ -1,0 +1,7 @@
+.card-title {
+	composes: base from "./base.module.css";
+	width: 40px;
+}
+.cardTitle { color: red }
+.default { color: blue }
+.__proto__ { color: green }

@@ -58,7 +58,13 @@ class Frontend implements helder.compiler.Plugin {
 			// (helder's declaration files as its Haxe types make them, before tsgo reads them)
 			Generator.ensure(source());
 			phase("declarations");
-			project = Project.check(entry, Path.join([source(), "helder/typescript/globals.d.ts"]), p -> api = new Api(p));
+			var root = core.Define.rawDefinedValueSafe(com.defines, "helder.root", "");
+			project = Project.check(entry, Path.join([source(), "helder/typescript/globals.d.ts"]), root == "" ? Sys.getCwd() : root, p -> api = new Api(p));
+			var css = [for (m in project.css.active) m.files[0]];
+			if (css.length > 0) {
+				actx.configMacros.push('helder.css.CssModule.defineTypeScript(${haxe.Json.stringify(css)})');
+				actx.classes.push(new core.Globals.GlobalTypePath(["helder", "typescript"], "CssModuleKeep"));
+			}
 			phase("check (tsgo)");
 			// (its assets' files bundled: the executable's resources are the build's before it is typed)
 			helder.typescript.lower.TsAssets.bundle(com, project);
@@ -88,6 +94,10 @@ class Frontend implements helder.compiler.Plugin {
 		}
 		if (ready == null) throw "TSHX004: the TypeScript program was not prepared";
 		if (ready.error != null) throw ready.error;
+		if (deps != "") {
+			var css = [for (m in ready.project.css.active) {file: m.files[0], files: m.files, names: m.signature}];
+			sys.io.File.saveContent(deps + ".css.json", haxe.Json.stringify({root: ready.project.css.root, modules: css}));
+		}
 		// (the manifest the build's typing made: each module's on its declaration class)
 		if (ready.api != null) {
 			var parts = [];
@@ -108,6 +118,11 @@ class Frontend implements helder.compiler.Plugin {
 		var dev = core.Define.rawDefined(com.defines, "hxmc.dev");
 		hxmc.Main.generate(com, com.file, (com, p) -> {
 			phase("lower runtime");
+			// The keep lets hxmc lower the Haxe installers. ES modules call them in evaluation order.
+			if (ready.project.css.active.iterator().hasNext()) for (f in p.inits.copy()) if (f.name == "helder_typescript_CssModuleKeep__init") {
+				p.inits.remove(f);
+				p.roots.remove(f);
+			}
 			var frontend = new Lowering(ready.project, p, ready.api, dev, name -> core.Define.rawDefined(com.defines, name) ? core.Define.rawDefinedValueSafe(com.defines, name, "1") : null);
 			// (a TSHX004 of a program importing another helder than this one: said so)
 			try frontend.lower() catch (e:Dynamic) {
@@ -118,7 +133,7 @@ class Frontend implements helder.compiler.Plugin {
 			// (what the program links of helder's API: its package's classes and permissions)
 			Uses.record(com, [for (f in p.funcs) f.name], [
 				for (f in Project.read)
-					if (!f.endsWith(".d.ts") && f.indexOf("/node_modules/") < 0 && !f.startsWith(source())) sys.io.File.getContent(f)
+					if (!f.endsWith(".d.ts") && !f.endsWith(".css") && f.indexOf("/node_modules/") < 0 && !f.startsWith(source())) sys.io.File.getContent(f)
 			]);
 			// (the manifest's keeps: their __init__s named what the lowering may call, they run no more)
 			if (ready.api != null && ready.api.manifest != null) {
