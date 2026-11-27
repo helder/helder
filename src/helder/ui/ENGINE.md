@@ -25,13 +25,30 @@ and fast.
 | Step | What | State |
 | --- | --- | --- |
 | 1 | Size gate: binary sizes with a per-class map | parked; a CI-only lane later |
-| 2 | Style storage: property ids, interned groups, typed reads, impact classes | done (#339, #346 sharing: the HTML Standard styled in 238 ms) |
-| 3 | Box tree, block and inline flow, paint, hit testing; the WPT reftest gate | done (#341–#348, #358, #360); flex and grid in the engine (#391, grid's PR) |
-| 4 | Live styling: rule index, Bloom filter, state, invalidation, compiled sheets, CSS modules | done (#332, #337, #352, #354); unsupported-CSS diagnostics next |
-| 5 | The port: helder.ui on helder.dom, the app UA sheet (src/helder/css/ua/app.css), the codemod | not started; gated on sizes and benches |
-| 6 | Floats, positioning, tables, lists, generated content | done (#349, #351, #355, #363, #366) |
-| 7 | Paged media: fragmentation, PagedView, margin boxes, GCPM | in progress (#375; #384 margin boxes) |
-| 8 | HTML→PDF end to end | `helder pdf` and `PagedView.toPdf()`; tests/pdf-docs against their goldens, and against WeasyPrint in CI (advisory) |
+| 2 | Style storage: property ids, interned groups, typed reads, impact classes | done (#339; #346 sharing: the HTML Standard styled in 238 ms) |
+| 3 | Box tree, block and inline flow, paint, hit testing; the WPT reftest gate | done (#341–#348, #358, #360); flex and grid in the engine (#391, #395), aspect-ratio and grid tracks (#403) |
+| 4 | Live styling: rule index, Bloom filter, state, invalidation, compiled sheets, CSS modules | done (#332, #337, #352, #354); unsupported-CSS diagnostics and the support table open |
+| 5 | The port: helder.ui on helder.dom, the app UA sheet (src/helder/css/ua/app.css), the codemod | 5a (a live document in a window, and its benches) in progress; the -helder- properties (#390, #435) and the codemod plan (src/helder/css/ua/README.md) are ready |
+| 6 | Floats, positioning, tables, lists, generated content, containment | done (#349, #351, #355, #363, #366, #414, #417) |
+| 7 | Paged media: fragmentation, PagedView, margin boxes, GCPM | done for checkpoint 1 (#375–#442): pages, margin boxes, running heads, cross-references, tables, floats, flex and grid across pages, monolithic overflow |
+| 8 | HTML→PDF end to end | done: `helder pdf` and `PagedView.toPdf()`; real text, outline, links, colour fonts, SVG as vectors, deduplicated images |
+
+## Where it stands (2026-11-27)
+
+- **WPT gate (`css-reftests`):** 7,324 of 9,047 pass (81%), 1,723 pending with reasons, 149 skipped; the same on macOS and Linux.
+- **Values:** 19,924 of 20,206 WPT value rows; interpolation 3,500 of 4,456; Taffy (flex/grid) 4,667 of 5,232.
+- **Against WeasyPrint** (tests/pdf-docs): 95–99.8% per document, identical page breaks.
+- **Size and speed** (a one-off html2pdf, not committed): 4.5 MB wasm, 5.3 MB native; a document converts in 10–40 ms warm (natively 4–28 ms), about takumi-pdf's speed; the first conversion in a process costs 60–120 ms in wasm (V8 compiling lazily, the UA sheet parsed at run time).
+
+## Next
+
+Conformance is paused at a good place; pick up from here:
+
+1. **The port (step 5)**: finish 5a and decide from its benches; then markup to DOM elements, controls as element classes, the codemod, the size gate.
+2. **WeasyPrint features still missing**: footnotes (`float: footnote`), multi-column layout (also unlocks ~1,100 css-break tests), http(s) resources in `helder pdf`, tagged PDF (PDF/UA) and PDF/A.
+3. **Engine gaps by stage** (the gate's pending reasons): inline and bidi (::first-line, white-space, bidi edge cases), the rest of paged (margin-box edge cases, named pages and page sizes, abspos inside abspos), SVG (`<text>`, patterns, masks, filters), tables' tail.
+4. **Startup**: compile the UA sheet at build time in `helder pdf` (CssUserAgentTheme), `wasm-opt -Oz` for release wasm (−14% size).
+5. **A one-off quality check when ready**: helder vs WeasyPrint vs Chromium print, plus qpdf and Poppler/mutool text extraction (not in CI).
 
 ## Decisions
 

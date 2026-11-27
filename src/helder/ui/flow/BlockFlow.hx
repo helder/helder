@@ -955,6 +955,11 @@ class BlockFlow implements FormattingContext {
 		var min = 0.0, max = 0.0;
 		var c = box.first;
 		while (c != null) {
+			// (an absolutely positioned child: out of flow, no part of its parent's size, CSS 2.1 §10.3.7's shrink-to-fit)
+			if (c.absolute) {
+				c = c.next;
+				continue;
+			}
 			if (c.context != null) c.context.intrinsic(c, space) else intrinsic(c, space);
 			var cs = c.style.model();
 			var m = fixed(cs.margin[1]) + fixed(cs.margin[3]);
