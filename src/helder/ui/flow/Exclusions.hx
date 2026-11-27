@@ -10,6 +10,8 @@ class Exclusions {
 	final x1s:Array<Float> = [];
 	final y0s:Array<Float> = [];
 	final y1s:Array<Float> = [];
+	// (in a fragmentainer: a float went to the next whole, the floats after it there too, CSS 2.1 §9.5.1 rule 5)
+	public var pushed = false;
 	// (a float's top is no higher than an earlier one's, rule 5)
 	var lastTop = Math.NEGATIVE_INFINITY;
 

@@ -19,10 +19,13 @@ class BreakToken {
 	public final side:Null<String>;
 	// the next page's name (the page property of what it starts with; null: none)
 	public final name:Null<String>;
+	// floats broken across the fragmentainers, their continuations' tokens
+	public final floats:ObjectMap<Box, BreakToken>;
 
-	public function new(resumes:ObjectMap<Box, Resume>, side:Null<String>, name:Null<String>) {
+	public function new(resumes:ObjectMap<Box, Resume>, side:Null<String>, name:Null<String>, ?floats:ObjectMap<Box, BreakToken>) {
 		this.resumes = resumes;
 		this.side = side;
 		this.name = name;
+		this.floats = floats ?? new ObjectMap();
 	}
 }
