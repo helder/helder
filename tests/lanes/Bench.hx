@@ -207,7 +207,7 @@ class Bench {
 	// Chromium through Playwright: tests/bench/document.mjs, bin/document-bench/results.md)
 	static function documentBench() {
 		var b = "bin/bench/DocumentBench";
-		exe(b, cps(["src", "tests/bench", "tests/ui", "tests/css", "examples/todo", "examples/mail", "examples/document"]).concat(["-main", "DocumentBench"]));
+		exe(b, cps(["src", "tests/bench", "tests/bench/document", "tests/ui", "tests/css", "examples/todo", "examples/mail", "examples/document"]).concat(["-main", "DocumentBench"]));
 		run(NODE, ["tests/bench/document.mjs", exePath(b, HOST)]);
 	}
 

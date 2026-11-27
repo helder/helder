@@ -49,7 +49,7 @@ class BoxPainter {
 	public var placedRuns:Null<PlacedRuns> = null;
 	// scroll containers' offsets (x, y) by their element: what they hold
 	// moved back by them (PaintOrder.scroller); null: none scrolled
-	public var scrolls:Null<haxe.ds.ObjectMap<helder.dom.Node, Array<Float>>> = null;
+	public var scrolls:Null<haxe.ds.ObjectMap<{}, Array<Float>>> = null;
 	// (each state's offset from its scrollers, x and y: culling where things are drawn)
 	final shifts:Array<Float> = [];
 
@@ -127,7 +127,7 @@ class BoxPainter {
 		for (s in 1...n) {
 			var p = order.parents[s], dx = shifts[2 * p], dy = shifts[2 * p + 1];
 			if (order.scroller[s]) {
-				var o = scrolls.get(f.box(order.layerFragment[s]).node);
+				var o = scrolls.get(Box.scrollKey(f.box(order.layerFragment[s])));
 				if (o != null) {
 					dx += o[0];
 					dy += o[1];
@@ -189,7 +189,7 @@ class BoxPainter {
 					clip.rect(Math.round(r[0]), Math.round(r[1]), Math.round(r[0] + r[2]) - Math.round(r[0]), Math.round(r[1] + r[3]) - Math.round(r[1]));
 					p.clip(clip);
 					if (order.scroller[s] && scrolls != null) {
-						var o = scrolls.get(f.box(order.layerFragment[s]).node);
+						var o = scrolls.get(Box.scrollKey(f.box(order.layerFragment[s])));
 						if (o != null) p.translate(-o[0], -o[1]);
 					}
 			}

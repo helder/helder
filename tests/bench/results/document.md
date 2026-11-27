@@ -260,6 +260,58 @@ styles what the changed rules match there, not all of it: 702 → 160 ms
 across 1000 px, to what is seen (a frame at a scroll of 400,000 px, its
 anchor laid out exactly with all above it: 372 ms).
 
+## helder.ui, the DOM and boxes made from code (Phase A, 2026-11-27)
+
+`bench document`'s app screens (DocumentBench apps), natively on the
+same Mac, the median of a frame (ms), the least of 5 runs; × is against
+helder.ui. *dom* is the screens as helder.dom trees styled by the cascade
+(ua/app.css and the screen's sheet, compiled at build time); *fast* is
+the same boxes made from code with no element behind them (BoxScreen,
+the "fast nodes" prototype, option C: each style's computed values as
+data, CssStyle groups filled from them, no matching or cascade run).
+Both lay out, paint and hit test with the same engine and draw the same
+pixels (0 differ on either screen).
+
+| | helder.ui | dom | × | fast | × |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **todo:** first frame (20 rows) | 2.69 | 4.40 | 1.64 | 2.79 | 1.04 |
+| scroll the list (1,020 rows) | 1.92 | 2.21 | 1.16 | 2.22 | 1.16 |
+| hover over rows | 1.28 | 1.73 | 1.36 | 1.67 | 1.31 |
+| type into a field | 1.28 | 2.33 | 1.81 | 2.30 | 1.79 |
+| resize, two widths | 4.88 | 3.64 | 0.75 | 3.62 | 0.74 |
+| drag-resize, a new width each frame | 4.12 | 9.90 | 2.40 | 9.90 | 2.40 |
+| add 1,000 rows | 17.05 | 28.52 | 1.67 | 21.25 | 1.25 |
+| **mail:** first frame | 3.29 | 5.45 | 1.66 | 3.83 | 1.16 |
+| scroll | 1.40 | 2.09 | 1.49 | 1.78 | 1.27 |
+| hover | 1.41 | 1.99 | 1.41 | 1.90 | 1.35 |
+| type | 1.40 | 2.13 | 1.52 | 2.08 | 1.49 |
+| resize, two widths | 1.25 | 1.84 | 1.47 | 2.09 | 1.67 |
+| drag-resize | 1.26 | 1.92 | 1.52 | 2.11 | 1.67 |
+| add 1,000 rows | 25.58 | 27.65 | 1.08 | 20.17 | 0.79 |
+| GC a frame (scroll, hover, type) | ~1 KB | 0.6–1.9 MB | | 0.6–1.9 MB | |
+| live heap, 1,020 rows (todo / mail) | 27 / 32 MB | 17 / 19 MB | | 12 / 15 MB | |
+| RSS (todo / mail) | 66 / 72 MB | 81 / 87 MB | | 76 / 83 MB | |
+
+Before this, the DOM screens' typing was 2.5× and resizes 2.5–8.8×: a
+relayout made the whole paint order again (now a stacking context whose
+fragment, place and state are the last order's is copied from it), and
+a width change let every fragment go (now only a long document's: an
+app's boxes of a set width come from the layout cache).
+
+Size, the size lane's flags (full DCE, release), todo's screen:
+
+| | native | | wasm32 | |
+| --- | ---: | ---: | ---: | ---: |
+| helder.ui todo | 5.47 MB | | 3.97 MB | |
+| dom (TodoDocument) | 7.94 MB | +45.1% | 6.07 MB | +53.0% |
+| fast (TodoBoxes) | 6.61 MB | +20.8% | 4.99 MB | +25.7% |
+
+The fast build links no resolver, matcher, Bloom filter, computed values
+or shorthands; what is left of helder.css (310 KB) is values (CssCalc 64
+KB, CssColors 51, CssColorSpace 26, CssRgba 21), CssStyle's groups, and
+what a CssStyle reads of its CssStyles (CssStyles 17, CssMedia 21; an
+empty document behind it, helder.dom's tag tables 34 KB).
+
 ## Is it worth it
 
 - Wins: scrolling costs the engine nothing (the compositor moves the
