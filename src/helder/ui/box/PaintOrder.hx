@@ -43,6 +43,9 @@ class PaintOrder {
 	// its scroll, BoxPainter.scrolls); a state inside one)
 	public final scroller:Array<Bool> = [false];
 	public final scrolled:Array<Bool> = [false];
+	// (inside scrollers: the outermost one's clip, x0, y0, x1, y1, which no
+	// scroll moves and what they hold is never seen past; null outside one)
+	final scrollClip:Array<Null<Array<Float>>> = [null];
 
 	// the box whose background is the canvas's (the root's, else body's, CSS 2.1 §14.2)
 	public var canvas(default, null):Null<Box> = null;
@@ -55,8 +58,9 @@ class PaintOrder {
 	// The steps in runs of CHUNK, each run's bounds (x0, y0, x1, y1, four a
 	// run) in the root's space: what its fragments' border boxes and their
 	// reach (BoxPainter.reach: shadows, outlines) cover; a run with a step
-	// under a transform or in a scroller covers everything. What paint culls and hit testing
-	// passes over a run at a time, made on first use.
+	// under a transform covers everything, one in a scroller its outermost
+	// scroller's clip (where what scrolls in it can be seen). What paint
+	// culls and hit testing passes over a run at a time, made on first use.
 	public static inline var CHUNK = 64;
 
 	public function chunks():Array<Float> {
@@ -68,9 +72,15 @@ class PaintOrder {
 			var end = k + CHUNK < count ? k + CHUNK : count;
 			while (k < end) {
 				var id = fragments[k];
-				if (transformed[stateOf[k]] || scrolled[stateOf[k]]) {
+				var clip = scrollClip[stateOf[k]];
+				if (transformed[stateOf[k]]) {
 					x0 = y0 = Math.NEGATIVE_INFINITY;
 					x1 = y1 = Math.POSITIVE_INFINITY;
+				} else if (clip != null) {
+					if (clip[0] < x0) x0 = clip[0];
+					if (clip[1] < y0) y0 = clip[1];
+					if (clip[2] > x1) x1 = clip[2];
+					if (clip[3] > y1) y1 = clip[3];
 				} else {
 					var s = f.box(id).style, r = s.reach;
 					if (r != r) r = s.reach = BoxPainter.reach(s);
@@ -139,6 +149,7 @@ class PaintOrder {
 		var sc = kind == CLIP && frag >= 0 && rect != area && f.box(frag).parent != null && f.box(frag).parent.parent != null && f.box(frag).style.scrolls;
 		scroller.push(sc);
 		scrolled.push(scrolled[state] || sc);
+		scrollClip.push(scrollClip[state] ?? (sc ? [rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]] : null));
 		return state = parents.length - 1;
 	}
 
