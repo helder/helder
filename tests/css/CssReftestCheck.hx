@@ -228,6 +228,14 @@ class CssReftestCheck {
 		var u = unexplained(test, g);
 		if (Sys.getEnv("GOLDEN_DEBUG") == "1") Sys.println('$dir/${t.name}\t${u.flat}\t${u.edges}');
 		if (u.flat == 0 && u.edges <= EDGES) return {pass: true, why: ""};
+		// (GOLDEN_OUT: a failing test's drawing and its golden side by side, to see why: CI uploads them)
+		var out = Sys.getEnv("GOLDEN_OUT");
+		if (out != null) {
+			var at = '$out/$dir/${t.name}';
+			FileSystem.createDirectory(haxe.io.Path.directory(at));
+			File.saveBytes('$at.png', helder.image.PngEncoder.encode(test, W, H, true));
+			File.copy(file, '$at.golden.png');
+		}
 		return {pass: false, why: '${u.flat + u.edges} pixels differ from Chromium\'s'};
 	}
 
