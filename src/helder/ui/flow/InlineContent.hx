@@ -1023,7 +1023,11 @@ class InlineContent {
 				continue;
 			}
 			if (fa & WRAPS == 0) status = LineBreaks.NONE;
-			else if (before == 0xAD) {
+			// Blink keeps a pipe inside printable ASCII text together at normal breaks.
+			else if (before == "|".code && (opts.get(u - 1) | opts.get(u)) == 0) {
+				var after = StringTools.fastCodeAt(text, u);
+				if (after > 0x20 && after < 0x7F) status = LineBreaks.NONE;
+			} else if (before == 0xAD) {
 				if (fa & NO_HYPHENS != 0) status = LineBreaks.NONE else s |= HYPHEN;
 			}
 			breaks.set(u, s & ~LineBreaks.STATUS | status);
