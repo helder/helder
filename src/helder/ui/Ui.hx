@@ -1583,6 +1583,8 @@ class Ui extends ScrollHost {
 	// (an event: the graph's writes in it land at its end, helder.view.graph)
 	public function pointerDown(x:Float, y:Float, button:Int, id = 0, type:PointerType = Mouse, pressure = 1.0, at = -1.0):Bool {
 		inputEpoch++;
+		// (a press ends a wheel's gesture: its latch let go, the next wheel the scroller's it is over, as Chromium's)
+		wheelLatch = null;
 		eventAt = at;
 		var r = pointerDownNow(x, y, button, id, type, pressure);
 		eventAt = -1;
