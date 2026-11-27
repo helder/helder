@@ -17,33 +17,40 @@ class Fragments {
 
 	public var count(default, null) = 0;
 
-	final kinds:Array<Int> = [];
-	final boxes:Array<Box> = [];
-	final parents:Array<Int> = [];
-	final firsts:Array<Int> = [];
-	final lasts:Array<Int> = [];
-	final nexts:Array<Int> = [];
-	final xs:Array<Float> = [];
-	final ys:Array<Float> = [];
-	final ws:Array<Float> = [];
-	final hs:Array<Float> = [];
-	final baselines:Array<Float> = [];
-	final starts:Array<Int> = [];
-	final ends:Array<Int> = [];
-	final datas:Array<Int> = [];
+	var kinds = new haxe.ds.Vector<Int>(0);
+	var boxes = new haxe.ds.Vector<Box>(0);
+	var parents = new haxe.ds.Vector<Int>(0);
+	var firsts = new haxe.ds.Vector<Int>(0);
+	var lasts = new haxe.ds.Vector<Int>(0);
+	var nexts = new haxe.ds.Vector<Int>(0);
+	var xs = new haxe.ds.Vector<Float>(0);
+	var ys = new haxe.ds.Vector<Float>(0);
+	var ws = new haxe.ds.Vector<Float>(0);
+	var hs = new haxe.ds.Vector<Float>(0);
+	var baselines = new haxe.ds.Vector<Float>(0);
+	var starts = new haxe.ds.Vector<Int>(0);
+	var ends = new haxe.ds.Vector<Int>(0);
+	var datas = new haxe.ds.Vector<Int>(0);
 	// (how far each one's subtree paints above its top and down from it: ink, worked out once)
-	final inkTops:Array<Float> = [];
-	final inkBottoms:Array<Float> = [];
+	var inkTops = new haxe.ds.Vector<Float>(0);
+	var inkBottoms = new haxe.ds.Vector<Float>(0);
 	public final runs:Array<Null<ShapedRun>> = [];
-	// (by run: a line's plain text whose run is made when first asked for, glyphs())
-	public final lazy:Array<Null<helder.ui.flow.LazyText>> = [];
+	// (by run: a line's plain text whose run is made when first asked for, glyphs(): its content, item, units
+	// and fonts, the layout's palettes)
+	final lazyContent:Array<Null<helder.ui.flow.InlineContent>> = [];
+	final lazyItem:Array<Int> = [];
+	final lazyStart:Array<Int> = [];
+	final lazyEnd:Array<Int> = [];
+	final lazyFonts:Array<Null<helder.text.FontSet>> = [];
+	var palettes:Null<FontMatch> = null;
 
 	public function new() {}
 
 	public function clear() {
 		count = 0;
 		runs.resize(0);
-		lazy.resize(0);
+		lazyContent.resize(0);
+		lazyFonts.resize(0);
 	}
 
 	var capacity = 0;
@@ -70,24 +77,45 @@ class Fragments {
 	}
 
 	// (every column a size up at once: a growth by one is a copy per fragment)
+	// (a column at a larger size: Vector's, as an Array's capacity goes to the next power of two; one a type,
+	// a generic copy goes an element at a time)
+	static function ints(v:haxe.ds.Vector<Int>, n:Int):haxe.ds.Vector<Int> {
+		var w = new haxe.ds.Vector<Int>(n);
+		haxe.ds.Vector.blit(v, 0, w, 0, v.length);
+		return w;
+	}
+
+	static function floats(v:haxe.ds.Vector<Float>, n:Int):haxe.ds.Vector<Float> {
+		var w = new haxe.ds.Vector<Float>(n);
+		haxe.ds.Vector.blit(v, 0, w, 0, v.length);
+		return w;
+	}
+
+	static function refs(v:haxe.ds.Vector<Box>, n:Int):haxe.ds.Vector<Box> {
+		var w = new haxe.ds.Vector<Box>(n);
+		haxe.ds.Vector.blit(v, 0, w, 0, v.length);
+		return w;
+	}
+
 	function grow() {
-		capacity = capacity < 64 ? 64 : capacity * 2;
-		kinds.resize(capacity);
-		boxes.resize(capacity);
-		parents.resize(capacity);
-		firsts.resize(capacity);
-		lasts.resize(capacity);
-		nexts.resize(capacity);
-		xs.resize(capacity);
-		ys.resize(capacity);
-		ws.resize(capacity);
-		hs.resize(capacity);
-		baselines.resize(capacity);
-		starts.resize(capacity);
-		ends.resize(capacity);
-		datas.resize(capacity);
-		inkTops.resize(capacity);
-		inkBottoms.resize(capacity);
+		// (doubling while small, then half as many more: a long document's columns a sixth empty, not a third)
+		capacity = capacity < 64 ? 64 : capacity < 262144 ? capacity * 2 : capacity + (capacity >> 1);
+		kinds = ints(kinds, capacity);
+		boxes = refs(boxes, capacity);
+		parents = ints(parents, capacity);
+		firsts = ints(firsts, capacity);
+		lasts = ints(lasts, capacity);
+		nexts = ints(nexts, capacity);
+		xs = floats(xs, capacity);
+		ys = floats(ys, capacity);
+		ws = floats(ws, capacity);
+		hs = floats(hs, capacity);
+		baselines = floats(baselines, capacity);
+		starts = ints(starts, capacity);
+		ends = ints(ends, capacity);
+		datas = ints(datas, capacity);
+		inkTops = floats(inkTops, capacity);
+		inkBottoms = floats(inkBottoms, capacity);
 	}
 
 	// child appended to parent's children, at (x, y) in it
@@ -234,8 +262,22 @@ class Fragments {
 		if (r < 0 || r >= runs.length) return null;
 		var g = runs[r];
 		if (g != null) return g;
-		var l = r < lazy.length ? lazy[r] : null;
-		return l == null ? null : runs[r] = l.run();
+		var c = r < lazyContent.length ? lazyContent[r] : null;
+		return c == null ? null : runs[r] = helder.ui.flow.LazyText.make(c, lazyItem[r], lazyStart[r], lazyEnd[r], lazyFonts[r], boxes[id], palettes);
+	}
+
+	// a text fragment's run left for later (glyphs()): an item's text from start to end in its content
+	public function later(id:Int, content:helder.ui.flow.InlineContent, item:Int, start:Int, end:Int, fonts:helder.text.FontSet,
+			palettes:FontMatch) {
+		var r = runs.length;
+		datas[id] = r;
+		runs.push(null);
+		lazyContent[r] = content;
+		lazyItem[r] = item;
+		lazyStart[r] = start;
+		lazyEnd[r] = end;
+		lazyFonts[r] = fonts;
+		this.palettes = palettes;
 	}
 
 	public inline function setRun(id:Int, run:Int)

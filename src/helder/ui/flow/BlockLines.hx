@@ -317,17 +317,15 @@ class BlockLines {
 		// (each text item's run: the runs come in the items' order, a DOM text's ::first-letter's and the
 		// rest told apart by the offset of the item's first unit)
 		var t = 0;
+		out.texts = new haxe.ds.Vector(c.items);
 		for (i in 0...c.items) {
 			var source = c.kind(i) == Text ? c.source(i) : null;
-			if (source == null) {
-				out.texts.push(null);
-				continue;
-			}
+			if (source == null) continue;
 			var at = c.end(i) > c.start(i) ? c.domOffset(c.start(i)) : -1, k = t;
 			while (k < runs.length && (runs[k].node != source || at >= 0 && at >= runs[k].offset + runs[k].text.length && k + 1 < runs.length && runs[k + 1].node == source))
 				k++;
 			if (k < runs.length) t = k;
-			out.texts.push(k < runs.length ? runs[k] : null);
+			out.texts[i] = k < runs.length ? runs[k] : null;
 		}
 		// (what a later layout and the sizes' questions take again: the same at any width; a live
 		// document's changes let it go, DocumentView.stale)
@@ -554,18 +552,16 @@ class BlockLines {
 		if (r < 0) return;
 		var fonts = glyphs.runFonts(r);
 		// (plain text: its run made when first asked for, from the content, nothing placed now)
-		var lt = l.kind(f) == TextRun && l.plain(f) ? new LazyText(c, l.item(f), t0, t1, fonts, box, space.fonts) : null;
-		if (lt != null && !check) {
+		var lazy = l.kind(f) == TextRun && l.plain(f);
+		if (lazy && !check) {
 			var tf = frags.add(Fragments.TEXT, box, l.fragmentWidth(f), ascent + descent);
 			frags.setRange(tf, from, to);
 			frags.setBaseline(tf, ascent);
-			frags.setRun(tf, frags.runs.length);
-			frags.lazy[frags.runs.length] = lt;
-			frags.runs.push(null);
+			frags.later(tf, c, l.item(f), t0, t1, fonts, space.fonts);
 			frags.adopt(parent, tf, x, y);
 			return;
 		}
-		var made = lt != null ? lt.run() : null, madeAt = 0;
+		var made = lazy ? LazyText.make(c, l.item(f), t0, t1, fonts, box, space.fonts) : null, madeAt = 0;
 		var g0 = glyphs.runStart(r), n = glyphs.runCount(r);
 		var run:Null<ShapedRun> = null, runX = 0.0;
 		function flush(endX:Float) {
@@ -719,17 +715,16 @@ private class Built {
 	public var markers:Array<Box> = [];
 	public var leaders:Array<Box> = [];
 	// (each item's text run: null for the items not text, and generated text's)
-	public final texts:Array<Null<Box>> = [];
-	var slotted:Null<Array<Int>> = null;
+	public var texts = new haxe.ds.Vector<Null<Box>>(0);
+	var slotted:Null<haxe.ds.Vector<Int>> = null;
 
 	public function new(content:InlineContent)
 		this.content = content;
 
 	// (each item's place among the opened boxes or the atomics; -1: neither): made once
-	public function slots():Array<Int> {
+	public function slots():haxe.ds.Vector<Int> {
 		if (slotted != null) return slotted;
-		var c = content, out = [], open = 0, atomic = 0;
-		out.resize(c.items);
+		var c = content, out = new haxe.ds.Vector<Int>(c.items), open = 0, atomic = 0;
 		for (i in 0...c.items) out[i] = switch c.kind(i) {
 			case Open: open++;
 			case Atomic: atomic++;

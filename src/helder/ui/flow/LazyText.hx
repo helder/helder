@@ -11,26 +11,8 @@ import helder.ui.box.Box;
 // numbers each, and a relayout copies no glyph (LayoutNG's ShapeResultView
 // over its items' shape results).
 class LazyText {
-	final content:InlineContent;
-	final item:Int;
-	final start:Int;
-	final end:Int;
-	final fonts:FontSet;
-	final box:Box;
-	final palettes:helder.ui.box.FontMatch;
-
-	public function new(content:InlineContent, item:Int, start:Int, end:Int, fonts:FontSet, box:Box, palettes:helder.ui.box.FontMatch) {
-		this.content = content;
-		this.item = item;
-		this.start = start;
-		this.end = end;
-		this.fonts = fonts;
-		this.box = box;
-		this.palettes = palettes;
-	}
-
-	// its run: each glyph's pen from the fragment's start, as the line builder places them
-	public function run():ShapedRun {
+	// the run of an item's text from start to end: each glyph's pen from its start, as the line builder places them
+	public static function make(content:InlineContent, item:Int, start:Int, end:Int, fonts:FontSet, box:Box, palettes:helder.ui.box.FontMatch):ShapedRun {
 		var c = content, sh = c.shaper, face = fonts.first;
 		c.ensureShaped();
 		// (the piece holding start: the last that starts at or before it)

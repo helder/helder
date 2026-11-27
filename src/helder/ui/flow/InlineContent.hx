@@ -52,38 +52,43 @@ class InlineContent {
 	var iMatch = new Vector<Int>(16);
 	var iLevel = new Vector<Int>(16);
 	var iFont = new Vector<Int>(16);
-	var iWidth = new Vector<Float>(16);
-	var iHeight = new Vector<Float>(16);
-	var iBaseline = new Vector<Float>(16);
+	// (an atomic's sizes, the items' spacing: let go where every item's is 0, compact())
+	var iWidth:Null<Vector<Float>> = new Vector<Float>(16);
+	var iHeight:Null<Vector<Float>> = new Vector<Float>(16);
+	var iBaseline:Null<Vector<Float>> = new Vector<Float>(16);
 	var iSource = new Vector<Node>(16);
 	// (an Open's: the box around it and its depth; every item's: its style's flags, spacing)
 	var iParent = new Vector<Int>(16);
 	var iDepth = new Vector<Int>(16);
 	var iFlags = new Vector<Int>(16);
-	var iLetter = new Vector<Float>(16);
-	var iWord = new Vector<Float>(16);
+	var iLetter:Null<Vector<Float>> = new Vector<Float>(16);
+	var iWord:Null<Vector<Float>> = new Vector<Float>(16);
 	// (the bidi paragraphs: each one's first unit and base level)
 	final paragraphs:Array<Int> = [];
 	// (each item's isolate initiator's or PDI's level: an Open's or Close's of an isolating box; -1 else)
 	final isolates:Array<Int> = [];
 
 	// --- units: each UTF-16 unit of the text ---
-	var offsets = new Vector<Int>(64);
+	// (each unit's offset in its item's source, as it is built; then, compact(), only where they don't go one
+	// unit to the next (a space collapsed, an item's start, a transform's two units of one): unit, offset pairs)
+	var offsets:Null<Vector<Int>> = new Vector<Int>(64);
+	var jumps:Null<Vector<Int>> = null;
 	var levels = Bytes.alloc(64);
 	var breaks = Bytes.alloc(65);
 
 	// --- pieces ---
-	var pKind = new Vector<Int>(16);
+	// (a byte each: a kind, an opportunity)
+	var pKind = Bytes.alloc(16);
 	var pStart = new Vector<Int>(16);
 	var pEnd = new Vector<Int>(16);
 	var pItem = new Vector<Int>(16);
-	var pBreak = new Vector<Int>(16);
+	var pBreak = Bytes.alloc(16);
 	var pEntry = new Vector<Int>(16);
 	var pWidth = new Vector<Float>(16);
 	var shapedIn = -1;
 
 	// (what the builder was given, before finish processes it)
-	final raw:Array<RawItem> = [];
+	var raw:Array<RawItem> = [];
 
 	public function new(root:InlineStyle, ?fonts:InlineFonts, ?shaper:InlineShaper) {
 		this.root = root;
@@ -194,19 +199,19 @@ class InlineContent {
 		return iFont[i];
 
 	public inline function letterSpacing(i:Int):Float
-		return iLetter[i];
+		return iLetter == null ? 0 : iLetter[i];
 
 	public inline function wordSpacing(i:Int):Float
-		return iWord[i];
+		return iWord == null ? 0 : iWord[i];
 
 	public inline function atomicWidth(i:Int):Float
-		return iWidth[i];
+		return iWidth == null ? 0 : iWidth[i];
 
 	public inline function atomicHeight(i:Int):Float
-		return iHeight[i];
+		return iHeight == null ? 0 : iHeight[i];
 
 	public inline function atomicBaseline(i:Int):Float
-		return iBaseline[i];
+		return iBaseline == null ? 0 : iBaseline[i];
 
 	// the item a unit of the text is in (not a zero-length one)
 	public function itemAt(u:Int):Int {
@@ -231,10 +236,10 @@ class InlineContent {
 			var i = items - 1;
 			while (i > 0 && (iSource[i] == null || kind(i) == Open || kind(i) == Close))
 				i--;
-			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? offsets[iEnd[i] - 1] + 1 : 0} : {node: iSource[i], offset: 1};
+			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? domOffset(iEnd[i] - 1) + 1 : 0} : {node: iSource[i], offset: 1};
 		}
 		var i = itemAt(u);
-		return kind(i) == Text ? {node: iSource[i], offset: offsets[u]} : {node: iSource[i], offset: 0};
+		return kind(i) == Text ? {node: iSource[i], offset: domOffset(u)} : {node: iSource[i], offset: 0};
 	}
 
 	// the unit of a DOM position (a node of the content and an offset in it):
@@ -246,18 +251,25 @@ class InlineContent {
 			if (iSource[i] != node) continue;
 			if (kind(i) != Text) return offset > 0 ? iEnd[i] : iStart[i];
 			for (u in iStart[i]...iEnd[i])
-				if (offsets[u] >= offset) return u;
+				if (domOffset(u) >= offset) return u;
 			found = iEnd[i];
 		}
 		return found;
 	}
 
 	// a unit's offset in its item's source
-	public inline function domOffset(u:Int):Int
-		return offsets[u];
+	public function domOffset(u:Int):Int {
+		if (offsets != null) return offsets[u];
+		var j = jumps, lo = 0, hi = (j.length >> 1) - 1;
+		while (lo < hi) {
+			var m = (lo + hi + 1) >> 1;
+			if (j[2 * m] <= u) lo = m else hi = m - 1;
+		}
+		return j[2 * lo + 1] + (u - j[2 * lo]);
+	}
 
 	public inline function unitLevel(u:Int):Int
-		return levels.get(u);
+		return bidi ? levels.get(u) : 0;
 
 	// the opportunity before a unit (LineBreaks' status and CLUSTER; HYPHEN)
 	public inline function breakAt(u:Int):Int
@@ -285,7 +297,7 @@ class InlineContent {
 	public static inline var ITEM = 3;
 
 	public inline function pieceKind(p:Int):Int
-		return pKind[p];
+		return pKind.get(p);
 
 	public inline function pieceStart(p:Int):Int
 		return pStart[p];
@@ -298,7 +310,7 @@ class InlineContent {
 
 	// the opportunity before it (LineBreaks' NONE, ALLOWED, FORCED; HYPHEN)
 	public inline function pieceBreak(p:Int):Int
-		return pBreak[p];
+		return pBreak.get(p);
 
 	// its shaped word (InlineShaper's entry; -1: none)
 	public inline function pieceEntry(p:Int):Int
@@ -329,7 +341,8 @@ class InlineContent {
 		opportunities();
 		segment();
 		shape();
-		raw.resize(0);
+		// (not kept: a long document's contents each held its source runs)
+		raw = [];
 	}
 
 	// an item's style's flags (flags): wraps (text-wrap-mode), break-spaces,
@@ -577,14 +590,22 @@ class InlineContent {
 		iSource = s;
 	}
 
+	static final NO_LEVELS = Bytes.alloc(0);
+
+	static function bytes(b:Bytes, n:Int):Bytes {
+		var c = Bytes.alloc(n);
+		c.blit(0, b, 0, b.length);
+		return c;
+	}
+
 	function pieceRoom(n:Int) {
 		if (n <= pKind.length) return;
 		var m = n * 2;
-		pKind = ints(pKind, m);
+		pKind = bytes(pKind, m);
 		pStart = ints(pStart, m);
 		pEnd = ints(pEnd, m);
 		pItem = ints(pItem, m);
-		pBreak = ints(pBreak, m);
+		pBreak = bytes(pBreak, m);
 		pEntry = ints(pEntry, m);
 		pWidth = floats(pWidth, m);
 	}
@@ -622,17 +643,40 @@ class InlineContent {
 		}
 		if (slack(pKind.length, pieces)) {
 			var m = pieces;
-			pKind = fit(pKind, m);
+			pKind = pKind.sub(0, m);
 			pStart = fit(pStart, m);
 			pEnd = fit(pEnd, m);
 			pItem = fit(pItem, m);
-			pBreak = fit(pBreak, m);
+			pBreak = pBreak.sub(0, m);
 			pEntry = fit(pEntry, m);
 			pWidth = fit(pWidth, m);
 		}
+		// (columns of zeros alone: none)
+		inline function zeros(v:Null<Vector<Float>>):Bool {
+			var z = v != null;
+			if (z) for (i in 0...items) if (v[i] != 0) {
+				z = false;
+				break;
+			}
+			return z;
+		}
+		if (zeros(iWidth)) iWidth = null;
+		if (zeros(iHeight)) iHeight = null;
+		if (zeros(iBaseline)) iBaseline = null;
+		if (zeros(iLetter)) iLetter = null;
+		if (zeros(iWord)) iWord = null;
 		var n = text.length;
-		if (slack(offsets.length, n + 1)) offsets = fit(offsets, n + 1);
-		if (slack(levels.length, n + 1)) levels = levels.sub(0, n + 1);
+		var o = offsets, count = 0;
+		for (u in 0...n + 1) if (u == 0 || u >= o.length || o[u] != o[u - 1] + 1) count++;
+		var j = new Vector<Int>(2 * count), k = 0;
+		for (u in 0...n + 1) if (u == 0 || u >= o.length || o[u] != o[u - 1] + 1) {
+			j[k++] = u;
+			j[k++] = u < o.length ? o[u] : 0;
+		}
+		jumps = j;
+		offsets = null;
+		// (all 0 without bidi: none kept)
+		if (!bidi) levels = NO_LEVELS else if (slack(levels.length, n + 1)) levels = levels.sub(0, n + 1);
 		if (slack(breaks.length, n + 1)) breaks = breaks.sub(0, n + 1);
 	}
 
@@ -924,15 +968,15 @@ class InlineContent {
 		iMatch[to] = o.iMatch[from];
 		iLevel[to] = o.iLevel[from];
 		iFont[to] = o.iFont[from];
-		iWidth[to] = o.iWidth[from];
-		iHeight[to] = o.iHeight[from];
-		iBaseline[to] = o.iBaseline[from];
+		iWidth[to] = o.atomicWidth(from);
+		iHeight[to] = o.atomicHeight(from);
+		iBaseline[to] = o.atomicBaseline(from);
 		iSource[to] = o.iSource[from];
 		iParent[to] = o.iParent[from];
 		iDepth[to] = o.iDepth[from];
 		iFlags[to] = o.iFlags[from];
-		iLetter[to] = o.iLetter[from];
-		iWord[to] = o.iWord[from];
+		iLetter[to] = o.letterSpacing(from);
+		iWord[to] = o.wordSpacing(from);
 	}
 
 	// --- break opportunities ---
@@ -1053,7 +1097,7 @@ class InlineContent {
 			if (k != Text) {
 				var p = addPiece(ITEM, iStart[i], iEnd[i], i);
 				// (a Close ends what is before it: no break before it; but a box's closing control is text: after a forced break, on the next line)
-				pBreak[p] = k == Close && !takesBreak(i) ? LineBreaks.NONE : breakBefore(i);
+				pBreak.set(p, k == Close && !takesBreak(i) ? LineBreaks.NONE : breakBefore(i));
 				continue;
 			}
 			var u = iStart[i], e = iEnd[i];
@@ -1068,7 +1112,7 @@ class InlineContent {
 						v++;
 					}
 				var p = addPiece(kindOf, u, v, i);
-				pBreak[p] = u == iStart[i] ? breakBefore(i) : breaks.get(u) & (LineBreaks.STATUS | HYPHEN);
+				pBreak.set(p, u == iStart[i] ? breakBefore(i) : breaks.get(u) & (LineBreaks.STATUS | HYPHEN));
 				u = v;
 			}
 		}
@@ -1109,11 +1153,11 @@ class InlineContent {
 	function addPiece(kind:Int, start:Int, end:Int, item:Int):Int {
 		var p = pieces++;
 		pieceRoom(pieces);
-		pKind[p] = kind;
+		pKind.set(p, kind);
 		pStart[p] = start;
 		pEnd[p] = end;
 		pItem[p] = item;
-		pBreak[p] = LineBreaks.NONE;
+		pBreak.set(p, LineBreaks.NONE);
 		pEntry[p] = -1;
 		pWidth[p] = 0;
 		return p;
@@ -1124,11 +1168,11 @@ class InlineContent {
 		shapedIn = shaper.generation;
 		for (p in 0...pieces) {
 			var i = pItem[p];
-			switch pKind[p] {
+			switch pKind.get(p) {
 				case WORD | SPACE:
 					var f = iFont[i];
-					var rtl = iLevel[i] & 1 == 1 && pKind[p] == WORD ? InlineShaper.RTL : 0;
-					var e = shaper.shape(fonts.set(f), f, text, pStart[p], pEnd[p], rtl, iLetter[i], iWord[i]);
+					var rtl = iLevel[i] & 1 == 1 && pKind.get(p) == WORD ? InlineShaper.RTL : 0;
+					var e = shaper.shape(fonts.set(f), f, text, pStart[p], pEnd[p], rtl, letterSpacing(i), wordSpacing(i));
 					pEntry[p] = e;
 					pWidth[p] = shaper.width(e);
 				case TAB:
@@ -1144,7 +1188,7 @@ class InlineContent {
 					pWidth[p] = switch kind(i) {
 						case Open: s.marginStart() + s.borderStart() + s.paddingStart();
 						case Close: s.marginEnd() + s.borderEnd() + s.paddingEnd();
-						case Atomic: s.marginStart() + iWidth[i] + s.marginEnd();
+						case Atomic: s.marginStart() + atomicWidth(i) + s.marginEnd();
 						case _: 0;
 					}
 			}
