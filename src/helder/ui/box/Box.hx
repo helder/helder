@@ -87,8 +87,8 @@ class Box {
 
 	@:allow(helder.ui.box.BoxInline, helder.ui.box.BoxPainter)
 	function markerSymbol():Null<String> {
-		if (style.keyword("content") != "normal" || first == null || first.kind != Text || first.next != null) return null;
-		var symbol = switch style.keyword("list-style-type") {
+		if (!style.rare.contentNormal || first == null || first.kind != Text || first.next != null) return null;
+		var symbol = switch style.rare.listStyleType {
 			case "disc": "\u2022";
 			case "circle": "\u25E6";
 			case "square": "\u25AA";

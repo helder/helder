@@ -22,7 +22,7 @@ class TextTerms {
 
 	// font-variant-caps, -numeric, -east-asian, -position and historical-forms
 	// as their features, font-feature-settings' over them (CSS Fonts 4 §7.2)
-	public static function features(s:BoxStyle):Null<Array<FontFeature>> {
+	public static function features(s:CssBoxStyle):Null<Array<FontFeature>> {
 		var out:Array<FontFeature> = [];
 		for (p in ["font-variant-caps", "font-variant-numeric", "font-variant-east-asian", "font-variant-position", "font-variant-alternates"])
 			for (t in s.terms(p)) switch t {

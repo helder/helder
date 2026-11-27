@@ -1,72 +1,54 @@
 package helder.ui.box;
 
-import helder.css.CssColors;
 import helder.css.CssContain;
-import helder.css.CssDisplay;
-import helder.css.CssLength;
-import helder.css.CssProperties;
-import helder.css.CssProperty;
-import helder.css.CssRgba;
-import helder.css.CssShorthands;
-import helder.css.CssStyle;
+import helder.css.CssColors;
 import helder.css.CssTerm;
 import helder.ui.box.Len;
 import helder.ui.box.Len.Lens;
+import helder.ui.flow.InlineBasicStyle;
 
 using StringTools;
 
-// What layout and paint read of a computed style, typed: the one place
-// that knows how helder.css stores it (its typed reads by property id:
-// lengths, colours, display, numbers; terms for the rest), so a new
-// storage changes this file alone. Callers name properties as CSS does;
-// each name is the property's id once. An anonymous box's style is its
-// parent's inherited values and the initial ones (CSS 2.1 §9.2.1.1).
+// What layout and paint read of a box's computed style, typed: its
+// display, its box model, its text part (what inline layout and fonts
+// read), what paint reads, flex and alignment, the traits every box is
+// asked, and what few boxes have apart (BoxRare). A record whose values
+// are CSS's initial ones until set: by code (a box made from code), or
+// read, a part at a time when first asked, from the cascade's computed
+// style (CssBoxStyle, the one place that knows how helder.css stores it),
+// so that a program whose boxes are all made from code links no cascade.
+// An anonymous box's style is its parent's inherited values and the
+// initial ones (CSS 2.1 §9.2.1.1).
+@:allow(helder.ui)
 class BoxStyle {
-	public final css:CssStyle;
 	public final anonymous:Bool;
 	// (its InlineStyles by split edges, BoxInline.of's)
 	@:allow(helder.ui.box.BoxInline) final inlines:Array<Null<BoxInline>> = [null, null, null, null];
 
-	public function new(css:CssStyle, anonymous = false) {
-		this.css = css;
+	public function new(anonymous = false) {
 		this.anonymous = anonymous;
 	}
 
+	// the cascade's computed style it was read from (null: made from code)
+	public var css(get, never):Null<helder.css.CssStyle>;
+
+	function get_css():Null<helder.css.CssStyle>
+		return null;
+
 	// (how far it paints past its box, BoxPainter.reach's: kept once known; NaN until then)
 	@:allow(helder.ui.box) var reach = Math.NaN;
-	// (whether it draws text decorations: text-decoration-line not none; read once)
-	var decorating = -1;
 
-	public function decorates():Bool {
-		if (decorating < 0) {
-			var lines = terms("text-decoration-line");
-			decorating = lines.length > 0 && !lines[0].match(Keyword("none")) ? 1 : 0;
-		}
-		return decorating == 1;
-	}
-
-	public function anonymousChild():BoxStyle
-		return new BoxStyle(css, true);
-
-	// The same box's style from another computed style (a live document
-	// restyled): an anonymous table part's display kept.
-	public function restyled(next:CssStyle):BoxStyle {
-		var s = new BoxStyle(next, anonymous);
-		if (anonymous && displayRead) {
-			s.displayRead = true;
-			s.displayNone = displayNone;
-			s.displayContents = displayContents;
-			s.displayList = displayList;
-			s.displayOuter = displayOuter;
-			s.displayInner = displayInner;
-			s.displayPart = displayPart;
-		}
+	// An anonymous child's: its inherited values (the text part), the initial ones for the rest.
+	public function anonymousChild():BoxStyle {
+		var s = new BoxStyle(true);
+		s.textPart = text;
+		s.traits = traits < 0 ? -1 : traits & (RTL | VISIBLE | COLLAPSE | BREAKS | WRAPS);
 		return s;
 	}
 
 	// An anonymous box of a table's display (CSS 2.1 §17.2.1): its parent's inherited values.
 	public function anonymousTable(inner:Int, part:Int, outer = BLOCK):BoxStyle {
-		var s = new BoxStyle(css, true);
+		var s = anonymousChild();
 		s.displayRead = true;
 		s.displayInner = inner;
 		s.displayPart = part;
@@ -74,223 +56,12 @@ class BoxStyle {
 		return s;
 	}
 
-	public function terms(p:String):Array<CssTerm> {
-		var id = idOf(p);
-		if (id < 0) return [];
-		if (anonymous && !CssProperties.inherits(cast id)) return CssShorthands.initialTerms(p) ?? [];
-		return css.terms(cast id);
-	}
+	// (whether it draws text decorations: text-decoration-line not none)
+	public function decorates():Bool
+		return text.decoration != 0;
 
-	// (names to ids, once each; -1: not a property in scope)
-	static final ids = new Map<String, Int>();
-
-	static function idOf(p:String):Int {
-		var id = ids.get(p);
-		if (id == null) {
-			var found = CssProperties.of(p);
-			ids.set(p, id = found == null ? -1 : (cast found : Int));
-		}
-		return id;
-	}
-
-	// (the typed reads where the value is the element's own; an anonymous box's reset ones are initial)
-	inline function typed(p:String):Bool
-		return !anonymous || CssProperties.inherits(cast idOf(p));
-
-	public function keyword(p:String):String {
-		// (keywords the groups keep as an index, read without terms made for them)
-		if (!anonymous) {
-			var k:Int = switch p {
-				case "white-space-collapse": cast css.inheritedText.whiteSpaceCollapse;
-				case "text-wrap-mode": cast css.inheritedText.textWrapMode;
-				case "word-break": cast css.inheritedText.wordBreak;
-				case "line-break": cast css.inheritedText.lineBreak;
-				case "overflow-wrap": cast css.inheritedText.overflowWrap;
-				case "hyphens": cast css.inheritedText.hyphens;
-				case "direction": cast css.inheritedText.direction;
-				case "text-align-last": cast css.inheritedText.textAlignLast;
-				case "font-kerning": cast css.font.fontKerning;
-				case "list-style-position": cast css.list.listStylePosition;
-				case "visibility": cast css.ui.visibility;
-				case "pointer-events": cast css.ui.pointerEvents;
-				case "float": cast css.box.float;
-				case "box-sizing": cast css.box.boxSizing;
-				case "overflow-x": cast css.box.overflowX;
-				case "overflow-y": cast css.box.overflowY;
-				case "unicode-bidi": cast css.box.unicodeBidi;
-				case "position": cast css.position.position;
-				case "outline-style": cast css.outline.outlineStyle;
-				case "text-decoration-style": cast css.decoration.textDecorationStyle;
-				case _: -2;
-			}
-			if (k >= 0) return CssProperties.keywords(cast idOf(p))[k];
-		}
-		return switch terms(p) {
-			case [Keyword(k)] | [Ident(k)]: k;
-			case [Part(_, [Keyword(k)])]: k;
-			case _: "";
-		}
-	}
-
-	public function px(p:String):Float {
-		if (!typed(p)) return 0;
-		var id = idOf(p);
-		if (id < 0) return 0;
-		if (unstyled(p)) return 0;
-		var l = lengthOf(p, id);
-		return switch l.kind {
-			case Px | Plain: l.value;
-			case Relative: relative(l);
-			// (a property its group keeps as terms: text-indent's)
-			case Other: switch termLen(terms(p)) {
-					case Px(v): v;
-					case _: 0;
-				}
-			case _: 0;
-		}
-	}
-
-	// (a border's or outline's used width under a none or hidden style: 0,
-	// Borders 4 §4.3; its computed one, helder.css's, is as written)
-	function unstyled(p:String):Bool {
-		var style = switch p {
-			case "border-top-width": "border-top-style";
-			case "border-right-width": "border-right-style";
-			case "border-bottom-width": "border-bottom-style";
-			case "border-left-width": "border-left-style";
-			case "outline-width": "outline-style";
-			case _: return false;
-		}
-		var k = keyword(style);
-		return k == "none" || k == "hidden" && p != "outline-width";
-	}
-
-	// (the groups' typed fields where layout reads often: CssStyle.length interns its terms again)
-	function lengthOf(p:String, id:Int):CssLength
-		return switch p {
-			case "margin-top": css.spacing.marginTop;
-			case "margin-right": css.spacing.marginRight;
-			case "margin-bottom": css.spacing.marginBottom;
-			case "margin-left": css.spacing.marginLeft;
-			case "padding-top": css.spacing.paddingTop;
-			case "padding-right": css.spacing.paddingRight;
-			case "padding-bottom": css.spacing.paddingBottom;
-			case "padding-left": css.spacing.paddingLeft;
-			case "border-top-width": css.border.borderTopWidth;
-			case "border-right-width": css.border.borderRightWidth;
-			case "border-bottom-width": css.border.borderBottomWidth;
-			case "border-left-width": css.border.borderLeftWidth;
-			case "width": css.box.width;
-			case "height": css.box.height;
-			case "min-width": css.box.minWidth;
-			case "min-height": css.box.minHeight;
-			case "max-width": css.box.maxWidth;
-			case "max-height": css.box.maxHeight;
-			case "letter-spacing": css.inheritedText.letterSpacing;
-			case "word-spacing": css.inheritedText.wordSpacing;
-			case "line-height": css.font.lineHeight;
-			case "font-size": css.font.fontSize;
-			case "outline-width": css.outline.outlineWidth;
-			case "outline-offset": css.outline.outlineOffset;
-			case _: css.length(cast id);
-		}
-
-	// (a length from terms, a font-relative unit resolved)
-	function termLen(t:Array<CssTerm>):Len
-		return switch toLen(t) {
-			case Px(v):
-				var unit = "px";
-				for (x in t) switch x {
-					case Dimension(_, u): unit = u;
-					case _:
-				}
-				unit == "px" ? Px(v) : Px(unitPx(v, unit));
-			case l: l;
-		}
-
-	// (a length in a font's unit helder.css leaves to layout: ex and ch as half an em, cap and ic
-	// as 0.7 and 1, until the fonts' own metrics come here)
-	function relative(l:CssLength):Float
-		return unitPx(l.value, l.unit);
-
-	function unitPx(value:Float, unit:String):Float {
-		var em = css.fontSize();
-		return value * switch unit {
-			case "ex" | "ch": em / 2;
-			case "cap": em * 0.7;
-			case "ic" | "em": em;
-			case "lh": css.lineHeight() ?? em * 1.2;
-			case _: 0;
-		}
-	}
-
-	public function len(p:String):Len {
-		if (!typed(p)) return toLen(terms(p));
-		var id = idOf(p);
-		if (id < 0) return Auto;
-		if (unstyled(p)) return Px(0);
-		var l = lengthOf(p, id);
-		return switch l.kind {
-			case Px | Plain: Px(l.value);
-			case Relative: Px(relative(l));
-			case Other: termLen(terms(p));
-			case Percent: Percent(l.value);
-			case Mixed if (l.calc != null): Calc(l.calc);
-			case _: Auto;
-		}
-	}
-
-	public static function toLen(t:Array<CssTerm>):Len
-		return switch t {
-			case [Dimension(v, _)]: Px(v);
-			case [Percentage(v)]: Percent(v);
-			case [Calc(n, _, _)]: Calc(n);
-			case [Number(v, _)]: Px(v);
-			case [Part(_, inner)]: toLen(inner);
-			// (a length among keywords: text-indent's with hanging or each-line)
-			case _ if (t.length > 1): {
-					for (x in t) switch x {
-						case Dimension(_, _) | Percentage(_) | Calc(_, _, _): return toLen([x]);
-						case _:
-					}
-					Auto;
-				}
-			case _: Auto;
-		}
-
-	public function number(p:String, fallback = 0.0):Float {
-		if (!typed(p)) return switch terms(p) {
-			case [Number(v, _)]: v;
-			case _: fallback;
-		}
-		var id = idOf(p);
-		var v = id < 0 ? Math.NaN : css.number(cast id);
-		return Math.isNaN(v) ? fallback : v;
-	}
-
-	// The colour as 0xAARRGGBB; currentcolor is the color property's.
-	public function color(p:String):Int {
-		if (!typed(p)) return 0;
-		var id = idOf(p);
-		return id < 0 ? 0 : rgba(css.color(cast id));
-	}
-
-	static function rgba(c:CssRgba):Int {
-		inline function byte(x:Float):Int {
-			var v = Math.round((Math.isNaN(x) ? 0 : x) * 255);
-			return v < 0 ? 0 : v > 255 ? 255 : v;
-		}
-		// (system colours: the light scheme's, CssColors.system)
-		if (c.keyword != null && c.keyword != "currentcolor") switch c.keyword {
-			case "transparent": return 0;
-			case k:
-				var s = CssColors.system(k);
-				if (s != null) return (byte(c.a * s[3]) << 24) | (Std.int(s[0]) << 16) | (Std.int(s[1]) << 8) | Std.int(s[2]);
-		}
-		return (byte(c.a) << 24) | (byte(c.r) << 16) | (byte(c.g) << 8) | byte(c.b);
-	}
-
-	public static function argb(c:CssColorValue, current:Int):Int {
+	// A CSS colour value as 0xAARRGGBB, currentcolor as current.
+	public static function argb(c:helder.css.CssColors.CssColorValue, current:Int):Int {
 		switch c.keyword {
 			case "currentcolor": return current;
 			case "transparent": return 0;
@@ -312,6 +83,11 @@ class BoxStyle {
 		var a = byte((Math.isNaN(c.alpha) ? 0 : c.alpha) * 255);
 		return (a << 24) | (byte(rgb[0]) << 16) | (byte(rgb[1]) << 8) | byte(rgb[2]);
 	}
+
+	// A length's terms as a Len: a dimension or number its px, a percentage, a calc(), the first length among
+	// keywords; else Auto.
+	public static function toLen(t:Array<CssTerm>):Len
+		return BoxRare.toLen(t);
 
 	// ---- display (Display 3: outer and inner)
 
@@ -342,6 +118,8 @@ class BoxStyle {
 	var displayOuter = 0;
 	var displayInner = 0;
 	var displayPart = 0;
+	// (the display it had before being blockified (a flex or grid item's): its outer one)
+	var originalOuter = 0;
 
 	public var none(get, never):Bool;
 	public var contents(get, never):Bool;
@@ -381,52 +159,35 @@ class BoxStyle {
 		return displayInner;
 	}
 
+	// the outer display it had before being blockified (BLOCK or INLINE)
+	public var originalDisplayOuter(get, never):Int;
+
+	function get_originalDisplayOuter():Int {
+		display();
+		return originalOuter;
+	}
+
 	function display() {
 		if (displayRead) return;
 		displayRead = true;
-		if (anonymous) return;
-		var d = css.display;
-		switch d.outer {
-			case None: displayNone = true;
-			case Contents: displayContents = true;
-			case Inline: displayOuter = INLINE;
-			case _: displayOuter = BLOCK;
-		}
-		displayList = d.listItem;
-		displayInner = switch d.inner {
-			case FlowRoot: FLOW_ROOT;
-			case Table: TABLE;
-			case Flex: FLEX;
-			case Grid | GridLanes: GRID;
-			case TableRowGroup | TableHeaderGroup | TableFooterGroup | TableRow | TableCell | TableColumnGroup | TableColumn | TableCaption: TABLE_PART;
-			case _: FLOW;
-		}
-		displayPart = switch d.inner {
-			case TableRowGroup: ROW_GROUP;
-			case TableHeaderGroup: HEADER_GROUP;
-			case TableFooterGroup: FOOTER_GROUP;
-			case TableRow: ROW;
-			case TableCell: CELL;
-			case TableColumnGroup: COLUMN_GROUP;
-			case TableColumn: COLUMN;
-			case TableCaption: CAPTION;
-			case _: 0;
-		}
-		if (d.outer == Internal && displayInner != TABLE_PART) displayOuter = BLOCK;
+		readDisplay();
 	}
+
+	// (the cascade's display: CssBoxStyle's; here a block's, or what code set)
+	function readDisplay() {}
 
 	// ---- the text part: what inline layout and fonts read of it, typed
 	// (InlineBasicStyle's fields; its edges, lang and direction the box's,
 	// BoxInline's), read once. text-indent apart: a percentage of the
 	// containing block's width.
 
-	var textPart:Null<helder.ui.flow.InlineBasicStyle> = null;
+	var textPart:Null<InlineBasicStyle> = null;
 	var indentLen = Len.Auto;
 
-	public var text(get, never):helder.ui.flow.InlineBasicStyle;
+	public var text(get, never):InlineBasicStyle;
 	public var textIndent(get, never):Len;
 
-	inline function get_text():helder.ui.flow.InlineBasicStyle
+	inline function get_text():InlineBasicStyle
 		return textPart ??= readText();
 
 	inline function get_textIndent():Len {
@@ -434,151 +195,13 @@ class BoxStyle {
 		return indentLen;
 	}
 
-	function readText():helder.ui.flow.InlineBasicStyle {
-		var t = new helder.ui.flow.InlineBasicStyle();
-		t.families = families();
-		t.size = css.fontSize();
-		t.weight = Std.int(number("font-weight", 400));
-		var fs = terms("font-style");
-		t.style = switch keyword("font-style") {
-			case "italic": Italic;
-			case "oblique": Oblique;
-			case _: switch fs {
-					case [Keyword("oblique"), _]: Oblique;
-					case _: Normal;
-				}
-		}
-		t.angle = switch fs {
-			case [Keyword("oblique"), Dimension(v, "deg")]: v;
-			case [Keyword("oblique"), Dimension(v, "turn")]: v * 360;
-			case [Keyword("oblique"), Dimension(v, "rad")]: v * 180 / Math.PI;
-			case [Keyword("oblique"), Dimension(v, "grad")]: v * 0.9;
-			case _: 14;
-		}
-		t.stretch = switch terms("font-width") {
-			case [Percentage(p)]: p;
-			case [Keyword(k)]: helder.text.FontFaces.FontFaceDescriptors.STRETCH.get(k) ?? 100;
-			case _: 100;
-		}
-		var synthesis = 0;
-		if (keyword("font-synthesis-weight") != "none") synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Weight;
-		switch keyword("font-synthesis-style") {
-			case "none":
-			case "oblique-only": synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Oblique;
-			case _: synthesis |= helder.ui.flow.InlineValues.InlineSynthesis.Style | helder.ui.flow.InlineValues.InlineSynthesis.Oblique;
-		}
-		t.synthesis = synthesis;
-		t.opticalSizing = keyword("font-optical-sizing") != "none";
-		t.variations = TextTerms.variations(terms("font-variation-settings"));
-		t.features = TextTerms.features(this);
-		t.kerning = switch keyword("font-kerning") {
-			case "normal": Normal;
-			case "none": None;
-			case _: Auto;
-		}
-		t.ligatures = TextTerms.ligatures(terms("font-variant-ligatures"));
-		t.emoji = switch keyword("font-variant-emoji") {
-			case "text": Text;
-			case "emoji": Emoji;
-			case "unicode": Unicode;
-			case _: Normal;
-		}
-		t.colour = color("color");
-		t.height = switch terms("line-height") {
-			case [Dimension(v, "px")]: v;
-			case [Number(n, _)]: n * t.size;
-			case [Percentage(p)]: p * t.size / 100;
-			case _: Math.NaN;
-		}
-		t.letters = px("letter-spacing");
-		t.words = px("word-spacing");
-		t.transform = TextTerms.transform(terms("text-transform"));
-		t.collapse = switch keyword("white-space-collapse") {
-			case "discard": Discard;
-			case "preserve": Preserve;
-			case "preserve-breaks": PreserveBreaks;
-			case "preserve-spaces": PreserveSpaces;
-			case "break-spaces": BreakSpaces;
-			case _: Collapse;
-		}
-		t.wrap = keyword("text-wrap-mode") == "nowrap" ? NoWrap : Wrap;
-		t.tab = switch terms("tab-size") {
-			case [Number(n, _)]: n;
-			case [Dimension(v, _)]: -v;
-			case _: 8;
-		}
-		t.breakWord = switch keyword("word-break") {
-			case "break-all": BreakAll;
-			case "keep-all": KeepAll;
-			case "break-word": BreakWord;
-			case _: Normal;
-		}
-		t.overflow = switch keyword("overflow-wrap") {
-			case "break-word": BreakWord;
-			case "anywhere": Anywhere;
-			case _: Normal;
-		}
-		t.breakLine = switch keyword("line-break") {
-			case "loose": Loose;
-			case "normal": Normal;
-			case "strict": Strict;
-			case "anywhere": Anywhere;
-			case _: Auto;
-		}
-		t.hyphen = switch keyword("hyphens") {
-			case "none": None;
-			case "auto": Auto;
-			case _: Manual;
-		}
-		t.dir = rtl ? Rtl : Ltr;
-		t.bidi = switch keyword("unicode-bidi") {
-			case "embed": Embed;
-			case "isolate": Isolate;
-			case "bidi-override": BidiOverride;
-			case "isolate-override": IsolateOverride;
-			case "plaintext": Plaintext;
-			case _: Normal;
-		}
-		t.align = TextTerms.align(keyword("text-align-all"), Start);
-		t.alignLast = TextTerms.align(keyword("text-align-last"), Auto);
-		t.justify = switch keyword("text-justify") {
-			case "none": None;
-			case "inter-word": InterWord;
-			case "inter-character": InterCharacter;
-			case _: Auto;
-		}
-		indentLen = len("text-indent");
-		var ti = terms("text-indent");
-		t.indentEachLine = ti.contains(Keyword("each-line"));
-		t.indentHanging = ti.contains(Keyword("hanging"));
-		var to = terms("text-overflow");
-		t.textOverflowEnd = to.length > 0 && to[to.length - 1].match(Keyword("ellipsis")) ? Ellipsis : Clip;
-		t.clamp = switch terms("line-clamp") {
-			case [Number(n, _)]: Std.int(n);
-			case _: 0;
-		}
-		var va = verticalAlign();
-		t.vertical = TextTerms.vertical(va.kind);
-		t.shift = va.kind == "percent" ? va.shift / 100 : va.shift;
-		t.decoration = TextTerms.decoration(terms("text-decoration-line"));
-		t.decorationStyle = switch keyword("text-decoration-style") {
-			case "double": Double;
-			case "dotted": Dotted;
-			case "dashed": Dashed;
-			case "wavy": Wavy;
-			case _: Solid;
-		}
-		t.decorationColour = switch terms("text-decoration-color") {
-			case [Color(c)]: argb(c, t.colour);
-			case _: t.colour;
-		}
-		t.decorationThickness = switch terms("text-decoration-thickness") {
-			case [Dimension(v, _)]: v;
-			case [Percentage(p)]: p * t.size / 100;
-			case _: Math.NaN;
-		}
-		return t;
-	}
+	// (the cascade's text part: CssBoxStyle's; here the initial one)
+	function readText():InlineBasicStyle
+		return new InlineBasicStyle();
+
+	// font-family's names, generic ones as their keywords, a quoted name that is one ("serif") in its quotes
+	public inline function families():Array<String>
+		return text.families;
 
 	// ---- paint's: the background, the corners' radii, the borders' styles and
 	// colours, box shadows and the outline, read once (paint reads them per
@@ -597,74 +220,14 @@ class BoxStyle {
 	var outlineOffsetValue = 0.0;
 	var outlineColorValue = 0;
 
+	// (the cascade's paint part: CssBoxStyle's; here its initial values, or what code set)
 	function readPaint() {
 		paintRead = true;
-		bgColor = color("background-color");
-		var images = BackgroundParts.split(terms("background-image"));
-		if (!(images.length == 1 && (images[0].length == 0 || images[0][0].match(Keyword("none"))))) bgParts = new BackgroundParts(this, images);
-		// (the colour's clip: the bottom layer's)
-		var clips = bgParts != null ? bgParts.clips : BackgroundParts.split(terms("background-clip"));
-		bgClip = switch clips[(images.length - 1) % clips.length] {
-			case [Keyword(k)]: k;
-			case _: "border-box";
-		}
-		var r = [], any = false;
-		for (c in CORNERS) switch terms('border-$c-radius') {
-			case [a, b]:
-				r.push(a);
-				r.push(b);
-				if (!zero(a) || !zero(b)) any = true;
-			case [a]:
-				r.push(a);
-				r.push(a);
-				if (!zero(a)) any = true;
-			case _:
-				r.push(Number(0, true));
-				r.push(Number(0, true));
-		}
-		if (any) radiusTerms = r;
-		for (side in SIDES) {
-			sideStyles.push(keyword('border-$side-style'));
-			sideColors.push(color('border-$side-color'));
-		}
-		var shadow = terms("box-shadow");
-		if (shadow.length > 0 && !shadow[0].match(Keyword("none"))) {
-			var list = [], current = color("color");
-			var one = new BoxShadow();
-			list.push(one);
-			for (t in shadow) switch t {
-				case Delim(","):
-					one = new BoxShadow();
-					list.push(one);
-				case Color(c): one.color = argb(c, current);
-				case Keyword("inset"): one.inset = true;
-				case Dimension(v, _): one.lengths.push(v);
-				case _:
-			}
-			for (o in list) {
-				if (o.color == -1) o.color = current;
-				while (o.lengths.length < 4) o.lengths.push(0);
-			}
-			shadowList = list;
-		}
-		outlineStyleValue = keyword("outline-style");
-		if (outlineStyleValue != "none" && outlineStyleValue != "") {
-			outlineWidthValue = px("outline-width");
-			outlineOffsetValue = px("outline-offset");
-			outlineColorValue = switch terms("outline-color") {
-				case [Keyword("auto" | "invert")]: color("color");
-				case _: color("outline-color");
-			}
+		if (sideStyles.length == 0) for (_ in 0...4) {
+			sideStyles.push("none");
+			sideColors.push(0);
 		}
 	}
-
-	static function zero(t:CssTerm):Bool
-		return switch t {
-			case Dimension(v, _) | Number(v, _) | Percentage(v): v == 0;
-			case _: false;
-		}
-
-	static final CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"];
 
 	// background-color, and its layers' lists apart (null: no image)
 	public var backgroundColor(get, never):Int;
@@ -754,27 +317,12 @@ class BoxStyle {
 	var floatValue = "";
 	var clearValue = "";
 
+	// (the cascade's layout part: CssBoxStyle's; here its initial values, or what code set)
 	function readLayout() {
 		layoutRead = true;
-		orderValue = Std.int(number("order", 0));
-		growValue = number("flex-grow", 0);
-		shrinkValue = number("flex-shrink", 1);
-		basisWord = keyword("flex-basis");
-		basisValue = len("flex-basis");
-		directionValue = keyword("flex-direction");
-		wrapValue = keyword("flex-wrap");
-		for (p in ALIGNS) {
-			var k = keyword(p);
-			aligns.push(k == "" ? helder.css.CssText.join(terms(p), helder.css.CssText.term) : k);
-		}
-		rowGapValue = keyword("row-gap") == "normal" ? Len.Auto : len("row-gap");
-		columnGapValue = keyword("column-gap") == "normal" ? Len.Auto : len("column-gap");
-		for (s in SIDES) insets.push(len(s));
-		floatValue = keyword("float");
-		clearValue = keyword("clear");
+		if (aligns.length == 0) for (v in ["normal", "normal", "normal", "auto", "legacy", "auto"]) aligns.push(v);
+		if (insets.length == 0) for (_ in 0...4) insets.push(Len.Auto);
 	}
-
-	static final ALIGNS = ["justify-content", "align-content", "align-items", "align-self", "justify-items", "justify-self"];
 
 	public var order(get, never):Int;
 	public var flexGrow(get, never):Float;
@@ -903,59 +451,27 @@ class BoxStyle {
 	public var ratio(default, null) = Math.NaN;
 	public var ratioAuto(default, null) = true;
 
-	static final SIDES = ["top", "right", "bottom", "left"];
-
 	public function model():BoxStyle {
 		if (modelRead) return this;
 		modelRead = true;
-		// (an anonymous box's are all initial: none, zero, auto)
-		if (anonymous) {
-			for (_ in 0...4) {
-				margin.push(Px(0));
-				padding.push(Px(0));
-				border.push(0);
-			}
-			return this;
-		}
-		for (s in SIDES) {
-			margin.push(len('margin-$s'));
-			padding.push(len('padding-$s'));
-			border.push(px('border-$s-width'));
-		}
-		width = len("width");
-		height = len("height");
-		minWidth = len("min-width");
-		minHeight = len("min-height");
-		maxWidth = len("max-width");
-		maxHeight = len("max-height");
-		borderBox = keyword("box-sizing") == "border-box";
-		readRatio(terms("aspect-ratio"));
+		readModel();
 		return this;
 	}
 
-	function readRatio(terms:Array<CssTerm>) {
-		var a = Math.NaN, b = 1.0, over = false;
-		for (t in terms) switch t {
-			case Number(v, _):
-				if (over) b = v else a = v;
-			case Delim("/"):
-				over = true;
-			case Part(_, inner):
-				readRatio(inner);
-				return;
-			case _:
+	// (the cascade's box model: CssBoxStyle's; here the initial one (none, zero, auto), or what code set)
+	function readModel() {
+		if (margin.length > 0) return;
+		for (_ in 0...4) {
+			margin.push(Px(0));
+			padding.push(Px(0));
+			border.push(0);
 		}
-		if (Math.isNaN(a)) return;
-		ratioAuto = terms[0].match(Keyword("auto")) || terms[terms.length - 1].match(Keyword("auto"));
-		var r = a / b;
-		if (r > 0 && Math.isFinite(r)) ratio = r;
 	}
 
-	// ---- positioning and the rest layout asks
+	// ---- the traits every box is asked, read once: a bit each, position's keyword
 
-	// (what layout asks of every box, read once: a bit each, position's keyword)
 	var traits = -1;
-	var positionWord = "";
+	var positionWord = "static";
 
 	static inline var FLOATING = 1;
 	static inline var CLIPS = 2;
@@ -964,18 +480,21 @@ class BoxStyle {
 	static inline var COLLAPSE = 16;
 	static inline var BREAKS = 32;
 	static inline var WRAPS = 64;
+	// (overflow scroll or auto on either axis; hidden on either; a transform; a stacking context; content-visibility: hidden)
+	static inline var SCROLLS = 128;
+	static inline var HIDDEN_OVERFLOW = 256;
+	static inline var MOVED = 512;
+	static inline var STACKS = 1024;
+	static inline var CONTENT_HIDDEN = 2048;
 
-	function trait(bit:Int):Bool {
-		if (traits < 0) {
-			positionWord = keyword("position");
-			var f = keyword("float"), x = keyword("overflow-x"), y = keyword("overflow-y"), v = keyword("visibility"), c = keyword("white-space-collapse");
-			// (paint containment clips as overflow does, to the padding box, Contain 2 §3.4)
-			traits = (f == "left" || f == "right" ? FLOATING : 0) | ((x != "visible" && x != "") || (y != "visible" && y != "") || containment.has(Paint) ? CLIPS : 0)
-				| (keyword("direction") == "rtl" ? RTL : 0) | (v != "hidden" && v != "collapse" ? VISIBLE : 0) | (c == "collapse" || c == "" ? COLLAPSE : 0)
-				| (c != "collapse" ? BREAKS : 0) | (keyword("text-wrap-mode") != "nowrap" ? WRAPS : 0);
-		}
+	inline function trait(bit:Int):Bool {
+		if (traits < 0) traits = readTraits();
 		return traits & bit != 0;
 	}
+
+	// (the cascade's traits: CssBoxStyle's; here the initial ones, visible text that collapses and wraps)
+	function readTraits():Int
+		return VISIBLE | COLLAPSE | WRAPS;
 
 	public var position(get, never):String;
 
@@ -1003,57 +522,37 @@ class BoxStyle {
 	public var contentSized(get, never):Bool;
 
 	function get_contentSized():Bool {
-		if (sized < 0) {
-			var k = keyword("width");
-			sized = k == "min-content" || k == "max-content" || k == "fit-content" ? 1 : 0;
-		}
-		return sized == 1;
+		var k = rare.widthKeyword;
+		return k == "min-content" || k == "max-content" || k == "fit-content";
 	}
-
-	var sized = -1;
 
 	// CSS Masking 1: clip's offsets are from the border box's top and left.
 	@:allow(helder.ui.box.PaintOrder)
 	function positionedClip(x:Float, y:Float, w:Float, h:Float):Null<Array<Float>> {
-		return switch terms("clip") {
-			case [Func("rect", [top, Delim(","), right, Delim(","), bottom, Delim(","), left])]:
-				var t = Lens.resolve(termLen([top]), Math.NaN, 0), r = Lens.resolve(termLen([right]), Math.NaN, w);
-				var b = Lens.resolve(termLen([bottom]), Math.NaN, h), l = Lens.resolve(termLen([left]), Math.NaN, 0);
-				[x + l, y + t, Math.max(0, r - l), Math.max(0, b - t)];
-			case _: null;
-		}
+		var c = rare.clip;
+		if (c == null) return null;
+		var t = Lens.resolve(c[0], Math.NaN, 0), r = Lens.resolve(c[1], Math.NaN, w);
+		var b = Lens.resolve(c[2], Math.NaN, h), l = Lens.resolve(c[3], Math.NaN, 0);
+		return [x + l, y + t, Math.max(0, r - l), Math.max(0, b - t)];
 	}
 
 	// overflow scroll or auto on either axis: a scroll container whose content scrolls
 	public var scrolls(get, never):Bool;
 
-	function get_scrolls():Bool {
-		if (overflows < 0) {
-			var x = keyword("overflow-x"), y = keyword("overflow-y");
-			overflows = (x == "auto" || x == "scroll" || y == "auto" || y == "scroll" ? 1 : 0) | (x == "hidden" || y == "hidden" ? 2 : 0);
-		}
-		return overflows & 1 != 0;
-	}
+	inline function get_scrolls():Bool
+		return trait(SCROLLS);
 
 	// overflow hidden, auto or scroll on either axis: a scroll container (clip makes none, Overflow 3 §3)
 	public var scrollContainer(get, never):Bool;
 
-	function get_scrollContainer():Bool
-		return scrolls || overflows & 2 != 0;
-
-	// (scrolls' and scrollContainer's, read once: 1 scrolls, 2 hidden)
-	var overflows = -1;
+	inline function get_scrollContainer():Bool
+		return trait(SCROLLS) || trait(HIDDEN_OVERFLOW);
 
 	// a transform (transform, translate, rotate, scale): what it paints moved
 	public var transformed(get, never):Bool;
 
-	function get_transformed():Bool {
-		if (moved < 0) moved = anonymous || keyword("transform") == "none" && keyword("translate") == "none" && keyword("rotate") == "none"
-			&& keyword("scale") == "none" ? 0 : 1;
-		return moved == 1;
-	}
-
-	var moved = -1;
+	inline function get_transformed():Bool
+		return trait(MOVED);
 
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;
@@ -1067,11 +566,8 @@ class BoxStyle {
 		return trait(RTL);
 
 	// z-index: null for auto
-	public function zIndex():Null<Int>
-		return switch terms("z-index") {
-			case [Number(v, _)]: Std.int(v);
-			case _: null;
-		}
+	public inline function zIndex():Null<Int>
+		return rare.zIndex;
 
 	public var opacity(get, never):Float;
 
@@ -1079,9 +575,12 @@ class BoxStyle {
 	var opacityValue = Math.NaN;
 
 	function get_opacity():Float {
-		if (opacityValue != opacityValue) opacityValue = number("opacity", 1);
+		if (opacityValue != opacityValue) opacityValue = readOpacity();
 		return opacityValue;
 	}
+
+	function readOpacity():Float
+		return 1;
 
 	public var visible(get, never):Bool;
 
@@ -1089,14 +588,8 @@ class BoxStyle {
 		return trait(VISIBLE);
 
 	// a stacking context of its own (CSS 2.1 §9.9.1, Color 4's opacity, Transforms 1)
-	public function stacking():Bool {
-		if (stacks < 0)
-			stacks = positioned && zIndex() != null || opacity < 1 || keyword("transform") != "none" && terms("transform").length > 0
-				|| keyword("position") == "fixed" || containment.stacking ? 1 : 0;
-		return stacks == 1;
-	}
-
-	var stacks = -1;
+	public inline function stacking():Bool
+		return trait(STACKS);
 
 	// ---- containment (CSS Containment 2)
 
@@ -1106,76 +599,35 @@ class BoxStyle {
 	public var containment(get, never):CssContain;
 
 	function get_containment():CssContain {
-		if (contained < 0) contained = anonymous ? 0 : css.containment();
+		if (contained < 0) contained = readContainment();
 		return contained;
 	}
 
+	function readContainment():Int
+		return 0;
+
 	// contain-intrinsic-width or -height's length, size containment's size (Sizing 4 §5.4; none: 0; auto: its
 	// length, the last remembered size not kept)
-	public function intrinsicSize(width:Bool):Float {
-		for (t in terms(width ? "contain-intrinsic-width" : "contain-intrinsic-height")) switch t {
-			case Dimension(v, _): return v;
-			case Number(v, _): return v;
-			case _:
-		}
-		return 0;
-	}
+	public function intrinsicSize(width:Bool):Float
+		return width ? rare.intrinsicWidth : rare.intrinsicHeight;
 
 	// content-visibility: hidden, its contents not laid out nor painted, Contain 2 §4
 	public var hidden(get, never):Bool;
 
 	inline function get_hidden():Bool
-		return !anonymous && keyword("content-visibility") == "hidden";
-
-	// ---- the font
-
-	var familyList:Null<Array<String>> = null;
-
-	// font-family's names, generic ones as their keywords, a quoted name
-	// that is one ("serif") in its quotes (read once)
-	public function families():Array<String> {
-		if (familyList == null) familyList = familiesOf(terms("font-family"));
-		return familyList;
-	}
-
-	public static function familiesOf(terms:Array<CssTerm>):Array<String> {
-		var out = [], word = [];
-		for (t in terms) switch t {
-			case Delim(","):
-				if (word.length > 0) out.push(word.join(" "));
-				word = [];
-			case Str(v) if (helder.ui.flow.InlineFonts.generic(v)): word.push('"$v"');
-			case Ident(v) | Str(v) | Keyword(v) | Raw(v): word.push(v);
-			case _:
-		}
-		if (word.length > 0) out.push(word.join(" "));
-		return out;
-	}
+		return trait(CONTENT_HIDDEN);
 
 	// ---- vertical-align (Inline 3's longhands: baseline-shift, then alignment-baseline)
 
 	// "baseline", "sub", "super", "top", "bottom", "middle", "text-top",
 	// "text-bottom", "length" (shift: px up) or "percent" (shift: of the line height)
 	public function verticalAlign():{kind:String, shift:Float}
-		return aligned ??= align();
+		return aligned ??= readAlign();
 
 	var aligned:Null<{kind:String, shift:Float}> = null;
 
-	function align():{kind:String, shift:Float} {
-		switch terms("baseline-shift") {
-			case [Keyword(k)] if (k != "baseline"): return {kind: k == "center" ? "middle" : k, shift: 0};
-			case [Dimension(v, _)] if (v != 0): return {kind: "length", shift: v};
-			case [Percentage(p)] if (p != 0): return {kind: "percent", shift: p};
-			case [Calc(_, _, _)]: return {kind: "length", shift: Lens.resolve(len("baseline-shift"), 0, 0)};
-			case _:
-		}
-		return switch keyword("alignment-baseline") {
-			case "middle" | "central": {kind: "middle", shift: 0};
-			case "text-top" | "text-before-edge": {kind: "text-top", shift: 0};
-			case "text-bottom" | "text-after-edge": {kind: "text-bottom", shift: 0};
-			case _: {kind: "baseline", shift: 0};
-		}
-	}
+	function readAlign():{kind:String, shift:Float}
+		return {kind: "baseline", shift: 0};
 
 	// ---- white space (Text 4's longhands)
 
@@ -1193,6 +645,18 @@ class BoxStyle {
 
 	inline function get_wraps():Bool
 		return trait(WRAPS);
+
+	// ---- what few boxes have: a side object, read once (BoxRare)
+
+	var rareRead:Null<BoxRare> = null;
+
+	public var rare(get, never):BoxRare;
+
+	inline function get_rare():BoxRare
+		return rareRead ??= readRare();
+
+	function readRare():BoxRare
+		return new BoxRare();
 }
 
 // A box's background layers' lists, each split at its commas once
@@ -1207,15 +671,15 @@ class BackgroundParts {
 	public final ys:Array<Array<CssTerm>>;
 	public final attachments:Array<Array<CssTerm>>;
 
-	public function new(s:BoxStyle, images:Array<Array<CssTerm>>) {
+	public function new(images, clips, origins, sizes, repeats, xs, ys, attachments) {
 		this.images = images;
-		clips = split(s.terms("background-clip"));
-		origins = split(s.terms("background-origin"));
-		sizes = split(s.terms("background-size"));
-		repeats = split(s.terms("background-repeat"));
-		xs = split(s.terms("background-position-x"));
-		ys = split(s.terms("background-position-y"));
-		attachments = split(s.terms("background-attachment"));
+		this.clips = clips;
+		this.origins = origins;
+		this.sizes = sizes;
+		this.repeats = repeats;
+		this.xs = xs;
+		this.ys = ys;
+		this.attachments = attachments;
 	}
 
 	// (a list's items at its commas)

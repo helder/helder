@@ -418,7 +418,7 @@ class PagedView {
 		var css = styles.marginBoxStyle(page.index, page.name, page.left, page.blank, name);
 		var items = css == null ? null : CssItems.content(css.terms(Content));
 		if (items == null) return null;
-		var s = new BoxStyle(css);
+		var s = new CssBoxStyle(css);
 		var kids:Array<Box> = [], text = new StringBuf();
 		function flush() {
 			if (text.length == 0) return;
@@ -474,7 +474,7 @@ class PagedView {
 	// (a page's style, size, margins and page area: auto margins none, percentages of the page's width and height)
 	function pageOf(index:Int, left:Bool, blank:Bool, ?name:String):Page {
 		var style = styles.pageStyle(index, name, left, blank);
-		var m = new BoxStyle(style.style).model();
+		var m = new CssBoxStyle(style.style).model();
 		var margins = [for (k in 0...4) BlockFlow.auto(m.margin[k], k % 2 == 0 ? style.height : style.width)];
 		margins = [for (v in margins) Math.isNaN(v) ? 0.0 : v];
 		var inset = [for (k in 0...4) margins[k] + m.border[k] + BlockFlow.res(m.padding[k], k % 2 == 0 ? style.height : style.width)];
@@ -504,7 +504,7 @@ class PagedView {
 	public function paint(i:Int, p:Painter, snap = true) {
 		var page = pages[i];
 		var b = page.bleed, m = page.margins;
-		var style = new BoxStyle(page.style.style);
+		var style = new CssBoxStyle(page.style.style);
 		Backgrounds.paint(p, style, 0, 0, page.width + 2 * b, page.height + 2 * b, image, null, false, false, false, false, svg);
 		Borders.paint(p, style, b + m[3], b + m[0], page.width - m[1] - m[3], page.height - m[0] - m[2]);
 		if (page.root >= 0) contentOf(i, p, snap);

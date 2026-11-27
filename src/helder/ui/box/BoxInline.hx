@@ -41,7 +41,7 @@ class BoxInline implements InlineStyle {
 	@:allow(helder.ui.flow.BlockLines)
 	static function insideMarker(box:Box, cb:Float, fonts:InlineFonts):BoxInline {
 		var style = of(box, cb);
-		if (box.first == null || box.style.keyword("content") != "normal") return style;
+		if (box.first == null || !box.style.rare.contentNormal) return style;
 		var gap = 0.0;
 		if (box.first.kind == InlineReplaced) {
 			gap = 7;

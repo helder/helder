@@ -10,9 +10,9 @@ import helder.css.CssTerm;
 // The 3D functions keep their 2D part.
 class Transforms {
 	public static function matrix(s:BoxStyle, x:Float, y:Float, w:Float, h:Float):Null<Matrix> {
-		var list = s.terms("transform");
+		var list = s.rare.transform;
 		if (list.length == 0 || list[0].match(Keyword("none"))) return null;
-		var origin = s.terms("transform-origin");
+		var origin = s.rare.transformOrigin;
 		var ox = x + at(origin, 0, w), oy = y + at(origin, 1, h);
 		var m = new Matrix().translate(ox, oy);
 		for (t in list) switch t {

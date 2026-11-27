@@ -487,7 +487,7 @@ class FlexFlow implements FormattingContext {
 	// when it was measured: its row gap or grid rows, a child's height, min,
 	// max or flex basis, through anonymous boxes)
 	static function percentHeights(b:Box):Bool {
-		if (Lens.relative(b.style.rowGap) || b.style.inner == BoxStyle.GRID && percent(b.style.terms("grid-template-rows"))) return true;
+		if (Lens.relative(b.style.rowGap) || b.style.inner == BoxStyle.GRID && percent(b.style.rare.gridTemplateRows)) return true;
 		var c = b.first;
 		while (c != null) {
 			if (c.kind != Text && c.kind != Break && !c.absolute) {

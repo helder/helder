@@ -359,7 +359,7 @@ class GridFlow implements FormattingContext {
 	}
 
 	static function text(st:BoxStyle, p:String):String
-		return CssText.join(st.terms(p), CssText.term);
+		return CssText.join(p == "grid-template-areas" ? st.rare.gridTemplateAreas : st.rare.gridAutoFlow, CssText.term);
 
 	// (§8.5: the items' cells: those with both lines first, then those locked to a row (a column, flowing by
 	// columns), then the rest by the cursor (sparse; dense: back at the start for each); the tracks before

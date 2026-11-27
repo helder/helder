@@ -24,7 +24,13 @@ class GridTemplate {
 
 	// room: the content box's size on the axis or its max (NaN: none), least: its min
 	public static function parse(st:BoxStyle, p:String, room:Float, least:Float, gap:Float):GridTemplate {
-		var terms = st.terms(p);
+		var r = st.rare;
+		var terms = switch p {
+			case "grid-template-columns": r.gridTemplateColumns;
+			case "grid-template-rows": r.gridTemplateRows;
+			case "grid-auto-columns": r.gridAutoColumns;
+			case _: r.gridAutoRows;
+		}
 		switch terms {
 			case [] | [Keyword("none" | "subgrid" | "masonry")]: return NONE;
 			case _:

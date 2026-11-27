@@ -232,7 +232,7 @@ class BlockLines {
 				if (l.kind(f) != InlineFragment.Abspos) continue;
 				var box = k < boxes.length ? boxes[k] : null;
 				k++;
-				if (box == null || box.style.css.originalDisplay.outer != Block) {
+				if (box == null || box.style.originalDisplayOuter != helder.ui.box.BoxStyle.BLOCK) {
 					out.push({x: l.x(f), y: l.y(f)});
 					continue;
 				}
@@ -344,7 +344,7 @@ class BlockLines {
 	// (whether its inline edges or text-indent take a percentage of the width)
 	static function widthRelative(b:Box, block:Bool):Bool {
 		var m = b.style.model();
-		if (block) return Lens.relative(b.style.len("text-indent"));
+		if (block) return Lens.relative(b.style.textIndent);
 		for (k in 0...4) if (Lens.relative(m.margin[k]) || Lens.relative(m.padding[k])) return true;
 		return false;
 	}
@@ -368,7 +368,7 @@ class BlockLines {
 			var b = i < built.texts.length ? built.texts[i] : null;
 			return b != null ? b : (cast c.style(i) : BoxInline).box;
 		}
-		var root = (cast c.root : BoxInline).box, rtl = root.style.rtl, align = root.style.keyword("text-align");
+		var root = (cast c.root : BoxInline).box, rtl = root.style.rtl, align = root.style.rare.textAlign;
 		var startAligned = align == "" || align == "start" || align == "justify" || align == (rtl ? "right" : "left");
 		var lines = 0, baseline = Math.NaN;
 		for (k in from...to) {

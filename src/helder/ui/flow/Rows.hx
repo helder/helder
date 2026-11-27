@@ -141,7 +141,7 @@ class Rows implements Fragmentation.FragmentRows {
 
 	static function pick(items:Array<RowItem>, p:String, last:Bool):Box {
 		var avoid:Null<Box> = null;
-		for (it in items) switch it.box.style.keyword(p) {
+		for (it in items) switch p == "break-before" ? it.box.style.rare.breakBefore : it.box.style.rare.breakAfter {
 			case "page" | "always" | "left" | "right" | "recto" | "verso": return it.box;
 			case "avoid" | "avoid-page" if (avoid == null): avoid = it.box;
 			case _:

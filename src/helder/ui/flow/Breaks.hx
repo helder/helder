@@ -139,7 +139,7 @@ class Breaks implements Fragmentation.Fragmentainer {
 
 	public function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool {
 		if (line == first) return leading({box: box, child: null, line: line, from: at, bottom: bottom, appeal: LAST, forced: null, keep: true});
-		var orphans = box.style.number("orphans", 2), widows = box.style.number("widows", 2);
+		var orphans = box.style.rare.orphans, widows = box.style.rare.widows;
 		var appeal = line - first < orphans || count - line < widows ? ORPHANS : PERFECT;
 		return offer({box: box, child: null, line: line, from: at, bottom: bottom, appeal: inside(box, appeal), forced: null, keep: false});
 	}
@@ -265,7 +265,7 @@ class Breaks implements Fragmentation.Fragmentainer {
 	// A box's used page name (its page property, auto its parent's; null: none).
 	public static function named(b:Null<Box>):Null<String> {
 		while (b != null) {
-			var v = b.style.keyword("page");
+			var v = b.style.rare.page;
 			if (v != "" && v != "auto") return v;
 			b = b.parent;
 		}
@@ -336,9 +336,10 @@ class Breaks implements Fragmentation.Fragmentainer {
 
 	// (break-before, break-after, break-inside, or CSS 2's page-break-* when it's auto)
 	static function value(b:Box, which:String):String {
-		var v = b.style.keyword('break-$which');
+		var r = b.style.rare;
+		var v = which == "before" ? r.breakBefore : which == "after" ? r.breakAfter : r.breakInside;
 		if (v != "" && v != "auto") return v;
-		var legacy = b.style.keyword('page-break-$which');
+		var legacy = which == "before" ? r.pageBreakBefore : which == "after" ? r.pageBreakAfter : r.pageBreakInside;
 		return legacy == "always" ? "page" : legacy == "" ? "auto" : legacy;
 	}
 

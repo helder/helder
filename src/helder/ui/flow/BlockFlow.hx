@@ -145,7 +145,7 @@ class BlockFlow implements FormattingContext {
 			fr = new Unbroken(fr);
 		}
 		// (box-decoration-break: clone, each fragment its border and padding whole; its bottom ones kept room for in each)
-		var clone = fr != null && box.style.keyword("box-decoration-break") == "clone";
+		var clone = fr != null && box.style.rare.boxDecorationBreak == "clone";
 		// (gone: its top edges in the fragmentainer before, still part of its border-box height)
 		var gone = 0.0;
 		if (resume != null) {
@@ -934,7 +934,7 @@ class BlockFlow implements FormattingContext {
 	// (width's min-content, max-content or fit-content, Sizing 3 §3.2: its content width from its intrinsic sizes, the
 	// room its margins leave the fit's; NaN: none of them)
 	public static function sizing(box:Box, space:Space, cb:Float, ml:Float, mr:Float, bpx:Float, intrinsic:() -> Void):Float {
-		var k = box.style.keyword("width");
+		var k = box.style.rare.widthKeyword;
 		if (k != "min-content" && k != "max-content" && k != "fit-content") return Math.NaN;
 		intrinsic();
 		var room = cb - (Math.isNaN(ml) ? 0 : ml) - (Math.isNaN(mr) ? 0 : mr);
