@@ -1,0 +1,10 @@
+const Constructor: any = function () {};
+Constructor.prototype = { value: 1 };
+const first = new Constructor();
+Constructor["prototype"] = { value: 2 };
+const second = new Constructor();
+console.log(first.value, second.value, first instanceof Constructor, second instanceof Constructor);
+const descriptor = Object.getOwnPropertyDescriptor(Constructor, "prototype")!;
+console.log(descriptor.writable, descriptor.enumerable, descriptor.configurable);
+Constructor.prototype = null;
+console.log(Object.getPrototypeOf(new Constructor()) === Object.prototype);

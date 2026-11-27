@@ -79,8 +79,16 @@ function tests() {
 			tri.lineTo(0, 10);
 			tri.close();
 			p.fill(tri, helder.canvas.Paint.solid(0xFF112233));
+			// (a list marker's circle stroked: a ring; a dotted line's squares: rects)
+			var circle = new Path();
+			circle.ellipse(5, 5, 4, 4, 0, 0, 2 * Math.PI);
+			p.stroke(circle, new helder.canvas.Stroke(1), helder.canvas.Paint.solid(0xFF112233));
+			var dots = new Path();
+			dots.rect(0, 0, 2, 2);
+			dots.rect(4, 0, 2, 2);
+			p.fill(dots, helder.canvas.Paint.solid(0xFF112233));
 			p.end();
-			equals(c.calls, ["rect 1 2 30 40 r0", "rect 0 0 20 10 r4", "ring 0 0 20 20 1,2,3,2", "image"]);
+			equals(c.calls, ["rect 1 2 30 40 r0", "rect 0 0 20 10 r4", "ring 0 0 20 20 1,2,3,2", "image", "border 0.5 0.5 9 9 r4.5 w1", "rect 0 0 2 2 r0", "rect 4 0 2 2 r0"]);
 		});
 	});
 }
@@ -142,6 +150,7 @@ private class Recording implements helder.ui.Canvas {
 	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:helder.gfx.Color, borderWidth:Float, border:helder.gfx.Color,
 			?corners:helder.ui.Corners, ?sides:helder.os.Edges, style:helder.ui.BorderStyle = Solid) {
 		if (sides != null) calls.push('ring $x $y $w $h ${sides.top},${sides.right},${sides.bottom},${sides.left}');
+		else if (borderWidth > 0) calls.push('border $x $y $w $h r$radius w$borderWidth');
 		else calls.push('rect $x $y $w $h r$radius');
 	}
 

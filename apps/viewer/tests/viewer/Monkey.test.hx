@@ -53,6 +53,12 @@ function tests() {
 		h.show(["Video"]);
 		h.frame(0);
 		var s = h.screens[0];
+		// (where the system decodes nothing (a static Linux build, no libavcodec), nothing plays: nothing to check)
+		if (helder.media.Decoders.missing() != null) {
+			s.reset();
+			Hosting.on = false;
+			return;
+		}
 		function played(f:Void->Void):String
 			return s.run(() -> {
 				f();

@@ -179,16 +179,17 @@ class Objects {
 	// All own keys (strings in order, then symbols), hidden ones included.
 	public static function ownPropertyKeys(o:JsObject):Array<String> {
 		if (o.bits & JsObject.PROXY != 0) return Exotics.keys(o);
-		var strings:Array<String> = [];
 		var symbols:Array<String> = [];
+		var numeric:Array<String> = [];
 		if (Std.isOfType(o, JsArray)) {
 			var a:JsArray = cast o;
-			for (i in 0...a.items.length) if (a.items[i] != hole) strings.push(Std.string(i));
+			if (a.nums != null) for (i in 0...a.nums.length) numeric.push(Std.string(i));
+			else for (i in 0...a.items.length) if (!same(a.items[i], hole)) numeric.push(Std.string(i));
 		}
-		var numeric:Array<String> = [];
+		var dense = numeric.length;
 		var other:Array<String> = [];
 		if (o.ownNames() != null) for (n in o.ownNames()) if (Symbols.isSymbolKey(n)) symbols.push(n); else if (index(n) >= 0) numeric.push(n); else other.push(n);
-		numeric.sort((x, y) -> {
+		if (numeric.length > dense) numeric.sort((x, y) -> {
 			var a = index(x), b = index(y);
 			return a < b ? -1 : a > b ? 1 : 0;});
 		var extra:Array<String> = [];
@@ -196,7 +197,7 @@ class Objects {
 		if (Std.isOfType(o, JsFunction)) {
 			for (k in ["length", "name"]) if (!o.hasOwn(k) && hasOwnKey(o, k)) extra.push(k);
 		}
-		return strings.concat(numeric).concat(extra).concat(other).concat(symbols);
+		return numeric.concat(extra).concat(other).concat(symbols);
 	}
 
 	public static function descriptor(o:JsObject, k:String):Dynamic {
@@ -213,7 +214,7 @@ class Objects {
 		}
 		else {
 			d.setOwn("value", v);
-			d.setOwn("writable", virtual ? (Std.isOfType(o, JsArray) && k == "length" || k == "prototype") : attribute & (Attr.READONLY | Attr.FROZEN) == 0);
+			d.setOwn("writable", virtual ? (Std.isOfType(o, JsArray) && (k != "length" || (cast o : JsArray).lengthWritable) || k == "prototype") : attribute & (Attr.READONLY | Attr.FROZEN) == 0);
 		}
 		d.setOwn("enumerable", virtual ? (Std.isOfType(o, JsArray) && k != "length") : attribute & Attr.HIDDEN == 0);
 		d.setOwn("configurable", virtual ? (Std.isOfType(o, JsFunction) && k != "prototype" || Std.isOfType(o, JsArray) && k != "length") : attribute & Attr.LOCKED == 0);
@@ -222,22 +223,45 @@ class Objects {
 
 	static function defineProperties(o:JsObject, props:Dynamic):Void {
 		var p = toObject(props);
-		for (k in ownPropertyKeys(p)) if (enumerableOwn(p, k)) defineProperty(o, k, get(p, k));
+		var entries = [for (k in ownPropertyKeys(p)) if (enumerableOwn(p, k)) {key: k, desc: propertyDescriptor(get(p, k))}];
+		for (entry in entries) applyDescriptor(o, entry.key, entry.desc, true);
 	}
 
-	public static function defineProperty(o:JsObject, k:String, desc:Dynamic):Void {
-		if (!isObject(desc)) error("TypeError", "Property description must be an object: " + Seed.text(desc));
-		if (o.bits & JsObject.PROXY != 0) {
-			if (!Exotics.define(o, k, desc)) Exotics.fail("defineProperty", k);
-			return;
+	// ToPropertyDescriptor reads each present field once, in order, before
+	// applying any part of the descriptor.
+	static function propertyDescriptor(v:Dynamic):JsObject {
+		if (!isObject(v)) return error("TypeError", "Property description must be an object: " + Seed.text(v));
+		var d = new JsObject(ObjectProto);
+		for (k in ["enumerable", "configurable", "value", "writable", "get", "set"]) if (has(v, k)) {
+			var x:Dynamic = get(v, k);
+			switch k {
+				case "value": d.setOwn(k, x);
+				case "get", "set":
+					if (!same(x, undef()) && !isCallable(x)) error("TypeError", "Invalid descriptor " + k + "ter: " + Seed.text(x));
+					d.setOwn(k, x);
+				case _: d.setOwn(k, Seed.truth(x));
+			}
 		}
-		define(o, k, desc, true);
+		if ((d.hasOwn("get") || d.hasOwn("set")) && (d.hasOwn("value") || d.hasOwn("writable")))
+			error("TypeError", "Invalid property descriptor. Cannot both specify accessors and a value or writable attribute");
+		return d;
 	}
+
+	public static function defineProperty(o:JsObject, k:String, desc:Dynamic):Void
+		applyDescriptor(o, k, propertyDescriptor(desc), true);
 
 	// [[DefineOwnProperty]] as Reflect.defineProperty and a proxy's target take it: whether it was done
-	public static function defineResult(o:JsObject, k:String, desc:Dynamic):Bool {
-		if (!isObject(desc)) error("TypeError", "Property description must be an object: " + Seed.text(desc));
-		return o.bits & JsObject.PROXY != 0 ? Exotics.define(o, k, desc) : define(o, k, desc, false);
+	public static function defineResult(o:JsObject, k:String, desc:Dynamic):Bool
+		return applyDescriptor(o, k, propertyDescriptor(desc), false);
+
+	// CreateDataPropertyOrThrow: bypass setters and require all three attributes.
+	public static function createDataProperty(o:JsObject, k:String, value:Dynamic):Void {
+		var d = new JsObject(ObjectProto);
+		d.setOwn("value", value);
+		d.setOwn("writable", true);
+		d.setOwn("enumerable", true);
+		d.setOwn("configurable", true);
+		applyDescriptor(o, k, d, true);
 	}
 
 	static function refused(strict:Bool, text:String):Bool {
@@ -245,57 +269,75 @@ class Objects {
 		return false;
 	}
 
-	static function define(o:JsObject, k:String, desc:Dynamic, strict:Bool):Bool {
-		if (!o.hasOwn(k) && Std.isOfType(o, JsFunction) && hasOwnKey(o, k)) o.setOwn(k, get(o, k), k == "prototype" ? Attr.HIDDEN | Attr.LOCKED : Attr.HIDDEN | Attr.READONLY);
-		var exists = o.hasOwn(k);
-		var old = exists ? o.attr(k) : Attr.HIDDEN | Attr.READONLY | Attr.LOCKED;
-		if (old & Attr.FROZEN != 0) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
-		if (exists && old & Attr.LOCKED != 0) {
-			if (has(desc, "value") && !(old & Attr.READONLY != 0 && sameValue(get(desc, "value"), o.getOwn(k))) && old & Attr.READONLY != 0) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
-			if (has(desc, "get") || has(desc, "set") || Seed.truth(get(desc, "configurable"))) return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
+	static function flag(d:JsObject, name:String, bit:Int, attribute:Int):Int {
+		if (!d.hasOwn(name)) return attribute;
+		return d.getOwn(name) ? attribute & ~bit : attribute | bit;
+	}
+
+	static function applyDescriptor(o:JsObject, k:String, d:JsObject, strict:Bool):Bool {
+		if (o.bits & JsObject.PROXY != 0) {
+			var ok = Exotics.define(o, k, d);
+			if (!ok && strict) Exotics.fail("defineProperty", k);
+			return ok;
 		}
-		else if (!exists && !o.extensible) return refused(strict, "Cannot define property " + Symbols.functionName(k) + ", object is not extensible");
-		function flag(name:String, bit:Int, attribute:Int):Int {
-			if (!has(desc, name)) return attribute;
-			return Seed.truth(get(desc, name)) ? attribute & ~bit : attribute | bit;
+		var a:JsArray = o.form == Form.ARRAY ? cast o : null;
+		var i = a == null ? -1 : index(k);
+		if (a != null && k == "length") return defineLength(a, d, strict);
+		if (o.form == Form.FUNCTION && !o.hasOwn(k) && hasOwnKey(o, k) && k != "prototype")
+			o.setOwn(k, get(o, k), Attr.HIDDEN | Attr.READONLY);
+
+		var shaped = o.hasOwn(k), exists = shaped || i >= 0 && hasOwnKey(o, k);
+		var old = shaped ? o.attr(k) : exists ? 0 : Attr.HIDDEN | Attr.READONLY | Attr.LOCKED;
+		var current = shaped ? o.getOwn(k) : exists ? get(o, i) : undef();
+		var acc:Accessor = Std.isOfType(current, Accessor) ? current : null;
+		var accessor = d.hasOwn("get") || d.hasOwn("set"), data = d.hasOwn("value") || d.hasOwn("writable");
+		var attribute = flag(d, "enumerable", Attr.HIDDEN, old);
+		attribute = flag(d, "configurable", Attr.LOCKED, attribute);
+		attribute = flag(d, "writable", Attr.READONLY, attribute);
+
+		if (old & Attr.FROZEN != 0 || exists && old & Attr.LOCKED != 0 && (
+			(attribute ^ old) & (Attr.HIDDEN | Attr.LOCKED) != 0
+			|| accessor && acc == null || data && acc != null
+			|| acc != null && (d.hasOwn("get") && !sameValue(d.getOwn("get"), acc.getter == null ? undef() : acc.getter)
+				|| d.hasOwn("set") && !sameValue(d.getOwn("set"), acc.setter == null ? undef() : acc.setter))
+			|| acc == null && old & Attr.READONLY != 0 && (attribute & Attr.READONLY == 0
+				|| d.hasOwn("value") && !sameValue(d.getOwn("value"), current))))
+			return refused(strict, "Cannot redefine property: " + Symbols.functionName(k));
+		if (!exists && !o.extensible) return refused(strict, "Cannot define property " + Symbols.functionName(k) + ", object is not extensible");
+		if (i >= 0 && i >= a.length && !a.lengthWritable) return refused(strict, "Cannot extend array with a non-writable length");
+
+		var value:Dynamic;
+		if (accessor || acc != null && !data) {
+			var g = d.hasOwn("get") ? d.getOwn("get") : acc == null ? null : acc.getter;
+			var s = d.hasOwn("set") ? d.getOwn("set") : acc == null ? null : acc.setter;
+			value = new Accessor(same(g, undef()) ? null : g, same(s, undef()) ? null : s);
+			attribute &= ~Attr.READONLY;
 		}
-		var attribute = old;
-		attribute = flag("enumerable", Attr.HIDDEN, attribute);
-		attribute = flag("configurable", Attr.LOCKED, attribute);
-		if (has(desc, "get") || has(desc, "set")) {
-			var current = exists ? o.getOwn(k) : null;
-			var acc = Std.isOfType(current, Accessor) ? (current : Accessor) : new Accessor(null, null);
-			if (has(desc, "get")) {
-				var g = get(desc, "get");
-				acc.getter = g == undef() ? null : g;
-			}
-			if (has(desc, "set")) {
-				var s = get(desc, "set");
-				acc.setter = s == undef() ? null : s;
-			}
-			o.setOwn(k, acc, attribute & ~Attr.READONLY);
-			return true;
+		else {
+			value = d.hasOwn("value") ? d.getOwn("value") : acc != null ? undef() : current;
+			if (acc != null && !d.hasOwn("writable")) attribute |= Attr.READONLY;
 		}
-		attribute = flag("writable", Attr.READONLY, attribute);
-		var value = has(desc, "value") ? get(desc, "value") : exists && !Std.isOfType(o.getOwn(k), Accessor) ? o.getOwn(k) : undef();
-		if (Std.isOfType(o, JsArray)) {
-			var a:JsArray = cast o;
-			if (k == "length") {
-				setLength(a, value);
+		if (i >= 0) {
+			if (!shaped && attribute == 0 && !accessor) {
+				setIndex(a, i, value);
 				return true;
 			}
-			var i = index(k);
-			if (i >= 0) {
-				if (attribute == 0) {
-					setIndex(a, i, value);
-					return true;
-				}
-				if (i < a.items.length) a.items[Std.int(i)] = hole;
-				if (i >= a.length) a.length = i + 1;
-			}
+			if (exists && !shaped) a.items[Std.int(i)] = hole;
+			if (i >= a.length) a.length = i + 1;
 		}
 		o.setOwn(k, value, attribute);
 		return true;
+	}
+
+	static function defineLength(a:JsArray, d:JsObject, strict:Bool):Bool {
+		var len = d.hasOwn("value") ? arrayLength(d.getOwn("value")) : a.length;
+		var writable = d.hasOwn("writable") ? (d.getOwn("writable") : Bool) : a.lengthWritable;
+		if (d.hasOwn("get") || d.hasOwn("set") || d.getOwn("configurable") == true || d.getOwn("enumerable") == true
+			|| !a.lengthWritable && (writable || len != a.length))
+			return refused(strict, "Cannot redefine property: length");
+		var ok = resizeArray(a, len);
+		if (!writable) a.lockLength();
+		return ok || refused(strict, "Cannot truncate array with a non-configurable element");
 	}
 
 	static function integrity(v:Dynamic, freeze:Bool):Void {
@@ -321,7 +363,8 @@ class Objects {
 			var a:JsArray = cast o;
 			var items = a.items;
 			a.items = [];
-			for (i in 0...items.length) if (items[i] != hole) a.setOwn(Std.string(i), items[i]);
+			for (i in 0...items.length) if (!same(items[i], hole)) a.setOwn(Std.string(i), items[i]);
+			if (freeze) a.lockLength();
 		}
 		if (o.ownNames() != null) for (k in o.ownNames().copy()) {
 			var attribute = o.attr(k) | Attr.LOCKED;
@@ -345,7 +388,10 @@ class Objects {
 			return true;
 		}
 		if (o.extensible) return false;
-		if (Std.isOfType(o, JsArray) && (cast o : JsArray).items.length > 0) return false;
+		if (Std.isOfType(o, JsArray)) {
+			var a:JsArray = cast o;
+			if ((a.nums != null ? a.nums.length > 0 : Lambda.exists(a.items, v -> !same(v, hole))) || frozen && a.lengthWritable) return false;
+		}
 		if (o.ownNames() != null) for (k in o.ownNames().copy()) {
 			var attribute = o.attr(k);
 			if (attribute & Attr.LOCKED == 0) return false;

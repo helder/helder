@@ -212,7 +212,7 @@ class Lib {
 			if (a.nums != null) {
 				if (i >= 0 && i < a.nums.length) return true;
 			}
-			else if (i >= 0 && i < a.items.length) return !same(a.items[Std.int(i)], hole);
+			else if (i >= 0 && i < a.items.length && !same(a.items[Std.int(i)], hole)) return true;
 		}
 		else if (obj.form == Form.TYPED) {
 			var i = index(name);
@@ -287,14 +287,23 @@ class Lib {
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			if (name == "length") {
-				setLength(a, v);
-				return true;
+				if (!a.lengthWritable) return refuse(strict, readOnlyText(name, obj));
+				if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
+				return resizeArray(a, arrayLength(v)) || refuse(strict, "Cannot truncate array with a non-configurable element");
 			}
 			var i = index(name);
-			if (i >= 0 && !obj.hasOwn(name) && inherited(obj.proto, name) == null) {
-				if (!obj.extensible && !hasOwnKey(obj, name)) return refuse(strict, "Cannot add property " + name + ", object is not extensible");
-				setIndex(a, i, v);
-				return true;
+			if (i >= 0 && !obj.hasOwn(name)) {
+				if (hasOwnKey(obj, name)) {
+					if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
+					setIndex(a, i, v);
+					return true;
+				}
+				if (inherited(obj.proto, name) == null && same(receiver, obj)) {
+					if (i >= a.length && !a.lengthWritable) return refuse(strict, readOnlyText("length", obj));
+					if (!obj.extensible) return refuse(strict, "Cannot add property " + name + ", object is not extensible");
+					setIndex(a, i, v);
+					return true;
+				}
 			}
 		}
 		else if (obj.form == Form.TYPED) {
@@ -317,7 +326,13 @@ class Lib {
 			obj.writeOwn(name, v);
 			return true;
 		}
-		if (obj.form == Form.FUNCTION && functionOwn(cast obj, name) != absent && name != "prototype") return refuse(strict, readOnlyText(name, obj));
+		if (obj.form == Form.FUNCTION && functionOwn(cast obj, name) != absent) {
+			if (name != "prototype") return refuse(strict, readOnlyText(name, obj));
+			// functionOwn just installed the lazy prototype. Update that slot.
+			if (!same(receiver, obj)) return setOn(receiver, name, v, strict);
+			obj.writeOwn(name, v);
+			return true;
+		}
 		// (a proxy above it before any object that has the property: the proxy's [[Set]])
 		if (Exotics.made) {
 			var p = obj.proto;
@@ -423,16 +438,29 @@ class Lib {
 		if (i >= a.length) a.length = i + 1;
 	}
 
-	public static function setLength(a:JsArray, v:Dynamic):Void {
-		var len = Seed.numeric(v);
-		if (Math.isNaN(len) || len < 0 || len > 4294967295.0 || Math.ffloor(len) != len) {
-			error("RangeError", "Invalid array length");
-			return;
+	public static function arrayLength(v:Dynamic):Float {
+		var len = toUint32(v);
+		if (len != Seed.numeric(v)) return error("RangeError", "Invalid array length");
+		return len;
+	}
+
+	public static function setLength(a:JsArray, v:Dynamic):Void putNamed(a, "length", v);
+
+	public static function resizeArray(a:JsArray, len:Float):Bool {
+		var end = len;
+		var names = len < a.length ? a.names : null;
+		if (names != null) {
+			for (n in names) {
+				var i = index(n);
+				if (i >= end && a.attr(n) & Attr.LOCKED != 0) end = i + 1;
+			}
+			for (n in names.copy()) if (index(n) >= end) a.removeOwn(n);
 		}
-		if (a.nums != null && len <= a.nums.length) a.nums.resize(Std.int(len));
-		else if (len < a.items.length) a.items.resize(Std.int(len));
-		if (a.names != null) for (n in a.names.copy()) if (index(n) >= len) a.removeOwn(n);
-		a.length = len;
+		// Growing past the dense numbers materializes the generic storage.
+		if (a.nums != null && end <= a.nums.length) a.nums.resize(Std.int(end));
+		else if (end < a.items.length) a.items.resize(Std.int(end));
+		a.length = end;
+		return end == len;
 	}
 
 	public static function remove(o:Dynamic, k:Dynamic):Bool {
@@ -449,7 +477,7 @@ class Lib {
 		if (obj.form == Form.ARRAY) {
 			var a:JsArray = cast obj;
 			var i = index(name);
-			if (i >= 0 && i < a.items.length) {
+			if (i >= 0 && i < a.items.length && !same(a.items[Std.int(i)], hole)) {
 				a.items[Std.int(i)] = hole;
 				return true;
 			}
@@ -499,10 +527,14 @@ class Lib {
 			if (Symbols.isSymbolKey(n)) continue;
 			if (index(n) >= 0) numeric.push(n); else other.push(n);
 		}
-		numeric.sort((x, y) -> {
-			var a = index(x), b = index(y);
-			return a < b ? -1 : a > b ? 1 : 0;});
-		return out.concat(numeric).concat(other);
+		if (numeric.length > 0) {
+			numeric = out.concat(numeric);
+			numeric.sort((x, y) -> {
+				var a = index(x), b = index(y);
+				return a < b ? -1 : a > b ? 1 : 0;});
+			out = numeric;
+		}
+		return out.concat(other);
 	}
 
 	public static function keys(o:Dynamic):Array<String> return ownKeys(o, true);
@@ -770,7 +802,7 @@ class Lib {
 
 	// (an own property enumerable: a proxy's by its descriptor)
 	public static function enumerableOwn(o:JsObject, k:String):Bool {
-		if (o.bits & JsObject.PROXY == 0) return o.attr(k) & Attr.HIDDEN == 0;
+		if (o.bits & JsObject.PROXY == 0) return !(o.form == Form.ARRAY && k == "length") && o.attr(k) & Attr.HIDDEN == 0;
 		var d = Exotics.own(o, k);
 		return !same(d, undef()) && Seed.truth(get(d, "enumerable"));
 	}
@@ -992,7 +1024,8 @@ class Lib {
 	public static function toList(o:Dynamic):Array<Dynamic> {
 		if (Std.isOfType(o, JsArray) && arrayIteration(o)) {
 			var a:JsArray = cast o;
-			var out = [for (v in a.elements()) same(v, hole) ? undef() : v];
+			var values = a.elements();
+			var out = [for (i in 0...values.length) same(values[i], hole) ? get(a, i) : values[i]];
 			while (out.length < a.length) out.push(get(a, out.length));
 			return out;
 		}

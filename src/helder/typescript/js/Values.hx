@@ -352,6 +352,7 @@ class JsArray extends JsObject {
 	public var nums:Array<Float> = null;
 	@:isVar public var items(get, set):Array<Dynamic> = [];
 	public var length:Float = 0;
+	public var lengthWritable(default, null) = true;
 
 	public function new(proto:JsObject) {
 		super(proto);
@@ -360,6 +361,12 @@ class JsArray extends JsObject {
 	}
 
 	override public function tag():String return "Array";
+
+	public function lockLength():Void {
+		lengthWritable = false;
+		// Leave the plain-array mutation fast paths.
+		if (!shape.dict) shape = shape.dictionary();
+	}
 
 	inline function get_items():Array<Dynamic> {
 		if (nums != null) generic();

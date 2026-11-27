@@ -41,14 +41,14 @@ parse tests.
 <!-- counts -->
 | area | pass | judged | rate | set aside (wrapping) | out of scope |
 | --- | --- | --- | --- | --- | --- |
-| built-ins/Array | 2124 | 2596 | 81.8% | 15 | 472 |
+| built-ins/Array | 2492 | 2596 | 96.0% | 15 | 472 |
 | built-ins/JSON | 105 | 116 | 90.5% | 0 | 50 |
 | built-ins/Map | 119 | 136 | 87.5% | 10 | 58 |
-| built-ins/Math | 276 | 317 | 87.1% | 0 | 10 |
+| built-ins/Math | 279 | 317 | 88.0% | 0 | 10 |
 | built-ins/Number | 310 | 331 | 93.7% | 0 | 9 |
-| built-ins/Object | 2516 | 3091 | 81.4% | 52 | 268 |
+| built-ins/Object | 2838 | 3091 | 91.8% | 52 | 268 |
 | built-ins/Promise | 322 | 582 | 55.3% | 80 | 70 |
 | built-ins/Set | 326 | 349 | 93.4% | 0 | 34 |
 | built-ins/String | 1001 | 1076 | 93.0% | 46 | 101 |
-| all | 7099 | 8594 | 82.6% | | |
+| all | 7792 | 8594 | 90.7% | | |
 <!-- /counts -->

@@ -13,42 +13,13 @@
 import fs from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 import { playwright } from '../playwright.mjs';
+import { page } from './pages.mjs';
 
 const [bench] = process.argv.slice(2);
 const RUNS = Number(process.env.RUNS ?? 3);
 const dir = 'bin/bench/html', out = 'bin/document-bench';
 fs.mkdirSync(dir, { recursive: true });
 fs.mkdirSync(out, { recursive: true });
-
-async function fetchTo(url, file) {
-	if (fs.existsSync(file)) return;
-	const res = await fetch(url, { headers: { 'user-agent': 'helder-bench' } });
-	if (!res.ok) throw new Error(`${url}: ${res.status}`);
-	fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
-}
-
-// (a page and its <link rel=stylesheet>s: URL to file, as the engine resolves them)
-async function page(name, url) {
-	const file = `${dir}/${name}.html`;
-	await fetchTo(url, file);
-	const sheets = {};
-	const html = fs.readFileSync(file, 'utf8');
-	let k = 0;
-	for (const m of html.matchAll(/<link\b[^>]*>/g)) {
-		const tag = m[0];
-		if (!/rel="?stylesheet"?/.test(tag)) continue;
-		const href = /href="([^"]+)"/.exec(tag)?.[1]?.replaceAll('&amp;', '&');
-		if (!href) continue;
-		const abs = new URL(href, url).href;
-		const f = `${dir}/${name}-sheet-${k++}.css`;
-		await fetchTo(abs, f);
-		sheets[abs] = f;
-		// (the plain join too: the engine resolves without percent-encoding)
-		if (href.startsWith('/')) sheets[new URL(url).origin + href] = f;
-	}
-	fs.writeFileSync(`${dir}/${name}-sheets.json`, JSON.stringify(sheets, null, 2));
-	return { name, url, file, sheets: `${dir}/${name}-sheets.json` };
-}
 
 const pages = [await page('html-spec', 'https://html.spec.whatwg.org/'), await page('wikipedia', 'https://en.wikipedia.org/wiki/World_War_II')];
 

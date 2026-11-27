@@ -36,7 +36,6 @@ stack.push(1, 2, 3);
 const own: any = [1, 2, 3];
 own.map = () => 'own map';
 const arrayLike = {length: 2, 0: 'a', 1: 'b'};
-// (spread: the runtime's map makes no species, a subclass's instance)
 console.log([...stack.map(x => x + 1)], own.map((x: number) => x), Array.prototype.map.call(arrayLike, (x: any) => x + '!'));
 
 // calls at their arity: fewer arguments, more, rest, arguments

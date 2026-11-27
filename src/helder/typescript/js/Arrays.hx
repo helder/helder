@@ -36,7 +36,7 @@ class Arrays {
 			if (a.nums != null) {
 				if (i < a.nums.length) return true;
 			}
-			else if (i < a.items.length) return !same(a.items[Std.int(i)], hole);
+			else if (i < a.items.length && !same(a.items[Std.int(i)], hole)) return true;
 		}
 		return has(o, Seed.numberText(i));
 	}
@@ -44,6 +44,49 @@ class Arrays {
 	static function setAt(o:Dynamic, i:Float, v:Dynamic):Void put(o, i, v);
 
 	static function deleteAt(o:Dynamic, i:Float):Void remove(o, Seed.numberText(i));
+
+	// ArraySpeciesCreate's custom constructor, or null for an ordinary array.
+	static function species(o:JsObject, length:Float):JsObject {
+		if (o.form == Form.ARRAY && o.shape == Shapes.array && o.proto == ArrayProto || !Exotics.isArray(o)) return null;
+		var ctor = getNamed(o, "constructor");
+		if (isObject(ctor)) {
+			ctor = getNamed(ctor, "\x00@@species");
+			if (ctor == null) return null;
+		}
+		if (same(ctor, undef()) || ctor == ArrayCtor) return null;
+		if (!isConstructor(ctor)) return error("TypeError", "Array species is not a constructor");
+		return construct(ctor, [length == 0 ? 0.0 : length], ctor);
+	}
+
+	static var ArrayCtor:JsFunction;
+
+	static function resultArray(length:Float):JsArray {
+		if (length > 4294967295.0) return error("RangeError", "Invalid array length");
+		var a = new JsArray(ArrayProto);
+		a.length = length;
+		return a;
+	}
+
+	static inline function writeResult(out:JsObject, plain:Bool, i:Float, value:Dynamic):Void {
+		if (plain && i < 4294967295.0) setIndex(cast out, i, value);
+		else Objects.createDataProperty(out, Seed.numberText(i), value);
+	}
+
+	static function resultLength(out:JsObject, plain:Bool, length:Float):Void {
+		if (plain) (cast out : JsArray).length = arrayLength(length);
+		else putNamed(out, "length", length);
+	}
+
+	static function sliceSpecies(o:JsObject, out:JsObject, start:Float, end:Float):JsObject {
+		var i = start, k:Float = 0;
+		while (i < end) {
+			if (hasAt(o, i)) Objects.createDataProperty(out, Seed.numberText(k), get(o, i));
+			k++;
+			i++;
+		}
+		putNamed(out, "length", k);
+		return out;
+	}
 
 	static function relative(v:Dynamic, len:Float):Float {
 		var n = toIntegerOrInfinity(v);
@@ -84,6 +127,7 @@ class Arrays {
 			r.proto = protoFrom(nt, ArrayProto);
 			return r;
 		});
+		ArrayCtor = c;
 		getter(c, "\x00@@species", t -> t);
 		var unscopables = new JsObject(null);
 		for (name in ["at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values"]) unscopables.setOwn(name, true);
@@ -103,12 +147,12 @@ class Arrays {
 		method(p, "push", 1, (t, a, _) -> {
 			if (Std.isOfType(t, JsArray)) {
 				var arr:JsArray = cast t;
-				if (arr.nums != null && arr.extensible && Lambda.foreach(a, isNumber)) {
+				if (arr.nums != null && arr.extensible && arr.lengthWritable && Lambda.foreach(a, isNumber)) {
 					for (v in a) arr.nums.push(v);
 					arr.length = arr.nums.length;
 					return arr.length;
 				}
-				if (arr.items.length == arr.length && arr.extensible) {
+				if (arr.items.length == arr.length && arr.extensible && arr.lengthWritable) {
 					for (v in a) arr.items.push(v);
 					arr.length = arr.items.length;
 					return arr.length;
@@ -121,7 +165,7 @@ class Arrays {
 			return n;
 		});
 		fixed(p, "pop", 0, (t, _, _, _) -> {
-			if (Std.isOfType(t, JsArray) && (t : JsArray).nums != null && (t : JsArray).nums.length > 0) {
+			if (Std.isOfType(t, JsArray) && (t : JsArray).nums != null && (t : JsArray).nums.length > 0 && (t : JsArray).lengthWritable) {
 				var arr:JsArray = cast t;
 				arr.length--;
 				return arr.nums.pop();
@@ -145,11 +189,11 @@ class Arrays {
 			}
 			if (Std.isOfType(o, JsArray)) {
 				var arr:JsArray = cast o;
-				if (arr.nums != null && arr.extensible) {
+				if (arr.nums != null && arr.extensible && arr.lengthWritable) {
 					arr.length--;
 					return arr.nums.shift();
 				}
-				if (arr.items.length == n && arr.extensible) {
+				if (arr.items.length == n && arr.extensible && arr.lengthWritable) {
 					var v = arr.items.shift();
 					arr.length--;
 					return same(v, hole) ? undef() : v;
@@ -188,6 +232,10 @@ class Arrays {
 			var n = lengthOf(o);
 			var start = relative(a0, n);
 			var end = same(a1, undef()) ? n : relative(a1, n);
+			var count = Math.max(end - start, 0);
+			var custom = species(o, count);
+			if (custom != null) return sliceSpecies(o, custom, start, end);
+			if (count > 4294967295.0) return error("RangeError", "Invalid array length");
 			var out = new JsArray(ArrayProto);
 			var i = start;
 			var k:Float = 0;
@@ -196,7 +244,7 @@ class Arrays {
 				k++;
 				i++;
 			}
-			out.length = Math.max(k, 0);
+			out.length = k;
 			return out;});
 		fixed(p, "at", 1, (t, a0:Dynamic, _, _) -> {
 			var o = toObject(t);
@@ -240,25 +288,24 @@ class Arrays {
 		// (each its own function: the loop runs per element)
 		fixed(p, "map", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t), n = lengthOf(o), f = callback(a0), self = a1;
-			var out = new JsArray(ArrayProto);
-			out.length = n;
+			var custom = species(o, n), plain = custom == null, out = plain ? resultArray(n) : custom;
 			var i:Float = 0;
 			while (i < n) {
 				if (hasAt(o, i)) {
 					var v = get(o, i);
-					setIndex(out, i, call3(f, self, v, i, o));
+					writeResult(out, plain, i, call3(f, self, v, i, o));
 				}
 				i++;
 			}
 			return out;});
 		fixed(p, "filter", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 			var o = toObject(t), n = lengthOf(o), f = callback(a0), self = a1;
-			var out = new JsArray(ArrayProto);
-			var i:Float = 0;
+			var custom = species(o, 0), plain = custom == null, out = plain ? resultArray(0) : custom;
+			var i:Float = 0, to:Float = 0;
 			while (i < n) {
 				if (hasAt(o, i)) {
 					var v = get(o, i);
-					if (Seed.truth(call3(f, self, v, i, o))) setIndex(out, out.length, v);
+					if (Seed.truth(call3(f, self, v, i, o))) writeResult(out, plain, to++, v);
 				}
 				i++;
 			}
@@ -325,21 +372,27 @@ class Arrays {
 			while (i < end) setAt(o, i++, a0);
 			return o;});
 		method(p, "concat", 1, (t, a, _) -> {
-			var out = new JsArray(ArrayProto);
-			for (item in ([toObject(t)] : Array<Dynamic>).concat(a)) {
+			var o = toObject(t);
+			var custom = species(o, 0), plain = custom == null, out = plain ? resultArray(0) : custom;
+			var to:Float = 0;
+			for (item in ([o] : Array<Dynamic>).concat(a)) {
 				var spreadable = getKey(item, "\x00@@isConcatSpreadable", item);
-				if (same(spreadable, undef()) ? Std.isOfType(item, JsArray) : Seed.truth(spreadable)) {
+				if (same(spreadable, undef()) ? Exotics.isArray(item) : Seed.truth(spreadable)) {
 					var n = lengthOf(item);
+					if (to + n > 9007199254740991.0) error("TypeError", "Array result is too large");
 					var i:Float = 0;
-					var start = out.length;
 					while (i < n) {
-						if (hasAt(item, i)) setIndex(out, start + i, get(item, i));
+						if (hasAt(item, i)) writeResult(out, plain, to + i, get(item, i));
 						i++;
 					}
-					out.length = start + n;
+					to += n;
 				}
-				else setIndex(out, out.length, item);
+				else {
+					if (to >= 9007199254740991.0) error("TypeError", "Array result is too large");
+					writeResult(out, plain, to++, item);
+				}
 			}
+			resultLength(out, plain, to);
 			return out;
 		});
 		fixed(p, "keys", 0, (t, _, _, _) -> new JsIterator(ArrayIteratorProto, toObject(t), "keys"));
@@ -362,13 +415,13 @@ class Arrays {
 				while (i < n) out.push(get(o, i++));
 				return array(out);
 			}
-			var removed = new JsArray(ArrayProto);
+			var custom = species(o, count), plain = custom == null, removed = plain ? resultArray(count) : custom;
 			var k:Float = 0;
 			while (k < count) {
-				if (hasAt(o, start + k)) setIndex(removed, k, get(o, start + k));
+				if (hasAt(o, start + k)) writeResult(removed, plain, k, get(o, start + k));
 				k++;
 			}
-			removed.length = count;
+			resultLength(removed, plain, count);
 			var delta = inserted.length - count;
 			if (delta < 0) {
 				var i = start;
@@ -469,19 +522,21 @@ class Arrays {
 			}
 			return o;});
 		fixed(p, "flat", 0, (t, a0:Dynamic, _, _) -> {
-			var o = toObject(t);
-			var out = new JsArray(ArrayProto);
+			var o = toObject(t), n = lengthOf(o);
 			var depth = same(a0, undef()) ? 1 : Math.max(toIntegerOrInfinity(a0), 0);
-			flatten(out, o, depth + 1);
+			var custom = species(o, 0), plain = custom == null, out = plain ? resultArray(0) : custom;
+			var i:Float = 0, to:Float = 0;
+			while (i < n) {
+				if (hasAt(o, i)) to = flatten(out, plain, to, get(o, i), depth);
+				i++;
+			}
 			return out;});
 		fixed(p, "flatMap", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
-			var o = toObject(t);
-			var f = callback(a0);
-			var out = new JsArray(ArrayProto);
-			var n = lengthOf(o);
-			var i:Float = 0;
+			var o = toObject(t), n = lengthOf(o), f = callback(a0);
+			var custom = species(o, 0), plain = custom == null, out = plain ? resultArray(0) : custom;
+			var i:Float = 0, to:Float = 0;
 			while (i < n) {
-				if (hasAt(o, i)) flatten(out, call3(f, a1, get(o, i), i, o), 1);
+				if (hasAt(o, i)) to = flatten(out, plain, to, call3(f, a1, get(o, i), i, o), 1);
 				i++;
 			}
 			return out;});
@@ -521,16 +576,19 @@ class Arrays {
 		return b.toString();
 	}
 	static var cycle:Array<Dynamic> = [];
-	static function flatten(out:JsArray, v:Dynamic, depth:Float):Void {
-		if (depth > 0 && Std.isOfType(v, JsArray)) {
+	static function flatten(out:JsObject, plain:Bool, to:Float, v:Dynamic, depth:Float):Float {
+		if (depth > 0 && Exotics.isArray(v)) {
 			var n = lengthOf(v);
 			var i:Float = 0;
 			while (i < n) {
-				if (hasAt(v, i)) flatten(out, get(v, i), depth - 1);
+				if (hasAt(v, i)) to = flatten(out, plain, to, get(v, i), depth - 1);
 				i++;
 			}
+			return to;
 		}
-		else setIndex(out, out.length, v);
+		if (to >= 9007199254740991.0) return error("TypeError", "Array result is too large");
+		writeResult(out, plain, to, v);
+		return to + 1;
 	}
 
 	static inline var RUN = 32;
