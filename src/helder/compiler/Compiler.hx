@@ -65,6 +65,7 @@ class Compiler {
 			Phases.begin(com);
 			noOutput = actx.noOutput;
 			os(com, actx);
+			dce(com);
 			dev(com);
 			nullSafety(actx);
 			// (Haxe's analyzer stays on, without analyzer-optimize, which
@@ -195,6 +196,15 @@ class Compiler {
 		if (!core.Define.rawDefined(com.defines, "hxmc.dev")) return;
 		core.Define.rawDefine(com.defines, "hxmc.stacks");
 		if (core.Define.rawDefinedValueSafe(com.defines, "hxmc.target") == "wasm32-wasi") core.Define.rawDefine(com.defines, "hxmc.symbols");
+	}
+
+	// full DCE for every hxmc build, dev and compilation-server ones too (a
+	// static engine reaches nothing by name it didn't keep): Haxe's default
+	// `std` (its registry's, so an explicit `-dce std` reads the same) becomes
+	// `full`; `-dce no` stays
+	static function dce(com:context.Common.CommonContext) {
+		if (!com.platform.match(CustomTarget("hxmc"))) return;
+		if (core.Define.rawDefinedValueSafe(com.defines, "dce", "std") == "std") core.Define.rawDefineValue(com.defines, "dce", "full");
 	}
 
 	// helder.os (Os), unless given: the target's, or the host's for a build

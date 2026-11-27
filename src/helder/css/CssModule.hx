@@ -122,6 +122,8 @@ class CssModule {
 					if (helder.typescript.js.Interop.keeping()) $b{installs};
 			};
 			keep.pack = ["helder", "typescript"];
+			// (nothing references it: full DCE would drop it, its __init__ with it)
+			keep.meta = [{name: ":keep", pos: Context.currentPos()}];
 			Context.defineType(keep);
 		});
 	}
