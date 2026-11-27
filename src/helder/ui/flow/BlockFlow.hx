@@ -28,14 +28,26 @@ class BlockFlow implements FormattingContext {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
 		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null
-			&& Math.isNaN(space.fixedHeight) && !space.ignoreHeight;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
+		if (reusable && hit(box, key, space)) return box.cacheFragment;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
+		keep(box, key, space, space.fragmentation == null ? f : -1);
+		return f;
+	}
+
+	// (the cache's key: the width or fixed width, the containing block's
+	// height, a fixed height, whether the height is ignored: a flex or grid
+	// item's passes at the same sizes reuse their fragment)
+	@:allow(helder.ui.flow) static inline function hit(box:Box, key:Float, space:Space):Bool
+		return box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height) && same(box.cacheFixedHeight, space.fixedHeight)
+			&& box.cacheIgnore == space.ignoreHeight;
+
+	@:allow(helder.ui.flow) static inline function keep(box:Box, key:Float, space:Space, f:Int) {
 		box.cacheWidth = key;
 		box.cacheHeight = space.height;
-		box.cacheFragment = space.fragmentation == null ? f : -1;
-		return f;
+		box.cacheFixedHeight = space.fixedHeight;
+		box.cacheIgnore = space.ignoreHeight;
+		box.cacheFragment = f;
 	}
 
 	static inline function same(a:Float, b:Float):Bool

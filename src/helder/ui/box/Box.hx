@@ -9,7 +9,8 @@ import helder.ui.flow.FormattingContext;
 // and keeps its cache here; fragments are apart (Fragments).
 class Box {
 	public final kind:BoxKind;
-	public final style:BoxStyle;
+	// (another as a live document is restyled, DocumentView.update)
+	public var style(default, null):BoxStyle;
 	// the element or text node it is for: null for an anonymous box
 	public final node:Null<Node>;
 	// "before", "after", "marker": generated content's
@@ -55,6 +56,9 @@ class Box {
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
 	public var cacheHeight = Math.NaN;
+	// (and the fixed height it was laid out at, whether its height was ignored: a flex or grid item's passes)
+	public var cacheFixedHeight = Math.NaN;
+	public var cacheIgnore = false;
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
@@ -77,6 +81,9 @@ class Box {
 		this.node = node;
 		this.pseudo = pseudo;
 	}
+
+	@:allow(helder.ui.box) function restyle(s:BoxStyle)
+		style = s;
 
 	public function append(child:Box) {
 		child.parent = this;

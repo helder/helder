@@ -39,6 +39,10 @@ class PaintOrder {
 	public final layerFragment:Array<Int> = [-1];
 	// (whether a state is under a transform: steps outside the view are not culled there)
 	public final transformed:Array<Bool> = [false];
+	// (a clip's box scrolls (overflow scroll or auto: what it holds moved by
+	// its scroll, BoxPainter.scrolls); a state inside one)
+	public final scroller:Array<Bool> = [false];
+	public final scrolled:Array<Bool> = [false];
 
 	// the box whose background is the canvas's (the root's, else body's, CSS 2.1 §14.2)
 	public var canvas(default, null):Null<Box> = null;
@@ -47,6 +51,46 @@ class PaintOrder {
 	var state = 0;
 	// (a page's area: what a monolithic box sliced across pages is clipped to)
 	final area:Null<Array<Float>>;
+
+	// The steps in runs of CHUNK, each run's bounds (x0, y0, x1, y1, four a
+	// run) in the root's space: what its fragments' border boxes and their
+	// reach (BoxPainter.reach: shadows, outlines) cover; a run with a step
+	// under a transform or in a scroller covers everything. What paint culls and hit testing
+	// passes over a run at a time, made on first use.
+	public static inline var CHUNK = 64;
+
+	public function chunks():Array<Float> {
+		if (runs != null) return runs;
+		var out = [], reaches = new haxe.ds.ObjectMap<BoxStyle, Float>();
+		var k = 0;
+		while (k < count) {
+			var x0 = Math.POSITIVE_INFINITY, y0 = Math.POSITIVE_INFINITY, x1 = Math.NEGATIVE_INFINITY, y1 = Math.NEGATIVE_INFINITY;
+			var end = k + CHUNK < count ? k + CHUNK : count;
+			while (k < end) {
+				var id = fragments[k];
+				if (transformed[stateOf[k]] || scrolled[stateOf[k]]) {
+					x0 = y0 = Math.NEGATIVE_INFINITY;
+					x1 = y1 = Math.POSITIVE_INFINITY;
+				} else {
+					var s = f.box(id).style, r = reaches.get(s);
+					if (r == null) reaches.set(s, r = BoxPainter.reach(s));
+					var x = xs[k], y = ys[k];
+					if (x - r < x0) x0 = x - r;
+					if (y - r < y0) y0 = y - r;
+					if (x + f.width(id) + r > x1) x1 = x + f.width(id) + r;
+					if (y + f.height(id) + r > y1) y1 = y + f.height(id) + r;
+				}
+				k++;
+			}
+			out.push(x0);
+			out.push(y0);
+			out.push(x1);
+			out.push(y1);
+		}
+		return runs = out;
+	}
+
+	var runs:Null<Array<Float>> = null;
 
 	public function new(fragments:Fragments, root:Int, ?area:Array<Float>) {
 		f = fragments;
@@ -90,6 +134,10 @@ class PaintOrder {
 		rects.push(rect);
 		layerFragment.push(frag);
 		transformed.push(transformed[state] || m != null);
+		// (the root's and body's overflow are the viewport's, not a scroller's)
+		var sc = kind == CLIP && frag >= 0 && rect != area && f.box(frag).parent != null && f.box(frag).parent.parent != null && f.box(frag).style.scrolls;
+		scroller.push(sc);
+		scrolled.push(scrolled[state] || sc);
 		return state = parents.length - 1;
 	}
 
