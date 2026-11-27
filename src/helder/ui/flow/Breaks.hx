@@ -14,7 +14,7 @@ import helder.ui.flow.Fragmentation.Resume;
 // again up to it. Appeals: perfect; orphans or widows short; an avoid
 // (break-before, break-after, break-inside on a box around it); last
 // resort, the first opportunity past the end, when nothing fits.
-class Breaks implements Fragmentation {
+class Breaks implements Fragmentation.Fragmentainer {
 	public var size(default, null):Float;
 	final incoming:Null<BreakToken>;
 	final points:Array<Point> = [];
@@ -24,7 +24,7 @@ class Breaks implements Fragmentation {
 	var taken:Null<Point> = null;
 	var halted = false;
 	// (the absolutely positioned boxes deferred in this pass, and the floats carried)
-	public final deferred:Array<Deferred> = [];
+	public var deferred(default, null):Array<Deferred> = [];
 	final carries = new ObjectMap<Box, BreakToken>();
 	// (where the content laid out ends, its margins aside; where the floats placed so far end)
 	var reach = 0.0;
@@ -66,7 +66,22 @@ class Breaks implements Fragmentation {
 		return offer({box: box, child: null, line: BreakToken.LINE, from: at, bottom: size, appeal: inside(box, LAST), forced: null, keep: false,
 			shift: size - top});
 
-	public function parallel(box:Box, child:Box):Null<Breaks> {
+	public function rows():Fragmentation.FragmentRows
+		return new Rows();
+
+	public function sub(size:Float, from:Null<BreakToken>):Fragmentation.Fragmentainer
+		return new Breaks(size, from);
+
+	public function push(float:Box)
+		carry(float, new BreakToken(new haxe.ds.ObjectMap(), null, null));
+
+	public function avoids(b:Box):Bool
+		return Breaks.avoidsInside(b);
+
+	public function forcesBefore(b:Box):Bool
+		return Breaks.forcedBefore(b);
+
+	public function parallel(box:Box, child:Box):Null<Fragmentation.Fragmentainer> {
 		var r = resume(box);
 		if (r != null && r.parallel != null) {
 			var t = r.parallel.get(child);
@@ -310,11 +325,11 @@ class Breaks implements Fragmentation {
 	}
 
 	// Whether a box forces a break before it (break-before, page-break-before).
-	public static function forcesBefore(b:Box):Bool
+	static function forcedBefore(b:Box):Bool
 		return forced(value(b, "before"));
 
 	// Whether a box avoids a break inside it (break-inside, page-break-inside).
-	public static function avoids(b:Box):Bool {
+	static function avoidsInside(b:Box):Bool {
 		var v = value(b, "inside");
 		return v == "avoid" || v == "avoid-page";
 	}

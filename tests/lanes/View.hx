@@ -16,7 +16,7 @@ class View {
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer against golden images", run: uiDraw},
 		{name: "ui-web", about: "helder.ui as wasm32-wasi in headless Chromium", run: uiWeb},
-		{name: "document-window", about: "the HTML Standard in a real window (DocumentNode): the wheel, jumps, anchors, the thumb and text dragged, each step's frame in a budget, the live heap flat (fetched into bin/bench/html)", run: documentWindow}
+		{name: "document-window", about: "the HTML Standard and Wikipedia's longest page in a real window (DocumentNode): the wheel, jumps, anchors, the thumb and text dragged, each step's frame in a budget, the live heap flat (fetched into bin/bench/html)", run: documentWindow}
 	];
 
 	static function view() {
@@ -135,6 +135,13 @@ class View {
 		// (Linux: a window in Xvfb; elsewhere the desktop's own)
 		var linux = Sys.systemName() == "Linux";
 		var xvfb = linux ? '$XVFB -a -s "-screen 0 640x480x24"' : "";
+		// (the goldens' faces and raster elsewhere too: DejaVu 2.37 alone, drawn by helder's engine as FreeType draws
+		// them on Linux; a Mac's Core Text drew lighter text on dark)
+		if (!linux) {
+			run(NODE, ["tests/dejavu.mjs"]);
+			Sys.putEnv("HELDER_FONT_DIRS", sys.FileSystem.fullPath("bin/fonts/dejavu-2.37"));
+			Sys.putEnv("HELDER_TEXT_ENGINE", "helder");
+		}
 		shell('$gpu $b/UiDrawCheck tests/ui/draw.png $b/draw.png$bless');
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/UiDrawCheck tests/ui/draw.png $b/window.png --window');
 		shell('$gpu $b/TodoCheck tests/ui/todo.png $b/todo.png$bless');
@@ -164,9 +171,13 @@ class View {
 		if (GFX_TARGET.startsWith("macos-") && !linux) shell('$b/SystemLayersWindowCheck');
 		// (the system's Liquid Glass, macOS 26: its views in the layer tree, kept in the background)
 		if (GFX_TARGET.startsWith("macos-") && !linux) shell('HELDER_BACKGROUND=1 $b/GlassWindowCheck');
+		if (!linux) {
+			Sys.putEnv("HELDER_FONT_DIRS", "");
+			Sys.putEnv("HELDER_TEXT_ENGINE", "");
+			return;
+		}
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
-		if (!linux) return;
 		shell('$xvfb $b/ClipboardCheck');
 		shell('$xvfb $b/KeyInputCheck');
 		// (AT-SPI: the window's tree read by another process through libatspi,
@@ -184,10 +195,12 @@ class View {
 		native(b, cps(["src", "tests/ui"]).concat(["-main", "DocumentWindowCheck"]), GFX_TARGET);
 		var linux = Sys.systemName() == "Linux";
 		var pre = linux ? 'LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a -s "-screen 0 1280x1024x24" ' : "HELDER_BACKGROUND=1 ";
-		shell('$pre${exePath(b, GFX_TARGET)} bin/bench/html/html-spec.html bin/bench/html/html-spec-sheets.json');
+		var pages = ["html-spec", "telemann"];
+		for (p in pages)
+			shell('$pre${exePath(b, GFX_TARGET)} bin/bench/html/$p.html bin/bench/html/$p-sheets.json');
 		// (--front: shown over the other windows, not made key, as a window in use presents; HELDER_TEST_FRONT=1)
-		if (Sys.getEnv("HELDER_TEST_INPUT") == "1")
-			shell('${pre}THUMB_HZ=250 THUMB_S=20 ${exePath(b, GFX_TARGET)} bin/bench/html/html-spec.html bin/bench/html/html-spec-sheets.json --real${Sys.getEnv("HELDER_TEST_FRONT") == "1" ? " --front" : ""}');
+		if (Sys.getEnv("HELDER_TEST_INPUT") == "1") for (p in pages)
+			shell('${pre}THUMB_HZ=250 THUMB_S=20 ${exePath(b, GFX_TARGET)} bin/bench/html/$p.html bin/bench/html/$p-sheets.json --real${Sys.getEnv("HELDER_TEST_FRONT") == "1" ? " --front" : ""}');
 	}
 
 	static function uiWeb() {

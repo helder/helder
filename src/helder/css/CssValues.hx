@@ -22,6 +22,12 @@ class CssValues {
 		return read(property, Css.values(text));
 
 	// A declaration's component values for a property, as parse.
+	// (read, for what reads values when the program runs that a cascade of
+	// compiled sheets alone has no need of, @font-palette-values' colours:
+	// installed with CssResolver.rereads, so that otherwise no grammar
+	// matcher is linked)
+	public static var reading:Null<(property:String, values:Array<CssValue>) -> Null<CssSpecified>> = null;
+
 	public static function read(property:String, values:Array<CssValue>):Null<CssSpecified> {
 		var custom = StringTools.startsWith(property, "--");
 		var name = custom ? property : Css.lower(property);

@@ -15,9 +15,12 @@ using haxe.macro.ExprTools;
 // contexts those sheets can make. The macro reads the sheets when the
 // program is compiled, finds the display values they set, and links only
 // those contexts (flex, grid, table; block flow always): a program whose
-// sheets never say grid links no GridFlow. A sheet it can't read (not a
-// CssTheme.file, CssTheme.sheet or the app's user agent sheet), an
-// @import, or a display through var() gives every context. CSS modules'
+// sheets never say grid links no GridFlow. Counters and generated content
+// likewise: CssCounters only where the sheets set content, counters,
+// list styles or list items, quotes, string-set or bookmarks, else
+// CssNoCounters. A sheet it can't read (not a CssTheme.file,
+// CssTheme.sheet or the app's user agent sheet), an @import, or a display
+// through var() gives every context and the counters. CSS modules'
 // sheets, which CssCascade.themed adds, are not read: a display they set
 // that the sheets don't lays out as flow, noted.
 //
@@ -41,6 +44,7 @@ class DocumentApp {
 			var found = displays(e);
 			if (found == null) every = true else for (k in found) kinds.set(k, true);
 		}
+		var counters = every || kinds.exists("counters") ? macro s -> new helder.css.CssCounters(s) : macro _ -> new helder.css.CssNoCounters();
 		var flow = macro flow;
 		var made:Array<Expr> = [];
 		if (every || kinds.exists("flex")) made.push(macro c.flex = new helder.ui.flow.FlexFlow($flow));
@@ -59,12 +63,13 @@ class DocumentApp {
 			var c = new helder.ui.flow.Contexts(flow);
 			$b{made};
 			o.contexts = c;
+			o.counters = $counters;
 			new $tp($doc, (d, media, _) -> helder.css.CssCascade.themed(d, sheets, {media: media}), o);
 		}
 	}
 
 	// (the inner displays a sheet expression's rules can set: flex, grid,
-	// table; null: unknown, every one)
+	// table; "counters" where it needs counters; null: unknown, every one)
 	static function displays(e:Expr):Null<Array<String>> {
 		var call = switch e.expr {
 			case ECall(f, args): {name: f.toString(), args: args};
@@ -83,6 +88,10 @@ class DocumentApp {
 		return scan(CssSheet.parse(text, Author).rules, out) ? out : null;
 	}
 
+	// (what needs counters or generated content set to anything but none or normal)
+	static final COUNTED = ["content", "counter-reset", "counter-increment", "counter-set", "list-style-type", "list-style-image", "quotes",
+		"string-set", "bookmark-label", "bookmark-level", "bookmark-state"];
+
 	static function read(file:String):String {
 		Context.registerModuleDependency(Context.getLocalModule(), file);
 		return sys.io.File.getContent(file);
@@ -98,10 +107,12 @@ class DocumentApp {
 	static function scan(rules:Array<CssSheetRule>, out:Array<String>):Bool {
 		for (r in rules) switch r {
 			case Style(_, declarations):
+				for (d in declarations) if (COUNTED.contains(d.property) && !d.value.match(Terms([Keyword("none" | "normal")]) | Wide("initial"))) out.push("counters");
 				for (d in declarations) if (d.property == "display") switch d.value {
 					case Terms(ts):
 						for (t in ts) switch t {
 							case Keyword("flex" | "inline-flex"): out.push("flex");
+							case Keyword("list-item"): out.push("counters");
 							case Keyword("grid" | "inline-grid"): out.push("grid");
 							case Keyword(k) if (StringTools.startsWith(k, "table") || k == "inline-table"): out.push("table");
 							case _:

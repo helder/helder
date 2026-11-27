@@ -101,7 +101,7 @@ private final COLUMNS:Gen<{list:Array<TableColumn>, width:Float}> = c -> {
 
 private function build(body:String):BoxTree {
 	var doc = Dom.parse('<!doctype html><body>$body');
-	return BoxTree.build(doc, CssCascade.styles(doc), {contexts: helder.ui.flow.Contexts.all()});
+	return BoxTree.build(doc, CssCascade.styles(doc), {contexts: helder.ui.flow.Contexts.all(), counters: s -> new helder.css.CssCounters(s)});
 }
 
 private class Laid {
@@ -112,7 +112,7 @@ private class Laid {
 		document = doc;
 		var fonts = new FontMatch();
 		fonts.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "Ahem");
-		var tree = BoxTree.build(doc, CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}, hints: true}), {contexts: helder.ui.flow.Contexts.all()});
+		var tree = BoxTree.build(doc, CssCascade.styles(doc, {media: {type: "screen", width: 800, height: 600}, hints: true}), {contexts: helder.ui.flow.Contexts.all(), counters: s -> new helder.css.CssCounters(s)});
 		var space = new Space(fragments, fonts, 800, 600);
 		space.exact = exact;
 		tree.root.context.layout(tree.root, space);

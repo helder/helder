@@ -180,7 +180,7 @@ class GridFlow implements FormattingContext {
 				if (reach < r) reach = r;
 				group.push(n);
 			}
-			var parts = new Rows();
+			var parts = fr.rows();
 			for (it in items) {
 				var m = it.box.style.model(), ih = frags.height(it.frag);
 				parts.add(group[it.row], it.box, it.frag, it.x, it.top, it.top - BlockFlow.res(m.margin[0], w), it.top + ih + BlockFlow.res(m.margin[2], w));

@@ -122,12 +122,13 @@ height: 100% }`), fixed since (the node's height takes the overflow).
 a real window, a 20 s thumb drag at 250 Hz and a select drag posted to
 its own queue. Memory is RSS before a full collection / live heap after
 it / RSS after it. Chromium is the renderer process (headless,
-Playwright, the same page and sheets, after load). Ladybird is the
-user's Activity Monitor figure for the same page.
+Playwright, the same page and sheets, after load). For Ladybird, see
+the measured references below; an earlier "just under 600 MB" from
+Activity Monitor was wrong.
 
 | | helder, main before (7a2b4d74) | #466 (fonts mapped, box side tables, inline content cut) | the resize PR (laid out where seen) | Chromium | Ladybird |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| after load | 2,114 / 1,633 / 2,043 MB | 1,084 / 937 / 1,084 MB | 487 / 311 / 487 MB | 1,044 MB RSS, 795 MB footprint | just under 600 MB |
+| after load | 2,114 / 1,633 / 2,043 MB | 1,084 / 937 / 1,084 MB | 487 / 311 / 487 MB | 1,044 MB RSS, 795 MB footprint | 2,298 MB RSS, 1,861 MB footprint (below) |
 | the most during the thumb drag | 2,265 MB | 1,280 MB | 617 MB | | |
 | after the thumb drag | | 1,149 / 933 / 1,136 MB | 608 / 388 / 605 MB | | |
 | after the select drag | | 1,249 / 987 / 1,223 MB | 613 / 396 / 613 MB | | |
@@ -156,6 +157,25 @@ float), no closures, maps or sorts for a line without inline boxes,
 glyph ends found in one pass for left-to-right text, and the hot style
 reads (`verticalAlign`, `stacking`, `line-height`, overflow) read once
 a style.
+
+## References: Ladybird and Chromium on the HTML Standard
+
+Measured on the same Mac (2026-11-27). The page and its sheets were
+served locally; each figure is the least of 3 runs.
+
+| | Ladybird 2026.47.8 | Chromium 149 |
+| --- | ---: | ---: |
+| load to the first requestAnimationFrame after load | 4,153 ms | 1,794 ms |
+| a forced relayout at 900 px (JS: the root's width set, then a layout read) | 294 ms | 139 ms |
+| a real resize, 1280 → 900, to the next requestAnimationFrame | 635 ms | 271 ms |
+| the content process, RSS / footprint | 2,298 / 1,861 MB | 1,176 / 1,052 MB |
+| all its processes, footprint | 2,223 MB | 1,096 MB |
+
+Chromium is the bar for speed and memory: a footprint under 1 GB after
+load and while dragging, a forced full relayout at 900 px toward
+139 ms (measured the same way), and the first full frame toward 1.8 s.
+Ladybird's design is a reference where it is simpler and measures as
+well.
 
 ## Is it worth it
 

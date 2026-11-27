@@ -11,7 +11,7 @@ import helder.ui.box.Box;
 // item when it is the only one; each row placed after the one before as
 // the layout spaced them, the first here at the top. Items sharing a row
 // are whole: broken in parallel, they need a token of several resumes.
-class Rows {
+class Rows implements Fragmentation.FragmentRows {
 	final rows:Array<Row> = [];
 
 	public function new() {}

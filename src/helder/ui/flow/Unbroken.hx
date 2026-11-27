@@ -44,13 +44,28 @@ class Unbroken implements Fragmentation {
 		outer.defer(d);
 
 	// (a parallel flow laid out whole too: where it resumes the outer's)
-	public function parallel(box:Box, child:Box):Null<Breaks> {
+	public function rows():Fragmentation.FragmentRows
+		return outer.rows();
+
+	public function sub(size:Float, from:Null<BreakToken>):Fragmentation.Fragmentainer
+		return outer.sub(size, from);
+
+	public function push(float:Box)
+		outer.push(float);
+
+	public function avoids(b:Box):Bool
+		return outer.avoids(b);
+
+	public function forcesBefore(b:Box):Bool
+		return outer.forcesBefore(b);
+
+	public function parallel(box:Box, child:Box):Null<Fragmentation.Fragmentainer> {
 		var r = outer.resume(box);
 		if (r != null && r.parallel != null) {
 			var t = r.parallel.get(child);
-			return t == null ? null : new Breaks(Math.POSITIVE_INFINITY, t);
+			return t == null ? null : outer.sub(Math.POSITIVE_INFINITY, t);
 		}
-		return new Breaks(Math.POSITIVE_INFINITY, null);
+		return outer.sub(Math.POSITIVE_INFINITY, null);
 	}
 
 	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float, ?tall:Bool):Bool

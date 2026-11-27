@@ -70,13 +70,40 @@ class CssTheme {
 					{
 						name: "get",
 						access: [APublic, AStatic],
-						kind: FFun({args: [], ret: macro :helder.css.CssSheet, expr: macro return cache ??= helder.css.CssSheetData.decode($v{CssSheetData.encode(sheet, false)})}),
+						kind: FFun({args: [], ret: macro :helder.css.CssSheet, expr: substitutes(sheet) ? macro {
+							// (its var()s read again when substituted)
+							helder.css.CssResolver.rereads();
+							return cache ??= helder.css.CssSheetData.decode($v{CssSheetData.encode(sheet, false)});
+						} : macro return cache ??= helder.css.CssSheetData.decode($v{CssSheetData.encode(sheet, false)})}),
 						pos: pos
 					}
 				]
 			});
 		}
 		return macro @:pos(pos) $p{["helder", "css", "themes", name]}.get();
+	}
+
+	// (whether a property's value in the sheet waits for var() substitution,
+	// CssResolver reading it again then, or the sheet has palettes to read:
+	// CssResolver.rereads installed by its get())
+	static function substitutes(sheet:CssSheet):Bool {
+		function declared(ds:Array<CssDeclared>):Bool {
+			for (d in ds) if (d.id >= 0 && d.value.match(Unresolved(_))) return true;
+			return false;
+		}
+		function rules(rs:Null<Array<CssSheetRule>>):Bool {
+			for (r in rs ?? []) if (switch r {
+				case Style(_, ds): declared(ds);
+				case Media(_, inner) | Layer(_, inner): rules(inner);
+				case Import(s, _, _, _): substitutes(s);
+				case Page(p): declared(p.declarations) || Lambda.exists([for (m in p.margins) m], declared);
+				// (its descriptors read by their grammar: FontMatch)
+				case FontPaletteValues(_): true;
+				case _: false;
+			}) return true;
+			return false;
+		}
+		return rules(sheet.rules);
 	}
 
 	static function originOf(e:Null<Expr>):CssOrigin

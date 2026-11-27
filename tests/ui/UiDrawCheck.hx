@@ -10,7 +10,9 @@ import helder.ui.draw.*;
 // Linux: Mesa's llvmpipe on an EGL pbuffer):
 //   UiDrawCheck <golden.png> <out.png> [--bless | --dump | --window | --smoke]
 // (--dump prints the laid-out tree; --window draws it in a helder.ui.UiWindow, X11
-// under Xvfb on Linux, and compares the frame read back before its present;
+// under Xvfb on Linux, and compares the frame read back before its present
+// (a window at another scale, a Mac's Retina one: against the sample drawn
+// headless at that scale, the golden being 1x);
 // --smoke, for the machines without DejaVu Sans (Windows, macOS: CI's
 // gfx-windows and gfx-macos): no golden image, but the system font found
 // is printed and the card's paragraph must have drawn text)
@@ -90,13 +92,23 @@ class UiDrawCheck {
 	static function window(golden:String, out:String) {
 		var w = new helder.ui.UiWindow({title: "UiDrawCheck", width: W, height: H});
 		Sample.build(w.root);
-		var pixels = Bytes.alloc(W * H * 4);
+		var pixels = Bytes.alloc(W * H * 4), pw = W, ph = H;
 		var frames = 0;
 		w.onFrame = () -> {
 			frames++;
 			// (frames 2 and 3 asked for: with nothing changed the window draws no more)
 			if (frames < 3) w.ui.requestFrame();
-			if (frames == 2) w.capture = pixels;
+			if (frames == 2) {
+				// (the soft build has no device: its frame is the window's size at its scale)
+				#if helder.soft
+				pw = Math.round(W * w.scale);
+				ph = Math.round(H * w.scale);
+				#else
+				pw = w.device.width;
+				ph = w.device.height;
+				#end
+				w.capture = pixels = Bytes.alloc(pw * ph * 4);
+			}
 		};
 		// helder.ui.UiWindow.run's loop, counting the turns with nothing to draw: each
 		// sleeps (App.wait) until an event or 50 ms; closed after half a second idle
@@ -116,10 +128,27 @@ class UiDrawCheck {
 				}
 			}
 		}, e -> w.handle(e));
-		sys.io.File.saveBytes(out, Png.encode(pixels, W, H));
+		sys.io.File.saveBytes(out, Png.encode(pixels, pw, ph));
 		var slept = frames == 3 && idle > 2 && idle < 40;
 		Sys.println('UiDrawCheck: window: $frames frames, then $idle turns idle, scale ${w.scale}' + (slept ? "" : " (FAIL: 3 frames and the loop asleep expected)"));
-		Sys.exit(compare(pixels, golden) && slept && !failedShown ? 0 : 1);
+		var same = pw == W && ph == H ? compare(pixels, golden) : scaled(pixels, pw, ph, w.scale, w.ui.overlayBars);
+		Sys.exit(same && slept && !failedShown ? 0 : 1);
+	}
+
+	// (a window's frame at scale s against the sample drawn headless at s, with the window's kind of scrollbars)
+	static function scaled(pixels:Bytes, pw:Int, ph:Int, s:Float, overlay:Bool):Bool {
+		var ui = new Ui(new DrawText(), W, H);
+		ui.scale = s;
+		ui.overlayBars = overlay;
+		Sample.build(ui.root);
+		ui.update();
+		var f = new DrawFrame(pw, ph);
+		f.scale = s;
+		var theirs = f.draw(ui);
+		f.dispose();
+		var d = ImageDiff.of(pixels, theirs, pw, ph, TOLERANCE), ok = d.within(MAX_OFF);
+		Sys.println('UiDrawCheck: window at scale $s against the sample drawn at it: ' + (ok ? "ok" : "FAIL") + ' ($d)');
+		return ok;
 	}
 	#end
 

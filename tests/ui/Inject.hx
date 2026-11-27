@@ -173,6 +173,45 @@ class Inject {
 		return true;
 	}
 
+	// what the window server shows of a window now: its pixels as presented,
+	// the system's layers composed (BGRA, rows stride bytes apart, its title
+	// bar included; one buffer, the next call's too); null where they can't be read
+	public static function screen(w:helder.os.Window):Null<{px:haxe.io.Bytes, width:Int, height:Int, stride:Int}> {
+		if (!supported) return null;
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		var view = w.surface.handle;
+		var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC;
+		var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
+		var n = M.i(M.id(view, O.sel("window")), O.sel("windowNumber")).toInt();
+		var r:Ptr<helder.os.apple.objc.CGRect> = LibC.malloc(32);
+		// (CGRectNull: the window's own bounds)
+		r.value.origin.x = Math.POSITIVE_INFINITY;
+		r.value.origin.y = Math.POSITIVE_INFINITY;
+		r.value.size.width = 0;
+		r.value.size.height = 0;
+		var img = CG.CGWindowListCreateImage(r.value, 8, n, 1);
+		LibC.free(r);
+		var out:Null<{px:haxe.io.Bytes, width:Int, height:Int, stride:Int}> = null;
+		if (!img.isNull()) {
+			var data = CG.CGDataProviderCopyData(CG.CGImageGetDataProvider(img));
+			if (!data.isNull()) {
+				var len = M.i(data, O.sel("length")).toInt();
+				if (shown.length < len) shown = haxe.io.Bytes.alloc(len);
+				BytesPtr.copyIn(shown, 0, M.id(data, O.sel("bytes")), len);
+				out = {px: shown, width: CG.CGImageGetWidth(img).toInt(), height: CG.CGImageGetHeight(img).toInt(), stride: CG.CGImageGetBytesPerRow(img).toInt()};
+				CF.CFRelease(data);
+			}
+			CF.CFRelease(img);
+		}
+		helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
+		return out;
+		#else
+		return null;
+		#end
+	}
+
+	static var shown = haxe.io.Bytes.alloc(0);
+
 	// one mouse event at x, y points of w's content (type: NSEvent's, 1 the
 	// left button down, 2 up, 6 dragged, 5 moved), posted to the
 	// application's own queue as a mouse's come (a drag's many queue
@@ -207,6 +246,12 @@ class Inject {
 	static function CGEventSetLocation(e:Ptr, p:helder.os.apple.objc.CGPoint):Void;
 	static function CGEventSetIntegerValueField(e:Ptr, field:Int, value:Int64):Void;
 	static function CGEventPostToPid(pid:Int, e:Ptr):Void;
+	static function CGWindowListCreateImage(bounds:helder.os.apple.objc.CGRect, option:Int, window:Int, imageOption:Int):Ptr;
+	static function CGImageGetDataProvider(image:Ptr):Ptr;
+	static function CGDataProviderCopyData(provider:Ptr):Ptr;
+	static function CGImageGetWidth(image:Ptr):Int64;
+	static function CGImageGetHeight(image:Ptr):Int64;
+	static function CGImageGetBytesPerRow(image:Ptr):Int64;
 }
 
 @:build(helder.os.apple.objc.Sender.build())

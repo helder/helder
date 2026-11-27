@@ -76,18 +76,24 @@ class CssSheet {
 		this.rules = rules;
 	}
 
-	public static function parse(text:String, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
+	public static function parse(text:String, origin:CssOrigin, ?options:CssSheetOptions):CssSheet {
+		// (its var()s read again when substituted: CssResolver's)
+		CssResolver.rereads();
 		return new Builder(origin, options ?? {}, 0).sheet(Css.sheet(text));
+	}
 
 	// Rules read before (CssScope's, scoped) compiled as parse compiles text's.
-	@:allow(helder.css) static function of(rules:Array<CssRule>, origin:CssOrigin, ?options:CssSheetOptions):CssSheet
+	@:allow(helder.css) static function of(rules:Array<CssRule>, origin:CssOrigin, ?options:CssSheetOptions):CssSheet {
+		CssResolver.rereads();
 		return new Builder(origin, options ?? {}, 0).sheet(rules);
+	}
 
 	// A style attribute's declarations (author, compiled).
 	public static function attribute(text:String):Array<CssDeclared>
 		return compile(Css.declarations(text));
 
 	public static function compile(declarations:Array<CssDeclaration>):Array<CssDeclared> {
+		CssResolver.rereads();
 		var out = [];
 		for (d in declarations) for (c in declared(d)) out.push(c);
 		return out;

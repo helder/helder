@@ -458,8 +458,14 @@ class Compositor implements RenderIdle {
 		barShown.resize(0);
 		var changed = false;
 		for (i in 0...f.nodes.length) {
-			var o = mirror.offsets(f.nodes[i]);
-			var x = o == null ? f.offsets[2 * i] : o.x, y = o == null ? f.offsets[2 * i + 1] : o.y;
+			var o = mirror.offsets(f.nodes[i]), x = f.offsets[2 * i], y = f.offsets[2 * i + 1];
+			// (no farther than what the program's frame recorded: past it, its
+			// content as it was until the program draws there, not nothing)
+			if (o != null) {
+				var r = f.reach, k = 4 * i;
+				x = Math.max(x + r[k], Math.min(x + r[k + 1], o.x));
+				y = Math.max(y + r[k + 2], Math.min(y + r[k + 3], o.y));
+			}
 			now.push(x);
 			now.push(y);
 			if (x != shownAt[2 * i] || y != shownAt[2 * i + 1]) {

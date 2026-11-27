@@ -47,6 +47,7 @@ class DamageCheck {
 			device.dispose();
 			planes(scale);
 		}
+		long();
 		// (last: motion, once declared, is on for the process)
 		for (scale in [1, 2]) {
 			var device = Device.create(Surface.headless(W * scale, H * scale));
@@ -57,6 +58,24 @@ class DamageCheck {
 		}
 		Sys.println("DamageCheck: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
+	}
+
+	// (a long page's layer: its background's quad reaching far past the
+	// 8192 pixels a drawable has, its drawable around what its clip shows
+	// scrolled far down, not at the quad's top)
+	static function long() {
+		var p = new helder.ui.layers.LayerPlane(helder.ui.layers.LayerPlane.SCROLL, null), out = Bytes.alloc(helder.ui.layers.CompositeFrame.STRIDE);
+		for (k in [[8, 0], [12, -447420], [24, 2000], [28, -447420], [40, 0], [44, 22873]])
+			out.setFloat(k[0], k[1]);
+		p.cx1 = 2000;
+		p.cy1 = 1536;
+		p.scale = 2;
+		p.drawnY = 223775;
+		p.ranges[3] = 230000;
+		p.begin();
+		p.add(0, out);
+		p.fit();
+		check('a long page scrolled far: its layer around what is seen', p.oy <= p.cy0 && p.oy + p.ph >= p.cy1, 'from ${p.oy}, ${p.ph} tall');
 	}
 
 	static final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};

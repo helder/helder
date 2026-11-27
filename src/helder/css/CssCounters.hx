@@ -64,7 +64,7 @@ typedef CssBookmark = {level:Int, label:String, open:Bool}
 //   counters.exit(li, "before");
 //   ...children...
 //   counters.exit(li);
-class CssCounters {
+class CssCounters implements CssCounting {
 	public final formats:CssCounterStyles;
 	final styles:CssStyles;
 	// (per name, the counters in scope, innermost last)
@@ -289,6 +289,9 @@ class CssCounters {
 	// A list item's marker: ::marker's content, else list-style-image, else
 	// list-style-type's text for its list-item counter (a style's prefix and
 	// suffix, a string as it is); null for none.
+	public function listMarker(v:Int, type:String):String
+		return formats.marker(v, type);
+
 	public function marker(el:Element):Null<Array<CssGeneratedPart>> {
 		var s = styles.computed(el, "marker");
 		if (s.keyword(Content) == "none") return null;
@@ -382,7 +385,7 @@ class CssCounters {
 	static final AUTO = [["“", "”"], ["‘", "’"]];
 
 	// (a counter in a style: a name, none, or symbols() as CssItems writes it)
-	function format(v:Int, style:String):String {
+	public function format(v:Int, style:String):String {
 		if (style == "none") return "";
 		if (!StringTools.startsWith(style, "symbols(")) return formats.format(v, style);
 		var parts = style.substring("symbols(".length, style.length - 1).split("\x1f");
