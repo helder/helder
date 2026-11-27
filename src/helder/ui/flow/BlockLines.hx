@@ -368,6 +368,8 @@ class BlockLines {
 		inline function atomicFrag(i:Int):Int
 			return slot[i] >= 0 && slot[i] < built.laid.length ? built.laid[slot[i]] : -1;
 		function textBox(i:Int):Box {
+			// (an ellipsis, of no item: the block's, in its style, CSS Overflow 3 §5.1)
+			if (i < 0) return (cast c.root : BoxInline).box;
 			var b = i < built.texts.length ? built.texts[i] : null;
 			return b != null ? b : (cast c.style(i) : BoxInline).box;
 		}
@@ -483,9 +485,9 @@ class BlockLines {
 			}
 			// (an item's nearest box with a span on the line: its fragment and place, or the line's)
 			inline function parentOf(item:Int):Int {
-				var open = c.box(item);
-				while (open >= 0 && !hasSpan(open)) open = c.parent(open);
-				return open;
+				var open = boxOf(c, item);
+				while (open >= 0 && open < c.items && !hasSpan(open)) open = c.parent(open);
+				return open >= c.items ? -1 : open;
 			}
 			for (f in start...end) switch l.kind(f) {
 				case TextRun | Hyphen | Ellipsis:
@@ -507,8 +509,8 @@ class BlockLines {
 				case _:
 			}
 			for (f in start...end) if (l.kind(f) != BoxSpan) {
-				var open = c.box(l.item(f));
-				while (open >= 0) {
+				var open = boxOf(c, l.item(f));
+				while (open >= 0 && open < c.items) {
 					if (firstStamp[open] != stamp || firstOf[open] > f) {
 						firstStamp[open] = stamp;
 						firstOf[open] = f;
@@ -697,6 +699,10 @@ class BlockLines {
 		}
 		return {height: height, baseline: baseline};
 	}
+
+	// (an item's box; -1 for a line's own fragments, an ellipsis' or a hyphen's, whose item may be none)
+	static inline function boxOf(c:InlineContent, item:Int):Int
+		return item >= 0 && item < c.items ? c.box(item) : -1;
 
 	// (synthesized bold's stroke, as Skia's: 1/24 of the size at 9px to 1/32 at 36px)
 	@:allow(helder.ui.flow) static function embolden(size:Float):Float {
