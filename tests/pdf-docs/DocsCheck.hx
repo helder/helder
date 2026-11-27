@@ -18,7 +18,7 @@ using StringTools;
 // the parity target), the two are rasterised the same way and compared
 // page by page, a pixel differing when a channel is off by more than
 // TOLERANCE: each page's similarity, a diff image (diff/<name>-<n>.png:
-// helder's page in grey, what differs red) and a summary
+// alike in grey, helder's ink red, WeasyPrint's blue) and a summary
 // (similarity.md). The comparison never fails the run.
 class DocsCheck {
 	static final dir = "tests/pdf-docs";
@@ -121,9 +121,11 @@ class DocsCheck {
 				img.set(o + 1, grey);
 				img.set(o + 2, grey);
 			} else {
-				img.set(o, 230);
-				img.set(o + 1, 30);
-				img.set(o + 2, 30);
+				// (red: helder's ink, the darker; blue: WeasyPrint's)
+				var ours = px(a, x, y, 0) + px(a, x, y, 1) + px(a, x, y, 2) < px(b, x, y, 0) + px(b, x, y, 1) + px(b, x, y, 2);
+				img.set(o, ours ? 230 : 30);
+				img.set(o + 1, ours ? 30 : 90);
+				img.set(o + 2, ours ? 30 : 230);
 			}
 			img.set(o + 3, 255);
 		}
