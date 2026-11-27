@@ -31,7 +31,7 @@ and fast.
 | 5 | The port: helder.ui on helder.dom, the app UA sheet (src/helder/css/ua/app.css), the codemod | not started; gated on sizes and benches |
 | 6 | Floats, positioning, tables, lists, generated content | done (#349, #351, #355, #363, #366) |
 | 7 | Paged media: fragmentation, PagedView, margin boxes, GCPM | in progress (#375; #384 margin boxes) |
-| 8 | HTML→PDF end to end | `helder pdf` and `PagedView.toPdf()` |
+| 8 | HTML→PDF end to end | `helder pdf` and `PagedView.toPdf()`; tests/pdf-docs against their goldens, and against WeasyPrint in CI (advisory) |
 
 ## Decisions
 

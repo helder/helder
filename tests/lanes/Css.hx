@@ -7,6 +7,7 @@ class Css {
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
 		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively, and its noref tests against goldens Chromium draws (Playwright; reftest-manifest.json; args: directories or names to run alone)", run: reftests},
 		{name: "css-paged", about: "real documents on pages (tests/paged: an invoice, a report) against their goldens of our own output, drawn by PagedView (BLESS=1 takes them); a screen-only program without the paged host's fragmentation in its symbols", run: pagedLane},
+		{name: "pdf-docs", about: "real-world documents (tests/pdf-docs) through helder pdf, each page rasterised by helder.pdf against its golden of our own output (BLESS=1 takes them); against WeasyPrint's PDFs where bin/pdf-docs has them (CI: similarity.md, diff/)", run: pdfDocs},
 		{name: "css-app", about: "src/helder/css/ua/app.css against helder.ui today: example screens (todo, mail) mirrored as helder.dom trees, their computed values compared (a report: bin/css/app-ua.md)", run: app},
 		{name: "box-conformance", about: "Taffy's flexbox and grid fixtures (Chrome's boxes) through helder's CSS engine, DocumentView (box-manifest.json; BLESS=1 takes it; args: fixture ids' parts)", run: boxConformance},
 		{name: "css-render", about: "a page drawn by helder.ui.box: css-render <page> <out.png> [width height] [--tree]", run: render},
@@ -165,6 +166,17 @@ class Css {
 		if (!sys.FileSystem.exists("bin/fonts/dejavu-2.37/DejaVuSansMono.ttf")) run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
 		exe("bin/paged/PagedCheck", cps(["src", "tests/css", "tests/paged"]).concat(["-main", "PagedCheck"]));
 		run(exePath("bin/paged/PagedCheck", HOST), []);
+	}
+
+	static function pdfDocs() {
+		if (!sys.FileSystem.exists("bin/fonts/dejavu-2.37/DejaVuSansMono.ttf")) run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
+		var cli = helderCli();
+		mkdirs("bin/pdf-docs");
+		var names = [for (f in sys.FileSystem.readDirectory("tests/pdf-docs")) if (StringTools.endsWith(f, ".html")) f];
+		names.sort(Reflect.compare);
+		for (f in names) run(cli, ["pdf", 'tests/pdf-docs/$f', "-o", 'bin/pdf-docs/${f.substr(0, f.length - 5)}.pdf']);
+		exe("bin/pdf-docs/DocsCheck", cps(["src", "tests/pdf-docs"]).concat(["-main", "DocsCheck"]));
+		run(exePath("bin/pdf-docs/DocsCheck", HOST), []);
 	}
 
 	static function boxConformance() {

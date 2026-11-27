@@ -1153,6 +1153,13 @@ From a program, one call: `PagedView.toPdf(html, {url: ..., load: ...,
 image: ..., font: ...})` (helder.ui.box) gives the PDF's bytes;
 `new PagedView(document, options)` its pages, to paint or print one by one.
 
+tests/pdf-docs' documents (an invoice, a report with its contents and
+running heads, a long table, a book chapter with endnotes, floats and
+images, a CV in flex and grid) are the end-to-end check: `bun run test
+pdf-docs` renders each through `helder pdf` and compares its pages with
+their goldens. CI's advisory pdf-docs job compares them with WeasyPrint's
+PDFs too, page by page (the similarity and the diff images an artifact).
+
 ## Stopping
 
 On SIGINT or SIGTERM (`helder.async.Signals`), `helder dev` stops the
