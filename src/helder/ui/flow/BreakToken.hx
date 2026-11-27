@@ -16,6 +16,9 @@ class BreakToken {
 	// (a Resume's line in a monolithic box past the fragmentainer's end: laid out whole again, shifted up by what the
 	// ones before took of it, its overflow continuing)
 	public static inline var MONO = -4;
+	// (a Resume's line in its lines: the one at its from past the fragmentainer's end, monolithic: laid out again
+	// shifted up by its shift, its overflow continuing, the lines after it below)
+	public static inline var LINE = -5;
 
 	public final resumes:ObjectMap<Box, Resume>;
 	// a forced break's page side ("left", "right": the next page is that side, a blank one between if not)

@@ -50,9 +50,9 @@ class Breaks implements Fragmentation {
 		if (bottom > reach) reach = bottom;
 
 	// (progress even with no content before it here: the box's height fills the fragmentainer)
-	public function after(box:Box, bottom:Float):Bool
-		return offer({box: box, child: null, line: BreakToken.PAST, from: null, bottom: Math.max(bottom, 2 * EPSILON), appeal: inside(box, PERFECT), forced: null,
-			keep: false});
+	public function after(box:Box, bottom:Float, ?forced:Bool):Bool
+		return offer({box: box, child: null, line: BreakToken.PAST, from: null, bottom: Math.max(bottom, 2 * EPSILON), appeal: inside(box, PERFECT),
+			forced: forced ? "page" : null, keep: false});
 
 	public function defer(d:Deferred)
 		deferred.push(d);
@@ -61,6 +61,10 @@ class Breaks implements Fragmentation {
 		tops.set(box, top);
 		return offer({box: box, child: null, line: BreakToken.MONO, from: null, bottom: size, appeal: inside(box, LAST), forced: null, keep: false});
 	}
+
+	public function overflowing(box:Box, at:InlineBreak, top:Float):Bool
+		return offer({box: box, child: null, line: BreakToken.LINE, from: at, bottom: size, appeal: inside(box, LAST), forced: null, keep: false,
+			shift: size - top});
 
 	public function parallel(box:Box, child:Box):Null<Breaks> {
 		var r = resume(box);
@@ -76,6 +80,15 @@ class Breaks implements Fragmentation {
 
 	public function uncarry(float:Box)
 		carries.remove(float);
+
+	public function carrying(box:Box):Bool {
+		for (f in carries.keys()) {
+			var a = f.parent;
+			while (a != null && a != box) a = a.parent;
+			if (a == box) return true;
+		}
+		return false;
+	}
 
 	public function carried(host:Box):Array<{box:Box, token:BreakToken}> {
 		var out = [];
@@ -198,7 +211,7 @@ class Breaks implements Fragmentation {
 		var forced = p.forced != null || p.keep && (top == null || p.bottom - top < size);
 		// (past a box's content: it and the boxes around it to the fragmentainer's end)
 		var end = p.line == BreakToken.PAST ? size : p.bottom;
-		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, parallel: p.parallel, consumed: consumed(p.box, end), forced: forced});
+		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, parallel: p.parallel, consumed: consumed(p.box, end), forced: forced, shift: p.shift});
 		var b = p.box;
 		while (b.parent != null) {
 			resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, end), forced: forced});
@@ -334,5 +347,6 @@ private typedef Point = {
 	bottom:Float,
 	appeal:Int,
 	forced:Null<String>,
-	keep:Bool
+	keep:Bool,
+	?shift:Float
 }

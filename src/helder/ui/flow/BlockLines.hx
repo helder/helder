@@ -41,6 +41,11 @@ class BlockLines {
 		var fr = space.fragmentation;
 		var resume = fr != null ? fr.resume(block) : null;
 		var from = resume != null ? resume.from : null;
+		// (resumed inside a line past the fragmentainer's end: the lines from it up by what the ones before showed of it,
+		// clipped to the page)
+		var shift = resume != null && resume.line == BreakToken.LINE ? resume.shift ?? 0.0 : 0.0;
+		if (shift > 0) block.flags |= Box.SLICED;
+		oy -= shift;
 		// (the function, not the space's field: the lines are laid out again for hit testing, the space gone on)
 		var lineWidth = space.lineWidth;
 		var constraints = new InlineConstraints(width, lineWidth == null ? null : (y, h) -> {
@@ -90,14 +95,23 @@ class BlockLines {
 			}
 			// (class B: between lines, from the second here, the floats of the lines before it before it too; a
 			// break taken ends this fragment's lines)
-			var last = l.lines;
+			var last = l.lines, overflows = false;
 			if (fr != null) {
-				var top = space.reserve + space.pageTop, next = 0;
+				var top = space.reserve + space.pageTop - shift, next = 0;
 				for (k in 0...l.lines) {
 					while (next < bottoms.length && next < tops.length && tops[next] < l.lineTop(k)) fr.floated(top + bottoms[next++]);
 					var bottom = top + (k == 0 ? 0 : l.lineTop(k - 1) + l.lineHeight(k - 1));
 					if (fr.inLines(block, 0, k, l.lines, bottom, l.breakAt(k)) || fr.stopped) {
 						last = k;
+						break;
+					}
+					// (a line past the end at the fragmentainer's top, nothing before it here to break at, monolithic: a break
+					// inside it, its overflow on the pages after; elsewhere it goes to the next whole)
+					var lineTop = space.pageTop - shift + l.lineTop(k);
+					if (lineTop <= 0.01 && lineTop + l.lineHeight(k) + space.reserve > fr.size + 0.01 && fr.overflowing(block, l.breakAt(k), lineTop)) {
+						block.flags |= Box.SLICED;
+						last = k + 1;
+						overflows = true;
 						break;
 					}
 				}
@@ -118,7 +132,10 @@ class BlockLines {
 			var r = fragments(l, built, space, frag, ox, oy, constraints, 0, last);
 			if (fr == null) block.lines = new BlockText(c, constraints, frag, ox, oy);
 			depth--;
-			return r;
+			// (broken inside a line: its content to the fragmentainer's end, the rest of the line's overflow)
+			var h = r.height - shift;
+			if (overflows) h = Math.min(h, fr.size - space.reserve - space.pageTop);
+			return h != r.height ? {height: Math.max(0, h), lines: r.lines, baseline: r.baseline - shift} : r;
 		} catch (e:haxe.Exception) {
 			depth--;
 			throw e;
