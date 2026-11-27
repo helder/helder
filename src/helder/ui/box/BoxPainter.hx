@@ -329,26 +329,24 @@ class BoxPainter {
 		// (the text's box: the marker's, or its text's)
 		var marker = b.kind == Text ? b.parent : b;
 		if (!shapes || !b.markerPseudo() || marker == null || !marker.markerPseudo() || run.text == null) return false;
-		var type = marker.style.keyword("list-style-type");
-		var symbol = switch type {
-			case "disc": "\u2022";
-			case "circle": "\u25E6";
-			case "square": "\u25AA";
-			case _: return false;
-		}
-		if (StringTools.trim(run.shown()) != symbol) return false;
+		var symbol = marker.markerSymbol();
+		if (symbol == null || StringTools.trim(run.shown()) != symbol) return false;
 		if (color >>> 24 == 0) return true;
 		var a = Math.round(FontMatch.ascent(run.face, run.size)), offset = Std.int(a * 2 / 3), size = Std.int((offset + 1) / 2);
 		// (outside: from the line's start, its marker span's end: whatever its text's trailing space)
 		var span = f.parent(id);
-		var start = span >= 0 && f.kind(span) == Fragments.SPAN ? x - f.x(id) + f.width(span) : x + f.width(id);
-		var x0 = Math.round(marker.flags & Box.OUTSIDE != 0 ? start - offset - 7 : x), y0 = Math.round(baseline) - a + Std.int(3 * (a - offset) / 2);
+		var hasSpan = span >= 0 && f.kind(span) == Fragments.SPAN;
+		var start = hasSpan ? x - f.x(id) : x, width = f.width(hasSpan ? span : id);
+		var line = hasSpan ? f.parent(span) : -1;
+		var rtl = line >= 0 ? f.box(line).style.rtl : marker.style.rtl;
+		var px = marker.flags & Box.OUTSIDE == 0 ? x : rtl ? start + offset + 7 - size : start + width - offset - 7;
+		var x0 = Math.round(px), y0 = Math.round(baseline) - a + Std.int(3 * (a - offset) / 2);
 		var path = new Path();
-		switch type {
-			case "square":
+		switch symbol {
+			case "\u25AA":
 				path.rect(x0, y0, size, size);
 				p.fill(path, Paint.solid(color));
-			case "circle":
+			case "\u25E6":
 				path.ellipse(x0 + size / 2, y0 + size / 2, size / 2 - 0.5, size / 2 - 0.5, 0, 0, 2 * Math.PI);
 				p.stroke(path, new helder.canvas.Stroke(), Paint.solid(color));
 			case _:

@@ -279,7 +279,8 @@ class BlockLines {
 					case Inline:
 						if (widthRelative(k, false)) relative = true;
 						out.opened.push(k);
-						c.openBox(BoxInline.of(k, width), k.node);
+						var style = !space.exact && k.markerPseudo() ? BoxInline.insideMarker(k, width, space.fonts.inlines) : BoxInline.of(k, width);
+						c.openBox(style, k.node);
 						walk(k);
 						c.closeBox(k.node);
 					case Break:

@@ -70,6 +70,18 @@ class Box {
 	public inline function markerPseudo():Bool
 		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";
 
+	@:allow(helder.ui.box.BoxInline, helder.ui.box.BoxPainter)
+	function markerSymbol():Null<String> {
+		if (style.keyword("content") != "normal" || first == null || first.kind != Text || first.next != null) return null;
+		var symbol = switch style.keyword("list-style-type") {
+			case "disc": "\u2022";
+			case "circle": "\u25E6";
+			case "square": "\u25AA";
+			case _: return null;
+		}
+		return StringTools.trim(first.text) == symbol ? symbol : null;
+	}
+
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth(get, set):Float;
 	public var cacheHeight(get, set):Float;
