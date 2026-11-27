@@ -780,6 +780,7 @@ class InlineContent {
 		rtl = base == 1;
 		paragraphs.resize(0);
 		isolates.resize(0);
+		var explicit = false;
 		if (!rtl) {
 			var i = 0;
 			while (i < n) {
@@ -787,16 +788,17 @@ class InlineContent {
 				if (c < 0x590) continue;
 				if (c >= 0xD800 && c < 0xDC00 && i < n) c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(text, i++) - 0xDC00);
 				var k = Bidi.classOf(c);
-				if (k == Bidi.R || k == Bidi.AL) {
+				if (k == Bidi.R || k == Bidi.AL || k == Bidi.RLE || k == Bidi.RLO || k == Bidi.RLI || k == Bidi.FSI) {
 					rtl = true;
 					break;
 				}
+				if (k >= Bidi.LRE && k <= Bidi.PDI) explicit = true;
 			}
 		}
 		// (a block container's bidi-override: its inline content's, each paragraph in an override, CSS Writing Modes 3 §2.2)
 		var rootBidi = root.unicodeBidi();
 		var forced = rootBidi == BidiOverride || rootBidi == IsolateOverride ? (base == 1 ? 0x202E : 0x202D) : -1;
-		var any = rtl || plaintext || forced >= 0;
+		var any = rtl || explicit || plaintext || forced >= 0;
 		for (k in 1...styles.length)
 			if (styles[k].direction() == Rtl) rtl = true;
 		// (an override or embedding asked for: the algorithm, even on left-to-right text)
