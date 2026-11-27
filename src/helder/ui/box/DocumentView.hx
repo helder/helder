@@ -574,11 +574,14 @@ class DocumentView {
 		} else
 			lazy = null;
 		tailOf = null;
-		var f = (r.context ?? options.contexts.flow).layout(r, space);
+		var flow = r.absolute ? Std.downcast(options.contexts.flow, helder.ui.flow.BlockFlow) : null;
+		var f = flow != null ? flow.positionedDocument(r, space) : (r.context ?? options.contexts.flow).layout(r, space);
 		// (past a box it was to reach: the cut where that left it)
 		if (lazy != null) bottom = Math.max(bottom, lazy.bottom);
-		var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
-		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
+		if (flow == null) {
+			var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
+			fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
+		}
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
 		if (sticky && (options.media == null || options.media.type != "print")) helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
 		orderDue = true;
