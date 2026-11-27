@@ -13,13 +13,16 @@ using haxe.macro.ExprTools;
 #end
 
 // Style sheets compiled at build time: the CSS (a file's or a string
-// constant's) parsed by the compiler and the sheet written as the
-// expressions that make it again: selectors with their specificity, Bloom
-// hashes and buckets, declarations as property ids and typed values,
-// @media's queries, @import's sheets (read beside the file). A program
-// that styles with these alone (CssCascade.themed) links no CSS tokenizer
-// or parser; var() is substituted when styles are computed, as ever. The
-// sheets have no URL: url()s stay as written.
+// constant's) parsed by the compiler and the sheet written as data
+// (CssSheetData: selectors with their specificity, Bloom hashes and
+// buckets, declarations as property ids and typed values, @media's
+// queries, @import's sheets read beside the file), read back when first
+// asked. A program that styles with these alone (CssCascade.themed) links
+// no CSS tokenizer or parser, and one decoder whatever its sheets: as code
+// (a constructor per value) html.css took 958 KB, as data 58 KB, parsed
+// when the program runs 198 KB and 1.4 ms, read as data 0.13 ms. var()
+// is substituted when styles are computed, as ever. The sheets have no
+// URL: url()s stay as written.
 //
 //   var theme = CssTheme.file("theme.css");  // beside the calling file, else under a class path
 //   var base = CssTheme.sheet("button { padding: 4px 8px }");
@@ -56,84 +59,24 @@ class CssTheme {
 			};
 			var sheet = try CssSheet.parse(text, origin, {url: "file://" + FileSystem.fullPath(dir) + "/", load: load})
 				catch (e:Dynamic) Context.error('CssTheme: $e', pos);
+			// (the sheet as CssSheetData's string, read when first asked)
 			Context.defineType({
 				pack: ["helder", "css", "themes"],
 				name: name,
 				pos: pos,
 				kind: TDClass(),
 				fields: [
-					{name: "sheet", access: [APublic, AStatic, AFinal], kind: FVar(macro :helder.css.CssSheet, macro @:privateAccess ${value(sheet, pos)}), pos: pos}
+					{name: "cache", access: [AStatic], kind: FVar(macro :Null<helder.css.CssSheet>, macro null), pos: pos},
+					{
+						name: "get",
+						access: [APublic, AStatic],
+						kind: FFun({args: [], ret: macro :helder.css.CssSheet, expr: macro return cache ??= helder.css.CssSheetData.decode($v{CssSheetData.encode(sheet, false)})}),
+						pos: pos
+					}
 				]
 			});
 		}
-		return macro @:pos(pos) $p{["helder", "css", "themes", name, "sheet"]};
-	}
-
-	// (a value of the sheet's as the expression that makes it: enums by
-	// their constructors, structures, arrays and maps as literals, the
-	// classes a sheet holds by their constructors)
-	static function value(v:Dynamic, pos:Position):Expr {
-		inline function e(d:ExprDef):Expr
-			return {expr: d, pos: pos};
-		if (v == null) return macro null;
-		return switch Type.typeof(v) {
-			case TBool: e(EConst(CIdent(v ? "true" : "false")));
-			case TInt: e(EConst(CInt(Std.string(v))));
-			case TFloat: float(v, pos);
-			case TEnum(en):
-				var path = Type.getEnumName(en).split(".");
-				// (an enum of another module's: its module named)
-				var last = path.pop();
-				if (MODULES.exists(last)) path.push(MODULES[last]);
-				path.push(last);
-				var c = macro $p{path.concat([Type.enumConstructor(v)])};
-				var args = Type.enumParameters(v);
-				args.length == 0 ? c : e(ECall(c, [for (a in args) value(a, pos)]));
-			case TObject: e(EObjectDecl([for (f in Reflect.fields(v)) {field: f, expr: value(Reflect.field(v, f), pos)}]));
-			case TClass(c):
-				switch Type.getClassName(c) {
-					case "String": e(EConst(CString(v)));
-					case "Array": e(EArrayDecl([for (x in (v : Array<Dynamic>)) value(x, pos)]));
-					case "haxe.ds.StringMap":
-						var m:haxe.ds.StringMap<Dynamic> = v;
-						var items = [for (k => x in m) macro $v{k} => ${value(x, pos)}];
-						items.length == 0 ? macro new Map() : e(EArrayDecl(items));
-					case "helder.css.CssSheet":
-						var s:CssSheet = v;
-						macro new helder.css.CssSheet(${value(s.origin, pos)}, null, ${value(s.rules, pos)});
-					case "helder.css.CssSelector":
-						var s:CssSelector = v;
-						macro new helder.css.CssSelector(${value(s.compounds, pos)}, ${value(s.combinators, pos)}, ${value(s.relative, pos)},
-							${value(s.pseudo, pos)}, cast ${value(s.specificity.toInt(), pos)}, ${value(s.hashes, pos)}, $v{s.local}, ${value(s.bucket, pos)});
-					case "helder.css.CssAnB":
-						var a:CssAnB = v;
-						macro new helder.css.CssAnB($v{a.a}, $v{a.b});
-					case "helder.css.CssToken":
-						var t:CssToken = v;
-						macro new helder.css.CssToken(${value(t.kind, pos)}, $v{t.start}, $v{t.end});
-					case "helder.css.CssDeclaration":
-						var d:CssDeclaration = v;
-						macro new helder.css.CssDeclaration($v{d.name}, ${value(d.value, pos)}, $v{d.important}, ${value(d.text, pos)}, $v{d.start}, $v{d.end});
-					case "helder.css.CssMedia":
-						macro new helder.css.CssMedia(${value(@:privateAccess (v : CssMedia).queries, pos)});
-					case n: Context.error('CssTheme: a $n in the sheet', pos);
-				}
-			case t: Context.error('CssTheme: a $t in the sheet', pos);
-		}
-	}
-
-	static final MODULES = [
-		"CssOrigin" => "CssSheet", "CssSheetRule" => "CssSheet", "CssSpecified" => "CssTerm", "CssTokenKind" => "CssToken", "CssCombinator" => "CssSelector",
-		"CssNamespace" => "CssSelector", "CssSimple" => "CssSelector", "CssAttributeOp" => "CssSelector", "CssSensitivity" => "CssSelector",
-		"CssPseudoClass" => "CssSelector", "CssPseudoElement" => "CssSelector", "CssBucket" => "CssSelector", "CssCalcNode" => "CssCalc",
-		"CssMediaQuery" => "CssMedia", "CssMediaCondition" => "CssMedia"
-	];
-
-	static function float(f:Float, pos:Position):Expr {
-		if (Math.isNaN(f)) return macro Math.NaN;
-		if (!Math.isFinite(f)) return f > 0 ? macro Math.POSITIVE_INFINITY : macro Math.NEGATIVE_INFINITY;
-		var s = Std.string(f);
-		return {expr: EConst(CFloat(s.indexOf(".") < 0 && s.indexOf("e") < 0 ? s + ".0" : s)), pos: pos};
+		return macro @:pos(pos) $p{["helder", "css", "themes", name]}.get();
 	}
 
 	static function originOf(e:Null<Expr>):CssOrigin

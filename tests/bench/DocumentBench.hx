@@ -1,0 +1,729 @@
+import haxe.Timer;
+import haxe.io.Bytes;
+import helder.css.CssCascade;
+import helder.css.CssTheme;
+import helder.css.CssUserAgentTheme;
+import helder.dom.Dom;
+import helder.dom.Document;
+import helder.dom.Element;
+import helder.gfx.Color;
+import helder.ui.*;
+import helder.ui.box.DocumentNode;
+import helder.ui.box.DocumentView;
+import helder.ui.draw.DrawText;
+import helder.view.Render;
+import helder.view.graph.Graph;
+import Todo;
+import Mail;
+
+using StringTools;
+
+// helder's CSS engine live in a helder.ui window (DocumentNode), timed
+// against helder.ui today and against itself on long documents, natively,
+// each frame drawn by the GPU renderer offscreen and read back (DrawFrame:
+// the GPU waited for), the least and the median of runs (bench document):
+//
+//   DocumentBench apps                       examples/todo and examples/mail as helder.ui
+//                                            draws them, and mirrored as an app on the engine
+//                                            would have them: helder.dom trees built in code,
+//                                            styled by ua/app.css and the screen's sheet
+//                                            (tests/bench/document/<screen>.css: each node's own
+//                                            style and :hover look as classes), both compiled at
+//                                            build time, no parser: the first frame, the list
+//                                            scrolled, rows hovered, a field typed into, the
+//                                            window resized, 1,000 rows added
+//   DocumentBench sheets                     those sheets written again (a screen changed)
+//   DocumentBench doc <page.html> [sheets.json] [name]
+//   DocumentBench sample | sample-files <dir> | mem <todo|mail> <helder.ui|engine>
+//                                            a page in a scroller: loaded to its first frame,
+//                                            scrolled through, its links hovered, resized
+//
+// Each frame: its update (what the engine's restyle, layout run in) and
+// its draw (Ui.paint: what the engine paints recorded, the renderer's work,
+// the GPU's, read back); the engine's own work apart (DocumentNode.stats:
+// restyle, layout, paint recording); GC bytes a frame; the live heap the
+// screen holds (a full collection before and after it is made).
+// JSON lines on stdout, tests/bench/document.mjs makes the tables.
+class DocumentBench {
+	static final RUNS = Std.parseInt(Sys.getEnv("RUNS") ?? "3") ?? 3;
+	static var frame:Null<DrawFrame> = null;
+	static var pixels:Null<Bytes> = null;
+	static var screen = "";
+	static var variant = "";
+	static var declared = false;
+
+	static function main() {
+		var args = Sys.args();
+		Clock.tick(0);
+		switch args[0] {
+			case "apps":
+				var only = Sys.getEnv("SCREENS");
+				if (only == null || only.indexOf("todo") >= 0) todo();
+				if (only == null || only.indexOf("mail") >= 0) mail();
+			case "doc":
+				document(args[1], args.length > 2 ? args[2] : null, args.length > 3 ? args[3] : haxe.io.Path.withoutExtension(haxe.io.Path.withoutDirectory(args[1])));
+			case "sample":
+				sample();
+			case "mem":
+				memory(args[1], args[2]);
+			case "sheets":
+				// (the mirrors' sheets, compiled into the engine's screens: tests/bench/document/<screen>.css)
+				for (name in ["todo", "mail"]) {
+					var css = sheetText([name == "todo" ? todoMirror(20) : mailMirror(20), name == "todo" ? todoMirror(1020) : mailMirror(1020)]);
+					sys.io.File.saveContent('tests/bench/document/$name.css', css);
+					Sys.println('tests/bench/document/$name.css');
+				}
+			case "sample-files":
+				// (the sample page and its images as files, for Chromium)
+				var dir = args[1];
+				sys.io.File.saveContent('$dir/sample.html', SamplePage.HTML);
+				for (n in ["harbour.png", "field.png", "dusk.png"]) {
+					var b = SamplePage.image(n);
+					sys.io.File.saveBytes('$dir/$n', helder.image.PngEncoder.encode(b.straight(), b.width, b.height));
+				}
+			case _:
+				Sys.println("DocumentBench apps | doc <page.html> [sheets.json] [name] | sample | sheets");
+		}
+	}
+
+	// ---- the frame
+
+	static function draw(ui:Ui) {
+		// (one target as large as the largest window: a resize draws into it as a window's swap chain keeps its size)
+		if (frame == null || frame.width < Std.int(ui.width) || frame.height < Std.int(ui.height)) {
+			if (frame != null) frame.dispose();
+			frame = new DrawFrame(Std.int(Math.max(ui.width, 1024)), Std.int(Math.max(ui.height, 768)));
+			pixels = Bytes.alloc(frame.width * frame.height * 4);
+		}
+		frame.draw(ui, pixels);
+	}
+
+	// (a frame: the clock on, the update, the draw; its times and the engine's)
+	static function step(ui:Ui, doc:Null<DocumentNode>):Array<Float> {
+		Clock.tick(Clock.now + 1 / 60);
+		var e0 = engine(doc);
+		var t0 = Timer.stamp();
+		ui.update();
+		var t1 = Timer.stamp();
+		draw(ui);
+		var t2 = Timer.stamp();
+		var e1 = engine(doc);
+		return [(t1 - t0) * 1000, (t2 - t1) * 1000, e1[0] - e0[0], e1[1] - e0[1], e1[2] - e0[2]];
+	}
+
+	static function engine(doc:Null<DocumentNode>):Array<Float>
+		return doc == null ? [0, 0, 0] : [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs];
+
+	// (n frames, each after act(i): their times, GC bytes; a JSON line)
+	static function run(op:String, ui:Ui, doc:Null<DocumentNode>, n:Int, act:Int->Void, ?extra:Dynamic) {
+		var totals = [], updates = [], draws = [], styles = [], layouts = [], paints = [], bytes = [];
+		var gc0 = GcStats.collections();
+		for (i in 0...n) {
+			var b0 = GcStats.bytes(), t0 = Timer.stamp();
+			act(i);
+			var a = (Timer.stamp() - t0) * 1000;
+			var s = step(ui, doc);
+			bytes.push(GcStats.bytes() - b0);
+			totals.push(a + s[0] + s[1]);
+			updates.push(a + s[0]);
+			draws.push(s[1]);
+			styles.push(s[2]);
+			layouts.push(s[3]);
+			paints.push(s[4]);
+		}
+		report(op, totals, updates, draws, styles, layouts, paints, bytes, GcStats.collections() - gc0, extra);
+	}
+
+	static function report(op:String, totals:Array<Float>, updates:Array<Float>, draws:Array<Float>, styles:Array<Float>, layouts:Array<Float>,
+			paints:Array<Float>, bytes:Array<Float>, gcs:Int, ?extra:Dynamic) {
+		var o:Dynamic = {
+			screen: screen,
+			variant: variant,
+			op: op,
+			frames: totals.length,
+			median: med(totals),
+			min: min(totals),
+			p95: pct(totals, 0.95),
+			max: pct(totals, 1),
+			update: med(updates),
+			draw: med(draws),
+			style: med(styles),
+			layout: med(layouts),
+			paint: med(paints),
+			engine: med([for (k in 0...styles.length) styles[k] + layouts[k] + paints[k]]),
+			gcBytes: med(bytes),
+			gcs: gcs
+		};
+		if (extra != null) for (f in Reflect.fields(extra)) Reflect.setField(o, f, Reflect.field(extra, f));
+		Sys.println(haxe.Json.stringify(o));
+	}
+
+	static function med(a:Array<Float>):Float
+		return pct(a, 0.5);
+
+	static function min(a:Array<Float>):Float {
+		var m = Math.POSITIVE_INFINITY;
+		for (v in a) if (v < m) m = v;
+		return round(m);
+	}
+
+	static function pct(a:Array<Float>, p:Float):Float {
+		if (a.length == 0) return 0;
+		var s = a.copy();
+		s.sort(Reflect.compare);
+		return round(s[Std.int(Math.min(s.length - 1, Math.floor(p * (s.length - 1) + 0.5)))]);
+	}
+
+	static inline function round(v:Float):Float
+		return Math.round(v * 1000) / 1000;
+
+	// (the heap's live bytes after a full collection)
+	static function live():Float {
+		#if (target.name == "hxmc")
+		hxmc.NativeGc.collect(true);
+		return hxmc.GcStats.liveBytes();
+		#else
+		return 0;
+		#end
+	}
+
+	// (a first frame, made RUNS times: the least and the median, the heap it holds; the last kept)
+	static function first<T>(op:String, make:Void->{ui:Ui, doc:Null<DocumentNode>, keep:T}):{ui:Ui, doc:Null<DocumentNode>, keep:T} {
+		var times = [], updates = [], draws = [], styles = [], layouts = [], paints = [], bytes = [];
+		var made = null, heap = 0.0;
+		for (_ in 0...RUNS) {
+			made = null;
+			var h0 = live();
+			var b0 = GcStats.bytes(), t0 = Timer.stamp();
+			made = make();
+			var a = (Timer.stamp() - t0) * 1000;
+			var s = step(made.ui, made.doc);
+			bytes.push(GcStats.bytes() - b0);
+			times.push(a + s[0] + s[1]);
+			updates.push(a + s[0]);
+			draws.push(s[1]);
+			var e = engine(made.doc);
+			styles.push(e[0]);
+			layouts.push(e[1]);
+			paints.push(e[2]);
+			heap = live() - h0;
+		}
+		report(op, times, updates, draws, styles, layouts, paints, bytes, 0, {heap: Math.round(heap)});
+		return made;
+	}
+
+	// ---- apps: helder.ui today, and the same screen as DOM and CSS
+
+	static function todo() {
+		screen = "todo";
+		var w = 480, h = 560;
+		function items(n:Int, from = 0):Array<Item>
+			return [for (i in from...from + n) new Item('Task ${i + 1}: water the plants and call back')];
+		function mount(n:Int):{ui:Ui, app:Todo} {
+			var ui = new Ui(new DrawText(), w, h);
+			ui.theme = Todo.sheet;
+			var app = new Todo();
+			app.todos(items(n));
+			Render.render(app.view(), ui.root);
+			Graph.flush();
+			ui.update();
+			Clock.finish();
+			ui.update();
+			return {ui: ui, app: app};
+		}
+		// (the mirrors: as helder.ui lays the screen out with 20 rows, and with 1,000 more)
+		var m20 = mirror(mount(20).ui), m1020 = mirror(mount(1020).ui);
+		fresh("todo", [m20, m1020]);
+		var rowsAdded = rowsOf(m1020.root, "list", 20);
+		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Todo) -> a.todos(a.todos().concat(items(1000, 20))), "draft");
+	}
+
+	static function mail() {
+		screen = "mail";
+		var w = 860, h = 560;
+		function messages(n:Int):Array<Message>
+			return [
+				for (i in 0...n)
+					new Message('Sender ${i % 37}', 'Subject number ${i} about the weekly report', 'Body ${i}', "Inbox", 1 + i % 28, i % 3 == 0)
+			];
+		function mount(n:Int):{ui:Ui, app:Mail} {
+			var ui = new Ui(new DrawText(), w, h);
+			if (!declared) Mail.declare();
+			declared = true;
+			var app = new Mail();
+			if (n > 0) app.messages(messages(n));
+			var root = new Node();
+			root.theme = Mail.sheet;
+			root.style.flexGrow = 1;
+			ui.root.append(root);
+			Render.render(app.view(), root);
+			Graph.flush();
+			ui.update();
+			Clock.finish();
+			ui.update();
+			return {ui: ui, app: app};
+		}
+		var m20 = mirror(mount(20).ui), m1020 = mirror(mount(1020).ui);
+		fresh("mail", [m20, m1020]);
+		var rowsAdded = rowsOf(m1020.root, "list", 20);
+		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Mail) -> a.messages(messages(1020)), "search");
+	}
+
+	// (each operation on helder.ui's screen, then on the engine's)
+	static function app<A>(w:Int, h:Int, mount:Void->{ui:Ui, app:A}, m:Mirror, rowsAdded:Array<MirrorNode>, add:(Ui, A) -> Void, field:String) {
+		// (helder.ui)
+		variant = "helder.ui";
+		var made = first("first frame (20 rows)", () -> {
+			var x = mount();
+			{ui: x.ui, doc: null, keep: x.app};
+		});
+		var ui = made.ui, a = made.keep;
+		add(ui, a);
+		Graph.flush();
+		step(ui, null);
+		var list = ui.root.find("list");
+		var lx = list.absX + list.width / 2, ly = list.absY + list.height / 2;
+		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(lx, ly, 0, i % 60 < 30 ? 40 : -40));
+		var rows = [for (c in list.children) if (c.absY - list.scrollY > list.absY && c.absY - list.scrollY + c.height < list.absY + list.height) c];
+		run("hover over rows", ui, null, 120, i -> {
+			var r = rows[i % rows.length];
+			ui.pointerMove(r.absX + 20, r.absY - list.scrollY + r.height / 2);
+		});
+		var f = ui.root.find(field);
+		ui.pointerDown(f.absX + 10, f.absY + f.height / 2, 1);
+		ui.pointerUp(f.absX + 10, f.absY + f.height / 2, 1);
+		step(ui, null);
+		run("type into a field", ui, null, 60, i -> ui.textInput(String.fromCharCode(97 + i % 26)));
+		run("resize the window", ui, null, 40, i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
+		// (a window's edge dragged: a width not seen before each frame)
+		run("drag-resize (a new width each frame)", ui, null, 40, i -> ui.resize(w - 1 - i, h));
+		ui.resize(w, h);
+		step(ui, null);
+		addRows("add 1,000 rows", () -> {
+			var x = mount();
+			{ui: x.ui, doc: null, keep: x.app};
+		}, x -> {
+			add(x.ui, x.keep);
+			Graph.flush();
+		});
+
+		// (the engine)
+		variant = "engine";
+		function mountDoc():{ui:Ui, doc:Null<DocumentNode>, keep:Document} {
+			var ui = new Ui(new DrawText(), w, h);
+			var d = build(m);
+			var node = engineNode(d);
+			node.style.flexGrow = 1;
+			ui.root.append(node);
+			return {ui: ui, doc: node, keep: d};
+		}
+		var e = first("first frame (20 rows)", mountDoc);
+		var ui = e.ui, doc = e.doc, d = e.keep;
+		var listEl = byTag(d, "list");
+		appendRows(d, listEl, rowsAdded);
+		step(ui, doc);
+		var box = rectOf(doc, listEl);
+		run("scroll the list (1,020 rows, 40 px a frame)", ui, doc, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
+		var rowEls = [for (c in listEl.children) c].slice(0, 12);
+		run("hover over rows", ui, doc, 120, i -> {
+			var r = rectOf(doc, rowEls[i % rowEls.length]);
+			var o = doc.view.scrolls.get(listEl);
+			ui.pointerMove(r[0] + 20, r[1] - (o == null ? 0 : o[1]) + r[3] / 2);
+		});
+		var fieldEl = byTag(d, field), text = d.createTextNode(" ");
+		fieldEl.append(text);
+		step(ui, doc);
+		run("type into a field", ui, doc, Std.parseInt(Sys.getEnv("TYPES") ?? "60"), i -> text.data = (text.data.length > 40 ? " " : text.data) + String.fromCharCode(97 + i % 26));
+		run("resize the window", ui, doc, Std.parseInt(Sys.getEnv("RESIZES") ?? "40"), i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
+		run("drag-resize (a new width each frame)", ui, doc, Std.parseInt(Sys.getEnv("DRAGS") ?? "40"), i -> ui.resize(w - 1 - i % 200, h));
+		ui.resize(w, h);
+		step(ui, doc);
+		addRows("add 1,000 rows", mountDoc, x -> appendRows(x.keep, byTag(x.keep, "list"), rowsAdded));
+		Sys.println(haxe.Json.stringify({screen: screen, mirror: m.nodes, hovers: m.hovers}));
+		snapshots(w, h, mount, mountDoc);
+	}
+
+	// (a first frame made, then rows added and a frame: RUNS times)
+	static function addRows<T>(op:String, make:Void->{ui:Ui, doc:Null<DocumentNode>, keep:T}, add:{ui:Ui, doc:Null<DocumentNode>, keep:T}->Void) {
+		var times = [], updates = [], draws = [], styles = [], layouts = [], paints = [], bytes = [];
+		var heap = 0.0;
+		for (_ in 0...RUNS) {
+			var x = make();
+			step(x.ui, x.doc);
+			var h0 = live();
+			var e0 = engine(x.doc);
+			var b0 = GcStats.bytes(), t0 = Timer.stamp();
+			add(x);
+			var a = (Timer.stamp() - t0) * 1000;
+			var s = step(x.ui, x.doc);
+			bytes.push(GcStats.bytes() - b0);
+			times.push(a + s[0] + s[1]);
+			updates.push(a + s[0]);
+			draws.push(s[1]);
+			var e1 = engine(x.doc);
+			styles.push(e1[0] - e0[0]);
+			layouts.push(e1[1] - e0[1]);
+			paints.push(e1[2] - e0[2]);
+			heap = live() - h0;
+		}
+		report(op, times, updates, draws, styles, layouts, paints, bytes, 0, {heap: Math.round(heap)});
+	}
+
+	// (both screens drawn, for the report: bin/document-bench/<screen>-<variant>.png)
+	static function snapshots<A>(w:Int, h:Int, mount:Void->{ui:Ui, app:A}, mountDoc:Void->{ui:Ui, doc:Null<DocumentNode>, keep:Document}) {
+		sys.FileSystem.createDirectory("bin/document-bench");
+		var a = mount().ui;
+		step(a, null);
+		sys.io.File.saveBytes('bin/document-bench/$screen-helder.ui.png', crop(w, h));
+		var b = mountDoc();
+		step(b.ui, b.doc);
+		sys.io.File.saveBytes('bin/document-bench/$screen-engine.png', crop(w, h));
+	}
+
+	// (the frame's top left w by h, as a PNG)
+	static function crop(w:Int, h:Int):Bytes {
+		var out = Bytes.alloc(w * h * 4);
+		for (y in 0...h) out.blit(y * w * 4, pixels, y * frame.width * 4, w * 4);
+		return helder.image.PngEncoder.encode(out, w, h);
+	}
+
+	static function byTag(d:Document, tag:String):Element {
+		var n:Null<helder.dom.Node> = d.documentElement;
+		while (n != null) {
+			if (n.nodeType == helder.dom.Node.ELEMENT_NODE && (cast n : Element).getAttribute("data-tag") == tag) return cast n;
+			n = next(n);
+		}
+		throw 'no $tag';
+	}
+
+	static function next(n:helder.dom.Node):Null<helder.dom.Node> {
+		if (n.firstChild != null) return n.firstChild;
+		while (n != null) {
+			if (n.nextSibling != null) return n.nextSibling;
+			n = n.parentNode;
+		}
+		return null;
+	}
+
+	// (an element's first box in the node: x, y, width, height in the window)
+	static function rectOf(doc:DocumentNode, el:Element):Array<Float> {
+		var f = doc.view.fragments, id = doc.view.fragmentOf(doc.view.boxesOf(el)[0]);
+		if (id < 0) return [0, 0, 0, 0];
+		var p = f.absolute(id);
+		return [doc.absX + p.x, doc.absY + p.y, f.width(id), f.height(id)];
+	}
+
+	// (the list's rows past the first `from`)
+	static function rowsOf(root:MirrorNode, tag:String, from:Int):Array<MirrorNode> {
+		function find(n:MirrorNode):Null<MirrorNode> {
+			if (n.tag == tag) return n;
+			for (c in n.children) {
+				var f = find(c);
+				if (f != null) return f;
+			}
+			return null;
+		}
+		return find(root).children.slice(from);
+	}
+
+	static function appendRows(d:Document, list:Element, rows:Array<MirrorNode>) {
+		for (r in rows) list.appendChild(element(d, r));
+	}
+
+	// (the engine's screen as an app has it: its tree built in code, styled by
+	// app.css and the screen's sheet, both compiled at build time: no parser)
+	static function engineNode(d:Document):DocumentNode {
+		var sheets = [CssUserAgentTheme.app(), screen == "todo" ? CssTheme.file("document/todo.css") : CssTheme.file("document/mail.css")];
+		return new DocumentNode(d, (doc, media, _) -> CssCascade.themed(doc, sheets, {media: media}));
+	}
+
+	static function build(m:Mirror):Document {
+		var d = new Document();
+		d.append(element(d, m.root));
+		return d;
+	}
+
+	static function element(d:Document, n:MirrorNode):Element {
+		var e = d.createElement(n.tag);
+		for (a in n.attrs) e.setAttribute(a[0], a[1]);
+		if (n.text != null) e.append(d.createTextNode(n.text));
+		for (c in n.children) e.appendChild(element(d, c));
+		return e;
+	}
+
+	// (the screen's sheet: the mirrors' classes, sorted; the checked-in one the same, else stale)
+	static function sheetText(ms:Array<Mirror>):String {
+		var rules = new Map<String, String>();
+		for (m in ms) for (k => v in m.rules) rules.set(k, v);
+		var keys = [for (k in rules.keys()) k];
+		keys.sort(Reflect.compare);
+		return HEADER + [for (k in keys) '$k { ${rules[k]} }\n'].join("");
+	}
+
+	static function fresh(name:String, ms:Array<Mirror>) {
+		var file = 'tests/bench/document/$name.css';
+		var have = sys.FileSystem.exists(file) ? sys.io.File.getContent(file) : "";
+		if (have != sheetText(ms)) throw '$file is stale (the screen changed): DocumentBench sheets writes it again';
+	}
+
+	// (the window's height; the screen's top box shrinks to it: helder.ui's
+	// Layout lets it, where CSS's automatic minimum height of a flex item
+	// keeps its content's, a port difference this says)
+	static final HEADER = ":root { height: 100% } :root > *, :root > * > * { min-height: 0 }\n";
+
+	// (a string's FNV-1a hash, as a class name's hex)
+	static function hash(s:String):String {
+		var h = 0x811c9dc5;
+		for (i in 0...s.length) h = (h ^ StringTools.fastCodeAt(s, i)) * 0x01000193;
+		return StringTools.hex(h, 8).toLowerCase();
+	}
+
+	// ---- the mirror: a helder.ui tree as a helder.dom document (AppUaCheck's,
+	// with what it draws: backgrounds, borders, radii, opacity, colours), and
+	// each node whose look changes when hovered as a :hover rule
+
+	static function mirror(ui:Ui):Mirror {
+		var rules = new Map<String, String>(), count = 0, hovers = 0;
+		// (each kind of node's look hovered, probed once: its slot, variant, size and state)
+		var kinds = new Map<String, Null<String>>();
+		function node(n:Node):MirrorNode {
+			count++;
+			var tag = n.tag == "textfield" ? "field" : n.tag == null || n.tag == "" ? "view" : n.tag;
+			if (!~/^[a-z][a-z0-9-]*$/.match(tag)) tag = "view";
+			var attrs = [], classes = [];
+			if (n.tag != null && n.tag != "") attrs.push(["data-tag", n.tag]);
+			if (n.slot != null) attrs.push(["slot", n.slot]);
+			if (n.variant != null) attrs.push(["variant", n.variant]);
+			// (its own style as a class of the screen's sheet)
+			var style = declarations(n);
+			if (style != "") {
+				var c = "s" + hash(style);
+				rules.set('.$c', style);
+				classes.push(c);
+			}
+			if (n.slot != null) {
+				var kind = '${n.slot}-${n.variant}-${n.size}-${n.attr("data-state")}';
+				if (!kinds.exists(kind)) {
+					var look = hoverLook(ui, n);
+					kinds.set(kind, look);
+					if (look != null) {
+						hovers++;
+						rules.set('.h${hash(look)}:hover', look);
+					}
+				}
+				var look = kinds.get(kind);
+				if (look != null) classes.push('h${hash(look)}');
+			}
+			if (classes.length > 0) attrs.push(["class", classes.join(" ")]);
+			var text = Std.isOfType(n, TextNode) ? (cast n : TextNode).text : null;
+			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)]};
+		}
+		var root:MirrorNode = {tag: "root", attrs: [], text: null, children: [for (c in ui.root.children) node(c)]};
+		return {root: root, rules: rules, nodes: count, hovers: hovers};
+	}
+
+	static function esc(s:String):String
+		return s.replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;");
+
+	// (its background, colour and border colour while hovered, where they differ: CSS)
+	static function hoverLook(ui:Ui, n:Node):Null<String> {
+		if (n.slot == null) return null;
+		var s = n.style, bg = s.background, fg = n.textColor(), bc = s.borderColor;
+		@:privateAccess n.setState(true, false, false);
+		ui.update();
+		var out = [];
+		if (s.background != bg) out.push('background-color: ${color(s.background)} !important');
+		if (n.textColor() != fg) out.push('color: ${color(n.textColor())} !important');
+		if (s.borderColor != bc) out.push('border-color: ${color(s.borderColor)} !important');
+		@:privateAccess n.setState(false, false, false);
+		ui.update();
+		return out.length == 0 ? null : out.join("; ");
+	}
+
+	// (AppUaCheck's declarations, and what is drawn)
+	static function declarations(n:Node):String {
+		var s = n.style, out = [@:privateAccess AppUaCheck.declarations(n)];
+		if (s.borderColor.a > 0) out.push('border-color: ${color(s.borderColor)}');
+		if (s.borderRadius > 0) out.push('border-radius: ${s.borderRadius}px');
+		if (s.opacity < 1) out.push('opacity: ${s.opacity}');
+		var c = n.textColor();
+		if (n.parent != null && c != n.parent.textColor()) out.push('color: ${color(c)}');
+		return [for (o in out) if (o != "") o].join("; ");
+	}
+
+	static function color(c:Color):String
+		return @:privateAccess AppUaCheck.color(c);
+
+	// (a screen of 1,020 rows drawn, held; its live heap printed, then held
+	// until a line on stdin: tests/bench/document.mjs reads its RSS meanwhile)
+	static var held:Dynamic = null;
+
+	static function memory(name:String, what:String) {
+		var w = name == "todo" ? 480 : 860, h = 560;
+		var base = live();
+		var ui = new Ui(new DrawText(), w, h);
+		if (what == "engine") {
+			// (the mirror made by helder.ui, let go before the engine's screen is)
+			var m = name == "todo" ? todoMirror(1020) : mailMirror(1020);
+			var b2 = live();
+			screen = name;
+			var d = build(m);
+			var node = engineNode(d);
+			node.style.flexGrow = 1;
+			ui.root.append(node);
+			step(ui, node);
+			base = b2;
+			held = node;
+		} else {
+			if (name == "todo") {
+				ui.theme = Todo.sheet;
+				var app = new Todo();
+				app.todos([for (i in 0...1020) new Item('Task ${i + 1}: water the plants and call back')]);
+				Render.render(app.view(), ui.root);
+				held = app;
+			} else {
+				if (!declared) Mail.declare();
+				declared = true;
+				var app = new Mail();
+				app.messages(mailMessages(1020));
+				var root = new Node();
+				root.theme = Mail.sheet;
+				root.style.flexGrow = 1;
+				ui.root.append(root);
+				Render.render(app.view(), root);
+				held = app;
+			}
+			Graph.flush();
+			step(ui, null);
+		}
+		Sys.println(haxe.Json.stringify({screen: name, variant: what, memory: true, heap: Math.round(live() - base)}));
+		Sys.stdin().readLine();
+		held = ui;
+	}
+
+	static function todoMirror(n:Int):Mirror {
+		var ui = new Ui(new DrawText(), 480, 560);
+		ui.theme = Todo.sheet;
+		var app = new Todo();
+		app.todos([for (i in 0...n) new Item('Task ${i + 1}: water the plants and call back')]);
+		Render.render(app.view(), ui.root);
+		Graph.flush();
+		ui.update();
+		return mirror(ui);
+	}
+
+	static function mailMirror(n:Int):Mirror {
+		var ui = new Ui(new DrawText(), 860, 560);
+		if (!declared) Mail.declare();
+		declared = true;
+		var app = new Mail();
+		app.messages(mailMessages(n));
+		var root = new Node();
+		root.theme = Mail.sheet;
+		root.style.flexGrow = 1;
+		ui.root.append(root);
+		Render.render(app.view(), root);
+		Graph.flush();
+		ui.update();
+		return mirror(ui);
+	}
+
+	static function mailMessages(n:Int):Array<Message>
+		return [
+			for (i in 0...n)
+				new Message('Sender ${i % 37}', 'Subject number ${i} about the weekly report', 'Body ${i}', "Inbox", 1 + i % 28, i % 3 == 0)
+		];
+
+	// ---- documents
+
+	static function document(path:String, sheetsPath:Null<String>, name:String) {
+		screen = name;
+		variant = "engine";
+		var html = sys.io.File.getContent(path);
+		var files:haxe.DynamicAccess<String> = sheetsPath == null ? {} : haxe.Json.parse(sys.io.File.getContent(sheetsPath));
+		var canonical = ~/<link[^>]*rel="?canonical"?[^>]*href="([^"]+)"/;
+		var url = canonical.match(html) ? canonical.matched(1) : 'file://$path';
+		var load = (u:String) -> files.exists(u) ? sys.io.File.getContent(files[u]) : null;
+		var w = 1024, h = 768;
+		page(html, url, load, w, h, null);
+	}
+
+	static function sample() {
+		screen = "sample";
+		variant = "engine";
+		page(SamplePage.HTML, "https://example.com/sample.html", _ -> null, 1024, 768, SamplePage.image);
+	}
+
+	static function page(html:String, url:String, load:String->Null<String>, w:Int, h:Int, image:Null<String->Null<helder.canvas.Bitmap>>) {
+		var parse = 0.0;
+		function make():{ui:Ui, doc:Null<DocumentNode>, keep:Node} {
+			var ui = new Ui(new DrawText(), w, h);
+			var t0 = Timer.stamp();
+			var d = Dom.parse(html);
+			parse = (Timer.stamp() - t0) * 1000;
+			var node = DocumentNode.html(d, {url: url, load: load, image: image});
+			var sc = new Node("scroll");
+			sc.style.overflow = Scroll;
+			sc.style.flexGrow = 1;
+			sc.style.minHeight = 0;
+			sc.append(node);
+			ui.root.append(sc);
+			return {ui: ui, doc: node, keep: sc};
+		}
+		var made = first("load to the first frame", make);
+		var ui = made.ui, doc = made.doc, sc = made.keep;
+		var v = doc.view;
+		Sys.println(haxe.Json.stringify({
+			screen: screen,
+			parse: round(parse),
+			elements: count(v.document),
+			boxes: v.tree.count,
+			fragments: v.fragments.count,
+			height: Math.round(doc.height)
+		}));
+		// (down 100 px a frame for 300 frames, then back and forth over what was recorded)
+		// (the pointer over the page as it scrolls, as a person's is: what is under it changes)
+		ui.pointerMove(500, 400);
+		step(ui, doc);
+		var p0 = doc.stats.paints, pm0 = doc.stats.paintMs;
+		run("scroll, 100 px a frame", ui, doc, Std.parseInt(Sys.getEnv("SCROLLS") ?? "300"), i -> ui.wheel(500, 400, 0, 100));
+		Sys.println(haxe.Json.stringify({screen: screen, scrollPaints: doc.stats.paints - p0, scrollPaintMs: round(doc.stats.paintMs - pm0), restyles: doc.stats.restyles}));
+		if (Sys.getEnv("ONLY_SCROLL") != null) return;
+		run("scroll back and forth 40 px", ui, doc, 120, i -> ui.wheel(500, 400, 0, i % 20 < 10 ? 40 : -40));
+		run("jump 20,000 px", ui, doc, 30, i -> ui.scrollTo(sc, 0, (sc.scrollY + 20000) % Math.max(1, doc.height - h)));
+		ui.scrollTo(sc, 0, 0);
+		step(ui, doc);
+		// (the links in view hovered in turn: each a restyle and a repaint)
+		var links = [];
+		var f = v.fragments;
+		for (id in 0...f.count) {
+			var b = f.box(id);
+			if (b.node == null || b.node.nodeType != helder.dom.Node.TEXT_NODE || b.node.parentNode == null || b.node.parentNode.nodeName != "A") continue;
+			var p = f.absolute(id);
+			if (p.y > 20 && p.y < h - 40 && f.width(id) > 4) links.push([p.x + 2, p.y + f.height(id) / 2]);
+			if (links.length >= 12) break;
+		}
+		var r0 = doc.stats.rasters;
+		if (links.length > 0) run("hover links", ui, doc, Std.parseInt(Sys.getEnv("HOVERS") ?? "120"), i -> ui.pointerMove(links[i % links.length][0], links[i % links.length][1]), {links: links.length});
+		Sys.println(haxe.Json.stringify({screen: screen, rastersPerHover: (doc.stats.rasters - r0) / 120}));
+		ui.pointerMove(w - 5, h - 5);
+		step(ui, doc);
+		run("resize 1024 ↔ 900 wide", ui, doc, 20, i -> ui.resize(i % 2 == 0 ? 900 : 1024, h));
+		ui.resize(w, h);
+		step(ui, doc);
+		Sys.println(haxe.Json.stringify({screen: screen, heapAfter: Math.round(live()), fragmentsAfter: v.fragments.count}));
+	}
+
+	static function count(d:Document):Int {
+		var n:Null<helder.dom.Node> = d.documentElement, k = 0;
+		while (n != null) {
+			if (n.nodeType == helder.dom.Node.ELEMENT_NODE) k++;
+			n = next(n);
+		}
+		return k;
+	}
+}
+
+// (a helder.ui tree as the elements to make: tag, attributes, text, children)
+private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>};
+private typedef Mirror = {root:MirrorNode, rules:Map<String, String>, nodes:Int, hovers:Int};

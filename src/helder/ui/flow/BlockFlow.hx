@@ -28,14 +28,58 @@ class BlockFlow implements FormattingContext {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
 		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null
-			&& Math.isNaN(space.fixedHeight) && !space.ignoreHeight;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
+		var cached = reusable ? hit(box, key, space) : -1;
+		if (cached >= 0) return cached;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
+		keep(box, key, space, space.fragmentation == null ? f : -1);
+		return f;
+	}
+
+	// (the cache's key: the width or fixed width, the containing block's
+	// height, a fixed height, whether the height is ignored: a flex or grid
+	// item's passes at the same sizes reuse their fragment; the last layout
+	// and a few before it at other keys; -1: none)
+	@:allow(helder.ui.flow) static function hit(box:Box, key:Float, space:Space):Int {
+		if (box.cacheFragment < 0) return -1;
+		if (box.cacheWidth == key && same(box.cacheHeight, space.height) && same(box.cacheFixedHeight, space.fixedHeight)
+			&& box.cacheIgnore == space.ignoreHeight) return box.cacheFragment;
+		var m = box.cacheMore;
+		if (m == null) return -1;
+		var k = 0, ignore = space.ignoreHeight ? 1 : 0;
+		while (k < m.length) {
+			if (m[k] == key && same(m[k + 1], space.height) && same(m[k + 2], space.fixedHeight) && m[k + 3] == ignore) return Std.int(m[k + 4]);
+			k += MORE;
+		}
+		return -1;
+	}
+
+	static inline var MORE = 5;
+	// (the layouts kept beside the last)
+	static inline var KEPT = 3;
+
+	@:allow(helder.ui.flow) static function keep(box:Box, key:Float, space:Space, f:Int) {
+		// (the last one kept beside, at another key; a fragment not to reuse lets all go)
+		if (f < 0) box.cacheMore = null else if (box.cacheFragment >= 0 && !(box.cacheWidth == key && same(box.cacheHeight, space.height)
+			&& same(box.cacheFixedHeight, space.fixedHeight) && box.cacheIgnore == space.ignoreHeight)) {
+			var m = box.cacheMore ??= [];
+			var k = 0, ignore = space.ignoreHeight ? 1 : 0;
+			// (the one at the new key goes: it is the last now)
+			while (k < m.length) {
+				if (m[k] == key && same(m[k + 1], space.height) && same(m[k + 2], space.fixedHeight) && m[k + 3] == ignore) m.splice(k, MORE) else k += MORE;
+			}
+			if (m.length >= KEPT * MORE) m.splice(0, MORE);
+			m.push(box.cacheWidth);
+			m.push(box.cacheHeight);
+			m.push(box.cacheFixedHeight);
+			m.push(box.cacheIgnore ? 1 : 0);
+			m.push(box.cacheFragment);
+		}
 		box.cacheWidth = key;
 		box.cacheHeight = space.height;
-		box.cacheFragment = space.fragmentation == null ? f : -1;
-		return f;
+		box.cacheFixedHeight = space.fixedHeight;
+		box.cacheIgnore = space.ignoreHeight;
+		box.cacheFragment = f;
 	}
 
 	static inline function same(a:Float, b:Float):Bool
@@ -65,8 +109,11 @@ class BlockFlow implements FormattingContext {
 		}
 		// (box-decoration-break: clone, each fragment its border and padding whole; its bottom ones kept room for in each)
 		var clone = fr != null && box.style.keyword("box-decoration-break") == "clone";
+		// (gone: its top edges in the fragmentainer before, still part of its border-box height)
+		var gone = 0.0;
 		if (resume != null) {
 			if (!clone) {
+				gone = bt + pt;
 				bt = 0;
 				pt = 0;
 			}
@@ -75,7 +122,7 @@ class BlockFlow implements FormattingContext {
 		var reserve = fr == null ? 0.0 : space.reserve + (clone ? bb + pb : 0);
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : size(s.height,
-			space.height, s.borderBox, bpy);
+			space.height, s.borderBox, bpy + gone);
 		var w = width(box, s, space, bpx, bpy, heightSpec);
 		var root = formattingRoot(box);
 		// (an aspect-ratio's auto height: its width's through it, within min and max, and no less than its
@@ -88,6 +135,15 @@ class BlockFlow implements FormattingContext {
 				if (Lens.isAuto(s.minHeight) && !s.clips) floor = ratioCap(box, s, space.width, space.height, bpx, bpy);
 			}
 		}
+		// (its height ended in a fragmentainer before, its content going on past it: no end edges here either, no height)
+		if (resume != null && !Math.isNaN(heightSpec) && !box.absolute && !box.floating && resume.consumed >= heightSpec + pb + bb - 0.01) {
+			bb = 0;
+			pb = 0;
+			mb = 0;
+			bpy = pt + bt;
+		}
+		// (its children's percentages of its whole height, not of what is left of it here)
+		var whole = heightSpec;
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		// (a scroll container is monolithic, Fragmentation 3 §4.1, one with layout or size containment too, Contain 2
 		// §3.2, as LayoutNG's; a box that clips, ending here, has its content
@@ -96,7 +152,7 @@ class BlockFlow implements FormattingContext {
 		if (fr != null && box.parent != null && (scrolls(box.style) || contain.has(Layout) || contain.has(Size) || s.clips && !Math.isNaN(heightSpec)
 			&& space.pageTop + bt + pt + heightSpec <= fr.size + 0.01))
 			fr = new Unbroken(fr);
-		var pctBase = heightSpec;
+		var pctBase = whole;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
 		var frags = space.fragments;
 		var frag = frags.add(Fragments.BOX, box, w + bpx, 0);
@@ -167,7 +223,7 @@ class BlockFlow implements FormattingContext {
 						fs.fragmentation = sub;
 						fs.pageTop = at;
 						fs.reserve = space.reserve;
-						b.cacheFragment = -1;
+						b.uncache();
 						return child(b, fs);
 					}
 					f = lay();
@@ -190,8 +246,30 @@ class BlockFlow implements FormattingContext {
 			floatBottom = at.y + fmt + frags.height(f) + fmb;
 			return f;
 		}
+		function overflow(b:Box, from:BreakToken) {
+			var sub = new Breaks(fr.size, from);
+			var fs = childSpace(w);
+			fs.fragmentation = sub;
+			fs.pageTop = space.pageTop + bt + pt;
+			fs.reserve = reserve;
+			b.cacheFragment = -1;
+			var f = child(b, fs);
+			if (sub.decide()) {
+				b.cacheFragment = -1;
+				f = child(b, fs);
+			}
+			var t = sub.token();
+			if (t != null) fr.carry(b, t);
+			for (d in sub.deferred) fr.defer(d);
+			frags.adopt(frag, f, bl + pl + b.marginLeft, bt + pt);
+		}
 		// (floats broken in the fragmentainer before whose continuations this box hosts: first, at its content's top)
+		// (and boxes' content going on past their fixed height: at its content's top, of no height, the flow not around it)
 		if (fr != null && resume != null) for (c in fr.carried(box)) {
+			if (!c.box.floating) {
+				overflow(c.box, c.token);
+				continue;
+			}
 			float(c.box, cy, c.token);
 			fr.floated(reserve + space.pageTop + bt + pt + floatBottom - cy);
 		}
@@ -335,7 +413,31 @@ class BlockFlow implements FormattingContext {
 					space2.pageTop = space.pageTop + bt + pt + py;
 					space2.reserve = reserve;
 				}
-				var cf = child(c, space2);
+				// (a fixed height that fits here, its content past it a parallel flow: laid out on its own, its rest carried
+				// to the fragmentainers after as a broken float's is, the flow going on after it, as LayoutNG's overflow)
+				var sub = fr != null && fr.size < Math.POSITIVE_INFINITY && overflows(c, space2) && fr.resume(c) == null ? new Breaks(fr.size, null) : null;
+				var cf = -1;
+				if (sub != null) {
+					space2.fragmentation = sub;
+					c.cacheFragment = -1;
+					cf = child(c, space2);
+					if (sub.decide()) {
+						c.cacheFragment = -1;
+						cf = child(c, space2);
+					}
+					// (its border box past the end itself, broken: as any box is)
+					if (frags.end(cf) == Box.NO_END || space2.pageTop + c.topPositive + c.topNegative + frags.height(cf) > fr.size + 0.01) {
+						frags.remove(cf);
+						space2.fragmentation = fr;
+						c.cacheFragment = -1;
+						sub = null;
+					} else {
+						var t = sub.token();
+						if (t != null) fr.carry(c, t);
+						for (d in sub.deferred) fr.defer(d);
+					}
+				}
+				if (sub == null) cf = child(c, space2);
 				if (truncate) {
 					c.topPositive = 0;
 					c.topNegative = 0;
@@ -415,6 +517,11 @@ class BlockFlow implements FormattingContext {
 			own.placed(space.pageTop + bt + pt + heightSpec);
 			if (own.after(box, reserve + space.pageTop + bt + pt + y) || own.stopped) broken = true;
 		}
+		// (a fixed height ending here, its content broken past it: the box whole here, its end edges at its height, its
+		// content's overflow on the pages after, the box there of no height, as LayoutNG's at its block end)
+		if (broken && fr != null && !autoHeight && !box.absolute && !box.floating && box.parent != null
+			&& space.pageTop + bt + pt + heightSpec + pb + bb + reserve <= fr.size + 0.01)
+			broken = false;
 		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
 		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
 		if (broken) {
@@ -653,7 +760,7 @@ class BlockFlow implements FormattingContext {
 		cs.exclusions = null;
 		cs.left = 0;
 		cs.top = 0;
-		b.cacheFragment = -1;
+		b.uncache();
 		var f = child(b, cs);
 		var frags = space.fragments;
 		// (vertical: the height its content gave, or what top and bottom leave)
@@ -695,6 +802,10 @@ class BlockFlow implements FormattingContext {
 	}
 
 	// (whole wherever it is: a replaced element, a scroll container, one with layout or size containment)
+	// (an in-flow block of a fixed height, not monolithic: its content past its height a parallel flow on pages)
+	static function overflows(b:Box, space:Space):Bool
+		return b.kind == Block && !b.floating && !b.absolute && !monolithic(b) && !Math.isNaN(size(b.style.height, space.height, b.style.borderBox, 0));
+
 	public static function monolithic(b:Box):Bool {
 		var c = b.style.containment;
 		return b.kind == BlockReplaced || b.kind == InlineReplaced || scrolls(b.style) || c.has(Layout) || c.has(Size);

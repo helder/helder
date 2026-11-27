@@ -75,7 +75,7 @@ class Rows {
 					cs.fragmentation = fr;
 					cs.pageTop = space.pageTop + top + pos + dy;
 					cs.reserve = space.reserve;
-					it.box.cacheFragment = -1;
+					it.box.uncache();
 					f = flow.child(it.box, cs);
 				}
 				frags.adopt(frag, f, left + it.x, top + pos + dy - before);
@@ -117,7 +117,7 @@ class Rows {
 				cs.fragmentation = sub;
 				cs.pageTop = at;
 				cs.reserve = space.reserve;
-				it.box.cacheFragment = -1;
+				it.box.uncache();
 				return flow.child(it.box, cs);
 			}
 			var f = lay();

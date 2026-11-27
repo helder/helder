@@ -150,13 +150,21 @@ class CssItems {
 			case x: CssText.term(x);
 		} : CssText.join(t, CssText.term);
 
-	// (a function's k-th argument past its commas: a name)
-	// (symbols(): its text, for CssCounters to read)
+	// (a function's k-th argument past its commas: a name; symbols() as
+	// "symbols(" its system and strings, each after a \x1f, ")": for
+	// CssCounters to read without a tokenizer)
 	static function name(args:Array<CssTerm>, k:Int):Null<String> {
 		var parts = CssText.layers(args);
 		return k < parts.length && parts[k].length == 1 ? switch parts[k][0] {
 			case Ident(n) | Keyword(n): n;
-			case t = Func("symbols", _): CssText.term(t);
+			case Func("symbols", a):
+				var system = "symbolic", list = [];
+				for (x in a) switch x {
+					case Keyword(w) | Ident(w): system = w;
+					case Str(t): list.push(t);
+					case _:
+				}
+				"symbols(" + [system].concat(list).join("\x1f") + ")";
 			case _: null;
 		} : null;
 	}

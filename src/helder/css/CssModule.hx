@@ -122,7 +122,7 @@ class CssModule {
 			values.push({field: f, expr: macro $v{n.value}});
 		}
 		var names:ComplexType = TAnonymous(fields);
-		var sheet = @:privateAccess CssTheme.value(CssScope.sheet(m), pos);
+		var sheet = macro helder.css.CssSheetData.decode($v{CssSheetData.encode(CssScope.sheet(m), false)});
 		var installs = [for (d in deps) macro $p{d.split(".").concat(["install"])}()];
 		if (Context.defined("hxmc.dev")) {
 			var key = assetKey(m.file, root), dev = FileSystem.fullPath(m.file).split("\\").join("/");

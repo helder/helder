@@ -30,7 +30,7 @@ class Run {
 	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "parallel", "test", "os", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft", "gfx-soft", "css", "dom"];
 
 	static final LANES:Array<Lane> = [{name: "headless", about: "the lanes that need no GPU, display or browser", run: () -> for (l in HEADLESS) lane(l)}]
-		.concat(View.LANES).concat(Text.LANES).concat(Css.LANES).concat(Flow.LANES).concat(Dom.LANES).concat(Image.LANES).concat(Canvas.LANES).concat(Async.LANES).concat(Os.LANES).concat(Viewer.LANES).concat(Pack.LANES).concat(Cli.LANES).concat(Gfx.LANES).concat(Scene.LANES).concat(Studio.LANES).concat(Bench.LANES);
+		.concat(View.LANES).concat(Text.LANES).concat(Css.LANES).concat(Flow.LANES).concat(Dom.LANES).concat(Image.LANES).concat(Canvas.LANES).concat(Async.LANES).concat(Os.LANES).concat(Viewer.LANES).concat(Pack.LANES).concat(Cli.LANES).concat(Gfx.LANES).concat(Scene.LANES).concat(Studio.LANES).concat(Bench.LANES).concat(Size.LANES);
 
 	static function main() {
 		// (helder.text's own engine for every lane's program: goldens the same on every OS; system-text's the platform's)
@@ -75,11 +75,13 @@ class Run {
 			}
 			args.splice(i, n == null ? 1 : 2);
 		}
-		// (css-reftests, css-render and box-conformance take what follows them)
-		for (l in ["css-reftests", "css-render", "box-conformance"]) {
+		// (css-reftests, css-render, box-conformance and test262 take what follows them)
+		for (l in ["css-reftests", "css-render", "box-conformance", "test262"]) {
 			var at = args.indexOf(l);
 			if (at >= 0) Css.laneArgs = args.splice(at + 1, args.length);
 		}
+		var size = args.indexOf("size");
+		if (size >= 0) Size.laneArgs = args.splice(size + 1, args.length);
 		if (args.length == 0) args = ["headless"];
 		args = benches(args);
 		if (args.contains("help")) {
@@ -154,7 +156,8 @@ class Run {
 						if (l == null) break;
 						var s = Sys.time();
 						var opts = buildOnly ? ["--build-only"] : usePrebuilt ? ["--prebuilt"] : [];
-						var p = new Process(TOOL, ["-cp", "tests", "-cp", "src", "--run", "Run", l].concat(shardArgs()).concat(opts));
+						var p = new Process(TOOL, ["-cp", "tests", "-cp", "src", "--run", "Run", l].concat(shardArgs()).concat(opts)
+							.concat(l == "size" ? Size.laneArgs : []));
 						var r = drain(p);
 						var code = p.exitCode();
 						p.close();

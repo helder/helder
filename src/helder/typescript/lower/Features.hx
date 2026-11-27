@@ -29,6 +29,7 @@ class Features {
 		add("StructuredClone", ["structuredClone"]);
 		add("Proxy", ["Proxy"]);
 		add("Reflect", ["Reflect"]);
+		add("WebGlobals", ["TextEncoder", "TextDecoder", "crypto", "performance", "atob", "btoa"]);
 		add("All", ["globalThis"]);
 		m;
 	};

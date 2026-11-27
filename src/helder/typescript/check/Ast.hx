@@ -276,10 +276,30 @@ class Node extends Children {
 		var d = data();
 		var mask = d & 0xC0000000 == NODE_DATA_TYPE_CHILDREN ? d & 0xff : 0xff;
 		if (mask & (1 << order) == 0) return null;
-		var skip = 0;
-		for (i in 0...order) if (mask & (1 << i) != 0) skip++;
+		var skip = 0, present = 0;
+		for (i in 0...8) if (mask & (1 << i) != 0) {
+			present++;
+			if (i < order) skip++;
+		}
+		// (tsgo's reparsed JSDoc nodes no bit of the mask counts, `@type` on a
+		// function declaration's: passed over, as many as the records past the mask's)
+		var extra = -present, r = index + 1;
+		if (d & 0xC0000000 == NODE_DATA_TYPE_CHILDREN)
+			while (r != 0) {
+				// (the JSDoc comments themselves come after the children: not one of them)
+				if (file.node(r).kind != KindJSDoc) extra++;
+				r = file.field(r, NODE_OFFSET_NEXT);
+			}
 		var c = index + 1;
-		for (_ in 0...skip) c = file.field(c, NODE_OFFSET_NEXT);
+		function pass() while (extra > 0 && file.field(c, NODE_OFFSET_FLAGS) & NodeFlags.Reparsed != 0) {
+			extra--;
+			c = file.field(c, NODE_OFFSET_NEXT);
+		}
+		pass();
+		for (_ in 0...skip) {
+			c = file.field(c, NODE_OFFSET_NEXT);
+			pass();
+		}
 		return file.node(c);
 	}
 
@@ -360,4 +380,5 @@ class NodeFlags {
 	public static inline var Using = 4;
 	public static inline var BlockScoped = 7;
 	public static inline var OptionalChain = 32;
+	public static inline var Reparsed = 8;
 }

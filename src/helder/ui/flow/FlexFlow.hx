@@ -32,12 +32,11 @@ class FlexFlow implements FormattingContext {
 
 	public function layout(box:Box, space:Space):Int {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
-		var reusable = box.flags & Box.ESCAPES == 0 && Math.isNaN(space.fixedHeight) && space.fragmentation == null;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null;
+		var cached = reusable ? BlockFlow.hit(box, key, space) : -1;
+		if (cached >= 0) return cached;
 		var f = container(box, space);
-		box.cacheWidth = key;
-		box.cacheHeight = space.height;
-		box.cacheFragment = reusable ? f : -1;
+		BlockFlow.keep(box, key, space, reusable ? f : -1);
 		return f;
 	}
 
@@ -427,6 +426,8 @@ class FlexFlow implements FormattingContext {
 		cs.fixedWidth = !Math.isNaN(it.cross) ? it.cross : fit(it, crossSize, space);
 		var f = child(b, cs);
 		var h = space.fragments.height(f);
+		it.measured = f;
+		it.measuredWidth = cs.fixedWidth;
 		return {min: h, max: h};
 	}
 
@@ -442,17 +443,46 @@ class FlexFlow implements FormattingContext {
 	// (an item laid out at its main size, its cross size given (stretched) or its own)
 	function laid(it:Item, row:Bool, cross:Float, space:Space, mainSize:Float, crossSize:Float, stretched:Bool):Int {
 		var b = it.box;
+		var fw = row ? it.main : !Math.isNaN(cross) ? cross : !Math.isNaN(it.cross) ? it.cross : fit(it, crossSize, space);
+		// (a column's item at the height it was measured at, as wide: that layout is this one, unless what it
+		// holds takes a percentage of its height, indefinite when measured)
+		if (!row && it.measured >= 0 && fw == it.measuredWidth && Math.abs(space.fragments.height(it.measured) - it.main) < 1e-9
+			&& !percentHeights(b)) return it.measured;
 		var cs = space.child(row ? mainSize : (Math.isNaN(crossSize) ? space.width : crossSize), row ? crossSize : mainSize);
 		cs.fragmentation = null;
+		cs.fixedWidth = fw;
 		if (row) {
-			cs.fixedWidth = it.main;
 			if (!Math.isNaN(cross)) cs.fixedHeight = cross;
-		} else {
+		} else
 			cs.fixedHeight = it.main;
-			cs.fixedWidth = !Math.isNaN(cross) ? cross : !Math.isNaN(it.cross) ? it.cross : fit(it, crossSize, space);
-		}
-		b.cacheFragment = -1;
 		return child(b, cs);
+	}
+
+	// (whether something takes a percentage of the box's height, indefinite
+	// when it was measured: its row gap or grid rows, a child's height, min,
+	// max or flex basis, through anonymous boxes)
+	static function percentHeights(b:Box):Bool {
+		if (Lens.relative(b.style.len("row-gap")) || b.style.inner == BoxStyle.GRID && percent(b.style.terms("grid-template-rows"))) return true;
+		var c = b.first;
+		while (c != null) {
+			if (c.kind != Text && c.kind != Break && !c.absolute) {
+				var m = c.style.model();
+				if (Lens.relative(m.height) || Lens.relative(m.minHeight) || Lens.relative(m.maxHeight) || Lens.relative(c.style.len("flex-basis"))) return true;
+				if (c.anonymous && percentHeights(c)) return true;
+			}
+			c = c.next;
+		}
+		return false;
+	}
+
+	static function percent(terms:Array<helder.css.CssTerm>):Bool {
+		for (t in terms) switch t {
+			case Percentage(_): return true;
+			case Calc(_, _, _): return true;
+			case Func(_, a) | Brackets(_, a) | Part(_, a): if (percent(a)) return true;
+			case _:
+		}
+		return false;
 	}
 
 	// (a column's item's width, its own: fit-content in the room, within its min and max)
@@ -694,6 +724,9 @@ private class Item {
 	public var maxMain = Math.POSITIVE_INFINITY;
 	public var cross = Math.NaN;
 	public var crossSet = Math.NaN;
+	// (a column's item laid out to measure its height, at measuredWidth; -1: not)
+	public var measured = -1;
+	public var measuredWidth = Math.NaN;
 	public var crossAuto = true;
 	public var minCross = 0.0;
 	public var maxCross = Math.POSITIVE_INFINITY;

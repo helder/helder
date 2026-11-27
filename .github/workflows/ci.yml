@@ -16,6 +16,8 @@
 #   two jobs, --shard 0/2 and 1/2, four workers each);
 # - examples: every example built (EXAMPLES_WEB=site: the web builds the
 #   site job makes too left to it);
+# - size: release binary size budgets, native and wasm32-wasi, on Linux
+#   and macOS (Windows PE/COFF symbol attribution is unsupported);
 # - site: the examples' pages and the docs built (every web example's
 #   build, an unknown example, region, page or link a failure) and checked
 #   in headless Chromium (site-check: bun run site:check, its demos and
@@ -81,7 +83,7 @@
 #   (story-shared) on a macOS and a Windows runner; on macOS the web
 #   view too (the webview-macos lane);
 # - ci: always run, the required jobs' verdict (changes, headless,
-#   typescript, examples, site, site-check): one check to require, also when a change
+#   typescript, examples, size, site, site-check): one check to require, also when a change
 #   to the docs alone skips the others;
 # - the viewer's releases are release.yml's (a tag viewer-v<version>);
 # - the npm packages' nightlies are npm.yml's.
@@ -238,6 +240,39 @@ jobs:
         env:
           EXAMPLES_WEB: site
         run: bun run test examples
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
+  size:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {node-version: 24}
+      - name: Release binary size budgets
+        shell: bash
+        run: |
+          # The first Linux run supplies the baselines for review in its artifact.
+          if [[ "$RUNNER_OS" == Linux && ! -f tests/size/baselines/linux-x86_64.json && ! -f tests/size/baselines/linux-wasm32-wasi.json ]]; then
+            echo "::notice::Blessing the initial Linux baselines for the size report artifact"
+            export BLESS=1
+          fi
+          bun run test size
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: size-${{ matrix.os }}
+          path: |
+            bin/size/report.md
+            tests/size/baselines/linux-*.json
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 
@@ -842,7 +877,7 @@ jobs:
   # removed), saved as the OS's one entry, the older entries deleted (a run
   # that ends after a newer one's: its merge restored first, still warm).
   cache:
-    needs: [changes, headless, typescript, examples, site, site-check, css-reftests, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
+    needs: [changes, headless, typescript, examples, size, site, site-check, css-reftests, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.changes.outputs.code == 'true' }}
     strategy:
       fail-fast: false
@@ -915,7 +950,7 @@ jobs:
   # The required jobs' verdict, always reported: a skipped job (a change to
   # the docs alone) passes, a failed or cancelled one fails it.
   ci:
-    needs: [changes, headless, typescript, examples, site, site-check]
+    needs: [changes, headless, typescript, examples, size, site, site-check]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

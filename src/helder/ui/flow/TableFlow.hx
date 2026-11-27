@@ -512,7 +512,7 @@ class TableFlow implements FormattingContext {
 			var cs = space.child(cw, Math.NaN);
 			cs.fixedWidth = cw;
 			if (collapse) cs.borders = cellBorders(g, cell);
-			cell.box.cacheFragment = -1;
+			cell.box.uncache();
 			var f = flow.child(cell.box, cs);
 			cell.fragment = f;
 			cell.height = frags.height(f);
@@ -784,7 +784,7 @@ class TableFlow implements FormattingContext {
 					cs.fragmentation = sub;
 					cs.pageTop = top;
 					cs.reserve = reserve;
-					cell.box.cacheFragment = -1;
+					cell.box.uncache();
 					return flow.child(cell.box, cs);
 				}
 				f = lay();

@@ -32,8 +32,27 @@ class BoxStyle {
 		this.anonymous = anonymous;
 	}
 
+	// (how far it paints past its box, BoxPainter.reach's: kept once known; NaN until then)
+	@:allow(helder.ui.box) var reach = Math.NaN;
+
 	public function anonymousChild():BoxStyle
 		return new BoxStyle(css, true);
+
+	// The same box's style from another computed style (a live document
+	// restyled): an anonymous table part's display kept.
+	public function restyled(next:CssStyle):BoxStyle {
+		var s = new BoxStyle(next, anonymous);
+		if (anonymous && displayRead) {
+			s.displayRead = true;
+			s.displayNone = displayNone;
+			s.displayContents = displayContents;
+			s.displayList = displayList;
+			s.displayOuter = displayOuter;
+			s.displayInner = displayInner;
+			s.displayPart = displayPart;
+		}
+		return s;
+	}
 
 	// An anonymous box of a table's display (CSS 2.1 §17.2.1): its parent's inherited values.
 	public function anonymousTable(inner:Int, part:Int, outer = BLOCK):BoxStyle {
@@ -502,6 +521,14 @@ class BoxStyle {
 
 	function get_absolute():Bool
 		return position == "absolute" || position == "fixed";
+
+	// overflow scroll or auto on either axis: a scroll container whose content scrolls
+	public var scrolls(get, never):Bool;
+
+	function get_scrolls():Bool {
+		var x = keyword("overflow-x"), y = keyword("overflow-y");
+		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
+	}
 
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;

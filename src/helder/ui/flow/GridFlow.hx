@@ -37,13 +37,11 @@ class GridFlow implements FormattingContext {
 
 	public function layout(box:Box, space:Space):Int {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
-		var reusable = box.flags & Box.ESCAPES == 0 && Math.isNaN(space.fixedHeight) && space.fragmentation == null && !space.ignoreHeight;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && (box.cacheHeight == space.height || Math.isNaN(box.cacheHeight)
-			&& Math.isNaN(space.height))) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null;
+		var cached = reusable ? BlockFlow.hit(box, key, space) : -1;
+		if (cached >= 0) return cached;
 		var f = container(box, space);
-		box.cacheWidth = key;
-		box.cacheHeight = space.height;
-		box.cacheFragment = reusable ? f : -1;
+		BlockFlow.keep(box, key, space, reusable ? f : -1);
 		return f;
 	}
 
@@ -142,7 +140,6 @@ class GridFlow implements FormattingContext {
 			cs.fixedWidth = iw;
 			if (Math.isNaN(ih) && jy == "stretch") ih = clamp(roomH, minCH, maxCH);
 			if (!Math.isNaN(ih)) cs.fixedHeight = ih;
-			c.cacheFragment = -1;
 			var f = flow.child(c, cs);
 			if (Math.isNaN(ih)) ih = frags.height(f);
 			if (autoS || autoE) jx = roomW - iw <= 0 ? "start" : autoS && autoE ? "center" : autoS ? "end" : "start";
@@ -903,7 +900,6 @@ class GridFlow implements FormattingContext {
 			intrinsicOf(c, space);
 			cs.fixedWidth = Math.min(c.maxContent, Math.max(room, c.minContent));
 		}
-		c.cacheFragment = -1;
 		return flow.child(c, cs);
 	}
 

@@ -57,7 +57,8 @@ features) reach the shaper as OpenType features. Each InlineFonts has its
 shaper (`shaper`: the shaped-word cache is keyed by its sets' numbers,
 never given twice). A set is made once per font
 description and numbered; its metrics are rounded to whole pixels as
-Blink rounds them (ascent, descent, line gap: line-height: normal).
+Blink rounds them (ascent, descent, line gap: line-height: normal), or
+kept exact when a layout asks (`ascent(id, true)`, ...).
 
 ## Processing
 
@@ -140,7 +141,12 @@ that is narrower). A line the floats shorten so that its first piece does
 not fit (or fits only by an overflow-wrap cut) moves down until it fits or
 the floats end (CSS 2.1 §9.5): to `floatEdge(y)`, the next y where the
 floats beside the lines change, or without it a pixel at a time; a line
-with nothing in it does not move. Laid out again with the same content and
+with nothing in it does not move. `exactMetrics` (default off) keeps the
+fonts' ascent, descent and line gap, the leading's halves and
+vertical-align's shifts as they are, unrounded, as print wants them
+(WeasyPrint's, PagedView's); off, they are rounded as Chromium rounds
+them (whole pixels, the leading's part above floored, LayoutUnit's 1/64),
+as the screen and the reftests want. Laid out again with the same content and
 constraints it does nothing; at another width it places the same shaped
 pieces.
 

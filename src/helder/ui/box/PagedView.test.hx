@@ -120,6 +120,24 @@ function tests() {
 			equals(v.layout(), 1);
 			equals(texts(v, 0, false), ["v", "one", "two", "z", " x", "w", "y", "1.", "five"]);
 		});
+		test("a line on a page: the font's metrics and leading unrounded (print), on a screen in whole pixels", () -> {
+			var bytes = sys.io.File.getBytes("tests/canvas/fonts/DejaVuSans-pdf.ttf");
+			var f = new FontMatch();
+			f.register(bytes, "DejaVu Sans");
+			var html = '<!doctype html><style>@page { size: 200px 100px; margin: 0 } body { margin: 0; font: 12px/15.6px "DejaVu Sans" }</style><p id=p style="margin:0">Hxy</p>';
+			var v = new PagedView(Dom.parse(html), {fonts: f});
+			equals(v.layout(), 1);
+			var face = helder.text.FontFile.parse(bytes), k = 12 / face.unitsPerEm;
+			var a = face.ascender * k, d = -face.descender * k;
+			// (half the leading above the text, unfloored: Blink's 11 px here)
+			var line = v.fragments.first(find(v, 0, "p"));
+			approx(v.fragments.baseline(line), (15.6 - a - d) / 2 + a, 1e-3);
+			var s = DocumentView.html(Dom.parse(html), {fonts: f});
+			s.layout(200, 100);
+			var sp = s.fragments, sk = -1;
+			for (i in 0...sp.count) if (sp.kind(i) == Fragments.LINE && sk < 0) sk = i;
+			equals(sp.baseline(sk), Math.ffloor(sp.baseline(sk)));
+		});
 		test("a line of both directions: the PDF's text in logical order, a span in place", () -> {
 			var f = new FontMatch();
 			f.register(sys.io.File.getBytes("tests/canvas/fonts/DejaVuSans-pdf.ttf"), "DejaVu Sans");

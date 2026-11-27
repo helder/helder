@@ -15,6 +15,7 @@ class Cli {
 		{name: "devtools", about: "the devtools protocol without a window", run: devtools},
 		{name: "declarations", about: "the generated TypeScript declarations", run: declarations},
 		{name: "typescript", about: "helder.typescript's programs against tsc and node", run: () -> run(NODE, ["tests/typescript/run.mjs"].concat(shardArgs()).concat(workerCount == null ? [] : ["--jobs", Std.string(workerCount)]))},
+		{name: "test262", about: "tc39's test262 through helder's frontend as JavaScript, natively (tests/test262: a pinned checkout, manifest.json the gate; args: parts of paths)", run: () -> run(NODE, ["tests/test262/run.mjs"].concat(Css.laneArgs))},
 		{name: "typescript-native", about: "helder/native's definitions where their systems are", run: () -> run(NODE, ["tests/typescript/native.mjs"])},
 		{name: "examples", about: "every example built, not run", run: examples},
 		{name: "dev", about: "helder.dev.Hot and signals across a reload", run: dev},

@@ -40,6 +40,15 @@ class BoxPainter {
 	// box of its own (a page's margin box)
 	public var propagate = true;
 	public var canvasBox:Null<Array<Float>> = null;
+	// what is seen (x0, y0, x1, y1 in the painter's units; null: the
+	// painter's whole): what is outside it is skipped, as outside the
+	// painter (a window's view of a long document)
+	public var area:Null<Array<Float>> = null;
+	// scroll containers' offsets (x, y) by their element: what they hold
+	// moved back by them (PaintOrder.scroller); null: none scrolled
+	public var scrolls:Null<haxe.ds.ObjectMap<helder.dom.Node, Array<Float>>> = null;
+	// (each state's offset from its scrollers, x and y: culling where things are drawn)
+	final shifts:Array<Float> = [];
 
 	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>, ?svg:String->Null<helder.canvas.Svg>) {
 		f = fragments;
@@ -50,18 +59,41 @@ class BoxPainter {
 
 	public function paint(p:Painter) {
 		if (propagate) canvas(p);
-		// (what is outside the painter is skipped, but under a transform, or with a shadow or an outline that may reach in)
+		// (what is outside the painter is skipped, but under a transform, or with a shadow or an outline that may reach in;
+		// a run of steps whose bounds miss it at once)
 		var cull = p.matrix.isIdentity();
-		var pw = p.width + MARGIN, ph = p.height + MARGIN;
-		for (k in 0...order.count) {
-			var id = order.fragments[k], x = order.xs[k], y = order.ys[k];
-			if (cull && !order.transformed[order.stateOf[k]] && (y > ph || x > pw || y + f.height(id) < -MARGIN || x + f.width(id) < -MARGIN)) {
-				var r = reach(f.box(id).style);
-				if (r == 0 || y - r > ph || x - r > pw || y + f.height(id) + r < -MARGIN || x + f.width(id) + r < -MARGIN) continue;
+		var a = area;
+		var ax0 = (a == null ? 0 : a[0]) - MARGIN, ay0 = (a == null ? 0 : a[1]) - MARGIN;
+		var ax1 = (a == null ? p.width : a[2]) + MARGIN, ay1 = (a == null ? p.height : a[3]) + MARGIN;
+		var runs = cull ? order.chunks() : null;
+		var shifted = scrolls != null && shift();
+		var k = 0;
+		while (k < order.count) {
+			if (runs != null && k % PaintOrder.CHUNK == 0) {
+				var r = Std.int(k / PaintOrder.CHUNK) * 4;
+				if (runs[r] > ax1 || runs[r + 1] > ay1 || runs[r + 2] < ax0 || runs[r + 3] < ay0) {
+					k += PaintOrder.CHUNK;
+					continue;
+				}
 			}
-			enter(p, order.stateOf[k]);
+			var id = order.fragments[k], x = order.xs[k], y = order.ys[k];
+			k++;
+			if (shifted) {
+				var st = order.stateOf[k - 1];
+				x -= shifts[2 * st];
+				y -= shifts[2 * st + 1];
+			}
+			if (cull && !order.transformed[order.stateOf[k - 1]] && (y > ay1 || x > ax1 || y + f.height(id) < ay0 || x + f.width(id) < ax0)) {
+				var r = reach(f.box(id).style);
+				if (r == 0 || y - r > ay1 || x - r > ax1 || y + f.height(id) + r < ay0 || x + f.width(id) + r < ax0) continue;
+			}
+			if (shifted) {
+				x = order.xs[k - 1];
+				y = order.ys[k - 1];
+			}
+			enter(p, order.stateOf[k - 1]);
 			var b = f.box(id), s = b.style;
-			switch order.steps[k] {
+			switch order.steps[k - 1] {
 				case PaintOrder.BACKGROUND:
 					if (!s.visible) continue;
 					if (f.kind(id) == Fragments.SPAN) span(p, id, x, y) else box(p, id, b, x, y);
@@ -83,8 +115,29 @@ class BoxPainter {
 
 	static inline var MARGIN = 64;
 
+	// (each state's offset from the scrollers around it; false: none scrolled)
+	function shift():Bool {
+		var any = false, n = order.parents.length;
+		shifts.resize(2 * n);
+		shifts[0] = shifts[1] = 0;
+		for (s in 1...n) {
+			var p = order.parents[s], dx = shifts[2 * p], dy = shifts[2 * p + 1];
+			if (order.scroller[s]) {
+				var o = scrolls.get(f.box(order.layerFragment[s]).node);
+				if (o != null) {
+					dx += o[0];
+					dy += o[1];
+					any = true;
+				}
+			}
+			shifts[2 * s] = dx;
+			shifts[2 * s + 1] = dy;
+		}
+		return any;
+	}
+
 	// (how far past its border box a box paints: its shadows' and its outline's reach)
-	static function reach(s:BoxStyle):Float {
+	@:allow(helder.ui.box.PaintOrder) static function reach(s:BoxStyle):Float {
 		var r = 0.0;
 		if (s.keyword("outline-style") != "none") r = s.px("outline-width") + Math.abs(s.px("outline-offset"));
 		var t = s.terms("box-shadow");
@@ -131,6 +184,10 @@ class BoxPainter {
 					var clip = new Path();
 					clip.rect(Math.round(r[0]), Math.round(r[1]), Math.round(r[0] + r[2]) - Math.round(r[0]), Math.round(r[1] + r[3]) - Math.round(r[1]));
 					p.clip(clip);
+					if (order.scroller[s] && scrolls != null) {
+						var o = scrolls.get(f.box(order.layerFragment[s]).node);
+						if (o != null) p.translate(-o[0], -o[1]);
+					}
 			}
 		}
 	}

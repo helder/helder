@@ -729,11 +729,16 @@ styles.pages;                              // @page rules: selectors, declaratio
 `CssTheme.sheet(text)` and `CssTheme.file(path)` are macros: the CSS (a
 string constant, or a file beside the calling module or under a class
 path, its `@import`s read beside it) is parsed when the program is
-compiled, and the sheet becomes the expressions that make it again, one
-static per sheet: selectors with their specificity, Bloom hashes and
-bucket (`CssSelector.bucket`, `CssBucket`: where `CssRuleIndex` files
-it), declarations as `CssProperty` ids with typed values, @media's
-parsed queries, the at-rules' data. `CssCascade.themed(doc, sheets)`
+compiled, and the sheet is written as data (`CssSheetData`), one string
+constant per sheet, read back when first asked: selectors with their
+specificity, Bloom hashes and bucket (`CssSelector.bucket`, `CssBucket`:
+where `CssRuleIndex` files it), declarations as `CssProperty` ids with
+typed values, @media's parsed queries, the at-rules' data. The data is
+ASCII (base-64 digits, interned strings), read by one decoder whatever
+the sheets: html.css costs 58 KB natively and 0.13 ms to read, against
+958 KB when it was written as the expressions that make it again and
+198 KB and 1.4 ms parsed when the program runs. CSS modules
+(`CssModule`) are written the same way. `CssCascade.themed(doc, sheets)`
 cascades with those sheets alone: no user agent's sheet but one passed,
 no `<style>` or `<link>`, no style attribute. A program styled so links
 no CSS tokenizer or parser: the initial values are compiled too
@@ -1008,7 +1013,7 @@ what isn't hidden until the end).
 ## Counter styles
 
 `CssCounterStyles` formats a number in a counter style (Counter Styles 3):
-the predefined ones (`CssCounterStylesData`: §6's rules, from decimal to
+the predefined ones (`ua/counter-styles.css`, compiled at build time: §6's rules, from decimal to
 the Armenian, Georgian, Hebrew, roman, Greek, kana and Indic ones, disc,
 circle, square, the disclosure triangles, cjk-earthly-branch and
 cjk-heavenly-stem; `CssCounterAlgorithms`: §7's Chinese, Japanese and
