@@ -6,6 +6,14 @@ package helder.canvas.web;
 // that never calls it keeps none of it.
 class Web {
 	public static function use() {
+		// (natively an error, and WebCanvas not built: helder/canvas's
+		// TypeScript declarations export useWeb on every target, and a native
+		// program keeping the class linked its browser imports through the
+		// painter's dispatch, which macOS can't load: the canvas lane's)
+		#if (hxmc.target == "wasm32-wasi")
 		helder.canvas.dom.Canvas.backend = (w, h) -> new WebCanvas(w, h);
+		#else
+		throw "useWeb: a web build's (wasm32-wasi)";
+		#end
 	}
 }
