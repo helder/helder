@@ -107,40 +107,40 @@ class Collections {
 				return m;
 			});
 			getter(c, "\x00@@species", t -> t);
-			method(p, "get", 1, (t, a, _) -> {
+			fixed(p, "get", 1, (t, a0:Dynamic, _, _) -> {
 				var m = thisMap(t, isSet, "get");
-				var i = mapIndex(m, arg(a, 0));
+				var i = mapIndex(m, a0);
 				return i < 0 ? undef() : m.values[i];});
-			method(p, "has", 1, (t, a, _) -> mapIndex(thisMap(t, isSet, "has"), arg(a, 0)) >= 0);
-			if (isSet) method(p, "add", 1, (t, a, _) -> mapPut(thisMap(t, true, "add"), arg(a, 0), arg(a, 0)));
-			else method(p, "set", 2, (t, a, _) -> mapPut(thisMap(t, false, "set"), arg(a, 0), arg(a, 1)));
-			method(p, "delete", 1, (t, a, _) -> mapDelete(thisMap(t, isSet, "delete"), arg(a, 0)));
-			method(p, "clear", 0, (t, _, _) -> {
+			fixed(p, "has", 1, (t, a0:Dynamic, _, _) -> mapIndex(thisMap(t, isSet, "has"), a0) >= 0);
+			if (isSet) fixed(p, "add", 1, (t, a0:Dynamic, _, _) -> mapPut(thisMap(t, true, "add"), a0, a0));
+			else fixed(p, "set", 2, (t, a0:Dynamic, a1:Dynamic, _) -> mapPut(thisMap(t, false, "set"), a0, a1));
+			fixed(p, "delete", 1, (t, a0:Dynamic, _, _) -> mapDelete(thisMap(t, isSet, "delete"), a0));
+			fixed(p, "clear", 0, (t, _, _, _) -> {
 				var m = thisMap(t, isSet, "clear");
 				for (i in 0...m.active.length) m.active[i] = false;
 				m.count = 0;
 				MapIndex.clear(m);
 				return undef();});
-			method(p, "forEach", 1, (t, a, _) -> {
+			fixed(p, "forEach", 1, (t, a0:Dynamic, a1:Dynamic, _) -> {
 				var m = thisMap(t, isSet, "forEach");
-				var f = callback(arg(a, 0));
+				var f = callback(a0);
 				var i = 0;
 				while (i < m.keys.length) {
-					if (m.active[i]) call3(f, arg(a, 1), m.values[i], m.keys[i], m);
+					if (m.active[i]) call3(f, a1, m.values[i], m.keys[i], m);
 					i++;
 				}
 				return undef();});
 			getter(p, "size", t -> {
 				return thisMap(t, isSet, "size").count;});
 			var iteratorProto = isSet ? SetIteratorProto : MapIteratorProto;
-			method(p, "keys", 0, (t, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "keys"), isSet ? "values" : "keys"));
-			method(p, "entries", 0, (t, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "entries"), "entries"));
+			fixed(p, "keys", 0, (t, _, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "keys"), isSet ? "values" : "keys"));
+			fixed(p, "entries", 0, (t, _, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "entries"), "entries"));
 			var values = native("values", 0, (t, _, _) -> new JsIterator(iteratorProto, thisMap(t, isSet, "values"), "values"));
 			p.setOwn("values", values, Attr.HIDDEN);
 			if (isSet) p.setOwn("keys", values, Attr.HIDDEN);
 			p.setOwn(Symbols.iterator, isSet ? values : p.getOwn("entries"), Attr.HIDDEN);
 			p.setOwn(Symbols.toStringTag, name, Attr.HIDDEN | Attr.READONLY);
-			if (!isSet) method(c, "groupBy", 2, (_, a, _) -> groupBy(arg(a, 0), arg(a, 1), true));
+			if (!isSet) fixed(c, "groupBy", 2, (_, a0:Dynamic, a1:Dynamic, _) -> groupBy(a0, a1, true));
 		}
 		// (weak collections hold their keys strongly)
 		for (name in ["WeakMap", "WeakSet"]) {
@@ -150,19 +150,19 @@ class Collections {
 				if (!isObject(k) && !Std.isOfType(k, Symbols.JsSymbol)) error("TypeError", "Invalid value used " + (isSet ? "in weak set" : "as weak map key"));
 				return k;
 			}
-			method(p, "has", 1, (t, a, _) -> {
+			fixed(p, "has", 1, (t, a0:Dynamic, _, _) -> {
 				var m = thisMap(t, isSet, "has", true);
-				return isObject(arg(a, 0)) && mapIndex(m, arg(a, 0)) >= 0;});
-			method(p, "delete", 1, (t, a, _) -> {
+				return isObject(a0) && mapIndex(m, a0) >= 0;});
+			fixed(p, "delete", 1, (t, a0:Dynamic, _, _) -> {
 				var m = thisMap(t, isSet, "delete", true);
-				return isObject(arg(a, 0)) && mapDelete(m, arg(a, 0));});
-			if (isSet) method(p, "add", 1, (t, a, _) -> mapPut(thisMap(t, true, "add", true), key(arg(a, 0)), arg(a, 0)));
+				return isObject(a0) && mapDelete(m, a0);});
+			if (isSet) fixed(p, "add", 1, (t, a0:Dynamic, _, _) -> mapPut(thisMap(t, true, "add", true), key(a0), a0));
 			else {
-				method(p, "get", 1, (t, a, _) -> {
+				fixed(p, "get", 1, (t, a0:Dynamic, _, _) -> {
 					var m = thisMap(t, false, "get", true);
-					var i = isObject(arg(a, 0)) ? mapIndex(m, arg(a, 0)) : -1;
+					var i = isObject(a0) ? mapIndex(m, a0) : -1;
 					return i < 0 ? undef() : m.values[i];});
-				method(p, "set", 2, (t, a, _) -> mapPut(thisMap(t, false, "set", true), key(arg(a, 0)), arg(a, 1)));
+				fixed(p, "set", 2, (t, a0:Dynamic, a1:Dynamic, _) -> mapPut(thisMap(t, false, "set", true), key(a0), a1));
 			}
 			p.setOwn(Symbols.toStringTag, name, Attr.HIDDEN | Attr.READONLY);
 			constructor(name, 0, p, (_, a, nt) -> {

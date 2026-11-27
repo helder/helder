@@ -19,9 +19,9 @@ class Objects {
 	// Object
 	static function setupObject():Void {
 		var o = ObjectProto;
-		method(o, "hasOwnProperty", 1, (t, a, _) -> hasOwnKey(toObject(t), key(arg(a, 0))));
-		method(o, "isPrototypeOf", 1, (t, a, _) -> {
-			var v = arg(a, 0);
+		fixed(o, "hasOwnProperty", 1, (t, a0:Dynamic, _, _) -> hasOwnKey(toObject(t), key(a0)));
+		fixed(o, "isPrototypeOf", 1, (t, a0:Dynamic, _, _) -> {
+			var v = a0;
 			if (!isObject(v)) return false;
 			var p = prototypeOf(v);
 			while (p != null) {
@@ -29,13 +29,13 @@ class Objects {
 				p = prototypeOf(p);
 			}
 			return false;});
-		method(o, "propertyIsEnumerable", 1, (t, a, _) -> {
+		fixed(o, "propertyIsEnumerable", 1, (t, a0:Dynamic, _, _) -> {
 			var obj = toObject(t);
-			var k = key(arg(a, 0));
+			var k = key(a0);
 			return hasOwnKey(obj, k) && enumerableOwn(obj, k);});
-		method(o, "toString", 0, (t, _, _) -> objectToString(t));
-		method(o, "toLocaleString", 0, (t, _, _) -> callMethod(t, "toString", []));
-		method(o, "valueOf", 0, (t, _, _) -> toObject(t));
+		fixed(o, "toString", 0, (t, _, _, _) -> objectToString(t));
+		fixed(o, "toLocaleString", 0, (t, _, _, _) -> callMethod(t, "toString", []));
+		fixed(o, "valueOf", 0, (t, _, _, _) -> toObject(t));
 		o.setOwn("__proto__", new Accessor(native("get __proto__", 0, (t, _, _) -> {
 			return prototypeOf(toObject(t));}), native("set __proto__", 1, (t, a, _) -> {
 				setPrototype(t, arg(a, 0));
@@ -43,12 +43,12 @@ class Objects {
 		var c = constructor("Object", 1, o, (t, a, nt) -> {
 			var v = arg(a, 0);
 			return v == null || v == undef() ? new JsObject(ObjectProto) : toObject(v);});
-		method(c, "keys", 1, (_, a, _) -> array([for (k in keys(toObject(arg(a, 0)))) k]));
-		method(c, "values", 1, (_, a, _) -> {
-			var o = toObject(arg(a, 0));
+		fixed(c, "keys", 1, (_, a0:Dynamic, _, _) -> array([for (k in keys(toObject(a0))) k]));
+		fixed(c, "values", 1, (_, a0:Dynamic, _, _) -> {
+			var o = toObject(a0);
 			return array([for (k in keys(o)) get(o, k)]);});
-		method(c, "entries", 1, (_, a, _) -> {
-			var o = toObject(arg(a, 0));
+		fixed(c, "entries", 1, (_, a0:Dynamic, _, _) -> {
+			var o = toObject(a0);
 			return array([for (k in keys(o)) array([k, get(o, k)])]);});
 		method(c, "assign", 2, (_, a, _) -> {
 			var target = toObject(arg(a, 0));
@@ -57,62 +57,62 @@ class Objects {
 				for (k in ownPropertyKeys(s)) if (enumerableOwn(s, k)) put(target, k, get(s, k));
 			}
 			return target;});
-		method(c, "fromEntries", 1, (_, a, _) -> {
+		fixed(c, "fromEntries", 1, (_, a0:Dynamic, _, _) -> {
 			var o = new JsObject(ObjectProto);
-			for (entry in toList(arg(a, 0))) defineOwn(o, key(get(entry, 0)), get(entry, 1));
+			for (entry in toList(a0)) defineOwn(o, key(get(entry, 0)), get(entry, 1));
 			return o;});
-		method(c, "hasOwn", 2, (_, a, _) -> hasOwnKey(toObject(arg(a, 0)), key(arg(a, 1))));
-		method(c, "is", 2, (_, a, _) -> sameValue(arg(a, 0), arg(a, 1)));
-		method(c, "getPrototypeOf", 1, (_, a, _) -> prototypeOf(toObject(arg(a, 0))));
-		method(c, "setPrototypeOf", 2, (_, a, _) -> {
-			var o = arg(a, 0);
-			var p = arg(a, 1);
+		fixed(c, "hasOwn", 2, (_, a0:Dynamic, a1:Dynamic, _) -> hasOwnKey(toObject(a0), key(a1)));
+		fixed(c, "is", 2, (_, a0:Dynamic, a1:Dynamic, _) -> sameValue(a0, a1));
+		fixed(c, "getPrototypeOf", 1, (_, a0:Dynamic, _, _) -> prototypeOf(toObject(a0)));
+		fixed(c, "setPrototypeOf", 2, (_, a0:Dynamic, a1:Dynamic, _) -> {
+			var o = a0;
+			var p = a1;
 			if (p != null && !isObject(p)) error("TypeError", "Object prototype may only be an Object or null: " + Seed.text(p));
 			setPrototype(o, p);
 			return o;});
-		method(c, "create", 2, (_, a, _) -> {
-			var p = arg(a, 0);
+		fixed(c, "create", 2, (_, a0:Dynamic, a1:Dynamic, _) -> {
+			var p = a0;
 			if (p != null && !isObject(p)) error("TypeError", "Object prototype may only be an Object or null: " + Seed.text(p));
 			var o = new JsObject(p);
-			if (arg(a, 1) != undef()) defineProperties(o, arg(a, 1));
+			if (a1 != undef()) defineProperties(o, a1);
 			return o;});
-		method(c, "defineProperty", 3, (_, a, _) -> {
-			var o = arg(a, 0);
+		fixed(c, "defineProperty", 3, (_, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
+			var o = a0;
 			if (!isObject(o)) error("TypeError", "Object.defineProperty called on non-object");
-			defineProperty(o, key(arg(a, 1)), arg(a, 2));
+			defineProperty(o, key(a1), a2);
 			return o;});
-		method(c, "defineProperties", 2, (_, a, _) -> {
-			var o = arg(a, 0);
+		fixed(c, "defineProperties", 2, (_, a0:Dynamic, a1:Dynamic, _) -> {
+			var o = a0;
 			if (!isObject(o)) error("TypeError", "Object.defineProperties called on non-object");
-			defineProperties(o, arg(a, 1));
+			defineProperties(o, a1);
 			return o;});
-		method(c, "getOwnPropertyNames", 1, (_, a, _) -> {
-			var o = toObject(arg(a, 0));
+		fixed(c, "getOwnPropertyNames", 1, (_, a0:Dynamic, _, _) -> {
+			var o = toObject(a0);
 			var names:Array<Dynamic> = [for (k in ownPropertyKeys(o)) if (!Symbols.isSymbolKey(k)) k];
 			return array(names);});
-		method(c, "getOwnPropertySymbols", 1, (_, a, _) -> {
-			var o = toObject(arg(a, 0));
+		fixed(c, "getOwnPropertySymbols", 1, (_, a0:Dynamic, _, _) -> {
+			var o = toObject(a0);
 			var symbols:Array<Dynamic> = [for (k in ownPropertyKeys(o)) if (Symbols.isSymbolKey(k) && Symbols.fromKey(k) != null) Symbols.fromKey(k)];
 			return array(symbols);});
-		method(c, "getOwnPropertyDescriptor", 2, (_, a, _) -> descriptor(toObject(arg(a, 0)), key(arg(a, 1))));
-		method(c, "getOwnPropertyDescriptors", 1, (_, a, _) -> {
-			var o = toObject(arg(a, 0));
+		fixed(c, "getOwnPropertyDescriptor", 2, (_, a0:Dynamic, a1:Dynamic, _) -> descriptor(toObject(a0), key(a1)));
+		fixed(c, "getOwnPropertyDescriptors", 1, (_, a0:Dynamic, _, _) -> {
+			var o = toObject(a0);
 			var r = new JsObject(ObjectProto);
 			for (k in ownPropertyKeys(o)) r.setOwn(k, descriptor(o, k));
 			return r;});
-		method(c, "freeze", 1, (_, a, _) -> {
-			integrity(arg(a, 0), true);
-			return arg(a, 0);});
-		method(c, "seal", 1, (_, a, _) -> {
-			integrity(arg(a, 0), false);
-			return arg(a, 0);});
-		method(c, "preventExtensions", 1, (_, a, _) -> {
-			if (isObject(arg(a, 0)) && !Exotics.preventExtensions(arg(a, 0))) error("TypeError", "'preventExtensions' on proxy: trap returned falsish");
-			return arg(a, 0);});
-		method(c, "isFrozen", 1, (_, a, _) -> testIntegrity(arg(a, 0), true));
-		method(c, "isSealed", 1, (_, a, _) -> testIntegrity(arg(a, 0), false));
-		method(c, "isExtensible", 1, (_, a, _) -> isObject(arg(a, 0)) && Exotics.isExtensible(arg(a, 0)));
-		method(c, "groupBy", 2, (_, a, _) -> groupBy(arg(a, 0), arg(a, 1), false));
+		fixed(c, "freeze", 1, (_, a0:Dynamic, _, _) -> {
+			integrity(a0, true);
+			return a0;});
+		fixed(c, "seal", 1, (_, a0:Dynamic, _, _) -> {
+			integrity(a0, false);
+			return a0;});
+		fixed(c, "preventExtensions", 1, (_, a0:Dynamic, _, _) -> {
+			if (isObject(a0) && !Exotics.preventExtensions(a0)) error("TypeError", "'preventExtensions' on proxy: trap returned falsish");
+			return a0;});
+		fixed(c, "isFrozen", 1, (_, a0:Dynamic, _, _) -> testIntegrity(a0, true));
+		fixed(c, "isSealed", 1, (_, a0:Dynamic, _, _) -> testIntegrity(a0, false));
+		fixed(c, "isExtensible", 1, (_, a0:Dynamic, _, _) -> isObject(a0) && Exotics.isExtensible(a0));
+		fixed(c, "groupBy", 2, (_, a0:Dynamic, a1:Dynamic, _) -> groupBy(a0, a1, false));
 	}
 
 	// GroupBy consumes one iterator value per callback and caches the next method.

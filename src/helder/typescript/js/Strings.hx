@@ -62,23 +62,25 @@ class Strings {
 				i++;
 			}
 			return out.toString();});
-		method(p, "toString", 0, (t, _, _) -> primitive(t, "string"));
-		method(p, "valueOf", 0, (t, _, _) -> primitive(t, "string"));
+		fixed(p, "toString", 0, (t, _, _, _) -> primitive(t, "string"));
+		fixed(p, "valueOf", 0, (t, _, _, _) -> primitive(t, "string"));
 		// (each method its own function, in String.prototype's order)
 		function m(name:String, arity:Int, fn:(String, Array<Dynamic>) -> Dynamic) method(p, name, arity, (t, a, _) -> fn(thisString(t), a));
-		m("charAt", 1, (s, a) -> {
-			var i = toIntegerOrInfinity(arg(a, 0));
+		// (one reading at most three arguments by their places: a fixed entry, Builtins.fixed)
+		function m3(name:String, arity:Int, fn:(String, Dynamic, Dynamic, Dynamic) -> Dynamic) fixed(p, name, arity, (t, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> fn(thisString(t), a0, a1, a2));
+		m3("charAt", 1, (s, a0:Dynamic, _, _) -> {
+			var i = toIntegerOrInfinity(a0);
 			return i < 0 || i >= s.length ? "" : s.charAt(Std.int(i));});
-		m("at", 1, (s, a) -> {
-			var i = toIntegerOrInfinity(arg(a, 0));
+		m3("at", 1, (s, a0:Dynamic, _, _) -> {
+			var i = toIntegerOrInfinity(a0);
 			if (i < 0) i += s.length;
 			return i < 0 || i >= s.length ? undef() : s.charAt(Std.int(i));});
-		m("charCodeAt", 1, (s, a) -> {
-			var i = toIntegerOrInfinity(arg(a, 0));
+		m3("charCodeAt", 1, (s, a0:Dynamic, _, _) -> {
+			var i = toIntegerOrInfinity(a0);
 			return i < 0 || i >= s.length ? Math.NaN : StringTools.fastCodeAt(s, Std.int(i));});
 		// (Dynamic returns throughout: a lambda returning undefined and an Int is typed Int, undefined read as 0)
-		m("codePointAt", 1, (s, a) -> {
-			var i = toIntegerOrInfinity(arg(a, 0)), n = s.length;
+		m3("codePointAt", 1, (s, a0:Dynamic, _, _) -> {
+			var i = toIntegerOrInfinity(a0), n = s.length;
 			if (i < 0 || i >= n) return undef();
 			var c = StringTools.fastCodeAt(s, Std.int(i));
 			if (c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
@@ -86,17 +88,17 @@ class Strings {
 				if (d >= 0xdc00 && d <= 0xdfff) return ((c - 0xd800) * 1024 + (d - 0xdc00) + 65536 : Dynamic);
 			}
 			return (c : Dynamic);});
-		m("slice", 2, (s, a) -> {
-			var n = s.length, second = arg(a, 1);
-			var start = relative(arg(a, 0), n), end = second == undef() ? n : relative(second, n);
+		m3("slice", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var n = s.length, second = a1;
+			var start = relative(a0, n), end = second == undef() ? n : relative(second, n);
 			return s.substring(Std.int(start), Std.int(Math.max(start, end)));});
-		m("substring", 2, (s, a) -> {
-			var n = s.length, second = arg(a, 1);
-			var start = Math.max(0, Math.min(toIntegerOrInfinity(arg(a, 0)), n)), end = second == undef() ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
+		m3("substring", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var n = s.length, second = a1;
+			var start = Math.max(0, Math.min(toIntegerOrInfinity(a0), n)), end = second == undef() ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
 			return s.substring(Std.int(Math.min(start, end)), Std.int(Math.max(start, end)));});
-		m("substr", 2, (s, a) -> {
-			var n = s.length, second = arg(a, 1);
-			var start = relative(arg(a, 0), n);
+		m3("substr", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var n = s.length, second = a1;
+			var start = relative(a0, n);
 			var length = second == undef() ? n - start : Math.min(Math.max(toIntegerOrInfinity(second), 0), n - start);
 			return length <= 0 ? "" : s.substr(Std.int(start), Std.int(length));});
 		m("concat", 1, (s, a) -> {
@@ -104,30 +106,30 @@ class Strings {
 			b.add(s);
 			for (v in a) b.add(Seed.text(v));
 			return b.toString();});
-		m("indexOf", 1, (s, a) -> s.indexOf(Seed.text(arg(a, 0)), from(s, arg(a, 1))));
-		m("includes", 1, (s, a) -> s.indexOf(needle(arg(a, 0), "includes"), from(s, arg(a, 1))) >= 0);
-		m("startsWith", 1, (s, a) -> {
-			var needle = needle(arg(a, 0), "startsWith");
-			return s.substr(from(s, arg(a, 1)), needle.length) == needle;});
-		m("lastIndexOf", 1, (s, a) -> {
-			var n = s.length, num = Seed.numeric(arg(a, 1));
+		m3("indexOf", 1, (s, a0:Dynamic, a1:Dynamic, _) -> s.indexOf(Seed.text(a0), from(s, a1)));
+		m3("includes", 1, (s, a0:Dynamic, a1:Dynamic, _) -> s.indexOf(needle(a0, "includes"), from(s, a1)) >= 0);
+		m3("startsWith", 1, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var needle = needle(a0, "startsWith");
+			return s.substr(from(s, a1), needle.length) == needle;});
+		m3("lastIndexOf", 1, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var n = s.length, num = Seed.numeric(a1);
 			var pos = Math.isNaN(num) ? n : Std.int(Math.max(0, Math.min(toIntegerOrInfinity(num), n)));
-			return s.lastIndexOf(Seed.text(arg(a, 0)), Std.int(pos));});
-		m("endsWith", 1, (s, a) -> {
-			var needle = needle(arg(a, 0), "endsWith"), second = arg(a, 1);
+			return s.lastIndexOf(Seed.text(a0), Std.int(pos));});
+		m3("endsWith", 1, (s, a0:Dynamic, a1:Dynamic, _) -> {
+			var needle = needle(a0, "endsWith"), second = a1;
 			var end = second == undef() ? s.length : from(s, second);
 			return end >= needle.length && s.substr(end - needle.length, needle.length) == needle;});
-		m("toLowerCase", 0, (s, _) -> s.toLowerCase());
-		m("toUpperCase", 0, (s, _) -> s.toUpperCase());
-		m("toLocaleLowerCase", 0, (s, _) -> s.toLowerCase());
-		m("toLocaleUpperCase", 0, (s, _) -> s.toUpperCase());
-		m("trim", 0, (s, _) -> trim(s, true, true));
-		m("trimStart", 0, (s, _) -> trim(s, true, false));
-		m("trimEnd", 0, (s, _) -> trim(s, false, true));
-		m("trimLeft", 0, (s, _) -> trim(s, true, false));
-		m("trimRight", 0, (s, _) -> trim(s, false, true));
-		m("repeat", 1, (s, a) -> {
-			var first = arg(a, 0);
+		m3("toLowerCase", 0, (s, _, _, _) -> s.toLowerCase());
+		m3("toUpperCase", 0, (s, _, _, _) -> s.toUpperCase());
+		m3("toLocaleLowerCase", 0, (s, _, _, _) -> s.toLowerCase());
+		m3("toLocaleUpperCase", 0, (s, _, _, _) -> s.toUpperCase());
+		m3("trim", 0, (s, _, _, _) -> trim(s, true, true));
+		m3("trimStart", 0, (s, _, _, _) -> trim(s, true, false));
+		m3("trimEnd", 0, (s, _, _, _) -> trim(s, false, true));
+		m3("trimLeft", 0, (s, _, _, _) -> trim(s, true, false));
+		m3("trimRight", 0, (s, _, _, _) -> trim(s, false, true));
+		m3("repeat", 1, (s, a0:Dynamic, _, _) -> {
+			var first = a0;
 			var count = toIntegerOrInfinity(first);
 			if (count < 0 || !Math.isFinite(count)) error("RangeError", "Invalid count value: " + Seed.text(first));
 			if (count * s.length > 536870888) error("RangeError", "Invalid string length");
@@ -143,20 +145,20 @@ class Strings {
 		m("split", 2, split);
 		m("replace", 2, (s, a) -> replace(s, a, false));
 		m("replaceAll", 2, (s, a) -> replace(s, a, true));
-		m("localeCompare", 1, (s, a) -> collate(s, Seed.text(arg(a, 0))));
-		m("normalize", 0, (s, a) -> {
-			var first = arg(a, 0);
+		m3("localeCompare", 1, (s, a0:Dynamic, _, _) -> collate(s, Seed.text(a0)));
+		m3("normalize", 0, (s, a0:Dynamic, _, _) -> {
+			var first = a0;
 			var form = first == undef() ? "NFC" : Seed.text(first);
 			if (["NFC", "NFD", "NFKC", "NFKD"].indexOf(form) < 0) return error("RangeError", "Invalid normalization form");
 			return normalizeString(s, form);});
-		m("isWellFormed", 0, (s, _) -> wellFormed(s, true));
-		m("toWellFormed", 0, (s, _) -> wellFormed(s, false));
-		m("search", 1, (s, a) -> matcher(s, arg(a, 0), "search"));
-		m("match", 1, (s, a) -> matcher(s, arg(a, 0), "match"));
-		m("matchAll", 1, (s, a) -> matcher(s, arg(a, 0), "matchAll"));
+		m3("isWellFormed", 0, (s, _, _, _) -> wellFormed(s, true));
+		m3("toWellFormed", 0, (s, _, _, _) -> wellFormed(s, false));
+		m3("search", 1, (s, a0:Dynamic, _, _) -> matcher(s, a0, "search"));
+		m3("match", 1, (s, a0:Dynamic, _, _) -> matcher(s, a0, "match"));
+		m3("matchAll", 1, (s, a0:Dynamic, _, _) -> matcher(s, a0, "matchAll"));
 		// (read-only: compiled code calls it itself on a string, Seed.stringCharCodeAt)
 		p.setOwn("charCodeAt", p.getOwn("charCodeAt"), Attr.HIDDEN | Attr.READONLY | Attr.LOCKED);
-		method(p, Symbols.iterator, 0, (t, _, _) -> new JsIterator(StringIteratorProto, thisString(t), "values"));
+		fixed(p, Symbols.iterator, 0, (t, _, _, _) -> new JsIterator(StringIteratorProto, thisString(t), "values"));
 	}
 
 	// (a search's start: an integer from 0 to the length)
