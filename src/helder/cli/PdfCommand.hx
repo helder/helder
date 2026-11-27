@@ -90,7 +90,10 @@ class PdfCommand {
 			image: u -> {
 				if (u.toLowerCase().split("?")[0].endsWith(".svg")) return null;
 				var b = read(u);
-				b == null ? null : try Bitmap.fromImage(Image.decode(b)) catch (_:Dynamic) null;
+				var bitmap = b == null ? null : try Bitmap.fromImage(Image.decode(b)) catch (_:Dynamic) null;
+				// (its file kept: a JPEG or PNG written into the PDF as it is)
+				if (bitmap != null) bitmap.source = b;
+				bitmap;
 			}
 		};
 

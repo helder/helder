@@ -9,6 +9,10 @@ final class Bitmap {
 	public final width:Int;
 	public final height:Int;
 	public final pixels:Bytes;
+	// the encoded file these pixels were decoded from (a JPEG's, a PNG's), for
+	// a writer to embed as it is (PdfWriter: /DCTDecode, PNG's IDAT); null:
+	// none. Set by whoever decoded it, and only if the pixels are left as decoded.
+	public var source:Null<Bytes> = null;
 
 	public function new(width:Int, height:Int, ?pixels:Bytes) {
 		this.width = width;

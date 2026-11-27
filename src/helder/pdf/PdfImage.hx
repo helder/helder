@@ -22,7 +22,8 @@ class PdfImage {
 	public static var jpegDecoder:Null<(data:Bytes, scale:Int, cmyk:Bool) -> {width:Int, height:Int, rgba:Bytes, ?cmyk:Bool}> = null;
 
 	public static function useJpeg()
-		jpegDecoder = (d, s, cmyk) -> helder.image.JpegDecoder.decode(d, null, s, cmyk);
+		// (EXIF's orientation not applied: a PDF reader's image space ignores it)
+		jpegDecoder = (d, s, cmyk) -> helder.image.JpegDecoder.decode(d, null, s, cmyk, false);
 
 	public static var jpxInfo:Null<(data:Bytes) -> Null<{width:Int, height:Int, levels:Int}>> = null;
 

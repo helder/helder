@@ -138,7 +138,13 @@ images shaded by UiShader's own functions, into a `Bitmap`.
   paths as PDF's, colours with their opacity and blend mode in ExtGStates,
   linear and radial gradients as shadings (stops as stitching functions,
   their alpha a luminosity soft mask), images as image XObjects with soft
-  masks, layers as transparency groups, streams Flate-compressed;
+  masks, one per distinct image however often it is drawn (by the
+  bitmap, then its pixels' hash); a bitmap with its file
+  (`Bitmap.source`: helder pdf's loader keeps it) drawn whole is that file
+  as it is: a JPEG as /DCTDecode (grey, RGB, CMYK with Adobe's inversion;
+  its EXIF orientation the image's matrix), an 8-bit grey or RGB PNG's
+  IDAT with /Predictor 15. Layers as transparency groups, streams
+  Flate-compressed;
   `SvgWriter.write(page)`: an SVG (gradients userSpaceOnUse, clipPaths,
   groups, mix-blend-mode, images as PNG data, text as outlines). What
   neither can say (conic gradients, patterns, unbounded operators,
