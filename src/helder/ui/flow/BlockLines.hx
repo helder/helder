@@ -531,8 +531,9 @@ class BlockLines {
 		if (l.lines == 0 && built.markers.length > 0) {
 			var line = frags.add(Fragments.LINE, (cast c.root : BoxInline).box, 0, 0);
 			frags.adopt(frag, line, ox, oy);
-			var left = constraints.lineWidth == null ? 0 : constraints.lineWidth(0, 1).offset;
-			var h = markers(space, built.markers, line, -1, left, rtl, 0);
+			var room = constraints.lineWidth == null ? null : constraints.lineWidth(0, 1);
+			var shift = room == null ? 0.0 : rtl ? room.offset + room.width - constraints.width : room.offset;
+			var h = markers(space, built.markers, line, -1, shift, rtl, constraints.width);
 			frags.resize(line, 0, h.height);
 			frags.setBaseline(line, h.baseline);
 			return {height: h.height, lines: 1, baseline: h.baseline};
@@ -641,8 +642,10 @@ class BlockLines {
 
 	// (outside markers: on the first line's baseline, at the block edge even when floats narrow the line)
 	// (baseline -1: the line is the marker's own; its height and baseline given back)
-	function markers(space:Space, list:Array<Box>, line:Int, baseline:Float, left:Float, rtl:Bool, avail:Float):{height:Float, baseline:Float} {
+	function markers(space:Space, list:Array<Box>, line:Int, baseline:Float, shift:Float, rtl:Bool, avail:Float):{height:Float, baseline:Float} {
 		var frags = space.fragments;
+		var host = frags.parent(line), item = frags.box(host);
+		var itemMarker = item.pseudo == null ? "marker" : item.pseudo + "::marker";
 		var own = baseline < 0, height = 0.0;
 		for (mk in list) {
 			// (text alone: its content kept for the layouts after, as a block's inline content is)
@@ -684,7 +687,11 @@ class BlockLines {
 			var span = frags.add(Fragments.SPAN, mk, w, ml.lineHeight(0));
 			// (an image's: 7 before the line, as Chromium's marker padding; a text's own space does that)
 			var gap = laid.length > 0 ? 7 : 0;
-			frags.adopt(line, span, rtl ? left + avail + gap : left - w - gap, own ? 0 : baseline - mb);
+			var start = rtl ? avail : 0.0;
+			// (a marker in its item's own formatting context sits outside its border box)
+			if (item.style.listItem && mk.source == item.source && mk.pseudo == itemMarker)
+				start = (rtl ? frags.width(host) : 0) - frags.x(line);
+			frags.adopt(line, span, shift + (rtl ? start + gap : start - w - gap), own ? 0 : baseline - mb);
 			frags.setBaseline(span, mb);
 			var atomic = 0;
 			for (f in ml.lineFragmentStart(0)...ml.lineFragmentEnd(0)) switch ml.kind(f) {
