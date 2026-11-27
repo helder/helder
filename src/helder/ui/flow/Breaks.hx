@@ -3,6 +3,7 @@ package helder.ui.flow;
 import haxe.ds.ObjectMap;
 import helder.ui.box.Box;
 import helder.ui.box.BoxStyle;
+import helder.ui.flow.Fragmentation.Deferred;
 import helder.ui.flow.Fragmentation.Resume;
 
 // A fragmentainer's breaks (CSS Fragmentation 3 §4), as LayoutNG chooses
@@ -22,6 +23,8 @@ class Breaks implements Fragmentation {
 	var target:Null<Point> = null;
 	var taken:Null<Point> = null;
 	var halted = false;
+	// (the absolutely positioned boxes deferred in this pass)
+	public final deferred:Array<Deferred> = [];
 	// (where the content laid out ends, its margins aside; where the floats placed so far end)
 	var reach = 0.0;
 	var floor = 0.0;
@@ -44,6 +47,12 @@ class Breaks implements Fragmentation {
 
 	public function placed(bottom:Float)
 		if (bottom > reach) reach = bottom;
+
+	public function after(box:Box, bottom:Float):Bool
+		return offer({box: box, child: null, line: BreakToken.PAST, from: null, bottom: bottom, appeal: inside(box, PERFECT), forced: null, keep: false});
+
+	public function defer(d:Deferred)
+		deferred.push(d);
 
 	public function floated(bottom:Float) {
 		if (bottom > floor) floor = bottom;
@@ -118,6 +127,7 @@ class Breaks implements Fragmentation {
 		target = best;
 		halted = false;
 		floor = 0;
+		deferred.resize(0);
 		tops.clear();
 		return true;
 	}

@@ -5,6 +5,7 @@ import helder.ui.box.BoxKind;
 import helder.ui.box.BoxStyle;
 import helder.ui.box.Fragments;
 import helder.ui.box.Len;
+import helder.ui.flow.Fragmentation.Deferred;
 
 // Flow layout of block containers (CSS 2.1 §9.4.1, §10.3, §10.6, §8.3):
 // widths and their auto margins (§10.3.3), shrink-to-fit for inline
@@ -130,7 +131,9 @@ class BlockFlow implements FormattingContext {
 		var topPos = mt > 0 ? mt : 0.0, topNeg = mt < 0 ? mt : 0.0;
 		var pos = 0.0, neg = 0.0, y = 0.0;
 		var atTop = topCollapses, empty = true, baseline = Math.NaN;
-		var hasLines = box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
+		// (resumed past its content: only its height left, Fragmentation's after)
+		var done = resume != null && resume.line == BreakToken.PAST;
+		var hasLines = !done && box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
 		// (broken: a break taken inside it, its content goes on in the next fragmentainer)
 		var broken = false;
 		if (fr != null) fr.enter(box, space.pageTop + bt + pt);
@@ -165,7 +168,7 @@ class BlockFlow implements FormattingContext {
 			}
 			if (fr != null && fr.stopped) broken = true;
 		} else {
-			var c = box.first;
+			var c = done ? null : box.first;
 			// (resumed at a child: the ones before it were in the fragmentainers before; after an unforced
 			// break its top margins are truncated, css-break-3 §5.2)
 			var truncate = false;
@@ -296,6 +299,13 @@ class BlockFlow implements FormattingContext {
 			}
 			if (fr != null && fr.stopped) broken = true;
 		}
+		// (an absolutely positioned box's height past the fragmentainer's end, its content ending before: a break
+		// after the content, the rest of its height in the next, unless it clips (monolithic); an in-flow box's
+		// stays whole, as before, until the pending monolithic overflow is sliced as Chromium's)
+		if (fr != null && box.absolute && !broken && !autoHeight && !s.clips && space.pageTop + bt + pt + heightSpec > fr.size + 0.01) {
+			fr.placed(space.pageTop + bt + pt + heightSpec);
+			if (fr.after(box, fr.size) || fr.stopped) broken = true;
+		}
 		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
 		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
 		if (broken) {
@@ -345,9 +355,9 @@ class BlockFlow implements FormattingContext {
 			repeat(fixed, frag, space, bl + pl, bt + pt, ix, iy);
 			var r = space.repeated;
 			place(fixed, frag, space, ix, iy, r != null ? r.width : space.width, r != null ? r.height : space.height);
-			place(positioned, frag, space, ix, iy, space.width, space.height);
+			place(positioned, frag, space, ix, iy, space.width, space.height, resume != null);
 		} else if (owner)
-			place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb);
+			place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb, resume != null || broken);
 		// (a box whose layout left absolutely positioned boxes outside it is not reused from the cache)
 		var leaked = (space.positioned != null && space.positioned.boxes.length > escaped) || (space.fixed != null && space.fixed.boxes.length > escapedFixed);
 		box.flags = leaked ? box.flags | Box.ESCAPES : box.flags & ~Box.ESCAPES;
@@ -401,17 +411,26 @@ class BlockFlow implements FormattingContext {
 
 	// ---- absolutely positioned boxes (§10.3.7, §10.6.4)
 
-	// (each laid out in a containing block at cbx, cby of cbw by cbh in owner's border box)
-	function place(list:Positioned, owner:Int, space:Space, cbx:Float, cby:Float, cbw:Float, cbh:Float) {
-		var frags = space.fragments;
+	// (each laid out in a containing block at cbx, cby of cbw by cbh in owner's border box; in a fragmentainer,
+	// deferred to its host when split, owner broken across fragmentainers, or when it doesn't fit)
+	public function place(list:Positioned, owner:Int, space:Space, cbx:Float, cby:Float, cbw:Float, cbh:Float, split = false) {
+		var frags = space.fragments, fr = space.fragmentation;
 		var k = 0;
 		while (k < list.boxes.length) {
 			var b = list.boxes[k];
 			var from = frags.absolute(list.fragments[k]), to = frags.absolute(owner);
 			var sx = from.x - to.x + list.xs[k] - cbx, sy = from.y - to.y + list.ys[k] - cby;
 			if (space.repeated != null && b.style.position == "fixed") space.repeated.places.set(b, {x: sx, y: sy});
+			var d:Null<Deferred> = fr == null || b.style.position != "absolute" ? null : {box: b, owner: frags.box(owner), x: sx, y: sy, cbx: cbx, cby: cby, cbw: cbw,
+				cbh: cbh, align: list.aligns[k]};
+			if (d != null && split) {
+				fr.defer(d);
+				k++;
+				continue;
+			}
 			var f = positionedBox(b, space, sx, sy, cbw, cbh, list.aligns[k]);
-			frags.adopt(owner, f.fragment, cbx + f.x, cby + f.y);
+			if (d != null && space.pageTop + cby + f.y + frags.height(f.fragment) > fr.size + 0.01) fr.defer(d) else frags.adopt(owner, f.fragment, cbx + f.x,
+				cby + f.y);
 			k++;
 		}
 	}
@@ -428,7 +447,7 @@ class BlockFlow implements FormattingContext {
 	}
 
 	// (its border box's place in its containing block, given its static place there: CSS 2.1's equations)
-	function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float, ?align:Array<Float>):{fragment:Int, x:Float, y:Float} {
+	public function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float, ?align:Array<Float>):{fragment:Int, x:Float, y:Float} {
 		var s = b.style.model();
 		var pl = res(s.padding[3], cbw), pr = res(s.padding[1], cbw), pt = res(s.padding[0], cbw), pb = res(s.padding[2], cbw);
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
