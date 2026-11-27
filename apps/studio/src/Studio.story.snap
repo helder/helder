@@ -1,0 +1,92 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- story Studio/No project: Studio/No project (25 lines)
+Node#root 0,0 390x844
+  Node#studio 0,0 390x844
+    Node#watch 0,0 390x844
+      Node#header 0,0 390x40
+        Node#tab 12,6 123x28
+          Node#tab-dot 24,17 6x6
+          TextNode#text 38,11 85x17 "helder studio"
+        Node#view 143,20 235x0
+      Node#view 0,40 390x804
+        Node#canvas 0,40 390x804
+          Node#view 0,40 390x804
+            Node#stage 0,40 390x804
+              Dots#dots 0,40 390x804
+          Node#blank 0,40 390x804
+            Node#view 20,360 351x124
+              Node#chat-input 20,360 351x124
+                TextField#prompt 37,377 317x48 ""
+                Node#view 37,439 317x32
+                  Node#agent-chip 37,441 84x28
+                    Node#view 45,451 8x8
+                    TextNode#text 59,448 36x15 "Studio"
+                    ImageNode#image 101,449 12x12
+                  Node#view 129,455 185x0
+                  Node#send 322,439 32x32
+                    ImageNode#image 331,448 14x14
+
+--- story Studio/Todo, not started: Studio/Todo, not started (62 lines)
+Node#root 0,0 390x844
+  Node#studio 0,0 390x844
+    Node#watch 0,0 390x844
+      Node#header 0,0 390x40
+        Node#tab 12,6 64x28
+          Node#tab-dot 24,17 6x6
+          TextNode#text 38,11 26x17 "Todo"
+        Node#view 84,20 134x0
+        Node#view 226,6 152x28
+          Node#share 226,6 54x28
+            TextNode#text 238,12 30x15 "Share"
+          Node#play 288,6 90x28
+            ImageNode#image 300,14 12x12
+            TextNode#text 318,12 48x15 "Play app"
+      Node#view 0,40 390x804
+        Node#chat 0,40 380x804
+          Node#chat-log 0,40 379x698
+            Node#chat-end 18,58 343x16
+          Node#view 0,738 379x106
+            Node#chat-input 14,750 351x80
+              TextField#prompt 27,761 325x22 ""
+              Node#view 27,791 325x28
+                Node#agent-chip 27,794 79x22
+                  Node#view 35,802 6x6
+                  TextNode#text 47,798 33x14 "Claude"
+                  ImageNode#image 86,799 12x12
+                Node#view 114,805 202x0
+                Node#send 324,791 28x28
+                  ImageNode#image 331,798 14x14
+        Node#canvas 380,40 10x804
+          Node#view 380,40 10x804
+            Node#stage 380,40 10x804
+              Dots#dots 380,40 10x804
+              Node#world 380,40 1x1
+                Node#screen-todo-empty 380,40 480x560
+                  ImageNode#image 381,41 480x558
+                  Node#skeleton 381,41 478x558
+                    Node#view 121,41 260x558
+                Node#screen-todo-three-items 900,40 480x560
+                  ImageNode#image 901,41 480x558
+                  Node#skeleton 901,41 478x558
+                    Node#view 641,41 260x558
+                Node#screen-todo-done 1420,40 480x560
+                  ImageNode#image 1421,41 480x558
+                  Node#skeleton 1421,41 478x558
+                    Node#view 1161,41 260x558
+                Node#screen-phone-three-items 380,770 390x844
+                  ImageNode#image 381,771 390x842
+                  Node#skeleton 381,771 388x842
+                    Node#view 121,771 260x842
+              Node#overlay 380,40 10x804
+                TextNode#flow-title 380,-10 6x55 "Todo"
+                TextNode#flow-title 380,720 6x69 "Phone"
+                Node#caption-todo-empty 376,18 36x18
+                  TextNode#text 380,20 28x14 "Empty"
+                Node#caption-todo-three-items 896,18 36x18
+                  TextNode#text 900,20 28x14 "Three items"
+                Node#caption-todo-done 1416,18 30x18
+                  TextNode#text 1420,20 22x14 "Done"
+                Node#caption-phone-three-items 376,748 36x18
+                  TextNode#text 380,750 28x14 "Three items"
+                Node#watch 380,40 10x804

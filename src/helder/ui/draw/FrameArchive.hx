@@ -115,13 +115,14 @@ class FrameArchive {
 	// the archive as another machine reads it (a share's: helder.run's Board):
 	// each font it refers to by its file stored with it (at most maxFont
 	// bytes each; a larger one, an emoji font's, left to the reader's match);
-	// the keys let go (they name this machine's files)
-	public function portable(maxFont = 16 * 1024 * 1024):FrameArchive {
+	// the keys let go (they name this machine's files). had: fonts the reader
+	// has already (a live share's scene: the release's file stored them), left out
+	public function portable(maxFont = 16 * 1024 * 1024, ?had:String->Bool):FrameArchive {
 		var out = new FrameArchive();
 		for (name in order) {
 			var s = screens.get(name);
 			for (f in s.fonts) {
-				if (out.blobs.exists(f.hash)) continue;
+				if (out.blobs.exists(f.hash) || (had != null && had(f.hash))) continue;
 				var b = blobs.get(f.hash) ?? (f.path == null ? null : try sys.io.File.getBytes(f.path) catch (_:Dynamic) null);
 				if (b != null && b.length <= maxFont) out.blobs.set(f.hash, b);
 			}
@@ -140,6 +141,10 @@ class FrameArchive {
 		}
 		return out;
 	}
+
+	// whether a font's or an image's bytes are stored here
+	public function has(hash:String):Bool
+		return blobs.exists(hash);
 
 	public function remove(name:String) {
 		screens.remove(name);

@@ -36,7 +36,11 @@ window.helderLoad.fonts.catch(() => {});
 // `helder dev` a new build is swapped in, in this page: the running one
 // snapshots and disposes (host.dispose(): what it registered dropped, its
 // GPU objects released), and the new one runs from the snapshot against
-// the same canvas and GPU device; the page never loads again.
+// the same canvas and GPU device; the page never loads again. A live share
+// (helder.run's, PAGE.live: {socket, version, shell}) the same from its
+// room: a new version swapped in when its shell (scripts, fonts, assets)
+// is this page's, else the page loaded again; live literals patched in the
+// running build when they are its version's (Hot.literals).
 const PAGE = window.helderPage;
 const { run } = await import(new URL(PAGE.browser, document.baseURI).href);
 const DEV = PAGE.dev;
@@ -79,7 +83,7 @@ async function start(wasm, restoreBytes) {
 			frame: () => { window.hxmcDev.frames++; send({ type: 'frame' }); },
 			// (the devtools protocol in the page: helder.compiler.web's preview speaks it; helder dev's page not yet)
 			devtools: (f) => (state.devtoolsFn = f),
-			devtools_take: () => {},
+			devtools_take: (p) => h.bytes(p, state.inbox.length).set(state.inbox),
 			devtools_send: () => {},
 			// (helder.asset's: the keys of the files that changed, and its function told)
 			asset_register: (f) => (state.assetFn = f),
@@ -105,8 +109,8 @@ async function start(wasm, restoreBytes) {
 	document.getElementById('helder-splash')?.remove();
 }
 // a new build: compiled as it arrives (409: it failed, the running one stays), then swapped in
-async function swap() {
-	const r = await fetch(PAGE.wasm + '?swap=' + Date.now());
+async function swap(url = PAGE.wasm + '?swap=' + Date.now()) {
+	const r = await fetch(url);
 	if (!r.ok) return;
 	const module = await WebAssembly.compileStreaming(r);
 	const old = current;
@@ -124,7 +128,7 @@ async function swap() {
 }
 const failed = (e) => { show(String(e && e.stack || e)); send({ type: 'log', text: 'error: ' + (e && e.stack || e) }); };
 let swaps = Promise.resolve();
-const queueSwap = () => (swaps = swaps.then(swap).catch(failed));
+const queueSwap = (url) => (swaps = swaps.then(() => swap(url)).catch(failed));
 // (the dev server's socket; gone, it is asked for again, and a build it made meanwhile swapped in)
 function connect(again) {
 	ws = new WebSocket('ws://' + location.host + '/__hxmc/ws');
@@ -148,4 +152,34 @@ function connect(again) {
 }
 if (DEV) connect(false);
 swaps = start(window.helderLoad.wasm, null).catch(failed);
+// (a live share's room: what its owner sends, in order)
+const LIVE = PAGE.live;
+let version = LIVE?.version, asked = 0;
+window.hxmcDev.live = { version, patched: 0, swaps: 0 };
+function patch(list) {
+	swaps = swaps.then(() => {
+		const s = current;
+		if (!s?.devtoolsFn || !list.length) return;
+		s.inbox = enc.encode(JSON.stringify({ jsonrpc: '2.0', id: 'live' + ++asked, method: 'Hot.literals', params: { set: list } }));
+		s.host.call(s.devtoolsFn, s.inbox.length);
+		window.hxmcDev.live.patched += list.length;
+	}).catch(failed);
+}
+function live() {
+	const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + LIVE.socket);
+	ws.onmessage = (e) => {
+		const m = JSON.parse(e.data);
+		// (a newer version, on a build or when the socket comes again: swapped in, or the page again when its shell changed)
+		if ((m.t === 'build' || m.t === 'hello') && m.version > version) {
+			if (!m.wasm || m.shell !== LIVE.shell) return location.reload();
+			version = window.hxmcDev.live.version = m.version;
+			window.hxmcDev.live.swaps++;
+			queueSwap(m.wasm);
+		}
+		if (m.t === 'hello' && m.literals?.build === version) patch(m.literals.patches);
+		if (m.t === 'literals' && m.build === version) patch(m.patches);
+	};
+	ws.onclose = () => setTimeout(live, 3000);
+}
+if (LIVE) live();
 </script></body></html>

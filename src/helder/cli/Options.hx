@@ -215,6 +215,8 @@ class Options {
 				{key: "no-screenshot", names: ["--no-screenshot"], about: "no screenshots rendered for its page (the store stories, or one of the program)"},
 				{key: "frames", names: ["--frames"], value: "<file>", about: "the frames file its Board draws (default: the studio's, bin/studio/<project>/frames.hframes)"},
 				{key: "no-board", names: ["--no-board"], about: "no frames uploaded: the app alone, no Board"},
+				{key: "live", names: ["--live"], about: "kept live while it runs: a save of live literals patched in Play, any other edit built and shared as the link's next version, the studio's frames swapped into the Board"},
+				{key: "new", names: ["--new"], about: "a new link, not the project's last share (its write key: bin/studio/<project>/share.json)"},
 				{key: "dry-run", names: ["--dry-run"], about: "built, what would be uploaded printed; nothing uploaded"},
 			],
 		},

@@ -34,6 +34,22 @@ function tests() {
 			equals([p.names().join(","), p.key("s")], ["s", ""]);
 			equals(p.list("s") != null, true);
 		});
+		test("portable: fonts the reader has left out (a live share's scene), its fonts the archive it is taken into has", () -> {
+			var face = helder.text.SystemFonts.get().file("apps/studio/fonts/HankenGrotesk-Regular.ttf", 0), w = new FrameWriter();
+			w.rect(0, 0, 10, 10, 0, 0xFF000000, 0, 0);
+			var frame = w.frame();
+			frame.fonts.push(FrameArchive.fontRef(face));
+			var a = new FrameArchive();
+			a.add("s", "key", 10, 10, frame);
+			var board = FrameArchive.decode(a.portable().encode());
+			var one = FrameArchive.decode(a.portable(board.has).encode());
+			assert(one.encode().length < board.encode().length / 10);
+			var b = new FrameArchive();
+			b.take(board, "s", "");
+			b.take(one, "s", "sha");
+			equals(b.key("s"), "sha");
+			equals(b.list("s") != null, true);
+		});
 		#end
 		test("floats: on the grid as steps, else raw", () -> {
 			var o = new FrameStreams(), values = [0, 12.5, 12.5, -3.25, 1 / 3, 1e300, Math.NaN, 1 / 64];

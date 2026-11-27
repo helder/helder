@@ -424,13 +424,26 @@ its **Board** (helder.run draws every scene's still and loop with
 is generated (`.helder-share.tsx`, helder.cli.Scenes): it starts at
 `?scenario=<name>` (helder.scenario.Player), so each scene's Play from here
 is one build; `/?app` is the app from its start. `--no-board` uploads the
-app alone. The studio's **Share** runs `helder share` with its frames.
+app alone. The studio's **Share** runs `helder share --live` with its frames.
+
+A share's write key (helder.build's, given once) is kept in
+`bin/studio/<project>/share.json`, beside the frames, never committed:
+sharing again publishes the same link's next version (`--new` for another
+link). `--live` (helder.cli.Live) keeps the link live while it runs:
+builds are dev builds, and a save that changes only live literals' values
+is patched in Play at once, nothing built. Any other change is built and
+published as the next version, which Play swaps in keeping its state. Each
+scene the studio draws again goes to the Board, its fonts left out when
+the release's frames file has them. When it stops, the link stays an
+ordinary share for a week. helder.build's side (the room, the write key,
+the limits) is its PLAN.md 2.7, S2.
 
 ```sh
 helder login                         # GitHub, through helder.build (its device flow); the token in helder's config directory
 helder publish --run                 # this project's run block: <run.name>.helder.run and helder.build/<run.name>, a new version
 helder publish examples/planets --run --dry-run   # built, what would be uploaded printed
 helder share examples/planets        # anonymous: https://quiet-otter-k7m2.helder.run, for a week
+helder share examples/pong --live    # the same link, live: literals, scenes and builds pushed while it runs
 helder logout
 ```
 

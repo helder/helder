@@ -105,7 +105,11 @@ class Watch implements Markup {
 			<Show when={studio.shared() != null}>{shareNote(studio)}</Show>
 			<button tag="share" aria-label="Share" flexDirection="row" alignItems="center" height={28} padding="0 12" borderRadius={8} flexShrink={0}
 				background={c("tab")} color={c("ink")} cursor="pointer" onPress={() -> studio.share()}>
-				<text fontSize={12} fontWeight={Theme.MEDIUM}>{studio.shared()?.state == "sharing" ? "Sharing…" : "Share"}</text>
+				<text fontSize={12} fontWeight={Theme.MEDIUM}>{switch studio.shared()?.state {
+					case "sharing": "Sharing…";
+					case "live": "Stop live";
+					case _: "Share";
+				}}</text>
 			</button>
 			<button tag="play" aria-label={playLabel(studio)} flexDirection="row" alignItems="center" columnGap={6} height={28} padding="0 12" borderRadius={8}
 				flexShrink={0} background={c("ink")} color={c("ground")} cursor="pointer" onPress={() -> pressed(studio)}>
@@ -142,7 +146,7 @@ class Watch implements Markup {
 			maxWidth={360} background={failed() ? c("error-soft") : null} cursor={url() == null ? "default" : "pointer"}
 			onPress={() -> if (url() != null) helder.os.Links.show(url(), false)}>
 			<text fontSize={Theme.SMALL} lineClamp={1} textWrap="nowrap" textOverflow="ellipsis" flexShrink={1} minWidth={0}
-				color={failed() ? c("error") : url() != null ? c("ink") : c("fg3")} textDecoration={url() != null ? 1 : 0}>{url() != null ? "Shared: " + url() : studio.shared()?.note ?? ""}</text>
+				color={failed() ? c("error") : url() != null ? c("ink") : c("fg3")} textDecoration={url() != null ? 1 : 0}>{url() == null ? studio.shared()?.note ?? "" : (studio.shared()?.state == "live" ? "Live: " : "Shared: ") + url()}</text>
 		</button>;
 	}
 
