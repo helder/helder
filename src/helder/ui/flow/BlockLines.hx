@@ -409,6 +409,16 @@ class BlockLines {
 			frags.adopt(parent, tf, x + runX, y);
 			run = null;
 		}
+		// (each glyph's characters: its cluster up to the next one above it, the
+		// fragment's end after the last; a ligature's several, a pair's both units)
+		var bounds = [for (g in g0...g0 + n) glyphs.cluster(g)];
+		bounds.sort((a, b) -> a - b);
+		var next = new Map<Int, Int>(), e = t1;
+		var k = bounds.length;
+		while (--k >= 0) {
+			if (!next.exists(bounds[k])) next.set(bounds[k], e);
+			e = bounds[k];
+		}
 		for (g in g0...g0 + n) {
 			var face = glyphs.face(g);
 			if (run == null || run.face != face) {
@@ -427,9 +437,9 @@ class BlockLines {
 				if (face.hasColor) run.palette = space.fonts.palette(face, box.style);
 				runX = glyphs.x(g);
 			}
-			var unit = glyphs.cluster(g) - t0;
+			var cl = glyphs.cluster(g), unit = cl - t0, end = next.get(cl) - t0;
 			if (unit < 0) unit = 0;
-			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, unit + 1);
+			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, end > unit ? end : unit + 1);
 		}
 		flush(n > 0 ? Math.max(l.fragmentWidth(f), glyphs.x(g0 + n - 1) + glyphs.advance(g0 + n - 1)) : l.fragmentWidth(f));
 	}
