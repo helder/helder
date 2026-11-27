@@ -8886,7 +8886,7 @@
 		"css/css-page/monolithic-overflow-020-print.html": {},
 		"css/css-page/monolithic-overflow-021-print.html": {},
 		"css/css-page/monolithic-overflow-022-print.html": {},
-		"css/css-page/monolithic-overflow-023-print.html": {"pending":"tables: page 2: 17341 pixels differ (a row of monolithic content under a repeated header: sliced where its reference keeps it on one page)"},
+		"css/css-page/monolithic-overflow-023-print.html": {},
 		"css/css-page/monolithic-overflow-024-print.html": {"pending":"generated: 3 pages, the reference 6"},
 		"css/css-page/monolithic-overflow-025-print.html": {"pending":"generated: 4 pages, the reference 8"},
 		"css/css-page/monolithic-overflow-026-print.html": {},
