@@ -1,0 +1,97 @@
+package helder.ui.flow;
+
+import helder.ui.box.Box;
+
+// A flex or grid container's items in a fragmentainer (CSS Fragmentation
+// with Flexbox §10 and Grid §12): rows down the block axis, a flex line's
+// items or a grid's rows that spanning items join, each laid out first as
+// one flow; a break between rows (a row's break-before and break-after its
+// items': the one forcing a break, else avoiding one), or inside a row's
+// item when it is the only one; each row placed after the one before as
+// the layout spaced them, the first here at the top. Items sharing a row
+// are whole: broken in parallel, they need a token of several resumes.
+class Rows {
+	final rows:Array<Row> = [];
+
+	public function new() {}
+
+	// an item in row key, its fragment at x and y in the content box, its margin box's top and bottom there
+	public function add(key:Int, box:Box, frag:Int, x:Float, y:Float, top:Float, bottom:Float) {
+		var r:Null<Row> = null;
+		for (row in rows) if (row.key == key) r = row;
+		if (r == null) rows.push(r = {key: key, items: [], top: top, bottom: bottom});
+		r.items.push({box: box, frag: frag, x: x, y: y, after: bottom});
+		if (top < r.top) r.top = top;
+		if (bottom > r.bottom) r.bottom = bottom;
+	}
+
+	// The rows here, adopted by frag at left and top (the content box's), from where box resumes to a break;
+	// h the content height laid out whole. The height they take here, whether a break was taken.
+	public function place(box:Box, frag:Int, space:Space, flow:BlockFlow, left:Float, top:Float, h:Float):{height:Float, broken:Bool} {
+		var fr = space.fragmentation, frags = space.fragments;
+		if (rows.length == 0) return {height: h, broken: false};
+		rows.sort((a, b) -> a.top < b.top ? -1 : a.top > b.top ? 1 : 0);
+		var resume = fr.resume(box), first = 0;
+		if (resume != null && resume.child != null)
+			for (k in 0...rows.length) for (it in rows[k].items) if (it.box == resume.child) first = k;
+		var base = space.reserve + space.pageTop + top;
+		fr.enter(box, space.pageTop + top);
+		var end = 0.0;
+		for (k in first...rows.length) {
+			var r = rows[k];
+			var pos = k == first ? 0.0 : end + (r.top - rows[k - 1].bottom);
+			var prev = k == first ? null : pick(rows[k - 1].items, "break-after", true);
+			if ((k > first || resume == null) && fr.between(box, prev, pick(r.items, "break-before", false), base + (prev == null ? pos : end)))
+				return {height: end, broken: true};
+			var reach = pos;
+			for (it in r.items) {
+				var f = it.frag;
+				var dy = fr.resume(it.box) != null ? 0 : it.y - r.top;
+				// (alone in its row: laid out again in the fragmentainer, where it is in it)
+				if (r.items.length == 1) {
+					var cs = space.child(frags.width(it.frag), h);
+					cs.fixedWidth = frags.width(it.frag);
+					cs.fixedHeight = frags.height(it.frag);
+					cs.fragmentation = fr;
+					cs.pageTop = space.pageTop + top + pos + dy;
+					cs.reserve = space.reserve;
+					it.box.cacheFragment = -1;
+					f = flow.child(it.box, cs);
+				}
+				frags.adopt(frag, f, left + it.x, top + pos + dy);
+				var bottom = pos + dy + frags.height(f);
+				fr.placed(space.pageTop + top + bottom);
+				reach = Math.max(reach, bottom + it.after - (it.y + frags.height(it.frag)));
+				if (fr.stopped) return {height: Math.max(end, bottom), broken: true};
+			}
+			end = reach;
+		}
+		return {height: end + Math.max(0, h - rows[rows.length - 1].bottom), broken: false};
+	}
+
+	static function pick(items:Array<RowItem>, p:String, last:Bool):Box {
+		var avoid:Null<Box> = null;
+		for (it in items) switch it.box.style.keyword(p) {
+			case "page" | "always" | "left" | "right" | "recto" | "verso": return it.box;
+			case "avoid" | "avoid-page" if (avoid == null): avoid = it.box;
+			case _:
+		}
+		return avoid ?? items[last ? items.length - 1 : 0].box;
+	}
+}
+
+private typedef Row = {
+	key:Int,
+	items:Array<RowItem>,
+	top:Float,
+	bottom:Float
+}
+
+private typedef RowItem = {
+	box:Box,
+	frag:Int,
+	x:Float,
+	y:Float,
+	// (its margin box's bottom in the content box)
+	after:Float
+}
