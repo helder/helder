@@ -400,23 +400,55 @@ class Arrays {
 			if (!same(cmp, undef())) callback(cmp);
 			var o = toObject(t);
 			var n = lengthOf(o);
-			var present = [];
+			var present:Array<Dynamic> = [];
 			var undefineds = 0;
-			var i:Float = 0;
-			while (i < n) {
-				if (name == "toSorted" || hasAt(o, i)) {
-					var v = get(o, i);
-					if (same(v, undef())) undefineds++; else present.push(v);
-				}
-				i++;
+			// (an array without own properties or holes: its elements read and, sorted, written as they are)
+			var plain:JsArray = Std.isOfType(o, JsArray) ? cast o : null;
+			if (plain != null && (plain.shape != Shapes.array || plain.length != (plain.nums != null ? plain.nums.length : plain.items.length))) plain = null;
+			if (plain != null && plain.nums != null) present = [for (x in plain.nums) (x : Dynamic)];
+			else if (plain != null && !Lambda.exists(plain.items, v -> same(v, hole))) {
+				for (v in plain.items) if (same(v, undef())) undefineds++; else present.push(v);
 			}
-			present = mergeSort(present, (x, y) -> same(cmp, undef()) ? compareStrings(Seed.text(x), Seed.text(y)) : {var r = Seed.numeric(call2(cmp, undef(), x, y)); r > 0 ? 1 : r < 0 ? -1 : 0;});
-			var target:Dynamic = name == "sort" ? o : new JsArray(ArrayProto);
+			else {
+				plain = null;
+				var i:Float = 0;
+				while (i < n) {
+					if (name == "toSorted" || hasAt(o, i)) {
+						var v = get(o, i);
+						if (same(v, undef())) undefineds++; else present.push(v);
+					}
+					i++;
+				}
+			}
+			if (!same(cmp, undef())) sortList(present, (x, y) -> {
+				var r = Seed.numeric(call2(cmp, undef(), x, y));
+				return r > 0 ? 1 : r < 0 ? -1 : 0;
+			});
+			else if (Lambda.exists(present, v -> isObject(v))) sortList(present, (x, y) -> compareStrings(Seed.text(x), Seed.text(y)));
+			// (primitives' text has no side effects: each made once)
+			else {
+				var texts = [for (v in present) Seed.text(v)];
+				var order = [for (j in 0...present.length) j];
+				sortList(order, (x, y) -> compareStrings(texts[x], texts[y]));
+				present = [for (j in order) present[j]];
+			}
+			if (name == "sort" && plain != null && plain.shape == Shapes.array && plain.extensible && plain.length == n) {
+				if (undefineds == 0 && plain.nums != null) plain.nums = [for (v in present) (v : Float)];
+				else {
+					for (_ in 0...undefineds) present.push(undef());
+					plain.items = present;
+				}
+				return plain;
+			}
+			if (name == "toSorted") {
+				for (_ in 0...undefineds) present.push(undef());
+				return array(present);
+			}
 			var k:Float = 0;
-			for (v in present) setAt(target, k++, v);
-			for (_ in 0...undefineds) setAt(target, k++, undef());
-			if (name == "sort") while (k < n) deleteAt(target, k++);
-			return target;
+			for (v in present) setAt(o, k++, v);
+			for (_ in 0...undefineds) setAt(o, k++, undef());
+			while (k < n) deleteAt(o, k++);
+			return o;
 		});
 		fixed(p, "copyWithin", 2, (t, a0:Dynamic, a1:Dynamic, a2:Dynamic) -> {
 			var o = toObject(t);
@@ -501,15 +533,77 @@ class Arrays {
 		else setIndex(out, out.length, v);
 	}
 
-	static function mergeSort(values:Array<Dynamic>, cmp:(Dynamic, Dynamic) -> Int):Array<Dynamic> {
-		if (values.length < 2) return values;
-		var mid = values.length >> 1;
-		var left = mergeSort(values.slice(0, mid), cmp), right = mergeSort(values.slice(mid), cmp);
-		var out = [];
-		var i = 0, j = 0;
-		while (i < left.length && j < right.length) out.push(cmp(left[i], right[j]) <= 0 ? left[i++] : right[j++]);
-		while (i < left.length) out.push(left[i++]);
-		while (j < right.length) out.push(right[j++]);
-		return out;
+	static inline var RUN = 32;
+
+	// a stable sort in place, as TimSort goes without its galloping: the
+	// runs found as they are (a strictly descending one reversed), a short
+	// one lengthened to RUN by binary insertion, the runs merged in pairs
+	// through one scratch list (a pair already in order not merged)
+	public static function sortList<T>(a:Array<T>, cmp:(T, T) -> Int):Void {
+		var n = a.length;
+		if (n < 2) return;
+		var bounds = [0];
+		var lo = 0;
+		while (lo < n) {
+			var hi = lo + 1;
+			if (hi < n) {
+				if (cmp(a[hi], a[lo]) < 0) {
+					while (hi + 1 < n && cmp(a[hi + 1], a[hi]) < 0) hi++;
+					var i = lo, j = hi;
+					while (i < j) {
+						var x = a[i];
+						a[i++] = a[j];
+						a[j--] = x;
+					}
+				}
+				else while (hi + 1 < n && cmp(a[hi + 1], a[hi]) >= 0) hi++;
+				hi++;
+			}
+			var end = lo + RUN < n ? lo + RUN : n;
+			if (hi < end) {
+				insertion(a, lo, hi, end, cmp);
+				hi = end;
+			}
+			bounds.push(hi);
+			lo = hi;
+		}
+		var scratch:Array<T> = [];
+		while (bounds.length > 2) {
+			var next = [0], k = 0;
+			while (k + 2 < bounds.length) {
+				merge(a, bounds[k], bounds[k + 1], bounds[k + 2], scratch, cmp);
+				next.push(bounds[k + 2]);
+				k += 2;
+			}
+			if (k + 1 < bounds.length) next.push(bounds[k + 1]);
+			bounds = next;
+		}
+	}
+
+	// (a[start...end] inserted into the sorted a[lo...start], each after its equals)
+	static function insertion<T>(a:Array<T>, lo:Int, start:Int, end:Int, cmp:(T, T) -> Int):Void {
+		for (i in start...end) {
+			var x = a[i];
+			var l = lo, r = i;
+			while (l < r) {
+				var m = (l + r) >> 1;
+				if (cmp(x, a[m]) < 0) r = m; else l = m + 1;
+			}
+			var j = i;
+			while (j > l) {
+				a[j] = a[j - 1];
+				j--;
+			}
+			a[l] = x;
+		}
+	}
+
+	static function merge<T>(a:Array<T>, lo:Int, mid:Int, hi:Int, scratch:Array<T>, cmp:(T, T) -> Int):Void {
+		if (cmp(a[mid - 1], a[mid]) <= 0) return;
+		var n = mid - lo;
+		for (x in 0...n) scratch[x] = a[lo + x];
+		var i = 0, j = mid, k = lo;
+		while (i < n && j < hi) a[k++] = cmp(scratch[i], a[j]) <= 0 ? scratch[i++] : a[j++];
+		while (i < n) a[k++] = scratch[i++];
 	}
 }

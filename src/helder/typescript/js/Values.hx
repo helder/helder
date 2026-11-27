@@ -460,6 +460,8 @@ class JsMap extends JsObject {
 	// (lookup indexes: strings, other primitive keys by encoding, objects and symbols by identity)
 	public var stringIndex:Map<String, Int> = null;
 	public var primitiveIndex:Map<String, Int> = null;
+	// (numbers that are 32-bit integers: no encoding made for them)
+	public var intIndex:haxe.ds.IntMap<Int> = null;
 	public var objectIndex:haxe.ds.ObjectMap<Dynamic, Int> = null;
 	public function new(proto:JsObject, isSet:Bool) {
 		super(proto);

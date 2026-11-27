@@ -313,13 +313,18 @@ class Strings {
 		return 10000 + b;
 	}
 
+	// (primary's of the ASCII code units)
+	static var ascii:Array<Int> = null;
+
 	public static function collate(a:String, b:String):Int {
+		if (a == b) return 0;
+		if (ascii == null) ascii = [for (c in 0...128) primary(c)];
 		var n = a.length < b.length ? a.length : b.length;
 		for (i in 0...n) {
 			var x = StringTools.fastCodeAt(a, i), y = StringTools.fastCodeAt(b, i);
 			if (x == y) continue;
-			x = primary(x);
-			y = primary(y);
+			x = x < 128 ? ascii[x] : primary(x);
+			y = y < 128 ? ascii[y] : primary(y);
 			if (x != y) return x < y ? -1 : 1;
 		}
 		if (a.length != b.length) return a.length < b.length ? -1 : 1;
