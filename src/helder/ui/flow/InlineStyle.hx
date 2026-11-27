@@ -18,6 +18,12 @@ interface InlineStyle {
 	function fontSize():Float;
 	function fontWeight():Int;
 	function fontStyle():InlineFontStyle;
+	// font-style: oblique's angle in degrees (14 when none is given)
+	function fontStyleAngle():Float;
+	// font-synthesis (weight, style)
+	function fontSynthesis():InlineSynthesis;
+	// font-optical-sizing: auto (a variable font's opsz axis at the size)
+	function fontOpticalSizing():Bool;
 	// font-stretch, a percentage (100: normal)
 	function fontStretch():Float;
 	// font-variation-settings (null: none)

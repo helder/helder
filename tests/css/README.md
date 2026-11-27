@@ -588,7 +588,7 @@ selectors.json: 34 invalid, 207 valid, 198 scoped selectors.
 
 ### Reftests
 
-10897 tests (references and support files left out), 8413 in scope: 6053 reftests, 10 crash tests and 2350 noref (no reference yet: checked later against goldens Chromium draws, a tier the reftest runner adds):
+12021 tests (references and support files left out), 8926 in scope: 6539 reftests, 33 crash tests and 2354 noref (no reference yet: checked later against goldens Chromium draws, a tier the reftest runner adds):
 
 | Suite | Tests | In scope | Reftests | Noref | Crash | Of them Ahem | Of them print |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -596,24 +596,28 @@ selectors.json: 34 invalid, 207 valid, 198 scoped selectors.
 | css/css-page | 283 | 223 | 199 | 20 | 4 | 9 | 202 |
 | css/css-break | 1386 | 65 | 64 | 0 | 1 | 4 | 61 |
 | css/css-gcpm | 20 | 20 | 0 | 20 | 0 | 0 | 0 |
+| css/css-fonts | 583 | 347 | 336 | 3 | 8 | 46 | 2 |
+| css/css-values | 541 | 166 | 150 | 1 | 15 | 7 | 2 |
 
 | Out of scope because | Tests |
 | --- | --- |
 | deferred: multicol | 1178 |
-| script: needs JavaScript | 470 |
-| interact: needs a person | 362 |
-| testharness.js: needs JavaScript | 156 |
-| deferred: writing-mode (its help) | 84 |
-| deferred: writing-mode | 71 |
+| testharness.js: needs JavaScript | 627 |
+| script: needs JavaScript | 574 |
+| interact: needs a person | 363 |
+| deferred: writing-mode | 91 |
+| deferred: writing-mode (its help) | 90 |
 | http: needs an HTTP server's headers | 57 |
 | animated: a page is still | 53 |
 | userstyle: needs a user style sheet set by hand | 23 |
-| deferred: forms | 10 |
+| deferred: forms | 11 |
 | scroll: a page doesn't scroll | 6 |
-| deferred: @layer | 4 |
+| deferred: @layer | 5 |
+| deferred: Sizing 4 (its help) | 5 |
 | history: :visited | 3 |
 | deferred: 3D transforms | 3 |
 | deferred: ruby (its help) | 3 |
+| deferred: past checkpoint 1's modules (its help) | 2 |
 | deferred: multicol (its help) | 1 |
 
 By directory (CSS2: its chapters; the others: their sections, from the first `<link rel=help>`):
@@ -698,6 +702,93 @@ By directory (CSS2: its chapters; the others: their sections, from the first `<l
 | css-break #varying-size-boxes | 5 | 0 | 0 |
 | css-break #widows-orphans | 28 | 0 | 0 |
 | css-break (no section) | 370 | 24 | 0 |
+| css-fonts #char-handling-issues | 3 | 2 | 0 |
+| css-fonts #cluster-matching | 4 | 3 | 0 |
+| css-fonts #cssfontfeaturevaluesmap | 1 | 0 | 0 |
+| css-fonts #default-features | 4 | 3 | 0 |
+| css-fonts #descdef-font-face-font-style | 1 | 0 | 0 |
+| css-fonts #descdef-font-face-font-variation-settings | 2 | 2 | 0 |
+| css-fonts #descdef-font-face-size-adjust | 2 | 2 | 0 |
+| css-fonts #descdef-font-face-unicode-range | 1 | 0 | 0 |
+| css-fonts #family-name-syntax | 2 | 0 | 0 |
+| css-fonts #feature-precedence | 2 | 2 | 0 |
+| css-fonts #feature-tag-value | 1 | 0 | 0 |
+| css-fonts #first-available-font | 7 | 7 | 0 |
+| css-fonts #font-display-desc | 3 | 0 | 0 |
+| css-fonts #font-display-timeline | 2 | 0 | 0 |
+| css-fonts #font-face-rule | 5 | 2 | 0 |
+| css-fonts #font-face-src-formats | 1 | 0 | 0 |
+| css-fonts #font-face-src-parsing | 3 | 0 | 0 |
+| css-fonts #font-family-2-desc | 2 | 2 | 0 |
+| css-fonts #font-family-prop | 6 | 1 | 0 |
+| css-fonts #font-feature-settings-prop | 6 | 3 | 0 |
+| css-fonts #font-feature-values | 1 | 0 | 0 |
+| css-fonts #font-kerning-prop | 9 | 3 | 0 |
+| css-fonts #font-language-override-prop | 3 | 3 | 0 |
+| css-fonts #font-matching-algorithm | 6 | 0 | 0 |
+| css-fonts #font-metrics-override-desc | 5 | 4 | 0 |
+| css-fonts #font-optical-sizing-def | 2 | 0 | 0 |
+| css-fonts #font-palette-prop | 46 | 37 | 0 |
+| css-fonts #font-palette-values | 6 | 0 | 0 |
+| css-fonts #font-prop | 9 | 0 | 0 |
+| css-fonts #font-prop-desc | 19 | 12 | 0 |
+| css-fonts #font-rend-desc | 6 | 4 | 0 |
+| css-fonts #font-size-adjust-prop | 27 | 18 | 1 |
+| css-fonts #font-size-prop | 19 | 10 | 0 |
+| css-fonts #font-stretch-prop | 20 | 18 | 0 |
+| css-fonts #font-style-matching | 5 | 4 | 0 |
+| css-fonts #font-style-prop | 8 | 1 | 0 |
+| css-fonts #font-synthesis | 6 | 3 | 0 |
+| css-fonts #font-synthesis-intro | 1 | 1 | 0 |
+| css-fonts #font-synthesis-prop | 5 | 5 | 0 |
+| css-fonts #font-synthesis-small-caps | 6 | 4 | 0 |
+| css-fonts #font-synthesis-style | 7 | 5 | 0 |
+| css-fonts #font-synthesis-weight | 11 | 7 | 0 |
+| css-fonts #font-variant-alternates-prop | 22 | 20 | 0 |
+| css-fonts #font-variant-caps-prop | 14 | 7 | 0 |
+| css-fonts #font-variant-east-asian-prop | 14 | 10 | 0 |
+| css-fonts #font-variant-emoji-prop | 8 | 5 | 0 |
+| css-fonts #font-variant-ligatures-prop | 18 | 14 | 0 |
+| css-fonts #font-variant-numeric-prop | 13 | 9 | 0 |
+| css-fonts #font-variant-position-prop | 9 | 5 | 0 |
+| css-fonts #font-variant-prop | 4 | 4 | 0 |
+| css-fonts #font-variation-settings-def | 1 | 1 | 0 |
+| css-fonts #font-weight-prop | 9 | 2 | 0 |
+| css-fonts #font-width-prop | 3 | 0 | 0 |
+| css-fonts #funcdef-calc | 1 | 0 | 0 |
+| css-fonts #funcdef-palette-mix | 1 | 1 | 0 |
+| css-fonts #generic-font-families | 2 | 1 | 0 |
+| css-fonts #ink | 1 | 0 | 0 |
+| css-fonts #issuecomment-402034497 | 2 | 0 | 0 |
+| css-fonts #language-specific-support | 1 | 0 | 1 |
+| css-fonts #local-font-fallback | 2 | 1 | 0 |
+| css-fonts #missing-weights | 1 | 1 | 0 |
+| css-fonts #om-fontfeaturevalues | 3 | 0 | 0 |
+| css-fonts #override-color | 1 | 1 | 0 |
+| css-fonts #propdef-font | 3 | 0 | 0 |
+| css-fonts #propdef-font-family | 26 | 26 | 0 |
+| css-fonts #propdef-font-language-override | 3 | 0 | 0 |
+| css-fonts #propdef-font-optical-sizing | 3 | 0 | 0 |
+| css-fonts #propdef-font-palette | 6 | 0 | 0 |
+| css-fonts #propdef-font-size | 5 | 0 | 0 |
+| css-fonts #propdef-font-size-adjust | 1 | 0 | 0 |
+| css-fonts #propdef-font-style | 2 | 1 | 0 |
+| css-fonts #propdef-font-variant | 3 | 0 | 0 |
+| css-fonts #propdef-font-variant-alternates | 2 | 0 | 0 |
+| css-fonts #propdef-font-variation-settings | 8 | 0 | 0 |
+| css-fonts #propdef-font-weight | 5 | 4 | 0 |
+| css-fonts #property-index | 1 | 0 | 0 |
+| css-fonts #serializing-at-rules | 1 | 0 | 0 |
+| css-fonts #size-adjust-desc | 1 | 0 | 0 |
+| css-fonts #src-desc | 2 | 0 | 0 |
+| css-fonts #standard-font-families | 20 | 20 | 0 |
+| css-fonts #system-ui-def | 8 | 8 | 0 |
+| css-fonts #the-color-property | 1 | 1 | 0 |
+| css-fonts #unicode-range-desc | 3 | 2 | 1 |
+| css-fonts #valdef-font-caption | 2 | 0 | 0 |
+| css-fonts #valdef-font-size-adjust-ic-height | 1 | 0 | 0 |
+| css-fonts #valdef-font-style-oblique-angle | 5 | 5 | 0 |
+| css-fonts (no section) | 56 | 27 | 0 |
 | css-gcpm #dotted-leader | 1 | 0 | 1 |
 | css-gcpm #setting-named-strings-the-string-set-pro | 12 | 0 | 12 |
 | css-gcpm #solid-leader | 1 | 0 | 1 |
@@ -739,4 +830,72 @@ By directory (CSS2: its chapters; the others: their sections, from the first `<l
 | css-page #using-named-pages | 52 | 44 | 0 |
 | css-page #valdef-position-fixed | 2 | 1 | 0 |
 | css-page (no section) | 76 | 63 | 0 |
+| css-values #:~:text=and%20always%20in%20the%20case%20of%20media%20queries | 1 | 0 | 0 |
+| css-values #:~:text=reserved%20for%20them)%20unconditionally | 1 | 1 | 0 |
+| css-values #absolute-lengths | 4 | 2 | 0 |
+| css-values #angles | 5 | 5 | 0 |
+| css-values #attr-notation | 31 | 17 | 0 |
+| css-values #attr-notations | 5 | 0 | 0 |
+| css-values #attr-security | 9 | 0 | 0 |
+| css-values #calc-computed-value | 11 | 0 | 0 |
+| css-values #calc-context | 2 | 1 | 0 |
+| css-values #calc-func | 1 | 0 | 0 |
+| css-values #calc-mix | 3 | 0 | 0 |
+| css-values #calc-notation | 38 | 35 | 0 |
+| css-values #calc-range | 6 | 3 | 0 |
+| css-values #calc-serialize | 7 | 0 | 0 |
+| css-values #calc-simplification | 2 | 0 | 0 |
+| css-values #calc-size | 39 | 17 | 0 |
+| css-values #calc-syntax | 3 | 2 | 0 |
+| css-values #calc-type-checking | 13 | 1 | 0 |
+| css-values #ch | 3 | 2 | 0 |
+| css-values #combine-integers | 5 | 1 | 0 |
+| css-values #comp-func | 30 | 3 | 0 |
+| css-values #component-function-commas | 1 | 0 | 0 |
+| css-values #container-queries | 1 | 0 | 0 |
+| css-values #counters | 1 | 1 | 0 |
+| css-values #exponent-funcs | 6 | 0 | 0 |
+| css-values #font-face-load | 3 | 0 | 0 |
+| css-values #font-relative-lengths | 44 | 14 | 0 |
+| css-values #funcdef-attr | 1 | 0 | 0 |
+| css-values #funcdef-calc | 6 | 4 | 0 |
+| css-values #funcdef-clamp | 5 | 0 | 0 |
+| css-values #funcdef-random-item | 8 | 0 | 0 |
+| css-values #ic | 4 | 4 | 0 |
+| css-values #ident | 5 | 0 | 0 |
+| css-values #if-notation | 7 | 0 | 0 |
+| css-values #inherit-notation | 4 | 0 | 0 |
+| css-values #interpolate-size | 3 | 0 | 0 |
+| css-values #lengths | 1 | 0 | 0 |
+| css-values #lh | 1 | 0 | 0 |
+| css-values #local-urls | 1 | 0 | 0 |
+| css-values #math | 1 | 0 | 0 |
+| css-values #math-function-simplify-an-expression | 1 | 0 | 0 |
+| css-values #position | 3 | 0 | 0 |
+| css-values #progress | 3 | 0 | 0 |
+| css-values #propdef-height | 2 | 0 | 0 |
+| css-values #propdef-max-height | 3 | 0 | 0 |
+| css-values #propdef-max-width | 2 | 0 | 0 |
+| css-values #propdef-min-height | 2 | 0 | 0 |
+| css-values #propdef-min-width | 2 | 0 | 0 |
+| css-values #propdef-width | 2 | 0 | 0 |
+| css-values #random | 12 | 0 | 0 |
+| css-values #relative-urls | 4 | 0 | 0 |
+| css-values #rem | 5 | 2 | 0 |
+| css-values #request-url-modifiers | 5 | 0 | 0 |
+| css-values #revert-rule-keyword | 2 | 0 | 0 |
+| css-values #rgba-color | 1 | 0 | 0 |
+| css-values #rlh | 1 | 0 | 0 |
+| css-values #round-func | 5 | 1 | 0 |
+| css-values #sign-funcs | 2 | 0 | 0 |
+| css-values #transparency | 1 | 0 | 0 |
+| css-values #tree-counting | 24 | 0 | 0 |
+| css-values #trig-funcs | 4 | 0 | 0 |
+| css-values #typedef-attr-name | 3 | 2 | 0 |
+| css-values #typedef-request-url-modifier-cross-origin-modifier | 23 | 6 | 0 |
+| css-values #typedef-request-url-modifier-integrity-modifier | 13 | 5 | 0 |
+| css-values #typedef-request-url-modifier-referrer-policy-modifier | 23 | 1 | 0 |
+| css-values #url-empty | 1 | 0 | 0 |
+| css-values #viewport-relative-lengths | 44 | 19 | 0 |
+| css-values (no section) | 26 | 16 | 1 |
 <!-- /report -->

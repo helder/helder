@@ -175,10 +175,19 @@ File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
 
 `FontMatch` matches a computed font to a helder.text face (Fonts 4 §5):
 each family in turn: fonts registered under a name (`register`: Ahem for
-WPT), `@font-face` rules (`fontFaces`: their src loaded through the
-caller), generic families (serif, sans-serif, monospace, cursive,
-fantasy, system-ui...), system families that are there; then the nearest
-style and weight. Ascent, descent and line gap are rounded to pixels as
+WPT), the document's `@font-face` rules (`fontFaces`: their src loaded
+through the caller, found by the rule's family alone; the last document's
+taken out), generic families (serif, sans-serif, monospace, cursive,
+fantasy, system-ui...), system families that are there. A family's faces
+are helder.text's `FontFaces`: the nearest stretch, style and weight to
+their descriptors' ranges, unicode-range's composite faces. Its `inlines`
+(the inline layout's `InlineFonts`) match the same faces: variable fonts'
+instances, synthesized bold and oblique. `metrics` is what the cascade
+asks for ex, ch, cap, ic and `line-height: normal` (`CssStyles.metrics`,
+DocumentView installs it): the first available font's x-height (OS/2's
+sxHeight, else x's top), the advance of 0, the cap height (sCapHeight,
+else H's top), the advance of 水 in the face that has it, and the line
+height normal has. Ascent, descent and line gap are rounded to pixels as
 Chromium rounds them.
 
 ## Tests

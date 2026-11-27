@@ -42,11 +42,20 @@ and padding above and below (its fragments' rectangles). The root (the
 block container's) style gives text-align, text-align-last, text-justify,
 text-indent, text-overflow and line-clamp.
 
-`InlineFonts` matches font-family's list (`SystemFonts`: the first family
-there is, the others' faces after it for the characters it lacks, then the
-system's fallbacks), the weight and the italic asked for (drawn oblique
-where the face is not italic), font-feature-settings, font-kerning and
-font-variant-ligatures as OpenType features. A set is made once per font
+`InlineFonts` matches font-family's list (a family the document's
+@font-face rules name by helder.text's `FontFaces`, CSS Fonts 4 §5.2's
+matching of their descriptors' ranges and unicode-range's composite faces;
+the others by `SystemFonts`: the first family there is, the others' faces
+after it for the characters it lacks, then the system's fallbacks). A
+variable face is the instance the style asks for (wght, wdth, slnt or ital,
+opsz at the size with font-optical-sizing: auto; font-variation-settings
+over them, within the face's descriptors' ranges); a weight or style no
+face has is synthesized as font-synthesis allows (`FontSet.bold`: outlines
+stroked, Skia's widths; `FontSet.oblique`: slanted). font-feature-settings,
+font-kerning, font-variant-ligatures and the other font-variant-* (BoxInline's
+features) reach the shaper as OpenType features. Each InlineFonts has its
+shaper (`shaper`: the shaped-word cache is keyed by its sets' numbers,
+never given twice). A set is made once per font
 description and numbered; its metrics are rounded to whole pixels as
 Blink rounds them (ascent, descent, line gap: line-height: normal).
 

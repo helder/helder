@@ -25,7 +25,10 @@ typedef CssCalcContext = {
 	// (lh's and rlh's: the line height in px; null for normal)
 	?lineHeight:Float,
 	?rootLineHeight:Float,
-	?viewport:{width:Float, height:Float}
+	?viewport:{width:Float, height:Float},
+	// (ex, ch, cap and ic: the first available font's; rex, rch, rcap, ric: the root's)
+	?metrics:CssFontMetrics,
+	?rootMetrics:CssFontMetrics
 }
 
 class CssCalc {
@@ -278,6 +281,14 @@ class CssCalc {
 			case "rem" if (ctx != null && ctx.rootFontSize != null): to(ctx.rootFontSize, "px");
 			case "lh" if (ctx != null && ctx.lineHeight != null): to(ctx.lineHeight, "px");
 			case "rlh" if (ctx != null && ctx.rootLineHeight != null): to(ctx.rootLineHeight, "px");
+			case "ex" if (ctx != null && ctx.metrics != null): to(ctx.metrics.ex, "px");
+			case "ch" if (ctx != null && ctx.metrics != null): to(ctx.metrics.ch, "px");
+			case "cap" if (ctx != null && ctx.metrics != null): to(ctx.metrics.cap, "px");
+			case "ic" if (ctx != null && ctx.metrics != null): to(ctx.metrics.ic, "px");
+			case "rex" if (ctx != null && ctx.rootMetrics != null): to(ctx.rootMetrics.ex, "px");
+			case "rch" if (ctx != null && ctx.rootMetrics != null): to(ctx.rootMetrics.ch, "px");
+			case "rcap" if (ctx != null && ctx.rootMetrics != null): to(ctx.rootMetrics.cap, "px");
+			case "ric" if (ctx != null && ctx.rootMetrics != null): to(ctx.rootMetrics.ic, "px");
 			case "vw" | "svw" | "lvw" | "dvw" | "vi" | "svi" | "lvi" | "dvi" if (ctx != null && ctx.viewport != null): to(ctx.viewport.width / 100, "px");
 			case "vh" | "svh" | "lvh" | "dvh" | "vb" | "svb" | "lvb" | "dvb" if (ctx != null && ctx.viewport != null): to(ctx.viewport.height / 100, "px");
 			case "vmin" | "svmin" | "lvmin" | "dvmin" if (ctx != null && ctx.viewport != null): to(Math.min(ctx.viewport.width, ctx.viewport.height) / 100, "px");

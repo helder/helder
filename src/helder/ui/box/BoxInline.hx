@@ -64,10 +64,34 @@ class BoxInline implements InlineStyle {
 		}
 
 	public function fontStretch():Float
-		return switch s.terms("font-stretch") {
+		return switch s.terms("font-width") {
 			case [Percentage(p)]: p;
+			case [Keyword(k)]: helder.text.FontFaces.FontFaceDescriptors.STRETCH.get(k) ?? 100;
 			case _: 100;
 		}
+
+	public function fontStyleAngle():Float
+		return switch s.terms("font-style") {
+			case [Keyword("oblique"), Dimension(v, "deg")]: v;
+			case [Keyword("oblique"), Dimension(v, "turn")]: v * 360;
+			case [Keyword("oblique"), Dimension(v, "rad")]: v * 180 / Math.PI;
+			case [Keyword("oblique"), Dimension(v, "grad")]: v * 0.9;
+			case _: 14;
+		}
+
+	public function fontSynthesis():InlineSynthesis {
+		var v = 0;
+		if (k("font-synthesis-weight") != "none") v |= InlineSynthesis.Weight;
+		switch k("font-synthesis-style") {
+			case "none":
+			case "oblique-only": v |= InlineSynthesis.Oblique;
+			case _: v |= InlineSynthesis.Style | InlineSynthesis.Oblique;
+		}
+		return v;
+	}
+
+	public function fontOpticalSizing():Bool
+		return k("font-optical-sizing") != "none";
 
 	public function fontVariations():Null<Map<String, Float>> {
 		var t = s.terms("font-variation-settings");
@@ -81,7 +105,40 @@ class BoxInline implements InlineStyle {
 		return out;
 	}
 
+	// font-variant-caps, -numeric, -east-asian, -position and historical-forms
+	// as their features, font-feature-settings' over them (CSS Fonts 4 §7.2)
 	public function fontFeatures():Null<Array<FontFeature>> {
+		var out = variants(), asked = settings();
+		if (asked != null)
+			for (f in asked) {
+				for (o in out.copy())
+					if (o.tag == f.tag) out.remove(o);
+				out.push(f);
+			}
+		return out.length == 0 ? null : out;
+	}
+
+	function variants():Array<FontFeature> {
+		var out:Array<FontFeature> = [];
+		inline function on(tags:Array<String>)
+			for (t in tags) out.push({tag: t, value: 1});
+		for (p in ["font-variant-caps", "font-variant-numeric", "font-variant-east-asian", "font-variant-position", "font-variant-alternates"])
+			for (t in s.terms(p)) switch t {
+				case Keyword(v): on(VARIANTS.get(v) ?? []);
+				case _:
+			}
+		return out;
+	}
+
+	static final VARIANTS = [
+		"small-caps" => ["smcp"], "all-small-caps" => ["smcp", "c2sc"], "petite-caps" => ["pcap"], "all-petite-caps" => ["pcap", "c2pc"],
+		"unicase" => ["unic"], "titling-caps" => ["titl"], "lining-nums" => ["lnum"], "oldstyle-nums" => ["onum"], "proportional-nums" => ["pnum"],
+		"tabular-nums" => ["tnum"], "diagonal-fractions" => ["frac"], "stacked-fractions" => ["afrc"], "ordinal" => ["ordn"], "slashed-zero" => ["zero"],
+		"jis78" => ["jp78"], "jis83" => ["jp83"], "jis90" => ["jp90"], "jis04" => ["jp04"], "simplified" => ["smpl"], "traditional" => ["trad"],
+		"full-width" => ["fwid"], "proportional-width" => ["pwid"], "ruby" => ["ruby"], "sub" => ["subs"], "super" => ["sups"], "historical-forms" => ["hist"]
+	];
+
+	function settings():Null<Array<FontFeature>> {
 		var t = s.terms("font-feature-settings");
 		if (t.length == 0 || t[0].match(Keyword("normal"))) return null;
 		var text = [for (x in t) switch x {

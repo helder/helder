@@ -118,12 +118,12 @@ class CssResolver {
 		"ruby-base-container" => "block", "ruby-text-container" => "block"
 	];
 
-	// The line height in px (lh's); null for normal.
+	// The line height in px (lh's); normal's the first available font's, null without fonts.
 	function lineHeight():Null<Float>
 		return switch get(LineHeight) {
 			case [Dimension(v, "px")]: v;
 			case [Number(n, _)]: n * fontSize();
-			case _: null;
+			case _: fontMetrics()?.lineHeight;
 		}
 
 	function fontSize():Float
@@ -131,6 +131,22 @@ class CssResolver {
 			case [Dimension(v, "px")]: v;
 			case _: 16;
 		}
+
+	var metrics:Null<CssFontMetrics> = null;
+	var measuring = false;
+
+	// (the element's first available font's metrics, from its font properties;
+	// none while they are worked out: their initial values are computed too)
+	function fontMetrics():Null<CssFontMetrics> {
+		if (metrics != null || measuring) return metrics;
+		measuring = true;
+		metrics = try styles.fontMetrics(get, fontSize()) catch (e:haxe.Exception) {
+			measuring = false;
+			throw e;
+		}
+		measuring = false;
+		return metrics;
+	}
 
 	// ---- the cascade's value
 
@@ -279,7 +295,10 @@ class CssResolver {
 			lineHeight: !metric && p != Color ? lineHeight() : parent?.lineHeight(),
 			rootLineHeight: !top ? styles.rootLineHeight() : metric ? null : lineHeight(),
 			viewport: styles.viewport(),
-			color: null
+			color: null,
+			// (the font properties' ex and ch the parent's font's, as their em)
+			metrics: own && !StringTools.startsWith(name, "font-") ? fontMetrics() : parent?.fontMetrics(),
+			rootMetrics: !top ? styles.rootMetrics() : own && !StringTools.startsWith(name, "font-") ? fontMetrics() : null
 		};
 	}
 

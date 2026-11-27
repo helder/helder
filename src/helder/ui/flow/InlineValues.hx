@@ -127,6 +127,15 @@ enum abstract InlineKerning(Int) {
 	var None;
 }
 
+// font-synthesis's longhands, added up: what may be synthesized (font-synthesis-style: oblique-only, Oblique alone)
+enum abstract InlineSynthesis(Int) from Int to Int {
+	var None = 0;
+	var Weight = 1;
+	var Style = 2;
+	var Oblique = 4;
+	var All = 7;
+}
+
 // font-variant-ligatures, added up (what is turned off or on; 0: normal)
 enum abstract InlineLigatures(Int) from Int to Int {
 	var Normal = 0;

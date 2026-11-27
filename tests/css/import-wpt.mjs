@@ -9,7 +9,7 @@ import {createHash} from 'node:crypto'
 import {bindings, calls} from './wpt-js.mjs'
 
 const REVISION = 'bc5ea7a9006b77c12118534bf7d2953e530d811f'
-const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm']
+const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm', 'css/css-fonts', 'css/css-values']
 const checkoutOnly = process.argv.includes('--checkout')
 const root = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) ?? 'bin/wpt')
 // (the reftests' resources too: Ahem and the other test fonts, the shared images)

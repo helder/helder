@@ -95,6 +95,16 @@ function tests() {
 			var r = [for (r in v.selection({node: t, offset: 1}, {node: t, offset: 5})) [r.x, r.y, r.width, r.height]];
 			equals(r, [[40.0, 10.0, 20.0, 10.0], [0.0, 20.0, 10.0, 10.0]]);
 		});
+		test("ex, ch, cap and line-height: normal from the first available font (Ahem's: 0.8em, 1em, 0.8em, 1em)", () -> {
+			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 20px Ahem } div { height: 0 }</style><body>'
+				+ '<div id=a style="margin-left: 2ch"></div><div id=b style="margin-left: 2ex"></div><div id=c style="margin-left: 1cap"></div>'
+				+ '<div id=d style="margin-left: 1lh"></div><p id=p style="margin: 0">x</p><div id=e></div>');
+			var v = new DocumentView(doc, {fonts: ahem()});
+			v.layout(200, 100);
+			equals([left(v, "a"), left(v, "b"), left(v, "c"), left(v, "d")], [40.0, 32, 16, 20]);
+			// (a line of normal height: ascent and descent)
+			equals(top(v, "e") - top(v, "p"), 20.0);
+		});
 		test("hit testing", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } span { position: relative; left: 100px }</style><body><p id=p>abcd</p><div id=d style="height:20px"></div><div><span id=s>x</span></div>');
 			var v = new DocumentView(doc, {fonts: ahem()});
@@ -110,6 +120,14 @@ function tests() {
 			equals(v.hit(5, 55).node.nodeName, "DIV");
 		});
 	});
+}
+
+// (an element's box's left edge on the canvas, its margin's end)
+private function left(v:DocumentView, id:String):Float {
+	var el = v.document.getElementById(id);
+	var f = v.fragments;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return f.absolute(k).x;
+	return Math.NaN;
 }
 
 // (an element's box's top on the canvas)

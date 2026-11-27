@@ -3,6 +3,7 @@ package helder.css;
 import haxe.ds.IntMap;
 import haxe.ds.ObjectMap;
 import helder.css.CssDisplay;
+import helder.css.CssFontMetrics;
 import helder.css.CssMedia;
 import helder.css.CssPages;
 import helder.css.CssProperty;
@@ -45,6 +46,24 @@ class CssStyles {
 	public final pages:Array<CssPageRule> = [];
 	public final fontFaces:Array<CssFontFace> = [];
 	public final counterStyles:Array<CssCounterStyle> = [];
+	// the first available font's metrics for a style (ex, ch, cap, ic, line-height: normal):
+	// what an engine with fonts installs; null, they stay as written
+	public var metrics:Null<CssFontQuery->CssFontMetrics> = null;
+
+	// (the metrics of a font's computed values: an element's, a resolver's on the way)
+	@:allow(helder.css)
+	function fontMetrics(get:CssProperty->Array<CssTerm>, size:Float):Null<CssFontMetrics> {
+		var m = metrics;
+		return m == null ? null : m({
+			family: get(FontFamily),
+			size: size,
+			weight: get(FontWeight),
+			style: get(FontStyle),
+			stretch: get(FontWidth),
+			variations: get(FontVariationSettings),
+			opticalSizing: get(FontOpticalSizing)
+		});
+	}
 	@:allow(helder.css) final intern = new CssIntern();
 
 	final hints:Null<Element->Array<CssDeclared>>;
@@ -568,6 +587,12 @@ class CssStyles {
 	function rootLineHeight():Null<Float> {
 		var r = rootStyle();
 		return r == null ? null : r.lineHeight();
+	}
+
+	@:allow(helder.css)
+	function rootMetrics():Null<CssFontMetrics> {
+		var r = rootStyle();
+		return r == null ? null : r.fontMetrics();
 	}
 
 	function rootStyle():Null<CssStyle> {

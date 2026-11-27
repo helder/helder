@@ -69,6 +69,9 @@ class FontFile {
 	public var lineGap(default, null) = 0;
 	public var numGlyphs(default, null) = 0;
 	public var weight(default, null) = 400; // OS/2 usWeightClass
+	public var width(default, null) = 5; // OS/2 usWidthClass, 1 to 9 (5: normal)
+	// the characters an @font-face rule gives the face (inclusive pairs; null: all of its own): has()
+	public var unicodeRange:Null<Array<Int>> = null;
 	public var italic(default, null) = false;
 	public var family(default, null) = "";
 	public var subfamily(default, null) = "";
@@ -229,6 +232,8 @@ class FontFile {
 		if (tables.exists("OS/2")) {
 			var os2 = tables.get("OS/2");
 			weight = u16(data, os2 + 4);
+			var w = u16(data, os2 + 6);
+			if (w >= 1 && w <= 9) width = w;
 			var fsSelection = u16(data, os2 + 62);
 			italic = fsSelection & 1 != 0;
 			// (USE_TYPO_METRICS)
@@ -248,6 +253,23 @@ class FontFile {
 	// --- characters and metrics ---
 
 	// the glyph of a Unicode code point (0: none, the .notdef glyph)
+	// whether the face is used for the character: in its unicode-range, and a glyph of it
+	public function has(cp:Int):Bool {
+		var r = unicodeRange;
+		if (r != null) {
+			var i = 0, inside = false;
+			while (i < r.length) {
+				if (cp >= r[i] && cp <= r[i + 1]) {
+					inside = true;
+					break;
+				}
+				i += 2;
+			}
+			if (!inside) return false;
+		}
+		return glyph(cp) != 0;
+	}
+
 	public function glyph(cp:Int):Int {
 		var p = cp >> 8;
 		if (p < 0 || p > 0x10FF) return 0;
@@ -278,6 +300,7 @@ class FontFile {
 	public function instance(values:Map<String, Float>):FontFile {
 		var f = new FontFile(data, index, cmap >= 0);
 		f.path = path;
+		f.unicodeRange = unicodeRange;
 		if (vars == null) return f;
 		f.vars = vars;
 		f.coords = vars.normalize(values);

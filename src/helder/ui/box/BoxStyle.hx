@@ -518,9 +518,13 @@ class BoxStyle {
 	// font-family's names, generic ones as their keywords, a quoted name
 	// that is one ("serif") in its quotes (read once)
 	public function families():Array<String> {
-		if (familyList != null) return familyList;
+		if (familyList == null) familyList = familiesOf(terms("font-family"));
+		return familyList;
+	}
+
+	public static function familiesOf(terms:Array<CssTerm>):Array<String> {
 		var out = [], word = [];
-		for (t in terms("font-family")) switch t {
+		for (t in terms) switch t {
 			case Delim(","):
 				if (word.length > 0) out.push(word.join(" "));
 				word = [];
@@ -529,7 +533,7 @@ class BoxStyle {
 			case _:
 		}
 		if (word.length > 0) out.push(word.join(" "));
-		return familyList = out;
+		return out;
 	}
 
 	// ---- vertical-align (Inline 3's longhands: baseline-shift, then alignment-baseline)
