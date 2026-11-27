@@ -139,6 +139,19 @@ class Options {
 			],
 		},
 		{
+			name: "pdf",
+			usage: "<input.html> [-o out.pdf] [options]",
+			about: "an HTML document laid out on pages (CSS Paged Media) and written as a PDF: its text, outline and links",
+			entry: false,
+			common: ["out"],
+			own: [
+				{key: "base-url", names: ["--base-url"], value: "<url>", about: "what its sheets, images, fonts and links resolve against (default: the file's)"},
+				{key: "media", names: ["--media"], value: "<print|screen>", about: "what @media matches (default: print)"},
+				{key: "stylesheet", names: ["--stylesheet"], value: "<css>", about: "a user style sheet under the document's (several: in order)"},
+			],
+			notes: ["its sheets, images and fonts are read from files; http(s) ones are not loaded yet (reported)", "-o: the PDF's path (default: the input's, .pdf)"],
+		},
+		{
 			name: "inspect",
 			usage: "[dir] [options]",
 			about: "a running helder dev's program: its ui tree, state, log or frames",
@@ -404,6 +417,8 @@ class Options {
 			if (p != null && isTarget(p) && !exists(p)) throw usage('`$p` is a target: use --target $p');
 		} else if (command == "inspect" || command == "migrate" || command == "new") {
 			if (positionals.length > 1) throw usage('one directory, not ${positionals.join(" and ")}');
+		} else if (command == "pdf") {
+			if (positionals.length != 1) throw usage(positionals.length == 0 ? 'an HTML file to write as a PDF' : 'one HTML file, not ${positionals.join(" and ")}', true);
 		} else if (command != "test" && positionals.length > 0) {
 			throw usage('unexpected argument ${positionals[0]}', true);
 		}

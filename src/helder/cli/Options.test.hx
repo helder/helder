@@ -5,7 +5,7 @@ import helder.test.Test;
 
 // the command line's grammar (Options): the shorthand, the positional never
 // a target, --target, -d, --, the options' errors, the help; and helder
-// devices' parsing of adb's and simctl's lists
+// devices' parsing of adb's and simctl's lists; helder pdf's
 function tests() {
 	// (a file system: these paths exist)
 	final files = ["examples/todo/Todo.hx", "examples/todo", "web-app"];
@@ -240,6 +240,18 @@ function tests() {
 			assert(Options.helpText("dev").indexOf("--port <n>") >= 0);
 			assert(Options.helpText("build").indexOf("--port") < 0);
 			assert(Options.helpText("build").indexOf("-- <args>") < 0);
+		});
+	});
+
+	describe("pdf", () -> {
+		test("its input, -o, the media and the user sheets in order", () -> {
+			var o = parse("pdf", ["doc.html", "-o", "out.pdf", "--media", "screen", "--stylesheet", "a.css", "--stylesheet", "b.css", "--base-url", "file:///x/"]);
+			equals([o.positionals[0], o.out, o.value("media"), o.value("base-url")], ["doc.html", "out.pdf", "screen", "file:///x/"]);
+			equals(o.values("stylesheet"), ["a.css", "b.css"]);
+		});
+		test("one HTML file, not none nor two", () -> {
+			assert(usage(() -> parse("pdf", [])).indexOf("an HTML file") >= 0);
+			assert(usage(() -> parse("pdf", ["a.html", "b.html"])).indexOf("one HTML file") >= 0);
 		});
 	});
 
