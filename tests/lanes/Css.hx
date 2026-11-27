@@ -59,6 +59,10 @@ class Css {
 		var ua = "32px 700 16px block inline list-item underline linktext 1";
 		probe("UaProbe", ua, []);
 		probe("UaProbe", ua, ["-D", "css.parse"]);
+		// (the engine as an app has it: a tree built in code, compiled sheets, DocumentView: no CSS, HTML or XML parser)
+		var engine = "laid out 28px rgb(59, 130, 246) flex row scroll";
+		probe("EngineProbe", engine, [], true);
+		probe("EngineProbe", engine, ["-D", "css.parse"], true);
 	}
 
 	// (CSS modules: a program styled through one, its values and no parser
@@ -103,9 +107,11 @@ class Css {
 
 	// (a probe built with -dce full and symbols: what it prints, and a CSS
 	// parser in its symbols only when it parses, -D css.parse; not on Windows)
-	static function probe(main:String, expected:String, defines:Array<String>) {
+	// (dom: helder.dom's HTML and XML parsers counted too, for a probe that builds its tree in code)
+	static function probe(main:String, expected:String, defines:Array<String>, dom = false) {
 		if (Sys.systemName() == "Windows") return;
 		var parser = ["helder_css_Tokenizer", "helder_css_Parser", "helder_css__Parser_", "helder_css_SelectorParser", "helder_css__CssSheet_Builder"];
+		if (dom) parser = parser.concat(["helder_dom_Tokenizer", "helder_dom_TreeBuilder", "helder_dom_XmlParser"]);
 		var parses = defines.contains("css.parse");
 		var out = 'bin/css/$main-${parses ? "parse" : "sym"}';
 		exe(out, cps(["src", "tests/css"]).concat(["-main", main, "-dce", "full", "-D", "hxmc.symbols"]).concat(defines));
@@ -113,9 +119,9 @@ class Css {
 		if (got != expected) throw new Failed('$out: "$got", expected "$expected"');
 		var symbols = output("nm", [exePath(out, HOST)]).split("\n");
 		var linked = [for (p in parser) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
-		if (!parses && linked.length > 0) throw new Failed('$out links a CSS parser: ${linked.join(", ")}');
+		if (!parses && linked.length > 0) throw new Failed('$out links a parser: ${linked.join(", ")}');
 		if (parses && linked.length < 3) throw new Failed('$out: no parser in its symbols (${linked.join(", ")}): the check checks nothing');
-		Sys.println('$out: ${Math.round(sys.FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols, ${linked.length == 0 ? "no CSS parser" : "parser: " + linked.join(", ")}');
+		Sys.println('$out: ${Math.round(sys.FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols, ${linked.length == 0 ? "no parser" : "parser: " + linked.join(", ")}');
 	}
 
 	// (what follows css-reftests or css-render on the command line: theirs, Run.hx)

@@ -89,6 +89,7 @@ using StringTools;
 	var tableTextSpaces = true;
 
 	function new(doc:Document, html:String, errors:Null<Array<ParseError>>) {
+		Attrs.decoder = Attrs.decode;
 		this.doc = doc;
 		this.errors = errors;
 		this.length = html.length;

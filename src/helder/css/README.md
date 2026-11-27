@@ -1013,7 +1013,7 @@ what isn't hidden until the end).
 ## Counter styles
 
 `CssCounterStyles` formats a number in a counter style (Counter Styles 3):
-the predefined ones (`CssCounterStylesData`: §6's rules, from decimal to
+the predefined ones (`ua/counter-styles.css`, compiled at build time: §6's rules, from decimal to
 the Armenian, Georgian, Hebrew, roman, Greek, kana and Indic ones, disc,
 circle, square, the disclosure triangles, cjk-earthly-branch and
 cjk-heavenly-stem; `CssCounterAlgorithms`: §7's Chinese, Japanese and

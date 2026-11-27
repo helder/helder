@@ -43,8 +43,13 @@ using StringTools;
 	public static function value(src:String, raw:Array<Int>, i:Int):String {
 		var k = i * SIZE, from = raw[k + 3], to = raw[k + 4];
 		if (from == to) return "";
-		return raw[k] & VALUE_DIRTY == 0 ? src.substring(from, to) : decode(src, from, to);
+		return raw[k] & VALUE_DIRTY == 0 ? src.substring(from, to) : decoder(src, from, to, true);
 	}
+
+	// (decode, set by the parser that makes raw attributes and lazy text,
+	// the Tokenizer and TreeBuilder: a program that builds its tree in code
+	// links no entity table nor the tokenizer's reference rules)
+	public static var decoder:(s:String, from:Int, to:Int, attribute:Bool) -> String = null;
 
 	// an attribute value's text (attribute: else a text's): references, CR and NUL as the tokenizer reads them there
 	public static function decode(s:String, from:Int, to:Int, attribute = true):String {
