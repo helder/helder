@@ -26,6 +26,7 @@ final STORE = "bin/test/monkey-reckless/store";
 
 // a monkey over a small program booted as its scenarios: one that holds,
 // one with a bug of each kind found, shrunk and written as a scenario file
+// (the finds' seeds fixed: what they shrink to the same in the fuzz lane's random runs)
 function tests() {
 	Hosting.on = true;
 	Reckless.main();
@@ -42,7 +43,7 @@ function tests() {
 		atoms: [Monkey.atom(names), Monkey.atom(query)]
 	}, {cases: 30, limit: 30}));
 	var outside = test("content outside the window: found, shrunk to the atom's value, written, replayed", () -> {
-		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0}, {cases: 200});
+		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0}, {cases: 200, seed: 0});
 		assert(f != null, "found");
 		if (f == null) return;
 		equals(f.steps, []);
@@ -50,11 +51,12 @@ function tests() {
 		assert(f.text.indexOf(".names([") > 0, f.text);
 		equals(sys.io.File.getContent(f.file), f.text);
 		// (its scenario alone fails as the case did)
-		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {cases: 1});
+		// (every choice its simplest: its environment the found scenario's own)
+		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
 		equals(again?.failure, f.failure);
 	});
 	var orphan = test("a popup left open as its anchor goes: found, shrunk to a few steps", () -> {
-		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200});
+		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200, seed: 0});
 		assert(f != null, "found");
 		if (f == null) return;
 		// (a search taking the button away while its popup is open, or one
@@ -93,12 +95,12 @@ function tests() {
 		if (!held) return;
 		sys.FileSystem.createDirectory(haxe.io.Path.directory(KEPT));
 		sys.io.File.saveContent(KEPT, "kept");
-		var f = Monkey.find({from: Monkey.from(reckless), root: careless, except: ["window"]}, {cases: 100});
+		var f = Monkey.find({from: Monkey.from(reckless), root: careless, except: ["window"]}, {cases: 100, seed: 0});
 		assert(f != null && f.failure.indexOf("refused: a monkey's case is sealed off the machine") > 0, f?.failure);
 		assert(f != null && f.steps.length == 1, f?.steps.join(", "));
 		// (each of its effects, a scenario of that tap)
 		for (what in ["Clean up", "Places", "Save"]) {
-			var g = Monkey.find({from: [{scenario: scenario({name: what, steps: [Steps.tap(what)]}), path: "reckless"}], root: careless, steps: 0}, {cases: 1});
+			var g = Monkey.find({from: [{scenario: scenario({name: what, steps: [Steps.tap(what)]}), path: "reckless"}], root: careless, steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
 			assert(g != null && g.failure.indexOf("refused") > 0, '$what: ${g?.failure}');
 		}
 		equals(sys.FileSystem.exists(KEPT), true);
