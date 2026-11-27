@@ -441,7 +441,7 @@ class PhoneState implements Markup {
 		renderEffect(() -> nav.path(), arrived);
 		// (a file's screen faded in place, not slid: the zoom from its tile moves it)
 		renderEffect(() -> x.full(), on -> {
-			if (on && top != "/view") push("/view", true);
+			if (on && top != "/view" && !viewing()) push("/view", true);
 			if (!on && top == "/view") nav.back();
 		});
 	}
@@ -476,6 +476,12 @@ class PhoneState implements Markup {
 			if (x.full.value) x.close();
 		}
 	}
+
+	// (the file's screen on the stack already, landed or not: the router's own stack, committed at
+	// once (its path lands at the next flush, and top with it): pushed again, two of it, each a
+	// player, both playing (a phone's shell made with a file open, a window back to a phone's width))
+	function viewing():Bool
+		return Lambda.exists(@:privateAccess (nav : helder.ui.nav.Router).stack, e -> e.path == "/view");
 
 	function push(path:String, still = false) {
 		top = path;

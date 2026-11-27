@@ -92,6 +92,13 @@ function tests() {
 		var x = explorer(h, 0), s = h.screens[0];
 		equals([x.full.value, x.zoom.holding(), s.run(() -> helder.ui.Clock.active)], [true, false, false]);
 	});
+	test("a phone's shell made with a file open: its full screen on top, one of it", () -> {
+		var h = host([scenario({name: "Opened", size: [390, 844], boot: () -> act(OpenRecent(Samples.ROOT + "/Starlings.jpg"))})]);
+		var stack = h.screens[0].ui.root.find("stack");
+		var full = [for (n in stack.children) if (n.find("full-stage") != null) n];
+		equals(full.length, 1);
+		equals(full[0].visible(), true);
+	});
 	test("a phone's size: the phone's shell", () -> {
 		var h = host([scenario({name: "Phone", size: [390, 844], boot: () -> act(Go(Samples.ROOT))})]);
 		var ui = h.screens[0].ui;

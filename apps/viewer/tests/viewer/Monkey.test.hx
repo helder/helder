@@ -6,6 +6,10 @@ import helder.test.Test;
 import helder.ui.Hosting;
 import viewer.Shell.act;
 
+// what the monkey found that is still open (Found.scenario.hx's names): skipped, each with why;
+// one fixed leaves this list, its scenario its regression test
+final KNOWN:Map<String, String> = [];
+
 // (the made folder, beside the viewer's own moments: a folder of names and kinds a case draws)
 final made = scenario({name: "Monkey/Made folder", size: [1100, 700], dark: true, boot: () -> act(Go(Sandbox.MADE))});
 final madePhone = scenario({name: "Monkey/Made folder, phone", size: [390, 844], boot: () -> act(Go(Sandbox.MADE))});
@@ -60,6 +64,15 @@ function tests() {
 		var f = Monkey.find({from: Monkey.from("viewer.Viewer_scenario", made, madePhone), atoms: [Monkey.atom(Sandbox.made)], steps: 0,
 			checks: [{name: "sandbox", check: sandbox}], except: ["window", "settles", "steady"]}, {cases: 60});
 		equals(f?.failure, null);
+	});
+	// (each found scenario replayed as written, its choices all its own: the monkey's invariants and the viewer's)
+	test("what the monkey found, replayed: fixed, its invariants hold; open, skipped by name", () -> {
+		for (b in Monkey.from("viewer.Found_scenario")) {
+			if (KNOWN.exists(b.scenario.name)) continue;
+			var f = Monkey.find({from: [b], steps: 0, checks: [{name: "sandbox", check: sandbox}, {name: "media", check: media}], animates: animates},
+				{replay: [for (_ in 0...64) "0"].join(" ")});
+			equals('${b.scenario.name}: ${f?.failure}', '${b.scenario.name}: null');
+		}
 	});
 	test("the viewer under a monkey", () -> Monkey.check({
 		from: Monkey.from("viewer.Viewer_scenario", made, madePhone),
