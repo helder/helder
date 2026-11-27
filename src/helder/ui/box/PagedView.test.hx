@@ -124,6 +124,12 @@ function tests() {
 			var v = paged('<ul style="margin:0"><li>five</li></ul>');
 			equals(helder.pdf.Pdf.text(helder.pdf.Pdf.open(v.pdf()).pages[0]), "\u2022 five");
 		});
+		test("a leader: what follows it at the line's end, its copies whole from there, the room before them", () -> {
+			var v = paged('<style>p::after { content: leader("..") "9" }</style><p style="margin:0">ab</p>');
+			equals(v.layout(), 1);
+			// (180 wide: "ab" 20, "9" 10, the leader's copies 20 each: 7 of them, 10 left)
+			equals([textX(v, "9"), textX(v, "..............")], [170.0, 30]);
+		});
 		test("the PDF: bookmarks from headings, links to a URI and to an id", () -> {
 			var v = paged('<h1 style="margin:0;font-size:10px">One</h1><p style="margin:0"><a href="#b">to b</a> <a href="https://example.com/">out</a></p><h2 id=b style="break-before:page;margin:0;font-size:10px">Two</h2>');
 			var pdf = v.pdf().toString();
@@ -143,4 +149,11 @@ function tests() {
 			equals([sliced(v, 0, "a"), sliced(v, 1, "a")], ["end", "start"]);
 		});
 	});
+}
+
+// (where a text fragment of a page's first starts, by its text: from the page area's left)
+private function textX(v:PagedView, text:String):Float {
+	var f = v.fragments;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.TEXT && f.run(k) >= 0 && f.runs[f.run(k)].text == text) return f.absolute(k).x;
+	return Math.NaN;
 }
