@@ -43,7 +43,7 @@ function tests() {
 			equals(error(() -> Brotli.all(Bytes.ofHex("0b0080580300"), 16)), "Brotli: data after the stream");
 		});
 		test("the static dictionary: RFC 7932's", () -> {
-			equals(Sha256.make(helder.asset.Asset.embed("helder/compress/dictionary.bin")).toHex(), "20e42eb1b511c21806d4d227d07e5dd06877d8ce7b3a817f378f313653f35c70");
+			equals(Sha256.make(helder.asset.Embed.bytes("helder/compress/dictionary.bin")).toHex(), "20e42eb1b511c21806d4d227d07e5dd06877d8ce7b3a817f378f313653f35c70");
 		});
 		test("a mutated stream: decoded, or an error", () -> {
 			var seeds = [for (name in manifest.keys()) if (sys.FileSystem.stat('$dir/$name').size <= 4096) name => File.getBytes('$dir/$name')];

@@ -16,7 +16,7 @@ class GlassScene {
 	public static function build(root:Node, bg:String, glass = true, labels = true, group = false):Array<Glass> {
 		// (added whatever the system has: an added face is found before a system's
 		// Inter (fonts-inter's), its every weight (a variable one); added once)
-		helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
 		var back = new Node();
 		back.style.set({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});

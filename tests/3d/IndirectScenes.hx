@@ -1,4 +1,4 @@
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.gfx.*;
 import helder.math.Vec3;
 import helder.math.Vec4;
@@ -39,7 +39,7 @@ class IndirectScenes {
 		return switch name {
 			case "sh":
 				Images.decode = Images.png;
-				var env = Environment.prefilterImage(device, "image/png", Asset.embed("panorama.png"), {size: 64, levels: 6, samples: 64});
+				var env = Environment.prefilterImage(device, "image/png", Embed.bytes("panorama.png"), {size: 64, levels: 6, samples: 64});
 				var r = new Renderer(device).use(env);
 				Scenes.renderer = r;
 				for (k in 0...5) {

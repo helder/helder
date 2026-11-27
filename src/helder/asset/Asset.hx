@@ -199,9 +199,8 @@ class Asset<T> #if !macro implements helder.view.graph.Read.Reader<T> #end {
 	@:definition public static macro function strings(path:Expr):Expr
 		return AssetDefinition.forward("strings", path);
 
-	// the file's bytes built into the code itself (no bundle, nothing to
-	// load: PackedModel.read(Asset.embed("level.hxm3d"), device)); for small
-	// files, read when compiling and not reloaded
+	// Embed.bytes under its old name: the same bytes, but a call of it links
+	// Asset (its loads are helder.async's) where Embed.bytes links nothing
 	@:definition public static macro function embed(path:Expr):Expr
 		return AssetDefinition.forward("embed", path);
 }

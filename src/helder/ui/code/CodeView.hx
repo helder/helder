@@ -175,7 +175,7 @@ class CodeView extends Node {
 		if (fontAdded) return;
 		fontAdded = true;
 		#if !macro
-		try helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/ui/code/fonts/JetBrainsMono-Regular.ttf")) catch (e:Dynamic) {}
+		try helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/ui/code/fonts/JetBrainsMono-Regular.ttf")) catch (e:Dynamic) {}
 		#end
 	}
 

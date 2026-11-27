@@ -185,7 +185,7 @@ class LineScenes {
 				enc -> r.draw(enc, world, camera);
 			case "text3d":
 				r.use(new Shadows(device, 1024));
-				var font = helder.text.FontFile.parse(helder.asset.Asset.embed("tests/canvas/fonts/DejaVuSans-Bold-canvas.ttf"));
+				var font = helder.text.FontFile.parse(helder.asset.Embed.bytes("tests/canvas/fonts/DejaVuSans-Bold-canvas.ttf"));
 				var word = world.node("word");
 				word.position = new Vec3(-0.4, 0.45, 0.3);
 				word.rotation = Quat.fromEuler(0, 0.25, 0);

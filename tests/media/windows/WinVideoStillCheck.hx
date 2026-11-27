@@ -1,5 +1,5 @@
 import haxe.io.Bytes;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.media.MemorySource;
 import helder.media.ui.VideoNode;
 import helder.os.OsThread;
@@ -90,7 +90,7 @@ class WinVideoStillCheck implements Markup {
 		}
 		UiWindow.run(<Surface title="WinVideoStillCheck" width={400} height={360} background="#333333">
 			<view flexGrow={1} paddingTop={40} paddingLeft={40} overflow="scroll" background={unit ? "#222222" : null}>
-				<video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
+				<video src={new MemorySource(Embed.bytes("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
 					onError={e -> say('error $e')} ref={v -> {
 						node = v;
 						Clock.addFor(v, step);

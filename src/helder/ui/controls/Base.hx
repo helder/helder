@@ -112,7 +112,7 @@ class Base {
 	public static function font() {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		var fonts = helder.text.SystemFonts.get();
-		if (!fonts.families().contains("Inter")) fonts.add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		if (!fonts.families().contains("Inter")) fonts.add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 		#end
 	}
 

@@ -6,7 +6,7 @@ import helder.test.Test;
 // adds): one variable face whose weights are instances
 function tests() {
 	describe("Inter", () -> {
-		var f = FontFile.parse(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		var f = FontFile.parse(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
 		test("one family, its weight an axis", () -> {
 			equals(f.family, "Inter");
 			equals([for (a in f.axes) a.tag], ["wght"]);

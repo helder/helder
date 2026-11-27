@@ -1,4 +1,4 @@
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.media.MemorySource;
 import helder.media.ui.VideoNode;
 import helder.ui.Clock;
@@ -89,7 +89,7 @@ class VideoStillCheck implements Markup {
 		}
 		UiWindow.run(<Surface title="VideoStillCheck" width={480} height={800} background="#333333">
 			<view flexGrow={1} paddingTop={200} paddingLeft={40} overflow="scroll">
-				<video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
+				<video src={new MemorySource(Embed.bytes("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
 					onError={e -> say('error $e')} ref={v -> {
 						node = v;
 						Clock.addFor(v, step);

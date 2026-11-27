@@ -28,7 +28,7 @@ class AreaLights implements RenderFeature implements RenderFeature.AreaSource {
 
 	public function new(device:Device) {
 		this.device = device;
-		ltc = device.createTexture({width: 64, height: 128, format: RGBA16F, data: helder.asset.Asset.embed("helder/scene/render/ltc.bin")});
+		ltc = device.createTexture({width: 64, height: 128, format: RGBA16F, data: helder.asset.Embed.bytes("helder/scene/render/ltc.bin")});
 		sampler = device.createSampler({filter: Linear, wrap: Clamp});
 		slotsOf = [
 			Renderer.slotsOf(PbrAreaShader.uniforms, PbrAreaShader.textures),

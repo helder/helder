@@ -1,6 +1,6 @@
 import haxe.DynamicAccess;
 import haxe.crypto.Crc32;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.async.Async;
 import helder.media.*;
 import helder.media.linux.Av;
@@ -27,19 +27,19 @@ class MediaLinuxCheck {
 	static var out = "bin/media";
 
 	static final files:Map<String, haxe.io.Bytes> = [
-		"h264-aac.mp4" => Asset.embed("tests/media/h264-aac.mp4"),
-		"hevc.mp4" => Asset.embed("tests/media/hevc.mp4"),
-		"editlist.mov" => Asset.embed("tests/media/editlist.mov"),
-		"rotated.mp4" => Asset.embed("tests/media/rotated.mp4"),
-		"fragmented.mp4" => Asset.embed("tests/media/fragmented.mp4"),
-		"av1.webm" => Asset.embed("tests/media/av1.webm"),
-		"av1.mp4" => Asset.embed("tests/media/av1.mp4"),
-		"apple/vp9-yuv.webm" => Asset.embed("tests/media/apple/vp9-yuv.webm"),
-		"apple/hevc10.mp4" => Asset.embed("tests/media/apple/hevc10.mp4"),
-		"apple/h264-full.mp4" => Asset.embed("tests/media/apple/h264-full.mp4"),
-		"apple/quads.mp4" => Asset.embed("tests/media/apple/quads.mp4"),
-		"apple/chirp.mp4" => Asset.embed("tests/media/apple/chirp.mp4"),
-		"apple/chirp.mkv" => Asset.embed("tests/media/apple/chirp.mkv")
+		"h264-aac.mp4" => Embed.bytes("tests/media/h264-aac.mp4"),
+		"hevc.mp4" => Embed.bytes("tests/media/hevc.mp4"),
+		"editlist.mov" => Embed.bytes("tests/media/editlist.mov"),
+		"rotated.mp4" => Embed.bytes("tests/media/rotated.mp4"),
+		"fragmented.mp4" => Embed.bytes("tests/media/fragmented.mp4"),
+		"av1.webm" => Embed.bytes("tests/media/av1.webm"),
+		"av1.mp4" => Embed.bytes("tests/media/av1.mp4"),
+		"apple/vp9-yuv.webm" => Embed.bytes("tests/media/apple/vp9-yuv.webm"),
+		"apple/hevc10.mp4" => Embed.bytes("tests/media/apple/hevc10.mp4"),
+		"apple/h264-full.mp4" => Embed.bytes("tests/media/apple/h264-full.mp4"),
+		"apple/quads.mp4" => Embed.bytes("tests/media/apple/quads.mp4"),
+		"apple/chirp.mp4" => Embed.bytes("tests/media/apple/chirp.mp4"),
+		"apple/chirp.mkv" => Embed.bytes("tests/media/apple/chirp.mkv")
 	];
 
 	static function check(what:String, ok:Bool, detail = "") {
@@ -53,7 +53,7 @@ class MediaLinuxCheck {
 	static function main() {
 		if (Sys.args().length > 0) out = Sys.args()[0];
 		sys.FileSystem.createDirectory(out);
-		var expected:Dynamic = haxe.Json.parse(Asset.embed("tests/media/apple/decoded.json").toString());
+		var expected:Dynamic = haxe.Json.parse(Embed.bytes("tests/media/apple/decoded.json").toString());
 		var t0 = haxe.Timer.stamp();
 		if (!Av.loaded()) {
 			check("libavcodec loaded", false, Av.missing());

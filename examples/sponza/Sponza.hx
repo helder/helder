@@ -5,7 +5,7 @@
 // data: models
 
 import helder.math.Vec4;
-import helder.asset.Asset;
+import helder.asset.Embed;
 import helder.math.Vec3;
 import helder.async.Async;
 import helder.async.Fetch;
@@ -72,7 +72,7 @@ class Sponza implements Markup {
 		variant = args.length > 1 ? args[1] : "";
 		Images.decode = Images.common;
 		helder.image.Image.decodeInBrowser = true;
-		var sky = Asset.embed("environment.png");
+		var sky = Embed.bytes("environment.png");
 		var t0 = Sys.time(), last = -1.0, firstFrame = -1.0, bytes = 0, printed = 0.0, started = 0.0;
 		Clock.add(t -> {
 			var r = renderer;
