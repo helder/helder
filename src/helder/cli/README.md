@@ -22,6 +22,7 @@ helder build examples/counter --target web    # bin/web/Counter.wasm, .html and 
 helder run tests/cli/tally -- 3               # built, then run with arguments
 helder test                                   # the *.test.hx files (src/helder/test)
 helder inspect --tree                         # a running helder dev's ui tree (--log, --frames, --state)
+helder pdf report.html -o report.pdf          # an HTML document on pages, as a PDF: its text, outline and links
 helder run --headless --script s.json --snap a.png --tree t.json   # no display: scripted, a frame and the node tree
 helder devices                                # this machine, a browser, Android devices, iOS simulators
 helder studio examples/ts-todo                # helder studio (apps/studio) on a project: its screens, code, inspector, MCP
@@ -1125,6 +1126,32 @@ text) and the state `Hot` keeps once, and streams the log (the default:
 what was kept, then each entry) and the frames' stats (a line a second:
 mean and longest frame, work, GC bytes a frame, collections and pauses,
 the agent's bytes) until `helder dev` ends.
+
+## HTML to PDF: helder pdf
+
+`helder pdf <input.html> [-o out.pdf] [--base-url <url>] [--media print|screen]
+[--stylesheet <css>]...` lays an HTML document out on pages and writes it as
+a PDF. It's parsed by helder.dom and styled with the UA sheet, the
+document's own CSS (`<style>`, `<link>`, `@import`) and the user sheets
+`--stylesheet` gives, in order, under the author's. `--media` sets what
+`@media` matches (print by default, A4). Then helder.ui.box's paged host
+(PagedView: CSS Paged Media 3 and Fragmentation 3, margin boxes, named
+pages, GCPM's running heads, strings, leaders and target counters) lays it
+out, and the PDF it writes has real text (its glyphs and their
+characters), bookmarks for its headings (`bookmark-level`) and links to
+URIs and to its own ids.
+
+Its sheets, images and fonts (`@font-face`) are read from files, relative
+to the input or to `--base-url` (a `file:` URL or a path). `http(s)` ones
+aren't loaded yet: each is reported (`skipped`) and left out. The PDF goes
+to `-o`, by default the input's path with `.pdf`. It prints its page
+count, size and time. Exit codes: 0 written; 1 an input, sheet or output
+that couldn't be read, laid out or written (the reason printed); 2 a usage
+error.
+
+From a program, one call: `PagedView.toPdf(html, {url: ..., load: ...,
+image: ..., font: ...})` (helder.ui.box) gives the PDF's bytes;
+`new PagedView(document, options)` its pages, to paint or print one by one.
 
 ## Stopping
 

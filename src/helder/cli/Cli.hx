@@ -49,6 +49,8 @@ class Cli {
 				Async.main(task -> Sys.exit(TestCommand.run(task, o)));
 			case "inspect":
 				Async.main(task -> Sys.exit(Inspect.run(task, o)));
+			case "pdf":
+				Sys.exit(PdfCommand.run(o));
 			case "publish":
 				Async.main(_ -> Sys.exit(Publish.run(o)));
 			case "setup":

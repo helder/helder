@@ -17,6 +17,7 @@ import helder.css.CssSheet;
 import helder.css.CssStyles;
 import helder.css.CssUrl;
 import helder.dom.Document;
+import helder.dom.Dom;
 import helder.ui.box.Len.Lens;
 import helder.ui.flow.BlockFlow;
 import helder.ui.flow.BreakToken;
@@ -541,6 +542,11 @@ class PagedView {
 		}
 		p.restore();
 	}
+
+	// An HTML document's text laid out on pages and written as a PDF, in one
+	// call: `PagedView.toPdf(html, {url: ..., load: ...})`.
+	public static function toPdf(html:String, ?options:PagedViewOptions):Bytes
+		return new PagedView(Dom.parse(html), options).pdf();
 
 	// The pages as a PDF (real text: its glyphs and their characters).
 	public function pdf():Bytes {
