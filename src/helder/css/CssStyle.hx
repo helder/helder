@@ -2,6 +2,7 @@ package helder.css;
 
 import helder.css.CssComputed;
 import helder.css.CssDisplay;
+import helder.css.CssProperties.CssImpact;
 import helder.css.CssGroups;
 import helder.css.CssKeywords;
 import helder.css.CssProperty;
@@ -205,6 +206,40 @@ class CssStyle extends CssStyleGroups {
 		}
 		var p = CssProperties.of(name);
 		return p == null ? "" : CssValues.written(name, terms(p), context());
+	}
+
+	// What changing from this style to another redoes (a live document's
+	// restyle): the most any property that differs does, by its impact
+	// (CssProperties.impact: Layout the most, then Text, Paint, Composite,
+	// None); None when nothing differs.
+	public function impact(other:CssStyle):CssImpact {
+		var most = (cast CssImpact.None : Int);
+		for (g in 0...CssProperties.members.length) {
+			var a = group(g), b = other.group(g);
+			if (a == b) continue;
+			for (p in CssProperties.members[g]) {
+				var i:Int = cast CssProperties.impact(cast p);
+				if (i >= most) continue;
+				if (a.terms(cast p) != b.terms(cast p) && CssIntern.key(a.terms(cast p)) != CssIntern.key(b.terms(cast p))) most = i;
+			}
+		}
+		return cast most;
+	}
+
+	// Whether its children may compute differently from another style in
+	// its place: an inherited group, a custom property or display (which
+	// blockifies flex and grid items) differs.
+	public function passesDown(other:CssStyle):Bool {
+		if (font != other.font || inheritedText != other.inheritedText || list != other.list || table != other.table || ui != other.ui) return true;
+		if (box != other.box && display != other.display) return true;
+		if (customs == other.customs) return false;
+		var n = 0;
+		for (k => v in customs) {
+			n++;
+			if (!other.customs.exists(k) || other.customs.get(k) != v) return true;
+		}
+		for (_ in other.customs.keys()) n--;
+		return n != 0;
 	}
 
 	// (what writing needs: currentcolor's colour, and em for colours' math)

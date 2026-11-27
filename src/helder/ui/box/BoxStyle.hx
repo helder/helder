@@ -35,6 +35,22 @@ class BoxStyle {
 	public function anonymousChild():BoxStyle
 		return new BoxStyle(css, true);
 
+	// The same box's style from another computed style (a live document
+	// restyled): an anonymous table part's display kept.
+	public function restyled(next:CssStyle):BoxStyle {
+		var s = new BoxStyle(next, anonymous);
+		if (anonymous && displayRead) {
+			s.displayRead = true;
+			s.displayNone = displayNone;
+			s.displayContents = displayContents;
+			s.displayList = displayList;
+			s.displayOuter = displayOuter;
+			s.displayInner = displayInner;
+			s.displayPart = displayPart;
+		}
+		return s;
+	}
+
 	// An anonymous box of a table's display (CSS 2.1 §17.2.1): its parent's inherited values.
 	public function anonymousTable(inner:Int, part:Int, outer = BLOCK):BoxStyle {
 		var s = new BoxStyle(css, true);

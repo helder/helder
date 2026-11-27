@@ -96,8 +96,11 @@ class CssStyles {
 	final watched = new Map<String, Bool>();
 	// (the ids some selector names: an element with another id may share)
 	final ids = new Map<String, Bool>();
-	// (the media queries the cascade read, and whether any declaration has a
-	// viewport unit: what another viewport size changes)
+	// (every selector of the rules added, pseudo-elements' too: what a
+	// restyle tracker's invalidation sets are made of; the media queries the
+	// cascade read, and whether any declaration has a viewport unit: what
+	// another viewport size changes)
+	final ruleSelectors:Array<CssSelector> = [];
 	final queries:Array<CssMedia> = [];
 	var viewportUnits = false;
 	public static inline var CANDIDATES = 32;
@@ -164,6 +167,10 @@ class CssStyles {
 		return s;
 	}
 
+	// The element's style if it was worked out and not forgotten since; null: not asked for.
+	public function cached(el:Element):Null<CssStyle>
+		return cache.get(el);
+
 	// A page's computed style (Paged Media 3 §5): the @page rules that match
 	// it (its index for :first, its page type's name, its side, whether
 	// it's blank), by their specificity, inheriting from the root element's;
@@ -191,6 +198,11 @@ class CssStyles {
 		bloom.reset();
 		hasCache.clear();
 	}
+
+	// Every selector of the rules in effect (pseudo-elements' too), for a
+	// restyle tracker's invalidation sets (CssInvalidation.of).
+	public function selectors():Array<CssSelector>
+		return ruleSelectors;
 
 	// Whether these styles hold in another media context (a window
 	// resized): every media query the cascade read matches it as it
@@ -652,6 +664,7 @@ class CssStyles {
 						zero: zero,
 						index: ruleCount++
 					};
+					ruleSelectors.push(s);
 					switch s.pseudo {
 						case _ if (never(s)):
 						case null:

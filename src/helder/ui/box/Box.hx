@@ -9,7 +9,8 @@ import helder.ui.flow.FormattingContext;
 // and keeps its cache here; fragments are apart (Fragments).
 class Box {
 	public final kind:BoxKind;
-	public final style:BoxStyle;
+	// (another as a live document is restyled, DocumentView.update)
+	public var style(default, null):BoxStyle;
 	// the element or text node it is for: null for an anonymous box
 	public final node:Null<Node>;
 	// "before", "after", "marker": generated content's
@@ -80,6 +81,9 @@ class Box {
 		this.node = node;
 		this.pseudo = pseudo;
 	}
+
+	@:allow(helder.ui.box) function restyle(s:BoxStyle)
+		style = s;
 
 	public function append(child:Box) {
 		child.parent = this;

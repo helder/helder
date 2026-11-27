@@ -7,8 +7,11 @@ import helder.canvas.Painter;
 import haxe.ds.ObjectMap;
 import helder.css.CssCascade;
 import helder.css.CssMedia;
+import helder.css.CssProperty;
+import helder.css.CssStyle;
 import helder.css.CssStyles;
 import helder.css.CssUrl;
+import helder.dom.CharacterData;
 import helder.dom.Document;
 import helder.dom.Element;
 import helder.dom.Node;
@@ -48,7 +51,22 @@ typedef DocumentViewOptions = {
 //   view.hit(10, 20);                                    // {node, offset}
 //   view.selection({node: a, offset: 0}, {node: b, offset: 3});   // its rectangles
 //   File.saveBytes("page.png", DocumentView.png(doc, 800, 600));
+//
+// Live (watch): the document's changes followed (DocumentChanges: helder.css's
+// CssRestyle and what changed in its tree), and update() redoing only what
+// they need, by the impact of each restyled element's properties
+// (CssProperties.impact): its boxes' styles swapped and painted again, the
+// paint order made again (opacity, transforms), the boxes' layout redone
+// where it changed (their caches and their ancestors' let go, the rest
+// reused), or the box tree made again.
 class DocumentView {
+	// what update redid, the most of it
+	public static inline var NOTHING = 0;
+	public static inline var PAINT = 1;
+	public static inline var ORDER = 2;
+	public static inline var LAYOUT = 3;
+	public static inline var TREE = 4;
+
 	public final document:Document;
 	public final fragments = new Fragments();
 	public final fonts:FontMatch;
@@ -62,8 +80,9 @@ class DocumentView {
 	final svgs = new Map<String, Null<helder.canvas.Svg>>();
 	var viewWidth = 0.0;
 	var viewHeight = 0.0;
-	// (each node's boxes, made as asked for; the boxes with lines; each box's
-	// fragment in this layout; the fragments a whole layout made)
+	// (the document's changes followed, watch; each node's boxes, made as asked
+	// for; the boxes with lines; the fragments a whole layout made)
+	var changes:Null<DocumentChanges> = null;
 	var owners:Null<ObjectMap<Node, Array<Box>>> = null;
 	var lined:Null<Array<Box>> = null;
 	var placed:Null<ObjectMap<Box, Int>> = null;
@@ -109,6 +128,10 @@ class DocumentView {
 			if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
 			fonts.fontPalettes(styles.fontPaletteValues);
 			build();
+			if (changes != null) {
+				changes.detach();
+				changes = new DocumentChanges(document, styles);
+			}
 		}
 		viewWidth = width;
 		viewHeight = height;
@@ -158,6 +181,140 @@ class DocumentView {
 				stack.push(c);
 				c = c.next;
 			}
+		}
+	}
+
+	// Follows the document's changes from now on (its observer): update()
+	// redoes what they need. After the first layout (its styles' selectors).
+	public function watch() {
+		if (changes == null && styles != null) changes = new DocumentChanges(document, styles);
+	}
+
+	// The document's changes since the last update, made good: the elements
+	// they may restyle styled again, and by what changed in them, their boxes'
+	// styles swapped (PAINT), the paint order made again (ORDER), the boxes
+	// laid out again where they changed (LAYOUT), or the box tree made again
+	// (TREE: children inserted or removed, a display, float, position or
+	// generated content changed). What it redid, the most of it.
+	public function update():Int {
+		var c = changes;
+		if (c == null || styles == null || tree == null || !c.dirty()) return NOTHING;
+		var redo = c.structure ? TREE : NOTHING;
+		var marked = c.restyle.changed();
+		var olds = new ObjectMap<Element, CssStyle>(), queued = new ObjectMap<Element, Bool>();
+		for (el in marked) {
+			var o = styles.cached(el);
+			if (o != null) olds.set(el, o);
+			queued.set(el, true);
+		}
+		styles.forget(marked);
+		var swaps = new ObjectMap<BoxStyle, BoxStyle>();
+		var k = 0;
+		while (k < marked.length && redo < TREE) {
+			var el = marked[k++], old = olds.get(el);
+			// (an element never styled is under display: none, or new: an insertion's tree)
+			if (old == null) continue;
+			var now = styles.computed(el);
+			if (now == old) continue;
+			// (what its children inherit, or their blockification, changed: they are styled again too)
+			if (old.passesDown(now)) {
+				var ch = el.firstElementChild;
+				while (ch != null) {
+					var o = styles.cached(ch);
+					if (o != null && !queued.exists(ch)) {
+						olds.set(ch, o);
+						queued.set(ch, true);
+						styles.forget([ch]);
+						marked.push(ch);
+					}
+					ch = ch.nextElementSibling;
+				}
+			}
+			var impact:Int = cast old.impact(now);
+			if (impact == (cast helder.css.CssProperties.CssImpact.None : Int)) continue;
+			if (impact <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(old, now)) {
+				redo = TREE;
+				break;
+			}
+			var level = impact <= (cast helder.css.CssProperties.CssImpact.Text : Int) ? LAYOUT : impact == (cast helder.css.CssProperties.CssImpact.Composite : Int) ? ORDER : PAINT;
+			if (level == PAINT && reaches(old, now)) level = ORDER;
+			var boxes = boxesOf(el);
+			for (b in boxes) if (b.pseudo == null) swap(b, el, old, now, swaps, level == LAYOUT);
+			// (its pseudo-elements' boxes: their styles made again, swapped the same way, or the tree made again)
+			for (b in boxes) if (b.pseudo != null && redo < TREE) {
+				var was = b.style.css, next = styles.computed(el, b.pseudo);
+				if (next == was) continue;
+				var i:Int = cast was.impact(next);
+				if (i <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(was, next)) redo = TREE else swap(b, el, was, next, swaps, i <= (cast helder.css.CssProperties.CssImpact.Text : Int));
+			}
+			if (level > redo) redo = level;
+		}
+		// (a text changed in place: its run's text, its blocks laid out again)
+		if (redo < TREE) for (t in c.texts) {
+			var boxes = boxesOf(t);
+			if (boxes.length != 1 || boxes[0].offset != 0 || t.data.length == 0) {
+				redo = TREE;
+				break;
+			}
+			boxes[0].text = t.data;
+			stale(boxes[0]);
+			redo = LAYOUT;
+		}
+		c.clear();
+		switch redo {
+			case TREE:
+				// (the elements under one whose display changed: blockified again)
+				build();
+				lay();
+			case LAYOUT:
+				lay();
+			case ORDER:
+				order = new PaintOrder(fragments, root);
+			case _:
+		}
+		return redo;
+	}
+
+	// (a change of these remakes boxes: their kind, generated content, counters)
+	static final STRUCTURAL:Array<CssProperty> = [Display, CssProperty.Float, Position, Content, ListStyleType, ListStyleImage, ListStylePosition, CounterReset,
+		CounterIncrement, CounterSet, Quotes, StringSet];
+
+	static function structural(a:CssStyle, b:CssStyle):Bool {
+		for (p in STRUCTURAL) if (a.terms(p) != b.terms(p) && helder.css.CssIntern.key(a.terms(p)) != helder.css.CssIntern.key(b.terms(p))) return true;
+		return a.display != b.display;
+	}
+
+	// (how far it paints past its box changed: an outline, a shadow; the paint order's bounds made again)
+	static final REACH:Array<CssProperty> = [OutlineStyle, OutlineWidth, OutlineOffset, BoxShadow];
+
+	static function reaches(a:CssStyle, b:CssStyle):Bool {
+		for (p in REACH) if (a.terms(p) != b.terms(p) && helder.css.CssIntern.key(a.terms(p)) != helder.css.CssIntern.key(b.terms(p))) return true;
+		return false;
+	}
+
+	// (an element's boxes and what they hold of it, its text runs and anonymous
+	// boxes, given its new style; laid out again: their caches and their
+	// ancestors' let go)
+	function swap(b:Box, el:Element, old:CssStyle, now:CssStyle, swaps:ObjectMap<BoxStyle, BoxStyle>, relayout:Bool) {
+		if (b.style.css == old) {
+			var s = swaps.get(b.style);
+			if (s == null) swaps.set(b.style, s = b.style.restyled(now));
+			b.restyle(s);
+			if (relayout) stale(b);
+		}
+		var c = b.first;
+		while (c != null) {
+			if (c.pseudo == null && (c.node == null || c.node == el || c.node.nodeType != Node.ELEMENT_NODE)) swap(c, el, old, now, swaps, relayout);
+			c = c.next;
+		}
+	}
+
+	// (a box and its ancestors laid out again)
+	static function stale(b:Null<Box>) {
+		while (b != null) {
+			b.cacheFragment = -1;
+			b.cacheWidth = b.minContent = b.maxContent = Math.NaN;
+			b = b.parent;
 		}
 	}
 
@@ -259,6 +416,27 @@ class DocumentView {
 			n = n.parentNode;
 		}
 		return null;
+	}
+
+	// The text position nearest (x, y), as a selection's end follows the
+	// pointer: from the lines of the innermost block whose fragment holds
+	// the point, else of the block nearest it above or below; null: no text.
+	// Transforms aside.
+	public function position(x:Float, y:Float):Null<{node:Node, offset:Int}> {
+		var best:Null<Box> = null, bestOrigin = null, far = Math.POSITIVE_INFINITY;
+		for (b in texts()) {
+			var id = b.lines.fragment, o = fragments.absolute(id);
+			var dy = y < o.y ? o.y - y : y > o.y + fragments.height(id) ? y - o.y - fragments.height(id) : 0.0;
+			var dx = x < o.x ? o.x - x : x > o.x + fragments.width(id) ? x - o.x - fragments.width(id) : 0.0;
+			// (inside: the innermost, the last in the tree's order; else the nearest, down then across)
+			var d = dy * 1e4 + dx;
+			if (d <= far) {
+				far = d;
+				best = b;
+				bestOrigin = o;
+			}
+		}
+		return best == null ? null : best.lines.hit(x - bestOrigin.x, y - bestOrigin.y);
 	}
 
 	// The caret at a DOM position (a text node and an offset in it) in the

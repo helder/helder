@@ -155,6 +155,7 @@ window's renderer: put in a scroller, the compositor scrolls it.
 
 ```haxe
 var page = new DocumentNode(Dom.parse(html), {url: url, load: load, image: image});
+page.onLink = (url, a) -> open(url);
 scroller.append(page);                   // laid out at its width, as tall as the document
 ```
 
@@ -169,20 +170,37 @@ scroller.append(page);                   // laid out at its width, as tall as th
   recorded over is painted (`BoxPainter.area`; PaintOrder's runs of 64
   steps with their bounds, `chunks`, skip what is out of view at once,
   for paint and hit testing).
-- The wheel scrolls a scroll container in the document (`scrollBy`:
-  `overflow: auto` and `scroll` boxes move what they hold at paint and
-  hit testing by their offset, `BoxPainter.scrolls`) before the
-  scrollers around the node.
+- Live (`DocumentView.watch`, `update`): `DocumentChanges` is the
+  document's observer, helder.css's CssRestyle beside what changes the
+  box tree. Each element restyled is compared with its old style by
+  impact (`CssStyle.impact`): a colour swaps its boxes' styles and
+  repaints (PAINT); opacity, a transform, an outline or a shadow make the
+  paint order again (ORDER); a size or text lays out again from the
+  layout cache, the changed boxes' and their ancestors' caches let go
+  (LAYOUT); a display, float, position or generated content makes the
+  box tree again (TREE), as do children inserted or removed. A text
+  changed in place is its run's. What children inherit restyles them
+  too (`passesDown`).
+- Input: the pointer sets `Element.state` (hover on the element under it
+  and its ancestors, active while pressed); dragging selects text
+  (`DocumentView.position`, `selection`); an `<a href>` clicked calls
+  `onLink`; Tab moves the focus (`:focus-visible`), Enter follows a
+  link; the wheel scrolls a scroll container in the document
+  (`scrollBy`: `overflow: auto` and `scroll` boxes move what they hold at
+  paint and hit testing by their offset, `BoxPainter.scrolls`) before
+  the scrollers around the node.
 - A resize lays out again from the cache, the styles kept unless a media
   query or a viewport unit reads the size (`CssStyles.holds`). The cache
   is keyed on the width, the containing block's height, a fixed height
   and whether the height is ignored: a flex or grid item's passes at the
   same sizes reuse their fragment.
-- Not yet: changes to the document after it is shown, input;
-  `position: fixed` and sticky boxes against the window (they scroll
-  with the page); a scroll container on the compositor (one in the
-  document repaints the node as it scrolls); rounded clips other than a
-  box's (their bounds).
+- Not yet: `position: fixed` and sticky boxes against the window (they
+  scroll with the page); a scroll container on the compositor (one in
+  the document repaints the node as it scrolls); rounded clips other
+  than a box's (their bounds); editing.
+
+tests/bench/results/document.md measures it against helder.ui today and
+Chromium.
 
 ## Pages
 
