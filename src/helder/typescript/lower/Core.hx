@@ -459,6 +459,9 @@ abstract class Core {
 	abstract function classValue(n:Node, ?name:String):Ex;
 	abstract function layoutConstruct(n:Node):Null<Ex>;
 	abstract function layoutCall(n:Node, inner:Node, actual:Array<Node>):Null<Ex>;
+	abstract function layoutInstanceOf(x:Ex, rhs:Node):Null<Ex>;
+	abstract function layoutSuperCall(n:Node, inner:Node, actual:Array<Node>):Null<Ex>;
+	abstract function layoutSuperGet(n:Node):Null<Ex>;
 	abstract function manifest(n:Node):Manifest;
 	abstract function apiExpr(n:Node):Null<Ex>;
 
@@ -467,6 +470,9 @@ abstract class Core {
 	abstract function assetImport(n:Node):Void;
 	abstract function apiTarget(n:Node):Null<{read:() -> Ex, write:Ex->Void}>;
 	abstract function layoutField(n:Node):Null<ClassLayout>;
+	abstract function layoutAccessor(n:Node, get:Bool):Null<ClassLayout>;
+	abstract function layoutGet(n:Node, c:ClassLayout, o:Ex):Ex;
+	abstract function layoutSet(n:Node, c:ClassLayout, o:Ex, v:Ex):Void;
 	abstract function mathCall(n:Node, callee:Node, actual:Array<Node>):Null<Ex>;
 	abstract function parameterProperties():Void;
 	abstract function call(n:Node):Ex;

@@ -25,6 +25,30 @@ class Direct {
 
 	public static function mapSet(m:JsMap, k:Dynamic, v:Dynamic):Dynamic return Collections.mapPut(m, k, v);
 
+	public static function mapDelete(m:JsMap, k:Dynamic):Bool return Collections.mapDelete(m, k);
+
+	public static function mapNext(m:JsMap, i:Int):Int {
+		while (i < m.keys.length) {
+			if (m.active[i]) return i;
+			i++;
+		}
+		return -1;
+	}
+
+	// (Array.prototype.push of one value, as its own fast way: an extensible
+	// array whose elements run to its length; else -1, pushed the runtime's way)
+	public static function arrayPush(a:JsArray, v:Dynamic):Float {
+		if (!a.extensible || Builtins.arrayMethodsChanged) return -1;
+		if (a.nums != null && Lib.isNumber(v)) {
+			a.nums.push(v);
+			return a.length = a.nums.length;
+		}
+		var items = a.items;
+		if (items.length != a.length) return -1;
+		items.push(v);
+		return a.length = items.length;
+	}
+
 	// (Array.prototype.includes: SameValueZero, a hole is undefined)
 	public static function arrayIncludes(a:JsArray, v:Dynamic):Bool {
 		if (a.nums != null) {

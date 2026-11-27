@@ -112,7 +112,7 @@ class Types {
 			var t:Dynamic = tsgo.call("getContextualType", {snapshot: at.snapshot, project: at.project, location: sf.location(i)});
 			if (t != null) sf.contextual.set(i, add(t));
 		}
-		for (i in 1...sf.count) if (sf.kindAt(i) == KindFunctionDeclaration || sf.kindAt(i) == KindMethodDeclaration) {
+		for (i in 1...sf.count) if (sf.kindAt(i) == KindFunctionDeclaration || sf.kindAt(i) == KindMethodDeclaration || sf.kindAt(i) == KindGetAccessor) {
 			var signature:Dynamic = tsgo.call("getSignatureFromDeclaration", {snapshot: at.snapshot, project: at.project, location: sf.location(i)});
 			if (signature == null) continue;
 			var result:Dynamic = request("getReturnTypeOfSignature", signature.id);

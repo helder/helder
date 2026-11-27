@@ -331,6 +331,12 @@ class Seed {
 
 	public static function mathCeil(a:Float):Float return Math.fceil(a);
 
+	public static function mathRound(a:Float):Float return Numbers.round(a);
+
+	public static function mathTrunc(a:Float):Float return a < 0 ? Math.fceil(a) : Math.ffloor(a);
+
+	public static function mathSign(a:Float):Float return Math.isNaN(a) || a == 0 ? a : a < 0 ? -1 : 1;
+
 	public static function mathUnary(name:String, a:Float):Float return Numbers.math(name, a, 0);
 
 	public static function mathBinary(name:String, a:Float, b:Float):Float return Numbers.math(name, a, b);
@@ -340,7 +346,7 @@ class Seed {
 	public static function mathMax(a:Float, b:Float):Float return Math.isNaN(a) || Math.isNaN(b) ? Math.NaN : a > b || a == 0 && b == 0 && 1 / a > 0 ? a : b;
 
 	// for-of over an array: the array iterator, unchanged, steps through it by index
-	public static function libArrayIterable(o:Dynamic):Bool return (o : JsArray).proto == Builtins.ArrayProto && !Builtins.arrayIterationChanged;
+	public static function libArrayIterable(o:Dynamic):Bool return Lib.arrayIteration(o);
 
 	public static function libTypedClass(cls:Dynamic, names:Array<String>, get:(JsObject, Int) -> Dynamic, set:(JsObject, Int, Dynamic) -> Void, alloc:JsObject->JsObject):Void {
 		var f:JsFunction = cls;
@@ -382,6 +388,20 @@ class Seed {
 	public static function libArrayIncludes(a:Dynamic, v:Dynamic):Bool return Direct.arrayIncludes(a, v);
 
 	public static function libArrayIndexOf(a:Dynamic, v:Dynamic):Float return Direct.arrayIndexOf(a, v);
+
+	public static function libArrayPush(a:Dynamic, v:Dynamic):Float return Direct.arrayPush(a, v);
+
+	public static function libMapDelete(m:Dynamic, k:Dynamic):Bool return Direct.mapDelete(m, k);
+
+	public static function libMapSize(m:Dynamic):Float return (m : JsMap).count;
+
+	// (for-of over a plain Map or Set by its table: Builtins.iteratorStep's
+	// order, the next live entry from i, or -1)
+	public static function libMapNext(m:Dynamic, i:Int):Int return Direct.mapNext(m, i);
+
+	public static function libMapKey(m:Dynamic, i:Int):Dynamic return (m : JsMap).keys[i];
+
+	public static function libMapValue(m:Dynamic, i:Int):Dynamic return (m : JsMap).values[i];
 
 	// (what an object layout's typed slots take)
 	public static function libIsNumber(v:Dynamic):Bool return Lib.isNumber(v);
@@ -432,6 +452,15 @@ class Seed {
 	public static function libStep(it:Dynamic):Dynamic return Lib.step(it);
 
 	public static function libRestArray(it:Dynamic):Dynamic return Lib.restArray(it);
+
+	// (a rest element of a plain array from index on: its iterator's values)
+	public static function libArrayRest(a:Dynamic, from:Float):Dynamic {
+		var o:JsArray = a;
+		var out = [];
+		var i = from;
+		while (i < o.length) out.push(Lib.get(o, i++));
+		return Lib.array(out);
+	}
 
 	public static function libRequireObject(o:Dynamic):Void Lib.requireObject(o);
 
@@ -636,8 +665,16 @@ class Seed {
 		if (libPlainArray(a)) libElement(a, 0);
 		if (libPlainMap(o, false) && libMapHas(o, null) && libArrayIncludes(a, null)) libMapSet(o, libMapGet(o, null), libArrayIndexOf(a, null));
 		if (libIsNumber(libNumber(0)) && libIsBoolean(true) && libIsString("")) libDeopt(libObjectProto());
+		mathRound(mathTrunc(mathSign(0)));
 		mathSqrt(mathAbs(mathFloor(mathCeil(mathUnary("sin", mathBinary("atan2", mathMin(0, mathMax(0, 0)), 0))))));
 		libArrayIterable(a);
+		libArrayPush(a, 0);
+		libArrayRest(a, 0);
+		print(text(libMapDelete(a, 0)));
+		print(text(libMapSize(a)));
+		print(text(libMapNext(a, 0)));
+		print(text(libMapKey(a, 0)));
+		print(text(libMapValue(a, 0)));
 		expectNumber(0, "");
 		expectBoolean(true, "");
 		expectString("", "");

@@ -275,8 +275,8 @@ abstract class ApiCalls extends ClassValues {
 	function mathCall(n:Node, callee:Node, actual:Array<Node>):Null<Ex> {
 		if (!mathFixed || callee.kind != KindPropertyAccessExpression || callee.expression().kind != KindIdentifier || callee.expression().text != "Math" || env.exists("Math") || n.flags & NodeFlags.OptionalChain != 0 || hasSpread(actual)) return null;
 		var name = callee.name().text;
-		var unary = ["sqrt" => "mathSqrt", "abs" => "mathAbs", "floor" => "mathFloor", "ceil" => "mathCeil"];
-		var others = ["trunc", "round", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sign", "cbrt", "log2", "log10"];
+		var unary = ["sqrt" => "mathSqrt", "abs" => "mathAbs", "floor" => "mathFloor", "ceil" => "mathCeil", "round" => "mathRound", "trunc" => "mathTrunc", "sign" => "mathSign"];
+		var others = ["sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "cbrt", "log2", "log10"];
 		var binary = ["min" => "mathMin", "max" => "mathMax"];
 		var arity = unary.exists(name) || others.contains(name) ? 1 : binary.exists(name) || name == "atan2" || name == "pow" ? 2 : 0;
 		if (arity == 0 || actual.length != arity) return null;

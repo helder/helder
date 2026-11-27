@@ -959,8 +959,13 @@ class Lib {
 		return array(values);
 	}
 
+	// (an array iterated as Array.prototype's iterator does, by index: its
+	// prototype's, frozen, and no iterator of its own)
+	public static function arrayIteration(a:JsArray):Bool
+		return a.proto == Builtins.ArrayProto && !Builtins.arrayIterationChanged && (a.shape == Shapes.array || !a.hasOwn(Symbols.iterator));
+
 	public static function toList(o:Dynamic):Array<Dynamic> {
-		if (Std.isOfType(o, JsArray) && (o : JsArray).proto == Builtins.ArrayProto && !Builtins.arrayIterationChanged) {
+		if (Std.isOfType(o, JsArray) && arrayIteration(o)) {
 			var a:JsArray = cast o;
 			var out = [for (v in a.elements()) same(v, hole) ? undef() : v];
 			while (out.length < a.length) out.push(get(a, out.length));

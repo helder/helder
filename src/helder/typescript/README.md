@@ -163,13 +163,21 @@ units and generics over numbers cost nothing. Everything else is a dynamic
 JavaScript value. Bindings, parameters, direct functions' results and
 fields of those types are typed slots, and code on them is plain native
 code: arithmetic on F64s, fields at fixed offsets, for-of over an array by
-index, `Math`'s functions called directly (Math is frozen). Such a class's
+index (its binding, and a pattern's names, typed as the elements' type
+says; a regular expression's match's left loose, its groups possibly
+undefined), for-of over a Map or Set (or its keys(), values(), entries())
+by its table, `[k, v]` bound without a pair, an array pattern over an
+array by index, `Math`'s functions called directly (Math is frozen). Such a class's
 constructor and methods are direct functions on a typed `this`: `new C(...)`
 makes and initializes the instance in place (C its declaration's name or an
 import of it: helder/math's Vec3 in a program's module, 64 bytes where the
 runtime's construct took 424), and `o.m(...)` calls the
 method o's class runs (found by o's prototype among C and its subclasses
-with layouts), the prototype keeping thin wrappers for dynamic calls. Its
+with layouts), the prototype keeping thin wrappers for dynamic calls; its
+getters and setters (`o.x`, `o.x = v`) and `super.m(...)` and `super.x` in
+its methods are direct calls the same way, and `x instanceof C` is a test
+of x's hxmc class (the runtime's way where it fails: an object made from
+C's prototype otherwise, a class's own Symbol.hasInstance). Its
 prototype is locked: replacing a method, or hiding one with an instance's
 own property, diverges (TSHX100). A binding no
 closure captures is a plain local (`Captures.hx`); a captured one is a

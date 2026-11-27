@@ -153,6 +153,12 @@ abstract class ClassValues extends Expressions {
 			f.ret = reps.rep(m.returnType());
 			c.methods.set(m.name().text, withThis(f));
 		}
+		for (m in c.node.members()) if (Classes.directAccessor(m)) {
+			var get = m.kind == KindGetAccessor;
+			var f = declareFunction(m, c.name + (get ? "_get_" : "_set_") + m.name().text, true);
+			f.ret = get ? reps.rep(m.returnType()) : TVoid;
+			(get ? c.getters : c.setters).set(m.name().text, withThis(f));
+		}
 	}
 
 	function layoutClassValue(n:Node, c:ClassLayout):Ex {
@@ -250,6 +256,23 @@ abstract class ClassValues extends Expressions {
 						return b.temp(call);
 					});
 					b.runtime("libDefineMethod", [read(protoBinding), EStr(m.name().text), b.runtime("libFunction", [value.clos, EInt(value.arity), bool(value.rest), EInt(METHOD), EStr(m.name().text)]), EInt(0), bool(false)]);
+				case KindGetAccessor | KindSetAccessor if (Classes.directAccessor(m)):
+					var get = m.kind == KindGetAccessor;
+					var f = (get ? c.getters : c.setters).get(m.name().text);
+					compileDirect(f, m, arrowsUseThis([m.body()]), () -> {
+						hoist(m.body(), false);
+						parameterSetup(m);
+						statement(m.body());
+					});
+					var value = directValue(f, [], args -> {
+						var call = ECall(f, Vector.fromArrayCopy([for (i in 0...f.args.length) store(ELocal(args[i]), f.args[i].ty)]));
+						if (f.ret == TVoid) {
+							b.out.push(SExpr(call));
+							return b.runtime("getUndefined", []);
+						}
+						return b.temp(call);
+					});
+					b.runtime("libDefineMethod", [read(protoBinding), EStr(m.name().text), b.runtime("libFunction", [value.clos, EInt(value.arity), bool(value.rest), EInt(METHOD), EStr(m.name().text)]), EInt(get ? 1 : 2), bool(false)]);
 				case KindMethodDeclaration | KindGetAccessor | KindSetAccessor if (m.body() != null):
 					env.set("%home", isStatic ? classBinding : protoBinding);
 					var kind = m.kind == KindGetAccessor ? 1 : m.kind == KindSetAccessor ? 2 : 0;
@@ -328,6 +351,63 @@ abstract class ClassValues extends Expressions {
 		return ELocal(l);
 	}
 
+	// `x instanceof C` of a class with a layout, C its declaration's name or
+	// an import of it: true where x is an instance of its hxmc class (its
+	// prototype C's or a subclass's: no prototype is set), else the
+	// runtime's way (an instance of none of them, a class's own
+	// Symbol.hasInstance)
+	function layoutInstanceOf(x:Ex, rhs:Node):Null<Ex> {
+		if (rhs.kind != KindIdentifier) return null;
+		var c = classes.of(rhs.symbol);
+		if (c != null && c.node.name().symbol != rhs.symbol) return null;
+		if (c == null) c = importedClass(rhs);
+		if (c == null || Lambda.exists(c.node.members(), m -> hasModifier(m, KindStaticKeyword) && m.name() != null && m.name().kind == KindComputedPropertyName)) return null;
+		var v = b.temp(any(x));
+		var l = b.local("instance", TBool);
+		b.out.push(SIf(EInstOf(c.info, v), Vector.fromArrayCopy([SSet(l, bool(true))]),
+			b.block(() -> b.out.push(SSet(l, b.runtime("libInstanceOf", [v, any(expr(rhs))]))))));
+		typedOperations++;
+		return ELocal(l);
+	}
+
+	// (`super` in an instance method or accessor of a class with a layout,
+	// directly or in its arrows, `this` typed: the parent, whose prototype
+	// is locked, so its member is the one super finds)
+	function superLayout(n:Node):Null<ClassLayout> {
+		var f = n.parent;
+		while (f != null && f.kind != KindMethodDeclaration && f.kind != KindGetAccessor && f.kind != KindSetAccessor && f.kind != KindConstructor
+			&& f.kind != KindFunctionDeclaration && f.kind != KindFunctionExpression && f.kind != KindClassDeclaration && f.kind != KindClassExpression
+			&& f.kind != KindPropertyDeclaration && f.kind != KindClassStaticBlockDeclaration)
+			f = f.parent;
+		if (f == null || f.kind == KindFunctionDeclaration || f.kind == KindFunctionExpression || f.kind == KindClassDeclaration || f.kind == KindClassExpression
+			|| f.kind == KindPropertyDeclaration || f.kind == KindClassStaticBlockDeclaration || hasModifier(f, KindStaticKeyword) || f.parent == null)
+			return null;
+		var c = classes.declared(f.parent);
+		var self = env.get("this");
+		if (c == null || c.parent == null || self == null || !self.ty.match(TRef(RObj(_)))) return null;
+		return c.parent;
+	}
+
+	// super.m(...) and super.x of a parent with a layout: its direct function
+	function layoutSuperCall(n:Node, inner:Node, actual:Array<Node>):Null<Ex> {
+		if (inner.kind != KindPropertyAccessExpression || hasSpread(actual)) return null;
+		var p = superLayout(inner), f = p?.method(inner.name().text);
+		if (f == null) return null;
+		var self = read(env.get("this"));
+		var e = ECall(f, Vector.fromArrayCopy([ECast(f.args[0].ty, self)].concat(positional(f, actuals(actual), 1))));
+		typedOperations++;
+		if (f.ret != TVoid) return b.temp(e);
+		b.out.push(SExpr(e));
+		return b.runtime("getUndefined", []);
+	}
+
+	function layoutSuperGet(n:Node):Null<Ex> {
+		var p = superLayout(n), f = p?.getter(n.name().text);
+		if (f == null) return null;
+		typedOperations++;
+		return b.temp(ECall(f, Vector.fromArrayCopy([ECast(f.args[0].ty, read(env.get("this")))])));
+	}
+
 	// the class with a layout an identifier is an import of (`import {C}
 	// from "./c"`, or `{D as C}`: the module's exported class declaration of
 	// that name), else null (another binding of the name, a re-export)
@@ -365,29 +445,67 @@ abstract class ClassValues extends Expressions {
 		var o = b.temp(expr(inner.expression()));
 		var args = [for (e in actuals(actual)) b.temp(e)];
 		var l = b.local("result", ret);
-		function slow() b.out.push(SSet(l, store(b.runtime("libCallMethod", [any(o), EStr(name), pack(args)]), ret)));
-		var dispatch = b.block(() -> {
+		dispatch(o, c, x -> x.method(name), f -> positional(f, args, 1), l,
+			() -> b.out.push(SSet(l, store(b.runtime("libCallMethod", [any(o), EStr(name), pack(args)]), ret))));
+		typedOperations++;
+		return ELocal(l);
+	}
+
+	// o's direct function found by its prototype (its class's or a subclass's
+	// with a layout), called with args, its result into l; else slow
+	function dispatch(o:Ex, c:ClassLayout, find:ClassLayout->Null<FuncInfo>, args:FuncInfo->Array<Ex>, l:Null<Local>, slow:() -> Void) {
+		var cases = [for (x in classes.descendants(c)) if (find(x) != null) x];
+		var fast = b.block(() -> {
 			var proto = b.temp(EField(reps.objectBase, reps.objectBase.fieldIndex("proto"), ECast(TRef(RObj(reps.objectBase)), o)));
 			var chain = b.block(slow);
 			var i = cases.length;
 			while (i-- > 0) {
-				var f = cases[i].method(name);
+				var f = find(cases[i]);
 				var call = b.block(() -> {
-					var e = ECall(f, Vector.fromArrayCopy([ECast(f.args[0].ty, o)].concat(positional(f, args, 1))));
-					if (f.ret == TVoid) {
+					var e = ECall(f, Vector.fromArrayCopy([ECast(f.args[0].ty, o)].concat(args(f))));
+					if (l == null) b.out.push(SExpr(e));
+					else if (f.ret == TVoid) {
 						b.out.push(SExpr(e));
-						b.out.push(SSet(l, store(b.runtime("getUndefined", []), ret)));
+						b.out.push(SSet(l, store(b.runtime("getUndefined", []), l.ty)));
 					}
-					else b.out.push(SSet(l, store(b.temp(e), ret)));
+					else b.out.push(SSet(l, store(b.temp(e), l.ty)));
 				});
 				chain = Vector.fromArrayCopy([SIf(EBin(RefEq, proto, EGlobal(cases[i].prototype, TRef(RAny))), call, chain)]);
 			}
 			for (s in chain) b.out.push(s);
 		});
-		if (reps.exact(o, c.info)) for (s in dispatch) b.out.push(s);
-		else b.out.push(SIf(EInstOf(c.info, any(o)), dispatch, b.block(slow)));
+		if (reps.exact(o, c.info)) for (s in fast) b.out.push(s);
+		else b.out.push(SIf(EInstOf(c.info, any(o)), fast, b.block(slow)));
+	}
+
+	// `o.name` of a getter, `o.name = v` of a setter, o of a class with a
+	// layout: its direct function by o's prototype, else the runtime's way
+	function layoutAccessor(n:Node, get:Bool):Null<ClassLayout> {
+		if (n.kind != KindPropertyAccessExpression || n.name().kind == KindPrivateIdentifier || !plainAccess(n) || n.flags & NodeFlags.OptionalChain != 0) return null;
+		var c = reps.layoutOf(n.expression().tsType), name = n.name().text;
+		if (c == null || c.declares(name)) return null;
+		for (x in classes.descendants(c)) if ((get ? x.getter(name) : x.setter(name)) != null) return c;
+		return null;
+	}
+
+	function layoutGet(n:Node, c:ClassLayout, o:Ex):Ex {
+		var name = n.name().text;
+		// (typed where every class's instance runs a getter: a setter alone
+		// reads undefined; an abstract class has none of its own)
+		var all = classes.descendants(c).filter(x -> !hasModifier(x.node, KindAbstractKeyword));
+		var rets = [for (x in all) if (x.getter(name) != null) x.getter(name).ret];
+		var ret = rets.length == all.length && Lambda.foreach(rets, t -> Type.enumEq(t, rets[0])) && rets[0] != TVoid ? rets[0] : TRef(RAny);
+		var l = b.local("got", ret);
+		dispatch(o, c, x -> x.getter(name), _ -> [], l, () -> b.out.push(SSet(l, store(reps.siteGet(b, any(o), name), ret))));
 		typedOperations++;
 		return ELocal(l);
+	}
+
+	function layoutSet(n:Node, c:ClassLayout, o:Ex, v:Ex) {
+		var name = n.name().text;
+		var value = b.temp(v);
+		dispatch(o, c, x -> x.setter(name), f -> [store(value, f.args[1].ty)], null, () -> reps.sitePut(b, any(o), name, value));
+		typedOperations++;
 	}
 
 	// `obj.name` with obj an instance of a class with a layout that declares the field

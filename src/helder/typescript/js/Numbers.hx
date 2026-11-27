@@ -471,13 +471,16 @@ class Numbers {
 		return value < 0 ? -rounded : rounded;
 	}
 
+	public static function round(a:Float):Float
+		return if (a == 0) a; else if (a < 0 && a >= -0.5) -0.0; else if (!Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) a; else Math.ffloor(a + 0.5);
+
 	public static function math(name:String, a:Float, b:Float):Float {
 		return switch (name) {
 			case "abs": Math.abs(a);
 			case "floor": Math.ffloor(a);
 			case "ceil": Math.fceil(a);
 			case "trunc": a < 0 ? Math.fceil(a) : Math.ffloor(a);
-			case "round": if (a == 0) a; else if (a < 0 && a >= -0.5) -0.0; else if (!Math.isFinite(a) || Math.abs(a) >= 4503599627370496.0) a; else Math.ffloor(a + 0.5);
+			case "round": round(a);
 			case "sqrt": Math.sqrt(a);
 			case "cbrt": if (a == 0 || !Math.isFinite(a)) a; else {
 					var r = a < 0 ? -Math.pow(-a, 1 / 3) : Math.pow(a, 1 / 3);
