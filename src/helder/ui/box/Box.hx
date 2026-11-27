@@ -63,10 +63,9 @@ class Box {
 	// (its last layout clear of floats: none beside it, none it placed in its formatting context; laid
 	// out again the same whatever floats came before, while none reaches below its top)
 	public static inline var UNFLOATED = 512;
-	// (a block with nothing that reaches outside it, floats or positioned boxes: Lazy may skip its contents)
-	public static inline var LAZY = 1024;
-	// (its contents laid out, their lines and inline content kept in them: what a lazy layout lets go)
-	public static inline var KEPT = 2048;
+	// (its element's style, or one in it, not worked out again yet since a resize: a lazy layout stops before it,
+	// Lazy)
+	public static inline var UNSTYLED = 1024;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth(get, set):Float;
@@ -88,16 +87,11 @@ class Box {
 	}
 
 	public var cacheFragment(get, set):Int;
-	// (its content box's width and height when its contents were last laid out: a lazy layout's estimate)
-	public var laidWidth(get, set):Float;
-	public var laidHeight(get, set):Float;
-	// (the fragment a lazy layout last gave it skipped, at the cache's key and the fragments' generation it was
-	// made in: given again while it stays skipped; -1: none)
-	public var skipped(get, set):Int;
-	public var skippedKey(get, set):Float;
-	public var skippedIn(get, set):Int;
 	public var minContent(get, set):Float;
 	public var maxContent(get, set):Float;
+	// (ESCAPES: what its last layout left for containing blocks outside it, BlockFlow's: absolutely positioned
+	// boxes and their static places, the positioned list's and the fixed one's)
+	public var escapes(get, set):Null<Array<helder.ui.flow.Positioned>>;
 	// (its inline content as BlockLines built it, kept while its text and styles stay: BlockLines' Built)
 	public var inlineCache(get, set):Null<Any>;
 	// (its lines' last layout, kept for hit testing, carets and selection)
@@ -195,35 +189,11 @@ class Box {
 	inline function set_cacheFragment(v:Int):Int
 		return state == null && v == -1 ? v : laid().cacheFragment = v;
 
-	inline function get_laidWidth():Float
-		return state == null ? Math.NaN : state.laidWidth;
+	inline function get_escapes():Null<Array<helder.ui.flow.Positioned>>
+		return state == null ? null : state.escapes;
 
-	inline function set_laidWidth(v:Float):Float
-		return laid().laidWidth = v;
-
-	inline function get_skipped():Int
-		return state == null ? -1 : state.skipped;
-
-	inline function set_skipped(v:Int):Int
-		return state == null && v == -1 ? v : laid().skipped = v;
-
-	inline function get_skippedKey():Float
-		return state == null ? Math.NaN : state.skippedKey;
-
-	inline function set_skippedKey(v:Float):Float
-		return laid().skippedKey = v;
-
-	inline function get_skippedIn():Int
-		return state == null ? -1 : state.skippedIn;
-
-	inline function set_skippedIn(v:Int):Int
-		return laid().skippedIn = v;
-
-	inline function get_laidHeight():Float
-		return state == null ? Math.NaN : state.laidHeight;
-
-	inline function set_laidHeight(v:Float):Float
-		return laid().laidHeight = v;
+	inline function set_escapes(v:Null<Array<helder.ui.flow.Positioned>>):Null<Array<helder.ui.flow.Positioned>>
+		return state == null && v == null ? v : laid().escapes = v;
 
 	inline function get_minContent():Float
 		return state == null ? Math.NaN : state.minContent;
@@ -369,11 +339,7 @@ private class BoxState {
 	public var cacheIgnore = false;
 	public var cacheMore:Null<Array<Float>> = null;
 	public var cacheFragment = -1;
-	public var laidWidth = Math.NaN;
-	public var laidHeight = Math.NaN;
-	public var skipped = -1;
-	public var skippedKey = Math.NaN;
-	public var skippedIn = -1;
+	public var escapes:Null<Array<helder.ui.flow.Positioned>> = null;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
 	public var inlineCache:Null<Any> = null;

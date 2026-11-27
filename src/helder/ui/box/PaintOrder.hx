@@ -54,6 +54,7 @@ class PaintOrder {
 	var state = 0;
 	// (a page's area: what a monolithic box sliced across pages is clipped to)
 	final area:Null<Array<Float>>;
+	public final window:Null<Array<Float>>;
 
 	// The steps in runs of CHUNK, each run's bounds (x0, y0, x1, y1, four a
 	// run) in the root's space: what its fragments' border boxes and their
@@ -103,10 +104,13 @@ class PaintOrder {
 	var runs:Null<Array<Float>> = null;
 	final spare:Array<Collected> = [];
 
-	// (steps: about how many there will be, its columns made that long at once: the last order's count, say)
-	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0) {
+	// (steps: about how many there will be, its columns made that long at once: the last order's count, say;
+	// window: a long document's top and bottom in the root's space, what paints outside them left out, the
+	// order a window's, for paints and hit tests inside it)
+	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0, ?window:Array<Float>) {
 		f = fragments;
 		this.area = area;
+		this.window = window;
 		if (steps > 0) {
 			this.steps.resize(steps);
 			this.fragments.resize(steps);
@@ -256,9 +260,12 @@ class PaintOrder {
 		var k = f.first(id);
 		while (k >= 0) {
 			var kx = x + f.x(k), ky = y + f.y(k);
+			// (in a window: what paints wholly above or below it left out)
+			if (window != null && (ky + f.inkBottom(k) < window[0] || ky + f.inkTop(k) > window[1])) {
+				k = f.next(k);
+				continue;
+			}
 			switch f.kind(k) {
-				// (a block a lazy layout skipped: nothing of it painted, its background never seen without its text)
-				case Fragments.BOX if (f.box(k).skipped == k && f.box(k).skippedIn == f.generation):
 				case Fragments.BOX:
 					var b = f.box(k);
 					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else if (b.floating) {

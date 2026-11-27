@@ -86,9 +86,9 @@ final class Glyphs implements helder.text.Outline {
 			transform[1] = 0;
 			transform[2] = r.skew * s * r.scaleX;
 			transform[3] = -s;
-			transform[4] = r.xs[i];
-			transform[5] = r.ys[i];
-			r.face.outline(r.ids[i], this, transform);
+			transform[4] = r.x(i);
+			transform[5] = r.y(i);
+			r.face.outline(r.id(i), this, transform);
 		}
 	}
 

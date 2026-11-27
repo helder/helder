@@ -319,6 +319,11 @@ class InlineContent {
 	public function finish() {
 		if (finished) return;
 		finished = true;
+		// (its items and units about as many as what it was given: their columns that long at once)
+		var units = 0;
+		for (r in raw) units += r.text.length;
+		itemRoom(raw.length + 4, true);
+		room(units + 4, true);
 		process();
 		bidiLevels();
 		opportunities();
@@ -543,14 +548,14 @@ class InlineContent {
 		}
 	}
 
-	function room(n:Int) {
+	function room(n:Int, exact = false) {
 		if (n <= offsets.length) return;
-		offsets = ints(offsets, n * 2);
+		offsets = ints(offsets, exact ? n : n * 2);
 	}
 
-	function itemRoom(n:Int) {
+	function itemRoom(n:Int, exact = false) {
 		if (n <= iKind.length) return;
-		var m = n * 2;
+		var m = exact ? n : n * 2;
 		iKind = ints(iKind, m);
 		iStart = ints(iStart, m);
 		iEnd = ints(iEnd, m);
@@ -588,7 +593,9 @@ class InlineContent {
 	// and 64 units): a long document keeps one a block, for its lines' hit
 	// tests and its later layouts.
 	public function compact() {
-		if (iKind.length > items) {
+		inline function slack(length:Int, used:Int):Bool
+			return length > used + (used >> 2) + 8;
+		if (slack(iKind.length, items)) {
 			var m = items;
 			iKind = fit(iKind, m);
 			iStart = fit(iStart, m);
@@ -608,7 +615,7 @@ class InlineContent {
 			iWord = fit(iWord, m);
 			iSource = fit(iSource, m);
 		}
-		if (pKind.length > pieces) {
+		if (slack(pKind.length, pieces)) {
 			var m = pieces;
 			pKind = fit(pKind, m);
 			pStart = fit(pStart, m);
@@ -619,9 +626,9 @@ class InlineContent {
 			pWidth = fit(pWidth, m);
 		}
 		var n = text.length;
-		if (offsets.length > n + 1) offsets = fit(offsets, n + 1);
-		if (levels.length > n + 1) levels = levels.sub(0, n + 1);
-		if (breaks.length > n + 1) breaks = breaks.sub(0, n + 1);
+		if (slack(offsets.length, n + 1)) offsets = fit(offsets, n + 1);
+		if (slack(levels.length, n + 1)) levels = levels.sub(0, n + 1);
+		if (slack(breaks.length, n + 1)) breaks = breaks.sub(0, n + 1);
 	}
 
 	static function fit<T>(v:Vector<T>, n:Int):Vector<T> {
@@ -705,7 +712,7 @@ class InlineContent {
 	// item cut where its level changes
 	function bidiLevels() {
 		var n = text.length;
-		if (levels.length < n + 1) levels = Bytes.alloc(n * 2 + 1);
+		if (levels.length < n + 1) levels = Bytes.alloc(n + 1);
 		levels.fill(0, n + 1, 0);
 		var base = root.direction() == Rtl ? 1 : 0;
 		direction = base;
@@ -929,7 +936,7 @@ class InlineContent {
 
 	function opportunities() {
 		var n = text.length;
-		if (breaks.length < n + 1) breaks = Bytes.alloc(n * 2 + 1);
+		if (breaks.length < n + 1) breaks = Bytes.alloc(n + 1);
 		var opts = Bytes.alloc(n + 1);
 		for (i in 0...items) {
 			if (iEnd[i] == iStart[i]) continue;

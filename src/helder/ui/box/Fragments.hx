@@ -31,18 +31,20 @@ class Fragments {
 	final starts:Array<Int> = [];
 	final ends:Array<Int> = [];
 	final datas:Array<Int> = [];
-	public final runs:Array<ShapedRun> = [];
+	// (how far each one's subtree paints above its top and down from it: ink, worked out once)
+	final inkTops:Array<Float> = [];
+	final inkBottoms:Array<Float> = [];
+	public final runs:Array<Null<ShapedRun>> = [];
+	// (by run: a line's plain text whose run is made when first asked for, glyphs())
+	public final lazy:Array<Null<helder.ui.flow.LazyText>> = [];
 
 	public function new() {}
 
 	public function clear() {
 		count = 0;
 		runs.resize(0);
-		generation++;
+		lazy.resize(0);
 	}
-
-	// (how many times cleared: a fragment kept by its id is of this generation's or gone)
-	public var generation(default, null) = 0;
 
 	var capacity = 0;
 
@@ -63,6 +65,7 @@ class Fragments {
 		starts[id] = 0;
 		ends[id] = 0;
 		datas[id] = -1;
+		inkTops[id] = Math.NaN;
 		return id;
 	}
 
@@ -83,9 +86,57 @@ class Fragments {
 		starts.resize(capacity);
 		ends.resize(capacity);
 		datas.resize(capacity);
+		inkTops.resize(capacity);
+		inkBottoms.resize(capacity);
 	}
 
 	// child appended to parent's children, at (x, y) in it
+	// How far a fragment's subtree paints above its top (its own top 0)
+	// and down from it: its border box, what its style paints past it (a
+	// shadow, an outline), its children's but past a clip; everywhere
+	// (infinities) where a transform moves it. Worked out once a fragment:
+	// one reused keeps its subtree, and so its ink.
+	public function inkTop(id:Int):Float {
+		ink(id);
+		return inkTops[id];
+	}
+
+	public function inkBottom(id:Int):Float {
+		ink(id);
+		return inkBottoms[id];
+	}
+
+	function ink(id:Int) {
+		if (inkTops[id] == inkTops[id]) return;
+		var top = 0.0, bottom = hs[id], b = boxes[id], k = kinds[id];
+		var clips = false;
+		if (b != null && (k == BOX || k == SPAN)) {
+			var s = b.style;
+			if (s.transformed) {
+				inkTops[id] = Math.NEGATIVE_INFINITY;
+				inkBottoms[id] = Math.POSITIVE_INFINITY;
+				return;
+			}
+			var r = s.reach;
+			if (r != r) r = s.reach = BoxPainter.reach(s);
+			top -= r;
+			bottom += r;
+			clips = k == BOX && s.clips;
+		}
+		if (!clips) {
+			var c = firsts[id];
+			while (c >= 0) {
+				ink(c);
+				var t = ys[c] + inkTops[c], e = ys[c] + inkBottoms[c];
+				if (t < top) top = t;
+				if (e > bottom) bottom = e;
+				c = nexts[c];
+			}
+		}
+		inkTops[id] = top;
+		inkBottoms[id] = bottom;
+	}
+
 	public function adopt(parent:Int, child:Int, x:Float, y:Float) {
 		parents[child] = parent;
 		nexts[child] = -1;
@@ -176,6 +227,16 @@ class Fragments {
 	// a text fragment's glyph run (runs), else -1
 	public inline function run(id:Int):Int
 		return datas[id];
+
+	// a text fragment's glyphs (null: none), made from its line's text the first time where they were left for later
+	public function glyphs(id:Int):Null<ShapedRun> {
+		var r = datas[id];
+		if (r < 0 || r >= runs.length) return null;
+		var g = runs[r];
+		if (g != null) return g;
+		var l = r < lazy.length ? lazy[r] : null;
+		return l == null ? null : runs[r] = l.run();
+	}
 
 	public inline function setRun(id:Int, run:Int)
 		datas[id] = run;

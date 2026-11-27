@@ -51,9 +51,7 @@ class DocumentNode extends helder.ui.Node {
 	var anchor:Null<DomPosition> = null;
 	var dragged = false;
 	var hooked:Null<helder.ui.Ui> = null;
-	// (the scroll's top where it was last laid out; how many times this frame's settles asked)
-	var lastTop = 0.0;
-	var rounds = 0;
+
 
 	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
 	public function new(document:Document, cascade:DocumentView.DocumentCascade, ?options:DocumentViewOptions) {
@@ -95,7 +93,6 @@ class DocumentNode extends helder.ui.Node {
 	}
 
 	function flush() {
-		rounds = 0;
 		if (view.styles == null) return;
 		view.watch();
 		var t0 = Timer.stamp();
@@ -110,6 +107,40 @@ class DocumentNode extends helder.ui.Node {
 				ui.requestFrame();
 			}
 		}
+		slice();
+	}
+
+	// (a long document laid out to a cut: a slice more of it between frames, about SLICE ms, until it is whole,
+	// before a scroll gets there; between the loop's turns too (helder.os.App.tasks), so that it is laid out
+	// to its end whether frames are drawn or not: a hidden window draws none)
+	function slice() {
+		if (!view.partial || ui == null) return;
+		queue();
+		var t0 = slicedAt = Timer.stamp(), b0 = DocumentStats.bytes();
+		view.extend(view.laidTo() + step);
+		var ms = (Timer.stamp() - t0) * 1000;
+		stats.laid(ms / 1000, DocumentStats.bytes() - b0);
+		// (the slice's length from the last's time: about SLICE ms)
+		step = Math.max(ui.height, Math.min(step * 4, step * SLICE / Math.max(ms, 0.5)));
+		docHeight = heightOf();
+		markDirty();
+		ui.requestFrame();
+	}
+
+	var step = 4000.0;
+	var slicedAt = 0.0;
+	var queued = false;
+	static inline var SLICE = 10.0;
+
+	function queue() {
+		if (queued) return;
+		queued = true;
+		helder.os.App.tasks.push(() -> {
+			if (ui == null || !view.partial) return queued = false;
+			// (a frame's slice just now: none more in its turn)
+			if ((Timer.stamp() - slicedAt) * 1000 > SLICE) slice();
+			return queued = view.partial;
+		});
 	}
 
 	// (Ui.update's, after its layout, the input of the frame read and the scroll where it shows it: what it
@@ -123,25 +154,17 @@ class DocumentNode extends helder.ui.Node {
 		if (u != null && u.settlers.indexOf(this) < 0) u.settlers.push(this);
 	}
 
-	// (a long document laid out lazily: what the scroll brings near that it skipped, laid out, what was at the
-	// scroll's top kept there)
+	// (a long document laid out to a cut: what the scroll brings into view laid out before the frame is drawn,
+	// and a screen past it, exactly; what is above it laid out already, it moves nothing)
 	function uncover():Bool {
 		if (!view.partial) return false;
 		var w = scrolled();
-		if (w == null) return false;
-		// (a frame's settles after its first: only what is seen itself, where it isn't laid out yet)
-		if (rounds++ > 0 && !view.unlaid(w.top, w.top + w.height)) return false;
+		if (w == null || !view.unlaid(w.top, w.top + w.height)) return false;
 		var t0 = Timer.stamp(), b0 = DocumentStats.bytes();
-		// (a screen around what is seen; what is seen alone where the scroll leaps, a thumb's drag: what it
-		// passes isn't seen again. Before the frame is drawn: no box seen without its contents)
-		var leaps = Math.abs(w.top - lastTop) > 2 * w.height;
-		lastTop = w.top;
-		var moved = view.reveal(w.top - (leaps ? 0 : w.height), w.top + w.height + (leaps ? 0 : w.height), w.top);
-		if (moved == null) return false;
+		if (!view.extend(w.top + 2 * w.height)) return false;
 		stats.laid(Timer.stamp() - t0, DocumentStats.bytes() - b0);
 		docHeight = heightOf();
 		markDirty();
-		keep(w.scroller, moved);
 		return true;
 	}
 
@@ -177,8 +200,9 @@ class DocumentNode extends helder.ui.Node {
 			var t0 = Timer.stamp();
 			// (a long document laid out where it is seen, what was at the scroll's top kept there)
 			var at = scrolled(), anchor = at != null && view.styles != null ? view.anchor(at.top) : null;
-			if (at != null) view.within(at.top - h, at.top + at.height + h);
+			view.upTo(at != null ? at.top + at.height + h : Math.POSITIVE_INFINITY);
 			view.layout(w, h);
+			if (view.partial && ui != null) queue();
 			if (anchor != null) keep(at.scroller, view.moved(anchor));
 			view.watch();
 			stats.laid(Timer.stamp() - t0);
@@ -195,12 +219,9 @@ class DocumentNode extends helder.ui.Node {
 		if (r < 0) return 0;
 		var b = view.tree.root;
 		var h = f.y(r) + f.height(r) + Math.max(0, b.bottomPositive + b.bottomNegative);
-		var runs = view.order.chunks(), k = 3;
-		while (k < runs.length) {
-			if (runs[k] > h && runs[k] < Math.POSITIVE_INFINITY) h = runs[k];
-			k += 4;
-		}
-		return h;
+		// (and what overflows it, as far as anything untransformed paints)
+		var ink = f.y(r) + f.inkBottom(r);
+		return ink > h && ink < Math.POSITIVE_INFINITY ? ink : h;
 	}
 
 	// ---- paint
@@ -213,6 +234,8 @@ class DocumentNode extends helder.ui.Node {
 		if (x1 <= x0 || y1 <= y0) return;
 		var t0 = Timer.stamp(), b0 = DocumentStats.bytes();
 		canvas.translate(x, y);
+		// (a long document's paint order made for what is painted and a margin around it)
+		view.paints(y0 - y, y1 - y);
 		painter.begin(canvas, Math.ceil(width), Math.ceil(height), ui.scale, x0 - x, y0 - y, x1 - x, y1 - y);
 		view.paint(painter, [x0 - x, y0 - y, x1 - x, y1 - y]);
 		painter.end();

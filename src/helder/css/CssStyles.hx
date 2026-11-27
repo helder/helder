@@ -218,6 +218,14 @@ class CssStyles {
 		hasCache.clear();
 	}
 
+	// An element's style let go, made again when next asked, the sharing
+	// cache kept: within a restyle that forget began (the document as it
+	// was then), what it is styled again with.
+	public function drop(el:Element) {
+		cache.remove(el);
+		pseudoCache.remove(el);
+	}
+
 	// Every selector of the rules in effect (pseudo-elements' too), for a
 	// restyle tracker's invalidation sets (CssInvalidation.of).
 	public function selectors():Array<CssSelector>

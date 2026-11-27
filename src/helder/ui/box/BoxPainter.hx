@@ -141,7 +141,7 @@ class BoxPainter {
 	}
 
 	// (how far past its border box a box paints: its shadows' and its outline's reach)
-	@:allow(helder.ui.box.PaintOrder) static function reach(s:BoxStyle):Float {
+	@:allow(helder.ui.box.PaintOrder, helder.ui.box.Fragments) static function reach(s:BoxStyle):Float {
 		var r = 0.0;
 		if (s.keyword("outline-style") != "none") r = s.px("outline-width") + Math.abs(s.px("outline-offset"));
 		var t = s.terms("box-shadow");
@@ -361,7 +361,8 @@ class BoxPainter {
 	function text(p:Painter, id:Int, b:Box, x:Float, y:Float) {
 		var r = f.run(id);
 		if (r < 0) return;
-		var run = f.runs[r];
+		var run = f.glyphs(id);
+		if (run == null) return;
 		var s = b.style;
 		var baseline = y + f.baseline(id);
 		var color = s.color("color");
@@ -369,7 +370,8 @@ class BoxPainter {
 		var decorations = decorating(b);
 		// (underlines and overlines under the text, line-throughs over it)
 		for (d in decorations) decorate(p, d, run, x, baseline, f.width(id), false);
-		if (color >>> 24 != 0) {
+		// (a painter that draws the run where it is placed: nothing copied here)
+		if (color >>> 24 != 0 && Std.isOfType(p, RunText) && (cast p : RunText).runText(run, x, baseline, snap, Paint.solid(color))) {} else if (color >>> 24 != 0) {
 			// (placed before at the same place: the same, a window's repaint allocating none)
 			var placed = placedRuns != null && placedRuns.runs[r] != null && placedRuns.xs[r] == x && placedRuns.ys[r] == baseline && placedRuns.snapped[r] == snap ? placedRuns.runs[r] : null;
 			if (placed != null) placedRuns.touch(r);
@@ -380,8 +382,8 @@ class BoxPainter {
 				placed.bold = run.bold;
 				placed.palette = run.palette;
 				for (k in 0...run.count) {
-					var gx = x + run.xs[k], gy = baseline + run.ys[k];
-					placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
+					var gx = x + run.x(k), gy = baseline + run.y(k);
+					placed.push(run.id(k), snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.start(k), run.end(k));
 				}
 				if (placedRuns != null) placedRuns.keep(r, placed, x, baseline, snap);
 			}

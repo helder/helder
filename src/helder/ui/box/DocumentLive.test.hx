@@ -97,24 +97,28 @@ function tests() {
 			fresh.layout(300, 200);
 			equals(geometry(v), geometry(fresh));
 		});
-		test("a long document laid out where it is seen, then whole as a fresh layout", () -> {
+		test("a long document laid out to a cut, exactly, then on to its end as a fresh layout", () -> {
 			var html = '<style>body { margin: 0; font: 10px/1 Ahem } section { margin: 4px 0 } @media (max-width: 110px) { p { margin: 2px 0 } em { display: block } }</style>'
-				+ [for (i in 0...3000) '<section><p>a$i bb <em>cc</em></p><p>dd ee ff gg hh</p><p>ii</p><p>jj kk</p><p>ll</p><p>mm nn oo</p><p>pp</p><p>qq rr</p></section>'].join("");
+				+ [for (i in 0...3000) '<section id=s$i><p>a$i bb <em>cc</em></p><p>dd ee ff gg hh</p><p>ii</p><p>jj kk</p><p>ll</p><p>mm nn oo</p><p>pp</p><p>qq rr</p></section>'].join("");
 			var v = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
-			v.within(0, 200);
+			v.upTo(200);
 			v.layout(120, 200);
-			// (across the query: what the window shows styled again now, the rest when it is laid out)
+			// (across the query: what is laid out styled again now, what is past the cut when it gets there)
 			v.layout(100, 200);
 			equals(v.partial, true);
-			// (a fragment a section skipped, and the lines of the first few)
-			equals(laid(v) < 3100, true);
-			var a = v.anchor(50);
-			equals(v.reveal(30000, 30200, 30000) != null, true);
+			equals(laid(v) < 400, true);
+			var a = v.anchor(50), at = v.laidTo();
+			equals(v.extend(30000), true);
+			equals(v.laidTo() >= 30000 && v.laidTo() > at, true);
+			// (what is above the cut stays where it was)
 			equals(v.moved(a), 0.0);
-			v.within(Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY);
+			var far = v.boxesOf(el(v, "s2900"))[0];
+			v.show(far);
+			equals(v.fragmentOf(far) >= 0, true);
+			v.finish();
+			equals(v.partial, false);
 			v.layout(120, 200);
 			v.layout(100, 200);
-			equals(v.partial, false);
 			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
 			fresh.layout(100, 200);
 			equals(geometry(v), geometry(fresh));

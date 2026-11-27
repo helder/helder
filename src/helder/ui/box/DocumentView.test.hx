@@ -13,6 +13,27 @@ import helder.test.Test;
 // and an offset (Ahem: each glyph a square of the font size).
 function tests() {
 	describe("DocumentView", () -> {
+		test("a line's plain text: its glyphs made when asked for, as the line placed them", () -> {
+			var html = '<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } .j { text-align: justify } pre { tab-size: 4 }</style>'
+				+ '<p>aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz</p><p class=j>aaa b cc dddd e ff ggg h ii jjjj</p>'
+				+ '<pre>a\tbb\tccc</pre><p>x <b>yy</b> <i>zzz</i>&shy;w</p>';
+			var was = helder.ui.flow.BlockLines.check, checked = helder.ui.flow.BlockLines.checked, differed = helder.ui.flow.BlockLines.differed;
+			helder.ui.flow.BlockLines.check = true;
+			var v = DocumentView.html(Dom.parse(html), {fonts: ahem()});
+			v.layout(120, 200);
+			helder.ui.flow.BlockLines.check = was;
+			assert(helder.ui.flow.BlockLines.checked > checked);
+			equals(helder.ui.flow.BlockLines.differed, differed);
+			// (laid out lazily: each text fragment's run there when asked for)
+			var w = DocumentView.html(Dom.parse(html), {fonts: ahem()});
+			w.layout(120, 200);
+			var f = w.fragments, texts = 0;
+			for (k in 0...f.count) if (f.kind(k) == Fragments.TEXT) {
+				texts++;
+				assert(f.glyphs(k) != null && f.glyphs(k).count > 0);
+			}
+			assert(texts > 10);
+		});
 		test("backgrounds and borders", () -> {
 			var c = draw('<div style="width:10px;height:10px;background:#f00;border:2px solid #00f"></div>');
 			equals(at(c, 1, 1), 0x0000FFFF);

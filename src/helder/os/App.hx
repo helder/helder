@@ -117,6 +117,11 @@ class App {
 	@:noCompletion public static final trims:Array<Void->Void> = [];
 	// run at each turn's start, before its events (helder.ui's compositor: the offsets it took drained)
 	@:noCompletion public static final beforeEvents:Array<Void->Void> = [];
+	// work done between turns, frames or none (a hidden window draws none):
+	// each a piece of it at a time, saying whether more is left; a turn whose
+	// frame was long gives it none, at most BUSY_TURNS in a row; while some
+	// is left, the loop doesn't sleep (a long document laid out to its end)
+	public static final tasks:Array<Void->Bool> = [];
 
 	@:allow(helder.os) static function lowMemory() {
 		helder.async.Errors.guard(() -> {
@@ -255,15 +260,35 @@ class App {
 	@:allow(helder.os) static function turn(onFrame:Void->Void, onEvent:Event->Void):Bool {
 		var started = haxe.Timer.stamp();
 		var going = turnOnce(onFrame, onEvent);
-		if (going) collectIdle(started);
+		if (going) {
+			work(started);
+			collectIdle(started);
+		}
 		return going;
+	}
+
+	static inline var BUSY = 0.008;
+	static inline var BUSY_TURNS = 8;
+	static var busyTurns = 0;
+
+	static function work(started:Float) {
+		if (tasks.length == 0) return;
+		if (haxe.Timer.stamp() - started > BUSY && ++busyTurns < BUSY_TURNS) return;
+		busyTurns = 0;
+		for (f in tasks.copy()) {
+			var more = false;
+			helder.async.Errors.guard(() -> more = f(), "task");
+			if (!more) tasks.remove(f);
+		}
 	}
 
 	// (a collection between frames: as a frame ends early, once what was
 	// allocated since the last one reaches the larger of IDLE_BYTES and what
 	// that one left live, the heap is collected and its pages returned, before
 	// garbage a frame promoted grows the heap to what a late collection takes
-	// seconds over; a garbage collector's own trigger waits for the heap to fill)
+	// seconds over; a garbage collector's own trigger waits for the heap to fill.
+	// Frames that never end early (a drag, a live resize) get one between them
+	// at twice that, paced by what they allocate, not in the middle of one)
 	static inline var IDLE_BYTES = 256.0 * 1024 * 1024;
 	static inline var EARLY = 0.004;
 	static var allocatedAt = 0.0;
@@ -271,9 +296,8 @@ class App {
 
 	static function collectIdle(started:Float) {
 		#if (target.name == "hxmc")
-		if (haxe.Timer.stamp() - started > EARLY) return;
-		var allocated = hxmc.GcStats.bytesAllocated();
-		if (allocated - allocatedAt < Math.max(IDLE_BYTES, leftLive)) return;
+		var allocated = hxmc.GcStats.bytesAllocated(), due = Math.max(IDLE_BYTES, leftLive);
+		if (allocated - allocatedAt < (haxe.Timer.stamp() - started > EARLY ? 2 * due : due)) return;
 		hxmc.NativeGc.collect(true);
 		allocatedAt = hxmc.GcStats.bytesAllocated();
 		leftLive = hxmc.GcStats.liveBytes();
@@ -442,6 +466,7 @@ class App {
 
 	// (seconds bounded by the loops' timers and what they wait for)
 	static inline function bounded(seconds:Float):Float {
+		if (tasks.length > 0) return 0;
 		var l = MainLoop.main;
 		var s = l != null ? l.bound(seconds) : seconds;
 		var next = eventNext != null ? eventNext() : 1e6;

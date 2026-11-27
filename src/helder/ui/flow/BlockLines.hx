@@ -31,6 +31,18 @@ class BlockLines {
 	static final NO_FRAGMENTS:Array<Int> = [];
 	// (text's: each glyph's characters' end)
 	final ends:Array<Int> = [];
+	// (a line's spans and adoptions, fragments(): stamped per line, kept to grow)
+	var lineStamp = 0;
+	final spanStamp:Array<Int> = [];
+	final spanOf:Array<Int> = [];
+	final spanX:Array<Float> = [];
+	final spanY:Array<Float> = [];
+	final firstStamp:Array<Int> = [];
+	final firstOf:Array<Int> = [];
+	final aParent:Array<Int> = [];
+	final aChild:Array<Int> = [];
+	final aX:Array<Float> = [];
+	final aY:Array<Float> = [];
 
 	public function new(flow:BlockFlow)
 		this.flow = flow;
@@ -58,6 +70,7 @@ class BlockLines {
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
 		constraints.exactMetrics = space.exact;
+		constraints.lazyText = true;
 		try {
 			// (floats placed where their lines put them, the lines then laid out around them: until they stay)
 			var floats:Array<Box> = [];
@@ -138,6 +151,8 @@ class BlockLines {
 			var r = fragments(l, built, space, frag, ox, oy, constraints, 0, last);
 			if (fr == null) {
 				c.compact();
+				// (a hit test's lines have their glyphs)
+				constraints.lazyText = false;
 				block.lines = new BlockText(c, constraints, frag, ox, oy);
 			}
 			depth--;
@@ -323,9 +338,11 @@ class BlockLines {
 		}
 		// (what a later layout and the sizes' questions take again: the same at any width; a live
 		// document's changes let it go, DocumentView.stale)
-		if (!space.exact && !relative && out.atomics.length == 0 && out.floats.length == 0 && out.leaders.length == 0 && out.absolutes.length == 0) {
+		// (absolutely positioned boxes too: their static places are worked out from the lines each layout)
+		if (!space.exact && !relative && out.atomics.length == 0 && out.floats.length == 0 && out.leaders.length == 0) {
 			// (a block each keeps one: the empty lists shared, the content cut to size)
-			out.atomics = out.floats = out.absolutes = out.leaders = NO_BOXES;
+			out.atomics = out.floats = out.leaders = NO_BOXES;
+			if (out.absolutes.length == 0) out.absolutes = NO_BOXES;
 			out.laid = NO_FRAGMENTS;
 			if (out.opened.length == 0) out.opened = NO_BOXES;
 			if (out.markers.length == 0) out.markers = NO_BOXES;
@@ -425,22 +442,37 @@ class BlockLines {
 				}
 				continue;
 			}
-			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
-			var order = [for (f in start...end) if (l.kind(f) == BoxSpan) f];
-			var adopts = new Map<Int, () -> Void>();
-			order.sort((a, b) -> c.depth(l.item(a)) - c.depth(l.item(b)));
-			inline function parentOf(item:Int):{frag:Int, x:Float, y:Float} {
-				var open = c.box(item);
-				while (open >= 0 && !spanOf.exists(open)) open = c.parent(open);
-				return open >= 0 ? {frag: spanOf.get(open), x: spanX.get(open), y: spanY.get(open)} : {frag: line, x: 0.0, y: top};
+			// (per item, stamped by the line: an Open's span and its place; a box's first fragment on the line)
+			var stamp = ++lineStamp;
+			if (spanStamp.length < c.items) {
+				spanStamp.resize(c.items);
+				spanOf.resize(c.items);
+				spanX.resize(c.items);
+				spanY.resize(c.items);
+				firstStamp.resize(c.items);
+				firstOf.resize(c.items);
+				for (i in 0...c.items) spanStamp[i] = firstStamp[i] = 0;
 			}
+			inline function hasSpan(open:Int):Bool
+				return spanStamp[open] == stamp;
+			// (each fragment's adoption: its parent, the child (-1: a text run's, made then), its place)
+			var n = end - start;
+			if (aParent.length < n) {
+				aParent.resize(n);
+				aChild.resize(n);
+				aX.resize(n);
+				aY.resize(n);
+			}
+			for (k in 0...n) aParent[k] = -2;
+			var order = [for (f in start...end) if (l.kind(f) == BoxSpan) f];
+			order.sort((a, b) -> c.depth(l.item(a)) - c.depth(l.item(b)));
 			for (f in order) {
 				var open = l.item(f);
 				var box = openBox(open);
 				if (box == null) continue;
 				var p = c.parent(open);
-				while (p >= 0 && !spanOf.exists(p)) p = c.parent(p);
-				var px = p >= 0 ? spanX.get(p) : 0.0, py = p >= 0 ? spanY.get(p) : top, pf = p >= 0 ? spanOf.get(p) : line;
+				while (p >= 0 && !hasSpan(p)) p = c.parent(p);
+				var px = p >= 0 ? spanX[p] : 0.0, py = p >= 0 ? spanY[p] : top, pf = p >= 0 ? spanOf[p] : line;
 				var sf = frags.add(Fragments.SPAN, box, l.fragmentWidth(f) + (around(f) ? gap : 0), l.fragmentHeight(f));
 				var starts = false, ends = false;
 				for (g in start...end) if (l.item(g) == open) switch l.kind(g) {
@@ -454,45 +486,64 @@ class BlockLines {
 				frags.setRange(sf, starts ? 0 : Box.NO_START, ends ? 0 : Box.NO_END);
 				frags.setBaseline(sf, l.ascent(f));
 				var off = BlockFlow.offset(box, l.lineAvailable(k), Math.NaN);
-				var at = {pf: pf, sf: sf, x: fx(f) - px + off.x, y: l.y(f) - py + off.y};
-				adopts.set(f, () -> frags.adopt(at.pf, at.sf, at.x, at.y));
-				spanOf.set(open, sf);
-				spanX.set(open, fx(f));
-				spanY.set(open, l.y(f));
+				var a = f - start;
+				aParent[a] = pf;
+				aChild[a] = sf;
+				aX[a] = fx(f) - px + off.x;
+				aY[a] = l.y(f) - py + off.y;
+				spanStamp[open] = stamp;
+				spanOf[open] = sf;
+				spanX[open] = fx(f);
+				spanY[open] = l.y(f);
+			}
+			// (an item's nearest box with a span on the line: its fragment and place, or the line's)
+			inline function parentOf(item:Int):Int {
+				var open = c.box(item);
+				while (open >= 0 && !hasSpan(open)) open = c.parent(open);
+				return open;
 			}
 			for (f in start...end) switch l.kind(f) {
 				case TextRun | Hyphen | Ellipsis:
-					var item = l.item(f);
-					var p = parentOf(item);
-					var box = textBox(item);
-					var x = fx(f) - p.x;
-					adopts.set(f, () -> text(space, l, f, box, c, p.frag, x, l.y(f) - p.y));
+					var o = parentOf(l.item(f)), a = f - start;
+					aParent[a] = o >= 0 ? spanOf[o] : line;
+					aChild[a] = -1;
+					aX[a] = fx(f) - (o >= 0 ? spanX[o] : 0.0);
+					aY[a] = l.y(f) - (o >= 0 ? spanY[o] : top);
 				case Atomic:
 					var item = l.item(f);
 					var af = atomicFrag(item);
 					if (af < 0) continue;
-					var p = parentOf(item);
-					var b = built.atomics[slot[item]];
-					var off = BlockFlow.offset(b, l.lineAvailable(k), Math.NaN);
-					var x = fx(f) - p.x + off.x;
-					adopts.set(f, () -> frags.adopt(p.frag, af, x, l.y(f) - p.y + off.y));
+					var o = parentOf(item), a = f - start;
+					var off = BlockFlow.offset(built.atomics[slot[item]], l.lineAvailable(k), Math.NaN);
+					aParent[a] = o >= 0 ? spanOf[o] : line;
+					aChild[a] = af;
+					aX[a] = fx(f) - (o >= 0 ? spanX[o] : 0.0) + off.x;
+					aY[a] = l.y(f) - (o >= 0 ? spanY[o] : top) + off.y;
 				case _:
 			}
-			var first = new Map<Int, Int>();
 			for (f in start...end) if (l.kind(f) != BoxSpan) {
 				var open = c.box(l.item(f));
 				while (open >= 0) {
-					if (!first.exists(open) || first.get(open) > f) first.set(open, f);
+					if (firstStamp[open] != stamp || firstOf[open] > f) {
+						firstStamp[open] = stamp;
+						firstOf[open] = f;
+					}
 					open = c.parent(open);
 				}
 			}
-			inline function key(f:Int):Int
-				return l.kind(f) == BoxSpan ? first.get(l.item(f)) ?? f : f;
+			inline function key(f:Int):Int {
+				var i = l.item(f);
+				return l.kind(f) == BoxSpan && firstStamp[i] == stamp ? firstOf[i] : f;
+			}
 			inline function rank(f:Int):Int
 				return l.kind(f) == BoxSpan ? c.depth(l.item(f)) : 1 << 20;
-			var all = [for (f in adopts.keys()) f];
+			var all = [for (f in start...end) if (aParent[f - start] != -2) f];
 			all.sort((a, b) -> key(a) != key(b) ? key(a) - key(b) : rank(a) != rank(b) ? rank(a) - rank(b) : a - b);
-			for (f in all) adopts.get(f)();
+			for (f in all) {
+				var a = f - start;
+				if (aChild[a] >= 0) frags.adopt(aParent[a], aChild[a], aX[a], aY[a]);
+				else text(space, l, f, textBox(l.item(f)), c, aParent[a], aX[a], aY[a]);
+			}
 		}
 		// (a list item with nothing else: a line for its marker, as tall as the marker's)
 		if (l.lines == 0 && built.markers.length > 0) {
@@ -515,6 +566,19 @@ class BlockLines {
 		var from = t0 < t1 ? c.domOffset(t0) : 0, to = t0 < t1 ? c.domOffset(t1 - 1) + 1 : from;
 		if (r < 0) return;
 		var fonts = glyphs.runFonts(r);
+		// (plain text: its run made when first asked for, from the content, nothing placed now)
+		var lt = l.kind(f) == TextRun && l.plain(f) ? new LazyText(c, l.item(f), t0, t1, fonts, box, space.fonts) : null;
+		if (lt != null && !check) {
+			var tf = frags.add(Fragments.TEXT, box, l.fragmentWidth(f), ascent + descent);
+			frags.setRange(tf, from, to);
+			frags.setBaseline(tf, ascent);
+			frags.setRun(tf, frags.runs.length);
+			frags.lazy[frags.runs.length] = lt;
+			frags.runs.push(null);
+			frags.adopt(parent, tf, x, y);
+			return;
+		}
+		var made = lt != null ? lt.run() : null, madeAt = 0;
 		var g0 = glyphs.runStart(r), n = glyphs.runCount(r);
 		var run:Null<ShapedRun> = null, runX = 0.0;
 		function flush(endX:Float) {
@@ -523,6 +587,17 @@ class BlockLines {
 			// one text to a painter that keeps text, a PDF's ActualText then giving a
 			// run of the other direction in logical order)
 			run.text = c.text;
+			if (made != null) {
+				checked++;
+				for (i in 0...run.count) {
+					var k = madeAt + i;
+					if (k >= made.count || made.id(k) != run.id(i) || Math.abs(made.x(k) - (runX + run.x(i))) > 1e-6 || made.y(k) != run.y(i) || made.start(k) != run.start(i) || made.end(k) != run.end(i)) {
+						if (differed++ < 20) Sys.println('BlockLines: a lazy run differs at glyph $i: ${k < made.count ? made.id(k) + " " + made.x(k) + " " + made.start(k) + "-" + made.end(k) : "none"} against ${run.id(i)} ${runX + run.x(i)} ${run.start(i)}-${run.end(i)} in "${c.text.substring(t0, t1)}"');
+						break;
+					}
+				}
+				madeAt += run.count;
+			}
 			var tf = frags.add(Fragments.TEXT, box, endX - runX, ascent + descent);
 			frags.setRange(tf, from, to);
 			frags.setBaseline(tf, ascent);
@@ -563,11 +638,7 @@ class BlockLines {
 				run = new ShapedRun(face, fonts.size);
 				// (its columns their size at once: grown a glyph at a time, each push copies)
 				var left = g0 + n - g;
-				run.ids.resize(left);
-				run.xs.resize(left);
-				run.ys.resize(left);
-				run.starts.resize(left);
-				run.ends.resize(left);
+				run.reserve(left);
 				// (per face: a fallback found at the weight or style asked for is not synthesized again)
 				run.skew = fonts.oblique && (face == fonts.primary || !face.italic) ? 0.25 : 0;
 				run.bold = fonts.bold && (face == fonts.primary || face.weight < 600) ? embolden(fonts.size) : 0;
@@ -578,7 +649,14 @@ class BlockLines {
 			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, end > unit ? end : unit + 1);
 		}
 		flush(n > 0 ? Math.max(l.fragmentWidth(f), glyphs.x(g0 + n - 1) + glyphs.advance(g0 + n - 1)) : l.fragmentWidth(f));
+		if (made != null && madeAt != made.count && differed++ < 20) Sys.println('BlockLines: a lazy run has ${made.count} glyphs against $madeAt in "${c.text.substring(t0, t1)}"');
 	}
+
+	// (a test's, HELDER_CHECK_TEXT: each lazy run made at once and compared with the line's glyphs, glyph for
+	// glyph; those compared and those that differed)
+	@:noCompletion public static var check = Sys.getEnv("HELDER_CHECK_TEXT") != null;
+	@:noCompletion public static var checked = 0;
+	@:noCompletion public static var differed = 0;
 
 	// (outside markers: before the first line's start, on its baseline; laid out by the engine alone)
 	// (baseline -1: the line is the marker's own; its height and baseline given back)
@@ -586,8 +664,10 @@ class BlockLines {
 		var frags = space.fragments;
 		var own = baseline < 0, height = 0.0;
 		for (mk in list) {
-			var mc = new InlineContent(BoxInline.of(mk, avail), space.fonts.inlines);
-			var t = mk.first, laid = [];
+			// (text alone: its content kept for the layouts after, as a block's inline content is)
+			var kept:Null<InlineContent> = space.exact ? null : cast mk.inlineCache;
+			var mc = kept ?? new InlineContent(BoxInline.of(mk, avail), space.fonts.inlines);
+			var t = kept != null ? null : mk.first, laid = [];
 			while (t != null) {
 				if (t.kind == Text) mc.addText(t.text, BoxInline.of(t, avail), t.node, t.offset);
 				// (list-style-image's image: laid out as a line's atomic is)
@@ -598,7 +678,13 @@ class BlockLines {
 				}
 				t = t.next;
 			}
-			mc.finish();
+			if (kept == null) {
+				mc.finish();
+				if (laid.length == 0 && !space.exact) {
+					mc.compact();
+					mk.inlineCache = mc;
+				}
+			}
 			mc.ensureShaped();
 			// (its width with its trailing space, which a line's end would hang: "1. ", "\u2022 "; laid out
 			// in just that, its item's text-align then moving nothing)
@@ -629,7 +715,7 @@ class BlockLines {
 	}
 
 	// (synthesized bold's stroke, as Skia's: 1/24 of the size at 9px to 1/32 at 36px)
-	static function embolden(size:Float):Float {
+	@:allow(helder.ui.flow) static function embolden(size:Float):Float {
 		var t = size <= 9 ? 0 : size >= 36 ? 1 : (size - 9) / 27;
 		return size * (1 / 24 + (1 / 32 - 1 / 24) * t);
 	}

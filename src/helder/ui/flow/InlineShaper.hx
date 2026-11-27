@@ -35,6 +35,9 @@ class InlineShaper {
 	var eStart = new Vector<Int>(256);
 	var eCount = new Vector<Int>(256);
 	var eWidth = new Vector<Float>(256);
+	// (whether its glyphs are all in its set's first available face, their clusters in order: a line's text
+	// of such words is placed from them alone, BlockLines' lazy runs)
+	var ePlain = new Vector<Int>(256);
 	// (glyphs)
 	var gFace = new Vector<Int>(1024);
 	var gId = new Vector<Int>(1024);
@@ -82,6 +85,9 @@ class InlineShaper {
 
 	public inline function width(e:Int):Float
 		return eWidth[e];
+
+	public inline function plain(e:Int):Bool
+		return ePlain[e] != 0;
 
 	public inline function font(e:Int):Int
 		return eFont[e];
@@ -216,6 +222,10 @@ class InlineShaper {
 				g = e;
 			}
 		}
+		var plain = flags & RTL == 0;
+		for (g in at...at + n)
+			if (faces[gFace[g]] != fonts.first || g > at && gCluster[g] < gCluster[g - 1]) plain = false;
+		ePlain[e] = plain ? 1 : 0;
 		glyphs += n;
 		eFont[e] = id;
 		eFlags[e] = flags;
@@ -278,6 +288,7 @@ class InlineShaper {
 		eLetter = floats(eLetter, n);
 		eWord = floats(eWord, n);
 		eWidth = floats(eWidth, n);
+		ePlain = ints(ePlain, n);
 		var t = new Vector<String>(n);
 		Vector.blit(eText, 0, t, 0, eText.length);
 		eText = t;

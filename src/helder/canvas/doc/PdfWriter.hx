@@ -509,8 +509,8 @@ class PdfWriter {
 		while (j < to && r.ops[j].kind == Text && r.ops[j].run.text == s) {
 			var run = r.ops[j].run, lo = 0x7FFFFFFF, hi = -1;
 			for (k in 0...run.count) {
-				if (run.starts[k] < lo) lo = run.starts[k];
-				if (run.ends[k] > hi) hi = run.ends[k];
+				if (run.start(k) < lo) lo = run.start(k);
+				if (run.end(k) > hi) hi = run.end(k);
 			}
 			var apart = true;
 			for (h in hulls)
@@ -531,7 +531,7 @@ class PdfWriter {
 		var after = [for (_ in 0...n + 1) 0x7FFFFFFF];
 		var q = n - 1;
 		while (q >= 0) {
-			var st = runOf(q).starts[idx[q]];
+			var st = runOf(q).start(idx[q]);
 			after[q] = st < after[q + 1] ? st : after[q + 1];
 			q--;
 		}
@@ -540,8 +540,8 @@ class PdfWriter {
 		var a = 0, lo = 0x7FFFFFFF, hi = -1;
 		for (q in 0...n) {
 			var run = runOf(q), g = idx[q];
-			if (run.starts[g] < lo) lo = run.starts[g];
-			if (run.ends[g] > hi) hi = run.ends[g];
+			if (run.start(g) < lo) lo = run.start(g);
+			if (run.end(g) > hi) hi = run.end(g);
 			if (hi > after[q + 1]) continue;
 			cuts.push({a: a, b: q + 1, lo: lo, hi: hi});
 			a = q + 1;
@@ -566,17 +566,17 @@ class PdfWriter {
 			var actual:Null<String> = t;
 			if (p.b - p.a == 1) {
 				var run = runOf(p.a);
-				if (fonts.get(run.face).map(run.ids[idx[p.a]], t)) actual = null;
+				if (fonts.get(run.face).map(run.id(idx[p.a]), t)) actual = null;
 			} else {
 				// (where a glyph has its characters to itself, its ToUnicode says them too: for readers without ActualText)
 				var shared = new Map<Int, Int>();
 				for (x in p.a...p.b) {
-					var st = runOf(x).starts[idx[x]];
+					var st = runOf(x).start(idx[x]);
 					shared.set(st, (shared.get(st) ?? 0) + 1);
 				}
 				for (x in p.a...p.b) {
 					var rx = runOf(x), gx = idx[x], f = fonts.get(rx.face);
-					if (shared.get(rx.starts[gx]) == 1 && !f.mapped(rx.ids[gx]) && rx.ends[gx] > rx.starts[gx]) f.map(rx.ids[gx], s.substring(rx.starts[gx], rx.ends[gx]));
+					if (shared.get(rx.start(gx)) == 1 && !f.mapped(rx.id(gx)) && rx.end(gx) > rx.start(gx)) f.map(rx.id(gx), s.substring(rx.start(gx), rx.end(gx)));
 				}
 			}
 			pieces.push({a: p.a, b: p.b, actual: actual});
@@ -619,14 +619,14 @@ class PdfWriter {
 		if (resources.fonts.indexOf(f) < 0) resources.fonts.push(f);
 		var stroke = o.stroke != null, visible = plainPaint(o.paint);
 		var size = run.size, sx = size * run.scaleX;
-		var colour = [for (k in a...b) colourGlyph(face, run.ids[k], size)];
+		var colour = [for (k in a...b) colourGlyph(face, run.id(k), size)];
 		if (!visible) {
 			// (a paint text cannot have: the outlines, drawn as a path is)
 			var part = new ShapedRun(face, size);
 			part.scaleX = run.scaleX;
 			part.skew = run.skew;
 			for (k in a...b)
-				part.push(run.ids[k], run.xs[k], run.ys[k], run.starts[k], run.ends[k]);
+				part.push(run.id(k), run.x(k), run.y(k), run.start(k), run.end(k));
 			var g = new Glyphs();
 			g.addRun(part);
 			var p = new Op(stroke ? StrokePath : Fill, o.matrix);
@@ -652,7 +652,7 @@ class PdfWriter {
 				out.add('$want Tr\n');
 				mode = want;
 			}
-			var x = run.xs[k], y = run.ys[k], g = run.ids[k];
+			var x = run.x(k), y = run.y(k), g = run.id(k);
 			if (open && Math.abs(y - py) < 1e-4) {
 				// (the pen moved from the advance's end to where the layout put the glyph)
 				var adj = (px - x) * 1000 / sx;
@@ -680,7 +680,7 @@ class PdfWriter {
 		var run = o.run, sub = new Recorder(r.width, r.height);
 		var m = o.matrix;
 		sub.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
-		ColorGlyphs.draw(sub, run.face, run.ids[k], run.size, run.xs[k], run.ys[k], run.scaleX, run.skew, run.palette, o.paint.color, o.paint.alpha);
+		ColorGlyphs.draw(sub, run.face, run.id(k), run.size, run.x(k), run.y(k), run.scaleX, run.skew, run.palette, o.paint.color, o.paint.alpha);
 		body(sub, 0, sub.ops.length, out, false);
 	}
 

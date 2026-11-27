@@ -334,11 +334,13 @@ class CoreText implements TextBackend {
 		}
 		var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
 		var f = CT.CTFontCreateUIFontForLanguage(type, 13, Ptr.nil());
-		if (!f.isNull() && italic) {
-			var it = CT.CTFontCreateCopyWithSymbolicTraits(f, 13, Ptr.nil(), 1, 1); // (kCTFontItalicTrait)
-			if (!it.isNull()) {
+		// (kCTFontItalicTrait, kCTFontBoldTrait: a family's bold face, Menlo Bold, not its regular one emboldened)
+		var traits = (italic ? 1 : 0) | (weight >= 600 ? 2 : 0);
+		if (!f.isNull() && traits != 0) {
+			var t = CT.CTFontCreateCopyWithSymbolicTraits(f, 13, Ptr.nil(), traits, traits);
+			if (!t.isNull()) {
 				CF.CFRelease(f);
-				f = it;
+				f = t;
 			}
 		}
 		var m = f.isNull() ? null : fileOf(f, -1);

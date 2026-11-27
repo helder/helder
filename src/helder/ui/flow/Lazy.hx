@@ -2,107 +2,77 @@ package helder.ui.flow;
 
 import helder.ui.box.Box;
 
-// A long document laid out where it is seen, as if its blocks had
-// content-visibility: auto: a block far from the window (top...bottom of
-// the root's formatting context) whose layout isn't kept is given an
-// estimated height (estimate's: its last layout's, else its text's) and
-// its contents are skipped, until the window comes near it. Only a block
-// with nothing in it that reaches outside it (Box.LAZY: no floats, nothing
-// positioned) is.
+// A long document laid out from its top to a bottom it is cut at (what
+// is seen, then further a slice at a time): the root's formatting
+// context's children from the first whose top is past bottom, or not
+// styled yet (Box.UNSTYLED: a resize's restyle comes to it later), not
+// laid out, nor what comes after them in each block around them. What is
+// laid out is exact: nothing estimated, a block around a cut only as tall
+// as what is laid out of it.
 class Lazy {
-	public var top = 0.0;
 	public var bottom = 0.0;
-	// (a block's content height at a content width, its contents unlaid)
-	final estimate:(box:Box, width:Float) -> Float;
-	// (the blocks skipped in the last layout, in order: their tops and heights)
-	public final boxes:Array<Box> = [];
-	final tops:Array<Float> = [];
-	final heights:Array<Float> = [];
+	// (each cut's block and its first child not laid out, innermost first: what is left, in the document's order)
+	public final blocks:Array<Box> = [];
+	public final rests:Array<Box> = [];
+	// where the last layout stopped, in the root's formatting context: what is above it is laid out (a root
+	// box as tall as the viewport, html { height: 100% }, ends far above it)
+	public var at = Math.POSITIVE_INFINITY;
 
-	public function new(estimate:(box:Box, width:Float) -> Float)
-		this.estimate = estimate;
+	// (a box to lay out first, the cut off till the layout has passed it (its ancestors here); then a margin past
+	// it)
+	var target:Null<haxe.ds.ObjectMap<Box, Bool>> = null;
+	var margin = 0.0;
 
-	// how many blocks the last layout skipped
+	public function new() {}
+
+	// Lays out to box at least, and margin past it.
+	public function reach(box:Box, margin:Float) {
+		var m = new haxe.ds.ObjectMap<Box, Bool>(), b = box;
+		while (b != null) {
+			m.set(b, true);
+			b = b.parent;
+		}
+		target = m;
+		this.margin = margin;
+	}
+
+	// (a child laid out at top: past the box to reach where it holds it, the cut margin past it)
+	public function passed(child:Box, top:Float) {
+		if (target == null || !target.exists(child)) return;
+		target = null;
+		bottom = Math.max(bottom, top + margin);
+	}
+
+	// whether a box to reach is still ahead
+	public var reaching(get, never):Bool;
+
+	inline function get_reaching():Bool
+		return target != null;
+
+	// how many cuts the last layout made
 	public var count(get, never):Int;
 
 	inline function get_count():Int
-		return tops.length;
+		return blocks.length;
 
 	public function reset() {
-		boxes.resize(0);
-		tops.resize(0);
-		heights.resize(0);
+		at = Math.POSITIVE_INFINITY;
+		blocks.resize(0);
+		rests.resize(0);
 	}
 
-	// The content height to give a block at top, width wide, its contents
-	// skipped; NaN: laid out.
-	public function skip(box:Box, top:Float, width:Float):Float {
-		if (box.flags & Box.LAZY == 0) return Math.NaN;
-		// (a table its last size, its width not its containing block's: what its columns take)
-		var h = box.kind == TableWrapper && box.laidHeight > 0 ? box.laidHeight : estimate(box, width);
-		if (top <= bottom && top + h >= this.top) return Math.NaN;
-		boxes.push(box);
-		tops.push(top);
-		heights.push(h);
-		if (box.flags & Box.KEPT != 0) release(box);
-		return h;
-	}
-
-	// (what its contents' last layout kept let go, laid out again when it is: a long document holds what is near
-	// the window, not all it was shown)
-	static function release(box:Box) {
-		var stack = [box];
-		while (stack.length > 0) {
-			var b = stack.pop();
-			b.flags &= ~Box.KEPT;
-			b.lines = null;
-			b.inlineCache = null;
-			b.uncache();
-			var c = b.first;
-			while (c != null) {
-				stack.push(c);
-				c = c.next;
-			}
-		}
-	}
-
-	// A block skipped before given its fragment again (Box.skipped), where
-	// it stays outside the window: whether it was.
-	public function again(box:Box, top:Float, height:Float):Bool {
-		if (top <= bottom && top + height >= this.top) return false;
-		boxes.push(box);
-		tops.push(top);
-		heights.push(height);
+	// Whether the layout of block stops before child, at top in the root's
+	// formatting context: past bottom, or not styled yet.
+	public function cut(block:Box, child:Box, top:Float):Bool {
+		if (target != null && child.flags & Box.UNSTYLED == 0 || top <= bottom && child.flags & Box.UNSTYLED == 0) return false;
+		at = Math.min(at, top);
+		stop(block, child);
 		return true;
 	}
 
-	// Whether a block the last layout skipped is in top...bottom.
-	public function skipped(top:Float, bottom:Float):Bool
-		return first(top, bottom) >= 0;
-
-	// The blocks the last layout skipped in top...bottom.
-	public function within(top:Float, bottom:Float):Array<Box> {
-		var k = first(top, bottom), out = [];
-		if (k < 0) return out;
-		while (k < tops.length && tops[k] <= bottom) {
-			if (tops[k] + heights[k] >= top) out.push(boxes[k]);
-			k++;
-		}
-		return out;
-	}
-
-	// (the first skipped block in top...bottom; -1: none)
-	function first(top:Float, bottom:Float):Int {
-		// (the first whose top is past top's less the tallest: the tops are in the flow's order)
-		var lo = 0, hi = tops.length;
-		while (lo < hi) {
-			var mid = (lo + hi) >> 1;
-			if (tops[mid] + heights[mid] < top) lo = mid + 1 else hi = mid;
-		}
-		for (k in lo...tops.length) {
-			if (tops[k] > bottom) return -1;
-			if (tops[k] + heights[k] >= top) return k;
-		}
-		return -1;
+	// The layout of block stopped before child, a cut in what came before it.
+	public function stop(block:Box, child:Box) {
+		blocks.push(block);
+		rests.push(child);
 	}
 }

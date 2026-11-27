@@ -92,7 +92,7 @@ function lineCount(v:PagedView, page:Int, id:String):Int {
 function texts(v:PagedView, page:Int, margins = true):Array<String> {
 	var f = v.fragments, out = [];
 	function walk(k:Int) {
-		if (f.kind(k) == Fragments.TEXT && f.run(k) >= 0) out.push(f.runs[f.run(k)].shown());
+		if (f.kind(k) == Fragments.TEXT && f.glyphs(k) != null) out.push(f.glyphs(k).shown());
 		var c = f.first(k);
 		while (c >= 0) {
 			walk(c);
