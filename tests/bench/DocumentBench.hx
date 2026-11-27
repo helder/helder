@@ -323,7 +323,7 @@ class DocumentBench {
 		step(ui, doc);
 		run("type into a field", ui, doc, Std.parseInt(Sys.getEnv("TYPES") ?? "60"), i -> text.data = (text.data.length > 40 ? " " : text.data) + String.fromCharCode(97 + i % 26));
 		run("resize the window", ui, doc, Std.parseInt(Sys.getEnv("RESIZES") ?? "40"), i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
-		run("drag-resize (a new width each frame)", ui, doc, 40, i -> ui.resize(w - 1 - i, h));
+		run("drag-resize (a new width each frame)", ui, doc, Std.parseInt(Sys.getEnv("DRAGS") ?? "40"), i -> ui.resize(w - 1 - i % 200, h));
 		ui.resize(w, h);
 		step(ui, doc);
 		addRows("add 1,000 rows", mountDoc, x -> appendRows(x.keep, byTag(x.keep, "list"), rowsAdded));
