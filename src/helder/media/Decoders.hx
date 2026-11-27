@@ -11,6 +11,9 @@ import hxmc.Platform;
 // Vorbis helder's own where the app links it (VorbisDecoder.link(): 38 KB;
 // else a Vorbis track is not heard, but a browser's or Linux's).
 class Decoders {
+	// (tests) the system decoders unavailable, with a diagnostic of their own
+	static var forcedMissing:Null<String>;
+
 	// whether this system has video decoders (an app's file types: the viewer's)
 	public static function available():Bool {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
@@ -30,6 +33,7 @@ class Decoders {
 
 	// what this system lacks to decode, said (Linux: libavcodec; null: nothing)
 	public static function missing():Null<String> {
+		if (forcedMissing != null) return forcedMissing;
 		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
 		if (Platform.target() == 7 || Platform.target() == 8) return helder.media.linux.Av.missing();
 		if (Platform.target() < 2) return "helder.media: a static Linux build loads no decoder (-D hxmc.libc=glibc loads the system's libavcodec)";
@@ -71,6 +75,7 @@ class Decoders {
 		return vorbis != null;
 
 	public static function video(t:MediaTrack):Null<VideoDecoder> {
+		if (forcedMissing != null) return null;
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.VtDecoder.supports(t.codec)) return new helder.media.apple.VtDecoder(t);
 		#end
@@ -91,6 +96,7 @@ class Decoders {
 
 	public static function audio(t:MediaTrack):Null<AudioDecoder> {
 		if (t.codec == Vorbis && vorbis != null) return vorbis(t);
+		if (forcedMissing != null) return null;
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.AtDecoder.supports(t.codec)) return new helder.media.apple.AtDecoder(t);
 		#end

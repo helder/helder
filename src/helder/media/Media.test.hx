@@ -2,6 +2,7 @@ package helder.media;
 
 import haxe.crypto.Crc32;
 import haxe.io.Bytes;
+import helder.async.Async;
 import helder.test.Test;
 
 // The files of tests/media (fixtures.sh: ffmpeg's, some Matroska laced or
@@ -14,6 +15,26 @@ import helder.test.Test;
 // Natively and as wasm32-wasi.
 function tests() {
 	var expected:haxe.DynamicAccess<Dynamic> = haxe.Json.parse(sys.io.File.getContent("tests/media/expected.json"));
+	#if (hxmc.target != "wasm32-wasi")
+	test("Player reports the missing decoder for an H.264 MP4", async(() -> {
+		var source = new MemorySource(sys.io.File.getBytes("tests/media/h264-aac.mp4"));
+		var missing = Decoders.missing();
+		if (missing == null) {
+			missing = "helder.media: no system decoders (test)";
+			@:privateAccess Decoders.forcedMissing = missing;
+		}
+		var p = Player.open(source, {silent: true}), errors = [];
+		p.onError = e -> errors.push(e);
+		var until = haxe.Timer.stamp() + 2;
+		while (p.error() == null && !p.loaded() && haxe.Timer.stamp() < until) Async.delay(0.01);
+		var error = p.error(), loaded = p.loaded();
+		p.close();
+		@:privateAccess Decoders.forcedMissing = null;
+		equals(error, missing);
+		equals(loaded, false);
+		equals(errors, [missing]);
+	}));
+	#end
 	describe("Media", () -> {
 		for (name in expected.keys())
 			test('$name as ffprobe reads it', async(() -> check(name, expected[name])));

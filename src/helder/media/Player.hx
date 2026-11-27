@@ -153,7 +153,10 @@ class Player {
 			timeNow();
 		};
 		live.push(this);
-		Async.launch(_ -> run());
+		Async.launch(_ -> run()).onCompletion((message, e) -> {
+			var error = e?.message ?? message;
+			if (error != null) failed(error);
+		});
 	}
 
 	// (the Reads told: what read them reads again)
@@ -385,54 +388,55 @@ class Player {
 	}
 
 	// (the loop: a seek asked for, a step, a packet where a decoder wants
-	// one; all else plain functions: a coroutine's state machine grows with
-	// what it holds across its suspensions)
-	@:coroutine function run() {
-		try {
-			var m = Media.open(source);
-			var v = Lambda.find(m.tracks, t -> t.kind == Video), a = Lambda.find(m.tracks, t -> t.kind == Audio);
-			// (the browser's answer awaited: isConfigSupported; elsewhere the decoders tell)
-			#if (hxmc.target == "wasm32-wasi")
-			if (v != null && !Decoders.supported(v)) v = null;
-			if (a != null && !Decoders.supported(a)) {
-				unheard = a;
-				a = null;
-			}
-			var all = Lambda.find(m.tracks, t -> t.kind == Video);
-			if (all != null && (v == null || helder.media.web.WebElement.forced) && fallback(m, all)) return;
-			#end
-			opened(m, v, a);
-			var first = true;
-			while (!closed) {
-				if (first || asked > -1e299) {
-					// (a seek asked for before it loaded: there at once)
-					var t = asked > -1e299 ? asked : 0.0, x = first || exact;
-					asked = -1e300;
-					reset();
-					var pre = seeked(m.seek(t), t, x);
-					if (pre < 1e299) @:privateAccess m.seekTrack(audio.index, pre);
-					if (first) {
-						first = false;
-						loadedNow = true;
-						changed();
-						if (onLoaded != null) onLoaded();
-					}
-					continue;
-				}
-				if (stepping > 0 && stepped()) continue;
-				if (!wants()) {
-					Async.delay(clock.playing || stepping > 0 ? 0.004 : 0.02);
-					continue;
-				}
-				var p = m.next();
-				if (p == null) eof = true else if (p.track == video || p.track == audio) feed(p, m.read(p));
-			}
-		} catch (e:Dynamic) {
-			if (closed) return;
-			errorNow = Std.string(e is haxe.Exception ? (e : haxe.Exception).message : e);
-			changed();
-			if (onError != null) onError(errorNow);
+	// one; if no track decodes, the task ends with the diagnostic. All else
+	// plain functions: the state machine grows with what it holds across suspensions)
+	@:coroutine function run():Null<String> {
+		var m = Media.open(source);
+		var v = Lambda.find(m.tracks, t -> t.kind == Video), a = Lambda.find(m.tracks, t -> t.kind == Audio);
+		// (the browser's answer awaited: isConfigSupported; elsewhere the decoders tell)
+		#if (hxmc.target == "wasm32-wasi")
+		if (v != null && !Decoders.supported(v)) v = null;
+		if (a != null && !Decoders.supported(a)) {
+			unheard = a;
+			a = null;
 		}
+		var all = Lambda.find(m.tracks, t -> t.kind == Video);
+		if (all != null && (v == null || helder.media.web.WebElement.forced) && fallback(m, all)) return null;
+		#end
+		if (!opened(m, v, a)) return Decoders.missing() ?? "nothing this system decodes";
+		var first = true;
+		while (!closed) {
+			if (first || asked > -1e299) {
+				// (a seek asked for before it loaded: there at once)
+				var t = asked > -1e299 ? asked : 0.0, x = first || exact;
+				asked = -1e300;
+				reset();
+				var pre = seeked(m.seek(t), t, x);
+				if (pre < 1e299) @:privateAccess m.seekTrack(audio.index, pre);
+				if (first) {
+					first = false;
+					loadedNow = true;
+					changed();
+					if (onLoaded != null) onLoaded();
+				}
+				continue;
+			}
+			if (stepping > 0 && stepped()) continue;
+			if (!wants()) {
+				Async.delay(clock.playing || stepping > 0 ? 0.004 : 0.02);
+				continue;
+			}
+			var p = m.next();
+			if (p == null) eof = true else if (p.track == video || p.track == audio) feed(p, m.read(p));
+		}
+		return null;
+	}
+
+	function failed(message:String) {
+		if (closed) return;
+		errorNow = message;
+		changed();
+		if (onError != null) onError(message);
 	}
 
 	#if (hxmc.target == "wasm32-wasi")
@@ -458,7 +462,7 @@ class Player {
 	#end
 
 	// (its tracks: the first video and audio, where the system decodes them; their decoders, the output)
-	function opened(m:Media, v:Null<MediaTrack>, a:Null<MediaTrack>) {
+	function opened(m:Media, v:Null<MediaTrack>, a:Null<MediaTrack>):Bool {
 		media = m;
 		video = v;
 		audio = a;
@@ -473,7 +477,7 @@ class Player {
 				audio = null;
 			}
 		}
-		if (video == null && audio == null) throw new MediaError(Decoders.missing() ?? "nothing this system decodes");
+		if (video == null && audio == null) return false;
 		durationNow = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
 		if (adec != null) {
 			// (two seconds, and room for a packet's 16384 frames over the
@@ -481,6 +485,7 @@ class Player {
 			ring = new AudioRing(Std.int(Math.max(adec.rate * 2, 65536)));
 			out = options.silent == true || quiet ? null : output(adec.rate);
 		}
+		return true;
 	}
 
 	function output(rate:Int):Null<Audio> {
