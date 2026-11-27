@@ -22,6 +22,7 @@ class Bench {
 		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
 		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
 		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
+		{name: "bench document", about: "the CSS engine live in a window (DocumentNode) against helder.ui's todo and mail and against Chromium on long pages", run: documentBench},
 		{name: "bench harbour", about: "a TypeScript 3D app of ~1,100 meshes, its frames", run: harbourBench},
 		{name: "bench scene-markup", about: "3D in markup against the same scene in code", run: sceneMarkupBench},
 		{name: "bench jobs", about: "background work against the main thread's frames", run: jobs},
@@ -200,6 +201,14 @@ class Bench {
 		}
 		run(NODE, ["tests/bench/harbour.mjs"].concat(stats));
 		File.saveContent('$b/results.md', output(NODE, ["tests/bench/harbour.mjs"].concat(stats).concat(["--markdown"])) ?? "");
+	}
+
+	// (natively, offscreen on the GPU; the pages fetched into bin/bench/html;
+	// Chromium through Playwright: tests/bench/document.mjs, bin/document-bench/results.md)
+	static function documentBench() {
+		var b = "bin/bench/DocumentBench";
+		exe(b, cps(["src", "tests/bench", "tests/ui", "tests/css", "examples/todo", "examples/mail", "examples/document"]).concat(["-main", "DocumentBench"]));
+		run(NODE, ["tests/bench/document.mjs", exePath(b, HOST)]);
 	}
 
 	static function millionBench() {
