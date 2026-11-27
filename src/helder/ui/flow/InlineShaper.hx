@@ -203,6 +203,19 @@ class InlineShaper {
 			gCluster[g] = l.glyphCluster(i);
 			w += gAdvance[g];
 		}
+		// (a right-to-left word's glyphs from its left: its clusters descending,
+		// what TextLayout did not reorder (an override's letters) reversed)
+		if (flags & RTL != 0) {
+			var g = at;
+			while (g < at + n) {
+				// (a run of ascending clusters: reversed by cluster, each cluster's glyphs kept in order)
+				var e = g + 1;
+				while (e < at + n && gCluster[e] >= gCluster[e - 1])
+					e++;
+				if (e - g > 1 && gCluster[e - 1] > gCluster[g]) reverseClusters(g, e);
+				g = e;
+			}
+		}
 		glyphs += n;
 		eFont[e] = id;
 		eFlags[e] = flags;
@@ -214,6 +227,45 @@ class InlineShaper {
 		eCount[e] = n;
 		eWidth[e] = w;
 		return e;
+	}
+
+	// (the glyphs from...to in reverse order of their clusters, those of one cluster in theirs)
+	function reverseClusters(from:Int, to:Int) {
+		inline function swap(a:Int, b:Int) {
+			var i = gFace[a];
+			gFace[a] = gFace[b];
+			gFace[b] = i;
+			i = gId[a];
+			gId[a] = gId[b];
+			gId[b] = i;
+			i = gCluster[a];
+			gCluster[a] = gCluster[b];
+			gCluster[b] = i;
+			var f = gAdvance[a];
+			gAdvance[a] = gAdvance[b];
+			gAdvance[b] = f;
+			f = gDx[a];
+			gDx[a] = gDx[b];
+			gDx[b] = f;
+			f = gDy[a];
+			gDy[a] = gDy[b];
+			gDy[b] = f;
+		}
+		inline function reverse(a:Int, b:Int) {
+			b--;
+			while (a < b)
+				swap(a++, b--);
+		}
+		// (all reversed, then each cluster's own glyphs back in order)
+		reverse(from, to);
+		var g = from;
+		while (g < to) {
+			var e = g + 1;
+			while (e < to && gCluster[e] == gCluster[g])
+				e++;
+			reverse(g, e);
+			g = e;
+		}
 	}
 
 	function growEntries() {

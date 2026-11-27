@@ -385,28 +385,28 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   a cell spanning into a collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37 on macOS:
-7,922 drawn, 6,002 pass, 491 skipped.
+7,922 drawn, 6,046 pass, 491 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 4,942 | 810 | 311 |
-| noref against goldens | 1,060 | 1,110 | 180 |
+| reftests and crash tests | 4,973 | 779 | 311 |
+| noref against goldens | 1,073 | 1,097 | 180 |
 
-The noref tests pending by stage: tables 522, generated 323, inline 109,
-fonts 53, ui 44, positioning 30, floats 29.
+The noref tests pending by stage: tables 522, generated 317, inline 103,
+fonts 53, ui 44, positioning 29, floats 29.
 
-At WPT bc5ea7a9006b, the box tree, block flow and tables with the line
-stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
-311 skipped):
+At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
+tree, block flow, tables and the inline engine), as the css-reftests lane
+draws them (5,752 drawn in about 30 s, 311 skipped):
 
 | Chapter | Pass | Drawn |
 | --- | --- | --- |
 | CSS2 | 0 | 5 |
 | CSS2/abspos | 13 | 25 |
 | CSS2/backgrounds | 303 | 333 |
-| CSS2/bidi-text | 9 | 34 |
+| CSS2/bidi-text | 30 | 34 |
 | CSS2/borders | 483 | 504 |
-| CSS2/box | 2 | 9 |
+| CSS2/box | 4 | 9 |
 | CSS2/box-display | 73 | 86 |
 | CSS2/cascade | 24 | 31 |
 | CSS2/cascade-import | 0 | 1 |
@@ -420,7 +420,7 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/fonts | 118 | 159 |
 | CSS2/generated-content | 189 | 205 |
 | CSS2/linebox | 166 | 192 |
-| CSS2/lists | 154 | 155 |
+| CSS2/lists | 155 | 155 |
 | CSS2/margin-padding-clear | 649 | 683 |
 | CSS2/media | 17 | 17 |
 | CSS2/normal-flow | 620 | 696 |
@@ -430,7 +430,7 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/stacking-context | 1 | 3 |
 | CSS2/syntax | 213 | 252 |
 | CSS2/tables | 203 | 250 |
-| CSS2/text | 286 | 376 |
+| CSS2/text | 293 | 376 |
 | CSS2/text/crashtests | 1 | 1 |
 | CSS2/ui | 40 | 52 |
 | CSS2/values | 11 | 25 |
@@ -441,9 +441,9 @@ stand-in, as the css-reftests lane draws them (5,752 drawn in about 30 s,
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 4942 | 5752 |
+| all | 4973 | 5752 |
 
-Pending by stage: positioning 216, generated content 202, inline 163, tables 98, floats 78, fonts 41, ui 12.
+Pending by stage: positioning 216, generated content 199, inline 135, tables 98, floats 78, fonts 41, ui 12.
 
 ## Interpolation
 

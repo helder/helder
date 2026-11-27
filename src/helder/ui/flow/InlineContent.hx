@@ -33,6 +33,8 @@ class InlineContent {
 	public var direction(default, null) = 0;
 	// whether bidi levels were resolved (something right to left, an embedding, an rtl root): else all 0
 	public var bidi(default, null) = false;
+	// (something right to left in it: text, the root, a box's direction)
+	var rtl = false;
 	public var items(default, null) = 0;
 	public var pieces(default, null) = 0;
 	public var finished(default, null) = false;
@@ -62,6 +64,8 @@ class InlineContent {
 	var iWord = new Vector<Float>(16);
 	// (the bidi paragraphs: each one's first unit and base level)
 	final paragraphs:Array<Int> = [];
+	// (each item's isolate initiator's or PDI's level: an Open's or Close's of an isolating box; -1 else)
+	final isolates:Array<Int> = [];
 
 	// --- units: each UTF-16 unit of the text ---
 	var offsets = new Vector<Int>(64);
@@ -178,6 +182,12 @@ class InlineContent {
 	public inline function level(i:Int):Int
 		return iLevel[i];
 
+	// an isolating box's Open or Close: its initiator's or PDI's level, at
+	// which it parts the runs around it (UAX #9 keeps isolates where X9
+	// removes embeddings); -1: none
+	public inline function isolateLevel(i:Int):Int
+		return i < isolates.length ? isolates[i] : -1;
+
 	// its font (InlineFonts' id: its style's)
 	public inline function font(i:Int):Int
 		return iFont[i];
@@ -208,6 +218,38 @@ class InlineContent {
 	}
 
 	// --- units ---
+
+	// a position in the text (a unit, a caret's place before it) as a DOM
+	// position: the node of the item it is in and the offset in it (its
+	// Text node's offset, an element's 0 or 1: before or after it); after
+	// the text, the end of its last text or atomic (not the boxes closed
+	// after it: a caret's place is in the text)
+	public function domPosition(u:Int):{node:Null<Node>, offset:Int} {
+		if (items == 0) return {node: null, offset: 0};
+		if (u >= text.length) {
+			var i = items - 1;
+			while (i > 0 && (iSource[i] == null || kind(i) == Open || kind(i) == Close))
+				i--;
+			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? offsets[iEnd[i] - 1] + 1 : 0} : {node: iSource[i], offset: 1};
+		}
+		var i = itemAt(u);
+		return kind(i) == Text ? {node: iSource[i], offset: offsets[u]} : {node: iSource[i], offset: 0};
+	}
+
+	// the unit of a DOM position (a node of the content and an offset in it):
+	// in a Text node, the first unit from that offset on (a collapsed space's
+	// the next one kept); an element's place before it; -1: not in the content
+	public function unitOf(node:Node, offset:Int):Int {
+		var found = -1;
+		for (i in 0...items) {
+			if (iSource[i] != node) continue;
+			if (kind(i) != Text) return offset > 0 ? iEnd[i] : iStart[i];
+			for (u in iStart[i]...iEnd[i])
+				if (offsets[u] >= offset) return u;
+			found = iEnd[i];
+		}
+		return found;
+	}
 
 	// a unit's offset in its item's source
 	public inline function domOffset(u:Int):Int
@@ -295,6 +337,8 @@ class InlineContent {
 	public static inline var HANGS = 16;
 	public static inline var BREAK_WORD = 32;
 	public static inline var ANYWHERE = 64;
+	// (a box's: its unicode-bidi opens and closes controls, in the text as Blink has them)
+	public static inline var CONTROLS = 128;
 
 	public inline function flags(i:Int):Int
 		return iFlags[i];
@@ -485,7 +529,8 @@ class InlineContent {
 				flags = (wrap ? WRAPS : 0) | (ws == BreakSpaces ? BREAK_SPACES : 0) | (st.hyphens() == None ? NO_HYPHENS : 0)
 					| (collapsible ? COLLAPSIBLE | HANGS : 0) | (wrap && (ws == Preserve || ws == PreserveSpaces) ? HANGS : 0)
 					| (st.overflowWrap() == BreakWord ? BREAK_WORD : 0)
-					| (st.overflowWrap() == Anywhere || st.wordBreak() == BreakWord ? BREAK_WORD | ANYWHERE : 0);
+					| (st.overflowWrap() == Anywhere || st.wordBreak() == BreakWord ? BREAK_WORD | ANYWHERE : 0)
+					| (last > 0 && st.unicodeBidi() != Normal ? CONTROLS : 0);
 				font = fonts.idOf(st);
 				letter = st.letterSpacing();
 				word = st.wordSpacing();
@@ -614,9 +659,10 @@ class InlineContent {
 		var base = root.direction() == Rtl ? 1 : 0;
 		direction = base;
 		var plaintext = root.unicodeBidi() == Plaintext;
-		var any = base == 1 || plaintext;
+		rtl = base == 1;
 		paragraphs.resize(0);
-		if (!any) {
+		isolates.resize(0);
+		if (!rtl) {
 			var i = 0;
 			while (i < n) {
 				var c = StringTools.fastCodeAt(text, i++);
@@ -624,11 +670,17 @@ class InlineContent {
 				if (c >= 0xD800 && c < 0xDC00 && i < n) c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(text, i++) - 0xDC00);
 				var k = Bidi.classOf(c);
 				if (k == Bidi.R || k == Bidi.AL) {
-					any = true;
+					rtl = true;
 					break;
 				}
 			}
 		}
+		// (a block container's bidi-override: its inline content's, each paragraph in an override, CSS Writing Modes 3 §2.2)
+		var rootBidi = root.unicodeBidi();
+		var forced = rootBidi == BidiOverride || rootBidi == IsolateOverride ? (base == 1 ? 0x202E : 0x202D) : -1;
+		var any = rtl || plaintext || forced >= 0;
+		for (k in 1...styles.length)
+			if (styles[k].direction() == Rtl) rtl = true;
 		// (an override or embedding asked for: the algorithm, even on left-to-right text)
 		if (!any)
 			for (k in 1...styles.length)
@@ -641,12 +693,20 @@ class InlineContent {
 		}
 		// (the code points of a paragraph, the controls among them, the unit each is: -1 a control's)
 		var cps:Array<Int> = [], at:Array<Int> = [], open:Array<Int> = [];
+		// (the isolates' levels in item order, and where each one's control is in the paragraph)
+		var marks:Array<Int> = [], pending:Array<Int> = [];
 		var first = 0;
 		function paragraph() {
 			if (cps.length == 0) return;
 			var r = Bidi.levels(cps, plaintext ? -1 : base);
 			paragraphs.push(first);
 			paragraphs.push(r.base);
+			var k = 0;
+			while (k < pending.length) {
+				marks[pending[k]] = r.levels[pending[k + 1]];
+				k += 2;
+			}
+			pending.resize(0);
 			for (k in 0...cps.length) {
 				var u = at[k];
 				if (u < 0) continue;
@@ -660,16 +720,29 @@ class InlineContent {
 			cps.push(c);
 			at.push(-1);
 		}
+		if (forced >= 0) control(forced);
 		for (i in 0...items) {
 			switch kind(i) {
 				case Open:
 					open.push(i);
-					for (c in opening(styles[iStyle[i]]))
+					var cs = opening(styles[iStyle[i]]);
+					if (cs.length > 0 && cs[0] >= 0x2066 && cs[0] <= 0x2068) {
+						pending.push(marks.length);
+						pending.push(cps.length);
+						marks.push(-1);
+					}
+					for (c in cs)
 						control(c);
 				case Close:
 					if (open.length > 0) {
 						var o = open.pop();
-						for (c in closing(styles[iStyle[o]]))
+						var cs = closing(styles[iStyle[o]]);
+						if (cs.length > 0 && cs[cs.length - 1] == 0x2069) {
+							pending.push(marks.length);
+							pending.push(cps.length + cs.length - 1);
+							marks.push(-1);
+						}
+						for (c in cs)
 							control(c);
 					}
 				case Break:
@@ -678,6 +751,7 @@ class InlineContent {
 					at.push(iStart[i]);
 					paragraph();
 					first = iEnd[i];
+					if (forced >= 0) control(forced);
 					for (o in open)
 						for (c in opening(styles[iStyle[o]]))
 							control(c);
@@ -700,6 +774,23 @@ class InlineContent {
 		// (zero-length items: the level of what is before them)
 		for (j in 0...items)
 			if (iEnd[j] == iStart[j]) iLevel[j] = j > 0 ? iLevel[j - 1] : base;
+		if (marks.length == 0) return;
+		// (the isolating boxes' Opens and Closes, met in the same order)
+		var m = 0, opened:Array<Int> = [];
+		isolates.resize(items);
+		for (j in 0...items) {
+			isolates[j] = -1;
+			switch kind(j) {
+				case Open:
+					var cs = opening(styles[iStyle[j]]);
+					var iso = cs.length > 0 && cs[0] >= 0x2066 && cs[0] <= 0x2068;
+					opened.push(iso ? 1 : 0);
+					if (iso) isolates[j] = marks[m++];
+				case Close:
+					if (opened.length > 0 && opened.pop() == 1) isolates[j] = marks[m++];
+				case _:
+			}
+		}
 	}
 
 	// (the controls an inline box's unicode-bidi opens and closes)
@@ -830,6 +921,64 @@ class InlineContent {
 			}
 			breaks.set(u, s & ~LineBreaks.STATUS | status);
 		}
+		hyphenate();
+	}
+
+	// hyphens: auto: each word's hyphenation points (helder.text's
+	// Hyphenation, its language's by the item's lang) as opportunities that
+	// show a hyphen. As TextLayout and browsers leave them: words shorter than
+	// HYPHEN_WORD letters, with a soft hyphen, in capitals, and the words of a
+	// token (between spaces) with a digit, an @, /, \ or _, or a . or : inside
+	// it; at least HYPHEN_SIDE letters on each side of a point
+	public static inline var HYPHEN_WORD = 5;
+	public static inline var HYPHEN_SIDE = 2;
+
+	function hyphenate() {
+		for (i in 0...items) {
+			if (kind(i) != Text || iFlags[i] & WRAPS == 0) continue;
+			var st = styles[iStyle[i]];
+			if (st.hyphens() != Auto) continue;
+			var h = helder.text.Hyphenation.get(st.lang());
+			if (h == null) continue;
+			var u = iStart[i], e = iEnd[i];
+			inline function at(k:Int):Int
+				return StringTools.fastCodeAt(text, k);
+			while (u < e) {
+				if (at(u) == 32 || at(u) == 9 || at(u) == 10) {
+					u++;
+					continue;
+				}
+				// (a token: up to a space)
+				var t = u, skip = false;
+				while (u < e && at(u) != 32 && at(u) != 9 && at(u) != 10) {
+					var c = at(u);
+					if (c >= "0".code && c <= "9".code || c == "@".code || c == "/".code || c == "\\".code || c == "_".code
+						|| (c == ".".code || c == ":".code) && u + 1 < e && isLetter(at(u + 1)))
+						skip = true;
+					u++;
+				}
+				if (skip) continue;
+				var j = t;
+				while (j < u) {
+					while (j < u && !isLetter(at(j)))
+						j++;
+					var w = j, shy = false, lower = false;
+					while (j < u && (isLetter(at(j)) || at(j) == 0xAD)) {
+						var c = at(j);
+						if (c == 0xAD) shy = true;
+						else if (String.fromCharCode(c).toUpperCase() != String.fromCharCode(c)) lower = true;
+						j++;
+					}
+					if (j - w < HYPHEN_WORD || shy || !lower) continue;
+					for (p in h.points(text.substring(w, j))) {
+						if (p < HYPHEN_SIDE || p > j - w - HYPHEN_SIDE) continue;
+						var b = breaks.get(w + p);
+						// (not inside a cluster: a mark, a joiner)
+						if (b & LineBreaks.STATUS == LineBreaks.NONE && b & LineBreaks.CLUSTER != 0) breaks.set(w + p, b | LineBreaks.ALLOWED | HYPHEN);
+					}
+				}
+			}
+		}
 	}
 
 	// --- pieces ---
@@ -840,8 +989,8 @@ class InlineContent {
 			var k = kind(i);
 			if (k != Text) {
 				var p = addPiece(ITEM, iStart[i], iEnd[i], i);
-				// (a Close ends what is before it: no break before it)
-				pBreak[p] = k == Close ? LineBreaks.NONE : breakBefore(i);
+				// (a Close ends what is before it: no break before it; but a box's closing control is text: after a forced break, on the next line)
+				pBreak[p] = k == Close && !takesBreak(i) ? LineBreaks.NONE : breakBefore(i);
 				continue;
 			}
 			var u = iStart[i], e = iEnd[i];
@@ -872,7 +1021,26 @@ class InlineContent {
 		var j = i - 1;
 		while (j >= 0 && iStart[j] == at && iEnd[j] == at && kind(j) != Close)
 			j--;
+		if (j >= 0 && kind(j) == Close && iStart[j] == at && takesBreak(j)) return LineBreaks.NONE;
 		return j == i - 1 ? s : LineBreaks.NONE;
+	}
+
+	// (a Close whose box's unicode-bidi closes a control after a forced break:
+	// the control is text, Blink's, so the box ends on the next line; the
+	// forced break is before it. Only in content with something right to
+	// left: HTML's isolate on div, p and the like would otherwise move a
+	// left-to-right box's end, which neither Chromium, whose sheet doesn't
+	// have it, nor Firefox does)
+	function takesBreak(close:Int):Bool {
+		var b = iBox[close], at = iStart[close];
+		if (!rtl || b < 0 || iFlags[b] & CONTROLS == 0 || at == 0 || breaks.get(at) & LineBreaks.STATUS != LineBreaks.FORCED) return false;
+		// (the first such Close there takes it)
+		var j = close - 1;
+		while (j >= 0 && iStart[j] == at && iEnd[j] == at) {
+			if (kind(j) == Close && iBox[j] >= 0 && iFlags[iBox[j]] & CONTROLS != 0) return false;
+			j--;
+		}
+		return true;
 	}
 
 	function addPiece(kind:Int, start:Int, end:Int, item:Int):Int {

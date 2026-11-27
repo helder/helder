@@ -47,6 +47,8 @@ class Box {
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
+	// (its lines' last layout, kept for hit testing, carets and selection)
+	public var lines:Null<helder.ui.flow.BlockText> = null;
 	// (its used side margins; the margins that collapse through its top and
 	// its bottom, the largest positive and the most negative; whether its
 	// top and bottom margins collapse together, §8.3.1)

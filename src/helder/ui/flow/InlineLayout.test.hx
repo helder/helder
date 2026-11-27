@@ -104,6 +104,46 @@ function tests() {
 			equals(l.lineWidth(0), 32.0);
 			assert(l.lineForced(0));
 		});
+		test("an isolate's end after a forced break: on that line, unless something is right to left", () -> {
+			function width(dir:InlineDirection) {
+				var l = lay(c -> {
+					c.openBox(ahem(s -> {
+						s.edges(0, 0, 10);
+						s.bidi = Isolate;
+						s.dir = dir;
+					}));
+					c.addText("aa", ahem());
+					c.addBreak();
+					c.closeBox();
+				}, 200);
+				return [for (k in 0...l.lines) l.lineWidth(k)];
+			}
+			equals(width(Ltr), [52.0]);
+			equals(width(Rtl), [42.0, 10.0]);
+		});
+		test("an isolate parts the runs around it: right-to-left text before it stays before it", () -> {
+			var l = lay(c -> {
+				c.openBox(ahem(s -> {
+					s.bidi = BidiOverride;
+					s.dir = Rtl;
+				}));
+				c.addText("aa", ahem());
+				c.closeBox();
+				c.openBox(ahem(s -> s.bidi = Isolate));
+				c.addText("b", ahem());
+				c.closeBox();
+			}, 200);
+			equals([l.x(find(l, TextRun, 0)), l.x(find(l, TextRun, 1))], [0.0, 32.0]);
+		});
+		test("a block's bidi-override: its text in the override's direction", () -> {
+			var root = ahem(s -> {
+				s.dir = Rtl;
+				s.bidi = BidiOverride;
+			});
+			var l = lay(c -> c.addText("ab", ahem()), 200, root);
+			// (a forced right to left: its caret on its right, the line's right end)
+			equals(l.caret(0).x, 200.0);
+		});
 		test("pre-wrap's spaces hang at a line's end", () -> {
 			var pw = ahem(s -> s.collapse = Preserve);
 			var l = lay(c -> c.addText("aa   bb", pw), 60);
@@ -138,6 +178,176 @@ function tests() {
 			equals(l.lineLeft(0), (100 - 42) / 2);
 			equals(l.x(0), (100 - 42) / 2 + 10);
 		});
+		test("justify: the room shared among the spaces, the last line as it is", () -> {
+			var root = ahem(s -> s.align = Justify);
+			var l = lay(c -> c.addText("aa b cc dd", ahem()), 100, root);
+			equals(l.lines, 2);
+			// ("aa b cc" is 112 wide: no; "aa b" 64, two spaces' room shared: 36 to the one space)
+			equals(texts(l), ["aa b", "cc dd"]);
+			equals([l.lineWidth(0), l.lineWidth(1)], [100.0, 80.0]);
+			var g = l.glyphs, r = l.glyphRun(0);
+			// (b after the widened space: 32 + 16 + 36)
+			equals(g.x(g.runStart(r) + 3), 84.0);
+		});
+		test("justify: an atomic between, its space alone takes the room", () -> {
+			var root = ahem(s -> {
+				s.align = Justify;
+				s.indent = 10;
+			});
+			var l = lay(c -> {
+				c.addText("abc ", ahem());
+				c.addAtomic(0, 44, Math.NaN, ahem(s -> s.margins = [3, 2, 0, 0]));
+				c.addText("abcdxyz  abcd", ahem());
+			}, 220, root);
+			equals(l.fragmentWidth(0), 64 + 29.0);
+			var same = lay(c -> {
+				c.addText("abc ", ahem(s -> s.height = 30));
+				c.addAtomic(0, 44, Math.NaN, ahem(s -> {
+					s.height = 30;
+					s.margins = [2, 3, 0, 0];
+					s.vertical = TextTop;
+				}));
+				c.addText("abcdxyz  abcd-ab\ta  ", ahem(s -> s.height = 30));
+			}, 220, ahem(s -> {
+				s.align = Justify;
+				s.indent = 10;
+				s.height = 30;
+			}));
+			equals(texts(same), ["abc abcdxyz", "abcd-ab a"]);
+			equals(same.fragmentWidth(0), 64 + 29.0);
+		});
+		test("justify: inter-character, after every character but the line's last", () -> {
+			var root = ahem(s -> {
+				s.align = Justify;
+				s.justify = InterCharacter;
+			});
+			var l = lay(c -> c.addText("ab cd", ahem()), 120, ahem(s -> {
+				s.align = Justify;
+				s.justify = InterCharacter;
+			}));
+			equals(l.lines, 1);
+			equals(l.lineWidth(0), 80.0);
+			var l2 = lay(c -> c.addText("ab cd ef", ahem()), 100, root);
+			equals(l2.lineWidth(0), 100.0);
+		});
+		test("text-overflow: ellipsis: what overflows given up at glyphs, an ellipsis after what is left", () -> {
+			var root = ahem(s -> {
+				s.textOverflowEnd = Ellipsis;
+				s.wrap = NoWrap;
+			});
+			var l = lay(c -> c.addText("abcdefgh", ahem(s -> s.wrap = NoWrap)), 100, root);
+			var e = find(l, Ellipsis);
+			assert(e >= 0, "an ellipsis");
+			// (100 holds 6 squares; 5 and the ellipsis)
+			equals([l.fragmentWidth(0), l.x(e), l.fragmentWidth(e)], [80.0, 80.0, 16.0]);
+			equals(l.textEnd(0), 5);
+		});
+		test("text-overflow: ellipsis in a right-to-left paragraph: on the left", () -> {
+			var root = ahem(s -> {
+				s.textOverflowEnd = Ellipsis;
+				s.wrap = NoWrap;
+				s.dir = Rtl;
+			});
+			var l = lay(c -> c.addText("abcdefgh", ahem(s -> s.wrap = NoWrap)), 100, root);
+			var e = find(l, Ellipsis);
+			equals([l.x(e), l.x(0), l.x(0) + l.fragmentWidth(0)], [4.0, 20.0, 100.0]);
+		});
+		test("line-clamp: its last line ends in an ellipsis, none after it", () -> {
+			var root = ahem(s -> s.clamp = 2);
+			var l = lay(c -> c.addText("aaaa bbbb cccc dddd", ahem()), 100, root);
+			equals(l.lines, 2);
+			var e = find(l, Ellipsis);
+			assert(e >= 0, "an ellipsis");
+			equals(l.x(e), 64.0);
+			var all = lay(c -> c.addText("aaaa bbbb", ahem()), 100, root);
+			equals([all.lines, find(all, Ellipsis)], [2, -1]);
+		});
+		test("hit testing: a point to its unit, by the glyph's half", () -> {
+			var l = lay(c -> c.addText("aa bb", ahem()), 50);
+			// (line 0: "aa", line 1: "bb")
+			equals(l.hitTest(5, 5).offset, 0);
+			equals(l.hitTest(10, 5).offset, 1);
+			equals(l.hitTest(40, 5).offset, 2);
+			equals(l.hitTest(17, 20).offset, 4);
+			equals(l.hitTest(100, 100).offset, 5);
+			equals(l.hitTest(-10, 20).offset, 3);
+		});
+		test("hit testing right to left: the right half is before", () -> {
+			var rtl = ahem(s -> {
+				s.dir = Rtl;
+				s.bidi = BidiOverride;
+			});
+			var l = lay(c -> {
+				c.openBox(rtl);
+				c.addText("abc", rtl);
+				c.closeBox();
+			}, 100);
+			// (c b a, from the left: 'a' at 32 to 48)
+			equals(l.hitTest(46, 5).offset, 0);
+			equals(l.hitTest(34, 5).offset, 1);
+			equals(l.hitTest(2, 5).offset, 3);
+		});
+		test("carets: before each unit, a right-to-left one's right edge", () -> {
+			var l = lay(c -> c.addText("ab cd", ahem()), 50);
+			equals([l.caret(0).x, l.caret(1).x, l.caret(3).x, l.caret(3).line, l.caret(5).x], [0.0, 16.0, 0.0, 1, 32.0]);
+			var rtl = ahem(s -> {
+				s.dir = Rtl;
+				s.bidi = BidiOverride;
+			});
+			var r = lay(c -> {
+				c.openBox(rtl);
+				c.addText("abc", rtl);
+				c.closeBox();
+			}, 100);
+			equals([r.caret(0).x, r.caret(1).x], [48.0, 32.0]);
+		});
+		test("selection: a rectangle a run of selected glyphs a line, the line's height", () -> {
+			var l = lay(c -> {
+				c.addText("aa b", ahem());
+				c.addAtomic(10, 10, Math.NaN, ahem());
+				c.addText(" cc dd", ahem(s -> s.height = 30));
+			}, 90);
+			var s = l.selection(1, 9);
+			equals([for (r in s) [r.x, r.y, r.width, r.height]], [[16.0, 0.0, 58.0, l.lineHeight(0)], [0.0, l.lineTop(1), 48.0, l.lineHeight(1)]]);
+			equals(l.selection(2, 2), []);
+		});
+		test("DOM positions: a unit to its node and offset, and back", () -> {
+			var doc = new helder.dom.Document();
+			var t = doc.createTextNode("  a  b"), u = doc.createTextNode("c");
+			var c = content(c -> {
+				c.addText("  a  b", ahem(), t, 0);
+				c.addText("c", ahem(), u, 0);
+			});
+			equals(c.text, "a bc");
+			var p = c.domPosition(2);
+			equals([p.node == t, p.offset == 5], [true, true]);
+			equals(c.domPosition(3).node == u, true);
+			equals([c.unitOf(t, 3), c.unitOf(t, 4), c.unitOf(u, 0), c.unitOf(u, 1)], [1, 2, 3, 4]);
+			// (after the text: its last text's end, not the box closed after it)
+			var span = doc.createElement("span");
+			var d = content(c -> {
+				c.openBox(ahem(), span);
+				c.addText("c", ahem(), u, 0);
+				c.closeBox(span);
+			});
+			var end = d.domPosition(1);
+			equals([end.node == u, end.offset == 1], [true, true]);
+		});
+		test("hyphens: auto: a word broken at its language's points, a hyphen shown", () -> {
+			helder.text.Hyphenation.add(helder.text.hyphenation.EnUs.patterns());
+			var auto = ahem(s -> {
+				s.hyphen = Auto;
+				s.language = "en";
+			});
+			// (hy-phen-ation: 112 holds "hyphen" and its hyphen)
+			var l = lay(c -> c.addText("hyphenation", auto), 112);
+			equals(texts(l), ["hyphen", "ation"]);
+			assert(find(l, Hyphen) >= 0, "a hyphen");
+			// (none without a language, none in capitals, none with hyphens: manual)
+			equals(lay(c -> c.addText("hyphenation", ahem(s -> s.hyphen = Auto)), 112).lines, 1);
+			equals(lay(c -> c.addText("HYPHENATION", auto), 112).lines, 1);
+			equals(lay(c -> c.addText("hyphenation", ahem(s -> s.language = "en")), 112).lines, 1);
+		});
 		test("floats narrow lines: lineWidth's offset and width", () -> {
 			var c = new InlineContent(ahem());
 			c.addText("aa bb cc", ahem());
@@ -161,7 +371,7 @@ function tests() {
 		test("no line is wider than its width unless a piece cannot break", () -> property(cases(), k -> {
 			var c = k.content, l = new InlineLayout().layout(c, new InlineConstraints(k.width));
 			for (i in 0...l.lines)
-				if (l.lineWidth(i) > k.width + 1e-3) assert(unbreakable(l, i), 'line $i: ${l.lineWidth(i)} > ${k.width}');
+				if (l.lineWidth(i) > k.width + 1e-3 && contentRight(l, i) > k.width + 1e-3) assert(unbreakable(l, i), 'line $i: ${l.lineWidth(i)} > ${k.width}');
 		}));
 		test("laid out twice at a width: the same", () -> property(cases(), k -> {
 			var c = k.content;
@@ -177,6 +387,22 @@ function tests() {
 			for (i in 0...l.lines)
 				if (l.lineForced(i)) forced++;
 			equals(l.lines - forced <= 1, true, 'lines ${l.lines}, forced $forced');
+		}));
+		test("a point just right of a glyph's left edge hits its cluster; a caret there is at it", () -> property(cases(), k -> {
+			var c = k.content, l = new InlineLayout().layout(c, new InlineConstraints(k.width)), g = l.glyphs;
+			for (f in 0...l.fragments) {
+				if (l.kind(f) != TextRun || l.glyphRun(f) < 0) continue;
+				var r = l.glyphRun(f);
+				for (i in g.runStart(r)...g.runStart(r) + g.runCount(r)) {
+					if (g.advance(i) < 1) continue;
+					var x = l.x(f) + g.x(i), line = 0;
+					while (line < l.lines - 1 && f >= l.lineFragmentEnd(line))
+						line++;
+					var hit = l.hitTest(x + 0.1, l.lineTop(line) + 0.5);
+					equals(hit.offset, g.cluster(i), 'glyph $i at $x');
+					approx(l.caret(g.cluster(i)).x, x, 1e-6);
+				}
+			}
 		}));
 		test("the fragments' text in order is the content's (but spaces removed at lines' ends)", () -> property(cases(), k -> {
 			var c = k.content, l = new InlineLayout().layout(c, new InlineConstraints(k.width)), t = c.text;
@@ -245,11 +471,21 @@ private function snapshot(l:InlineLayout):Array<Array<Float>>
 			[l.kind(f), l.x(f), l.y(f), l.fragmentWidth(f), l.fragmentHeight(f), l.textStart(f), l.textEnd(f)]
 	];
 
+// (how far a line's text and atomics reach from its left: boxes' end edges
+// after its trailing spaces may overflow, as Blink lets them)
+private function contentRight(l:InlineLayout, i:Int):Float {
+	var right = 0.0;
+	for (f in l.lineFragmentStart(i)...l.lineFragmentEnd(i))
+		if (l.kind(f) == TextRun || l.kind(f) == Atomic || l.kind(f) == Hyphen) right = Math.max(right, l.x(f) + l.fragmentWidth(f) - l.lineLeft(i));
+	return right;
+}
+
 // (whether line i holds a piece it could not break: no opportunity in it but at its start)
 private function unbreakable(l:InlineLayout, i:Int):Bool {
 	var c = l.content;
 	for (u in l.lineStart(i) + 1...l.lineEnd(i))
-		if (c.breakAt(u) & LineBreaks.STATUS == LineBreaks.ALLOWED) {
+		// (a soft hyphen's: its fit is its hyphen's too)
+		if (c.breakAt(u) & LineBreaks.STATUS == LineBreaks.ALLOWED && c.breakAt(u) & InlineContent.HYPHEN == 0) {
 			// (an opportunity inside: the line would have broken there unless what is before it overflows alone)
 			// (with nothing before it but edges and spaces removed at the line's start, no break there)
 			var before = 0.0, content = false;

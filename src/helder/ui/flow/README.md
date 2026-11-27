@@ -35,7 +35,8 @@ initial values). The values are typed (`InlineValues`: `InlineCollapse`,
 CSS pixels with percentages resolved by the implementer, except
 vertical-align's (`verticalShift`: a fraction of the line height). Each
 style is read once while the content is built; styles are compared by
-identity, so interned styles share their fonts. An inline box's edges are
+identity, so interned styles share their fonts (a style is not
+changed once given: `InlineFonts` keeps each one's font by the object). An inline box's edges are
 its inline-start and inline-end margin, border and padding, and its border
 and padding above and below (its fragments' rectangles). The root (the
 block container's) style gives text-align, text-align-last, text-justify,
@@ -157,10 +158,33 @@ it does nothing; at another width it places the same shaped pieces.
   and bottom-aligned subtrees are placed last, the line growing to hold
   them. A line with nothing in it (no text, preserved space, atomic, box
   edge or forced break: CSS 2.1 §9.4.2) is zero high.
-- **Alignment**: text-align (start, end, left, right, center; justify is
-  the next PR's), text-align-last on the last line and before forced
-  breaks, text-indent (each-line, hanging); an overflowing line is start
-  aligned.
+- **Bidi**: a line with a right-to-left level on it, or in a right-to-left
+  paragraph, is placed in visual order (UAX #9 per line: L1, the white
+  space at its end at the paragraph's level; L2, runs reversed from the
+  highest level down). An inline box's edges go on its visually first and
+  last pieces, its line-left edge its start's or its end's by its own
+  direction; a box whose pieces are not side by side has a `BoxSpan` per
+  run (Blink's fragments), a collapsed space at a soft wrap ending one. A
+  right-to-left word's glyphs are its clusters in descending order, also
+  where shaping it alone did not reorder it (an override's letters).
+- **Alignment**: text-align (start and end by the paragraph's direction;
+  justify: the room left shared among the spaces (text-justify auto and
+  inter-word) or every character but the line's last (inter-character),
+  hanging spaces out, the line placed again with each share after its
+  opportunity), text-align-last on the last line and before forced
+  breaks, text-indent (each-line, hanging; on the right in a right-to-left
+  paragraph); an overflowing line is start aligned.
+- **text-overflow: ellipsis** and **line-clamp**: a line that overflows
+  (where the root's text-overflow is ellipsis: the box tree's, where its
+  overflow is not visible), and line-clamp's last line with more after it
+  (no line after), give up their end side at whole glyphs (glyphs hidden:
+  id -1) until an ellipsis (U+2026 in the block's font, else "...") fits;
+  atomics past it hidden; the `Ellipsis` fragment after what is left.
+- **hyphens: auto**: each word's points from helder.text's `Hyphenation`
+  (the item's lang) are opportunities that show a hyphen, as soft
+  hyphens'; not in words under 5 letters, with a soft hyphen, in capitals,
+  or in a token with a digit, @, /, \, _ or an inner . or :; 2 letters at
+  least on each side.
 - **Output**: per line its top, height, baseline, width used, left, the
   width it had, its text range and its fragments; per fragment its kind
   (`TextRun`: an item's text on a line, a tab its own; `BoxStart` and
@@ -174,6 +198,25 @@ it does nothing; at another width it places the same shaped pieces.
 - **Intrinsic sizes**: `minContent` breaks at every opportunity
   (overflow-wrap: anywhere's cuts in, break-word's out), `maxContent` at
   forced breaks only; each the widest line's used width.
+
+## Hit testing and selection
+
+```haxe
+var h = l.hitTest(x, y);            // {item, offset}: the caret's place nearest the point
+var p = c.domPosition(h.offset);    // {node, offset}: the DOM position
+var at = l.caret(c.unitOf(textNode, 3));   // {x, y, height, line}
+var rects = l.selection(start, end);       // [{x, y, width, height}], a run a line
+```
+
+- `hitTest`: the line under y (the nearest), the text run or atomic under
+  x (the nearest), then over a glyph the boundary nearer by its half and
+  direction (a ligature's by its characters' equal parts).
+- `caret`: a unit's leading edge (a right-to-left glyph's right), at its
+  line's top and height; at a run's end, its trailing edge.
+- `selection`: each line's selected glyphs and atomics in visual order,
+  those side by side as one rectangle the line's height.
+- `InlineContent.domPosition` and `unitOf` map units to DOM positions and
+  back (a collapsed space's position to the next unit kept).
 
 ## Tests
 
@@ -191,7 +234,10 @@ it does nothing; at another width it places the same shaped pieces.
   lineWidth, intrinsic sizes and glyph runs, in Ahem; properties: no line
   wider than its width unless it holds a piece that cannot break, a layout
   the same twice, min-content <= max-content, at max-content a line a
-  forced break, the fragments' text in order the content's.
+  forced break, the fragments' text in order the content's, a point just
+  right of a glyph's left edge hitting its cluster and a caret there; then
+  justification, ellipsis and line-clamp, bidi hit testing and carets,
+  selection, DOM positions and hyphens: auto.
 - `flow-differential` (tests/flow/differential.mjs): generated content
   (text in white-space's modes, nested inline boxes with margins, borders
   and padding, inline-blocks, vertical-align's values, line heights,
@@ -208,13 +254,20 @@ it does nothing; at another width it places the same shaped pieces.
   a known case that passes fails the run. FLOW_ONLY=seed-12 prints one
   case's rectangles on both sides (its page: bin/flow/only.html);
   FLOW_NO=va,tab,bs,ow,ls,edges,atomic,br,tb,mid,tt,shift leaves features
-  out. On Chromium 141: 276 of the first 300 seeds the same, the other 24
-  known (17 of them top- and bottom-aligned subtrees that nest); a fresh
-  range (FLOW_SEED=1000): 269 of 300, 290 with no top or bottom.
+  out. Cases are named by the generator's version (g1-seed-12; a kept case
+  in place of the generated one of its name); FLOW_BIDI=1 is the second
+  (right-to-left paragraphs, inline boxes' direction and unicode-bidi),
+  reported, not gated yet. On Chromium 141: 263 of the first 300 g1 seeds
+  the same, 37 known (17 of them top- and bottom-aligned subtrees that
+  nest, 13 justified lines with tabs or break-spaces); a fresh range
+  (FLOW_SEED=1000): 262 of 300. With FLOW_BIDI=1: 163 of 300, 265 with
+  tabs, break-spaces, overflow-wrap, spacing, edges, atomics, breaks and
+  vertical-align left out. Chromium takes text-justify: inter-character as
+  auto: the generator asks for auto only.
 - `bench inline` (tests/bench/InlineBench.hx): the HTML Standard's 26,641
-  paragraphs (3.3 MB) at 700px in Inter, natively: 146 ms per MB with the
-  word cache empty, 133 with it full, 38 laid out again at 500px;
-  TextLayout on the same texts: 135 made, 18 wrapped again.
+  paragraphs (3.3 MB) at 700px in Inter, natively: 152 ms per MB with the
+  word cache empty, 135 with it full, 41 laid out again at 500px;
+  TextLayout on the same texts: 129 made, 17 wrapped again.
 
 `node src/helder/ui/flow/generate.mjs` makes LineBreakData.hx (each code
 point's Line_Break class and the flags its rules read: East Asian width,
@@ -376,3 +429,7 @@ node (text runs).
   marker's height.
 - Intrinsic sizes are the engine's (`minContent`, `maxContent`), atomics
   at their own min- and max-content, floats beside the lines at most.
+- Each block keeps its last lines' content and constraints (`BlockText`,
+  `Box.lines`): hit testing, carets and selection lay them out again on
+  the first question, the floats beside them where they were, and answer
+  in DOM positions (`InlineContent.domPosition`, `unitOf`).
