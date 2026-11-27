@@ -28,6 +28,9 @@
 # - css-reftests: helder.ui.box against WPT's CSS 2.1 reftests and its
 #   noref tests against goldens headless Chromium draws (bin/wpt and the
 #   goldens cached), the same fonts on every machine;
+# - pdf-docs (advisory): tests/pdf-docs through helder pdf against
+#   WeasyPrint, the parity target, page by page (the similarity and the
+#   diffs an artifact);
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
 #   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
@@ -358,6 +361,47 @@ jobs:
             bin/wpt
             bin/fonts
           key: ${{ steps.wpt.outputs.cache-primary-key }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
+  # tests/pdf-docs' documents through helder pdf against WeasyPrint's PDFs
+  # of them (pip, in a venv), both rasterised by helder.pdf and compared page
+  # by page: bin/pdf-docs/similarity.md and diff/ uploaded. Advisory: the
+  # lane's own goldens (helder's side) are the gate; the similarity a report.
+  pdf-docs:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {node-version: 24}
+      - uses: actions/cache/restore@v6
+        with:
+          path: |
+            bin/wpt
+            bin/fonts
+          key: css-wpt-${{ hashFiles('tests/css/import-wpt.mjs') }}
+      - name: DejaVu (the documents' fonts, for both)
+        run: test -f bin/fonts/dejavu-2.37/DejaVuSansMono.ttf || node tests/css/import-wpt.mjs --checkout
+      - name: WeasyPrint's PDFs
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends python3-venv libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+          python3 -m venv "$RUNNER_TEMP/weasyprint"
+          "$RUNNER_TEMP/weasyprint/bin/pip" install -q weasyprint
+          "$RUNNER_TEMP/weasyprint/bin/weasyprint" --version
+          mkdir -p bin/pdf-docs
+          for f in tests/pdf-docs/*.html; do "$RUNNER_TEMP/weasyprint/bin/weasyprint" "$f" "bin/pdf-docs/$(basename "$f" .html).weasyprint.pdf"; done
+      - name: helder pdf, its goldens, and the comparison
+        run: bun run test -k pdf-docs
+      - if: ${{ !cancelled() }}
+        run: cat bin/pdf-docs/similarity.md >> "$GITHUB_STEP_SUMMARY" || true
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with: {name: pdf-docs, path: bin/pdf-docs, retention-days: 14, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 
