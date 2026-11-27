@@ -4,7 +4,8 @@ import helder.test.Pages;
 import helder.test.Test;
 
 // Tables across pages: breaks between rows, the header and footer on
-// each page; a row taller than the page split inside its cells; a
+// each page; a row taller than the page split inside its cells; its
+// border, padding and spacing at a break sliced or cloned; a
 // collapsed-border table's grid per page.
 function tests() {
 	describe("PagedTables", () -> {
@@ -36,5 +37,24 @@ function tests() {
 			equals([on(v, 1, "h"), on(v, 1, "r6"), on(v, 1, "r11"), on(v, 1, "f")], [0.0, 10, 60, 70]);
 			equals(on(v, 0, "r6"), Math.NaN);
 		});
+		test("a table broken: its border, padding and spacing sliced, to the page's end; cloned: whole on each page", () -> {
+			var rows = [for (k in 0...6) '<tr><td id=r$k style="height:20px;padding:0"></td></tr>'].join("");
+			var v = paged('<table style="border:5px solid;padding:5px;border-spacing:0 5px">$rows</table>');
+			equals(v.layout(), 3);
+			// (the rows 15 down the first page, at the top of the next: their edges and spacing above there sliced)
+			equals([on(v, 0, "r0"), on(v, 1, "r2"), on(v, 2, "r5")], [15.0, 0, 0]);
+			equals([for (p in 0...3) edges(v, p)], ["end", "startend", "start"]);
+			equals(v.fragments.height(grid(v, 0)), 80.0);
+			var c = paged('<table style="border:5px solid;padding:5px;border-spacing:0 5px;box-decoration-break:clone">$rows</table>');
+			equals(c.layout(), 3);
+			equals([on(c, 1, "r2"), on(c, 2, "r4")], [15.0, 15]);
+			equals([for (p in 0...3) edges(c, p)], ["", "", ""]);
+		});
 	});
+}
+
+// (the table box's fragment on a page: its sliced edges)
+private function edges(v:PagedView, page:Int):String {
+	var k = grid(v, page), f = v.fragments;
+	return (f.start(k) == Box.NO_START ? "start" : "") + (f.end(k) == Box.NO_END ? "end" : "");
 }

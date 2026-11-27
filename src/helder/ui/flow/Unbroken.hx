@@ -53,7 +53,7 @@ class Unbroken implements Fragmentation {
 		return new Breaks(Math.POSITIVE_INFINITY, null);
 	}
 
-	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
+	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float, ?tall:Bool):Bool
 		return false;
 
 	public function carry(float:Box, token:BreakToken)

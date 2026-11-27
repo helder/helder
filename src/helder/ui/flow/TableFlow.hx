@@ -547,6 +547,9 @@ class TableFlow implements FormattingContext {
 		// (in a fragmentainer: its header rows, the body rows from where it resumes to where it breaks, its
 		// footer rows; captions above only where it starts, below only where it ends)
 		var shown = [for (_ in 0...rows) true];
+		// (in a fragmentainer: where the table box starts in it; box-decoration-break: clone, each fragment its border,
+		// padding and spacing whole, the bottom ones' room kept as it is)
+		var tableTop = 0.0, clone = t.style.keyword("box-decoration-break") == "clone";
 		// (rows broken inside here, their cells at their top)
 		var split = [for (_ in 0...rows) false];
 		var resumed = false, broken = false;
@@ -562,6 +565,8 @@ class TableFlow implements FormattingContext {
 				for (r in a...b) h += rowH[r] + g.spacingV;
 				return h;
 			}
+			// (one not repeated still the table's head or foot: no break between it and the body's first or last row)
+			var head = hEnd, foot = fStart;
 			if (rowsH(0, hEnd) > fr.size / 4) hEnd = 0;
 			if (rowsH(fStart, rows) > fr.size / 4) fStart = rows;
 			var r0 = hEnd;
@@ -572,18 +577,21 @@ class TableFlow implements FormattingContext {
 					if (at != null && at.child == g.rows[r]) r0 = r;
 				}
 			}
-			var y = space.pageTop + edges[0] + g.spacingV;
+			// (resumed: its top border, padding and spacing were in the fragmentainer before, sliced)
+			var y = space.pageTop;
 			if (!resumed) for (k in wrapper.children()) if (k != t && k.style.keyword("caption-side") != "bottom") {
 				var f = flow.child(k, space.child(w, Math.NaN));
 				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
 			} else if (k == t) break;
+			tableTop = y;
+			if (!resumed || clone) y += edges[0] + g.spacingV;
 			for (r in 0...hEnd) y += rowH[r] + g.spacingV;
 			var footerH = edges[2] + space.reserve;
 			for (r in fStart...rows) footerH += rowH[r] + g.spacingV;
 			var end = fStart, prev = y;
 			for (r in r0...fStart) {
 				// (between rows: not where a cell spans them)
-				if (r > r0 && !Lambda.exists(g.cells, c -> c.row < r && c.row + c.rows > r)
+				if (r > r0 && !(hEnd == 0 && r == head) && !(fStart == rows && r == foot) && !Lambda.exists(g.cells, c -> c.row < r && c.row + c.rows > r)
 					&& (fr.between(g.rowGroups[r] ?? t, g.rows[r - 1], g.rows[r], prev + footerH) || fr.stopped)) {
 					end = r;
 					broken = true;
@@ -594,13 +602,15 @@ class TableFlow implements FormattingContext {
 				var row = g.rows[r], at = fr.resume(row);
 				var inside = r == r0 && at != null && at.parallel != null;
 				if ((inside || y + rowH[r] + footerH > fr.size + 0.01) && !Lambda.exists(g.cells, c -> c.rows > 1 && c.row <= r && c.row + c.rows > r)) {
+					var whole = rowH[r];
 					var s = splitRow(g, r, space, fr, y, footerH, colX);
 					var going = s.tokens.iterator().hasNext() && s.progress;
 					split[r] = inside;
 					// (resumed: as tall as its cells' rest; else its height as laid out, the break not taken here: as it
 					// would go on, for the opportunities after it)
 					if (inside) rowH[r] = s.height else rowH[r] = Math.max(rowH[r], s.height);
-					if (going && (fr.split(row, s.tokens, y + s.height + footerH) || fr.stopped)) {
+					// (its cells' breaks kept the footer's room: broken, they reach the fragmentainer's end, so it fits there)
+					if (going && (fr.split(row, s.tokens, Math.min(y + s.height + footerH, fr.size), whole > fr.size) || fr.stopped)) {
 						split[r] = true;
 						rowH[r] = Math.max(s.height, fr.size - footerH - y);
 						end = r + 1;
@@ -615,16 +625,19 @@ class TableFlow implements FormattingContext {
 			}
 			for (r in hEnd...fStart) shown[r] = r >= r0 && r < end;
 		}
-		var rowY = [], y = edges[0] + g.spacingV;
+		var rowY = [], y = resumed && !clone ? 0 : edges[0] + g.spacingV;
 		for (r in 0...rows) {
 			rowY.push(y);
 			if (shown[r]) y += rowH[r] + g.spacingV;
 		}
 		rowY.push(y);
-		if (fr != null) gridH = y + edges[2];
+		// (broken: its bottom spacing, padding and border in a later fragmentainer, sliced; to the fragmentainer's end, as
+		// a block's)
+		if (fr != null) gridH = broken && !clone ? Math.max(y - g.spacingV, fr.size - tableTop) : y + edges[2];
 		// (fragments: the table box; its column groups and columns, row groups, rows and cells, in
 		// the order their backgrounds paint, §17.5.1)
 		var tf = frags.add(Fragments.BOX, t, w, gridH);
+		if ((resumed || broken) && !clone) frags.setRange(tf, resumed ? Box.NO_START : 0, broken ? Box.NO_END : 0);
 		var tg = g.borders ?? new TableGrid(cols, rows);
 		for (c in 0...cols) {
 			tg.x.push(colX[c]);

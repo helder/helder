@@ -50,8 +50,10 @@ interface Fragmentation {
 	function parallel(box:Box, child:Box):Null<Breaks>;
 	// box broken inside, its parallel flows each at its own break (tokens:
 	// those that go on), what is before the break ending at bottom; true:
-	// break here (box resumes with the tokens, BreakToken.SPLIT)
-	function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool;
+	// break here (box resumes with the tokens, BreakToken.SPLIT). tall: box
+	// is taller than a fragmentainer, its own break-inside: avoid not kept
+	// (Fragmentation 3 §4.4: nowhere it would fit)
+	function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float, ?tall:Bool):Bool;
 	// a float broken across fragmentainers: its token carried to the next,
 	// wherever the break is (uncarry: its line went to the next itself)
 	function carry(float:Box, token:BreakToken):Void;
