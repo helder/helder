@@ -7,9 +7,16 @@ class Css {
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
 		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively, and its noref tests against goldens Chromium draws (Playwright; reftest-manifest.json; args: directories or names to run alone)", run: reftests},
 		{name: "css-paged", about: "real documents on pages (tests/paged: an invoice, a report) against their goldens of our own output, drawn by PagedView (BLESS=1 takes them); a screen-only program without the paged host's fragmentation in its symbols", run: pagedLane},
+		{name: "css-app", about: "src/helder/css/ua/app.css against helder.ui today: example screens (todo, mail) mirrored as helder.dom trees, their computed values compared (a report: bin/css/app-ua.md)", run: app},
 		{name: "css-render", about: "a page drawn by helder.ui.box: css-render <page> <out.png> [width height] [--tree]", run: render},
 		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors (parsed, matched on helder.dom) against WPT's fixtures and css-parsing-tests", run: css}
 	];
+
+	// (the app user agent sheet's draft against helder.ui's defaults: a report, not a gate)
+	static function app() {
+		exe("bin/css/AppUaCheck", uiCp().concat(cps(["tests/css"])).concat(["-main", "AppUaCheck"]));
+		run(exePath("bin/css/AppUaCheck", HOST), []);
+	}
 
 	static function css() {
 		exe("bin/css/CssCheck", cps(["src", "tests/css"]).concat(["-main", "CssCheck"]));
@@ -46,6 +53,10 @@ class Css {
 		var expected = "block 14px 28px 3px 1px rgb(0, 128, 0) rgb(0, 0, 200) 12px 6px";
 		probe("ThemeProbe", expected, []);
 		probe("ThemeProbe", expected, ["-D", "css.parse"]);
+		// (the user agent's sheet compiled too: a document styled by it alone links no parser)
+		var ua = "32px 700 16px block inline list-item underline linktext 1";
+		probe("UaProbe", ua, []);
+		probe("UaProbe", ua, ["-D", "css.parse"]);
 	}
 
 	// (CSS modules: a program styled through one, its values and no parser
