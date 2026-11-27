@@ -83,6 +83,9 @@ class View {
 		wasm("bin/web/demo/counter-ui.wasm", cps(["src", "examples/counter"]).concat(["-main", "Counter"]));
 		for (f in FileSystem.readDirectory("bin/web/demo"))
 			if (f.endsWith(".log")) FileSystem.deleteFile('bin/web/demo/$f');
+		// (a plain UI program links no helder.async but Errors: tests/web/links.mjs)
+		wasm("bin/ui/WebTodo.wasm", uiCp().concat(["-main", "WebTodo"]));
+		run(NODE, ["tests/web/links.mjs", "bin/web/domtest.js", "bin/web/demo/counter-ui.wasm", "bin/ui/WebTodo.wasm"]);
 		run(NODE, ["tests/web/web.mjs", "bin/web"]);
 	}
 
