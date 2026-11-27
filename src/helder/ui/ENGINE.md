@@ -24,31 +24,32 @@ and fast.
 
 | Step | What | State |
 | --- | --- | --- |
-| 1 | Size gate: binary sizes with a per-class map | parked; a CI-only lane later |
+| 1 | Size gate: binary sizes with a per-class map | done: the `size` lane (#459), CI-only, per-OS baselines |
 | 2 | Style storage: property ids, interned groups, typed reads, impact classes | done (#339; #346 sharing: the HTML Standard styled in 238 ms) |
 | 3 | Box tree, block and inline flow, paint, hit testing; the WPT reftest gate | done (#341–#348, #358, #360); flex and grid in the engine (#391, #395), aspect-ratio and grid tracks (#403) |
 | 4 | Live styling: rule index, Bloom filter, state, invalidation, compiled sheets, CSS modules | done (#332, #337, #352, #354); unsupported-CSS diagnostics and the support table open |
-| 5 | The port: helder.ui on helder.dom, the app UA sheet (src/helder/css/ua/app.css), the codemod | 5a (a live document in a window, and its benches) in progress; the -helder- properties (#390, #435) and the codemod plan (src/helder/css/ua/README.md) are ready |
+| 5 | The port, now **fast nodes**: the box tree is the base layer; a fast node is a box made from code with a typed `Style` (no DOM, no cascade), DOM documents build the same boxes; one tree for selection, hit testing, focus and accessibility | 5a done (#447–#503: a live document in a window, its benches, exact layout); fast nodes steps 1–4 done (#498 bench, #499 Box off the DOM, #500/#506/#511 typed BoxStyle, #503 paint reuse, #516 `Style`/`Node`/`Tree` and the `fast-probe` lane); step 5 (the real todo through markup) in progress |
 | 6 | Floats, positioning, tables, lists, generated content, containment | done (#349, #351, #355, #363, #366, #414, #417) |
 | 7 | Paged media: fragmentation, PagedView, margin boxes, GCPM | done for checkpoint 1 (#375–#442): pages, margin boxes, running heads, cross-references, tables, floats, flex and grid across pages, monolithic overflow |
 | 8 | HTML→PDF end to end | done: `helder pdf` and `PagedView.toPdf()`; real text, outline, links, colour fonts, SVG as vectors, deduplicated images |
 
-## Where it stands (2026-11-27)
+## Where it stands (2026-11-27, evening)
 
-- **WPT gate (`css-reftests`):** 7,324 of 9,047 pass (81%), 1,723 pending with reasons, 149 skipped; the same on macOS and Linux.
-- **Values:** 19,924 of 20,206 WPT value rows; interpolation 3,500 of 4,456; Taffy (flex/grid) 4,667 of 5,232.
-- **Against WeasyPrint** (tests/pdf-docs): 95–99.8% per document, identical page breaks.
-- **Size and speed** (a one-off html2pdf, not committed): 4.5 MB wasm, 5.3 MB native; a document converts in 10–40 ms warm (natively 4–28 ms), about takumi-pdf's speed; the first conversion in a process costs 60–120 ms in wasm (V8 compiling lazily, the UA sheet parsed at run time).
+- **WPT gate (`css-reftests`):** 7,509 of 9,047 pass, 1,538 pending with reasons, 149 skipped; box conformance (Taffy) 4,671 of 5,232.
+- **Values:** 19,924 of 20,206 WPT value rows; interpolation 3,500 of 4,456.
+- **Against WeasyPrint** (tests/pdf-docs): 98.5–100% per document with exact metrics (#453), identical page breaks.
+- **Documents in a window, against browsers** (tests/bench/results/document.md, measured on one Mac, pages served locally): the HTML Standard loads in 1.9 s (Chromium 1.8, Ladybird 4.2), relayouts at a new width in ~207 ms (Chromium 139, Ladybird 294), and holds 843 MB RSS (Chromium 1,176, Ladybird 2,298). On the ECMAScript spec, War and Peace and Japanese pitch accent helder uses less memory than both browsers; load is faster than both on the first two.
+- **Apps:** fast nodes are within 1.43× of helder.ui on every todo/mail operation (most at or under 1.35×), and a fast-only todo is +15% in size over helder.ui's (6.31 MB native); the same screens through the DOM are +45% / +53% wasm.
+- **Size work** (#456 sheets as data, #458 tables as data, #462 no run-time parsers, #474–#478 layouts, counters and the matcher only when used) ended at the engine's core; the rest is hxmc's code generation.
 
 ## Next
 
-Conformance is paused at a good place; pick up from here:
-
-1. **The port (step 5)**: finish 5a and decide from its benches; then markup to DOM elements, controls as element classes, the codemod, the size gate.
-2. **WeasyPrint features still missing**: footnotes (`float: footnote`), multi-column layout (also unlocks ~1,100 css-break tests), http(s) resources in `helder pdf`, tagged PDF (PDF/UA) and PDF/A.
-3. **Engine gaps by stage** (the gate's pending reasons): inline and bidi (::first-line, white-space, bidi edge cases), the rest of paged (margin-box edge cases, named pages and page sizes, abspos inside abspos), SVG (`<text>`, patterns, masks, filters), tables' tail.
-4. **Startup**: compile the UA sheet at build time in `helder pdf` (CssUserAgentTheme), `wasm-opt -Oz` for release wasm (−14% size).
-5. **A one-off quality check when ready**: helder vs WeasyPrint vs Chromium print, plus qpdf and Poppler/mutool text extraction (not in CI).
+1. **Fast nodes (step 5 onward; the design: decisions recorded in the 2026-11-27 PRs #498–#516)**: the real todo through its markup, with focus, keys, accessibility and selection on fast boxes, then mail; `Style.of` and CSS modules resolved at build time, static subtrees as templates; CSS transitions on helder.ui's motion clock (deterministic for scenarios); then fast nodes become `helder.ui.Node` and helder.ui's own Layout goes.
+2. **Owed with an unlocked screen**: the real-input `document-window` run (six pages) and SystemLayersWindowCheck.
+3. **Engine gaps by stage** (the gate's pending reasons): tables (~580), generated content and positioning tails, inline and bidi, floats, the rest of paged, SVG (`<text>`, patterns, masks, filters).
+4. **WeasyPrint features still missing**: footnotes, multi-column layout (also ~1,100 css-break tests), http(s) resources in `helder pdf`, PDF/UA and PDF/A.
+5. **CSS animations**: `@keyframes` and `animation-*` (transitions first, with fast nodes' motion).
+6. **Async scrolling ahead**: the compositor scrolls at most a viewport past what was recorded while the program is busy; Chromium records a larger interest area.
 
 ## Decisions
 
