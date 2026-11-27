@@ -59,7 +59,9 @@ const TYPES = {
   '.woff2': 'font/woff2'
 }
 
-const browser = await pw.chromium.launch({args: ['--force-color-profile=srgb', '--hide-scrollbars', '--font-render-hinting=none']})
+// (grayscale text on every platform: Linux's fontconfig asks for LCD
+// antialiasing, which headless Chromium follows; macOS's has none)
+const browser = await pw.chromium.launch({args: ['--force-color-profile=srgb', '--hide-scrollbars', '--font-render-hinting=none', '--disable-lcd-text']})
 // (the key: WPT's revision, Chromium's version, and how goldens are drawn (this
 // script, the fonts): the same on every machine)
 const drawing = createHash('sha256').update(fs.readFileSync(new URL(import.meta.url))).update(JSON.stringify(fonts)).digest('hex').slice(0, 8)

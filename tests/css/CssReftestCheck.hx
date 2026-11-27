@@ -169,7 +169,10 @@ class CssReftestCheck {
 
 	// (goldens Chromium draws against the test's own words: skipped, why)
 	static final CHROMIUM = [
-		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)"
+		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)",
+		// (drawn differently by Chromium on Linux and macOS: no golden holds on both)
+		"css/CSS2/ui/system-colors-001.xht" => "Highlight is the platform's (macOS's selection colour, Linux's own)",
+		"css/CSS2/fonts/font-weight-017.xht" => "its glyphs' bottom row differs between Linux's and macOS's rasterizers"
 	];
 
 	// (drawn on pages: a print reftest, a paged directory's crash test)
@@ -228,6 +231,14 @@ class CssReftestCheck {
 		var u = unexplained(test, g);
 		if (Sys.getEnv("GOLDEN_DEBUG") == "1") Sys.println('$dir/${t.name}\t${u.flat}\t${u.edges}');
 		if (u.flat == 0 && u.edges <= EDGES) return {pass: true, why: ""};
+		// (GOLDEN_OUT: a failing test's drawing and its golden side by side, to see why: CI uploads them)
+		var out = Sys.getEnv("GOLDEN_OUT");
+		if (out != null) {
+			var at = '$out/$dir/${t.name}';
+			FileSystem.createDirectory(haxe.io.Path.directory(at));
+			File.saveBytes('$at.png', helder.image.PngEncoder.encode(test, W, H, true));
+			File.copy(file, '$at.golden.png');
+		}
 		return {pass: false, why: '${u.flat + u.edges} pixels differ from Chromium\'s'};
 	}
 
