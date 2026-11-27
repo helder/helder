@@ -21,7 +21,7 @@ class WebPage implements Markup {
 	static function main() {
 		var page = open(#if sys Sys.args() #else [] #end);
 		var node:Null<DocumentNode> = null;
-		node = new DocumentNode(Dom.parse(page.html), {url: page.url, load: page.load, image: page.image});
+		node = DocumentNode.html(Dom.parse(page.html), {url: page.url, load: page.load, image: page.image});
 		node.onLink = (url, a) -> {
 			var hash = url.indexOf("#");
 			var el = hash >= 0 && url.substr(0, hash) == page.url.split("#")[0] ? node.document.getElementById(url.substr(hash + 1)) : null;

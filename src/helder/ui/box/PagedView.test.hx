@@ -132,7 +132,7 @@ function tests() {
 			// (half the leading above the text, unfloored: Blink's 11 px here)
 			var line = v.fragments.first(find(v, 0, "p"));
 			approx(v.fragments.baseline(line), (15.6 - a - d) / 2 + a, 1e-3);
-			var s = new DocumentView(Dom.parse(html), {fonts: f});
+			var s = DocumentView.html(Dom.parse(html), {fonts: f});
 			s.layout(200, 100);
 			var sp = s.fragments, sk = -1;
 			for (i in 0...sp.count) if (sp.kind(i) == Fragments.LINE && sk < 0) sk = i;

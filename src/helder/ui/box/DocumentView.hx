@@ -42,12 +42,19 @@ typedef DocumentViewOptions = {
 	?author:Array<helder.css.CssSheet>
 }
 
-// A helder.dom document styled, laid out and painted: the cascade
-// (helder.css, HTML's presentational hints on, as browsers have them),
-// the box tree, flow layout into fragments, paint in CSS 2.1 Appendix E's
-// order, hit testing.
+// How a view's document is styled at a viewport: DocumentView.html (HTML's
+// cascade: the user agent's sheet, <style>, <link>, style attributes,
+// presentational hints, all parsed when the program runs) or an app's
+// (CssCascade.themed with sheets compiled at build time: no parser linked).
+typedef DocumentCascade = (document:Document, media:CssMediaContext, options:DocumentViewOptions) -> CssStyles;
+
+// A helder.dom document styled, laid out and painted: the cascade (the
+// caller's, so that a program links only the one it uses), the box tree,
+// flow layout into fragments, paint in CSS 2.1 Appendix E's order, hit
+// testing.
 //
-//   var view = DocumentView.render(doc, 800, canvas);   // canvas: a Painter, 800 wide
+//   var view = DocumentView.render(doc, 800, canvas);   // HTML's cascade; canvas: a Painter, 800 wide
+//   var app = new DocumentView(doc, (d, media, _) -> CssCascade.themed(d, [CssUserAgentTheme.app(), CssTheme.file("app.css")], {media: media}));
 //   view.hit(10, 20);                                    // {node, offset}
 //   view.selection({node: a, offset: 0}, {node: b, offset: 3});   // its rectangles
 //   File.saveBytes("page.png", DocumentView.png(doc, 800, 600));
@@ -76,6 +83,7 @@ class DocumentView {
 	public var order(default, null):Null<PaintOrder> = null;
 
 	final options:DocumentViewOptions;
+	final cascade:DocumentCascade;
 	final images = new Map<String, Null<Bitmap>>();
 	final svgs = new Map<String, Null<helder.canvas.Svg>>();
 	var viewWidth = 0.0;
@@ -89,14 +97,30 @@ class DocumentView {
 	var whole = 0;
 	var sticky = false;
 
-	public function new(document:Document, ?options:DocumentViewOptions) {
+	public function new(document:Document, cascade:DocumentCascade, ?options:DocumentViewOptions) {
 		this.document = document;
+		this.cascade = cascade;
 		this.options = options ?? {};
 		fonts = this.options.fonts ?? new FontMatch();
 	}
 
+	// A document styled as HTML is: DocumentCascade's HTML cascade.
+	public static function html(doc:Document, ?options:DocumentViewOptions):DocumentView
+		return new DocumentView(doc, htmlCascade, options);
+
+	public static function htmlCascade(document:Document, media:CssMediaContext, options:DocumentViewOptions):CssStyles
+		return CssCascade.styles(document, {
+			media: media,
+			viewport: options.viewport,
+			load: options.load,
+			url: options.url,
+			userAgent: options.userAgent,
+			author: options.author,
+			hints: true
+		});
+
 	public static function render(doc:Document, width:Int, painter:Painter, ?options:DocumentViewOptions):DocumentView {
-		var v = new DocumentView(doc, options);
+		var v = html(doc, options);
 		v.layout(width, painter.height);
 		v.paint(painter);
 		return v;
@@ -115,15 +139,7 @@ class DocumentView {
 	public function layout(width:Float, height:Float):Int {
 		var media = options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8};
 		if (styles == null || (width != viewWidth || height != viewHeight) && !styles.holds(media)) {
-			styles = CssCascade.styles(document, {
-				media: media,
-				viewport: options.viewport,
-				load: options.load,
-				url: options.url,
-				userAgent: options.userAgent,
-				author: options.author,
-				hints: true
-			});
+			styles = cascade(document, media, options);
 			// (ex, ch, cap, ic and line-height: normal from the first available font, as styles compute)
 			styles.metrics = fonts.metrics;
 			if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);

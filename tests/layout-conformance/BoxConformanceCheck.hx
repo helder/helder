@@ -114,7 +114,7 @@ class BoxConformanceCheck {
 			+ ' #v { position: absolute; left: 0; top: 0; flex-direction: row; align-items: start; width: ${f.viewport.width}; height: ${f.viewport.height} }</style>'
 			+ '<div id=v>${body.toString()}</div>';
 		var doc = Dom.parse(html);
-		var view = new DocumentView(doc, {fonts: fonts});
+		var view = DocumentView.html(doc, {fonts: fonts});
 		view.layout(100000, 100000);
 		var frags = view.fragments;
 		function boxOf(el:Element):Int {

@@ -18,7 +18,7 @@ function tests() {
 			v.layout(180, 200);
 			v.layout(260, 200);
 			v.layout(180, 200);
-			var fresh = new DocumentView(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
 			fresh.layout(180, 200);
 			equals(geometry(v), geometry(fresh));
 		});
@@ -86,7 +86,7 @@ function tests() {
 }
 
 private function live(body:String):DocumentView {
-	var v = new DocumentView(Dom.parse('<!doctype html>' + body), {fonts: ahem()});
+	var v = DocumentView.html(Dom.parse('<!doctype html>' + body), {fonts: ahem()});
 	v.layout(300, 200);
 	return v;
 }

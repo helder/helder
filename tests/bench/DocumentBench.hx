@@ -1,6 +1,7 @@
 import haxe.Timer;
 import haxe.io.Bytes;
-import helder.css.CssSheet;
+import helder.css.CssCascade;
+import helder.css.CssTheme;
 import helder.css.CssUserAgentTheme;
 import helder.dom.Dom;
 import helder.dom.Document;
@@ -23,11 +24,15 @@ using StringTools;
 // the GPU waited for), the least and the median of runs (bench document):
 //
 //   DocumentBench apps                       examples/todo and examples/mail as helder.ui
-//                                            draws them, and mirrored as helder.dom trees
-//                                            styled by src/helder/css/ua/app.css (AppUaCheck's
-//                                            mirror, :hover's looks as rules): the first frame,
-//                                            the list scrolled, rows hovered, a field typed
-//                                            into, the window resized, 1,000 rows added
+//                                            draws them, and mirrored as an app on the engine
+//                                            would have them: helder.dom trees built in code,
+//                                            styled by ua/app.css and the screen's sheet
+//                                            (tests/bench/document/<screen>.css: each node's own
+//                                            style and :hover look as classes), both compiled at
+//                                            build time, no parser: the first frame, the list
+//                                            scrolled, rows hovered, a field typed into, the
+//                                            window resized, 1,000 rows added
+//   DocumentBench sheets                     those sheets written again (a screen changed)
 //   DocumentBench doc <page.html> [sheets.json] [name]
 //   DocumentBench sample | sample-files <dir> | mem <todo|mail> <helder.ui|engine>
 //                                            a page in a scroller: loaded to its first frame,
@@ -61,6 +66,13 @@ class DocumentBench {
 				sample();
 			case "mem":
 				memory(args[1], args[2]);
+			case "sheets":
+				// (the mirrors' sheets, compiled into the engine's screens: tests/bench/document/<screen>.css)
+				for (name in ["todo", "mail"]) {
+					var css = sheetText([name == "todo" ? todoMirror(20) : mailMirror(20), name == "todo" ? todoMirror(1020) : mailMirror(1020)]);
+					sys.io.File.saveContent('tests/bench/document/$name.css', css);
+					Sys.println('tests/bench/document/$name.css');
+				}
 			case "sample-files":
 				// (the sample page and its images as files, for Chromium)
 				var dir = args[1];
@@ -70,7 +82,7 @@ class DocumentBench {
 					sys.io.File.saveBytes('$dir/$n', helder.image.PngEncoder.encode(b.straight(), b.width, b.height));
 				}
 			case _:
-				Sys.println("DocumentBench apps | doc <page.html> [sheets.json] [name] | sample");
+				Sys.println("DocumentBench apps | doc <page.html> [sheets.json] [name] | sample | sheets");
 		}
 	}
 
@@ -221,7 +233,8 @@ class DocumentBench {
 		}
 		// (the mirrors: as helder.ui lays the screen out with 20 rows, and with 1,000 more)
 		var m20 = mirror(mount(20).ui), m1020 = mirror(mount(1020).ui);
-		var rowsAdded = rowsOf(m1020.html, "list", 20);
+		fresh("todo", [m20, m1020]);
+		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Todo) -> a.todos(a.todos().concat(items(1000, 20))), "draft");
 	}
 
@@ -251,12 +264,13 @@ class DocumentBench {
 			return {ui: ui, app: app};
 		}
 		var m20 = mirror(mount(20).ui), m1020 = mirror(mount(1020).ui);
-		var rowsAdded = rowsOf(m1020.html, "list", 20);
+		fresh("mail", [m20, m1020]);
+		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Mail) -> a.messages(messages(1020)), "search");
 	}
 
 	// (each operation on helder.ui's screen, then on the engine's)
-	static function app<A>(w:Int, h:Int, mount:Void->{ui:Ui, app:A}, m:Mirror, rowsAdded:String, add:(Ui, A) -> Void, field:String) {
+	static function app<A>(w:Int, h:Int, mount:Void->{ui:Ui, app:A}, m:Mirror, rowsAdded:Array<MirrorNode>, add:(Ui, A) -> Void, field:String) {
 		// (helder.ui)
 		variant = "helder.ui";
 		var made = first("first frame (20 rows)", () -> {
@@ -295,12 +309,10 @@ class DocumentBench {
 
 		// (the engine)
 		variant = "engine";
-		var ua = CssUserAgentTheme.app();
-		var author = [CssSheet.parse(m.css, Author)];
 		function mountDoc():{ui:Ui, doc:Null<DocumentNode>, keep:Document} {
 			var ui = new Ui(new DrawText(), w, h);
-			var d = Dom.parseXml(m.html);
-			var node = new DocumentNode(d, {userAgent: ua, author: author});
+			var d = build(m);
+			var node = engineNode(d);
 			node.style.flexGrow = 1;
 			ui.root.append(node);
 			return {ui: ui, doc: node, keep: d};
@@ -401,18 +413,69 @@ class DocumentBench {
 		return [doc.absX + p.x, doc.absY + p.y, f.width(id), f.height(id)];
 	}
 
-	// (the list's rows past the first `from`, as markup)
-	static function rowsOf(html:String, tag:String, from:Int):String {
-		var d = Dom.parseXml(html), list = byTag(d, tag);
-		var out = new StringBuf(), k = 0;
-		for (c in list.children) if (k++ >= from) out.add(Dom.serialize(c));
-		return out.toString();
+	// (the list's rows past the first `from`)
+	static function rowsOf(root:MirrorNode, tag:String, from:Int):Array<MirrorNode> {
+		function find(n:MirrorNode):Null<MirrorNode> {
+			if (n.tag == tag) return n;
+			for (c in n.children) {
+				var f = find(c);
+				if (f != null) return f;
+			}
+			return null;
+		}
+		return find(root).children.slice(from);
 	}
 
-	static function appendRows(d:Document, list:Element, rows:String) {
-		var holder = Dom.parseXml('<x>$rows</x>').documentElement;
-		var kids = [for (c in holder.children) c];
-		for (c in kids) list.appendChild(d.adoptNode(c));
+	static function appendRows(d:Document, list:Element, rows:Array<MirrorNode>) {
+		for (r in rows) list.appendChild(element(d, r));
+	}
+
+	// (the engine's screen as an app has it: its tree built in code, styled by
+	// app.css and the screen's sheet, both compiled at build time: no parser)
+	static function engineNode(d:Document):DocumentNode {
+		var sheets = [CssUserAgentTheme.app(), screen == "todo" ? CssTheme.file("document/todo.css") : CssTheme.file("document/mail.css")];
+		return new DocumentNode(d, (doc, media, _) -> CssCascade.themed(doc, sheets, {media: media}));
+	}
+
+	static function build(m:Mirror):Document {
+		var d = new Document();
+		d.append(element(d, m.root));
+		return d;
+	}
+
+	static function element(d:Document, n:MirrorNode):Element {
+		var e = d.createElement(n.tag);
+		for (a in n.attrs) e.setAttribute(a[0], a[1]);
+		if (n.text != null) e.append(d.createTextNode(n.text));
+		for (c in n.children) e.appendChild(element(d, c));
+		return e;
+	}
+
+	// (the screen's sheet: the mirrors' classes, sorted; the checked-in one the same, else stale)
+	static function sheetText(ms:Array<Mirror>):String {
+		var rules = new Map<String, String>();
+		for (m in ms) for (k => v in m.rules) rules.set(k, v);
+		var keys = [for (k in rules.keys()) k];
+		keys.sort(Reflect.compare);
+		return HEADER + [for (k in keys) '$k { ${rules[k]} }\n'].join("");
+	}
+
+	static function fresh(name:String, ms:Array<Mirror>) {
+		var file = 'tests/bench/document/$name.css';
+		var have = sys.FileSystem.exists(file) ? sys.io.File.getContent(file) : "";
+		if (have != sheetText(ms)) throw '$file is stale (the screen changed): DocumentBench sheets writes it again';
+	}
+
+	// (the window's height; the screen's top box shrinks to it: helder.ui's
+	// Layout lets it, where CSS's automatic minimum height of a flex item
+	// keeps its content's, a port difference this says)
+	static final HEADER = ":root { height: 100% } :root > *, :root > * > * { min-height: 0 }\n";
+
+	// (a string's FNV-1a hash, as a class name's hex)
+	static function hash(s:String):String {
+		var h = 0x811c9dc5;
+		for (i in 0...s.length) h = (h ^ StringTools.fastCodeAt(s, i)) * 0x01000193;
+		return StringTools.hex(h, 8).toLowerCase();
 	}
 
 	// ---- the mirror: a helder.ui tree as a helder.dom document (AppUaCheck's,
@@ -420,45 +483,43 @@ class DocumentBench {
 	// each node whose look changes when hovered as a :hover rule
 
 	static function mirror(ui:Ui):Mirror {
-		var out = new StringBuf(), css = new StringBuf(), count = 0, hovers = 0;
+		var rules = new Map<String, String>(), count = 0, hovers = 0;
 		// (each kind of node's look hovered, probed once: its slot, variant, size and state)
 		var kinds = new Map<String, Null<String>>();
-		// (the window's height; the screen's top box shrinks to it: helder.ui's
-		// Layout lets it, where CSS's automatic minimum height of a flex item
-		// keeps its content's, a port difference this says)
-		css.add(":root { height: 100% } :root > *, :root > * > * { min-height: 0 }\n");
-		function node(n:Node, depth:Int) {
+		function node(n:Node):MirrorNode {
 			count++;
 			var tag = n.tag == "textfield" ? "field" : n.tag == null || n.tag == "" ? "view" : n.tag;
 			if (!~/^[a-z][a-z0-9-]*$/.match(tag)) tag = "view";
-			out.add('<$tag');
-			if (n.tag != null && n.tag != "") out.add(' data-tag="${esc(n.tag)}"');
-			if (n.slot != null) out.add(' slot="${esc(n.slot)}"');
-			if (n.variant != null) out.add(' variant="${esc(n.variant)}"');
+			var attrs = [], classes = [];
+			if (n.tag != null && n.tag != "") attrs.push(["data-tag", n.tag]);
+			if (n.slot != null) attrs.push(["slot", n.slot]);
+			if (n.variant != null) attrs.push(["variant", n.variant]);
+			// (its own style as a class of the screen's sheet)
 			var style = declarations(n);
+			if (style != "") {
+				var c = "s" + hash(style);
+				rules.set('.$c', style);
+				classes.push(c);
+			}
 			if (n.slot != null) {
 				var kind = '${n.slot}-${n.variant}-${n.size}-${n.attr("data-state")}';
 				if (!kinds.exists(kind)) {
 					var look = hoverLook(ui, n);
-					kinds.set(kind, look == null ? null : 'hover-${++hovers}');
-					if (look != null) css.add('.hover-$hovers:hover { $look }\n');
+					kinds.set(kind, look);
+					if (look != null) {
+						hovers++;
+						rules.set('.h${hash(look)}:hover', look);
+					}
 				}
-				var c = kinds.get(kind);
-				if (c != null) out.add(' class="$c"');
+				var look = kinds.get(kind);
+				if (look != null) classes.push('h${hash(look)}');
 			}
-			if (style != "") out.add(' style="${esc(style)}"');
-			out.add(">");
-			if (Std.isOfType(n, TextNode)) {
-				var t = (cast n : TextNode).text;
-				if (t != null) out.add(esc(t));
-			}
-			for (c in n.children) node(c, depth + 1);
-			out.add('</$tag>');
+			if (classes.length > 0) attrs.push(["class", classes.join(" ")]);
+			var text = Std.isOfType(n, TextNode) ? (cast n : TextNode).text : null;
+			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)]};
 		}
-		out.add('<root>');
-		for (c in ui.root.children) node(c, 0);
-		out.add('</root>');
-		return {html: out.toString(), css: css.toString(), nodes: count, hovers: hovers};
+		var root:MirrorNode = {tag: "root", attrs: [], text: null, children: [for (c in ui.root.children) node(c)]};
+		return {root: root, rules: rules, nodes: count, hovers: hovers};
 	}
 
 	static function esc(s:String):String
@@ -503,10 +564,11 @@ class DocumentBench {
 		var ui = new Ui(new DrawText(), w, h);
 		if (what == "engine") {
 			// (the mirror made by helder.ui, let go before the engine's screen is)
-			var m = name == "todo" ? todoMirror() : mailMirror();
+			var m = name == "todo" ? todoMirror(1020) : mailMirror(1020);
 			var b2 = live();
-			var d = Dom.parseXml(m.html);
-			var node = new DocumentNode(d, {userAgent: CssUserAgentTheme.app(), author: [CssSheet.parse(m.css, Author)]});
+			screen = name;
+			var d = build(m);
+			var node = engineNode(d);
 			node.style.flexGrow = 1;
 			ui.root.append(node);
 			step(ui, node);
@@ -539,23 +601,23 @@ class DocumentBench {
 		held = ui;
 	}
 
-	static function todoMirror():Mirror {
+	static function todoMirror(n:Int):Mirror {
 		var ui = new Ui(new DrawText(), 480, 560);
 		ui.theme = Todo.sheet;
 		var app = new Todo();
-		app.todos([for (i in 0...1020) new Item('Task ${i + 1}: water the plants and call back')]);
+		app.todos([for (i in 0...n) new Item('Task ${i + 1}: water the plants and call back')]);
 		Render.render(app.view(), ui.root);
 		Graph.flush();
 		ui.update();
 		return mirror(ui);
 	}
 
-	static function mailMirror():Mirror {
+	static function mailMirror(n:Int):Mirror {
 		var ui = new Ui(new DrawText(), 860, 560);
 		if (!declared) Mail.declare();
 		declared = true;
 		var app = new Mail();
-		app.messages(mailMessages(1020));
+		app.messages(mailMessages(n));
 		var root = new Node();
 		root.theme = Mail.sheet;
 		root.style.flexGrow = 1;
@@ -599,7 +661,7 @@ class DocumentBench {
 			var t0 = Timer.stamp();
 			var d = Dom.parse(html);
 			parse = (Timer.stamp() - t0) * 1000;
-			var node = new DocumentNode(d, {url: url, load: load, image: image});
+			var node = DocumentNode.html(d, {url: url, load: load, image: image});
 			var sc = new Node("scroll");
 			sc.style.overflow = Scroll;
 			sc.style.flexGrow = 1;
@@ -662,4 +724,6 @@ class DocumentBench {
 	}
 }
 
-private typedef Mirror = {html:String, css:String, nodes:Int, hovers:Int};
+// (a helder.ui tree as the elements to make: tag, attributes, text, children)
+private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>};
+private typedef Mirror = {root:MirrorNode, rules:Map<String, String>, nodes:Int, hovers:Int};

@@ -154,9 +154,22 @@ own characters).
 window's renderer: put in a scroller, the compositor scrolls it.
 
 ```haxe
-var page = new DocumentNode(Dom.parse(html), {url: url, load: load, image: image});
+var page = DocumentNode.html(Dom.parse(html), {url: url, load: load, image: image});
 page.onLink = (url, a) -> open(url);
 scroller.append(page);                   // laid out at its width, as tall as the document
+```
+
+The cascade is the caller's (`DocumentCascade`), so that a program links
+only the one it uses. `DocumentNode.html` and `DocumentView.html` style
+as HTML does: the user agent's sheet, `<style>`, `<link>`, style
+attributes, presentational hints, parsed when the program runs. An app
+builds its tree in code and styles it with sheets compiled at build time
+alone, and links no CSS, HTML or XML parser (tests/css/EngineProbe.hx,
+the size lane's engine):
+
+```haxe
+var sheets = [CssUserAgentTheme.app(), CssTheme.file("app.css")];
+var app = new DocumentNode(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));
 ```
 
 - Paint: `UiPainter` is helder.canvas's Painter on helder.ui's Canvas,

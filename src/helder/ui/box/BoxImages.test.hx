@@ -42,7 +42,7 @@ function tests() {
 }
 
 private function view(body:String):DocumentView {
-	var v = new DocumentView(Dom.parse('<!doctype html><style>body { margin: 0 }</style>' + body));
+	var v = DocumentView.html(Dom.parse('<!doctype html><style>body { margin: 0 }</style>' + body));
 	v.layout(50, 50);
 	return v;
 }

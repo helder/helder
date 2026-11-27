@@ -36,7 +36,7 @@ function tests() {
 			var v = live(html);
 			el(v, "b").setState(ElementState.HOVER, true);
 			equals(v.update(), DocumentView.LAYOUT);
-			var fresh = new DocumentView(Dom.parse('<!doctype html>' + html.split("#b:hover").join("#b")), {fonts: ahem()});
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html.split("#b:hover").join("#b")), {fonts: ahem()});
 			fresh.layout(300, 200);
 			equals(geometry(v), geometry(fresh));
 		});
@@ -66,7 +66,7 @@ function tests() {
 }
 
 private function live(body:String):DocumentView {
-	var v = new DocumentView(Dom.parse('<!doctype html>' + body), {fonts: ahem()});
+	var v = DocumentView.html(Dom.parse('<!doctype html>' + body), {fonts: ahem()});
 	v.layout(300, 200);
 	v.watch();
 	return v;

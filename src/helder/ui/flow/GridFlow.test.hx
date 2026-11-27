@@ -52,7 +52,7 @@ private function view(body:String):DocumentView {
 	var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem }</style><body>$body');
 	var f = new FontMatch();
 	f.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "Ahem");
-	var v = new DocumentView(doc, {fonts: f});
+	var v = DocumentView.html(doc, {fonts: f});
 	v.layout(800, 600);
 	return v;
 }

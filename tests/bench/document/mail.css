@@ -1,0 +1,31 @@
+:root { height: 100% } :root > *, :root > * > * { min-height: 0 }
+.h44ae4906:hover { color: rgb(24, 24, 27) !important }
+.h71cb0573:hover { background-color: rgb(244, 244, 245) !important }
+.s02567820 { flex-shrink: 0; width: 340px; min-height: 0px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-left-radius: 8px; background-color: rgb(255, 255, 255); border-color: rgb(228, 228, 231); border-radius: 8px }
+.s04cd91af { flex-direction: row; padding-top: 6px; padding-right: 10px; padding-bottom: 6px; border-bottom-width: 1px; padding-left: 10px; column-gap: 8px; border-color: rgb(228, 228, 231) }
+.s05f861d9 { flex-direction: row; align-items: center; padding-top: 5px; padding-right: 8px; padding-bottom: 5px; padding-left: 24px; border-top-left-radius: 6px; border-radius: 6px }
+.s0df043dc { flex-shrink: 0; width: 52px; min-width: 0px; font-weight: 700 }
+.s0f1a8ed9 { flex-direction: row; align-items: center; padding-top: 5px; padding-right: 8px; padding-bottom: 5px; padding-left: 8px; border-top-left-radius: 6px; background-color: rgb(219, 234, 254); color: rgb(30, 58, 138); font-weight: 600; border-radius: 6px; color: rgb(30, 58, 138) }
+.s171c26d0 { flex-direction: row; align-items: center; padding-top: 5px; border-top-width: 1px; padding-right: 10px; border-right-width: 1px; padding-bottom: 5px; border-bottom-width: 1px; padding-left: 10px; border-left-width: 1px; border-top-left-radius: 6px; border-radius: 6px }
+.s275c34c1 { flex-grow: 1; min-width: 0px; font-weight: 700 }
+.s3065dd65 { flex-direction: row; width: 90px; color: rgb(113, 113, 122); font-weight: 600; color: rgb(113, 113, 122) }
+.s45d0bccb { flex-direction: row; width: 52px; color: rgb(113, 113, 122); font-weight: 600; color: rgb(113, 113, 122) }
+.s46223adb { flex-grow: 1 }
+.s4dcaea5f { flex-shrink: 0; width: 90px; min-width: 0px; font-weight: 400 }
+.s59a4283b { flex-direction: row; align-items: center; padding-top: 8px; padding-right: 12px; padding-bottom: 8px; padding-left: 12px; column-gap: 8px; background-color: rgb(244, 244, 245) }
+.s5f95030a { width: 200px; padding-top: 5px; border-top-width: 1px; padding-right: 10px; border-right-width: 1px; padding-bottom: 5px; border-bottom-width: 1px; padding-left: 10px; border-left-width: 1px; border-top-left-radius: 6px; overflow-x: hidden; overflow-y: hidden; background-color: rgb(255, 255, 255); border-color: rgb(228, 228, 231); border-radius: 6px }
+.s67e514c0 { flex-direction: row; align-items: center; padding-top: 5px; border-top-width: 1px; padding-right: 10px; border-right-width: 1px; padding-bottom: 5px; border-bottom-width: 1px; padding-left: 10px; border-left-width: 1px; border-top-left-radius: 6px; background-color: rgb(255, 255, 255); border-color: rgb(228, 228, 231); border-radius: 6px }
+.s6aa3c69d { flex-shrink: 0; width: 52px; min-width: 0px; font-weight: 400 }
+.s7afc7c87 { flex-shrink: 0; width: 170px; row-gap: 2px }
+.s8971348e { flex-direction: row; flex-grow: 1; color: rgb(113, 113, 122); font-weight: 600; color: rgb(113, 113, 122) }
+.s89759098 { flex-grow: 1; min-width: 0px; padding-top: 16px; border-top-width: 1px; padding-right: 16px; border-right-width: 1px; padding-bottom: 16px; border-bottom-width: 1px; padding-left: 16px; border-left-width: 1px; border-top-left-radius: 8px; row-gap: 10px; background-color: rgb(255, 255, 255); border-color: rgb(228, 228, 231); border-radius: 8px }
+.s995f0f99 { display: none }
+.s9f32ec5a { flex-grow: 1; background-color: rgb(255, 255, 255); color: rgb(24, 24, 27); font-size: 13px; color: rgb(24, 24, 27) }
+.sbd65c03b { flex-direction: row; padding-top: 5px; padding-right: 10px; padding-bottom: 5px; padding-left: 10px; column-gap: 8px }
+.sc4be2479 { flex-grow: 1; min-height: 0px; overflow-x: scroll; overflow-y: scroll }
+.scb9634a0 { flex-grow: 1; min-width: 0px; font-weight: 400 }
+.scc62508a { flex-shrink: 0; width: 90px; min-width: 0px; font-weight: 700 }
+.sd49387b8 { color: rgb(113, 113, 122); color: rgb(113, 113, 122) }
+.se9f9043d { flex-direction: row; align-items: center; padding-top: 5px; padding-right: 8px; padding-bottom: 5px; padding-left: 8px; border-top-left-radius: 6px; border-radius: 6px }
+.sed047ef3 { padding-right: 8px; font-size: 15px; font-weight: 700 }
+.sfde5fb54 { flex-direction: row; flex-grow: 1; min-height: 0px; padding-top: 12px; padding-right: 12px; padding-bottom: 12px; padding-left: 12px; column-gap: 12px }

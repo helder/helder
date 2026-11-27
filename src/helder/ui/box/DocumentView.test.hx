@@ -74,18 +74,18 @@ function tests() {
 			// (a: below the viewport, stuck to its bottom; b: in a scroller, above its top, stuck 5px under it)
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0 }</style><div style="height:300px"><div style="height:200px"></div><div id=a style="position:sticky;bottom:0;height:10px"></div></div>'
 				+ '<div style="position:absolute;top:0;left:0;width:50px;overflow:hidden;height:40px"><div style="height:100px;padding-top:30px"><div id=b style="position:sticky;top:35px;height:10px"></div></div></div>');
-			var v = new DocumentView(doc);
+			var v = DocumentView.html(doc);
 			v.layout(50, 50);
 			equals(top(v, "a"), 40.0);
 			equals(top(v, "b"), 35.0);
 			// (on a printed page: where flow put it)
-			var p = new DocumentView(doc, {media: {type: "print", width: 50, height: 50}});
+			var p = DocumentView.html(doc, {media: {type: "print", width: 50, height: 50}});
 			p.layout(50, 50);
 			equals(top(p, "a"), 200.0);
 		});
 		test("text positions through the lines: hit beside a float, a caret, a selection", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem }</style><p id=q><span style="float:left;width:30px;height:10px"></span>abc def</p>');
-			var v = new DocumentView(doc, {fonts: ahem()});
+			var v = DocumentView.html(doc, {fonts: ahem()});
 			v.layout(60, 100);
 			var t = (doc.getElementById("q") : Element).lastChild;
 			var h = v.hit(46, 15);
@@ -99,7 +99,7 @@ function tests() {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 20px Ahem } div { height: 0 }</style><body>'
 				+ '<div id=a style="margin-left: 2ch"></div><div id=b style="margin-left: 2ex"></div><div id=c style="margin-left: 1cap"></div>'
 				+ '<div id=d style="margin-left: 1lh"></div><p id=p style="margin: 0">x</p><div id=e></div>');
-			var v = new DocumentView(doc, {fonts: ahem()});
+			var v = DocumentView.html(doc, {fonts: ahem()});
 			v.layout(200, 100);
 			equals([left(v, "a"), left(v, "b"), left(v, "c"), left(v, "d")], [40.0, 32, 16, 20]);
 			// (a line of normal height: ascent and descent)
@@ -112,7 +112,7 @@ function tests() {
 		});
 		test("shrink-to-fit: an absolutely positioned child no part of its parent's width", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0 }</style><div id=a style="position: absolute"> <span style="position: absolute; display: inline-block; width: 300px">x</span> <div style="width: 100px; height: 10px"></div></div>');
-			var v = new DocumentView(doc, {fonts: ahem()});
+			var v = DocumentView.html(doc, {fonts: ahem()});
 			v.layout(400, 100);
 			var f = v.fragments, w = -1.0;
 			for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == doc.getElementById("a")) w = f.width(k);
@@ -120,7 +120,7 @@ function tests() {
 		});
 		test("hit testing", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } span { position: relative; left: 100px }</style><body><p id=p>abcd</p><div id=d style="height:20px"></div><div><span id=s>x</span></div>');
-			var v = new DocumentView(doc, {fonts: ahem()});
+			var v = DocumentView.html(doc, {fonts: ahem()});
 			v.layout(200, 100);
 			var p:Element = doc.getElementById("p");
 			var h = v.hit(22, 15);

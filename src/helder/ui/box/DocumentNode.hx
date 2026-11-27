@@ -25,7 +25,8 @@ import helder.ui.box.DocumentView.DocumentViewOptions;
 // click on an <a href> calls onLink; Tab moves the focus between links and
 // controls (:focus-visible), Enter follows a focused link.
 //
-//   var page = new DocumentNode(Dom.parse(html), {url: url});
+//   var page = DocumentNode.html(Dom.parse(html), {url: url});   // HTML's cascade
+//   var app = new DocumentNode(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));   // compiled sheets: no parser linked
 //   page.onLink = (url, a) -> trace(url);
 //   scroller.append(page);
 @:access(helder.ui.Ui)
@@ -52,10 +53,11 @@ class DocumentNode extends helder.ui.Node {
 	var selected:Null<Array<{x:Float, y:Float, width:Float, height:Float}>> = null;
 	var hooked:Null<helder.ui.Ui> = null;
 
-	public function new(document:Document, ?options:DocumentViewOptions) {
+	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
+	public function new(document:Document, cascade:DocumentView.DocumentCascade, ?options:DocumentViewOptions) {
 		super("document");
 		this.options = options ?? {};
-		view = new DocumentView(document, this.options);
+		view = new DocumentView(document, cascade, this.options);
 		focusable = true;
 		onPointerMove = moved;
 		onPointerLeave = _ -> hover(null);
@@ -65,6 +67,10 @@ class DocumentNode extends helder.ui.Node {
 		onWheel = wheeled;
 		onBlur = _ -> focusOn(null, false);
 	}
+
+	// A document styled as HTML is (DocumentView.html's cascade).
+	public static function html(document:Document, ?options:DocumentViewOptions):DocumentNode
+		return new DocumentNode(document, DocumentView.htmlCascade, options);
 
 	public var document(get, never):Document;
 
