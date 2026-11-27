@@ -634,9 +634,11 @@ class Reps {
 		when(b, ENot(ELocal(done)), miss);
 	}
 
-	// (k, a number or a loop's Int64 counter, an index of nums: then with it as an Int)
-	static function inRange(b:Builder, nums:Ex, k:Ex, then:Ex->Void) {
-		if (Ir.typeOf(k) == TI64) when(b, EBin(LGe, k, EConv(I2L, EInt(0))), () -> when(b, EBin(LLt, k, EConv(I2L, EArrLen(nums))), () -> then(b.temp(EConv(L2I, k)))));
+	// (k, a number or a loop's Int64 counter, an index of nums: then with it
+	// as an Int; natural, a counter never below 0, its upper bound alone tested)
+	static function inRange(b:Builder, nums:Ex, k:Ex, then:Ex->Void, natural = false) {
+		if (Ir.typeOf(k) == TI64 && natural) when(b, EBin(LLt, k, EConv(I2L, EArrLen(nums))), () -> then(b.temp(EConv(L2I, k))));
+		else if (Ir.typeOf(k) == TI64) when(b, EBin(LGe, k, EConv(I2L, EInt(0))), () -> when(b, EBin(LLt, k, EConv(I2L, EArrLen(nums))), () -> then(b.temp(EConv(L2I, k)))));
 		else if (Ir.typeOf(k) == TI32) when(b, EBin(Ge, k, EInt(0)), () -> when(b, EBin(Lt, k, EArrLen(nums)), () -> then(k)));
 		else when(b, EBin(FGe, k, EF64(0)), () -> when(b, EBin(FLt, k, EConv(I2F, EArrLen(nums))), () -> {
 			var i = b.temp(EConv(F2I, k));
@@ -648,12 +650,12 @@ class Reps {
 
 	// `a[k]` of a number array as a number: the element where a is a number
 	// array and k one of its indices, else miss(the element as the runtime reads it)
-	public function arrayGetNumber(b:Builder, o:Ex, k:Ex, miss:Ex->Ex):Ex {
+	public function arrayGetNumber(b:Builder, o:Ex, k:Ex, miss:Ex->Ex, natural = false):Ex {
 		var l = b.local("number", TF64);
 		numbers(b, o, (nums, done) -> inRange(b, nums, k, i -> {
 			b.out.push(SSet(l, EArrGet(TF64, nums, i)));
 			yes(b, done);
-		}), () -> b.out.push(SSet(l, miss(arrayGet(b, o, index(b, k))))));
+		}, natural), () -> b.out.push(SSet(l, miss(arrayGet(b, o, index(b, k))))));
 		return ELocal(l);
 	}
 
@@ -681,6 +683,30 @@ class Reps {
 				yes(b, done);
 			})));
 		}, () -> arraySet(b, o, index(b, k), value));
+	}
+
+	// `a[k]` into a slot of class c: the element where a is an array, k one of
+	// its indices and the element an instance of c, tested right after the
+	// load (a hole is none); else, in one arm, miss(the element as the
+	// runtime reads it), the slot's check and its divergence there
+	public function arrayGetAs(b:Builder, o:Ex, k:Ex, c:ClassInfo, miss:Ex->Ex, natural = false):Ex {
+		var t = TRef(RObj(c));
+		var l = b.local("element", t);
+		var found = b.local("typed", TBool);
+		b.out.push(SSet(found, ECast(TBool, EInt(0))));
+		function inside() {
+			var items = b.temp(EField(arrayClass, arrayClass.fieldIndex("items"), ECast(TRef(RObj(arrayClass)), o)));
+			inRange(b, items, k, i -> {
+				var v = b.temp(EArrGet(TRef(RAny), items, i));
+				when(b, EInstOf(c, v), () -> {
+					b.out.push(SSet(l, ECast(t, v)));
+					yes(b, found);
+				});
+			}, natural);
+		}
+		if (exact(o, arrayClass)) inside(); else when(b, EInstOf(arrayClass, o), inside);
+		when(b, ENot(ELocal(found)), () -> b.out.push(SSet(l, miss(b.runtime("libGet", [b.coerce(o, TRef(RAny)), b.coerce(index(b, k), TRef(RAny))])))));
+		return ELocal(l);
 	}
 
 	public function arrayGet(b:Builder, o:Ex, k:Ex):Ex {
