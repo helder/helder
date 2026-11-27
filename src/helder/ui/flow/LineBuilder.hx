@@ -33,6 +33,8 @@ class LineBuilder {
 	var c:InlineContent;
 	var out:InlineLayout;
 	var dir = 0;
+	// (the fonts' metrics and leading unrounded: InlineConstraints.exactMetrics)
+	var exact = false;
 	// (the break found: the piece and unit the next line starts at, its flags, the width used)
 	var endP = 0;
 	var endU = 0;
@@ -61,6 +63,7 @@ class LineBuilder {
 		out.width = 0;
 		var root = c.root;
 		dir = cons.direction < 0 ? c.direction : cons.direction;
+		exact = cons.exactMetrics;
 		var indent = root.textIndent(), eachLine = root.textIndentEachLine(), hanging = root.textIndentHanging();
 		var strut = strutHeight();
 		var clamp = root.lineClamp();
@@ -360,7 +363,7 @@ class LineBuilder {
 	// the root's strut: its line height
 	function strutHeight():Float {
 		var lh = c.root.lineHeight();
-		return Math.isNaN(lh) ? c.fonts.normalLineHeight(fontOfStyle(0)) : lh;
+		return Math.isNaN(lh) ? c.fonts.normalLineHeight(fontOfStyle(0), exact) : lh;
 	}
 
 	inline function fontOfStyle(s:Int):Int
@@ -385,7 +388,7 @@ class LineBuilder {
 	// and sBottom, from them)
 	function metrics(s:Int) {
 		var st = c.styles[sStyle[s]], f = fontOfStyle(sStyle[s]);
-		var a = c.fonts.ascent(f), d = c.fonts.descent(f);
+		var a = c.fonts.ascent(f, exact), d = c.fonts.descent(f, exact);
 		sAscent[s] = a;
 		sDescent[s] = d;
 		if (sEdges[s] & ATOMIC != 0) {
@@ -399,7 +402,7 @@ class LineBuilder {
 			sDescent[s] = h - b;
 		} else {
 			var lh = st.lineHeight();
-			if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(f);
+			if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(f, exact);
 			var leading = lu(lh) - (a + d), half = leadingAbove(leading);
 			sAbove[s] = a + half;
 			sBelow[s] = d + leading - half;
@@ -418,13 +421,13 @@ class LineBuilder {
 		return switch st.verticalAlign() {
 			case Sub: -lu(size / 5 + 1);
 			case Super: lu(size / 3 + 1);
-			case TextTop: c.fonts.ascent(pf) - sTop[s];
-			case TextBottom: -sBottom[s] - c.fonts.descent(pf);
-			case Middle: Math.round(c.fonts.xHeight(pf) / 2 * 64) / 64 - half(sTop[s] + sBottom[s]);
+			case TextTop: c.fonts.ascent(pf, exact) - sTop[s];
+			case TextBottom: -sBottom[s] - c.fonts.descent(pf, exact);
+			case Middle: (exact ? c.fonts.xHeight(pf) / 2 : Math.round(c.fonts.xHeight(pf) / 2 * 64) / 64) - half(sTop[s] + sBottom[s]);
 			case Length: lu(st.verticalShift());
 			case Percent:
 				var lh = st.lineHeight();
-				if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(fontOfStyle(sStyle[s]));
+				if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(fontOfStyle(sStyle[s]), exact);
 				lu(st.verticalShift() * lh);
 			case _: 0.0;
 		}
@@ -436,18 +439,19 @@ class LineBuilder {
 		return s > 0 && (va == Top || va == Bottom);
 	}
 
-	// (Blink's LayoutUnit: a float to 1/64 of a pixel, toward zero; halved, its raw value halved toward zero)
-	static inline function lu(v:Float):Float
-		return (v >= 0 ? Math.floor(v * 64) : Math.ceil(v * 64)) / 64;
+	// (Blink's LayoutUnit: a float to 1/64 of a pixel, toward zero; halved, its raw value halved toward zero; exact: as it is)
+	inline function lu(v:Float):Float
+		return exact ? v : (v >= 0 ? Math.floor(v * 64) : Math.ceil(v * 64)) / 64;
 
-	static inline function half(v:Float):Float {
+	inline function half(v:Float):Float {
+		if (exact) return v / 2;
 		var raw = Std.int(lu(v) * 64);
 		return Std.int(raw / 2) / 64;
 	}
 
 	// (the leading's part above: half of it, floored to a pixel, as Blink's CalculateLeadingSpace)
-	static inline function leadingAbove(leading:Float):Float
-		return Math.floor(half(leading));
+	inline function leadingAbove(leading:Float):Float
+		return exact ? leading / 2 : Math.floor(half(leading));
 
 	// (line-height: normal's layout bounds of each face a run's glyphs are in
 	// other than its first available font, its own ascent, descent and line
@@ -459,7 +463,12 @@ class LineBuilder {
 			if (face == last || face == set.first) continue;
 			last = face;
 			var k = set.scale(face);
-			var a = Math.round(face.ascender * k), d = Math.round(-face.descender * k), gap = Math.round(face.lineGap * k);
+			var a = face.ascender * k, d = -face.descender * k, gap = face.lineGap * k;
+			if (!exact) {
+				a = Math.round(a);
+				d = Math.round(d);
+				gap = Math.round(gap);
+			}
 			var above = leadingAbove(gap);
 			contribute(s, a + above, d + gap - above);
 		}
@@ -572,8 +581,8 @@ class LineBuilder {
 					textItem = item;
 					o.fStart[textFragment] = from;
 					var f = c.font(item);
-					o.fAscent[textFragment] = c.fonts.ascent(f);
-					o.fDescent[textFragment] = c.fonts.descent(f);
+					o.fAscent[textFragment] = c.fonts.ascent(f, exact);
+					o.fDescent[textFragment] = c.fonts.descent(f, exact);
 					fRise[textFragment] = o.fAscent[textFragment];
 					o.fRun[textFragment] = o.glyphs.begin(c.fonts.set(f));
 				}
@@ -883,8 +892,8 @@ class LineBuilder {
 							o.fStart[textFragment] = vFrom[v];
 							o.fEnd[textFragment] = vTo[v];
 							var f = c.font(item);
-							o.fAscent[textFragment] = c.fonts.ascent(f);
-							o.fDescent[textFragment] = c.fonts.descent(f);
+							o.fAscent[textFragment] = c.fonts.ascent(f, exact);
+							o.fDescent[textFragment] = c.fonts.descent(f, exact);
 							fRise[textFragment] = o.fAscent[textFragment];
 							o.fRun[textFragment] = o.glyphs.begin(c.fonts.set(f));
 						}
@@ -1047,8 +1056,8 @@ class LineBuilder {
 				var item = o.fItem[f], s = fSlot[f], st = c.styles[c.styleOf(item)];
 				if (c.styleOf(item) != sStyle[s]) {
 					var fi = c.font(item);
-					var a = c.fonts.ascent(fi), d = c.fonts.descent(fi), lh = st.lineHeight();
-					if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(fi);
+					var a = c.fonts.ascent(fi, exact), d = c.fonts.descent(fi, exact), lh = st.lineHeight();
+					if (Math.isNaN(lh)) lh = c.fonts.normalLineHeight(fi, exact);
 					var leading = lu(lh) - (a + d), above = leadingAbove(leading);
 					contribute(s, a + above, d + leading - above);
 				}
@@ -1236,11 +1245,11 @@ class LineBuilder {
 			}
 		var x = rtl ? edge - ew : edge;
 		var h = fragment(Ellipsis, -1, x, ew, -1);
-		var a = c.fonts.ascent(f);
+		var a = c.fonts.ascent(f, exact);
 		o.fY[h] = baseline - a;
-		o.fHeight[h] = a + c.fonts.descent(f);
+		o.fHeight[h] = a + c.fonts.descent(f, exact);
 		o.fAscent[h] = a;
-		o.fDescent[h] = c.fonts.descent(f);
+		o.fDescent[h] = c.fonts.descent(f, exact);
 		o.fStart[h] = o.fEnd[h] = o.lFirst[k] < h ? o.fEnd[h - 1] : 0;
 		o.fRun[h] = o.glyphs.begin(set);
 		var gx = 0.0;
@@ -1322,8 +1331,8 @@ class LineBuilder {
 		var item = c.pieceItem(p), e = hyphenEntry(item), f = c.font(item), sh = c.shaper;
 		var h = fragment(Hyphen, item, x, sh.width(e), slot);
 		out.fStart[h] = out.fEnd[h] = c.pieceEnd(p);
-		out.fAscent[h] = c.fonts.ascent(f);
-		out.fDescent[h] = c.fonts.descent(f);
+		out.fAscent[h] = c.fonts.ascent(f, exact);
+		out.fDescent[h] = c.fonts.descent(f, exact);
 		fRise[h] = out.fAscent[h];
 		out.fRun[h] = out.glyphs.begin(c.fonts.set(f));
 		var gx = 0.0;

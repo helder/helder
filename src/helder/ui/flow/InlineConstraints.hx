@@ -7,12 +7,17 @@ package helder.ui.flow;
 // line so that its first piece does not fit, the line moves down (CSS 2.1
 // §9.5): to floatEdge(y), the next y below y where the floats beside the
 // lines change (infinity: they do not), or without it a pixel at a time,
-// until it fits or the floats end.
+// until it fits or the floats end. exactMetrics: the fonts' ascent,
+// descent and line gap as they are, and leading and vertical-align
+// unrounded, as print wants them (WeasyPrint's); otherwise rounded as
+// Chromium rounds them (whole pixels, LayoutUnit's 1/64), as the screen
+// and the reftests do.
 class InlineConstraints {
 	public var width:Float;
 	public var lineWidth:Null<(y:Float, height:Float) -> {offset:Float, width:Float}>;
 	public var floatEdge:Null<(y:Float) -> Float>;
 	public var direction:Int;
+	public var exactMetrics = false;
 
 	public function new(width:Float, ?lineWidth:(y:Float, height:Float) -> {offset:Float, width:Float}, direction = -1, ?floatEdge:(y:Float) -> Float) {
 		this.width = width;

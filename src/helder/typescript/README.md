@@ -89,7 +89,9 @@ entry reaches whose target is a declaration file other than helder's
 or a package's JavaScript, is resolved again by tsgo's resolver without
 the types condition (`noDtsResolution`, the `module` condition added;
 `module` read where a package has no `exports`; else the declaration's
-sibling `.js`/`.mjs`), and that file is one of the program's roots, as
+sibling `.js`/`.mjs`). Both resolutions recognize `browser` in `exports`
+and `imports` maps, in the package's condition order, excluding `node`
+and `require`. The implementation file is one of the program's roots, as
 an allowJs file is, its own imports followed the same way (a second
 snapshot when the first found new ones; a compilation server starts from
 the last build's roots). The declaration file stays the importer's types;
@@ -115,7 +117,8 @@ and the 7.1 nightlies' (helder's tests run the nightly of 2026-11-06),
 which name a project by its handle, a node by its file's identity
 (`index.#id`) and keep the enums in `enums/`. `Project.hx` creates a
 snapshot of the entry, with `globals.d.ts` (what the runtime provides beyond
-ECMAScript: console, timers), reports tsgo's diagnostics, then fetches each
+ECMAScript: console, timers, UTF-8 text codecs, system randomness, a
+monotonic clock and Base64), reports tsgo's diagnostics, then fetches each
 source file in tsgo's binary AST encoding, the symbols of its identifiers (one
 request a file), the types of its expressions and declared names (one request
 a file, then the members of the unions and the elements of the arrays among

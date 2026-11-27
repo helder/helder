@@ -105,6 +105,19 @@ function tests() {
 			// (a line of normal height: ascent and descent)
 			equals(top(v, "e") - top(v, "p"), 20.0);
 		});
+		test("positioned boxes of z-index auto paint in tree order, an absolute one's fragment wherever it is", () -> {
+			var c = draw('<div style="position: relative; width: 40px; height: 40px"><div style="position: absolute; inset: 0; background: rgb(255, 0, 0)"></div>'
+				+ '<div style="position: relative; height: 40px; background: rgb(0, 128, 0)"></div></div>');
+			equals(at(c, 20, 20), 0x008000FF);
+		});
+		test("shrink-to-fit: an absolutely positioned child no part of its parent's width", () -> {
+			var doc = Dom.parse('<!doctype html><style>body { margin: 0 }</style><div id=a style="position: absolute"> <span style="position: absolute; display: inline-block; width: 300px">x</span> <div style="width: 100px; height: 10px"></div></div>');
+			var v = new DocumentView(doc, {fonts: ahem()});
+			v.layout(400, 100);
+			var f = v.fragments, w = -1.0;
+			for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == doc.getElementById("a")) w = f.width(k);
+			equals(w, 100.0);
+		});
 		test("hit testing", () -> {
 			var doc = Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } span { position: relative; left: 100px }</style><body><p id=p>abcd</p><div id=d style="height:20px"></div><div><span id=s>x</span></div>');
 			var v = new DocumentView(doc, {fonts: ahem()});

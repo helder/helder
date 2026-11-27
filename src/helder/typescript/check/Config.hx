@@ -70,6 +70,9 @@ class Config {
 
 	static function withNoEmit(options:Dynamic):Dynamic {
 		options.noEmit = true;
+		// (project conditions extend the browser set without selecting Node or CommonJS)
+		var conditions = (options.customConditions : Array<String>) ?? [];
+		options.customConditions = ["browser"].concat(conditions.filter(c -> c != "browser" && c != "node" && c != "require"));
 		return options;
 	}
 

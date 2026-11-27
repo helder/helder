@@ -68,8 +68,11 @@ export declare class MenuItem {
 // (of an element or a symbol, its viewBox fitted, clipped to its
 // viewport, as a nested svg is); clip-path (a clipPath's shapes, in user
 // units); presentation attributes, style="" and the inherited ones passed
-// down. Not drawn: text, images, patterns (a pattern paint draws
-// nothing), masks, filters, markers; defs, title and the like are skipped.
+// down; lengths in percentages of the viewport. Not drawn: text, images,
+// patterns (a pattern paint draws nothing), masks, filters, markers, a
+// <style> element's rules; defs, title and the like are skipped. paint
+// draws it into any Painter as paths (a PDF's vectors), sized as CSS
+// sizes an image (naturalWidth, naturalHeight, ratio).
 export declare class Svg {
 	private readonly svg: never;
 }
