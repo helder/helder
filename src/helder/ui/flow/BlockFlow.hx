@@ -389,6 +389,9 @@ class BlockFlow implements FormattingContext {
 						sliced = true;
 						c.flags |= Box.SLICED;
 					}
+					// (the margins before it placed it: none after it here, a break's truncated)
+					pos = 0;
+					neg = 0;
 					break;
 				}
 				pos = c.bottomPositive;

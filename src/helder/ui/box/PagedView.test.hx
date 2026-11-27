@@ -148,6 +148,12 @@ function tests() {
 			equals(v.layout(), 3);
 			equals([on(v, 1, "a"), on(v, 2, "b")], [0.0, 20]);
 		});
+		test("a child broken inside a cloned block: its top margin not again below it at the break", () -> {
+			var v = paged('<div id=t style="border:5px solid;padding:5px 10px;box-decoration-break:clone"><div id=d style="margin:5px 0;border:5px solid"><div style="height:100px"></div></div></div>');
+			equals(v.layout(), 2);
+			// (80: 10 of the block's edges, 5 of margin, the child to 70, 10 of edges again)
+			equals([height(v, 0, "t"), on(v, 0, "d"), height(v, 0, "d")], [80.0, 15, 55]);
+		});
 		test("a block across pages: its border sliced, its height to the page's end", () -> {
 			var v = paged('<div id=a style="border:5px solid"><div style="line-height:60px">x</div><div style="line-height:60px">x</div></div>');
 			equals(v.layout(), 2);
