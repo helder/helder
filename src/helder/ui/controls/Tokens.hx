@@ -119,10 +119,17 @@ enum abstract Accent(String) to String {
 @:typescript.hide
 class TokenSet {
 	// the palette's names, as the sheet's colours are named
-	public static final COLORS = [
+	// (these tables made at their first read, not in the class's static init: a
+	// program's own static, a Look made from Look.base, may need them first)
+	public static var COLORS(get, never):Array<String>;
+
+	static var colors:Null<Array<String>> = null;
+
+	static function get_COLORS():Array<String>
+		return colors ??= [
 		"canvas", "surface", "raised", "well", "hover", "press", "fill", "fillHover", "fillPress", "rail", "railHover", "line", "edge", "edgeStrong", "fg", "fg2", "fg3", "accent", "accentStrong", "accentSoft",
 		"accentFg", "accentInk", "focus", "focusSoft", "danger", "dangerStrong", "dangerSoft", "dangerFg", "success", "warning", "info", "knob", "scrim", "shadow"
-	];
+	];;
 
 	// the palette's tones in COLORS' order (read as fields: no reflection
 	// on a class's values, which a TypeScript build would convert)
@@ -134,12 +141,15 @@ class TokenSet {
 
 	// (each accent's light and dark colour and text on them, after CUI's
 	// table; teal its own)
-	static final ACCENTS = [
+	static var accents:Null<Map<String, Array<String>>> = null;
+
+	static function accentTable():Map<String, Array<String>>
+		return accents ??= [
 		"blue" => ["#0562ef", "#ffffff", "#6ba3ff", "#0b1526"], "violet" => ["#7747ff", "#ffffff", "#a78bff", "#15102b"],
 		"teal" => ["#00827a", "#ffffff", "#4fd1c5", "#0b1f1d"], "green" => ["#00864b", "#ffffff", "#53dca6", "#102016"],
 		"amber" => ["#f3ad20", "#20190d", "#ffcb62", "#20190d"], "orange" => ["#c25300", "#ffffff", "#ffad5e", "#17130f"],
 		"red" => ["#d1403a", "#ffffff", "#ff9386", "#21110f"], "pink" => ["#d23286", "#ffffff", "#ff8bc5", "#250f1b"]
-	];
+	];;
 
 	// helder's tokens at a density, in an accent
 	public static function make(density:Density, accent:Accent):Tokens {
@@ -177,7 +187,7 @@ class TokenSet {
 			scrim: tone("0.13 0 0 / 0.32", "0 0 0 / 0.55"),
 			shadow: tone("0 0 0 / 0.12", "0 0 0 / 0.4")
 		};
-		var a = ACCENTS.get(accent);
+		var a = accentTable().get(accent);
 		if (a == null) {
 			// (neutral: hovering lightens it in light, darkens it in dark)
 			t.accent = gray(0.23, 0.93);
