@@ -237,12 +237,22 @@ class BlockLines {
 					out.push({x: l.x(f), y: l.y(f)});
 					continue;
 				}
-				var before = false;
-				for (g in l.lineFragmentStart(line)...l.lineFragmentEnd(line))
-					switch l.kind(g) {
-						case TextRun | Atomic if (l.item(g) < l.item(f)): before = true;
-						case _:
+				var before = false, c = l.content;
+				for (g in l.lineFragmentStart(line)...l.lineFragmentEnd(line)) {
+					var item = l.item(g);
+					var prior = switch l.kind(g) {
+						case TextRun | Atomic: item;
+						case BoxStart if (item >= 0 && c.edged(item)): item;
+						case BoxEnd if (item >= 0):
+							var close = c.match(item);
+							close >= 0 && c.edged(close) ? close : -1;
+						case _: -1;
 					}
+					if (prior >= 0 && prior < l.item(f)) {
+						before = true;
+						break;
+					}
+				}
 				out.push({x: rtl ? width : 0, y: before ? l.lineTop(line) + l.lineHeight(line) : l.lineTop(line)});
 			}
 		return out;

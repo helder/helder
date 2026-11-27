@@ -177,6 +177,16 @@ class InlineContent {
 	public inline function match(i:Int):Int
 		return iMatch[i];
 
+	// An inline edge with any margin, border or padding keeps the line from being empty.
+	@:allow(helder.ui.flow.LineBuilder, helder.ui.flow.BlockLines)
+	inline function edged(item:Int):Bool {
+		var open = kind(item) == Open, b = open ? item : box(item);
+		if (b < 0) return false;
+		var st = styles[styleOf(b)];
+		return open ? st.marginStart() != 0 || st.borderStart() != 0 || st.paddingStart() != 0 : st.marginEnd() != 0 || st.borderEnd() != 0
+			|| st.paddingEnd() != 0;
+	}
+
 	// an Open's: the box around it (-1: the root), its depth (1: in the root)
 	public inline function parent(open:Int):Int
 		return iParent[open];

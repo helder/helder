@@ -536,16 +536,6 @@ class LineBuilder {
 		return f;
 	}
 
-	// (an Open's or a Close's side of its box has a margin, border or padding
-	// that is not zero, whatever they add up to: what keeps a line from being
-	// empty, CSS 2.1 §9.4.2)
-	function edged(item:Int):Bool {
-		var open = c.kind(item) == Open, b = open ? item : c.box(item);
-		if (b < 0) return false;
-		var st = c.styles[c.styleOf(b)];
-		return open ? st.marginStart() != 0 || st.borderStart() != 0 || st.paddingStart() != 0 : st.marginEnd() != 0 || st.borderEnd() != 0
-			|| st.paddingEnd() != 0;
-	}
 
 	// (what placeLogical and placeVisual leave: whether the line has content, its hanging width)
 	var lineFilled = false;
@@ -620,7 +610,7 @@ class LineBuilder {
 						fragment(BoxStart, item, x, w, b);
 						sLeft[b] = x + s.marginStart();
 						cur = b;
-						if (edged(item)) filled = true;
+						if (c.edged(item)) filled = true;
 					case Close:
 						var b = cur;
 						while (b > 0 && sOpen[b] != c.box(item))
@@ -631,7 +621,7 @@ class LineBuilder {
 							sRight[b] = x + w - c.styles[c.styleOf(c.box(item))].marginEnd();
 							cur = sParent[b];
 						}
-						if (edged(item)) filled = true;
+						if (c.edged(item)) filled = true;
 					case Atomic:
 						var a = slot(item, cur, c.styleOf(item), ATOMIC);
 						var f = fragment(Atomic, item, x + s.marginStart(), c.atomicWidth(item), a);
@@ -777,7 +767,7 @@ class LineBuilder {
 						sSpan[b] = fragment(BoxSpan, item, x, 0, b);
 						sLeaves[b] = leaves;
 						cur = b;
-						if (edged(item)) filled = true;
+						if (c.edged(item)) filled = true;
 					case Close:
 						var b = cur;
 						while (b > 0 && sOpen[b] != c.box(item))
@@ -789,7 +779,7 @@ class LineBuilder {
 						}
 						var iso = c.isolateLevel(item);
 						if (iso >= 0) leaf(CONTROL_LEAF, -1, 0, 0, iso, 0, cur, false);
-						if (edged(item)) filled = true;
+						if (c.edged(item)) filled = true;
 					case Atomic:
 						if (slots == sLeaves.length) {
 							sFirst = ints(sFirst, slots * 2);
