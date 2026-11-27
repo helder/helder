@@ -16,6 +16,12 @@ function tests() {
 			equals(pdf.getString(0, 5), "%PDF-");
 			equals(helder.pdf.Pdf.open(pdf).pages.length, 2);
 		});
+		test("the PDF in points: A4 595 by 842, a link's rectangle in points", () -> {
+			var pdf = PagedView.toPdf('<!doctype html><style>@page { size: A4; margin: 0 } body { margin: 0 }</style><a href="https://example.com/" style="display:block;width:40px;height:20px"></a>');
+			var page = helder.pdf.Pdf.open(pdf).pages[0];
+			equals([page.width, page.height], [595.0, 842]);
+			equals(pdf.toString().indexOf("/Rect [0 827 30 842]") > 0, true);
+		});
 		// (blocks of a line each of a line-height: whole, a line not broken; an empty block of a height is, as Chromium's)
 		test("blocks: a page each that fits, the page area's height", () -> {
 			var v = paged('<div id=a style="line-height:50px">a</div><div id=b style="line-height:50px">b</div><div id=c style="line-height:20px">c</div>');
