@@ -4,6 +4,8 @@ import helder.css.CssTerm;
 import helder.text.FontFeature;
 import helder.ui.box.Len.Lens;
 import helder.ui.flow.InlineStyle;
+import helder.ui.flow.InlineFonts;
+import helder.ui.flow.InlineShaper;
 import helder.ui.flow.InlineValues;
 
 using StringTools;
@@ -18,6 +20,7 @@ class BoxInline implements InlineStyle {
 
 	final s:BoxStyle;
 	final cb:Float;
+	var markerGap = 0.0;
 
 	function new(box:Box, cb:Float) {
 		this.box = box;
@@ -34,6 +37,29 @@ class BoxInline implements InlineStyle {
 		var b = style.inlines[edges];
 		if (b == null || b.cb != cb) style.inlines[edges] = b = new BoxInline(box, cb);
 		return b;
+	}
+
+	@:allow(helder.ui.flow.BlockLines)
+	static function insideMarker(box:Box, cb:Float, fonts:InlineFonts):BoxInline {
+		var style = of(box, cb);
+		if (box.first == null || box.style.keyword("content") != "normal") return style;
+		var gap = 0.0;
+		if (box.first.kind == InlineReplaced) {
+			gap = 7;
+		} else {
+			var symbol = box.markerSymbol();
+			if (symbol == null || style.fontSize() == 0) return style;
+			var id = fonts.idOf(style), set = fonts.set(id), shaper = fonts.shaper;
+			var flags = box.style.rtl ? InlineShaper.RTL : 0;
+			var glyph = shaper.width(shaper.shape(set, id, symbol, 0, symbol.length, flags, 0, 0));
+			var space = shaper.width(shaper.shape(set, id, " ", 0, 1, 0, 0, 0));
+			// A painted bullet reserves its shape's width plus an em, independent of the glyph's advance.
+			var diameter = Std.int((Std.int(fonts.ascent(id) * 2 / 3) + 1) / 2);
+			gap = diameter + 1 + style.fontSize() - glyph - space;
+		}
+		var adjusted = new BoxInline(box, cb);
+		adjusted.markerGap = gap;
+		return adjusted;
 	}
 
 	inline function k(p:String):String
@@ -402,7 +428,7 @@ class BoxInline implements InlineStyle {
 		return edges()[0];
 
 	public function marginEnd():Float
-		return edges()[1];
+		return edges()[1] + markerGap;
 
 	public function borderStart():Float
 		return edges()[2];
