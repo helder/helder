@@ -4,6 +4,7 @@ import helder.scenario.Scenario.scenario;
 import helder.scenario.Steps.tap;
 import helder.scenario.Steps.press;
 import helder.scenario.Steps.resize;
+import helder.scenario.Steps.scroll;
 
 // What the UI monkey found in the viewer (tests/viewer/Monkey.test.hx), as
 // it wrote them: each replayed by the monkey's invariants
@@ -28,5 +29,18 @@ final twoPlayers = scenario({
 		resize(756, 1225),
 		press("ArrowRight"),
 		resize(253, 189)
+	]
+});
+
+// a phone's grid scrolled, a document opened from it, its wheel: the grid's behind it, latched
+final markdownWheel = scenario({
+	name: "Found/A document's wheel after a tap",
+	size: [390, 844],
+	boot: () -> viewer.Viewer_scenario.phone.boot(),
+	steps: [
+		resize(240, 335),
+		scroll({x: 120, y: 168}, "end"),
+		tap("Files"),
+		scroll({x: 120, y: 168}, "end")
 	]
 });
