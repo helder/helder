@@ -13,6 +13,14 @@ import helder.test.Test;
 // and an offset (Ahem: each glyph a square of the font size).
 function tests() {
 	describe("DocumentView", () -> {
+		test("an ellipsis' run, in its block's style (it has no item of its own), a link's span around the text before it", () -> {
+			var v = DocumentView.html(Dom.parse('<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } li { width: 50px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }</style><ul><li><a href=x>aaaaaaaaaa bbbbbbbbbb</a></li></ul>'), {fonts: ahem()});
+			v.layout(300, 200);
+			// (the ellipsis: a text fragment of the item's own box, the block's, its glyphs there)
+			var f = v.fragments, ellipses = 0;
+			for (k in 0...f.count) if (f.kind(k) == Fragments.TEXT && f.box(k).kind == Block && f.glyphs(k) != null && f.glyphs(k).count > 0) ellipses++;
+			equals(ellipses, 1);
+		});
 		test("a line's plain text: its glyphs made when asked for, as the line placed them", () -> {
 			var html = '<!doctype html><style>body { margin: 0; font: 10px/1 Ahem } .j { text-align: justify } pre { tab-size: 4 }</style>'
 				+ '<p>aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz</p><p class=j>aaa b cc dddd e ff ggg h ii jjjj</p>'
