@@ -52,7 +52,8 @@ class Space {
 	public var pageTop = 0.0;
 	// what must still fit below an in-flow box's content there: its cloned ancestors' bottom borders and padding
 	public var reserve = 0.0;
-	// no pixel grid (print): a collapsed border split in halves exactly, not in whole pixels as Chromium's
+	// no pixel grid (print, PagedView's): a collapsed border split in halves exactly, and the fonts' metrics and
+	// leading unrounded (InlineConstraints.exactMetrics), not in whole pixels as Chromium's
 	public var exact = false;
 
 	public function new(fragments:Fragments, fonts:FontMatch, width:Float, height:Float) {
