@@ -157,16 +157,34 @@ File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
   canvas's background over the page area, positioned in the root's box
   over all the pages (a background image goes on where the page before
   left it).
-- @media sees print and the first page's page area; viewport units are
-  of it too (the cascade has one size for both: Chromium's media queries
-  see the default page instead, media-queries-001).
+- @media sees the print medium (`media`, default an A4 page), not what
+  @page makes of it; viewport units are the first page's area (the
+  cascade's `viewport`), as browsers have them.
+- Margin boxes (`PageMargins`, Paged Media 3 §6): the corners, and three
+  along each side, those with content laid out in the page's margins.
+  Along a side an auto size comes from content: without a centre box the
+  two at the ends share the side by their max-content sizes (their
+  min-content ones when those don't fit); with one it is centred, sized
+  against twice the larger other, and they take what is left. Across, a
+  box fills its margin; its content is placed by vertical-align. They
+  are painted over the page's content, each its own background.
+- Their content: strings, `counter(page)` (the page counter: one more
+  each page, or as @page's counter-reset, -increment and -set say) and
+  `counter(pages)`, `string()` (string-set's values, page by page in the
+  pages' fragments' order, CssRunning), `element()` (a running element:
+  `position: running()` takes it out of the flow, a holder where it was;
+  laid out afresh in each margin box that shows it), images.
+- Cross-references (`target-counter()` and the like) are resolved once the
+  pages are known, and the pages laid out again when one's text changed.
+  A `leader()` is its fill repeated to its line's room (BlockLines: the
+  lines laid out once more). The PDF's page labels follow the page
+  counter.
 - All the pages' fragments are kept: `counter(pages)` (margin boxes, the
   next part) needs every page laid out before any margin box is. Painting
   a page and dropping its fragments once its margin boxes are known,
   keeping only the break tokens of a first pass, is a later optimisation;
   tokens hold boxes, never fragments, to keep it open.
-- Not yet: margin boxes and page counters, strings; named pages (`page`)
-  and pages of other sizes in one document; tables broken between rows;
+- Not yet: named pages (`page`) and pages of other sizes in one document; tables broken between rows;
   floats, absolutely positioned and fixed boxes split or repeated across
   pages; monolithic content taller than a page pushing what follows;
   `box-decoration-break: clone`; bookmarks and links in the PDF.

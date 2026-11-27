@@ -23,6 +23,8 @@ class BlockLines {
 	// (one engine layout a nesting depth: an atomic inline's lines are laid out inside another's)
 	final layouts:Array<InlineLayout> = [];
 	var depth = 0;
+	// (a block's leaders filled: built as they are)
+	var filling = false;
 	final markerLayout = new InlineLayout();
 
 	public function new(flow:BlockFlow)
@@ -51,23 +53,38 @@ class BlockLines {
 			var floats = built.floats;
 			var tops:Array<Float> = [];
 			var placed = 0;
-			for (round in 0...(floats.length > 0 && space.placeFloat != null ? 4 : 1)) {
-				l.layout(c, constraints);
-				if (first > 0 && first < l.lines) shift = l.lineTop(first);
-				if (floats.length == 0 || space.placeFloat == null) break;
-				var at = statics(l, InlineFragment.Float);
-				var same = round > 0 && at.length == tops.length;
-				if (same) for (k in 0...at.length) if (at[k].y != tops[k]) same = false;
-				if (same) break;
-				if (round > 0 && space.unplace != null) space.unplace(placed);
-				tops = [for (a in at) a.y];
-				placed = 0;
-				for (k in 0...floats.length) {
-					var top = k < tops.length ? tops[k] : 0;
-					if (top < shift) continue;
-					space.placeFloat(floats[k], oy + top - shift);
-					placed++;
+			function lay() {
+				for (round in 0...(floats.length > 0 && space.placeFloat != null ? 4 : 1)) {
+					l.layout(c, constraints);
+					if (first > 0 && first < l.lines) shift = l.lineTop(first);
+					if (floats.length == 0 || space.placeFloat == null) break;
+					var at = statics(l, InlineFragment.Float);
+					var same = round > 0 && at.length == tops.length;
+					if (same) for (k in 0...at.length) if (at[k].y != tops[k]) same = false;
+					if (same) break;
+					if (round > 0 && space.unplace != null) space.unplace(placed);
+					tops = [for (a in at) a.y];
+					placed = 0;
+					for (k in 0...floats.length) {
+						var top = k < tops.length ? tops[k] : 0;
+						if (top < shift) continue;
+						space.placeFloat(floats[k], oy + top - shift);
+						placed++;
+					}
 				}
+			}
+			lay();
+			// (leaders: their fill repeated to their lines' room, the lines laid out again)
+			if (built.leaders.length > 0 && fill(l, built)) {
+				if (placed > 0 && space.unplace != null) space.unplace(placed);
+				placed = 0;
+				tops = [];
+				filling = true;
+				built = build(block, space, width, pct, false);
+				filling = false;
+				c = built.content;
+				floats = built.floats;
+				lay();
 			}
 			// (class B: between lines, from the second here; a break taken ends this fragment's lines)
 			var last = l.lines;
@@ -122,6 +139,30 @@ class BlockLines {
 		return {min: lo, max: Math.max(lo, hi + floats)};
 	}
 
+	// (each leader's text its fill as often as its line's room takes, from
+	// one fill's width there: whether one changed)
+	static function fill(l:InlineLayout, built:Built):Bool {
+		var c = built.content, changed = false;
+		for (box in built.leaders) {
+			for (k in 0...l.lines) {
+				var w = 0.0;
+				for (f in l.lineFragmentStart(k)...l.lineFragmentEnd(k))
+					if (l.kind(f) == TextRun && (cast c.style(l.item(f)) : BoxInline).box == box) w += l.fragmentWidth(f);
+				if (w <= 0) continue;
+				var copies = Std.int(box.text.length / box.fill.length);
+				var one = w / Math.max(1, copies);
+				var n = copies + Std.int(Math.max(0, l.lineAvailable(k) - l.lineWidth(k)) / one);
+				var text = [for (_ in 0...n) box.fill].join("");
+				if (text != box.text) {
+					box.text = text;
+					changed = true;
+				}
+				break;
+			}
+		}
+		return changed;
+	}
+
 	// (the places of the fragments of a kind, in order)
 	static function statics(l:InlineLayout, kind:InlineFragment):Array<{x:Float, y:Float}> {
 		var out = [];
@@ -171,6 +212,7 @@ class BlockLines {
 			floats: [],
 			absolutes: [],
 			markers: [],
+			leaders: [],
 			texts: new haxe.ds.ObjectMap<Node, Array<Box>>()
 		};
 		function walk(b:Box) {
@@ -182,6 +224,11 @@ class BlockLines {
 							var list = out.texts.get(k.node);
 							if (list == null) out.texts.set(k.node, list = []);
 							list.push(k);
+						}
+						// (a leader: one fill, unless the lines just filled it)
+						if (k.flags & Box.LEADER != 0) {
+							if (!filling) k.text = k.fill;
+							out.leaders.push(k);
 						}
 						c.addText(k.text, BoxInline.of(k, width), k.node, k.offset);
 					case Inline if (k.flags & Box.OUTSIDE != 0):
@@ -420,6 +467,7 @@ private typedef Built = {
 	floats:Array<Box>,
 	absolutes:Array<Box>,
 	markers:Array<Box>,
+	leaders:Array<Box>,
 	// (a DOM text's runs: one, or its ::first-letter's and the rest)
 	texts:haxe.ds.ObjectMap<Node, Array<Box>>
 }

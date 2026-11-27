@@ -70,7 +70,7 @@ class CssRender {
 	static function pages(page:String, out:String, tree:Bool) {
 		var o = WptPage.options(page);
 		var user = CssSheet.parse("@page { size: 5in 3in; margin: 0.5in }", User);
-		var v = new PagedView(WptPage.parse(page), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [user]});
+		var v = new PagedView(WptPage.parse(page), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [user], media: CssReftestCheck.PRINT});
 		var n = v.layout();
 		var base = out.substr(0, out.length - 4);
 		for (i in 0...n) {

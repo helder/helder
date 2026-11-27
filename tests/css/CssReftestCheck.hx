@@ -287,6 +287,8 @@ class CssReftestCheck {
 	static var printPage:Null<CssSheet> = null;
 
 	static inline var MAX_PAGES = 100;
+	// (the medium @media sees: WPT's default page, 5in by 3in, as its runners print)
+	public static final PRINT:helder.css.CssMedia.CssMediaContext = {type: "print", width: 480, height: 288, resolution: 1, color: 8};
 
 	// (a print reftest against its references, page by page)
 	static function runPages(dir:String, t:Dynamic, path:String):{pass:Bool, why:String} {
@@ -347,7 +349,7 @@ class CssReftestCheck {
 		if (cached != null) return cached;
 		var o = WptPage.options(path);
 		printPage ??= CssSheet.parse("@page { size: 5in 3in; margin: 0.5in }", User);
-		var v = new PagedView(WptPage.parse(path), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [printPage], limit: MAX_PAGES + 1});
+		var v = new PagedView(WptPage.parse(path), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [printPage], media: PRINT, limit: MAX_PAGES + 1});
 		var n = v.layout();
 		if (n > MAX_PAGES) throw '$n pages';
 		var out = [];

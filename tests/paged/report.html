@@ -3,7 +3,11 @@
 <title>Notes on Paged Media</title>
 <style>
   @page { size: A5; margin: 18mm 15mm; }
-  @page :first { margin-top: 60mm; }
+  @page :first { margin-top: 60mm; @bottom-center { content: none } @top-right { content: none } }
+  @page { @bottom-center { content: counter(page) " / " counter(pages); font: 8pt sans-serif; color: #555 }
+    @top-right { content: string(chapter); font: italic 8pt serif; color: #555 } }
+  .chapter h2 { string-set: chapter content(); }
+  nav li a::after { content: leader(". ") target-counter(attr(href), page); }
   body { margin: 0; font: 10pt/1.45 serif; color: #111; }
   .title { break-after: page; text-align: center; }
   .title h1 { font: bold 22pt/1.2 sans-serif; margin: 0 0 8pt; }

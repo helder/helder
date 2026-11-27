@@ -31,6 +31,9 @@ class BoxPainter {
 	// whole) and the box it is positioned in (null: the root's fragment);
 	// a page's: its page area, the root's box over all the pages
 	public var canvasArea:Null<Array<Float>> = null;
+	// whether the root's background is the canvas's (CSS 2.1 §14.2); off: a
+	// box of its own (a page's margin box)
+	public var propagate = true;
 	public var canvasBox:Null<Array<Float>> = null;
 
 	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>) {
@@ -40,7 +43,7 @@ class BoxPainter {
 	}
 
 	public function paint(p:Painter) {
-		canvas(p);
+		if (propagate) canvas(p);
 		// (what is outside the painter is skipped, but under a transform, or with a shadow or an outline that may reach in)
 		var cull = p.matrix.isIdentity();
 		var pw = p.width + MARGIN, ph = p.height + MARGIN;
@@ -140,7 +143,7 @@ class BoxPainter {
 		}
 		// (a block's fragment in a fragmentainer: its start or end in another, box-decoration-break: slice)
 		var noTop = f.start(id) == Box.NO_START, noBottom = f.end(id) == Box.NO_END;
-		if (b != order.canvas) Backgrounds.paint(p, s, x, y, w, h, image, null, false, false, noTop, noBottom);
+		if (b != order.canvas || !propagate) Backgrounds.paint(p, s, x, y, w, h, image, null, false, false, noTop, noBottom);
 		if (cells != null) p.restore();
 		Borders.shadows(p, s, x, y, w, h, true);
 		// (rows, columns and their groups have no borders of their own but collapsed; collapsed ones are the table's)

@@ -22,6 +22,8 @@ class Box {
 	public var text = "";
 	// (offset of text in node's data: generated text has none)
 	public var offset = 0;
+	// a leader's fill (LEADER: its text that repeated)
+	public var fill = "";
 	// the formatting context it establishes for its contents, if any
 	public var context:Null<FormattingContext> = null;
 	public var image:Null<Bitmap> = null;
@@ -40,6 +42,10 @@ class Box {
 	public static inline var EMPTY = 16;
 	// (its last layout left absolutely positioned boxes for a containing block outside it)
 	public static inline var ESCAPES = 32;
+	// where a running element was (GCPM 3 §2.1): nothing, its page the element's
+	public static inline var RUNNING = 64;
+	// a leader's fill (GCPM 3 §3): its text repeated to its line's room
+	public static inline var LEADER = 128;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
