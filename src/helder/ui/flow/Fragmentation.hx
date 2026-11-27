@@ -48,7 +48,19 @@ interface Fragmentation {
 	// a parallel flow in box (a table cell beside the others in its row):
 	// its own breaks in this fragmentainer, from its token in box's resume;
 	// null: it ended in a fragmentainer before
-	function parallel(box:Box, child:Box):Null<Breaks>;
+	function parallel(box:Box, child:Box):Null<Fragmentainer>;
+	// a flex or grid container's rows in this fragmentainer (Rows): made
+	// here and called through FragmentRows, not by the container, so that
+	// a program without a paged host (no Breaks made) links none of them
+	function rows():FragmentRows;
+	// (the rest: a fragmentainer of size inside this one, from a token; a
+	// float carried whole to the next; a box's break-inside avoids a break,
+	// its break-before forces one: Breaks', asked of the fragmentainer so
+	// that a program without a paged host makes none)
+	function sub(size:Float, from:Null<BreakToken>):Fragmentainer;
+	function push(float:Box):Void;
+	function avoids(b:Box):Bool;
+	function forcesBefore(b:Box):Bool;
 	// box broken inside, its parallel flows each at its own break (tokens:
 	// those that go on), what is before the break ending at bottom; true:
 	// break here (box resumes with the tokens, BreakToken.SPLIT). tall: box
@@ -79,6 +91,20 @@ interface Fragmentation {
 // An absolutely positioned box deferred: its static place (x, y) in its
 // containing block, that at cbx, cby in its owner's fragment here, cbw by
 // cbh here; an alignment in an area (Positioned's).
+// A fragmentainer of its own (Breaks), inside another: its breaks decided
+// once its flow is laid out, the token it resumes with, what it deferred
+interface Fragmentainer extends Fragmentation {
+	var deferred(default, null):Array<Deferred>;
+	function decide():Bool;
+	function token():Null<BreakToken>;
+}
+
+// (Rows, as flex and grid containers call it)
+interface FragmentRows {
+	function add(key:Int, box:Box, frag:Int, x:Float, y:Float, top:Float, bottom:Float):Void;
+	function place(box:Box, frag:Int, space:Space, flow:BlockFlow, left:Float, top:Float, h:Float):{height:Float, broken:Bool};
+}
+
 typedef Deferred = {
 	box:Box,
 	owner:Box,

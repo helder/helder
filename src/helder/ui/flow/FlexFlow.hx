@@ -247,7 +247,7 @@ class FlexFlow implements FormattingContext {
 		var broken = false;
 		if (fr != null) {
 			// (Rows: a row's line one row, a column's items one each, all one when it has several lines)
-			var rows = new Rows(), splits = row || lines.length == 1;
+			var rows = fr.rows(), splits = row || lines.length == 1;
 			for (k in 0...placed.length) {
 				var it = placed[k], ih = frags.height(it.frag);
 				rows.add(row ? it.line : splits ? k : 0, it.box, it.frag, it.x, it.y, it.y - (row ? it.crossStart : it.mainStart), it.y + ih + (row ? it.crossEnd : it.mainEnd));
