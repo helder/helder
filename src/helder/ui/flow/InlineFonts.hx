@@ -97,22 +97,23 @@ class InlineFonts {
 		return sets[id - base];
 
 	// the metrics of a set, pixels: above the baseline, below it, the line
-	// gap (each rounded, as Blink rounds them), the x-height
-	public inline function ascent(id:Int):Float
-		return ascents[id - base];
+	// gap (each rounded, as Blink rounds them; exact: the font's own, as
+	// print wants them), the x-height
+	public inline function ascent(id:Int, exact = false):Float
+		return exact ? ascents[id - base] : Math.round(ascents[id - base]);
 
-	public inline function descent(id:Int):Float
-		return descents[id - base];
+	public inline function descent(id:Int, exact = false):Float
+		return exact ? descents[id - base] : Math.round(descents[id - base]);
 
-	public inline function lineGap(id:Int):Float
-		return gaps[id - base];
+	public inline function lineGap(id:Int, exact = false):Float
+		return exact ? gaps[id - base] : Math.round(gaps[id - base]);
 
 	public inline function xHeight(id:Int):Float
 		return xHeights[id - base];
 
 	// line-height: normal's
-	public inline function normalLineHeight(id:Int):Float
-		return ascents[id - base] + descents[id - base] + gaps[id - base];
+	public inline function normalLineHeight(id:Int, exact = false):Float
+		return ascent(id, exact) + descent(id, exact) + lineGap(id, exact);
 
 	// (a font replaced since: every set made again)
 	function clear() {
@@ -134,9 +135,9 @@ class InlineFonts {
 	function add(set:FontSet) {
 		var f = set.first, s = set.scale(f);
 		sets.push(set);
-		ascents.push(Math.round(f.ascender * s));
-		descents.push(Math.round(-f.descender * s));
-		gaps.push(Math.round(f.lineGap * s));
+		ascents.push(f.ascender * s);
+		descents.push(-f.descender * s);
+		gaps.push(f.lineGap * s);
 		xHeights.push(xHeightOf(f) * s);
 	}
 
