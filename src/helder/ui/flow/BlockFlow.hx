@@ -444,13 +444,17 @@ class BlockFlow implements FormattingContext {
 						if (c.context != null) c.context.intrinsic(c, space) else intrinsic(c, space);
 						need += c.minContent;
 					}
-					var band = ex.band(cy + py, 1, cx, cx + w);
+					// (floats beginning lower down can still intersect this border box)
+					var bpy = cm.border[0] + cm.border[2] + res(cm.padding[0], w) + res(cm.padding[2], w);
+					var contentHeight = size(cm.height, pctBase, cm.borderBox, bpy);
+					var bandHeight = clampHeight(cm, pctBase, bpy, Math.isNaN(contentHeight) ? 0 : contentHeight) + bpy;
+					var band = ex.band(cy + py, bandHeight, cx, cx + w);
 					while (band.right - band.left < need && (band.left > cx || band.right < cx + w)) {
-						var next = ex.nextBelow(cy + py, 1);
+						var next = ex.nextBelow(cy + py, bandHeight);
 						if (next == Math.POSITIVE_INFINITY) break;
 						py = next - cy;
 						cleared = true;
-						band = ex.band(cy + py, 1, cx, cx + w);
+						band = ex.band(cy + py, bandHeight, cx, cx + w);
 					}
 					space2.top = cy + py;
 					if (band.left > cx || band.right < cx + w) {
