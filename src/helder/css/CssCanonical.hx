@@ -150,6 +150,11 @@ class CssCanonical {
 
 	static function forms(property:String, terms:Array<CssTerm>):Array<CssTerm> {
 		return switch property {
+			case "clip":
+				switch terms {
+					case [Func("rect", [top, right, bottom, left])]: [Func("rect", [top, Delim(","), right, Delim(","), bottom, Delim(","), left])];
+					case _: terms;
+				}
 			case "font-palette": [for (t in terms) paletteMix(t)];
 			case "display": display(terms);
 			case "align-content" | "align-items" | "align-self" | "justify-content" | "justify-items" | "justify-self" | "place-content" | "place-items"

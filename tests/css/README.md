@@ -521,7 +521,7 @@ doesn't pass):
   interpolation-manifest.json's `pending` says why.
 
 <!-- interpolation -->
-3500 of 4456 cases pass.
+3559 of 4504 cases pass.
 
 | Pending because | Cases |
 | --- | --- |
@@ -531,7 +531,6 @@ doesn't pass):
 | images: list-style-image is discrete (Lists 3); the test wants it to transition, flipping halfway as Chrome's cross-fade does | 48 |
 | resolved values: getComputedStyle's px are layout's, and this check has none | 37 |
 | math functions: sign(), progress() and random() not resolved in computed values yet | 18 |
-| clip: rect() without commas, CSS 2's form the expected values use, not parsed | 11 |
 | display: expects an animation's flip (none until p > 0); without allow-discrete no transition starts | 6 |
 | colours: one channel off by one, a browser's 8-bit premultiplied rounding | 1 |
 | page: its script sets height: auto before this case, so neutral isn't the page's 10px | 1 |
