@@ -143,7 +143,7 @@ class Css {
 	// pages links them, so the check checks)
 	static function screenOnly() {
 		if (Sys.systemName() == "Windows") return;
-		var paged = ["helder_ui_flow_Breaks", "helder_ui_flow_BreakToken", "helder_ui_box_PagedView"];
+		var paged = ["helder_ui_flow_Breaks", "helder_ui_flow_BreakToken", "helder_ui_box_PagedView", "helder_ui_box_PageMargins"];
 		for (main in ["ScreenProbe", "PagedProbe"]) {
 			var out = 'bin/paged/$main';
 			exe(out, cps(["src", "tests/paged"]).concat(["-main", main, "-dce", "full", "-D", "hxmc.symbols"]));

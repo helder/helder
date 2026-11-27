@@ -16,7 +16,9 @@ typedef BoxTreeOptions = {
 	// the formatting contexts a program lays out with (Contexts.all(): every one)
 	?contexts:Contexts,
 	// an image by its URL as written (an <img>'s src, content's url()); null: none
-	?image:(url:String) -> Null<Bitmap>
+	?image:(url:String) -> Null<Bitmap>,
+	// for pages (GCPM 3): running elements out of the flow, string-set's values kept
+	?paged:Bool
 }
 
 // The box tree of a document (CSS 2.1 §9.2, Display 3 §2): each element's
@@ -37,7 +39,14 @@ class BoxTree {
 	final image:Null<String->Null<Bitmap>>;
 	// (one BoxStyle a computed style: helder.css shares styles between like elements)
 	final cache = new haxe.ds.ObjectMap<helder.css.CssStyle, BoxStyle>();
-	final counters:CssCounters;
+	public final counters:CssCounters;
+	// paged: each running element (its name, its boxes, where it was: a RUNNING holder, null when inline-level)
+	public final running:Array<{name:String, box:Box, holder:Null<Box>}> = [];
+	// paged: each element's string-set values, evaluated where the walk meets it
+	public final strings = new haxe.ds.ObjectMap<Element, Array<{name:String, value:String}>>();
+	// each cross-reference's text box (target-counter(), target-counters(), target-text()), resolveTargets' to fill
+	public final targets:Array<{box:Box, target:helder.css.CssCounters.CssTarget}> = [];
+	final paged:Bool;
 
 	public static function build(doc:Document, styles:CssStyles, ?options:BoxTreeOptions):BoxTree
 		return new BoxTree(doc, styles, options ?? {});
@@ -46,11 +55,28 @@ class BoxTree {
 		this.styles = styles;
 		contexts = options.contexts ?? Contexts.all();
 		image = options.image;
+		paged = options.paged ?? false;
 		counters = new CssCounters(styles);
 		var out = [];
 		var el = doc.documentElement;
 		if (el != null) generate(el, out);
 		root = out.length > 0 ? out[0] : null;
+		// (cross-references to what the walk passed; a page counter's: 0 until the pages are known)
+		resolve(_ -> 0);
+	}
+
+	// Cross-references' texts, the pages they are on by pageOf: whether one changed.
+	public function resolve(pageOf:Element->Int):Bool {
+		counters.resolveTargets(pageOf);
+		var changed = false;
+		for (t in targets) {
+			var text = t.target.text ?? "";
+			if (t.box.text != text) {
+				t.box.text = text;
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	function style(el:Element):BoxStyle {
@@ -77,7 +103,23 @@ class BoxTree {
 		var s = style(el);
 		if (s.none) return;
 		counters.enter(el);
-		boxes(el, s, out);
+		if (paged) {
+			var set = counters.strings(el);
+			if (set.length > 0) strings.set(el, set);
+		}
+		// (a running element: its boxes kept apart for the margin boxes, a holder where it was when block-level)
+		var name = paged ? s.css.running() : null;
+		if (name != null) {
+			var kids = [];
+			boxes(el, s, kids);
+			var holder = s.outer == BoxStyle.INLINE ? null : make(Block, s.anonymousChild(), el);
+			if (holder != null) {
+				holder.flags |= Box.RUNNING;
+				out.push(holder);
+			}
+			for (k in kids) running.push({name: name, box: k, holder: holder});
+		} else
+			boxes(el, s, out);
 		counters.exit(el);
 	}
 
@@ -465,6 +507,18 @@ class BoxTree {
 			case Image(Url(url, _)):
 				var b = make(InlineReplaced, s, el, which);
 				b.image = load(url);
+				out.push(b);
+			// (a cross-reference: its text once the targets are resolved; a leader: its fill, repeated by the lines)
+			case Target(target):
+				var b = make(Text, s, null, which);
+				b.text = target.text ?? "";
+				targets.push({box: b, target: target});
+				out.push(b);
+			case Leader(fill) if (fill != ""):
+				// (a style of its own: its text found in the lines by it)
+				var b = make(Text, s.anonymousChild(), null, which);
+				b.text = b.fill = fill;
+				b.flags |= Box.LEADER;
 				out.push(b);
 			case _:
 		}

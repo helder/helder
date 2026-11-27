@@ -44,6 +44,37 @@ function tests() {
 			v.layout();
 			equals(v.pages[0].area, [20.0, 20, 160, 60]);
 		});
+		test("margin boxes: counter(page) and counter(pages), where §6.3 puts them", () -> {
+			var v = paged('<style>@page { @bottom-center { content: counter(page) " of " counter(pages) } }</style><div style="height:60px"></div><div style="height:60px"></div>');
+			equals(v.layout(), 2);
+			equals([texts(v, 0), texts(v, 1)], [["1 of 2"], ["2 of 2"]]);
+			var f = v.pages[1].boxes[0];
+			// (the bottom margin's height, the width between the corners)
+			equals([v.fragments.x(f), v.fragments.y(f), v.fragments.width(f), v.fragments.height(f)], [10.0, 90, 180, 10]);
+		});
+		test("two boxes along a side share it by their content", () -> {
+			var v = paged('<style>@page { font: 10px Ahem; @top-left { content: "aaa" } @top-right { content: "b" } }</style>x');
+			v.layout();
+			var b = v.pages[0].boxes;
+			equals([v.fragments.width(b[0]), v.fragments.width(b[1])], [135.0, 45]);
+		});
+		test("string-set and string(): a running head, the page's first", () -> {
+			var v = paged('<style>h1 { string-set: title content(); break-before: page; margin: 0; font-size: 10px } @page { @top-center { content: string(title) } }</style><h1>One</h1><h1>Two</h1>');
+			equals(v.layout(), 2);
+			equals([texts(v, 0), texts(v, 1)], [["One"], ["Two"]]);
+		});
+		test("a running element: out of the flow, in the margin box that names it", () -> {
+			var v = paged('<style>header { position: running(head) } @page { @top-left { content: element(head) } }</style><header>head</header><p id=p style="margin:0">body</p>');
+			v.layout();
+			equals(texts(v, 0), ["head"]);
+			equals(on(v, 0, "p"), 0.0);
+		});
+		test("target-counter() a page, a leader its line's room", () -> {
+			var v = paged('<style>a::after { content: leader(".") target-counter(attr(href), page) }</style><p style="margin:0"><a href="#b">B</a></p><div id=b style="break-before:page">b</div>');
+			equals(v.layout(), 2);
+			var t = texts(v, 0, false).join("");
+			equals([t.indexOf("B") >= 0, t.indexOf(".2") >= 0, t.split(".").length > 10], [true, true, true]);
+		});
 		test("a margin at an unforced break truncated, kept at a forced one", () -> {
 			var v = paged('<div style="height:70px"></div><div id=a style="margin-top:20px;height:20px"></div><div id=b style="margin-top:20px;break-before:page">b</div>');
 			equals(v.layout(), 3);
@@ -105,6 +136,21 @@ private function lineCount(v:PagedView, page:Int, id:String):Int {
 		c = f.next(c);
 	}
 	return n;
+}
+
+// (the text of a page's margin boxes, or of its content)
+private function texts(v:PagedView, page:Int, margins = true):Array<String> {
+	var f = v.fragments, out = [];
+	function walk(k:Int) {
+		if (f.kind(k) == Fragments.TEXT && f.run(k) >= 0) out.push(f.runs[f.run(k)].text);
+		var c = f.first(k);
+		while (c >= 0) {
+			walk(c);
+			c = f.next(c);
+		}
+	}
+	if (margins) for (b in v.pages[page].boxes) walk(b) else walk(v.pages[page].root);
+	return margins ? [out.join("")] : out;
 }
 
 private function sliced(v:PagedView, page:Int, id:String):String {
