@@ -39,8 +39,8 @@ class CssStyles {
 		if (viewportSize != null) return viewportSize;
 		viewportSize = {width: media.width, height: media.height};
 		if (media.type != "print") return viewportSize;
-		// (the page's style inherits the root's, worked out meanwhile at the media's size)
-		return viewportSize = pageStyle(1, null, false, false).area();
+		// (the first page, index 0, :first's; its style inherits the root's, worked out meanwhile at the media's size)
+		return viewportSize = pageStyle(0, null, false, false).area();
 	}
 	public final pages:Array<CssPageRule> = [];
 	public final fontFaces:Array<CssFontFace> = [];
