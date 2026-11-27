@@ -19,6 +19,12 @@ class InlineLayout {
 	// the lines' total height, the widest line's left + width
 	public var height(default, null) = 0.0;
 	public var width(default, null) = 0.0;
+	// where this layout began (its first line's index in the content: from's), and where it ended
+	public var from(default, null):Null<InlineBreak> = null;
+	public var firstLine(default, null) = 0;
+	var nextPiece = 0;
+	var nextUnit = 0;
+	var nextForced = false;
 	public final glyphs = new InlineGlyphs();
 
 	var lTop = new Vector<Float>(8);
@@ -32,6 +38,7 @@ class InlineLayout {
 	var lFirst = new Vector<Int>(8);
 	var lLast = new Vector<Int>(8);
 	var lFlags = new Vector<Int>(8);
+	var lPiece = new Vector<Int>(8);
 
 	var fKind = new Vector<Int>(32);
 	var fX = new Vector<Float>(32);
@@ -51,26 +58,42 @@ class InlineLayout {
 	var laidCallback:Null<(y:Float, height:Float) -> {offset:Float, width:Float}> = null;
 	var laidGeneration = -1;
 	var laidDirection = -2;
+	var laidFrom:Null<InlineBreak> = null;
 
 	static final builder = new LineBuilder();
 
 	public function new() {}
 
-	// content laid out under constraints (the content finished)
-	public function layout(content:InlineContent, constraints:InlineConstraints):InlineLayout {
+	// content laid out under constraints (the content finished); from a
+	// break token (a continuation: its first line the token's, its lines'
+	// tops from 0, the constraints' lineWidth asked from its own top), else
+	// from the start
+	public function layout(content:InlineContent, constraints:InlineConstraints, ?from:InlineBreak):InlineLayout {
 		if (!content.finished) content.finish();
 		content.ensureShaped();
 		if (this.content == content && laidWidth == constraints.width && laidCallback == constraints.lineWidth && constraints.lineWidth == null
-			&& laidGeneration == content.shaper.generation && laidDirection == constraints.direction)
+			&& laidGeneration == content.shaper.generation && laidDirection == constraints.direction && laidFrom == from)
 			return this;
 		this.content = content;
 		laidWidth = constraints.width;
 		laidCallback = constraints.lineWidth;
 		laidGeneration = content.shaper.generation;
 		laidDirection = constraints.direction;
-		builder.layout(this, content, constraints);
+		laidFrom = from;
+		this.from = from;
+		firstLine = from == null ? 0 : from.line;
+		builder.layout(this, content, constraints, from);
 		return this;
 	}
+
+	// the token of line k's start (to lay the rest out from it: a page's
+	// break before line k)
+	public function breakAt(k:Int):InlineBreak
+		return InlineBreak.at(content, lPiece[k], lStart[k], firstLine + k, k == 0 ? from != null && from.afterForced : lFlags[k - 1] & LineBuilder.FORCED != 0);
+
+	// the token after the last line (null: all of the content laid out, or line-clamp's lines)
+	public function endBreak():Null<InlineBreak>
+		return nextPiece >= content.pieces ? null : InlineBreak.at(content, nextPiece, nextUnit, firstLine + lines, nextForced);
 
 	// the content's min-content and max-content inline sizes (CSS Sizing 3):
 	// its widest piece that cannot break (overflow-wrap: anywhere's

@@ -208,6 +208,28 @@ pieces.
   `maxContent` at forced breaks only; each the widest line's used width,
   the first line's with its indent (a negative one reduces it).
 
+## Fragmentation: resuming at a break
+
+```haxe
+var page1 = new InlineLayout().layout(c, new InlineConstraints(500, floats1));
+var token = page1.breakAt(k);                 // the start of line k: page 2 begins there
+var page2 = new InlineLayout().layout(c, new InlineConstraints(420, floats2), token);
+page2.firstLine;                              // k: orphans and widows count from it
+page2.endBreak();                             // where page 2 ends (null: the content's end)
+```
+
+An `InlineBreak` is a line's start without geometry: its piece and unit,
+its line's index in the whole content, whether a forced break ended the
+line before (text-indent: each-line), and the inline boxes still open there
+(`openBoxes`, outermost first). Laid out from it, the content goes on as it
+would have: its lines' tops from 0, `lineWidth` asked from the
+continuation's own top, the open boxes' start edges not drawn again
+(box-decoration-break: slice), text-indent only on the content's line 0,
+line-clamp counting the lines before. At the same width and with no
+floats, the lines from a token are those of the whole layout from line k
+(InlineLayout.test.hx's property); at another width, the rest is broken
+anew.
+
 ## Hit testing and selection
 
 ```haxe

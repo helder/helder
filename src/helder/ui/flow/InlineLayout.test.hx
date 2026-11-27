@@ -488,6 +488,62 @@ function tests() {
 			for (i in 0...l.lines)
 				if (l.lineWidth(i) > k.width + 1e-3 && contentRight(l, i) > k.width + 1e-3) assert(unbreakable(l, i), 'line $i: ${l.lineWidth(i)} > ${k.width}');
 		}));
+		test("resumed at line k's break: the same lines as laid out in one go, their tops from 0", () -> property(cases(), k -> {
+			var c = k.content, whole = new InlineLayout().layout(c, new InlineConstraints(k.width));
+			assume(whole.lines > 1);
+			for (line in 1...whole.lines) {
+				var token = whole.breakAt(line);
+				var rest = new InlineLayout().layout(c, new InlineConstraints(k.width), token);
+				equals([rest.firstLine, rest.lines], [line, whole.lines - line], 'from line $line');
+				var top = whole.lineTop(line);
+				var a = [
+					for (f in whole.lineFragmentStart(line)...whole.fragments)
+						[whole.kind(f), whole.x(f), whole.y(f) - top, whole.fragmentWidth(f), whole.fragmentHeight(f), whole.textStart(f), whole.textEnd(f)]
+				];
+				var b = [
+					for (f in 0...rest.fragments)
+						[rest.kind(f), rest.x(f), rest.y(f), rest.fragmentWidth(f), rest.fragmentHeight(f), rest.textStart(f), rest.textEnd(f)]
+				];
+				equals(b, a, 'from line $line');
+				approx(rest.height, whole.height - top, 1e-6);
+				equals(rest.endBreak(), null);
+			}
+		}));
+		test("a break token: the boxes open there continue without their start edge, at another width too", () -> {
+			var box = ahem(s -> s.edges(0, 2, 8));
+			var c = content(c -> {
+				c.addText("x ", ahem());
+				c.openBox(box);
+				c.addText("aa bb cc", ahem());
+				c.closeBox();
+			});
+			// (40 wide: "x" alone, then the box's lines)
+			var whole = new InlineLayout().layout(c, new InlineConstraints(60));
+			var token = whole.breakAt(2);
+			equals([token.line, token.openBoxes.length, token.openBoxes[0]], [2, 1, 1]);
+			var rest = new InlineLayout().layout(c, new InlineConstraints(200), token);
+			equals(rest.lines, 1);
+			equals(find(rest, BoxStart), -1);
+			assert(find(rest, BoxEnd) >= 0, "its end edge");
+			// (the span from the line's left, no start edge: "bb cc" and the end edge, 80 + 10)
+			var span = find(rest, BoxSpan);
+			equals([rest.x(span), rest.fragmentWidth(span)], [0.0, 90.0]);
+			// (laid out up to its third line, the rest from there: the start's edge on the first part only)
+			var head = new InlineLayout().layout(c, new InlineConstraints(60));
+			assert(find(head, BoxStart) >= 0, "its start edge");
+			equals(head.breakAt(1).openBoxes.length, 0);
+			// (a continuation's indent: only line 0's)
+			var indented = content(c -> c.addText("aa bb", ahem()), ahem(s -> s.indent = 20));
+			var all = new InlineLayout().layout(indented, new InlineConstraints(60));
+			equals([all.x(0), new InlineLayout().layout(indented, new InlineConstraints(60), all.breakAt(1)).x(0)], [20.0, 0.0]);
+			// (floats measured from the continuation's own top)
+			var asked = [];
+			new InlineLayout().layout(c, new InlineConstraints(200, (y, h) -> {
+				asked.push(y);
+				return {offset: 0.0, width: 200.0};
+			}), token);
+			equals(asked[0], 0.0);
+		});
 		test("laid out twice at a width: the same", () -> property(cases(), k -> {
 			var c = k.content;
 			var a = snapshot(new InlineLayout().layout(c, new InlineConstraints(k.width)));

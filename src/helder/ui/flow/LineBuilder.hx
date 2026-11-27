@@ -50,7 +50,7 @@ class LineBuilder {
 
 	// --- the lines ---
 
-	function layout(out:InlineLayout, content:InlineContent, cons:InlineConstraints) {
+	function layout(out:InlineLayout, content:InlineContent, cons:InlineConstraints, ?from:InlineBreak) {
 		this.out = out;
 		c = content;
 		minimum = false;
@@ -66,6 +66,15 @@ class LineBuilder {
 		var clamp = root.lineClamp();
 		clamped = false;
 		var p = 0, u = startOf(0), y = 0.0, first = true, afterForced = false;
+		// (a continuation: from its token; line-clamp counting the lines before it)
+		var before = 0;
+		if (from != null) {
+			p = from.piece;
+			u = from.unit;
+			first = from.line == 0;
+			afterForced = from.afterForced;
+			before = from.line;
+		}
 		while (p < c.pieces) {
 			var indented = first || eachLine && afterForced;
 			var x0 = indented != hanging ? indent : 0.0;
@@ -86,7 +95,7 @@ class LineBuilder {
 				y = next;
 			}
 			// (line-clamp: its last line, more after it, ends in an ellipsis)
-			clamped = clamp > 0 && out.lines == clamp - 1 && endP < c.pieces;
+			clamped = clamp > 0 && before + out.lines == clamp - 1 && endP < c.pieces;
 			var h = build(p, u, y, x0, avail, off);
 			if (cons.lineWidth != null && h > strut + EPSILON) {
 				// (taller than the strut: the floats beside its whole height)
@@ -94,13 +103,14 @@ class LineBuilder {
 				if (r.width < avail - EPSILON || r.offset != off) {
 					undo();
 					breakLine(p, u, x0, r.width);
-					clamped = clamp > 0 && out.lines == clamp - 1 && endP < c.pieces;
+					clamped = clamp > 0 && before + out.lines == clamp - 1 && endP < c.pieces;
 					h = build(p, u, y, x0, r.width, r.offset);
 				}
 			}
 			y += h;
 			if (clamped) {
 				clamped = false;
+				p = c.pieces;
 				break;
 			}
 			first = false;
@@ -109,6 +119,9 @@ class LineBuilder {
 			u = endU;
 		}
 		out.height = y;
+		out.nextPiece = p;
+		out.nextUnit = u;
+		out.nextForced = afterForced;
 	}
 
 	// (the last line taken back)
@@ -1131,6 +1144,7 @@ class LineBuilder {
 		o.lLeft[k] = offset + shift;
 		o.lAvail[k] = avail;
 		o.lStart[k] = u;
+		o.lPiece[k] = p;
 		o.lEnd[k] = endU;
 		o.lLast[k] = o.fragments;
 		o.lFlags[k] = endFlags;
@@ -1313,6 +1327,7 @@ class LineBuilder {
 		o.lFirst = ints(o.lFirst, n);
 		o.lLast = ints(o.lLast, n);
 		o.lFlags = ints(o.lFlags, n);
+		o.lPiece = ints(o.lPiece, n);
 	}
 
 	function growFragments() {
