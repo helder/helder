@@ -87,6 +87,7 @@ class DocumentView {
 	var lined:Null<Array<Box>> = null;
 	var placed:Null<ObjectMap<Box, Int>> = null;
 	var whole = 0;
+	var sticky = false;
 
 	public function new(document:Document, ?options:DocumentViewOptions) {
 		this.document = document;
@@ -143,6 +144,20 @@ class DocumentView {
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg});
 		fragments.clear();
 		owners = null;
+		// (whether any box sticks: Sticky.apply walks every fragment)
+		sticky = false;
+		if (tree.root != null) {
+			var stack = [tree.root];
+			while (stack.length > 0 && !sticky) {
+				var b = stack.pop();
+				if (b.kind != Text && b.style.position == "sticky") sticky = true;
+				var c = b.first;
+				while (c != null) {
+					stack.push(c);
+					c = c.next;
+				}
+			}
+		}
 	}
 
 	// (laid out at the view's size from the cache; the fragments of the layouts
@@ -163,7 +178,7 @@ class DocumentView {
 		var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
-		if (options.media == null || options.media.type != "print") helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
+		if (sticky && (options.media == null || options.media.type != "print")) helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
 		order = new PaintOrder(fragments, f);
 		if (fresh) whole = fragments.count;
 		return root = f;
@@ -174,7 +189,7 @@ class DocumentView {
 		var stack = [b];
 		while (stack.length > 0) {
 			var x = stack.pop();
-			x.cacheFragment = -1;
+			x.uncache();
 			x.cacheWidth = x.cacheHeight = x.minContent = x.maxContent = Math.NaN;
 			var c = x.first;
 			while (c != null) {
@@ -312,7 +327,7 @@ class DocumentView {
 	// (a box and its ancestors laid out again)
 	static function stale(b:Null<Box>) {
 		while (b != null) {
-			b.cacheFragment = -1;
+			b.uncache();
 			b.cacheWidth = b.minContent = b.maxContent = Math.NaN;
 			b = b.parent;
 		}

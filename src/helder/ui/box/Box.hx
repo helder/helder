@@ -34,6 +34,8 @@ class Box {
 	// a table box's grid as laid out (its columns, rows, collapsed borders)
 	public var table:Null<TableGrid> = null;
 	public var flags = 0;
+	// (its place in its tree, depth first: PaintOrder's tree order; -1 until asked)
+	public var rank = -1;
 
 	// an inline box split around a block: no start edge here (a later part), or no end edge
 	public static inline var NO_START = 1;
@@ -59,6 +61,17 @@ class Box {
 	// (and the fixed height it was laid out at, whether its height was ignored: a flex or grid item's passes)
 	public var cacheFixedHeight = Math.NaN;
 	public var cacheIgnore = false;
+	// (the layouts before the last at other constraints, kept beside it, 5
+	// numbers each: the width's key, the height, the fixed height, the
+	// height ignored (1), the fragment; a flex or grid item's measuring and
+	// final passes each hit their own)
+	public var cacheMore:Null<Array<Float>> = null;
+
+	// its layouts let go: laid out again when next asked
+	public function uncache() {
+		cacheFragment = -1;
+		cacheMore = null;
+	}
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
