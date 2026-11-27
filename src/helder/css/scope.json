@@ -53,6 +53,10 @@
     "-helder-scrollbar": {"syntax": "system | overlay | always", "initial": "system", "inherited": "yes", "appliesTo": "scroll containers", "percentages": "n/a", "computedValue": "specified keyword", "animationType": "discrete", "href": "https://github.com/helder/helder/blob/main/src/helder/css/ua/README.md#properties-of-our-own-and-the-rethinks-a-design-note"}
   },
   "overrides": {
+    "clip": {
+      "syntax": "<rect()> | rect( <top> <right> <bottom> <left> ) | auto",
+      "why": "CSS Masking 1 allows the legacy whitespace-separated form of rect() as well as commas"
+    },
     "text-overflow": {
       "syntax": "[ clip | ellipsis | -helder-middle | <string> | fade | <fade()> ]{1,2}",
       "why": "helder's own keyword: an ellipsis in the middle, the text's start and end kept (ua/README.md)"

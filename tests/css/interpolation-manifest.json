@@ -1,19 +1,6 @@
 {
 	"schema": 2,
 	"pending": {
-		"clip: rect() without commas, CSS 2's form the expected values use, not parsed": [
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at -1",
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at 0",
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at 0.25",
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at 0.75",
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at 1",
-			"interpolation clip from [inherit] to [rect(20px, 20px, 20px, 20px)] at 2",
-			"interpolation clip from neutral to [rect(20px, 20px, 20px, 20px)] at -1",
-			"interpolation clip from neutral to [rect(20px, 20px, 20px, 20px)] at 0.25",
-			"interpolation clip from neutral to [rect(20px, 20px, 20px, 20px)] at 0.75",
-			"interpolation clip from neutral to [rect(20px, 20px, 20px, 20px)] at 1",
-			"interpolation clip from neutral to [rect(20px, 20px, 20px, 20px)] at 2"
-		],
 		"colours: one channel off by one, a browser's 8-bit premultiplied rounding": [
 			"interpolation background-color from [currentcolor] to [rgba(0, 255, 0, 0.75)] at 0.75"
 		],

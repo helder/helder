@@ -175,6 +175,10 @@ class PaintOrder {
 			if (m != null || s.opacity < 1) push(LAYER, s.opacity, m, null, id);
 		}
 		if (area != null && b.flags & Box.SLICED != 0) push(CLIP, 1, null, area, id);
+		if (b.absolute) {
+			var rect = s.positionedClip(x, y, f.width(id), f.height(id));
+			if (rect != null) push(CLIP, 1, null, rect, -1);
+		}
 		// (a context's lists, used again by the next: an app's every box positioned is a context)
 		var c = spare.length > 0 ? spare.pop().reset() : new Collected();
 		if (f.kind(id) == Fragments.SPAN) {

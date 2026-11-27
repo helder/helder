@@ -545,6 +545,18 @@ class BoxStyle {
 
 	var sized = -1;
 
+	// CSS Masking 1: clip's offsets are from the border box's top and left.
+	@:allow(helder.ui.box.PaintOrder)
+	function positionedClip(x:Float, y:Float, w:Float, h:Float):Null<Array<Float>> {
+		return switch terms("clip") {
+			case [Func("rect", [top, Delim(","), right, Delim(","), bottom, Delim(","), left])]:
+				var t = Lens.resolve(termLen([top]), Math.NaN, 0), r = Lens.resolve(termLen([right]), Math.NaN, w);
+				var b = Lens.resolve(termLen([bottom]), Math.NaN, h), l = Lens.resolve(termLen([left]), Math.NaN, 0);
+				[x + l, y + t, Math.max(0, r - l), Math.max(0, b - t)];
+			case _: null;
+		}
+	}
+
 	// overflow scroll or auto on either axis: a scroll container whose content scrolls
 	public var scrolls(get, never):Bool;
 
