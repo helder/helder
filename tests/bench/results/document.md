@@ -116,6 +116,47 @@ and compositing run on other threads). Wikipedia's scroll rows of this
 run are left out: the page measured one window tall (`html, body {
 height: 100% }`), fixed since (the node's height takes the overflow).
 
+## The HTML Standard in a live window: memory and resize
+
+`HELDER_TEST_INPUT=1 bun run test document-window` on the Mac (2026-11-27):
+a real window, a 20 s thumb drag at 250 Hz and a select drag posted to
+its own queue. Memory is RSS before a full collection / live heap after
+it / RSS after it. Chromium is the renderer process (headless,
+Playwright, the same page and sheets, after load). Ladybird is the
+user's Activity Monitor figure for the same page.
+
+| | helder, main before (7a2b4d74) | #466 (fonts mapped, box side tables, inline content cut) | the resize PR (laid out where seen) | Chromium | Ladybird |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| after load | 2,114 / 1,633 / 2,043 MB | 1,084 / 937 / 1,084 MB | 487 / 311 / 487 MB | 1,044 MB RSS, 795 MB footprint | just under 600 MB |
+| the most during the thumb drag | 2,265 MB | 1,280 MB | 617 MB | | |
+| after the thumb drag | | 1,149 / 933 / 1,136 MB | 608 / 388 / 605 MB | | |
+| after the select drag | | 1,249 / 987 / 1,223 MB | 613 / 396 / 613 MB | | |
+
+The resize PR lays out a document of more than 50,000 boxes lazily,
+as if its blocks had `content-visibility: auto`. A block far from the
+scroll window whose layout isn't kept gets an estimated height: its
+last layout's, scaled to the new width, else its text's. Its contents
+are skipped until the window comes near, with scroll anchoring keeping
+what was at the top in place. A window resize then restyles only what
+its media queries and viewport units change: a sheet's query that flips
+re-indexes the rules in place and restyles the elements its rules
+match, those in skipped blocks when they're laid out. A display a
+query changes rebuilds the nearest block that can be rebuilt alone,
+not the whole tree.
+
+| the HTML Standard, a relayout at another width | before | now |
+| --- | ---: | ---: |
+| in the live window (a frame each, 26 widths, 1024 → 688 → 1024) | 3,683 ms | median 40 ms, worst 186 ms |
+| crossing the sheets' 768 px query | (the same) | 372–479 ms in a probe, within the frame budget in the window |
+| the whole document laid out at another width (tests, print) | 2.2 s (3.7 s in the window) | 0.6 s in a probe (Chromium 0.54 s) |
+
+The whole relayout's cuts: reuse of a block's layout beside floats that
+don't reach it (the cache was off for every block after the first
+float), no closures, maps or sorts for a line without inline boxes,
+glyph ends found in one pass for left-to-right text, and the hot style
+reads (`verticalAlign`, `stacking`, `line-height`, overflow) read once
+a style.
+
 ## Is it worth it
 
 - Wins: scrolling costs the engine nothing (the compositor moves the

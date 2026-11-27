@@ -51,6 +51,10 @@ class DocumentNode extends helder.ui.Node {
 	var anchor:Null<DomPosition> = null;
 	var dragged = false;
 	var hooked:Null<helder.ui.Ui> = null;
+	// (the scroll's top where it was last laid out, and when)
+	var lastTop = 0.0;
+	var lastReveal = 0.0;
+	static inline var LEAP = 0.032;
 
 	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
 	public function new(document:Document, cascade:DocumentView.DocumentCascade, ?options:DocumentViewOptions) {
@@ -96,16 +100,53 @@ class DocumentNode extends helder.ui.Node {
 		view.watch();
 		var t0 = Timer.stamp();
 		var redo = view.update();
-		if (redo == DocumentView.NOTHING) return;
-		stats.restyled(Timer.stamp() - t0, redo);
-		if (redo >= DocumentView.LAYOUT) {
-			docHeight = heightOf();
-			markDirty();
-		} else {
-			layerChanged();
-			ui.requestFrame();
+		if (redo != DocumentView.NOTHING) {
+			stats.restyled(Timer.stamp() - t0, redo);
+			if (redo >= DocumentView.LAYOUT) {
+				docHeight = heightOf();
+				markDirty();
+			} else {
+				layerChanged();
+				ui.requestFrame();
+			}
 		}
+		uncover();
 	}
+
+	// (a long document laid out lazily: what the scroll brings near that it skipped, laid out, what was at the
+	// scroll's top kept there)
+	function uncover() {
+		if (!view.partial) return;
+		var w = scrolled();
+		if (w == null) return;
+		var t0 = Timer.stamp();
+		// (a screen around what is seen; what is seen alone where the scroll leaps, a thumb's drag: what it
+		// passes isn't seen again, laid out every LEAP s at most meanwhile, a frame asked for the rest)
+		var leaps = Math.abs(w.top - lastTop) > 2 * w.height;
+		if (leaps && t0 - lastReveal < LEAP) {
+			ui.requestFrame();
+			return;
+		}
+		lastTop = w.top;
+		var moved = view.reveal(w.top - (leaps ? 0 : w.height), w.top + w.height + (leaps ? 0 : w.height), w.top);
+		lastReveal = t0;
+		if (moved == null) return;
+		stats.laid(Timer.stamp() - t0);
+		docHeight = heightOf();
+		markDirty();
+		keep(w.scroller, moved);
+	}
+
+	// (the scroller around it, and the part of the document it shows: its top and height)
+	function scrolled():Null<{scroller:Node, top:Float, height:Float}> {
+		var sc = parent;
+		while (sc != null && sc.style.overflow != Scroll) sc = sc.parent;
+		return sc == null ? null : {scroller: sc, top: sc.scrollY - (absY - sc.absY), height: sc.height};
+	}
+
+	// (the scroll moved with what it shows: a glide or a drag goes on)
+	function keep(sc:Node, by:Float)
+		if (by != 0 && ui != null) @:privateAccess helder.ui.Scrolling.setScroll(ui, sc, false, Math.max(0, sc.scrollY + by));
 
 	// ---- layout
 
@@ -123,7 +164,11 @@ class DocumentNode extends helder.ui.Node {
 		var h = ui != null ? ui.height : Math.isFinite(availHeight) ? availHeight : 600;
 		if (w != laidWidth || h != laidHeight || view.styles == null) {
 			var t0 = Timer.stamp();
+			// (a long document laid out where it is seen, what was at the scroll's top kept there)
+			var at = scrolled(), anchor = at != null && view.styles != null ? view.anchor(at.top) : null;
+			if (at != null) view.within(at.top - h, at.top + at.height + h);
 			view.layout(w, h);
+			if (anchor != null) keep(at.scroller, view.moved(anchor));
 			view.watch();
 			stats.laid(Timer.stamp() - t0);
 			laidWidth = w;
@@ -391,6 +436,11 @@ class DocumentNode extends helder.ui.Node {
 	function reveal(el:Element, top = false) {
 		var f = view.fragments, boxes = view.boxesOf(el);
 		if (boxes.length == 0 || ui == null) return;
+		if (view.partial) {
+			view.show(boxes[0]);
+			docHeight = heightOf();
+			markDirty();
+		}
 		var id = view.fragmentOf(boxes[0]);
 		if (id < 0) return;
 		var p = f.absolute(id), sc = parent;

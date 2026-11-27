@@ -16,6 +16,7 @@ import helder.dom.Document;
 import helder.dom.Element;
 import helder.dom.Node;
 import helder.ui.flow.Contexts;
+import helder.ui.flow.Lazy;
 import helder.ui.flow.Space;
 
 typedef DocumentViewOptions = {
@@ -46,6 +47,9 @@ typedef DocumentViewOptions = {
 // cascade: the user agent's sheet, <style>, <link>, style attributes,
 // presentational hints, all parsed when the program runs) or an app's
 // (CssCascade.themed with sheets compiled at build time: no parser linked).
+// a block and where its top was: what a layout keeps in place (DocumentView.anchor)
+typedef DocumentAnchor = {box:Box, y:Float};
+
 typedef DocumentCascade = (document:Document, media:CssMediaContext, options:DocumentViewOptions) -> CssStyles;
 
 // A helder.dom document styled, laid out and painted: the cascade (the
@@ -98,6 +102,14 @@ class DocumentView {
 	// (the glyph runs a window's paints placed: kept while the fragments are)
 	final placedRuns = new BoxPainter.PlacedRuns();
 	var sticky = false;
+	// (a long document's window, what within gave, and its lazy layout's skipped blocks)
+	var window:Null<Array<Float>> = null;
+	var lazy:Null<Lazy> = null;
+	final sizes = new ObjectMap<Box, {chars:Float, blocks:Int}>();
+	// (the elements a resize restyles in blocks a lazy layout skipped, by block: styled again when it is laid out)
+	final pending = new ObjectMap<Box, Array<Element>>();
+	// (a document of this many boxes is laid out lazily where within gives a window)
+	public static inline var LONG = 50000;
 
 	public function new(document:Document, cascade:DocumentCascade, ?options:DocumentViewOptions) {
 		this.document = document;
@@ -140,7 +152,11 @@ class DocumentView {
 	// height, the boxes' layout cache reused: the root's fragment.
 	public function layout(width:Float, height:Float):Int {
 		var media = options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8};
-		if (styles == null || (width != viewWidth || height != viewHeight) && !styles.holds(media)) {
+		// (at another size where only viewport units read it: the elements they styled, styled again, the
+		// boxes and their kept content stay)
+		var resized = styles != null && (width != viewWidth || height != viewHeight) && !styles.holds(media);
+		var restyled = resized ? styles.resize(media) : null;
+		if (styles == null || resized && restyled == null) {
 			styles = cascade(document, media, options);
 			// (ex, ch, cap, ic and line-height: normal from the first available font, as styles compute)
 			styles.metrics = fonts.metrics;
@@ -154,35 +170,234 @@ class DocumentView {
 		}
 		viewWidth = width;
 		viewHeight = height;
+		if (restyled != null) {
+			var now = defer(restyled), redo = restyle(now, NOTHING);
+			skipped = null;
+			if (redo == TREE) {
+				restyle(waiting(), NOTHING);
+				build();
+			}
+			// (the rules in effect may be others now: the tracker's selectors made again)
+			if (changes != null) {
+				changes.detach();
+				changes = new DocumentChanges(document, styles);
+			}
+		}
 		return lay();
 	}
 
 	// (the box tree made from the styles, nothing of the last one's layout kept)
 	function build() {
+		// (the elements kept to style again: styled as the tree is made)
+		var w = waiting();
+		if (w.length > 0) styles.forget(w);
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image, svg: svg});
+		fonts.inlines.forget();
 		fragments.clear();
 		placedRuns.clear();
 		owners = null;
-		// (whether any box sticks: Sticky.apply walks every fragment)
+		sizes.clear();
 		sticky = false;
-		if (tree.root != null) {
-			var stack = [tree.root];
-			while (stack.length > 0 && !sticky) {
-				var b = stack.pop();
-				if (b.kind != Text && b.style.position == "sticky") sticky = true;
-				var c = b.first;
+		if (tree.root != null) marks(tree.root);
+	}
+
+	// (whether any box sticks: Sticky.apply walks every fragment; the blocks with nothing reaching outside
+	// them, floats or positioned boxes: what a lazy layout may skip, Box.LAZY; in top, and around it)
+	function marks(top:Box) {
+		var order = [], stack = [top];
+		while (stack.length > 0) {
+			var b = stack.pop();
+			order.push(b);
+			if (b.kind != Text && b.style.position == "sticky") sticky = true;
+			var c = b.first;
+			while (c != null) {
+				stack.push(c);
+				c = c.next;
+			}
+		}
+		// (children before their parents, the reverse of a parent first order; then the boxes around it)
+		var k = order.length;
+		while (k-- > 0) mark(order[k]);
+		var a = top.parent;
+		while (a != null) {
+			mark(a);
+			a = a.parent;
+		}
+	}
+
+	// (what in a box reaches outside it, from its children's: an absolutely positioned box whose containing
+	// block is above it, a float whose formatting context is, a box that sticks or is fixed)
+	static function mark(b:Box) {
+		var open = 0;
+		if (b.kind != Text && b.kind != Break) {
+			if (b.floating) open |= FLOATS;
+			var p = b.style.position;
+			if (p == "fixed" || p == "sticky") open |= FIXED else if (b.absolute) open |= POSITIONED;
+		}
+		var holds = b.kind != Text && b.kind != Break && (b.style.positioned || b.style.containment.containingBlock);
+		var root = b.kind != Text && b.kind != Break && helder.ui.flow.BlockFlow.formattingRoot(b);
+		var c = b.first;
+		while (c != null) {
+			if (c.flags & POSITIONED != 0 && !holds) open |= POSITIONED;
+			if (c.flags & FLOATS != 0 && !root) open |= FLOATS;
+			open |= c.flags & FIXED;
+			c = c.next;
+		}
+		b.flags &= ~(Box.LAZY | POSITIONED | FLOATS | FIXED);
+		b.flags |= open;
+		// (an absolutely positioned box in it not laid out either while it's skipped: content-visibility: auto's
+		// containment)
+		if ((b.kind == Block || b.kind == TableWrapper && b.blockLevel && !b.floating && !b.absolute) && b.parent != null && b.first != null
+			&& open & (FLOATS | FIXED) == 0) b.flags |= Box.LAZY;
+	}
+
+	// (mark's, kept on the boxes: in it, a positioned box whose containing block is above it; a float whose
+	// formatting context is)
+	static inline var POSITIONED = 1 << 30;
+	static inline var FLOATS = 1 << 29;
+	// (and one fixed or sticky: what a scroll moves)
+	static inline var FIXED = 1 << 28;
+
+	// Lays out, where the document is long (LONG boxes), only what a window
+	// of it shows (top...bottom, a scroll's, in its coordinates) and what
+	// was laid out before: its other blocks skipped, their heights
+	// estimated, until reveal lays them out. The layouts from the next on.
+	public function within(top:Float, bottom:Float)
+		window = [top, bottom];
+
+	// whether the last layout skipped some of it
+	public var partial(get, never):Bool;
+
+	inline function get_partial():Bool
+		return lazy != null && lazy.count > 0;
+
+	// What a window shows that the last layout skipped, laid out (within's
+	// window moved there): how far what was at anchor (a scroll's top) moved
+	// in it, for the scroll to follow; null: nothing skipped there.
+	public function reveal(top:Float, bottom:Float, anchor:Float):Null<Float> {
+		window = [top, bottom];
+		if (lazy == null || tree == null || !lazy.skipped(top, bottom)) return null;
+		var a = this.anchor(anchor);
+		lay();
+		return a == null ? 0 : moved(a);
+	}
+
+	// What is at y, to keep in place across a layout (scroll anchoring): the
+	// deepest block there, and its top.
+	public function anchor(y:Float):Null<DocumentAnchor> {
+		if (root < 0) return null;
+		var f = root, x0 = 0.0, y0 = 0.0, out:Null<DocumentAnchor> = null;
+		while (true) {
+			var top = y0 + fragments.y(f);
+			out = {box: fragments.box(f), y: top};
+			var c = fragments.first(f), next = -1;
+			while (c >= 0) {
+				var cy = top + fragments.y(c);
+				if (fragments.kind(c) == Fragments.BOX && cy <= y && cy + fragments.height(c) > y) {
+					next = c;
+					break;
+				}
+				c = fragments.next(c);
+			}
+			if (next < 0) return out;
+			y0 = top;
+			f = next;
+		}
+	}
+
+	// How far an anchor's block moved since anchor gave it (0: it isn't laid out now).
+	public function moved(a:DocumentAnchor):Float {
+		var f = fragmentOf(a.box);
+		return f >= 0 ? fragments.absolute(f).y - a.y : 0;
+	}
+
+	// A box laid out where a lazy layout skipped it (a link's target): the
+	// window moved to the blocks skipped around it, laid out, until it is.
+	public function show(b:Box) {
+		for (_ in 0...16) {
+			if (fragmentOf(b) >= 0 || window == null) return;
+			var a = b.parent;
+			while (a != null && fragmentOf(a) < 0) a = a.parent;
+			if (a == null) return;
+			var y = fragments.absolute(fragmentOf(a)).y;
+			window = [y - viewHeight, y + 2 * viewHeight];
+			lay();
+		}
+	}
+
+	// (a block's content height at a content width, its contents unlaid: its last layout's, the text reflowed
+	// to the width; else its text's lines and its blocks, by its font size)
+	function estimate(b:Box, width:Float):Float {
+		if (b.laidWidth > 0 && width > 0) return b.laidHeight * Math.min(2, Math.max(0.5, b.laidWidth / width));
+		var t = sizes.get(b);
+		if (t == null) {
+			var n = 0.0, blocks = 0, stack = [b];
+			while (stack.length > 0) {
+				var x = stack.pop();
+				if (x.kind == Text) n += x.text.length else if (x.blockLevel) blocks++;
+				var c = x.first;
 				while (c != null) {
 					stack.push(c);
 					c = c.next;
 				}
 			}
+			sizes.set(b, t = {chars: n, blocks: blocks});
 		}
+		var size = b.style.css.fontSize();
+		return (Math.ceil(t.chars * size * 0.5 / Math.max(width, 1)) + t.blocks) * size * 1.3;
+	}
+
+	// (of the elements to style again, those in a block the last layout skipped, kept for when it is laid out:
+	// the others)
+	function defer(els:Array<Element>):Array<Element> {
+		if (lazy == null || lazy.count == 0) return els;
+		skipped = new ObjectMap<Box, Bool>();
+		for (b in lazy.boxes) skipped.set(b, true);
+		return [for (el in els) if (!kept(el)) el];
+	}
+
+	// (the blocks the last layout skipped, while a resize's restyle keeps what is in them for later)
+	var skipped:Null<ObjectMap<Box, Bool>> = null;
+
+	// (an element in a block skipped, kept to style again when it is laid out)
+	function kept(el:Element):Bool {
+		if (skipped == null) return false;
+		var bs = boxesOf(el), b = bs.length > 0 ? bs[0] : null;
+		while (b != null && !skipped.exists(b)) b = b.parent;
+		if (b == null) return false;
+		var list = pending.get(b);
+		if (list == null) pending.set(b, list = []);
+		list.push(el);
+		return true;
+	}
+
+	// (every element kept to style again, let go of)
+	function waiting():Array<Element> {
+		var out = [];
+		for (list in pending) for (el in list) out.push(el);
+		pending.clear();
+		return out;
 	}
 
 	// (laid out at the view's size from the cache; the fragments of the layouts
 	// before it, kept for the cache, dropped once they are a few times a whole
-	// layout's, and everything laid out afresh)
+	// layout's, and everything laid out afresh; the elements kept to style
+	// again in the blocks it will lay out styled first)
 	function lay():Int {
+		if (pending.keys().hasNext() && lazy != null && window != null) {
+			var due = [];
+			for (b in lazy.within(window[0], window[1])) {
+				var list = pending.get(b);
+				if (list == null) continue;
+				pending.remove(b);
+				for (el in list) due.push(el);
+			}
+			if (window[0] == Math.NEGATIVE_INFINITY) for (el in waiting()) due.push(el);
+			if (due.length > 0 && restyle(due, NOTHING) == TREE) {
+				restyle(waiting(), NOTHING);
+				build();
+			}
+		}
 		lined = null;
 		textIndex = null;
 		placed = null;
@@ -195,12 +410,20 @@ class DocumentView {
 		}
 		var fresh = fragments.count == 0;
 		var space = new Space(fragments, fonts, viewWidth, viewHeight);
+		if (window != null && tree.count > LONG) {
+			lazy ??= new Lazy(estimate);
+			lazy.top = window[0];
+			lazy.bottom = window[1];
+			lazy.reset();
+			space.lazy = lazy;
+		} else
+			lazy = null;
 		var f = (r.context ?? Contexts.all().flow).layout(r, space);
 		var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
 		if (sticky && (options.media == null || options.media.type != "print")) helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
-		order = new PaintOrder(fragments, f);
+		order = new PaintOrder(fragments, f, null, order != null ? order.count + (order.count >> 3) : 0);
 		if (fresh) whole = fragments.count;
 		return root = f;
 	}
@@ -235,56 +458,9 @@ class DocumentView {
 	public function update():Int {
 		var c = changes;
 		if (c == null || styles == null || tree == null || !c.dirty()) return NOTHING;
-		var redo = c.structure ? TREE : NOTHING;
-		var marked = c.restyle.changed();
-		var olds = new ObjectMap<Element, CssStyle>(), queued = new ObjectMap<Element, Bool>();
-		for (el in marked) {
-			var o = styles.cached(el);
-			if (o != null) olds.set(el, o);
-			queued.set(el, true);
-		}
-		styles.forget(marked);
-		var swaps = new ObjectMap<BoxStyle, BoxStyle>();
-		var k = 0;
-		while (k < marked.length && redo < TREE) {
-			var el = marked[k++], old = olds.get(el);
-			// (an element never styled is under display: none, or new: an insertion's tree)
-			if (old == null) continue;
-			var now = styles.computed(el);
-			if (now == old) continue;
-			// (what its children inherit, or their blockification, changed: they are styled again too)
-			if (old.passesDown(now)) {
-				var ch = el.firstElementChild;
-				while (ch != null) {
-					var o = styles.cached(ch);
-					if (o != null && !queued.exists(ch)) {
-						olds.set(ch, o);
-						queued.set(ch, true);
-						styles.forget([ch]);
-						marked.push(ch);
-					}
-					ch = ch.nextElementSibling;
-				}
-			}
-			var impact:Int = cast old.impact(now);
-			if (impact == (cast helder.css.CssProperties.CssImpact.None : Int)) continue;
-			if (impact <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(old, now)) {
-				redo = TREE;
-				break;
-			}
-			var level = impact <= (cast helder.css.CssProperties.CssImpact.Text : Int) ? LAYOUT : impact == (cast helder.css.CssProperties.CssImpact.Composite : Int) ? ORDER : PAINT;
-			if (level == PAINT && reaches(old, now)) level = ORDER;
-			var boxes = boxesOf(el);
-			for (b in boxes) if (b.pseudo == null) swap(b, el, old, now, swaps, level == LAYOUT);
-			// (its pseudo-elements' boxes: their styles made again, swapped the same way, or the tree made again)
-			for (b in boxes) if (b.pseudo != null && redo < TREE) {
-				var was = b.style.css, next = styles.computed(el, b.pseudo);
-				if (next == was) continue;
-				var i:Int = cast was.impact(next);
-				if (i <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(was, next)) redo = TREE else swap(b, el, was, next, swaps, i <= (cast helder.css.CssProperties.CssImpact.Text : Int));
-			}
-			if (level > redo) redo = level;
-		}
+		// (what is in a block a lazy layout skipped styled again when it is laid out)
+		var redo = restyle(defer(c.restyle.changed()), c.structure ? TREE : NOTHING);
+		skipped = null;
 		// (a text changed in place: its run's text, its blocks laid out again)
 		if (redo < TREE) for (t in c.texts) {
 			var boxes = boxesOf(t);
@@ -309,6 +485,133 @@ class DocumentView {
 			case _:
 		}
 		return redo;
+	}
+
+	// (the elements marked styled again, those their changes reach too, their
+	// boxes' styles swapped: what it takes, the most of it and redo)
+	function restyle(marked:Array<Element>, redo:Int):Int {
+		var olds = new ObjectMap<Element, CssStyle>(), queued = new ObjectMap<Element, Bool>();
+		for (el in marked) {
+			var o = styles.cached(el);
+			if (o != null) olds.set(el, o);
+			queued.set(el, true);
+		}
+		styles.forget(marked);
+		var swaps = new ObjectMap<BoxStyle, BoxStyle>(), remade:Array<Element> = [];
+		var levels = new ObjectMap<CssStyle, ObjectMap<CssStyle, Int>>();
+		var k = 0;
+		while (k < marked.length && redo < TREE) {
+			var el = marked[k++], old = olds.get(el);
+			// (an element never styled is under display: none, or new: an insertion's tree)
+			if (old == null) continue;
+			var now = styles.computed(el);
+			if (now == old) continue;
+			// (what its children inherit, or their blockification, changed: they are styled again too)
+			if (old.passesDown(now)) {
+				var ch = el.firstElementChild;
+				while (ch != null) {
+					var o = styles.cached(ch);
+					if (o != null && !queued.exists(ch) && !kept(ch)) {
+						olds.set(ch, o);
+						queued.set(ch, true);
+						styles.forget([ch]);
+						marked.push(ch);
+					}
+					ch = ch.nextElementSibling;
+				}
+			}
+			// (what the change of one style to another takes, worked out once a pair: many elements share both)
+			var pairs = levels.get(old);
+			if (pairs == null) levels.set(old, pairs = new ObjectMap());
+			var level = pairs.get(now);
+			if (level == null) pairs.set(now, level = levelOf(old, now));
+			if (level == NOTHING) continue;
+			if (level == TREE) {
+				remade.push(el);
+				continue;
+			}
+			var boxes = boxesOf(el);
+			for (b in boxes) if (b.pseudo == null) swap(b, el, old, now, swaps, level == LAYOUT);
+			// (its pseudo-elements' boxes: their styles made again, swapped the same way, or the tree made again)
+			for (b in boxes) if (b.pseudo != null && redo < TREE) {
+				var was = b.style.css, next = styles.computed(el, b.pseudo);
+				if (next == was) continue;
+				var i:Int = cast was.impact(next);
+				if (i <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(was, next)) remade.push(el) else swap(b, el, was, next, swaps,
+					i <= (cast helder.css.CssProperties.CssImpact.Text : Int));
+			}
+			if (level > redo) redo = level;
+		}
+		// (boxes of another kind: the nearest block around them that can be made again from its styles, or the tree)
+		for (el in remade) {
+			if (redo == TREE) break;
+			// (it, else the nearest block around it that can be: a list item's marker counts on its list, say; one
+			// in what was made again already is)
+			var e = el, done = false;
+			while (e != null && !done) {
+				var bs = [for (b in boxesOf(e)) if (b.pseudo == null) b];
+				if (bs.length > 0 && !attached(bs[0])) done = true;
+				else if (bs.length == 1 && bs[0].parent != null && (e == el || bs[0].kind == Block || bs[0].kind == Container)) {
+					var p = bs[0].parent, made = tree.rebuild(e, bs[0]);
+					if (made != null) {
+						stale(p);
+						owned(e, made);
+						for (b in made) marks(b);
+						if (made.length == 0) marks(p);
+						done = true;
+					}
+				}
+				e = e.parentElement;
+			}
+			redo = done ? (redo > LAYOUT ? redo : LAYOUT) : TREE;
+		}
+		if (remade.length > 0 && redo < TREE) sizes.clear();
+		return redo;
+	}
+
+	// (what a box's style changed from one to another takes: nothing, its paint, its paint order, its layout, its
+	// boxes made again)
+	static function levelOf(old:CssStyle, now:CssStyle):Int {
+		var impact:Int = cast old.impact(now);
+		if (impact == (cast helder.css.CssProperties.CssImpact.None : Int)) return NOTHING;
+		if (impact <= (cast helder.css.CssProperties.CssImpact.Text : Int)) return structural(old, now) ? TREE : LAYOUT;
+		if (impact == (cast helder.css.CssProperties.CssImpact.Composite : Int)) return ORDER;
+		return reaches(old, now) ? ORDER : PAINT;
+	}
+
+	// (the boxes of el and what is in it, made again: those of its nodes)
+	function owned(el:Element, made:Array<Box>) {
+		if (owners == null) return;
+		var stack:Array<Node> = [el];
+		while (stack.length > 0) {
+			var n = stack.pop();
+			owners.remove(n);
+			var c = n.firstChild;
+			while (c != null) {
+				stack.push(c);
+				c = c.nextSibling;
+			}
+		}
+		var boxes = made.copy();
+		while (boxes.length > 0) {
+			var b = boxes.pop();
+			if (b.node != null) {
+				var list = owners.get(b.node);
+				if (list == null) owners.set(b.node, list = []);
+				list.push(b);
+			}
+			var c = b.first;
+			while (c != null) {
+				boxes.push(c);
+				c = c.next;
+			}
+		}
+	}
+
+	// (in the tree, not in a part of it made again)
+	function attached(b:Box):Bool {
+		while (b.parent != null) b = b.parent;
+		return b == tree.root;
 	}
 
 	// (a change of these remakes boxes: their kind, generated content, counters)
@@ -577,11 +880,11 @@ class DocumentView {
 		if (lined != null) return lined;
 		var out = lined = [];
 		if (tree == null || tree.root == null || root < 0) return out;
-		// (in tree order: a box, its children, then its next sibling)
-		var b:Null<Box> = tree.root;
+		// (in tree order: a box, its children, then its next sibling; past a block a lazy layout left unlaid)
+		var b:Null<Box> = tree.root, partly = lazy != null;
 		while (b != null) {
 			if (b.lines != null && b.lines.fragment < fragments.count && fragments.box(b.lines.fragment) == b) out.push(b);
-			if (b.first != null) b = b.first else {
+			if (b.first != null && !(partly && b.flags & Box.LAZY != 0 && b.flags & Box.KEPT == 0)) b = b.first else {
 				while (b != null && b.next == null) b = b.parent;
 				b = b == null ? null : b.next;
 			}

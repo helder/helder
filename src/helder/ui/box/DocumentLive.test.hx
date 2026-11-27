@@ -40,10 +40,12 @@ function tests() {
 			fresh.layout(300, 200);
 			equals(geometry(v), geometry(fresh));
 		});
-		test("a display remakes the box tree", () -> {
+		test("a display remakes its boxes alone", () -> {
 			var v = live('<style>#a:hover { display: none }</style><div id=a>x</div><div id=b>y</div>');
+			var b = v.boxesOf(el(v, "b"))[0];
 			el(v, "a").setState(ElementState.HOVER, true);
-			equals(v.update(), DocumentView.TREE);
+			equals(v.update(), DocumentView.LAYOUT);
+			equals(v.boxesOf(el(v, "b"))[0] == b, true);
 			equals(v.boxesOf(el(v, "a")).length, 0);
 		});
 		test("a text changed in place", () -> {
@@ -61,6 +63,61 @@ function tests() {
 			u.append(li);
 			equals(v.update(), DocumentView.TREE);
 			equals(v.boxesOf(li).length > 0, true);
+		});
+		test("a viewport unit at another width restyles, the boxes kept", () -> {
+			var v = live('<style>body { margin: 0 } #a { width: 50vw; height: 10px }</style><div id=a></div><div id=b>y</div>');
+			var a = v.boxesOf(el(v, "a"))[0];
+			v.layout(400, 200);
+			equals(v.boxesOf(el(v, "a"))[0] == a, true);
+			equals(v.fragments.width(v.fragmentOf(a)), 200.0);
+		});
+		test("a media query that changes restyles what it matches", () -> {
+			var v = live('<style>@media (max-width: 250px) { #a { color: #f00 } }</style><p id=a>x</p><p id=b>y</p>');
+			var b = v.boxesOf(el(v, "b"))[0];
+			v.layout(200, 200);
+			equals(v.boxesOf(el(v, "b"))[0] == b, true);
+			equals(v.boxesOf(el(v, "a"))[0].style.color("color"), 0xFFFF0000);
+		});
+		test("a display a query changes remakes its block alone", () -> {
+			var html = '<style>body { margin: 0; font: 10px/1 Ahem } @media (max-width: 250px) { span { display: block } }</style><div id=a>w <span>x</span> y</div><div id=b>z</div>';
+			var v = live(html);
+			var b = v.boxesOf(el(v, "b"))[0];
+			v.layout(200, 200);
+			equals(v.boxesOf(el(v, "b"))[0] == b, true);
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			fresh.layout(200, 200);
+			equals(geometry(v), geometry(fresh));
+		});
+		test("a block after floats laid out again as a fresh layout does", () -> {
+			var html = '<style>body { margin: 0; font: 10px/1 Ahem } .f { float: left; width: 50px; height: 25px }</style><div class=f></div><p>aa aa aa aa</p><p>bb bb bb bb bb</p>';
+			var v = live(html);
+			v.layout(100, 200);
+			v.layout(300, 200);
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			fresh.layout(300, 200);
+			equals(geometry(v), geometry(fresh));
+		});
+		test("a long document laid out where it is seen, then whole as a fresh layout", () -> {
+			var html = '<style>body { margin: 0; font: 10px/1 Ahem } section { margin: 4px 0 } @media (max-width: 110px) { p { margin: 2px 0 } em { display: block } }</style>'
+				+ [for (i in 0...3000) '<section><p>a$i bb <em>cc</em></p><p>dd ee ff gg hh</p><p>ii</p><p>jj kk</p><p>ll</p><p>mm nn oo</p><p>pp</p><p>qq rr</p></section>'].join("");
+			var v = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			v.within(0, 200);
+			v.layout(120, 200);
+			// (across the query: what the window shows styled again now, the rest when it is laid out)
+			v.layout(100, 200);
+			equals(v.partial, true);
+			// (a fragment a section skipped, and the lines of the first few)
+			equals(laid(v) < 3100, true);
+			var a = v.anchor(50);
+			equals(v.reveal(30000, 30200, 30000) != null, true);
+			equals(v.moved(a), 0.0);
+			v.within(Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY);
+			v.layout(120, 200);
+			v.layout(100, 200);
+			equals(v.partial, false);
+			var fresh = DocumentView.html(Dom.parse('<!doctype html>' + html), {fonts: ahem()});
+			fresh.layout(100, 200);
+			equals(geometry(v), geometry(fresh));
 		});
 	});
 }
@@ -90,6 +147,21 @@ private function geometry(v:DocumentView):String {
 	}
 	walk(v.root, 0, 0);
 	return out.join("\n");
+}
+
+// (the fragments of its last layout)
+private function laid(v:DocumentView):Int {
+	var f = v.fragments, n = 0, stack = [v.root];
+	while (stack.length > 0) {
+		var id = stack.pop();
+		n++;
+		var c = f.first(id);
+		while (c >= 0) {
+			stack.push(c);
+			c = f.next(c);
+		}
+	}
+	return n;
 }
 
 private function top(v:DocumentView, id:String):Float {

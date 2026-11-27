@@ -22,6 +22,11 @@ class Exclusions {
 	inline function get_empty():Bool
 		return lefts.length == 0;
 
+	public var count(get, never):Int;
+
+	inline function get_count():Int
+		return lefts.length;
+
 	// The room between the floats across y...y + h, within left...right.
 	public function band(y:Float, h:Float, left:Float, right:Float):{left:Float, right:Float} {
 		var l = left, r = right;
@@ -61,6 +66,7 @@ class Exclusions {
 		y0s.push(y);
 		y1s.push(y + h);
 		lastTop = y;
+		low = Math.NaN;
 	}
 
 	// The last n floats taken out again (a line's floats placed anew).
@@ -72,6 +78,7 @@ class Exclusions {
 		x1s.resize(k);
 		y0s.resize(k);
 		y1s.resize(k);
+		low = Math.NaN;
 		lastTop = k > 0 ? y0s[k - 1] : Math.NEGATIVE_INFINITY;
 	}
 
@@ -87,8 +94,12 @@ class Exclusions {
 
 	// How low the floats reach (a formatting context's root's height takes them in, §10.6.7).
 	public function lowest():Float {
+		if (!Math.isNaN(low)) return low;
 		var bottom = Math.NEGATIVE_INFINITY;
 		for (y in y1s) if (y > bottom) bottom = y;
-		return bottom;
+		return low = bottom;
 	}
+
+	// (lowest's, until the floats change)
+	var low = Math.NaN;
 }

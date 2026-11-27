@@ -29,6 +29,8 @@ class BlockLines {
 	final markerLayout = new InlineLayout();
 	static final NO_BOXES:Array<Box> = [];
 	static final NO_FRAGMENTS:Array<Int> = [];
+	// (text's: each glyph's characters' end)
+	final ends:Array<Int> = [];
 
 	public function new(flow:BlockFlow)
 		this.flow = flow;
@@ -351,15 +353,18 @@ class BlockLines {
 			return constraints.lineWidth == null ? 0 : constraints.lineWidth(y, h).offset;
 		var frags = space.fragments, c = built.content, glyphs = l.glyphs;
 		// (an item's box: an inline box's by its Open item, an atomic's by order, text's by its DOM text)
-		var openBox = new Map<Int, Box>(), atomicFrag = new Map<Int, Int>(), atomicBox = new Map<Int, Box>();
-		var nextOpen = 0, nextAtomic = 0;
-		for (i in 0...c.items) switch c.kind(i) {
-			case Open: openBox.set(i, built.opened[nextOpen++]);
-			case Atomic:
-				atomicFrag.set(i, built.laid[nextAtomic]);
-				atomicBox.set(i, built.atomics[nextAtomic++]);
-			case _:
+		// (its place among the opened boxes or the atomics, by item; -1: neither)
+		var slot = [], nextOpen = 0, nextAtomic = 0;
+		slot.resize(c.items);
+		for (i in 0...c.items) slot[i] = switch c.kind(i) {
+			case Open: nextOpen++;
+			case Atomic: nextAtomic++;
+			case _: -1;
 		}
+		inline function openBox(i:Int):Null<Box>
+			return slot[i] >= 0 && slot[i] < built.opened.length ? built.opened[slot[i]] : null;
+		inline function atomicFrag(i:Int):Int
+			return slot[i] >= 0 && slot[i] < built.laid.length ? built.laid[slot[i]] : -1;
 		function textBox(i:Int):Box {
 			var b = i < built.texts.length ? built.texts[i] : null;
 			return b != null ? b : (cast c.style(i) : BoxInline).box;
@@ -402,8 +407,25 @@ class BlockLines {
 			// then everything adopted in the line's order, a span where its first part on the line is, before
 			// what it holds: the tree's order in a line of one direction, as paint and a PDF's text follow it;
 			// a run of the other direction kept as shown, PdfWriter's ActualText giving its logical order)
-			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
 			var start = l.lineFragmentStart(k), end = l.lineFragmentEnd(k);
+			// (a line of text and atomics alone, no inline box's span on it: each in the line's order, into it)
+			var spans = false;
+			for (f in start...end) if (l.kind(f) == BoxSpan) spans = true;
+			if (!spans) {
+				for (f in start...end) switch l.kind(f) {
+					case TextRun | Hyphen | Ellipsis:
+						var item = l.item(f);
+						text(space, l, f, textBox(item), c, line, fx(f), l.y(f) - top);
+					case Atomic:
+						var item = l.item(f), af = atomicFrag(item);
+						if (af < 0) continue;
+						var off = BlockFlow.offset(built.atomics[slot[item]], l.lineAvailable(k), Math.NaN);
+						frags.adopt(line, af, fx(f) + off.x, l.y(f) - top + off.y);
+					case _:
+				}
+				continue;
+			}
+			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
 			var order = [for (f in start...end) if (l.kind(f) == BoxSpan) f];
 			var adopts = new Map<Int, () -> Void>();
 			order.sort((a, b) -> c.depth(l.item(a)) - c.depth(l.item(b)));
@@ -414,7 +436,7 @@ class BlockLines {
 			}
 			for (f in order) {
 				var open = l.item(f);
-				var box = openBox.get(open);
+				var box = openBox(open);
 				if (box == null) continue;
 				var p = c.parent(open);
 				while (p >= 0 && !spanOf.exists(p)) p = c.parent(p);
@@ -447,10 +469,10 @@ class BlockLines {
 					adopts.set(f, () -> text(space, l, f, box, c, p.frag, x, l.y(f) - p.y));
 				case Atomic:
 					var item = l.item(f);
-					var af = atomicFrag.get(item);
-					if (af == null || af < 0) continue;
+					var af = atomicFrag(item);
+					if (af < 0) continue;
 					var p = parentOf(item);
-					var b = atomicBox.get(item);
+					var b = built.atomics[slot[item]];
 					var off = BlockFlow.offset(b, l.lineAvailable(k), Math.NaN);
 					var x = fx(f) - p.x + off.x;
 					adopts.set(f, () -> frags.adopt(p.frag, af, x, l.y(f) - p.y + off.y));
@@ -510,14 +532,29 @@ class BlockLines {
 			run = null;
 		}
 		// (each glyph's characters: its cluster up to the next one above it, the
-		// fragment's end after the last; a ligature's several, a pair's both units)
-		var bounds = [for (g in g0...g0 + n) glyphs.cluster(g)];
-		bounds.sort((a, b) -> a - b);
-		var next = new Map<Int, Int>(), e = t1;
-		var k = bounds.length;
-		while (--k >= 0) {
-			if (!next.exists(bounds[k])) next.set(bounds[k], e);
-			e = bounds[k];
+		// fragment's end after the last; a ligature's several, a pair's both units;
+		// clusters in order, as left to right text has them, at a pass from the end)
+		var ordered = true;
+		for (g in g0 + 1...g0 + n) if (glyphs.cluster(g) < glyphs.cluster(g - 1)) ordered = false;
+		var next:Null<Map<Int, Int>> = null, ends = this.ends;
+		if (ordered) {
+			if (ends.length < n) ends.resize(n);
+			var e = t1, k = n;
+			while (--k >= 0) {
+				var cl = glyphs.cluster(g0 + k);
+				ends[k] = e;
+				// (the next one above: past the glyphs of the same cluster)
+				if (k == 0 || glyphs.cluster(g0 + k - 1) != cl) e = cl;
+			}
+		} else {
+			var bounds = [for (g in g0...g0 + n) glyphs.cluster(g)];
+			bounds.sort((a, b) -> a - b);
+			next = new Map<Int, Int>();
+			var e = t1, k = bounds.length;
+			while (--k >= 0) {
+				if (!next.exists(bounds[k])) next.set(bounds[k], e);
+				e = bounds[k];
+			}
 		}
 		for (g in g0...g0 + n) {
 			var face = glyphs.face(g);
@@ -537,7 +574,7 @@ class BlockLines {
 				if (face.hasColor) run.palette = space.fonts.palette(face, box.style);
 				runX = glyphs.x(g);
 			}
-			var cl = glyphs.cluster(g), unit = cl < t0 ? t0 : cl, end = next.get(cl);
+			var cl = glyphs.cluster(g), unit = cl < t0 ? t0 : cl, end:Int = next == null ? ends[g - g0] : next.get(cl);
 			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, end > unit ? end : unit + 1);
 		}
 		flush(n > 0 ? Math.max(l.fragmentWidth(f), glyphs.x(g0 + n - 1) + glyphs.advance(g0 + n - 1)) : l.fragmentWidth(f));

@@ -28,10 +28,20 @@ class BlockFlow implements FormattingContext {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
 		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
+		// (beside floats only where one reaches below its top, and its last layout was clear of them)
+		var ex = space.exclusions;
+		var clear = ex == null || ex.empty || ex.lowest() <= space.top + 1e-6;
+		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null && (ex == null || ex.empty || clear && box.flags & Box.UNFLOATED != 0);
 		var cached = reusable ? hit(box, key, space) : -1;
 		if (cached >= 0) return cached;
+		var floats = ex == null ? 0 : ex.count, skipped = space.lazy != null ? space.lazy.count : 0;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
+		if (clear && (ex == null || ex.count == floats)) box.flags |= Box.UNFLOATED else box.flags &= ~Box.UNFLOATED;
+		// (some of it skipped by a lazy layout: not kept, laid out again where it is seen)
+		if (space.lazy != null && space.lazy.count != skipped) {
+			box.uncache();
+			return f;
+		}
 		keep(box, key, space, space.fragmentation == null ? f : -1);
 		return f;
 	}
@@ -86,8 +96,29 @@ class BlockFlow implements FormattingContext {
 		return a == b || Math.isNaN(a) && Math.isNaN(b);
 
 	// (a box laid out by its own context, or this one: replaced boxes have none)
-	public function child(box:Box, space:Space):Int
-		return box.context != null ? box.context.layout(box, space) : layout(box, space);
+	public function child(box:Box, space:Space):Int {
+		if (box.kind != TableWrapper || space.lazy == null || space.fragmentation != null)
+			return box.context != null ? box.context.layout(box, space) : layout(box, space);
+		// (a table a lazy layout skips as it does a block: as wide and tall as it last was, its rows not laid out)
+		var h = space.lazy.skip(box, space.top, space.width);
+		if (Math.isNaN(h)) {
+			var f = box.context != null ? box.context.layout(box, space) : layout(box, space);
+			box.laidWidth = space.fragments.width(f);
+			box.laidHeight = space.fragments.height(f);
+			box.flags |= Box.KEPT;
+			return f;
+		}
+		var m = box.style.model(), cb = space.width;
+		var mt = res(m.margin[0], cb), mb = res(m.margin[2], cb);
+		box.marginLeft = res(m.margin[3], cb);
+		box.marginRight = res(m.margin[1], cb);
+		box.topPositive = mt > 0 ? mt : 0;
+		box.topNegative = mt < 0 ? mt : 0;
+		box.bottomPositive = mb > 0 ? mb : 0;
+		box.bottomNegative = mb < 0 ? mb : 0;
+		box.through = false;
+		return space.fragments.add(Fragments.BOX, box, box.laidWidth > 0 ? box.laidWidth : cb, h);
+	}
 
 	// ---- block containers
 
@@ -135,6 +166,22 @@ class BlockFlow implements FormattingContext {
 				if (Lens.isAuto(s.minHeight) && !s.clips) floor = ratioCap(box, s, space.width, space.height, bpx, bpy);
 			}
 		}
+		// (a long document's block far from where it is seen: its contents laid out when it comes near, Lazy's
+		// estimate its height meanwhile, nothing else of its layout made)
+		if (space.lazy != null && fr == null && !box.style.hidden) {
+			var est = space.lazy.skip(box, space.top, w);
+			if (!Math.isNaN(est)) {
+				var content = Math.isNaN(heightSpec) ? est : heightSpec;
+				var h = space.ignoreHeight ? Math.max(0, content) : clampHeight(s, space.height, bpy, content);
+				box.topPositive = mt > 0 ? mt : 0;
+				box.topNegative = mt < 0 ? mt : 0;
+				box.bottomPositive = mb > 0 ? mb : 0;
+				box.bottomNegative = mb < 0 ? mb : 0;
+				box.through = false;
+				box.flags &= ~Box.ESCAPES;
+				return space.fragments.add(Fragments.BOX, box, w + bpx, h + bpy);
+			}
+		}
 		// (its height ended in a fragmentainer before, its content going on past it: no end edges here either, no height)
 		if (resume != null && !Math.isNaN(heightSpec) && !box.absolute && !box.floating && resume.consumed >= heightSpec + pb + bb - 0.01) {
 			bb = 0;
@@ -168,12 +215,16 @@ class BlockFlow implements FormattingContext {
 		var fixed = box.parent == null ? new Positioned() : cbox ? positioned : space.fixed ?? positioned;
 		var escaped = space.positioned != null ? space.positioned.boxes.length : 0;
 		var escapedFixed = space.fixed != null ? space.fixed.boxes.length : 0;
+		// (the last child's space, where a lazy layout skipped it: the next one's)
+		var spare:Null<Space> = null;
 		inline function childSpace(width:Float):Space {
 			var cs = space.child(width, pctBase);
 			cs.exclusions = ex;
 			cs.positioned = positioned;
 			cs.fixed = fixed;
 			cs.left = cx;
+			// (the root's formatting context's blocks alone skipped: their tops are the document's)
+			cs.lazy = root && box.parent != null ? null : space.lazy;
 			return cs;
 		}
 		function absolute(b:Box, x:Float, y:Float)
@@ -379,7 +430,15 @@ class BlockFlow implements FormattingContext {
 						cleared = true;
 					}
 				}
-				var space2 = childSpace(w);
+				var space2 = spare != null ? spare.again(space, w, pctBase) : childSpace(w);
+				if (spare != null) {
+					space2.exclusions = ex;
+					space2.positioned = positioned;
+					space2.fixed = fixed;
+					space2.left = cx;
+					space2.lazy = root && box.parent != null ? null : space.lazy;
+					spare = null;
+				}
 				space2.top = cy + py;
 				// (a formatting context's root beside floats: in the room they leave, §9.5)
 				var shift = 0.0;
@@ -437,7 +496,10 @@ class BlockFlow implements FormattingContext {
 						for (d in sub.deferred) fr.defer(d);
 					}
 				}
+				var lazy = space2.lazy, skipped = lazy != null ? lazy.count : 0;
 				if (sub == null) cf = child(c, space2);
+				// (skipped itself: its space kept nothing, the next child's)
+				if (lazy != null && lazy.count == skipped + 1 && lazy.boxes[skipped] == c) spare = space2;
 				if (truncate) {
 					c.topPositive = 0;
 					c.topNegative = 0;
@@ -550,6 +612,11 @@ class BlockFlow implements FormattingContext {
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
 		// (size containment: its content's height contain-intrinsic-height's, not its children's)
 		if (contain.has(Size)) content = box.style.intrinsicSize(false);
+		if (fr == null) {
+			box.laidWidth = w;
+			box.laidHeight = content;
+			box.flags |= Box.KEPT;
+		}
 		var h = space.ignoreHeight ? Math.max(0, autoHeight ? content : heightSpec) : clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
 		if (content > h && !Math.isNaN(floor)) h = Math.max(h, Math.min(content, floor));
 		box.through = false;
@@ -811,20 +878,16 @@ class BlockFlow implements FormattingContext {
 		return b.kind == BlockReplaced || b.kind == InlineReplaced || scrolls(b.style) || c.has(Layout) || c.has(Size);
 	}
 
-	static function scrolls(s:BoxStyle):Bool {
-		var x = s.keyword("overflow-x"), y = s.keyword("overflow-y");
-		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
-	}
+	static inline function scrolls(s:BoxStyle):Bool
+		return s.scrolls;
 
 	// (a scroll container: overflow hidden, auto or scroll; clip makes none, Overflow 3 §3)
-	static function scrollContainer(s:BoxStyle):Bool {
-		var x = s.keyword("overflow-x"), y = s.keyword("overflow-y");
-		return x == "hidden" || y == "hidden" || scrolls(s);
-	}
+	static inline function scrollContainer(s:BoxStyle):Bool
+		return s.scrollContainer;
 
 	// (a new block formatting context's root: no margin collapses across it, §8.3.1, §9.4.1; a flex or grid
 	// item too, Flexbox §4, Grid §6)
-	static function formattingRoot(box:Box):Bool {
+	@:allow(helder.ui.box) static function formattingRoot(box:Box):Bool {
 		var s = box.style;
 		if (box.parent == null || box.kind != Block) return true;
 		var inner = box.parent.style.inner;
@@ -847,7 +910,7 @@ class BlockFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = size(s.width, cb, s.borderBox, bpx);
-		if (Math.isNaN(spec)) spec = sizing(box, space, cb, ml, mr, bpx, () -> intrinsic(box, space));
+		if (Math.isNaN(spec) && s.contentSized) spec = sizing(box, space, cb, ml, mr, bpx, () -> intrinsic(box, space));
 		// (an auto width through an aspect-ratio from a height that is definite)
 		if (Math.isNaN(spec) && !Math.isNaN(height)) spec = Ratio.width(box, clampHeight(s, space.height, bpy, height), bpx, bpy);
 		// (a table's caption is laid out as a block in its table's width)

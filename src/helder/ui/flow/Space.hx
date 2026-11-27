@@ -55,12 +55,40 @@ class Space {
 	// no pixel grid (print, PagedView's): a collapsed border split in halves exactly, and the fonts' metrics and
 	// leading unrounded (InlineConstraints.exactMetrics), not in whole pixels as Chromium's
 	public var exact = false;
+	// (a long document laid out where it is seen: the root's formatting context's blocks far from it skipped)
+	public var lazy:Null<Lazy> = null;
 
 	public function new(fragments:Fragments, fonts:FontMatch, width:Float, height:Float) {
 		this.fragments = fragments;
 		this.fonts = fonts;
 		this.width = width;
 		this.height = height;
+	}
+
+	// A child space made again in one given before (what a lazy layout
+	// skipped kept nothing of): as child gives it, the parent's this.
+	public function again(parent:Space, width:Float, height:Float):Space {
+		this.width = width;
+		this.height = height;
+		fixedWidth = fixedHeight = Math.NaN;
+		ignoreHeight = false;
+		borders = null;
+		lineWidth = null;
+		placeFloat = null;
+		unplace = null;
+		placeAbsolute = null;
+		exclusions = parent.exclusions;
+		positioned = parent.positioned;
+		fixed = parent.fixed;
+		left = parent.left;
+		top = parent.top;
+		repeated = null;
+		fragmentation = null;
+		pageTop = 0;
+		reserve = 0;
+		exact = parent.exact;
+		lazy = null;
+		return this;
 	}
 
 	public function child(width:Float, height:Float):Space {
