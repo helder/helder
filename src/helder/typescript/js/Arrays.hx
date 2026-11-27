@@ -77,6 +77,17 @@ class Arrays {
 		else putNamed(out, "length", length);
 	}
 
+	static function sliceSpecies(o:JsObject, out:JsObject, start:Float, end:Float):JsObject {
+		var i = start, k:Float = 0;
+		while (i < end) {
+			if (hasAt(o, i)) Objects.createDataProperty(out, Seed.numberText(k), get(o, i));
+			k++;
+			i++;
+		}
+		putNamed(out, "length", k);
+		return out;
+	}
+
 	static function relative(v:Dynamic, len:Float):Float {
 		var n = toIntegerOrInfinity(v);
 		return n < 0 ? Math.max(len + n, 0) : Math.min(n, len);
@@ -222,15 +233,18 @@ class Arrays {
 			var start = relative(a0, n);
 			var end = same(a1, undef()) ? n : relative(a1, n);
 			var count = Math.max(end - start, 0);
-			var custom = species(o, count), plain = custom == null, out = plain ? resultArray(count) : custom;
+			var custom = species(o, count);
+			if (custom != null) return sliceSpecies(o, custom, start, end);
+			if (count > 4294967295.0) return error("RangeError", "Invalid array length");
+			var out = new JsArray(ArrayProto);
 			var i = start;
 			var k:Float = 0;
 			while (i < end) {
-				if (hasAt(o, i)) writeResult(out, plain, k, get(o, i));
+				if (hasAt(o, i)) setIndex(out, k, get(o, i));
 				k++;
 				i++;
 			}
-			resultLength(out, plain, k);
+			out.length = k;
 			return out;});
 		fixed(p, "at", 1, (t, a0:Dynamic, _, _) -> {
 			var o = toObject(t);
