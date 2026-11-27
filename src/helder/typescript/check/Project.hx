@@ -265,7 +265,9 @@ class Project {
 			(program ? files : declarations).push(sf);
 			if (name == absolute) file = sf;
 			symbols(tsgo, at, sf);
-			if (program) types.load(sf);
+			// (JavaScript's types are no promise: its JSDoc and what is inferred go
+			// unchecked (checkJs off), so its values are the runtime's, untyped)
+			if (program && !~/\.[cm]?jsx?$/.match(name)) types.load(sf);
 			for (i in 1...sf.count) switch sf.kindAt(i) {
 				case KindImportDeclaration | KindExportDeclaration:
 					var specifier = sf.node(i).moduleSpecifier();

@@ -93,7 +93,10 @@ sibling `.js`/`.mjs`), and that file is one of the program's roots, as
 an allowJs file is, its own imports followed the same way (a second
 snapshot when the first found new ones; a compilation server starts from
 the last build's roots). The declaration file stays the importer's types;
-an untyped package is typed as tsgo types its JavaScript. As a bundler does,
+an untyped package is typed as tsgo types its JavaScript. JavaScript's
+types are not used for its values (its JSDoc and inference go unchecked,
+checkJs off: lodash's `@param {string} key` is given objects), so a
+JavaScript file's values are the runtime's. As a bundler does,
 `process.env.NODE_ENV` where nothing binds `process` is the build's mode
 (`"production"`, `"development"` under `helder dev`), with no process
 global, and `Function("return this")` (that body alone: how libraries
