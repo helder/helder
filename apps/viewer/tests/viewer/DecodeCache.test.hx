@@ -40,6 +40,11 @@ function tests() {
 			pending = [];
 			decoded = [];
 		});
+		test("a key's path with a line break in its name: kept whole, its page apart", () -> {
+			var name = "a\r\nb 2.jpg";
+			equals(Decode.parseKey(Decode.key(name)), {path: name, page: 0});
+			equals(Decode.parseKey(Decode.key(name, 3)), {path: name, page: 3});
+		});
 		test("nearest first, two at a time", () -> {
 			var c = new DecodeCache(decode, 1000);
 			c.want(["a", "b", "c", "d"]);
