@@ -39,6 +39,7 @@ typedef CssScoped = {
 // files read (a composed module's change changes this one).
 typedef CssScopeTypeScript = {
 	source:String,
+	signature:String,
 	declaration:String,
 	haxeType:String,
 	diagnostics:Array<CssDiagnostic>,
@@ -80,16 +81,29 @@ class CssScope {
 	public static function typescript(file:String, ?options:CssScopeOptions):CssScopeTypeScript {
 		var m = compile(file, options);
 		var type = "{" + [for (n in m.names) 'readonly ${key(n.name)}: string'].join("; ") + "}";
-		var value = "{" + [for (n in m.names) '${key(n.name)}: ${haxe.Json.stringify(n.value)}'].join(", ") + "}";
+		var value = "{" + [for (n in m.names) {
+			var name = n.name == "__proto__" ? '["__proto__"]' : key(n.name);
+			'${name}: ${haxe.Json.stringify(n.value)}';
+		}].join(", ") + "}";
 		var name = Path.withoutDirectory(m.file);
 		return {
 			source: '// $name: its names, scoped by helder.css (CssScope); its sheet is ${typeName(m)}\'s\n'
 				+ 'const names: $type = Object.freeze($value);\nexport default names;\n',
+			signature: signature(m),
 			declaration: '// $name (helder.css: CssScope)\ndeclare const names: $type;\nexport default names;\n',
 			haxeType: typeName(m),
 			diagnostics: m.diagnostics,
 			files: m.files
 		};
+	}
+
+	public static function devKey(file:String):String
+		return "css-modules/" + haxe.crypto.Sha256.encode(file).substr(0, 16) + "/" + Path.withoutDirectory(file);
+
+	public static function signature(m:CssScoped):String {
+		var names = [for (n in m.names) n.name + "=" + n.value];
+		names.sort(Reflect.compare);
+		return names.join("\n");
 	}
 
 	// (a property key: an identifier as is, else quoted)

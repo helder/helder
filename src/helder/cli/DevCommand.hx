@@ -122,6 +122,7 @@ class DevCommand {
 	// the last build's assets (its manifest): their files by key, and keys by file
 	static var assetFiles = new Map<String, String>();
 	static var assetKeys = new Map<String, String>();
+	static var cssModules:Null<{root:String, modules:Array<{file:String, files:Array<String>, names:String}>}>;
 
 	@:coroutine public static function run(task:Node, o:Options):Int {
 		var port = Std.parseInt(o.value("port") ?? Sys.getEnv("HELDER_DEV_PORT") ?? "") ?? 4321, address = o.value("host") ?? "127.0.0.1";
@@ -243,7 +244,8 @@ class DevCommand {
 			var rest = [];
 			for (f in changed) {
 				var k = assetKeys.get(f);
-				if (k != null && FileSystem.exists(f)) assetChanged(k) else rest.push(f);
+				if (cssNeedsBuild(f)) rest.push(f);
+				else if (k != null && FileSystem.exists(f)) assetChanged(k) else rest.push(f);
 			}
 			if (rest.length == 0) continue;
 			// (live literals: a save that changed only their values patched, nothing built)
@@ -331,7 +333,7 @@ class DevCommand {
 		if (deps == null) for (r in roots) {
 			dirs.push(r);
 			walk(r, false);
-		} else for (f in deps) if (f != "" && under(f)) {
+		} else for (f in deps) if (f != "" && (under(f) || e.typescript != null && f.endsWith(".css"))) {
 			files.push(f);
 			var d = Path.directory(f);
 			if (!dirs.contains(d)) dirs.push(d);
@@ -353,6 +355,17 @@ class DevCommand {
 	static function source(name:String):Bool
 		return name.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(name);
 
+	// Compare with the running build's exports, including composed names.
+	static function cssNeedsBuild(file:String):Bool {
+		if (cssModules != null) for (m in cssModules.modules) if (m.files.contains(file)) {
+			if (lastError != null || !FileSystem.exists(file)) return true;
+			var fresh = helder.css.CssScope.typescript(m.file, {root: cssModules.root});
+			if (Lambda.exists(fresh.diagnostics, d -> d.severity == Error)) continue;
+			if (fresh.signature != m.names || fresh.files.join("\n") != m.files.join("\n")) return true;
+		}
+		return false;
+	}
+
 	static function depsFile():String
 		return Path.withoutExtension(out) + ".deps";
 
@@ -371,13 +384,16 @@ class DevCommand {
 
 	// the build's manifest read: the files watched as assets
 	static function readAssets() {
-		var m = AssetStep.manifest(builtExe());
-		if (!FileSystem.exists(m)) return;
 		assetFiles = new Map();
 		assetKeys = new Map();
 		for (a in AssetStep.assets(builtExe())) {
 			assetFiles.set(a.key, a.file);
 			assetKeys.set(a.file, a.key);
+		}
+		if (cssModules != null) for (m in cssModules.modules) for (file in m.files) {
+			var key = helder.css.CssScope.devKey(file);
+			assetFiles.set(key, file);
+			assetKeys.set(file, key);
 		}
 	}
 
@@ -469,6 +485,7 @@ class DevCommand {
 		}
 		var wasError = lastError != null;
 		lastError = null;
+		cssModules = e.typescript == null ? null : try haxe.Json.parse(File.getContent(depsFile() + ".css.json")) catch (_:Dynamic) null;
 		readAssets();
 		timing = seen == null ? null : {seen: seen, build: r.ms};
 		log(Style.status(seen == null ? "built" : "rebuilt", Ok, 'in ${Style.time(r.ms)}' + Style.dim(Style.sep() + BuildCommand.size(artifact))));

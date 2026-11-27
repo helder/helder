@@ -62,7 +62,7 @@ class Config {
 				case "configFilePath" | "pathsBasePath":
 				case _:
 			}
-			if (option != "configFilePath" && option != "pathsBasePath") Reflect.setField(options, option, v);
+			if (option != "configFilePath") Reflect.setField(options, option, v);
 		}
 		if (errors.length > 0) throw errors.join("\n");
 		return withNoEmit(options);

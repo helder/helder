@@ -18,7 +18,7 @@
 // - css-module: tests/cli/cards, an element styled through a CSS module
 //   (helder.css's CssModule): an edit to the module's file swaps its sheet,
 //   nothing built; one that adds a name says a rebuild is needed; one with
-//   an error keeps the last sheet.
+//   an error keeps the last sheet. css-module-ts also rebuilds on export changes.
 // - asset-web: Swatch for web: a new PNG sent to the page ({"type":
 //   "asset"}), the dev server serving the new bytes at /__hxmc/assets/.
 // The times from a save to the reload (native: the program's first frame,
@@ -40,8 +40,8 @@ const check = (what, ok, detail = '') => {
 
 fs.rmSync(work, { recursive: true, force: true });
 fs.mkdirSync(path.join(work, 'app'), { recursive: true });
-const assets = mode.startsWith('asset'), web = mode === 'web' || mode === 'asset-web', exit = mode === 'exit', cards = mode === 'css-module';
-const fixture = cards ? 'tests/cli/cards/Cards.hx' : assets ? 'tests/cli/swatch/Swatch.hx' : web ? 'examples/counter/Counter.hx' : exit ? 'tests/cli/closer/Closer.hx' : 'tests/cli/tally/Tally.hx';
+const assets = mode.startsWith('asset'), web = mode === 'web' || mode === 'asset-web', exit = mode === 'exit', tsCards = mode === 'css-module-ts', cards = mode === 'css-module' || tsCards
+const fixture = tsCards ? 'tests/cli/cards/Cards.ts' : cards ? 'tests/cli/cards/Cards.hx' : assets ? 'tests/cli/swatch/Swatch.hx' : web ? 'examples/counter/Counter.hx' : exit ? 'tests/cli/closer/Closer.hx' : 'tests/cli/tally/Tally.hx'
 const file = path.join(work, 'app', path.basename(fixture));
 fs.copyFileSync(path.join(repo, fixture), file);
 // (an RGBA8 PNG of w x h pixels, each rgba: what Swatch loads)
@@ -73,7 +73,10 @@ const write = (name, data) => {
 	fs.renameSync(f + '.tmp', f);
 	return performance.now();
 };
-if (cards) write('cards.module.css', '.card { width: 40px }\n');
+if (tsCards) {
+	write('cards.module.css', '.card { composes: base from "./base.module.css"; }\n')
+	write('base.module.css', '.base { width: 40px }\n')
+} else if (cards) write('cards.module.css', '.card { width: 40px }\n')
 if (assets) {
 	write('swatch.png', png(2, 2, 0xff0000ff));
 	write('note.txt', 'first note\n');
@@ -199,6 +202,18 @@ async function asset() {
 	check('helder dev runs on', dev.exitCode === null && !lines.some(closed));
 }
 
+async function cssModuleTs() {
+	check('the first build: the module exports card', !!(await line(/^cards: exports card$/, 240000, true)))
+	await sleep(300)
+	const swapped = line(/helder\.css: base\.module\.css swapped, nothing built/)
+	write('base.module.css', '.base { width: 30px }\n')
+	check('a composed sheet swapped without a build', !!(await swapped) && !lines.some(l => /^\s*rebuilt in/.test(l)))
+	const rebuilt = line(/^\s*rebuilt in/)
+	const exports = line(/^cards: exports card extra$/)
+	write('cards.module.css', '.card { composes: base from "./base.module.css"; }\n.extra { color: red }\n')
+	check('a name added: rebuilt with the new export', !!(await rebuilt) && !!(await exports))
+}
+
 // a CSS module's file edited: its sheet swapped, nothing built
 async function cssModule() {
 	check('the first build: the module\'s width', !!(await line(/^cards: width 40px$/, 240000, true)));
@@ -310,12 +325,13 @@ async function page() {
 }
 
 try {
-	await (cards ? cssModule() : mode === 'asset-web' ? assetPage() : assets ? asset() : web ? page() : exit ? exitPolicy() : native());
+	await (tsCards ? cssModuleTs() : cards ? cssModule() : mode === 'asset-web' ? assetPage() : assets ? asset() : web ? page() : exit ? exitPolicy() : native());
 } catch (e) {
 	console.log('FAIL ' + e.message);
 	failures++;
 } finally {
 	dev.kill();
+	await ended;
 }
 const ms = times.map((t) => Math.round(t));
 if (ms.length > 0) console.log(`cli dev ${mode}: save to reload ${ms.join(', ')} ms, median ${median(ms)} ms`);

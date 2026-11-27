@@ -4,6 +4,7 @@ import helder.typescript.check.Ast;
 import helder.typescript.check.Kind;
 import helder.typescript.check.Kind.*;
 import helder.typescript.check.Project;
+import helder.typescript.check.Packages;
 import hxmc.ir.Ir;
 import haxe.ds.Vector;
 import helder.typescript.ir.Builder;
@@ -52,6 +53,12 @@ class Frontend extends ApiCalls {
 		return m;
 	}
 
+	function callHaxe(name:String) {
+		var fn = Lambda.find(p.funcs, f -> f.name == name);
+		if (fn == null) throw "TSHX004: missing Haxe function " + name;
+		b.out.push(SExpr(ECall(fn, new Vector(0))));
+	}
+
 	// ES module evaluation order: imports depth first, in source order, each module once.
 	function moduleOrder():Array<Module> {
 		for (f in src.files) {
@@ -65,7 +72,10 @@ class Frontend extends ApiCalls {
 			visiting.set(m, true);
 			for (s in statementsOf(m.file)) {
 				var spec = moduleSpecifier(s);
-				if (spec != null && !declared(spec) && TsAssets.imported(s) == null) visit(targetModule(spec));
+				if (spec != null && !declared(spec) && TsAssets.imported(s) == null) {
+					if (src.css.active.exists(src.resolve(spec)) && Packages.typeOnly(s)) continue;
+					visit(targetModule(spec));
+				}
 			}
 			order.push(m);
 		}
@@ -116,6 +126,9 @@ class Frontend extends ApiCalls {
 			tsx.liveTable = definitions.define("helder.literals");
 			// (its timers and promises on helder.async's loop: Interop.hostLoop)
 			if (eventLoop) bridge.call(bridge.interop("hostLoop"), []);
+		} else if (eventLoop && dev && src.css.active.iterator().hasNext()) {
+			// CSS reloads run on helder.async's loop even in a program with only JS timers.
+			callHaxe("helder_typescript_js_Interop_hostLoop");
 		}
 		for (c in classes.all) declareLayout(c);
 		mathFixed = !features.contains("All") && !assignsMath();
@@ -156,6 +169,8 @@ class Frontend extends ApiCalls {
 		var body = b.block(() -> {
 			for (m in modules) {
 				enter(m);
+				var css = src.css.active.get(m.file.path);
+				if (css != null) callHaxe(css.haxeType.split(".").join("_") + "_install");
 				for (n in statementsOf(m.file)) statement(n, true);
 			}
 			// (timers and promises: only a program that has them runs the loop)

@@ -59,19 +59,35 @@ class CssModule {
 			w();
 	}
 
+	#if hxmc.dev
+	// Composes can read sources on disk natively. Keep the current text where
+	// the running app cannot read the project's files (the web or a device).
+	static final devSources = new Map<String, String>();
+
+	@:noCompletion public static function remember(file:String, text:String)
+		devSources.set(file, text);
+	#end
+
 	// (helder dev, from the code CssModule makes in dev builds: the file's
 	// new text scoped and compiled, the sheet swapped unless it has errors;
 	// names: the build's, name=value lines. What it did, as the log says it)
 	@:noCompletion public static function reload(key:String, file:String, root:String, names:String, text:String):String {
-		var m = CssScope.compile(file, {root: root, read: f -> f == file ? text : sys.FileSystem.exists(f) ? sys.io.File.getContent(f) : null});
+		#if hxmc.dev
+		remember(file, text);
+		#end
+		var m = CssScope.compile(file, {root: root, read: f -> {
+			if (f == file) return text;
+			if (sys.FileSystem.exists(f)) return sys.io.File.getContent(f);
+			#if hxmc.dev return devSources.get(f); #else return null; #end
+		}});
 		var base = haxe.io.Path.withoutDirectory(file), index = at.get(key);
 		var errors = [for (d in m.diagnostics) if (d.severity == Error) '${d.file}:${d.line}:${d.column}: ${d.message}'];
 		var said = if (index == null) '$base: not loaded by this build' else if (errors.length > 0) errors.concat(['$base not swapped: the last sheet stays']).join("\n") else {
 			list[index] = CssScope.sheet(m);
 			changed();
-			var was = [for (l in names.split("\n")) l.split("=")[0]], is = [for (n in m.names) n.name];
+			var was = names == "" ? [] : [for (l in names.split("\n")) l.split("=")[0]], is = [for (n in m.names) n.name];
 			var changes = [for (n in is) if (!was.contains(n)) "+" + n].concat([for (n in was) if (!is.contains(n)) "-" + n]);
-			var now = [for (n in m.names) n.name + "=" + n.value].join("\n");
+			var now = CssScope.signature(m);
 			if (now == names) '$base swapped, nothing built' else '$base swapped, but its names changed (${changes.length == 0 ? "what they compose" : changes.join(" ")}): rebuild to use them';
 		}
 		#if hxmc.dev
@@ -94,30 +110,45 @@ class CssModule {
 	}
 
 	#if macro
+	public static function defineTypeScript(files:Array<String>) {
+		Context.onAfterInitMacros(() -> {
+			var installs = [for (file in files) {
+				var path = define(file, null, false).split(".").concat(["install"]);
+				macro $p{path}();
+			}];
+			if (Context.defined("hxmc.dev")) installs.push(macro helder.typescript.js.Interop.hostLoop());
+			var keep = macro class CssModuleKeep {
+				static function __init__()
+					if (helder.typescript.js.Interop.keeping()) $b{installs};
+			};
+			keep.pack = ["helder", "typescript"];
+			Context.defineType(keep);
+		});
+	}
+
 	// The module's Haxe class made (once per file: its sheet, names, install()
 	// registering it after those it composes from), its path; its errors the
 	// build's. For TypeScript's frontend, CssScope.typescript's haxeType.
-	public static function define(file:String, ?pos:Position):String {
+	public static function define(file:String, ?pos:Position, haxeNames = true):String {
 		pos ??= Context.currentPos();
 		var root = root(), m = CssScope.compile(FileSystem.fullPath(file), {root: root});
-		var module = Context.getLocalModule();
-		for (f in m.files)
-			Context.registerModuleDependency(module, f);
+		if (haxeNames) for (f in m.files)
+			Context.registerModuleDependency(Context.getLocalModule(), f);
 		report(m.diagnostics, pos);
-		return make(m, root, pos);
+		if (haxeNames) checkFields(m, pos);
+		return make(m, root, pos, !haxeNames);
 	}
 
-	static function make(m:CssScoped, root:String, pos:Position):String {
+	static function make(m:CssScoped, root:String, pos:Position, typescript:Bool):String {
 		var type = CssScope.typeName(m), name = type.split(".").pop();
 		var exists = try Context.getType(type) != null catch (_:Dynamic) false;
 		if (exists) return type;
-		var deps = [for (d in m.composes) make(d, root, pos)];
-		var fields:Array<Field> = [], values:Array<ObjectField> = [], seen = new Map<String, String>();
+		var deps = [for (d in m.composes) make(d, root, pos, typescript)];
+		var fields:Array<Field> = [], values:Array<ObjectField> = [], seen = new Map<String, Bool>();
 		for (n in m.names) {
 			var f = field(n.name);
-			if (f == null) Context.error('CssModule: .${n.name} (${Path.withoutDirectory(m.file)}) is no Haxe field name', pos);
-			if (seen.exists(f) && seen.get(f) != n.name) Context.error('CssModule: .${n.name} and .${seen.get(f)} are both $f', pos);
-			seen.set(f, n.name);
+			if (f == null || seen.exists(f)) continue;
+			seen.set(f, true);
 			fields.push({name: f, access: [AFinal], kind: FVar(macro :String), pos: pos});
 			values.push({field: f, expr: macro $v{n.value}});
 		}
@@ -125,13 +156,18 @@ class CssModule {
 		var sheet = macro helder.css.CssSheetData.decode($v{CssSheetData.encode(CssScope.sheet(m), false)});
 		var installs = [for (d in deps) macro $p{d.split(".").concat(["install"])}()];
 		if (Context.defined("hxmc.dev")) {
-			var key = assetKey(m.file, root), dev = FileSystem.fullPath(m.file).split("\\").join("/");
-			var lines = [for (n in m.names) n.name + "=" + n.value].join("\n");
+			var key = typescript ? CssScope.devKey(m.file) : assetKey(m.file, root);
+			var dev = FileSystem.fullPath(m.file).split("\\").join("/");
+			var text = sys.io.File.getContent(m.file);
+			var lines = CssScope.signature(m);
 			var marker = helder.asset.AssetMacro.key(key, false);
-			installs.push(macro helder.asset.Assets.handle("css", $marker, _ -> helder.asset.Files.read($marker, $v{dev}), (_, fresh) -> {
-				helder.css.CssModule.reload($v{m.key}, $v{dev}, $v{root}, $v{lines}, fresh.toString());
-				fresh;
-			}));
+			installs.push(macro {
+				helder.css.CssModule.remember($v{m.file}, $v{text});
+				helder.asset.Assets.handle("css", $marker, _ -> helder.asset.Files.read($marker, $v{dev}), (_, fresh) -> {
+					helder.css.CssModule.reload($v{m.key}, $v{m.file}, $v{root}, $v{lines}, fresh.toString());
+					fresh;
+				}, () -> haxe.io.Bytes.ofString($v{text}));
+			});
 		}
 		var c = macro class $name {
 			public static final names:$names = ${{expr: EObjectDecl(values), pos: pos}};
@@ -171,6 +207,17 @@ class CssModule {
 		inline function bytes(k:Int)
 			return haxe.io.Bytes.ofString(text.substr(0, k)).length;
 		return Context.makePosition({file: d.file, min: bytes(d.start), max: bytes(Std.int(Math.max(d.end, d.start + 1)))});
+	}
+
+	static function checkFields(m:CssScoped, pos:Position) {
+		var seen = new Map<String, String>();
+		for (n in m.names) {
+			var f = field(n.name);
+			if (f == null) Context.error('CssModule: .${n.name} (${Path.withoutDirectory(m.file)}) is no Haxe field name', pos);
+			if (seen.exists(f)) Context.error('CssModule: .${n.name} and .${seen.get(f)} are both $f', pos);
+			seen.set(f, n.name);
+		}
+		for (d in m.composes) checkFields(d, pos);
 	}
 
 	// (a name as a Haxe field: dashes camelCased; null when it can't be one)

@@ -690,6 +690,28 @@ with the key. `deref`'s keeping its target alive until the job ends is
 the runtime's own list, cleared at the microtask checkpoint. Not yet:
 BigInt (and so BigInt64Array), `process` and node's other globals.
 
+### CSS modules
+
+Import a `*.module.css` file by a relative path or a `tsconfig.json` path
+alias. The default export is a frozen map of scoped names. Its keys are
+read-only and keep their CSS spelling, including dashes.
+
+```tsx
+import styles from './card.module.css'
+
+const card = <div class={styles.card}>Card</div>
+```
+
+The build checks the generated types and registers the precompiled sheet
+with the CSS cascade when the module runs. `composes` includes the
+composed classes and registers their sheets first. Errors such as an
+unknown composed class are reported in the CSS file. CSS imports require
+the `.module.css` file extension.
+
+Under `helder dev`, edits to a module or a composed sheet swap the sheet
+in the running program. Changes to the exported names or the classes
+they compose trigger a rebuild.
+
 ### Errors' stacks
 
 ```

@@ -17,6 +17,7 @@ class Project {
 	// (the declaration files the program and they import: helder's API, lower.Api)
 	public final declarations:Array<SourceFile> = [];
 	public final isJS:Bool;
+	public final css:CssModules;
 	public var types(default, null):Types;
 	final modules:Map<Node, String> = [];
 
@@ -27,7 +28,7 @@ class Project {
 	static var session:Null<{key:String, tsgo:Tsgo, tables:Tables}> = null;
 
 	// (checked: after, given the project while tsgo is up, asks what the lowering needs beyond it)
-	public static function check(entry:String, globals:String, ?after:Project->Void):Project {
+	public static function check(entry:String, globals:String, root:String, ?after:Project->Void):Project {
 		read = [haxe.io.Path.normalize(sys.FileSystem.fullPath(entry))];
 		var found = Tsgo.find(haxe.io.Path.directory(entry));
 		// (the worker's tsgo is one session for every directory: its paths are absolute)
@@ -43,7 +44,7 @@ class Project {
 		}
 		var s = session;
 		try {
-			var project = new Project(entry, globals, s.tsgo, s.tables);
+			var project = new Project(entry, globals, root, s.tsgo, s.tables);
 			if (after != null) after(project);
 			if (!hxmc.Driver.resident) stop();
 			return project;
@@ -73,7 +74,7 @@ class Project {
 		return s.size + "@" + s.mtime.getTime();
 	}
 
-	static function snapshot(tsgo:Tsgo, key:String, roots:Array<String>, options:Dynamic):{snapshot:Int, project:Dynamic} {
+	static function snapshot(tsgo:Tsgo, key:String, roots:Array<String>, options:Dynamic, css:CssModules):{snapshot:Int, project:Dynamic} {
 		var previous = last;
 		last = null;
 		if (previous != null && previous.key == key) {
@@ -90,23 +91,28 @@ class Project {
 			return {snapshot: r.snapshot, project: previous.project};
 		}
 		if (previous != null) tsgo.call("release", {snapshot: previous.snapshot});
-		var r:Dynamic = tsgo.call("createSnapshot", {createPrograms: [{rootFiles: roots, compilerOptions: options}]});
+		var params:Dynamic = {createPrograms: [{rootFiles: roots, compilerOptions: options}]};
+		if (css.revision > 0) params.fileSystem = {kind: "layer", files: css.overlay};
+		var r:Dynamic = tsgo.call("createSnapshot", params);
 		// (a project is named by its handle since 7.1's nightlies of November 2026, by its id before)
 		var p:Dynamic = r.projects[0];
 		return {snapshot: r.snapshot, project: p.handle != null ? p.handle : p.id};
 	}
 
-	function new(entry:String, globals:String, tsgo:Tsgo, tables:Tables) {
+	function new(entry:String, globals:String, root:String, tsgo:Tsgo, tables:Tables) {
+		css = new CssModules(root);
 		var absolute = haxe.io.Path.normalize(sys.FileSystem.fullPath(entry));
 		path = relative(absolute);
 		isJS = ~/\.[cm]?jsx?$/.match(absolute);
 		if (!sys.FileSystem.exists(absolute)) throw path + ": TSHX002: input file not found";
 		var options = Config.options(tsgo, absolute, haxe.io.Path.join([haxe.io.Path.directory(globals), "tsconfig.json"]), relative, f -> config = f);
+		options.allowArbitraryExtensions = true;
 		var base = absolute + "\n" + haxe.Json.stringify(options);
 		// (a package's implementation is one of the program's roots, as an
 		// allowJs file is: the last build's roots tried first)
 		var roots = last != null && last.base == base ? last.roots : [absolute, globals];
 		var at:Null<{snapshot:Int, project:Dynamic}> = null;
+		function key() return base + "\n" + roots.join("\n") + "\n" + css.revision;
 		// (kept for the next build, a failed one's too: its files are watched;
 		// its declaration files' too, those on disk: helder's are written
 		// again by a build, Generator)
@@ -116,16 +122,19 @@ class Project {
 				var s = stamp(f);
 				if (s != "") stamps.set(f, s);
 			}
-			last = {key: base + "\n" + roots.join("\n"), base: base, roots: roots, snapshot: at.snapshot, project: at.project, stamps: stamps, unresolved: unresolved};
+			last = {key: key(), base: base, roots: roots.filter(f -> !css.synthetic(f)), snapshot: at.snapshot, project: at.project, stamps: stamps, unresolved: unresolved};
 		}
 		try {
 			while (true) {
-				at = snapshot(tsgo, base + "\n" + roots.join("\n"), roots, options);
+				at = snapshot(tsgo, key(), roots, options, css);
+				var revision = css.revision;
 				var needed = walk(tsgo, tables, cast at, absolute, globals, options);
-				if (needed.join("\n") == roots.join("\n")) break;
+				if (revision == css.revision && needed.join("\n") == roots.join("\n")) break;
 				tsgo.call("release", {snapshot: at.snapshot});
+				at = null;
 				roots = needed;
 			}
+			css.report();
 			load(tsgo, tables, cast at, absolute, globals);
 		} catch (e:Dynamic) {
 			if (at != null) keep();
@@ -143,7 +152,7 @@ class Project {
 	var parsed:Map<String, SourceFile> = [];
 
 	static function declaration(file:String):Bool
-		return ~/\.d\.[cm]?ts$/.match(file);
+		return ~/\.d\.[cm]?ts$/.match(file) || StringTools.endsWith(file, ".d.css.ts");
 
 	static function script(file:String):Bool
 		return ~/\.[cm]?jsx?$/.match(file);
@@ -166,9 +175,12 @@ class Project {
 	// the declaration file its importers' types.
 	function walk(tsgo:Tsgo, tables:Tables, at:{snapshot:Int, project:Dynamic}, absolute:String, globals:String, options:Dynamic):Array<String> {
 		modules.clear();
+		css.active.clear();
 		parsed = [];
 		var names:Array<String> = tsgo.call("getSourceFileNames", at);
 		var program = [for (n in names) n => true];
+		read = [for (n in names) if (!declaration(n) && !css.synthetic(n) && n != globals) n];
+		if (config != null) read.push(config);
 		var needed = [absolute, globals], importers = new Map<String, Node>();
 		var seen = [absolute => true], queue = [absolute];
 		var resolver:Null<Int> = null;
@@ -202,9 +214,19 @@ class Project {
 					case KindImportDeclaration | KindExportDeclaration:
 						var n = sf.node(i), specifier = n.moduleSpecifier();
 						if (specifier == null || specifier.kind != KindStringLiteral) continue;
+						if (StringTools.endsWith(specifier.text, ".css") && !StringTools.endsWith(specifier.text, ".module.css"))
+							fail(specifier, "only *.module.css imports are supported");
+						css.discover(name, specifier.text, options);
 						var r = resolved(tsgo, at, name, specifier);
 						if (r == null || r.resolvedFileName == null) continue;
 						var target:String = r.resolvedFileName;
+						var cssSource = css.resolve(target, read, message -> fail(specifier, message));
+						if (cssSource != null) {
+							modules.set(specifier, cssSource);
+							if (!needed.contains(cssSource)) needed.push(cssSource);
+							continue;
+						}
+						if (StringTools.endsWith(target, ".d.css.ts")) continue;
 						var types = declaration(target);
 						if (types ? !Packages.helders(target, globals) : script(target) && r.isExternalLibraryImport == true) {
 							var js = implementation(name, specifier, types ? target : null);
@@ -240,8 +262,6 @@ class Project {
 		var names:Array<String> = tsgo.call("getSourceFileNames", at);
 		var sources = [for (n in names) if (!declaration(n) && n != globals) n];
 		declared = [for (n in names) if (declaration(n)) n];
-		read = sources.copy();
-		if (config != null) read.push(config);
 		var errors:Array<String> = [];
 		function report(list:Array<Dynamic>)
 			if (list != null) for (d in list) {

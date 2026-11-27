@@ -17,10 +17,12 @@ import { take, jobs as slots, HELD } from '../../src/helder/cli/slots.mjs';
 process.env.TZ='UTC';
 const T='tests/typescript';
 const args=process.argv.slice(2);
+const cssOnly = args[0] === '--css-modules'
+if (cssOnly) args.shift()
 const [partI,partN]=takeShard(args);
 const jobs=args[0]==='--jobs' ? Number(args[1]) : Math.max(1,Math.min(4,slots()||os.availableParallelism()));
 if((args.length && (args[0]!=='--jobs' || args.length!==2)) || !Number.isSafeInteger(jobs) || jobs<1) {
-    throw new Error('usage: run.mjs [--shard i/n] [--jobs n]');
+    throw new Error('usage: run.mjs [--css-modules] [--shard i/n] [--jobs n]')
 }
 if(jobs>1) {
     const b=spawnSync(process.execPath,['src/helder/compiler/build.mjs'],{stdio:['ignore','ignore','inherit']});
@@ -29,7 +31,7 @@ if(jobs>1) {
     const t0=Date.now();
     const shards=Array.from({length:jobs},(_,i)=>`${partI*jobs+i}/${partN*jobs}`);
     const codes=await Promise.all(shards.map(shard=>new Promise(resolve=>{
-        const p=spawn(process.execPath,[process.argv[1],'--shard',shard,'--jobs','1'],{stdio:['ignore','inherit','inherit']});
+        const p=spawn(process.execPath,[process.argv[1],...(cssOnly ? ['--css-modules'] : []),'--shard',shard,'--jobs','1'],{stdio:['ignore','inherit','inherit']});
         p.on('close',code=>resolve(code));
     })));
     const failed=shards.filter((_,i)=>codes[i]!==0);
@@ -46,7 +48,7 @@ const compiler=built.stdout.trim();
 // (the IR checks: the verifier, the text form and its golden file)
 const hxmc=spawnSync(process.execPath,['src/helder/compiler/build.mjs','--sources','--quiet'],{encoding:'utf8'}).stdout.trim();
 const launcher='node_modules/@hxmc/cli/hxmc/bootstrap/haxe.mjs';
-if(mine()) {
+if(!cssOnly && mine()) {
 ok(run(process.execPath,[launcher,'-D','hxmc.markup-braces','-cp','src','-cp',T,'-cp',`${hxmc}/haxe/src`,'-cp',`${hxmc}/hxmc/src`,'-main','IrTests','-D','hih_no_generators','-D','disable-parallelism','--custom-target',`hxmc=${dir}/ir-tests`]),'IR checks build');
 const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'IR checks');process.stdout.write(ir.stdout);
 }
@@ -65,6 +67,38 @@ function ok(r,what) {assert.equal(r.status,0,`${what}\n${r.stdout}\n${r.stderr}`
 // Mac, its programs linked with that platform package's runtime objects)
 const HOST=`${{linux:'linux',darwin:'macos',win32:'windows'}[process.platform]}-${{x64:'x86_64',arm64:'arm64'}[process.arch]}`;
 const targets=[HOST,'wasm32-wasi'];
+const rejected = fs.readdirSync(`${T}/reject`).filter(f => /\.tsx?$/.test(f)).sort()
+function reject(file) {
+    const out = `${dir}/reject-${path.parse(file).name}`
+    fs.rmSync(out, { force: true })
+    const r = run(compiler, [`${T}/reject/${file}`, '-o', out])
+    assert.notEqual(r.status, 0, `${file} should be rejected`)
+    assert.match(r.stderr, /TS(HX)?[0-9]+:/, `${file} needs a diagnostic code`)
+    const expected = fs.readFileSync(`${T}/reject/${file}`, 'utf8').match(/expect: (.*?)(?: \*\/)?$/m)?.[1]
+    if (expected) assert.ok(r.stderr.includes(expected), `${file} should report ${expected}, got ${r.stderr}`)
+    if (file === 'css-misspelt.ts' || file === 'css-readonly.ts')
+        assert.ok(r.stderr.includes(`${file}:2: characters `), `${file} needs a diagnostic at its property access`)
+    assert.equal(fs.existsSync(out), false, `${file} must not emit an executable`)
+    console.log(`PASS diagnostic ${file}`)
+}
+function cssModules(target) {
+    const fixture = `${T}/helder/css-modules`, out = `${dir}/css-modules${target === HOST ? '' : '.wasm'}`
+    ok(run(compiler, [`${fixture}/main.tsx`, '--cp', fixture, '--roundtrip-ir', '--target', target, '-D', 'hxmc.symbols', '-o', out]), `CSS modules compile ${target}`)
+    const r = target === HOST ? run(out, []) : run(process.execPath, [`${T}/run-wasi.cjs`, out])
+    ok(r, `CSS modules ${target}`)
+    assert.equal(r.stdout, fs.readFileSync(`${fixture}/main.out`, 'utf8'), `CSS modules stdout ${target}`)
+    if (target === HOST && process.platform !== 'win32') {
+        const symbols = run('nm', [out])
+        ok(symbols, 'CSS module symbols')
+        assert.doesNotMatch(symbols.stdout, /helder_css_(?:Tokenizer|Parser|_Parser_|SelectorParser|_CssSheet_Builder)/)
+    }
+    console.log(`PASS CSS modules ${target}`)
+}
+for (const target of targets) if (mine()) cssModules(target)
+if (cssOnly) {
+    for (const file of rejected.filter(f => f.startsWith('css-'))) if (mine()) reject(file)
+    process.exit(0)
+}
 const files=fs.readdirSync(`${T}/cases`).filter(f=>f.endsWith('.ts')).sort();
 let passed=0;
 for(const file of files) {
@@ -130,17 +164,7 @@ for(const file of standards)for(const target of targets) {
     ok(target===HOST?run(out,[]):run(process.execPath,[`${T}/run-wasi.cjs`,out]),`${file} ${target}`);
     console.log(`PASS standard ${file} ${target}`); passed++;
 }
-for(const file of fs.readdirSync(`${T}/reject`).filter(f=>/\.tsx?$/.test(f)).sort()) {
-    if(!mine())continue;
-    const out=`${dir}/reject-${file.replace(/\.tsx?$/,'')}`; fs.rmSync(out,{force:true});
-    const r=run(compiler,[`${T}/reject/${file}`,'-o',out]);
-    assert.notEqual(r.status,0,`${file} should be rejected`);
-    assert.match(r.stderr,/TS(HX)?[0-9]+:/,`${file} needs a diagnostic code`);
-    const expected=fs.readFileSync(`${T}/reject/${file}`,'utf8').match(/expect: (.*?)(?: \*\/)?$/m)?.[1];
-    if(expected)assert.ok(r.stderr.includes(expected),`${file} should report ${expected}, got ${r.stderr}`);
-    assert.equal(fs.existsSync(out),false,`${file} must not emit an executable`);
-    console.log(`PASS diagnostic ${file}`);
-}
+for (const file of rejected) if (mine()) reject(file)
 // src/helder/ui/style.d.ts, written by hand: its StyleProps naming
 // helder.ui.StyleProps' properties, no more, no fewer
 if(mine()) {
