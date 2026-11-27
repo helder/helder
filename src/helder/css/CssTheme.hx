@@ -13,13 +13,16 @@ using haxe.macro.ExprTools;
 #end
 
 // Style sheets compiled at build time: the CSS (a file's or a string
-// constant's) parsed by the compiler and the sheet written as the
-// expressions that make it again: selectors with their specificity, Bloom
-// hashes and buckets, declarations as property ids and typed values,
-// @media's queries, @import's sheets (read beside the file). A program
-// that styles with these alone (CssCascade.themed) links no CSS tokenizer
-// or parser; var() is substituted when styles are computed, as ever. The
-// sheets have no URL: url()s stay as written.
+// constant's) parsed by the compiler and the sheet written as data
+// (CssSheetData: selectors with their specificity, Bloom hashes and
+// buckets, declarations as property ids and typed values, @media's
+// queries, @import's sheets read beside the file), read back when first
+// asked. A program that styles with these alone (CssCascade.themed) links
+// no CSS tokenizer or parser, and one decoder whatever its sheets: as code
+// (a constructor per value) html.css took 958 KB, as data 58 KB, parsed
+// when the program runs 198 KB and 1.4 ms, read as data 0.13 ms. var()
+// is substituted when styles are computed, as ever. The sheets have no
+// URL: url()s stay as written.
 //
 //   var theme = CssTheme.file("theme.css");  // beside the calling file, else under a class path
 //   var base = CssTheme.sheet("button { padding: 4px 8px }");
@@ -56,22 +59,29 @@ class CssTheme {
 			};
 			var sheet = try CssSheet.parse(text, origin, {url: "file://" + FileSystem.fullPath(dir) + "/", load: load})
 				catch (e:Dynamic) Context.error('CssTheme: $e', pos);
+			// (the sheet as CssSheetData's string, read when first asked)
 			Context.defineType({
 				pack: ["helder", "css", "themes"],
 				name: name,
 				pos: pos,
 				kind: TDClass(),
 				fields: [
-					{name: "sheet", access: [APublic, AStatic, AFinal], kind: FVar(macro :helder.css.CssSheet, macro @:privateAccess ${value(sheet, pos)}), pos: pos}
+					{name: "cache", access: [AStatic], kind: FVar(macro :Null<helder.css.CssSheet>, macro null), pos: pos},
+					{
+						name: "get",
+						access: [APublic, AStatic],
+						kind: FFun({args: [], ret: macro :helder.css.CssSheet, expr: macro return cache ??= helder.css.CssSheetData.decode($v{CssSheetData.encode(sheet, false)})}),
+						pos: pos
+					}
 				]
 			});
 		}
-		return macro @:pos(pos) $p{["helder", "css", "themes", name, "sheet"]};
+		return macro @:pos(pos) $p{["helder", "css", "themes", name]}.get();
 	}
 
 	// (a value of the sheet's as the expression that makes it: enums by
 	// their constructors, structures, arrays and maps as literals, the
-	// classes a sheet holds by their constructors)
+	// classes a sheet holds by their constructors: CssInitial's values)
 	static function value(v:Dynamic, pos:Position):Expr {
 		inline function e(d:ExprDef):Expr
 			return {expr: d, pos: pos};
