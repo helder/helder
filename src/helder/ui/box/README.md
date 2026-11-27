@@ -131,6 +131,46 @@ helder.canvas's `ShapedRun`s, what paint and PdfWriter draw.
   carets and selection rectangles in the document (blocks in the box
   tree's order; transforms aside).
 
+## Pages
+
+`PagedView` lays a document out on pages (CSS Paged Media 3, CSS
+Fragmentation 3), for print and PDF; a program that never uses it has
+none of it (it, `Breaks` and `BreakToken` are objects only it creates;
+the css-paged lane checks a screen-only program's symbols).
+
+```haxe
+var view = new PagedView(doc, {url: url, load: load, image: image});
+var count = view.layout();         // the pages, view.pages[i]
+view.paint(0, canvas);             // a page on a Painter
+File.saveBytes("doc.pdf", view.pdf());   // PdfWriter, real text
+```
+
+- Each page's style is the @page cascade's (`styles.pageStyle(index,
+  name, left, blank)`): its size and bleed, its margins (auto as none,
+  percentages of the page's width and height), its border and padding
+  around the page area. The first page is a right one (left to right);
+  a forced break to the other side makes a blank page between.
+- Its content is the root laid out in the page area as a fragmentainer
+  (helder.ui.flow's `Breaks`), resuming where the page before ended (a
+  `BreakToken`). Each page is painted on its own: the page box's
+  background over it and its bleed, its border, then its content, the
+  canvas's background over the page area, positioned in the root's box
+  over all the pages (a background image goes on where the page before
+  left it).
+- @media sees print and the first page's page area; viewport units are
+  of it too (the cascade has one size for both: Chromium's media queries
+  see the default page instead, media-queries-001).
+- All the pages' fragments are kept: `counter(pages)` (margin boxes, the
+  next part) needs every page laid out before any margin box is. Painting
+  a page and dropping its fragments once its margin boxes are known,
+  keeping only the break tokens of a first pass, is a later optimisation;
+  tokens hold boxes, never fragments, to keep it open.
+- Not yet: margin boxes and page counters, strings; named pages (`page`)
+  and pages of other sizes in one document; tables broken between rows;
+  floats, absolutely positioned and fixed boxes split or repeated across
+  pages; monolithic content taller than a page pushing what follows;
+  `box-decoration-break: clone`; bookmarks and links in the PDF.
+
 ## Fonts
 
 `FontMatch` matches a computed font to a helder.text face (Fonts 4 §5):
@@ -154,7 +194,12 @@ objects, the grid, fixed layout, rows and vertical-align, captions, the
 collapsing model; a property: the columns take the width given, each its
 min-content at least. `DocumentView.test.hx`: backgrounds,
 borders, the canvas's background, Appendix E's order, opacity, overflow
-clips, transforms, hit testing.
+clips, transforms, hit testing. `PagedView.test.hx`: pages and their
+page area, breaks between blocks and lines, forced breaks and a blank
+page for a side, avoid, widows, margins truncated or kept, a block's
+border sliced, content past a page's end. The css-reftests lane draws
+WPT's print reftests on pages, and css-paged real documents
+(tests/paged) against goldens of our own output.
 
 ## Measures
 

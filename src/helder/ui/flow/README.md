@@ -316,6 +316,46 @@ keyed on its space: the same space, the same fragment.
 - Relative positioning (§9.4.3) moves a box's fragment, and an inline
   box's, after its place is known.
 
+## Fragmentation
+
+Flow laid out in a fragmentainer (CSS Fragmentation 3, LayoutNG's model):
+a block size, and where each in-flow box starts in it (`Space.pageTop`).
+Flow asks its `Fragmentation` (`Space.fragmentation`, null on a screen:
+there it only tests for null) at its break opportunities, and obeys:
+
+- Class A, between in-flow siblings (`between`), class B, between lines
+  (`inLines`, BlockLines); before a box's first content too, taken only
+  when it starts past the end (a margin as tall as what is left).
+- A box resumes (`resume`) at a child or a line: the ones before were in
+  the fragmentainers before. A resumed box has no border, padding or
+  margin at its start, a broken one none at its end (`Box.NO_START`,
+  `NO_END` on its fragment, box-decoration-break: slice) and fills the
+  fragmentainer to its end. After an unforced break the next box's top
+  margins are truncated; after a forced one kept.
+- A box laid out in a fragmentainer is not cached (where it is, and where
+  it resumes, change what it holds). Floats, absolutely positioned boxes,
+  atomic inlines, tables and their cells get spaces without it
+  (`Space.child`): monolithic.
+- Lines are laid out whole and a fragmentainer takes its run of them,
+  shifted up. Without floats beside a paragraph across a break that is
+  exact; with them, lines after the break are laid out as if the floats
+  were where the whole paragraph had them (the inline engine's resume
+  entry point will lay out from a line).
+
+`Breaks` decides, as LayoutNG does: a first pass (the probe) lays out
+from the incoming `BreakToken`, noting each opportunity that fits and its
+appeal, until one past the end; a forced break (break-before or -after:
+page, left, right, recto, verso; CSS 2's page-break-*; propagated from a
+first or last child) ends it there. Else the latest of the best appeal
+wins and a second pass lays out up to it. Appeals: perfect; orphans or
+widows short; inside a break-inside: avoid (each one more around it
+ranks a little lower) or at a break-before or -after: avoid; last
+resort, the first past the end. Content ending at the end (margins
+aside: trailing ones are truncated) makes no page more. The outgoing
+token is each box from the root to the break and where it goes on, and
+the block size it took (a fixed height goes on with the rest); a forced
+break's side, for a blank page.
+
 ## Floats and positioning
 
 - `Exclusions`: a block formatting context's floats, their margin boxes

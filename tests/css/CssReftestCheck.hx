@@ -3,7 +3,9 @@ import haxe.Json;
 import haxe.io.Bytes;
 import helder.canvas.Canvas;
 import helder.image.Image;
+import helder.css.CssSheet;
 import helder.ui.box.DocumentView;
+import helder.ui.box.PagedView;
 import sys.FileSystem;
 import sys.io.File;
 
@@ -17,6 +19,9 @@ using StringTools;
 // test is required to pass unless it is pending (its stage, and why) or
 // skipped; a pending test that passes fails the run too, until BLESS=1
 // writes the manifest from the results. Per chapter counts at the end.
+// Print reftests (-print, WPT's) are drawn by PagedView instead, at WPT's
+// default page (5in by 3in, 0.5in margins, under the test's @page), and
+// compared page by page: as many pages, each alike.
 //
 //   CssReftestCheck [filter...]   (a directory or test name's part: those alone)
 class CssReftestCheck {
@@ -64,7 +69,10 @@ class CssReftestCheck {
 				var st = stats.get(dir);
 				if (st == null) stats.set(dir, st = {pass: 0, pending: 0, skip: 0, total: 0});
 				st.total++;
-				var skip = entry == null ? skipped(dir, t) : entry.skip;
+				// (a paged skip is what this runner can't draw yet: asked again)
+				var was:Null<String> = entry == null ? null : entry.skip;
+				var skip = entry == null || was != null && was.startsWith("paged:") ? skipped(dir, t) : was;
+				if (skip == null && was != null) entry = null;
 				if (skip != null) {
 					st.skip++;
 					next[id] = {skip: skip};
@@ -137,7 +145,8 @@ class CssReftestCheck {
 	static function skipped(dir:String, t:Dynamic):Null<String> {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
 		if (dir.startsWith("css/css-gcpm")) return null;
-		if (needs.contains("print") || paged(dir)) return "paged: printed pages, not a screen (stage 7)";
+		if (printed(dir, t) && t.type == "noref") return "paged: no goldens of printed pages yet";
+		if (!printed(dir, t) && (needs.contains("print") || paged(dir))) return "paged: fragmentation in columns and regions, not pages, not yet";
 		if (needs.contains("script") || needs.contains("wait")) return "script: no JavaScript";
 		if (t.type == "noref") return manual(dir, t);
 		return null;
@@ -163,6 +172,12 @@ class CssReftestCheck {
 		"css/CSS2/tables/row-visibility-003.xht" => "a cell spanning into a visibility: collapse row isn't clipped (its red shows)"
 	];
 
+	// (drawn on pages: a print reftest, a paged directory's crash test)
+	static function printed(dir:String, t:Dynamic):Bool {
+		var needs:Array<String> = t.needs != null ? t.needs : [];
+		return needs.contains("print") || paged(dir) && t.type == "crash";
+	}
+
 	static function paged(dir:String):Bool
 		return dir.startsWith("css/css-page") || dir.startsWith("css/css-break") || dir.startsWith("css/css-gcpm") || dir == "css/CSS2/page-box"
 			|| dir == "css/CSS2/pagination";
@@ -173,6 +188,7 @@ class CssReftestCheck {
 		var path = '${WptPage.wpt}/$dir/${t.name}';
 		// (GCPM's running heads, leaders and cross-references: the paged host draws them; CssGcpmCheck reads them)
 		if (dir.startsWith("css/css-gcpm")) return {pass: false, why: "the paged host draws it (no golden: Chromium has no GCPM)"};
+		if (printed(dir, t)) return try runPages(dir, t, path) catch (e:Dynamic) {pass: false, why: 'error: ${Std.string(e).split("\n")[0]}'};
 		try {
 			var test = draw(path);
 			if (t.type == "crash") return {pass: true, why: ""};
@@ -265,6 +281,89 @@ class CssReftestCheck {
 	}
 
 	static final drawn = new Map<String, Bytes>();
+	static final drawnPages = new Map<String, Array<Page>>();
+
+	// (WPT's print reftests' page: under the test's own @page)
+	static var printPage:Null<CssSheet> = null;
+
+	static inline var MAX_PAGES = 100;
+
+	// (a print reftest against its references, page by page)
+	static function runPages(dir:String, t:Dynamic, path:String):{pass:Bool, why:String} {
+		var test = selected(path, pages(path));
+		if (t.type == "crash") return {pass: true, why: ""};
+		var refs:Array<Array<Dynamic>> = t.refs != null ? t.refs : [];
+		var fuzzy:Array<String> = t.fuzzy != null ? t.fuzzy : [];
+		for (r in refs) {
+			var refPath = haxe.io.Path.normalize('${WptPage.wpt}/$dir/${r[0]}');
+			if (!FileSystem.exists(refPath)) return {pass: false, why: 'no reference ${r[0]}'};
+			var ref = selected(refPath, pages(refPath));
+			var allowed = tolerance(fuzzy, r[0]);
+			var why:Null<String> = null;
+			if (test.length != ref.length) why = '${test.length} pages, the reference ${ref.length}';
+			else for (k in 0...test.length) {
+				var a = test[k], b = ref[k];
+				if (a.width != b.width || a.height != b.height) {
+					why = 'page ${k + 1}: ${a.width}x${a.height}, the reference ${b.width}x${b.height}';
+					break;
+				}
+				var d = diff(a.pixels, b.pixels);
+				if (!(d.pixels == 0 || d.max >= allowed[0] && d.max <= allowed[1] && d.pixels >= allowed[2] && d.pixels <= allowed[3])) {
+					why = 'page ${k + 1}: ${d.pixels} pixels differ (by up to ${d.max})';
+					break;
+				}
+			}
+			if (r[1] == "match" && why != null) return {pass: false, why: why};
+			if (r[1] == "mismatch" && why == null) return {pass: false, why: 'the same as ${r[0]}'};
+		}
+		return {pass: true, why: ""};
+	}
+
+	// (the pages its <meta name=reftest-pages> names, from 1: "2", "-2,4,6-7,9-"; else all)
+	static function selected(path:String, all:Array<Page>):Array<Page> {
+		var src = File.getContent(path);
+		var meta = ~/<meta[^>]*name=["']?reftest-pages["']?[^>]*>/i;
+		if (!meta.match(src)) return all;
+		var content = ~/content=["']([^"']*)["']/i;
+		if (!content.match(meta.matched(0))) return all;
+		var out = [];
+		for (k in 0...all.length) {
+			var n = k + 1;
+			for (part in content.matched(1).split(",")) {
+				var r = part.trim().split("-");
+				var lo = r[0] == "" ? 1 : Std.parseInt(r[0]), hi = r.length == 1 ? lo : r[1] == "" ? all.length : Std.parseInt(r[1]);
+				if (lo != null && hi != null && n >= lo && n <= hi) {
+					out.push(all[k]);
+					break;
+				}
+			}
+		}
+		return out;
+	}
+
+	// (a document's pages' pixels, each its page box's size; references drawn once a run)
+	static function pages(path:String):Array<Page> {
+		var cached = drawnPages.get(path);
+		if (cached != null) return cached;
+		var o = WptPage.options(path);
+		printPage ??= CssSheet.parse("@page { size: 5in 3in; margin: 0.5in }", User);
+		var v = new PagedView(WptPage.parse(path), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [printPage], limit: MAX_PAGES + 1});
+		var n = v.layout();
+		if (n > MAX_PAGES) throw '$n pages';
+		var out = [];
+		for (i in 0...n) {
+			var page = v.pages[i];
+			var w = Math.round(page.width + 2 * page.bleed), h = Math.round(page.height + 2 * page.bleed);
+			var c = new Canvas(w, h);
+			c.clear(0xFFFFFFFF);
+			v.paint(i, c);
+			var px = Bytes.alloc(w * h * 4);
+			c.readPixels(px, 0, 0, w, h);
+			out.push({width: w, height: h, pixels: px});
+		}
+		if (path.indexOf("-ref") >= 0 || path.indexOf("/reference/") >= 0) drawnPages.set(path, out);
+		return out;
+	}
 
 	// (a page's pixels, straight RGBA; references are drawn once a run)
 	static function draw(path:String):Bytes {
@@ -346,7 +445,7 @@ class CssReftestCheck {
 	static function stage(dir:String, t:Dynamic):String {
 		if (dir.startsWith("css/css-gcpm")) return "paged";
 		var short = dir.startsWith("css/CSS2/") ? dir.substr(9) : dir;
-		var s = STAGES.get(short);
+		var s = printed(dir, t) ? null : STAGES.get(short);
 		if (s != null) return s;
 		// (the test's source and its references': what either needs)
 		var src = "";
@@ -354,6 +453,12 @@ class CssReftestCheck {
 		for (f in [t.name].concat([for (r in refs) r[0]]))
 			src += try File.getContent('${WptPage.wpt}/$dir/$f').toLowerCase() catch (_:Dynamic) "";
 		var needs:Array<String> = t.needs != null ? t.needs : [];
+		// (printed pages: what the paged host's later parts bring, margin boxes, named pages)
+		if (printed(dir, t)) {
+			if (dir.indexOf("margin-boxes") >= 0 || ~/@(top|bottom|left|right)-|counter\(pages?\)|string-set|string\(/.match(src)) return "margin boxes";
+			if (~/[;{\s"']page\s*:\s*[a-z][a-z0-9_-]*\s*[;}"']/.match(src) || t.name.indexOf("page-name") >= 0) return "named pages";
+			if (~/position\s*:\s*fixed/.match(src)) return "positioning";
+		}
 		if (~/display\s*:\s*(inline-)?table|<table/.match(src)) return "tables";
 		if (~/float\s*:\s*(left|right)|clear\s*:/.match(src)) return "floats";
 		if (~/position\s*:\s*(absolute|fixed|sticky)/.match(src)) return "positioning";
@@ -367,3 +472,5 @@ class CssReftestCheck {
 		return "blocks";
 	}
 }
+
+private typedef Page = {width:Int, height:Int, pixels:Bytes};

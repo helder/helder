@@ -27,6 +27,11 @@ class BoxPainter {
 	// Skia quantizes subpixel-positioned text (Chromium's); off for a PDF,
 	// whose text keeps layout's places (a tie rounds up, float noise aside)
 	public var snap = true;
+	// the canvas's background: the area it covers (null: the painter's
+	// whole) and the box it is positioned in (null: the root's fragment);
+	// a page's: its page area, the root's box over all the pages
+	public var canvasArea:Null<Array<Float>> = null;
+	public var canvasBox:Null<Array<Float>> = null;
 
 	public function new(fragments:Fragments, order:PaintOrder, image:String->Null<Bitmap>) {
 		f = fragments;
@@ -133,11 +138,14 @@ class BoxPainter {
 			p.save();
 			p.clip(cells);
 		}
-		if (b != order.canvas) Backgrounds.paint(p, s, x, y, w, h, image);
+		// (a block's fragment in a fragmentainer: its start or end in another, box-decoration-break: slice)
+		var noTop = f.start(id) == Box.NO_START, noBottom = f.end(id) == Box.NO_END;
+		if (b != order.canvas) Backgrounds.paint(p, s, x, y, w, h, image, null, false, false, noTop, noBottom);
 		if (cells != null) p.restore();
 		Borders.shadows(p, s, x, y, w, h, true);
 		// (rows, columns and their groups have no borders of their own but collapsed; collapsed ones are the table's)
-		if (b.flags & Box.COLLAPSED == 0 && (part == 0 || part == BoxStyle.CELL || part == BoxStyle.CAPTION)) Borders.paint(p, s, x, y, w, h);
+		if (b.flags & Box.COLLAPSED == 0 && (part == 0 || part == BoxStyle.CELL || part == BoxStyle.CAPTION))
+			Borders.paint(p, s, x, y, w, h, false, false, noTop, noBottom);
 	}
 
 	// (a row's, column's or group's background shows in its cells, not in the spacing between them, §17.5.1:
@@ -201,7 +209,8 @@ class BoxPainter {
 		if (b == null || !b.style.visible) return;
 		for (k in 0...order.count) if (f.box(order.fragments[k]) == b && order.steps[k] == PaintOrder.BACKGROUND) {
 			var id = order.fragments[k];
-			Backgrounds.paint(p, b.style, order.xs[k], order.ys[k], f.width(id), f.height(id), image, [0.0, 0.0, p.width * 1.0, p.height * 1.0]);
+			var at = canvasBox ?? [order.xs[k], order.ys[k], f.width(id), f.height(id)];
+			Backgrounds.paint(p, b.style, at[0], at[1], at[2], at[3], image, canvasArea ?? [0.0, 0.0, p.width * 1.0, p.height * 1.0]);
 			return;
 		}
 	}

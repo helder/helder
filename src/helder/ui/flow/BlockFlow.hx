@@ -24,12 +24,13 @@ class BlockFlow implements FormattingContext {
 		// (the cache: the same containing block, the same fixed width: the same fragment)
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty);
+		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
+		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
 		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
 		box.cacheWidth = key;
 		box.cacheHeight = space.height;
-		box.cacheFragment = f;
+		box.cacheFragment = space.fragmentation == null ? f : -1;
 		return f;
 	}
 
@@ -49,11 +50,20 @@ class BlockFlow implements FormattingContext {
 		var ov = space.borders;
 		var bl = ov != null ? ov[3] : s.border[3], br = ov != null ? ov[1] : s.border[1];
 		var bt = ov != null ? ov[0] : s.border[0], bb = ov != null ? ov[2] : s.border[2];
-		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var mt = res(s.margin[0], cb), mb = res(s.margin[2], cb);
+		// (in a fragmentainer, resumed: its start's border, padding and margin were in the one before, box-decoration-break: slice)
+		var fr = space.fragmentation;
+		var resume = fr != null ? fr.resume(box) : null;
+		if (resume != null) {
+			bt = 0;
+			pt = 0;
+			mt = 0;
+		}
+		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
 		var w = width(box, s, space, bpx);
 		var root = formattingRoot(box);
 		var heightSpec = size(s.height, space.height, s.borderBox, bpy);
+		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var pctBase = heightSpec;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
 		var frags = space.fragments;
@@ -99,8 +109,13 @@ class BlockFlow implements FormattingContext {
 		var pos = 0.0, neg = 0.0, y = 0.0;
 		var atTop = topCollapses, empty = true, baseline = Math.NaN;
 		var hasLines = box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
+		// (broken: a break taken inside it, its content goes on in the next fragmentainer)
+		var broken = false;
+		if (fr != null) fr.enter(box, space.pageTop + bt + pt);
 		if (hasLines) {
 			var ls = childSpace(w);
+			ls.fragmentation = fr;
+			ls.pageTop = space.pageTop + bt + pt;
 			ls.lineWidth = (ly, lh) -> {
 				if (ex.empty) return null;
 				var b = ex.band(by + ly, lh, cx, cx + w);
@@ -120,10 +135,24 @@ class BlockFlow implements FormattingContext {
 				atTop = false;
 				y = r.height;
 				baseline = r.baseline;
+				if (fr != null) fr.placed(space.pageTop + bt + pt + y);
 			}
+			if (fr != null && fr.stopped) broken = true;
 		} else {
 			var c = box.first;
+			// (resumed at a child: the ones before it were in the fragmentainers before; after an unforced
+			// break its top margins are truncated, css-break-3 §5.2)
+			var truncate = false;
+			if (resume != null && resume.child != null) {
+				c = resume.child;
+				truncate = !resume.forced && fr.resume(c) == null;
+			}
+			var prev:Null<Box> = null;
 			while (c != null) {
+				if (fr != null && fr.stopped) {
+					broken = true;
+					break;
+				}
 				var cs = c.style;
 				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept)
 				if (c.floating) {
@@ -137,8 +166,15 @@ class BlockFlow implements FormattingContext {
 					c = c.next;
 					continue;
 				}
+				// (class A: between it and the in-flow sibling before it)
+				if (fr != null && fr.between(box, prev, c, space.pageTop + bt + pt + (prev == null && !atTop && !truncate && fr.resume(c) == null ? y + Math.max(pos, predict(c, w).pos) : y))) {
+					broken = true;
+					break;
+				}
+				prev = c;
 				// (where its border box will be: its top margins as they will collapse, or clearance, §9.5.2)
-				var strut = predict(c, w);
+				// (none when truncated, or resumed: a continuation's start has no margin)
+				var strut = truncate || fr != null && fr.resume(c) != null ? {pos: 0.0, neg: 0.0} : predict(c, w);
 				var py = atTop ? 0 : y + Math.max(pos, strut.pos) + Math.min(neg, strut.neg);
 				var clr = cs.keyword("clear");
 				var cleared = false;
@@ -178,7 +214,16 @@ class BlockFlow implements FormattingContext {
 						shift = band.left - cx;
 					}
 				}
+				if (fr != null) {
+					space2.fragmentation = fr;
+					space2.pageTop = space.pageTop + bt + pt + py;
+				}
 				var cf = child(c, space2);
+				if (truncate) {
+					c.topPositive = 0;
+					c.topNegative = 0;
+					truncate = false;
+				}
 				// (the margins before it: with clearance its own don't join them, §9.5.2)
 				var prePos = pos, preNeg = neg;
 				pos = Math.max(pos, c.topPositive);
@@ -210,10 +255,23 @@ class BlockFlow implements FormattingContext {
 				var b = frags.baseline(cf);
 				if (!Math.isNaN(b)) baseline = at + b + off.y;
 				y = at + frags.height(cf);
+				if (fr != null) fr.placed(space.pageTop + bt + pt + y);
 				pos = c.bottomPositive;
 				neg = c.bottomNegative;
 				c = c.next;
 			}
+			if (fr != null && fr.stopped) broken = true;
+		}
+		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
+		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
+		if (broken) {
+			bb = 0;
+			pb = 0;
+			mb = 0;
+			bpy = pt + pb + bt + bb;
+			bottomCollapses = false;
+			y = Math.max(y, fr.size - space.pageTop - bt - pt);
+			if (!autoHeight) heightSpec = y;
 		}
 		var content = 0.0;
 		var bottomPos = mb > 0 ? mb : 0.0, bottomNeg = mb < 0 ? mb : 0.0;
@@ -240,6 +298,7 @@ class BlockFlow implements FormattingContext {
 		box.bottomPositive = bottomPos;
 		box.bottomNegative = bottomNeg;
 		frags.resize(frag, w + bpx, h + bpy);
+		if (resume != null || broken) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
 		// (a scroll container's too: its last line's, as CSS Align 3 and browsers have it now, not CSS 2.1's bottom edge)
 		if (!Math.isNaN(baseline)) frags.setBaseline(frag, bt + pt + baseline);
 		// (the absolutely positioned boxes this is the containing block of: its padding box, the root's

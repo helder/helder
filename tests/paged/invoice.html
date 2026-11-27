@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<title>Invoice 2026-0142</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  body { margin: 0; font: 10pt/1.4 sans-serif; color: #222; }
+  header { border-bottom: 2px solid #2a5d8f; padding-bottom: 8pt; margin-bottom: 18pt; }
+  header h1 { margin: 0; font-size: 20pt; color: #2a5d8f; }
+  header p { margin: 2pt 0 0; color: #666; }
+  .parties { overflow: hidden; margin-bottom: 18pt; }
+  .from { float: left; width: 45%; }
+  .to { float: right; width: 45%; }
+  .parties h2 { font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0 0 4pt; }
+  .parties p { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14pt; }
+  th { text-align: left; background: #eef3f8; border-bottom: 1px solid #2a5d8f; padding: 4pt 6pt; }
+  td { padding: 4pt 6pt; border-bottom: 1px solid #ddd; }
+  td.n, th.n { text-align: right; }
+  .totals { width: 40%; margin-left: auto; }
+  .totals td { border: none; padding: 2pt 6pt; }
+  .totals tr.due td { font-weight: bold; border-top: 2px solid #2a5d8f; font-size: 12pt; }
+  .notes { margin-top: 24pt; padding: 8pt 10pt; background: #f7f7f7; border-left: 3px solid #2a5d8f; }
+  .notes p { margin: 0 0 4pt; }
+</style>
+<header>
+  <h1>Invoice 2026-0142</h1>
+  <p>Issued 27 November 2026 · Due 27 December 2026</p>
+</header>
+<div class="parties">
+  <div class="from">
+    <h2>From</h2>
+    <p>Northwind Typesetting</p>
+    <p>Kade 12</p>
+    <p>9000 Gent, Belgium</p>
+    <p>VAT BE 0123.456.789</p>
+  </div>
+  <div class="to">
+    <h2>Bill to</h2>
+    <p>Larkspur Press</p>
+    <p>14 Mill Lane</p>
+    <p>Oxford OX1 2JD, United Kingdom</p>
+  </div>
+</div>
+<table>
+  <thead><tr><th>Description</th><th class="n">Qty</th><th class="n">Unit</th><th class="n">Amount</th></tr></thead>
+  <tbody>
+    <tr><td>Book design: interior layout, 320 pages</td><td class="n">1</td><td class="n">2,400.00</td><td class="n">2,400.00</td></tr>
+    <tr><td>Cover design, three rounds of revisions</td><td class="n">1</td><td class="n">850.00</td><td class="n">850.00</td></tr>
+    <tr><td>Typesetting of corrections, per page</td><td class="n">46</td><td class="n">12.00</td><td class="n">552.00</td></tr>
+    <tr><td>Index preparation</td><td class="n">1</td><td class="n">640.00</td><td class="n">640.00</td></tr>
+    <tr><td>Proof PDFs and print-ready files</td><td class="n">3</td><td class="n">75.00</td><td class="n">225.00</td></tr>
+    <tr><td>Font licences (two families, print)</td><td class="n">2</td><td class="n">180.00</td><td class="n">360.00</td></tr>
+  </tbody>
+</table>
+<table class="totals">
+  <tr><td>Subtotal</td><td class="n">5,027.00</td></tr>
+  <tr><td>VAT 21%</td><td class="n">1,055.67</td></tr>
+  <tr class="due"><td>Total due</td><td class="n">EUR 6,082.67</td></tr>
+</table>
+<div class="notes">
+  <p><strong>Payment</strong> by bank transfer to BE71 0961 2345 6769, quoting the invoice number.</p>
+  <p>Thank you for your business. Questions about this invoice go to accounts@northwind.example.</p>
+</div>
+</html>

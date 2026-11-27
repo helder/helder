@@ -20,7 +20,7 @@ class Backgrounds {
 	// The background of a box at (x, y, w, h) (its border box); area: where it is painted
 	// instead of its clip box (the canvas's), positioned from the box all the same.
 	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, image:String->Null<Bitmap>, ?area:Array<Float>,
-			noLeft = false, noRight = false) {
+			noLeft = false, noRight = false, noTop = false, noBottom = false) {
 		var color = s.color("background-color");
 		var images = split(s.terms("background-image"));
 		var none = images.length == 1 && (images[0].length == 0 || images[0][0].match(Keyword("none")));
@@ -30,22 +30,23 @@ class Backgrounds {
 		var r = Borders.radii(s, bw, bh);
 		var bl = noLeft ? 0 : m.border[3], br = noRight ? 0 : m.border[1];
 		var pl = noLeft ? 0 : Lens.resolve(m.padding[3], w, 0), pr = noRight ? 0 : Lens.resolve(m.padding[1], w, 0);
-		var pt = Lens.resolve(m.padding[0], w, 0), pb = Lens.resolve(m.padding[2], w, 0);
+		var pt = noTop ? 0 : Lens.resolve(m.padding[0], w, 0), pb = noBottom ? 0 : Lens.resolve(m.padding[2], w, 0);
+		var bt = noTop ? 0 : m.border[0], bb = noBottom ? 0 : m.border[2];
 		function box(which:String):{x:Float, y:Float, w:Float, h:Float, r:Null<Array<Float>>}
 			return switch which {
 				case "padding-box": {
 						x: x0 + bl,
-						y: y0 + m.border[0],
+						y: y0 + bt,
 						w: bw - bl - br,
-						h: bh - m.border[0] - m.border[2],
-						r: Borders.inset(r, m.border[0], br, m.border[2], bl)
+						h: bh - bt - bb,
+						r: Borders.inset(r, bt, br, bb, bl)
 					};
 				case "content-box": {
 						x: x0 + bl + pl,
-						y: y0 + m.border[0] + pt,
+						y: y0 + bt + pt,
 						w: bw - bl - br - pl - pr,
-						h: bh - m.border[0] - m.border[2] - pt - pb,
-						r: Borders.inset(r, m.border[0] + pt, br + pr, m.border[2] + pb, bl + pl)
+						h: bh - bt - bb - pt - pb,
+						r: Borders.inset(r, bt + pt, br + pr, bb + pb, bl + pl)
 					};
 				case _: {x: x0, y: y0, w: bw, h: bh, r: r};
 			}

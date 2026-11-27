@@ -70,9 +70,10 @@ class Borders {
 	static final SIDES = ["top", "right", "bottom", "left"];
 
 	// The box's borders around (x, y, w, h); left and right left out where an inline box is split.
-	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, noLeft = false, noRight = false) {
+	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, noLeft = false, noRight = false, noTop = false,
+			noBottom = false) {
 		var m = s.model();
-		var widths = [m.border[0], noRight ? 0 : m.border[1], m.border[2], noLeft ? 0 : m.border[3]];
+		var widths = [noTop ? 0 : m.border[0], noRight ? 0 : m.border[1], noBottom ? 0 : m.border[2], noLeft ? 0 : m.border[3]];
 		if (widths[0] + widths[1] + widths[2] + widths[3] == 0) return;
 		var styles = [for (k in 0...4) s.keyword('border-${SIDES[k]}-style')];
 		var colors = [for (k in 0...4) s.color('border-${SIDES[k]}-color')];
