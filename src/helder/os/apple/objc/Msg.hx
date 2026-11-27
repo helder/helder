@@ -12,8 +12,16 @@ import hxmc.unsafe.*;
 @:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class Msg {
-	// objc_msgSend's address (libobjc is loaded: Runtime imports from it)
-	public static final send:Ptr = Posix.dlsym(Ptr.ofI64(-2), Mem.cstr("objc_msgSend")); // (RTLD_DEFAULT)
+	// objc_msgSend's address (libobjc is loaded: Runtime imports from it),
+	// looked up at the first message: a class's static init may send one
+	// before Msg's own has run (examples/signup's Look: the fonts' cache
+	// path, NSFileManager's), and a static final read then is null
+	public static var send(get, never):Ptr;
+
+	static var sender = Ptr.nil();
+
+	static inline function get_send():Ptr
+		return sender.isNull() ? (sender = Posix.dlsym(Ptr.ofI64(-2), Mem.cstr("objc_msgSend"))) : sender; // (RTLD_DEFAULT)
 
 	static function id(self:Ptr, sel:Ptr):Ptr;
 	static function idPtr(self:Ptr, sel:Ptr, a:Ptr):Ptr;

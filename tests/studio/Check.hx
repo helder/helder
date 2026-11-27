@@ -19,7 +19,7 @@ using StringTools;
 // - the file at the end: the original with those two changes alone, every
 //   edit's span applying to the text before it in order;
 // - the overview, the zoomed and the selected frames against the goldens here.
-// Then tests/studio/design (design files alone, tests/studio/design.json): its
+// Then examples/design (design files alone, tests/studio/design.json): its
 // two frames drawn by the studio itself, nothing built; the first frame
 // moved by its caption (canvas:at, snapped to the other's top); the title
 // clicked and selected (its box, its element); its colour changed in the
@@ -37,7 +37,7 @@ using StringTools;
 // Then a phone's sheets (tests/studio/phone.json, 390 by 844): opened from
 // the bar, a frame picked in the files' (lowering it to peek), the handle
 // dragged up to full and flung away, the code's at half.
-// Then the sidebar's file browser (tests/studio/files.json, tests/studio/design
+// Then the sidebar's file browser (tests/studio/files.json, examples/design
 // with an image, a font and code in folders): the folders opened, the image
 // in its viewer, the font in its specimen, code in the code view; the image
 // dragged from the tree onto the Home frame (an <image src> of its path,
@@ -83,10 +83,10 @@ class Check {
 			for (shot in ["overview", "zoomed", "selected"])
 				image('$app-$shot.png', '$dir/$app-$shot.png', bless);
 		}
-		design(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/design/app.helder'), events('$dir/design.jsonl'));
+		design(File.getContent("examples/design/app.helder"), File.getContent('$dir/design/app.helder'), events('$dir/design.jsonl'));
 		free(events('$dir/free.jsonl'), '$dir/free');
 		phone(events('$dir/phone.jsonl'));
-		files(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
+		files(File.getContent("examples/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
 		acp(events('$dir/acp.jsonl'));
 		stories(events('$dir/stories.jsonl'));
 		start(events('$dir/start.jsonl'));

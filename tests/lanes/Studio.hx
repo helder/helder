@@ -137,7 +137,7 @@ class Studio {
 		}
 		// (a project of design files alone: its frames interpreted, nothing built)
 		if (step("design")) {
-			copy('tests/studio/design', '$b/design');
+			copy('examples/design', '$b/design');
 			run("git", ["init", "-q", "-b", "studio", '$b/design']);
 			run(h, [
 				"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
@@ -154,7 +154,7 @@ class Studio {
 		}
 		// (a phone's: the sheets over the canvas, switched by the bar, dragged by the handle)
 		if (step("phone")) {
-			copy('tests/studio/design', '$b/phone');
+			copy('examples/design', '$b/phone');
 			run(h, [
 				"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
 				"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--classic", "--events", '$b/phone.jsonl'
@@ -162,7 +162,7 @@ class Studio {
 		}
 		// (the sidebar's file browser: design files, an image, a font, code in folders)
 		if (step("files")) {
-			copy('tests/studio/design', '$b/files');
+			copy('examples/design', '$b/files');
 			mkdirs('$b/files/assets');
 			mkdirs('$b/files/fonts');
 			mkdirs('$b/files/src');
@@ -176,7 +176,7 @@ class Studio {
 		}
 		// (the studio's own shell, watched, with an agent over ACP: the scripted one, tests/studio/acp-agent.mjs on node)
 		if (step("acp")) {
-			copy('tests/studio/design', '$b/acp');
+			copy('examples/design', '$b/acp');
 			run("git", ["init", "-q", "-b", "studio", '$b/acp']);
 			run(h, [
 				"run", "--headless", "apps/studio", "--script", "tests/studio/watch.json", "--size", "1180x740", "--snap", '$b/acp-working.png', "--at",
@@ -328,16 +328,26 @@ class Studio {
 		run(exePath('$b/Check', HOST), [b].concat(BLESS ? ["--bless"] : []));
 	}
 
-	// (the site apps/studio/web/build.mjs writes: the studio for the web, todo and 50 screens bundled)
+	// (the site apps/studio/web/build.mjs writes: the studio for the web, todo, design and 50 screens bundled)
 	static function studioWeb() {
+		// helder.build's site (its sites/build/assemble.mjs) bundles these by
+		// path and quotes design's app.helder: moving one broke its deploy
+		for (e in ["todo", "design", "signup", "mail"])
+			if (!FileSystem.isDirectory('examples/$e')) throw new Failed('examples/$e: helder.build\'s site bundles it');
 		// (Playwright first: the builds take minutes)
 		run(NODE, ["tests/playwright.mjs"]);
 		var b = "bin/studio-web";
 		rmrf(b);
+		// (the site's programs started natively, a frame drawn, as its covers
+		// start them: signup's look once crashed at its start on macOS)
+		for (e in ["todo", "signup", "mail"]) {
+			run(helderCli(), ["run", "--headless", 'examples/$e', "--snap", '$b/$e.png']);
+			if (!FileSystem.exists('$b/$e.png')) throw new Failed('examples/$e: no frame drawn');
+		}
 		run(NODE, ["tests/story/host/host.mjs", "project", '$b/screens50']);
 		// (helder.compiler.web's toolchain, as the compiler-web lane builds it: structural edits built in the browser)
 		run(NODE, ["src/helder/compiler/web/build.mjs", "bin/compiler-web"]);
-		run(NODE, ["apps/studio/web/build.mjs", '$b/site', "--compiler", "bin/compiler-web", "examples/todo=Todo", '$b/screens50=50 screens']);
+		run(NODE, ["apps/studio/web/build.mjs", '$b/site', "--compiler", "bin/compiler-web", "examples/todo=Todo", "examples/design=Design", '$b/screens50=50 screens']);
 		run(NODE, ["tests/studio-web/check.mjs", '$b/site', b].concat(BLESS ? ["--bless"] : []));
 	}
 
