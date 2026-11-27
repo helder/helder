@@ -6,8 +6,9 @@ import helder.css.CssDisplay;
 // keywords (strict and content as their sets) with content-visibility's
 // (auto: layout, style and paint; hidden: size too), less what doesn't
 // apply to its box (§3: size, layout and paint containment have no effect
-// on an element without a principal box, an internal table or ruby box or
-// a non-atomic inline; size containment none on a table either). Read by
+// on an element without a principal box, a non-atomic inline, or an
+// internal table or ruby box except for layout and paint on table cells).
+// Size containment also has no effect on a table itself. Read by
 // the box lane: a box with layout or paint containment is a stacking
 // context and the containing block of its absolute and fixed descendants.
 //
@@ -51,13 +52,13 @@ enum abstract CssContain(Int) from Int to Int {
 		}
 		if (visibility == "auto") c |= Layout | Style | Paint;
 		if (visibility == "hidden") c |= Size | Layout | Style | Paint;
-		// (no principal box, an internal table or ruby box, a non-atomic inline: only style containment)
 		var outer = display.outer, inner = display.inner;
+		// (captions are block containers in the wrapper, outside the table grid)
+		var internal = outer == CssOuterDisplay.Internal && inner != CssInnerDisplay.TableCaption;
 		var none = outer == CssOuterDisplay.None || outer == CssOuterDisplay.Contents
-			|| outer == CssOuterDisplay.Internal && inner != CssInnerDisplay.TableCell || outer == CssOuterDisplay.Inline && inner == CssInnerDisplay.Flow;
+			|| internal && inner != CssInnerDisplay.TableCell || outer == CssOuterDisplay.Inline && inner == CssInnerDisplay.Flow;
 		if (none) return c & Style;
-		// (a table: no size containment)
-		if (inner == CssInnerDisplay.Table) c &= ~(Size | InlineSize);
+		if (inner == CssInnerDisplay.Table || internal) c &= ~(Size | InlineSize);
 		return c;
 	}
 }
