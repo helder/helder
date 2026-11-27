@@ -161,6 +161,21 @@ for(const file of fs.readdirSync(`${T}/helder`).filter(f=>/\.tsx?$/.test(f)&&!f.
     assert.equal(r.stdout,fs.readFileSync(`${T}/helder/${stem}.out`,'utf8'),`${file} stdout ${target}`);
     console.log(`PASS helder ${file} ${target}`);
 }
+// helder/canvas natively links neither back end it does not use: useWeb's
+// WebCanvas (its imports, the wasm module hxmc_canvas, are no library here)
+// and useGpu's GpuCanvas, which a type test of the Painter a call's missing
+// argument makes (each implementation's default) once named (hxmc's Reach:
+// a tested class is no value Type.createEmptyInstance could make)
+if(mine()&&!HOST.startsWith('windows')) {
+    const out=`${dir}/canvas-links`;
+    ok(run(compiler,[`${T}/helder/bytes.ts`,'--cp','tests/view','--cp','tests/ui','-D','hxmc.symbols','-o',out]),'bytes.ts compile (symbols)');
+    const nm=run('nm',[out]);ok(nm,'nm');
+    assert.doesNotMatch(nm.stdout,/\bU _?canvas_run\b/,'helder/canvas native: hxmc_canvas\'s imports (WebCanvas) linked');
+    assert.doesNotMatch(nm.stdout,/helder_canvas_(web|gpu)_/,'helder/canvas native: a back end it does not use (WebCanvas, GpuCanvas) linked');
+    const libs=HOST.startsWith('macos')?run('otool',['-L',out]):run('readelf',['-d',out]);ok(libs,'the libraries linked');
+    assert.doesNotMatch(libs.stdout,/hxmc_canvas/,'helder/canvas native: libhxmc_canvas linked');
+    console.log('PASS helder/canvas native: no WebCanvas, no GpuCanvas, no hxmc_canvas');
+}
 // helder/native/platform's constants folded as Haxe's Platform.os() is: platform/main.ts
 // and Main.hx built for Linux (glibc's dynamic mode, where a C function of a
 // shared library is an import) and wasm32-wasi, their Windows branch
