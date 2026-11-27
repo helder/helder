@@ -1,7 +1,6 @@
 package helder.ui.flow;
 
 import helder.canvas.ShapedRun;
-import helder.dom.Node;
 import helder.ui.box.Box;
 import helder.ui.box.BoxInline;
 import helder.ui.box.BoxKind;
@@ -271,39 +270,37 @@ class BlockLines {
 		var relative = widthRelative(block, true);
 		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
 		var out = new Built(c);
-		var runs:Array<Box> = [];
 		function walk(b:Box) {
 			var k = b.first;
 			while (k != null) {
 				switch k.kind {
 					case Text:
-						if (k.node != null) runs.push(k);
 						// (a leader: one fill, unless the lines just filled it)
 						if (k.flags & Box.LEADER != 0) {
 							if (!filling) k.text = k.fill;
 							out.leaders.push(k);
 						}
-						c.addText(k.text, BoxInline.of(k, width), k.node, k.offset);
+						c.addText(k.text, BoxInline.of(k, width), k);
 					case Inline if (k.flags & Box.OUTSIDE != 0):
 						out.markers.push(k);
 					case Inline:
 						if (widthRelative(k, false)) relative = true;
 						out.opened.push(k);
 						var style = !space.exact && k.markerPseudo() ? BoxInline.insideMarker(k, width, space.fonts.inlines) : BoxInline.of(k, width);
-						c.openBox(style, k.node);
+						c.openBox(style, k);
 						walk(k);
-						c.closeBox(k.node);
+						c.closeBox(k);
 					case Break:
-						c.addBreak(k.node, BoxInline.of(k, width));
+						c.addBreak(k, BoxInline.of(k, width));
 					case _ if (k.floating):
 						if (measure) {
 							if (k.context != null) k.context.intrinsic(k, space) else flow.intrinsic(k, space);
 						}
 						out.floats.push(k);
-						c.addFloat(k.node);
+						c.addFloat(k);
 					case _ if (k.absolute):
 						out.absolutes.push(k);
-						c.addAbspos(k.node);
+						c.addAbspos(k);
 					case _:
 						var w = 0.0, h = 0.0, base = Math.NaN, f = -1;
 						if (measure) {
@@ -318,26 +315,16 @@ class BlockLines {
 						out.atomics.push(k);
 						out.laid.push(f);
 						// (its border box, its baseline from its top: NaN its bottom margin edge; its margins its style's)
-						c.addAtomic(w, h, k.kind == InlineReplaced ? Math.NaN : base, BoxInline.of(k, width), k.node);
+						c.addAtomic(w, h, k.kind == InlineReplaced ? Math.NaN : base, BoxInline.of(k, width), k);
 				}
 				k = k.next;
 			}
 		}
 		walk(block);
 		c.finish();
-		// (each text item's run: the runs come in the items' order, a DOM text's ::first-letter's and the
-		// rest told apart by the offset of the item's first unit)
-		var t = 0;
+		// (each text item's box: its source)
 		out.texts = new haxe.ds.Vector(c.items);
-		for (i in 0...c.items) {
-			var source = c.kind(i) == Text ? c.source(i) : null;
-			if (source == null) continue;
-			var at = c.end(i) > c.start(i) ? c.domOffset(c.start(i)) : -1, k = t;
-			while (k < runs.length && (runs[k].node != source || at >= 0 && at >= runs[k].offset + runs[k].text.length && k + 1 < runs.length && runs[k + 1].node == source))
-				k++;
-			if (k < runs.length) t = k;
-			out.texts[i] = k < runs.length ? runs[k] : null;
-		}
+		for (i in 0...c.items) if (c.kind(i) == Text) out.texts[i] = c.source(i);
 		// (what a later layout and the sizes' questions take again: the same at any width; a live
 		// document's changes let it go, DocumentView.stale)
 		// (absolutely positioned boxes too: their static places are worked out from the lines each layout)
@@ -559,7 +546,7 @@ class BlockLines {
 		var r = l.glyphRun(f);
 		var ascent = l.ascent(f), descent = l.descent(f);
 		var t0 = l.textStart(f), t1 = l.textEnd(f);
-		var from = t0 < t1 ? c.domOffset(t0) : 0, to = t0 < t1 ? c.domOffset(t1 - 1) + 1 : from;
+		var from = t0 < t1 ? c.sourceOffset(t0) : 0, to = t0 < t1 ? c.sourceOffset(t1 - 1) + 1 : from;
 		if (r < 0) return;
 		var fonts = glyphs.runFonts(r);
 		// (plain text: its run made when first asked for, from the content, nothing placed now)
@@ -663,12 +650,12 @@ class BlockLines {
 			var mc = kept ?? new InlineContent(BoxInline.of(mk, avail), space.fonts.inlines);
 			var t = kept != null ? null : mk.first, laid = [];
 			while (t != null) {
-				if (t.kind == Text) mc.addText(t.text, BoxInline.of(t, avail), t.node, t.offset);
+				if (t.kind == Text) mc.addText(t.text, BoxInline.of(t, avail), t);
 				// (list-style-image's image: laid out as a line's atomic is)
 				else if (t.kind == InlineReplaced) {
 					var f = flow.child(t, space.child(avail, avail));
 					laid.push(f);
-					mc.addAtomic(frags.width(f), frags.height(f), Math.NaN, BoxInline.of(t, avail), t.node);
+					mc.addAtomic(frags.width(f), frags.height(f), Math.NaN, BoxInline.of(t, avail), t);
 				}
 				t = t.next;
 			}

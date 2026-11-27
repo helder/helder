@@ -1,9 +1,9 @@
 package helder.ui.flow;
 
-import helder.dom.Node;
+import helder.ui.box.Box;
 
 // A block container's lines kept for hit testing, carets and selection
-// (InlineLayout's, in DOM positions through InlineContent): its content and
+// (InlineLayout's, in its boxes' positions through InlineContent): its content and
 // constraints, laid out again on the first question (the floats beside it
 // stay where they were). Its coordinates are its fragment's: the lines'
 // origin at x, y in it.
@@ -33,17 +33,17 @@ class BlockText {
 	function lines():InlineLayout
 		return laid ??= new InlineLayout().layout(content, constraints);
 
-	// The DOM position nearest (px, py) in the fragment: a text node and the offset in it.
-	public function hit(px:Float, py:Float):Null<{node:Node, offset:Int}> {
+	// The position nearest (px, py) in the fragment: a text box and the offset in its text (an atomic's 0 or 1).
+	public function hit(px:Float, py:Float):Null<{box:Box, offset:Int}> {
 		var h = lines().hitTest(px - x, py - y);
 		if (h.item < 0) return null;
-		var p = content.domPosition(h.offset);
-		return p.node == null ? null : {node: p.node, offset: p.offset};
+		var p = content.position(h.offset);
+		return p.box == null ? null : {box: p.box, offset: p.offset};
 	}
 
-	// A DOM position's unit in the content; -1: not in it.
-	public inline function unitOf(node:Node, offset:Int):Int
-		return content.unitOf(node, offset);
+	// A position's unit in the content; -1: not in it.
+	public inline function unitOf(box:Box, offset:Int):Int
+		return content.unitOf(box, offset);
 
 	// The caret before a unit, in the fragment.
 	public function caret(unit:Int):{x:Float, y:Float, height:Float} {

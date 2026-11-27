@@ -2,7 +2,7 @@ package helder.ui.flow;
 
 import haxe.ds.Vector;
 import haxe.io.Bytes;
-import helder.dom.Node;
+import helder.ui.box.Box;
 import helder.text.Bidi;
 import helder.ui.flow.InlineValues;
 
@@ -21,8 +21,8 @@ import helder.ui.flow.InlineValues;
 // piece of its own. Laid out again at another width nothing is shaped again.
 //
 // The processed text is `text`; items index it (start to end), each from
-// one source (a DOM Text node for text: domOffset maps each unit of the
-// text back to its offset in that node).
+// one source (a text box for text: sourceOffset maps each unit of the
+// text back to its offset in that box's text).
 class InlineContent {
 	public final root:InlineStyle;
 	public final fonts:InlineFonts;
@@ -56,7 +56,7 @@ class InlineContent {
 	var iWidth:Null<Vector<Float>> = new Vector<Float>(16);
 	var iHeight:Null<Vector<Float>> = new Vector<Float>(16);
 	var iBaseline:Null<Vector<Float>> = new Vector<Float>(16);
-	var iSource = new Vector<Node>(16);
+	var iSource = new Vector<Box>(16);
 	// (an Open's: the box around it and its depth; every item's: its style's flags, spacing)
 	var iParent = new Vector<Int>(16);
 	var iDepth = new Vector<Int>(16);
@@ -100,22 +100,22 @@ class InlineContent {
 
 	// --- building ---
 
-	// text of a DOM Text node (its raw data, from sourceOffset in it): finish processes it
-	public function addText(text:String, style:InlineStyle, ?source:Node, sourceOffset = 0)
+	// a text box's text (from sourceOffset in it): finish processes it
+	public function addText(text:String, style:InlineStyle, ?source:Box, sourceOffset = 0)
 		push(Text, text, style, source, sourceOffset);
 
 	// an inline box's start (its margin, border and padding at its start: style's)
-	public function openBox(style:InlineStyle, ?source:Node)
+	public function openBox(style:InlineStyle, ?source:Box)
 		push(Open, "", style, source, 0);
 
 	// its end
-	public function closeBox(?source:Node)
+	public function closeBox(?source:Box)
 		push(Close, "", null, source, 0);
 
 	// an inline-block, replaced element or inline flex or grid, laid out:
 	// its border box's width and height, its baseline from its top (NaN: none,
 	// its bottom margin edge then); style's margins around it
-	public function addAtomic(width:Float, height:Float, baseline:Float, style:InlineStyle, ?source:Node) {
+	public function addAtomic(width:Float, height:Float, baseline:Float, style:InlineStyle, ?source:Box) {
 		var r = push(Atomic, "￼", style, source, 0);
 		r.width = width;
 		r.height = height;
@@ -123,17 +123,17 @@ class InlineContent {
 	}
 
 	// a forced break (<br>; style: its own, else its box's)
-	public function addBreak(?source:Node, ?style:InlineStyle)
+	public function addBreak(?source:Box, ?style:InlineStyle)
 		push(Break, "\n", style, source, 0);
 
 	// a float's or absolutely positioned box's place (its static position)
-	public function addFloat(?source:Node)
+	public function addFloat(?source:Box)
 		push(Float, "", null, source, 0);
 
-	public function addAbspos(?source:Node)
+	public function addAbspos(?source:Box)
 		push(Abspos, "", null, source, 0);
 
-	function push(kind:InlineItem, text:String, style:Null<InlineStyle>, source:Null<Node>, offset:Int):RawItem {
+	function push(kind:InlineItem, text:String, style:Null<InlineStyle>, source:Null<Box>, offset:Int):RawItem {
 		if (finished) throw new haxe.Exception("InlineContent: finished");
 		var r = new RawItem(kind, text, style == null ? -1 : styleIndex(style), source, offset);
 		raw.push(r);
@@ -166,7 +166,7 @@ class InlineContent {
 	public inline function styleOf(i:Int):Int
 		return iStyle[i];
 
-	public inline function source(i:Int):Null<Node>
+	public inline function source(i:Int):Null<Box>
 		return iSource[i];
 
 	// the Open item of the inline box an item is in (-1: the root; an Open's
@@ -235,40 +235,41 @@ class InlineContent {
 
 	// --- units ---
 
-	// a position in the text (a unit, a caret's place before it) as a DOM
-	// position: the node of the item it is in and the offset in it (its
-	// Text node's offset, an element's 0 or 1: before or after it); after
-	// the text, the end of its last text or atomic (not the boxes closed
-	// after it: a caret's place is in the text)
-	public function domPosition(u:Int):{node:Null<Node>, offset:Int} {
-		if (items == 0) return {node: null, offset: 0};
+	// a position in the text (a unit, a caret's place before it) as one of
+	// its sources': the box of the item it is in and the offset there (in a
+	// text box's text, an atomic's or a break's 0 or 1: before or after
+	// it); after the text, the end of its last text or atomic (not the
+	// boxes closed after it: a caret's place is in the text)
+	public function position(u:Int):{box:Null<Box>, offset:Int} {
+		if (items == 0) return {box: null, offset: 0};
 		if (u >= text.length) {
 			var i = items - 1;
 			while (i > 0 && (iSource[i] == null || kind(i) == Open || kind(i) == Close))
 				i--;
-			return kind(i) == Text ? {node: iSource[i], offset: iEnd[i] > iStart[i] ? domOffset(iEnd[i] - 1) + 1 : 0} : {node: iSource[i], offset: 1};
+			return kind(i) == Text ? {box: iSource[i], offset: iEnd[i] > iStart[i] ? sourceOffset(iEnd[i] - 1) + 1 : 0} : {box: iSource[i], offset: 1};
 		}
 		var i = itemAt(u);
-		return kind(i) == Text ? {node: iSource[i], offset: domOffset(u)} : {node: iSource[i], offset: 0};
+		return kind(i) == Text ? {box: iSource[i], offset: sourceOffset(u)} : {box: iSource[i], offset: 0};
 	}
 
-	// the unit of a DOM position (a node of the content and an offset in it):
-	// in a Text node, the first unit from that offset on (a collapsed space's
-	// the next one kept); an element's place before it; -1: not in the content
-	public function unitOf(node:Node, offset:Int):Int {
+	// the unit of a position (a source box of the content and an offset in
+	// it): in a text box, the first unit from that offset on (a collapsed
+	// space's the next one kept); an atomic's place before it; -1: not in
+	// the content
+	public function unitOf(box:Box, offset:Int):Int {
 		var found = -1;
 		for (i in 0...items) {
-			if (iSource[i] != node) continue;
+			if (iSource[i] != box) continue;
 			if (kind(i) != Text) return offset > 0 ? iEnd[i] : iStart[i];
 			for (u in iStart[i]...iEnd[i])
-				if (domOffset(u) >= offset) return u;
+				if (sourceOffset(u) >= offset) return u;
 			found = iEnd[i];
 		}
 		return found;
 	}
 
-	// a unit's offset in its item's source
-	public function domOffset(u:Int):Int {
+	// a unit's offset in its item's source (a text box's text)
+	public function sourceOffset(u:Int):Int {
 		if (offsets != null) return offsets[u];
 		var j = jumps, lo = 0, hi = (j.length >> 1) - 1;
 		while (lo < hi) {
@@ -388,7 +389,7 @@ class InlineContent {
 			cps.push(c);
 			n += len;
 		}
-		inline function newItem(kind:InlineItem, style:Int, source:Null<Node>):Int {
+		inline function newItem(kind:InlineItem, style:Int, source:Null<Box>):Int {
 			var i = items++;
 			itemRoom(items);
 			iKind[i] = kind;
@@ -595,7 +596,7 @@ class InlineContent {
 		iBaseline = floats(iBaseline, m);
 		iLetter = floats(iLetter, m);
 		iWord = floats(iWord, m);
-		var s = new Vector<Node>(m);
+		var s = new Vector<Box>(m);
 		Vector.blit(iSource, 0, s, 0, iSource.length);
 		iSource = s;
 	}
@@ -1212,7 +1213,7 @@ class InlineContent {
 
 // What an item of InlineContent is (what the box tree gives the IFC)
 enum abstract InlineItem(Int) to Int {
-	// text in one style, from one DOM Text node
+	// text in one style, from one text box
 	var Text;
 	// an inline box's start and end
 	var Open;
@@ -1231,13 +1232,13 @@ private class RawItem {
 	public final kind:InlineItem;
 	public final text:String;
 	public final style:Int;
-	public final source:Null<Node>;
+	public final source:Null<Box>;
 	public final offset:Int;
 	public var width = 0.0;
 	public var height = 0.0;
 	public var baseline = 0.0;
 
-	public function new(kind:InlineItem, text:String, style:Int, source:Null<Node>, offset:Int) {
+	public function new(kind:InlineItem, text:String, style:Int, source:Null<Box>, offset:Int) {
 		this.kind = kind;
 		this.text = text;
 		this.style = style;

@@ -231,7 +231,7 @@ class PaintOrder {
 		if (hasBackground(root) || (root.style.containment : Int) != 0) return root;
 		var c = root.first;
 		while (c != null) {
-			if (c.node != null && c.node.nodeName.toLowerCase() == "body" && c.pseudo == null) return (c.style.containment : Int) != 0 ? root : c;
+			if (c.flags & Box.BODY != 0) return (c.style.containment : Int) != 0 ? root : c;
 			c = c.next;
 		}
 		return root;

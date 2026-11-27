@@ -51,10 +51,10 @@ function tests() {
 			equals(processed(["Hello"], s -> s.transform = Uppercase), "HELLO");
 			equals(processed(["Ab 1"], s -> s.transform = FullWidth), "Ａｂ １");
 		});
-		test("DOM offsets: each unit's place in its node", () -> {
+		test("source offsets: each unit's place in its box's text", () -> {
 			var c = content(s -> s.addText("  a  b", ahem(), null, 10));
 			equals(c.text, "a b");
-			equals([for (u in 0...3) c.domOffset(u)], [12, 13, 15]);
+			equals([for (u in 0...3) c.sourceOffset(u)], [12, 13, 15]);
 		});
 		test("break opportunities: after spaces, none in nowrap", () -> {
 			var c = content(s -> s.addText("aa bb", ahem()));

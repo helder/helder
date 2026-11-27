@@ -1,25 +1,28 @@
 package helder.ui.box;
 
 import helder.canvas.Bitmap;
-import helder.dom.Node;
 import helder.ui.flow.FormattingContext;
 
-// One box of the box tree (CSS 2.1 §9.2, Display 3): what the DOM and its
-// computed styles generate, anonymous boxes included. Layout reads it,
-// and keeps its cache here; fragments are apart (Fragments).
+// One box of the box tree (CSS 2.1 §9.2, Display 3): what a document's
+// elements and their computed styles generate (BoxTree), anonymous boxes
+// included, or a box made from code. Layout reads it, and keeps its cache
+// here; fragments are apart (Fragments). What layout and paint need of
+// the element it is for is on the box (lang, a table cell's spans, the
+// body's, an inline SVG's), so neither reads a document.
 class Box {
 	public final kind:BoxKind;
 	// (another as a live document is restyled, DocumentView.update)
 	public var style(default, null):BoxStyle;
-	// the element or text node it is for: null for an anonymous box
-	public final node:Null<Node>;
+	// what it is for: a document's element or text node (DocumentView maps
+	// them), a node made from code; null for an anonymous box
+	public final source:Null<{}>;
 	public var parent(default, null):Null<Box> = null;
 	public var first(default, null):Null<Box> = null;
 	public var last(default, null):Null<Box> = null;
 	public var next(default, null):Null<Box> = null;
 	// a text run's text, as the DOM has it (white space is the inline layout's)
 	public var text = "";
-	// (offset of text in node's data: generated text has none)
+	// (offset of text in its source's data: generated text has none)
 	public var offset = 0;
 	// (what few boxes have, and layout's state, which text and inline boxes
 	// do without: apart, made when first set to other than its default, so a
@@ -29,6 +32,12 @@ class Box {
 	var state:Null<BoxState> = null;
 	// "before", "after", "marker": generated content's
 	public var pseudo(get, never):Null<String>;
+	// its element's language (lang, xml:lang), where it sets one: the nearest box up that has one is the box's
+	public var lang(get, set):Null<String>;
+	// a table cell's colspan and rowspan, a column's or column group's span: as its element has them (-1: none)
+	public var colSpan(get, set):Int;
+	public var rowSpan(get, set):Int;
+	public var span(get, set):Int;
 	// a leader's fill (LEADER: its text that repeated)
 	public var fill(get, set):String;
 	// the formatting context it establishes for its contents, if any
@@ -68,6 +77,10 @@ class Box {
 	public static inline var UNSTYLED = 1024;
 	// (made from code, an element's in its own right: not an anonymous box though it has no node)
 	public static inline var MADE = 2048;
+	// (the HTML body's box: its background the canvas's where the root has none, CSS 2.1 §14.2)
+	public static inline var BODY = 4096;
+	// (an svg element in a document: drawn in the cascade's colour, not an image's black)
+	public static inline var INLINE_SVG = 8192;
 
 	public inline function markerPseudo():Bool
 		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";
@@ -99,7 +112,7 @@ class Box {
 	// (what a scroll container's offsets are kept by (BoxPainter.scrolls): its element, or the box itself where it
 	// has none, one made from code)
 	public static inline function scrollKey(b:Box):{}
-		return b.node != null ? b.node : b;
+		return b.source != null ? b.source : b;
 
 	// its layouts let go: laid out again when next asked
 	public function uncache() {
@@ -129,10 +142,10 @@ class Box {
 	public var bottomNegative(get, set):Float;
 	public var through(get, set):Bool;
 
-	public function new(kind:BoxKind, style:BoxStyle, ?node:Node, ?pseudo:String) {
+	public function new(kind:BoxKind, style:BoxStyle, ?source:{}, ?pseudo:String) {
 		this.kind = kind;
 		this.style = style;
-		this.node = node;
+		this.source = source;
 		if (pseudo != null) own().pseudo = pseudo;
 	}
 
@@ -144,6 +157,30 @@ class Box {
 
 	inline function get_pseudo():Null<String>
 		return extra == null ? null : extra.pseudo;
+
+	inline function get_lang():Null<String>
+		return extra == null ? null : extra.lang;
+
+	inline function set_lang(v:Null<String>):Null<String>
+		return v == null && extra == null ? v : own().lang = v;
+
+	inline function get_colSpan():Int
+		return extra == null ? -1 : extra.colSpan;
+
+	inline function set_colSpan(v:Int):Int
+		return v == -1 && extra == null ? v : own().colSpan = v;
+
+	inline function get_span():Int
+		return extra == null ? -1 : extra.span;
+
+	inline function set_span(v:Int):Int
+		return v == -1 && extra == null ? v : own().span = v;
+
+	inline function get_rowSpan():Int
+		return extra == null ? -1 : extra.rowSpan;
+
+	inline function set_rowSpan(v:Int):Int
+		return v == -1 && extra == null ? v : own().rowSpan = v;
 
 	inline function get_fill():String
 		return extra == null ? "" : extra.fill;
@@ -319,7 +356,7 @@ class Box {
 	public var anonymous(get, never):Bool;
 
 	inline function get_anonymous():Bool
-		return node == null && pseudo == null && flags & MADE == 0;
+		return source == null && pseudo == null && flags & MADE == 0;
 
 	public var blockLevel(get, never):Bool;
 
@@ -360,8 +397,7 @@ class Box {
 	}
 
 	public function toString():String {
-		var name = node == null ? "" : node.nodeType == Node.ELEMENT_NODE ? " " + node.nodeName.toLowerCase() : "";
-		if (pseudo != null) name += '::$pseudo';
+		var name = pseudo != null ? '::$pseudo' : "";
 		if (kind == Text) name += ' "${text}"';
 		return '$kind$name';
 	}
@@ -369,6 +405,10 @@ class Box {
 
 private class BoxExtra {
 	public var pseudo:Null<String> = null;
+	public var lang:Null<String> = null;
+	public var colSpan = -1;
+	public var rowSpan = -1;
+	public var span = -1;
 	public var fill = "";
 	public var context:Null<FormattingContext> = null;
 	public var image:Null<Bitmap> = null;

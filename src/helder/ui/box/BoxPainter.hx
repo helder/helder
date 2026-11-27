@@ -312,7 +312,7 @@ class BoxPainter {
 		var x0 = Math.round(dx), y0 = Math.round(dy);
 		// (an SVG as its paths, on whole pixels as an image is: an image's in black, its own document's colour; an inline one's paint is the cascade's)
 		if (b.svg != null) {
-			var own = b.node != null && (cast b.node : helder.dom.Element).namespaceURI == "http://www.w3.org/2000/svg";
+			var own = b.flags & Box.INLINE_SVG != 0;
 			b.svg.paint(p, x0, y0, Math.round(dx + dw) - x0, Math.round(dy + dh) - y0, own ? b.style.color("color") : 0xFF000000);
 			return;
 		}

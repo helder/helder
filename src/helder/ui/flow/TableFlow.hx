@@ -1,7 +1,6 @@
 package helder.ui.flow;
 
 import haxe.ds.ObjectMap;
-import helder.dom.Element;
 import helder.ui.box.Box;
 import helder.ui.box.BoxKind;
 import helder.ui.box.BoxStyle;
@@ -170,14 +169,10 @@ class TableFlow implements FormattingContext {
 	}
 
 	// (an HTML cell's colspan or rowspan, a column's or column group's span)
+	// (as BoxTree read it of an HTML element: -1 none)
 	static function attr(b:Box, name:String, fallback:Int, min:Int, max:Int):Int {
-		if (b.node == null || b.node.nodeType != helder.dom.Node.ELEMENT_NODE) return fallback;
-		var el:Element = cast b.node;
-		if (el.namespaceURI != "http://www.w3.org/1999/xhtml") return fallback;
-		var v = el.getAttribute(name);
-		if (v == null) return fallback;
-		var n = Std.parseInt(v.trim());
-		if (n == null) return fallback;
+		var n = name == "rowspan" ? b.rowSpan : name == "colspan" ? b.colSpan : b.span;
+		if (n == -1) return fallback;
 		return n < min ? (name == "rowspan" && n == 0 ? 0 : fallback) : n > max ? max : n;
 	}
 

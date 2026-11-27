@@ -127,7 +127,7 @@ private function rect(v:Laid, id:String):Array<Float> {
 	var f = v.fragments;
 	var k = f.count;
 	while (k-- > 0)
-		if (f.kind(k) == Fragments.BOX && f.box(k).node == el && f.box(k).kind != TableWrapper && f.parent(k) >= 0) {
+		if (f.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(f.box(k)) == el && f.box(k).kind != TableWrapper && f.parent(k) >= 0) {
 			var at = f.absolute(k);
 			return [at.x, at.y, f.width(k), f.height(k)];
 		}
@@ -141,7 +141,7 @@ private function firstText(v:Laid, id:String):Array<Float> {
 	for (k in 0...f.count)
 		if (f.kind(k) == Fragments.TEXT) {
 			var p = f.parent(k);
-			while (p >= 0 && f.box(p).node != el) p = f.parent(p);
+			while (p >= 0 && helder.ui.box.BoxTree.nodeOf(f.box(p)) != el) p = f.parent(p);
 			if (p >= 0) {
 				var at = f.absolute(k);
 				return [at.x, at.y, f.width(k), f.height(k)];

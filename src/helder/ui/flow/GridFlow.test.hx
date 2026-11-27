@@ -60,7 +60,7 @@ private function view(body:String):DocumentView {
 private function rect(v:DocumentView, id:String):Array<Float> {
 	var el:Element = v.document.getElementById(id);
 	var f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el && inTree(f, k, v.root)) {
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(f.box(k)) == el && inTree(f, k, v.root)) {
 		var at = f.absolute(k);
 		return [at.x, at.y, f.width(k), f.height(k)];
 	}

@@ -179,7 +179,7 @@ private function geometry(v:DocumentView):String {
 	function walk(id:Int, x:Float, y:Float) {
 		var ax = x + f.x(id), ay = y + f.y(id);
 		var b = f.box(id);
-		if (f.kind(id) != Fragments.LINE) out.push('${b.node == null ? "-" : b.node.nodeName} $ax,$ay ${f.width(id)}x${f.height(id)}');
+		if (f.kind(id) != Fragments.LINE) out.push('${BoxTree.nodeOf(b) == null ? "-" : BoxTree.nodeOf(b).nodeName} $ax,$ay ${f.width(id)}x${f.height(id)}');
 		var c = f.first(id);
 		while (c >= 0) {
 			walk(c, ax, ay);
@@ -207,7 +207,7 @@ private function laid(v:DocumentView):Int {
 
 private function top(v:DocumentView, id:String):Float {
 	var e = v.document.getElementById(id), f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == e && f.box(k).lines != null) return f.absolute(k).y;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && BoxTree.nodeOf(f.box(k)) == e && f.box(k).lines != null) return f.absolute(k).y;
 	return Math.NaN;
 }
 

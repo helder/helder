@@ -15,6 +15,7 @@ import helder.dom.CharacterData;
 import helder.dom.Document;
 import helder.dom.Element;
 import helder.dom.Node;
+import helder.ui.box.BoxTexts.BoxPosition;
 import helder.ui.flow.Contexts;
 import helder.ui.flow.Lazy;
 import helder.ui.flow.Space;
@@ -113,7 +114,6 @@ class DocumentView {
 	// for; the boxes with lines; the fragments a whole layout made)
 	var changes:Null<DocumentChanges> = null;
 	var owners:Null<ObjectMap<Node, Array<Box>>> = null;
-	var lined:Null<Array<Box>> = null;
 	var placed:Null<ObjectMap<Box, Int>> = null;
 	var whole = 0;
 	// (the glyph runs a window's paints placed: kept while the fragments are)
@@ -373,7 +373,7 @@ class DocumentView {
 		for (k in 0...rests.length) {
 			var b = rests[k];
 			while (b != null) {
-				if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE && b.pseudo == null) m.set(cast b.node, b);
+				if (BoxTree.nodeOf(b) != null && BoxTree.nodeOf(b).nodeType == Node.ELEMENT_NODE && b.pseudo == null) m.set(cast BoxTree.nodeOf(b), b);
 				b = b.next;
 			}
 		}
@@ -459,7 +459,7 @@ class DocumentView {
 		var els = waiting.copy();
 		for (b in unstyled) {
 			b.flags &= ~Box.UNSTYLED;
-			if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE) for (el in styles.rematch(cast b.node)) els.push(el);
+			if (BoxTree.nodeOf(b) != null && BoxTree.nodeOf(b).nodeType == Node.ELEMENT_NODE) for (el in styles.rematch(cast BoxTree.nodeOf(b))) els.push(el);
 		}
 		unstyled.resize(0);
 		waiting.resize(0);
@@ -491,8 +491,8 @@ class DocumentView {
 
 	// (the elements of a box (its element and what is in it), in tree order)
 	static function elementsOf(b:Box, out:Array<Element>) {
-		if (b.node == null || b.node.nodeType != Node.ELEMENT_NODE) return;
-		var stack:Array<Node> = [b.node];
+		if (BoxTree.nodeOf(b) == null || BoxTree.nodeOf(b).nodeType != Node.ELEMENT_NODE) return;
+		var stack:Array<Node> = [BoxTree.nodeOf(b)];
 		while (stack.length > 0) {
 			var n = stack.pop();
 			if (n.nodeType != Node.ELEMENT_NODE) continue;
@@ -539,8 +539,7 @@ class DocumentView {
 	}
 
 	function once():Int {
-		lined = null;
-		textIndex = null;
+		boxTexts = null;
 		placed = null;
 		var r = tree.root;
 		if (r == null) return root = -1;
@@ -764,9 +763,9 @@ class DocumentView {
 		var boxes = made.copy();
 		while (boxes.length > 0) {
 			var b = boxes.pop();
-			if (b.node != null) {
-				var list = owners.get(b.node);
-				if (list == null) owners.set(b.node, list = []);
+			if (BoxTree.nodeOf(b) != null) {
+				var list = owners.get(BoxTree.nodeOf(b));
+				if (list == null) owners.set(BoxTree.nodeOf(b), list = []);
 				list.push(b);
 			}
 			var c = b.first;
@@ -818,7 +817,7 @@ class DocumentView {
 		}
 		var c = b.first;
 		while (c != null) {
-			if (c.pseudo == null && (c.node == null || c.node == el || c.node.nodeType != Node.ELEMENT_NODE)) swap(c, el, old, now, swaps, relayout);
+			if (c.pseudo == null && (BoxTree.nodeOf(c) == null || BoxTree.nodeOf(c) == el || BoxTree.nodeOf(c).nodeType != Node.ELEMENT_NODE)) swap(c, el, old, now, swaps, relayout);
 			c = c.next;
 		}
 	}
@@ -863,9 +862,9 @@ class DocumentView {
 				var stack = [tree.root];
 				while (stack.length > 0) {
 					var b = stack.pop();
-					if (b.node != null) {
-						var list = m.get(b.node);
-						if (list == null) m.set(b.node, list = []);
+					if (BoxTree.nodeOf(b) != null) {
+						var list = m.get(BoxTree.nodeOf(b));
+						if (list == null) m.set(BoxTree.nodeOf(b), list = []);
 						list.push(b);
 					}
 					var c = b.first;
@@ -899,9 +898,43 @@ class DocumentView {
 		bp.paint(p);
 	}
 
-	// What is at (x, y): a text node and the offset there, or an element (offset -1).
-	public function hit(x:Float, y:Float):Null<{node:Node, offset:Int}>
+	// What is at (x, y): its box and the offset there (BoxTexts' position), as HitTest finds it.
+	public function hitBox(x:Float, y:Float):Null<BoxPosition>
 		return order == null ? null : HitTest.at(fragments, order, x, y, scrolls);
+
+	// What is at (x, y): a text node and the offset there, or an element (offset -1).
+	public function hit(x:Float, y:Float):Null<{node:Node, offset:Int}> {
+		var p = hitBox(x, y);
+		return p == null ? null : domOf(p);
+	}
+
+	// A box position as the document has it: a text box's its text node's (the box's text a slice of it from
+	// its offset); an atomic's its element's 0 or 1; else the nearest element's (offset -1), a text's parent's
+	public function domOf(p:BoxPosition):Null<{node:Node, offset:Int}> {
+		var n = BoxTree.nodeOf(p.box);
+		if (n != null && p.box.kind == Text && n.nodeType == Node.TEXT_NODE) return {node: n, offset: p.box.offset + p.offset};
+		if (n != null && p.offset >= 0 && p.box.pseudo == null && n.nodeType == Node.ELEMENT_NODE) return {node: n, offset: p.offset};
+		var b:Null<Box> = p.box;
+		while (b != null && BoxTree.nodeOf(b) == null) b = b.parent;
+		if (b == null) return null;
+		var e = BoxTree.nodeOf(b);
+		return {node: e.nodeType == Node.TEXT_NODE ? e.parentNode : e, offset: -1};
+	}
+
+	// A DOM position as a box position: in a text node, the run of it holding the offset (a ::first-letter's
+	// or the rest's); an element's, its first box's; null: no box has it
+	public function boxOf(node:Node, offset:Int):Null<BoxPosition> {
+		var boxes = boxesOf(node);
+		if (boxes.length == 0) return null;
+		if (node.nodeType != Node.TEXT_NODE) return {box: boxes[0], offset: offset};
+		var last = boxes[0];
+		for (b in boxes) {
+			if (b.kind != Text) continue;
+			last = b;
+			if (offset < b.offset + b.text.length) return {box: b, offset: Std.int(Math.max(0, offset - b.offset))};
+		}
+		return {box: last, offset: offset - last.offset};
+	}
 
 	// Scroll containers' offsets (x, y) by their element: what paint and hit testing move their content by.
 	public final scrolls = new ObjectMap<{}, Array<Float>>();
@@ -909,156 +942,62 @@ class DocumentView {
 	// The innermost scroll container at (x, y) that can scroll by dx, dy
 	// scrolled (within its content's extent): the element; null: none can.
 	public function scrollBy(x:Float, y:Float, dx:Float, dy:Float):Null<Element> {
-		var h = hit(x, y);
-		var n = h == null ? null : h.node;
-		while (n != null) {
-			if (n.nodeType == Node.ELEMENT_NODE) for (b in boxesOf(n)) if (b.pseudo == null && b.style.scrolls && b.parent != null && b.parent.parent != null) {
+		var h = hitBox(x, y);
+		var b = h == null ? null : h.box;
+		while (b != null) {
+			if (b.pseudo == null && b.style.scrolls && b.parent != null && b.parent.parent != null) {
 				var id = fragmentOf(b);
-				if (id < 0) continue;
-				var m = b.style.model();
-				var cw = fragments.width(id) - m.border[1] - m.border[3], ch = fragments.height(id) - m.border[0] - m.border[2];
-				// (its content's extent: its children's margin boxes' far edges, and its padding's at the end)
-				var ew = 0.0, eh = 0.0, c = fragments.first(id);
-				while (c >= 0) {
-					ew = Math.max(ew, fragments.x(c) + fragments.width(c));
-					eh = Math.max(eh, fragments.y(c) + fragments.height(c));
-					c = fragments.next(c);
+				if (id >= 0) {
+					var m = b.style.model();
+					var cw = fragments.width(id) - m.border[1] - m.border[3], ch = fragments.height(id) - m.border[0] - m.border[2];
+					// (its content's extent: its children's margin boxes' far edges, and its padding's at the end)
+					var ew = 0.0, eh = 0.0, c = fragments.first(id);
+					while (c >= 0) {
+						ew = Math.max(ew, fragments.x(c) + fragments.width(c));
+						eh = Math.max(eh, fragments.y(c) + fragments.height(c));
+						c = fragments.next(c);
+					}
+					eh += helder.ui.box.Len.Lens.resolve(m.padding[2], cw, 0) - m.border[0];
+					ew -= m.border[3];
+					var key = Box.scrollKey(b), o = scrolls.get(key) ?? [0.0, 0.0];
+					var sx = Math.max(0, Math.min(o[0] + dx, ew - cw)), sy = Math.max(0, Math.min(o[1] + dy, eh - ch));
+					if (sx != o[0] || sy != o[1]) {
+						scrolls.set(key, [sx, sy]);
+						return cast BoxTree.nodeOf(b);
+					}
 				}
-				eh += helder.ui.box.Len.Lens.resolve(m.padding[2], cw, 0) - m.border[0];
-				ew -= m.border[3];
-				var o = scrolls.get(n) ?? [0.0, 0.0];
-				var sx = Math.max(0, Math.min(o[0] + dx, ew - cw)), sy = Math.max(0, Math.min(o[1] + dy, eh - ch));
-				if (sx == o[0] && sy == o[1]) continue;
-				scrolls.set(n, [sx, sy]);
-				return cast n;
 			}
-			n = n.parentNode;
+			b = b.parent;
 		}
 		return null;
 	}
 
+	// The text of this layout by box position (BoxTexts): made when first asked
+	public function texts():BoxTexts
+		return boxTexts ??= new BoxTexts(fragments, tree == null || root < 0 ? null : tree.root);
+
+	var boxTexts:Null<BoxTexts> = null;
+
 	// The text position nearest (x, y), as a selection's end follows the
-	// pointer: from the lines of the innermost block whose fragment holds
-	// the point, else of the block nearest it above or below; null: no text.
-	// Transforms aside.
+	// pointer (BoxTexts.position), as the document has it; null: no text.
 	public function position(x:Float, y:Float):Null<{node:Node, offset:Int}> {
-		var blocks = texts(), ix = index();
-		if (blocks.length == 0) return null;
-		var best = -1, far = Math.POSITIVE_INFINITY;
-		inline function consider(k:Int) {
-			var dy = y < ix.y0[k] ? ix.y0[k] - y : y > ix.y1[k] ? y - ix.y1[k] : 0.0;
-			var dx = x < ix.x0[k] ? ix.x0[k] - x : x > ix.x1[k] ? x - ix.x1[k] : 0.0;
-			// (inside: the innermost, the last in the tree's order; else the nearest, down then across)
-			var d = dy * 1e4 + dx;
-			if (d < far || d == far && k > best) {
-				far = d;
-				best = k;
-			}
-		}
-		// (the bucket the point is in, then rings of buckets around it until one beyond the nearest found)
-		var at = Std.int(Math.max(0, Math.min(ix.buckets.length - 1, Math.floor(y / BUCKET)))), r = 0;
-		while (r <= ix.buckets.length) {
-			for (b in [at - r, at + r]) if (b >= 0 && b < ix.buckets.length && (r > 0 || b == at)) for (k in ix.buckets[b]) consider(k);
-			if (best >= 0 && far / 1e4 < r * BUCKET) break;
-			r++;
-		}
-		var o = blocks[best].lines;
-		return o.hit(x - ix.x0[best], y - ix.y0[best]);
-	}
-
-	// (the text blocks' places, absolute: each block in the buckets of BUCKET px its lines cover; each text's block)
-	static inline var BUCKET = 256;
-	var textIndex:Null<TextIndex> = null;
-
-	function index():TextIndex {
-		if (textIndex != null) return textIndex;
-		var blocks = texts(), ix = new TextIndex();
-		var tall = 0.0;
-		for (k in 0...blocks.length) {
-			var id = blocks[k].lines.fragment, o = fragments.absolute(id);
-			ix.x0.push(o.x);
-			ix.y0.push(o.y);
-			ix.x1.push(o.x + fragments.width(id));
-			ix.y1.push(o.y + fragments.height(id));
-			tall = Math.max(tall, o.y + fragments.height(id));
-			ix.of.set(blocks[k], k);
-		}
-		var n = Std.int(Math.ceil(tall / BUCKET)) + 1;
-		for (_ in 0...n) ix.buckets.push([]);
-		for (k in 0...blocks.length) {
-			var b0 = Std.int(Math.max(0, Math.floor(ix.y0[k] / BUCKET))), b1 = Std.int(Math.min(n - 1, Math.floor(ix.y1[k] / BUCKET)));
-			for (b in b0...b1 + 1) ix.buckets[b].push(k);
-		}
-		return textIndex = ix;
-	}
-
-	// (the block whose lines hold a DOM text: up from its runs to the nearest block with lines; -1: none)
-	function blockOf(node:Node):Int {
-		var ix = index();
-		for (b in boxesOf(node)) {
-			var p:Null<Box> = b;
-			while (p != null) {
-				var k = ix.of.get(p);
-				if (k != null) return k;
-				p = p.parent;
-			}
-		}
-		return -1;
+		var p = texts().position(x, y);
+		return p == null ? null : domOf(p);
 	}
 
 	// The caret at a DOM position (a text node and an offset in it) in the
 	// document, its line's height; null: not in any lines. Transforms aside.
 	public function caret(node:Node, offset:Int):Null<{x:Float, y:Float, height:Float}> {
-		var k = blockOf(node);
-		if (k < 0) return null;
-		var b = texts()[k], u = b.lines.unitOf(node, offset);
-		if (u < 0) return null;
-		var c = b.lines.caret(u), ix = index();
-		return {x: ix.x0[k] + c.x, y: ix.y0[k] + c.y, height: c.height};
+		var p = boxOf(node, offset);
+		return p == null ? null : texts().caret(p);
 	}
 
 	// The rectangles a selection from one DOM position to another covers in
-	// the document: each line's selected runs, the line's height, block by
-	// block in the box tree's order. Transforms aside.
+	// the document (BoxTexts.rects). Transforms aside.
 	public function selection(from:{node:Node, offset:Int}, to:{node:Node, offset:Int}, top = Math.NEGATIVE_INFINITY,
 			bottom = Math.POSITIVE_INFINITY):Array<{x:Float, y:Float, width:Float, height:Float}> {
-		var blocks = texts(), ix = index();
-		var b0 = blockOf(from.node), b1 = blockOf(to.node);
-		var u0 = b0 < 0 ? -1 : blocks[b0].lines.unitOf(from.node, from.offset), u1 = b1 < 0 ? -1 : blocks[b1].lines.unitOf(to.node, to.offset);
-		if (b0 < 0 || b1 < 0 || u0 < 0 || u1 < 0) return [];
-		if (b1 < b0 || b1 == b0 && u1 < u0) {
-			var t = b0, v = u0;
-			b0 = b1;
-			u0 = u1;
-			b1 = t;
-			u1 = v;
-		}
-		var out = [];
-		// (top...bottom: the blocks there alone, what is seen of a long selection)
-		for (k in b0...b1 + 1) {
-			if (ix.y1[k] < top || ix.y0[k] > bottom) continue;
-			var l = blocks[k].lines;
-			for (r in l.selection(k == b0 ? u0 : 0, k == b1 ? u1 : l.content.text.length))
-				out.push({x: ix.x0[k] + r.x, y: ix.y0[k] + r.y, width: r.width, height: r.height});
-		}
-		return out;
-	}
-
-	// (the boxes with lines in this layout, in the tree's order)
-	function texts():Array<Box> {
-		if (lined != null) return lined;
-		var out = lined = [];
-		if (tree == null || tree.root == null || root < 0) return out;
-		// (in tree order: a box, its children, then its next sibling)
-		var b:Null<Box> = tree.root;
-		while (b != null) {
-			if (b.lines != null && b.lines.fragment < fragments.count && fragments.box(b.lines.fragment) == b) out.push(b);
-			if (b.first != null) b = b.first else {
-				while (b != null && b.next == null) b = b.parent;
-				b = b == null ? null : b.next;
-			}
-		}
-		return out;
+		var a = boxOf(from.node, from.offset), z = boxOf(to.node, to.offset);
+		return a == null || z == null ? [] : texts().rects(a, z, top, bottom);
 	}
 
 	function image(url:String):Null<Bitmap> {
@@ -1078,16 +1017,4 @@ class DocumentView {
 		svgs.set(abs, v);
 		return v;
 	}
-}
-
-// (DocumentView's text blocks' places: absolute bounds by block, the blocks in each bucket of rows, each block's number)
-private class TextIndex {
-	public final x0:Array<Float> = [];
-	public final y0:Array<Float> = [];
-	public final x1:Array<Float> = [];
-	public final y1:Array<Float> = [];
-	public final buckets:Array<Array<Int>> = [];
-	public final of = new ObjectMap<Box, Int>();
-
-	public function new() {}
 }

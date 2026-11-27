@@ -49,7 +49,7 @@ private function view(body:String):DocumentView {
 
 private function size(v:DocumentView, id:String):Array<Float> {
 	var el = v.document.getElementById(id), f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return [f.width(k), f.height(k)];
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && BoxTree.nodeOf(f.box(k)) == el) return [f.width(k), f.height(k)];
 	return [];
 }
 

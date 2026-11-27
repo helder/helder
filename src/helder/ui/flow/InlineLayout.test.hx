@@ -311,27 +311,26 @@ function tests() {
 			equals([for (r in s) [r.x, r.y, r.width, r.height]], [[16.0, 0.0, 58.0, l.lineHeight(0)], [0.0, l.lineTop(1), 48.0, l.lineHeight(1)]]);
 			equals(l.selection(2, 2), []);
 		});
-		test("DOM positions: a unit to its node and offset, and back", () -> {
-			var doc = new helder.dom.Document();
-			var t = doc.createTextNode("  a  b"), u = doc.createTextNode("c");
+		test("positions: a unit to its source box and offset, and back", () -> {
+			var t = new helder.ui.box.Box(Text, null), u = new helder.ui.box.Box(Text, null);
 			var c = content(c -> {
-				c.addText("  a  b", ahem(), t, 0);
-				c.addText("c", ahem(), u, 0);
+				c.addText("  a  b", ahem(), t);
+				c.addText("c", ahem(), u);
 			});
 			equals(c.text, "a bc");
-			var p = c.domPosition(2);
-			equals([p.node == t, p.offset == 5], [true, true]);
-			equals(c.domPosition(3).node == u, true);
+			var p = c.position(2);
+			equals([p.box == t, p.offset == 5], [true, true]);
+			equals(c.position(3).box == u, true);
 			equals([c.unitOf(t, 3), c.unitOf(t, 4), c.unitOf(u, 0), c.unitOf(u, 1)], [1, 2, 3, 4]);
 			// (after the text: its last text's end, not the box closed after it)
-			var span = doc.createElement("span");
+			var span = new helder.ui.box.Box(Inline, null);
 			var d = content(c -> {
 				c.openBox(ahem(), span);
-				c.addText("c", ahem(), u, 0);
+				c.addText("c", ahem(), u);
 				c.closeBox(span);
 			});
-			var end = d.domPosition(1);
-			equals([end.node == u, end.offset == 1], [true, true]);
+			var end = d.position(1);
+			equals([end.box == u, end.offset == 1], [true, true]);
 		});
 		test("hyphens: auto: a word broken at its language's points, a hyphen shown", () -> {
 			helder.text.Hyphenation.add(helder.text.hyphenation.EnUs.patterns());

@@ -189,9 +189,39 @@ class BoxTree {
 	function make(kind:BoxKind, s:BoxStyle, ?node:Node, ?pseudo:String):Box {
 		count++;
 		var b = new Box(kind, s, node, pseudo);
+		if (node != null && pseudo == null && node.nodeType == Node.ELEMENT_NODE) facts(b, cast node, s);
 		if (b.container || kind == TableWrapper) b.context = contexts.of(kind == TableWrapper ? BoxStyle.TABLE : s.inner, note);
 		return b;
 	}
+
+	// A box's element or text node: its source where it is a document's (null: anonymous, or made from code).
+	public static inline function nodeOf(b:Box):Null<Node>
+		return b.flags & Box.MADE != 0 ? null : cast b.source;
+
+	// (what layout and paint need of its element, on the box: its lang, an HTML table part's spans, the body,
+	// an svg element)
+	static function facts(b:Box, el:Element, s:BoxStyle) {
+		var lang = el.getAttribute("lang") ?? el.getAttributeNS(XML, "lang");
+		if (lang != null) b.lang = lang;
+		var part = s.part;
+		if ((part == BoxStyle.CELL || part == BoxStyle.COLUMN || part == BoxStyle.COLUMN_GROUP) && el.namespaceURI == XHTML) {
+			b.colSpan = number(el.getAttribute("colspan"));
+			b.rowSpan = number(el.getAttribute("rowspan"));
+			b.span = number(el.getAttribute("span"));
+		}
+		if (el.localName == "body") b.flags |= Box.BODY;
+		if (el.namespaceURI == SVG) b.flags |= Box.INLINE_SVG;
+	}
+
+	// (an HTML integer attribute, -1 where it is none or isn't one)
+	static function number(v:Null<String>):Int {
+		if (v == null) return -1;
+		var n = Std.parseInt(StringTools.trim(v));
+		return n == null ? -1 : n;
+	}
+
+	static inline var XML = "http://www.w3.org/XML/1998/namespace";
+	static inline var XHTML = "http://www.w3.org/1999/xhtml";
 
 	// ---- elements
 
@@ -224,7 +254,11 @@ class BoxTree {
 
 	function boxes(el:Element, s:BoxStyle, out:Array<Box>) {
 		if (s.contents) {
+			var from = out.length;
 			contents(el, s, out);
+			// (its lang on the boxes it leaves to its parent: they are its content's)
+			var lang = el.getAttribute("lang") ?? el.getAttributeNS(XML, "lang");
+			if (lang != null) for (k in from...out.length) if (out[k].lang == null) out[k].lang = lang;
 			return;
 		}
 		var kind = kindOf(el, s);
@@ -407,20 +441,20 @@ class BoxTree {
 		while (i < n && Punctuation.is(code(text, i))) i += width(text, i);
 		var s = new BoxStyle(styles.computed(el, "first-letter"));
 		var box = make(s.floating ? Block : Inline, s, el, "first-letter");
-		var letter = make(Text, s, t.node);
+		var letter = make(Text, s, nodeOf(t));
 		letter.text = text.substring(start, i);
 		letter.offset = t.offset + start;
 		box.append(letter);
 		var parts = [];
 		if (start > 0) {
-			var before = make(Text, t.style, t.node);
+			var before = make(Text, t.style, nodeOf(t));
 			before.text = text.substring(0, start);
 			before.offset = t.offset;
 			parts.push(before);
 		}
 		parts.push(box);
 		if (i < n) {
-			var after = make(Text, t.style, t.node);
+			var after = make(Text, t.style, nodeOf(t));
 			after.text = text.substring(i);
 			after.offset = t.offset + i;
 			parts.push(after);
@@ -536,7 +570,7 @@ class BoxTree {
 			case BoxStyle.COLUMN:
 			case _:
 				fill(b, orphans(kids, b.style, false));
-				if (b.node != null && b.pseudo == null) firstLetter(cast b.node, b);
+				if (nodeOf(b) != null && b.pseudo == null) firstLetter(cast nodeOf(b), b);
 		}
 
 	function row(parent:BoxStyle, kids:Array<Box>):Box {
@@ -710,7 +744,10 @@ class BoxTree {
 	public function dump():String {
 		var out = new StringBuf();
 		function walk(b:Box, depth:Int) {
-			out.add("".lpad(" ", depth * 2) + b.toString() + "\n");
+			// (its element's name, as the box has none of its own)
+			var n:Null<Node> = cast b.source, name = n != null && n.nodeType == Node.ELEMENT_NODE ? " " + n.nodeName.toLowerCase() : "";
+			var line = b.toString(), kind = Std.string(b.kind);
+			out.add("".lpad(" ", depth * 2) + kind + name + line.substr(kind.length) + "\n");
 			var c = b.first;
 			while (c != null) {
 				walk(c, depth + 1);

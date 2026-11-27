@@ -332,7 +332,7 @@ class PagedView {
 	}
 
 	function holds(id:Int, el:helder.dom.Element):Bool {
-		if (fragments.box(id).node == el) return true;
+		if (BoxTree.nodeOf(fragments.box(id)) == el) return true;
 		var c = fragments.first(id);
 		while (c >= 0) {
 			if (holds(c, el)) return true;
@@ -398,7 +398,7 @@ class PagedView {
 		if (kind == Fragments.TEXT || b.kind == BlockReplaced || b.kind == InlineReplaced) at.shown = true;
 		if (kind == Fragments.BOX || kind == Fragments.SPAN) {
 			if (b.flags & Box.RUNNING != 0) for (r in tree.running) if (r.holder == b) running.assign(r.name, r.box, !at.shown);
-			var el = b.node != null && b.node.nodeType == helder.dom.Node.ELEMENT_NODE ? (cast b.node : helder.dom.Element) : null;
+			var el = BoxTree.nodeOf(b) != null && BoxTree.nodeOf(b).nodeType == helder.dom.Node.ELEMENT_NODE ? (cast BoxTree.nodeOf(b) : helder.dom.Element) : null;
 			var set = el == null || assigned.exists(el) ? null : tree.strings.get(el);
 			if (set != null) {
 				assigned.set(el, true);
@@ -588,7 +588,7 @@ class PagedView {
 			if (page.root < 0) continue;
 			var ox = page.bleed + page.area[0], oy = page.bleed + page.area[1];
 			function walk(k:Int) {
-				var kind = fragments.kind(k), node = fragments.box(k).node;
+				var kind = fragments.kind(k), node = BoxTree.nodeOf(fragments.box(k));
 				if ((kind == Fragments.BOX || kind == Fragments.SPAN) && node != null && node.nodeType == helder.dom.Node.ELEMENT_NODE) {
 					var el:helder.dom.Element = cast node;
 					var at = fragments.absolute(k);

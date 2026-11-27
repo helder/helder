@@ -144,7 +144,7 @@ function tests() {
 			var v = DocumentView.html(doc, {fonts: ahem()});
 			v.layout(400, 100);
 			var f = v.fragments, w = -1.0;
-			for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == doc.getElementById("a")) w = f.width(k);
+			for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && BoxTree.nodeOf(f.box(k)) == doc.getElementById("a")) w = f.width(k);
 			equals(w, 100.0);
 		});
 		test("hit testing", () -> {
@@ -168,7 +168,7 @@ function tests() {
 private function left(v:DocumentView, id:String):Float {
 	var el = v.document.getElementById(id);
 	var f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return f.absolute(k).x;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && BoxTree.nodeOf(f.box(k)) == el) return f.absolute(k).x;
 	return Math.NaN;
 }
 
@@ -176,7 +176,7 @@ private function left(v:DocumentView, id:String):Float {
 private function top(v:DocumentView, id:String):Float {
 	var el = v.document.getElementById(id);
 	var f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && f.box(k).node == el) return f.absolute(k).y;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.BOX && BoxTree.nodeOf(f.box(k)) == el) return f.absolute(k).y;
 	return Math.NaN;
 }
 

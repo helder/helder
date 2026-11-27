@@ -192,7 +192,7 @@ private function lineOf(v:Laid, id:String):Array<Float> {
 	var f = v.fragments;
 	var k = f.count;
 	while (k-- > 0)
-		if (f.kind(k) == Fragments.BOX && f.box(k).node == el && f.parent(k) >= 0) {
+		if (f.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(f.box(k)) == el && f.parent(k) >= 0) {
 			var c = f.first(k);
 			while (c >= 0 && f.kind(c) != Fragments.LINE) c = f.next(c);
 			if (c < 0 || f.first(c) < 0) return [];
@@ -237,7 +237,7 @@ private function rect(v:Laid, id:String):Array<Float> {
 	var k = f.count;
 	// (the last laid out)
 	while (k-- > 0)
-		if (f.kind(k) == Fragments.BOX && f.box(k).node == el && f.parent(k) >= 0) {
+		if (f.kind(k) == Fragments.BOX && helder.ui.box.BoxTree.nodeOf(f.box(k)) == el && f.parent(k) >= 0) {
 			var at = f.absolute(k);
 			return [at.x, at.y, f.width(k), f.height(k)];
 		}

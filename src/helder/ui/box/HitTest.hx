@@ -1,17 +1,17 @@
 package helder.ui.box;
 
 import helder.canvas.Matrix;
-import helder.dom.Node;
 import helder.ui.flow.BlockFlow;
 
 // What a point is over: the last thing painted there (PaintOrder backwards),
 // through the transforms and clips around it. A text fragment gives the
-// DOM position nearest the point, from its block's lines (InlineLayout's
+// position nearest the point, from its block's lines (InlineLayout's
 // hit testing: a glyph's nearer half by its direction, a ligature's
-// parts); a box its element (a pseudo-element's, its element's).
+// parts): its text box and the offset in its text; another box itself
+// (offset -1). A document's position is DocumentView's, from it.
 class HitTest {
 	// (scrolls: scroll containers' offsets by their element, as BoxPainter's)
-	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float, ?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>):Null<{node:Node, offset:Int}> {
+	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float, ?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>):Null<{box:Box, offset:Int}> {
 		var k = order.count;
 		var inv = new Matrix();
 		// (a run of steps whose bounds miss the point passed over at once)
@@ -33,39 +33,12 @@ class HitTest {
 			if (p == null) continue;
 			var fx = order.xs[k], fy = order.ys[k];
 			if (p.x < fx || p.y < fy || p.x >= fx + f.width(id) || p.y >= fy + f.height(id)) continue;
-			if (f.kind(id) == Fragments.TEXT && b.node != null) {
-				// (the lines' answer when it is in this fragment's node: a marker's text, generated text, isn't in them)
+			if (f.kind(id) == Fragments.TEXT && b.kind == Text) {
+				// (the lines' answer when it is in this fragment's box: an outside marker's text isn't in them)
 				var at = text(f, id, p.x - fx, p.y - fy);
-				return at != null && at.node == b.node ? at : {node: b.node, offset: offset(f, id, p.x - fx)};
+				return at != null && at.box == b ? at : {box: b, offset: offset(f, id, p.x - fx)};
 			}
-			var n = b;
-			while (n != null && n.node == null) n = n.parent;
-			if (n != null) return {node: n.node.nodeType == Node.TEXT_NODE ? n.node.parentNode : n.node, offset: -1};
-		}
-		return null;
-	}
-
-	// The box painted last at a point, through the transforms, clips and scrolls around it: what a tree of
-	// boxes made from code has where an element would be.
-	public static function box(f:Fragments, order:PaintOrder, x:Float, y:Float, ?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>):Null<Box> {
-		var inv = new Matrix(), runs = order.chunks(), k = order.count;
-		while (k-- > 0) {
-			if (k % PaintOrder.CHUNK == PaintOrder.CHUNK - 1 || k == order.count - 1) {
-				var r = Std.int(k / PaintOrder.CHUNK) * 4;
-				if (x < runs[r] || y < runs[r + 1] || x > runs[r + 2] || y > runs[r + 3]) {
-					k -= k % PaintOrder.CHUNK;
-					continue;
-				}
-			}
-			var step = order.steps[k];
-			if (step == PaintOrder.OUTLINE || step == PaintOrder.BORDERS) continue;
-			var id = order.fragments[k], b = f.box(id);
-			if (!b.style.visible || b.style.keyword("pointer-events") == "none") continue;
-			var p = local(f, order, order.stateOf[k], x, y, inv, scrolls);
-			if (p == null) continue;
-			var fx = order.xs[k], fy = order.ys[k];
-			if (p.x < fx || p.y < fy || p.x >= fx + f.width(id) || p.y >= fy + f.height(id)) continue;
-			return b;
+			return {box: b, offset: -1};
 		}
 		return null;
 	}
@@ -106,7 +79,7 @@ class HitTest {
 	// (the position in a text fragment's block's lines: the point taken to
 	// the block's fragment, its inline boxes' relative offsets undone, as
 	// the lines have them)
-	static function text(f:Fragments, id:Int, x:Float, y:Float):Null<{node:Node, offset:Int}> {
+	static function text(f:Fragments, id:Int, x:Float, y:Float):Null<{box:Box, offset:Int}> {
 		var owner = id;
 		while (owner >= 0 && !(f.kind(owner) == Fragments.BOX && f.box(owner).lines != null && f.box(owner).lines.fragment == owner))
 			owner = f.parent(owner);
@@ -126,7 +99,7 @@ class HitTest {
 		return lines.hit(x, y);
 	}
 
-	// (the offset in the text node nearest x, from the fragment's glyph run: no lines kept for it)
+	// (the offset in the text box's text nearest x, from the fragment's glyph run: no lines kept for it)
 	static function offset(f:Fragments, id:Int, x:Float):Int {
 		var r = f.run(id), start = f.start(id), end = f.end(id);
 		if (r < 0) return start;
