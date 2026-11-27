@@ -45,9 +45,12 @@ class PaintOrder {
 
 	final f:Fragments;
 	var state = 0;
+	// (a page's area: what a monolithic box sliced across pages is clipped to)
+	final area:Null<Array<Float>>;
 
-	public function new(fragments:Fragments, root:Int) {
+	public function new(fragments:Fragments, root:Int, ?area:Array<Float>) {
 		f = fragments;
+		this.area = area;
 		if (root < 0) return;
 		canvas = canvasBox(f.box(root));
 		context(root, f.x(root), f.y(root));
@@ -99,6 +102,7 @@ class PaintOrder {
 			var m = Transforms.matrix(s, x, y, f.width(id), f.height(id));
 			if (m != null || s.opacity < 1) push(LAYER, s.opacity, m, null, id);
 		}
+		if (area != null && b.flags & Box.SLICED != 0) push(CLIP, 1, null, area, id);
 		var c = new Collected();
 		if (f.kind(id) == Fragments.SPAN) {
 			step(BACKGROUND, id, x, y);
@@ -169,15 +173,18 @@ class PaintOrder {
 						c.floatY.push(ky);
 						c.floatState.push(st);
 					} else {
-						c.block(BACKGROUND, k, kx, ky, st);
-						c.outline(k, kx, ky, st);
 						var saved = state;
 						state = st;
+						// (sliced across pages: it and its contents clipped to the page's area)
+						var bs = area != null && b.flags & Box.SLICED != 0 ? push(CLIP, 1, null, area, k) : st;
+						c.block(BACKGROUND, k, kx, ky, bs);
+						c.outline(k, kx, ky, bs);
+						state = bs;
 						var inner = clip(k, b, kx, ky);
 						state = saved;
-						if (b.kind == BlockReplaced) c.atom(REPLACED, k, kx, ky, st);
+						if (b.kind == BlockReplaced) c.atom(REPLACED, k, kx, ky, bs);
 						walk(k, kx, ky, c, inner);
-						if (b.table != null && b.table.collapse) c.block(BORDERS, k, kx, ky, st);
+						if (b.table != null && b.table.collapse) c.block(BORDERS, k, kx, ky, bs);
 					}
 				case Fragments.LINE:
 					line(k, kx, ky, c, st);

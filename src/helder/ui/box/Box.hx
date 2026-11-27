@@ -46,6 +46,8 @@ class Box {
 	public static inline var RUNNING = 64;
 	// a leader's fill (GCPM 3 §3): its text repeated to its line's room
 	public static inline var LEADER = 128;
+	// a monolithic box sliced across fragmentainers: on each, clipped to its area (its overflow on the next)
+	public static inline var SLICED = 256;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;

@@ -9,17 +9,16 @@ import helder.test.Test;
 // after it too.
 function tests() {
 	describe("PagedFloats", () -> {
-		test("a float that doesn't fit: the next page's, with its line; the lines there beside it", () -> {
+		test("a float that doesn't fit: broken beside its lines, its rest at the next page's top", () -> {
 			var v = paged('<div style="height:30px"></div><p id=p style="margin:0;widows:1;orphans:1">x<br>x<br><span id=f style="float:left;width:20px;height:40px"></span>x<br>x</p>');
 			equals(v.layout(), 2);
-			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [2, 2]);
-			equals([on(v, 0, "f"), on(v, 1, "f")], [Math.NaN, 0]);
-			equals(lineX(v, 1, "p"), 20.0);
+			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [4, 0]);
+			equals([on(v, 0, "f"), height(v, 0, "f"), on(v, 1, "f"), height(v, 1, "f")], [50.0, 30, 0, 10]);
 		});
-		test("a block-level float that doesn't fit: the next page's, a break before it", () -> {
-			var v = paged('<div id=a style="height:50px"></div><div id=f style="float:left;width:20px;height:40px"></div><div id=b>b</div>');
+		test("a block-level float that can't break and doesn't fit: the next page's whole, alone", () -> {
+			var v = paged('<div id=a style="height:50px"></div><div id=f style="float:left;width:20px;height:40px;overflow:auto"></div><div id=b>b</div>');
 			equals(v.layout(), 2);
-			equals([on(v, 1, "f"), on(v, 1, "b")], [0.0, 0]);
+			equals([on(v, 1, "f"), on(v, 0, "b")], [0.0, 50]);
 		});
 		test("a float taller than the page: broken, its continuation at the next page's top", () -> {
 			var v = paged('<div id=f style="float:left;width:20px"><div style="height:60px"></div><div id=g style="height:60px"></div></div>x');

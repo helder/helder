@@ -64,6 +64,9 @@ class Rows {
 			for (it in r.items) {
 				var f = it.frag;
 				var dy = fr.resume(it.box) != null ? 0 : it.y - r.top;
+				// (a monolithic item's continuation: up by what the fragmentainers before took of it)
+				var at = fr.resume(it.box), before = at != null && at.line == BreakToken.MONO ? at.consumed : 0.0;
+				it.box.flags = before > 0 ? it.box.flags | Box.SLICED : it.box.flags & ~Box.SLICED;
 				// (alone in its row: laid out again in the fragmentainer, where it is in it)
 				if (r.items.length == 1) {
 					var cs = space.child(frags.width(it.frag), h);
@@ -75,10 +78,16 @@ class Rows {
 					it.box.cacheFragment = -1;
 					f = flow.child(it.box, cs);
 				}
-				frags.adopt(frag, f, left + it.x, top + pos + dy);
-				var bottom = pos + dy + frags.height(f);
+				frags.adopt(frag, f, left + it.x, top + pos + dy - before);
+				var bottom = pos + dy - before + frags.height(f);
 				fr.placed(space.pageTop + top + bottom);
 				reach = Math.max(reach, bottom + it.after - (it.y + frags.height(it.frag)));
+				// (alone in its row, monolithic, past the fragmentainer's end: a break inside it, its overflow in the next)
+				if (r.items.length == 1 && BlockFlow.monolithic(it.box) && space.pageTop + top + bottom > fr.size + 0.01
+					&& fr.monolithic(it.box, space.pageTop + top + pos + dy)) {
+					it.box.flags |= Box.SLICED;
+					return {height: fr.size - space.pageTop - top, broken: true};
+				}
 				if (fr.stopped) return {height: Math.max(end, bottom), broken: true};
 			}
 			end = reach;

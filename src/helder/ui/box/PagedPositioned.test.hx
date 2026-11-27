@@ -15,8 +15,9 @@ function tests() {
 		test("an absolutely positioned box: in its containing block across pages, broken where it's taller", () -> {
 			var v = paged('<div style="position:relative"><div id=a style="position:absolute;bottom:0;width:10px;height:10px"></div><div style="height:60px"></div><div style="height:60px"></div></div>');
 			equals(v.layout(), 2);
-			// (the containing block 60px on each page: its bottom 50px down the second)
-			equals([on(v, 0, "a"), on(v, 1, "a")], [Math.NaN, 50]);
+			// (its second child broken, 20px then 40px: the containing block to the first page's end, 40px on the
+			// second, its bottom 30px down there)
+			equals([on(v, 0, "a"), on(v, 1, "a")], [Math.NaN, 30]);
 			var t = paged('<div id=b style="position:absolute;top:40px;height:150px;width:10px"></div>x');
 			equals(t.layout(), 3);
 			equals([on(t, 0, "b"), height(t, 0, "b"), on(t, 1, "b"), height(t, 1, "b"), height(t, 2, "b")], [40.0, 40, 0, 80, 30]);

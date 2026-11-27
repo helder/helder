@@ -57,6 +57,11 @@ class Breaks implements Fragmentation {
 	public function defer(d:Deferred)
 		deferred.push(d);
 
+	public function monolithic(box:Box, top:Float):Bool {
+		tops.set(box, top);
+		return offer({box: box, child: null, line: BreakToken.MONO, from: null, bottom: size, appeal: inside(box, LAST), forced: null, keep: false});
+	}
+
 	public function parallel(box:Box, child:Box):Null<Breaks> {
 		var r = resume(box);
 		if (r != null && r.parallel != null) {

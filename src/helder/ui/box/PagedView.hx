@@ -513,7 +513,7 @@ class PagedView {
 		var b = page.bleed;
 		p.save();
 		p.translate(b + page.area[0], b + page.area[1]);
-		var painter = new BoxPainter(fragments, new PaintOrder(fragments, page.root), image);
+		var painter = new BoxPainter(fragments, new PaintOrder(fragments, page.root, [0.0, 0.0, page.area[2], page.area[3]]), image);
 		painter.snap = snap;
 		painter.canvasArea = [0.0, 0.0, page.area[2], page.area[3]];
 		// (the root's box: its fragments on the pages before above this one's, all of them its height)

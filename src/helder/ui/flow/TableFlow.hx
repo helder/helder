@@ -584,7 +584,8 @@ class TableFlow implements FormattingContext {
 				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
 			} else if (k == t) break;
 			tableTop = y;
-			if (!resumed || clone) y += edges[0] + g.spacingV;
+			// (cloned: its border and padding again, its spacing not)
+			if (!resumed) y += edges[0] + g.spacingV else if (clone) y += edges[0];
 			for (r in 0...hEnd) y += rowH[r] + g.spacingV;
 			var footerH = edges[2] + space.reserve;
 			for (r in fStart...rows) footerH += rowH[r] + g.spacingV;
@@ -603,7 +604,8 @@ class TableFlow implements FormattingContext {
 				var inside = r == r0 && at != null && at.parallel != null;
 				if ((inside || y + rowH[r] + footerH > fr.size + 0.01) && !Lambda.exists(g.cells, c -> c.rows > 1 && c.row <= r && c.row + c.rows > r)) {
 					var whole = rowH[r];
-					var s = splitRow(g, r, space, fr, y, footerH, colX);
+					// (its cells keep room for the footer rows, and for its bottom edges only when cloned: sliced at the break)
+					var s = splitRow(g, r, space, fr, y, clone ? footerH : footerH - edges[2], colX);
 					var going = s.tokens.iterator().hasNext() && s.progress;
 					split[r] = inside;
 					// (resumed: as tall as its cells' rest; else its height as laid out, the break not taken here: as it
@@ -618,6 +620,9 @@ class TableFlow implements FormattingContext {
 						fr.placed(y + rowH[r] + footerH);
 						break;
 					}
+					// (not taken here: its cells go on past the fragmentainer's end, the opportunities after it there too, as
+					// content past the end before them (floated's floor))
+					if (going) fr.floated(fr.size + y + s.height);
 				}
 				prev = y + rowH[r];
 				fr.placed(prev + footerH);
@@ -625,7 +630,7 @@ class TableFlow implements FormattingContext {
 			}
 			for (r in hEnd...fStart) shown[r] = r >= r0 && r < end;
 		}
-		var rowY = [], y = resumed && !clone ? 0 : edges[0] + g.spacingV;
+		var rowY = [], y = !resumed ? edges[0] + g.spacingV : clone ? edges[0] : 0;
 		for (r in 0...rows) {
 			rowY.push(y);
 			if (shown[r]) y += rowH[r] + g.spacingV;
@@ -633,7 +638,7 @@ class TableFlow implements FormattingContext {
 		rowY.push(y);
 		// (broken: its bottom spacing, padding and border in a later fragmentainer, sliced; to the fragmentainer's end, as
 		// a block's)
-		if (fr != null) gridH = broken && !clone ? Math.max(y - g.spacingV, fr.size - tableTop) : y + edges[2];
+		if (fr != null) gridH = !broken ? y + edges[2] : clone ? y - g.spacingV + edges[2] : Math.max(y - g.spacingV, fr.size - tableTop);
 		// (fragments: the table box; its column groups and columns, row groups, rows and cells, in
 		// the order their backgrounds paint, §17.5.1)
 		var tf = frags.add(Fragments.BOX, t, w, gridH);
