@@ -401,6 +401,17 @@ class PaintOrder {
 		if (reuse(id, x, y, atomic)) return;
 		var rec = record(id, x, y, atomic, state), outer = current;
 		current = rec;
+		paintContext(id, x, y, collectContext(id, x, y, atomic));
+		state = saved;
+		ctxStep1[rec] = count;
+		ctxState1[rec] = parents.length;
+		ctxEnd[rec] = ctxFrag.length;
+		current = outer;
+		into(rec, outer);
+	}
+
+	function collectContext(id:Int, x:Float, y:Float, atomic:Bool, ?ancestor:Collected):Collected {
+		var saved = state;
 		var b = f.box(id), s = b.style;
 		if (!atomic) {
 			var m = s.transformed ? Transforms.matrix(s, x, y, f.width(id), f.height(id)) : null;
@@ -411,19 +422,23 @@ class PaintOrder {
 			var rect = s.positionedClip(x, y, f.width(id), f.height(id));
 			if (rect != null) push(CLIP, 1, null, rect, -1);
 		}
-		// (a context's lists, used again by the next: an app's every box positioned is a context)
 		var c = spare.length > 0 ? spare.pop().reset() : new Collected();
-		if (f.kind(id) == Fragments.SPAN) {
-			step(BACKGROUND, id, x, y);
-			c.outline(id, x, y, state);
-			line(id, x, y, c, state);
-		} else {
-			step(BACKGROUND, id, x, y);
-			c.outline(id, x, y, state);
-			var inner = clip(id, b, x, y);
-			if (b.kind == BlockReplaced || b.kind == InlineReplaced) step(REPLACED, id, x, y);
-			walk(id, x, y, c, inner);
-		}
+		c.rootState = state;
+		c.outline(id, x, y, state);
+		var scope = ancestor ?? c;
+		if (f.kind(id) == Fragments.SPAN)
+			line(id, x, y, c, state, scope);
+		else
+			walk(id, x, y, c, clip(id, b, x, y), scope);
+		state = saved;
+		return c;
+	}
+
+	function paintContext(id:Int, x:Float, y:Float, c:Collected) {
+		var saved = state, b = f.box(id);
+		state = c.rootState;
+		step(BACKGROUND, id, x, y);
+		if (b.kind == BlockReplaced || b.kind == InlineReplaced) step(REPLACED, id, x, y);
 		// (by z-index, then in tree order: an absolutely positioned box's fragment comes after its containing
 		// block's in-flow children, a box before it in the tree painted under it otherwise)
 		// (its own list, kept with the context's: no array a context, most defer nothing)
@@ -475,11 +490,7 @@ class PaintOrder {
 		}
 		state = saved;
 		spare.push(c);
-		ctxStep1[rec] = count;
-		ctxState1[rec] = parents.length;
-		ctxEnd[rec] = ctxFrag.length;
-		current = outer;
-		into(rec, outer);
+
 	}
 
 	// (a box's place in its tree, depth first: every box numbered once, on
@@ -502,7 +513,43 @@ class PaintOrder {
 
 	function deferred(c:Collected, k:Int) {
 		state = c.deferredState[k];
-		context(c.deferred[k], c.deferredX[k], c.deferredY[k]);
+		var id = c.deferred[k], x = c.deferredX[k], y = c.deferredY[k];
+		var prepared = c.deferredGroups[k];
+		if (prepared == null) context(id, x, y) else paintContext(id, x, y, prepared);
+	}
+
+	function queueContext(scope:Collected, id:Int, x:Float, y:Float, st:Int) {
+		var s = f.box(id).style, prepared:Null<Collected> = null;
+		// Relative and absolute boxes at z-index: auto paint as a group, but their positioned descendants
+		// participate in the enclosing stacking context (CSS 2 Appendix E).
+		if (!s.stacking() && !s.transformed && s.position != "sticky" && (last == null || last.contextOf(id) < 0)
+			&& containsDeferred(id)) {
+			var saved = state;
+			state = st;
+			prepared = collectContext(id, x, y, false, scope);
+			state = saved;
+		}
+		scope.defer(id, x, y, s.zIndex() ?? 0, st, prepared);
+	}
+
+	// (a group whose children all paint within it can use the regular context's reuse)
+	function containsDeferred(id:Int):Bool {
+		var inlineParent = f.kind(id) == Fragments.LINE || f.kind(id) == Fragments.SPAN;
+		var k = f.first(id);
+		while (k >= 0) {
+			switch f.kind(k) {
+				case Fragments.BOX:
+					var b = f.box(k);
+					if (apart(b) || !inlineParent && !b.floating && containsDeferred(k)) return true;
+				case Fragments.SPAN:
+					if (apart(f.box(k)) || containsDeferred(k)) return true;
+				case Fragments.LINE:
+					if (containsDeferred(k)) return true;
+				case _:
+			}
+			k = f.next(k);
+		}
+		return false;
 	}
 
 	// (an overflow clip around a box's contents: its padding box)
@@ -517,7 +564,7 @@ class PaintOrder {
 	}
 
 	// (a context's descendants in flow: blocks, lines, and what paints apart)
-	function walk(id:Int, x:Float, y:Float, c:Collected, st:Int) {
+	function walk(id:Int, x:Float, y:Float, c:Collected, st:Int, scope:Collected) {
 		var k = f.first(id);
 		while (k >= 0) {
 			var kx = x + f.x(k), ky = y + f.y(k);
@@ -529,7 +576,7 @@ class PaintOrder {
 			switch f.kind(k) {
 				case Fragments.BOX:
 					var b = f.box(k);
-					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else if (b.floating) {
+					if (apart(b)) queueContext(scope, k, kx, ky, st) else if (b.floating) {
 						// (a float: after the blocks' backgrounds, before the inline content, painted whole, step 5)
 						c.floats.push(k);
 						c.floatX.push(kx);
@@ -546,11 +593,11 @@ class PaintOrder {
 						var inner = clip(k, b, kx, ky);
 						state = saved;
 						if (b.kind == BlockReplaced) c.atom(REPLACED, k, kx, ky, bs);
-						walk(k, kx, ky, c, inner);
+						walk(k, kx, ky, c, inner, scope);
 						if (b.table != null && b.table.collapse) c.block(BORDERS, k, kx, ky, bs);
 					}
 				case Fragments.LINE:
-					line(k, kx, ky, c, st);
+					line(k, kx, ky, c, st, scope);
 				case _:
 			}
 			k = f.next(k);
@@ -558,22 +605,22 @@ class PaintOrder {
 	}
 
 	// (a line's contents in order: spans, text, atomic inlines)
-	function line(id:Int, x:Float, y:Float, c:Collected, st:Int) {
+	function line(id:Int, x:Float, y:Float, c:Collected, st:Int, scope:Collected) {
 		var k = f.first(id);
 		while (k >= 0) {
 			var kx = x + f.x(k), ky = y + f.y(k);
 			var b = f.box(k);
 			switch f.kind(k) {
 				case Fragments.SPAN:
-					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else {
+					if (apart(b)) queueContext(scope, k, kx, ky, st) else {
 						c.atom(BACKGROUND, k, kx, ky, st);
 						c.outline(k, kx, ky, st);
-						line(k, kx, ky, c, st);
+						line(k, kx, ky, c, st, scope);
 					}
 				case Fragments.TEXT:
 					c.atom(TEXT, k, kx, ky, st);
 				case Fragments.BOX:
-					if (apart(b)) c.defer(k, kx, ky, b.style.zIndex() ?? 0, st) else c.atom(-1, k, kx, ky, st);
+					if (apart(b)) queueContext(scope, k, kx, ky, st) else c.atom(-1, k, kx, ky, st);
 				case _:
 			}
 			k = f.next(k);
@@ -586,6 +633,7 @@ class PaintOrder {
 }
 
 private class Collected {
+	public var rootState = 0;
 	public final blocks:Array<Int> = [];
 	public final blockX:Array<Float> = [];
 	public final blockY:Array<Float> = [];
@@ -604,6 +652,7 @@ private class Collected {
 	public final deferredX:Array<Float> = [];
 	public final deferredY:Array<Float> = [];
 	public final deferredState:Array<Int> = [];
+	public final deferredGroups:Array<Null<Collected>> = [];
 	public final z:Array<Int> = [];
 	public final order:Array<Int> = [];
 	public final outlines:Array<Int> = [];
@@ -630,6 +679,7 @@ private class Collected {
 		deferredX.resize(0);
 		deferredY.resize(0);
 		deferredState.resize(0);
+		deferredGroups.resize(0);
 		z.resize(0);
 		outlines.resize(0);
 		outlineX.resize(0);
@@ -655,11 +705,12 @@ private class Collected {
 		blockState.push(st);
 	}
 
-	public function defer(k:Int, x:Float, y:Float, z:Int, st:Int) {
+	public function defer(k:Int, x:Float, y:Float, z:Int, st:Int, group:Null<Collected>) {
 		deferred.push(k);
 		deferredX.push(x);
 		deferredY.push(y);
 		deferredState.push(st);
+		deferredGroups.push(group);
 		this.z.push(z);
 	}
 
