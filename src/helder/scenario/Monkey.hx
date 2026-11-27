@@ -382,7 +382,8 @@ class Monkey {
 		if (step.kind != "wait" && step.kind != "type") return;
 		var field = step.kind == "type" ? s.ui.focus : null;
 		// (a field that takes text: a read-only one, a document's code, takes no focus)
-		var f = before.field, editable = f != null && f.editable() && !(f.accessText()?.readOnly ?? false);
+		// (a menu open before it: the tap that closes it goes no further, as the platforms' menus' do)
+		var f = before.field, editable = f != null && f.editable() && !(f.accessText()?.readOnly ?? false) && !before.menu;
 		if (step.kind == "type" && editable && !~/[\x00-\x1F\x7F]/.match(step.text) && (field == null || !field.takesText())) {
 			fail("kept", '${at({step: step})}typing lost its field\'s focus (now ${field == null ? "none" : describe(field)})');
 			return;
@@ -867,8 +868,9 @@ private class Snapshot {
 	public final views:Array<{node:Node, offsetX:Float, offsetY:Float, x:Float, y:Float, width:Float, height:Float, scrollsY:Bool, contentWidth:Float,
 		contentHeight:Float}> = [];
 	public var focus:Null<Node> = null;
-	// (a type step's field, as the step finds it)
+	// (a type step's field, as the step finds it; whether a menu was open)
 	public var field:Null<Node> = null;
+	public var menu = false;
 	final boxes = new haxe.ds.ObjectMap<Node, helder.os.Rect>();
 
 	function new() {}
@@ -876,6 +878,7 @@ private class Snapshot {
 	public static function of(s:Screen):Snapshot {
 		var out = new Snapshot();
 		out.focus = s.ui.focus;
+		out.menu = Lambda.exists(s.popups(), p -> p.menu);
 		for (c in s.ui.root.children)
 			out.visit(c, false, 1);
 		for (c in s.ui.overlay.children)

@@ -76,10 +76,11 @@ class Sandbox {
 		return x;
 	}
 
-	// (a made file's name: no slash or NUL, as no file system has; one a
-	// name, its kind's extension, numbered when taken)
+	// (a made file's name: no slash or NUL, as no file system has, nor a
+	// backslash, which haxe.io.Path (MemoryFiles' names) takes for a
+	// separator everywhere; one a name, its kind's extension, numbered when taken)
 	static function fileName(given:String, kind:MadeKind, taken:Map<String, Bool>):String {
-		var base = ~/[\/\x00]/g.replace(given, "∕");
+		var base = ~/[\/\\\x00]/g.replace(given, "∕");
 		if (base == "" || base == "." || base == "..") base = "unnamed";
 		var ext = kind == Folder ? "" : "." + haxe.io.Path.extension(fixture(kind));
 		var name = base + ext, n = 1;
