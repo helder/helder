@@ -103,6 +103,7 @@ class CssComputed {
 					case _: t;
 				}];
 			case "font-feature-settings" | "font-variation-settings": features(out);
+			case "font-palette": [for (t in out) CssCanonical.paletteMix(t)];
 			case "filter" | "backdrop-filter": [for (t in out) filter(t)];
 			// (a number of steps at least 1, 2 for jump-none, Easing 1 §2.3)
 			case "transition-timing-function":

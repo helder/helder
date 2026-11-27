@@ -92,8 +92,65 @@ class CssCanonical {
 		}
 	}
 
+	// palette-mix() as Fonts 4 §9.3 serializes it, as color-mix() does: the
+	// default method (in oklab, shorter hue) left out, each item's percentage
+	// after it; with no calc() left, the percentages left out share what the
+	// others leave of 100%, and they're all left out when they're equal and
+	// come to 100%, or one item's at 100%. (CssComputed asks again once its
+	// calc()s are resolved.)
+	public static function paletteMix(t:CssTerm):CssTerm {
+		var args = switch t {
+			case Func("palette-mix", a): CssShorthands.plain(a);
+			case _: return t;
+		}
+		var layers = CssText.layers(args);
+		var method = layers.length > 1 && layers[0].length > 0 && layers[0][0].match(Keyword("in")) ? layers.shift() : null;
+		if (method != null) {
+			inline function word(x:CssTerm):String
+				return CssText.term(x).toLowerCase();
+			if (method.length >= 4 && word(method[method.length - 2]) == "shorter" && word(method[method.length - 1]) == "hue")
+				method = method.slice(0, -2);
+			if (method.length == 2 && word(method[1]) == "oklab") method = null;
+		}
+		var items = [for (l in layers) {
+			var value:Null<CssTerm> = null, share:Null<CssTerm> = null;
+			for (x in l) switch x {
+				case Percentage(_) | Calc(_, _, _): share = x;
+				case _: value = paletteMix(x);
+			}
+			{value: value, share: share};
+		}];
+		var given = [for (i in items) switch i.share {
+			case Percentage(p): p;
+			case null: null;
+			case _: Math.NaN;
+		}];
+		if (!given.exists(p -> p != null && Math.isNaN(p))) {
+			var missing = given.filter(p -> p == null).length, sum = 0.0;
+			for (p in given) if (p != null) sum += p;
+			if (items.length == 1) {
+				if (given[0] == 100) items[0].share = null;
+			} else if (missing < items.length) {
+				var each = Math.max(0, 100 - sum) / Math.max(missing, 1);
+				var all = [for (p in given) p ?? each];
+				var total = 0.0;
+				for (p in all) total += p;
+				var equal = !all.exists(p -> Math.abs(p - all[0]) > 1e-9) && Math.abs(total - 100) < 1e-9;
+				for (k in 0...items.length) items[k].share = equal ? null : Percentage(all[k]);
+			}
+		}
+		var out:Array<CssTerm> = method == null ? [] : method.concat([Delim(",")]);
+		for (k in 0...items.length) {
+			if (k > 0) out.push(Delim(","));
+			if (items[k].value != null) out.push(items[k].value);
+			if (items[k].share != null) out.push(items[k].share);
+		}
+		return Func("palette-mix", out);
+	}
+
 	static function forms(property:String, terms:Array<CssTerm>):Array<CssTerm> {
 		return switch property {
+			case "font-palette": [for (t in terms) paletteMix(t)];
 			case "display": display(terms);
 			case "align-content" | "align-items" | "align-self" | "justify-content" | "justify-items" | "justify-self" | "place-content" | "place-items"
 				| "place-self":

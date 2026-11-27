@@ -5385,6 +5385,7 @@
 			"computed font-family: random-item(fixed 0, {Times, serif}, {Arial, sans-serif})",
 			"computed font-family: random-item(fixed 0.999, { Times, serif }, { Arial, sans-serif })",
 			"computed font-family: random-item(fixed 0.999, {Times, serif}, {Arial, sans-serif})",
+			"computed font-palette: ident(\"--test-\" calc(1em / 1px))",
 			"computed font-variant-alternates: stylistic(ident(\"test-\" calc(1em / 1px)))",
 			"computed font-variation-settings: \"wght\" sibling-index()",
 			"computed grid-row-start: span calc(sibling-index() - 2)",
@@ -10058,28 +10059,6 @@
 			"computed cursor: conic-gradient(from 3.1416rad at 20% 20%, red, blue), crosshair",
 			"computed cursor: linear-gradient(200grad, red 10%, blue calc(75% - 2px)), auto",
 			"computed cursor: radial-gradient(farthest-side at calc(5px + 10%), red, blue), pointer"
-		],
-		"values: WPT's inset-block and inset-inline files want the value as written (0, auto auto), unlike its other logical shorthands' and inset's (followed: the shortest)": [
-			"valid inset-block: 0",
-			"valid inset-block: 100px 100px",
-			"valid inset-block: auto auto #2",
-			"valid inset-inline: 0",
-			"valid inset-inline: 100px 100px",
-			"valid inset-inline: auto auto"
-		],
-		"values: WPT's logical inset files want 0 as written and calc() unresolved, unlike its top, right, bottom and left files (followed: Values 4's computed value)": [
-			"computed inset-block-end: calc(10px + 0.5em)",
-			"computed inset-block-end: calc(10px - 0.5em)",
-			"computed inset-block-start: calc(10px + 0.5em)",
-			"computed inset-block-start: calc(10px - 0.5em)",
-			"computed inset-inline-end: calc(10px + 0.5em)",
-			"computed inset-inline-end: calc(10px - 0.5em) #2",
-			"computed inset-inline-start: calc(10px + 0.5em)",
-			"computed inset-inline-start: calc(10px - 0.5em)",
-			"valid inset-block-end: 0",
-			"valid inset-block-start: 0",
-			"valid inset-inline-end: 0",
-			"valid inset-inline-start: 0"
 		],
 		"values: box-shadow's longhands (Borders 4): WPT has a draft's expectations, no browser the longhands": [
 			"computed box-shadow-offset: 0 0",
