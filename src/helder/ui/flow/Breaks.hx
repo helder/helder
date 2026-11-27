@@ -83,9 +83,9 @@ class Breaks implements Fragmentation {
 		return out;
 	}
 
-	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
-		return offer({box: box, child: null, line: BreakToken.SPLIT, from: null, parallel: tokens, bottom: bottom, appeal: inside(box, PERFECT), forced: null,
-			keep: false});
+	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float, ?tall:Bool):Bool
+		return offer({box: box, child: null, line: BreakToken.SPLIT, from: null, parallel: tokens, bottom: bottom,
+			appeal: tall && box.parent != null ? inside(box.parent, PERFECT) : inside(box, PERFECT), forced: null, keep: false});
 
 	public function floated(bottom:Float) {
 		if (bottom > floor) floor = bottom;
