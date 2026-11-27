@@ -30,6 +30,18 @@ using StringTools;
 class CssStyles {
 	public final document:Document;
 	public final media:CssMediaContext;
+	var viewportSize:Null<{width:Float, height:Float}> = null;
+
+	// What viewport units resolve against: the cascade's `viewport`, else
+	// on print the first page's area (its @page size less its margins),
+	// else the media's size.
+	public function viewport():{width:Float, height:Float} {
+		if (viewportSize != null) return viewportSize;
+		viewportSize = {width: media.width, height: media.height};
+		if (media.type != "print") return viewportSize;
+		// (the page's style inherits the root's, worked out meanwhile at the media's size)
+		return viewportSize = pageStyle(1, null, false, false).area();
+	}
 	public final pages:Array<CssPageRule> = [];
 	public final fontFaces:Array<CssFontFace> = [];
 	public final counterStyles:Array<CssCounterStyle> = [];

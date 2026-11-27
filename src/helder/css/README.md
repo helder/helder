@@ -975,6 +975,13 @@ marks, else 0), `marks` and `page-orientation`.
 §6.2's `text-align` and `vertical-align` beneath its rules, `content:
 normal` as none. Data only: the paged host lays out.
 
+On print, `@media` and viewport units see different sizes, as Chromium
+and Paged Media 3 have them: a media query the medium's (the printer's
+default page, `media`: unaffected by @page), vw, vh, vmin and vmax the
+first page's area (`page.area()`: its size less its margins), unless
+the cascade's `viewport` option gives one; `size: auto` is the medium's
+page.
+
 Tests (`CssCounters.test.hx`, natively and as wasm32-wasi): the
 predefined styles, `@counter-style`'s systems and descriptors, their
 syntax, lists (`start`, `reversed`, `value`, `type`), counters, scopes and

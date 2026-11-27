@@ -23,8 +23,10 @@ function tests() {
 			equals(at(d, 3, 7), 0x000000FF);
 		});
 		test("a font named like a generic family isn't the generic family", () -> {
-			var fonts = new FontMatch();
+			// (bundled fonts alone: Inter is the generic family's face where the system has none, as on wasm)
+			var fonts = new FontMatch(new helder.text.SystemFonts());
 			fonts.register(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"), "serif");
+			fonts.register(sys.io.File.getBytes("src/helder/text/fonts/Inter.ttf"));
 			var doc = Dom.parse('<!doctype html><p id=a style=\'font-family: "serif"\'>a</p><p id=b style="font-family: serif">b</p>');
 			var styles = helder.css.CssCascade.styles(doc);
 			function face(id:String)

@@ -263,7 +263,6 @@ class CssResolver {
 
 	function context(p:CssProperty):CssComputeContext {
 		var parentSize = parent != null ? parent.fontSize() : 16;
-		var media = styles.media;
 		// (color's em and font-size's colour are their parent's: neither depends on the
 		// other; em in the font properties is the parent's, Values 4 §6.1.1)
 		var own = p != FontSize && p != Color;
@@ -279,7 +278,7 @@ class CssResolver {
 			rootFontSize: !top ? styles.rootFontSize() : p == FontSize ? 16 : fontSize(),
 			lineHeight: !metric && p != Color ? lineHeight() : parent?.lineHeight(),
 			rootLineHeight: !top ? styles.rootLineHeight() : metric ? null : lineHeight(),
-			viewport: {width: media.width, height: media.height},
+			viewport: styles.viewport(),
 			color: null
 		};
 	}

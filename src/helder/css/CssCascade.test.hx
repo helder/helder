@@ -258,6 +258,27 @@ function tests() {
 			equals(has("a", "first-line"), false);
 			equals(has("a", "after"), false);
 		});
+		test("media queries see the medium, viewport units the first page's area", () -> {
+			// (a 5in by 3in medium, as WPT's print tests have it; the page 10in square with 2in margins)
+			var css = "@page { size: 10in; margin: 2in } div { width: 100vw; height: 50vh } @media (min-width: 4in) and (max-width: 5in) { div { color: green } }";
+			var media = {type: "print", width: 480.0, height: 288.0, resolution: 1.0, color: 8};
+			var s = styles('<div id=d></div>', css, {media: media});
+			equals(text(s, "d", "color"), "rgb(0, 128, 0)");
+			equals(text(s, "d", "width"), "576px");
+			equals(text(s, "d", "height"), "288px");
+			// (page-margin-001's: the page's own margins, 10px 20px 30px 40px, off its size: the UA's A4, WeasyPrint's)
+			var m = styles('<div id=d></div>', "@page { margin: 10px 20px 30px 40px } div { width: 100vw; height: 100vh }", {media: media});
+			equals(text(m, "d", "width"), "733.701px");
+			equals(text(m, "d", "height"), "1082.52px");
+			// (size: auto, the printer's: the print medium's page)
+			var a = styles('<div id=d></div>', "@page { size: auto; margin: 0 } div { width: 100vw }", {media: media});
+			equals(text(a, "d", "width"), "480px");
+			// (a viewport given, or a screen's: as it is)
+			var g = styles('<div id=d></div>', css, {media: media, viewport: {width: 100, height: 40}});
+			equals(text(g, "d", "width"), "100px");
+			var screen = styles('<div id=d></div>', css, {media: {type: "screen", width: 300.0, height: 200.0, resolution: 1.0, color: 8}});
+			equals(text(screen, "d", "width"), "300px");
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

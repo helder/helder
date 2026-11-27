@@ -11,6 +11,10 @@ using StringTools;
 typedef CssCascadeOptions = {
 	// what @media is evaluated against (CssMedia.PRINT: an A4 page)
 	?media:CssMediaContext,
+	// what vw, vh, vmin and vmax resolve against; default: on print, the
+	// first page's area (Paged Media 3 §3.2.3: @page's size and margins,
+	// which @media doesn't see), else the media's size
+	?viewport:{width:Float, height:Float},
 	// a <link>'s or @import's text by its absolute URL; null: not loaded
 	?load:(url:String) -> Null<String>,
 	// the document's URL, what links and url() resolve against
@@ -47,6 +51,7 @@ class CssCascade {
 		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, hints ? CssHints.declarations : null,
 			hints ? CssUserAgent.hints() : null);
 		@:privateAccess styles.sharing = o.share != false;
+		@:privateAccess styles.viewportSize = o.viewport;
 		return styles;
 	}
 
