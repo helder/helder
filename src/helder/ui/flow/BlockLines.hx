@@ -90,7 +90,7 @@ class BlockLines {
 			var last = l.lines;
 			if (fr != null)
 				for (k in first...l.lines) {
-					var bottom = k == first ? space.pageTop + oy : space.pageTop + oy + l.lineTop(k - 1) + l.lineHeight(k - 1) - shift;
+					var bottom = space.reserve + (k == first ? space.pageTop + oy : space.pageTop + oy + l.lineTop(k - 1) + l.lineHeight(k - 1) - shift);
 					if (fr.inLines(block, first, k, l.lines, bottom) || fr.stopped) {
 						last = k;
 						break;

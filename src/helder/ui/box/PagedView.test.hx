@@ -75,6 +75,25 @@ function tests() {
 			var t = texts(v, 0, false).join("");
 			equals([t.indexOf("B") >= 0, t.indexOf(".2") >= 0, t.split(".").length > 10], [true, true, true]);
 		});
+		test("box-decoration-break: clone, each fragment's border whole, room kept for the bottom one", () -> {
+			var v = paged('<div id=a style="border:5px solid;box-decoration-break:clone"><div style="height:60px"></div><div style="height:60px"></div></div>');
+			equals(v.layout(), 2);
+			equals([height(v, 0, "a"), height(v, 1, "a")], [80.0, 70]);
+			equals([sliced(v, 0, "a"), sliced(v, 1, "a")], ["", ""]);
+		});
+		test("named pages: a change of page name a break, each page its @page's size", () -> {
+			var v = paged('<style>@page wide { size: 300px 100px }</style><div id=a>a</div><div id=b style="page:wide">b</div><div id=c style="page:wide">c</div>');
+			equals(v.layout(), 2);
+			equals([v.pages[0].width, v.pages[1].width], [200.0, 300]);
+			equals(v.pages[1].name, "wide");
+			equals([on(v, 1, "b"), on(v, 1, "c")], [0.0, 10]);
+		});
+		test("the PDF: bookmarks from headings, links to a URI and to an id", () -> {
+			var v = paged('<h1 style="margin:0;font-size:10px">One</h1><p style="margin:0"><a href="#b">to b</a> <a href="https://example.com/">out</a></p><h2 id=b style="break-before:page;margin:0;font-size:10px">Two</h2>');
+			var pdf = v.pdf().toString();
+			equals([pdf.indexOf("/Outlines") > 0, pdf.indexOf("(One)") > 0, pdf.indexOf("(Two)") > 0], [true, true, true]);
+			equals([pdf.indexOf("https://example.com/") > 0, pdf.indexOf("/Dests") > 0 || pdf.indexOf("/D [") > 0 || pdf.indexOf("(b)") > 0], [true, true]);
+		});
 		test("a table across pages: between rows, its header and footer on each", () -> {
 			var rows = [for (k in 0...12) '<tr><td id=r$k style="height:10px;padding:0"></td></tr>'].join("");
 			var v = paged('<table style="border-spacing:0"><thead><tr><td id=h style="height:10px;padding:0"></td></tr></thead><tfoot><tr><td id=f style="height:10px;padding:0"></td></tr></tfoot><tbody>$rows</tbody></table>');

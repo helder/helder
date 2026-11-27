@@ -47,6 +47,8 @@ class Space {
 	// cells are monolithic
 	public var fragmentation:Null<Fragmentation> = null;
 	public var pageTop = 0.0;
+	// what must still fit below an in-flow box's content there: its cloned ancestors' bottom borders and padding
+	public var reserve = 0.0;
 
 	public function new(fragments:Fragments, fonts:FontMatch, width:Float, height:Float) {
 		this.fragments = fragments;

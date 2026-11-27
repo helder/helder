@@ -405,19 +405,19 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
-on every machine: 8,781 drawn, 6,944 pass, 145 skipped.
+on every machine: 8,781 drawn, 6,977 pass, 145 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
 | reftests and crash tests | 5,492 | 765 | 3 |
 | noref against goldens | 1,306 | 906 | 142 |
-| print reftests on pages | 146 | 166 | 0 |
+| print reftests on pages | 179 | 133 | 0 |
 
 The noref tests pending by stage: tables 495, generated 256, inline 39,
 ui 38, fonts 25, positioning 20, paged 20, floats 13.
 
-The print reftests pending by stage: named pages 46, paged 32, margin
-boxes 28, positioning 24, generated 17, tables 12, floats 7.
+The print reftests pending by stage: paged 32, margin boxes 25,
+positioning 24, generated 17, named pages 16, tables 12, floats 7.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane
