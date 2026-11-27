@@ -72,6 +72,10 @@ class CssCounters {
 	// (per entered element, the names its children made: dropped when it exits)
 	final levels:Array<Array<String>> = [[]];
 	var quotes = 0;
+	// (style containment's boundaries, innermost last: its element's level,
+	// the counters made before it (counted: how many so far), the quote depth entering it)
+	final contained:Array<{level:Int, counted:Int, quotes:Int}> = [];
+	var counted = 0;
 	// (cross-references made, and per element with an id, its counters and
 	// its ::before's and ::after's text, as the walk met them)
 	final targets:Array<CssTarget> = [];
@@ -99,17 +103,17 @@ class CssCounters {
 		}
 		var increments = s.counters(CounterIncrement);
 		if (s.box.display.listItem && !Lambda.exists(increments, c -> c.name == "list-item")) {
-			var current = innermost("list-item");
+			var current = inside("list-item");
 			increments.push({name: "list-item", value: current != null && current.reversed ? -1 : 1, reversed: false});
 		}
 		for (c in increments) {
-			var counter = innermost(c.name) ?? make(level, c.name, 0, false);
+			var counter = inside(c.name) ?? make(level, c.name, 0, false);
 			// (one that would overflow 32 bits is left out, as browsers do)
 			var next = (counter.value : Float) + (c.value ?? 1);
 			if (next <= 2147483647 && next >= -2147483648) counter.value = Std.int(next);
 		}
 		for (c in s.counters(CounterSet)) {
-			var counter = innermost(c.name) ?? make(level, c.name, 0, false);
+			var counter = inside(c.name) ?? make(level, c.name, 0, false);
 			counter.value = c.value ?? 0;
 		}
 		// (a counter content uses that isn't in scope: made here, at 0)
@@ -120,13 +124,19 @@ class CssCounters {
 		}
 		// (an element a cross-reference may name: its counters as they are here)
 		if (pseudo == null && el.getAttribute("id") != null) snapshots.set(el, [for (name => list in scopes) if (list.length > 0) name => [for (c in list) c.value]]);
+		// (style containment, Contain 2 §3.3: in its subtree, below the element's own counters, increments and sets make counters
+		// of their own, and quotes nest there alone)
+		if (pseudo == null && s.containment().has(Style)) contained.push({level: levels.length - 1, counted: counted, quotes: quotes});
 		levels.push([]);
 	}
 
 	public function exit(el:Element, ?pseudo:String) {
-		if (pseudo == null && boxless(styles.computed(el))) return;
+		var s = styles.computed(el);
+		if (pseudo == null && boxless(s)) return;
 		var made = levels.pop();
 		for (name in made) scopes.get(name).pop();
+		if (pseudo == null && contained.length > 0 && contained[contained.length - 1].level == levels.length - 1 && s.containment().has(Style))
+			quotes = contained.pop().quotes;
 	}
 
 	static inline function boxless(s:CssStyle):Bool
@@ -399,6 +409,12 @@ class CssCounters {
 		return CssCounterStyles.symbols(system, list, v, asMarker);
 	}
 
+	// (the innermost counter of the name an increment or set may change: none made outside the innermost style containment)
+	function inside(name:String):Null<Counter> {
+		var c = innermost(name);
+		return c == null || contained.length == 0 || c.order >= contained[contained.length - 1].counted ? c : null;
+	}
+
 	inline function innermost(name:String):Null<Counter> {
 		var l = scopes.get(name);
 		return l == null || l.length == 0 ? null : l[l.length - 1];
@@ -410,7 +426,7 @@ class CssCounters {
 		var l = scopes.get(name);
 		if (l == null) scopes.set(name, l = []);
 		if (level.contains(name)) l.pop() else level.push(name);
-		var c = {value: value, reversed: reversed};
+		var c = {value: value, reversed: reversed, order: counted++};
 		l.push(c);
 		return c;
 	}
@@ -448,6 +464,8 @@ class CssCounters {
 			if (s.box.display.outer == None) return;
 			visit(e, null, own);
 			if (!own && Lambda.exists(s.counters(CounterReset), c -> c.name == name)) return;
+			// (a style-contained subtree's increments make its own counter, Contain 2 §3.3)
+			if (!own && s.containment().has(Style)) return;
 			for (p in ["marker", "before"]) if (generated(e, p)) visit(e, p, false);
 			var c = e.firstElementChild;
 			while (c != null && !done) {
@@ -482,4 +500,4 @@ class CssCounters {
 
 }
 
-private typedef Counter = {value:Int, reversed:Bool}
+private typedef Counter = {value:Int, reversed:Bool, order:Int}

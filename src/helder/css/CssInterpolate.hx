@@ -141,11 +141,13 @@ class CssInterpolate {
 
 	// A discrete property's value p of the way (transition-behavior:
 	// allow-discrete's): the start's below halfway, the end's after; display
-	// stays what isn't none (Transitions 2 §3.3).
+	// stays what isn't none, content-visibility what isn't hidden
+	// (Transitions 2 §3.3, Contain 2 §4.1).
 	public static function discrete(p:CssProperty, a:Array<CssTerm>, b:Array<CssTerm>, t:Float):Array<CssTerm> {
-		if (p == Display) {
-			if (word(a) == "none" && word(b) != "none") return b;
-			if (word(b) == "none" && word(a) != "none") return t >= 1 ? b : a;
+		var gone = p == Display ? "none" : p == ContentVisibility ? "hidden" : null;
+		if (gone != null) {
+			if (word(a) == gone && word(b) != gone) return b;
+			if (word(b) == gone && word(a) != gone) return t >= 1 ? b : a;
 		}
 		return t < 0.5 ? a : b;
 	}

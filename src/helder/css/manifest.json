@@ -4,11 +4,11 @@
   "sha256": "18b474d16c2686f3aa45fa535ab418f4079bf97e82a80c9d3ed1f83de7512c58",
   "license": "MIT",
   "counts": {
-    "properties": 305,
+    "properties": 312,
     "types": 308,
     "primitives": 22,
     "descriptors": 72,
-    "out": 518
+    "out": 511
   },
   "out": {
     "-webkit- aliases and WebKit's compat properties": 68,
@@ -29,8 +29,6 @@
     "filters: not in checkpoint 1": 4,
     "multicol: deferred": 11,
     "gap decorations (Gaps 1): not in checkpoint 1": 38,
-    "containment: not in checkpoint 1": 2,
-    "Sizing 4 (aspect-ratio, contain-intrinsic-size): not in checkpoint 1": 11,
     "@container: deferred": 3,
     "GCPM 4: not in checkpoint 1": 1,
     "speech: not visual": 19,
@@ -42,6 +40,7 @@
     "page floats beyond CSS 2.1's: not in checkpoint 1": 3,
     "regions: deferred": 3,
     "footnotes: deferred": 2,
+    "Sizing 4 (aspect-ratio, contain-intrinsic-size): not in checkpoint 1": 6,
     "writing modes: deferred": 4,
     "Text 4: not in checkpoint 1": 17,
     "image-rendering and image-resolution: not in checkpoint 1": 2,

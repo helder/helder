@@ -182,7 +182,8 @@ fs.writeFileSync(out + '/CssTable.hx', table)
 const styles = JSON.parse(fs.readFileSync(out + '/styles.json', 'utf8'))
 const typeSyntax = new Map()
 for (const t of typeList) if (t.syntax != null && (!typeSyntax.has(t.name) || !t.scope.length)) typeSyntax.set(t.name, t.syntax)
-const isLogical = p => p.module === 'css-logical-1' && !p.longhands.length
+// (and Sizing 4's contain-intrinsic-block-size and -inline-size)
+const isLogical = p => (p.module === 'css-logical-1' || /^contain-intrinsic-(block|inline)-size$/.test(p.name)) && !p.longhands.length
 const stored = chosen.filter(p => !p.alias && (!p.longhands.length || p.name === 'box-shadow') && !isLogical(p) && !styles.unstored[p.name])
 const logical = chosen.filter(isLogical)
 const groupOf = new Map()
@@ -280,7 +281,7 @@ const info = new Map(stored.map(p => [p.name, kindOf(p)]))
 const impactOf = name => styles.impact[name] ?? styles.groups[groupOf.get(name)].impact
 // (logical to physical, horizontal-tb: block-start top, block-end bottom, inline-start left (rtl: right))
 const physical = (name, rtl) => name
-  .replace(/^(min-|max-)?inline-size$/, (_, m) => (m ?? '') + 'width').replace(/^(min-|max-)?block-size$/, (_, m) => (m ?? '') + 'height')
+  .replace(/^(min-|max-|contain-intrinsic-)?inline-size$/, (_, m) => (m ?? '') + 'width').replace(/^(min-|max-|contain-intrinsic-)?block-size$/, (_, m) => (m ?? '') + 'height')
   .replace(/^inset-/, '').replace(/^border-(start|end)-(start|end)-radius$/, (_, b, i) => `border-${b === 'start' ? 'top' : 'bottom'}-${(i === 'start') !== rtl ? 'left' : 'right'}-radius`)
   .replace('block-start', 'top').replace('block-end', 'bottom')
   .replace('inline-start', rtl ? 'right' : 'left').replace('inline-end', rtl ? 'left' : 'right')
