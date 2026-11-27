@@ -358,10 +358,13 @@ keyed on its space: the same space, the same fragment.
   viewport), its margin box kept within its containing block; outer
   sticky boxes first. Printed pages have no scrollport: there a sticky box
   stays put, positioned as a relative one would be.
-- Not yet: the static position of a box that was block-level before
-  blockification is taken where it is met in a line, not below it;
-  floats' intrinsic contribution beyond
-  their min- and max-content.
+- A static position met in a line is where the line has it for a box
+  that was inline-level before blockification (`originalDisplay`); one
+  block-level before it sits as a block would, at the content edge (the
+  right one right to left) where its line starts, or where the next line
+  starts when in-flow content comes before it on its line (LayoutNG's).
+- Not yet: floats' intrinsic contribution beyond their min- and
+  max-content.
 
 ## Tables
 

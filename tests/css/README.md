@@ -385,11 +385,11 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   a cell spanning into a collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37 on macOS:
-7,922 drawn, 6,046 pass, 491 skipped.
+7,922 drawn, 6,063 pass, 491 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 4,973 | 779 | 311 |
+| reftests and crash tests | 4,990 | 762 | 311 |
 | noref against goldens | 1,073 | 1,097 | 180 |
 
 The noref tests pending by stage: tables 522, generated 317, inline 103,
@@ -402,7 +402,7 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 | Chapter | Pass | Drawn |
 | --- | --- | --- |
 | CSS2 | 0 | 5 |
-| CSS2/abspos | 13 | 25 |
+| CSS2/abspos | 14 | 25 |
 | CSS2/backgrounds | 303 | 333 |
 | CSS2/bidi-text | 30 | 34 |
 | CSS2/borders | 483 | 504 |
@@ -414,7 +414,7 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 | CSS2/css1 | 131 | 164 |
 | CSS2/css21-errata | 4 | 9 |
 | CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
-| CSS2/floats | 78 | 112 |
+| CSS2/floats | 81 | 112 |
 | CSS2/floats-clear | 178 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
 | CSS2/fonts | 118 | 159 |
@@ -423,8 +423,8 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 | CSS2/lists | 155 | 155 |
 | CSS2/margin-padding-clear | 649 | 683 |
 | CSS2/media | 17 | 17 |
-| CSS2/normal-flow | 620 | 696 |
-| CSS2/positioning | 418 | 513 |
+| CSS2/normal-flow | 621 | 696 |
+| CSS2/positioning | 430 | 513 |
 | CSS2/sec5 | 22 | 23 |
 | CSS2/selectors | 448 | 467 |
 | CSS2/stacking-context | 1 | 3 |
@@ -441,9 +441,9 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 4973 | 5752 |
+| all | 4990 | 5752 |
 
-Pending by stage: positioning 216, generated content 199, inline 135, tables 98, floats 78, fonts 41, ui 12.
+Pending by stage: positioning 202, generated content 199, inline 135, tables 98, floats 75, fonts 41, ui 12.
 
 ## Interpolation
 

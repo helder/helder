@@ -132,7 +132,8 @@ class BlockFlow implements FormattingContext {
 					continue;
 				}
 				if (c.absolute) {
-					absolute(c, bl + pl, bt + pt + y + (atTop ? 0 : pos + neg));
+					// (its static place: the content edge on its side, the right one right to left)
+					absolute(c, bl + pl + (box.style.rtl ? w : 0), bt + pt + y + (atTop ? 0 : pos + neg));
 					c = c.next;
 					continue;
 				}
