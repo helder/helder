@@ -32,6 +32,9 @@ class BoxStyle {
 		this.anonymous = anonymous;
 	}
 
+	// (how far it paints past its box, BoxPainter.reach's: kept once known; NaN until then)
+	@:allow(helder.ui.box) var reach = Math.NaN;
+
 	public function anonymousChild():BoxStyle
 		return new BoxStyle(css, true);
 

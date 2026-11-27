@@ -38,7 +38,8 @@ class GridFlow implements FormattingContext {
 	public function layout(box:Box, space:Space):Int {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null;
-		if (reusable && BlockFlow.hit(box, key, space)) return box.cacheFragment;
+		var cached = reusable ? BlockFlow.hit(box, key, space) : -1;
+		if (cached >= 0) return cached;
 		var f = container(box, space);
 		BlockFlow.keep(box, key, space, reusable ? f : -1);
 		return f;

@@ -61,7 +61,7 @@ class PaintOrder {
 
 	public function chunks():Array<Float> {
 		if (runs != null) return runs;
-		var out = [], reaches = new haxe.ds.ObjectMap<BoxStyle, Float>();
+		var out = [];
 		var k = 0;
 		while (k < count) {
 			var x0 = Math.POSITIVE_INFINITY, y0 = Math.POSITIVE_INFINITY, x1 = Math.NEGATIVE_INFINITY, y1 = Math.NEGATIVE_INFINITY;
@@ -72,8 +72,8 @@ class PaintOrder {
 					x0 = y0 = Math.NEGATIVE_INFINITY;
 					x1 = y1 = Math.POSITIVE_INFINITY;
 				} else {
-					var s = f.box(id).style, r = reaches.get(s);
-					if (r == null) reaches.set(s, r = BoxPainter.reach(s));
+					var s = f.box(id).style, r = s.reach;
+					if (r != r) r = s.reach = BoxPainter.reach(s);
 					var x = xs[k], y = ys[k];
 					if (x - r < x0) x0 = x - r;
 					if (y - r < y0) y0 = y - r;
@@ -91,6 +91,7 @@ class PaintOrder {
 	}
 
 	var runs:Null<Array<Float>> = null;
+	final spare:Array<Collected> = [];
 
 	public function new(fragments:Fragments, root:Int, ?area:Array<Float>) {
 		f = fragments;
@@ -151,7 +152,8 @@ class PaintOrder {
 			if (m != null || s.opacity < 1) push(LAYER, s.opacity, m, null, id);
 		}
 		if (area != null && b.flags & Box.SLICED != 0) push(CLIP, 1, null, area, id);
-		var c = new Collected();
+		// (a context's lists, used again by the next: an app's every box positioned is a context)
+		var c = spare.length > 0 ? spare.pop().reset() : new Collected();
 		if (f.kind(id) == Fragments.SPAN) {
 			step(BACKGROUND, id, x, y);
 			c.outline(id, x, y, state);
@@ -166,8 +168,10 @@ class PaintOrder {
 		// (by z-index, then in tree order: an absolutely positioned box's fragment comes after its containing
 		// block's in-flow children, a box before it in the tree painted under it otherwise)
 		var order = [for (k in 0...c.deferred.length) k];
-		var at = [for (k in 0...c.deferred.length) rank(f.box(c.deferred[k]))];
-		order.sort((a, b) -> c.z[a] != c.z[b] ? c.z[a] - c.z[b] : at[a] != at[b] ? at[a] - at[b] : a - b);
+		if (order.length > 1) {
+			var at = [for (k in 0...c.deferred.length) rank(f.box(c.deferred[k]))];
+			order.sort((a, b) -> c.z[a] != c.z[b] ? c.z[a] - c.z[b] : at[a] != at[b] ? at[a] - at[b] : a - b);
+		}
 		for (k in order) if (c.z[k] < 0) deferred(c, k);
 		for (k in 0...c.blocks.length) {
 			state = c.blockState[k];
@@ -191,29 +195,26 @@ class PaintOrder {
 			step(OUTLINE, c.outlines[k], c.outlineX[k], c.outlineY[k]);
 		}
 		state = saved;
+		spare.push(c);
 	}
 
-	// (a box's place in its tree, depth first: every box numbered once, on first ask)
-	function rank(b:Box):Int {
-		if (ranks == null) {
-			ranks = new haxe.ds.ObjectMap();
+	// (a box's place in its tree, depth first: every box numbered once, on
+	// first ask, kept on the boxes for the paint orders after this one)
+	static function rank(b:Box):Int {
+		if (b.rank < 0) {
 			var top = b;
 			while (top.parent != null) top = top.parent;
-			var n = 0;
-			function walk(x:Box) {
-				ranks.set(x, n++);
-				var c = x.first;
-				while (c != null) {
-					walk(c);
-					c = c.next;
+			var n = 0, x:Null<Box> = top;
+			while (x != null) {
+				x.rank = n++;
+				if (x.first != null) x = x.first else {
+					while (x != top && x.next == null) x = x.parent;
+					x = x == top ? null : x.next;
 				}
 			}
-			walk(top);
 		}
-		return ranks.get(b) ?? 0;
+		return b.rank;
 	}
-
-	var ranks:Null<haxe.ds.ObjectMap<Box, Int>> = null;
 
 	function deferred(c:Collected, k:Int) {
 		state = c.deferredState[k];
@@ -319,6 +320,33 @@ private class Collected {
 	public final outlineX:Array<Float> = [];
 	public final outlineY:Array<Float> = [];
 	public final outlineState:Array<Int> = [];
+
+	public function reset():Collected {
+		blocks.resize(0);
+		blockX.resize(0);
+		blockY.resize(0);
+		blockState.resize(0);
+		blockSteps.resize(0);
+		floats.resize(0);
+		floatX.resize(0);
+		floatY.resize(0);
+		floatState.resize(0);
+		inlines.resize(0);
+		inlineStep.resize(0);
+		inlineX.resize(0);
+		inlineY.resize(0);
+		inlineState.resize(0);
+		deferred.resize(0);
+		deferredX.resize(0);
+		deferredY.resize(0);
+		deferredState.resize(0);
+		z.resize(0);
+		outlines.resize(0);
+		outlineX.resize(0);
+		outlineY.resize(0);
+		outlineState.resize(0);
+		return this;
+	}
 
 	public function new() {}
 

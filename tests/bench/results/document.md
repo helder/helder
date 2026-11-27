@@ -13,7 +13,32 @@ after this one); the memory figures and a quiet-Mac run are owed.
 
 examples/todo and examples/mail, mounted in helder.ui, mirrored as
 helder.dom trees styled by src/helder/css/ua/app.css (AppUaCheck's
-mirror, :hover looks as rules), 20 rows, then 1,020.
+mirror, :hover looks as rules), 20 rows, then 1,020. Frame ms, median
+(least) of the frames; the Mac's load 5–6 (not quiet: owed again).
+
+### After the layout cache keeps a few layouts per box (speed PR 1)
+
+| todo | helder.ui | engine | engine: update (restyle + relayout) / draw (paint + renderer + GPU) |
+| --- | ---: | ---: | ---: |
+| first frame (20 rows) | 4.0 (least) | 12.2 (9.8) | 8.5 / 5.3 |
+| scroll the list (1,020 rows) | 2.6 | 3.9 | 0.6 / 3.3 |
+| hover over rows | 2.5 | 3.3 | 0.6 / 2.7 |
+| type into a field | 2.4 | 6.5 (5.8) | 3.0 / 3.6 |
+| resize, two widths in turn | 7.4 | 5.9 | 2.6 / 3.3 |
+| drag-resize, a new width each frame | 7.5 | 31.9 (27.4) | 28.3 / 3.5 |
+| add 1,000 rows | 34.7 | 110 (94) | 106 / 3.8 |
+
+| mail | helder.ui | engine | engine: update / draw |
+| --- | ---: | ---: | ---: |
+| first frame (20 rows) | 4.4 (least) | 10.7 (7.9) | 7.9 / 2.7 |
+| scroll the list | 2.8 | 4.0 | 0.4 / 3.5 |
+| hover over rows | 2.7 | 3.9 | 0.5 / 3.4 |
+| type into a field | 2.4 | 5.3 | 1.8 / 3.5 |
+| resize, two widths in turn | 2.0 | 5.2 | 1.7 / 3.5 |
+| drag-resize | 2.0 | 5.7 | 2.0 / 3.7 |
+| add 1,000 rows | 34.6 | 152 (135) | 147 / 5.1 |
+
+### Before the speed work (#452's first run)
 
 | todo | helder.ui frame ms | engine frame ms | engine's own: style + layout + paint |
 | --- | ---: | ---: | ---: |

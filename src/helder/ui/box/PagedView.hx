@@ -204,7 +204,7 @@ class PagedView {
 					if (fixedHeight) cs.fixedHeight = height;
 					cs.fragmentation = breaks;
 					cs.pageTop = first ? o : 0;
-					d.box.cacheFragment = -1;
+					d.box.uncache();
 					return flow.child(d.box, cs);
 				}
 				var f = lay();
@@ -341,7 +341,7 @@ class PagedView {
 
 	static function afresh(b:Null<Box>) {
 		if (b == null) return;
-		b.cacheFragment = -1;
+		b.uncache();
 		b.minContent = b.maxContent = Math.NaN;
 		var c = b.first;
 		while (c != null) {
