@@ -729,6 +729,10 @@ class Ui extends ScrollHost {
 	// change again; or if it was recorded over less than what is seen, as
 	// it scrolls, and the first time, over a viewport each way)
 	function ensure(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float) {
+		l.seenX0 = x0;
+		l.seenY0 = y0;
+		l.seenX1 = x1;
+		l.seenY1 = y1;
 		var stale = l.list.stale();
 		if (l.dirty || l.volatile || l.key != paintKey || l.hidden != l.hiddenIn || stuckMoved(l) || stale) {
 			l.content++;

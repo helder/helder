@@ -11,8 +11,11 @@ import helder.ui.box.DocumentNode;
 // pointer moved meanwhile. A watchdog thread tells a stall: no frame of
 // the loop for STALL s while steps are due; it prints what it saw and
 // keeps the process (sample it), then fails. Each step's frame against
-// a budget.
-//   DocumentWindowCheck <page.html> [sheets.json]   (HELDER_BACKGROUND=1)
+// a budget. With --real, the system's own input posted to it (a fast
+// wheel, the thumb dragged and held, a live resize, text selected), and
+// what the window server shows sampled meanwhile: the document's text
+// there, not a blank window (macOS).
+//   DocumentWindowCheck <page.html> [sheets.json] [--real] [--front]   (HELDER_BACKGROUND=1)
 class DocumentWindowCheck {
 	static inline var STALL = 3.0;
 	// (a step's frame, ms: a far jump records the page there afresh, a collection may land in it)
@@ -198,6 +201,42 @@ class DocumentWindowCheck {
 		w.handle(e);
 	}
 
+	static var lowest:Array<Float> = [];
+
+	// (the share of dark pixels below its title bar, left of its scrollbar)
+	static function inked(px:haxe.io.Bytes, width:Int, height:Int, stride:Int):Float {
+		var dark = 0, all = 0, edge = Std.int(width * 0.97), y = Std.int(height * 0.1);
+		while (y < height) {
+			var x = 0;
+			while (x < edge) {
+				var i = y * stride + x * 4;
+				if (px.get(i) + px.get(i + 1) + px.get(i + 2) < 300) dark++;
+				all++;
+				x += 2;
+			}
+			y += 2;
+		}
+		return dark / Math.max(all, 1);
+	}
+
+	static var screens = 0;
+	static final blankBy = new Map<String, Int>();
+	static var blankScreens = 0;
+	static var screenRun = 0;
+	static var screenMost = 0;
+
+	static function savePng(path:String, px:haxe.io.Bytes, width:Int, height:Int, stride:Int) {
+		var rgba = haxe.io.Bytes.alloc(width * height * 4);
+		for (y in 0...height) for (x in 0...width) {
+			var i = y * stride + x * 4, o = (y * width + x) * 4;
+			rgba.set(o, px.get(i + 2));
+			rgba.set(o + 1, px.get(i + 1));
+			rgba.set(o + 2, px.get(i));
+			rgba.set(o + 3, 255);
+		}
+		sys.io.File.saveBytes(path, helder.image.PngEncoder.encode(rgba, width, height));
+	}
+
 	static var thumbX = 0.0;
 	static var scrollTo = -1.0;
 	static var resizeTo:Null<Array<Int>> = null;
@@ -242,14 +281,50 @@ class DocumentWindowCheck {
 				M.i(M.id(w.window.surface.handle, O.sel("window")), O.sel("occlusionState")).toInt();
 			});
 		var heaps = [];
+		// (what the window server shows, every 50 ms while dragging or resizing: whether the document's text is there,
+		// the compositor's layers composed as they are presented)
+		sys.thread.Thread.create(() -> {
+			while (!done) {
+				Sys.sleep(0.05);
+				if (!(StringTools.startsWith(phase, "thumb") || phase == "wheel" || phase == "live resize")) continue;
+				var s = Inject.screen(w.window);
+				if (s == null) continue;
+				screens++;
+				// (the least inked, saved to look at)
+				var ink = inked(s.px, s.width, s.height, s.stride);
+				if (Sys.getEnv("SHOTS") != null && (lowest.length < 3 || ink < lowest[lowest.length - 1])) {
+					lowest.push(ink);
+					lowest.sort(Reflect.compare);
+					if (lowest.length > 3) lowest.pop();
+					var k = lowest.indexOf(ink);
+					savePng('bin/scratch/least-$k.png', s.px, s.width, s.height, s.stride);
+					Sys.println('DocumentWindowCheck --real: a frame inked ${Math.round(ink * 10000) / 100}% at "$phase" saved as least-$k');
+				}
+				// (a page of text inks a percent or more of it; none, what a scrollbar's thumb inks alone)
+				if (ink < 0.001) {
+					blankScreens++;
+					blankBy.set(phase, (blankBy.get(phase) ?? 0) + 1);
+					screenRun++;
+					if (screenRun > screenMost) screenMost = screenRun;
+				} else
+					screenRun = 0;
+			}
+		});
 		sys.thread.Thread.create(() -> {
 			while (!ready) Sys.sleep(0.05);
+			// (shown on the screen first: what the window server shows is sampled)
+			Sys.sleep(1);
+			Sys.println('DocumentWindowCheck --real: the window ${occlusion() & 2 != 0 ? "visible" : "occluded"} (occlusionState ${occlusion()})');
+			rssLoaded = rss();
+			// (the wheel, a fast one: WHEEL_S seconds of 12 pixels a millisecond, posted as the system's are, the
+			// compositor scrolling ahead of the program)
+			phase = "wheel";
+			Inject.start(w.window, Std.int(Std.parseFloat(Sys.getEnv("WHEEL_S") ?? "4") * 1000), 0.001).join();
+			Sys.sleep(0.3);
 			// (the thumb: pressed, dragged down the track and back three times, a move every 8 ms)
 			var t = helder.os.OsThread.get(() -> @:privateAccess Scrolling.thumb(scroller, false));
 			var tx = t == null ? 1018 : t[0] + t[2] / 2, ty = t == null ? 10 : t[1] + t[3] / 2;
-			rssLoaded = rss();
 			phase = "thumb drag";
-			Sys.println('DocumentWindowCheck --real: the window ${occlusion() & 2 != 0 ? "visible" : "occluded"} (occlusionState ${occlusion()})');
 			Inject.mouse(w.window, tx, ty, 5);
 			Inject.mouse(w.window, tx, ty, 1);
 			// (THUMB_HZ moves a second for THUMB_S seconds, down the track and back, as a fast mouse drags; RSS each second)
@@ -360,7 +435,7 @@ class DocumentWindowCheck {
 			w.device.settle();
 			// (a frame drawn while the thumb is dragged: what it shows laid out, within BLANK frames)
 			if (drew && phase == "live resize") widths.set(w.window.width, true);
-			if (drew && (StringTools.startsWith(phase, "thumb") || phase == "live resize")) {
+			if (drew && (StringTools.startsWith(phase, "thumb") || phase == "wheel" || phase == "live resize")) {
 				var top = scroller.scrollY - (node.absY - scroller.absY);
 				if (node.view.unlaid(top, top + scroller.height)) {
 					blankRun++;
@@ -392,7 +467,9 @@ class DocumentWindowCheck {
 				sizes.sort(Reflect.compare);
 				Sys.println('DocumentWindowCheck --real: the live resize drew ${sizes.length} widths, ${sizes.length > 0 ? sizes[0] + " to " + sizes[sizes.length - 1] : "none"}');
 				Sys.println('DocumentWindowCheck --real: frames drawn with what is seen not laid out while the thumb is dragged or the window resized: $blankFrames, $blankMost in a row at most');
-				var ok = worst < 1500 && bounded && blankMost <= BLANK;
+				Sys.println('DocumentWindowCheck --real: the window as shown, every 50 ms while dragging or resizing: $screens, $blankScreens without text, $screenMost in a row at most');
+				if (blankScreens > 0) Sys.println('DocumentWindowCheck --real: without text by phase: $blankBy');
+				var ok = worst < 1500 && bounded && blankMost <= BLANK && screenMost <= 1;
 				Sys.println('DocumentWindowCheck --real: ${ok ? "ok" : "FAIL"} (worst turn ${Math.round(worst)} ms; RSS ${Math.round(rssLoaded)} MB loaded, ${Math.round(rssMost)} MB the most in the drag${bounded ? "" : ", over 1.5 times"})');
 				w.close();
 				Sys.exit(ok ? 0 : 1);

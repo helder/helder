@@ -64,6 +64,9 @@ class CompositeFrame {
 	final bars:Array<Float> = [];
 	// (and their ranges: per axis its least offset and how far it scrolls)
 	final ranges:Array<Float> = [];
+	// (and how far each scrolls from its offsets and still shows what its
+	// content was recorded over: per axis back and on)
+	final reach:Array<Float> = [];
 	// the tiles: per group, where its quads go (the quad before which),
 	// its frame and its clip's, its clip (x0, y0, x1, y1, its corners'
 	// radii), its tiles' raster origin and translation as drawn (rx, ry,
@@ -144,6 +147,7 @@ class CompositeFrame {
 		parents.resize(0);
 		offsets.resize(0);
 		ranges.resize(0);
+		reach.resize(0);
 		bars.resize(0);
 		groups.resize(0);
 		groupData.resize(0);
@@ -172,6 +176,11 @@ class CompositeFrame {
 			ranges.push(@:privateAccess Scrolling.scrollStart(n, x));
 			ranges.push(@:privateAccess Scrolling.maxScroll(n, x));
 		}
+		var l = n.contentLayer, known = l != null && l.recordedAt >= 0;
+		reach.push(known ? Math.min(0, l.x0 - l.seenX0) : -1e300);
+		reach.push(known ? Math.max(0, l.x1 - l.seenX1) : 1e300);
+		reach.push(known ? Math.min(0, l.y0 - l.seenY0) : -1e300);
+		reach.push(known ? Math.max(0, l.y1 - l.seenY1) : 1e300);
 		for (x in [true, false]) {
 			var t = @:privateAccess Scrolling.thumb(n, x);
 			if (t == null) {
