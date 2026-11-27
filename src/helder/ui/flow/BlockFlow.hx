@@ -84,6 +84,10 @@ class BlockFlow implements FormattingContext {
 			}
 		}
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
+		// (a scroll container is monolithic, Fragmentation 3 §4.1; a box that clips, ending here, has its content
+		// past its height clipped: laid out whole, not broken into fragmentainers after it)
+		if (fr != null && box.parent != null && (scrolls(box.style) || s.clips && !Math.isNaN(heightSpec) && space.pageTop + bt + pt + heightSpec <= fr.size + 0.01))
+			fr = new Unbroken(fr);
 		var pctBase = heightSpec;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
 		var frags = space.fragments;
@@ -299,12 +303,12 @@ class BlockFlow implements FormattingContext {
 			}
 			if (fr != null && fr.stopped) broken = true;
 		}
-		// (an absolutely positioned box's height past the fragmentainer's end, its content ending before: a break
-		// after the content, the rest of its height in the next, unless it clips (monolithic); an in-flow box's
-		// stays whole, as before, until the pending monolithic overflow is sliced as Chromium's)
-		if (fr != null && box.absolute && !broken && !autoHeight && !s.clips && space.pageTop + bt + pt + heightSpec > fr.size + 0.01) {
+		// (an absolutely positioned box's height past the fragmentainer's end, its content starting before and
+		// ending there: a break after the content, the rest of its height in the next; an in-flow box's stays
+		// whole yet: tests whose references are such boxes need table cells and monolithic overflow broken too)
+		if (fr != null && box.absolute && !broken && !autoHeight && (done || space.pageTop + bt + pt < fr.size - 0.01) && space.pageTop + bt + pt + heightSpec > fr.size + 0.01) {
 			fr.placed(space.pageTop + bt + pt + heightSpec);
-			if (fr.after(box, fr.size) || fr.stopped) broken = true;
+			if (fr.after(box, reserve + space.pageTop + bt + pt + y) || fr.stopped) broken = true;
 		}
 		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
 		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
@@ -402,7 +406,9 @@ class BlockFlow implements FormattingContext {
 			var v = res(m.margin[0], cb);
 			if (v > 0) pos = Math.max(pos, v) else neg = Math.min(neg, v);
 			if (formattingRoot(b) || m.border[0] > 0 || res(m.padding[0], cb) > 0) break;
+			// (absolutely positioned ones aside: they don't part a box's margins from its first child's)
 			var f = b.first;
+			while (f != null && f.absolute) f = f.next;
 			if (f == null || !inFlowBlock(f)) break;
 			b = f;
 		}
@@ -563,6 +569,11 @@ class BlockFlow implements FormattingContext {
 			}
 		}
 		return {fragment: f, x: left + ml, y: t + a};
+	}
+
+	static function scrolls(s:BoxStyle):Bool {
+		var x = s.keyword("overflow-x"), y = s.keyword("overflow-y");
+		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
 	}
 
 	// (a new block formatting context's root: no margin collapses across it, §8.3.1, §9.4.1)

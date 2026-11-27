@@ -48,8 +48,10 @@ class Breaks implements Fragmentation {
 	public function placed(bottom:Float)
 		if (bottom > reach) reach = bottom;
 
+	// (progress even with no content before it here: the box's height fills the fragmentainer)
 	public function after(box:Box, bottom:Float):Bool
-		return offer({box: box, child: null, line: BreakToken.PAST, from: null, bottom: bottom, appeal: inside(box, PERFECT), forced: null, keep: false});
+		return offer({box: box, child: null, line: BreakToken.PAST, from: null, bottom: Math.max(bottom, 2 * EPSILON), appeal: inside(box, PERFECT), forced: null,
+			keep: false});
 
 	public function defer(d:Deferred)
 		deferred.push(d);
@@ -141,10 +143,12 @@ class Breaks implements Fragmentation {
 		// (a pushed box's margin kept, unless it alone would push it past the end again)
 		var top = tops.get(p.box);
 		var forced = p.forced != null || p.keep && (top == null || p.bottom - top < size);
-		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, consumed: consumed(p.box, p.bottom), forced: forced});
+		// (past a box's content: it and the boxes around it to the fragmentainer's end)
+		var end = p.line == BreakToken.PAST ? size : p.bottom;
+		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, consumed: consumed(p.box, end), forced: forced});
 		var b = p.box;
 		while (b.parent != null) {
-			resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, p.bottom), forced: forced});
+			resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, end), forced: forced});
 			b = b.parent;
 		}
 		var side = p.forced == "left" || p.forced == "verso" ? "left" : p.forced == "right" || p.forced == "recto" ? "right" : null;

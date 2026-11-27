@@ -8621,7 +8621,7 @@
 		"css/css-page/monolithic-overflow-025-print.html": {"pending":"generated: 4 pages, the reference 8"},
 		"css/css-page/monolithic-overflow-026-print.html": {},
 		"css/css-page/monolithic-overflow-027-print.html": {"pending":"positioning: 2 pages, the reference 1 (an in-flow box taller than the page area isn't broken past its content yet, the absolutely positioned one compared is)"},
-		"css/css-page/monolithic-overflow-028-print.html": {},
+		"css/css-page/monolithic-overflow-028-print.html": {"pending":"positioning: 4 pages, the reference 1 (an in-flow box taller than the page area isn't broken past its content yet, the absolutely positioned one compared is)"},
 		"css/css-page/monolithic-overflow-029-print.html": {"pending":"positioning: 2 pages, the reference 1 (an in-flow box taller than the page area isn't broken past its content yet, the absolutely positioned one compared is)"},
 		"css/css-page/monolithic-overflow-030-print.html": {},
 		"css/css-page/monolithic-overflow-031-print.html": {"pending":"generated: page 1: 50605 pixels differ (by up to 255)"},
