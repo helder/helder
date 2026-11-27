@@ -1,6 +1,6 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Browser/empty: Browser/empty (88 lines)
+--- story Browser/empty: Browser/empty (89 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -66,12 +66,13 @@ Node#root 0,0 390x844
                         TextNode#text 282,677 30x15 "empty"
                 TextNode#count 744,677 48x15 "0 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 933,246 35x18 "empty"
-                  TextNode#text 930,266 42x15 "0 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 933,246 35x18 "empty"
+                    TextNode#text 930,266 42x15 "0 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 93x30
@@ -90,7 +91,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, dark: Browser/grid, dark (149 lines)
+--- story Browser/grid, dark: Browser/grid, dark (150 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -217,12 +218,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -241,7 +243,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, light: Browser/grid, light (149 lines)
+--- story Browser/grid, light: Browser/grid, light (150 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -368,12 +370,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -392,7 +395,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, PDF: Browser/inspector, PDF (122 lines)
+--- story Browser/inspector, PDF: Browser/inspector, PDF (123 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -467,37 +470,38 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 18x15 "pdf"
                 TextNode#count 696,677 96x15 "1 of 1 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#view 815,14 271x220
-                    ImageNode#preview-image 880,30 141x188
-                    TextNode#pages 928,208 45x18 "1 / 3"
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 919,246 63x18 "pages.pdf"
-                  TextNode#inspector-kind 885,266 132x15 "PDF document · 3 pages"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x113
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1059,376 25x15 "1 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 1009,400 75x15 "PDF document"
-                  Node#view 817,420 267x24
-                    TextNode#text 817,424 31x15 "Pages"
-                    TextNode#text 1078,424 6x15 "3"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 815,14 271x220
+                      ImageNode#preview-image 880,30 141x188
+                      TextNode#pages 928,208 45x18 "1 / 3"
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 919,246 63x18 "pages.pdf"
+                    TextNode#inspector-kind 885,266 132x15 "PDF document · 3 pages"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x113
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1059,376 25x15 "1 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 1009,400 75x15 "PDF document"
+                    Node#view 817,420 267x24
+                      TextNode#text 817,424 31x15 "Pages"
+                      TextNode#text 1078,424 6x15 "3"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 80x30
@@ -516,7 +520,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (327 lines)
+--- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (328 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -662,171 +666,172 @@ Node#root 0,0 390x844
                         TextNode#text 271,677 42x15 "Samples"
                 TextNode#count 690,677 102x15 "1 of 10 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#preview-page 837,30 228x188
-                    Node#view 837,30 600x495
-                      MarkdownView#markdown 837,52 600x473
-                        Node#markdown-row 837,52 600x66
-                          TextNode#markdown-h1 877,58 520x44 ""
-                            TextNode#text 877,58 0x0 "Welcome to Viewer"
-                        Node#markdown-row 837,118 600x110
-                          TextNode#markdown-p 877,118 520x96 ""
-                            TextNode#text 877,118 0x0 "Viewer is a fast image viewer and file browser built on"
-                            TextNode#text 877,118 0x0 " "
-                            TextNode#markdown-link 877,118 0x0 ""
-                              TextNode#text 877,118 0x0 "helder"
-                            TextNode#text 877,118 0x0 " alone. This page is a "
-                            TextNode#markdown-strong 877,118 0x0 ""
-                              TextNode#text 877,118 0x0 "Markdown"
-                            TextNode#text 877,118 0x0 " file, shown"
-                            TextNode#text 877,118 0x0 " "
-                            TextNode#text 877,118 0x0 "the way the viewer shows every "
-                            TextNode#markdown-code-span 877,118 0x0 ".md"
-                            TextNode#text 877,118 0x0 " file: a column of text, its links"
-                            TextNode#text 877,118 0x0 " "
-                            TextNode#text 877,118 0x0 "followed, its pictures from the same folder."
-                        Node#markdown-row 837,228 600x43
-                          Node#markdown-p 877,228 520x29
-                            TextNode#markdown-image-alt 877,228 215x29 "A planet, from examples/planet"
-                        Node#markdown-row 837,271 600x58
-                          TextNode#markdown-h2 877,281 520x34 ""
-                            TextNode#text 877,281 0x0 "What is in this folder"
-                        Node#markdown-row 837,329 600x128
-                          Node#markdown-list 877,329 520x114
-                            Node#markdown-item 877,329 520x24
-                              TextNode#markdown-marker 877,329 24x24 "•"
-                              Node#markdown-item-body 901,329 496x24
-                                TextNode#markdown-p 901,329 496x24 ""
-                                  TextNode#markdown-strong 901,329 0x0 ""
-                                    TextNode#text 901,329 0x0 "Photos"
-                                  TextNode#text 901,329 0x0 ": "
-                                  TextNode#markdown-link 901,329 0x0 ""
-                                    TextNode#text 901,329 0x0 "Murmuration"
-                                  TextNode#text 901,329 0x0 ", "
-                                  TextNode#markdown-link 901,329 0x0 ""
-                                    TextNode#text 901,329 0x0 "Starlings"
-                                  TextNode#text 901,329 0x0 " and a"
-                                  TextNode#text 901,329 0x0 " "
-                                  TextNode#markdown-link 901,329 0x0 ""
-                                    TextNode#text 901,329 0x0 "wide panorama"
-                            Node#markdown-item 877,359 520x24
-                              TextNode#markdown-marker 877,359 24x24 "•"
-                              Node#markdown-item-body 901,359 496x24
-                                TextNode#markdown-p 901,359 496x24 ""
-                                  TextNode#markdown-strong 901,359 0x0 ""
-                                    TextNode#text 901,359 0x0 "A PDF"
-                                  TextNode#text 901,359 0x0 " of three pages: "
-                                  TextNode#markdown-link 901,359 0x0 ""
-                                    TextNode#text 901,359 0x0 "About Viewer"
-                            Node#markdown-item 877,389 520x24
-                              TextNode#markdown-marker 877,389 24x24 "•"
-                              Node#markdown-item-body 901,389 496x24
-                                TextNode#markdown-p 901,389 496x24 ""
-                                  TextNode#markdown-strong 901,389 0x0 ""
-                                    TextNode#text 901,389 0x0 "A video and a sound"
-                                  TextNode#text 901,389 0x0 ": Starlings.mp4, Chimes.m4a"
-                            Node#markdown-item 877,419 520x24
-                              TextNode#markdown-marker 877,419 24x24 "•"
-                              Node#markdown-item-body 901,419 496x24
-                                TextNode#markdown-p 901,419 496x24 ""
-                                  TextNode#text 901,419 0x0 "More pictures in the "
-                                  TextNode#markdown-link 901,419 0x0 ""
-                                    TextNode#text 901,419 0x0 "More"
-                                  TextNode#text 901,419 0x0 " folder"
-                        Node#markdown-row 837,457 600x58
-                          TextNode#markdown-h2 877,467 520x34 ""
-                            TextNode#text 877,467 0x0 "Keys"
-                        Node#markdown-row 837,515 600x224
-                          Node#markdown-table-scroll 877,515 520x210
-                            Node#markdown-table 877,515 457x210
-                              TextNode#markdown-th 878,516 186x33 ""
-                                TextNode#text 878,516 0x0 "Key"
-                              TextNode#markdown-th 1064,516 270x33 ""
-                                TextNode#text 1064,516 0x0 "In a document"
-                              TextNode#markdown-td 878,549 186x35 ""
-                                TextNode#text 878,549 0x0 "Space, Page Down"
-                              TextNode#markdown-td 1064,549 270x35 ""
-                                TextNode#text 1064,549 0x0 "a screen down"
-                              TextNode#markdown-td 878,584 186x36 ""
-                                TextNode#text 878,584 0x0 "Up, Down"
-                              TextNode#markdown-td 1064,584 270x36 ""
-                                TextNode#text 1064,584 0x0 "a line"
-                              TextNode#markdown-td 878,620 186x35 ""
-                                TextNode#text 878,620 0x0 "Home, End"
-                              TextNode#markdown-td 1064,620 270x35 ""
-                                TextNode#text 1064,620 0x0 "the top, the end"
-                              TextNode#markdown-td 878,655 186x35 ""
-                                TextNode#text 878,655 0x0 "Left, Right"
-                              TextNode#markdown-td 1064,655 270x35 ""
-                                TextNode#text 1064,655 0x0 "the folder's previous and next file"
-                              TextNode#markdown-td 878,690 186x35 ""
-                                TextNode#text 878,690 0x0 "Ctrl+U (Cmd+U on a Mac)"
-                              TextNode#markdown-td 1064,690 270x35 ""
-                                TextNode#text 1064,690 0x0 "the source"
-                        Node#markdown-row 837,739 600x59
-                          TextNode#markdown-h2 877,749 520x35 ""
-                            TextNode#text 877,749 0x0 "A bit of code"
-                        Node#markdown-row 837,798 600x98
-                          Node#markdown-code 877,798 520x84
-                            CodeView#code-view 877,810 506x60
-                        Node#markdown-row 837,896 600x66
-                          Node#markdown-quote 877,896 520x52
-                            TextNode#markdown-p 896,898 501x48 ""
-                              TextNode#text 896,898 0x0 "Everything here was made for the viewer's samples, under the MIT license."
-                        Node#markdown-row 837,962 600x68
-                          Node#markdown-list 877,962 520x54
-                            Node#markdown-item 877,962 520x24
-                              Node#markdown-task 877,967 15x15
-                                TextNode#markdown-task-mark 882,968 5x12 "✓"
-                              Node#markdown-item-body 901,962 496x24
-                                TextNode#markdown-p 901,962 496x24 ""
-                                  TextNode#text 901,962 0x0 "Open a folder of your own with "
-                                  TextNode#markdown-strong 901,962 0x0 ""
-                                    TextNode#text 901,962 0x0 "Open folder"
-                            Node#markdown-item 877,992 520x24
-                              Node#markdown-task 877,997 15x15
-                              Node#markdown-item-body 901,992 496x24
-                                TextNode#markdown-p 901,992 496x24 ""
-                                  TextNode#text 901,992 0x0 "Drop files on the page"
-                        Node#markdown-row 837,1030 600x38
-                          TextNode#markdown-p 877,1030 520x24 ""
-                            TextNode#text 877,1030 0x0 "Back to "
-                            TextNode#markdown-link 877,1030 0x0 ""
-                              TextNode#text 877,1030 0x0 "the top"
-                            TextNode#text 877,1030 0x0 "."
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 916,246 70x18 "Welcome.md"
-                  TextNode#inspector-kind 864,266 174x15 "Markdown document · 150 words"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x161
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1059,376 25x15 "1 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 978,400 106x15 "Markdown document"
-                  Node#view 817,420 267x24
-                    TextNode#text 817,424 31x15 "Words"
-                    TextNode#text 1065,424 19x15 "150"
-                  Node#view 817,444 267x24
-                    TextNode#text 817,448 50x15 "Headings"
-                    TextNode#text 1078,448 6x15 "4"
-                  Node#view 817,468 267x24
-                    TextNode#text 817,472 50x15 "Modified"
-                    TextNode#text 972,472 112x15 "24 Nov 2026, 12:00"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#preview-page 837,30 228x188
+                      Node#view 837,30 600x495
+                        MarkdownView#markdown 837,52 600x473
+                          Node#markdown-row 837,52 600x66
+                            TextNode#markdown-h1 877,58 520x44 ""
+                              TextNode#text 877,58 0x0 "Welcome to Viewer"
+                          Node#markdown-row 837,118 600x110
+                            TextNode#markdown-p 877,118 520x96 ""
+                              TextNode#text 877,118 0x0 "Viewer is a fast image viewer and file browser built on"
+                              TextNode#text 877,118 0x0 " "
+                              TextNode#markdown-link 877,118 0x0 ""
+                                TextNode#text 877,118 0x0 "helder"
+                              TextNode#text 877,118 0x0 " alone. This page is a "
+                              TextNode#markdown-strong 877,118 0x0 ""
+                                TextNode#text 877,118 0x0 "Markdown"
+                              TextNode#text 877,118 0x0 " file, shown"
+                              TextNode#text 877,118 0x0 " "
+                              TextNode#text 877,118 0x0 "the way the viewer shows every "
+                              TextNode#markdown-code-span 877,118 0x0 ".md"
+                              TextNode#text 877,118 0x0 " file: a column of text, its links"
+                              TextNode#text 877,118 0x0 " "
+                              TextNode#text 877,118 0x0 "followed, its pictures from the same folder."
+                          Node#markdown-row 837,228 600x43
+                            Node#markdown-p 877,228 520x29
+                              TextNode#markdown-image-alt 877,228 215x29 "A planet, from examples/planet"
+                          Node#markdown-row 837,271 600x58
+                            TextNode#markdown-h2 877,281 520x34 ""
+                              TextNode#text 877,281 0x0 "What is in this folder"
+                          Node#markdown-row 837,329 600x128
+                            Node#markdown-list 877,329 520x114
+                              Node#markdown-item 877,329 520x24
+                                TextNode#markdown-marker 877,329 24x24 "•"
+                                Node#markdown-item-body 901,329 496x24
+                                  TextNode#markdown-p 901,329 496x24 ""
+                                    TextNode#markdown-strong 901,329 0x0 ""
+                                      TextNode#text 901,329 0x0 "Photos"
+                                    TextNode#text 901,329 0x0 ": "
+                                    TextNode#markdown-link 901,329 0x0 ""
+                                      TextNode#text 901,329 0x0 "Murmuration"
+                                    TextNode#text 901,329 0x0 ", "
+                                    TextNode#markdown-link 901,329 0x0 ""
+                                      TextNode#text 901,329 0x0 "Starlings"
+                                    TextNode#text 901,329 0x0 " and a"
+                                    TextNode#text 901,329 0x0 " "
+                                    TextNode#markdown-link 901,329 0x0 ""
+                                      TextNode#text 901,329 0x0 "wide panorama"
+                              Node#markdown-item 877,359 520x24
+                                TextNode#markdown-marker 877,359 24x24 "•"
+                                Node#markdown-item-body 901,359 496x24
+                                  TextNode#markdown-p 901,359 496x24 ""
+                                    TextNode#markdown-strong 901,359 0x0 ""
+                                      TextNode#text 901,359 0x0 "A PDF"
+                                    TextNode#text 901,359 0x0 " of three pages: "
+                                    TextNode#markdown-link 901,359 0x0 ""
+                                      TextNode#text 901,359 0x0 "About Viewer"
+                              Node#markdown-item 877,389 520x24
+                                TextNode#markdown-marker 877,389 24x24 "•"
+                                Node#markdown-item-body 901,389 496x24
+                                  TextNode#markdown-p 901,389 496x24 ""
+                                    TextNode#markdown-strong 901,389 0x0 ""
+                                      TextNode#text 901,389 0x0 "A video and a sound"
+                                    TextNode#text 901,389 0x0 ": Starlings.mp4, Chimes.m4a"
+                              Node#markdown-item 877,419 520x24
+                                TextNode#markdown-marker 877,419 24x24 "•"
+                                Node#markdown-item-body 901,419 496x24
+                                  TextNode#markdown-p 901,419 496x24 ""
+                                    TextNode#text 901,419 0x0 "More pictures in the "
+                                    TextNode#markdown-link 901,419 0x0 ""
+                                      TextNode#text 901,419 0x0 "More"
+                                    TextNode#text 901,419 0x0 " folder"
+                          Node#markdown-row 837,457 600x58
+                            TextNode#markdown-h2 877,467 520x34 ""
+                              TextNode#text 877,467 0x0 "Keys"
+                          Node#markdown-row 837,515 600x224
+                            Node#markdown-table-scroll 877,515 520x210
+                              Node#markdown-table 877,515 457x210
+                                TextNode#markdown-th 878,516 186x33 ""
+                                  TextNode#text 878,516 0x0 "Key"
+                                TextNode#markdown-th 1064,516 270x33 ""
+                                  TextNode#text 1064,516 0x0 "In a document"
+                                TextNode#markdown-td 878,549 186x35 ""
+                                  TextNode#text 878,549 0x0 "Space, Page Down"
+                                TextNode#markdown-td 1064,549 270x35 ""
+                                  TextNode#text 1064,549 0x0 "a screen down"
+                                TextNode#markdown-td 878,584 186x36 ""
+                                  TextNode#text 878,584 0x0 "Up, Down"
+                                TextNode#markdown-td 1064,584 270x36 ""
+                                  TextNode#text 1064,584 0x0 "a line"
+                                TextNode#markdown-td 878,620 186x35 ""
+                                  TextNode#text 878,620 0x0 "Home, End"
+                                TextNode#markdown-td 1064,620 270x35 ""
+                                  TextNode#text 1064,620 0x0 "the top, the end"
+                                TextNode#markdown-td 878,655 186x35 ""
+                                  TextNode#text 878,655 0x0 "Left, Right"
+                                TextNode#markdown-td 1064,655 270x35 ""
+                                  TextNode#text 1064,655 0x0 "the folder's previous and next file"
+                                TextNode#markdown-td 878,690 186x35 ""
+                                  TextNode#text 878,690 0x0 "Ctrl+U (Cmd+U on a Mac)"
+                                TextNode#markdown-td 1064,690 270x35 ""
+                                  TextNode#text 1064,690 0x0 "the source"
+                          Node#markdown-row 837,739 600x59
+                            TextNode#markdown-h2 877,749 520x35 ""
+                              TextNode#text 877,749 0x0 "A bit of code"
+                          Node#markdown-row 837,798 600x98
+                            Node#markdown-code 877,798 520x84
+                              CodeView#code-view 877,810 506x60
+                          Node#markdown-row 837,896 600x66
+                            Node#markdown-quote 877,896 520x52
+                              TextNode#markdown-p 896,898 501x48 ""
+                                TextNode#text 896,898 0x0 "Everything here was made for the viewer's samples, under the MIT license."
+                          Node#markdown-row 837,962 600x68
+                            Node#markdown-list 877,962 520x54
+                              Node#markdown-item 877,962 520x24
+                                Node#markdown-task 877,967 15x15
+                                  TextNode#markdown-task-mark 882,968 5x12 "✓"
+                                Node#markdown-item-body 901,962 496x24
+                                  TextNode#markdown-p 901,962 496x24 ""
+                                    TextNode#text 901,962 0x0 "Open a folder of your own with "
+                                    TextNode#markdown-strong 901,962 0x0 ""
+                                      TextNode#text 901,962 0x0 "Open folder"
+                              Node#markdown-item 877,992 520x24
+                                Node#markdown-task 877,997 15x15
+                                Node#markdown-item-body 901,992 496x24
+                                  TextNode#markdown-p 901,992 496x24 ""
+                                    TextNode#text 901,992 0x0 "Drop files on the page"
+                          Node#markdown-row 837,1030 600x38
+                            TextNode#markdown-p 877,1030 520x24 ""
+                              TextNode#text 877,1030 0x0 "Back to "
+                              TextNode#markdown-link 877,1030 0x0 ""
+                                TextNode#text 877,1030 0x0 "the top"
+                              TextNode#text 877,1030 0x0 "."
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 916,246 70x18 "Welcome.md"
+                    TextNode#inspector-kind 864,266 174x15 "Markdown document · 150 words"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x161
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1059,376 25x15 "1 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 978,400 106x15 "Markdown document"
+                    Node#view 817,420 267x24
+                      TextNode#text 817,424 31x15 "Words"
+                      TextNode#text 1065,424 19x15 "150"
+                    Node#view 817,444 267x24
+                      TextNode#text 817,448 50x15 "Headings"
+                      TextNode#text 1078,448 6x15 "4"
+                    Node#view 817,468 267x24
+                      TextNode#text 817,472 50x15 "Modified"
+                      TextNode#text 972,472 112x15 "24 Nov 2026, 12:00"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 106x30
@@ -845,7 +850,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, photo: Browser/inspector, photo (173 lines)
+--- story Browser/inspector, photo: Browser/inspector, photo (174 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -972,36 +977,205 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 696,677 96x15 "1 of 7 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 815,14 271x220
+                      ImageNode#preview-image 839,30 223x188
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 912,246 77x18 "photo 2.jpg"
+                    TextNode#inspector-kind 894,266 114x15 "JPEG image · 202 KB"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x113
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1047,376 37x15 "202 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 1022,400 62x15 "JPEG image"
+                    Node#view 817,420 267x24
+                      TextNode#text 817,424 63x15 "Dimensions"
+                      TextNode#text 959,424 125x15 "1242 × 1048 · 1.3 MP"
+        Node#viewer 0,0 1100x700
+          Node#viewer-bar 0,0 1100x52
+            Node#back-pill 14,11 99x30
+              ImageNode#image 20,18 16x16
+              ImageNode#image 42,19 14x14
+              TextNode#text 62,18 39x16 "folder"
+            TextNode#viewer-title 121,18 927x16 "Viewer"
+            Node#viewer-trash 1056,11 30x30
+              ImageNode#image 1063,18 16x16
+          Node#stage 0,52 1100x648
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
+        Node#window-start 16,0 0x40
+        Node#window-end 1100,0 0x0
+
+--- story Browser/list, dark: Browser/list, dark (166 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 1100x700
+    Node#view 0,0 1100x700
+      Node#window 0,0 1100x700
+        Node#browser 0,0 1100x700
+          Node#sidebar 0,0 236x700
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#level-back-label 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
+          Node#view 236,0 864x700
+            Node#main 236,0 564x700
+              Node#toolbar 237,0 563x40
+                Node#view 245,5 62x30
+                  Node#back 245,5 30x30
+                    ImageNode#image 252,12 16x16
+                  Node#forward 277,5 30x30
+                    ImageNode#image 284,12 16x16
+                Node#folder-title 313,5 74x30
+                  TextNode#text 321,11 42x17 "folder"
+                  ImageNode#image 367,13 14x14
+                Node#view 393,20 280x0
+                Node#search 679,5 30x30
+                  ImageNode#image 686,12 16x16
+                Node#view-menu 715,5 41x30
+                  ImageNode#image 722,12 16x16
+                  ImageNode#image 740,14 12x12
+                Node#inspector-toggle 762,5 30x30
+                  ImageNode#image 769,12 16x16
+              Node#content 237,40 563x628
+                Node#list 237,40 563x628
+                  Node#list-head 237,40 563x30
+                    Node#view 253,40 127x30
+                      Node#button 281,40 99x30
+                        TextNode#text 281,47 23x15 "Name"
+                        ImageNode#image 308,49 12x12
+                    Node#button 392,40 156x30
+                      TextNode#text 392,47 75x15 "Date modified"
+                    Node#button 560,40 84x30
+                      TextNode#text 621,47 23x15 "Size"
+                    Node#button 656,40 124x30
+                      TextNode#text 656,47 23x15 "Kind"
+                  VirtualScroll#rows 237,70 563x598
+                    Spacer#before 237,70 563x6
+                    Node#row 237,76 563x30
+                      Node#view 243,76 551x30
+                        Node#view 253,81 127x20
+                          Node#view 253,81 20x20
+                            ImageNode#image 256,84 14x14
+                          TextNode#name 281,83 99x16 "alpha.png"
+                        TextNode#text 392,83 156x16 ""
+                        TextNode#text 560,83 84x16 "530 bytes"
+                        TextNode#text 656,83 124x16 "PNG image"
+                    Node#row 237,106 563x30
+                      Node#view 243,106 551x30
+                        Node#view 253,111 127x20
+                          Node#view 253,111 20x20
+                            ImageNode#image 256,114 14x14
+                          TextNode#name 281,113 99x16 "anim.gif"
+                        TextNode#text 392,113 156x16 ""
+                        TextNode#text 560,113 84x16 "3 KB"
+                        TextNode#text 656,113 124x16 "GIF image"
+                    Node#row 237,136 563x30
+                      Node#view 243,136 551x30
+                        Node#view 253,141 127x20
+                          Node#view 253,141 20x20
+                            ImageNode#image 256,144 14x14
+                          TextNode#name 281,143 99x16 "broken.jpg"
+                        TextNode#text 392,143 156x16 ""
+                        TextNode#text 560,143 84x16 "300 bytes"
+                        TextNode#text 656,143 124x16 "JPEG image"
+                    Node#row 237,166 563x30
+                      Node#view 243,166 551x30
+                        Node#view 253,171 127x20
+                          Node#view 253,171 20x20
+                            ImageNode#image 256,174 14x14
+                          TextNode#name 281,173 99x16 "lossy.webp"
+                        TextNode#text 392,173 156x16 ""
+                        TextNode#text 560,173 84x16 "1 KB"
+                        TextNode#text 656,173 124x16 "WebP image"
+                    Node#row 237,196 563x30
+                      Node#view 243,196 551x30
+                        Node#view 253,201 127x20
+                          Node#view 253,201 20x20
+                            ImageNode#image 256,204 14x14
+                          TextNode#name 281,203 99x16 "notes.txt"
+                        TextNode#text 392,203 156x16 ""
+                        TextNode#text 560,203 84x16 "13 bytes"
+                        TextNode#text 656,203 124x16 "Plain text"
+                    Node#row 237,226 563x30
+                      Node#view 243,226 551x30
+                        Node#view 253,231 127x20
+                          Node#view 253,231 20x20
+                            ImageNode#image 256,234 14x14
+                          TextNode#name 281,233 99x16 "photo 2.jpg"
+                        TextNode#text 392,233 156x16 ""
+                        TextNode#text 560,233 84x16 "202 KB"
+                        TextNode#text 656,233 124x16 "JPEG image"
+                    Node#row 237,256 563x30
+                      Node#view 243,256 551x30
+                        Node#view 253,261 127x20
+                          Node#view 253,261 20x20
+                            ImageNode#image 256,264 14x14
+                          TextNode#name 281,263 99x16 "photo 10.jpg"
+                        TextNode#text 392,263 156x16 ""
+                        TextNode#text 560,263 84x16 "702 bytes"
+                        TextNode#text 656,263 124x16 "JPEG image"
+                    Spacer#after 237,286 563x6
+              Node#pathbar 237,668 563x32
+                Node#view 241,669 503x32
+                  PathBarNode#pathbar 241,669 503x32
+                    Node#pathbar-segments 247,673 491x24
+                      Node#pathbar-segment 247,673 42x24
+                        TextNode#text 253,677 30x15 "tests"
+                      Node#pathbar-separator 289,673 11x24
+                        ImageNode#image 289,679 11x11
+                      Node#pathbar-segment 300,673 60x24
+                        TextNode#text 306,677 48x15 "fixtures"
+                      Node#pathbar-separator 360,673 11x24
+                        ImageNode#image 360,679 11x11
+                      Node#pathbar-current 371,673 48x24
+                        TextNode#text 377,677 36x15 "folder"
+                TextNode#count 744,677 48x15 "7 items"
+            Node#inspector 800,0 300x700
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
                   Node#view 815,14 271x220
-                    ImageNode#preview-image 839,30 223x188
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 912,246 77x18 "photo 2.jpg"
-                  TextNode#inspector-kind 894,266 114x15 "JPEG image · 202 KB"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x113
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1047,376 37x15 "202 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 1022,400 62x15 "JPEG image"
-                  Node#view 817,420 267x24
-                    TextNode#text 817,424 63x15 "Dimensions"
-                    TextNode#text 959,424 125x15 "1242 × 1048 · 1.3 MP"
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -1020,7 +1194,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, dark: Browser/list, dark (165 lines)
+--- story Browser/list, light: Browser/list, light (166 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1163,12 +1337,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -1187,174 +1362,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, light: Browser/list, light (165 lines)
-Node#root 0,0 390x844
-  Node#view 0,0 1100x700
-    Node#view 0,0 1100x700
-      Node#window 0,0 1100x700
-        Node#browser 0,0 1100x700
-          Node#sidebar 0,0 236x700
-            Node#level-bar 10,8 216x30
-              Node#level-back 12,10 56x26
-                ImageNode#image 14,16 14x14
-                Node#view 30,16 30x15
-                  TextNode#level-back-label 30,16 30x15 "tests"
-              Node#view 70,23 122x0
-              Node#level-home 194,8 30x30
-                ImageNode#image 201,15 16x16
-            Node#sidebar-body 10,44 216x656
-              Node#sidebar-pane 10,44 216x656
-                Node#view 10,44 216x656
-                  Node#view 10,44 216x21
-                    TextNode#level-title 18,46 60x19 "fixtures"
-                    Node#view 86,55 72x0
-                    TextNode#text 166,48 52x15 "2 folders"
-                  Node#scroll 10,71 216x629
-                    Node#button 10,71 216x28
-                      ImageNode#image 18,77 16x16
-                      TextNode#text 42,77 176x16 "folder"
-                    Node#button 10,100 216x28
-                      ImageNode#image 18,106 16x16
-                      TextNode#text 42,106 176x16 "pdf"
-          Node#view 236,0 864x700
-            Node#main 236,0 564x700
-              Node#toolbar 237,0 563x40
-                Node#view 245,5 62x30
-                  Node#back 245,5 30x30
-                    ImageNode#image 252,12 16x16
-                  Node#forward 277,5 30x30
-                    ImageNode#image 284,12 16x16
-                Node#folder-title 313,5 74x30
-                  TextNode#text 321,11 42x17 "folder"
-                  ImageNode#image 367,13 14x14
-                Node#view 393,20 280x0
-                Node#search 679,5 30x30
-                  ImageNode#image 686,12 16x16
-                Node#view-menu 715,5 41x30
-                  ImageNode#image 722,12 16x16
-                  ImageNode#image 740,14 12x12
-                Node#inspector-toggle 762,5 30x30
-                  ImageNode#image 769,12 16x16
-              Node#content 237,40 563x628
-                Node#list 237,40 563x628
-                  Node#list-head 237,40 563x30
-                    Node#view 253,40 127x30
-                      Node#button 281,40 99x30
-                        TextNode#text 281,47 23x15 "Name"
-                        ImageNode#image 308,49 12x12
-                    Node#button 392,40 156x30
-                      TextNode#text 392,47 75x15 "Date modified"
-                    Node#button 560,40 84x30
-                      TextNode#text 621,47 23x15 "Size"
-                    Node#button 656,40 124x30
-                      TextNode#text 656,47 23x15 "Kind"
-                  VirtualScroll#rows 237,70 563x598
-                    Spacer#before 237,70 563x6
-                    Node#row 237,76 563x30
-                      Node#view 243,76 551x30
-                        Node#view 253,81 127x20
-                          Node#view 253,81 20x20
-                            ImageNode#image 256,84 14x14
-                          TextNode#name 281,83 99x16 "alpha.png"
-                        TextNode#text 392,83 156x16 ""
-                        TextNode#text 560,83 84x16 "530 bytes"
-                        TextNode#text 656,83 124x16 "PNG image"
-                    Node#row 237,106 563x30
-                      Node#view 243,106 551x30
-                        Node#view 253,111 127x20
-                          Node#view 253,111 20x20
-                            ImageNode#image 256,114 14x14
-                          TextNode#name 281,113 99x16 "anim.gif"
-                        TextNode#text 392,113 156x16 ""
-                        TextNode#text 560,113 84x16 "3 KB"
-                        TextNode#text 656,113 124x16 "GIF image"
-                    Node#row 237,136 563x30
-                      Node#view 243,136 551x30
-                        Node#view 253,141 127x20
-                          Node#view 253,141 20x20
-                            ImageNode#image 256,144 14x14
-                          TextNode#name 281,143 99x16 "broken.jpg"
-                        TextNode#text 392,143 156x16 ""
-                        TextNode#text 560,143 84x16 "300 bytes"
-                        TextNode#text 656,143 124x16 "JPEG image"
-                    Node#row 237,166 563x30
-                      Node#view 243,166 551x30
-                        Node#view 253,171 127x20
-                          Node#view 253,171 20x20
-                            ImageNode#image 256,174 14x14
-                          TextNode#name 281,173 99x16 "lossy.webp"
-                        TextNode#text 392,173 156x16 ""
-                        TextNode#text 560,173 84x16 "1 KB"
-                        TextNode#text 656,173 124x16 "WebP image"
-                    Node#row 237,196 563x30
-                      Node#view 243,196 551x30
-                        Node#view 253,201 127x20
-                          Node#view 253,201 20x20
-                            ImageNode#image 256,204 14x14
-                          TextNode#name 281,203 99x16 "notes.txt"
-                        TextNode#text 392,203 156x16 ""
-                        TextNode#text 560,203 84x16 "13 bytes"
-                        TextNode#text 656,203 124x16 "Plain text"
-                    Node#row 237,226 563x30
-                      Node#view 243,226 551x30
-                        Node#view 253,231 127x20
-                          Node#view 253,231 20x20
-                            ImageNode#image 256,234 14x14
-                          TextNode#name 281,233 99x16 "photo 2.jpg"
-                        TextNode#text 392,233 156x16 ""
-                        TextNode#text 560,233 84x16 "202 KB"
-                        TextNode#text 656,233 124x16 "JPEG image"
-                    Node#row 237,256 563x30
-                      Node#view 243,256 551x30
-                        Node#view 253,261 127x20
-                          Node#view 253,261 20x20
-                            ImageNode#image 256,264 14x14
-                          TextNode#name 281,263 99x16 "photo 10.jpg"
-                        TextNode#text 392,263 156x16 ""
-                        TextNode#text 560,263 84x16 "702 bytes"
-                        TextNode#text 656,263 124x16 "JPEG image"
-                    Spacer#after 237,286 563x6
-              Node#pathbar 237,668 563x32
-                Node#view 241,669 503x32
-                  PathBarNode#pathbar 241,669 503x32
-                    Node#pathbar-segments 247,673 491x24
-                      Node#pathbar-segment 247,673 42x24
-                        TextNode#text 253,677 30x15 "tests"
-                      Node#pathbar-separator 289,673 11x24
-                        ImageNode#image 289,679 11x11
-                      Node#pathbar-segment 300,673 60x24
-                        TextNode#text 306,677 48x15 "fixtures"
-                      Node#pathbar-separator 360,673 11x24
-                        ImageNode#image 360,679 11x11
-                      Node#pathbar-current 371,673 48x24
-                        TextNode#text 377,677 36x15 "folder"
-                TextNode#count 744,677 48x15 "7 items"
-            Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
-        Node#viewer 0,0 1100x700
-          Node#viewer-bar 0,0 1100x52
-            Node#back-pill 14,11 99x30
-              ImageNode#image 20,18 16x16
-              ImageNode#image 42,19 14x14
-              TextNode#text 62,18 39x16 "folder"
-            TextNode#viewer-title 121,18 927x16 "Viewer"
-            Node#viewer-trash 1056,11 30x30
-              ImageNode#image 1063,18 16x16
-          Node#stage 0,52 1100x648
-            Node#stage-content 0,52 1100x648
-              ImageView#photo 0,52 1100x648
-              Node#message 0,52 1100x648
-                TextNode#title 495,353 110x22 "No image open"
-                TextNode#detail 550,383 0x16 ""
-        Node#window-start 16,0 0x40
-        Node#window-end 1100,0 0x0
-
---- story Browser/marquee: Browser/marquee (179 lines)
+--- story Browser/marquee: Browser/marquee (180 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1483,40 +1491,41 @@ Node#root 0,0 390x844
                           TextNode#text 377,677 36x15 "folder"
                   TextNode#count 696,677 96x15 "7 of 7 selected"
               Node#inspector 800,0 300x700
-                Node#view 801,0 299x700
-                  Node#preview 815,14 271x220
-                    Node#view 885,58 132x132
-                      Node#view 915,78 72x92
-                        ImageNode#image 939,106 24x24
-                        TextNode#text 938,145 25x14 "GIF"
-                    Node#view 885,58 132x132
-                      Node#view 915,78 72x92
-                        ImageNode#image 939,106 24x24
-                        TextNode#text 938,145 25x14 "JPG"
-                    Node#view 881,54 140x140
-                      Node#view 915,78 72x92
-                        ImageNode#image 939,106 24x24
-                        TextNode#text 938,145 25x14 "PNG"
-                  Node#view 801,234 299x47
-                    TextNode#inspector-name 926,246 49x18 "7 items"
-                    TextNode#inspector-kind 933,266 36x15 "208 KB"
-                  Node#view 801,281 299x56
-                    Node#open 882,293 65x30
-                      TextNode#text 895,299 39x17 "Open 7"
-                    Node#reveal 953,293 30x30
-                      ImageNode#image 960,300 16x16
-                    Node#trash 989,293 30x30
-                      ImageNode#image 996,300 16x16
-                  Node#details 801,337 299x89
-                    Node#view 817,348 267x24
-                      ImageNode#image 817,353 14x14
-                      TextNode#text 837,353 50x13 "SELECTION"
-                    Node#view 817,372 267x24
-                      TextNode#text 817,376 63x15 "Total size"
-                      TextNode#text 1047,376 37x15 "208 KB"
-                    Node#view 817,396 267x24
-                      TextNode#text 817,400 31x15 "Kinds"
-                      TextNode#text 860,400 224x15 "1 GIF image, 1 PNG image, 1 Plain text, 1 WebP image, 3 JPEG images"
+                Node#inspector-body 801,0 299x700
+                  Node#view 801,0 299x700
+                    Node#preview 815,14 271x220
+                      Node#view 885,58 132x132
+                        Node#view 915,78 72x92
+                          ImageNode#image 939,106 24x24
+                          TextNode#text 938,145 25x14 "GIF"
+                      Node#view 885,58 132x132
+                        Node#view 915,78 72x92
+                          ImageNode#image 939,106 24x24
+                          TextNode#text 938,145 25x14 "JPG"
+                      Node#view 881,54 140x140
+                        Node#view 915,78 72x92
+                          ImageNode#image 939,106 24x24
+                          TextNode#text 938,145 25x14 "PNG"
+                    Node#view 801,234 299x47
+                      TextNode#inspector-name 926,246 49x18 "7 items"
+                      TextNode#inspector-kind 933,266 36x15 "208 KB"
+                    Node#view 801,281 299x56
+                      Node#open 882,293 65x30
+                        TextNode#text 895,299 39x17 "Open 7"
+                      Node#reveal 953,293 30x30
+                        ImageNode#image 960,300 16x16
+                      Node#trash 989,293 30x30
+                        ImageNode#image 996,300 16x16
+                    Node#details 801,337 299x89
+                      Node#view 817,348 267x24
+                        ImageNode#image 817,353 14x14
+                        TextNode#text 837,353 50x13 "SELECTION"
+                      Node#view 817,372 267x24
+                        TextNode#text 817,376 63x15 "Total size"
+                        TextNode#text 1047,376 37x15 "208 KB"
+                      Node#view 817,396 267x24
+                        TextNode#text 817,400 31x15 "Kinds"
+                        TextNode#text 860,400 224x15 "1 GIF image, 1 PNG image, 1 Plain text, 1 WebP image, 3 JPEG images"
           Node#viewer 0,0 1100x700
             Node#viewer-bar 0,0 1100x52
               Node#back-pill 14,11 99x30
@@ -1535,7 +1544,7 @@ Node#root 0,0 390x844
           Node#window-start 16,0 0x40
           Node#window-end 1100,0 0x0
 
---- story Browser/missing folder: Browser/missing folder (91 lines)
+--- story Browser/missing folder: Browser/missing folder (92 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1604,12 +1613,13 @@ Node#root 0,0 390x844
                         TextNode#text 329,677 24x15 "gone"
                 TextNode#count 744,677 48x15 "0 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 937,246 28x18 "gone"
-                  TextNode#text 930,266 42x15 "0 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 937,246 28x18 "gone"
+                    TextNode#text 930,266 42x15 "0 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 86x30
@@ -1628,7 +1638,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/no results: Browser/no results (98 lines)
+--- story Browser/no results: Browser/no results (99 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1704,12 +1714,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "0 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "0 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "0 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -1728,7 +1739,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, dark: Browser/search focused, dark (150 lines)
+--- story Browser/search focused, dark: Browser/search focused, dark (151 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1856,12 +1867,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -1880,7 +1892,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, light: Browser/search focused, light (150 lines)
+--- story Browser/search focused, light: Browser/search focused, light (151 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2008,12 +2020,13 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -2032,7 +2045,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/several selected: Browser/several selected (177 lines)
+--- story Browser/several selected: Browser/several selected (178 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2159,40 +2172,41 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 696,677 96x15 "4 of 7 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#view 885,58 132x132
-                    Node#view 915,78 72x92
-                      ImageNode#image 939,106 24x24
-                      TextNode#text 938,145 25x14 "GIF"
-                  Node#view 885,58 132x132
-                    Node#view 915,78 72x92
-                      ImageNode#image 939,106 24x24
-                      TextNode#text 938,145 25x14 "JPG"
-                  Node#view 881,54 140x140
-                    Node#view 915,78 72x92
-                      ImageNode#image 939,106 24x24
-                      TextNode#text 938,145 25x14 "PNG"
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 926,246 49x18 "4 items"
-                  TextNode#inspector-kind 939,266 24x15 "5 KB"
-                Node#view 801,281 299x56
-                  Node#open 882,293 65x30
-                    TextNode#text 895,299 39x17 "Open 4"
-                  Node#reveal 953,293 30x30
-                    ImageNode#image 960,300 16x16
-                  Node#trash 989,293 30x30
-                    ImageNode#image 996,300 16x16
-                Node#details 801,337 299x89
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 50x13 "SELECTION"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 63x15 "Total size"
-                    TextNode#text 1059,376 25x15 "5 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 31x15 "Kinds"
-                    TextNode#text 860,400 224x15 "1 GIF image, 1 JPEG image, 1 PNG image, 1 WebP image"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 885,58 132x132
+                      Node#view 915,78 72x92
+                        ImageNode#image 939,106 24x24
+                        TextNode#text 938,145 25x14 "GIF"
+                    Node#view 885,58 132x132
+                      Node#view 915,78 72x92
+                        ImageNode#image 939,106 24x24
+                        TextNode#text 938,145 25x14 "JPG"
+                    Node#view 881,54 140x140
+                      Node#view 915,78 72x92
+                        ImageNode#image 939,106 24x24
+                        TextNode#text 938,145 25x14 "PNG"
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 926,246 49x18 "4 items"
+                    TextNode#inspector-kind 939,266 24x15 "5 KB"
+                  Node#view 801,281 299x56
+                    Node#open 882,293 65x30
+                      TextNode#text 895,299 39x17 "Open 4"
+                    Node#reveal 953,293 30x30
+                      ImageNode#image 960,300 16x16
+                    Node#trash 989,293 30x30
+                      ImageNode#image 996,300 16x16
+                  Node#details 801,337 299x89
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 50x13 "SELECTION"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 63x15 "Total size"
+                      TextNode#text 1059,376 25x15 "5 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 31x15 "Kinds"
+                      TextNode#text 860,400 224x15 "1 GIF image, 1 JPEG image, 1 PNG image, 1 WebP image"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -2211,7 +2225,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/sidebar's volume: Browser/sidebar's volume (158 lines)
+--- story Browser/sidebar's volume: Browser/sidebar's volume (159 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2347,12 +2361,13 @@ Node#root 0,0 390x844
                         TextNode#text 437,677 36x15 "folder"
                 TextNode#count 744,677 48x15 "7 items"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#view 815,14 271x220
+                    ImageNode#image 903,85 96x78
+                  Node#view 801,234 299x47
+                    TextNode#text 930,246 42x18 "folder"
+                    TextNode#text 930,266 42x15 "7 items"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -2371,7 +2386,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (135 lines)
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (136 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2446,37 +2461,38 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 18x15 "pdf"
                 TextNode#count 696,677 96x15 "1 of 1 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#view 815,14 271x220
-                    ImageNode#preview-image 880,30 141x188
-                    TextNode#pages 928,208 45x18 "1 / 3"
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 919,246 63x18 "pages.pdf"
-                  TextNode#inspector-kind 885,266 132x15 "PDF document · 3 pages"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x113
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1059,376 25x15 "1 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 1009,400 75x15 "PDF document"
-                  Node#view 817,420 267x24
-                    TextNode#text 817,424 31x15 "Pages"
-                    TextNode#text 1078,424 6x15 "3"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 815,14 271x220
+                      ImageNode#preview-image 880,30 141x188
+                      TextNode#pages 928,208 45x18 "1 / 3"
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 919,246 63x18 "pages.pdf"
+                    TextNode#inspector-kind 885,266 132x15 "PDF document · 3 pages"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x113
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1059,376 25x15 "1 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 1009,400 75x15 "PDF document"
+                    Node#view 817,420 267x24
+                      TextNode#text 817,424 31x15 "Pages"
+                      TextNode#text 1078,424 6x15 "3"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 80x30
@@ -2508,7 +2524,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/error: Viewer/error (171 lines)
+--- story Viewer/error: Viewer/error (172 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2635,34 +2651,35 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 696,677 96x15 "1 of 7 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#view 915,78 72x92
-                    ImageNode#image 939,106 24x24
-                    TextNode#text 938,145 25x14 "JPG"
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 916,246 70x18 "broken.jpg"
-                  TextNode#inspector-kind 885,266 132x15 "JPEG image · 300 bytes"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x89
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1028,376 56x15 "300 bytes"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 1022,400 62x15 "JPEG image"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 915,78 72x92
+                      ImageNode#image 939,106 24x24
+                      TextNode#text 938,145 25x14 "JPG"
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 916,246 70x18 "broken.jpg"
+                    TextNode#inspector-kind 885,266 132x15 "JPEG image · 300 bytes"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x89
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1028,376 56x15 "300 bytes"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 1022,400 62x15 "JPEG image"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
@@ -2681,7 +2698,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/status line: Viewer/status line (173 lines)
+--- story Viewer/status line: Viewer/status line (174 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2808,36 +2825,37 @@ Node#root 0,0 390x844
                         TextNode#text 377,677 36x15 "folder"
                 TextNode#count 696,677 96x15 "1 of 7 selected"
             Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#preview 815,14 271x220
-                  Node#view 815,14 271x220
-                    ImageNode#preview-image 839,30 223x188
-                Node#view 801,234 299x47
-                  TextNode#inspector-name 912,246 77x18 "photo 2.jpg"
-                  TextNode#inspector-kind 894,266 114x15 "JPEG image · 202 KB"
-                Node#view 801,281 299x56
-                  Node#open 871,293 52x30
-                    TextNode#text 884,299 26x17 "Open"
-                  Node#reveal 929,293 30x30
-                    ImageNode#image 936,300 16x16
-                  Node#trash 965,293 30x30
-                    ImageNode#image 972,300 16x16
-                  Node#view 1001,293 30x30
-                    Node#more 1001,293 30x30
-                      ImageNode#image 1008,300 16x16
-                Node#details 801,337 299x113
-                  Node#view 817,348 267x24
-                    ImageNode#image 817,353 14x14
-                    TextNode#text 837,353 39x13 "DETAILS"
-                  Node#view 817,372 267x24
-                    TextNode#text 817,376 25x15 "Size"
-                    TextNode#text 1047,376 37x15 "202 KB"
-                  Node#view 817,396 267x24
-                    TextNode#text 817,400 25x15 "Kind"
-                    TextNode#text 1022,400 62x15 "JPEG image"
-                  Node#view 817,420 267x24
-                    TextNode#text 817,424 63x15 "Dimensions"
-                    TextNode#text 959,424 125x15 "1242 × 1048 · 1.3 MP"
+              Node#inspector-body 801,0 299x700
+                Node#view 801,0 299x700
+                  Node#preview 815,14 271x220
+                    Node#view 815,14 271x220
+                      ImageNode#preview-image 839,30 223x188
+                  Node#view 801,234 299x47
+                    TextNode#inspector-name 912,246 77x18 "photo 2.jpg"
+                    TextNode#inspector-kind 894,266 114x15 "JPEG image · 202 KB"
+                  Node#view 801,281 299x56
+                    Node#open 871,293 52x30
+                      TextNode#text 884,299 26x17 "Open"
+                    Node#reveal 929,293 30x30
+                      ImageNode#image 936,300 16x16
+                    Node#trash 965,293 30x30
+                      ImageNode#image 972,300 16x16
+                    Node#view 1001,293 30x30
+                      Node#more 1001,293 30x30
+                        ImageNode#image 1008,300 16x16
+                  Node#details 801,337 299x113
+                    Node#view 817,348 267x24
+                      ImageNode#image 817,353 14x14
+                      TextNode#text 837,353 39x13 "DETAILS"
+                    Node#view 817,372 267x24
+                      TextNode#text 817,376 25x15 "Size"
+                      TextNode#text 1047,376 37x15 "202 KB"
+                    Node#view 817,396 267x24
+                      TextNode#text 817,400 25x15 "Kind"
+                      TextNode#text 1022,400 62x15 "JPEG image"
+                    Node#view 817,420 267x24
+                      TextNode#text 817,424 63x15 "Dimensions"
+                      TextNode#text 959,424 125x15 "1242 × 1048 · 1.3 MP"
         Node#viewer 0,0 1100x700
           Node#viewer-bar 0,0 1100x52
             Node#back-pill 14,11 99x30
