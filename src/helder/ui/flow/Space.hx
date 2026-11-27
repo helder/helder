@@ -26,8 +26,9 @@ class Space {
 	// where a line at y of height h may go (y from the box's border box top; offset from its left),
 	// and how far down it widens (next: infinity when it doesn't): floats narrow it (null: the whole width)
 	public var lineWidth:Null<(y:Float, h:Float) -> Null<{offset:Float, width:Float, next:Float}>> = null;
-	// a float met in a line at y (from the box's border box top): laid out and placed by the block
-	public var placeFloat:Null<(box:Box, y:Float) -> Void> = null;
+	// a float met in a line at y (from the box's border box top): laid out and placed by the block; where
+	// its margin box ends
+	public var placeFloat:Null<(box:Box, y:Float) -> Float> = null;
 	// the last n floats placeFloat placed taken out again (the lines laid out anew around them)
 	public var unplace:Null<(n:Int) -> Void> = null;
 	// an absolutely positioned box met in a line, its static position (from the box's border box)

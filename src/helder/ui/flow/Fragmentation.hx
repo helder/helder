@@ -20,9 +20,14 @@ interface Fragmentation {
 	// when it starts past the end, its margins truncated)
 	function between(box:Box, before:Null<Box>, after:Box, bottom:Float):Bool;
 	// class B: between box's lines line - 1 and line (from its first in
-	// this fragmentainer, of count), the one before ending at bottom; true:
-	// break here. Line first: the first here, at bottom (as before null)
-	function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float):Bool;
+	// this fragmentainer, of count), the one before ending at bottom, at
+	// the line's break (where its lines resume); true: break here. Line
+	// first: the first here, at bottom (as before null)
+	function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool;
+	// a float placed, its margin box ending at bottom: content before the
+	// break opportunities after it (a float is whole: one that doesn't fit
+	// takes the break before it, its line's or its own)
+	function floated(bottom:Float):Void;
 	// in-flow content laid out, its border box ending at bottom (margins
 	// aside: trailing ones are truncated, they make no page of their own)
 	function placed(bottom:Float):Void;
@@ -32,11 +37,13 @@ interface Fragmentation {
 }
 
 // Where a box resumes: at a child (laid out from its start, its top
-// margin truncated after an unforced break), or at a line; the block
-// size it already took in the fragmentainers before.
+// margin truncated after an unforced break), or at a line (its lines laid
+// out from its break, from); the block size it already took in the
+// fragmentainers before.
 typedef Resume = {
 	child:Null<Box>,
 	line:Int,
+	from:Null<InlineBreak>,
 	consumed:Float,
 	forced:Bool
 }

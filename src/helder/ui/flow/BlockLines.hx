@@ -36,27 +36,31 @@ class BlockLines {
 		var frags = space.fragments;
 		if (layouts.length <= depth) layouts.push(new InlineLayout());
 		var l = layouts[depth++];
-		// (in a fragmentainer: the lines from first on are this one's, the ones from last on the next's;
-		// shift: the first one's top, where this fragment starts in the lines)
+		// (in a fragmentainer, resumed at a line: laid out from its break, the lines before it and their floats
+		// were in the fragmentainers before)
 		var fr = space.fragmentation;
 		var resume = fr != null ? fr.resume(block) : null;
-		var first = resume != null && resume.line > 0 ? resume.line : 0, shift = 0.0;
+		var from = resume != null ? resume.from : null;
 		// (the function, not the space's field: the lines are laid out again for hit testing, the space gone on)
 		var lineWidth = space.lineWidth;
 		var constraints = new InlineConstraints(width, lineWidth == null ? null : (y, h) -> {
-			var lw = lineWidth(oy + y - shift, h);
+			var lw = lineWidth(oy + y, h);
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
 		try {
-			// (floats placed where their lines put them, the lines then laid out around them: until they stay;
-			// resumed, the ones of the lines before first were in a fragmentainer before)
-			var floats = built.floats;
-			var tops:Array<Float> = [];
+			// (floats placed where their lines put them, the lines then laid out around them: until they stay)
+			var floats:Array<Box> = [];
+			var tops:Array<Float> = [], bottoms:Array<Float> = [];
 			var placed = 0;
 			function lay() {
+				var skipped = 0;
+				if (from != null) {
+					var end = from.piece < c.pieces ? c.pieceItem(from.piece) : c.items;
+					for (i in 0...end) if (c.kind(i) == Float) skipped++;
+				}
+				floats = built.floats.slice(skipped);
 				for (round in 0...(floats.length > 0 && space.placeFloat != null ? 4 : 1)) {
-					l.layout(c, constraints);
-					if (first > 0 && first < l.lines) shift = l.lineTop(first);
+					l.layout(c, constraints, from);
 					if (floats.length == 0 || space.placeFloat == null) break;
 					var at = statics(l, InlineFragment.Float);
 					var same = round > 0 && at.length == tops.length;
@@ -64,11 +68,10 @@ class BlockLines {
 					if (same) break;
 					if (round > 0 && space.unplace != null) space.unplace(placed);
 					tops = [for (a in at) a.y];
+					bottoms = [];
 					placed = 0;
 					for (k in 0...floats.length) {
-						var top = k < tops.length ? tops[k] : 0;
-						if (top < shift) continue;
-						space.placeFloat(floats[k], oy + top - shift);
+						bottoms.push(space.placeFloat(floats[k], oy + (k < tops.length ? tops[k] : 0)) - oy);
 						placed++;
 					}
 				}
@@ -83,32 +86,36 @@ class BlockLines {
 				built = build(block, space, width, pct, false);
 				filling = false;
 				c = built.content;
-				floats = built.floats;
 				lay();
 			}
-			// (class B: between lines, from the second here; a break taken ends this fragment's lines)
+			// (class B: between lines, from the second here, the floats of the lines before it before it too; a
+			// break taken ends this fragment's lines)
 			var last = l.lines;
-			if (fr != null)
-				for (k in first...l.lines) {
-					var bottom = space.reserve + (k == first ? space.pageTop + oy : space.pageTop + oy + l.lineTop(k - 1) + l.lineHeight(k - 1) - shift);
-					if (fr.inLines(block, first, k, l.lines, bottom) || fr.stopped) {
+			if (fr != null) {
+				var top = space.reserve + space.pageTop, next = 0;
+				for (k in 0...l.lines) {
+					while (next < bottoms.length && next < tops.length && tops[next] < l.lineTop(k)) fr.floated(top + bottoms[next++]);
+					var bottom = top + (k == 0 ? 0 : l.lineTop(k - 1) + l.lineHeight(k - 1));
+					if (fr.inLines(block, 0, k, l.lines, bottom, l.breakAt(k)) || fr.stopped) {
 						last = k;
 						break;
 					}
 				}
+				if (last == l.lines) while (next < bottoms.length) fr.floated(top + bottoms[next++]);
+			}
 			var end = last < l.lines ? l.lineTop(last) : Math.POSITIVE_INFINITY;
 			// (the floats of the lines from last on: the next fragmentainer's)
 			if (last < l.lines && space.unplace != null) {
 				var later = 0;
-				for (k in 0...floats.length) if (k < tops.length && tops[k] >= shift && tops[k] >= end) later++;
+				for (k in 0...floats.length) if (k < tops.length && tops[k] >= end) later++;
 				if (later > 0) space.unplace(later);
 			}
 			if (space.placeAbsolute != null) {
 				var at = absoluteStatics(l, built.absolutes, width, block.style.rtl);
 				for (k in 0...built.absolutes.length)
-					if (k < at.length && at[k].y >= shift && at[k].y < end) space.placeAbsolute(built.absolutes[k], ox + at[k].x, oy + at[k].y - shift);
+					if (k < at.length && at[k].y < end) space.placeAbsolute(built.absolutes[k], ox + at[k].x, oy + at[k].y);
 			}
-			var r = fragments(l, built, space, frag, ox, oy, constraints, first, last, shift);
+			var r = fragments(l, built, space, frag, ox, oy, constraints, 0, last);
 			if (fr == null) block.lines = new BlockText(c, constraints, frag, ox, oy);
 			depth--;
 			return r;
@@ -275,9 +282,9 @@ class BlockLines {
 
 	// ---- fragments
 
-	// (lines from...to, shifted up by shift: a fragmentainer's part of them)
-	function fragments(l:InlineLayout, built:Built, space:Space, frag:Int, ox:Float, oy:Float, constraints:InlineConstraints, from:Int, to:Int,
-			shift:Float):{height:Float, lines:Int, baseline:Float} {
+	// (lines from...to: a fragmentainer's part of them)
+	function fragments(l:InlineLayout, built:Built, space:Space, frag:Int, ox:Float, oy:Float, constraints:InlineConstraints, from:Int,
+			to:Int):{height:Float, lines:Int, baseline:Float} {
 		// (where a line at y starts, the floats beside it: an outside marker goes before it)
 		inline function edge(y:Float, h:Float):Float
 			return constraints.lineWidth == null ? 0 : constraints.lineWidth(y, h).offset;
@@ -308,11 +315,11 @@ class BlockLines {
 		for (k in from...to) {
 			var top = l.lineTop(k), h = l.lineHeight(k);
 			var line = frags.add(Fragments.LINE, (cast c.root : BoxInline).box, l.lineAvailable(k), h);
-			frags.adopt(frag, line, ox, oy + top - shift);
+			frags.adopt(frag, line, ox, oy + top);
 			frags.setBaseline(line, l.lineBaseline(k));
 			if (h > 0) {
 				lines++;
-				baseline = top - shift + l.lineBaseline(k);
+				baseline = top + l.lineBaseline(k);
 			}
 			// (spans first, outer ones before inner: the boxes' parts on this line, by their Open item)
 			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
@@ -365,7 +372,7 @@ class BlockLines {
 					frags.adopt(p.frag, af, l.x(f) - p.x + off.x, l.y(f) - p.y + off.y);
 				case _:
 			}
-			if (k == 0 && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), (cast c.root : BoxInline).box.style.rtl, l.lineAvailable(k));
+			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), (cast c.root : BoxInline).box.style.rtl, l.lineAvailable(k));
 		}
 		// (a list item with nothing else: a line for its marker, as tall as the marker's)
 		if (l.lines == 0 && built.markers.length > 0) {
@@ -376,7 +383,7 @@ class BlockLines {
 			frags.setBaseline(line, h.baseline);
 			return {height: h.height, lines: 1, baseline: h.baseline};
 		}
-		return {height: (to < l.lines ? l.lineTop(to) : l.height) - shift, lines: lines, baseline: baseline};
+		return {height: to < l.lines ? l.lineTop(to) : l.height, lines: lines, baseline: baseline};
 	}
 
 	// (a text fragment: its content area, its glyph runs, one a face)
