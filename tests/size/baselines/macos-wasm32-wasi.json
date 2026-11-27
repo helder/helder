@@ -223,12 +223,12 @@
     }
   },
   "engine": {
-    "total": 6286866,
-    "code": 5167749,
+    "total": 6229235,
+    "code": 5114350,
     "const": 0,
-    "data": 850309,
+    "data": 848150,
     "packages": {
-      "(runtime)": 163351,
+      "(runtime)": 161631,
       "(top)": 31632,
       "haxe": 6590,
       "haxe.atomic": 421,
@@ -262,7 +262,7 @@
       "helder.ui.actions": 29389,
       "helder.ui.box": 436739,
       "helder.ui.draw": 284447,
-      "helder.ui.flow": 490127,
+      "helder.ui.flow": 438545,
       "helder.ui.gesture": 13307,
       "helder.ui.layers": 136627,
       "helder.ui.layers.web": 26992,

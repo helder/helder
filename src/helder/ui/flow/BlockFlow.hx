@@ -272,9 +272,9 @@ class BlockFlow implements FormattingContext {
 			// carried from its start, a zero exclusion here, its fragment not adopted)
 			if (fr != null && from == null && fr.size < Math.POSITIVE_INFINITY) {
 				var at = space.pageTop + bt + pt + top - cy, h = fmt + frags.height(f);
-				var over = at + h > fr.size + 0.01 && (!breakable || Breaks.avoids(b));
-				if (at > 0.01 && (ex.pushed || Breaks.forcesBefore(b) || over)) {
-					fr.carry(b, new BreakToken(new haxe.ds.ObjectMap(), null, null));
+				var over = at + h > fr.size + 0.01 && (!breakable || fr.avoids(b));
+				if (at > 0.01 && (ex.pushed || fr.forcesBefore(b) || over)) {
+					fr.push(b);
 					ex.pushed = true;
 					ex.place(b.style.keyword("float") == "left", 0, 0, top, cx, cx + w);
 					floatBottom = top;
@@ -284,8 +284,8 @@ class BlockFlow implements FormattingContext {
 			}
 			if (fr != null && breakable) {
 				var at = space.pageTop + bt + pt + top - cy + (from != null ? 0 : fmt), h = f >= 0 ? frags.height(f) : 0.0;
-				if (from != null || at + h > fr.size + 0.01 && (!Breaks.avoids(b) || h > fr.size + 0.01)) {
-					var sub = new Breaks(fr.size, from);
+				if (from != null || at + h > fr.size + 0.01 && (!fr.avoids(b) || h > fr.size + 0.01)) {
+					var sub = fr.sub(fr.size, from);
 					function lay():Int {
 						var fs = childSpace(w);
 						fs.exclusions = null;
@@ -316,7 +316,7 @@ class BlockFlow implements FormattingContext {
 			return f;
 		}
 		function overflow(b:Box, from:BreakToken) {
-			var sub = new Breaks(fr.size, from);
+			var sub = fr.sub(fr.size, from);
 			var fs = childSpace(w);
 			fs.fragmentation = sub;
 			fs.pageTop = space.pageTop + bt + pt;
@@ -492,7 +492,7 @@ class BlockFlow implements FormattingContext {
 				}
 				// (a fixed height that fits here, its content past it a parallel flow: laid out on its own, its rest carried
 				// to the fragmentainers after as a broken float's is, the flow going on after it, as LayoutNG's overflow)
-				var sub = fr != null && fr.size < Math.POSITIVE_INFINITY && overflows(c, space2) && fr.resume(c) == null ? new Breaks(fr.size, null) : null;
+				var sub = fr != null && fr.size < Math.POSITIVE_INFINITY && overflows(c, space2) && fr.resume(c) == null ? fr.sub(fr.size, null) : null;
 				var cf = -1;
 				if (sub != null) {
 					space2.fragmentation = sub;
