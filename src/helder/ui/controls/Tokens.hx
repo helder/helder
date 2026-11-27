@@ -129,7 +129,7 @@ class TokenSet {
 		return colors ??= [
 		"canvas", "surface", "raised", "well", "hover", "press", "fill", "fillHover", "fillPress", "rail", "railHover", "line", "edge", "edgeStrong", "fg", "fg2", "fg3", "accent", "accentStrong", "accentSoft",
 		"accentFg", "accentInk", "focus", "focusSoft", "danger", "dangerStrong", "dangerSoft", "dangerFg", "success", "warning", "info", "knob", "scrim", "shadow"
-	];;
+	];
 
 	// the palette's tones in COLORS' order (read as fields: no reflection
 	// on a class's values, which a TypeScript build would convert)
@@ -149,7 +149,7 @@ class TokenSet {
 		"teal" => ["#00827a", "#ffffff", "#4fd1c5", "#0b1f1d"], "green" => ["#00864b", "#ffffff", "#53dca6", "#102016"],
 		"amber" => ["#f3ad20", "#20190d", "#ffcb62", "#20190d"], "orange" => ["#c25300", "#ffffff", "#ffad5e", "#17130f"],
 		"red" => ["#d1403a", "#ffffff", "#ff9386", "#21110f"], "pink" => ["#d23286", "#ffffff", "#ff8bc5", "#250f1b"]
-	];;
+	];
 
 	// helder's tokens at a density, in an accent
 	public static function make(density:Density, accent:Accent):Tokens {
