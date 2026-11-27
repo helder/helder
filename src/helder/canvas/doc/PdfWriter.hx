@@ -738,8 +738,29 @@ class PdfWriter {
 		return add('<< /Type /Mask /S /Luminosity /G $form 0 R >>');
 	}
 
-	// a bitmap as an image XObject (premultiplied undone: RGB, its alpha a soft mask)
+	// a bitmap as an image XObject, one per distinct image (by the bitmap, then its pixels)
 	function imageObject(b:Bitmap, smooth:Bool):Int {
+		var k = smooth ? 1 : 0, known = images.get(b);
+		if (known != null && known[k] >= 0) return use(known[k]);
+		var key = '${b.width}x${b.height}/$k/' + haxe.crypto.Md5.make(b.pixels).toHex();
+		var id = imageKeys.get(key) ?? encode(b, smooth);
+		imageKeys.set(key, id);
+		if (known == null) images.set(b, known = [-1, -1]);
+		known[k] = id;
+		return use(id);
+	}
+
+	// (the page's resources naming it once)
+	function use(id:Int):Int {
+		if (!resources.images.contains(id)) resources.images.push(id);
+		return id;
+	}
+
+	final images = new haxe.ds.ObjectMap<Bitmap, Array<Int>>();
+	final imageKeys = new Map<String, Int>();
+
+	// (premultiplied undone: RGB, its alpha a soft mask)
+	function encode(b:Bitmap, smooth:Bool):Int {
 		var n = b.width * b.height, rgbBytes = Bytes.alloc(n * 3), a = Bytes.alloc(n), straight = b.straight(), hasAlpha = false;
 		for (i in 0...n) {
 			rgbBytes.set(i * 3, straight.get(i * 4));
@@ -755,9 +776,44 @@ class PdfWriter {
 		}
 		var id = reserve();
 		stream(id, '/Type /XObject /Subtype /Image /Width ${b.width} /Height ${b.height} /ColorSpace /DeviceRGB /BitsPerComponent 8${smooth ? " /Interpolate true" : ""}${smask >= 0 ? ' /SMask $smask 0 R' : ""}', rgbBytes);
-		resources.images.push(id);
 		return id;
 	}
+
+	// A bitmap's file as it is, where it says the same pixels: a JPEG (its
+	// orientation the image's matrix, not its pixels), a PNG's IDAT; the
+	// XObject and the JPEG's orientation, null where it can't.
+	function passthrough(b:Bitmap, smooth:Bool):Null<{id:Int, orientation:Int}> {
+		var src = b.source;
+		if (src == null) return null;
+		var k = smooth ? 1 : 0, key = 'file/$k/' + haxe.crypto.Md5.make(src).toHex();
+		var known = sources.get(key);
+		if (known != null) {
+			use(known.id);
+			return known;
+		}
+		var interpolate = smooth ? " /Interpolate true" : "";
+		var found:Null<{id:Int, orientation:Int}> = null;
+		var j = PdfImages.jpeg(src);
+		if (j != null) {
+			var turned = j.orientation >= 5 && j.orientation <= 8;
+			if ((turned ? j.height : j.width) != b.width || (turned ? j.width : j.height) != b.height) return null;
+			var space = j.components == 1 ? "/DeviceGray" : j.components == 3 ? "/DeviceRGB" : "/DeviceCMYK";
+			var id = reserve();
+			stream(id, '/Type /XObject /Subtype /Image /Width ${j.width} /Height ${j.height} /ColorSpace $space /BitsPerComponent 8${j.inverted ? " /Decode [1 0 1 0 1 0 1 0]" : ""}$interpolate /Filter /DCTDecode', src, false);
+			found = {id: id, orientation: j.orientation};
+		} else {
+			var p = PdfImages.png(src);
+			if (p == null || p.width != b.width || p.height != b.height) return null;
+			var id = reserve();
+			stream(id, '/Type /XObject /Subtype /Image /Width ${p.width} /Height ${p.height} /ColorSpace ${p.colors == 1 ? "/DeviceGray" : "/DeviceRGB"} /BitsPerComponent 8$interpolate /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors ${p.colors} /BitsPerComponent 8 /Columns ${p.width} >>', p.data, false);
+			found = {id: id, orientation: 1};
+		}
+		sources.set(key, found);
+		use(found.id);
+		return found;
+	}
+
+	final sources = new Map<String, {id:Int, orientation:Int}>();
 
 	function image(o:Op, out:StringBuf) {
 		var r = o.rect, img = o.image;
@@ -765,6 +821,18 @@ class PdfWriter {
 		var sx = Std.int(Math.max(0, Math.floor(r[0]))), sy = Std.int(Math.max(0, Math.floor(r[1])));
 		var sw = Std.int(Math.min(img.width - sx, Math.ceil(r[0] + r[2]) - sx)), sh = Std.int(Math.min(img.height - sy, Math.ceil(r[1] + r[3]) - sy));
 		if (sw <= 0 || sh <= 0) return;
+		var gs = resources.state(o.paint.alpha, o.paint.alpha, o.paint.blend);
+		// (the whole of an image whose file says it: that file, its orientation placed by the matrix)
+		var whole = sx == 0 && sy == 0 && sw == img.width && sh == img.height;
+		var file = whole ? passthrough(img, o.smooth) : null;
+		if (file != null) {
+			var kx = r[6] / r[2], ky = r[7] / r[3];
+			var dx = r[4] - r[0] * kx, dy = r[5] - r[1] * ky, dw = img.width * kx, dh = img.height * ky;
+			var t = PdfImages.oriented(file.orientation);
+			var m = o.matrix.clone().multiply(new Matrix(dw * t[0], dh * t[3], dw * t[1], dh * t[4], dx + dw * t[2], dy + dh * t[5]));
+			out.add('q /$gs gs ${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.e)} ${num(m.f)} cm /Im${file.id} Do Q\n');
+			return;
+		}
 		var cut = img;
 		if (sx != 0 || sy != 0 || sw != img.width || sh != img.height) {
 			cut = new Bitmap(sw, sh);
@@ -775,7 +843,6 @@ class PdfWriter {
 		var kx = r[6] / r[2], ky = r[7] / r[3];
 		var dx = r[4] + (sx - r[0]) * kx, dy = r[5] + (sy - r[1]) * ky, dw = sw * kx, dh = sh * ky;
 		var m = o.matrix.clone().multiply(new Matrix(dw, 0, 0, -dh, dx, dy + dh));
-		var gs = resources.state(o.paint.alpha, o.paint.alpha, o.paint.blend);
 		out.add('q /$gs gs ${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.e)} ${num(m.f)} cm /Im$id Do Q\n');
 	}
 

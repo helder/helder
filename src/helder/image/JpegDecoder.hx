@@ -42,6 +42,7 @@ class JpegDecoder {
 	var cmyk = false; // (four components: C, M, Y, K out as they are, not RGB)
 	var jfif = false;
 	var orientation = 1;
+	var oriented = true;
 	var frameRead = false;
 	var scans = 0;
 	// the bit reader
@@ -85,7 +86,8 @@ class JpegDecoder {
 	// scale 1, 2, 4 or 8: the image at that fraction of its size, each
 	// block's IDCT reduced to 4x4, 2x2 or its DC, as libjpeg's scale_denom:
 	// a photo decoded at the size it is shown, a fraction of the work)
-	public static function decode(jpg:Bytes, ?mem:ImageMemory, scale = 1, cmyk = false):{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool} {
+	// (orient: EXIF's orientation applied; a PDF's image takes none, its matrix places it)
+	public static function decode(jpg:Bytes, ?mem:ImageMemory, scale = 1, cmyk = false, orient = true):{width:Int, height:Int, rgba:Bytes, ?cmyk:Bool} {
 		if (scale != 1 && scale != 2 && scale != 4 && scale != 8) throw ImageError.unsupported("JpegDecoder: a scale of 1/" + scale);
 		var r = new ByteReader(jpg);
 		if (r.length < 4 || r.u8(0) != 0xFF || r.u8(1) != 0xD8) throw ImageError.unsupported("JpegDecoder: not a JPEG file");
@@ -93,6 +95,7 @@ class JpegDecoder {
 			var d = new JpegDecoder(jpg, mem ?? ImageMemory.gc);
 			d.bs = 8 >> (scale == 1 ? 0 : scale == 2 ? 1 : scale == 4 ? 2 : 3);
 			d.cmyk = cmyk;
+			d.oriented = orient;
 			d.run();
 		});
 	}
@@ -770,6 +773,7 @@ class JpegDecoder {
 			rgba.set(4 * i + 3, 255);
 			}
 		});
+		if (!oriented) return {width: width, height: height, rgba: rgba, cmyk: cmyk && n == 4};
 		var o = orient(rgba);
 		return {width: o.width, height: o.height, rgba: o.rgba, cmyk: cmyk && n == 4};
 	}
