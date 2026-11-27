@@ -153,7 +153,7 @@ class BoxPainter {
 				case PaintOrder.REPLACED:
 					if (s.visible && (b.image != null || b.svg != null)) replaced(p, id, b, x, y);
 				case PaintOrder.OUTLINE:
-					if (s.visible) {
+					if (s.visible && !(b.kind == Container && (s.part == BoxStyle.COLUMN || s.part == BoxStyle.COLUMN_GROUP))) {
 						var w = f.width(id), h = f.height(id);
 						Borders.outline(p, s, x, y, w, h);
 					}
