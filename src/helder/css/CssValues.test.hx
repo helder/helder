@@ -42,6 +42,19 @@ function tests() {
 			equals(computed("font-width", "semi-condensed"), "87.5%");
 			equals(computed("border-top-width", "thick"), "5px");
 		});
+		test("relative colours: written as given, resolved when computed", () -> {
+			equals(text("color", "rgba(from hsl(120deg 20% 50% / .5) r g calc(b * 2) / alpha)"), "rgb(from rgba(102, 153, 102, 0.5) r g calc(2 * b) / alpha)");
+			equals(text("color", "rgb(from currentColor r g b)"), "rgb(from currentcolor r g b)");
+			equals(computed("color", "rgb(from rebeccapurple r g b)"), "color(srgb 0.4 0.2 0.6)");
+			equals(computed("color", "hsl(from rebeccapurple none s l / alpha)"), "hsl(none 50% 40%)");
+			equals(computed("color", "lab(from lab(none 10 10) l a b)"), "lab(none 10 10)");
+			equals(computed("color", "hsl(from lab(50 none none) h s l)"), "hsl(none none 46.6327%)");
+			equals(computed("color", "color(from color(srgb 0.25 0.5 0.75) rec2020 r g b)"), "color(rec2020 0.420493 0.518024 0.741381)");
+			equals(computed("color", "lch(from oklch(0.2 0.000004 180) l calc(c * 1000) h)"), "lch(7.22637 0 none)");
+			equals(computed("color", "color(from color(display-p3 0.7 0.5 0.3 / 40%) display-p3 r g 0 / alpha)"), "color(display-p3 0.7 0.5 0 / 0.4)");
+			for (c in ["rgb(from rebeccapurple r 10deg 10)", "rgb(from red, r, g, b)", "hsl(from red h s)", "rgb(from r g b)", "lab(from red l a x)"])
+				equals(CssValues.parse("color", c), null, c);
+		});
 		test("numbers", () -> {
 			equals(CssNumber.format(1 / 3), "0.333333");
 			equals(CssNumber.format(1e6), "1e+06");
@@ -182,7 +195,7 @@ private function primitive(c:Choices, name:String, range:Null<CssRange>):Null<St
 		case "custom-ident" | "ident": pick(["foo", "bar-1"]);
 		case "dashed-ident": "--x";
 		case "url": pick(["url(a.png)", "url(\"b c.png\")"]);
-		case "color": pick(["red", "#0f08", "rgb(1 2 3)", "hsl(120 50% 50%)", "transparent", "currentcolor", "lab(50 10 -20)", "color(display-p3 0.1 0.2 0.3)"]);
+		case "color": pick(["red", "#0f08", "rgb(1 2 3)", "hsl(120 50% 50%)", "transparent", "currentcolor", "lab(50 10 -20)", "color(display-p3 0.1 0.2 0.3)", "rgb(from red r g calc(b + 10) / alpha)", "oklch(from currentcolor l c h)"]);
 		case "declaration-value" | "any-value": "a b";
 		case "zero": "0";
 		case "dimension": "1px";

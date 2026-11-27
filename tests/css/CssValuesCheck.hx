@@ -14,7 +14,8 @@ using StringTools;
 // css-parsing-tests' colours (fixtures/colors), natively (bun run test css).
 // values-manifest.json sorts the cases that don't pass:
 //
-// - skip: not checkpoint 1's to pass (out of scope: Color 5, drafts; an
+// - skip: not checkpoint 1's to pass (out of scope: Color 5 but its
+//   relative colours, drafts; an
 //   outdated fixture: css-parsing-tests where it and WPT disagree), each
 //   group with why; run, not gated;
 // - pending: our gaps, each group tagged with the stage that clears it
@@ -139,7 +140,7 @@ class CssValuesCheck {
 		var style = CssCascade.styles(doc, {media: media}).computed(target);
 		var got = style.text(prop);
 		// (the same through #321's cascade, frozen: the row's property, and every longhand on a page's first row)
-		if (!LOGICAL.match(html + " " + prop + " " + value)) {
+		if (!LOGICAL.match(html + " " + prop + " " + value) && !RELATIVE.match(value)) {
 			var old = reference.RefCascade.styles(doc, {media: media}).computed(target);
 			var props = (parityPages.exists(file) ? [prop] : LONGHANDS.concat([prop])).filter(p -> !ZEROED.match(p));
 			parityPages.set(file, true);
@@ -152,6 +153,8 @@ class CssValuesCheck {
 		return got;
 	}
 
+	// (#321 had no relative colours: it kept those of currentcolor as written)
+	static final RELATIVE = ~/\(\s*from\b/i;
 	// (#321 had no logical properties: pages with them are left out)
 	static final LOGICAL = ~/(margin|padding|inset|border)-(block|inline)|(min-|max-|\b)(inline|block)-size|border-(start|end)-(start|end)-radius/;
 	static final LONGHANDS = [for (p in helder.css.CssData.properties) if (p.longhands.length == 0 && p.alias == null && !LOGICAL.match(p.name) && p.name != "all") p.name];
@@ -264,8 +267,8 @@ class CssValuesCheck {
 	// (a case out of checkpoint 1's scope, by its value, whether it passes or not)
 	static function scope(prop:String, value:String):Null<String> {
 		var v = value.toLowerCase();
-		if (~/color-mix\(|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(\s*from\b|light-dark\(|contrast-color\(|device-cmyk\(|\balpha\(|color-layers\(|color\(--/.match(v))
-			return "out of scope: Color 5 and 6 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4";
+		if (~/color-mix\(|light-dark\(|contrast-color\(|device-cmyk\(|\balpha\(|color-layers\(|color\(--/.match(v))
+			return "out of scope: Color 5 and 6 (color-mix(), light-dark(), contrast-color(), alpha()); checkpoint 1 is Color 4 and Color 5's relative colours";
 		if (~/\b(sibling-index|sibling-count|random|random-item|progress|if|calc-size|anchor|anchor-size|inherit|paint|ident)\(|--[a-z][\w-]*\(|-webkit-image-set\(/.match(v)
 			|| prop != "content" && ~/\battr\(/.match(v))
 			return "out of scope: drafts past checkpoint 1 (Values 5's functions, custom functions, -webkit-image-set())";
@@ -290,13 +293,12 @@ class CssValuesCheck {
 		"justify-items" => ~/(un)?safe normal/, "place-items" => ~/(un)?safe normal/
 	];
 
-	// (a case out of scope by its page: vertical writing modes, a custom property of a relative colour)
+	// (a case out of scope by its page: vertical writing modes)
 	static function page(file:Int, value:String):Null<String> {
 		var p:Dynamic = documents.get(Std.string(file));
 		if (p == null) return null;
 		var html:String = Std.isOfType(p, String) ? p : p.html;
 		if (~/writing-mode:\s*vertical|writing-mode:\s*sideways/.match(html)) return "out of scope: writing modes (deferred): the test's page is vertical";
-		if (value.indexOf("var(") >= 0 && ~/\b(rgb|hsl|hwb|lab|lch|oklab|oklch|color)\(\s*from\b/.match(html)) return "out of scope: Color 5 (color-mix(), relative colours, light-dark(), contrast-color()); checkpoint 1 is Color 4";
 		return null;
 	}
 
@@ -324,6 +326,7 @@ class CssValuesCheck {
 		else if (computed && ~/^(width|height|min-|max-|padding|margin|top|right|bottom|left|inset|text-indent|inline-size|block-size)/.match(prop) && v.indexOf("%") >= 0) "layout: percentages of the containing block"
 		else if (computed && v.indexOf("url(") >= 0) "cascade: url() made absolute against the document"
 		else if (computed && ~/var\(|env\(/.match(v)) "cascade: var() and env() substituted"
+		else if (computed && prop == "background-color" && ~/\(\s*from\s+.*currentcolor/.match(v)) "cascade: the test sets the element's color from a script (target.style.color), which a static read doesn't see"
 		else if (computed && ~/currentcolor/.match(v)) "cascade: currentcolor, the element's color"
 		else if (computed && ~/\d(em|ex|ch|ic|cap|lh|rlh|vw|vh|vmin|vmax|cq[a-z]*|%)(?![a-z])/.match(v)) "cascade: the test's own sizes (font size, container)"
 		else if (WRITTEN.exists(prop)) 'values: ${WRITTEN[prop]}'

@@ -13,10 +13,15 @@ using StringTools;
 // currentcolor as written (its components resolved for a named one).
 // parts: the three components and the alpha as written, when one is a
 // math function (kept as specified, resolved when computed).
-typedef CssColorValue = {space:String, c:Array<Float>, alpha:Float, ?keyword:String, ?parts:Array<CssColorPart>}
+// from: a relative colour's origin (Color 5 §4): its space the one
+// written, its parts the components as written (a channel keyword a Word
+// in its expression; three when the alpha is left out, the origin's), no
+// components of its own until resolved (CssColors.absolute).
+typedef CssColorValue = {space:String, c:Array<Float>, alpha:Float, ?keyword:String, ?parts:Array<CssColorPart>, ?from:CssColorValue}
 
-// kind: 0 a number, 1 a percentage, 2 an angle (in deg), 3 none; expr: the math function's tree
-typedef CssColorPart = {v:Float, kind:Int, ?expr:CssCalcNode}
+// kind: 0 a number, 1 a percentage, 2 an angle (in deg), 3 none; expr: the math function's tree;
+// word: a relative colour's channel keyword, as written
+typedef CssColorPart = {v:Float, kind:Int, ?expr:CssCalcNode, ?word:String}
 
 class CssColors {
 	public static final SPACES = ["srgb", "srgb-linear", "display-p3", "display-p3-linear", "a98-rgb", "prophoto-rgb", "rec2020", "xyz", "xyz-d50", "xyz-d65"];
@@ -53,29 +58,26 @@ class CssColors {
 	};
 
 	// Whether parse reads this value: a hash, a keyword, or one of Color 4's
-	// functions without `from` (color-mix(), relative colours and the rest
-	// are left to the grammar).
+	// functions, relative ones too (color-mix() and the rest are left to the
+	// grammar).
 	public static function handles(v:CssValue):Bool
 		return switch v {
 			case Token(t): switch t.kind {
 					case Hash(_, _) | Ident(_): true;
 					case _: false;
 				}
-			case Function(name, values, _, _): FUNCTIONS.contains(Css.lower(name)) && !relative(values);
+			case Function(name, _, _, _): FUNCTIONS.contains(Css.lower(name));
 			case _: false;
 		}
 
-	static function relative(values:Array<CssValue>):Bool {
-		for (v in values) switch v {
+	static function isFrom(v:CssValue):Bool
+		return switch v {
 			case Token(t): switch t.kind {
-					case Whitespace:
-					case Ident(w): return Css.lower(w) == "from";
-					case _: return false;
+					case Ident(w): Css.lower(w) == "from";
+					case _: false;
 				}
-			case _: return false;
+			case _: false;
 		}
-		return false;
-	}
 
 	public static function parse(v:CssValue):Null<CssColorValue> {
 		return switch v {
@@ -122,7 +124,13 @@ class CssColors {
 
 	static function function_(name:String, values:Array<CssValue>):CssColorValue {
 		var items = [for (v in values) if (!isSpace(v)) v];
-		if (Lambda.exists(items, isComma)) return legacy(name, items);
+		var from:Null<CssColorValue> = null;
+		if (items.length > 0 && isFrom(items[0])) {
+			if (items.length < 2 || Lambda.exists(items, isComma)) throw new Bad();
+			from = parse(items[1]);
+			if (from == null) throw new Bad();
+			items = items.slice(2);
+		} else if (Lambda.exists(items, isComma)) return legacy(name, items);
 		var space = switch name {
 			case "rgba": "rgb";
 			case "hsla": "hsl";
@@ -137,22 +145,36 @@ class CssColors {
 				}
 			case n: n;
 		}
+		// (a relative colour's channel keywords: numbers, its components' and its alpha)
+		var channels = from == null ? null : keys(space).concat(["alpha"]);
 		var alpha:Null<CssColorPart> = null;
 		var slash = -1;
 		for (k in 0...items.length) if (isDelim(items[k], "/")) slash = k;
 		if (slash >= 0) {
 			if (slash != items.length - 2) throw new Bad();
-			alpha = component(items[slash + 1]);
+			alpha = component(items[slash + 1], channels);
 			items = items.slice(0, slash);
 		}
 		if (items.length != 3) throw new Bad();
-		var parts = [for (v in items) component(v)];
+		var parts = [for (v in items) component(v, channels)];
 		// (an angle only as a hue, which is no percentage)
 		var hue = space == "hsl" || space == "hwb" ? 0 : space == "lch" || space == "oklch" ? 2 : -1;
 		for (k in 0...3) if (parts[k].kind == ANGLE && k != hue || k == hue && parts[k].kind == PERCENT) throw new Bad();
 		if (alpha != null && alpha.kind == ANGLE) throw new Bad();
+		if (from != null) return {space: space, c: [], alpha: Math.NaN, from: from, parts: alpha == null ? parts : parts.concat([alpha])};
 		return make(space, parts.concat([alpha ?? {v: 1, kind: NUMBER}]));
 	}
+
+	// (a space's channel keywords: rgb()'s r, g, b; hsl()'s h, s, l...; color()'s r, g, b or x, y, z)
+	static function keys(space:String):Array<String>
+		return switch space {
+			case "hsl": ["h", "s", "l"];
+			case "hwb": ["h", "w", "b"];
+			case "lab" | "oklab": ["l", "a", "b"];
+			case "lch" | "oklch": ["l", "c", "h"];
+			case "xyz-d50" | "xyz-d65": ["x", "y", "z"];
+			case _: ["r", "g", "b"];
+		}
 
 	// rgb(1, 2, 3), rgba(), hsl(), hsla() with commas: no none, rgb()'s all numbers or all percentages
 	static function legacy(name:String, items:Array<CssValue>):CssColorValue {
@@ -220,7 +242,7 @@ class CssColors {
 	static function unresolved(p:CssColorPart):Bool
 		return p.expr != null && !p.expr.match(Value(_, _));
 
-	static function component(v:CssValue):CssColorPart {
+	static function component(v:CssValue, ?channels:Array<String>):CssColorPart {
 		switch v {
 			case Token(t):
 				switch t.kind {
@@ -231,10 +253,11 @@ class CssColors {
 						if (c == null || c.unit != "deg") throw new Bad();
 						return {v: c.value, kind: ANGLE};
 					case Ident(w) if (Css.lower(w) == "none"): return {v: Math.NaN, kind: NONE};
+					case Ident(w) if (channels != null && channels.contains(Css.lower(w))): return {v: 0, kind: NUMBER, word: Css.lower(w)};
 					case _:
 				}
 			case Function(_, _, _, _):
-				var n = CssCalc.parse(v);
+				var n = CssCalc.parse(v, channels);
 				if (n == null) throw new Bad();
 				var s = CssCalc.simplify(n);
 				// (a percentage inside only where the component is one: not sign(50%) in a hue)
@@ -304,15 +327,20 @@ class CssColors {
 	// resolve later (in the modern syntax, it kept); the others in their
 	// function, a math function as calc() of its value.
 	public static function specified(c:CssColorValue):String {
+		if (c.from != null) return relative(c);
 		if (c.keyword != null) return c.keyword;
 		if (c.parts != null && Lambda.exists(c.parts, unresolved)) return modern(c);
 		return written(c, true);
 	}
 
 	// As a computed value: keywords resolved (currentcolor to `current`,
-	// when known), math functions too (in the default context; null when
-	// they can't be).
-	public static function computed(c:CssColorValue, ?current:String, ?ctx:CssCalcContext):Null<String> {
+	// when known; a relative colour's to `currentColor`), math functions too
+	// (in the default context; null when they can't be).
+	public static function computed(c:CssColorValue, ?current:String, ?ctx:CssCalcContext, ?currentColor:CssColorValue):Null<String> {
+		if (c.from != null) {
+			var r = absolute(c, currentColor, ctx);
+			return r == null ? relative(c) : resolvedText(r);
+		}
 		if (c.keyword == "currentcolor") return current ?? "currentcolor";
 		// (the light scheme's Canvas and CanvasText, as browsers have them; the other system colours as written)
 		if (c.keyword == "canvastext") return "rgb(0, 0, 0)";
@@ -327,6 +355,81 @@ class CssColors {
 			return written({space: c.space, c: r.c, alpha: r.alpha}, false);
 		}
 		return written({space: c.space, c: c.c, alpha: c.alpha}, false);
+	}
+
+	// A colour's components, resolved: a relative one's from its origin
+	// (Color 5 §4.1: the origin in the colour's space, each channel keyword
+	// its component there, none where it is missing, 0 in a math function),
+	// currentcolor as `current`, a system colour as a light page's, math
+	// functions in the context; null where it can't be (currentcolor not
+	// known, a math function of what isn't).
+	public static function absolute(c:CssColorValue, ?current:CssColorValue, ?ctx:CssCalcContext):Null<CssColorValue> {
+		if (c.from == null) {
+			if (c.keyword == "currentcolor") return current == null || current.keyword == "currentcolor" ? null : absolute(current, null, ctx);
+			if (c.keyword != null && c.c.length == 0) {
+				var s = system(c.keyword);
+				return s == null ? null : {space: "rgb", c: s.slice(0, 3), alpha: s[3]};
+			}
+			if (c.parts != null && Lambda.exists(c.parts, unresolved)) {
+				var parts = [for (p in c.parts) if (!unresolved(p)) p else switch CssCalc.simplify(p.expr, ctx) {
+					case Value(x, _): ({v: x, kind: p.kind} : CssColorPart);
+					case _: return null;
+				}];
+				var r = channels(c.space, parts);
+				return {space: c.space, c: r.c, alpha: r.alpha};
+			}
+			return {space: c.space, c: c.c.copy(), alpha: c.alpha};
+		}
+		var o = absolute(c.from, current, ctx);
+		if (o == null) return null;
+		var at = CssColorSpace.convert(o.space, o.c, c.space), names = keys(c.space);
+		var values = new Map<String, Float>(), zeros = new Map<String, Float>();
+		for (k in 0...3) values.set(names[k], at[k]);
+		values.set("alpha", o.alpha);
+		for (k => v in values) zeros.set(k, Math.isNaN(v) ? 0 : v);
+		var parts:Array<CssColorPart> = [];
+		for (p in c.parts) parts.push(if (p.word != null) Math.isNaN(values[p.word]) ? {v: Math.NaN, kind: NONE} : {v: values[p.word], kind: NUMBER} else switch p.expr {
+			case null: p;
+			case e: switch CssCalc.simplify(CssCalc.bind(e, zeros), ctx) {
+					case Value(x, u): {v: x, kind: u == "%" ? PERCENT : u == "deg" ? ANGLE : NUMBER};
+					case _: return null;
+				}
+		});
+		if (parts.length == 3) parts.push(Math.isNaN(o.alpha) ? {v: Math.NaN, kind: NONE} : {v: o.alpha, kind: NUMBER});
+		var r = channels(c.space, parts);
+		return {space: c.space, c: r.c, alpha: r.alpha};
+	}
+
+	// The colour with currentcolor in its origins as the given colour (a
+	// relative colour in color itself: currentcolor the inherited colour).
+	public static function current(c:CssColorValue, color:CssColorValue):CssColorValue {
+		if (c.keyword == "currentcolor") return color;
+		return c.from == null ? c : {space: c.space, c: c.c, alpha: c.alpha, parts: c.parts, from: current(c.from, color)};
+	}
+
+	// (a relative colour as written: its function, the origin as specified, the components as they were)
+	static function relative(c:CssColorValue):String {
+		var name = ["rgb", "hsl", "hwb", "lab", "lch", "oklab", "oklch"].contains(c.space) ? '${c.space}(from ${specified(c.from)}' : 'color(from ${specified(c.from)} ${c.space}';
+		var parts = [for (p in c.parts) partText(p)];
+		return '$name ${parts.slice(0, 3).join(" ")}${parts.length > 3 ? ' / ${parts[3]}' : ""})';
+	}
+
+	static function partText(p:CssColorPart):String
+		return if (p.word != null) p.word else switch p.expr {
+			case null: p.kind == NONE ? "none" : CssNumber.format(p.v) + (p.kind == PERCENT ? "%" : p.kind == ANGLE ? "deg" : "");
+			case e: CssCalc.serialize(e);
+		}
+
+	// (a relative colour resolved, as computed: rgb(), hsl() and hwb() as
+	// color(srgb), unclamped, but hsl() and hwb() with a component missing in
+	// their own; the others in theirs)
+	static function resolvedText(r:CssColorValue):String {
+		var none = Lambda.exists(r.c, Math.isNaN) || Math.isNaN(r.alpha);
+		return switch r.space {
+			case "rgb": 'color(srgb ${[for (x in r.c) num(x / 255)].join(" ")}${alphaText(r.alpha)})';
+			case "hsl" | "hwb" if (!none): 'color(srgb ${[for (x in srgb(r)) num(Math.abs(x) < 1e-8 ? 0 : x / 255)].join(" ")}${alphaText(r.alpha)})';
+			case _: written(r, false);
+		}
 	}
 
 	// (specified: math functions as calc() of their values in the modern spaces)

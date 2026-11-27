@@ -95,7 +95,7 @@ class CssValues {
 
 	static function text(t:CssTerm, ctx:CssComputeContext):String
 		return switch t {
-			case Color(c): CssColors.computed(c, ctx.color, {fontSize: ctx.fontSize, rootFontSize: ctx.rootFontSize, viewport: ctx.viewport}) ?? CssColors.specified(c);
+			case Color(c): CssColors.computed(c, ctx.color, {fontSize: ctx.fontSize, rootFontSize: ctx.rootFontSize, viewport: ctx.viewport}, ctx.currentColor) ?? CssColors.specified(c);
 			case Func(name, args): '$name(${CssText.join(args, a -> text(a, ctx))})';
 			case Brackets("[", args): '[${CssText.join(args, a -> text(a, ctx))}]';
 			case _: CssText.term(t);

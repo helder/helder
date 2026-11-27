@@ -19,6 +19,8 @@ typedef CssComputeContext = {
 	?rootLineHeight:Float,
 	?viewport:{width:Float, height:Float},
 	?color:String,
+	// (the same colour as a value: what a relative colour of currentcolor resolves against)
+	?currentColor:helder.css.CssColors.CssColorValue,
 	?metrics:CssFontMetrics,
 	?rootMetrics:CssFontMetrics
 }
