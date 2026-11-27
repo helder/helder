@@ -112,6 +112,8 @@ class Monkey {
 		}
 		@:privateAccess Runner.capture = outer;
 		@:privateAccess Runner.checks = checks;
+		// (none run: a replay whose steps no longer resolve says nothing, not that it holds)
+		if (r.failed == null && r.cases == 0 && r.rejected > 0) throw 'helder.scenario.Monkey: every case rejected (${r.rejected}): a scenario\'s step that no longer resolves, a replay too short';
 		if (r.failed == null) return null;
 		m.write();
 		return m.best;
