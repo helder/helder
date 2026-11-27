@@ -318,6 +318,11 @@ function tests() {
 			equals(text(s, "c", "text-overflow"), "ellipsis -helder-middle");
 			equals(text(s, "d", "-helder-scrollbar"), "system");
 		});
+		test("app.css: glass is of glass", () -> {
+			var s = styles('<glass id=a></glass><view id=b></view>', "", {userAgent: CssUserAgent.app()});
+			equals(text(s, "a", "-helder-material"), "glass");
+			equals(text(s, "b", "-helder-material"), "none");
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

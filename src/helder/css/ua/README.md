@@ -36,7 +36,7 @@
 | `<scroll>` | NodeRenderer.hx:117 | `scroll { overflow: scroll }` |
 | `<image>`, `<icon>`: fill, centred | ImageNode.hx:16-23 | `object-fit: fill; object-position: 50% 50%` |
 | `<field>`, `<textarea>`: clipped, a text cursor, fixed sizing | EditableText.hx:258-263 | `overflow: hidden; cursor: text; field-sizing: fixed` |
-| `<glass>`: a capsule | Glass.hx:20 | `glass { border-radius: 10000px }` |
+| `<glass>`: a capsule of glass | Glass.hx:20 | `glass { border-radius: 10000px; -helder-material: glass }` |
 | `hidden` | NodeRenderer.hx:491 | `[hidden] { display: none }` |
 | `outlineStyle` Auto: the window's focus ring, `#3B82F6`, 2 wide, offset 2 | Ui.hx:169-172 | `:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px }` |
 | selection `rgba(59,130,246,.3)`, placeholder `rgba(0,0,0,.4)` | Ui.hx:2046, EditableText.hx:57 | `::selection`, `::placeholder` |
@@ -138,3 +138,56 @@ chrome (`dragRegion`, `titleHit`, `<WindowControls>`), `host="native"`,
 titlebar area are CSS's (`env(safe-area-inset-*)`,
 `env(titlebar-area-*)`); `display: block` as a non-growing column
 becomes CSS's block in the codemod only where it lays out alike.
+
+## The codemod (a plan)
+
+The port rewrites each app once. A node's own style (its markup's style
+attributes, Style's fields set in code) becomes its `style` attribute in
+CSS's names and values: numbers as px, Dim's `Percent` as `%`, `Calc` as
+`calc()`. A theme's rules (a `Look`, Compile.hx) become a theme sheet:
+slot, variant and size as attribute selectors, states as Compile.hx maps
+them, tokens as custom properties. The elements' defaults are app.css.
+
+Where the name or the value changes:
+
+| helder.ui | CSS |
+| --- | --- |
+| `background`, `backgroundImage` (a Gradient) | `background-color`, `background-image: linear-gradient(...)` |
+| `borderWidth`, `borders`, `borderColor`, `borderStyle` (null: solid) | `border-width` per side, `border-color`; `border-style: solid` where a width is set and no style |
+| `corners` | the four `border-*-radius` |
+| `ring*` | `box-shadow` layers ahead of the shadow's, per state: `0 0 0 offset offsetColor` (white unless set), then `0 0 0 calc(offset + width) color` (currentcolor when null), both `inset` for `ringInset` |
+| `boxShadow`, `textShadow` without a colour | the colour written: `#00000040` |
+| `lineHeight` (a multiple), `lineHeightPx` | one `line-height`: the px where the node sets `lineHeightPx`, else the number; markup's `"normal"` written as nothing (inherited, 1.25 from app.css's `:root`) |
+| `letterSpacing` (px), `letterSpacingEm` | `letter-spacing` in px or em |
+| `scrollbarColor`, `scrollbarTrackColor` | `scrollbar-color: thumb track` |
+| `textOverflow` Middle, `lineClamp` | `text-overflow: -helder-middle`, `line-clamp` |
+| `textDecoration` (flags), `textWrap` | `text-decoration-line`, `text-wrap-mode` and `text-wrap-style` |
+| `outlineStyle` null (Auto) | `outline-style: auto`; the ring is app.css's `:focus-visible` |
+| `display` Block | `display: block` where its children lay out alike (no grow, shrink or row direction on them); else `display: flex; flex-direction: column`, its children `flex: none` |
+| `zIndex` | `z-index`; and `isolation: isolate` on the parent of each node with a z-index, unless the parent already makes a stacking context (opacity, a transform, its own z-index), so siblings stay ordered among themselves as today |
+| `<glass tint>`, `variant="clear"`, a view's `glassSpacing` | `-helder-material-tint`, `-helder-material: glass clear`, `-helder-material-spacing` |
+| `<Surface backdrop>` | `-helder-backdrop` on the root: blur to popover, mica and glass to auto, sidebar to sidebar |
+| `<Surface scrollbars>` | `-helder-scrollbar` on the root |
+| `objectFit`, `objectPosition` (`<image>`, `<video>`) | `object-fit`, `object-position` |
+
+The rest of Style's fields keep their name in kebab case (`flexGrow` to
+`flex-grow`, `gridTemplateColumns` to `grid-template-columns`).
+
+**Rules.keep.** Today an own value equal to Style's default counts as
+unset, so a theme rule for the node's slot wins over it. The codemod
+drops such an attribute where a rule sets the property for the node's
+slot and the node doesn't keep it (`Rules.keep`): the rule still wins,
+now by the cascade. Where the node keeps it, or no rule sets it, the
+attribute stays as written, and the style attribute wins as CSS's does.
+
+**What stays an attribute.** Behaviour, state and content, not style:
+`id`, `class`, `role`, `hidden` (app.css's `[hidden]`), `disabled`,
+`required`, `tabIndex`, `autoFocus`, `focusable`, `selectable`, `slot`,
+`variant`, `size`, `host`, `group`, `peer`, `tag`, `states`,
+`keyContext`, `actions`, `trackFocus`, `dragRegion`, `dragData`,
+`panAxis`, `panMinPointers`, the `motion*` attributes, `lead`, `trail`,
+`instant`, `matched`, `ride`, `lang`, `aria-*`, `data-*`, `key`, `ref`,
+the events; and each element's own: `<text text>`, `<image src
+mirrored>`, `<icon name mirrored>`, a field's and a textarea's inputs
+(`value`, `placeholder`, `type`, `rows`...), `<webview>`'s, `<glass
+interactive>`, `<video>`'s but `objectFit`, `<a href>`, `<label for>`.
