@@ -234,7 +234,7 @@ class SharedFrames implements HostRuntime {
 		if (f == null) return;
 		// (the same still as the last written: nothing new, its loop the same;
 		// a loop's recording builds the screen again, and it draws its still again)
-		var sum = haxe.crypto.Md5.make(f.bytes).toHex();
+		var sum = Host.stillSum(f);
 		if (stills.get(s.name) == sum) return;
 		stills.set(s.name, sum);
 		var t = haxe.Timer.stamp();
