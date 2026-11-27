@@ -77,9 +77,11 @@ field, textarea {
   field-sizing: fixed;
 }
 
-/* <glass>: a capsule (Glass.hx:20, 32-35); the material is ours (README.md) */
+/* <glass>: a capsule (Glass.hx:20, 32-35) of glass, the material ours
+   (-helder-material, README.md) */
 glass {
   border-radius: 10000px;
+  -helder-material: glass;
 }
 
 /* hidden: none (NodeRenderer.hx:491-494) */
