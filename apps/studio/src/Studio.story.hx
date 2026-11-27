@@ -2,7 +2,10 @@ import helder.story.Story;
 
 // The studio's own screens (`helder studio apps/studio`: the studio in the
 // studio), at its window's size: no project open, and examples/todo opened
-// but not started (its screens waiting for their build).
+// but not started (its screens waiting for their build). Not on wasm: the
+// browser's studio opens its projects through studio.mjs, the page's, so
+// without it both are its Welcome.
+#if (hxmc.target != "wasm32-wasi")
 final none = story({
 	name: "Studio/No project",
 	width: 1180,
@@ -23,3 +26,4 @@ final todo = story({
 		studio.Shell.view(s);
 	}
 });
+#end
