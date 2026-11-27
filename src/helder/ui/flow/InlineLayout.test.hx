@@ -470,6 +470,21 @@ function tests() {
 				equals([Math.max(0, InlineLayout.minContent(c)), Math.max(0, InlineLayout.maxContent(c))], [em(k.min), em(k.max)]);
 			}
 		});
+		test("fallback faces keep the weight and style asked for (bold Arabic in DejaVu Sans Bold)", () -> {
+			var system = new helder.text.SystemFonts();
+			system.add(sys.io.File.getBytes("tests/flow/fixtures/Ahem.ttf"));
+			system.add(sys.io.File.getBytes("tests/canvas/fonts/DejaVuSans-canvas.ttf"));
+			system.add(sys.io.File.getBytes("tests/canvas/fonts/DejaVuSans-Bold-canvas.ttf"));
+			var fonts = new InlineFonts(system);
+			function dejaVu(style:InlineBasicStyle):helder.text.FontFile {
+				var set = fonts.set(fonts.idOf(style));
+				for (f in set.fallbacks)
+					if (f.family == "DejaVu Sans") return f;
+				return null;
+			}
+			equals(require(dejaVu(ahem(s -> s.weight = 700))).weight >= 700, true);
+			equals(require(dejaVu(ahem())).weight, 400);
+		});
 		test("min-content and max-content", () -> {
 			var c = content(c -> c.addText("aa bbb c", ahem()));
 			equals(InlineLayout.minContent(c), 48.0);
