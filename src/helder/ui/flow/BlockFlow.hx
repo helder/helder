@@ -204,7 +204,8 @@ class BlockFlow implements FormattingContext {
 		var cbox = box.style.containment.containingBlock;
 		var owner = box.parent == null || s.positioned || cbox;
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
-		var fixed = box.parent == null ? new Positioned() : cbox ? positioned : space.fixed ?? positioned;
+		var rootFixed = box.parent == null && box.absolute ? space.fixed : null;
+		var fixed = cbox ? positioned : box.parent == null ? rootFixed ?? new Positioned() : space.fixed ?? positioned;
 		var escaped = space.positioned != null ? space.positioned.boxes.length : 0;
 		var escapedFixed = space.fixed != null ? space.fixed.boxes.length : 0;
 		inline function childSpace(width:Float):Space {
@@ -627,11 +628,17 @@ class BlockFlow implements FormattingContext {
 		// (the absolutely positioned boxes this is the containing block of: its padding box, the root's
 		// the initial containing block, §10.1)
 		if (box.parent == null) {
-			var ix = -box.marginLeft, iy = -(topPos + topNeg);
-			repeat(fixed, frag, space, bl + pl, bt + pt, ix, iy);
-			var r = space.repeated;
-			place(fixed, frag, space, ix, iy, r != null ? r.width : space.width, r != null ? r.height : space.height);
-			place(positioned, frag, space, ix, iy, space.width, space.height, resume != null);
+			var off = fr == null ? offset(box, space.width, space.height) : {x: 0.0, y: 0.0};
+			var ix = -box.marginLeft - off.x, iy = -(topPos + topNeg) - off.y;
+			if (fixed != positioned && rootFixed == null) {
+				repeat(fixed, frag, space, bl + pl, bt + pt, ix, iy);
+				var r = space.repeated;
+				place(fixed, frag, space, ix, iy, r != null ? r.width : space.width, r != null ? r.height : space.height);
+			}
+			if (s.positioned || cbox)
+				place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb, resume != null || broken);
+			else
+				place(positioned, frag, space, ix, iy, space.width, space.height, resume != null);
 		} else if (owner)
 			place(positioned, frag, space, bl, bt, w + pl + pr, h + pt + pb, resume != null || broken);
 		// (a box whose layout left absolutely positioned boxes outside it is not reused from the cache)
@@ -689,6 +696,17 @@ class BlockFlow implements FormattingContext {
 
 	// ---- absolutely positioned boxes (§10.3.7, §10.6.4)
 
+	// The positioned document root itself uses the viewport. Its fixed descendants may use it too.
+	@:allow(helder.ui.box.DocumentView)
+	function positionedDocument(box:Box, space:Space):Int {
+		var fixed = new Positioned();
+		space.fixed = fixed;
+		var at = positionedBox(box, space, box.style.rtl ? space.width : 0, 0, space.width, space.height);
+		space.fragments.moveTo(at.fragment, at.x, at.y);
+		place(fixed, at.fragment, space, -at.x, -at.y, space.width, space.height);
+		return at.fragment;
+	}
+
 	// (each laid out in a containing block at cbx, cby of cbw by cbh in owner's border box; in a fragmentainer,
 	// deferred to its host when split, owner broken across fragmentainers, or when it doesn't fit)
 	public function place(list:Positioned, owner:Int, space:Space, cbx:Float, cby:Float, cbw:Float, cbh:Float, split = false) {
@@ -735,7 +753,7 @@ class BlockFlow implements FormattingContext {
 		var replaced = b.kind == BlockReplaced || b.kind == InlineReplaced;
 		var w = replaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
 		var minW = size(s.minWidth, cbw, s.borderBox, bpx), maxW = size(s.maxWidth, cbw, s.borderBox, bpx);
-		var rtl = b.parent != null && b.parent.style.rtl;
+		var rtl = b.parent?.style.rtl ?? b.style.rtl;
 		var ratio = !replaced && !Math.isNaN(Ratio.of(b));
 		// (an aspect-ratio's auto width: its height's through it, the height set or what top and bottom leave,
 		// unless left and right give the width)
