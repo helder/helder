@@ -617,7 +617,13 @@ class DocumentBench {
 			height: Math.round(doc.height)
 		}));
 		// (down 100 px a frame for 300 frames, then back and forth over what was recorded)
-		run("scroll, 100 px a frame", ui, doc, 300, i -> ui.wheel(500, 400, 0, 100));
+		// (the pointer over the page as it scrolls, as a person's is: what is under it changes)
+		ui.pointerMove(500, 400);
+		step(ui, doc);
+		var p0 = doc.stats.paints, pm0 = doc.stats.paintMs;
+		run("scroll, 100 px a frame", ui, doc, Std.parseInt(Sys.getEnv("SCROLLS") ?? "300"), i -> ui.wheel(500, 400, 0, 100));
+		Sys.println(haxe.Json.stringify({screen: screen, scrollPaints: doc.stats.paints - p0, scrollPaintMs: round(doc.stats.paintMs - pm0), restyles: doc.stats.restyles}));
+		if (Sys.getEnv("ONLY_SCROLL") != null) return;
 		run("scroll back and forth 40 px", ui, doc, 120, i -> ui.wheel(500, 400, 0, i % 20 < 10 ? 40 : -40));
 		run("jump 20,000 px", ui, doc, 30, i -> ui.scrollTo(sc, 0, (sc.scrollY + 20000) % Math.max(1, doc.height - h)));
 		ui.scrollTo(sc, 0, 0);
