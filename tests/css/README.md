@@ -398,14 +398,15 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
-on every machine: 7,940 drawn, 6,235 pass, 473 skipped.
+on every machine: 7,960 drawn, 6,341 pass, 453 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 5,050 | 702 | 311 |
-| noref against goldens | 1,185 | 1,003 | 162 |
+| reftests and crash tests | 5,055 | 697 | 311 |
+| noref against goldens | 1,286 | 922 | 142 |
 
-The noref tests pending by stage: tables 499, generated 309, inline 65, fonts 44, ui 43, positioning 27, floats 16.
+The noref tests pending by stage: tables 497, generated 256, inline 39,
+ui 39, fonts 37, positioning 21, paged 20, floats 13.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane
@@ -415,47 +416,47 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 | --- | --- | --- |
 | CSS2 | 0 | 5 |
 | CSS2/abspos | 14 | 25 |
-| CSS2/backgrounds | 303 | 333 |
+| CSS2/backgrounds | 312 | 333 |
 | CSS2/bidi-text | 30 | 34 |
-| CSS2/borders | 483 | 504 |
+| CSS2/borders | 488 | 504 |
 | CSS2/box | 4 | 9 |
-| CSS2/box-display | 73 | 86 |
+| CSS2/box-display | 81 | 86 |
 | CSS2/cascade | 24 | 31 |
 | CSS2/cascade-import | 0 | 1 |
-| CSS2/colors | 10 | 19 |
-| CSS2/css1 | 131 | 164 |
+| CSS2/colors | 19 | 19 |
+| CSS2/css1 | 141 | 164 |
 | CSS2/css21-errata | 4 | 9 |
 | CSS2/csswg-issues/submitted/css2.1 | 0 | 3 |
 | CSS2/floats | 81 | 112 |
 | CSS2/floats-clear | 178 | 203 |
 | CSS2/floats/crashtests | 1 | 1 |
-| CSS2/fonts | 118 | 159 |
-| CSS2/generated-content | 189 | 205 |
-| CSS2/linebox | 166 | 192 |
+| CSS2/fonts | 137 | 159 |
+| CSS2/generated-content | 185 | 205 |
+| CSS2/linebox | 172 | 192 |
 | CSS2/lists | 155 | 155 |
-| CSS2/margin-padding-clear | 649 | 683 |
+| CSS2/margin-padding-clear | 646 | 683 |
 | CSS2/media | 17 | 17 |
-| CSS2/normal-flow | 621 | 696 |
-| CSS2/positioning | 430 | 513 |
+| CSS2/normal-flow | 622 | 696 |
+| CSS2/positioning | 431 | 513 |
 | CSS2/sec5 | 22 | 23 |
-| CSS2/selectors | 448 | 467 |
+| CSS2/selectors | 447 | 467 |
 | CSS2/stacking-context | 1 | 3 |
 | CSS2/syntax | 213 | 252 |
-| CSS2/tables | 203 | 250 |
-| CSS2/text | 293 | 376 |
+| CSS2/tables | 204 | 250 |
+| CSS2/text | 301 | 376 |
 | CSS2/text/crashtests | 1 | 1 |
 | CSS2/ui | 40 | 52 |
 | CSS2/values | 11 | 25 |
-| CSS2/visudet | 23 | 37 |
+| CSS2/visudet | 19 | 37 |
 | CSS2/visudet/crashtests | 1 | 1 |
 | CSS2/visufx | 4 | 49 |
 | CSS2/visufx/crashtests | 1 | 1 |
 | CSS2/visuren | 23 | 26 |
 | CSS2/zindex | 25 | 29 |
 | CSS2/zorder | 0 | 1 |
-| all | 4990 | 5752 |
+| all | 5055 | 5752 |
 
-Pending by stage: positioning 202, generated content 199, inline 135, tables 98, floats 75, fonts 41, ui 12.
+Pending by stage: positioning 202, generated content 186, inline 122, tables 78, floats 75, fonts 22, ui 12.
 
 ## GCPM
 
