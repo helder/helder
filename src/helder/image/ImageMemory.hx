@@ -8,7 +8,9 @@ import haxe.io.Bytes;
 // leaves the heap small and its collections short, and its pixels move to
 // the caller instead of being copied. A decoder given one allocates its
 // planes, coefficients and pixels through bytes(); the caller keeps the
-// result's buffer (take) and frees the rest (dispose). Elsewhere (Eval, the
+// result's buffer (take) and frees the rest (dispose). An off-heap one is its
+// thread's: its arrays take no lock, so bytes() from another thread throws
+// (a decode allocates before it splits work over threads). Elsewhere (Eval, the
 // web) offHeap is gc's.
 class ImageMemory {
 	public static final gc = new ImageMemory(false);
@@ -18,6 +20,7 @@ class ImageMemory {
 	#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 	final buffers:Array<hxmc.unsafe.IoBuffer> = [];
 	final views:Array<Bytes> = [];
+	final thread = hxmc.NativeThread.current();
 	#end
 
 	function new(offHeap:Bool)
@@ -31,6 +34,7 @@ class ImageMemory {
 	@:hxmc.unsafe(gc) public function bytes(n:Int):Bytes {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		if (offHeap) {
+			if (hxmc.NativeThread.current() != thread) throw "ImageMemory.bytes: another thread's memory";
 			var b = hxmc.unsafe.IoBuffer.alloc(n), v = b.view();
 			buffers.push(b);
 			views.push(v);
