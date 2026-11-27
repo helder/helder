@@ -115,8 +115,11 @@ class PaintOrder {
 			if (b.kind == BlockReplaced || b.kind == InlineReplaced) step(REPLACED, id, x, y);
 			walk(id, x, y, c, inner);
 		}
+		// (by z-index, then in tree order: an absolutely positioned box's fragment comes after its containing
+		// block's in-flow children, a box before it in the tree painted under it otherwise)
 		var order = [for (k in 0...c.deferred.length) k];
-		order.sort((a, b) -> c.z[a] != c.z[b] ? c.z[a] - c.z[b] : a - b);
+		var at = [for (k in 0...c.deferred.length) rank(f.box(c.deferred[k]))];
+		order.sort((a, b) -> c.z[a] != c.z[b] ? c.z[a] - c.z[b] : at[a] != at[b] ? at[a] - at[b] : a - b);
 		for (k in order) if (c.z[k] < 0) deferred(c, k);
 		for (k in 0...c.blocks.length) {
 			state = c.blockState[k];
@@ -141,6 +144,28 @@ class PaintOrder {
 		}
 		state = saved;
 	}
+
+	// (a box's place in its tree, depth first: every box numbered once, on first ask)
+	function rank(b:Box):Int {
+		if (ranks == null) {
+			ranks = new haxe.ds.ObjectMap();
+			var top = b;
+			while (top.parent != null) top = top.parent;
+			var n = 0;
+			function walk(x:Box) {
+				ranks.set(x, n++);
+				var c = x.first;
+				while (c != null) {
+					walk(c);
+					c = c.next;
+				}
+			}
+			walk(top);
+		}
+		return ranks.get(b) ?? 0;
+	}
+
+	var ranks:Null<haxe.ds.ObjectMap<Box, Int>> = null;
 
 	function deferred(c:Collected, k:Int) {
 		state = c.deferredState[k];
