@@ -82,6 +82,13 @@ function tests() {
 			equals(g.layout(), 2);
 			equals([on(g, 0, "g2"), on(g, 1, "g4")], [30.0, 0]);
 		});
+		test("a margin collapsing through two parents, an absolutely positioned first child before: the lines' page offset", () -> {
+			var lines = [for (k in 0...10) "x"].join("<br>");
+			var v = paged('<div style="position:relative"><div style="position:absolute"></div><div><p id=p style="margin:20px 0 0;widows:1;orphans:1">$lines</p></div></div>');
+			equals(v.layout(), 2);
+			// (20px down the page: 6 lines of 10px before its end)
+			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [6, 4]);
+		});
 		test("content starting past the page's end, its margin: on the next page", () -> {
 			var v = paged('<div id=a style="margin-top:120px">a</div>');
 			equals(v.layout(), 2);

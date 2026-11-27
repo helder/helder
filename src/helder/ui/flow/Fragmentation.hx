@@ -24,9 +24,9 @@ interface Fragmentation {
 	// the line's break (where its lines resume); true: break here. Line
 	// first: the first here, at bottom (as before null)
 	function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool;
-	// past box's content, its height going on, the fragmentainer's end at
-	// bottom; true: break here, the rest of its height in the next (resumed
-	// at line BreakToken.PAST)
+	// past box's content, its height going on, the content ending at
+	// bottom; true: break here, the box to the fragmentainer's end, the rest
+	// of its height in the next (resumed at line BreakToken.PAST)
 	function after(box:Box, bottom:Float):Bool;
 	// a float placed, its margin box ending at bottom: content before the
 	// break opportunities after it (a float is whole: one that doesn't fit
