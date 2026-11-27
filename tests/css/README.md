@@ -599,7 +599,7 @@ selectors.json: 34 invalid, 207 valid, 198 scoped selectors.
 
 ### Reftests
 
-12021 tests (references and support files left out), 8926 in scope: 6539 reftests, 33 crash tests and 2354 noref (no reference yet: checked later against goldens Chromium draws, a tier the reftest runner adds):
+12627 tests (references and support files left out), 9196 in scope: 6799 reftests, 43 crash tests and 2354 noref (no reference yet: checked later against goldens Chromium draws, a tier the reftest runner adds):
 
 | Suite | Tests | In scope | Reftests | Noref | Crash | Of them Ahem | Of them print |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -609,27 +609,29 @@ selectors.json: 34 invalid, 207 valid, 198 scoped selectors.
 | css/css-gcpm | 20 | 20 | 0 | 20 | 0 | 0 | 0 |
 | css/css-fonts | 583 | 347 | 336 | 3 | 8 | 46 | 2 |
 | css/css-values | 541 | 166 | 150 | 1 | 15 | 7 | 2 |
+| css/css-contain | 606 | 270 | 260 | 0 | 10 | 14 | 1 |
 
 | Out of scope because | Tests |
 | --- | --- |
-| deferred: multicol | 1178 |
-| testharness.js: needs JavaScript | 627 |
-| script: needs JavaScript | 574 |
+| deferred: multicol | 1197 |
+| script: needs JavaScript | 754 |
+| testharness.js: needs JavaScript | 728 |
 | interact: needs a person | 363 |
-| deferred: writing-mode | 91 |
+| deferred: writing-mode | 109 |
 | deferred: writing-mode (its help) | 90 |
 | http: needs an HTTP server's headers | 57 |
 | animated: a page is still | 53 |
+| deferred: forms | 24 |
 | userstyle: needs a user style sheet set by hand | 23 |
-| deferred: forms | 11 |
 | scroll: a page doesn't scroll | 6 |
+| deferred: Sizing 4 (its help) | 6 |
 | deferred: @layer | 5 |
-| deferred: Sizing 4 (its help) | 5 |
+| deferred: 3D transforms | 4 |
 | history: :visited | 3 |
-| deferred: 3D transforms | 3 |
 | deferred: ruby (its help) | 3 |
+| deferred: multicol (its help) | 2 |
 | deferred: past checkpoint 1's modules (its help) | 2 |
-| deferred: multicol (its help) | 1 |
+| deferred: @container | 2 |
 
 By directory (CSS2: its chapters; the others: their sections, from the first `<link rel=help>`):
 
@@ -713,6 +715,24 @@ By directory (CSS2: its chapters; the others: their sections, from the first `<l
 | css-break #varying-size-boxes | 5 | 0 | 0 |
 | css-break #widows-orphans | 28 | 0 | 0 |
 | css-break (no section) | 370 | 24 | 0 |
+| css-contain #algo-stretch | 1 | 1 | 0 |
+| css-contain #anchor-relevance | 7 | 0 | 0 |
+| css-contain #column-gaps-and-rules | 1 | 0 | 0 |
+| css-contain #contain-property | 87 | 44 | 0 |
+| css-contain #containment-inline-size | 2 | 2 | 0 |
+| css-contain #containment-layout | 53 | 41 | 0 |
+| css-contain #containment-paint | 62 | 59 | 0 |
+| css-contain #containment-size | 86 | 65 | 0 |
+| css-contain #containment-style | 33 | 23 | 0 |
+| css-contain #content-visibility | 185 | 16 | 0 |
+| css-contain #cv-notes | 3 | 0 | 0 |
+| css-contain #ink-overflow | 8 | 8 | 0 |
+| css-contain #propdef-container-type | 1 | 0 | 0 |
+| css-contain #property-scoped-to-a-sub-tree | 1 | 1 | 0 |
+| css-contain #size-containment | 1 | 1 | 0 |
+| css-contain #skips-its-contents | 1 | 0 | 0 |
+| css-contain #x43 | 3 | 3 | 0 |
+| css-contain (no section) | 71 | 6 | 0 |
 | css-fonts #char-handling-issues | 3 | 2 | 0 |
 | css-fonts #cluster-matching | 4 | 3 | 0 |
 | css-fonts #cssfontfeaturevaluesmap | 1 | 0 | 0 |

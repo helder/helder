@@ -88,6 +88,9 @@ class GridFlow implements FormattingContext {
 		shims(items, st, space);
 		var rows = tracks(g.rows, items, false, heightSpec, heightSpec, rowGap, stretchRows, space, cols, false, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
 		var gridH = sum(rows, rowGap);
+		// (size containment: an auto height as if it had no items, its explicit rows and contain-intrinsic-height's)
+		if (Math.isNaN(heightSpec) && box.style.containment.has(Size))
+			gridH = Math.max(sum(tracks(g.rows, [], false, Math.NaN, Math.NaN, rowGap, false, space, cols), rowGap), box.style.intrinsicSize(false));
 		var h = !Math.isNaN(heightSpec) ? heightSpec : clamp(gridH, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
 		// (an auto height its min-height made more: the rows stretched to it; fr rows sized again at it)
 		if (Math.isNaN(heightSpec) && (stretchRows && h > gridH + 1e-6 || Lambda.exists(g.rows, t -> t.max.match(Fr(_)))))
@@ -208,9 +211,9 @@ class GridFlow implements FormattingContext {
 		box.through = false;
 		// (absolutely positioned children: at the content box's start, for their containing block; when it is
 		// this grid, the area their lines give (an auto one, or one the grid hasn't, its padding edge), §9.1)
-		var owner = box.parent == null || st.positioned;
+		var owner = box.parent == null || st.positioned || box.style.containment.containingBlock;
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
-		var fixed = box.parent == null ? new Positioned() : space.fixed ?? positioned;
+		var fixed = box.parent == null ? new Positioned() : box.style.containment.containingBlock ? positioned : space.fixed ?? positioned;
 		var fullW = w + pl + pr, fullH = h + pt + pb;
 		// (each line where an area starts at it, its next track's start, and where one ends at it, its track's end: gaps between)
 		var colLines = lines(colPos, cols, rtl ? pr : pl, true), rowLines = lines(rowPos, rows, pt, true);
@@ -249,6 +252,7 @@ class GridFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = BlockFlow.size(s.width, cb, s.borderBox, bpx);
+		if (Math.isNaN(spec)) spec = BlockFlow.sizing(box, space, cb, ml, mr, bpx, () -> intrinsic(box, space));
 		if (Math.isNaN(spec)) spec = Ratio.width(box, height, bpx, s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], cb) + BlockFlow.res(s.padding[2], cb));
 		if (box.blockLevel && box.kind != InlineBlock && !box.floating && !box.absolute) {
 			var rtl = box.parent != null && box.parent.style.rtl;
@@ -1017,8 +1021,12 @@ class GridFlow implements FormattingContext {
 		if (!Math.isNaN(w)) min = max = w else {
 			var g = grid(box, space, Math.NaN, Math.NaN);
 			var colGap = gap(box.style, "column-gap", Math.NaN);
-			min = sum(tracks(g.cols, g.items, true, Math.NaN, Math.NaN, colGap, false, space, null, true), colGap);
-			max = sum(tracks(g.cols, g.items, true, Math.NaN, Math.NaN, colGap, false, space, null), colGap);
+			// (size or inline-size containment: as if it had no items, its explicit tracks and contain-intrinsic-width's,
+			// Contain 2 §3.1)
+			var c = box.style.containment, items = c.has(Size) || c.has(InlineSize) ? [] : g.items;
+			min = sum(tracks(g.cols, items, true, Math.NaN, Math.NaN, colGap, false, space, null, true), colGap);
+			max = sum(tracks(g.cols, items, true, Math.NaN, Math.NaN, colGap, false, space, null), colGap);
+			if (items.length == 0 && g.items.length > 0) min = max = Math.max(max, box.style.intrinsicSize(true));
 		}
 		var maxW = BlockFlow.size(s.maxWidth, Math.NaN, s.borderBox, bpx), minW = BlockFlow.size(s.minWidth, Math.NaN, s.borderBox, bpx);
 		if (!Math.isNaN(maxW)) {

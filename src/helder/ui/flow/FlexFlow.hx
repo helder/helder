@@ -84,9 +84,9 @@ class FlexFlow implements FormattingContext {
 		var mainLimit = row ? w : !Math.isNaN(heightSpec) ? heightSpec : !Math.isNaN(maxH) ? maxH : Math.POSITIVE_INFINITY;
 		var crossSize = row ? heightSpec : w;
 		// (absolutely positioned children: for the nearest positioned box; the others are items, in order)
-		var owner = box.parent == null || box.style.positioned;
+		var owner = box.parent == null || box.style.positioned || box.style.containment.containingBlock;
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
-		var fixed = box.parent == null ? new Positioned() : space.fixed ?? positioned;
+		var fixed = box.parent == null ? new Positioned() : box.style.containment.containingBlock ? positioned : space.fixed ?? positioned;
 		var items:Array<Item> = [];
 		var c = box.first, index = 0;
 		var abs:Array<Box> = [];
@@ -240,6 +240,8 @@ class FlexFlow implements FormattingContext {
 			}
 		}
 		var h = row ? crossSize : mainSize;
+		// (size containment: an auto height as if empty, contain-intrinsic-height's)
+		if (Math.isNaN(heightSpec) && box.style.containment.has(Size)) h = box.style.intrinsicSize(false);
 		if (Math.isNaN(heightSpec)) h = clamp(h, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
 		// (in a fragmentainer: its rows here, from where it resumes to a break; broken, its end's border and padding
 		// in a later one, its height to the fragmentainer's end)
@@ -303,6 +305,7 @@ class FlexFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = BlockFlow.size(s.width, cb, s.borderBox, bpx);
+		if (Math.isNaN(spec)) spec = BlockFlow.sizing(box, space, cb, ml, mr, bpx, () -> intrinsic(box, space));
 		if (Math.isNaN(spec)) spec = Ratio.width(box, height, bpx, s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], cb) + BlockFlow.res(s.padding[2], cb));
 		if (box.blockLevel && box.kind != InlineBlock && !box.floating && !box.absolute) {
 			var rtl = box.parent != null && box.parent.style.rtl;
@@ -608,6 +611,12 @@ class FlexFlow implements FormattingContext {
 	public function contentSizes(box:Box, space:Space):{min:Float, max:Float} {
 		var s = box.style.model();
 		var bpx = BlockFlow.fixed(s.padding[1]) + BlockFlow.fixed(s.padding[3]) + s.border[1] + s.border[3];
+		// (size or inline-size containment: as if empty, contain-intrinsic-width's, Contain 2 §3.1)
+		var c = box.style.containment;
+		if (c.has(Size) || c.has(InlineSize)) {
+			var w = box.style.intrinsicSize(true) + bpx;
+			return {min: w, max: w};
+		}
 		var dir = box.style.keyword("flex-direction");
 		var row = dir != "column" && dir != "column-reverse";
 		var wraps = box.style.keyword("flex-wrap") != "nowrap" && box.style.keyword("flex-wrap") != "";

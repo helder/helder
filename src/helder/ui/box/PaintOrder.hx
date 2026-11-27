@@ -54,10 +54,11 @@ class PaintOrder {
 	}
 
 	static function canvasBox(root:Box):Null<Box> {
-		if (hasBackground(root)) return root;
+		// (containment on the root or body: body's background not propagated, Contain 2 §3)
+		if (hasBackground(root) || (root.style.containment : Int) != 0) return root;
 		var c = root.first;
 		while (c != null) {
-			if (c.node != null && c.node.nodeName.toLowerCase() == "body" && c.pseudo == null) return c;
+			if (c.node != null && c.node.nodeName.toLowerCase() == "body" && c.pseudo == null) return (c.style.containment : Int) != 0 ? root : c;
 			c = c.next;
 		}
 		return root;

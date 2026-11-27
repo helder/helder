@@ -84,9 +84,12 @@ class BlockFlow implements FormattingContext {
 			}
 		}
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
-		// (a scroll container is monolithic, Fragmentation 3 §4.1; a box that clips, ending here, has its content
+		// (a scroll container is monolithic, Fragmentation 3 §4.1, one with layout or size containment too, Contain 2
+		// §3.2, as LayoutNG's; a box that clips, ending here, has its content
 		// past its height clipped: laid out whole, not broken into fragmentainers after it)
-		if (fr != null && box.parent != null && (scrolls(box.style) || s.clips && !Math.isNaN(heightSpec) && space.pageTop + bt + pt + heightSpec <= fr.size + 0.01))
+		var contain = box.style.containment;
+		if (fr != null && box.parent != null && (scrolls(box.style) || contain.has(Layout) || contain.has(Size) || s.clips && !Math.isNaN(heightSpec)
+			&& space.pageTop + bt + pt + heightSpec <= fr.size + 0.01))
 			fr = new Unbroken(fr);
 		var pctBase = heightSpec;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
@@ -97,9 +100,11 @@ class BlockFlow implements FormattingContext {
 		var cx = bx + bl + pl, cy = by + bt + pt;
 		var ex = root || space.exclusions == null ? new Exclusions() : space.exclusions;
 		// (absolutely positioned descendants wait for their containing block: the nearest positioned box, else the root)
-		var owner = box.parent == null || s.positioned;
+		// (layout and paint containment: the containing block of absolutely positioned and fixed descendants)
+		var cbox = box.style.containment.containingBlock;
+		var owner = box.parent == null || s.positioned || cbox;
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
-		var fixed = box.parent == null ? new Positioned() : space.fixed ?? positioned;
+		var fixed = box.parent == null ? new Positioned() : cbox ? positioned : space.fixed ?? positioned;
 		var escaped = space.positioned != null ? space.positioned.boxes.length : 0;
 		var escapedFixed = space.fixed != null ? space.fixed.boxes.length : 0;
 		inline function childSpace(width:Float):Space {
@@ -191,11 +196,14 @@ class BlockFlow implements FormattingContext {
 		var pos = 0.0, neg = 0.0, y = 0.0;
 		var atTop = topCollapses, empty = true, baseline = Math.NaN;
 		// (resumed past its content: only its height left, Fragmentation's after)
-		var done = resume != null && resume.line == BreakToken.PAST;
+		// (content-visibility: hidden: its contents neither laid out nor painted, its size containment's size)
+		var done = resume != null && resume.line == BreakToken.PAST || box.style.hidden;
 		var hasLines = !done && box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
 		// (broken: a break taken inside it, its content goes on in the next fragmentainer)
 		var broken = false;
-		if (fr != null) fr.enter(box, space.pageTop + bt + pt);
+		// (own: what breaks the box itself, its content laid out whole or not)
+		var own = contain.has(Size) && box.absolute ? space.fragmentation : fr;
+		if (own != null) own.enter(box, space.pageTop + bt + pt);
 		if (hasLines) {
 			var ls = childSpace(w);
 			ls.fragmentation = fr;
@@ -367,9 +375,12 @@ class BlockFlow implements FormattingContext {
 		// (an absolutely positioned box's height past the fragmentainer's end, its content starting before and
 		// ending there: a break after the content, the rest of its height in the next; an in-flow box's stays
 		// whole yet: tests whose references are such boxes need table cells and monolithic overflow broken too)
-		if (fr != null && box.absolute && !broken && !autoHeight && (done || space.pageTop + bt + pt < fr.size - 0.01) && space.pageTop + bt + pt + heightSpec > fr.size + 0.01) {
-			fr.placed(space.pageTop + bt + pt + heightSpec);
-			if (fr.after(box, reserve + space.pageTop + bt + pt + y) || fr.stopped) broken = true;
+		// (size containment's content laid out whole, the box's own height still broken past it: in place of LayoutNG's
+		// monolithic overflow, its pages after)
+		if (own != null && box.absolute && !broken && !autoHeight && (done || space.pageTop + bt + pt < own.size - 0.01)
+			&& space.pageTop + bt + pt + heightSpec > own.size + 0.01) {
+			own.placed(space.pageTop + bt + pt + heightSpec);
+			if (own.after(box, reserve + space.pageTop + bt + pt + y) || own.stopped) broken = true;
 		}
 		// (broken: its end's border, padding and margin are in a later fragmentainer, slice; its height what it holds here)
 		// (filling the fragmentainer to its end, as LayoutNG's: its background reaches the page's bottom)
@@ -381,7 +392,7 @@ class BlockFlow implements FormattingContext {
 			mb = 0;
 			bpy = pt + pb + bt + bb;
 			bottomCollapses = false;
-			y = Math.max(y, fr.size - space.pageTop - bt - pt - (clone ? bb + pb : 0));
+			y = Math.max(y, space.fragmentation.size - space.pageTop - bt - pt - (clone ? bb + pb : 0));
 			if (!autoHeight) heightSpec = y;
 		}
 		var content = 0.0;
@@ -395,6 +406,8 @@ class BlockFlow implements FormattingContext {
 			content = Math.max(0, y + pos + neg);
 		// (a formatting context's root's auto height takes its floats in, §10.6.7)
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
+		// (size containment: its content's height contain-intrinsic-height's, not its children's)
+		if (contain.has(Size)) content = box.style.intrinsicSize(false);
 		var h = space.ignoreHeight ? Math.max(0, autoHeight ? content : heightSpec) : clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
 		if (content > h && !Math.isNaN(floor)) h = Math.max(h, Math.min(content, floor));
 		box.through = false;
@@ -412,7 +425,8 @@ class BlockFlow implements FormattingContext {
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!clone && (resume != null || broken)) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
 		// (a scroll container's too: its last line's, as CSS Align 3 and browsers have it now, not CSS 2.1's bottom edge)
-		if (!Math.isNaN(baseline)) frags.setBaseline(frag, bt + pt + baseline);
+		// (layout containment: no baseline for its parent, Contain 2 §3.2)
+		if (!Math.isNaN(baseline) && !contain.has(Layout)) frags.setBaseline(frag, bt + pt + baseline);
 		// (the absolutely positioned boxes this is the containing block of: its padding box, the root's
 		// the initial containing block, §10.1)
 		if (box.parent == null) {
@@ -640,7 +654,9 @@ class BlockFlow implements FormattingContext {
 	// (a new block formatting context's root: no margin collapses across it, §8.3.1, §9.4.1)
 	static function formattingRoot(box:Box):Bool {
 		var s = box.style;
-		return box.parent == null || box.kind != Block || s.clips || s.inner == BoxStyle.FLOW_ROOT || box.floating || box.absolute;
+		// (layout and paint containment: an independent formatting context, Contain 2 §3.2, §3.4)
+		return box.parent == null || box.kind != Block || s.clips || s.inner == BoxStyle.FLOW_ROOT || box.floating || box.absolute
+			|| s.containment.has(Layout) || s.containment.has(Paint);
 	}
 
 	// The content width, the used side margins on the box (§10.3.3; shrink-to-fit §10.3.9).
@@ -657,6 +673,7 @@ class BlockFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = size(s.width, cb, s.borderBox, bpx);
+		if (Math.isNaN(spec)) spec = sizing(box, space, cb, ml, mr, bpx, () -> intrinsic(box, space));
 		// (an auto width through an aspect-ratio from a height that is definite)
 		if (Math.isNaN(spec) && !Math.isNaN(height)) spec = Ratio.width(box, clampHeight(s, space.height, bpy, height), bpx, bpy);
 		// (a table's caption is laid out as a block in its table's width)
@@ -678,6 +695,17 @@ class BlockFlow implements FormattingContext {
 		if (!Math.isNaN(maxW) && w > maxW) w = maxW;
 		if (w < minW) w = minW;
 		return Math.max(0, w);
+	}
+
+	// (width's min-content, max-content or fit-content, Sizing 3 §3.2: its content width from its intrinsic sizes, the
+	// room its margins leave the fit's; NaN: none of them)
+	public static function sizing(box:Box, space:Space, cb:Float, ml:Float, mr:Float, bpx:Float, intrinsic:() -> Void):Float {
+		var k = box.style.keyword("width");
+		if (k != "min-content" && k != "max-content" && k != "fit-content") return Math.NaN;
+		intrinsic();
+		var room = cb - (Math.isNaN(ml) ? 0 : ml) - (Math.isNaN(mr) ? 0 : mr);
+		var w = k == "min-content" ? box.minContent : k == "max-content" ? box.maxContent : Math.min(Math.max(box.minContent, room), box.maxContent);
+		return Math.max(0, w - bpx);
 	}
 
 	// (CSS 2.1 §10.3.3's equation for a width, NaN: auto, and the margins, NaN: auto)
@@ -758,6 +786,11 @@ class BlockFlow implements FormattingContext {
 	public static function replacedSize(box:Box, cbw:Float, cbh:Float, bpx:Float, bpy:Float):{w:Float, h:Float} {
 		var s = box.style.model();
 		var iw = box.image == null ? 0.0 : box.image.width, ih = box.image == null ? 0.0 : box.image.height;
+		// (size containment: no natural size but contain-intrinsic-size's, no natural ratio, Contain 2 §3.1)
+		if (box.style.containment.has(Size)) {
+			iw = box.style.intrinsicSize(true);
+			ih = box.style.intrinsicSize(false);
+		}
 		// (its natural ratio, or aspect-ratio's over it)
 		var ratio = Ratio.of(box);
 		var w = size(s.width, cbw, s.borderBox, bpx), h = size(s.height, cbh, s.borderBox, bpy);
@@ -824,6 +857,12 @@ class BlockFlow implements FormattingContext {
 	public function contentSizes(box:Box, space:Space):{min:Float, max:Float} {
 		var s = box.style.model();
 		var bpx = fixed(s.padding[1]) + fixed(s.padding[3]) + s.border[1] + s.border[3];
+		// (size or inline-size containment: contain-intrinsic-width's, its children aside, Contain 2 §3.1, §3.3)
+		var c = box.style.containment;
+		if (c.has(Size) || c.has(InlineSize)) {
+			var w = box.style.intrinsicSize(true) + bpx;
+			return {min: w, max: w};
+		}
 		if (box.kind == BlockReplaced || box.kind == InlineReplaced) {
 			var w = replacedSize(box, Math.NaN, Math.NaN, 0, 0).w + bpx;
 			return {min: w, max: w};

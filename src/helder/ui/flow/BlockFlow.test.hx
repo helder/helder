@@ -10,7 +10,7 @@ import helder.ui.box.FontMatch;
 import helder.ui.box.Fragments;
 
 // Block layout: widths and auto margins, min and max, box-sizing,
-// percentages, heights, aspect-ratio, margin collapsing (siblings, negative, parent and
+// percentages, heights, aspect-ratio, containment, the sizing keywords, margin collapsing (siblings, negative, parent and
 // child, through empty boxes, not across a formatting context's root),
 // relative offsets, the layout cache. Then a property: siblings' places
 // as a plain model of §8.3.1 has them.
@@ -39,6 +39,20 @@ function tests() {
 				+ '<div id=e style="height:30px;aspect-ratio:2;float:left"></div>');
 			equals([rect(v, "a")[3], rect(v, "b")[3], rect(v, "c")[3], rect(v, "d")[3]], [50.0, 48, 10, 50]);
 			equals(rect(v, "e")[2], 60.0);
+		});
+		test("containment: size's height and width its contain-intrinsic-size's, layout's a containing block, hidden content-visibility's contents not laid out", () -> {
+			var v = view('<div id=a style="contain:size;contain-intrinsic-height:30px;width:100px"><div style="height:80px"></div></div>'
+				+ '<div id=b style="contain:size;contain-intrinsic-width:40px;float:left"><div style="width:90px;height:5px"></div></div>'
+				+ '<div id=c style="contain:layout;margin-top:20px"><div id=d style="position:fixed;top:0;left:0;width:5px;height:5px"></div></div>'
+				+ '<div id=e style="content-visibility:hidden;contain-intrinsic-size:10px 12px;width:fit-content"><div id=f style="height:50px">x</div></div>');
+			equals([rect(v, "a")[3], rect(v, "b")[2]], [30.0, 40]);
+			// (c the fixed box's containing block, not the viewport)
+			equals(rect(v, "d")[1], rect(v, "c")[1]);
+			equals([rect(v, "e")[2], rect(v, "e")[3], rect(v, "f").length], [10.0, 12, 0]);
+		});
+		test("width: min-content, max-content and fit-content", () -> {
+			var v = view('<div style="width:100px"><div id=a style="width:min-content">xx xx</div><div id=b style="width:max-content">xx xx</div><div id=c style="width:fit-content">xx xx xx xx xx xx xx</div></div>');
+			equals([rect(v, "a")[2], rect(v, "b")[2], rect(v, "c")[2]], [32.0, 80, 100]);
 		});
 		test("margins: siblings, negative, parent and child", () -> {
 			var v = view('<div style="height:10px;margin-bottom:20px"></div><div id=a style="height:10px;margin-top:30px;margin-bottom:-5px"></div>'

@@ -9,7 +9,7 @@ import {createHash} from 'node:crypto'
 import {bindings, calls} from './wpt-js.mjs'
 
 const REVISION = 'bc5ea7a9006b77c12118534bf7d2953e530d811f'
-const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm', 'css/css-fonts', 'css/css-values']
+const SUITES = ['css/CSS2', 'css/css-page', 'css/css-break', 'css/css-gcpm', 'css/css-fonts', 'css/css-values', 'css/css-contain']
 const checkoutOnly = process.argv.includes('--checkout')
 const root = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) ?? 'bin/wpt')
 // (the reftests' resources too: Ahem and the other test fonts, the shared images)
@@ -194,7 +194,7 @@ const DEFERRED = [
 ]
 const HELP_DEFERRED = [
   [/css-writing-modes/, 'writing-mode'], [/css-multicol/, 'multicol'], [/#footnote|css-gcpm-3\/#.*footnote/, 'footnotes'],
-  [/css-regions/, 'regions'], [/css-shapes/, 'shapes'], [/css-forms/, 'forms'], [/css-contain/, 'containment'],
+  [/css-regions/, 'regions'], [/css-shapes/, 'shapes'], [/css-forms/, 'forms'],
   [/css-conditional-5/, '@container'], [/css-ruby/, 'ruby'], [/css-anchor-position/, 'anchor positioning'],
   [/css-sizing-4/, 'Sizing 4'], [/css-text-4|css-text-decor-4|css-overflow-4|css-inline/, 'past checkpoint 1\'s modules']
 ]
