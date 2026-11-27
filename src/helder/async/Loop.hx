@@ -529,12 +529,10 @@ private class Wake {
 
 // (helder.view's graph on this loop: a write flushes when the task running
 // ends, Solid 2's microtask; a coroutine computation runs as a task started
-// now, cancelled when its run is superseded). Installed by statics'
-// initializers that full DCE keeps only where they can work (@:ifFeature):
-// the flush for a TypeScript program, whose runtime turns this loop (a UI
-// flushes on its frames: the web viewer, given this flush too, stayed
-// blank), the coroutine starter for a coroutine computation (no tasks
-// linked for one otherwise)
+// now, cancelled when its run is superseded). Nothing names it: kept, its
+// __init__ with it, as `-dce std` kept it, but in a release build, whose
+// UI flushes on its frames (the web viewer, given these hooks, stayed blank)
+#if !helder.release @:keep #end
 private class GraphHooks implements IDispatchObject {
 	final f:Void->Void;
 
@@ -551,32 +549,19 @@ private class GraphHooks implements IDispatchObject {
 
 	var queued = false;
 
-	// (hxmc runs a class's static initializers at startup only for a class
-	// with an __init__; DCE keeps this one with the class, so only where a
-	// feature below is used)
-	static function __init__()
-		flushes = null;
-
-	@:ifFeature("helder.typescript.js._Interop.LoopHost.run")
-	static final scheduler = {
+	static function __init__() {
 		helder.view.graph.Scheduler.later = f -> {
 			if (flushes == null) flushes = new GraphHooks(f);
 			if (flushes.queued) return;
 			flushes.queued = true;
 			Loop.current().dispatch(flushes);
 		};
-		true;
-	};
-
-	@:ifFeature("helder.view.graph.CoroutineRun.new")
-	static final coroutines = {
 		helder.view.graph.Coroutines.start = (body, ok, fail) -> {
 			var t = new Task<Dynamic>(null, Loop.current().context(), @:coroutine function(_) return body(), false);
 			t.onCompletion((r, e) -> if (e != null) fail(e) else ok(r));
 			t.onDispatch();
 			() -> t.cancel();
 		};
-		true;
-	};
+	}
 }
 
