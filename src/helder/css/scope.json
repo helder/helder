@@ -54,6 +54,10 @@
     }
   },
   "types": {
+    "element()": {"syntax": "element( <id-selector> ) | element( <custom-ident> , [ first | start | last | first-except ]? )", "why": "GCPM 3's running elements' element(name, which) in a margin box's content, beside Images 4's element(#id)", "href": "https://drafts.csswg.org/css-gcpm-3/#funcdef-element"},
+    "target-counter()": {"syntax": "target-counter( [ <string> | <url> | <attr()> | attr( <attr-name> url ) ] , <custom-ident> , <counter-style>? )", "why": "GCPM 3's examples point at a link's target with attr(href url), a type Values 5 has dropped", "href": "https://drafts.csswg.org/css-gcpm-3/#target-counter"},
+    "target-counters()": {"syntax": "target-counters( [ <string> | <url> | <attr()> | attr( <attr-name> url ) ] , <custom-ident> , <string> , <counter-style>? )", "why": "as target-counter()'s: attr(href url)", "href": "https://drafts.csswg.org/css-content-3/#target-counters"},
+    "target-text()": {"syntax": "target-text( [ <string> | <url> | <attr()> | attr( <attr-name> url ) ] , [ content | before | after | first-letter ]? )", "why": "as target-counter()'s: attr(href url)", "href": "https://drafts.csswg.org/css-content-3/#target-text"},
     "top": {
       "syntax": "<length> | auto",
       "why": "CSS 2.1's clip: rect(); the spec says it in prose"

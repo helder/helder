@@ -985,6 +985,51 @@ CssCountersCheck renders WPT's css-counter-styles and css-lists reftests
 and their references to text through CssCounters, and reads
 `@counter-style`'s syntax tests.
 
+## Generated content for paged media
+
+GCPM 3's side in CSS, for the paged host (helder.css computes and resolves
+what it can; the host, which knows the pages, fills the rest):
+
+- **Content parts:** `CssItems.content` reads `string(name, which)`,
+  `element(name, which)`, `leader()` (dotted `". "`, solid `"_"`, space
+  `" "`, a string), `content(text | before | after | first-letter |
+  marker)`, `target-counter()`, `target-counters()` and `target-text()`
+  (a fragment as a string, `url()`, `attr(href)` or `attr(href url)`).
+  `CssCounters.content` resolves them to `CssGeneratedPart`s:
+  `StringValue`, `RunningElement` and `Leader` for the host to fill, and
+  `Target(CssTarget)`.
+- **Named strings:** `counters.strings(el, page, pages)` evaluates the
+  element's `string-set` where it is: strings, counters, attributes,
+  `content()` of the element (its text, white space collapsed; its
+  ::before, ::after, marker; its first letter), quotes at their depth;
+  `counter(page)` and `counter(pages)` as the host gives them.
+  `CssRunning<T>` keeps the assignments page by page and answers
+  `string()`'s and `element()`'s `first`, `start`, `last` and
+  `first-except` (GCPM 3 §1.2).
+- **Running elements:** `style.running()` is `position: running(name)`'s
+  name; such an element leaves the flow for the margin boxes that name it.
+- **Cross-references:** a `CssTarget` names its element (`#id` in the
+  document), what it wants, and has no text until
+  `counters.resolveTargets(pageOf)` runs once the pages are known: a
+  page counter from `pageOf`, other counters as they were at the target
+  (the walk keeps each element with an id's counters), its text, its
+  ::before's or ::after's text, its first letter.
+- **Bookmarks:** `counters.bookmark(el)` gives `bookmark-level` (h1 to h6
+  1 to 6, WeasyPrint's UA rules in print.css), `bookmark-label` evaluated
+  as a string's value (initial: the element's text) and `bookmark-state`.
+
+```haxe
+counters.enter(h1);
+for (s in counters.strings(h1, page)) running.assign(s.name, s.value, atPageStart);
+running.value("title", "first");               // a margin box's string(title)
+counters.resolveTargets(el -> pageOf.get(el)); // then each Target(t): t.text
+```
+
+Tests (`CssCounters.test.hx`, `CssRunning.test.hx`): the parts, string-set
+where its element is, running elements, bookmarks, cross-references
+before and after resolveTargets, CssRunning's four values. The css lane's
+CssGcpmCheck reads WPT's css-gcpm tests through this API.
+
 ## Interpolation and transitions
 
 `CssInterpolate.values(property, a, b, p)` interpolates two computed

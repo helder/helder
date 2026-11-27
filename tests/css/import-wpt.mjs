@@ -419,6 +419,32 @@ const countersReport = {}
   Object.assign(countersReport, {by, pairs: pairs.length, syntax: syntax.length, tests: tests.length})
 }
 
+// ---- gcpm.json: css-gcpm's visual tests (paged: no reference), each page with what its own words
+// say passes ("Test passes if ..."), for CssGcpmCheck to read through the CSS side's API
+{
+  const tests = []
+  for (const file of walk(path.join(root, 'css/css-gcpm'))) {
+    const rel = path.relative(root, file)
+    if (!/\.html?$/.test(rel) || /-ref\.html?$/.test(rel) || /\/support\//.test(rel)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    const body = text.slice(text.search(/<body/i))
+    // (the sentence, and the list after "Test passes if:")
+    const at = body.search(/Test passes if/)
+    const words = at < 0 ? '' : body.slice(at, body.indexOf('</p>', at) < 0 ? undefined : body.indexOf('</p>', at))
+      + (/Test passes if:\s*$/.test(body.slice(at, body.indexOf('</p>', at)).replace(/<[^>]+>/g, '')) ? ' ' + (/<(ul|ol)[\s\S]*?<\/\1>/i.exec(body.slice(at))?.[0] ?? '') : '')
+    tests.push({
+      file: rel,
+      expect: words.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+      page: text.replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '').replace(/<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '')
+    })
+  }
+  tests.sort((x, y) => x.file < y.file ? -1 : 1)
+  writeJson(out + '/gcpm.json', {
+    source: 'web-platform-tests', revision: REVISION, license: 'BSD-3-Clause (tests/css/WPT-LICENSE.md)',
+    fields: 'tests: {file, expect: its "Test passes if ..." words, page: scripts, links and metas out}', tests
+  }, 2)
+}
+
 // ---- interpolation.json: test_interpolation's and its kin's calls (interpolation-testcommon.js) on
 // in-scope properties, read statically, with their pages: what CssTransition's interpolation must give
 const interpolationReport = {}

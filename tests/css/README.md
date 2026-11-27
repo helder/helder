@@ -457,6 +457,24 @@ draws them (5,752 drawn in about 30 s, 311 skipped):
 
 Pending by stage: positioning 202, generated content 199, inline 135, tables 98, floats 75, fonts 41, ui 12.
 
+## GCPM
+
+WPT's css-gcpm tests (visual, paged, without references: what passes is
+in their own words) read through helder.css's GCPM API, natively (`bun run
+test css`: CssGcpmCheck; BLESS=1: gcpm-manifest.json; SHOW=1: each test's
+pages and what its words want):
+
+- `fixtures/gcpm.json` (made by `import-wpt.mjs`): each test's page,
+  scripts out, and its "Test passes if ..." words.
+- `CssGcpmCheck.hx`: each page walked as the box tree walks it
+  (CssCounters), its pages where its forced breaks are (the tests are
+  short), string-set's assignments page by page (CssRunning: an element
+  at a page's start when nothing shown comes before it there), each
+  page's margin boxes' content resolved, and the words checked: each
+  page's running heads, a leader's fill. All 20 pass. Their reftests are
+  pending in reftest-manifest.json, stage paged: the paged host draws them
+  (Chromium has no GCPM, so no golden).
+
 ## Interpolation
 
 Interpolation and transitions against WPT's interpolation tests,

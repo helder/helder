@@ -134,6 +134,14 @@ class CssStyle extends CssStyleGroups {
 	inline function get_display():CssDisplay
 		return box.display;
 
+	// position: running(name)'s name (GCPM 3 §2.1: the element leaves the
+	// flow for the margin boxes that name it in element()); else null.
+	public function running():Null<String>
+		return switch terms(Position) {
+			case [Func("running", [Ident(name)])]: name;
+			case _: null;
+		}
+
 	// The display before blockification (an absolutely positioned or
 	// floated box's, a flex or grid item's, the root's), else display.
 	public var originalDisplay(get, never):CssDisplay;
