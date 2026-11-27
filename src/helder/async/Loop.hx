@@ -529,10 +529,11 @@ private class Wake {
 
 // (helder.view's graph on this loop: a write flushes when the task running
 // ends, Solid 2's microtask; a coroutine computation runs as a task started
-// now, cancelled when its run is superseded). Each installed by a static's
-// initializer that full DCE keeps only where the program uses that part of
-// the graph (@:ifFeature: a program with no coroutine computation links no
-// tasks for one)
+// now, cancelled when its run is superseded). Installed by statics'
+// initializers that full DCE keeps only for a program with a coroutine
+// computation (@:ifFeature), the flush with them: elsewhere the program's
+// own loop flushes (a UI's frames; on the web this loop never turns, and a
+// flush queued on it would never run)
 private class GraphHooks implements IDispatchObject {
 	final f:Void->Void;
 
@@ -555,7 +556,7 @@ private class GraphHooks implements IDispatchObject {
 	static function __init__()
 		flushes = null;
 
-	@:ifFeature("helder.view.graph.Scheduler.later")
+	@:ifFeature("helder.view.graph.CoroutineRun.new")
 	static final scheduler = {
 		helder.view.graph.Scheduler.later = f -> {
 			if (flushes == null) flushes = new GraphHooks(f);
