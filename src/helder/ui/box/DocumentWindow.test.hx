@@ -6,8 +6,8 @@ import helder.dom.Element;
 import helder.test.Test;
 
 // A document in a window: a resize laid out from the layout cache as a
-// fresh layout lays it out, styles kept unless a media query or a viewport
-// unit reads the size, scroll containers' content moved at paint and hit
+// fresh layout lays it out, what a media query or a viewport unit reads
+// restyled, scroll containers' content moved at paint and hit
 // testing; UiPainter's shapes (a rectangle, a rounded one, a ring) told
 // from other paths.
 function tests() {
@@ -22,17 +22,17 @@ function tests() {
 			fresh.layout(180, 200);
 			equals(geometry(v), geometry(fresh));
 		});
-		test("media queries restyle on a resize, others not", () -> {
+		test("media queries and viewport units restyle on a resize, the styles kept", () -> {
 			var v = live('<style>@media (min-width: 250px) { p { color: #f00 } }</style><p id=p>x</p>');
 			var s = v.styles;
 			v.layout(320, 200);
-			equals(v.styles == s, true);
+			equals(v.boxesOf(el(v, "p"))[0].style.color("color"), 0xFFFF0000);
 			v.layout(200, 200);
-			equals(v.styles == s, false);
-			var w = live('<style>p { width: 50vw }</style><p>x</p>');
-			var ws = w.styles;
+			equals(v.styles == s, true);
+			equals(v.boxesOf(el(v, "p"))[0].style.color("color"), 0xFF000000);
+			var w = live('<style>body { margin: 0 } p { width: 50vw }</style><p id=p>x</p>');
 			w.layout(320, 200);
-			equals(w.styles == ws, false);
+			equals(w.fragments.width(w.fragmentOf(w.boxesOf(el(w, "p"))[0])), 160.0);
 		});
 		test("a scroll container scrolls its content, painted and hit", () -> {
 			var v = live('<style>body { margin: 0; font: 10px/1 Ahem } #s { overflow: auto; height: 20px; width: 50px } p { margin: 0; height: 10px }</style><div id=s><p id=a style="background:#f00">a</p><p id=b style="background:#0f0">b</p><p id=c style="background:#00f">c</p></div>');

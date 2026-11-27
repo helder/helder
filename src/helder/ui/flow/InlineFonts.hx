@@ -116,6 +116,14 @@ class InlineFonts {
 		return ascent(id, exact) + descent(id, exact) + lineGap(id, exact);
 
 	// (a font replaced since: every set made again)
+	// The styles asked for let go (a box tree made again: its styles are
+	// new objects, the old ones' kept would keep the old tree); their sets
+	// stay, by their key.
+	public function forget() {
+		byStyle.clear();
+		lastStyle = null;
+	}
+
 	function clear() {
 		byKey.clear();
 		fallbackSets.clear();

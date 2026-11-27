@@ -182,13 +182,20 @@ class BoxInline implements InlineStyle {
 	public function color():Int
 		return s.color("color");
 
-	public function lineHeight():Float
-		return switch s.terms("line-height") {
+	public function lineHeight():Float {
+		if (lineHeightRead) return lineHeightValue;
+		lineHeightRead = true;
+		return lineHeightValue = switch s.terms("line-height") {
 			case [Dimension(v, "px")]: v;
 			case [Number(n, _)]: n * fontSize();
 			case [Percentage(p)]: p * fontSize() / 100;
 			case _: Math.NaN;
 		}
+	}
+
+	// (lineHeight's, read once: a style's)
+	var lineHeightRead = false;
+	var lineHeightValue = Math.NaN;
 
 	// (none in a list marker: browsers leave a marker's text unspaced)
 	public function letterSpacing():Float

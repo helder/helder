@@ -53,6 +53,7 @@ class CssCascade {
 		var styles = @:privateAccess new CssStyles(doc, sheets, o.media ?? CssMedia.PRINT, CssSheet.attribute, declared, hints ? CssUserAgent.hints() : null);
 		@:privateAccess styles.sharing = o.share != false;
 		@:privateAccess styles.viewportSize = o.viewport;
+		@:privateAccess styles.fixedViewport = o.viewport != null;
 		return styles;
 	}
 

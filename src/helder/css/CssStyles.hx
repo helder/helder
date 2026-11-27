@@ -31,8 +31,12 @@ using StringTools;
 // @counter-style).
 class CssStyles {
 	public final document:Document;
-	public final media:CssMediaContext;
+	public var media(default, null):CssMediaContext;
 	var viewportSize:Null<{width:Float, height:Float}> = null;
+	// (the cascade's own viewport: not the media's size)
+	var fixedViewport = false;
+	// (the elements a declaration with a viewport unit styled: what another size styles again)
+	final viewported = new ObjectMap<Element, Bool>();
 
 	// What viewport units resolve against: the cascade's `viewport`, else
 	// on print the first page's area (its @page size less its margins),
@@ -71,7 +75,7 @@ class CssStyles {
 	final hints:Null<Element->Array<CssDeclared>>;
 	// (a style attribute's declarations; null: style attributes not read, no parser linked)
 	final declarations:Null<String->Array<CssDeclared>>;
-	final index = new CssRuleIndex<Rule>();
+	var index = new CssRuleIndex<Rule>();
 	final pseudos = new Map<String, CssRuleIndex<Rule>>();
 	final bloom = new CssBloom();
 	final cache = new ObjectMap<Element, CssStyle>();
@@ -123,6 +127,16 @@ class CssStyles {
 		this.media = media;
 		this.declarations = declarations;
 		this.hints = hints;
+		this.sheets = sheets;
+		this.hintSheet = hintSheet;
+		indexRules();
+	}
+
+	final sheets:Array<{sheet:CssSheet, media:Null<CssMedia>}>;
+	final hintSheet:Null<CssSheet>;
+
+	// (the rules in effect in the media, indexed)
+	function indexRules() {
 		// (HTML's hints written as CSS: author rules of specificity zero before the author's own)
 		if (hintSheet != null) {
 			var start = order;
@@ -215,6 +229,80 @@ class CssStyles {
 		return true;
 	}
 
+	// These styles made good for another size (a window resized): the
+	// elements whose styles may change there, to work out again (forget,
+	// then computed; what inherits from them is the caller's), those whose
+	// cascade has a viewport unit and, where a sheet's media query matches
+	// it as it didn't this one (or the other way; a sheet's own too), those
+	// a rule inside it matches, the rules indexed again for it. Null where
+	// it can't be: another media type, the root's font size or line height
+	// changed (rem everywhere): a cascade of its own then.
+	public function resize(other:CssMediaContext):Null<Array<Element>> {
+		if (other.type != media.type || other.resolution != media.resolution || other.color != media.color || media.type == "print") return null;
+		// (the rules inside the queries that change: what they match is styled again)
+		var changed = new CssRuleIndex<Bool>(), n = 0;
+		function within(rules:Array<CssSheetRule>, flips:Bool)
+			for (r in rules) switch r {
+				case Style(selectors, _) if (flips):
+					for (sel in selectors) if (!never(sel)) {
+						changed.add(sel, true);
+						n++;
+					}
+				case Media(m, inner): within(inner, flips || m.matches(other) != m.matches(media));
+				case Layer(_, inner) if (inner != null): within(inner, flips);
+				case Import(sheet, m, _, _): within(sheet.rules, flips || m.matches(other) != m.matches(media));
+				case _:
+			}
+		if (hintSheet != null) within(hintSheet.rules, false);
+		for (s in sheets) within(s.sheet.rules, s.media != null && s.media.matches(other) != s.media.matches(media));
+		var out = new ObjectMap<Element, Bool>();
+		if (n > 0) changed.walk(document, (el, found) -> if (found.length > 0) out.set(el, true));
+		var r = document.documentElement, was = r == null ? null : cache.get(r);
+		media = other;
+		if (!fixedViewport) viewportSize = null;
+		if (n > 0) reindex();
+		// (the root styled again: its font size and line height what rem and rlh read everywhere, the same or a
+		// cascade of its own)
+		if (r != null && was != null && (viewported.exists(r) || out.exists(r))) {
+			forget([r]);
+			root = null;
+			var now = computed(r);
+			if (now.fontSize() != was.fontSize() || now.lineHeight() != was.lineHeight()) return null;
+			cache.set(r, was);
+			out.set(r, true);
+		}
+		// (the cascades seen at the old size whose viewport units resolved against it)
+		for (k => bucket in shared) {
+			var kept = [for (x in bucket) if (!x.viewport) x];
+			if (kept.length != bucket.length) shared.set(k, kept);
+		}
+		for (el in viewported.keys()) out.set(el, true);
+		var list = [for (el in out.keys()) if (cache.exists(el)) el];
+		for (el in list) viewported.remove(el);
+		return list;
+	}
+
+	// (the rules indexed again for the media: the styles worked out so far kept, those of the elements the
+	// changed rules match let go by the caller)
+	function reindex() {
+		index = new CssRuleIndex<Rule>();
+		pseudos.clear();
+		order = 0;
+		ruleCount = 0;
+		layers.clear();
+		ruleSelectors.resize(0);
+		queries.resize(0);
+		viewportUnits = false;
+		watched.clear();
+		ids.clear();
+		pages.resize(0);
+		fontFaces.resize(0);
+		counterStyles.resize(0);
+		fontPaletteValues.resize(0);
+		paged = null;
+		indexRules();
+	}
+
 	// The groups made so far, per group, and the distinct styles.
 	public function counts():{groups:Map<String, Int>, styles:Int} {
 		var out = new Map<String, Int>();
@@ -236,6 +324,7 @@ class CssStyles {
 			var c = share(el, parent, attribute, hintKey, sig);
 			if (c != null) {
 				shares++;
+				if (c.viewport) viewported.set(el, true);
 				// (a twin is for its children's cousins: a leaf needs none; one given children later shares less, never wrongly)
 				if (el.firstElementChild != null) twins.set(el, twins.get(c.el) ?? c.el);
 				return c.style;
@@ -266,13 +355,19 @@ class CssStyles {
 			if (x.parent == parent && x.pseudo == pseudo && x.root == isRoot && x.item == item && x.attribute == attribute && x.hints == hintKey
 				&& same(x.rules, matched)) {
 				hits++;
-				if (sig != null && local) remember(el, parent, attribute, hintKey, sig, x.style, reval, results);
+				if (x.viewport) viewported.set(el, true);
+				if (sig != null && local) remember(el, parent, attribute, hintKey, sig, x.style, reval, results, x.viewport);
 				return x.style;
 			}
 		misses++;
 		var s = resolve(el, pseudo, parent, isRoot, item, matched, attribute, hinted);
-		if (sig != null && local) remember(el, parent, attribute, hintKey, sig, s, reval, results);
+		var viewport = attribute != null && viewportText(attribute);
+		for (r in matched) if (r.viewport) viewport = true;
+		if (hinted != null) for (d in hinted) if (viewportRelative(d)) viewport = true;
+		if (viewport) viewported.set(el, true);
+		if (sig != null && local) remember(el, parent, attribute, hintKey, sig, s, reval, results, viewport);
 		bucket.push({
+			viewport: viewport,
 			parent: parent,
 			pseudo: pseudo,
 			root: isRoot,
@@ -352,8 +447,9 @@ class CssStyles {
 	}
 
 	function remember(el:Element, parent:Null<CssStyle>, attribute:Null<String>, hintKey:String, sig:String, style:CssStyle, reval:Array<CssSelector>,
-			results:Array<Bool>) {
+			results:Array<Bool>, viewport:Bool) {
 		candidates.unshift({
+			viewport: viewport,
 			reval: reval,
 			results: results,
 			el: el,
@@ -651,8 +747,9 @@ class CssStyles {
 	function add(rules:Array<CssSheetRule>, origin:CssOrigin, layer:Null<String>, zero = false) {
 		for (r in rules) switch r {
 			case Style(selectors, declarations):
-				var o = order++;
-				if (!viewportUnits) for (d in declarations) if (viewportRelative(d)) viewportUnits = true;
+				var o = order++, viewport = false;
+				for (d in declarations) if (viewportRelative(d)) viewport = true;
+				if (viewport) viewportUnits = true;
 				var l = layer == null ? UNLAYERED : layers.get(key(origin, layer));
 				for (s in selectors) {
 					var rule = {
@@ -662,7 +759,8 @@ class CssStyles {
 						layer: l,
 						order: o,
 						zero: zero,
-						index: ruleCount++
+						index: ruleCount++,
+						viewport: viewport
 					};
 					ruleSelectors.push(s);
 					switch s.pseudo {
@@ -680,11 +778,11 @@ class CssStyles {
 				}
 			case Media(m, inner):
 				queries.push(m);
-				if (m.matches(media)) add(inner, origin, layer, zero);
+				if (m.matches(media)) add(inner, origin, layer, zero) else skip(inner);
 			case Layer(name, inner): if (inner != null) add(inner, origin, name, zero);
 			case Import(sheet, m, l, _):
 				queries.push(m);
-				if (m.matches(media)) add(sheet.rules, origin, l ?? layer, zero);
+				if (m.matches(media)) add(sheet.rules, origin, l ?? layer, zero) else skip(sheet.rules);
 			case Page(p):
 				p.order = order++;
 				pages.push(p);
@@ -693,6 +791,20 @@ class CssStyles {
 			case FontPaletteValues(p): fontPaletteValues.push(p);
 		}
 	}
+
+	// (rules a query leaves out numbered as if they were in: the others' numbers the same at any size, the
+	// cascades seen by them still good after resize)
+	function skip(rules:Array<CssSheetRule>)
+		for (r in rules) switch r {
+			case Style(selectors, _):
+				order++;
+				ruleCount += selectors.length;
+			case Media(_, inner): skip(inner);
+			case Layer(_, inner) if (inner != null): skip(inner);
+			case Import(sheet, _, _, _): skip(sheet.rules);
+			case Page(_): order++;
+			case _:
+		}
 
 	static inline var UNLAYERED = 1 << 20;
 
@@ -703,6 +815,13 @@ class CssStyles {
 			case Terms(t): viewportTerms(t);
 			case _: false;
 		}
+	}
+
+	// (a style attribute's text that may have a viewport unit: told apart from vw's own letters loosely, more not less)
+	static function viewportText(text:String):Bool {
+		var t = text.toLowerCase();
+		return t.indexOf("vw") >= 0 || t.indexOf("vh") >= 0 || t.indexOf("vi") >= 0 || t.indexOf("vb") >= 0 || t.indexOf("vmin") >= 0
+			|| t.indexOf("vmax") >= 0;
 	}
 
 	static function viewportUnit(unit:String):Bool {
@@ -781,6 +900,7 @@ class CssStyles {
 }
 
 private typedef Candidate = {
+	viewport:Bool,
 	el:Element,
 	reval:Array<CssSelector>,
 	results:Array<Bool>,
@@ -795,9 +915,10 @@ private typedef Candidate = {
 	style:CssStyle
 }
 
-private typedef Rule = {selector:CssSelector, declarations:Array<CssDeclared>, origin:CssOrigin, layer:Int, order:Int, zero:Bool, index:Int}
+private typedef Rule = {selector:CssSelector, declarations:Array<CssDeclared>, origin:CssOrigin, layer:Int, order:Int, zero:Bool, index:Int, viewport:Bool}
 
 private typedef Shared = {
+	viewport:Bool,
 	parent:Null<CssStyle>,
 	pseudo:Null<String>,
 	root:Bool,

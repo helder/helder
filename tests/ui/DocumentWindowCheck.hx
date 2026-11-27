@@ -65,6 +65,15 @@ class DocumentWindowCheck {
 			}
 		});
 		var steps:Array<{name:String, run:Void->Void}> = [];
+
+		// (the window resized a step a frame, narrower and back, as a live resize: a long document lays out
+		// what is seen at each width, the rest as it comes near; what was at the top kept there)
+		steps.push({name: 'resize start', run: () -> w.ui.scrollTo(scroller, 0, 400000)});
+		for (i in 0...24) {
+			var width = 1024 - (i < 12 ? i : 24 - i) * 28;
+			steps.push({name: 'resize $i to $width', run: () -> w.window.resize(width, 768)});
+		}
+		steps.push({name: 'resize end', run: () -> w.ui.scrollTo(scroller, 0, 0)});
 		for (i in 0...120) steps.push({name: 'wheel $i', run: () -> wheel(w, 600)});
 		for (i in 0...40) steps.push({name: 'jump $i', run: () -> w.ui.scrollTo(scroller, 0, (i * 104729) % Std.int(Math.max(1, node.height - 768)))});
 		for (i in 0...anchors.length) steps.push({name: 'anchor $i #${anchors[i].id}', run: () -> node.scrollTo(anchors[i])});
@@ -100,6 +109,7 @@ class DocumentWindowCheck {
 		// loop running as a window's does, its frames timed (HELDER_TEST_INPUT=1: Inject))
 		if (a.indexOf("--real") >= 0) return real(w, node, scroller);
 		var k = -1, frame = 0, slow:Array<String> = [], worst = 0.0, at = Timer.stamp();
+		var layoutAt = 0.0, paintAt = 0.0, gcAt = 0.0, resizes:Array<Float> = [], seen = 0;
 		// (the heap's live bytes as the steps go: it should stay flat over repeated drags)
 		var heaps = [];
 		Sys.println('DocumentWindowCheck: loaded in ${Math.round((Timer.stamp() - t0) * 1000)} ms, ${anchors.length} anchors, ${steps.length} steps');
@@ -112,16 +122,24 @@ class DocumentWindowCheck {
 				if (k >= 0) {
 					var ms = (now - at) * 1000;
 					worst = Math.max(worst, ms);
-					if (ms > BUDGET) slow.push('${steps[k].name}: ${Math.round(ms)} ms');
+					if (StringTools.startsWith(steps[k].name, "resize ")) resizes.push(ms);
+					if (ms > BUDGET) {
+						var st = node.stats;
+						slow.push('${steps[k].name}: ${Math.round(ms)} ms (layout ${Math.round(st.layoutMs - layoutAt)} ms, paint ${Math.round(st.paintMs - paintAt)} ms, GC ${Math.round((hxmc.GcStats.totalPause() - gcAt) * 1000)} ms)');
+					}
 				}
 				k++;
-				if (k % 100 == 0) {
+				if (k % 100 == 0 || k > 0 && k < steps.length && steps[k - 1].name == "thumb up") {
 					hxmc.NativeGc.collect(true);
-					heaps.push(Math.round(hxmc.GcStats.liveBytes() / 1048576));
+					var heap = Math.round(hxmc.GcStats.liveBytes() / 1048576);
+					if (k % 100 == 0) heaps.push(heap) else seen = heap;
 				}
 				armed = true;
 				if (k < steps.length) {
 					stepName = steps[k].name;
+					layoutAt = node.stats.layoutMs;
+					paintAt = node.stats.paintMs;
+					gcAt = hxmc.GcStats.totalPause();
 					at = Timer.stamp();
 					steps[k].run();
 				}
@@ -129,10 +147,20 @@ class DocumentWindowCheck {
 			if (w.needsFrame() || k < steps.length) w.frame();
 			w.device.settle();
 			if (k >= steps.length) {
-				// (the live heap after the steps against after the first hundred: drags and jumps keep nothing)
-				var flat = heaps.length < 2 || heaps[heaps.length - 1] <= heaps[1] * 1.1 + 64;
-				Sys.println('DocumentWindowCheck: live heap every 100 steps: ${heaps.join(", ")} MB${flat ? "" : " (grew)"}');
+				// (the live heap after the steps against once the resizes, the jumps and the thumb's drag have been
+				// across the document at its widths, the fonts it shows loaded (a long one is laid out where it is
+				// seen): the drags, jumps and hovers after it keep nothing)
+				var flat = heaps[heaps.length - 1] <= seen * 1.1 + 64;
+				Sys.println('DocumentWindowCheck: live heap every 100 steps: ${heaps.join(", ")} MB; $seen MB after the thumb${flat ? "" : " (grew)"}');
 				Sys.println('DocumentWindowCheck: ${steps.length} steps, the slowest ${Math.round(worst)} ms; over $BUDGET ms: ${slow.length == 0 ? "none" : slow.join(", ")}');
+				resizes.sort(Reflect.compare);
+				Sys.println('DocumentWindowCheck: resized ${resizes.length} times, a frame each: median ${Math.round(resizes[resizes.length >> 1])} ms, worst ${Math.round(resizes[resizes.length - 1])} ms');
+				// (and the whole document laid out at another width, as a test or print lays it out: what a resize cost before)
+				var v = node.view;
+				v.within(Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY);
+				var t1 = Timer.stamp();
+				v.layout(900, 768);
+				Sys.println('DocumentWindowCheck: the whole document laid out at 900 wide: ${Math.round((Timer.stamp() - t1) * 1000)} ms');
 				var ok = slow.length == 0 && flat;
 				Sys.println('DocumentWindowCheck: ${ok ? "ok" : "FAIL"}');
 				w.close();

@@ -60,6 +60,13 @@ class Box {
 	public static inline var LEADER = 128;
 	// a monolithic box sliced across fragmentainers: on each, clipped to its area (its overflow on the next)
 	public static inline var SLICED = 256;
+	// (its last layout clear of floats: none beside it, none it placed in its formatting context; laid
+	// out again the same whatever floats came before, while none reaches below its top)
+	public static inline var UNFLOATED = 512;
+	// (a block with nothing that reaches outside it, floats or positioned boxes: Lazy may skip its contents)
+	public static inline var LAZY = 1024;
+	// (its contents laid out, their lines and inline content kept in them: what a lazy layout lets go)
+	public static inline var KEPT = 2048;
 
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth(get, set):Float;
@@ -81,6 +88,9 @@ class Box {
 	}
 
 	public var cacheFragment(get, set):Int;
+	// (its content box's width and height when its contents were last laid out: a lazy layout's estimate)
+	public var laidWidth(get, set):Float;
+	public var laidHeight(get, set):Float;
 	public var minContent(get, set):Float;
 	public var maxContent(get, set):Float;
 	// (its inline content as BlockLines built it, kept while its text and styles stay: BlockLines' Built)
@@ -179,6 +189,18 @@ class Box {
 
 	inline function set_cacheFragment(v:Int):Int
 		return state == null && v == -1 ? v : laid().cacheFragment = v;
+
+	inline function get_laidWidth():Float
+		return state == null ? Math.NaN : state.laidWidth;
+
+	inline function set_laidWidth(v:Float):Float
+		return laid().laidWidth = v;
+
+	inline function get_laidHeight():Float
+		return state == null ? Math.NaN : state.laidHeight;
+
+	inline function set_laidHeight(v:Float):Float
+		return laid().laidHeight = v;
 
 	inline function get_minContent():Float
 		return state == null ? Math.NaN : state.minContent;
@@ -324,6 +346,8 @@ private class BoxState {
 	public var cacheIgnore = false;
 	public var cacheMore:Null<Array<Float>> = null;
 	public var cacheFragment = -1;
+	public var laidWidth = Math.NaN;
+	public var laidHeight = Math.NaN;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
 	public var inlineCache:Null<Any> = null;

@@ -71,6 +71,89 @@ class BoxTree {
 		resolve(_ -> 0);
 	}
 
+	// An element's boxes made again from its styles (a display, a float,
+	// its own or what is in it), in its box old's place: the boxes made
+	// (old's parent's children now); null where it can't be: el no
+	// longer one box of old's kind (unless old is a block among blocks and
+	// they are blocks too, or none), a counter in it not reset in it (its
+	// value the document's before it), more than REBUILT elements in it
+	// (the whole tree made again then costs little more), on pages.
+	public static inline var REBUILT = 20000;
+
+	public function rebuild(el:Element, old:Box):Null<Array<Box>> {
+		var p = old.parent;
+		if (paged || p == null || counted(el)) return null;
+		var out = [], s = style(el);
+		if (!s.none) boxes(el, s, out);
+		var same = out.length == 1 && out[0].kind == old.kind;
+		if (!same && !(among(p) && Lambda.foreach(out, b -> inFlowBlock(b) || outOfFlow(b)))) return null;
+		if (out.length == 0) remove(old) else replace(old, out);
+		return out;
+	}
+
+	// (a block container's children all blocks or out of flow: none in an anonymous block, none in lines)
+	static function among(p:Box):Bool {
+		var k = p.first;
+		while (k != null) {
+			if (!inFlowBlock(k) && !outOfFlow(k)) return false;
+			k = k.next;
+		}
+		return p.kind == Block || p.kind == Container;
+	}
+
+	static function remove(old:Box)
+		@:privateAccess {
+			var p = old.parent;
+			var prev:Null<Box> = null, k = p.first;
+			while (k != null && k != old) {
+				prev = k;
+				k = k.next;
+			}
+			if (prev == null) p.first = old.next else prev.next = old.next;
+			if (p.last == old) p.last = prev;
+			old.parent = null;
+			old.next = null;
+		}
+
+	// (a counter el or what is in it reads that isn't reset in it, a list item's too: what generating it
+	// alone gets wrong, its value the document's before it)
+	function counted(el:Element):Bool {
+		var reset = new Map<String, Int>(), left = REBUILT;
+		function names(terms:Array<CssTerm>):Array<String>
+			return [for (t in terms) switch t {
+				case Ident(n): n;
+				case _: continue;
+			}];
+		function reads(n:String):Bool
+			return !reset.exists(n) || reset.get(n) == 0;
+		function walk(e:Element):Bool {
+			if (left-- <= 0) return true;
+			var s = style(e);
+			if (s.none) return false;
+			var own = names(s.css.terms(helder.css.CssProperty.CounterReset));
+			for (n in own) reset.set(n, (reset.get(n) ?? 0) + 1);
+			var outside = s.listItem && reads("list-item");
+			for (p in [helder.css.CssProperty.CounterIncrement, helder.css.CssProperty.CounterSet]) for (n in names(s.css.terms(p))) if (reads(n)) outside = true;
+			// (generated content that reads a counter)
+			for (which in ["before", "after"])
+				if (!outside && styles.hasPseudo(e, which))
+					for (t in styles.computed(e, which).terms(helder.css.CssProperty.Content)) switch t {
+						case Func("counter" | "counters", args):
+							for (n in names(args)) if (reads(n)) outside = true;
+						case Func("target-counter" | "target-counters", _): outside = true;
+						case _:
+					}
+			var c = e.firstElementChild;
+			while (c != null && !outside) {
+				if (walk(c)) outside = true;
+				c = c.nextElementSibling;
+			}
+			for (n in own) reset.set(n, reset.get(n) - 1);
+			return outside;
+		}
+		return walk(el);
+	}
+
 	// Cross-references' texts, the pages they are on by pageOf: whether one changed.
 	public function resolve(pageOf:Element->Int):Bool {
 		counters.resolveTargets(pageOf);
@@ -384,6 +467,8 @@ class BoxTree {
 			with[with.length - 1].next = next;
 			if (prev == null) p.first = with[0] else prev.next = with[0];
 			if (p.last == old) p.last = with[with.length - 1];
+			old.parent = null;
+			old.next = null;
 		}
 
 	static inline function white(c:Int):Bool

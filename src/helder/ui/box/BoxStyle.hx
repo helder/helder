@@ -532,13 +532,38 @@ class BoxStyle {
 	function get_absolute():Bool
 		return position == "absolute" || position == "fixed";
 
+	// width: min-content, max-content or fit-content (Sizing 3 §3.2)
+	public var contentSized(get, never):Bool;
+
+	function get_contentSized():Bool {
+		if (sized < 0) {
+			var k = keyword("width");
+			sized = k == "min-content" || k == "max-content" || k == "fit-content" ? 1 : 0;
+		}
+		return sized == 1;
+	}
+
+	var sized = -1;
+
 	// overflow scroll or auto on either axis: a scroll container whose content scrolls
 	public var scrolls(get, never):Bool;
 
 	function get_scrolls():Bool {
-		var x = keyword("overflow-x"), y = keyword("overflow-y");
-		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
+		if (overflows < 0) {
+			var x = keyword("overflow-x"), y = keyword("overflow-y");
+			overflows = (x == "auto" || x == "scroll" || y == "auto" || y == "scroll" ? 1 : 0) | (x == "hidden" || y == "hidden" ? 2 : 0);
+		}
+		return overflows & 1 != 0;
 	}
+
+	// overflow hidden, auto or scroll on either axis: a scroll container (clip makes none, Overflow 3 §3)
+	public var scrollContainer(get, never):Bool;
+
+	function get_scrollContainer():Bool
+		return scrolls || overflows & 2 != 0;
+
+	// (scrolls' and scrollContainer's, read once: 1 scrolls, 2 hidden)
+	var overflows = -1;
 
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;
@@ -569,9 +594,14 @@ class BoxStyle {
 		return trait(VISIBLE);
 
 	// a stacking context of its own (CSS 2.1 §9.9.1, Color 4's opacity, Transforms 1)
-	public function stacking():Bool
-		return positioned && zIndex() != null || opacity < 1 || keyword("transform") != "none" && terms("transform").length > 0
-			|| keyword("position") == "fixed" || containment.stacking;
+	public function stacking():Bool {
+		if (stacks < 0)
+			stacks = positioned && zIndex() != null || opacity < 1 || keyword("transform") != "none" && terms("transform").length > 0
+				|| keyword("position") == "fixed" || containment.stacking ? 1 : 0;
+		return stacks == 1;
+	}
+
+	var stacks = -1;
 
 	// ---- containment (CSS Containment 2)
 
@@ -631,7 +661,12 @@ class BoxStyle {
 
 	// "baseline", "sub", "super", "top", "bottom", "middle", "text-top",
 	// "text-bottom", "length" (shift: px up) or "percent" (shift: of the line height)
-	public function verticalAlign():{kind:String, shift:Float} {
+	public function verticalAlign():{kind:String, shift:Float}
+		return aligned ??= align();
+
+	var aligned:Null<{kind:String, shift:Float}> = null;
+
+	function align():{kind:String, shift:Float} {
 		switch terms("baseline-shift") {
 			case [Keyword(k)] if (k != "baseline"): return {kind: k == "center" ? "middle" : k, shift: 0};
 			case [Dimension(v, _)] if (v != 0): return {kind: "length", shift: v};

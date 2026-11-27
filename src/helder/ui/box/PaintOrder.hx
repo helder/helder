@@ -103,9 +103,17 @@ class PaintOrder {
 	var runs:Null<Array<Float>> = null;
 	final spare:Array<Collected> = [];
 
-	public function new(fragments:Fragments, root:Int, ?area:Array<Float>) {
+	// (steps: about how many there will be, its columns made that long at once: the last order's count, say)
+	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0) {
 		f = fragments;
 		this.area = area;
+		if (steps > 0) {
+			this.steps.resize(steps);
+			this.fragments.resize(steps);
+			xs.resize(steps);
+			ys.resize(steps);
+			stateOf.resize(steps);
+		}
 		if (root < 0) return;
 		canvas = canvasBox(f.box(root));
 		context(root, f.x(root), f.y(root));
