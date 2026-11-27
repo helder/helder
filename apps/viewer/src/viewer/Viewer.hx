@@ -621,7 +621,8 @@ class Viewer {
 			camera.glide(dt);
 			moved = true;
 		}
-		var d = shown;
+		// (closed: its picture kept for the fade, still: an animation no one sees steps no more)
+		var d = closed ? null : shown;
 		if (d != null && d.frames.length > 1 && (d.repetitions < 0 || played <= d.repetitions)) {
 			// (the first tick, or a clock that went back: from now)
 			if (frameAt < 0 || now < frameAt) frameAt = now;
