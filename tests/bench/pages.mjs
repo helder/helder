@@ -2,7 +2,7 @@
 // bin/bench/html with their <link rel=stylesheet>s, and a sheets.json of
 // URL to file, as the engine resolves them.
 //
-//   node tests/bench/pages.mjs      fetches the HTML Standard and a Wikipedia article
+//   node tests/bench/pages.mjs      fetches the HTML Standard and two Wikipedia articles
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,4 +43,6 @@ export async function page(name, url) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	await page('html-spec', 'https://html.spec.whatwg.org/');
 	await page('wikipedia', 'https://en.wikipedia.org/wiki/World_War_II');
+	// (Wikipedia's longest: tables of some 2,700 rows, its page's background far past a layer's 8192 pixels)
+	await page('telemann', 'https://en.wikipedia.org/wiki/List_of_vocal_works_by_Georg_Philipp_Telemann');
 }

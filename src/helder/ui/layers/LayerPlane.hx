@@ -151,6 +151,13 @@ class LayerPlane {
 			if (x1 <= x0 || y1 <= y0) return;
 		}
 		var g = grid, nx = Math.ffloor(x0 / g) * g, ny = Math.ffloor(y0 / g) * g;
+		// (a drawable is 8192 pixels at most: where the quads cover more (a
+		// long page's background), the part around what its clip shows, not
+		// their top, so that it is not left blank past the first 8192)
+		if (kind == SCROLL) {
+			nx = around(nx, x0, x1, cx0, cx1, g);
+			ny = around(ny, y0, y1, cy0, cy1, g);
+		}
 		var w = Std.int(Math.min(8192, Math.fceil(x1) - nx)), h = Std.int(Math.min(8192, Math.fceil(y1) - ny));
 		inline function grown(v:Int):Int
 			return Std.int(Math.min(8192, Math.ceil(v / (64 * g)) * 64 * g));
@@ -158,6 +165,11 @@ class LayerPlane {
 		if (h > ph || h * 2 < ph) ph = grown(h);
 		ox = nx;
 		oy = ny;
+	}
+
+	static function around(n:Float, v0:Float, v1:Float, c0:Float, c1:Float, g:Int):Float {
+		if (Math.fceil(v1) - n <= 8192) return n;
+		return Math.ffloor(Math.max(v0, Math.min((c0 + c1 - 8192) / 2, v1 - 8192)) / g) * g;
 	}
 
 	// (its quads in its pixels, its runs; whether to draw them: other than drawn last, or sampling what was drawn into since)

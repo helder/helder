@@ -145,11 +145,14 @@ class DocumentNode extends helder.ui.Node {
 		return true;
 	}
 
-	// (the scroller around it, and the part of the document it shows: its top and height)
+	// (the scroller around it, and the part of the document it shows: its top and height; the top as the
+	// clamp after the settles leaves it, the document shorter for what was laid out at its end)
 	function scrolled():Null<{scroller:Node, top:Float, height:Float}> {
 		var sc = parent;
 		while (sc != null && sc.style.overflow != Scroll) sc = sc.parent;
-		return sc == null ? null : {scroller: sc, top: sc.scrollY - (absY - sc.absY), height: sc.height};
+		if (sc == null) return null;
+		var y = Math.max(0, Math.min(sc.scrollY, @:privateAccess helder.ui.Scrolling.maxScroll(sc, false)));
+		return {scroller: sc, top: y - (absY - sc.absY), height: sc.height};
 	}
 
 	// (the scroll moved with what it shows: a glide or a drag goes on)

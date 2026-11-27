@@ -27,6 +27,11 @@ class Layer {
 	@:allow(helder.ui) var x1 = 0.0;
 	@:allow(helder.ui) var y1 = 0.0;
 	@:allow(helder.ui) var key = -1;
+	// (what was seen of it as it was last walked: what it is recorded over reaches past it)
+	@:allow(helder.ui) var seenX0 = 0.0;
+	@:allow(helder.ui) var seenY0 = 0.0;
+	@:allow(helder.ui) var seenX1 = 0.0;
+	@:allow(helder.ui) var seenY1 = 0.0;
 	// (the paint it was last recorded in)
 	@:allow(helder.ui) var recordedAt = -1;
 	// (under visibility hidden where it was recorded, and in its parent's list now)

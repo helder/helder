@@ -591,6 +591,19 @@ class AsyncScrollCheck {
 			ui.scrollTo(list, 0, first);
 			frame(true);
 		}
+		// (the mirror far past what the program's last frame recorded: what
+		// that recorded held at its edge, as the program's own there, not blank)
+		var l = @:privateAccess list.contentLayer, edge = first + @:privateAccess (l.y1 - l.seenY1);
+		@:privateAccess c.mirror.byNode.get(list).scrollY = 1500;
+		c.drawNow(mine);
+		ui.scrollTo(list, 0, edge);
+		frame(false, theirs);
+		var off = 0;
+		for (i in 0...w * h)
+			if (mine.getInt32(i * 4) != theirs.getInt32(i * 4)) off++;
+		check('frames at scale $scale: the compositor\'s far past what was recorded held at its edge, $edge', edge < 1500 && off == 0, '$off pixels differ');
+		ui.scrollTo(list, 0, first);
+		frame(true);
 		c.dispose();
 		device.dispose();
 	}
