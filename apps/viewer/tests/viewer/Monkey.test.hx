@@ -64,12 +64,21 @@ function tests() {
 	test("the viewer under a monkey", () -> Monkey.check({
 		from: Monkey.from("viewer.Viewer_scenario", made, madePhone),
 		atoms: [Monkey.atom(Sandbox.made)],
-		checks: [{name: "sandbox", check: sandbox}, {name: "media", check: media}]
+		checks: [{name: "sandbox", check: sandbox}, {name: "media", check: media}],
+		animates: animates
 	}, {cases: 20, limit: 60}));
 	#end
 }
 
 #if (hxmc.target != "wasm32-wasi")
+// (an animated image or a medium shown: moving by design, looping)
+function animates():Bool {
+	var x = Shell.explorer.peek();
+	if (x == null || !x.full.value) return false;
+	var d = x.viewer.shown;
+	return d != null && d.frames.length > 1 || x.viewer.media.peek() != "";
+}
+
 // (the explorer's files: the Sandbox's, in memory, never the machine's)
 function sandbox():Null<String> {
 	var x = Shell.explorer.peek();

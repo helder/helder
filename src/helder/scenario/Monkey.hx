@@ -270,7 +270,9 @@ class Monkey {
 	function ok(s:Screen, after:Null<{step:Step, before:Snapshot}>):Bool {
 		var seal = s.context.seal;
 		if (seal != null && seal.refused.length > 0) fail("throws", '${at(after)}${seal.refused[0]}');
-		if (!s.settled && on("settles")) fail("settles", '${at(after)}it never settles: ${s.pending()} after a minute of its clock');
+		// (moving by design now, its own say: an animation that loops, a video playing)
+		var endless = def.animates != null && s.context.run(def.animates);
+		if (!s.settled && on("settles") && !endless) fail("settles", '${at(after)}it never settles: ${s.pending()} after a minute of its clock');
 		if (s.missed != null) fail("throws", '${at(after)}${s.missed}');
 		if (failed() > 0) return false;
 		var now = Snapshot.of(s);
@@ -326,7 +328,7 @@ class Monkey {
 		}
 		if (after != null && on("kept")) kept(s, after.step, after.before, now);
 		if (failed() > 0) return false;
-		if (on("steady")) {
+		if (on("steady") && !endless) {
 			s.frame();
 			var later = Snapshot.of(s);
 			for (n in now.nodes) {
@@ -609,6 +611,10 @@ typedef MonkeyDef = {
 	@:optional var texts:Gen<String>;
 	// invariants left out, by name (Monkey.INVARIANTS, the checks')
 	@:optional var except:Array<String>;
+	// whether the program moves by design now (asked in the case's screen:
+	// an animated image looping, a video playing): settles and steady not
+	// asked of it then
+	@:optional var animates:Void->Bool;
 	// the program's own invariants, after the monkey's: each run in the
 	// case's screen (its context and store current) after boot and each
 	// step, what is wrong (null: none)
