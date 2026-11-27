@@ -635,7 +635,7 @@ class BoxTree {
 				b.text = text;
 				out.push(b);
 			case Image(Url(url, _)):
-				var b = make(InlineReplaced, s, el, which);
+				var b = make(InlineReplaced, s.anonymousChild(), el, which);
 				source(b, url);
 				out.push(b);
 			// (a cross-reference: its text once the targets are resolved; a leader: its fill, repeated by the lines)
