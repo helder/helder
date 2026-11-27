@@ -26,11 +26,10 @@ class Sandbox {
 	static final read = new Map<String, Bytes>();
 
 	public static function explorer():Explorer {
-		var m = new MemoryFiles(), bytes = new Map<String, Bytes>();
+		var m = new MemoryFiles();
 		function put(path:String, file:String, modified = 0.0) {
 			var b = read.get(file);
 			if (b == null) read.set(file, b = File.getBytes(file));
-			bytes.set(path, b);
 			m.add(path, b, modified);
 		}
 		for (d in FOLDERS) {
@@ -52,9 +51,7 @@ class Sandbox {
 				case Empty: m.add(path, haxe.io.Bytes.alloc(0));
 				case Truncated:
 					put(path, fixture(Truncated));
-					var b = bytes.get(path).sub(0, 4096);
-					bytes.set(path, b);
-					m.add(path, b);
+					m.add(path, m.bytes(path).sub(0, 4096));
 				case k: put(path, fixture(k));
 			}
 		}
@@ -63,14 +60,17 @@ class Sandbox {
 			{kind: Pictures, name: Samples.ROOT, path: Samples.ROOT},
 			{kind: Documents, name: "Fixtures", path: "tests/fixtures"}
 		];
-		var x = new Explorer(m, (key, side, done) -> done(Decode.of({path: key, bytes: bytes.get(Decode.parseKey(key).path), side: side})), places, [],
-			(path, done) -> Preview.from(path, bytes.get(path), done), (path, done) -> done(PdfPages.sizesIn({path: path, bytes: bytes.get(path)})),
+		// (a file's bytes where it is now: moved, renamed, trashed and put back as the explorer does; gone, none)
+		function bytes(path:String):Bytes
+			return m.bytes(path) ?? Bytes.alloc(0);
+		var x = new Explorer(m, (key, side, done) -> done(Decode.of({path: key, bytes: bytes(Decode.parseKey(key).path), side: side})), places, [],
+			(path, done) -> Preview.from(path, bytes(path), done), (path, done) -> done(PdfPages.sizesIn({path: path, bytes: bytes(path)})),
 			(path, done) -> done(m.text(path)));
-		x.viewer.measure = (paths, done) -> done([for (p in paths) bytes.exists(p) ? helder.image.Image.size(bytes.get(p)) : null]);
+		x.viewer.measure = (paths, done) -> done([for (p in paths) m.bytes(p) != null ? helder.image.Image.size(m.bytes(p)) : null]);
 		var listed = x.browser.onItems;
 		x.browser.onItems = () -> {
 			if (listed != null) listed();
-			tiles(x, bytes);
+			tiles(x, m);
 		};
 		Kinds.utc(true);
 		return x;
@@ -106,9 +106,9 @@ class Sandbox {
 		}
 
 	// (the folder's thumbnails made now, as the queue would make them; kept by content, every screen's)
-	static function tiles(x:Explorer, bytes:Map<String, Bytes>)
+	static function tiles(x:Explorer, m:MemoryFiles)
 		for (e in x.browser.items.value) {
-			var b = bytes.get(x.browser.path(e.name));
+			var b = m.bytes(x.browser.path(e.name));
 			if (b == null || Tiles.cached(x, e) != null || !Kinds.viewable(e) || FolderModel.isMedia(e.name) || FolderModel.isMarkdown(e.name)) continue;
 			var d = Decode.of({path: x.browser.path(e.name), bytes: b, side: Thumbnails.SIDE});
 			if (d.frames.length == 0) {
