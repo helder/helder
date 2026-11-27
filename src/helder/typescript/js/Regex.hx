@@ -1,6 +1,7 @@
 package helder.typescript.js;
 
 import helder.typescript.js.Values;
+import helder.typescript.js.Shapes;
 import helder.typescript.js.Lib.*;
 
 enum RxNode {
@@ -52,6 +53,12 @@ class Compiled {
 	public final flags:String;
 	public final first:Array<Int>;
 	public final anchored:Bool;
+	// (first's ASCII code units, by code unit: Regex.scan's)
+	public var ascii:Null<Array<Bool>> = null;
+	// (a group has a name: a match has groups)
+	public final named:Bool;
+	// (a match's groups': its names in order, when they are distinct)
+	public var groupShape:Null<Shape> = null;
 
 	public function new(program:RxNode, groups:Int, names:Array<String>, bits:Int, flags:String, first:Array<Int>, anchored:Bool) {
 		this.program = program;
@@ -61,6 +68,7 @@ class Compiled {
 		this.flags = flags;
 		this.first = first;
 		this.anchored = anchored;
+		named = Lambda.exists(names, n -> n != null);
 	}
 }
 
@@ -68,6 +76,10 @@ class Compiled {
 // backtracking matcher (continuation passing), with the RegExp built-ins.
 class Regex {
 	public static var RegExpProto:JsObject;
+	// (a RegExp's shape with lastIndex alone: slot 0)
+	static var plain:Shape = null;
+	// (a match's array's: index, input and groups, slots 0 to 2)
+	static var matched:Shape = null;
 	public static function isRegExp(v:Dynamic):Bool return Std.isOfType(v, JsRegExp);
 
 	// flags as bits
@@ -529,7 +541,14 @@ class Regex {
 		r.groupCount = compiled.groups;
 		r.groupNames = compiled.names;
 		r.program = compiled.program;
-		r.setOwn("lastIndex", 0.0, Attr.HIDDEN | Attr.LOCKED);
+		if (plain == null) {
+			r.setOwn("lastIndex", 0.0, Attr.HIDDEN | Attr.LOCKED);
+			plain = r.shape;
+		}
+		else {
+			r.shape = plain;
+			r.slots = [0.0];
+		}
 		return r;
 	}
 
@@ -544,7 +563,11 @@ class Regex {
 			case RChar(c) if (c < 128): [c, c];
 			case RSet(ranges, false) if (!fold && !(unicode && ranges.filter(r -> r >= 0xd800).length > 0)): ranges;
 			case RGroup(_, x): firsts(x, fold, unicode);
-			case RSeq(items) if (items.length > 0): firsts(items[0], fold, unicode);
+			// (what a sequence's first consumes: its assertions before it consume nothing)
+			case RSeq(items):
+				var i = 0;
+				while (i < items.length && items[i].match(RWord(_) | RStart | REnd | RLook(_, _, _))) i++;
+				i < items.length ? firsts(items[i], fold, unicode) : null;
 			case RRepeat(x, min, _, _, _, _) if (min > 0): firsts(x, fold, unicode);
 			case RAlt(options):
 				var out = [];
@@ -801,8 +824,33 @@ class Regex {
 		if (compiled.anchored && k > 0 && !(multiline && lineTerminator(StringTools.fastCodeAt(s, k - 1)))) return false;
 		var first = compiled.first;
 		if (first == null) return true;
-		if (k >= s.length) return false;
-		var c = StringTools.fastCodeAt(s, k), i = 0;
+		return k < s.length && starts(StringTools.fastCodeAt(s, k), first);
+	}
+
+	// (the first position from k where possible holds, else -1; code unit by code unit, no surrogate pairs)
+	function scan(k:Int):Int {
+		var n = s.length;
+		if (compiled.anchored) {
+			if (k == 0) return 0;
+			if (!multiline) return -1;
+			while (k <= n && !lineTerminator(StringTools.fastCodeAt(s, k - 1))) k++;
+			return k <= n ? k : -1;
+		}
+		var first = compiled.first;
+		if (first == null) return k;
+		var ascii = compiled.ascii;
+		if (ascii == null) ascii = compiled.ascii = [for (c in 0...128) starts(c, first)];
+		while (k < n) {
+			var c = StringTools.fastCodeAt(s, k);
+			if (c < 128 ? ascii[c] : starts(c, first)) return k;
+			k++;
+		}
+		return -1;
+	}
+
+	// (first's pairs are in no order: an alternative's after another's)
+	static function starts(c:Int, first:Array<Int>):Bool {
+		var i = 0;
 		while (i < first.length) {
 			if (c >= first[i] && c <= first[i + 1]) return true;
 			i += 2;
@@ -829,12 +877,18 @@ class Regex {
 
 	// RegExpBuiltinExec: the match object (array with index, input, groups), or null.
 	public static function exec(r:JsRegExp, s:String):Dynamic {
+		var caps = execCaps(r, s);
+		return caps == null ? null : result(r, s, caps);
+	}
+
+	// (RegExpBuiltinExec's captures, lastIndex read and written as it does)
+	static function execCaps(r:JsRegExp, s:String):Array<Int> {
 		var bits = r.compiled.bits;
 		var global = bits & GLOBAL != 0, sticky = bits & STICKY != 0;
-		var lastIndex = toLength(get(r, "lastIndex"));
+		var lastIndex = toLength(getLastIndex(r));
 		if (!global && !sticky) lastIndex = 0;
 		if (lastIndex > s.length) {
-			if (global || sticky) put(r, "lastIndex", 0);
+			if (global || sticky) setLastIndex(r, 0);
 			return null;
 		}
 		var k = Std.int(lastIndex), unicode = bits & UNICODE != 0;
@@ -846,30 +900,60 @@ class Regex {
 		var caps:Array<Int> = null;
 		var m = matcher(r, s);
 		while (k <= s.length) {
+			if (!sticky && !unicode && (k = m.scan(k)) < 0) break;
 			caps = m.attempt(k);
 			if (caps != null || sticky) break;
 			k = advance(s, k, unicode);
 		}
 		if (caps == null) {
-			if (global || sticky) put(r, "lastIndex", 0);
+			if (global || sticky) setLastIndex(r, 0);
 			return null;
 		}
-		if (global || sticky) put(r, "lastIndex", caps[1]);
-		return result(r, s, caps);
+		if (global || sticky) setLastIndex(r, caps[1]);
+		return caps;
+	}
+
+	// (lastIndex as a RegExp of lastIndex alone has it, its slot, else read and written as a property)
+	static inline function getLastIndex(r:JsRegExp):Dynamic return r.shape == plain ? r.slots[0] : get(r, "lastIndex");
+
+	static inline function setLastIndex(r:JsRegExp, v:Int):Void if (r.shape == plain) r.slots[0] = v; else put(r, "lastIndex", v);
+
+	// (r a RegExp of RegExp.prototype's, its own properties lastIndex alone:
+	// its methods' reads of exec, flags and themselves find the prototype's
+	// built-ins, frozen (Builtins.freeze), so they skip them, and its
+	// matches are read as captures where no one sees their arrays)
+	public static function pristine(r:Dynamic):Bool
+		return Std.isOfType(r, JsRegExp) && (r : JsRegExp).shape == plain && (r : JsRegExp).proto == RegExpProto;
+
+	static function captures(r:JsRegExp, s:String, caps:Array<Int>):Array<Dynamic>
+		return [for (g in 0...r.groupCount + 1) caps[2 * g] < 0 ? undef() : s.substring(caps[2 * g], caps[2 * g + 1])];
+
+	static function groupsOf(r:JsRegExp, items:Array<Dynamic>):Dynamic {
+		var c = r.compiled;
+		if (!c.named) return undef();
+		var g = new JsObject(null);
+		if (c.groupShape == null) {
+			var names = [for (n in r.groupNames) if (n != null) n];
+			if (Lambda.count([for (n in names) n => true]) == names.length) c.groupShape = Shapes.literal(names);
+		}
+		if (c.groupShape != null) {
+			g.shape = c.groupShape;
+			g.slots = [for (k in 0...r.groupNames.length) if (r.groupNames[k] != null) items[k + 1]];
+			return g;
+		}
+		for (k in 0...r.groupNames.length) if (r.groupNames[k] != null) g.setOwn(r.groupNames[k], items[k + 1]);
+		return g;
 	}
 
 	static function result(r:JsRegExp, s:String, caps:Array<Int>):Dynamic {
-		var items:Array<Dynamic> = [for (g in 0...r.groupCount + 1) caps[2 * g] < 0 ? undef() : s.substring(caps[2 * g], caps[2 * g + 1])];
-		var a:JsArray = cast array(items);
-		a.setOwn("index", caps[0]);
-		a.setOwn("input", s);
-		var groups:Dynamic = undef();
-		if (r.groupNames.filter(n -> n != null).length > 0) {
-			var g = new JsObject(null);
-			for (k in 0...r.groupNames.length) if (r.groupNames[k] != null) g.setOwn(r.groupNames[k], items[k + 1]);
-			groups = g;
-		}
-		a.setOwn("groups", groups);
+		var items = captures(r, s, caps);
+		var groups = groupsOf(r, items);
+		var a = new JsArray(Builtins.ArrayProto);
+		a.items = items;
+		a.length = items.length;
+		if (matched == null) matched = Shapes.array.with("index", 0, Shapes.KEYS, false).with("input", 0, Shapes.KEYS, false).with("groups", 0, Shapes.KEYS, false);
+		a.shape = matched;
+		a.slots = [caps[0], s, groups];
 		if (r.compiled.bits & INDICES != 0) {
 			var indices:JsArray = cast array([for (g in 0...r.groupCount + 1) caps[2 * g] < 0 ? undef() : array([caps[2 * g], caps[2 * g + 1]])]);
 			var ig:Dynamic = undef();
@@ -902,6 +986,7 @@ class Regex {
 
 	// (exec through a possibly overridden exec method, as RegExpExec does)
 	static function regExpExec(r:Dynamic, s:String):Dynamic {
+		if (pristine(r)) return exec(r, s);
 		var f = get(r, "exec");
 		if (Std.isOfType(f, JsFunction) && (f : JsFunction).native != null && Std.isOfType(r, JsRegExp)) return exec(r, s);
 		if (isCallable(f)) {
@@ -940,7 +1025,10 @@ class Regex {
 		getter("flags", r -> r.compiled.flags);
 		for (pair in [["global", "g"], ["ignoreCase", "i"], ["multiline", "m"], ["dotAll", "s"], ["unicode", "u"], ["unicodeSets", "v"], ["sticky", "y"], ["hasIndices", "d"]]) getter(pair[0], r -> r.flags.indexOf(pair[1]) >= 0);
 		method("exec", 1, (t, a, _) -> exec(thisRegExp(t, "exec"), Seed.text(arg(a, 0))));
-		method("test", 1, (t, a, _) -> regExpExec(t, Seed.text(arg(a, 0))) != null);
+		method("test", 1, (t, a, _) -> {
+			var s = Seed.text(arg(a, 0));
+			return pristine(t) ? execCaps(t, s) != null : regExpExec(t, s) != null;
+		});
 		method("toString", 0, (t, _, _) -> "/" + Seed.text(get(t, "source")) + "/" + Seed.text(get(t, "flags")));
 		method("compile", 2, (t, a, _) -> {
 			var r = thisRegExp(t, "compile");
@@ -956,6 +1044,7 @@ class Regex {
 			return r;});
 		method("\x00@@match", 1, (t, a, _) -> {
 			var s = Seed.text(arg(a, 0));
+			if (pristine(t)) return matches(t, s);
 			var flags = Seed.text(get(t, "flags"));
 			if (flags.indexOf("g") < 0) return regExpExec(t, s);
 			put(t, "lastIndex", 0);
@@ -978,15 +1067,15 @@ class Regex {
 			var global = flags.indexOf("g") >= 0;
 			var it = new JsObject(Builtins.IteratorProto);
 			it.setOwn("next", Builtins.nativeFunction("next", 0, (_, _, _) -> {
-				if (done) return object(["value", "done"], [undef(), true]);
+				if (done) return iterResult(undef(), true);
 				var m = exec(r, s);
 				if (m == null) {
 					done = true;
-					return object(["value", "done"], [undef(), true]);
+					return iterResult(undef(), true);
 				}
 				if (!global) done = true;
 				else if (Seed.text(get(m, 0)) == "") put(r, "lastIndex", advance(s, Std.int(toLength(get(r, "lastIndex"))), flags.indexOf("u") >= 0));
-				return object(["value", "done"], [m, false]);
+				return iterResult(m, false);
 			}), Attr.HIDDEN);
 			it.setOwn(Symbols.toStringTag, "RegExp String Iterator", Attr.HIDDEN);
 			return it;
@@ -1010,6 +1099,7 @@ class Regex {
 			if (s.length == 0) return array(m.attempt(0) != null ? [] : [s]);
 			var p = 0, q = 0;
 			while (q < s.length) {
+				if (!unicode && ((q = m.scan(q)) < 0 || q >= s.length)) break;
 				var caps = m.attempt(q);
 				if (caps == null || caps[1] == p || caps[1] > s.length) {
 					q = advance(s, q, unicode);
@@ -1027,43 +1117,99 @@ class Regex {
 			out.push(s.substr(p));
 			return array(out);
 		});
-		method("\x00@@replace", 2, (t, a, _) -> {
-			var s = Seed.text(arg(a, 0));
-			var replaceValue = arg(a, 1);
-			var functional = isCallable(replaceValue);
-			var template = functional ? "" : Seed.text(replaceValue);
-			var flags = Seed.text(get(t, "flags"));
-			var global = flags.indexOf("g") >= 0;
-			if (global) put(t, "lastIndex", 0);
-			var results:Array<Dynamic> = [];
-			while (true) {
-				var m = regExpExec(t, s);
-				if (m == null) break;
-				results.push(m);
-				if (!global) break;
-				if (Seed.text(get(m, 0)) == "") put(t, "lastIndex", advance(s, Std.int(toLength(get(t, "lastIndex"))), flags.indexOf("u") >= 0));
+		method("\x00@@replace", 2, (t, a, _) -> replace(t, Seed.text(arg(a, 0)), arg(a, 1)));
+	}
+
+	public static function replace(t:Dynamic, s:String, replaceValue:Dynamic):String {
+		var functional = isCallable(replaceValue);
+		var template = functional ? "" : Seed.text(replaceValue);
+		if (pristine(t)) return replaceAll(t, s, functional ? replaceValue : null, template);
+		var flags = Seed.text(get(t, "flags"));
+		var global = flags.indexOf("g") >= 0;
+		if (global) put(t, "lastIndex", 0);
+		var results:Array<Dynamic> = [];
+		while (true) {
+			var m = regExpExec(t, s);
+			if (m == null) break;
+			results.push(m);
+			if (!global) break;
+			if (Seed.text(get(m, 0)) == "") put(t, "lastIndex", advance(s, Std.int(toLength(get(t, "lastIndex"))), flags.indexOf("u") >= 0));
+		}
+		var out = new StringBuf();
+		var next = 0;
+		for (m in results) {
+			var matched = Seed.text(get(m, 0));
+			var position = Std.int(Math.max(Math.min(toIntegerOrInfinity(get(m, "index")), s.length), 0));
+			var n = Std.int(Arrays.lengthOf(m));
+			var captures:Array<Dynamic> = [for (k in 1...n) {
+				var c = get(m, k);
+				c == undef() ? c : Seed.text(c);
+			}];
+			var groups = get(m, "groups");
+			var replacement = functional ? Seed.text(call(replaceValue, undef(), ([matched] : Array<Dynamic>).concat(captures).concat([position, s]).concat(groups == undef() ? [] : [groups]))) : expand(template, matched, s, position, captures, groups == undef() ? null : toObject(groups));
+			if (position >= next) {
+				out.add(s.substring(next, position));
+				out.add(replacement);
+				next = position + matched.length;
 			}
-			var out = new StringBuf();
-			var next = 0;
-			for (m in results) {
-				var matched = Seed.text(get(m, 0));
-				var position = Std.int(Math.max(Math.min(toIntegerOrInfinity(get(m, "index")), s.length), 0));
-				var n = Std.int(Arrays.lengthOf(m));
-				var captures:Array<Dynamic> = [for (k in 1...n) {
-					var c = get(m, k);
-					c == undef() ? c : Seed.text(c);
-				}];
-				var groups = get(m, "groups");
-				var replacement = functional ? Seed.text(call(replaceValue, undef(), ([matched] : Array<Dynamic>).concat(captures).concat([position, s]).concat(groups == undef() ? [] : [groups]))) : expand(template, matched, s, position, captures, groups == undef() ? null : toObject(groups));
-				if (position >= next) {
-					out.add(s.substring(next, position));
-					out.add(replacement);
-					next = position + matched.length;
+		}
+		out.add(s.substr(next));
+		return out.toString();
+	}
+
+	// (@@match of a pristine RegExp: its matches' captures, no arrays for them)
+	static function matches(r:JsRegExp, s:String):Dynamic {
+		var bits = r.compiled.bits;
+		if (bits & GLOBAL == 0) return exec(r, s);
+		setLastIndex(r, 0);
+		var out:Array<Dynamic> = [];
+		while (true) {
+			var caps = execCaps(r, s);
+			if (caps == null) break;
+			out.push(s.substring(caps[0], caps[1]));
+			if (caps[0] == caps[1]) setLastIndex(r, advance(s, Std.int(toLength(getLastIndex(r))), bits & UNICODE != 0));
+		}
+		return out.length == 0 ? null : array(out);
+	}
+
+	// (@@replace of a pristine RegExp, by a function or a template: every
+	// match found first, as the method does, then each replaced)
+	static function replaceAll(r:JsRegExp, s:String, fn:Dynamic, template:String):String {
+		var bits = r.compiled.bits, global = bits & GLOBAL != 0;
+		if (global) setLastIndex(r, 0);
+		var found:Array<Array<Int>> = [];
+		while (true) {
+			var caps = execCaps(r, s);
+			if (caps == null) break;
+			found.push(caps);
+			if (!global) break;
+			if (caps[0] == caps[1]) setLastIndex(r, advance(s, Std.int(toLength(getLastIndex(r))), bits & UNICODE != 0));
+		}
+		var out = new StringBuf();
+		var next = 0, literal = fn == null && template.indexOf("$") < 0;
+		for (caps in found) {
+			var position = caps[0];
+			var replacement = if (literal) template; else {
+				var items = captures(r, s, caps);
+				var groups = groupsOf(r, items);
+				var matched:String = items.shift();
+				if (fn == null) expand(template, matched, s, position, items, Lib.same(groups, undef()) ? null : groups);
+				else {
+					items.unshift(matched);
+					items.push(position);
+					items.push(s);
+					if (!Lib.same(groups, undef())) items.push(groups);
+					Seed.text(call(fn, undef(), items));
 				}
 			}
-			out.add(s.substr(next));
-			return out.toString();
-		});
+			if (position >= next) {
+				out.addSub(s, next, position - next);
+				out.add(replacement);
+				next = caps[1];
+			}
+		}
+		out.addSub(s, next);
+		return out.toString();
 	}
 
 	static function escapeSource(source:String):String {

@@ -53,7 +53,7 @@ class Async {
 		if (!g.started && mode != 0) g.finished = true;
 		if (g.finished) {
 			if (mode == 1) throw sent;
-			return object(["value", "done"], [mode == 2 ? sent : undef(), true]);
+			return iterResult(mode == 2 ? sent : undef(), true);
 		}
 		g.started = true;
 		g.running = true;
@@ -70,7 +70,7 @@ class Async {
 			g.finished = true;
 			g.frame = null;
 		}
-		return object(["value", "done"], [v, !g.suspended]);
+		return iterResult(v, !g.suspended);
 	}
 
 	public static function suspend(g:JsGenerator, id:Int, kind:Int, at:String):Void {
@@ -103,7 +103,7 @@ class Async {
 		var name = m == 1 ? "throw" : "return";
 		var f = get(it, name);
 		if (f == null || f == undef()) {
-			if (m == 2) return object(["value", "done"], [received, true]);
+			if (m == 2) return iterResult(received, true);
 			var close = get(it, "return");
 			if (close != null && close != undef()) call(close, it, []);
 			return error("TypeError", "The iterator does not provide a 'throw' method");

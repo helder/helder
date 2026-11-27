@@ -119,7 +119,7 @@ class AsyncArray {
 				var done = Seed.truth(get(result, "done")), value = get(result, "value");
 				// Async-from-sync awaits the value even for a completed result.
 				var wrapped = Promises.create(Promises.PromiseProto);
-				wait(value, v -> Promises.resolve(wrapped, object(["value", "done"], [v, done])), e -> {
+				wait(value, v -> Promises.resolve(wrapped, iterResult(v, done)), e -> {
 					if (done) Promises.reject(wrapped, e); else {
 						var ret:Dynamic;
 						try {

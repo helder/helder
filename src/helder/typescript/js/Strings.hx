@@ -18,8 +18,8 @@ import helder.typescript.js.Globals.*;
 class Strings {
 	// String
 	static function thisString(t:Dynamic):String {
-		if (t == null || t == undef()) error("TypeError", "String.prototype method called on null or undefined");
 		if (Std.isOfType(t, String)) return t;
+		if (t == null || Lib.same(t, undef())) error("TypeError", "String.prototype method called on null or undefined");
 		return Seed.text(isObject(t) ? toPrimitive(t, "string") : t);
 	}
 
@@ -28,8 +28,8 @@ class Strings {
 		constant(p, "length", 0);
 		p.setOwn("\x00@primitive", "", Attr.HIDDEN);
 		var c = constructor("String", 1, p, (_, a, nt) -> {
-			var v = a.length == 0 ? "" : Std.isOfType(a[0], Symbols.JsSymbol) && nt == undef() ? Symbols.text(a[0]) : Seed.text(isObject(a[0]) ? toPrimitive(a[0], "string") : a[0]);
-			if (nt == undef()) return (v : Dynamic);
+			var v = a.length == 0 ? "" : Std.isOfType(a[0], Symbols.JsSymbol) && same(nt, undef()) ? Symbols.text(a[0]) : Seed.text(isObject(a[0]) ? toPrimitive(a[0], "string") : a[0]);
+			if (same(nt, undef())) return (v : Dynamic);
 			var o = wrap(v);
 			o.proto = protoFrom(nt, StringProto);
 			return o;
@@ -90,16 +90,16 @@ class Strings {
 			return (c : Dynamic);});
 		m3("slice", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
 			var n = s.length, second = a1;
-			var start = relative(a0, n), end = second == undef() ? n : relative(second, n);
+			var start = relative(a0, n), end = same(second, undef()) ? n : relative(second, n);
 			return s.substring(Std.int(start), Std.int(Math.max(start, end)));});
 		m3("substring", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
 			var n = s.length, second = a1;
-			var start = Math.max(0, Math.min(toIntegerOrInfinity(a0), n)), end = second == undef() ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
+			var start = Math.max(0, Math.min(toIntegerOrInfinity(a0), n)), end = same(second, undef()) ? n : Math.max(0, Math.min(toIntegerOrInfinity(second), n));
 			return s.substring(Std.int(Math.min(start, end)), Std.int(Math.max(start, end)));});
 		m3("substr", 2, (s, a0:Dynamic, a1:Dynamic, _) -> {
 			var n = s.length, second = a1;
 			var start = relative(a0, n);
-			var length = second == undef() ? n - start : Math.min(Math.max(toIntegerOrInfinity(second), 0), n - start);
+			var length = same(second, undef()) ? n - start : Math.min(Math.max(toIntegerOrInfinity(second), 0), n - start);
 			return length <= 0 ? "" : s.substr(Std.int(start), Std.int(length));});
 		m("concat", 1, (s, a) -> {
 			var b = new StringBuf();
@@ -117,7 +117,7 @@ class Strings {
 			return s.lastIndexOf(Seed.text(a0), Std.int(pos));});
 		m3("endsWith", 1, (s, a0:Dynamic, a1:Dynamic, _) -> {
 			var needle = needle(a0, "endsWith"), second = a1;
-			var end = second == undef() ? s.length : from(s, second);
+			var end = same(second, undef()) ? s.length : from(s, second);
 			return end >= needle.length && s.substr(end - needle.length, needle.length) == needle;});
 		m3("toLowerCase", 0, (s, _, _, _) -> s.toLowerCase());
 		m3("toUpperCase", 0, (s, _, _, _) -> s.toUpperCase());
@@ -140,15 +140,15 @@ class Strings {
 				i++;
 			}
 			return b.toString();});
-		m("padStart", 1, (s, a) -> pad(s, a, true));
-		m("padEnd", 1, (s, a) -> pad(s, a, false));
-		m("split", 2, split);
-		m("replace", 2, (s, a) -> replace(s, a, false));
-		m("replaceAll", 2, (s, a) -> replace(s, a, true));
+		m3("padStart", 1, (s, a0:Dynamic, a1:Dynamic, _) -> pad(s, a0, a1, true));
+		m3("padEnd", 1, (s, a0:Dynamic, a1:Dynamic, _) -> pad(s, a0, a1, false));
+		m3("split", 2, (s, a0:Dynamic, a1:Dynamic, _) -> split(s, a0, a1));
+		m3("replace", 2, (s, a0:Dynamic, a1:Dynamic, _) -> replace(s, a0, a1, false));
+		m3("replaceAll", 2, (s, a0:Dynamic, a1:Dynamic, _) -> replace(s, a0, a1, true));
 		m3("localeCompare", 1, (s, a0:Dynamic, _, _) -> collate(s, Seed.text(a0)));
 		m3("normalize", 0, (s, a0:Dynamic, _, _) -> {
 			var first = a0;
-			var form = first == undef() ? "NFC" : Seed.text(first);
+			var form = same(first, undef()) ? "NFC" : Seed.text(first);
 			if (["NFC", "NFD", "NFKC", "NFKD"].indexOf(form) < 0) return error("RangeError", "Invalid normalization form");
 			return normalizeString(s, form);});
 		m3("isWellFormed", 0, (s, _, _, _) -> wellFormed(s, true));
@@ -176,10 +176,10 @@ class Strings {
 		return s.substring(i, j);
 	}
 
-	static function pad(s:String, a:Array<Dynamic>, start:Bool):String {
-		var n = s.length, second = arg(a, 1);
-		var target = toIntegerOrInfinity(arg(a, 0));
-		var fill = second == undef() ? " " : Seed.text(second);
+	static function pad(s:String, first:Dynamic, second:Dynamic, start:Bool):String {
+		var n = s.length;
+		var target = toIntegerOrInfinity(first);
+		var fill = Lib.same(second, undef()) ? " " : Seed.text(second);
 		if (target <= n || fill == "") return s;
 		if (target > 536870888) error("RangeError", "Invalid string length");
 		var needed = Std.int(target - n);
@@ -212,44 +212,42 @@ class Strings {
 		return test ? ok : b.toString();
 	}
 
-	static function split(s:String, a:Array<Dynamic>):Dynamic {
-		var first = arg(a, 0), second = arg(a, 1), n = s.length;
-		if (first != null && first != undef()) {
+	static function split(s:String, first:Dynamic, second:Dynamic):Dynamic {
+		var n = s.length;
+		if (first != null && !Lib.same(first, undef())) {
 			var splitter = getKey(first, "\x00@@split", first);
-			if (splitter != undef() && splitter != null) return call(splitter, first, [s, second]);
+			if (!same(splitter, undef()) && splitter != null) return call(splitter, first, [s, second]);
 		}
-		var limit = second == undef() ? 4294967295.0 : toUint32(second);
-		var out = new JsArray(ArrayProto);
-		if (limit == 0) return out;
-		if (first == undef()) {
-			setIndex(out, 0, s);
-			return out;
-		}
+		var limit = Lib.same(second, undef()) ? 4294967295.0 : toUint32(second);
+		var out:Array<Dynamic> = [];
+		if (limit == 0) return array(out);
+		if (Lib.same(first, undef())) return array([s]);
 		var delimiter = Seed.text(first);
 		if (delimiter == "") {
 			var i = 0;
-			while (i < n && out.length < limit) setIndex(out, out.length, s.charAt(i++));
-			return out;
+			while (i < n && out.length < limit) out.push(s.charAt(i++));
+			return array(out);
 		}
 		var start = 0;
 		while (out.length < limit) {
 			var i = s.indexOf(delimiter, start);
 			if (i < 0) {
-				setIndex(out, out.length, s.substr(start));
+				out.push(s.substr(start));
 				break;
 			}
-			setIndex(out, out.length, s.substring(start, i));
+			out.push(s.substring(start, i));
 			start = i + delimiter.length;
 		}
-		return out;
+		return array(out);
 	}
 
-	static function replace(s:String, a:Array<Dynamic>, all:Bool):Dynamic {
-		var first = arg(a, 0), second = arg(a, 1), n = s.length;
-		if (first != null && first != undef()) {
+	static function replace(s:String, first:Dynamic, second:Dynamic, all:Bool):Dynamic {
+		var n = s.length;
+		if (!all && Regex.pristine(first)) return Regex.replace(first, s, second);
+		if (first != null && !Lib.same(first, undef())) {
 			if (all && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "replaceAll must be called with a global RegExp");
 			var replacer = getKey(first, "\x00@@replace", first);
-			if (replacer != undef() && replacer != null) return call(replacer, first, [s, second]);
+			if (!same(replacer, undef()) && replacer != null) return call(replacer, first, [s, second]);
 		}
 		var search = Seed.text(first);
 		var functional = isCallable(second);
@@ -275,12 +273,12 @@ class Strings {
 
 	static function matcher(s:String, first:Dynamic, name:String):Dynamic {
 		var symbol = name == "search" ? "\x00@@search" : name == "match" ? "\x00@@match" : "\x00@@matchAll";
-		if (first != null && first != undef()) {
+		if (first != null && !same(first, undef())) {
 			if (name == "matchAll" && Regex.isRegExp(first) && Seed.text(get(first, "flags")).indexOf("g") < 0) error("TypeError", "String.prototype.matchAll called with a non-global RegExp argument");
 			var m = getKey(first, symbol, first);
-			if (m != undef() && m != null) return call(m, first, [s]);
+			if (!same(m, undef()) && m != null) return call(m, first, [s]);
 		}
-		var re = createRegExp(first == undef() ? "" : Seed.text(first), name == "matchAll" ? "g" : "");
+		var re = createRegExp(same(first, undef()) ? "" : Seed.text(first), name == "matchAll" ? "g" : "");
 		return call(get(re, symbol), re, [s]);
 	}
 

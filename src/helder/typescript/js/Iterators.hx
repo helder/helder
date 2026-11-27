@@ -62,7 +62,7 @@ class Iterators {
 		return direct(iterator);
 	}
 
-	static function result(value:Dynamic, done:Bool):Dynamic return object(["value", "done"], [value, done]);
+	static function result(value:Dynamic, done:Bool):Dynamic return iterResult(value, done);
 
 	static function step(record:IteratorRecord):Dynamic {
 		if (record.done) return finished;
