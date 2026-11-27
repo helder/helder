@@ -33,7 +33,7 @@ class Unbroken implements Fragmentation {
 	public function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool
 		return false;
 
-	public function after(box:Box, bottom:Float):Bool
+	public function after(box:Box, bottom:Float, ?forced:Bool):Bool
 		return false;
 
 	public function floated(bottom:Float) {}
@@ -59,11 +59,17 @@ class Unbroken implements Fragmentation {
 	public function monolithic(box:Box, top:Float):Bool
 		return false;
 
+	public function overflowing(box:Box, at:InlineBreak, top:Float):Bool
+		return false;
+
 	public function carry(float:Box, token:BreakToken)
 		outer.carry(float, token);
 
 	public function uncarry(float:Box)
 		outer.uncarry(float);
+
+	public function carrying(box:Box):Bool
+		return outer.carrying(box);
 
 	public function carried(host:Box):Array<{box:Box, token:BreakToken}>
 		return outer.carried(host);

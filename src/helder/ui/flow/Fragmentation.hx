@@ -28,7 +28,8 @@ interface Fragmentation {
 	// past box's content, its height going on, the content ending at
 	// bottom; true: break here, the box to the fragmentainer's end, the rest
 	// of its height in the next (resumed at line BreakToken.PAST)
-	function after(box:Box, bottom:Float):Bool;
+	// (forced: taken, nothing after it here: a formatting context's root whose float goes on)
+	function after(box:Box, bottom:Float, ?forced:Bool):Bool;
 	// a float placed, its margin box ending at bottom: content before the
 	// break opportunities after it (a float is whole: one that doesn't fit
 	// takes the break before it, its line's or its own)
@@ -60,10 +61,16 @@ interface Fragmentation {
 	// of monolithic content, as LayoutNG's); last resort, a break before it
 	// first
 	function monolithic(box:Box, top:Float):Bool;
+	// a line of box's past the fragmentainer's end, starting at at, its top at top (above 0: what the ones before
+	// showed of it): true: break inside it (resumed at BreakToken.LINE, its overflow continuing, as a monolithic
+	// box's, Fragmentation 3 §4.3, as LayoutNG's); last resort, a break before it first
+	function overflowing(box:Box, at:InlineBreak, top:Float):Bool;
 	// a float broken across fragmentainers: its token carried to the next,
 	// wherever the break is (uncarry: its line went to the next itself)
 	function carry(float:Box, token:BreakToken):Void;
 	function uncarry(float:Box):Void;
+	// whether a float in box goes on in the next fragmentainer (carried)
+	function carrying(box:Box):Bool;
 	// the floats carried here host places at its content's top: those whose
 	// nearest ancestor resumed here it is
 	function carried(host:Box):Array<{box:Box, token:BreakToken}>;
@@ -95,5 +102,7 @@ typedef Resume = {
 	// (broken inside: its parallel flows' tokens, by box)
 	?parallel:ObjectMap<Box, BreakToken>,
 	consumed:Float,
-	forced:Bool
+	forced:Bool,
+	// (at BreakToken.LINE: what the fragmentainers before took of its line)
+	?shift:Float
 }

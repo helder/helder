@@ -370,7 +370,7 @@ class BlockFlow implements FormattingContext {
 				// (a monolithic box's continuation: up by what the fragmentainers before took of it)
 				var mono = fr != null ? fr.resume(c) : null, before = mono != null && mono.line == BreakToken.MONO ? mono.consumed : 0.0;
 				at -= before;
-				c.flags = before > 0 ? c.flags | Box.SLICED : c.flags & ~Box.SLICED;
+				if (monolithic(c)) c.flags = before > 0 ? c.flags | Box.SLICED : c.flags & ~Box.SLICED;
 				frags.adopt(frag, cf, bl + pl + shift + c.marginLeft + off.x, bt + pt + at + off.y);
 				empty = false;
 				var b = frags.baseline(cf);
@@ -401,6 +401,10 @@ class BlockFlow implements FormattingContext {
 			}
 			if (fr != null && fr.stopped) broken = true;
 		}
+		// (a formatting context's root whose float goes on in the next fragmentainer: it goes on there too, past its
+		// content, the float in it, what follows it after it, §10.6.7)
+		if (root && box.parent != null && fr != null && !broken && fr.carrying(box) && fr.after(box, reserve + space.pageTop + bt + pt + y, true))
+			broken = true;
 		// (an absolutely positioned box's height past the fragmentainer's end, its content starting before and
 		// ending there: a break after the content, the rest of its height in the next; an in-flow box's stays
 		// whole yet: tests whose references are such boxes need table cells and monolithic overflow broken too)
