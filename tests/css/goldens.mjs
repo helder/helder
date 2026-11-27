@@ -107,17 +107,19 @@ function families(generic) {
     }
   }
   walk(document.styleSheets)
+  // (helder's fallback for characters its faces lack: DejaVu Sans, SystemFonts.FALLBACK; the machine's after it)
+  const fallback = `"${sans}"`
   const rewrite = value => {
     if (!value || /var\(|^\s*(inherit|initial|unset|revert|revert-layer)\s*$/i.test(value)) return null
     const items = value.match(/("[^"]*"|'[^']*'|[^,])+/g) ?? []
-    return items.map(item => {
+    return [...items.map(item => {
       const t = item.trim(), quoted = /^["']/.test(t)
       const name = quoted ? t.slice(1, -1) : t.replace(/\s+/g, ' ')
       const lower = name.toLowerCase()
       if (!quoted && GENERIC[lower]) return `"${GENERIC[lower]}"`
       if (known.has(lower)) return t
       return `"helder-none ${name.replace(/["\\]/g, '')}"`
-    }).join(', ')
+    }), fallback].join(', ')
   }
   const fix = style => {
     const v = style.getPropertyValue('font-family'), w = rewrite(v)
@@ -132,7 +134,8 @@ function families(generic) {
   for (const sheet of sheets) rules(sheet.cssRules)
   for (const el of document.querySelectorAll('[style]')) if (el.style) fix(el.style)
   const ua = new CSSStyleSheet()
-  ua.replaceSync(`@layer helder-ua { :where(pre, xmp, plaintext, listing, code, kbd, samp, tt, textarea) { font-family: "${mono}" } }`)
+  ua.replaceSync(`@layer helder-ua { :root { font-family: "${serif}", ${fallback} }
+    :where(pre, xmp, plaintext, listing, code, kbd, samp, tt, textarea) { font-family: "${mono}", ${fallback} } }`)
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, ua]
 }
 

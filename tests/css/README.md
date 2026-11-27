@@ -379,7 +379,9 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   style attributes rewritten (a generic family as the face helder takes,
   since Chromium's settings can't name a web font; a family neither has
   renamed to one no machine has, so a Mac's Arial is skipped as on
-  Linux; the UA's monospace elements in a layer below the page's); text
+  Linux; the UA's monospace elements in a layer below the page's; DejaVu
+  Sans after every list, helder's fallback for characters a face lacks,
+  so Hebrew and Arabic aren't the machine's); text
   antialiased in grayscale as helder draws it. A golden is a PNG in
   `bin/css/goldens/<WPT revision>-chromium-<version>-<hash>/`, the hash
   of goldens.mjs and the fonts: the same on every machine, not
@@ -396,14 +398,14 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   collapsed row not clipped).
 
 At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
-on every machine: 7,940 drawn, 6,182 pass, 473 skipped.
+on every machine: 7,940 drawn, 6,235 pass, 473 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
 | reftests and crash tests | 5,050 | 702 | 311 |
-| noref against goldens | 1,132 | 1,056 | 162 |
+| noref against goldens | 1,185 | 1,003 | 162 |
 
-The noref tests pending by stage: tables 504, generated 311, inline 91, fonts 62, ui 44, positioning 27, floats 17.
+The noref tests pending by stage: tables 499, generated 309, inline 65, fonts 44, ui 43, positioning 27, floats 16.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane
