@@ -8,6 +8,7 @@ class Css {
 		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively, and its noref tests against goldens Chromium draws (Playwright; reftest-manifest.json; args: directories or names to run alone)", run: reftests},
 		{name: "css-paged", about: "real documents on pages (tests/paged: an invoice, a report) against their goldens of our own output, drawn by PagedView (BLESS=1 takes them); a screen-only program without the paged host's fragmentation in its symbols", run: pagedLane},
 		{name: "css-app", about: "src/helder/css/ua/app.css against helder.ui today: example screens (todo, mail) mirrored as helder.dom trees, their computed values compared (a report: bin/css/app-ua.md)", run: app},
+		{name: "box-conformance", about: "Taffy's flexbox and grid fixtures (Chrome's boxes) through helder's CSS engine, DocumentView (box-manifest.json; BLESS=1 takes it; args: fixture ids' parts)", run: boxConformance},
 		{name: "css-render", about: "a page drawn by helder.ui.box: css-render <page> <out.png> [width height] [--tree]", run: render},
 		{name: "css", about: "helder.css's property table, grammars, values, syntax and selectors (parsed, matched on helder.dom) against WPT's fixtures and css-parsing-tests", run: css}
 	];
@@ -129,8 +130,11 @@ class Css {
 		// (noref tests against Chromium's goldens: drawn where missing, kept in bin/css/goldens, the directory in its `current`)
 		run(NODE, ["tests/css/goldens.mjs"].concat(laneArgs));
 		run(exePath("bin/css/CssReftestCheck", HOST), laneArgs, ["GOLDENS" => StringTools.trim(sys.io.File.getContent("bin/css/goldens/current"))]);
-		// (the whole gate: the real documents on pages too)
-		if (laneArgs.length == 0) paged();
+		// (the whole gate: the real documents on pages too, and Taffy's flex and grid fixtures through the engine)
+		if (laneArgs.length == 0) {
+			paged();
+			boxConformance();
+		}
 	}
 
 	static function pagedLane() {
@@ -161,6 +165,11 @@ class Css {
 		if (!sys.FileSystem.exists("bin/fonts/dejavu-2.37/DejaVuSansMono.ttf")) run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
 		exe("bin/paged/PagedCheck", cps(["src", "tests/css", "tests/paged"]).concat(["-main", "PagedCheck"]));
 		run(exePath("bin/paged/PagedCheck", HOST), []);
+	}
+
+	static function boxConformance() {
+		exe("bin/css/BoxConformanceCheck", cps(["src", "tests/layout-conformance"]).concat(["-main", "BoxConformanceCheck"]));
+		run(exePath("bin/css/BoxConformanceCheck", HOST), laneArgs);
 	}
 
 	static function render() {

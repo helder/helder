@@ -415,6 +415,42 @@ break's side, for a blank page.
 - Not yet: floats' intrinsic contribution beyond their min- and
   max-content.
 
+## Flex layout
+
+`FlexFlow` (CSS Flexible Box Layout 1 §9) is helder.ui's Layout flexbox
+ported to the box tree: the same steps (its flexible lengths resolved as
+Layout's resolveFlexible, Chromium's 64ths), over boxes whose items get
+block, inline, table and flex layout inside. BoxTree makes each in-flow
+child an item, a run of text an anonymous block (white space alone none).
+
+- Items in `order`; each its flex base size (flex-basis: a length, or
+  content, min-content, max-content, fit-content, stretch; auto its width
+  or height, else its content's) and hypothetical main size within its min
+  and max: min auto its content's (`contentSizes`, its own size aside: a
+  row's min-content width, a column's height at its cross size), no more
+  than its own size, 0 when it clips.
+- Lines (nowrap one, wrap as items fit, a column's at its height or
+  max-height), the flexible lengths per line, cross sizes from layout at
+  the main size (`Space.fixedWidth`, `fixedHeight`), baselines shared in a
+  row, a single line the container's cross size (its min and max in);
+  align-content between lines (stretch by default); stretched items laid
+  out again; auto margins, then justify-content and align-self.
+- start and end (and self-start, self-end by the item's own direction
+  across a column) are the writing mode's: reversed axes don't flip them,
+  flow-start and flow-end (flex-start and flex-end are their legacy
+  aliases, Align 3) are the main or cross start and end here, and do.
+- Absolutely positioned children: static places as if each were the only
+  item (justify-content, align-self), applied once their size is known
+  (`Positioned` alignment).
+- Its intrinsic sizes: a row's items side by side (the largest min when
+  wrapping), a column's largest; its baseline its first line's first item's.
+- On pages a flex container is monolithic: its lines aren't broken
+  (pending, stage paged).
+- Taffy's fixtures through the engine (tests/layout-conformance,
+  `bun run test box-conformance`): flex 2,275 of 2,760 cases.
+- Not yet: aspect-ratio, flex-wrap: balance, scrollbar gutters, safe
+  alignment's overflow rule; a few baseline cases in wrap-reverse.
+
 ## Tables
 
 `TableFlow` (CSS 2.1 §17, with CSS Tables 3 where they agree) lays out a

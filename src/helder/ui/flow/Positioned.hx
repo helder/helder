@@ -12,13 +12,17 @@ class Positioned {
 	public final fragments:Array<Int> = [];
 	public final xs:Array<Float> = [];
 	public final ys:Array<Float> = [];
+	// (a static place aligned in an area: its left and top x and y, its size, the fractions of the room
+	// left across and down: a flex container's child's, by justify-content and align-self; null: none)
+	public final aligns:Array<Null<Array<Float>>> = [];
 
 	public function new() {}
 
-	public function add(box:Box, fragment:Int, x:Float, y:Float) {
+	public function add(box:Box, fragment:Int, x:Float, y:Float, ?align:Array<Float>) {
 		boxes.push(box);
 		fragments.push(fragment);
 		xs.push(x);
 		ys.push(y);
+		aligns.push(align);
 	}
 }

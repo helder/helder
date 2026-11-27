@@ -229,6 +229,26 @@ class BoxTree {
 	// A block container's children: inline-level runs beside blocks in
 	// anonymous blocks, a run of collapsible white space alone dropped.
 	function fill(b:Box, kids:Array<Box>) {
+		// (a flex or grid container's items: each in-flow block, each run of inline content in an anonymous
+		// block, a run of white space alone none, Flexbox §4, Grid §6)
+		var inner = b.style.inner;
+		if (inner == BoxStyle.FLEX || inner == BoxStyle.GRID) {
+			var run = [];
+			function wrap() {
+				if (run.length > 0 && !Lambda.foreach(run, blank)) {
+					var anon = make(Block, b.style.anonymousChild());
+					for (k in run) anon.append(k);
+					b.append(anon);
+				}
+				run = [];
+			}
+			for (k in kids) if (inFlowBlock(k) || outOfFlow(k)) {
+				wrap();
+				b.append(k);
+			} else run.push(k);
+			wrap();
+			return;
+		}
 		if (!Lambda.exists(kids, inFlowBlock)) {
 			for (k in kids) b.append(k);
 			return;

@@ -19,6 +19,7 @@ class Contexts {
 		var flow = new BlockFlow();
 		var c = new Contexts(flow);
 		c.table = new TableFlow(flow);
+		c.flex = new FlexFlow(flow);
 		return c;
 	}
 
