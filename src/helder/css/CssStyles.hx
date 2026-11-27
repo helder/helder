@@ -2,6 +2,7 @@ package helder.css;
 
 import haxe.ds.IntMap;
 import haxe.ds.ObjectMap;
+import helder.css.CssCalc.CssCalcNode;
 import helder.css.CssDisplay;
 import helder.css.CssFontMetrics;
 import helder.css.CssMedia;
@@ -95,6 +96,10 @@ class CssStyles {
 	final watched = new Map<String, Bool>();
 	// (the ids some selector names: an element with another id may share)
 	final ids = new Map<String, Bool>();
+	// (the media queries the cascade read, and whether any declaration has a
+	// viewport unit: what another viewport size changes)
+	final queries:Array<CssMedia> = [];
+	var viewportUnits = false;
 	public static inline var CANDIDATES = 32;
 	// (a candidate with more selectors to match again is not kept: cheaper to match)
 	static inline var REVALIDATE = 16;
@@ -123,6 +128,7 @@ class CssStyles {
 			order = start;
 		}
 		// (layers' order first, over every sheet, then the rules)
+		for (s in sheets) if (s.media != null) queries.push(s.media);
 		for (s in sheets) if (s.media == null || s.media.matches(media)) declareLayers(s.sheet.rules, s.sheet.origin);
 		for (s in sheets) if (s.media == null || s.media.matches(media)) add(s.sheet.rules, s.sheet.origin, null);
 	}
@@ -184,6 +190,17 @@ class CssStyles {
 		twins.clear();
 		bloom.reset();
 		hasCache.clear();
+	}
+
+	// Whether these styles hold in another media context (a window
+	// resized): every media query the cascade read matches it as it
+	// matched this one's, and, at another size, no declaration has a
+	// viewport unit.
+	public function holds(other:CssMediaContext):Bool {
+		if (other.type != media.type || other.resolution != media.resolution || other.color != media.color) return false;
+		if (viewportUnits && (other.width != media.width || other.height != media.height)) return false;
+		for (q in queries) if (q.matches(other) != q.matches(media)) return false;
+		return true;
 	}
 
 	// The groups made so far, per group, and the distinct styles.
@@ -623,6 +640,7 @@ class CssStyles {
 		for (r in rules) switch r {
 			case Style(selectors, declarations):
 				var o = order++;
+				if (!viewportUnits) for (d in declarations) if (viewportRelative(d)) viewportUnits = true;
 				var l = layer == null ? UNLAYERED : layers.get(key(origin, layer));
 				for (s in selectors) {
 					var rule = {
@@ -647,9 +665,13 @@ class CssStyles {
 							i.add(s, rule);
 					}
 				}
-			case Media(m, inner): if (m.matches(media)) add(inner, origin, layer, zero);
+			case Media(m, inner):
+				queries.push(m);
+				if (m.matches(media)) add(inner, origin, layer, zero);
 			case Layer(name, inner): if (inner != null) add(inner, origin, name, zero);
-			case Import(sheet, m, l, _): if (m.matches(media)) add(sheet.rules, origin, l ?? layer, zero);
+			case Import(sheet, m, l, _):
+				queries.push(m);
+				if (m.matches(media)) add(sheet.rules, origin, l ?? layer, zero);
 			case Page(p):
 				p.order = order++;
 				pages.push(p);
@@ -660,6 +682,51 @@ class CssStyles {
 	}
 
 	static inline var UNLAYERED = 1 << 20;
+
+	// (a declaration with vw, vh, vi, vb, vmin or vmax, of any viewport: s, l, d)
+	static function viewportRelative(d:CssDeclared):Bool {
+		if (d.values != null && viewportValues(d.values)) return true;
+		return switch d.value {
+			case Terms(t): viewportTerms(t);
+			case _: false;
+		}
+	}
+
+	static function viewportUnit(unit:String):Bool {
+		var u = unit.toLowerCase();
+		if (u.length > 2 && (u.charAt(0) == "s" || u.charAt(0) == "l" || u.charAt(0) == "d")) u = u.substr(1);
+		return u == "vw" || u == "vh" || u == "vi" || u == "vb" || u == "vmin" || u == "vmax";
+	}
+
+	static function viewportTerms(terms:Array<CssTerm>):Bool {
+		for (t in terms) switch t {
+			case Dimension(_, unit): if (viewportUnit(unit)) return true;
+			case Calc(c, _, _): if (viewportCalc(c)) return true;
+			case Func(_, args) | Brackets(_, args) | Part(_, args): if (viewportTerms(args)) return true;
+			case _:
+		}
+		return false;
+	}
+
+	static function viewportCalc(c:CssCalcNode):Bool
+		return switch c {
+			case Value(_, unit): viewportUnit(unit);
+			case Sum(items) | Product(items) | Fn(_, items): Lambda.exists(items, viewportCalc);
+			case Negate(item) | Invert(item): viewportCalc(item);
+			case Word(_): false;
+		}
+
+	static function viewportValues(values:Array<CssValue>):Bool {
+		for (v in values) switch v {
+			case Token(t): switch t.kind {
+					case Dimension(_, _, _, unit): if (viewportUnit(unit)) return true;
+					case _:
+				}
+			case Function(_, inner, _, _) | Block(_, inner, _): if (viewportValues(inner)) return true;
+			case _:
+		}
+		return false;
+	}
 
 	// (a compound with :visited and the like: never)
 	static function never(s:CssSelector):Bool {

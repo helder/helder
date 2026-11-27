@@ -503,6 +503,14 @@ class BoxStyle {
 	function get_absolute():Bool
 		return position == "absolute" || position == "fixed";
 
+	// overflow scroll or auto on either axis: a scroll container whose content scrolls
+	public var scrolls(get, never):Bool;
+
+	function get_scrolls():Bool {
+		var x = keyword("overflow-x"), y = keyword("overflow-y");
+		return x == "auto" || x == "scroll" || y == "auto" || y == "scroll";
+	}
+
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;
 

@@ -10,16 +10,26 @@ import helder.ui.flow.BlockFlow;
 // hit testing: a glyph's nearer half by its direction, a ligature's
 // parts); a box its element (a pseudo-element's, its element's).
 class HitTest {
-	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float):Null<{node:Node, offset:Int}> {
+	// (scrolls: scroll containers' offsets by their element, as BoxPainter's)
+	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float, ?scrolls:haxe.ds.ObjectMap<Node, Array<Float>>):Null<{node:Node, offset:Int}> {
 		var k = order.count;
 		var inv = new Matrix();
+		// (a run of steps whose bounds miss the point passed over at once)
+		var runs = order.chunks();
 		while (k-- > 0) {
+			if (k % PaintOrder.CHUNK == PaintOrder.CHUNK - 1 || k == order.count - 1) {
+				var r = Std.int(k / PaintOrder.CHUNK) * 4;
+				if (x < runs[r] || y < runs[r + 1] || x > runs[r + 2] || y > runs[r + 3]) {
+					k -= k % PaintOrder.CHUNK;
+					continue;
+				}
+			}
 			var step = order.steps[k];
 			if (step == PaintOrder.OUTLINE || step == PaintOrder.BORDERS) continue;
 			var id = order.fragments[k];
 			var b = f.box(id);
 			if (!b.style.visible || b.style.keyword("pointer-events") == "none") continue;
-			var p = local(order, order.stateOf[k], x, y, inv);
+			var p = local(f, order, order.stateOf[k], x, y, inv, scrolls);
 			if (p == null) continue;
 			var fx = order.xs[k], fy = order.ys[k];
 			if (p.x < fx || p.y < fy || p.x >= fx + f.width(id) || p.y >= fy + f.height(id)) continue;
@@ -36,7 +46,7 @@ class HitTest {
 	}
 
 	// (the point in a state's space: each layer's transform undone, each clip tested; null outside a clip)
-	static function local(order:PaintOrder, st:Int, x:Float, y:Float, inv:Matrix):Null<{x:Float, y:Float}> {
+	static function local(f:Fragments, order:PaintOrder, st:Int, x:Float, y:Float, inv:Matrix, scrolls:Null<haxe.ds.ObjectMap<Node, Array<Float>>>):Null<{x:Float, y:Float}> {
 		var chain = [];
 		while (st != 0) {
 			chain.push(st);
@@ -57,6 +67,11 @@ class HitTest {
 				case PaintOrder.CLIP:
 					var r = order.rects[s];
 					if (x < r[0] || y < r[1] || x >= r[0] + r[2] || y >= r[1] + r[3]) return null;
+					var o = order.scroller[s] && scrolls != null ? scrolls.get(f.box(order.layerFragment[s]).node) : null;
+					if (o != null) {
+						x += o[0];
+						y += o[1];
+					}
 				case _:
 			}
 		}

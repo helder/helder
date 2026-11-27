@@ -32,12 +32,10 @@ class FlexFlow implements FormattingContext {
 
 	public function layout(box:Box, space:Space):Int {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
-		var reusable = box.flags & Box.ESCAPES == 0 && Math.isNaN(space.fixedHeight) && space.fragmentation == null;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null;
+		if (reusable && BlockFlow.hit(box, key, space)) return box.cacheFragment;
 		var f = container(box, space);
-		box.cacheWidth = key;
-		box.cacheHeight = space.height;
-		box.cacheFragment = reusable ? f : -1;
+		BlockFlow.keep(box, key, space, reusable ? f : -1);
 		return f;
 	}
 
@@ -451,7 +449,6 @@ class FlexFlow implements FormattingContext {
 			cs.fixedHeight = it.main;
 			cs.fixedWidth = !Math.isNaN(cross) ? cross : !Math.isNaN(it.cross) ? it.cross : fit(it, crossSize, space);
 		}
-		b.cacheFragment = -1;
 		return child(b, cs);
 	}
 

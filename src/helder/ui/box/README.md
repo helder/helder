@@ -148,6 +148,42 @@ own characters).
   carets and selection rectangles in the document (blocks in the box
   tree's order; transforms aside).
 
+## In a window
+
+`DocumentNode` is a helder.ui node showing a document live, through the
+window's renderer: put in a scroller, the compositor scrolls it.
+
+```haxe
+var page = new DocumentNode(Dom.parse(html), {url: url, load: load, image: image});
+scroller.append(page);                   // laid out at its width, as tall as the document
+```
+
+- Paint: `UiPainter` is helder.canvas's Painter on helder.ui's Canvas,
+  so BoxPainter stays the one painter: rectangles, rounded ones and
+  their one-colour borders become the Canvas's `rect`, glyph runs its
+  `text` (GlyphText: a RunParagraph from the glyph atlas), box shadows
+  its GPU shadows (`ShadowPainter`, offered by Borders as GlyphText is
+  by text), images images; the rest (gradients, other paths, strokes)
+  is drawn on the CPU at the window's scale and kept by what it draws,
+  so a repaint draws none again. Only what the scroller's layer is
+  recorded over is painted (`BoxPainter.area`; PaintOrder's runs of 64
+  steps with their bounds, `chunks`, skip what is out of view at once,
+  for paint and hit testing).
+- The wheel scrolls a scroll container in the document (`scrollBy`:
+  `overflow: auto` and `scroll` boxes move what they hold at paint and
+  hit testing by their offset, `BoxPainter.scrolls`) before the
+  scrollers around the node.
+- A resize lays out again from the cache, the styles kept unless a media
+  query or a viewport unit reads the size (`CssStyles.holds`). The cache
+  is keyed on the width, the containing block's height, a fixed height
+  and whether the height is ignored: a flex or grid item's passes at the
+  same sizes reuse their fragment.
+- Not yet: changes to the document after it is shown, input;
+  `position: fixed` and sticky boxes against the window (they scroll
+  with the page); a scroll container on the compositor (one in the
+  document repaints the node as it scrolls); rounded clips other than a
+  box's (their bounds).
+
 ## Pages
 
 `PagedView` lays a document out on pages (CSS Paged Media 3, CSS

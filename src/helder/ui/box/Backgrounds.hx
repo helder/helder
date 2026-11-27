@@ -395,10 +395,22 @@ class Gradients {
 		}
 	}
 
-	// (a gradient drawn into a bitmap of one tile, to repeat)
+	// (a gradient drawn into a bitmap of one tile, to repeat; the last few
+	// kept by their computed value and size, which a repaint draws again)
 	public static function tile(t:CssTerm, w:Float, h:Float):Null<Bitmap> {
 		var tw = Math.ceil(w), th = Math.ceil(h);
 		if (tw <= 0 || th <= 0 || tw * th > 4096 * 4096) return null;
+		for (k in tiles) if (k.term == t && k.w == tw && k.h == th) return k.bitmap;
+		var b = drawTile(t, tw, th);
+		if (b == null) return null;
+		if (tiles.length >= 16) tiles.shift();
+		tiles.push({term: t, w: tw, h: th, bitmap: b});
+		return b;
+	}
+
+	static final tiles:Array<{term:CssTerm, w:Int, h:Int, bitmap:Bitmap}> = [];
+
+	static function drawTile(t:CssTerm, tw:Int, th:Int):Null<Bitmap> {
 		var c = new Canvas(tw, th);
 		var g = shader(t, 0, 0, tw, th);
 		if (g == null) return null;
