@@ -75,8 +75,8 @@ class Run {
 			}
 			args.splice(i, n == null ? 1 : 2);
 		}
-		// (css-reftests, css-render and box-conformance take what follows them)
-		for (l in ["css-reftests", "css-render", "box-conformance"]) {
+		// (css-reftests, css-render, box-conformance and test262 take what follows them)
+		for (l in ["css-reftests", "css-render", "box-conformance", "test262"]) {
 			var at = args.indexOf(l);
 			if (at >= 0) Css.laneArgs = args.splice(at + 1, args.length);
 		}
