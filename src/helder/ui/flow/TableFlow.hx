@@ -162,6 +162,12 @@ class TableFlow implements FormattingContext {
 			g.colBoxes.push(null);
 			g.colGroups.push(null);
 		}
+		// (resolve spans in reading order, then give layout physical column indices)
+		if (s.rtl) {
+			g.colBoxes.reverse();
+			g.colGroups.reverse();
+			for (cell in g.cells) cell.col = g.columns - cell.col - cell.cols;
+		}
 		for (_ in 0...g.columns) g.cols.push({min: 0, max: 0, pct: 0, fixed: false});
 		if (g.collapse) collapseBorders(t, g);
 		measure(g, space);
@@ -315,26 +321,31 @@ class TableFlow implements FormattingContext {
 			}
 			r = end;
 		}
-		for (c in 0...cols) {
-			var col = g.colBoxes[c];
+		// (equal borders from the same origin favour inline-start)
+		var rtl = t.style.rtl;
+		inline function column(i:Int):Int
+			return rtl ? cols - 1 - i : i;
+		for (i in 0...cols) {
+			var c = column(i), col = g.colBoxes[c];
 			if (col == null) continue;
 			v(c, 0, rows, col, 3);
 			v(c + 1, 0, rows, col, 1);
 			h(0, c, c + 1, col, 0);
 			h(rows, c, c + 1, col, 2);
 		}
-		var c = 0;
-		while (c < cols) {
-			var group = g.colGroups[c];
-			var end = c + 1;
-			while (end < cols && g.colGroups[end] == group) end++;
+		var i = 0;
+		while (i < cols) {
+			var group = g.colGroups[column(i)];
+			var end = i + 1;
+			while (end < cols && g.colGroups[column(end)] == group) end++;
 			if (group != null) {
-				v(c, 0, rows, group, 3);
-				v(end, 0, rows, group, 1);
-				h(0, c, end, group, 0);
-				h(rows, c, end, group, 2);
+				var left = rtl ? cols - end : i, right = rtl ? cols - i : end;
+				v(left, 0, rows, group, 3);
+				v(right, 0, rows, group, 1);
+				h(0, left, right, group, 0);
+				h(rows, left, right, group, 2);
 			}
-			c = end;
+			i = end;
 		}
 		h(0, 0, cols, t, 0);
 		h(rows, 0, cols, t, 2);
