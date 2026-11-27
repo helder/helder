@@ -28,7 +28,7 @@ class Cli {
 	// failure written as a scenario file in bin/fuzz/monkey)
 	static final FUZZ = ["tests/image/Fuzz.test.hx", "tests/pdf/Fuzz.test.hx", "tests/media/Fuzz.test.hx", "tests/text/Fuzz.test.hx",
 		"src/helder/markdown/Markdown.test.hx", "src/helder/css/Css.test.hx", "src/helder/view/graph/AtomsModel.test.hx", "src/helder/dom/Dom.test.hx",
-		"src/helder/dom/XmlParser.test.hx", "src/helder/scenario/Monkey.test.hx"];
+		"src/helder/dom/XmlParser.test.hx", "src/helder/scenario/Monkey.test.hx", "src/helder/compress/Brotli.test.hx", "src/helder/text/Woff.test.hx"];
 
 	static function fuzz() {
 		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)

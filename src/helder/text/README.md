@@ -21,7 +21,18 @@ text with, usable on its own.
   not read; HVAR, MVAR and GPOS's variations are not applied.
   Colour glyphs: CBDT/CBLC and sbix bitmaps (Noto Color Emoji, Apple
   Color Emoji: their PNG files, a font of bitmaps only loads too) and COLR
-  version 0 layers with CPAL's palette (Segoe UI Emoji).
+  version 0 layers with CPAL's palette (Segoe UI Emoji). WOFF and WOFF2
+  files read as the fonts they wrap (`parse` and `faceCount` tell them by
+  their signature).
+- `Woff`: WOFF 1.0 and WOFF2 unwrapped into the sfnt (or `.ttc`) they
+  carry: WOFF's zlib tables, WOFF2's Brotli stream (`helder.compress`)
+  with its glyf and loca rebuilt from their transformed form (points from
+  triplets, bounding boxes computed where none is given, composites,
+  instructions, loca from the glyphs' sizes), a transformed hmtx's left
+  side bearings from the glyphs' xMin, collections. Untrusted input: each
+  offset and count checked, at most 64 MB out, a damaged file an error
+  `Woff: ...` (or `Brotli: ...`). A 92 KB WOFF2 (JetBrains Mono) in 4.3 ms
+  natively on an M4, 2.8 ms of it Brotli (`bun run test bench woff`).
 - `FontEncoder`: a TrueType font (.ttf) written from glyphs of quadratic
   contours (`FontSource`: the family, metrics, each glyph's characters,
   advance and contours, kerning pairs): the tables an installed font and
