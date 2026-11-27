@@ -107,7 +107,9 @@ class BlockFlow implements FormattingContext {
 		}
 		function absolute(b:Box, x:Float, y:Float)
 			(b.style.position == "fixed" ? fixed : positioned).add(b, frag, x, y);
-		// (a float at y or below in its formatting context, beside the floats there)
+		// (a float at y or below in its formatting context, beside the floats there; floatBottom: where its
+		// margin box ends there)
+		var floatBottom = 0.0;
 		function float(b:Box, top:Float):Int {
 			var fs = childSpace(w);
 			fs.exclusions = null;
@@ -119,6 +121,7 @@ class BlockFlow implements FormattingContext {
 			var at = ex.place(b.style.keyword("float") == "left", b.marginLeft + frags.width(f) + b.marginRight, fmt + frags.height(f) + fmb, top, cx, cx + w);
 			var off = offset(b, w, pctBase);
 			frags.adopt(frag, f, at.x + b.marginLeft - bx + off.x, at.y + fmt - by + off.y);
+			floatBottom = at.y + fmt + frags.height(f) + fmb;
 			return f;
 		}
 		var topCollapses = !root && bt == 0 && pt == 0;
@@ -143,7 +146,10 @@ class BlockFlow implements FormattingContext {
 				return {offset: b.left - bx, width: b.right - b.left, next: next - by};
 			};
 			var placed = [];
-			ls.placeFloat = (b, ly) -> placed.push(float(b, by + ly));
+			ls.placeFloat = (b, ly) -> {
+				placed.push(float(b, by + ly));
+				floatBottom - by;
+			}
 			ls.unplace = n -> {
 				ex.drop(n);
 				for (_ in 0...n) if (placed.length > 0) frags.remove(placed.pop());
@@ -174,9 +180,15 @@ class BlockFlow implements FormattingContext {
 					break;
 				}
 				var cs = c.style;
-				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept)
+				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept;
+				// in a fragmentainer a break before it, it whole)
 				if (c.floating) {
+					if (fr != null && fr.between(box, prev, c, reserve + space.pageTop + bt + pt + y)) {
+						broken = true;
+						break;
+					}
 					float(c, cy + y + (atTop ? 0 : pos + neg));
+					if (fr != null) fr.floated(reserve + space.pageTop + bt + pt + floatBottom - cy);
 					c = c.next;
 					continue;
 				}

@@ -5,7 +5,8 @@ import helder.test.Test;
 
 // Pages: their size and margins from @page, content broken between
 // blocks and lines (forced breaks, a blank page for a side, avoid,
-// orphans and widows), margins truncated at a break, a block's border
+// orphans and widows; a float whole, the next page's with its line when
+// it doesn't fit), margins truncated at a break, a block's border
 // sliced; in Ahem, each line 10px.
 function tests() {
 	describe("PagedView", () -> {
@@ -32,6 +33,24 @@ function tests() {
 			var v = paged('<p id=p style="margin:0;widows:3">$lines</p>');
 			equals(v.layout(), 2);
 			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [7, 3]);
+		});
+		test("lines resumed from their break; a block's top padding counted once", () -> {
+			var lines = [for (k in 0...10) "x"].join("<br>");
+			var v = paged('<p id=p style="margin:0;padding-top:30px;widows:1;orphans:1">$lines</p>');
+			equals(v.layout(), 2);
+			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [5, 5]);
+		});
+		test("a float that doesn't fit: the next page's, with its line; the lines there beside it", () -> {
+			var v = paged('<div style="height:30px"></div><p id=p style="margin:0;widows:1;orphans:1">x<br>x<br><span id=f style="float:left;width:20px;height:40px"></span>x<br>x</p>');
+			equals(v.layout(), 2);
+			equals([lineCount(v, 0, "p"), lineCount(v, 1, "p")], [2, 2]);
+			equals([on(v, 0, "f"), on(v, 1, "f")], [Math.NaN, 0]);
+			equals(lineX(v, 1, "p"), 20.0);
+		});
+		test("a block-level float that doesn't fit: the next page's, a break before it", () -> {
+			var v = paged('<div id=a style="height:50px"></div><div id=f style="float:left;width:20px;height:40px"></div><div id=b>b</div>');
+			equals(v.layout(), 2);
+			equals([on(v, 1, "f"), on(v, 1, "b")], [0.0, 0]);
 		});
 		test("content starting past the page's end, its margin: on the next page", () -> {
 			var v = paged('<div id=a style="margin-top:120px">a</div>');
@@ -154,6 +173,16 @@ private function on(v:PagedView, page:Int, id:String):Float {
 private function height(v:PagedView, page:Int, id:String):Float {
 	var k = find(v, page, id);
 	return k < 0 ? Math.NaN : v.fragments.height(k);
+}
+
+// (where the first line of an element's box on a page starts its content)
+private function lineX(v:PagedView, page:Int, id:String):Float {
+	var k = find(v, page, id), f = v.fragments;
+	var c = k < 0 ? -1 : f.first(k);
+	while (c >= 0 && f.kind(c) != Fragments.LINE) c = f.next(c);
+	if (c < 0) return Math.NaN;
+	var t = f.first(c);
+	return t < 0 ? Math.NaN : f.x(t);
 }
 
 private function lineCount(v:PagedView, page:Int, id:String):Int {

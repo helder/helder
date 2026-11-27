@@ -22,8 +22,9 @@ class Breaks implements Fragmentation {
 	var target:Null<Point> = null;
 	var taken:Null<Point> = null;
 	var halted = false;
-	// (where the content laid out ends, its margins aside)
+	// (where the content laid out ends, its margins aside; where the floats placed so far end)
 	var reach = 0.0;
+	var floor = 0.0;
 
 	public function new(size:Float, incoming:Null<BreakToken>) {
 		this.size = size;
@@ -44,21 +45,27 @@ class Breaks implements Fragmentation {
 	public function placed(bottom:Float)
 		if (bottom > reach) reach = bottom;
 
-	public function between(box:Box, before:Null<Box>, after:Box, bottom:Float):Bool {
-		if (before == null) return leading({box: box, child: after, line: -1, bottom: bottom, appeal: LAST, forced: null, keep: true});
-		var a = ending(before), b = starting(after);
-		var forced = Breaks.forced(a) ? a : Breaks.forced(b) ? b : null;
-		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between)
-		if (forced == null && ending(before, true) != starting(after, true)) forced = "page";
-		var appeal = a == "avoid" || a == "avoid-page" || b == "avoid" || b == "avoid-page" ? AVOID : PERFECT;
-		return offer({box: box, child: after, line: -1, bottom: bottom, appeal: inside(box, appeal), forced: forced, keep: false});
+	public function floated(bottom:Float) {
+		if (bottom > floor) floor = bottom;
+		placed(bottom);
 	}
 
-	public function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float):Bool {
-		if (line == first) return leading({box: box, child: null, line: line, bottom: bottom, appeal: LAST, forced: null, keep: true});
+	public function between(box:Box, before:Null<Box>, after:Box, bottom:Float):Bool {
+		if (before == null) return leading({box: box, child: after, line: -1, from: null, bottom: bottom, appeal: LAST, forced: null, keep: true});
+		// (before a float, out of flow: its break-before and page name make no break, the one before's break-after does)
+		var a = ending(before), b = after.floating ? "auto" : starting(after);
+		var forced = Breaks.forced(a) ? a : Breaks.forced(b) ? b : null;
+		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between)
+		if (forced == null && !after.floating && ending(before, true) != starting(after, true)) forced = "page";
+		var appeal = a == "avoid" || a == "avoid-page" || b == "avoid" || b == "avoid-page" ? AVOID : PERFECT;
+		return offer({box: box, child: after, line: -1, from: null, bottom: bottom, appeal: inside(box, appeal), forced: forced, keep: false});
+	}
+
+	public function inLines(box:Box, first:Int, line:Int, count:Int, bottom:Float, at:InlineBreak):Bool {
+		if (line == first) return leading({box: box, child: null, line: line, from: at, bottom: bottom, appeal: LAST, forced: null, keep: true});
 		var orphans = box.style.number("orphans", 2), widows = box.style.number("widows", 2);
 		var appeal = line - first < orphans || count - line < widows ? ORPHANS : PERFECT;
-		return offer({box: box, child: null, line: line, bottom: bottom, appeal: inside(box, appeal), forced: null, keep: false});
+		return offer({box: box, child: null, line: line, from: at, bottom: bottom, appeal: inside(box, appeal), forced: null, keep: false});
 	}
 
 	// (before a box's first content here: a break only when it starts past
@@ -67,6 +74,7 @@ class Breaks implements Fragmentation {
 	// page's worth themselves)
 	function leading(p:Point):Bool {
 		if (target != null) return offer(p);
+		if (p.bottom < floor) p.bottom = floor;
 		if (p.bottom <= size + EPSILON || p.bottom <= EPSILON) return false;
 		past ??= p;
 		halted = true;
@@ -80,7 +88,9 @@ class Breaks implements Fragmentation {
 			halted = true;
 			return true;
 		}
-		// (nothing before it here: a break there would make no progress, a forced one at the start none)
+		// (the floats before it end there too; nothing before it here: a break there would make no
+		// progress, a forced one at the start none)
+		if (p.bottom < floor) p.bottom = floor;
 		if (p.bottom <= EPSILON) return false;
 		if (p.bottom > size + EPSILON) {
 			past ??= p;
@@ -107,6 +117,7 @@ class Breaks implements Fragmentation {
 		if (best == null) return false;
 		target = best;
 		halted = false;
+		floor = 0;
 		tops.clear();
 		return true;
 	}
@@ -119,10 +130,10 @@ class Breaks implements Fragmentation {
 		// (a pushed box's margin kept, unless it alone would push it past the end again)
 		var top = tops.get(p.box);
 		var forced = p.forced != null || p.keep && (top == null || p.bottom - top < size);
-		resumes.set(p.box, {child: p.child, line: p.line, consumed: consumed(p.box, p.bottom), forced: forced});
+		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, consumed: consumed(p.box, p.bottom), forced: forced});
 		var b = p.box;
 		while (b.parent != null) {
-			resumes.set(b.parent, {child: b, line: -1, consumed: consumed(b.parent, p.bottom), forced: forced});
+			resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, p.bottom), forced: forced});
 			b = b.parent;
 		}
 		var side = p.forced == "left" || p.forced == "verso" ? "left" : p.forced == "right" || p.forced == "recto" ? "right" : null;
@@ -238,6 +249,7 @@ private typedef Point = {
 	box:Box,
 	child:Null<Box>,
 	line:Int,
+	from:Null<InlineBreak>,
 	bottom:Float,
 	appeal:Int,
 	forced:Null<String>,
