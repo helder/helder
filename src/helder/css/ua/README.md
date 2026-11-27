@@ -61,17 +61,34 @@ support table as ours.
 - **`-helder-material: none | glass [ regular | clear ]?`**, not
   inherited, initial none, computed as keywords. Today the `<glass>`
   element (Glass.hx), `variant="clear"`. app.css gives `glass {
-  -helder-material: glass }` beside its capsule radius. Its siblings:
+  -helder-material: glass }` beside its capsule radius. The host
+  chooses how it renders: the system's glass where the host has it
+  (macOS 26), helder's shader glass on the GPU elsewhere, and a blur
+  or a plain tint as the last fallback (PDF and print: the tint over
+  the background). Its siblings:
   **`-helder-material-tint: <color>`** (initial transparent, a computed
   colour; today `tint`, its alpha how far) and
   **`-helder-material-spacing: none | <length [0,∞]>`** (initial none,
   an absolute length; today a view's `glassSpacing`, GlassGroup.hx:
   glass inside it nearer than this merge). `interactive` and `active`
   stay attributes: behaviour and window state, not style.
-- **`-helder-backdrop: none | blur | mica | sidebar | glass`**, on the
-  root, not inherited, computed as a keyword. Today `<Surface backdrop>`
+- **`-helder-backdrop: none | auto | sidebar | popover`**, on the root,
+  not inherited, computed as a keyword. Today `<Surface backdrop>`
   (UiWindow.hx:55, helder.os's WindowBackdrop): the window's material,
-  seen through a transparent clear colour.
+  seen through a transparent clear colour. The values say what the
+  surface is; the host picks the material, and no platform's name
+  (mica, glass, blur) is in CSS:
+  - `auto`, the host's standard window material: Liquid Glass on
+    macOS 26 and later, under-window vibrancy before; Mica on Windows
+    11; KDE's blur; none elsewhere.
+  - `sidebar`, the sidebar's: macOS's sidebar vibrancy; Mica Alt on
+    Windows, else Mica; KDE's blur.
+  - `popover`, a transient surface's: macOS's menu and popover
+    material (glass on 26); Acrylic on Windows; KDE's blur.
+
+  Where the host has none, the element's `background-color` alone
+  shows. The codemod maps today's values: blur to popover, mica and
+  glass to auto, sidebar to sidebar.
 - **`-helder-scrollbar: system | overlay | always`**, inherited, initial
   system, computed as a keyword. Today `<Surface scrollbars>`
   (UiWindow.hx:77-81) choosing `Ui.scrollbarLook` (Plain, MacOverlay,
@@ -89,7 +106,7 @@ support table as ours.
   part's eased states and look reach it as its arguments and custom
   properties, as `paint()` passes them.
 
-The rethinks, proposed:
+The rethinks, as decided:
 
 - **Rings** (`ring*`, composed over `boxShadow`): drop them as
   properties. The codemod writes each ring as `box-shadow` layers (`0 0
@@ -99,9 +116,10 @@ The rethinks, proposed:
   still ease.
 - **A shadow's default colour** (`#00000040`, not currentcolor): drop
   it; the codemod writes the colour where a shadow leaves it out.
-- **Sibling-only `zIndex`**: standard. app.css would add `* { isolation:
-  isolate }` makes every node a stacking context, so z-index orders
-  siblings only, as today.
+- **Sibling-only `zIndex`**: CSS's stacking, as standard; app.css adds
+  no `isolation`. The codemod writes `isolation: isolate` only where an
+  app relies on z-index ordering siblings alone: on a node whose
+  descendants set z-index, so they stay inside it as today.
 - **`order` in paint and hit order**: standard already. Flexbox paints
   in order-modified document order, and hit testing follows paint; the
   engine has to implement that, nothing more.
