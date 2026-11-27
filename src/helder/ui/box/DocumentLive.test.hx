@@ -97,6 +97,19 @@ function tests() {
 			fresh.layout(300, 200);
 			equals(geometry(v), geometry(fresh));
 		});
+		test("a paint order made from the last one's contexts is the one made afresh", () -> {
+			var rows = [for (i in 0...40) '<div class=r style="z-index: ${i % 3}"><span id=t$i>row $i</span><b style="opacity: 0.5">x</b></div>'].join("");
+			var v = live('<style>body { margin: 0; font: 10px/1 Ahem } .r { position: relative; display: flex; gap: 4px }</style>' + rows);
+			v.order;
+			(cast el(v, "t7").firstChild : Text).data = "row seven, longer";
+			equals(v.update(), DocumentView.LAYOUT);
+			var made = v.order, fresh = new PaintOrder(v.fragments, v.root);
+			equals(made.count, fresh.count);
+			equals([for (k in 0...made.count) '${made.steps[k]} ${made.fragments[k]} ${made.xs[k]},${made.ys[k]} ${made.kinds[made.stateOf[k]]}'].join("\n"),
+				[for (k in 0...fresh.count) '${fresh.steps[k]} ${fresh.fragments[k]} ${fresh.xs[k]},${fresh.ys[k]} ${fresh.kinds[fresh.stateOf[k]]}'].join("\n"));
+			equals(made.parents.length, fresh.parents.length);
+			equals(made.reused > 30, true);
+		});
 		test("a long document laid out to a cut, exactly, then on to its end as a fresh layout", () -> {
 			var html = '<style>body { margin: 0; font: 10px/1 Ahem } section { margin: 4px 0 } @media (max-width: 110px) { p { margin: 2px 0 } em { display: block } }</style>'
 				+ [for (i in 0...3000) '<section id=s$i><p>a$i bb <em>cc</em></p><p>dd ee ff gg hh</p><p>ii</p><p>jj kk</p><p>ll</p><p>mm nn oo</p><p>pp</p><p>qq rr</p></section>'].join("");

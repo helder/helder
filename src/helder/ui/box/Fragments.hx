@@ -16,6 +16,8 @@ class Fragments {
 	public static inline var TEXT = 3;
 
 	public var count(default, null) = 0;
+	// (how many times cleared: a fragment's id another's after it)
+	public var epoch(default, null) = 0;
 
 	var kinds = new haxe.ds.Vector<Int>(0);
 	var boxes = new haxe.ds.Vector<Box>(0);
@@ -48,6 +50,7 @@ class Fragments {
 
 	public function clear() {
 		count = 0;
+		epoch++;
 		runs.resize(0);
 		lazyContent.resize(0);
 		lazyFonts.resize(0);

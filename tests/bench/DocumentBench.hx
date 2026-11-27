@@ -73,6 +73,20 @@ class DocumentBench {
 					sys.io.File.saveContent('tests/bench/document/$name.css', css);
 					Sys.println('tests/bench/document/$name.css');
 				}
+			case "boxstyles":
+				// (the box variant's styles: each mirror node's computed style, by tag, class and its parent's, hovered
+				// too where a :hover rule has it, written as data: tests/bench/document/<screen>.boxes)
+				for (name in ["todo", "mail"]) {
+					screen = name;
+					var ms = name == "todo" ? [todoMirror(20), todoMirror(1020)] : [mailMirror(20), mailMirror(1020)];
+					sys.io.File.saveContent('tests/bench/document/$name.boxes', boxStyles([for (m in ms) build(m)]));
+					Sys.println('tests/bench/document/$name.boxes');
+				}
+				// (TodoBoxes', the size lane's: TodoDocument's tree and sheet)
+				var d = new Document();
+				d.append(element(d, cast TodoBoxes.spec()));
+				sys.io.File.saveContent('tests/bench/document/todo-app.boxes', boxStyles([d], d -> helder.ui.box.DocumentApp.node(d, [CssUserAgentTheme.app(), CssTheme.file("document/todo-app.css")])));
+				Sys.println('tests/bench/document/todo-app.boxes');
 			case "sample-files":
 				// (the sample page and its images as files, for Chromium)
 				var dir = args[1];
@@ -112,7 +126,10 @@ class DocumentBench {
 	}
 
 	static function engine(doc:Null<DocumentNode>):Array<Float>
-		return doc == null ? [0, 0, 0] : [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs];
+		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : [0, 0, 0];
+
+	// (the box variant's node, its engine work: BoxScreen's)
+	static var boxNode:Null<BoxScreen.BoxNode> = null;
 
 	// (n frames, each after act(i): their times, GC bytes; a JSON line)
 	static function run(op:String, ui:Ui, doc:Null<DocumentNode>, n:Int, act:Int->Void, ?extra:Dynamic) {
@@ -342,7 +359,151 @@ class DocumentBench {
 		step(ui, doc);
 		addRows("add 1,000 rows", mountDoc, x -> appendRows(x.keep, byTag(x.keep, "list"), rowsAdded));
 		Sys.println(haxe.Json.stringify({screen: screen, mirror: m.nodes, hovers: m.hovers}));
+		boxes(w, h, m, rowsAdded, field);
 		snapshots(w, h, mount, mountDoc);
+	}
+
+	// ---- the box variant: the engine's boxes made from code, no DOM, no cascade (BoxScreen)
+
+	// (the box variant's styles, written by `DocumentBench boxstyles`: "" before they are)
+	static final boxData = ["todo" => Embed.text("tests/bench/document/todo.boxes"), "mail" => Embed.text("tests/bench/document/mail.boxes")];
+
+	static function boxes(w:Int, h:Int, m:Mirror, rowsAdded:Array<MirrorNode>, field:String) {
+		variant = "boxes";
+		if (boxData[screen] == "") return;
+		var styles = new BoxScreen.BoxStyles(boxData[screen]);
+		function mountBoxes():{ui:Ui, doc:Null<DocumentNode>, keep:BoxScreen.BoxBuild} {
+			var ui = new Ui(new DrawText(), w, h);
+			var bb = new BoxScreen.BoxBuild(styles), out = [];
+			bb.box(m.root, null, out);
+			var node = new BoxScreen.BoxNode(out[0], bb.contexts);
+			node.style.flexGrow = 1;
+			ui.root.append(node);
+			boxNode = node;
+			return {ui: ui, doc: null, keep: bb};
+		}
+		function rect(b:BoxScreen.BoxNode, x:helder.ui.box.Box):Array<Float> {
+			var id = b.fragmentOf(x);
+			if (id < 0) return [0, 0, 0, 0];
+			var p = b.fragments.absolute(id);
+			return [b.absX + p.x, b.absY + p.y, b.fragments.width(id), b.fragments.height(id)];
+		}
+		function hovering(bb:BoxScreen.BoxBuild, node:BoxScreen.BoxNode) {
+			var hovered:Null<helder.ui.box.Box> = null;
+			node.onHover = b -> {
+				// (the nearest box a :hover rule restyles)
+				while (b != null) {
+					var spec = bb.specs.get(b);
+					if (spec != null && b.parent != null && styles.of(spec.tag, spec.cls, b.parent.style, true) != null) break;
+					b = b.parent;
+				}
+				if (b == hovered) return;
+				if (hovered != null) bb.restyle(node, hovered, hovered.parent.style, false);
+				if (b != null) bb.restyle(node, b, b.parent.style, true);
+				hovered = b;
+				node.changed(null, false);
+			};
+		}
+		var made = first("first frame (20 rows)", mountBoxes);
+		var ui = made.ui, bb = made.keep, node = boxNode;
+		hovering(bb, node);
+		var list = bb.named(node.root, "list");
+		function addTo(bb:BoxScreen.BoxBuild, n:BoxScreen.BoxNode, list:helder.ui.box.Box) {
+			var out = [];
+			for (r in rowsAdded) bb.box(r, list.style, out);
+			for (b in out) list.append(b);
+			n.changed(list, true);
+		}
+		addTo(bb, node, list);
+		step(ui, null);
+		var box = rect(node, list);
+		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
+		var rows = [];
+		var c = list.first;
+		while (c != null && rows.length < 12) {
+			rows.push(c);
+			c = c.next;
+		}
+		run("hover over rows", ui, null, 120, i -> {
+			var r = rect(node, rows[i % rows.length]);
+			var o = node.scrolls.get(list);
+			ui.pointerMove(r[0] + 20, r[1] - (o == null ? 0 : o[1]) + r[3] / 2);
+		});
+		var f = bb.named(node.root, field), anon = bb.make(Block, styles.anonymousOf(f.style)), text = bb.text(f.style, " ");
+		anon.append(text);
+		f.append(anon);
+		node.changed(text, true);
+		step(ui, null);
+		run("type into a field", ui, null, Std.parseInt(Sys.getEnv("TYPES") ?? "60"), i -> {
+			text.text = (text.text.length > 40 ? " " : text.text) + String.fromCharCode(97 + i % 26);
+			node.changed(text, true);
+		});
+		run("resize the window", ui, null, Std.parseInt(Sys.getEnv("RESIZES") ?? "40"), i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
+		run("drag-resize (a new width each frame)", ui, null, Std.parseInt(Sys.getEnv("DRAGS") ?? "40"), i -> ui.resize(w - 1 - i % 200, h));
+		ui.resize(w, h);
+		step(ui, null);
+		addRows("add 1,000 rows", mountBoxes, x -> addTo(x.keep, boxNode, x.keep.named(boxNode.root, "list")));
+		sys.FileSystem.createDirectory("bin/document-bench");
+		var s = mountBoxes();
+		step(s.ui, null);
+		sys.io.File.saveBytes('bin/document-bench/$screen-boxes.png', crop(w, h));
+		boxNode = null;
+	}
+
+	// (each document's elements' computed styles by tag, class and the parent's style ("|h": hovered, where a
+	// :hover rule restyles it, its subtree under it), as data: the initial values, then each style's own)
+	static function boxStyles(docs:Array<Document>, ?nodeOf:Document->DocumentNode):String {
+		var ids = new haxe.ds.ObjectMap<helder.css.CssStyle, Int>(), list:Array<helder.css.CssStyle> = [], keys = new Map<String, Int>();
+		var initials:Null<Array<helder.css.CssGroup>> = null;
+		function id(s:helder.css.CssStyle):Int {
+			var i = ids.get(s);
+			if (i == null) {
+				ids.set(s, i = list.length);
+				list.push(s);
+			}
+			return i;
+		}
+		for (d in docs) {
+			var ui = new Ui(new DrawText(), 800, 600), node = nodeOf != null ? nodeOf(d) : engineNode(d);
+			ui.root.append(node);
+			ui.update();
+			var styles = node.view.styles;
+			initials ??= @:privateAccess styles.initialGroups();
+			function subtree(el:Element):Array<Element> {
+				var out = [el];
+				for (c in el.children) out = out.concat(subtree(c));
+				return out;
+			}
+			function walk(el:Element, parent:Int, hovered:Bool) {
+				var cls = el.getAttribute("class") ?? "", s = id(styles.computed(el));
+				keys.set(el.localName + "|" + cls + "|" + parent + (hovered ? "|h" : ""), s);
+				for (c in el.children) walk(c, s, false);
+				if (!hovered && Lambda.exists(cls.split(" "), c -> c.charAt(0) == "h")) {
+					el.setState(helder.dom.ElementState.HOVER, true);
+					styles.forget(subtree(el));
+					walk(el, parent, true);
+					el.setState(helder.dom.ElementState.HOVER, false);
+					styles.forget(subtree(el));
+				}
+			}
+			walk(d.documentElement, -1, false);
+		}
+		var entries = [];
+		for (g in 0...helder.css.CssGroups.COUNT) for (p in helder.css.CssProperties.members[g]) {
+			var t = initials[g].terms(cast p);
+			if (t != null) entries.push({name: "i\t" + helder.css.CssProperties.name(cast p), specified: helder.css.CssTerm.CssSpecified.Terms(t), of: null});
+		}
+		for (i in 0...list.length) for (g in 0...helder.css.CssGroups.COUNT) {
+			var grp = @:privateAccess list[i].group(g);
+			if (grp == initials[g]) continue;
+			for (p in helder.css.CssProperties.members[g]) {
+				var t = grp.terms(cast p), ti = initials[g].terms(cast p);
+				if (helder.css.CssIntern.key(t) != helder.css.CssIntern.key(ti))
+					entries.push({name: 's$i\t' + helder.css.CssProperties.name(cast p), specified: helder.css.CssTerm.CssSpecified.Terms(t), of: null});
+			}
+		}
+		for (k => i in keys) entries.push({name: "k\t" + k, specified: helder.css.CssTerm.CssSpecified.Terms([helder.css.CssTerm.CssTerm.Number(i, true)]), of: null});
+		return helder.css.CssSheetData.encodeInitials(entries);
 	}
 
 	// (a first frame made, then rows added and a frame: RUNS times)
@@ -573,6 +734,18 @@ class DocumentBench {
 			node.style.flexGrow = 1;
 			ui.root.append(node);
 			step(ui, node);
+			base = b2;
+			held = node;
+		} else if (what == "boxes") {
+			var m = name == "todo" ? todoMirror(1020) : mailMirror(1020);
+			var b2 = live();
+			screen = name;
+			var bb = new BoxScreen.BoxBuild(new BoxScreen.BoxStyles(boxData[name])), out = [];
+			bb.box(m.root, null, out);
+			var node = new BoxScreen.BoxNode(out[0], bb.contexts);
+			node.style.flexGrow = 1;
+			ui.root.append(node);
+			step(ui, null);
 			base = b2;
 			held = node;
 		} else {

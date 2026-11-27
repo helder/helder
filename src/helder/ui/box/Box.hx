@@ -66,6 +66,8 @@ class Box {
 	// (its element's style, or one in it, not worked out again yet since a resize: a lazy layout stops before it,
 	// Lazy)
 	public static inline var UNSTYLED = 1024;
+	// (made from code, an element's in its own right: not an anonymous box though it has no node)
+	public static inline var MADE = 2048;
 
 	public inline function markerPseudo():Bool
 		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";
@@ -93,6 +95,11 @@ class Box {
 	// height ignored (1), the fragment; a flex or grid item's measuring and
 	// final passes each hit their own)
 	public var cacheMore(get, set):Null<Array<Float>>;
+
+	// (what a scroll container's offsets are kept by (BoxPainter.scrolls): its element, or the box itself where it
+	// has none, one made from code)
+	public static inline function scrollKey(b:Box):{}
+		return b.node != null ? b.node : b;
 
 	// its layouts let go: laid out again when next asked
 	public function uncache() {
@@ -312,7 +319,7 @@ class Box {
 	public var anonymous(get, never):Bool;
 
 	inline function get_anonymous():Bool
-		return node == null && pseudo == null;
+		return node == null && pseudo == null && flags & MADE == 0;
 
 	public var blockLevel(get, never):Bool;
 

@@ -90,11 +90,15 @@ class DocumentView {
 	// position query's, makes none)
 	@:isVar public var order(get, null):Null<PaintOrder> = null;
 	var orderDue = false;
+	// (a restyle changed what a paint order's steps hold: the next one made without the last one's)
+	var orderFresh = false;
 
 	function get_order():Null<PaintOrder> {
 		if (orderDue) {
 			orderDue = false;
-			order = root < 0 ? null : new PaintOrder(fragments, root, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null);
+			var last = orderFresh || long() || sticky ? null : order;
+			orderFresh = false;
+			order = root < 0 ? null : new PaintOrder(fragments, root, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null, last);
 		}
 		return order;
 	}
@@ -210,9 +214,10 @@ class DocumentView {
 				changes = new DocumentChanges(document, styles);
 			}
 		}
-		// (at another width nearly every box is laid out again: the fragments before let go at once, not kept for
-		// the cache till they are three layouts' worth; the boxes' intrinsic sizes and inline content kept)
-		if (resizedWidth && tree != null && tree.root != null && fragments.count > 0) {
+		// (a long document at another width: nearly every box laid out again, the fragments before let go at once,
+		// not kept for the cache till they are three layouts' worth, the boxes' intrinsic sizes and inline content
+		// kept; an app's kept, its boxes of a set width laid out again from the cache)
+		if (resizedWidth && long() && fragments.count > 0) {
 			fragments.clear();
 			placedRuns.clear();
 			Box.forgetFragments();
@@ -642,6 +647,7 @@ class DocumentView {
 				lay();
 			case ORDER:
 				orderDue = false;
+				orderFresh = false;
 				order = new PaintOrder(fragments, root);
 			case _:
 		}
@@ -691,12 +697,15 @@ class DocumentView {
 				remade.push(el);
 				continue;
 			}
+			// (what the paint order's steps hold changed: the next made afresh, nothing of the last one's used)
+			if (level == ORDER) orderFresh = true;
 			var boxes = boxesOf(el);
 			for (b in boxes) if (b.pseudo == null) swap(b, el, old, now, swaps, level == LAYOUT);
 			// (its pseudo-elements' boxes: their styles made again, swapped the same way, or the tree made again)
 			for (b in boxes) if (b.pseudo != null && redo < TREE) {
 				var was = b.style.css, next = styles.computed(el, b.pseudo);
 				if (next == was) continue;
+				orderFresh = true;
 				var i:Int = cast was.impact(next);
 				if (i <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(was, next)) remade.push(el) else swap(b, el, was, next, swaps,
 					i <= (cast helder.css.CssProperties.CssImpact.Text : Int));
@@ -895,7 +904,7 @@ class DocumentView {
 		return order == null ? null : HitTest.at(fragments, order, x, y, scrolls);
 
 	// Scroll containers' offsets (x, y) by their element: what paint and hit testing move their content by.
-	public final scrolls = new ObjectMap<Node, Array<Float>>();
+	public final scrolls = new ObjectMap<{}, Array<Float>>();
 
 	// The innermost scroll container at (x, y) that can scroll by dx, dy
 	// scrolled (within its content's extent): the element; null: none can.

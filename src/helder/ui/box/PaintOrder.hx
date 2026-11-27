@@ -107,10 +107,13 @@ class PaintOrder {
 	// (steps: about how many there will be, its columns made that long at once: the last order's count, say;
 	// window: a long document's top and bottom in the root's space, what paints outside them left out, the
 	// order a window's, for paints and hit tests inside it)
-	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0, ?window:Array<Float>) {
+	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0, ?window:Array<Float>, ?last:PaintOrder) {
 		f = fragments;
 		this.area = area;
 		this.window = window;
+		epoch = f.epoch;
+		if (last != null && last.f == f && last.epoch == epoch && area == null && window == null && last.area == null && last.window == null)
+			this.last = last;
 		if (steps > 0) {
 			this.steps.resize(steps);
 			this.fragments.resize(steps);
@@ -121,7 +124,107 @@ class PaintOrder {
 		if (root < 0) return;
 		canvas = canvasBox(f.box(root));
 		context(root, f.x(root), f.y(root));
+		this.last = null;
 	}
+
+	// (each stacking context's steps and states, a run of each, by its fragment: what the next order, the layout
+	// after this one, copies where the fragment is the same one, at the same place, in a state like it)
+	final epoch:Int;
+	var last:Null<PaintOrder> = null;
+	// how many contexts were copied from the last order
+	public var reused(default, null) = 0;
+	final contexts = new haxe.ds.IntMap<Int>();
+	final ctxFrag:Array<Int> = [];
+	final ctxX:Array<Float> = [];
+	final ctxY:Array<Float> = [];
+	final ctxAtomic:Array<Bool> = [];
+	final ctxStep0:Array<Int> = [];
+	final ctxStep1:Array<Int> = [];
+	final ctxState0:Array<Int> = [];
+	final ctxState1:Array<Int> = [];
+	final ctxEntry:Array<Int> = [];
+	// (the records after it that are its own contexts' up to this one)
+	final ctxEnd:Array<Int> = [];
+
+	function record(id:Int, x:Float, y:Float, atomic:Bool, entry:Int):Int {
+		var r = ctxFrag.length;
+		contexts.set(id, r);
+		ctxFrag.push(id);
+		ctxX.push(x);
+		ctxY.push(y);
+		ctxAtomic.push(atomic);
+		ctxStep0.push(count);
+		ctxStep1.push(count);
+		ctxState0.push(parents.length);
+		ctxState1.push(parents.length);
+		ctxEntry.push(entry);
+		ctxEnd.push(r + 1);
+		return r;
+	}
+
+	// (the last order's steps of the context at id copied, where it can be: its fragment the same, at x, y, the
+	// state it is in clipped, scrolled and transformed as that one was)
+	function reuse(id:Int, x:Float, y:Float, atomic:Bool):Bool {
+		var l = last;
+		if (l == null) return false;
+		var r = l.contexts.get(id);
+		if (r == null || l.ctxX[r] != x || l.ctxY[r] != y || l.ctxAtomic[r] != atomic) return false;
+		var e = l.ctxEntry[r];
+		if (l.transformed[e] != transformed[state] || l.scrolled[e] != scrolled[state] || !sameClip(l.scrollClip[e], scrollClip[state])) return false;
+		var p0 = l.ctxState0[r], p1 = l.ctxState1[r], s0 = l.ctxStep0[r], s1 = l.ctxStep1[r];
+		var base = parents.length, entry = state;
+		inline function map(st:Int):Int
+			return st == e ? entry : base + st - p0;
+		for (st in p0...p1) {
+			parents.push(map(l.parents[st]));
+			kinds.push(l.kinds[st]);
+			alphas.push(l.alphas[st]);
+			matrices.push(l.matrices[st]);
+			rects.push(l.rects[st]);
+			layerFragment.push(l.layerFragment[st]);
+			transformed.push(l.transformed[st]);
+			scroller.push(l.scroller[st]);
+			scrolled.push(l.scrolled[st]);
+			scrollClip.push(l.scrollClip[st]);
+		}
+		var shift = count - s0;
+		if (count + s1 - s0 > steps.length) {
+			var n = count + s1 - s0;
+			steps.resize(n);
+			fragments.resize(n);
+			xs.resize(n);
+			ys.resize(n);
+			stateOf.resize(n);
+		}
+		for (k in s0...s1) {
+			steps[count] = l.steps[k];
+			fragments[count] = l.fragments[k];
+			xs[count] = l.xs[k];
+			ys[count] = l.ys[k];
+			stateOf[count] = map(l.stateOf[k]);
+			count++;
+		}
+		reused++;
+		// (its own contexts' records with it: the order after this one copies them where this one is made again)
+		var first = ctxFrag.length;
+		for (q in r...l.ctxEnd[r]) {
+			contexts.set(l.ctxFrag[q], ctxFrag.length);
+			ctxFrag.push(l.ctxFrag[q]);
+			ctxX.push(l.ctxX[q]);
+			ctxY.push(l.ctxY[q]);
+			ctxAtomic.push(l.ctxAtomic[q]);
+			ctxStep0.push(l.ctxStep0[q] + shift);
+			ctxStep1.push(l.ctxStep1[q] + shift);
+			ctxState0.push(l.ctxState0[q] - p0 + base);
+			ctxState1.push(l.ctxState1[q] - p0 + base);
+			ctxEntry.push(map(l.ctxEntry[q]));
+			ctxEnd.push(l.ctxEnd[q] - r + first);
+		}
+		return true;
+	}
+
+	static function sameClip(a:Null<Array<Float>>, b:Null<Array<Float>>):Bool
+		return a == b || a != null && b != null && a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3];
 
 	static function canvasBox(root:Box):Null<Box> {
 		// (containment on the root or body: body's background not propagated, Contain 2 §3)
@@ -169,6 +272,8 @@ class PaintOrder {
 
 	function context(id:Int, x:Float, y:Float, atomic = false) {
 		var saved = state;
+		if (reuse(id, x, y, atomic)) return;
+		var rec = record(id, x, y, atomic, state);
 		var b = f.box(id), s = b.style;
 		if (!atomic) {
 			var m = Transforms.matrix(s, x, y, f.width(id), f.height(id));
@@ -227,6 +332,9 @@ class PaintOrder {
 		}
 		state = saved;
 		spare.push(c);
+		ctxStep1[rec] = count;
+		ctxState1[rec] = parents.length;
+		ctxEnd[rec] = ctxFrag.length;
 	}
 
 	// (a box's place in its tree, depth first: every box numbered once, on
