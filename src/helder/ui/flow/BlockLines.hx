@@ -321,10 +321,14 @@ class BlockLines {
 				lines++;
 				baseline = top + l.lineBaseline(k);
 			}
-			// (spans first, outer ones before inner: the boxes' parts on this line, by their Open item)
+			// (its marker first, the item's first child)
+			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), (cast c.root : BoxInline).box.style.rtl, l.lineAvailable(k));
+			// (spans made first, outer ones before inner: the boxes' parts on this line, by their Open item;
+			// then everything adopted in the items' order, the tree's, as paint and a PDF's text follow it)
 			var spanOf = new Map<Int, Int>(), spanX = new Map<Int, Float>(), spanY = new Map<Int, Float>();
 			var start = l.lineFragmentStart(k), end = l.lineFragmentEnd(k);
 			var order = [for (f in start...end) if (l.kind(f) == BoxSpan) f];
+			var adopts = new Map<Int, () -> Void>();
 			order.sort((a, b) -> c.depth(l.item(a)) - c.depth(l.item(b)));
 			inline function parentOf(item:Int):{frag:Int, x:Float, y:Float} {
 				var open = c.box(item);
@@ -351,7 +355,8 @@ class BlockLines {
 				frags.setRange(sf, starts ? 0 : Box.NO_START, ends ? 0 : Box.NO_END);
 				frags.setBaseline(sf, l.ascent(f));
 				var off = BlockFlow.offset(box, l.lineAvailable(k), Math.NaN);
-				frags.adopt(pf, sf, l.x(f) - px + off.x, l.y(f) - py + off.y);
+				var at = {pf: pf, sf: sf, x: l.x(f) - px + off.x, y: l.y(f) - py + off.y};
+				adopts.set(f, () -> frags.adopt(at.pf, at.sf, at.x, at.y));
 				spanOf.set(open, sf);
 				spanX.set(open, l.x(f));
 				spanY.set(open, l.y(f));
@@ -361,7 +366,7 @@ class BlockLines {
 					var item = l.item(f);
 					var p = parentOf(item);
 					var box = textBox(item);
-					text(space, l, f, box, c, p.frag, l.x(f) - p.x, l.y(f) - p.y);
+					adopts.set(f, () -> text(space, l, f, box, c, p.frag, l.x(f) - p.x, l.y(f) - p.y));
 				case Atomic:
 					var item = l.item(f);
 					var af = atomicFrag.get(item);
@@ -369,10 +374,12 @@ class BlockLines {
 					var p = parentOf(item);
 					var b = atomicBox.get(item);
 					var off = BlockFlow.offset(b, l.lineAvailable(k), Math.NaN);
-					frags.adopt(p.frag, af, l.x(f) - p.x + off.x, l.y(f) - p.y + off.y);
+					adopts.set(f, () -> frags.adopt(p.frag, af, l.x(f) - p.x + off.x, l.y(f) - p.y + off.y));
 				case _:
 			}
-			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), edge(top, h), (cast c.root : BoxInline).box.style.rtl, l.lineAvailable(k));
+			var all = [for (f in adopts.keys()) f];
+			all.sort((a, b) -> l.item(a) != l.item(b) ? l.item(a) - l.item(b) : a - b);
+			for (f in all) adopts.get(f)();
 		}
 		// (a list item with nothing else: a line for its marker, as tall as the marker's)
 		if (l.lines == 0 && built.markers.length > 0) {
