@@ -652,8 +652,15 @@ class TextLayout {
 				lFace[g] = faceIndex(fonts.primary);
 				lId[g] = 0;
 			} else {
-				// (in an emoji's sequence: a colour face; a variation selector or joiner keeps the face before it, its run unbroken)
-				var f = c == 9 ? fonts.primary : emoji != null && emoji[i] ? (ignorable(c) && g > 0 ? fontOf(g - 1) : fonts.emojiFaceFor(c)) : fonts.faceFor(c);
+				// (in an emoji's sequence: a colour face; in VS15's, one without; a keycap's or an
+				// emoji character's as font-variant-emoji says; a variation selector, joiner or
+				// keycap mark keeps the face before it, its run unbroken)
+				var cls = emoji == null ? 0 : emoji[i];
+				var f = if (c == 9) fonts.primary else if (cls != 0 && g > 0 && (ignorable(c) || c == 0x20E3)) fontOf(g - 1) else switch cls == 1 ? FontSet.EMOJI : cls == 2 ? FontSet.TEXT : presented(c, fonts.presentation, cls == 3) {
+					case FontSet.EMOJI: fonts.emojiFaceFor(c);
+					case FontSet.TEXT: fonts.textFaceFor(c);
+					case _: fonts.faceFor(c);
+				}
 				lFace[g] = faceIndex(f);
 				lId[g] = c == 9 ? f.glyph(32) : f.glyph(c);
 			}
@@ -881,34 +888,49 @@ class TextLayout {
 		return 1;
 	}
 
-	// which UTF-16 units are in an emoji's sequence (a grapheme cluster with
-	// VS16, an emoji modifier, a zero width joiner, regional indicators or a
-	// keycap): drawn with a colour face; null: none in the text
-	static function emojiClusters(text:String):Null<haxe.ds.Vector<Bool>> {
+	// the presentation of a character not in a sequence that says (FontSet's
+	// TEXT or EMOJI; 0: none, an ordinary character): font-variant-emoji's,
+	// text and emoji as asked, normal and unicode as Emoji_Presentation says
+	static function presented(c:Int, asked:Int, keycap:Bool):Int {
+		if (!keycap && (c < 0x203C && c != 0xA9 && c != 0xAE || !Emoji.emoji(c))) return 0;
+		return switch asked {
+			case FontSet.TEXT: FontSet.TEXT;
+			case FontSet.EMOJI: FontSet.EMOJI;
+			case _: Emoji.presentation(c) ? FontSet.EMOJI : FontSet.TEXT;
+		}
+	}
+
+	// the UTF-16 units of each grapheme cluster that says its presentation:
+	// 1 an emoji's sequence (VS16, an emoji modifier, a zero width joiner,
+	// regional indicators), drawn with a colour face; 2 VS15's, with a face
+	// without; 3 a keycap without either, as its character's presentation;
+	// null: none in the text
+	static function emojiClusters(text:String):Null<haxe.ds.Vector<Int>> {
 		var any = false;
 		for (i in 0...text.length) {
 			var c = StringTools.fastCodeAt(text, i);
-			if (c == 0xFE0F || c == 0x200D || c == 0x20E3 || c == 0xD83C || c >= 0x1F1E6 && c <= 0x1F1FF || c >= 0x1F3FB && c <= 0x1F3FF) any = true;
+			if (c == 0xFE0F || c == 0xFE0E || c == 0x200D || c == 0x20E3 || c == 0xD83C || c >= 0x1F1E6 && c <= 0x1F1FF || c >= 0x1F3FB && c <= 0x1F3FF) any = true;
 		}
 		if (!any) return null;
-		var out = new haxe.ds.Vector<Bool>(text.length);
-		for (i in 0...text.length)
-			out[i] = false;
+		var out = new haxe.ds.Vector<Int>(text.length, 0);
 		var b = Grapheme.boundaries(text);
 		for (k in 0...b.length - 1) {
-			var marked = false, i = b[k];
+			var sequence = false, text15 = false, keycap = false, i = b[k];
 			while (i < b[k + 1]) {
 				var c = StringTools.fastCodeAt(text, i), len = 1;
 				if (c >= 0xD800 && c < 0xDC00 && i + 1 < text.length) {
 					c = 0x10000 + ((c - 0xD800) << 10) + (StringTools.fastCodeAt(text, i + 1) - 0xDC00);
 					len = 2;
 				}
-				if (c == 0xFE0F || c == 0x200D || c == 0x20E3 || c >= 0x1F1E6 && c <= 0x1F1FF || c >= 0x1F3FB && c <= 0x1F3FF) marked = true;
+				if (c == 0xFE0F || c == 0x200D || c >= 0x1F1E6 && c <= 0x1F1FF || c >= 0x1F3FB && c <= 0x1F3FF) sequence = true;
+				if (c == 0xFE0E) text15 = true;
+				if (c == 0x20E3) keycap = true;
 				i += len;
 			}
-			if (marked)
+			var cls = sequence ? 1 : text15 ? 2 : keycap ? 3 : 0;
+			if (cls != 0)
 				for (j in b[k]...b[k + 1])
-					out[j] = true;
+					out[j] = cls;
 		}
 		return out;
 	}

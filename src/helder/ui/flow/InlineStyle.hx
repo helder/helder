@@ -32,6 +32,8 @@ interface InlineStyle {
 	function fontFeatures():Null<Array<FontFeature>>;
 	function fontKerning():InlineKerning;
 	function fontLigatures():InlineLigatures;
+	// font-variant-emoji: a character's text or emoji presentation where no variation selector says
+	function fontEmoji():InlineEmoji;
 	// 0xAARRGGBB
 	function color():Int;
 	// pixels; NaN: normal (the font's own)

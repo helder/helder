@@ -76,10 +76,11 @@ class InlineFonts {
 			synthesis: style.fontSynthesis(),
 			optical: style.fontOpticalSizing(),
 			features: featuresOf(style),
-			variations: style.fontVariations()
+			variations: style.fontVariations(),
+			emoji: style.fontEmoji()
 		};
 		var key = r.families.join(",") + "|" + r.size + "|" + r.weight + "|" + r.stretch + "|" + Std.string(r.style) + "|" + (r.synthesis : Int) + "|"
-			+ r.optical + "|" + (r.features == null ? "" : FontFeature.key(r.features)) + "|"
+			+ r.optical + "|" + (r.emoji : Int) + "|" + (r.features == null ? "" : FontFeature.key(r.features)) + "|"
 			+ (r.variations == null ? "" : [for (k => v in r.variations) k + "=" + v].join(","));
 		var id = byKey.get(key);
 		if (id == null) {
@@ -191,6 +192,7 @@ class InlineFonts {
 		set.bold = r.weight >= 600 && lacks.weight < 600 && s & InlineSynthesis.Weight != 0;
 		set.oblique = italic && !lacks.slanted && (s & InlineSynthesis.Style != 0 || r.style.match(FontStyle.Oblique(_)) && s & InlineSynthesis.Oblique != 0);
 		if (r.features != null) set.features = r.features;
+		set.presentation = r.emoji;
 		return set;
 	}
 
@@ -298,5 +300,6 @@ private typedef Request = {
 	synthesis:InlineSynthesis,
 	optical:Bool,
 	features:Null<Array<FontFeature>>,
-	variations:Null<Map<String, Float>>
+	variations:Null<Map<String, Float>>,
+	emoji:InlineEmoji
 }

@@ -597,11 +597,15 @@ class InlineContent {
 	}
 
 	// a segment break between two characters removed (CSS Text 3 §4.1.2):
-	// next to a zero width space, or between two East Asian wide ones, not Hangul
+	// next to a zero width space, or between two East Asian wide ones, not
+	// Hangul and not emoji (as Firefox: emoji are wide, yet words of their own)
 	static function removesBreak(before:Int, after:Int):Bool {
 		if (before == 0x200B || after == 0x200B) return true;
-		return before >= 0 && LineBreaks.wide(before) && LineBreaks.wide(after) && !hangul(before) && !hangul(after);
+		return before >= 0 && joins(before) && joins(after);
 	}
+
+	static inline function joins(c:Int):Bool
+		return LineBreaks.wide(c) && !hangul(c) && !helder.text.Emoji.presentation(c);
 
 	static inline function hangul(c:Int):Bool
 		return c >= 0x1100 && c <= 0x11FF || c >= 0x3130 && c <= 0x318F || c >= 0xAC00 && c <= 0xD7FF || c >= 0xA960 && c <= 0xA97F;

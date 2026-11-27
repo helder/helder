@@ -171,6 +171,14 @@ class BoxInline implements InlineStyle {
 		return v;
 	}
 
+	public function fontEmoji():InlineEmoji
+		return switch k("font-variant-emoji") {
+			case "text": Text;
+			case "emoji": Emoji;
+			case "unicode": Unicode;
+			case _: Normal;
+		}
+
 	public function color():Int
 		return s.color("color");
 

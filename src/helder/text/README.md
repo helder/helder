@@ -86,8 +86,12 @@ text with, usable on its own.
   letter's initial, medial, final or isolated form, then the required
   ligatures such as lam-alef), the caret at a character's leading edge.
   Emoji sequences (VS16, skin tones, zero width joiners, flags, keycaps)
-  take a colour face and its ligatures, their widths as Chromium's;
-  default ignorable characters are hidden. GSUB's standard and contextual
+  take a colour face and its ligatures, their widths as Chromium's; VS15
+  asks for a text (non-colour) face. `FontSet.presentation` is CSS's
+  `font-variant-emoji`: `TEXT` and `EMOJI` pick a face for every emoji
+  character, `NORMAL` and `UNICODE` by its Emoji_Presentation (`Emoji`,
+  from Unicode's emoji-data.txt), a variation selector winning over all
+  four. Default ignorable characters are hidden. GSUB's standard and contextual
   ligatures and alternates (`liga`, `clig`, `calt`: DejaVu's ff, fi,
   ffi..., Inter's arrows and ×) are applied as Chromium applies them, not
   where letters are spaced: single, alternate, ligature and (chained)

@@ -12,6 +12,13 @@ class FontSet {
 	public var oblique = false;
 	// bold asked of a face that is not (font-synthesis-weight): drawn emboldened, its outlines stroked
 	public var bold = false;
+	// font-variant-emoji: NORMAL, TEXT, EMOJI or UNICODE (TextLayout's choice of a face for an emoji character)
+	public var presentation = NORMAL;
+
+	public static inline var NORMAL = 0;
+	public static inline var TEXT = 1;
+	public static inline var EMOJI = 2;
+	public static inline var UNICODE = 3;
 	// the first available font (CSS Fonts 4 §5): the first face whose
 	// unicode-range has the space, its metrics the set's (primary: by default)
 	public var first:FontFile;
@@ -68,6 +75,19 @@ class FontSet {
 			if (f != null) return f;
 		}
 		return primary;
+	}
+
+	// the face for a character in text presentation: a face without colour that
+	// has it first (the set's, then the system's fallback), else faceFor's
+	public function textFaceFor(cp:Int):FontFile {
+		if (!primary.hasColor && primary.has(cp)) return primary;
+		for (f in fallbacks)
+			if (!f.hasColor && f.has(cp)) return f;
+		if (more != null) {
+			var f = more(cp);
+			if (f != null && !f.hasColor) return f;
+		}
+		return faceFor(cp);
 	}
 
 	// the face for a character of an emoji's sequence (with VS16, a modifier,
