@@ -4,7 +4,7 @@
   "sha256": "18b474d16c2686f3aa45fa535ab418f4079bf97e82a80c9d3ed1f83de7512c58",
   "license": "MIT",
   "counts": {
-    "properties": 312,
+    "properties": 317,
     "types": 308,
     "primitives": 22,
     "descriptors": 72,

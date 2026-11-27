@@ -235,6 +235,23 @@ enum abstract CssFontVariantPosition(Int) to Int {
 	var Other = -2;
 }
 
+// -helder-backdrop
+enum abstract CssHelderBackdrop(Int) to Int {
+	var None = 0;
+	var Auto = 1;
+	var Sidebar = 2;
+	var Popover = 3;
+	var Other = -2;
+}
+
+// -helder-scrollbar
+enum abstract CssHelderScrollbar(Int) to Int {
+	var System = 0;
+	var Overlay = 1;
+	var Always = 2;
+	var Other = -2;
+}
+
 // hyphens
 enum abstract CssHyphens(Int) to Int {
 	var None = 0;
