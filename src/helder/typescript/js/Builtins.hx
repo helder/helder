@@ -255,6 +255,11 @@ class Builtins {
 		publish();
 	}
 
+	public static function installWebGlobals() if (once("web globals")) {
+		WebGlobals.setup();
+		publish();
+	}
+
 	public static function installStructuredClone() if (once("structuredClone")) {
 		globals.set("structuredClone", native("structuredClone", 1, (_, a, _) -> clone(arg(a, 0), new haxe.ds.ObjectMap())));
 		freeze();
@@ -278,6 +283,7 @@ class Builtins {
 		installStructuredClone();
 		installProxy();
 		installReflect();
+		installWebGlobals();
 	}
 
 	// an installer's new globals, also as globalThis's properties
