@@ -1,5 +1,6 @@
 package helder.css;
 
+import helder.css.CssComputed.CssComputeContext;
 import helder.css.CssProperty;
 import helder.dom.Dom;
 import helder.test.Test;
@@ -61,18 +62,26 @@ function tests() {
 	});
 }
 
-private function starts(before:String, after:String):Array<CssTransition.CssTransitionStart>
-	return CssTransition.starts(style(before), style(after));
+// (these helpers hold no value across a call: hxmc inlines a small helper
+// that does, twice in one function, with that function's shadow frame
+// popped after the first copy; Linux's host tests crashed on this file)
+private function starts(before:String, after:String):Array<CssTransition.CssTransitionStart> {
+	var s = styles(before, after);
+	return CssTransition.starts(s[0], s[1]);
+}
 
 private function written(t:CssTransition.CssTransitionStart, time:Float):String {
-	var name = CssProperties.name(t.property);
-	return CssValues.written(name, CssTransition.value(t, time), @:privateAccess style("").context());
+	var p = t.property, v = CssTransition.value(t, time);
+	return CssValues.written(CssProperties.name(p), v, NONE);
 }
+
+private final NONE:CssComputeContext = {};
 
 private function names(t:Array<CssTransition.CssTransitionStart>):String
 	return [for (x in t) CssProperties.name(x.property)].join(" ");
 
-private function style(declarations:String):CssStyle {
-	var doc = Dom.parse('<!doctype html><p id=x style="$declarations"></p>');
-	return CssCascade.styles(doc).computed(doc.getElementById("x"));
+private function styles(before:String, after:String):Array<CssStyle> {
+	var doc = Dom.parse('<!doctype html><p style="$before"></p><p style="$after"></p>');
+	var s = CssCascade.styles(doc), ps = doc.getElementsByTagName("p");
+	return [s.computed(cast ps.item(0)), s.computed(cast ps.item(1))];
 }
