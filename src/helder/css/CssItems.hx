@@ -130,11 +130,15 @@ class CssItems {
 		for (x in t) switch x {
 			case Ident(n): out.push({name: n, value: null, reversed: false});
 			case Func("reversed", [Ident(n)]): out.push({name: n, value: null, reversed: true});
-			case Number(v, _) if (out.length > 0): out[out.length - 1].value = Std.int(v);
+			case Number(v, _) if (out.length > 0): out[out.length - 1].value = counterInteger(v);
 			case _:
 		}
 		return out;
 	}
+
+	@:allow(helder.css.CssCounters)
+	static inline function counterInteger(v:Float):Int
+		return v >= 2147483647 ? 2147483647 : v <= -2147483648 ? -2147483648 : Std.int(v);
 
 	// font-family's families: names, and generics as their keywords.
 	public static function families(t:Array<CssTerm>):Array<String>
