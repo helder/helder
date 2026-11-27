@@ -53,10 +53,15 @@ class GridFlow implements FormattingContext {
 		var pl = BlockFlow.res(s.padding[3], cb), pr = BlockFlow.res(s.padding[1], cb), pt = BlockFlow.res(s.padding[0], cb), pb = BlockFlow.res(s.padding[2], cb);
 		var bl = s.border[3], br = s.border[1], bt = s.border[0], bb = s.border[2];
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
-		var w = width(box, s, space, bpx);
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : BlockFlow.size(s.height,
 			space.height, s.borderBox, bpy);
 		if (!Math.isNaN(heightSpec) && !space.ignoreHeight) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
+		var w = width(box, s, space, bpx, heightSpec);
+		// (an aspect-ratio's auto height: its width's through it)
+		if (Math.isNaN(heightSpec) && Math.isNaN(space.fixedHeight)) {
+			var rh = Ratio.height(box, w, bpx, bpy);
+			if (!Math.isNaN(rh)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, rh);
+		}
 		var minH = space.ignoreHeight ? Math.NaN : BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy);
 		var maxH = space.ignoreHeight ? Math.NaN : BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy);
 		var frags = space.fragments;
@@ -108,6 +113,14 @@ class GridFlow implements FormattingContext {
 			var minCH = nanTo(BlockFlow.size(m.minHeight, ah, m.borderBox, cbpy), 0) + cbpy, maxCH = nanTo(BlockFlow.size(m.maxHeight, ah, m.borderBox, cbpy), Math.POSITIVE_INFINITY) + cbpy;
 			var sw = BlockFlow.size(m.width, aw, m.borderBox, cbpx), sh = BlockFlow.size(m.height, ah, m.borderBox, cbpy);
 			var iw = Math.isNaN(sw) ? Math.NaN : clamp(sw + cbpx, minCW, maxCW), ih = Math.isNaN(sh) ? Math.NaN : clamp(sh + cbpy, minCH, maxCH);
+			// (an aspect-ratio's, normal: stretched across, its height through the ratio, and so its width within
+			// its min and max height's through it when that is stretched too, as Chromium has it)
+			var ratio = !Math.isNaN(Ratio.of(c)), normal = jy == "stretch" && normal(c);
+			if (Math.isNaN(iw) && jx == "stretch" && ratio && Math.isNaN(ih) && jy == "stretch") {
+				var lo = Ratio.width(c, minCH - cbpy, cbpx, cbpy) + cbpx, hi = Ratio.width(c, maxCH - cbpy, cbpx, cbpy) + cbpx;
+				iw = clamp(Math.min(roomW, hi), Math.max(minCW, lo), maxCW);
+			}
+			if (ratio && normal) jy = "start";
 			if (Math.isNaN(iw)) {
 				if (jx == "stretch") iw = clamp(roomW, minCW, maxCW) else {
 					// (fit-content: its max-content width, no more than the area, no less than its min-content)
@@ -186,7 +199,7 @@ class GridFlow implements FormattingContext {
 
 	// (the container's content width: given, set, or filling its containing block; shrink-to-fit when it
 	// floats, is absolutely positioned or inline-level)
-	function width(box:Box, s:BoxStyle, space:Space, bpx:Float):Float {
+	function width(box:Box, s:BoxStyle, space:Space, bpx:Float, height:Float):Float {
 		var cb = space.width;
 		var ml = BlockFlow.auto(s.margin[3], cb), mr = BlockFlow.auto(s.margin[1], cb);
 		var minW = nanTo(BlockFlow.size(s.minWidth, cb, s.borderBox, bpx), 0), maxW = BlockFlow.size(s.maxWidth, cb, s.borderBox, bpx);
@@ -196,6 +209,7 @@ class GridFlow implements FormattingContext {
 			return Math.max(0, space.fixedWidth - bpx);
 		}
 		var spec = BlockFlow.size(s.width, cb, s.borderBox, bpx);
+		if (Math.isNaN(spec)) spec = Ratio.width(box, height, bpx, s.border[0] + s.border[2] + BlockFlow.res(s.padding[0], cb) + BlockFlow.res(s.padding[2], cb));
 		if (box.blockLevel && box.kind != InlineBlock && !box.floating && !box.absolute) {
 			var rtl = box.parent != null && box.parent.style.rtl;
 			var w = BlockFlow.solve(box, spec, ml, mr, cb, bpx, rtl);
@@ -924,6 +938,13 @@ class GridFlow implements FormattingContext {
 		}
 	}
 
+	// (align-self normal, its own or its container's align-items')
+	static function normal(b:Box):Bool {
+		var v = keyword(b.style, "align-self");
+		if (v == "auto" || v == "normal" || v == "") v = keyword(b.parent.style, "align-items");
+		return v == "normal" || v == "" || v == "legacy";
+	}
+
 	static function keyword(s:BoxStyle, p:String):String {
 		var k = s.keyword(p);
 		return k == "" ? CssText.join(s.terms(p), CssText.term) : k;
@@ -942,6 +963,8 @@ class GridFlow implements FormattingContext {
 		var bpx = BlockFlow.fixed(s.padding[1]) + BlockFlow.fixed(s.padding[3]) + s.border[1] + s.border[3];
 		var min = 0.0, max = 0.0;
 		var w = BlockFlow.size(s.width, Math.NaN, s.borderBox, bpx);
+		var bpy = BlockFlow.fixed(s.padding[0]) + BlockFlow.fixed(s.padding[2]) + s.border[0] + s.border[2];
+		if (Math.isNaN(w)) w = Ratio.width(box, BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
 		if (!Math.isNaN(w)) min = max = w else {
 			var g = grid(box, space, Math.NaN, Math.NaN);
 			var colGap = gap(box.style, "column-gap", Math.NaN);

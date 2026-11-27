@@ -401,6 +401,10 @@ class BoxStyle {
 	public var maxWidth(default, null) = Len.Auto;
 	public var maxHeight(default, null) = Len.Auto;
 	public var borderBox(default, null) = false;
+	// aspect-ratio's width / height (NaN: auto, or degenerate); auto: natural
+	// ratio first, a replaced element's
+	public var ratio(default, null) = Math.NaN;
+	public var ratioAuto(default, null) = true;
 
 	static final SIDES = ["top", "right", "bottom", "left"];
 
@@ -428,7 +432,26 @@ class BoxStyle {
 		maxWidth = len("max-width");
 		maxHeight = len("max-height");
 		borderBox = keyword("box-sizing") == "border-box";
+		readRatio(terms("aspect-ratio"));
 		return this;
+	}
+
+	function readRatio(terms:Array<CssTerm>) {
+		var a = Math.NaN, b = 1.0, over = false;
+		for (t in terms) switch t {
+			case Number(v, _):
+				if (over) b = v else a = v;
+			case Delim("/"):
+				over = true;
+			case Part(_, inner):
+				readRatio(inner);
+				return;
+			case _:
+		}
+		if (Math.isNaN(a)) return;
+		ratioAuto = terms[0].match(Keyword("auto")) || terms[terms.length - 1].match(Keyword("auto"));
+		var r = a / b;
+		if (r > 0 && Math.isFinite(r)) ratio = r;
 	}
 
 	// ---- positioning and the rest layout asks
