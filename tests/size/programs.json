@@ -1,0 +1,6 @@
+[
+  { "name": "todo", "dir": "examples/todo", "main": "Todo" },
+  { "name": "viewer", "dir": "apps/viewer", "src": "src", "main": "Main" },
+  { "name": "counter", "dir": "examples/counter", "main": "Counter" },
+  { "name": "pdf", "dir": "tests/size", "main": "HtmlToPdf" }
+]

@@ -102,6 +102,18 @@ test bench <name> ...` the ones named.
 | `bench watch` | the watchers' cost a tick on 10k files (tests/bench/WatchBench.hx): PollWatcher against SampledWatcher |
 | `bench soft` | the CPU's canvas against the GPU on the same scenes (tests/bench/SoftBench.hx, then again with HELDER_SOFT=1) |
 
+## Binary size (lanes/Size.hx)
+
+| Lane | Checks |
+| --- | --- |
+| `size` | todo, viewer, counter and HTML-to-PDF built in release with full DCE and symbols, natively and as wasm32-wasi (tests/size/programs.json). A binary may grow by up to 2% or 32 KiB, whichever is larger, against its OS and target baseline. The lane prints the packages that grew most and writes bin/size/report.md, with code, const and data totals, package deltas, the 20 largest classes and file-backed sections. |
+
+CI runs this lane on macOS and Linux and uploads the report. Windows
+requires PE/COFF symbol support. Run `bun run test size <program>` locally
+to build just that program for both targets. Set `BLESS=1` to update the
+selected baselines in tests/size/baselines. The first Linux job supplies
+its initial baselines in the same artifact.
+
 ## GFX (lanes/Gfx.hx)
 
 | Lane | Checks |
