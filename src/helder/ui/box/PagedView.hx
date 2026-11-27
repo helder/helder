@@ -2,6 +2,7 @@ package helder.ui.box;
 
 import haxe.io.Bytes;
 import helder.canvas.Bitmap;
+import helder.canvas.Matrix;
 import helder.canvas.Painter;
 import helder.canvas.doc.Document as PdfDocument;
 import helder.canvas.doc.PdfWriter;
@@ -53,11 +54,9 @@ typedef PagedViewOptions = {
 	?limit:Int
 }
 
-// A page: its page box's size (bleed around it), its margins (top,
-// right, bottom, left), its page area (x, y, width, height in the page
-// box: inside its margins, border and padding), whether it is a left page
-// and a blank one, its @page style, and its content's root fragment (-1:
-// none).
+// A page: its output size (bleed around it), its margins and area in
+// layout coordinates, whether it is a left page and a blank one, its
+// @page style, and its content's root fragment (-1: none).
 typedef Page = {
 	index:Int,
 	// its page type's name (the page property; null: none)
@@ -372,8 +371,9 @@ class PagedView {
 				var b = marginBox(page, name, strings, running, number);
 				if (b != null) boxes.set(name, b);
 			}
-			var space = spaceFor(page.width, page.height);
-			page.boxes = PageMargins.layout(boxes, page.width, page.height, page.margins, space, flow);
+			var w = page.style.width, h = page.style.height;
+			var space = spaceFor(w, h);
+			page.boxes = PageMargins.layout(boxes, w, h, page.margins, space, flow);
 		}
 	}
 
@@ -478,11 +478,12 @@ class PagedView {
 		var margins = [for (k in 0...4) BlockFlow.auto(m.margin[k], k % 2 == 0 ? style.height : style.width)];
 		margins = [for (v in margins) Math.isNaN(v) ? 0.0 : v];
 		var inset = [for (k in 0...4) margins[k] + m.border[k] + BlockFlow.res(m.padding[k], k % 2 == 0 ? style.height : style.width)];
+		var turned = style.orientation != "upright";
 		return {
 			index: index,
 			name: name,
-			width: style.width,
-			height: style.height,
+			width: turned ? style.height : style.width,
+			height: turned ? style.width : style.height,
 			bleed: style.bleed,
 			margins: margins,
 			area: [inset[3], inset[0], Math.max(0, style.width - inset[1] - inset[3]), Math.max(0, style.height - inset[0] - inset[2])],
@@ -504,12 +505,27 @@ class PagedView {
 	public function paint(i:Int, p:Painter, snap = true) {
 		var page = pages[i];
 		var b = page.bleed, m = page.margins;
+		var w = page.style.width, h = page.style.height;
+		var turn = rotation(page);
+		if (turn != null) {
+			p.save();
+			p.transform(turn.a, turn.b, turn.c, turn.d, turn.e, turn.f);
+		}
 		var style = new CssBoxStyle(page.style.style);
-		Backgrounds.paint(p, style, 0, 0, page.width + 2 * b, page.height + 2 * b, image, null, false, false, false, false, svg);
-		Borders.paint(p, style, b + m[3], b + m[0], page.width - m[1] - m[3], page.height - m[0] - m[2]);
+		Backgrounds.paint(p, style, 0, 0, w + 2 * b, h + 2 * b, image, null, false, false, false, false, svg);
+		Borders.paint(p, style, b + m[3], b + m[0], w - m[1] - m[3], h - m[0] - m[2]);
 		if (page.root >= 0) contentOf(i, p, snap);
 		marginsOf(page, p, b, snap);
+		if (turn != null) p.restore();
 	}
+
+	// (page-orientation rotates the bleed box after layout, CSS Paged Media 3 §7.1.2)
+	static function rotation(page:Page):Null<Matrix>
+		return switch page.style.orientation {
+			case "rotate-left": new Matrix(0, -1, 1, 0, 0, page.style.width + 2 * page.bleed);
+			case "rotate-right": new Matrix(0, 1, -1, 0, page.style.height + 2 * page.bleed, 0);
+			case _: null;
+		}
 
 	// (its content in its page area)
 	function contentOf(i:Int, p:Painter, snap:Bool) {
@@ -587,14 +603,22 @@ class PagedView {
 		for (page in pages) {
 			if (page.root < 0) continue;
 			var ox = page.bleed + page.area[0], oy = page.bleed + page.area[1];
+			var turn = rotation(page);
 			function walk(k:Int) {
 				var kind = fragments.kind(k), node = BoxTree.nodeOf(fragments.box(k));
 				if ((kind == Fragments.BOX || kind == Fragments.SPAN) && node != null && node.nodeType == helder.dom.Node.ELEMENT_NODE) {
 					var el:helder.dom.Element = cast node;
 					var at = fragments.absolute(k);
-					if (!first.exists(el)) first.set(el, {page: page.index, x: ox + at.x, y: oy + at.y});
-					if (el.localName == "a" && el.hasAttribute("href"))
-						links.push({el: el, page: page.index, x: ox + at.x, y: oy + at.y, w: fragments.width(k), h: fragments.height(k)});
+					var x = ox + at.x, y = oy + at.y;
+					var px = turn == null ? x : turn.mapX(x, y), py = turn == null ? y : turn.mapY(x, y);
+					if (!first.exists(el)) first.set(el, {page: page.index, x: px, y: py});
+					if (el.localName == "a" && el.hasAttribute("href")) {
+						var w = fragments.width(k), h = fragments.height(k);
+						if (turn == null) links.push({el: el, page: page.index, x: x, y: y, w: w, h: h}) else {
+							var qx = turn.mapX(x + w, y + h), qy = turn.mapY(x + w, y + h);
+							links.push({el: el, page: page.index, x: Math.min(px, qx), y: Math.min(py, qy), w: Math.abs(px - qx), h: Math.abs(py - qy)});
+						}
+					}
 				}
 				var c = fragments.first(k);
 				while (c >= 0) {
