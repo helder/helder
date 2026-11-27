@@ -56,6 +56,19 @@ class Breaks implements Fragmentation {
 	public function defer(d:Deferred)
 		deferred.push(d);
 
+	public function parallel(box:Box, child:Box):Null<Breaks> {
+		var r = resume(box);
+		if (r != null && r.parallel != null) {
+			var t = r.parallel.get(child);
+			return t == null ? null : new Breaks(size, t);
+		}
+		return new Breaks(size, null);
+	}
+
+	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
+		return offer({box: box, child: null, line: BreakToken.SPLIT, from: null, parallel: tokens, bottom: bottom, appeal: inside(box, PERFECT), forced: null,
+			keep: false});
+
 	public function floated(bottom:Float) {
 		if (bottom > floor) floor = bottom;
 		placed(bottom);
@@ -145,7 +158,7 @@ class Breaks implements Fragmentation {
 		var forced = p.forced != null || p.keep && (top == null || p.bottom - top < size);
 		// (past a box's content: it and the boxes around it to the fragmentainer's end)
 		var end = p.line == BreakToken.PAST ? size : p.bottom;
-		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, consumed: consumed(p.box, end), forced: forced});
+		resumes.set(p.box, {child: p.child, line: p.line, from: p.from, parallel: p.parallel, consumed: consumed(p.box, end), forced: forced});
 		var b = p.box;
 		while (b.parent != null) {
 			resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, end), forced: forced});
@@ -265,6 +278,7 @@ private typedef Point = {
 	child:Null<Box>,
 	line:Int,
 	from:Null<InlineBreak>,
+	?parallel:ObjectMap<Box, BreakToken>,
 	bottom:Float,
 	appeal:Int,
 	forced:Null<String>,

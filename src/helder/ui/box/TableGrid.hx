@@ -15,6 +15,20 @@ class TableGrid {
 	public var collapse(default, null) = false;
 	// the table box's fragment, and its spacing between cells
 	public var fragment = -1;
+	// (in fragmentainers: the rows on this fragment, and the grid of the table's fragment before (a page's
+	// layout each; paint finds its fragment's by it))
+	public var shown:Null<Array<Bool>> = null;
+	public var previous:Null<TableGrid> = null;
+
+	// the grid of a table's fragment (its latest layout's when none is that fragment's)
+	public static function of(latest:Null<TableGrid>, fragment:Int):Null<TableGrid> {
+		var g = latest;
+		while (g != null && g.fragment != fragment) g = g.previous;
+		return g ?? latest;
+	}
+
+	public inline function hides(row:Int):Bool
+		return shown != null && !shown[row];
 	public var spacing = 0.0;
 	// (the horizontal lines' segments: (rows + 1) * columns, line r above row r; the vertical
 	// ones': rows * (columns + 1), line c left of column c)

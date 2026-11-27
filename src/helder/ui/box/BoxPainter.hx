@@ -136,7 +136,7 @@ class BoxPainter {
 		if (b.flags & (Box.EMPTY | Box.COLLAPSED) == Box.EMPTY && s.keyword("empty-cells") == "hide") return;
 		var part = s.part;
 		Borders.shadows(p, s, x, y, w, h, false);
-		var cells = part == BoxStyle.ROW || part == BoxStyle.ROW_GROUP || part == BoxStyle.COLUMN || part == BoxStyle.COLUMN_GROUP ? gridCells(b, x, y, w, h) : null;
+		var cells = part == BoxStyle.ROW || part == BoxStyle.ROW_GROUP || part == BoxStyle.COLUMN || part == BoxStyle.COLUMN_GROUP ? gridCells(id, b, x, y, w, h) : null;
 		if (cells != null) {
 			p.save();
 			p.clip(cells);
@@ -153,14 +153,18 @@ class BoxPainter {
 
 	// (a row's, column's or group's background shows in its cells, not in the spacing between them, §17.5.1:
 	// the grid's cells under its rectangle; null where there is no spacing)
-	function gridCells(b:Box, x:Float, y:Float, w:Float, h:Float):Null<Path> {
+	function gridCells(id:Int, b:Box, x:Float, y:Float, w:Float, h:Float):Null<Path> {
 		var t = b.parent;
 		while (t != null && !(t.kind == Container && t.style.inner == BoxStyle.TABLE)) t = t.parent;
-		var g = t == null ? null : t.table;
+		// (the table's fragment around this one: its grid)
+		var k = id;
+		while (k >= 0 && f.box(k) != t) k = f.parent(k);
+		var g = t == null ? null : TableGrid.of(t.table, k);
 		if (g == null || g.spacing == 0 || g.fragment < 0) return null;
 		var o = f.absolute(g.fragment);
 		var path = new Path();
 		for (r in 0...g.rows) for (c in 0...g.columns) {
+			if (g.hides(r)) continue;
 			var cx = o.x + g.x[c], cy = o.y + g.y[r];
 			if (cx + g.widths[c] <= x || cx >= x + w || cy + g.heights[r] <= y || cy >= y + h) continue;
 			path.rect(Math.round(cx), Math.round(cy), Math.round(cx + g.widths[c]) - Math.round(cx), Math.round(cy + g.heights[r]) - Math.round(cy));
@@ -171,7 +175,7 @@ class BoxPainter {
 	// (a table's collapsed borders, §17.6.2: each line's segments, a horizontal one over the vertical
 	// lines' half widths at its ends; double, dotted and the rest drawn solid)
 	function collapsed(p:Painter, id:Int, b:Box, x:Float, y:Float) {
-		var g = b.table;
+		var g = TableGrid.of(b.table, id);
 		if (g == null || !g.collapse) return;
 		var rows = g.rows, cols = g.columns;
 		inline function colLeft(c:Int):Float
@@ -179,13 +183,16 @@ class BoxPainter {
 		inline function rowTop(r:Int):Float
 			return r < rows ? g.y[r] : g.y[rows - 1] + g.heights[rows - 1];
 		var path = new Path();
+		// (in a fragmentainer: the lines of the rows here, a horizontal one beside one of them)
 		for (r in 0...rows) for (c in 0...cols + 1) {
+			if (g.hides(r)) continue;
 			var k = g.v(r, c), w = g.vPainted(k);
 			if (w <= 0) continue;
 			var lx = Math.round(x + colLeft(c) - Math.floor(w / 2)), ty = Math.round(y + rowTop(r)), by = Math.round(y + rowTop(r + 1));
 			fillRect(p, path, lx, ty, w, by - ty, g.vColor[k]);
 		}
 		for (r in 0...rows + 1) for (c in 0...cols) {
+			if (g.shown != null && (r == 0 || g.hides(r - 1)) && (r == rows || g.hides(r))) continue;
 			var k = g.h(r, c), w = g.hPainted(k);
 			if (w <= 0) continue;
 			var left = 0.0, right = 0.0;
