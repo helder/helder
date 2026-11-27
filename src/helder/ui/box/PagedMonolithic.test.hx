@@ -7,9 +7,24 @@ import helder.test.Test;
 // at its start, kept whole, its overflow continuing on the pages after,
 // each one clipped to its area; pushed to the next page first when there
 // is content before it. A line taller than the page sliced the same way;
-// a formatting context's root going on with its float.
+// a formatting context's root going on with its float. A fixed height's
+// content past it a parallel flow, going on after the box ends.
 function tests() {
 	describe("PagedMonolithic", () -> {
+		test("a fixed height ending on its page, its content past it: whole there, the content going on after, the flow after it there", () -> {
+			var v = paged('<div id=p style="height:50px;border:5px solid"><div id=c style="height:150px"></div></div><div id=n style="height:10px"></div>');
+			equals(v.layout(), 2);
+			equals([height(v, 0, "p"), height(v, 0, "c"), on(v, 0, "n"), height(v, 1, "p"), height(v, 1, "c")], [60.0, 75, 60, 0, 75]);
+			equals([sliced(v, 0, "p"), sliced(v, 0, "c"), sliced(v, 1, "c")], ["", "end", "start"]);
+		});
+		test("a resumed border-box box: its height less its top edges too, its children's percentages of its whole height", () -> {
+			var v = paged('<style>html, body { height: 100%; box-sizing: border-box } body { border: 10px solid; padding: 10px } #c { height: 300%; box-sizing: border-box }</style><div id=c></div>');
+			equals(v.layout(), 2);
+			// (the body whole on the first page, of no height after; #c 300% of its 40: 60 and 60)
+			equals([height(v, 0, "c"), height(v, 1, "c")], [60.0, 60]);
+			var f = v.fragments;
+			equals([f.height(f.parent(find(v, 0, "c"))), f.height(f.parent(find(v, 1, "c")))], [80.0, 0]);
+		});
 		test("a line taller than the page: its overflow on the pages after, the next block after it", () -> {
 			var v = paged('<div id=l><div style="display:inline-block;vertical-align:top;width:20px;height:200px"></div></div><div id=b style="height:10px"></div>');
 			equals(v.layout(), 3);
