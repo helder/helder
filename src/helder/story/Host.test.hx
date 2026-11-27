@@ -120,6 +120,36 @@ function tests() {
 		equals(most, Host.MOUNTED);
 		equals([for (s in host.screens) s.version == (was.contains(s.name) ? 2 : 1)], [for (_ in stories) true]);
 	});
+	var pictured = test("a literal's patch that changes a still's picture alone: its checksum another (the harbour's 3D stills, kept as pictures, never taken again)", () -> {
+		function picture(v:Int) {
+			var px = haxe.io.Bytes.alloc(4 * 4 * 4);
+			for (i in 0...16) {
+				px.set(i * 4, v);
+				px.set(i * 4 + 3, 255);
+			}
+			return new helder.image.Image(4, 4, px);
+		}
+		var pictures = [picture(0x22), picture(0xcc)], shown = helder.view.graph.Graph.signal(0);
+		var s = new Story("Picture", _ -> View.view(<image src={pictures[shown()]} width={40} height={40}/>), 1, null, 100, 100);
+		var host = new Host([s], new HeadlessHost());
+		host.still(true);
+		host.show(["Picture"]);
+		host.frame(0);
+		var a = host.written(host.screens[0]);
+		// (the patch: the picture's pixels another, its place the same)
+		host.screens[0].context.run(() -> {
+			shown(1);
+			helder.view.graph.Graph.flush();
+		});
+		host.frame(1);
+		var b = host.written(host.screens[0]);
+		if (a == null || b == null) throw "not written";
+		equals(b.bytes.toHex() == a.bytes.toHex(), true);
+		equals(Host.stillSum(b) == Host.stillSum(a), false);
+		var c = host.written(host.screens[0]);
+		if (c == null) throw "not written";
+		equals(Host.stillSum(c), Host.stillSum(b));
+	});
 	// (as wasm32-wasi the host's device is the browser's WebGPU or WebGL2, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
 	recorded.skip();
@@ -128,5 +158,6 @@ function tests() {
 	outOfView.skip();
 	throws.skip();
 	parked.skip();
+	pictured.skip();
 	#end
 }

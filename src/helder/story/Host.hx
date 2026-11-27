@@ -257,6 +257,18 @@ class Host {
 	// story's loop too, its frames from its moment on its clock (as hovered,
 	// Host.loop), the screen built again after (its moment); none when a
 	// pass draws in it (played live)
+	// a still's checksum: its list's bytes and its images'. A picture (a 3D
+	// scene with effects, kept as its picture) is named by its index alone in
+	// the list: a literal's patch that changes only it changes only its pixels'
+	// hash (its still was taken as the same, never again)
+	public static function stillSum(f:FrameWriter.Frame):String {
+		var b = new haxe.io.BytesBuffer();
+		b.add(f.bytes);
+		for (i in f.images)
+			b.addString(i.hash + ";");
+		return haxe.crypto.Md5.make(b.getBytes()).toHex();
+	}
+
 	public function written(s:HostScreen, fps = 0):Null<FrameWriter.Frame> {
 		var ui = s.ui;
 		if (ui == null) return null;
