@@ -200,6 +200,7 @@ using StringTools;
 	var piTarget = "";
 
 	public function new(s:String, sink:TokenSink, ?errors:Array<ParseError>) {
+		Attrs.decoder = Attrs.decode;
 		this.s = s;
 		this.len = s.length;
 		this.sink = sink;

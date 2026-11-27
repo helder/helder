@@ -59,6 +59,14 @@ function tests() {
 				for (_ in 0...60) @:privateAccess helder.scenario.Steps.frame(s.ui, s.context);
 				'${media()} ${[for (p in @:privateAccess helder.media.Player.live) if (p.playing()) p].length}';
 			});
+		// (the player opens its file off the frame: settled, loaded or failed, before the count; a loaded CI
+		// runner can take longer than the frames below)
+		var settled = () -> s.run(() -> Lambda.exists(@:privateAccess helder.media.Player.live, p -> p.loaded() || p.error() != null));
+		var until = haxe.Timer.stamp() + 10;
+		while (!settled() && haxe.Timer.stamp() < until) {
+			s.run(() -> @:privateAccess helder.scenario.Steps.frame(s.ui, s.context));
+			Sys.sleep(0.01);
+		}
 		// (where the system decodes no H.264 (no libavcodec), nothing plays: nothing to check)
 		var shown = played(() -> {});
 		if (s.run(() -> Lambda.exists(@:privateAccess helder.media.Player.live, p -> p.error() != null))) {

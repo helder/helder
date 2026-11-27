@@ -381,21 +381,12 @@ class CssCounters {
 
 	static final AUTO = [["“", "”"], ["‘", "’"]];
 
-	// (a counter in a style: a name, none, or symbols()'s text)
+	// (a counter in a style: a name, none, or symbols() as CssItems writes it)
 	function format(v:Int, style:String):String {
 		if (style == "none") return "";
 		if (!StringTools.startsWith(style, "symbols(")) return formats.format(v, style);
-		return switch Css.values(style) {
-			case [Function(_, args, _, _)]:
-				var system = "symbolic", list = [];
-				for (a in args) switch a {
-					case Token(_.kind => Ident(k)): system = Css.lower(k);
-					case Token(_.kind => Str(x)): list.push(x);
-					case _:
-				}
-				CssCounterStyles.symbols(system, list, v, false);
-			case _: formats.format(v, "decimal");
-		}
+		var parts = style.substring("symbols(".length, style.length - 1).split("\x1f");
+		return CssCounterStyles.symbols(Css.lower(parts[0]), parts.slice(1), v, false);
 	}
 
 	// (symbols()'s anonymous style: its system, then its strings)

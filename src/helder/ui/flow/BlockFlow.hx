@@ -28,14 +28,58 @@ class BlockFlow implements FormattingContext {
 		var key = Math.isNaN(space.fixedWidth) ? space.width : -1 - space.fixedWidth;
 		// (not when its layout left absolutely positioned boxes outside it, nor beside floats: its place matters)
 		// (nor in a fragmentainer: where it is there and where it resumes change what it lays out)
-		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null
-			&& Math.isNaN(space.fixedHeight) && !space.ignoreHeight;
-		if (reusable && box.cacheFragment >= 0 && box.cacheWidth == key && same(box.cacheHeight, space.height)) return box.cacheFragment;
+		var reusable = box.flags & Box.ESCAPES == 0 && (space.exclusions == null || space.exclusions.empty) && space.fragmentation == null;
+		var cached = reusable ? hit(box, key, space) : -1;
+		if (cached >= 0) return cached;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
+		keep(box, key, space, space.fragmentation == null ? f : -1);
+		return f;
+	}
+
+	// (the cache's key: the width or fixed width, the containing block's
+	// height, a fixed height, whether the height is ignored: a flex or grid
+	// item's passes at the same sizes reuse their fragment; the last layout
+	// and a few before it at other keys; -1: none)
+	@:allow(helder.ui.flow) static function hit(box:Box, key:Float, space:Space):Int {
+		if (box.cacheFragment < 0) return -1;
+		if (box.cacheWidth == key && same(box.cacheHeight, space.height) && same(box.cacheFixedHeight, space.fixedHeight)
+			&& box.cacheIgnore == space.ignoreHeight) return box.cacheFragment;
+		var m = box.cacheMore;
+		if (m == null) return -1;
+		var k = 0, ignore = space.ignoreHeight ? 1 : 0;
+		while (k < m.length) {
+			if (m[k] == key && same(m[k + 1], space.height) && same(m[k + 2], space.fixedHeight) && m[k + 3] == ignore) return Std.int(m[k + 4]);
+			k += MORE;
+		}
+		return -1;
+	}
+
+	static inline var MORE = 5;
+	// (the layouts kept beside the last)
+	static inline var KEPT = 3;
+
+	@:allow(helder.ui.flow) static function keep(box:Box, key:Float, space:Space, f:Int) {
+		// (the last one kept beside, at another key; a fragment not to reuse lets all go)
+		if (f < 0) box.cacheMore = null else if (box.cacheFragment >= 0 && !(box.cacheWidth == key && same(box.cacheHeight, space.height)
+			&& same(box.cacheFixedHeight, space.fixedHeight) && box.cacheIgnore == space.ignoreHeight)) {
+			var m = box.cacheMore ??= [];
+			var k = 0, ignore = space.ignoreHeight ? 1 : 0;
+			// (the one at the new key goes: it is the last now)
+			while (k < m.length) {
+				if (m[k] == key && same(m[k + 1], space.height) && same(m[k + 2], space.fixedHeight) && m[k + 3] == ignore) m.splice(k, MORE) else k += MORE;
+			}
+			if (m.length >= KEPT * MORE) m.splice(0, MORE);
+			m.push(box.cacheWidth);
+			m.push(box.cacheHeight);
+			m.push(box.cacheFixedHeight);
+			m.push(box.cacheIgnore ? 1 : 0);
+			m.push(box.cacheFragment);
+		}
 		box.cacheWidth = key;
 		box.cacheHeight = space.height;
-		box.cacheFragment = space.fragmentation == null ? f : -1;
-		return f;
+		box.cacheFixedHeight = space.fixedHeight;
+		box.cacheIgnore = space.ignoreHeight;
+		box.cacheFragment = f;
 	}
 
 	static inline function same(a:Float, b:Float):Bool
@@ -179,7 +223,7 @@ class BlockFlow implements FormattingContext {
 						fs.fragmentation = sub;
 						fs.pageTop = at;
 						fs.reserve = space.reserve;
-						b.cacheFragment = -1;
+						b.uncache();
 						return child(b, fs);
 					}
 					f = lay();
@@ -716,7 +760,7 @@ class BlockFlow implements FormattingContext {
 		cs.exclusions = null;
 		cs.left = 0;
 		cs.top = 0;
-		b.cacheFragment = -1;
+		b.uncache();
 		var f = child(b, cs);
 		var frags = space.fragments;
 		// (vertical: the height its content gave, or what top and bottom leave)

@@ -148,6 +148,73 @@ own characters).
   carets and selection rectangles in the document (blocks in the box
   tree's order; transforms aside).
 
+## In a window
+
+`DocumentNode` is a helder.ui node showing a document live, through the
+window's renderer: put in a scroller, the compositor scrolls it.
+
+```haxe
+var page = DocumentNode.html(Dom.parse(html), {url: url, load: load, image: image});
+page.onLink = (url, a) -> open(url);
+scroller.append(page);                   // laid out at its width, as tall as the document
+```
+
+The cascade is the caller's (`DocumentCascade`), so that a program links
+only the one it uses. `DocumentNode.html` and `DocumentView.html` style
+as HTML does: the user agent's sheet, `<style>`, `<link>`, style
+attributes, presentational hints, parsed when the program runs. An app
+builds its tree in code and styles it with sheets compiled at build time
+alone, and links no CSS, HTML or XML parser (tests/css/EngineProbe.hx,
+the size lane's engine):
+
+```haxe
+var sheets = [CssUserAgentTheme.app(), CssTheme.file("app.css")];
+var app = new DocumentNode(doc, (d, media, _) -> CssCascade.themed(d, sheets, {media: media}));
+```
+
+- Paint: `UiPainter` is helder.canvas's Painter on helder.ui's Canvas,
+  so BoxPainter stays the one painter: rectangles, rounded ones and
+  their one-colour borders become the Canvas's `rect`, glyph runs its
+  `text` (GlyphText: a RunParagraph from the glyph atlas), box shadows
+  its GPU shadows (`ShadowPainter`, offered by Borders as GlyphText is
+  by text), images images; the rest (gradients, other paths, strokes)
+  is drawn on the CPU at the window's scale and kept by what it draws,
+  so a repaint draws none again. Only what the scroller's layer is
+  recorded over is painted (`BoxPainter.area`; PaintOrder's runs of 64
+  steps with their bounds, `chunks`, skip what is out of view at once,
+  for paint and hit testing).
+- Live (`DocumentView.watch`, `update`): `DocumentChanges` is the
+  document's observer, helder.css's CssRestyle beside what changes the
+  box tree. Each element restyled is compared with its old style by
+  impact (`CssStyle.impact`): a colour swaps its boxes' styles and
+  repaints (PAINT); opacity, a transform, an outline or a shadow make the
+  paint order again (ORDER); a size or text lays out again from the
+  layout cache, the changed boxes' and their ancestors' caches let go
+  (LAYOUT); a display, float, position or generated content makes the
+  box tree again (TREE), as do children inserted or removed. A text
+  changed in place is its run's. What children inherit restyles them
+  too (`passesDown`).
+- Input: the pointer sets `Element.state` (hover on the element under it
+  and its ancestors, active while pressed); dragging selects text
+  (`DocumentView.position`, `selection`); an `<a href>` clicked calls
+  `onLink`; Tab moves the focus (`:focus-visible`), Enter follows a
+  link; the wheel scrolls a scroll container in the document
+  (`scrollBy`: `overflow: auto` and `scroll` boxes move what they hold at
+  paint and hit testing by their offset, `BoxPainter.scrolls`) before
+  the scrollers around the node.
+- A resize lays out again from the cache, the styles kept unless a media
+  query or a viewport unit reads the size (`CssStyles.holds`). The cache
+  is keyed on the width, the containing block's height, a fixed height
+  and whether the height is ignored: a flex or grid item's passes at the
+  same sizes reuse their fragment.
+- Not yet: `position: fixed` and sticky boxes against the window (they
+  scroll with the page); a scroll container on the compositor (one in
+  the document repaints the node as it scrolls); rounded clips other
+  than a box's (their bounds); editing.
+
+tests/bench/results/document.md measures it against helder.ui today and
+Chromium.
+
 ## Pages
 
 `PagedView` lays a document out on pages (CSS Paged Media 3, CSS

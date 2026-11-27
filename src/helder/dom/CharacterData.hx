@@ -25,7 +25,7 @@ class CharacterData extends Node {
 
 	function get_value():String {
 		if (lazyFrom >= 0) {
-			v = lazyTo >= 0 ? v.substring(lazyFrom, lazyTo) : Attrs.decode(v, lazyFrom, -1 - lazyTo, false);
+			v = lazyTo >= 0 ? v.substring(lazyFrom, lazyTo) : Attrs.decoder(v, lazyFrom, -1 - lazyTo, false);
 			lazyFrom = -1;
 		}
 		return v;

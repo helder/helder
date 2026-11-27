@@ -156,7 +156,7 @@ class PageMargins {
 	}
 
 	static function afresh(b:Box) {
-		b.cacheFragment = -1;
+		b.uncache();
 		b.minContent = b.maxContent = Math.NaN;
 		var c = b.first;
 		while (c != null) {

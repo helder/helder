@@ -58,6 +58,40 @@ class CssRestyle implements DomObserver {
 		return out;
 	}
 
+	// The marked elements as the marks have them, not reading the whole
+	// document (marked's walk): each marked alone, each marked subtree's
+	// elements, once each, in no particular order; every element when the
+	// document is marked.
+	public function changed():Array<Element> {
+		if (all) return marked();
+		var out = [], seen = new haxe.ds.ObjectMap<Element, Bool>();
+		for (el in self.keys()) if (!seen.exists(el)) {
+			seen.set(el, true);
+			out.push(el);
+		}
+		for (root in subtrees.keys()) {
+			var n:Null<Node> = root;
+			while (n != null) {
+				if (n.nodeType == Node.ELEMENT_NODE && !seen.exists(cast n)) {
+					seen.set(cast n, true);
+					out.push(cast n);
+				}
+				n = n == root && n.firstChild == null ? null : within(n, root);
+			}
+		}
+		return out;
+	}
+
+	// (the node after n in tree order, inside root; null past it)
+	static function within(n:Node, root:Node):Null<Node> {
+		if (n.firstChild != null) return n.firstChild;
+		while (n != null && n != root) {
+			if (n.nextSibling != null) return n.nextSibling;
+			n = n.parentNode;
+		}
+		return null;
+	}
+
 	// whether anything is marked
 	public function dirty():Bool
 		return all || self.keys().hasNext() || subtrees.keys().hasNext();

@@ -6,7 +6,7 @@ import helder.css.CssSheet;
 using StringTools;
 
 // A document's counter styles (Counter Styles 3): the predefined ones
-// (CssCounterStylesData's rules and the CJK and Ethiopic longhand
+// (ua/counter-styles.css's rules and the CJK and Ethiopic longhand
 // algorithms) and its @counter-style rules, a later rule of a name over
 // an earlier one and over a predefined style. A number is formatted by
 // its style's system, within its range (else by its fallback), with its
@@ -234,12 +234,43 @@ class CssCounterStyles {
 	static function predefined():Array<Style> {
 		if (PREDEFINED != null) return PREDEFINED;
 		var out = [];
-		for (r in CssSheet.parse(CssCounterStylesData.rules, UserAgent).rules) switch r {
-			case CounterStyle(c):
-				var s = compile(c.name, c.descriptors);
-				if (s != null) out.push(s);
-			case _:
+		#if !macro
+		// (ua/counter-styles.css's styles, compiled at build time and read
+		// back: no parser linked, nor a sheet's decoder)
+		var r = new CssPacked(packed());
+		for (_ in 0...r.uint()) {
+			var s = new Style(r.str());
+			s.system = switch r.uint() {
+				case 0: Cyclic;
+				case 1: Numeric;
+				case 2: Alphabetic;
+				case 3: Symbolic;
+				case 4: Additive;
+				case 5: Fixed(r.int());
+				case 6: Extends(r.str());
+				case _: Algorithm(r.str());
+			}
+			s.symbols = r.strs();
+			s.additive = r.list(() -> {
+				var w = r.int();
+				{weight: w, symbol: r.str()};
+			});
+			s.negative = r.strs();
+			s.prefix = r.str();
+			s.suffix = r.str();
+			s.range = r.nlist(() -> {
+				var lo = r.int();
+				({lo: lo, hi: r.int()} : CssCounterRange);
+			});
+			if (r.bool()) {
+				var length = r.int();
+				s.pad = {length: length, symbol: r.str()};
+			}
+			s.fallback = r.str();
+			for (k in r.strs()) s.given.set(k, true);
+			out.push(s);
 		}
+		#end
 		for (a in CssCounterAlgorithms.STYLES) {
 			var s = new Style(a.name);
 			s.system = Algorithm(a.name);
@@ -251,6 +282,60 @@ class CssCounterStyles {
 		}
 		for (s in out) PREDEFINED_NAMES.push(s.name);
 		return PREDEFINED = out;
+	}
+
+	// (ua/counter-styles.css's @counter-style rules, parsed and compiled when
+	// the program is: CssPacked's string, read by predefined)
+	static macro function packed():haxe.macro.Expr {
+		var file = haxe.io.Path.join([haxe.io.Path.directory(haxe.macro.Context.getPosInfos(haxe.macro.Context.currentPos()).file), "ua/counter-styles.css"]);
+		haxe.macro.Context.registerModuleDependency(haxe.macro.Context.getLocalModule(), file);
+		var styles = [];
+		for (r in CssSheet.parse(sys.io.File.getContent(file), UserAgent).rules) switch r {
+			case CounterStyle(c):
+				var s = compile(c.name, c.descriptors);
+				if (s != null) styles.push(s);
+			case _:
+		}
+		var w = new CssPackedWriter();
+		w.list(styles, s -> {
+			w.str(s.name);
+			switch s.system {
+				case Cyclic: w.uint(0);
+				case Numeric: w.uint(1);
+				case Alphabetic: w.uint(2);
+				case Symbolic: w.uint(3);
+				case Additive: w.uint(4);
+				case Fixed(first):
+					w.uint(5);
+					w.int(first);
+				case Extends(name):
+					w.uint(6);
+					w.str(name);
+				case Algorithm(name):
+					w.uint(7);
+					w.str(name);
+			}
+			w.list(s.symbols, w.str);
+			w.list(s.additive, a -> {
+				w.int(a.weight);
+				w.str(a.symbol);
+			});
+			w.list(s.negative, w.str);
+			w.str(s.prefix);
+			w.str(s.suffix);
+			w.nlist(s.range, x -> {
+				w.int(x.lo);
+				w.int(x.hi);
+			});
+			w.bool(s.pad != null);
+			if (s.pad != null) {
+				w.int(s.pad.length);
+				w.str(s.pad.symbol);
+			}
+			w.str(s.fallback);
+			w.list([for (k in s.given.keys()) k], w.str);
+		});
+		return macro $v{w.toString()};
 	}
 
 	// A rule's style; null when it doesn't define one (a system without the

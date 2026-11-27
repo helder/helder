@@ -9,7 +9,8 @@ import helder.ui.flow.FormattingContext;
 // and keeps its cache here; fragments are apart (Fragments).
 class Box {
 	public final kind:BoxKind;
-	public final style:BoxStyle;
+	// (another as a live document is restyled, DocumentView.update)
+	public var style(default, null):BoxStyle;
 	// the element or text node it is for: null for an anonymous box
 	public final node:Null<Node>;
 	// "before", "after", "marker": generated content's
@@ -33,6 +34,8 @@ class Box {
 	// a table box's grid as laid out (its columns, rows, collapsed borders)
 	public var table:Null<TableGrid> = null;
 	public var flags = 0;
+	// (its place in its tree, depth first: PaintOrder's tree order; -1 until asked)
+	public var rank = -1;
 
 	// an inline box split around a block: no start edge here (a later part), or no end edge
 	public static inline var NO_START = 1;
@@ -55,9 +58,25 @@ class Box {
 	// (layout's: the constraints of the last layout and its result, LayoutNG's cache)
 	public var cacheWidth = Math.NaN;
 	public var cacheHeight = Math.NaN;
+	// (and the fixed height it was laid out at, whether its height was ignored: a flex or grid item's passes)
+	public var cacheFixedHeight = Math.NaN;
+	public var cacheIgnore = false;
+	// (the layouts before the last at other constraints, kept beside it, 5
+	// numbers each: the width's key, the height, the fixed height, the
+	// height ignored (1), the fragment; a flex or grid item's measuring and
+	// final passes each hit their own)
+	public var cacheMore:Null<Array<Float>> = null;
+
+	// its layouts let go: laid out again when next asked
+	public function uncache() {
+		cacheFragment = -1;
+		cacheMore = null;
+	}
 	public var cacheFragment = -1;
 	public var minContent = Math.NaN;
 	public var maxContent = Math.NaN;
+	// (its inline content as BlockLines built it, kept while its text and styles stay: BlockLines' Built)
+	public var inlineCache:Null<Any> = null;
 	// (its lines' last layout, kept for hit testing, carets and selection)
 	public var lines:Null<helder.ui.flow.BlockText> = null;
 	// (its used side margins; the margins that collapse through its top and
@@ -77,6 +96,9 @@ class Box {
 		this.node = node;
 		this.pseudo = pseudo;
 	}
+
+	@:allow(helder.ui.box) function restyle(s:BoxStyle)
+		style = s;
 
 	public function append(child:Box) {
 		child.parent = this;
