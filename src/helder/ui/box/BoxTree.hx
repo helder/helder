@@ -13,7 +13,9 @@ import helder.ui.flow.Contexts;
 using StringTools;
 
 typedef BoxTreeOptions = {
-	// the formatting contexts a program lays out with (Contexts.all(): every one)
+	// the formatting contexts a program lays out with (Contexts.all(): every
+	// one; an app's, DocumentApp: what its sheets can make), the caller's so
+	// that a program links only those
 	?contexts:Contexts,
 	// an image by its URL as written (an <img>'s src, content's url()); null: none
 	?image:(url:String) -> Null<Bitmap>,
@@ -58,7 +60,7 @@ class BoxTree {
 
 	function new(doc:Document, styles:CssStyles, options:BoxTreeOptions) {
 		this.styles = styles;
-		contexts = options.contexts ?? Contexts.all();
+		contexts = options.contexts ?? throw "BoxTree: no formatting contexts (Contexts.all(), or an app's: DocumentApp)";
 		image = options.image;
 		svg = options.svg;
 		paged = options.paged ?? false;

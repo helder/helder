@@ -59,7 +59,7 @@ class Css {
 		var ua = "32px 700 16px block inline list-item underline linktext 1";
 		probe("UaProbe", ua, []);
 		probe("UaProbe", ua, ["-D", "css.parse"]);
-		// (the engine as an app has it: a tree built in code, compiled sheets, DocumentView: no CSS, HTML or XML parser)
+		// (the engine as an app has it, DocumentApp: a tree built in code, compiled sheets: no CSS, HTML or XML parser, nor grid or table layout)
 		var engine = "laid out 28px rgb(59, 130, 246) flex row scroll";
 		probe("EngineProbe", engine, [], true);
 		probe("EngineProbe", engine, ["-D", "css.parse"], true);
@@ -107,11 +107,13 @@ class Css {
 
 	// (a probe built with -dce full and symbols: what it prints, and a CSS
 	// parser in its symbols only when it parses, -D css.parse; not on Windows)
-	// (dom: helder.dom's HTML and XML parsers counted too, for a probe that builds its tree in code)
-	static function probe(main:String, expected:String, defines:Array<String>, dom = false) {
+	// (app: an app's probe, its tree built in code and laid out: helder.dom's
+	// HTML and XML parsers counted too, and the formatting contexts its
+	// sheets can't make, grid and table: DocumentApp)
+	static function probe(main:String, expected:String, defines:Array<String>, app = false) {
 		if (Sys.systemName() == "Windows") return;
 		var parser = ["helder_css_Tokenizer", "helder_css_Parser", "helder_css__Parser_", "helder_css_SelectorParser", "helder_css__CssSheet_Builder"];
-		if (dom) parser = parser.concat(["helder_dom_Tokenizer", "helder_dom_TreeBuilder", "helder_dom_XmlParser"]);
+		if (app) parser = parser.concat(["helder_dom_Tokenizer", "helder_dom_TreeBuilder", "helder_dom_XmlParser", "helder_ui_flow_GridFlow", "helder_ui_flow_TableFlow"]);
 		var parses = defines.contains("css.parse");
 		var out = 'bin/css/$main-${parses ? "parse" : "sym"}';
 		exe(out, cps(["src", "tests/css"]).concat(["-main", main, "-dce", "full", "-D", "hxmc.symbols"]).concat(defines));

@@ -44,10 +44,15 @@ class CssStyles {
 	public function viewport():{width:Float, height:Float} {
 		if (viewportSize != null) return viewportSize;
 		viewportSize = {width: media.width, height: media.height};
-		if (media.type != "print") return viewportSize;
+		if (media.type != "print" || printArea == null) return viewportSize;
 		// (the first page, index 0, :first's; its style inherits the root's, worked out meanwhile at the media's size)
-		return viewportSize = pageStyle(0, null, false, false).area();
+		return viewportSize = printArea(this);
 	}
+
+	// (a printed viewport's: the first page's area, CssPages'; installed by
+	// CssCascade.styles, so that an app's themed cascade links no @page
+	// cascade; without it, the media's size)
+	@:allow(helder.css) static var printArea:Null<CssStyles->{width:Float, height:Float}> = null;
 	public final pages:Array<CssPageRule> = [];
 	public final fontFaces:Array<CssFontFace> = [];
 	public final counterStyles:Array<CssCounterStyle> = [];

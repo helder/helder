@@ -54,7 +54,7 @@ class LayoutBench {
 			walk(n);
 			var t2 = haxe.Timer.stamp();
 			var b0 = GcStats.bytes();
-			var tree = BoxTree.build(doc, styles);
+			var tree = BoxTree.build(doc, styles, {contexts: helder.ui.flow.Contexts.all()});
 			var t3 = haxe.Timer.stamp();
 			var b1 = GcStats.bytes();
 			var frags = new Fragments();
