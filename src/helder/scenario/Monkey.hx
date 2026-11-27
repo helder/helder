@@ -42,12 +42,16 @@ import helder.scenario.Steps.Step;
 //   sealed, helder.os.Seal: its trash, places, stores' files, an app's real
 //   files refused, a refusal its failure even when the program catches it)
 // - sizes: no NaN, infinite or negative box, offset or content size
-// - window: what is shown, outside every clipping box, inside the window
+// - window: what is shown and draws (content, a background), outside every
+//   clipping box, laid out inside the
+//   window (its layout's box: a transform's move, a sheet at a detent, is
+//   the program's own)
 // - settles: after each step its clock comes to rest (no frame asked for,
 //   nothing animating, no timer due within a second) within a minute
 // - steady: settled, a frame later nothing has moved and none is asked for
-// - scrolls: a scroller wheeled to its end is at its end, its last row
-//   shown; to its start at 0
+// - scrolls: a wheel to an end moves a scroller under it that way (the
+//   innermost, or one around it: nested scrolling), unless all are there;
+//   the innermost at its end, its last row shown
 // - kept: idle time moves no scroll position and makes no node again;
 //   typing moves no scroller around another field (but to its new end,
 //   its content shorter) and keeps the field it types into
@@ -75,8 +79,9 @@ class Monkey {
 	// a huge name (one word, nowhere to break), sometimes long)
 	public static final TEXTS:Gen<String> = oneOf([pick(["", "a", "Name"]), string(null, 0, 40), string(pick(["a", "W", "m", "中", "😀", "ש"]), 40, 300),
 		string(null, 40, 600)]);
-	// (keys pressed)
-	static final KEYS = ["Enter", "Escape", "Tab", "Backspace", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Space", "Home", "End", "Delete", "a"];
+	// (keys pressed; the editing keys side by side, early: a shrink lowering
+	// one finds the other, its search over the list's order)
+	static final KEYS = ["Enter", "Backspace", "Delete", "Escape", "Tab", "Space", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End", "a"];
 	// (sizes a case may have, a phone's, a tablet's, a laptop's, tiny, huge)
 	static final SIZES = [[390, 844], [820, 1180], [1280, 800], [320, 240], [2560, 1440], [1100, 700], [240, 180]];
 	static final LOCALES = ["nl-BE", "ar-EG", "he-IL", "ja-JP", "de-DE", "en-GB"];
@@ -107,6 +112,8 @@ class Monkey {
 		}
 		@:privateAccess Runner.capture = outer;
 		@:privateAccess Runner.checks = checks;
+		// (none run: a replay whose steps no longer resolve says nothing, not that it holds)
+		if (r.failed == null && r.cases == 0 && r.rejected > 0) throw 'helder.scenario.Monkey: every case rejected (${r.rejected}): a scenario\'s step that no longer resolves, a replay too short';
 		if (r.failed == null) return null;
 		m.write();
 		return m.best;
@@ -133,8 +140,9 @@ class Monkey {
 		this.def = def;
 		this.pos = pos;
 		root = r;
+		var names = INVARIANTS.concat([for (k in def.checks ?? []) k.name]);
 		for (e in def.except ?? [])
-			if (!INVARIANTS.contains(e)) throw 'helder.scenario.Monkey: no invariant "$e" (${INVARIANTS.join(", ")})';
+			if (!names.contains(e)) throw 'helder.scenario.Monkey: no invariant "$e" (${names.join(", ")})';
 		except = def.except ?? [];
 		most = def.steps ?? 20;
 		var least = def.smallest ?? [240, 180];
@@ -174,7 +182,8 @@ class Monkey {
 			s.mount();
 			// (its own steps first, as its file runs them)
 			for (step in base.scenario.steps) {
-				s.act(step);
+				// (written for its own environment: one that does not resolve in the one drawn is no case)
+				try s.act(step) catch (e:StepError) throw new Rejected();
 				done.push(step);
 			}
 			if (ok(s, null)) for (_ in 0...most) {
@@ -182,8 +191,12 @@ class Monkey {
 				if (step == null) break;
 				c.note(code(step));
 				var before = Snapshot.of(s);
-				s.act(step);
+				before.field = step.kind == "type" ? s.node(step.query) : null;
+				// (drawn from the screen, it resolves; replayed after an edit
+				// of the case (shrinking), one that does not is no case)
+				// (kept before it runs: one that throws is the file's last)
 				done.push(step);
+				try s.act(step) catch (e:StepError) throw new Rejected();
 				if (!ok(s, {step: step, before: before})) break;
 			}
 			// (its end, as its still: the pointer gone, settled)
@@ -193,13 +206,29 @@ class Monkey {
 			}
 		} catch (e:haxe.Exception) {
 			// (a replayed case run out, or rejected: the property's, not a failure)
-			if (Std.isOfType(e, Overran) || Std.isOfType(e, Rejected)) control = e else fail(@:privateAccess Runner.error(e));
+			if (Std.isOfType(e, Overran) || Std.isOfType(e, Rejected)) control = e else fail("throws", @:privateAccess Runner.error(e));
 		}
 		try s.dispose() catch (e:haxe.Exception) {
-			fail('letting the screen go threw: ${@:privateAccess Runner.error(e)}');
+			fail("throws", 'letting the screen go threw: ${@:privateAccess Runner.error(e)}');
 		}
-		if (control != null) throw control;
-		if (failed() > 0) keep(c, base, env, writes, done);
+		if (control != null) {
+			@:privateAccess Runner.capture.resize(0);
+			throw control;
+		}
+		if (failed() == 0) return;
+		// (a finding still open (known): no case of this run's, the rest going on)
+		var why = messages[0] ?? "";
+		if (Lambda.exists(def.known ?? [], k -> why.indexOf(k.failure) >= 0)) {
+			@:privateAccess Runner.capture.resize(0);
+			throw new Rejected();
+		}
+		// (another invariant broken while shrinking: not the failure being shrunk)
+		if (target != null && first != target) {
+			@:privateAccess Runner.capture.resize(0);
+			throw new Rejected();
+		}
+		target = first;
+		keep(c, base, env, writes, done);
 	}
 
 	// (the case's environment: each field its scenario's unless drawn)
@@ -219,9 +248,10 @@ class Monkey {
 		return c -> {
 			if (!c.weighted(1 - 1 / most)) return null;
 			var shown = s.inspect(), kinds = ["tap", "press", "wait", "resize"];
-			var tappable = [for (n in shown.nodes) if (n.role != null && ACTIVE.contains(n.role)) n];
-			var named = [for (n in shown.nodes) if (n.role != null || n.label != null || n.text != null || n.identifier != null) n];
-			var fields = [for (n in shown.nodes) if (n.role != null && FIELDS.contains(n.role)) n];
+			// (what a tap at its centre reaches: a node another covers is no tap's)
+			var tappable = [for (n in shown.nodes) if (n.role != null && ACTIVE.contains(n.role) && s.reached(n)) n];
+			var named = [for (n in shown.nodes) if ((n.role != null || n.label != null || n.text != null || n.identifier != null) && s.reached(n)) n];
+			var fields = [for (n in shown.nodes) if (n.role != null && FIELDS.contains(n.role) && s.reached(n)) n];
 			var views = s.scrollers();
 			if (fields.length > 0) kinds.push("type");
 			if (views.length > 0) kinds.push("scroll");
@@ -249,9 +279,11 @@ class Monkey {
 	// (after a step (null: boot, the end) and settling: whether they all held)
 	function ok(s:Screen, after:Null<{step:Step, before:Snapshot}>):Bool {
 		var seal = s.context.seal;
-		if (seal != null && seal.refused.length > 0) fail('${at(after)}${seal.refused[0]}');
-		if (!s.settled && on("settles")) fail('${at(after)}it never settles: ${s.pending()} after a minute of its clock');
-		if (s.missed != null) fail('${at(after)}${s.missed}');
+		if (seal != null && seal.refused.length > 0) fail("throws", '${at(after)}${seal.refused[0]}');
+		// (moving by design now, its own say: an animation that loops, a video playing)
+		var endless = def.animates != null && s.context.run(def.animates);
+		if (!s.settled && on("settles") && !endless) fail("settles", '${at(after)}it never settles: ${s.pending()} after a minute of its clock');
+		if (s.missed != null) fail("throws", '${at(after)}${s.missed}');
 		if (failed() > 0) return false;
 		var now = Snapshot.of(s);
 		if (on("sizes")) for (n in now.nodes) {
@@ -260,15 +292,17 @@ class Monkey {
 			for (x in [b.x, b.y, b.width, b.height, n.node.contentWidth, n.node.contentHeight, n.node.scrollX, n.node.scrollY])
 				if (!Math.isFinite(x)) finite = false;
 			if (!finite || b.width < 0 || b.height < 0) {
-				fail('${at(after)}${describe(n.node)} is ${b.x}, ${b.y}, ${b.width} × ${b.height} (content ${n.node.contentWidth} × ${n.node.contentHeight}, scrolled ${n.node.scrollX}, ${n.node.scrollY})');
+				fail("sizes", '${at(after)}${describe(n.node)} is ${b.x}, ${b.y}, ${b.width} × ${b.height} (content ${n.node.contentWidth} × ${n.node.contentHeight}, scrolled ${n.node.scrollX}, ${n.node.scrollY})');
 				break;
 			}
 		}
 		if (on("window")) for (n in now.nodes) {
-			if (n.clipped || !n.shown) continue;
-			var b = n.box, e = 0.5;
+			// (what draws: its content (a text, an image), else a background; an empty box draws nothing)
+			if (n.clipped || !n.shown || !(n.node.hasContent() || n.node.style.background.a > 0)) continue;
+			// (its layout's box: a transform's move is the program's own (a sheet at a detent, a drawer), not an overflow)
+			var b = n.laid, e = 0.5;
 			if (b.x < -e || b.y < -e || b.x + b.width > s.ui.width + e || b.y + b.height > s.ui.height + e) {
-				fail('${at(after)}${describe(n.node)} at ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} is outside the window (${s.ui.width} × ${s.ui.height})');
+				fail("window", '${at(after)}${describe(n.node)} at ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} is outside the window (${s.ui.width} × ${s.ui.height})');
 				break;
 			}
 		}
@@ -276,57 +310,67 @@ class Monkey {
 			var a = p.anchor;
 			if (a == null || !(p.placement == Below || p.placement == Above || p.placement == Left || p.placement == Right)) continue;
 			if (!s.attached(a)) {
-				fail('${at(after)}${describe(p)} is open, its anchor ${describe(a)} gone');
+				fail("popups", '${at(after)}${describe(p)} is open, its anchor ${describe(a)} gone');
 				break;
 			}
 			var ab = a.windowBounds(), pb = p.windowBounds(), g = p.gap + 2;
 			var inView = ab.x < s.ui.width && ab.y < s.ui.height && ab.x + ab.width > 0 && ab.y + ab.height > 0;
 			if (inView && (pb.x > ab.x + ab.width + g || pb.x + pb.width < ab.x - g || pb.y > ab.y + ab.height + g || pb.y + pb.height < ab.y - g)) {
-				fail('${at(after)}${describe(p)} at ${r(pb.x)}, ${r(pb.y)} is away from its anchor ${describe(a)} at ${r(ab.x)}, ${r(ab.y)}, ${r(ab.width)} × ${r(ab.height)}');
+				fail("popups", '${at(after)}${describe(p)} at ${r(pb.x)}, ${r(pb.y)} is away from its anchor ${describe(a)} at ${r(ab.x)}, ${r(ab.y)}, ${r(ab.width)} × ${r(ab.height)}');
 				break;
 			}
 		}
 		if (after != null && on("scrolls") && after.step.kind == "scroll" && (after.step.to == "end" || after.step.to == "start")) {
-			var v = after.before.target(after.step);
-			if (v != null) {
-				var end = after.step.to == "end", sv = s.view(v.node);
-				if (sv != null && sv.scrollsY) {
-					var far = Math.max(0, sv.contentHeight - sv.height);
-					if (Math.abs(sv.offsetY - (end ? far : 0)) > 1) fail('${at(after)}${describe(v.node)} is scrolled to ${r(sv.offsetY)}, not its ${end ? "end" : "start"} (${r(end ? far : 0)}: ${r(sv.contentHeight)} of content, ${r(sv.height)} shown)');
-					else if (end) {
-						var last = s.last(v.node);
-						if (last != null) {
-							var lb = last.windowBounds();
-							if (lb.y + lb.height > sv.y + sv.height + 1) fail('${at(after)}${describe(v.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
-						}
-					}
+			var end = after.step.to == "end", under = after.before.under(after.step);
+			// (nested scrollers: the wheel may go to one around the innermost first, by design (a large
+			// title collapsing): one of those under it moves that way, unless all are there already)
+			var moved = false, there = true, inner:Null<{node:Node, offsetY:Float}> = null;
+			for (v in under) {
+				var sv = s.view(v.node);
+				if (sv == null) continue;
+				var far = Math.max(0, sv.contentHeight - sv.height);
+				if (end ? sv.offsetY > v.offsetY + 0.5 : sv.offsetY < v.offsetY - 0.5) moved = true;
+				if (Math.abs(v.offsetY - (end ? Math.max(0, v.contentHeight - v.height) : 0)) > 1) there = false;
+				inner = v;
+			}
+			if (inner != null && !moved && !there) fail("scrolls", '${at(after)}${describe(inner.node)} and the scrollers around it did not move toward their ${end ? "end" : "start"}');
+			else if (inner != null && end) {
+				var sv = s.view(inner.node), last = s.last(inner.node);
+				if (sv != null && last != null && Math.abs(sv.offsetY - Math.max(0, sv.contentHeight - sv.height)) <= 1) {
+					var lb = last.windowBounds();
+					if (lb.y + lb.height > sv.y + sv.height + 1) fail("scrolls", '${at(after)}${describe(inner.node)} is at its end, but its last row ${describe(last)} ends at ${r(lb.y + lb.height)}, below it (${r(sv.y + sv.height)})');
 				}
 			}
 		}
 		if (after != null && on("kept")) kept(s, after.step, after.before, now);
 		if (failed() > 0) return false;
-		if (on("steady")) {
+		if (on("steady") && !endless) {
 			s.frame();
 			var later = Snapshot.of(s);
 			for (n in now.nodes) {
 				var b = n.box, l = later.box(n.node);
 				if (l == null) {
-					fail('${at(after)}${describe(n.node)} is gone a frame after settling');
+					fail("steady", '${at(after)}${describe(n.node)} is gone a frame after settling');
 					break;
 				}
 				if (Math.abs(l.x - b.x) > 0.01 || Math.abs(l.y - b.y) > 0.01 || Math.abs(l.width - b.width) > 0.01 || Math.abs(l.height - b.height) > 0.01) {
-					fail('${at(after)}${describe(n.node)} moved a frame after settling: ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} to ${r(l.x)}, ${r(l.y)}, ${r(l.width)} × ${r(l.height)}');
+					fail("steady", '${at(after)}${describe(n.node)} moved a frame after settling: ${r(b.x)}, ${r(b.y)}, ${r(b.width)} × ${r(b.height)} to ${r(l.x)}, ${r(l.y)}, ${r(l.width)} × ${r(l.height)}');
 					break;
 				}
 			}
-			if (failed() == 0 && s.ui.needsFrame) fail('${at(after)}settled, it asks for a frame again with nothing changed');
+			if (failed() == 0 && s.ui.needsFrame) fail("steady", '${at(after)}settled, it asks for a frame again with nothing changed');
 		}
+		for (k in def.checks ?? [])
+			if (failed() == 0 && on(k.name)) {
+				var why = s.context.run(k.check);
+				if (why != null) fail(k.name, '${at(after)}$why');
+			}
 		return failed() == 0;
 	}
 
 	// (kept: idle time moves no scroll position and makes nothing again;
 	// typing keeps its field's focus and moves no scroller but one around
-	// it, or one whose content grew shorter than where it was)
+	// it, or one whose content it changed (a search's results))
 	function kept(s:Screen, step:Step, before:Snapshot, now:Snapshot) {
 		if (step.kind == "wait") {
 			// (a node gone and one of its tag new in the same parent: made again)
@@ -339,25 +383,30 @@ class Monkey {
 				}
 			for (n in now.nodes)
 				if (before.box(n.node) == null && n.parent != null && (gone.get(n.parent) ?? []).contains(n.node.tag)) {
-					fail('${at({step: step})}${describe(n.node)} was made again with nothing done');
+					fail("kept", '${at({step: step})}${describe(n.node)} was made again with nothing done');
 					return;
 				}
 		}
 		if (step.kind != "wait" && step.kind != "type") return;
 		var field = step.kind == "type" ? s.ui.focus : null;
-		if (step.kind == "type" && !~/[\x00-\x1F\x7F]/.match(step.text) && (field == null || !field.takesText())) {
-			fail('${at({step: step})}typing lost its field\'s focus (now ${field == null ? "none" : describe(field)})');
+		// (a field that takes text: a read-only one, a document's code, takes no focus)
+		// (a menu open before it: the tap that closes it goes no further, as the platforms' menus' do)
+		var f = before.field, editable = f != null && f.editable() && !(f.accessText()?.readOnly ?? false) && !before.menu;
+		if (step.kind == "type" && editable && !~/[\x00-\x1F\x7F]/.match(step.text) && (field == null || !field.takesText())) {
+			fail("kept", '${at({step: step})}typing lost its field\'s focus (now ${field == null ? "none" : describe(field)})');
 			return;
 		}
 		for (v in before.views) {
 			var sv = s.view(v.node);
 			if (sv == null) continue;
 			if (field != null && v.node.contains(field)) continue;
+			// (its content changed by what was typed, a search's results: where it starts is its own)
+			if (Math.abs(sv.contentHeight - v.contentHeight) > 0.5 || Math.abs(sv.contentWidth - v.contentWidth) > 0.5) continue;
 			var far = Math.max(0, sv.contentHeight - sv.height);
 			var moved = Math.abs(sv.offsetY - v.offsetY) > 0.5 || Math.abs(sv.offsetX - v.offsetX) > 0.5;
 			var clamped = v.offsetY > far && Math.abs(sv.offsetY - far) <= 0.5;
 			if (moved && !clamped) {
-				fail('${at({step: step})}${describe(v.node)} scrolled from ${r(v.offsetY)} to ${r(sv.offsetY)} (${step.kind == "wait" ? "with nothing done" : "typing elsewhere"})');
+				fail("kept", '${at({step: step})}${describe(v.node)} scrolled from ${r(v.offsetY)} to ${r(sv.offsetY)} (${step.kind == "wait" ? "with nothing done" : "typing elsewhere"})');
 				return;
 			}
 		}
@@ -370,13 +419,17 @@ class Monkey {
 		return c == null ? 0 : c.length;
 	}
 
-	function fail(message:String) {
+	function fail(kind:String, message:String) {
+		if (messages.length == 0) first = kind;
 		messages.push(message);
 		@:privateAccess Runner.failure(message, pos);
 	}
 
-	// (the case's failures, without their place)
+	// (the case's failures, without their place; its first's invariant, and
+	// the one the smallest failing case broke: shrinking keeps to it)
 	final messages:Array<String> = [];
+	var first = "";
+	var target:Null<String> = null;
 
 	static function at(after:Null<{step:Step}>):String
 		return after == null ? "" : 'after ${code(after.step)}: ';
@@ -573,8 +626,20 @@ typedef MonkeyDef = {
 	@:optional var atoms:Array<MonkeyAtom>;
 	// texts typed (else short words, long runs, right to left, emoji, marks)
 	@:optional var texts:Gen<String>;
-	// invariants left out, by name (Monkey.INVARIANTS)
+	// invariants left out, by name (Monkey.INVARIANTS, the checks')
 	@:optional var except:Array<String>;
+	// findings still open: a case whose first failure holds one's text is
+	// rejected, not failed (that cause alone; every other failure counts),
+	// each with why (one fixed leaves the list)
+	@:optional var known:Array<{failure:String, why:String}>;
+	// whether the program moves by design now (asked in the case's screen:
+	// an animated image looping, a video playing): settles and steady not
+	// asked of it then
+	@:optional var animates:Void->Bool;
+	// the program's own invariants, after the monkey's: each run in the
+	// case's screen (its context and store current) after boot and each
+	// step, what is wrong (null: none)
+	@:optional var checks:Array<{name:String, check:Void->Null<String>}>;
 	// a case's most steps (20)
 	@:optional var steps:Int;
 	// the smallest window a case is given or resized to, [width, height] in
@@ -666,8 +731,7 @@ private class Screen {
 	// (a step run and waited for, as a scenario runs it)
 	public function act(s:Step)
 		context.run(() -> {
-			@:privateAccess Steps.act(s, ui, context, why -> throw new StepError(why));
-			settled = @:privateAccess Steps.settle(ui, context);
+			settled = @:privateAccess Steps.next(s, ui, context, why -> throw new StepError(why));
 		});
 
 	public function leave()
@@ -683,7 +747,19 @@ private class Screen {
 	public function pending():String {
 		var what = [];
 		if (ui.needsFrame) what.push("a frame asked for");
-		if (context.animating) what.push("something animating");
+		if (context.animating) {
+			// (what moves: its transitions, its motion; else a clock step of its own)
+			var moving = [];
+			function walk(n:Node) {
+				var t = @:privateAccess n.style.themed, p = n.present;
+				if (t != null && t.moving != null || p != null && p.active) moving.push(Monkey.describe(n));
+				for (c in n.children)
+					if (moving.length < 3) walk(c);
+			}
+			walk(ui.root);
+			walk(ui.overlay);
+			what.push(moving.length > 0 ? 'moving: ${moving.join(", ")}' : "a clock step running");
+		}
 		if (context.nextTimer() <= context.now + 1) what.push("a timer due");
 		return what.length == 0 ? "something" : what.join(", ");
 	}
@@ -710,23 +786,60 @@ private class Screen {
 		return {x: Math.round(n.x + n.width / 2), y: Math.round(n.y + n.height / 2)};
 	}
 
+	// (whether a tap at n's centre lands on it: the topmost node there is it or in it)
+	public function reached(n:InspectedNode):Bool
+		return under(n) != null;
+
+	// (the node a tap at n's centre lands in, n's own: null when another covers it)
+	function under(n:InspectedNode):Null<Node> {
+		var h = context.run(() -> @:privateAccess ui.hit(n.x + n.width / 2, n.y + n.height / 2));
+		while (h != null) {
+			var b = h.windowBounds();
+			if (h.tag == n.tag && Math.abs(b.x - n.x) < 0.5 && Math.abs(b.y - n.y) < 0.5 && Math.abs(b.width - n.width) < 0.5 && Math.abs(b.height - n.height) < 0.5)
+				return h;
+			h = h.parent;
+		}
+		return null;
+	}
+
+	// (the node a step's query finds, as it would land on it)
+	public function node(q:Dynamic):Null<Node> {
+		var found = context.run(() -> Steps.matches(ui, q));
+		return found.length == 1 ? under(found[0]) : null;
+	}
+
 	static function same(a:InspectedNode, b:InspectedNode):Bool
 		return a.id == b.id && a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 
-	// (the scrollers that scroll, shown, not under a modal popup)
+	// (the scrollers that scroll, shown, not under a modal popup, and reached
+	// at the point a step wheels them at: none another covers)
 	public function scrollers():Array<ScrollView>
-		return context.run(() -> ui.scrollViews().filter(v -> (v.scrollsY || v.scrollsX) && !v.covered && v.width > 0 && v.height > 0
-			&& v.x + v.width / 2 >= 0 && v.y + v.height / 2 >= 0 && v.x + v.width / 2 < ui.width && v.y + v.height / 2 < ui.height));
+		return context.run(() -> ui.scrollViews().filter(v -> {
+			if (!(v.scrollsY || v.scrollsX) || v.covered || v.width <= 0 || v.height <= 0) return false;
+			var p:{x:Float, y:Float} = spot(v);
+			if (p.x < 0 || p.y < 0 || p.x >= ui.width || p.y >= ui.height) return false;
+			var h = @:privateAccess ui.hit(p.x, p.y);
+			h != null && v.node.contains(h);
+		}));
+
+	// (where a step wheels a scroller: its shown part's centre)
+	function spot(v:ScrollView):{x:Float, y:Float} {
+		var x0 = Math.max(0, v.x), y0 = Math.max(0, v.y), x1 = Math.min(ui.width, v.x + v.width), y1 = Math.min(ui.height, v.y + v.height);
+		return {x: Math.round((x0 + x1) / 2), y: Math.round((y0 + y1) / 2)};
+	}
 
 	// (a scroller's node, as a step finds it: a query, else its shown part's centre)
 	public function place(v:ScrollView):Dynamic {
-		var x0 = Math.max(0, v.x), y0 = Math.max(0, v.y), x1 = Math.min(ui.width, v.x + v.width), y1 = Math.min(ui.height, v.y + v.height);
 		var label = v.node.semantics?.label;
 		if (label != null && label != "" && label.length <= 60) {
 			var found = context.run(() -> Steps.matches(ui, label));
-			if (found.length == 1 && found[0].tag == v.node.tag && Math.abs(found[0].x - v.x) < 1 && Math.abs(found[0].y - v.y) < 1) return label;
+			// (its name when a wheel at its node's centre reaches it, as at its spot)
+			if (found.length == 1 && found[0].tag == v.node.tag && Math.abs(found[0].x - v.x) < 1 && Math.abs(found[0].y - v.y) < 1) {
+				var h = context.run(() -> @:privateAccess ui.hit(found[0].x + found[0].width / 2, found[0].y + found[0].height / 2));
+				if (h != null && v.node.contains(h)) return label;
+			}
 		}
-		return {x: Math.round((x0 + x1) / 2), y: Math.round((y0 + y1) / 2)};
+		return spot(v);
 	}
 
 	public function view(n:Node):Null<ScrollView>
@@ -764,8 +877,12 @@ private class Screen {
 // its scrollers' offsets)
 private class Snapshot {
 	public final nodes:Array<Shot> = [];
-	public final views:Array<{node:Node, offsetX:Float, offsetY:Float, x:Float, y:Float, width:Float, height:Float, scrollsY:Bool}> = [];
+	public final views:Array<{node:Node, offsetX:Float, offsetY:Float, x:Float, y:Float, width:Float, height:Float, scrollsY:Bool, contentWidth:Float,
+		contentHeight:Float}> = [];
 	public var focus:Null<Node> = null;
+	// (a type step's field, as the step finds it; whether a menu was open)
+	public var field:Null<Node> = null;
+	public var menu = false;
 	final boxes = new haxe.ds.ObjectMap<Node, helder.os.Rect>();
 
 	function new() {}
@@ -773,12 +890,14 @@ private class Snapshot {
 	public static function of(s:Screen):Snapshot {
 		var out = new Snapshot();
 		out.focus = s.ui.focus;
+		out.menu = Lambda.exists(s.popups(), p -> p.menu);
 		for (c in s.ui.root.children)
 			out.visit(c, false, 1);
 		for (c in s.ui.overlay.children)
 			out.visit(c, false, 1);
 		for (v in s.scrollers())
-			out.views.push({node: v.node, offsetX: v.offsetX, offsetY: v.offsetY, x: v.x, y: v.y, width: v.width, height: v.height, scrollsY: v.scrollsY});
+			out.views.push({node: v.node, offsetX: v.offsetX, offsetY: v.offsetY, x: v.x, y: v.y, width: v.width, height: v.height, scrollsY: v.scrollsY,
+				contentWidth: v.contentWidth, contentHeight: v.contentHeight});
 		return out;
 	}
 
@@ -786,7 +905,8 @@ private class Snapshot {
 		var st = n.style;
 		if (st.display == None || n.present != null && n.present.away) return;
 		var b = n.windowBounds(), op = opacity * st.opacity;
-		nodes.push({node: n, parent: n.parent, box: b, clipped: clipped, shown: op > 0 && b.width > 0 && b.height > 0});
+		nodes.push({node: n, parent: n.parent, box: b, laid: {x: n.absX, y: n.absY, width: n.width, height: n.height}, clipped: clipped,
+			shown: op > 0 && b.width > 0 && b.height > 0});
 		boxes.set(n, b);
 		var clips = clipped || st.overflowX != Visible || st.overflowY != Visible;
 		for (c in n.children)
@@ -796,18 +916,17 @@ private class Snapshot {
 	public function box(n:Node):Null<helder.os.Rect>
 		return boxes.get(n);
 
-	// (the scroller a scroll step wheels: the innermost one under its point, as it was)
-	public function target(s:Step):Null<{node:Node}> {
-		var p:Dynamic = s.query;
+	// (the scrollers a scroll step's point is in, as they were, the outermost first)
+	public function under(s:Step):Array<{node:Node, offsetY:Float, contentHeight:Float, height:Float}> {
+		var p:Dynamic = s.query, out = [];
 		if (!Std.isOfType(p, String) && p != null && Reflect.hasField(p, "x")) {
-			var found = null;
 			for (v in views)
-				if (p.x >= v.x && p.y >= v.y && p.x < v.x + v.width && p.y < v.y + v.height) found = v;
-			return found == null ? null : {node: found.node};
-		}
-		for (v in views)
-			if (v.node.semantics?.label == p) return {node: v.node};
-		return null;
+				if (v.scrollsY && p.x >= v.x && p.y >= v.y && p.x < v.x + v.width && p.y < v.y + v.height) out.push(v);
+		} else for (v in views)
+			if (v.scrollsY && v.node.semantics?.label == p) out.push(v);
+		// (outermost first: each contains the next)
+		out.sort((a, b) -> a.node.contains(b.node) ? -1 : b.node.contains(a.node) ? 1 : 0);
+		return [for (v in out) {node: v.node, offsetY: v.offsetY, contentHeight: v.contentHeight, height: v.height}];
 	}
 }
 
@@ -815,6 +934,7 @@ private typedef Shot = {
 	node:Node,
 	parent:Null<Node>,
 	box:helder.os.Rect,
+	laid:helder.os.Rect,
 	clipped:Bool,
 	shown:Bool
 }

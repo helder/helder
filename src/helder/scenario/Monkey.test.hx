@@ -55,13 +55,22 @@ function tests() {
 		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
 		equals(again?.failure, f.failure);
 	});
-	var orphan = test("a popup left open as its anchor goes: found, shrunk to a few steps", () -> {
+	var known = test("a finding still open (known) leaves its cases out, that cause alone: the others still found", () -> {
+		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0,
+			known: [{failure: "is outside the window", why: "open"}]}, {cases: 200, seed: 0});
+		equals(f, null);
+		var g = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"]),
+			known: [{failure: "is outside the window", why: "open"}]}, {cases: 200, seed: 0});
+		assert(g != null && g.failure.indexOf("its anchor button gone") > 0, g?.failure);
+	});
+	var orphan = test("a popup anchored to a button made again: found, shrunk to its three steps", () -> {
 		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200, seed: 0});
 		assert(f != null, "found");
 		if (f == null) return;
-		// (a search taking the button away while its popup is open, or one
-		// emptied making the button again: the popup's anchor the one made first)
-		assert(f.steps.contains('tap("Menu")') && f.steps.length <= 4, f.steps.join(", "));
+		// (the button taken away by a search and made again as it is emptied,
+		// then the menu opened: anchored to the button made first; tapping
+		// Menu before the search instead closes the popup, a tap outside it)
+		equals(f.steps, ['type("Search", "a")', 'press("Backspace")', 'tap("Menu")']);
 		assert(f.failure.indexOf("its anchor button gone") > 0, f.failure);
 	});
 	test("steps as a scenario file writes them", () -> {
@@ -108,7 +117,7 @@ function tests() {
 	});
 	#if (hxmc.target == "wasm32-wasi")
 	// (a robustness property's watchdog and the store's files: natively)
-	for (t in [right, outside, orphan, sealed])
+	for (t in [right, outside, known, orphan, sealed])
 		t.skip();
 	#end
 }

@@ -361,18 +361,23 @@ class Phone implements Markup {
 						// (down: the picture shrinking toward its tile with the finger, Flight)
 						shift(0);
 						drop(Math.max(0, g.ty));
-						x.zoom.drag(drop.peek(), h, closed -> if (closed) p.nav.back());
+						// (up: nothing to drag; a flight held at none would be let go by nothing)
+						if (drop.peek() > 0 || x.zoom.holding()) x.zoom.drag(drop.peek(), h, closed -> if (closed) p.nav.back());
 					}
 				case Ended:
 					var dx = shift.peek(), dy = drop.peek();
 					shift(0);
 					drop(0);
 					// (let go: on to the tile or back, with the finger's speed; no picture to fly: by how far, as fast)
-					if (dy > 0 && x.zoom.holding()) x.zoom.release() else if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
+					// (a flight held let go whatever came after: a swipe across still a swipe)
+					var held = x.zoom.holding();
+					if (held) x.zoom.release();
+					if (held && dy > 0) return;
+					if (dy > h * 0.2 || dy > 0 && g.vy > 800) p.nav.back() else if (dx < -w * 0.25 || dx < 0 && g.vx < -500) v.next() else if (dx > w * 0.25
 						|| dx > 0 && g.vx > 500) v.previous();
 				case _:
 					shift(0);
-					if (drop.peek() > 0) x.zoom.release();
+					if (x.zoom.holding()) x.zoom.release();
 					drop(0);
 			}
 		}
@@ -436,7 +441,7 @@ class PhoneState implements Markup {
 		renderEffect(() -> nav.path(), arrived);
 		// (a file's screen faded in place, not slid: the zoom from its tile moves it)
 		renderEffect(() -> x.full(), on -> {
-			if (on && top != "/view") push("/view", true);
+			if (on && top != "/view" && !viewing()) push("/view", true);
 			if (!on && top == "/view") nav.back();
 		});
 	}
@@ -471,6 +476,12 @@ class PhoneState implements Markup {
 			if (x.full.value) x.close();
 		}
 	}
+
+	// (the file's screen on the stack already, landed or not: the router's own stack, committed at
+	// once (its path lands at the next flush, and top with it): pushed again, two of it, each a
+	// player, both playing (a phone's shell made with a file open, a window back to a phone's width))
+	function viewing():Bool
+		return Lambda.exists(@:privateAccess (nav : helder.ui.nav.Router).stack, e -> e.path == "/view");
 
 	function push(path:String, still = false) {
 		top = path;

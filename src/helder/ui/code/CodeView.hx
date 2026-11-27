@@ -76,7 +76,8 @@ class CodeView extends Node {
 	final numbers:Array<String> = [];
 
 	var ticking = false;
-	// (the last activity: the caret shown solid, then blinking)
+	// (the last activity, on its screen's clock (a still's, a scenario's: not
+	// the wall's): the caret shown solid, then blinking)
 	var activeAt = 0.0;
 	final tick:Float->Bool;
 	// (the blink's phase last drawn)
@@ -157,7 +158,7 @@ class CodeView extends Node {
 			if (scrollTo(scrollLeft + dx, scrollTop + dy)) e.preventDefault();
 		};
 		onFocus = e -> {
-			activeAt = Ui.now();
+			activeAt = Clock.now;
 			startTicking();
 			changed(false);
 		};
@@ -224,7 +225,7 @@ class CodeView extends Node {
 	public function changed(reveal = true) {
 		if (reveal) revealPending = true;
 		if (onUpdate != null) onUpdate();
-		activeAt = Ui.now();
+		activeAt = Clock.now;
 		Ui.accessEpoch++;
 		if (ui != null) {
 			ui.requestFrame();
@@ -728,7 +729,7 @@ class CodeView extends Node {
 	function step(t:Float):Bool {
 		// (the rest of the file highlighted, a thousand lines a tick: nothing drawn for it)
 		if (!model.highlighted()) model.highlight(model.lineCount, 1000);
-		var blinking = focused && !Clock.reducedMotion && Ui.now() - activeAt <= BLINK_FOR;
+		var blinking = focused && !Clock.reducedMotion && Clock.now - activeAt <= BLINK_FOR;
 		// (a frame when the caret blinks on or off: not every tick)
 		if (ui != null && focused && blinkPhase() != drawnPhase) ui.requestFrame();
 		ticking = blinking || !model.highlighted();
@@ -739,7 +740,7 @@ class CodeView extends Node {
 	// after an edit or a move, then blinking every half second, solid again
 	// after BLINK_FOR seconds without one)
 	function blinkPhase():Int {
-		var since = Ui.now() - activeAt;
+		var since = Clock.now - activeAt;
 		return Clock.reducedMotion || since < 0.5 || since > BLINK_FOR ? 0 : 1 + Std.int((since - 0.5) / 0.5);
 	}
 

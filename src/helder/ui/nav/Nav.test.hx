@@ -157,6 +157,42 @@ function tests() {
 			equals(u.overlay.find("sheet"), null);
 			dispose();
 		});
+		test("the window resized while it is open: as tall as the window lets it, at its detent", () -> {
+			var u = ui(390, 844), open = signal(false), at = signal(Large);
+			var dispose = Render.render(<view flexGrow={1}>
+				<Sheet open={open} detents={[Medium, Large]} detent={at} onDismiss={() -> open(false)} label="Info"><text tag="body">Info</text></Sheet>
+			</view>, u.root);
+			u.update();
+			open(true);
+			Graph.flush();
+			Clock.finish();
+			u.update();
+			u.resize(844, 390);
+			Graph.flush();
+			Clock.finish();
+			u.update();
+			var b = u.overlay.find("sheet").windowBounds();
+			assert(b.y >= 0 && b.y + b.height <= 390.5, 'at ${b.y}, ${b.height} high');
+			equals(at.peek(), Large);
+			dispose();
+		});
+		test("a popover made shorter by the window as it is open: its share of the new window at most", () -> {
+			var u = ui(820, 1180), open = signal(false), button:Null<Node> = null;
+			var dispose = Render.render(<view flexGrow={1}>
+				<view tag="info" width={44} height={44} ref={n -> button = n}/>
+				<Sheet open={open} anchor={() -> button} onDismiss={() -> open(false)}><view height={2000} flexShrink={0}/></Sheet>
+			</view>, u.root);
+			u.update();
+			open(true);
+			Graph.flush();
+			u.update();
+			u.resize(820, 300);
+			Graph.flush();
+			u.update();
+			var b = u.overlay.find("sheet-popover").windowBounds();
+			assert(b.height <= 300 * 0.8 + 0.5, 'its height ${b.height}');
+			dispose();
+		});
 		test("a popover from its anchor on a wider screen", () -> {
 			var u = ui(820, 1180), open = signal(false), button:Null<Node> = null;
 			var dispose = Render.render(<view flexGrow={1}>

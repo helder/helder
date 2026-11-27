@@ -62,6 +62,10 @@ function tests() {
 			viewer.tick(0, 0);
 			viewer.tick(0.15, 0.15);
 			equals(viewer.frame, 1);
+			// (closed, its picture kept for the fade: still, nothing more to step)
+			@:privateAccess viewer.closed = true;
+			equals([viewer.tick(0.3, 0.15), viewer.frame == 1, viewer.shown != null], [false, true, true]);
+			@:privateAccess viewer.closed = false;
 			// (a JPEG cut short: its message in place, flipping goes on)
 			ui.keyDown(Key.PAGE_DOWN, 0);
 			ui.update();

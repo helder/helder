@@ -34,6 +34,15 @@ class Cli {
 		// (its own bin/fuzz: beside the test lane under -j, the two wrote one bin/test/src)
 		run(helderCli(), ["test"].concat(FUZZ).concat(["--target", "host", "--out", "bin/fuzz"]),
 			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]);
+		// (the viewer under a UI monkey: from its folder, whose fixtures its Sandbox reads; its failures in its bin/fuzz)
+		var h = FileSystem.fullPath(helderCli()), here = Sys.getCwd();
+		Sys.setCwd("apps/viewer");
+		try run(h, ["test", "tests/viewer/Monkey.test.hx", "--target", "host", "--out", "bin/fuzz"],
+			["HELDER_PROPERTY_SOAK" => Sys.getEnv("FUZZ_SECONDS") ?? "20", "HELDER_PROPERTY_SEED" => Sys.getEnv("FUZZ_SEED") ?? "random"]) catch (e:Failed) {
+			Sys.setCwd(here);
+			throw e;
+		}
+		Sys.setCwd(here);
 		// (helder's TypeScript against node: FUZZ_TS_SECONDS (300) of random
 		// programs, its findings shrunk and kept with the properties')
 		run(NODE, ["tests/typescript/fuzz/fuzz.mjs", "--seconds", Sys.getEnv("FUZZ_TS_SECONDS") ?? "300", "--out", "bin/fuzz/typescript",

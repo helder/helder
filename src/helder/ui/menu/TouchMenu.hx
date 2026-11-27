@@ -22,7 +22,8 @@ typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool
 // choices 44 points high (slot touch-menu, touch-menu-item: data-selected
 // checked, data-disabled; touch-menu-item-danger), a group's line between
 // them (touch-menu-separator), in a modal popup over
-// the window. With a preview (a view at where its node is, lifted: slot
+// the window; taller than the window, as high as it and scrolled; the
+// window resized, dismissed. With a preview (a view at where its node is, lifted: slot
 // touch-menu-preview) the menu goes under it, or above it where there is
 // no room, the preview moved up to fit; blur puts a glass over what is
 // behind (slot touch-menu-scrim: a dimmed, blurred window). A press
@@ -78,6 +79,8 @@ class TouchMenu implements Markup {
 			?theme:helder.ui.StyleSheet, ?onClose:Void->Void):Popup {
 		var p = new Popup("touch-menu-layer");
 		p.modal = true;
+		// (a menu: dismissed as the window resizes, a phone turned, as the platforms' are; it was placed for the size it opened at)
+		p.menu = true;
 		p.style.background = helder.gfx.Color.TRANSPARENT;
 		if (theme != null) p.theme = theme;
 		var dispose:Null<Void->Void> = null;
@@ -105,6 +108,8 @@ class TouchMenu implements Markup {
 		var mh = 0.0;
 		for (c in choices)
 			mh += ROW + (c.separated == true ? LINE : 0);
+		// (taller than the window's room: as high as it, its choices scrolled)
+		mh = Math.min(mh, Math.max(ROW, bottom - top));
 		var mw = Math.min(WIDTH, ui.width - 2 * EDGE);
 		var ph = lifted ? Math.min(r.height, Math.max(0, bottom - top - mh - GAP)) : 0.0;
 		var pw = lifted && r.height > 0 ? r.width * ph / r.height : 0.0;
@@ -121,7 +126,7 @@ class TouchMenu implements Markup {
 		var cx = r.x + r.width / 2;
 		var mx = cx < ui.width / 2 ? r.x : r.x + r.width - mw;
 		mx = Math.max(EDGE, Math.min(mx, ui.width - EDGE - mw));
-		return {px: px, py: py, pw: pw, ph: ph, mx: mx, my: my, mw: mw};
+		return {px: px, py: py, pw: pw, ph: ph, mx: mx, my: my, mw: mw, mh: mh};
 	}
 
 	static function Layer(props:{at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
@@ -132,7 +137,8 @@ class TouchMenu implements Markup {
 				onPress={_ -> props.onClose()}/>}
 			{props.preview != null ? <view slot="touch-menu-preview" position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
 				transition="fade scale" onPress={_ -> props.onClose()}>{props.preview}</view> : null}
-			<view slot="touch-menu" tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} overflow="hidden" transition="fade scale">
+			<view slot="touch-menu" tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} maxHeight={a.mh} overflow="scroll"
+				transition="fade scale">
 				{[for (c in props.choices) <Item choice={c} onPick={props.onPick}/>]}
 			</view>
 		</view>;
@@ -142,7 +148,7 @@ class TouchMenu implements Markup {
 		var c = props.choice;
 		return <>
 			{c.separated == true ? <view slot="touch-menu-separator" role="separator" height={1} margin="4 0" flexShrink={0}/> : null}
-			<button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem"
+			<button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem" flexShrink={0}
 				aria-label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
 				data-disabled={c.disabled == true}
 				onPress={() -> if (c.disabled != true) props.onPick(c)}>
@@ -154,5 +160,5 @@ class TouchMenu implements Markup {
 	}
 }
 
-// (a touch menu's places: the preview's box, the menu's top left and width)
-private typedef Placed = {px:Float, py:Float, pw:Float, ph:Float, mx:Float, my:Float, mw:Float};
+// (a touch menu's places: the preview's box, the menu's top left, width and most height)
+private typedef Placed = {px:Float, py:Float, pw:Float, ph:Float, mx:Float, my:Float, mw:Float, mh:Float};

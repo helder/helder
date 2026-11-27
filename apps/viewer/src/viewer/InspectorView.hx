@@ -62,22 +62,24 @@ class InspectorView implements Markup {
 		});
 		onCleanup(() -> if (stop != null) stop());
 		// (Windows' and Linux's window buttons over its top: the toolbar's row carried on, a title bar's)
-		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={0} overflow="hidden"
+		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={fill ? 1 : 0} minHeight={0} overflow="hidden"
 			borders={fill ? "0 0 0 0" : "0 0 0 1"} borderColor={Look.ref.line}>
 			<Show when={!fill && WindowButtons.side() == "end"}>
 				<view tag="inspector-bar" height={Shell.BAR} flexShrink={0} dragRegion borders="0 0 1 0" borderColor={Look.ref.line}/>
 			</Show>
-			<Show when={many() != ""}>{() -> {
-				many();
-				var all = untrack(several);
-				all.length > 1 ? InspectorView.many(x, all) : null;
-			}}</Show>
-			<Show when={one() != ""}>{() -> {
-				one();
-				var e = untrack(entry);
-				e == null ? null : file(x, e, shown);
-			}}</Show>
-			<Show when={one() == "" && many() == ""}>{() -> folder(x)}</Show>
+			<scroll tag="inspector-body" flexGrow={1} flexShrink={1} minHeight={0}>
+				<Show when={many() != ""}>{() -> {
+					many();
+					var all = untrack(several);
+					all.length > 1 ? InspectorView.many(x, all) : null;
+				}}</Show>
+				<Show when={one() != ""}>{() -> {
+					one();
+					var e = untrack(entry);
+					e == null ? null : file(x, e, shown);
+				}}</Show>
+				<Show when={one() == "" && many() == ""}>{() -> folder(x)}</Show>
+			</scroll>
 		</view>;
 	}
 

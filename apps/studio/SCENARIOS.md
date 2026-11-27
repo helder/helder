@@ -486,8 +486,51 @@ Tests: `src/helder/scenario/Monkey.test.hx` (a small program that holds: 30 case
 the window, to the atom's value alone; a popup left open as a search takes its anchor away, to a
 few steps), in the fuzz lane.
 
-Follow-ups: the viewer (generated folders: huge names, RTL, emoji and combining names, many
-entries, broken files), TypeScript programs (a `helder/scenario` monkey), and the invariants left:
+**The viewer** (`apps/viewer/tests/viewer/Monkey.test.hx`, in the fuzz lane from apps/viewer):
+its 16 scenarios (`Monkey.from("viewer.Viewer_scenario")`: `helder test` links a project's
+`*.scenario.hx` as `Foo_scenario`, as the studio does) and a made folder, desktop and phone:
+`Sandbox.made`, an atom of names and kinds (huge, right to left, emoji and combining names, many
+entries; photos, PNG, GIF, WebP, text, Markdown, PDF, an MP4 video and audio, a broken JPEG, one
+cut short, empty files, folders), files in the Sandbox's memory, under a HELDER_HOME of its own.
+Its failures land in apps/viewer/bin/fuzz. `checks`: each case's files the Sandbox's (a probe of 60 cases first, no steps), and media's (one
+player at most playing, the viewer's, its file shown in it; a test plays the clip and closes it).
+
+Found by it, each fixed with a test:
+- a decode's key cut a file name at a line break (Null Access opening it);
+- a touch menu, and a drawn menu, taller than the window ran off it (their last items out of
+  reach: the viewer's View options on a phone held sideways); a touch menu stayed placed for the
+  old size after a resize (now dismissed, as the platforms' menus are);
+- a sheet open as the window resized kept its old height (444 points above the top of a phone
+  turned);
+- a code view's caret blinked on the wall's clock, not its screen's (a still's phase the wall's;
+  a scenario never settled);
+- a closed viewer's animated GIF went on stepping every frame behind the folder;
+- a phone's photo dragged up a little and let go stayed held by its flight, stepping for good;
+- the inspector had no scroller (its details cut off in a short window, laid out past a phone's
+  sheet);
+- in the harness: Steps.settle settled before what layout's events wrote was flushed (an
+  onResize's signals, a frame behind); the Sandbox decoded a moved file from its old path.
+
+Then, each fixed with a test: two players playing at once (a phone's shell made again with a
+file full size pushed its screen twice: the window resized past a phone's width and back); a
+press did not end a wheel's latch (a document opened from a scrolled grid sent its wheel to the
+grid behind it); a sheet's popover kept its old most height as the window resized.
+
+Found scenarios: `apps/viewer/tests/viewer/Found.scenario.hx` keeps what the monkey wrote, each
+replayed with its invariants (Monkey.test.hx's "found" test); what is still open is one list,
+`KNOWN`, each finding its failure's text (the soak leaves out that cause alone), why, and its
+scenario where it has one:
+- a virtual grid's limit 6.6 points short of its layout's at some sizes (its last points out of
+  reach; not diagnosed);
+- `Buffer.adopt: no buffer` (helder.image.ImageMemory's buffers and views out of step) once in some
+  hundred cases, never alone (GC timing: benmerckx/hxmc#224).
+
+Narrowed in the generator instead: a made file's name holds no backslash (haxe.io.Path's
+separator everywhere: whether the viewer mishandles such names on macOS and Linux is open). Also
+open: the photo's image-rect (an invisible node) placed from paint, a frame behind a resize.
+Press-on-pointer-down is not checked: no control says it acts on pointer-down.
+
+Follow-ups: TypeScript programs (a `helder/scenario` monkey), and the invariants left:
 a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
 idle time and typing, at most one media playing, frames compared (a still built twice the same
 pixels), perf bounds; a resize step as the studio frame's size; `play` scenarios (their clock run

@@ -1,6 +1,6 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Web/Samples: Web/Samples (120 lines)
+--- story Web/Samples: Web/Samples (121 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
@@ -98,12 +98,13 @@ Node#root 0,0 390x844
                       TextNode#text 271,821 0x15 "Samples"
               TextNode#count 241,814 36x30 "10 items"
           Node#inspector 237,0 300x844
-            Node#view 238,0 299x844
-              Node#view 252,14 271x220
-                ImageNode#image 340,85 96x78
-              Node#view 238,234 299x47
-                TextNode#text 363,246 49x18 "Samples"
-                TextNode#text 364,266 48x15 "10 items"
+            Node#inspector-body 238,0 299x844
+              Node#view 238,0 299x844
+                Node#view 252,14 271x220
+                  ImageNode#image 340,85 96x78
+                Node#view 238,234 299x47
+                  TextNode#text 363,246 49x18 "Samples"
+                  TextNode#text 364,266 48x15 "10 items"
       Node#viewer 0,0 390x844
         Node#viewer-bar 0,0 390x52
           Node#back-pill 14,11 106x30

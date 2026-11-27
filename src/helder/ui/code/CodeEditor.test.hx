@@ -125,6 +125,11 @@ function tests() {
 			ui.wheel(v.absX + 100, v.absY + 50, 0, 100);
 			equals(v.scrollTop, 100.0);
 		});
+		test("the caret blinks on its screen's clock: after 30 s of it with no edit, solid, nothing ticking", () -> {
+			assert(Clock.active, "blinking");
+			Clock.tick(Clock.now + 31);
+			equals(Clock.active, false);
+		});
 		test("find and replace, go to line", () -> {
 			key("f".code, Mods.CONTROL);
 			assert(editor.findOpen);

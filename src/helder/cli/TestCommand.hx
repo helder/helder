@@ -27,7 +27,11 @@ using StringTools;
 // HelderTestInterp.hx, the files that opt in) calls each one's
 // module-level `tests()`. The compiler's output and the program's are
 // written with the real paths again (the content, so the positions, are
-// the same). Several targets' builds at once, then each run in turn (once).
+// the same). A project's scenario files (`Foo.scenario.hx`) are linked
+// too, as `Foo_scenario.hx` (the module the studio makes of them), for its
+// tests to name: never run, built only where a test uses them (a UI
+// monkey's: helder.scenario.Monkey.from("app.App_scenario")). Several
+// targets' builds at once, then each run in turn (once).
 class TestCommand {
 	// (--out's: the links, the mains, the builds, the properties' store)
 	static var out = "bin/test";
@@ -91,6 +95,9 @@ class TestCommand {
 			Term.err(Style.usage('helder test: ${e.message}'));
 			return 1;
 		}
+		// (the scenario files: linked whatever the filters pick, never run)
+		var scenarios = files.filter(f -> f.scenario == true);
+		files = files.filter(f -> f.scenario != true);
 		// (the filters that are part of a path pick files; the rest names)
 		var paths = filters.filter(f -> Lambda.exists(files, t -> t.real.contains(norm(f))));
 		var names = filters.filter(f -> !paths.contains(f));
@@ -106,9 +113,9 @@ class TestCommand {
 			if (runner[i] == "-t" && runner[i + 1].length > 2 && runner[i + 1].startsWith("/") && runner[i + 1].endsWith("/")) regex = true;
 		var ts = files.filter(f -> f.ts == true);
 		files = files.filter(f -> f.ts != true);
-		generate(files, regex);
+		generate(files, scenarios, regex);
 		writeTypescriptMain(ts, p.helder);
-		var map = new Mapper(files);
+		var map = new Mapper(files.concat(scenarios));
 		var cp = Compiler.markup(p.defines);
 		for (c in p.classPaths(files).concat([GEN])) cp = cp.concat(["-cp", c]);
 		// (each target's build then its run, its TypeScript program's first)
@@ -284,17 +291,17 @@ class TestCommand {
 
 	// the links, stale ones removed, and the main (written only when it changed:
 	// the module cache keeps it)
-	static function generate(files:Array<TestFile>, regex:Bool) {
-		var wanted = [for (f in files) f.linked => true];
+	static function generate(files:Array<TestFile>, scenarios:Array<TestFile>, regex:Bool) {
+		var wanted = [for (f in files.concat(scenarios)) f.linked => true];
 		function clean(dir:String)
 			for (n in (try FileSystem.readDirectory(dir) catch (_:Dynamic) [])) {
 				var p = '$dir/$n';
-				if (FileSystem.isDirectory(p)) clean(p) else if ((n.endsWith("_test.hx") || n.endsWith("_story.hx")) && !wanted.exists(p)) FileSystem.deleteFile(p);
+				if (FileSystem.isDirectory(p)) clean(p) else if ((n.endsWith("_test.hx") || n.endsWith("_story.hx") || n.endsWith("_scenario.hx")) && !wanted.exists(p)) FileSystem.deleteFile(p);
 			}
 		clean(GEN);
 		// (a project of TypeScript tests only links none: the directory made for the mains all the same)
 		mkdirs(GEN);
-		for (f in files) {
+		for (f in files.concat(scenarios)) {
 			mkdirs(Path.directory(f.linked));
 			Link.make(f.real, f.linked);
 		}
@@ -376,6 +383,8 @@ typedef TestFile = {
 	?ts:Bool,
 	// a .story.hx file (its module-level stories, story({...}), each a test: helder.story.Stories)
 	?story:Bool,
+	// a .scenario.hx file: linked for the tests to name, not run
+	?scenario:Bool,
 }
 
 // The project in the working directory: its class paths (package.json's
@@ -452,7 +461,8 @@ class Project {
 			for (n in (try FileSystem.readDirectory(dir) catch (_:Dynamic) [])) {
 				if (n == "bin" || n == "node_modules" || n.startsWith(".")) continue;
 				var p = '$dir/$n';
-				if (FileSystem.isDirectory(p)) walk(p) else if ((n.endsWith(".test.hx") || n.endsWith(".story.hx") || isTypescript(n)) && !found.contains(p)) found.push(p);
+				if (FileSystem.isDirectory(p)) walk(p) else if ((n.endsWith(".test.hx") || n.endsWith(".story.hx") || n.endsWith(".scenario.hx") || isTypescript(n))
+					&& !found.contains(p)) found.push(p);
 			}
 		for (r in roots) walk(r);
 		found.sort(Reflect.compare);
@@ -471,13 +481,21 @@ class Project {
 			var have = declared.match(content) ? declared.matched(1) : "";
 			if (have != pack)
 				throw '$p: package ${have == "" ? "(none)" : have}, but its directory under $r/ makes it ${pack == "" ? "(none)" : pack}';
-			var name = Path.withoutDirectory(p), story = name.endsWith(".story.hx");
-			name = story ? name.substr(0, name.length - ".story.hx".length) + "_story" : name.substr(0, name.length - ".test.hx".length) + "_test";
+			var name = Path.withoutDirectory(p), story = name.endsWith(".story.hx"), scenario = name.endsWith(".scenario.hx");
+			name = story ? name.substr(0, name.length - ".story.hx".length) + "_story" : scenario ? name.substr(0, name.length - ".scenario.hx".length)
+				+ "_scenario" : name.substr(0, name.length - ".test.hx".length) + "_test";
 			var module = pack == "" ? name : '$pack.$name';
 			// (the same module from two roots)
 			if (seen.exists(module)) throw '$p: the same module as ${seen.get(module)}';
 			seen.set(module, p);
-			out.push({real: p, linked: '${TestCommand.GEN}/' + (dirs == "" ? "" : dirs + "/") + name + ".hx", module: module, interp: !story && TestCommand.INTERP.match(content), story: story});
+			out.push({
+				real: p,
+				linked: '${TestCommand.GEN}/' + (dirs == "" ? "" : dirs + "/") + name + ".hx",
+				module: module,
+				interp: !story && !scenario && TestCommand.INTERP.match(content),
+				story: story,
+				scenario: scenario
+			});
 		}
 		return out;
 	}
@@ -498,7 +516,7 @@ class Mapper {
 	}
 
 	public function apply(line:String):String {
-		if (!line.contains("_test.hx") && !line.contains("_story.hx")) return line;
+		if (!line.contains("_test.hx") && !line.contains("_story.hx") && !line.contains("_scenario.hx")) return line;
 		for (p in pairs) line = line.split(p.from).join(p.to);
 		return line;
 	}

@@ -43,13 +43,13 @@ class Decode {
 	public static inline var MAX_SIDE = 8192;
 
 	// what the cache and the jobs know a decode by: the file's path, and a
-	// PDF's page past the first after a newline (no file's name has one: the
-	// recent files are kept a line each)
+	// PDF's page past the first after a NUL (no path has one; a line break a
+	// name may have, on macOS and Linux)
 	public static function key(path:String, page = 0):String
-		return page <= 0 ? path : path + "\n" + page;
+		return page <= 0 ? path : path + "\x00" + page;
 
 	public static function parseKey(key:String):{path:String, page:Int} {
-		var nl = key.lastIndexOf("\n");
+		var nl = key.lastIndexOf("\x00");
 		return nl < 0 ? {path: key, page: 0} : {path: key.substr(0, nl), page: Std.parseInt(key.substr(nl + 1)) ?? 0};
 	}
 

@@ -50,12 +50,16 @@ typedef SheetProps = {
 class Sheets implements Markup {
 	public static inline var TOP = 10.0;
 	public static inline var POPOVER = 360.0;
+	// (a popover's most height, of the window's)
+	public static inline var POPOVER_SHARE = 0.8;
 
 	public static function Sheet(props:SheetProps):Any
 		return new SheetMount(props);
 
 	@:noCompletion public static function Panel(props:{s:SheetState, children:Any}):UiView {
 		var s = props.s;
+		// (the window resized while it is open, a phone turned: as tall as it lets it, at its detent)
+		renderEffect(() -> helder.ui.ScreenContext.current.height(), h -> s.resized(h));
 		return <view tag={s.props.tag ?? "sheet-layer"} position="absolute" left={0} top={0} right={0} bottom={0}
 			onKeyDown={e -> if (e.key == Key.ESCAPE) s.dismiss(0)}>
 			<view slot="sheet-scrim" tag="sheet-scrim" position="absolute" left={0} top={0} right={0} bottom={0} opacity={s.scrim()}
@@ -69,9 +73,12 @@ class Sheets implements Markup {
 		</view>;
 	}
 
-	@:noCompletion public static function Floating(props:{s:SheetState, children:Any}):UiView
+	@:noCompletion public static function Floating(props:{s:SheetState, children:Any}):UiView {
+		// (the window resized while it is open: its most height the new window's share)
+		renderEffect(() -> helder.ui.ScreenContext.current.height(), h -> props.s.full(h * POPOVER_SHARE));
 		return <view slot="sheet-popover" tag={props.s.props.tag ?? "sheet-popover"} role="dialog" aria-label={props.s.props.label} width={POPOVER}
 			maxHeight={props.s.full()} onKeyDown={e -> if (e.key == Key.ESCAPE) props.s.dismiss(0)}>{props.children}</view>;
+	}
 }
 
 // A sheet's place: its height shown (the detent's, as dragged), the scrim
@@ -118,6 +125,16 @@ class Sheets implements Markup {
 		var d = detents.indexOf(at.peek()) < 0 ? detents[0] : at.peek();
 		at(d);
 		to(d, null);
+	}
+
+	// (the window's height changed while it is open: its full height again, at its detent at once)
+	public function resized(h:Float) {
+		if (closing || height == 0 || h == height) return;
+		height = h;
+		tall = h - SafeArea.insets.peek().top - Sheets.TOP;
+		full(tall);
+		y.set(rest(at.peek()));
+		tick();
 	}
 
 	// the height left above a detent's top (Large 0)
@@ -289,7 +306,7 @@ class SheetMount implements Mountable<Node> implements Markup {
 				q.placement = Below;
 				q.gap = 8;
 				q.onDismiss = () -> s.dismiss(0);
-				s.full(u.height * 0.8);
+				s.full(u.height * Sheets.POPOVER_SHARE);
 				Graph.runWithOwner(home, () -> dispose = Render.render(<Sheets.Floating s={s}>{props.children}</Sheets.Floating>, q));
 			} else {
 				q.modal = true;
