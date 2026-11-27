@@ -55,4 +55,13 @@ class Unbroken implements Fragmentation {
 
 	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
 		return false;
+
+	public function carry(float:Box, token:BreakToken)
+		outer.carry(float, token);
+
+	public function uncarry(float:Box)
+		outer.uncarry(float);
+
+	public function carried(host:Box):Array<{box:Box, token:BreakToken}>
+		return outer.carried(host);
 }

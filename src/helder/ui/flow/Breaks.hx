@@ -23,8 +23,9 @@ class Breaks implements Fragmentation {
 	var target:Null<Point> = null;
 	var taken:Null<Point> = null;
 	var halted = false;
-	// (the absolutely positioned boxes deferred in this pass)
+	// (the absolutely positioned boxes deferred in this pass, and the floats carried)
 	public final deferred:Array<Deferred> = [];
+	final carries = new ObjectMap<Box, BreakToken>();
 	// (where the content laid out ends, its margins aside; where the floats placed so far end)
 	var reach = 0.0;
 	var floor = 0.0;
@@ -65,6 +66,23 @@ class Breaks implements Fragmentation {
 		return new Breaks(size, null);
 	}
 
+	public function carry(float:Box, token:BreakToken)
+		carries.set(float, token);
+
+	public function uncarry(float:Box)
+		carries.remove(float);
+
+	public function carried(host:Box):Array<{box:Box, token:BreakToken}> {
+		var out = [];
+		if (incoming == null) return out;
+		for (f => t in incoming.floats) {
+			var a = f.parent;
+			while (a != null && resume(a) == null) a = a.parent;
+			if (a == host) out.push({box: f, token: t});
+		}
+		return out;
+	}
+
 	public function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool
 		return offer({box: box, child: null, line: BreakToken.SPLIT, from: null, parallel: tokens, bottom: bottom, appeal: inside(box, PERFECT), forced: null,
 			keep: false});
@@ -76,8 +94,8 @@ class Breaks implements Fragmentation {
 
 	public function between(box:Box, before:Null<Box>, after:Box, bottom:Float):Bool {
 		if (before == null) return leading({box: box, child: after, line: -1, from: null, bottom: bottom, appeal: LAST, forced: null, keep: true});
-		// (before a float, out of flow: its break-before and page name make no break, the one before's break-after does)
-		var a = ending(before), b = after.floating ? "auto" : starting(after);
+		// (before a float, out of flow: its own break-before (not its content's), its page name making no break)
+		var a = ending(before), b = after.floating ? value(after, "before") : starting(after);
 		var forced = Breaks.forced(a) ? a : Breaks.forced(b) ? b : null;
 		// (named pages, Paged Media 3 §5.1: siblings of different page names, a page break between; a flex, grid
 		// or table container's items' make none)
@@ -144,6 +162,7 @@ class Breaks implements Fragmentation {
 		halted = false;
 		floor = 0;
 		deferred.resize(0);
+		carries.clear();
 		tops.clear();
 		return true;
 	}
@@ -151,7 +170,23 @@ class Breaks implements Fragmentation {
 	// Where the next fragmentainer resumes; null: the content ended here.
 	public function token():Null<BreakToken> {
 		var p = taken;
-		if (p == null) return null;
+		// (the content ended here but a float goes on: the boxes around it resumed past their content)
+		if (p == null) {
+			if (!carries.iterator().hasNext()) return null;
+			var resumes = new ObjectMap<Box, Resume>(), floats = new ObjectMap<Box, BreakToken>();
+			// (its parent past its content, the boxes around that resumed at it)
+			for (f => t in carries) {
+				floats.set(f, t);
+				var b = f.parent;
+				if (b == null || resumes.exists(b)) continue;
+				resumes.set(b, {child: null, line: BreakToken.PAST, from: null, consumed: consumed(b, size), forced: false});
+				while (b.parent != null && !resumes.exists(b.parent)) {
+					resumes.set(b.parent, {child: b, line: -1, from: null, consumed: consumed(b.parent, size), forced: false});
+					b = b.parent;
+				}
+			}
+			return new BreakToken(resumes, null, null, floats);
+		}
 		var resumes = new ObjectMap<Box, Resume>();
 		// (a pushed box's margin kept, unless it alone would push it past the end again)
 		var top = tops.get(p.box);
@@ -165,7 +200,9 @@ class Breaks implements Fragmentation {
 			b = b.parent;
 		}
 		var side = p.forced == "left" || p.forced == "verso" ? "left" : p.forced == "right" || p.forced == "recto" ? "right" : null;
-		return new BreakToken(resumes, side, p.child != null ? first(p.child) : named(p.box));
+		var floats = new ObjectMap<Box, BreakToken>();
+		for (f => t in carries) floats.set(f, t);
+		return new BreakToken(resumes, side, p.child != null ? first(p.child) : named(p.box), floats);
 	}
 
 	// (the block size a box's content took up to the break, in this fragmentainer and the ones before)
@@ -252,6 +289,16 @@ class Breaks implements Fragmentation {
 		if (p == c) return null;
 		while (p.next != c) p = p.next;
 		return p;
+	}
+
+	// Whether a box forces a break before it (break-before, page-break-before).
+	public static function forcesBefore(b:Box):Bool
+		return forced(value(b, "before"));
+
+	// Whether a box avoids a break inside it (break-inside, page-break-inside).
+	public static function avoids(b:Box):Bool {
+		var v = value(b, "inside");
+		return v == "avoid" || v == "avoid-page";
 	}
 
 	// (break-before, break-after, break-inside, or CSS 2's page-break-* when it's auto)

@@ -52,6 +52,13 @@ interface Fragmentation {
 	// those that go on), what is before the break ending at bottom; true:
 	// break here (box resumes with the tokens, BreakToken.SPLIT)
 	function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float):Bool;
+	// a float broken across fragmentainers: its token carried to the next,
+	// wherever the break is (uncarry: its line went to the next itself)
+	function carry(float:Box, token:BreakToken):Void;
+	function uncarry(float:Box):Void;
+	// the floats carried here host places at its content's top: those whose
+	// nearest ancestor resumed here it is
+	function carried(host:Box):Array<{box:Box, token:BreakToken}>;
 }
 
 // An absolutely positioned box deferred: its static place (x, y) in its

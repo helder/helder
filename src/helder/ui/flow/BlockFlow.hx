@@ -115,19 +115,74 @@ class BlockFlow implements FormattingContext {
 		// (a float at y or below in its formatting context, beside the floats there; floatBottom: where its
 		// margin box ends there)
 		var floatBottom = 0.0;
-		function float(b:Box, top:Float):Int {
-			var fs = childSpace(w);
-			fs.exclusions = null;
-			var f = child(b, fs);
+		// (in a fragmentainer: one that doesn't fit broken at its end, its continuation carried to the next, unless it
+		// avoids a break and fits in one; from: a continuation, from its token, at the content's top)
+		function float(b:Box, top:Float, ?from:BreakToken):Int {
 			var m = b.style.model();
 			var fmt = res(m.margin[0], w), fmb = res(m.margin[2], w);
 			var clr = b.style.keyword("clear");
-			if (clr == "left" || clr == "right" || clr == "both") top = Math.max(top, ex.clear(clr));
+			// (cleared unless a continuation: one carried whole from its start is)
+			var fresh = from == null || !from.resumes.iterator().hasNext();
+			if (fresh && (clr == "left" || clr == "right" || clr == "both")) top = Math.max(top, ex.clear(clr));
+			var f = -1, broken = false;
+			if (from == null) {
+				var fs = childSpace(w);
+				fs.exclusions = null;
+				f = child(b, fs);
+			}
+			var breakable = b.kind != BlockReplaced && b.kind != InlineReplaced;
+			// (the next fragmentainer's whole, content before it here: a forced break before it, a float before it
+			// gone there, or it doesn't fit, monolithic or avoiding a break and fitting in one; carried from its
+			// start, a zero exclusion here, its fragment not adopted)
+			if (fr != null && from == null && fr.size < Math.POSITIVE_INFINITY) {
+				var at = space.pageTop + bt + pt + top - cy, h = fmt + frags.height(f);
+				var over = at + h > fr.size + 0.01 && (!breakable || Breaks.avoids(b) && h <= fr.size + 0.01);
+				if (at > 0.01 && (ex.pushed || Breaks.forcesBefore(b) || over)) {
+					fr.carry(b, new BreakToken(new haxe.ds.ObjectMap(), null, null));
+					ex.pushed = true;
+					ex.place(b.style.keyword("float") == "left", 0, 0, top, cx, cx + w);
+					floatBottom = top;
+					frags.remove(f);
+					return frags.add(Fragments.BOX, b, 0, 0);
+				}
+			}
+			if (fr != null && breakable) {
+				var at = space.pageTop + bt + pt + top - cy + (from != null ? 0 : fmt), h = f >= 0 ? frags.height(f) : 0.0;
+				if (from != null || at + h > fr.size + 0.01 && (!Breaks.avoids(b) || h > fr.size + 0.01)) {
+					var sub = new Breaks(fr.size, from);
+					function lay():Int {
+						var fs = childSpace(w);
+						fs.exclusions = null;
+						fs.fragmentation = sub;
+						fs.pageTop = at;
+						fs.reserve = space.reserve;
+						b.cacheFragment = -1;
+						return child(b, fs);
+					}
+					f = lay();
+					if (sub.decide()) f = lay();
+					var t = sub.token();
+					if (t != null) {
+						fr.carry(b, t);
+						broken = true;
+					}
+					for (d in sub.deferred) fr.defer(d);
+				}
+			}
+			// (a continuation without its top margin (one carried whole from its start keeps it); one broken without its
+			// bottom one)
+			if (!fresh) fmt = 0;
+			if (broken) fmb = 0;
 			var at = ex.place(b.style.keyword("float") == "left", b.marginLeft + frags.width(f) + b.marginRight, fmt + frags.height(f) + fmb, top, cx, cx + w);
 			var off = offset(b, w, pctBase);
 			frags.adopt(frag, f, at.x + b.marginLeft - bx + off.x, at.y + fmt - by + off.y);
 			floatBottom = at.y + fmt + frags.height(f) + fmb;
 			return f;
+		}
+		// (floats broken in the fragmentainer before whose continuations this box hosts: first, at its content's top)
+		if (fr != null && resume != null) for (c in fr.carried(box)) {
+			float(c.box, cy, c.token);
+			fr.floated(reserve + space.pageTop + bt + pt + floatBottom - cy);
 		}
 		var topCollapses = !root && bt == 0 && pt == 0;
 		var autoHeight = Math.isNaN(heightSpec);
@@ -159,7 +214,11 @@ class BlockFlow implements FormattingContext {
 			}
 			ls.unplace = n -> {
 				ex.drop(n);
-				for (_ in 0...n) if (placed.length > 0) frags.remove(placed.pop());
+				for (_ in 0...n) if (placed.length > 0) {
+					var f = placed.pop();
+					if (fr != null) fr.uncarry(frags.box(f));
+					frags.remove(f);
+				}
 			};
 			ls.placeAbsolute = (b, ax, ay) -> absolute(b, ax, ay);
 			var r = lines.layout(box, w, ls, frag, bl + pl, bt + pt, pctBase);
@@ -180,7 +239,8 @@ class BlockFlow implements FormattingContext {
 				c = resume.child;
 				truncate = !resume.forced && fr.resume(c) == null;
 			}
-			var prev:Null<Box> = null;
+			// (prev: the in-flow sibling before; last: any, a float too)
+			var prev:Null<Box> = null, last:Null<Box> = null;
 			while (c != null) {
 				if (fr != null && fr.stopped) {
 					broken = true;
@@ -190,10 +250,11 @@ class BlockFlow implements FormattingContext {
 				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept;
 				// in a fragmentainer a break before it, it whole)
 				if (c.floating) {
-					if (fr != null && fr.between(box, prev, c, reserve + space.pageTop + bt + pt + y)) {
+					if (fr != null && fr.between(box, last, c, reserve + space.pageTop + bt + pt + y)) {
 						broken = true;
 						break;
 					}
+					last = c;
 					float(c, cy + y + (atTop ? 0 : pos + neg));
 					if (fr != null) fr.floated(reserve + space.pageTop + bt + pt + floatBottom - cy);
 					c = c.next;
@@ -211,7 +272,7 @@ class BlockFlow implements FormattingContext {
 					broken = true;
 					break;
 				}
-				prev = c;
+				prev = last = c;
 				// (where its border box will be: its top margins as they will collapse, or clearance, §9.5.2)
 				// (none when truncated, or resumed: a continuation's start has no margin)
 				var strut = truncate || fr != null && fr.resume(c) != null ? {pos: 0.0, neg: 0.0} : predict(c, w);
