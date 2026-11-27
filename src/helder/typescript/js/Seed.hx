@@ -417,6 +417,8 @@ class Seed {
 
 	public static function libLock(o:Dynamic):Void(o : JsObject).locked = true;
 
+	public static function libShadowable(names:String):Void JsObject.shadowable = [for (n in names.split("\n")) n => true];
+
 	public static function libDefineMethod(target:Dynamic, k:Dynamic, fn:Dynamic, kind:Int, enumerable:Bool):Void Lib.defineMethod(target, k, fn, kind, enumerable);
 
 	public static function libDefineField(target:Dynamic, k:Dynamic, v:Dynamic):Void Lib.defineField(target, k, v);
@@ -682,6 +684,7 @@ class Seed {
 		stringCharCodeAtInt("", 0);
 		libBufferAdd(libBuffer(""), libBuffered(libBuffer("")));
 		libLock(libAllocate(libLayoutOf(f)));
+		libShadowable("");
 		diverge("", null, "");
 		libDefineMethod(o, "x", f, 0, true);
 		libDefineField(o, "x", null);

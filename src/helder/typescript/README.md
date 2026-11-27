@@ -93,7 +93,11 @@ sibling `.js`/`.mjs`), and that file is one of the program's roots, as
 an allowJs file is, its own imports followed the same way (a second
 snapshot when the first found new ones; a compilation server starts from
 the last build's roots). The declaration file stays the importer's types;
-an untyped package is typed as tsgo types its JavaScript. CommonJS (a
+an untyped package is typed as tsgo types its JavaScript. As a bundler does,
+`process.env.NODE_ENV` where nothing binds `process` is the build's mode
+(`"production"`, `"development"` under `helder dev`), with no process
+global, and `Function("return this")` (that body alone: how libraries
+find the global object) is a function returning globalThis. CommonJS (a
 `.cjs`, or a file of no import or export that uses `require`,
 `module.exports` or `exports`) is refused at the import naming the
 package; so is a package of values whose JavaScript is not there (one of
@@ -179,7 +183,10 @@ its methods are direct calls the same way, and `x instanceof C` is a test
 of x's hxmc class (the runtime's way where it fails: an object made from
 C's prototype otherwise, a class's own Symbol.hasInstance). Its
 prototype is locked: replacing a method, or hiding one with an instance's
-own property, diverges (TSHX100). A binding no
+own property, diverges (TSHX100), but for a method whose name the program
+writes as a property (`this.parse = this.parse.bind(this)`, zod's
+constructor: `Classes.written`): such a method is not called directly,
+and an instance may hide it (`JsObject.shadowable`). A binding no
 closure captures is a plain local (`Captures.hx`); a captured one is a
 shared box. A string local a loop only appends to (`s += x`, no other use
 of it in the loop) is built in a buffer while the loop runs, so the loop is

@@ -329,7 +329,10 @@ class Builtins {
 				o = prototypeOf(o);
 			}
 			return false;});
-		var c = constructor("Function", 1, p, (_, _, _) -> error("EvalError", "Code generation from strings is not supported"));
+		// (`Function("return this")`, how libraries find the global object, lodash's: a
+		// sloppy function's `this` is globalThis; any other code is no string to compile)
+		var c = constructor("Function", 1, p, (_, a, _) -> a.length == 1 && Std.isOfType(a[0], String) && StringTools.trim(a[0]) == "return this"
+			? native("anonymous", 0, (_, _, _) -> globals.get("globalThis")) : error("EvalError", "Code generation from strings is not supported"));
 	}
 
 	// Number, Boolean, Symbol

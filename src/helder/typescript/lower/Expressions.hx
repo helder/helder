@@ -67,6 +67,8 @@ abstract class Expressions extends Statements {
 		var k:Dynamic = n.kind == KindPropertyAccessExpression || n.kind == KindBinaryExpression || n.kind == KindPrefixUnaryExpression ? platform.constant(n) : null;
 		if (k != null) return Std.isOfType(k, Bool) ? ECast(TBool, EInt(k ? 1 : 0)) : EStr(k);
 		if (Platform.bare(n)) fail(n, "helder/native/platform's platform is the build's constants: read its fields (platform.os, platform.target, platform.arm)");
+		// (as a bundler does: process.env.NODE_ENV where nothing binds `process`, the build's mode; no process global)
+		if (nodeEnv(n)) return EStr(dev ? "development" : "production");
 		var result:Ex = switch (n.kind) {
 			case KindPropertyAccessExpression | KindElementAccessExpression | KindCallExpression if (chainTop(n)): optionalChain(n);
 			case KindNumericLiteral: EF64(Std.parseFloat(n.text));
@@ -940,6 +942,13 @@ abstract class Expressions extends Statements {
 	// read unboxed, else the runtime's element made a number
 	// (coerce: the operator makes a number of a value that is none, as
 	// ToNumber does: not + nor a relation, whose operands' value it keeps)
+	function nodeEnv(n:Node):Bool {
+		if (n.kind != KindPropertyAccessExpression || n.name().text != "NODE_ENV") return false;
+		var o = n.expression();
+		return o.kind == KindPropertyAccessExpression && o.name().text == "env" && o.expression().kind == KindIdentifier
+			&& o.expression().text == "process" && !env.exists("process");
+	}
+
 	function numeric(n:Node, slot:Bool, coerce:Bool = true):Ex {
 		var inner = strip(n);
 		while (inner.kind == KindNonNullExpression) inner = strip(inner.expression());

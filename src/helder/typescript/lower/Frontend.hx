@@ -107,6 +107,8 @@ class Frontend extends ApiCalls {
 		reps = new Reps(p, types, classes);
 		b.out.push(SExpr(ECall(reps.startup, new Vector(0))));
 		captures = new Captures(src);
+		var shadowed = classes.shadowed();
+		if (shadowed.length > 0) b.runtime("libShadowable", [EStr(shadowed.join("\n"))]);
 		prepareLayouts();
 		if (api != null && api.manifest != null) {
 			bridge = new Haxe(this, p, api.manifest);
