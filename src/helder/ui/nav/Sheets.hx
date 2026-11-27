@@ -56,6 +56,8 @@ class Sheets implements Markup {
 
 	@:noCompletion public static function Panel(props:{s:SheetState, children:Any}):UiView {
 		var s = props.s;
+		// (the window resized while it is open, a phone turned: as tall as it lets it, at its detent)
+		renderEffect(() -> helder.ui.ScreenContext.current.height(), h -> s.resized(h));
 		return <view tag={s.props.tag ?? "sheet-layer"} position="absolute" left={0} top={0} right={0} bottom={0}
 			onKeyDown={e -> if (e.key == Key.ESCAPE) s.dismiss(0)}>
 			<view slot="sheet-scrim" tag="sheet-scrim" position="absolute" left={0} top={0} right={0} bottom={0} opacity={s.scrim()}
@@ -118,6 +120,16 @@ class Sheets implements Markup {
 		var d = detents.indexOf(at.peek()) < 0 ? detents[0] : at.peek();
 		at(d);
 		to(d, null);
+	}
+
+	// (the window's height changed while it is open: its full height again, at its detent at once)
+	public function resized(h:Float) {
+		if (closing || height == 0 || h == height) return;
+		height = h;
+		tall = h - SafeArea.insets.peek().top - Sheets.TOP;
+		full(tall);
+		y.set(rest(at.peek()));
+		tick();
 	}
 
 	// the height left above a detent's top (Large 0)
