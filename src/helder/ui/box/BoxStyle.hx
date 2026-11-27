@@ -565,6 +565,17 @@ class BoxStyle {
 	// (scrolls' and scrollContainer's, read once: 1 scrolls, 2 hidden)
 	var overflows = -1;
 
+	// a transform (transform, translate, rotate, scale): what it paints moved
+	public var transformed(get, never):Bool;
+
+	function get_transformed():Bool {
+		if (moved < 0) moved = anonymous || keyword("transform") == "none" && keyword("translate") == "none" && keyword("rotate") == "none"
+			&& keyword("scale") == "none" ? 0 : 1;
+		return moved == 1;
+	}
+
+	var moved = -1;
+
 	// overflow other than visible on either axis (clips, and roots a formatting context)
 	public var clips(get, never):Bool;
 

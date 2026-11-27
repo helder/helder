@@ -18,6 +18,9 @@ class InlineConstraints {
 	public var floatEdge:Null<(y:Float) -> Float>;
 	public var direction:Int;
 	public var exactMetrics = false;
+	// (a block's own layout: the glyphs of its plain text not placed, made from the content when asked,
+	// BlockLines' LazyText; a hit test's lines have theirs)
+	public var lazyText = false;
 
 	public function new(width:Float, ?lineWidth:(y:Float, height:Float) -> {offset:Float, width:Float}, direction = -1, ?floatEdge:(y:Float) -> Float) {
 		this.width = width;

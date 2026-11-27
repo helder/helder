@@ -50,6 +50,10 @@ class SystemTextCheck {
 		check("sans-serif bold: the same family, heavier", bold != null && bold.family == ui && bold != sans, bold == null ? "none" : bold.family);
 		var mono = fonts.match("monospace", 400);
 		check("monospace: a fixed pitch face", mono != null && mono.advance(mono.glyph("i".code)) == mono.advance(mono.glyph("W".code)), mono == null ? "none" : mono.family);
+		// (its bold: the family's bold face where it has one, Menlo Bold, not its regular one emboldened)
+		var monoBold = fonts.match("monospace", 700);
+		check("monospace bold: the same family's bold face", monoBold != null && mono != null && monoBold.family == mono.family && monoBold.weight >= 600,
+			monoBold == null ? "none" : monoBold.family + " " + monoBold.subfamily);
 		// fallback: a face for each script, the system's
 		var faces = new Map<String, FontFile>();
 		for (s in SCRIPTS) {

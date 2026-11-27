@@ -428,26 +428,41 @@ class FontMatch {
 	// the OS/2 table's strikeout (yStrikeoutPosition, yStrikeoutSize), as
 	// Chromium reads it; else half the x-height and the underline's
 	public static function strikeout(f:FontFile, size:Float):{offset:Float, thickness:Float} {
-		var os2 = f.table("OS/2");
-		var scale = size / f.unitsPerEm;
-		if (os2 != null && os2.length >= 30) {
-			var thick = os2.get(26) << 8 | os2.get(27), pos = os2.get(28) << 8 | os2.get(29);
-			if (pos > 32767) pos -= 65536;
-			if (thick > 0 && pos > 0) return {offset: pos * scale, thickness: Math.max(1, thick * scale)};
-		}
+		var m = lines(f), scale = size / f.unitsPerEm;
+		if (m[2] > 0 && m[3] > 0) return {offset: m[3] * scale, thickness: Math.max(1, m[2] * scale)};
 		var u = underline(f, size);
 		return {offset: xHeight(f, size) / 2 + u.thickness / 2, thickness: u.thickness};
 	}
+
+	// (a face's underline position and thickness (post; 0x10000 none), its strikeout's thickness and position
+	// (OS/2), in its units: read once, as each text a paint decorates asks)
+	static function lines(f:FontFile):Array<Int> {
+		var m = decorationLines.get(f);
+		if (m != null) return m;
+		var post = f.table("post"), os2 = f.table("OS/2");
+		m = [0x10000, 0, 0, 0];
+		if (post != null && post.length >= 12) {
+			var pos = post.get(8) << 8 | post.get(9);
+			m[0] = pos > 32767 ? pos - 65536 : pos;
+			m[1] = post.get(10) << 8 | post.get(11);
+		}
+		if (os2 != null && os2.length >= 30) {
+			var pos = os2.get(28) << 8 | os2.get(29);
+			m[2] = os2.get(26) << 8 | os2.get(27);
+			m[3] = pos > 32767 ? pos - 65536 : pos;
+		}
+		decorationLines.set(f, m);
+		return m;
+	}
+
+	static final decorationLines = new haxe.ds.ObjectMap<FontFile, Array<Int>>();
 
 	// the underline's centre below the baseline and its thickness (the post
 	// table's: its position the stroke's top, FreeType's centre half its
 	// thickness lower, which Chromium draws around), in px
 	public static function underline(f:FontFile, size:Float):{offset:Float, thickness:Float} {
-		var post = f.table("post");
-		var scale = size / f.unitsPerEm;
-		if (post == null || post.length < 12) return {offset: size / 10, thickness: Math.max(1, size / 16)};
-		var pos = (post.get(8) << 8 | post.get(9)), thick = post.get(10) << 8 | post.get(11);
-		if (pos > 32767) pos -= 65536;
-		return {offset: (-pos + thick / 2) * scale, thickness: Math.max(1, thick * scale)};
+		var m = lines(f), scale = size / f.unitsPerEm;
+		if (m[0] == 0x10000) return {offset: size / 10, thickness: Math.max(1, size / 16)};
+		return {offset: (-m[0] + m[1] / 2) * scale, thickness: Math.max(1, m[1] * scale)};
 	}
 }

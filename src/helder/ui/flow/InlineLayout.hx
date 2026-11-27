@@ -52,6 +52,7 @@ class InlineLayout {
 	var fStart = new Vector<Int>(32);
 	var fEnd = new Vector<Int>(32);
 	var fRun = new Vector<Int>(32);
+	var fPlain = new Vector<Int>(32);
 
 	// (what the last layout was: the cache's key)
 	var laidWidth = Math.NaN;
@@ -352,6 +353,12 @@ class InlineLayout {
 	// its glyph run (glyphs; -1: none)
 	public inline function glyphRun(f:Int):Int
 		return fRun[f];
+
+	// whether a text run's glyphs were left unplaced (constraints' lazyText): its item's words in its set's
+	// first face, one after the other from its start (no justification's share, tab, right-to-left word,
+	// fallback face or ellipsis' cut); BlockLines makes them when they are asked for
+	public inline function plain(f:Int):Bool
+		return fPlain[f] != 0;
 }
 
 // What a fragment of an InlineLayout is

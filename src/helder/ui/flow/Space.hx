@@ -55,8 +55,11 @@ class Space {
 	// no pixel grid (print, PagedView's): a collapsed border split in halves exactly, and the fonts' metrics and
 	// leading unrounded (InlineConstraints.exactMetrics), not in whole pixels as Chromium's
 	public var exact = false;
-	// (a long document laid out where it is seen: the root's formatting context's blocks far from it skipped)
+	// (a long document laid out to a cut: the root's formatting context's blocks past it not yet, Lazy)
 	public var lazy:Null<Lazy> = null;
+	// (how many layouts at other sizes a box keeps beside its last, BlockFlow's cache: fewer in a long document,
+	// each one all of it)
+	public var kept = 3;
 
 	public function new(fragments:Fragments, fonts:FontMatch, width:Float, height:Float) {
 		this.fragments = fragments;
@@ -99,6 +102,7 @@ class Space {
 		s.left = left;
 		s.top = top;
 		s.exact = exact;
+		s.kept = kept;
 		return s;
 	}
 }

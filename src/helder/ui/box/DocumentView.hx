@@ -104,14 +104,16 @@ class DocumentView {
 	// (the glyph runs a window's paints placed: kept while the fragments are)
 	final placedRuns = new BoxPainter.PlacedRuns();
 	var sticky = false;
-	// (a long document's window, what within gave, and its lazy layout's skipped blocks)
-	var window:Null<Array<Float>> = null;
+	// (a long document laid out to a cut (upTo's bottom), Lazy: its cuts; what is after them whose styles a
+	// restyle left to work out, in the document's order (Box.UNSTYLED), the tail's boxes by element)
+	var bottom = Math.POSITIVE_INFINITY;
 	var lazy:Null<Lazy> = null;
-	final sizes = new ObjectMap<Box, {chars:Float, blocks:Int}>();
-	// (the elements a resize restyles in blocks a lazy layout skipped, by block: styled again when it is laid out)
-	final pending = new ObjectMap<Box, Array<Element>>();
-	// (a document of this many boxes is laid out lazily where within gives a window)
+	final unstyled:Array<Box> = [];
+	var tailOf:Null<ObjectMap<Element, Box>> = null;
+	// (a document of this many boxes is laid out to a cut where upTo gives one)
 	public static inline var LONG = 50000;
+	// (what a slice styles again before laying out more: about so many elements)
+	static inline var RESTYLED = 2000;
 
 	public function new(document:Document, cascade:DocumentCascade, ?options:DocumentViewOptions) {
 		this.document = document;
@@ -166,12 +168,11 @@ class DocumentView {
 		// (at another size where only viewport units read it: the elements they styled, styled again, the
 		// boxes and their kept content stay)
 		var resized = styles != null && (width != viewWidth || height != viewHeight) && !styles.holds(media);
-		// (what a block a lazy layout skipped holds not matched now: the block styled again whole when laid out)
-		var blocks = new ObjectMap<Element, Box>();
-		if (resized && lazy != null) for (b in lazy.boxes) if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE) blocks.set(cast b.node, b);
+		// (what is past the cut not matched now: styled again before it is laid out, Box.UNSTYLED)
+		var tail = resized ? tail() : null;
 		var restyled = resized ? styles.resize(media, el -> {
-			var b = blocks.get(el);
-			if (b != null) unstyled.set(b, true);
+			var b = tail == null ? null : tail.get(el);
+			if (b != null) postpone(b);
 			b != null;
 		}) : null;
 		if (styles == null || resized && restyled == null) {
@@ -186,15 +187,17 @@ class DocumentView {
 				changes = new DocumentChanges(document, styles);
 			}
 		}
+		// (at another width nearly every box is laid out again: the fragments before let go at once, not kept for
+		// the cache till they are three layouts' worth; the boxes' intrinsic sizes and inline content kept)
+		if (width != viewWidth && tree != null && tree.root != null) {
+			fragments.clear();
+			placedRuns.clear();
+			uncacheAll(tree.root);
+		}
 		viewWidth = width;
 		viewHeight = height;
 		if (restyled != null) {
-			var now = defer(restyled), redo = restyle(now, NOTHING);
-			skipped = null;
-			if (redo == TREE) {
-				restyle(waiting(), NOTHING);
-				build();
-			}
+			if (restyle(later(restyled), NOTHING) == TREE) build();
 			// (the rules in effect may be others now: the tracker's selectors made again)
 			if (changes != null) {
 				changes.detach();
@@ -207,102 +210,84 @@ class DocumentView {
 	// (the box tree made from the styles, nothing of the last one's layout kept)
 	function build() {
 		// (the elements kept to style again: styled as the tree is made)
-		var w = waiting();
+		var w = [];
+		for (b in unstyled) elementsOf(b, w);
+		unstyled.resize(0);
 		if (w.length > 0) styles.forget(w);
 		tree = BoxTree.build(document, styles, {contexts: options.contexts, counters: options.counters, image: image, svg: svg});
 		fonts.inlines.forget();
 		fragments.clear();
 		placedRuns.clear();
 		owners = null;
-		sizes.clear();
+		tailOf = null;
+		// (whether any box sticks: Sticky.apply walks every fragment)
 		sticky = false;
-		if (tree.root != null) marks(tree.root);
-	}
-
-	// (whether any box sticks: Sticky.apply walks every fragment; the blocks with nothing reaching outside
-	// them, floats or positioned boxes: what a lazy layout may skip, Box.LAZY; in top, and around it)
-	function marks(top:Box) {
-		var order = [], stack = [top];
-		while (stack.length > 0) {
-			var b = stack.pop();
-			order.push(b);
-			if (b.kind != Text && b.style.position == "sticky") sticky = true;
-			var c = b.first;
-			while (c != null) {
-				stack.push(c);
-				c = c.next;
+		if (tree.root != null) {
+			var stack = [tree.root];
+			while (stack.length > 0 && !sticky) {
+				var b = stack.pop();
+				if (b.kind != Text && b.style.position == "sticky") sticky = true;
+				var c = b.first;
+				while (c != null) {
+					stack.push(c);
+					c = c.next;
+				}
 			}
 		}
-		// (children before their parents, the reverse of a parent first order; then the boxes around it)
-		var k = order.length;
-		while (k-- > 0) mark(order[k]);
-		var a = top.parent;
-		while (a != null) {
-			mark(a);
-			a = a.parent;
-		}
 	}
 
-	// (what in a box reaches outside it, from its children's: an absolutely positioned box whose containing
-	// block is above it, a float whose formatting context is, a box that sticks or is fixed)
-	static function mark(b:Box) {
-		var open = 0;
-		if (b.kind != Text && b.kind != Break) {
-			if (b.floating) open |= FLOATS;
-			var p = b.style.position;
-			if (p == "fixed" || p == "sticky") open |= FIXED else if (b.absolute) open |= POSITIONED;
-		}
-		var holds = b.kind != Text && b.kind != Break && (b.style.positioned || b.style.containment.containingBlock);
-		var root = b.kind != Text && b.kind != Break && helder.ui.flow.BlockFlow.formattingRoot(b);
-		var c = b.first;
-		while (c != null) {
-			if (c.flags & POSITIONED != 0 && !holds) open |= POSITIONED;
-			if (c.flags & FLOATS != 0 && !root) open |= FLOATS;
-			open |= c.flags & FIXED;
-			c = c.next;
-		}
-		b.flags &= ~(Box.LAZY | POSITIONED | FLOATS | FIXED);
-		b.flags |= open;
-		// (an absolutely positioned box in it not laid out either while it's skipped: content-visibility: auto's
-		// containment)
-		if ((b.kind == Block || b.kind == TableWrapper && b.blockLevel && !b.floating && !b.absolute) && b.parent != null && b.first != null
-			&& open & (FLOATS | FIXED) == 0) b.flags |= Box.LAZY;
+	// Lays out, where the document is long (LONG boxes), from its top to
+	// bottom at least (in its coordinates), exactly: the rest, past the
+	// cut, not laid out yet, the document only as tall as what is (extend
+	// lays out more). The layouts from the next on; infinity: whole.
+	public function upTo(bottom:Float)
+		this.bottom = bottom;
+
+	// A long document's paint order made for what a paint shows (top...
+	// bottom, in its coordinates) and a margin of twice as much, as a
+	// window records it: made again only when less than half the margin is
+	// left. A short one's is the whole document's.
+	public function paints(top:Float, bottom:Float) {
+		if (!long() || root < 0) return;
+		var w = order != null ? order.window : null, m = Math.max(bottom - top, 1) * 2;
+		if (w != null && w[0] > Math.NEGATIVE_INFINITY && w[0] <= top - m / 2 && w[1] >= bottom + m / 2) return;
+		window = [top - m, bottom + m];
+		order = new PaintOrder(fragments, root, null, order != null ? order.count : 0, window);
 	}
 
-	// (mark's, kept on the boxes: in it, a positioned box whose containing block is above it; a float whose
-	// formatting context is)
-	static inline var POSITIONED = 1 << 30;
-	static inline var FLOATS = 1 << 29;
-	// (and one fixed or sticky: what a scroll moves)
-	static inline var FIXED = 1 << 28;
+	// (a long document's paint order's window: Math's infinities till a paint asks)
+	var window = [Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY];
 
-	// Lays out, where the document is long (LONG boxes), only what a window
-	// of it shows (top...bottom, a scroll's, in its coordinates) and what
-	// was laid out before: its other blocks skipped, their heights
-	// estimated, until reveal lays them out. The layouts from the next on.
-	public function within(top:Float, bottom:Float)
-		window = [top, bottom];
+	inline function long():Bool
+		return tree != null && tree.count > LONG;
 
-	// Whether the last layout skipped a block in top...bottom: what a frame
-	// showing it would show without its contents.
-	public function unlaid(top:Float, bottom:Float):Bool
-		return lazy != null && lazy.skipped(top, bottom);
-
-	// whether the last layout skipped some of it
+	// whether the last layout stopped short of the document's end
 	public var partial(get, never):Bool;
 
 	inline function get_partial():Bool
 		return lazy != null && lazy.count > 0;
 
-	// What a window shows that the last layout skipped, laid out (within's
-	// window moved there): how far what was at anchor (a scroll's top) moved
-	// in it, for the scroll to follow; null: nothing skipped there.
-	public function reveal(top:Float, bottom:Float, anchor:Float):Null<Float> {
-		window = [top, bottom];
-		if (lazy == null || tree == null || !lazy.skipped(top, bottom)) return null;
-		var a = this.anchor(anchor);
+	// Whether what top...bottom shows isn't laid out yet: past the cut.
+	public function unlaid(top:Float, bottom:Float):Bool
+		return partial && bottom > laidTo();
+
+	// how far the document is laid out: its bottom where it is whole
+	public function laidTo():Float
+		return root < 0 ? 0 : partial ? fragments.y(root) + (lazy.at < Math.POSITIVE_INFINITY ? lazy.at : fragments.height(root)) : Math.POSITIVE_INFINITY;
+
+	// Lays out to bottom at least, the cut moved on (what was laid out kept
+	// as it is: what comes after it laid out): whether it laid out more.
+	public function extend(bottom:Float):Bool {
+		if (!partial || tree == null || laidTo() >= bottom) return false;
+		this.bottom = Math.max(this.bottom, bottom);
 		lay();
-		return a == null ? 0 : moved(a);
+		return true;
+	}
+
+	// Lays out the rest of the document.
+	public function finish() {
+		bottom = Math.POSITIVE_INFINITY;
+		if (partial) lay();
 	}
 
 	// What is at y, to keep in place across a layout (scroll anchoring): the
@@ -349,79 +334,108 @@ class DocumentView {
 		return y - a.y;
 	}
 
-	// A box laid out where a lazy layout skipped it (a link's target): the
-	// window moved to the blocks skipped around it, laid out, until it is.
+	// A box laid out where a layout to a cut stopped short of it (a link's
+	// target): the cut moved past it.
 	public function show(b:Box) {
-		for (_ in 0...16) {
-			if (fragmentOf(b) >= 0 || window == null) return;
-			var a = b.parent;
-			while (a != null && fragmentOf(a) < 0) a = a.parent;
-			if (a == null) return;
-			var y = fragments.absolute(fragmentOf(a)).y;
-			window = [y - viewHeight, y + 2 * viewHeight];
-			lay();
-		}
+		if (!partial || fragmentOf(b) >= 0) return;
+		reaching = b;
+		lay();
+		// (a cut short of it all the same, before what a restyle left: on to its end)
+		if (fragmentOf(b) < 0) finish();
 	}
 
-	// (a block's content height at a content width, its contents unlaid: its last layout's, the text reflowed
-	// to the width; else its text's lines and its blocks, by its font size)
-	function estimate(b:Box, width:Float):Float {
-		if (b.laidWidth > 0 && width > 0) return b.laidHeight * Math.min(2, Math.max(0.5, b.laidWidth / width));
-		var t = sizes.get(b);
-		if (t == null) {
-			var n = 0.0, blocks = 0, stack = [b];
-			while (stack.length > 0) {
-				var x = stack.pop();
-				if (x.kind == Text) n += x.text.length else if (x.blockLevel) blocks++;
-				var c = x.first;
-				while (c != null) {
-					stack.push(c);
-					c = c.next;
-				}
+	// (the box the next layout lays out to)
+	var reaching:Null<Box> = null;
+
+	// (the boxes past the cuts, in the document's order, by element: what a restyle can leave for later)
+	function tail():Null<ObjectMap<Element, Box>> {
+		if (tailOf != null) return tailOf;
+		var rests = partial ? lazy.rests : long() && bottom < Math.POSITIVE_INFINITY ? restsAt(bottom) : null;
+		if (rests == null || rests.length == 0) return null;
+		var m = new ObjectMap<Element, Box>();
+		for (k in 0...rests.length) {
+			var b = rests[k];
+			while (b != null) {
+				if (b.node != null && b.node.nodeType == Node.ELEMENT_NODE && b.pseudo == null) m.set(cast b.node, b);
+				b = b.next;
 			}
-			sizes.set(b, t = {chars: n, blocks: blocks});
 		}
-		var size = b.style.css.fontSize();
-		return (Math.ceil(t.chars * size * 0.5 / Math.max(width, 1)) + t.blocks) * size * 1.3;
+		return tailOf = m;
 	}
 
-	// (of the elements to style again, those in a block the last layout skipped, kept for when it is laid out:
-	// the others)
-	function defer(els:Array<Element>):Array<Element> {
-		if (lazy == null || lazy.count == 0) return els;
-		skipped = new ObjectMap<Box, Bool>();
-		for (b in lazy.boxes) skipped.set(b, true);
-		return [for (el in els) if (!kept(el)) el];
-	}
-
-	// (the blocks the last layout skipped, while a resize's restyle keeps what is in them for later)
-	var skipped:Null<ObjectMap<Box, Bool>> = null;
-
-	// (an element in a block skipped, kept to style again when it is laid out)
-	function kept(el:Element):Bool {
-		if (skipped == null) return false;
-		var bs = boxesOf(el), b = bs.length > 0 ? bs[0] : null;
-		while (b != null && !skipped.exists(b)) b = b.parent;
-		if (b == null) return false;
-		var list = pending.get(b);
-		if (list == null) pending.set(b, list = []);
-		list.push(el);
-		return true;
-	}
-
-	// (every element kept to style again, let go of)
-	function waiting():Array<Element> {
+	// (where a cut at bottom would be in the layout there is, exact: each block of the root's formatting context
+	// its first child past it, innermost first, as Lazy's rests)
+	function restsAt(bottom:Float):Array<Box> {
 		var out = [];
-		for (list in pending) for (el in list) out.push(el);
-		pending.clear();
-		for (b in unstyled.keys()) elementsOf(b, out);
-		unstyled.clear();
+		if (root < 0) return out;
+		var f = root, top = fragments.y(root);
+		while (true) {
+			var c = fragments.first(f), last = -1, past = -1;
+			while (c >= 0) {
+				if (fragments.kind(c) == Fragments.BOX) {
+					if (top + fragments.y(c) > bottom) {
+						past = c;
+						break;
+					}
+					last = c;
+				}
+				c = fragments.next(c);
+			}
+			if (past >= 0) out.push(fragments.box(past));
+			// (into the block straddling it, where it is of the same formatting context)
+			if (last < 0) break;
+			var b = fragments.box(last);
+			if (b.kind != Block || helder.ui.flow.BlockFlow.formattingRoot(b)) break;
+			top += fragments.y(last);
+			f = last;
+		}
+		out.reverse();
 		return out;
 	}
 
-	// (the elements of a block kept to style again whole, in tree order)
+	// (a box past the cut to style again before it is laid out)
+	function postpone(b:Box) {
+		if (b.flags & Box.UNSTYLED != 0) return;
+		b.flags |= Box.UNSTYLED;
+		unstyled.push(b);
+	}
+
+	// (of the elements to style again, those past the cut left for when it gets there, their box past it
+	// postponed whole: the others)
+	function later(els:Array<Element>):Array<Element> {
+		var tail = tail();
+		if (tail == null) return els;
+		var now = [for (el in els) if (!postponed(el)) el];
+		// (the document's order: the cut goes past them in it)
+		if (unstyled.length > 1) {
+			var rank = new ObjectMap<Box, Int>(), k = 0, rests = partial ? lazy.rests : restsAt(bottom);
+			for (i in 0...rests.length) {
+				var b = rests[i];
+				while (b != null) {
+					rank.set(b, k++);
+					b = b.next;
+				}
+			}
+			unstyled.sort((a, b) -> (rank.get(a) ?? 0) - (rank.get(b) ?? 0));
+		}
+		return now;
+	}
+
+	// (an element past the cut: its box there postponed, styled again before it is laid out)
+	function postponed(el:Element):Bool {
+		var tail = tail();
+		if (tail == null) return false;
+		var e = el, b:Null<Box> = null;
+		while (e != null && (b = tail.get(e)) == null) e = e.parentElement;
+		if (b == null) return false;
+		postpone(b);
+		return true;
+	}
+
+	// (the elements of a box (its element and what is in it), in tree order)
 	static function elementsOf(b:Box, out:Array<Element>) {
-		var el:Element = cast b.node, stack:Array<Node> = [el];
+		if (b.node == null || b.node.nodeType != Node.ELEMENT_NODE) return;
+		var stack:Array<Node> = [b.node];
 		while (stack.length > 0) {
 			var n = stack.pop();
 			if (n.nodeType != Node.ELEMENT_NODE) continue;
@@ -434,60 +448,103 @@ class DocumentView {
 		}
 	}
 
-	// (the blocks a resize's changed rules weren't matched in, while skipped: styled again whole when laid out)
-	final unstyled = new ObjectMap<Box, Bool>();
+	// (the next of what a restyle left past the cut styled, about RESTYLED elements: the cut goes on past them)
+	function catchUp():Bool {
+		if (unstyled.length == 0) return false;
+		var els = [], k = 0;
+		while (k < unstyled.length && els.length < RESTYLED) {
+			unstyled[k].flags &= ~Box.UNSTYLED;
+			elementsOf(unstyled[k++], els);
+		}
+		unstyled.splice(0, k);
+		if (restyle(els, NOTHING) == TREE) build();
+		return true;
+	}
 
 	// (laid out at the view's size from the cache; the fragments of the layouts
 	// before it, kept for the cache, dropped once they are a few times a whole
 	// layout's, and everything laid out afresh; the elements kept to style
 	// again in the blocks it will lay out styled first)
 	function lay():Int {
-		if ((pending.keys().hasNext() || unstyled.keys().hasNext()) && lazy != null && window != null) {
-			var due = [];
-			for (b in lazy.within(window[0], window[1])) {
-				if (unstyled.exists(b)) {
-					unstyled.remove(b);
-					elementsOf(b, due);
-				}
-				var list = pending.get(b);
-				if (list == null) continue;
-				pending.remove(b);
-				for (el in list) due.push(el);
-			}
-			if (window[0] == Math.NEGATIVE_INFINITY) for (el in waiting()) due.push(el);
-			if (due.length > 0 && restyle(due, NOTHING) == TREE) {
-				restyle(waiting(), NOTHING);
-				build();
-			}
-		}
+		var f = once();
+		// (stopped before what a restyle left past the cut, short of the bottom: styled, laid out on)
+		while (partial && laidTo() < bottom && stoppedUnstyled() && catchUp()) f = once();
+		return f;
+	}
+
+	function stoppedUnstyled():Bool {
+		for (b in lazy.rests) if (b.flags & Box.UNSTYLED != 0) return true;
+		return false;
+	}
+
+	function once():Int {
 		lined = null;
 		textIndex = null;
 		placed = null;
 		var r = tree.root;
 		if (r == null) return root = -1;
+		// (the fragments of the layouts before it, kept for the cache, a few times what the last one holds: let go,
+		// everything laid out afresh)
 		if (fragments.count > 3 * whole + 4096) {
-			fragments.clear();
-			placedRuns.clear();
-			forget(r);
+			var held = holds();
+			if (held * 2 > fragments.count) whole = held else {
+				fragments.clear();
+				placedRuns.clear();
+				forget(r);
+			}
 		}
 		var fresh = fragments.count == 0;
 		var space = new Space(fragments, fonts, viewWidth, viewHeight);
-		if (window != null && tree.count > LONG) {
-			lazy ??= new Lazy(estimate);
-			lazy.top = window[0];
-			lazy.bottom = window[1];
+		if (bottom < Math.POSITIVE_INFINITY && tree.count > LONG) {
+			lazy ??= new Lazy();
+			lazy.bottom = bottom;
 			lazy.reset();
+			if (reaching != null) lazy.reach(reaching, 2 * viewHeight);
+			reaching = null;
 			space.lazy = lazy;
 		} else
 			lazy = null;
+		tailOf = null;
 		var f = (r.context ?? options.contexts.flow).layout(r, space);
+		// (past a box it was to reach: the cut where that left it)
+		if (lazy != null) bottom = Math.max(bottom, lazy.bottom);
 		var off = helder.ui.flow.BlockFlow.offset(r, viewWidth, viewHeight);
 		fragments.moveTo(f, r.marginLeft + off.x, r.topPositive + r.topNegative + off.y);
 		// (sticky boxes against their scrollport at a scroll of 0; printed pages have none: they stay)
 		if (sticky && (options.media == null || options.media.type != "print")) helder.ui.flow.Sticky.apply(fragments, f, viewWidth, viewHeight);
-		order = new PaintOrder(fragments, f, null, order != null ? order.count + (order.count >> 3) : 0);
+		order = new PaintOrder(fragments, f, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null);
 		if (fresh) whole = fragments.count;
 		return root = f;
+	}
+
+	// (the fragments the last layout's tree holds)
+	function holds():Int {
+		if (root < 0) return 0;
+		var n = 0, stack = [root];
+		while (stack.length > 0) {
+			var id = stack.pop();
+			n++;
+			var c = fragments.first(id);
+			while (c >= 0) {
+				stack.push(c);
+				c = fragments.next(c);
+			}
+		}
+		return n;
+	}
+
+	// (every box's fragment let go, its intrinsic sizes and inline content kept)
+	static function uncacheAll(b:Box) {
+		var stack = [b];
+		while (stack.length > 0) {
+			var x = stack.pop();
+			x.uncache();
+			var c = x.first;
+			while (c != null) {
+				stack.push(c);
+				c = c.next;
+			}
+		}
 	}
 
 	// (every box's layout cache let go)
@@ -520,9 +577,8 @@ class DocumentView {
 	public function update():Int {
 		var c = changes;
 		if (c == null || styles == null || tree == null || !c.dirty()) return NOTHING;
-		// (what is in a block a lazy layout skipped styled again when it is laid out)
-		var redo = restyle(defer(c.restyle.changed()), c.structure ? TREE : NOTHING);
-		skipped = null;
+		// (what is past the cut styled again when it is laid out)
+		var redo = restyle(later(c.restyle.changed()), c.structure ? TREE : NOTHING);
 		// (a text changed in place: its run's text, its blocks laid out again)
 		if (redo < TREE) for (t in c.texts) {
 			var boxes = boxesOf(t);
@@ -573,10 +629,10 @@ class DocumentView {
 				var ch = el.firstElementChild;
 				while (ch != null) {
 					var o = styles.cached(ch);
-					if (o != null && !queued.exists(ch) && !kept(ch)) {
+					if (o != null && !queued.exists(ch) && !postponed(ch)) {
 						olds.set(ch, o);
 						queued.set(ch, true);
-						styles.forget([ch]);
+						styles.drop(ch);
 						marked.push(ch);
 					}
 					ch = ch.nextElementSibling;
@@ -618,8 +674,8 @@ class DocumentView {
 					if (made != null) {
 						stale(p);
 						owned(e, made);
-						for (b in made) marks(b);
-						if (made.length == 0) marks(p);
+						tailOf = null;
+						for (b in made) if (b.style.position == "sticky") sticky = true;
 						done = true;
 					}
 				}
@@ -627,7 +683,6 @@ class DocumentView {
 			}
 			redo = done ? (redo > LAYOUT ? redo : LAYOUT) : TREE;
 		}
-		if (remade.length > 0 && redo < TREE) sizes.clear();
 		return redo;
 	}
 
@@ -942,11 +997,11 @@ class DocumentView {
 		if (lined != null) return lined;
 		var out = lined = [];
 		if (tree == null || tree.root == null || root < 0) return out;
-		// (in tree order: a box, its children, then its next sibling; past a block a lazy layout left unlaid)
-		var b:Null<Box> = tree.root, partly = lazy != null;
+		// (in tree order: a box, its children, then its next sibling)
+		var b:Null<Box> = tree.root;
 		while (b != null) {
 			if (b.lines != null && b.lines.fragment < fragments.count && fragments.box(b.lines.fragment) == b) out.push(b);
-			if (b.first != null && !(partly && b.flags & Box.LAZY != 0 && b.flags & Box.KEPT == 0)) b = b.first else {
+			if (b.first != null) b = b.first else {
 				while (b != null && b.next == null) b = b.parent;
 				b = b == null ? null : b.next;
 			}

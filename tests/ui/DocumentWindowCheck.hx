@@ -118,9 +118,18 @@ class DocumentWindowCheck {
 		// (the heap's live bytes as the steps go: it should stay flat over repeated drags)
 		var heaps = [];
 		Sys.println('DocumentWindowCheck: loaded in ${Math.round((Timer.stamp() - t0) * 1000)} ms, ${anchors.length} anchors, ${steps.length} steps');
+		// (after the load's frames, none drawn: laid out to its end all the same, between the loop's turns, as a
+		// hidden window is)
+		var hidden = -1.0, wholeIn = -1.0;
 		App.run(() -> {
 			var now = Timer.stamp();
 			last = now;
+			if (frame == 30 && wholeIn < 0) {
+				if (hidden < 0) hidden = now;
+				if (node.view.partial && now - hidden < 30) return;
+				wholeIn = node.view.partial ? -2 : now - hidden;
+				Sys.println('DocumentWindowCheck: ${wholeIn < 0 ? "not laid out whole in 30 s without frames" : "laid out whole without frames in " + Math.round(wholeIn * 1000) + " ms"}');
+			}
 			frame++;
 			// (the load's frames first, then a step each frame)
 			if (frame > 30 && k < steps.length) {
@@ -170,12 +179,12 @@ class DocumentWindowCheck {
 				Sys.println('DocumentWindowCheck: resized ${resizes.length} times, a frame each: median ${Math.round(resizes[resizes.length >> 1])} ms, worst ${Math.round(resizes[resizes.length - 1])} ms');
 				// (and the whole document laid out at another width, as a test or print lays it out: what a resize cost before)
 				var v = node.view;
-				v.within(Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY);
+				v.upTo(Math.POSITIVE_INFINITY);
 				var t1 = Timer.stamp();
 				v.layout(900, 768);
 				Sys.println('DocumentWindowCheck: the whole document laid out at 900 wide: ${Math.round((Timer.stamp() - t1) * 1000)} ms');
 				Sys.println('DocumentWindowCheck: frames drawn resizing or dragging the thumb with what is seen not laid out: ${unlaid.length == 0 ? "none" : unlaid.length + " (" + unlaid.slice(0, 5).join(", ") + ")"}');
-				var ok = slow.length == 0 && flat && unlaid.length == 0;
+				var ok = slow.length == 0 && flat && unlaid.length == 0 && wholeIn >= 0;
 				Sys.println('DocumentWindowCheck: ${ok ? "ok" : "FAIL"}');
 				w.close();
 				Sys.exit(ok ? 0 : 1);
@@ -264,6 +273,7 @@ class DocumentWindowCheck {
 			return;
 		}
 		var frames:Array<Float> = [], phase = "load", done = false, ready = false, count = 0;
+		var whole = false, wholeAt = 0.0, startAt = Timer.stamp();
 		// (--front: shown over the other windows, as a window in use presents, not made key: no focus taken)
 		var front = Sys.args().indexOf("--front") >= 0;
 		helder.os.OsThread.get(() -> {
@@ -311,7 +321,10 @@ class DocumentWindowCheck {
 			}
 		});
 		sys.thread.Thread.create(() -> {
-			while (!ready) Sys.sleep(0.05);
+			// (the document whole first: laid out to its end a slice at a time after its first frame)
+			var t0 = Timer.stamp();
+			while (!ready || !whole && Timer.stamp() - t0 < 20) Sys.sleep(0.05);
+			Sys.println('DocumentWindowCheck --real: the document whole ${whole ? "in " + Math.round((wholeAt - startAt) * 1000) + " ms" : "not in 20 s"}');
 			// (shown on the screen first: what the window server shows is sampled)
 			Sys.sleep(1);
 			Sys.println('DocumentWindowCheck --real: the window ${occlusion() & 2 != 0 ? "visible" : "occluded"} (occlusionState ${occlusion()})');
@@ -408,6 +421,11 @@ class DocumentWindowCheck {
 					w.window.surface.resizing = r[2] == 1;
 					w.window.resize(r[0], r[1]);
 				});
+			}
+			// (laid out to its end: told from here, as a layout's own state is read between its passes only)
+			if (!whole && count > 0 && !node.view.partial) {
+				whole = true;
+				wholeAt = Timer.stamp();
 			}
 			if (count++ > 30) {
 				ready = true;

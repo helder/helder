@@ -29,7 +29,7 @@ import helder.ui.draw.RunParagraph;
 // within what is seen, and drawn as an image. Clips are rectangles, rounded
 // ones with their radii (another path's its bounds); layers groups;
 // transforms pushed, each save's undone at its restore.
-class UiPainter implements Painter implements GlyphText implements ShadowPainter {
+class UiPainter implements Painter implements GlyphText implements RunText implements ShadowPainter {
 	public var width(default, null):Int;
 	public var height(default, null):Int;
 	public var matrix(get, never):Matrix;
@@ -56,6 +56,9 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 	// (the paragraphs made of glyph runs, kept while given in each frame's paints)
 	var paragraphs = new ObjectMap<ShapedRun, RunParagraph>();
 	var oldParagraphs = new ObjectMap<ShapedRun, RunParagraph>();
+	// (and those of the runs drawn where they are placed (runText), with that place)
+	var placed = new ObjectMap<ShapedRun, PlacedParagraph>();
+	var oldPlaced = new ObjectMap<ShapedRun, PlacedParagraph>();
 	var redrawn = new Map<String, Image>();
 
 	static inline var THIN = 2.5;
@@ -97,6 +100,10 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		oldParagraphs = paragraphs;
 		paragraphs = pg;
 		paragraphs.clear();
+		var pp = oldPlaced;
+		oldPlaced = placed;
+		placed = pp;
+		placed.clear();
 		var was = images;
 		images = drawn;
 		drawn = was;
@@ -281,8 +288,8 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		if (n == 0) return true;
 		var color = colorOf(paint);
 		if (color.a == 0) return true;
-		var x0 = run.xs[0], base = run.ys[0], right = x0;
-		for (k in 0...n) if (run.xs[k] > right) right = run.xs[k];
+		var x0 = run.x(0), base = run.y(0), right = x0;
+		for (k in 0...n) if (run.x(k) > right) right = run.x(k);
 		var w = right - x0 + run.size;
 		// (a run given again, a view's kept one: its paragraph again)
 		var kept = paragraphs.get(run) ?? oldParagraphs.get(run);
@@ -303,14 +310,60 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 		p.spans.resize(n);
 		for (k in 0...n) {
 			p.faces[k] = run.face;
-			p.ids[k] = run.ids[k];
-			p.xs[k] = run.xs[k] - x0;
-			p.dys[k] = run.ys[k] - base;
+			p.ids[k] = run.id(k);
+			p.xs[k] = run.x(k) - x0;
+			p.dys[k] = run.y(k) - base;
 			p.sizes[k] = run.size;
 			p.obliques[k] = oblique;
 			p.spans[k] = -1;
 		}
 		paragraphs.set(run, p);
+		canvas.text(p, x0, base, w, Left, color);
+		return true;
+	}
+
+	public function runText(run:ShapedRun, x:Float, baseline:Float, snap:Bool, paint:Paint):Bool {
+		if (paint.shader != null || run.scaleX != 1 || run.bold > 0) return false;
+		var n = run.count;
+		if (n == 0) return true;
+		var color = colorOf(paint);
+		if (color.a == 0) return true;
+		var kept = placed.get(run) ?? oldPlaced.get(run);
+		if (kept != null && kept.x == x && kept.y == baseline && kept.snap == snap) {
+			placed.set(run, kept);
+			canvas.text(kept.paragraph, kept.x0, kept.base, kept.paragraph.width, Left, color);
+			return true;
+		}
+		inline function sx(k:Int):Float {
+			var gx = x + run.x(k);
+			return snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx;
+		}
+		inline function sy(k:Int):Float {
+			var gy = baseline + run.y(k);
+			return snap ? Math.round(gy) : gy;
+		}
+		var x0 = sx(0), base = sy(0), right = x0;
+		for (k in 0...n) if (sx(k) > right) right = sx(k);
+		var w = right - x0 + run.size;
+		var p = new RunParagraph(w, run.size, w, 0, run.size, [{top: 0, baseline: 0, width: w, height: run.size, start: 0, end: n}]);
+		var oblique = run.skew != 0;
+		p.faces.resize(n);
+		p.ids.resize(n);
+		p.xs.resize(n);
+		p.dys.resize(n);
+		p.sizes.resize(n);
+		p.obliques.resize(n);
+		p.spans.resize(n);
+		for (k in 0...n) {
+			p.faces[k] = run.face;
+			p.ids[k] = run.id(k);
+			p.xs[k] = sx(k) - x0;
+			p.dys[k] = sy(k) - base;
+			p.sizes[k] = run.size;
+			p.obliques[k] = oblique;
+			p.spans[k] = -1;
+		}
+		placed.set(run, new PlacedParagraph(p, x, baseline, snap, x0, base));
 		canvas.text(p, x0, base, w, Left, color);
 		return true;
 	}
@@ -538,3 +591,22 @@ class UiPainter implements Painter implements GlyphText implements ShadowPainter
 }
 
 private typedef Shape = {x:Float, y:Float, w:Float, h:Float, radius:Float, corners:Null<Corners>, next:Int};
+
+// (a run's paragraph as drawn where it was placed: x, y and snap given, its first glyph's place)
+private class PlacedParagraph {
+	public final paragraph:RunParagraph;
+	public final x:Float;
+	public final y:Float;
+	public final snap:Bool;
+	public final x0:Float;
+	public final base:Float;
+
+	public function new(paragraph, x, y, snap, x0, base) {
+		this.paragraph = paragraph;
+		this.x = x;
+		this.y = y;
+		this.snap = snap;
+		this.x0 = x0;
+		this.base = base;
+	}
+}

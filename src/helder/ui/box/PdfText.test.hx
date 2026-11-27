@@ -75,9 +75,9 @@ private function page(t:String):String
 private function boxes(run:helder.pdf.PdfRun, op:helder.canvas.doc.Recorder.Op) {
 	var r = op.run, m = op.matrix, tol = 0.05;
 	for (k in 0...r.count) {
-		var c = r.starts[k], n = r.ends[k] - c;
+		var c = r.start(k), n = r.end(k) - c;
 		if (n <= 0) continue;
-		var gx = m.a * r.xs[k] + m.c * r.ys[k] + m.e, gy = m.b * r.xs[k] + m.d * r.ys[k] + m.f;
+		var gx = m.a * r.x(k) + m.c * r.y(k) + m.e, gy = m.b * r.x(k) + m.d * r.y(k) + m.f;
 		var box = [for (g in run.glyphs) if (g.start <= c && c < g.end) g][0];
 		if (box == null) {
 			fail('no box for ${run.text.substr(c, n)} at $c');

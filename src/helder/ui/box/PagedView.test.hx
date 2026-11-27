@@ -185,6 +185,6 @@ function tests() {
 // (where a text fragment of a page's first starts, by its text: from the page area's left)
 private function textX(v:PagedView, text:String):Float {
 	var f = v.fragments;
-	for (k in 0...f.count) if (f.kind(k) == Fragments.TEXT && f.run(k) >= 0 && f.runs[f.run(k)].shown() == text) return f.absolute(k).x;
+	for (k in 0...f.count) if (f.kind(k) == Fragments.TEXT && f.glyphs(k) != null && f.glyphs(k).shown() == text) return f.absolute(k).x;
 	return Math.NaN;
 }

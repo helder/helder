@@ -31,30 +31,35 @@ class BlockFlow implements FormattingContext {
 		// (beside floats only where one reaches below its top, and its last layout was clear of them)
 		var ex = space.exclusions;
 		var clear = ex == null || ex.empty || ex.lowest() <= space.top + 1e-6;
-		var reusable = box.flags & Box.ESCAPES == 0 && space.fragmentation == null && (ex == null || ex.empty || clear && box.flags & Box.UNFLOATED != 0);
+		// (one whose layout left absolutely positioned boxes for a containing block outside it: its last layout
+		// alone, those boxes given to the blocks around it again with their static places, Box.escapes)
+		var escapes = box.flags & Box.ESCAPES != 0;
+		var reusable = space.fragmentation == null && (ex == null || ex.empty || clear && box.flags & Box.UNFLOATED != 0)
+			&& (!escapes || box.escapes != null);
 		var cached = reusable ? hit(box, key, space) : -1;
-		if (cached >= 0) return cached;
-		var lazy = space.lazy, frags = space.fragments;
-		// (skipped before at this width and still outside the window: the same fragment)
-		if (lazy != null && box.skipped >= 0 && box.skippedKey == key && box.skippedIn == frags.generation && reusable
-			&& lazy.again(box, space.top, frags.height(box.skipped)))
-			return box.skipped;
-		var floats = ex == null ? 0 : ex.count, skipped = lazy != null ? lazy.count : 0;
+		if (cached >= 0 && (!escapes || cached == box.cacheFragment && box.cacheWidth == key)) {
+			if (escapes) {
+				var e = box.escapes;
+				again(e[0], space.positioned);
+				if (e.length > 1) again(e[1], space.fixed);
+			}
+			return cached;
+		}
+		var lazy = space.lazy;
+		var floats = ex == null ? 0 : ex.count, cuts = lazy != null ? lazy.count : 0;
+		var p0 = space.positioned == null ? 0 : space.positioned.boxes.length, x0 = space.fixed == null ? 0 : space.fixed.boxes.length;
 		var f = box.kind == BlockReplaced || box.kind == InlineReplaced ? replaced(box, space) : container(box, space);
 		if (clear && (ex == null || ex.count == floats)) box.flags |= Box.UNFLOATED else box.flags &= ~Box.UNFLOATED;
-		// (some of it skipped by a lazy layout: not kept, laid out again where it is seen; skipped itself, its
-		// fragment kept for the next layout that skips it)
-		if (lazy != null && lazy.count != skipped) {
+		// (what it left the blocks around it: kept, given again where it is reused)
+		box.escapes = box.flags & Box.ESCAPES == 0 ? null : space.fixed == null || space.fixed == space.positioned ? [part(space.positioned, p0)] : [
+			part(space.positioned, p0),
+			part(space.fixed, x0)
+		];
+		// (cut short by a lazy layout: not kept, laid out again as the cut moves on)
+		if (lazy != null && lazy.count != cuts) {
 			box.uncache();
-			if (lazy.count == skipped + 1 && lazy.boxes[skipped] == box) {
-				box.skipped = f;
-				box.skippedKey = key;
-				box.skippedIn = frags.generation;
-			} else
-				box.skipped = -1;
 			return f;
 		}
-		box.skipped = -1;
 		keep(box, key, space, space.fragmentation == null ? f : -1);
 		return f;
 	}
@@ -77,9 +82,18 @@ class BlockFlow implements FormattingContext {
 		return -1;
 	}
 
+	// (the absolutely positioned boxes a list got from from on)
+	static function part(list:Null<Positioned>, from:Int):Positioned {
+		var p = new Positioned();
+		if (list != null) for (k in from...list.boxes.length) p.add(list.boxes[k], list.fragments[k], list.xs[k], list.ys[k], list.aligns[k]);
+		return p;
+	}
+
+	// (them given to a list again)
+	static function again(p:Positioned, list:Null<Positioned>)
+		if (list != null) for (k in 0...p.boxes.length) list.add(p.boxes[k], p.fragments[k], p.xs[k], p.ys[k], p.aligns[k]);
+
 	static inline var MORE = 5;
-	// (the layouts kept beside the last)
-	static inline var KEPT = 3;
 
 	@:allow(helder.ui.flow) static function keep(box:Box, key:Float, space:Space, f:Int) {
 		// (the last one kept beside, at another key; a fragment not to reuse lets all go)
@@ -91,7 +105,7 @@ class BlockFlow implements FormattingContext {
 			while (k < m.length) {
 				if (m[k] == key && same(m[k + 1], space.height) && same(m[k + 2], space.fixedHeight) && m[k + 3] == ignore) m.splice(k, MORE) else k += MORE;
 			}
-			if (m.length >= KEPT * MORE) m.splice(0, MORE);
+			if (m.length >= space.kept * MORE) m.splice(0, m.length - (space.kept - 1) * MORE);
 			m.push(box.cacheWidth);
 			m.push(box.cacheHeight);
 			m.push(box.cacheFixedHeight);
@@ -109,34 +123,8 @@ class BlockFlow implements FormattingContext {
 		return a == b || Math.isNaN(a) && Math.isNaN(b);
 
 	// (a box laid out by its own context, or this one: replaced boxes have none)
-	public function child(box:Box, space:Space):Int {
-		if (box.kind != TableWrapper || space.lazy == null || space.fragmentation != null)
-			return box.context != null ? box.context.layout(box, space) : layout(box, space);
-		// (a table a lazy layout skips as it does a block: as wide and tall as it last was, its rows not laid out)
-		var h = space.lazy.skip(box, space.top, space.width);
-		if (Math.isNaN(h)) {
-			var f = box.context != null ? box.context.layout(box, space) : layout(box, space);
-			box.laidWidth = space.fragments.width(f);
-			box.laidHeight = space.fragments.height(f);
-			box.flags |= Box.KEPT;
-			box.skipped = -1;
-			return f;
-		}
-		var m = box.style.model(), cb = space.width;
-		var mt = res(m.margin[0], cb), mb = res(m.margin[2], cb);
-		box.marginLeft = res(m.margin[3], cb);
-		box.marginRight = res(m.margin[1], cb);
-		box.topPositive = mt > 0 ? mt : 0;
-		box.topNegative = mt < 0 ? mt : 0;
-		box.bottomPositive = mb > 0 ? mb : 0;
-		box.bottomNegative = mb < 0 ? mb : 0;
-		box.through = false;
-		var f = space.fragments.add(Fragments.BOX, box, box.laidWidth > 0 ? box.laidWidth : cb, h);
-		box.skipped = f;
-		box.skippedKey = cb;
-		box.skippedIn = space.fragments.generation;
-		return f;
-	}
+	public function child(box:Box, space:Space):Int
+		return box.context != null ? box.context.layout(box, space) : layout(box, space);
 
 	// ---- block containers
 
@@ -184,22 +172,6 @@ class BlockFlow implements FormattingContext {
 				if (Lens.isAuto(s.minHeight) && !s.clips) floor = ratioCap(box, s, space.width, space.height, bpx, bpy);
 			}
 		}
-		// (a long document's block far from where it is seen: its contents laid out when it comes near, Lazy's
-		// estimate its height meanwhile, nothing else of its layout made)
-		if (space.lazy != null && fr == null && !box.style.hidden) {
-			var est = space.lazy.skip(box, space.top, w);
-			if (!Math.isNaN(est)) {
-				var content = Math.isNaN(heightSpec) ? est : heightSpec;
-				var h = space.ignoreHeight ? Math.max(0, content) : clampHeight(s, space.height, bpy, content);
-				box.topPositive = mt > 0 ? mt : 0;
-				box.topNegative = mt < 0 ? mt : 0;
-				box.bottomPositive = mb > 0 ? mb : 0;
-				box.bottomNegative = mb < 0 ? mb : 0;
-				box.through = false;
-				box.flags &= ~Box.ESCAPES;
-				return space.fragments.add(Fragments.BOX, box, w + bpx, h + bpy);
-			}
-		}
 		// (its height ended in a fragmentainer before, its content going on past it: no end edges here either, no height)
 		if (resume != null && !Math.isNaN(heightSpec) && !box.absolute && !box.floating && resume.consumed >= heightSpec + pb + bb - 0.01) {
 			bb = 0;
@@ -233,15 +205,13 @@ class BlockFlow implements FormattingContext {
 		var fixed = box.parent == null ? new Positioned() : cbox ? positioned : space.fixed ?? positioned;
 		var escaped = space.positioned != null ? space.positioned.boxes.length : 0;
 		var escapedFixed = space.fixed != null ? space.fixed.boxes.length : 0;
-		// (the last child's space, where a lazy layout skipped it: the next one's)
-		var spare:Null<Space> = null;
 		inline function childSpace(width:Float):Space {
 			var cs = space.child(width, pctBase);
 			cs.exclusions = ex;
 			cs.positioned = positioned;
 			cs.fixed = fixed;
 			cs.left = cx;
-			// (the root's formatting context's blocks alone skipped: their tops are the document's)
+			// (the root's formatting context's blocks alone cut: their tops are the document's)
 			cs.lazy = root && box.parent != null ? null : space.lazy;
 			return cs;
 		}
@@ -403,10 +373,19 @@ class BlockFlow implements FormattingContext {
 			}
 			// (prev: the in-flow sibling before; last: any, a float too)
 			var prev:Null<Box> = null, last:Null<Box> = null;
+			// (a long document laid out to a cut: what is past it, or after a child cut short, not yet, Lazy)
+			var lazy = fr == null && !(root && box.parent != null) ? space.lazy : null, cutAfter = false;
 			while (c != null) {
 				if (fr != null && fr.stopped) {
 					broken = true;
 					break;
+				}
+				if (lazy != null) {
+					if (cutAfter) {
+						lazy.stop(box, c);
+						break;
+					}
+					if (lazy.cut(box, c, cy + y + (atTop ? 0 : pos))) break;
 				}
 				var cs = c.style;
 				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept;
@@ -448,15 +427,7 @@ class BlockFlow implements FormattingContext {
 						cleared = true;
 					}
 				}
-				var space2 = spare != null ? spare.again(space, w, pctBase) : childSpace(w);
-				if (spare != null) {
-					space2.exclusions = ex;
-					space2.positioned = positioned;
-					space2.fixed = fixed;
-					space2.left = cx;
-					space2.lazy = root && box.parent != null ? null : space.lazy;
-					spare = null;
-				}
+				var space2 = childSpace(w);
 				space2.top = cy + py;
 				// (a formatting context's root beside floats: in the room they leave, §9.5)
 				var shift = 0.0;
@@ -514,10 +485,11 @@ class BlockFlow implements FormattingContext {
 						for (d in sub.deferred) fr.defer(d);
 					}
 				}
-				var lazy = space2.lazy, skipped = lazy != null ? lazy.count : 0;
+				var cuts = lazy != null ? lazy.count : 0;
 				if (sub == null) cf = child(c, space2);
-				// (skipped itself: its space kept nothing, the next child's)
-				if (lazy != null && lazy.count == skipped + 1 && lazy.boxes[skipped] == c) spare = space2;
+				if (lazy != null && lazy.reaching) lazy.passed(c, cy + py);
+				// (cut short inside: the children after it neither)
+				if (lazy != null && lazy.count != cuts) cutAfter = true;
 				if (truncate) {
 					c.topPositive = 0;
 					c.topNegative = 0;
@@ -630,11 +602,6 @@ class BlockFlow implements FormattingContext {
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
 		// (size containment: its content's height contain-intrinsic-height's, not its children's)
 		if (contain.has(Size)) content = box.style.intrinsicSize(false);
-		if (fr == null) {
-			box.laidWidth = w;
-			box.laidHeight = content;
-			box.flags |= Box.KEPT;
-		}
 		var h = space.ignoreHeight ? Math.max(0, autoHeight ? content : heightSpec) : clampHeight(s, space.height, bpy, autoHeight ? content : heightSpec);
 		if (content > h && !Math.isNaN(floor)) h = Math.max(h, Math.min(content, floor));
 		box.through = false;

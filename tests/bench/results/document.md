@@ -177,6 +177,25 @@ load and while dragging, a forced full relayout at 900 px toward
 Ladybird's design is a reference where it is simpler and measures as
 well.
 
+## Exact layout (2026-11-27)
+
+The whole document laid out, nothing estimated: what is seen first,
+the rest in slices between the loop's turns (helder.os App.tasks, with
+or without frames). The HTML Standard, the same Mac, least of 3 runs,
+measured as the references above (a 1280 × 800 viewport; the relayout
+the whole document at 900 px, from 1280):
+
+| | helder | Chromium 149 | Ladybird 2026.47.8 |
+| --- | ---: | ---: | ---: |
+| load: parsed, styled and laid out whole | 1,929 ms | 1,794 ms | 4,153 ms |
+| a forced relayout at 900 px | 287 ms | 139 ms | 294 ms |
+| RSS after load | 843 MB | 1,176 MB | 2,298 MB |
+| live heap after load | 785 MB | | |
+
+A scroll's paint (the page laid out whole, drawn offscreen a frame at a
+time): a wheel's frame (60 px) allocates nothing at the median; a
+thumb's jump (20,000 px) 1.0 MB, where it was 4.1 MB.
+
 ## Is it worth it
 
 - Wins: scrolling costs the engine nothing (the compositor moves the

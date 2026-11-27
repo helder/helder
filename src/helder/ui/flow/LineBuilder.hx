@@ -35,6 +35,8 @@ class LineBuilder {
 	var dir = 0;
 	// (the fonts' metrics and leading unrounded: InlineConstraints.exactMetrics)
 	var exact = false;
+	// (this layout's plain text left without its glyphs: InlineConstraints.lazyText, no ellipsis to cut it)
+	var lazy = false;
 	// (the break found: the piece and unit the next line starts at, its flags, the width used)
 	var endP = 0;
 	var endU = 0;
@@ -64,6 +66,7 @@ class LineBuilder {
 		var root = c.root;
 		dir = cons.direction < 0 ? c.direction : cons.direction;
 		exact = cons.exactMetrics;
+		lazy = cons.lazyText && root.textOverflow() != Ellipsis && root.lineClamp() <= 0;
 		var indent = root.textIndent(), eachLine = root.textIndentEachLine(), hanging = root.textIndentHanging();
 		var strut = strutHeight();
 		var clamp = root.lineClamp();
@@ -125,6 +128,13 @@ class LineBuilder {
 		out.nextPiece = p;
 		out.nextUnit = u;
 		out.nextForced = afterForced;
+		release();
+	}
+
+	// (the content and layout let go: one builder for every layout, which would keep the last document whole)
+	function release() {
+		c = null;
+		out = null;
 	}
 
 	// (the last line taken back)
@@ -149,6 +159,7 @@ class LineBuilder {
 			u = endU;
 		}
 		minimum = false;
+		release();
 		return widest;
 	}
 
@@ -519,6 +530,7 @@ class LineBuilder {
 		o.fLevel[f] = item >= 0 ? c.level(item) : dir;
 		o.fStart[f] = o.fEnd[f] = item >= 0 ? c.start(item) : 0;
 		o.fRun[f] = -1;
+		o.fPlain[f] = 0;
 		fSlot[f] = slot;
 		fRise[f] = 0;
 		return f;
@@ -585,10 +597,11 @@ class LineBuilder {
 					o.fDescent[textFragment] = c.fonts.descent(f, exact);
 					fRise[textFragment] = o.fAscent[textFragment];
 					o.fRun[textFragment] = o.glyphs.begin(c.fonts.set(f));
+					o.fPlain[textFragment] = lazy && plainFrom(p, i, last) ? 1 : 0;
 				}
 				// (preserved white space too: only removed spaces leave a line empty)
 				filled = true;
-				glyphsOf(i, from, to, x - o.fX[textFragment], st == HANG ? 0 : expansion);
+				if (o.fPlain[textFragment] == 0 || BlockLines.check) glyphsOf(i, from, to, x - o.fX[textFragment], st == HANG ? 0 : expansion);
 				o.fWidth[textFragment] = x + w - o.fX[textFragment];
 				o.fEnd[textFragment] = to;
 				if (i == lastText) {
@@ -1278,6 +1291,21 @@ class LineBuilder {
 		}
 	}
 
+	// (whether the text of piece i's item on the line, from i to at most last, is plain: words its set's
+	// first face shaped in order, no tab, no justification's share)
+	function plainFrom(p:Int, i:Int, last:Int):Bool {
+		var item = c.pieceItem(i), sh = c.shaper;
+		for (k in i...last + 1) {
+			var kind = c.pieceKind(k);
+			if (c.pieceItem(k) != item || kind == InlineContent.ITEM) break;
+			var st = state[k - p];
+			if (st == REMOVED) continue;
+			var e = c.pieceEntry(k);
+			if (kind == InlineContent.TAB || e >= 0 && !sh.plain(e) || st != HANG && expansion != 0 && justifies(k)) return false;
+		}
+		return true;
+	}
+
 	// --- justification ---
 
 	// (the space each justification opportunity is given; its kind: text-justify's)
@@ -1372,6 +1400,7 @@ class LineBuilder {
 		o.fStart = ints(o.fStart, n);
 		o.fEnd = ints(o.fEnd, n);
 		o.fRun = ints(o.fRun, n);
+		o.fPlain = ints(o.fPlain, n);
 	}
 
 	static function ints(v:Vector<Int>, n:Int):Vector<Int> {

@@ -27,8 +27,8 @@ class ColorGlyphs {
 		plain.scaleX = r.scaleX;
 		plain.skew = r.skew;
 		for (i in 0...r.count)
-			if (!colour || !draw(p, face, r.ids[i], r.size, r.xs[i], r.ys[i], r.scaleX, r.skew, r.palette, paint.color, paint.alpha))
-				plain.push(r.ids[i], r.xs[i], r.ys[i], r.starts[i], r.ends[i]);
+			if (!colour || !draw(p, face, r.id(i), r.size, r.x(i), r.y(i), r.scaleX, r.skew, r.palette, paint.color, paint.alpha))
+				plain.push(r.id(i), r.x(i), r.y(i), r.start(i), r.end(i));
 		glyphs.addRun(plain);
 		if (!glyphs.path.isEmpty()) p.fill(glyphs.path, paint);
 	}
