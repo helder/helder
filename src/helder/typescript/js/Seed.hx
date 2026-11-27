@@ -494,7 +494,7 @@ class Seed {
 	// `a.push(v)` on a number array with Array.prototype's push: its new
 	// length; -1 where it is not (the call then made as any other)
 	public static function libPushNumber(o:JsArray, v:Float):Float {
-		if (o.nums == null || o.shape.size() > 0 || o.proto != Builtins.ArrayProto || Builtins.arrayMethodsChanged || !o.extensible) return -1;
+		if (o.nums == null || o.shape != Shapes.array || o.proto != Builtins.ArrayProto || Builtins.arrayMethodsChanged || !o.extensible) return -1;
 		o.nums.push(v);
 		return o.length = o.nums.length;
 	}
