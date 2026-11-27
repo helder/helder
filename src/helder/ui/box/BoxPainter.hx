@@ -68,10 +68,52 @@ class BoxPainter {
 		var a = area;
 		var ax0 = (a == null ? 0 : a[0]) - MARGIN, ay0 = (a == null ? 0 : a[1]) - MARGIN;
 		var ax1 = (a == null ? p.width : a[2]) + MARGIN, ay1 = (a == null ? p.height : a[3]) + MARGIN;
-		var runs = cull ? order.chunks() : null;
 		var shifted = scrolls != null && shift();
+		// (into a display list: each flat context's calls a span, copied from the paint before where it is the same)
+		var list = spans == null || PaintSpans.off ? null : listOf(p);
+		if (list != null) {
+			var sum = 0.0;
+			if (shifted) for (v in shifts) sum = sum * 31 + v;
+			spans.begin(order, list, area, sum);
+			starts.resize(order.count);
+			for (k in 0...order.count) starts[k] = -1;
+			var r = order.contexts;
+			while (r-- > 0) if (order.contextFlat(r) && order.contextEnd(r) > order.contextStart(r)) starts[order.contextStart(r)] = r;
+			open.resize(0);
+		} else if (spans != null) spans.none();
+		// (runs of steps whose bounds miss what is seen passed over at once: chunks; with spans, a flat context
+		// moved by its scrolls (a list's rows out of view))
+		var runs = cull && list == null ? order.chunks() : null;
 		var k = 0;
 		while (k < order.count) {
+			if (list != null) {
+				// (the spans ending here kept; one starting here copied, else begun)
+				while (open.length > 0 && open[open.length - 1] <= k) close();
+				var r = starts[k];
+				if (r >= 0 && cull) {
+					var st = order.stateOf[k];
+					if (order.contextMisses(r, shifted ? shifts[2 * st] : 0, shifted ? shifts[2 * st + 1] : 0, ax0, ay0, ax1, ay1)) {
+						culled();
+						k = order.contextEnd(r);
+						continue;
+					}
+				}
+				if (r >= 0) {
+					enter(p, order.stateOf[k]);
+					var q = spans.before(order, r);
+					if (q >= 0 && spans.copy(r, q)) {
+						k = order.contextEnd(r);
+						continue;
+					}
+					spans.mark();
+					open.push(r);
+					open.push(list.markInts());
+					open.push(list.markFloats());
+					open.push(list.markResources());
+					open.push(1);
+					open.push(order.contextEnd(r));
+				}
+			}
 			if (runs != null && k % PaintOrder.CHUNK == 0) {
 				var r = Std.int(k / PaintOrder.CHUNK) * 4;
 				if (runs[r] > ax1 || runs[r + 1] > ay1 || runs[r + 2] < ax0 || runs[r + 3] < ay0) {
@@ -89,7 +131,10 @@ class BoxPainter {
 			if (cull && !order.transformed[order.stateOf[k - 1]] && (y > ay1 || x > ax1 || y + f.height(id) < ay0 || x + f.width(id) < ax0)) {
 				var st = f.box(id).style, r = st.reach;
 				if (r != r) r = st.reach = reach(st);
-				if (r == 0 || y - r > ay1 || x - r > ax1 || y + f.height(id) + r < ay0 || x + f.width(id) + r < ax0) continue;
+				if (r == 0 || y - r > ay1 || x - r > ax1 || y + f.height(id) + r < ay0 || x + f.width(id) + r < ax0) {
+					if (list != null) culled();
+					continue;
+				}
 			}
 			if (shifted) {
 				x = order.xs[k - 1];
@@ -114,10 +159,42 @@ class BoxPainter {
 					}
 			}
 		}
+		if (list != null) while (open.length > 0) close();
+		if (spans != null) spans.fresh = false;
 		enter(p, 0);
 	}
 
 	static inline var MARGIN = 64;
+
+	// the spans of what it paints into a display list, kept for the next paint (null: none)
+	public var spans:Null<PaintSpans> = null;
+	// (each step's flat context starting there, -1 none; the spans open: record, ints, floats, resources, whether
+	// no step was culled, end)
+	final starts:Array<Int> = [];
+	final open:Array<Int> = [];
+
+	// (the innermost open span kept)
+	function close() {
+		var n = open.length;
+		spans.keep(open[n - 6], open[n - 5], open[n - 4], open[n - 3], open[n - 2] == 1);
+		open.resize(n - 6);
+	}
+
+	// (a step culled: the spans open hold less than their steps)
+	inline function culled() {
+		var k = open.length - 2;
+		while (k >= 0) {
+			open[k] = 0;
+			k -= 6;
+		}
+	}
+
+	// (the display list a painter records into: helder.ui's)
+	static function listOf(p:Painter):Null<helder.ui.draw.DisplayList> {
+		if (!Std.isOfType(p, UiPainter)) return null;
+		var c = @:privateAccess (cast p : UiPainter).canvas;
+		return Std.isOfType(c, helder.ui.draw.DisplayList) ? cast c : null;
+	}
 
 	// (each state's offset from the scrollers around it; false: none scrolled)
 	function shift():Bool {
@@ -160,8 +237,11 @@ class BoxPainter {
 	}
 
 	// (the painter's state made the step's: layers and clips left and entered)
+	final path:Array<Int> = [];
+
 	function enter(p:Painter, st:Int) {
-		var path = [];
+		var path = path;
+		path.resize(0);
 		var s = st;
 		while (s != 0) {
 			path.push(s);

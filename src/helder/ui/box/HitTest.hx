@@ -13,7 +13,17 @@ class HitTest {
 	// (scrolls: scroll containers' offsets by their element, as BoxPainter's)
 	public static function at(f:Fragments, order:PaintOrder, x:Float, y:Float, ?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>):Null<{box:Box, offset:Int}> {
 		var k = order.count;
-		var inv = new Matrix();
+		// (each state's point worked out once a test, from its parent's: the steps of a list share a few)
+		stamp++;
+		var n = order.parents.length;
+		if (seen.length < n) {
+			seen.resize(n);
+			xs.resize(n);
+			ys.resize(n);
+		}
+		seen[0] = stamp;
+		xs[0] = x;
+		ys[0] = y;
 		// (a run of steps whose bounds miss the point passed over at once)
 		var runs = order.chunks();
 		while (k-- > 0) {
@@ -29,51 +39,63 @@ class HitTest {
 			var id = order.fragments[k];
 			var b = f.box(id);
 			if (!b.style.visible || b.style.keyword("pointer-events") == "none") continue;
-			var p = local(f, order, order.stateOf[k], x, y, inv, scrolls);
-			if (p == null) continue;
+			var st = order.stateOf[k];
+			if (!local(f, order, st, scrolls)) continue;
+			var px = xs[st], py = ys[st];
 			var fx = order.xs[k], fy = order.ys[k];
-			if (p.x < fx || p.y < fy || p.x >= fx + f.width(id) || p.y >= fy + f.height(id)) continue;
+			if (px < fx || py < fy || px >= fx + f.width(id) || py >= fy + f.height(id)) continue;
 			if (f.kind(id) == Fragments.TEXT && b.kind == Text) {
 				// (the lines' answer when it is in this fragment's box: an outside marker's text isn't in them)
-				var at = text(f, id, p.x - fx, p.y - fy);
-				return at != null && at.box == b ? at : {box: b, offset: offset(f, id, p.x - fx)};
+				var at = text(f, id, px - fx, py - fy);
+				return at != null && at.box == b ? at : {box: b, offset: offset(f, id, px - fx)};
 			}
 			return {box: b, offset: -1};
 		}
 		return null;
 	}
 
-	// (the point in a state's space: each layer's transform undone, each clip tested; null outside a clip)
-	static function local(f:Fragments, order:PaintOrder, st:Int, x:Float, y:Float, inv:Matrix, scrolls:Null<haxe.ds.ObjectMap<{}, Array<Float>>>):Null<{x:Float, y:Float}> {
-		var chain = [];
-		while (st != 0) {
-			chain.push(st);
-			st = order.parents[st];
-		}
-		var k = chain.length;
-		while (k-- > 0) {
-			var s = chain[k];
-			switch order.kinds[s] {
+	// (the test's point in each state's space, by state: valid where seen is the test's stamp; NaN outside a clip)
+	static var stamp = 0;
+	static final seen:Array<Int> = [];
+	static final xs:Array<Float> = [];
+	static final ys:Array<Float> = [];
+	static final inv = new Matrix();
+
+	// (the point in a state's space: its parent's, its layer's transform undone, its clip tested; false outside a
+	// clip)
+	static function local(f:Fragments, order:PaintOrder, st:Int, scrolls:Null<haxe.ds.ObjectMap<{}, Array<Float>>>):Bool {
+		if (seen[st] == stamp) return xs[st] == xs[st];
+		seen[st] = stamp;
+		var p = order.parents[st];
+		var x = Math.NaN, y = Math.NaN;
+		if (local(f, order, p, scrolls)) {
+			x = xs[p];
+			y = ys[p];
+			switch order.kinds[st] {
 				case PaintOrder.LAYER:
-					var m = order.matrices[s];
+					var m = order.matrices[st];
 					if (m != null) {
-						if (!m.invertInto(inv)) return null;
-						var nx = inv.mapX(x, y), ny = inv.mapY(x, y);
-						x = nx;
-						y = ny;
+						if (!m.invertInto(inv)) x = y = Math.NaN else {
+							var nx = inv.mapX(x, y), ny = inv.mapY(x, y);
+							x = nx;
+							y = ny;
+						}
 					}
 				case PaintOrder.CLIP:
-					var r = order.rects[s];
-					if (x < r[0] || y < r[1] || x >= r[0] + r[2] || y >= r[1] + r[3]) return null;
-					var o = order.scroller[s] && scrolls != null ? scrolls.get(Box.scrollKey(f.box(order.layerFragment[s]))) : null;
-					if (o != null) {
-						x += o[0];
-						y += o[1];
+					var r = order.rects[st];
+					if (x < r[0] || y < r[1] || x >= r[0] + r[2] || y >= r[1] + r[3]) x = y = Math.NaN else {
+						var o = order.scroller[st] && scrolls != null ? scrolls.get(Box.scrollKey(f.box(order.layerFragment[st]))) : null;
+						if (o != null) {
+							x += o[0];
+							y += o[1];
+						}
 					}
 				case _:
 			}
 		}
-		return {x: x, y: y};
+		xs[st] = x;
+		ys[st] = y;
+		return x == x;
 	}
 
 	// (the position in a text fragment's block's lines: the point taken to

@@ -101,14 +101,54 @@ function tests() {
 			var rows = [for (i in 0...40) '<div class=r style="z-index: ${i % 3}"><span id=t$i>row $i</span><b style="opacity: 0.5">x</b></div>'].join("");
 			var v = live('<style>body { margin: 0; font: 10px/1 Ahem } .r { position: relative; display: flex; gap: 4px }</style>' + rows);
 			v.order;
-			(cast el(v, "t7").firstChild : Text).data = "row seven, longer";
+			// (three layouts: the third's order the first's made again, PaintOrder.again)
+			for (t in ["row seven, longer", "seven", "row seven, longer still"]) {
+				(cast el(v, "t7").firstChild : Text).data = t;
+				equals(v.update(), DocumentView.LAYOUT);
+				var made = v.order, fresh = new PaintOrder(v.fragments, v.root);
+				equals(made.count, fresh.count);
+				equals([for (k in 0...made.count) '${made.steps[k]} ${made.fragments[k]} ${made.xs[k]},${made.ys[k]} ${made.kinds[made.stateOf[k]]}'].join("\n"),
+					[for (k in 0...fresh.count) '${fresh.steps[k]} ${fresh.fragments[k]} ${fresh.xs[k]},${fresh.ys[k]} ${fresh.kinds[fresh.stateOf[k]]}'].join("\n"));
+				equals(made.parents.length, fresh.parents.length);
+				equals(made.reused > 30, true);
+			}
+		});
+		test("a paint copies what it recorded of unchanged contexts: the calls painting them makes", () -> {
+			var rows = [for (i in 0...40) '<div class=r><span id=t$i>row $i</span></div>'].join("");
+			var v = live('<style>body { margin: 0; font: 10px/1 Ahem } .r { position: relative; background: #eee; border: 1px solid #999 }</style>' + rows);
+			var list = new helder.ui.draw.DisplayList(), painter = new UiPainter(null, 0, 0);
+			function record(l:helder.ui.draw.DisplayList) {
+				l.begin();
+				painter.begin(l, 300, 200, 1, 0, 0, 300, 200);
+				v.paint(painter, [0, 0, 300, 200]);
+				painter.end();
+			}
+			record(list);
+			(cast el(v, "t3").firstChild : Text).data = "row three";
 			equals(v.update(), DocumentView.LAYOUT);
-			var made = v.order, fresh = new PaintOrder(v.fragments, v.root);
-			equals(made.count, fresh.count);
-			equals([for (k in 0...made.count) '${made.steps[k]} ${made.fragments[k]} ${made.xs[k]},${made.ys[k]} ${made.kinds[made.stateOf[k]]}'].join("\n"),
-				[for (k in 0...fresh.count) '${fresh.steps[k]} ${fresh.fragments[k]} ${fresh.xs[k]},${fresh.ys[k]} ${fresh.kinds[fresh.stateOf[k]]}'].join("\n"));
-			equals(made.parents.length, fresh.parents.length);
-			equals(made.reused > 30, true);
+			v.order;
+			record(list);
+			var copied = @:privateAccess v.spans.copied;
+			PaintSpans.off = true;
+			var whole = new helder.ui.draw.DisplayList();
+			record(whole);
+			PaintSpans.off = false;
+			// (the rows seen but the one changed copied; the same calls and numbers as the paint of them all)
+			equals(copied >= 10, true);
+			@:privateAccess {
+				equals([list.ni, list.nf], [whole.ni, whole.nf]);
+				equals([for (i in 0...list.ni) list.ints[i]], [for (i in 0...whole.ni) whole.ints[i]]);
+				equals([for (i in 0...list.nf) list.floats[i]], [for (i in 0...whole.nf) whole.floats[i]]);
+			}
+			// (a colour restyled, its context the same: nothing copied, the colour painted)
+			el(v, "t5").parentElement.setAttribute("style", "background: #f00");
+			equals(v.update(), DocumentView.PAINT);
+			record(list);
+			equals(@:privateAccess v.spans.copied, 0);
+			PaintSpans.off = true;
+			record(whole);
+			PaintSpans.off = false;
+			@:privateAccess equals([for (i in 0...list.nf) list.floats[i]], [for (i in 0...whole.nf) whole.floats[i]]);
 		});
 		test("a long document laid out to a cut, exactly, then on to its end as a fresh layout", () -> {
 			var html = '<style>body { margin: 0; font: 10px/1 Ahem } section { margin: 4px 0 } @media (max-width: 110px) { p { margin: 2px 0 } em { display: block } }</style>'

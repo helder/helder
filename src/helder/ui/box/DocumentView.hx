@@ -91,6 +91,10 @@ class DocumentView {
 	// position query's, makes none)
 	@:isVar public var order(get, null):Null<PaintOrder> = null;
 	var orderDue = false;
+	// (what the last paint recorded of each stacking context, for the next to copy: PaintSpans)
+	final spans = new PaintSpans();
+	// (the order before the last, made again into the next)
+	var spareOrder:Null<PaintOrder> = null;
 	// (a restyle changed what a paint order's steps hold: the next one made without the last one's)
 	var orderFresh = false;
 
@@ -99,7 +103,12 @@ class DocumentView {
 			orderDue = false;
 			var last = orderFresh || long() || sticky ? null : order;
 			orderFresh = false;
-			order = root < 0 ? null : new PaintOrder(fragments, root, null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null, last);
+			// (two orders, one made again in turn from the other: a frame's order allocates nothing once they are
+			// as long as it)
+			var made = spareOrder != null && root >= 0 ? spareOrder.again(root, long() ? window : null, last) : root < 0 ? null : new PaintOrder(fragments, root,
+				null, order != null ? order.count + (order.count >> 3) : 0, long() ? window : null, last);
+			spareOrder = order;
+			order = made;
 		}
 		return order;
 	}
@@ -696,8 +705,10 @@ class DocumentView {
 				remade.push(el);
 				continue;
 			}
-			// (what the paint order's steps hold changed: the next made afresh, nothing of the last one's used)
+			// (what the paint order's steps hold changed: the next made afresh, nothing of the last one's used; what
+			// a paint recorded of it changed: nothing copied from the last paint)
 			if (level == ORDER) orderFresh = true;
+			if (level == ORDER || level == PAINT) spans.fresh = true;
 			var boxes = boxesOf(el);
 			for (b in boxes) if (b.pseudo == null) swap(b, el, old, now, swaps, level == LAYOUT);
 			// (its pseudo-elements' boxes: their styles made again, swapped the same way, or the tree made again)
@@ -705,6 +716,7 @@ class DocumentView {
 				var was = b.style.css, next = styles.computed(el, b.pseudo);
 				if (next == was) continue;
 				orderFresh = true;
+				spans.fresh = true;
 				var i:Int = cast was.impact(next);
 				if (i <= (cast helder.css.CssProperties.CssImpact.Text : Int) && structural(was, next)) remade.push(el) else swap(b, el, was, next, swaps,
 					i <= (cast helder.css.CssProperties.CssImpact.Text : Int));
@@ -892,6 +904,7 @@ class DocumentView {
 		}
 		bp.scrolls = scrolls;
 		if (area != null) {
+			bp.spans = spans;
 			bp.area = area;
 			bp.canvasArea = [area[0], area[1], area[2] - area[0], area[3] - area[1]];
 		}

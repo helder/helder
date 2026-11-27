@@ -21,10 +21,31 @@ class Backgrounds {
 	// instead of its clip box (the canvas's), positioned from the box all the same.
 	public static function paint(p:Painter, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, image:String->Null<Bitmap>, ?area:Array<Float>,
 			noLeft = false, noRight = false, noTop = false, noBottom = false, ?svg:String->Null<helder.canvas.Svg>) {
-		var color = s.color("background-color");
-		var images = split(s.terms("background-image"));
-		var none = images.length == 1 && (images[0].length == 0 || images[0][0].match(Keyword("none")));
-		if (color >>> 24 == 0 && none) return;
+		var color = s.backgroundColor, parts = s.background;
+		if (color >>> 24 == 0 && parts == null) return;
+		// (a colour alone, the common case: its clip box filled, nothing else made)
+		if (parts == null && area == null) {
+			var x0 = Math.round(x), y0 = Math.round(y), bw = Math.round(x + w) - x0, bh = Math.round(y + h) - y0;
+			var r = Borders.radii(s, bw, bh), path = new Path();
+			switch s.backgroundClip {
+				case "padding-box" | "content-box":
+					var m = s.model(), content = s.backgroundClip == "content-box";
+					var bl = noLeft ? 0 : m.border[3], br = noRight ? 0 : m.border[1], bt = noTop ? 0 : m.border[0], bb = noBottom ? 0 : m.border[2];
+					if (content) {
+						bl += noLeft ? 0 : Lens.resolve(m.padding[3], w, 0);
+						br += noRight ? 0 : Lens.resolve(m.padding[1], w, 0);
+						bt += noTop ? 0 : Lens.resolve(m.padding[0], w, 0);
+						bb += noBottom ? 0 : Lens.resolve(m.padding[2], w, 0);
+					}
+					Borders.rect(path, x0 + bl, y0 + bt, bw - bl - br, bh - bt - bb, Borders.inset(r, bt, br, bb, bl));
+				case _:
+					Borders.rect(path, x0, y0, bw, bh, r);
+			}
+			p.fill(path, Paint.solid(color));
+			return;
+		}
+		var images = parts == null ? NONE : parts.images;
+		var none = parts == null;
 		var x0 = Math.round(x), y0 = Math.round(y), bw = Math.round(x + w) - x0, bh = Math.round(y + h) - y0;
 		var m = s.model();
 		var r = Borders.radii(s, bw, bh);
@@ -50,12 +71,12 @@ class Backgrounds {
 					};
 				case _: {x: x0, y: y0, w: bw, h: bh, r: r};
 			}
-		var clips = split(s.terms("background-clip"));
-		var origins = split(s.terms("background-origin"));
-		var sizes = split(s.terms("background-size"));
-		var repeats = split(s.terms("background-repeat"));
-		var xs = split(s.terms("background-position-x")), ys = split(s.terms("background-position-y"));
-		var attachments = split(s.terms("background-attachment"));
+		var clips = parts == null ? [[Keyword(s.backgroundClip)]] : parts.clips;
+		var origins = parts == null ? NONE : parts.origins;
+		var sizes = parts == null ? NONE : parts.sizes;
+		var repeats = parts == null ? NONE : parts.repeats;
+		var xs = parts == null ? NONE : parts.xs, ys = parts == null ? NONE : parts.ys;
+		var attachments = parts == null ? NONE : parts.attachments;
 		inline function at<T>(list:Array<Array<T>>, k:Int):Array<T>
 			return list[k % list.length];
 		inline function word(t:Array<CssTerm>, fallback:String):String
@@ -192,6 +213,8 @@ class Backgrounds {
 	static final PLAIN = new Paint();
 
 	// (a comma-separated list's parts)
+	static final NONE:Array<Array<CssTerm>> = [[Keyword("none")]];
+
 	public static function split(terms:Array<CssTerm>):Array<Array<CssTerm>> {
 		var out:Array<Array<CssTerm>> = [[]];
 		for (t in terms) if (t.match(Delim(","))) out.push([]) else out[out.length - 1].push(t);

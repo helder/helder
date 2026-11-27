@@ -128,11 +128,43 @@ class DocumentBench {
 	static function engine(doc:Null<DocumentNode>):Array<Float>
 		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : [0, 0, 0];
 
+	static function spansOf(doc:Null<DocumentNode>):helder.ui.box.PaintSpans
+		return doc != null ? @:privateAccess doc.view.spans : boxNode != null ? @:privateAccess boxNode.spans : new helder.ui.box.PaintSpans();
+
 	// (the box variant's node, its engine work: BoxScreen's)
 	static var boxNode:Null<BoxScreen.BoxNode> = null;
 
 	// (n frames, each after act(i): their times, GC bytes; a JSON line)
 	static function run(op:String, ui:Ui, doc:Null<DocumentNode>, n:Int, act:Int->Void, ?extra:Dynamic) {
+		if (Sys.getEnv("PAINT_BYTES") != null) {
+			var bb = BoxScreen.BoxNode.bytes;
+			for (k in 0...5) bb[k] = 0;
+
+			var f0 = GcStats.bytes();
+			var F = helder.gfx.FrameCounts;
+			var q0 = F.quads, d0 = F.draws, p0 = F.passes, u0 = F.uploaded;
+			for (k in 0...3) DrawFrame.PHASES[k] = 0;
+			runOp(op, ui, doc, n, act, extra);
+			if (Sys.getEnv("SPAN_CHECK") != null && (op.startsWith("type") || op.startsWith("drag") || op.startsWith("scroll") || op.startsWith("resize") || op.startsWith("hover")) && variant != "helder.ui") {
+				var a = Bytes.alloc(pixels.length);
+				a.blit(0, pixels, 0, pixels.length);
+				helder.ui.box.PaintSpans.off = true;
+				if (doc != null) @:privateAccess doc.layerChanged() else @:privateAccess boxNode.layerChanged();
+				ui.requestFrame();
+				step(ui, doc);
+				helder.ui.box.PaintSpans.off = false;
+				var diff = 0;
+				for (i in 0...Std.int(pixels.length / 4)) if (a.getInt32(i * 4) != pixels.getInt32(i * 4)) diff++;
+				Sys.println('SPANS $screen $variant $op: ${diff} pixels differ from the frame painted whole');
+			}
+			Sys.println('GPU $screen $variant $op: quads ${Math.round((F.quads - q0) / n)} draws ${Math.round((F.draws - d0) / n)} passes ${Math.round((F.passes - p0) / n)} uploaded ${Math.round((F.uploaded - u0) / n)} a frame; spans copied ${spansOf(doc).copied} recorded ${spansOf(doc).recorded}; record ${Math.round(DrawFrame.PHASES[0] / n * 100000) / 100} encode ${Math.round(DrawFrame.PHASES[1] / n * 100000) / 100} gpu+read ${Math.round(DrawFrame.PHASES[2] / n * 100000) / 100} ms');
+			if (variant == "boxes") Sys.println('PAINT $screen $op: frame ${Math.round((GcStats.bytes() - f0) / n / 1024)} KB; paints ${bb[4]}: order ${Math.round(bb[0] / n / 1024)} begin ${Math.round(bb[1] / n / 1024)} paint ${Math.round(bb[2] / n / 1024)} end ${Math.round(bb[3] / n / 1024)} KB a frame');
+			return;
+		}
+		runOp(op, ui, doc, n, act, extra);
+	}
+
+	static function runOp(op:String, ui:Ui, doc:Null<DocumentNode>, n:Int, act:Int->Void, ?extra:Dynamic) {
 		var totals = [], updates = [], draws = [], styles = [], layouts = [], paints = [], bytes = [];
 		var gc0 = GcStats.collections();
 		for (i in 0...n) {

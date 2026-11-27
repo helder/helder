@@ -227,6 +227,8 @@ class BoxNode extends helder.ui.Node {
 	// (the engine's own work, ms: layouts, paints recorded)
 	public var layoutMs = 0.0;
 	public var paintMs = 0.0;
+	// (bytes allocated painting: the order, begin, BoxPainter.paint, end; paints)
+	public static final bytes = [0.0, 0.0, 0.0, 0.0, 0.0];
 	// (the hovered box's style and its subtree's: the bench's)
 	public var onHover:Null<Null<Box>->Void> = null;
 	final painter = new UiPainter(null, 0, 0);
@@ -236,6 +238,8 @@ class BoxNode extends helder.ui.Node {
 	var due = true;
 	var orderDue = true;
 	var orderFresh = false;
+	var spare:Null<PaintOrder> = null;
+	final spans = new helder.ui.box.PaintSpans();
 	var whole = 0;
 	var boxIndex:Null<ObjectMap<Box, Int>> = null;
 
@@ -271,6 +275,7 @@ class BoxNode extends helder.ui.Node {
 	public function restyled(b:Box, s:BoxStyle) {
 		@:privateAccess b.style = s;
 		orderFresh = true;
+		spans.fresh = true;
 	}
 
 	@:noCompletion override public function hasContent():Bool
@@ -317,21 +322,33 @@ class BoxNode extends helder.ui.Node {
 		var w = @:privateAccess ui.walk;
 		var x0 = Math.max(w.x0, x), y0 = Math.max(w.y0, y), x1 = Math.min(w.x1, x + width), y1 = Math.min(w.y1, y + height);
 		if (x1 <= x0 || y1 <= y0) return;
-		var t0 = haxe.Timer.stamp();
+		var t0 = haxe.Timer.stamp(), a0 = hxmc.GcStats.bytesAllocated();
 		if (orderDue) {
 			var last = orderFresh ? null : order;
-			order = new PaintOrder(fragments, rootFragment, null, order != null ? order.count : 0, null, last);
+			var made = spare != null ? spare.again(rootFragment, null, last) : new PaintOrder(fragments, rootFragment, null, order != null ? order.count : 0, null, last);
+			spare = order;
+			order = made;
 			orderDue = orderFresh = false;
 		}
+		var a1 = hxmc.GcStats.bytesAllocated();
 		canvas.translate(x, y);
 		painter.begin(canvas, Math.ceil(width), Math.ceil(height), ui.scale, x0 - x, y0 - y, x1 - x, y1 - y);
 		painter.clear(0xFFFFFFFF);
 		var bp = new BoxPainter(fragments, order, _ -> null);
 		bp.scrolls = scrolls;
+		bp.spans = spans;
 		bp.area = [x0 - x, y0 - y, x1 - x, y1 - y];
 		bp.canvasArea = [x0 - x, y0 - y, x1 - x0, y1 - y0];
+		var a2 = hxmc.GcStats.bytesAllocated();
 		bp.paint(painter);
+		var a3 = hxmc.GcStats.bytesAllocated();
 		painter.end();
+		var a4 = hxmc.GcStats.bytesAllocated();
+		bytes[0] += a1 - a0;
+		bytes[1] += a2 - a1;
+		bytes[2] += a3 - a2;
+		bytes[3] += a4 - a3;
+		bytes[4]++;
 		canvas.translate(-x, -y);
 		paintMs += (haxe.Timer.stamp() - t0) * 1000;
 	}
