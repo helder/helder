@@ -310,12 +310,13 @@ class BlockLines {
 							f = flow.child(k, space.child(width, pct));
 							w = frags.width(f);
 							h = frags.height(f);
-							base = frags.baseline(f);
+							if (k.kind != InlineReplaced && !(k.kind == InlineBlock && k.style.scrollContainer))
+								base = frags.baseline(f);
 						}
 						out.atomics.push(k);
 						out.laid.push(f);
 						// (its border box, its baseline from its top: NaN its bottom margin edge; its margins its style's)
-						c.addAtomic(w, h, k.kind == InlineReplaced ? Math.NaN : base, BoxInline.of(k, width), k);
+						c.addAtomic(w, h, base, BoxInline.of(k, width), k);
 				}
 				k = k.next;
 			}
