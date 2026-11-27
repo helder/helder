@@ -13,6 +13,8 @@ class TableGrid {
 	public final y:Array<Float> = [];
 	public final heights:Array<Float> = [];
 	public var collapse(default, null) = false;
+	// no pixel grid (print): its lines split in exact halves
+	public var exact = false;
 	// the table box's fragment, and its spacing between cells
 	public var fragment = -1;
 	// (in fragmentainers: the rows on this fragment, and the grid of the table's fragment before (a page's
@@ -26,6 +28,11 @@ class TableGrid {
 		while (g != null && g.fragment != fragment) g = g.previous;
 		return g ?? latest;
 	}
+
+	// (a line's part on one side of it: whole pixels, floor(w/2) above it and to its left, the rest below and to
+	// its right, as Chromium's; exactly half without a pixel grid, as WeasyPrint's)
+	public function half(w:Float, after:Bool):Float
+		return exact ? w / 2 : after ? Math.ceil(w / 2) : Math.floor(w / 2);
 
 	public inline function hides(row:Int):Bool
 		return shown != null && !shown[row];

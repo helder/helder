@@ -180,7 +180,7 @@ class PagedView {
 			var e = queue[k++], d = e.d;
 			var cb = containing(d, e.page);
 			if (cb == null) continue;
-			var space = new Space(fragments, fonts, cb.w, cb.h);
+			var space = spaceFor(cb.w, cb.h);
 			// (its fixed descendants: on every page already)
 			space.fixed = new Positioned();
 			var at = flow.positionedBox(d.box, space, cb.sx, cb.sy, cb.w, cb.h, d.align);
@@ -197,7 +197,7 @@ class PagedView {
 			while (true) {
 				var breaks = new Breaks(pages[p].area[3], token);
 				function lay():Int {
-					var cs = new Space(fragments, fonts, cb.w, cb.h);
+					var cs = spaceFor(cb.w, cb.h);
 					cs.fixed = new Positioned();
 					cs.fixedWidth = fragments.width(at.fragment);
 					if (fixedHeight) cs.fixedHeight = height;
@@ -292,7 +292,7 @@ class PagedView {
 		var flow:BlockFlow = cast (options.contexts ?? Contexts.all()).flow;
 		for (b in fixed.boxes) {
 			var at = fixed.places.get(b) ?? {x: 0.0, y: 0.0};
-			var space = new Space(fragments, fonts, fixed.width, fixed.height);
+			var space = spaceFor(fixed.width, fixed.height);
 			space.fixed = new Positioned();
 			var f = flow.positionedBox(b, space, at.x, at.y, fixed.width, fixed.height);
 			adopt(p, f.fragment, f.x, f.y);
@@ -369,7 +369,7 @@ class PagedView {
 				var b = marginBox(page, name, strings, running, number);
 				if (b != null) boxes.set(name, b);
 			}
-			var space = new Space(fragments, fonts, page.width, page.height);
+			var space = spaceFor(page.width, page.height);
 			page.boxes = PageMargins.layout(boxes, page.width, page.height, page.margins, space, flow);
 		}
 	}
@@ -457,7 +457,7 @@ class PagedView {
 
 	// (the root laid out in a page area of w by h, resuming where breaks' token says)
 	function content(root:Box, breaks:Breaks, w:Float, h:Float, first:Bool):Int {
-		var space = new Space(fragments, fonts, w, h);
+		var space = spaceFor(w, h);
 		space.fragmentation = breaks;
 		space.repeated = fixed ??= new Repeated(fixedOf(root, []), w, h);
 		var mt = first ? BlockFlow.auto(root.style.model().margin[0], w) : 0.0;
@@ -618,6 +618,13 @@ class PagedView {
 			var at = el == null ? null : first.get(el);
 			if (at != null) doc.anchor(name, at.page, at.x * PT, at.y * PT);
 		}
+	}
+
+	// (a layout's space on a page: print's, no pixel grid)
+	function spaceFor(w:Float, h:Float):Space {
+		var s = new Space(fragments, fonts, w, h);
+		s.exact = true;
+		return s;
 	}
 
 	function image(url:String):Null<Bitmap> {
