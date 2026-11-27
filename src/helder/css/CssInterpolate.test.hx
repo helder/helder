@@ -61,6 +61,16 @@ function tests() {
 			equals(at("font-palette", "light", "dark", 1), "dark");
 			equals(at("font-palette", "normal", "normal", 0.5), "normal");
 		});
+		test("the -helder- properties: the tint a colour, the spacing a length, the rest discrete", () -> {
+			equals(at("-helder-material-tint", "rgb(0 0 0 / 0)", "rgb(0 0 255)", 0.5), "rgba(0, 0, 255, 0.5)");
+			equals(at("-helder-material-spacing", "0px", "20px", 0.25), "5px");
+			equals(at("-helder-material", "none", "glass", 0.5), null);
+			equals(discrete("-helder-material", "none", "glass", 0.4), "none");
+			equals(discrete("-helder-material", "glass regular", "glass clear", 0.6), "glass clear");
+			equals(discrete("-helder-backdrop", "none", "sidebar", 0.6), "sidebar");
+			equals(discrete("-helder-scrollbar", "system", "overlay", 0.6), "overlay");
+			equals(discrete("text-overflow", "clip", "-helder-middle", 0.6), "-helder-middle");
+		});
 		test("spacing: normal as 0", () -> {
 			equals(at("letter-spacing", "normal", "10px", 0.3), "3px");
 			equals(at("letter-spacing", "normal", "10px", 0), "normal");

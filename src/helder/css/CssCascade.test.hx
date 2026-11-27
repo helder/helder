@@ -297,6 +297,27 @@ function tests() {
 			equals(text(s, "c", "font-palette"), "palette-mix(in lch longer hue, dark, light)");
 			equals(text(s, "d", "font-palette"), "palette-mix(in srgb, dark)");
 		});
+		test("the -helder- properties: parsed, computed, inherited", () -> {
+			var s = styles('<div id=a><p id=b></p></div><p id=c></p><p id=d></p>',
+				"#a { -helder-material: glass clear; -helder-material-tint: rgb(0 0 255 / 50%); -helder-material-spacing: 1em; -helder-scrollbar: overlay; -helder-backdrop: sidebar; text-overflow: -helder-middle }"
+				+ "#c { -helder-material: glass; -helder-material-spacing: -1px; -helder-backdrop: mica; text-overflow: ellipsis -helder-middle }");
+			equals(text(s, "a", "-helder-material"), "glass clear");
+			equals(text(s, "a", "-helder-material-tint"), "rgba(0, 0, 255, 0.5)");
+			equals(text(s, "a", "-helder-material-spacing"), "16px");
+			equals(text(s, "a", "-helder-backdrop"), "sidebar");
+			equals(text(s, "a", "text-overflow"), "-helder-middle");
+			// (only the scrollbar inherits)
+			equals(text(s, "b", "-helder-scrollbar"), "overlay");
+			equals(text(s, "b", "-helder-material"), "none");
+			equals(text(s, "b", "-helder-material-tint"), "rgba(0, 0, 0, 0)");
+			equals(text(s, "b", "-helder-material-spacing"), "none");
+			equals(text(s, "c", "-helder-material"), "glass");
+			// (a negative spacing and a platform's name are invalid)
+			equals(text(s, "c", "-helder-material-spacing"), "none");
+			equals(text(s, "c", "-helder-backdrop"), "none");
+			equals(text(s, "c", "text-overflow"), "ellipsis -helder-middle");
+			equals(text(s, "d", "-helder-scrollbar"), "system");
+		});
 		test("values nested deeply kept apart", () -> {
 			// (CssIntern's keys once were Std.string's, which elides deep nesting)
 			var s = styles('<p id=a style="max-width: stretch(calc(0% + 100px))"></p><p id=b style="max-width: stretch(calc(10% + 50px))"></p>', "");

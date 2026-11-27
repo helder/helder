@@ -378,7 +378,7 @@ restyle.clear();
 8.7.10, the CSS specs' definitions as webref scrapes them, cut to
 checkpoint 1's properties:
 
-- `properties`: 222 `CssProperty`s, each with the module it is in scope
+- `properties`: 317 `CssProperty`s, each with the module it is in scope
   for (`module`), its spec's anchor (`href`), its grammar (`syntax`, the
   spec's text), `initial`, `inherited` (null for a shorthand), `appliesTo`,
   `percentages`, `computed` (the computed value's prose), `animation`,
@@ -405,6 +405,22 @@ say. Where checkpoint 1's module and the latest differ, scope.json's
 not CSS Content 3's (strings). Its `types` give the grammars the specs say
 in prose: CSS 2.1's `<top>` to `<left>` (`<length> | auto`), Fonts 4's
 `<font-src-list>`.
+
+helder's own properties, for app trees (`ua/README.md`'s design note),
+are scope.json's `ours`, defined as webref defines a spec's, in the
+module `helder`; the table, grammars, storage and interpolation take
+them as any other:
+
+| Ours | Grammar | Inherited | Animation |
+| --- | --- | --- | --- |
+| `-helder-material` | `none \| glass [ regular \| clear ]?` | no | discrete |
+| `-helder-material-tint` | `<color>` | no | a colour |
+| `-helder-material-spacing` | `none \| <length [0,∞]>` | no | a length |
+| `-helder-backdrop` | `none \| auto \| sidebar \| popover` (the root) | no | discrete |
+| `-helder-scrollbar` | `system \| overlay \| always` | yes | discrete |
+| `text-overflow: -helder-middle` | a keyword in Overflow 4's grammar (an override) | no | discrete |
+
+Rendering them is the port's (helder.ui onto helder.dom).
 
 scope.json lists the properties in scope under their module, and every
 other webref property is out, by its spec (`outSpecs`) or by name (`out`),

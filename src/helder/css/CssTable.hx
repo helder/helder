@@ -8,6 +8,11 @@ typedef CssTypeDefinition = {name:String, scope:Array<String>, syntax:Null<Strin
 
 class CssTable {
 	public static final properties:Array<CssDefinition> = [
+		{name: "-helder-backdrop", syntax: "none | auto | sidebar | popover", initial: "none", inherited: false, longhands: [], alias: null},
+		{name: "-helder-material", syntax: "none | glass [ regular | clear ]?", initial: "none", inherited: false, longhands: [], alias: null},
+		{name: "-helder-material-spacing", syntax: "none | <length [0,∞]>", initial: "none", inherited: false, longhands: [], alias: null},
+		{name: "-helder-material-tint", syntax: "<color>", initial: "transparent", inherited: false, longhands: [], alias: null},
+		{name: "-helder-scrollbar", syntax: "system | overlay | always", initial: "system", inherited: true, longhands: [], alias: null},
 		{name: "accent-color", syntax: "auto | <color>", initial: "auto", inherited: true, longhands: [], alias: null},
 		{name: "align-content", syntax: "normal | <baseline-position> | <content-distribution> | <overflow-position>? <content-position>", initial: "normal", inherited: false, longhands: [], alias: null},
 		{name: "align-items", syntax: "normal | stretch | <baseline-position> | <overflow-position>? <self-position>", initial: "normal", inherited: false, longhands: [], alias: null},
@@ -289,7 +294,7 @@ class CssTable {
 		{name: "text-emphasis-style", syntax: "none | [ [ filled | open ] || [ dot | circle | double-circle | triangle | sesame ] ] | <string>", initial: "none", inherited: true, longhands: [], alias: null},
 		{name: "text-indent", syntax: "[ <length-percentage> ] && hanging? && each-line?", initial: "0", inherited: true, longhands: [], alias: null},
 		{name: "text-justify", syntax: "[ auto | none | inter-word | inter-character | ruby | distribute ] || no-compress", initial: "auto", inherited: true, longhands: [], alias: null},
-		{name: "text-overflow", syntax: "[ clip | ellipsis | <string> | fade | <fade()> ]{1,2}", initial: "clip", inherited: false, longhands: [], alias: null},
+		{name: "text-overflow", syntax: "[ clip | ellipsis | -helder-middle | <string> | fade | <fade()> ]{1,2}", initial: "clip", inherited: false, longhands: [], alias: null},
 		{name: "text-shadow", syntax: "none | <shadow>#", initial: "none", inherited: true, longhands: [], alias: null},
 		{name: "text-transform", syntax: "none | [capitalize | uppercase | lowercase ] || full-width || full-size-kana | math-auto", initial: "none", inherited: true, longhands: [], alias: null},
 		{name: "text-underline-offset", syntax: "auto | <length-percentage>", initial: "auto", inherited: true, longhands: [], alias: null},

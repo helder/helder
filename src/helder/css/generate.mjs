@@ -24,6 +24,8 @@ if (fs.existsSync(manifestFile)) {
 
 const css = JSON.parse(fs.readFileSync(path.join(dir, 'package/css.json'), 'utf8'))
 const scope = JSON.parse(fs.readFileSync(out + '/scope.json', 'utf8'))
+// (helder's own properties, scope.json's ours: defined as webref defines a spec's)
+for (const [name, p] of Object.entries(scope.ours)) if (name !== 'about') css.properties.push({name, ...p})
 const spec = href => href.split('#')[0].replace(/\/$/, '').split('/').pop()
 const byName = list => {
   const map = new Map()
@@ -273,7 +275,7 @@ function kindOf(p) {
   return {kind, keywords, integer: has.has('I') && !has.has('N')}
 }
 
-const pascal = n => n.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')
+const pascal = n => n.split('-').filter(w => w).map(w => w[0].toUpperCase() + w.slice(1)).join('')
 const camel = n => { const x = pascal(n); const c = x[0].toLowerCase() + x.slice(1); return c === 'continue' ? 'continues' : c }
 const ids = [...stored, ...logical].sort((a, b) => a.name < b.name ? -1 : 1)
 const idOf = new Map(ids.map((p, i) => [p.name, i]))
