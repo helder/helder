@@ -266,7 +266,8 @@ class Shell implements Markup {
 
 	// the window of a screen: its explorer made, owned by it, and shown
 	static function Window(props:{launch:Launch}):RootView {
-		var l = props.launch, store = l.store ?? (helder.ui.Hosting.on ? try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null : null);
+		// (the launch's: none in a preview host, whose screens read and keep nothing of the user's)
+		var l = props.launch, store = l.store;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
 			return v == null ? d : v;

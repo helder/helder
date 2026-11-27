@@ -61,6 +61,27 @@ function tests() {
 		equals(explorer(h, 1).browser.error.value, "denied");
 		equals(explorer(h, 2).browser.picked(), ["alpha.png", "anim.gif", "broken.jpg", "lossy.webp"]);
 	});
+	test("a screen opens no store: what one kept not read, what it opens not kept", () -> {
+		var was = Sys.getEnv("HELDER_HOME") ?? "";
+		Sys.putEnv("HELDER_HOME", haxe.io.Path.join([Sys.getCwd(), "bin/scenario-home"]));
+		var kept = helder.os.Store.open("helder-viewer");
+		kept.set("layout", "list");
+		kept.remove("recent");
+		var h = host([scenario({name: "Kept", size: [1100, 700], boot: () -> act(OpenRecent(Sandbox.HOME + "/photo 2.jpg"))})]);
+		var x = explorer(h, 0);
+		equals(x.browser.layout.value, Grid);
+		equals(x.full.value, true);
+		equals(helder.os.Store.open("helder-viewer").get("recent"), null);
+		Sys.putEnv("HELDER_HOME", was);
+	});
+	test("a screen rendered outside a preview host: its real files refused, its failure; none made", () -> {
+		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "Outside", size: [1100, 700]})]);
+		h.show(["Outside"]);
+		// (Hosting off as it renders: the Window makes NativeFiles, which the screen's seal refuses)
+		h.frame(0);
+		h.frame(1);
+		equals((h.screens[0].failure?.message ?? "").split(" refused")[0], "viewer.NativeFiles");
+	});
 	test("a phone's size: the phone's shell", () -> {
 		var h = host([scenario({name: "Phone", size: [390, 844], boot: () -> act(Go(Samples.ROOT))})]);
 		var ui = h.screens[0].ui;

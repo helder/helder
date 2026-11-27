@@ -67,6 +67,8 @@ class ThumbCache {
 	public function new(budget = 512 << 20, segmentSize = 16 << 20, ?directory:String) {
 		this.budget = budget;
 		this.segmentSize = segmentSize;
+		// (the user's own cache, never a scenario's or a monkey's screen's: helder.os.Seal)
+		if (directory == null) helder.os.Seal.check("viewer.ThumbCache");
 		var base = directory == null ? Paths.cache() : null;
 		this.directory = directory ?? (base == null ? null : base + "/thumbs");
 		if (this.directory == null || segmentSize < HEADER || budget < HEADER) return;

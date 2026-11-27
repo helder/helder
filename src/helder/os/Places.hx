@@ -16,20 +16,24 @@ typedef Volume = {name:String, path:String, total:Float, free:Float, removable:B
 
 // Existing user folders, and mounted volumes a file browser can show.
 class Places {
-	@:typescript public static function user():Array<Place>
+	@:typescript public static function user():Array<Place> {
+		Seal.check("helder.os.Places.user()");
 		return #if helder.headless []
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64") helder.os.apple.MacPlaces.user()
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64") helder.os.windows.WinPlaces.user()
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64") helder.os.linux.LinuxPlaces.user()
 		#else [] #end;
+	}
 
 	// The system volume first; capacities in bytes (zero when unknown).
-	@:typescript public static function volumes():Array<Volume>
+	@:typescript public static function volumes():Array<Volume> {
+		Seal.check("helder.os.Places.volumes()");
 		return #if helder.headless []
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64") helder.os.apple.MacPlaces.volumes()
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64") helder.os.windows.WinPlaces.volumes()
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64") helder.os.linux.LinuxPlaces.volumes()
 		#else [] #end;
+	}
 
 	@:allow(helder.os) static final kinds:Array<PlaceKind> = [Home, Desktop, Documents, Downloads, Pictures, Movies, Music];
 

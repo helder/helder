@@ -18,21 +18,32 @@ final menu = Graph.signal(false);
 final plain = scenario({name: "People/Plain"});
 final crowded = scenario({name: "People/Crowded", boot: () -> names([for (i in 0...60) 'Person $i'])});
 final broken = scenario({name: "Broken/Plain"});
+final reckless = scenario({name: "Reckless/Plain"});
+
+// (a file a reckless program trashes, and a store's file it opens: neither touched)
+final KEPT = "bin/test/monkey-reckless/kept.txt";
+final STORE = "bin/test/monkey-reckless/store";
 
 // a monkey over a small program booted as its scenarios: one that holds,
 // one with a bug of each kind found, shrunk and written as a scenario file
+// (the finds' seeds fixed: what they shrink to the same in the fuzz lane's random runs)
 function tests() {
 	Hosting.on = true;
+	Reckless.main();
+	var careless = Hosting.root;
 	Broken.main();
 	var wrong = Hosting.root;
 	People.main();
+	// (its own root: another test file's main, built beside it, gives UiWindow.run its own)
+	var people = Hosting.root;
 	Hosting.on = false;
 	var right = test("a program that holds under a monkey", () -> Monkey.check({
 		from: Monkey.from(plain, crowded),
+		root: people,
 		atoms: [Monkey.atom(names), Monkey.atom(query)]
 	}, {cases: 30, limit: 30}));
 	var outside = test("content outside the window: found, shrunk to the atom's value, written, replayed", () -> {
-		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0}, {cases: 200});
+		var f = Monkey.find({from: Monkey.from(broken), atoms: [Monkey.atom(names)], root: wrong, except: ["popups"], steps: 0}, {cases: 200, seed: 0});
 		assert(f != null, "found");
 		if (f == null) return;
 		equals(f.steps, []);
@@ -40,11 +51,12 @@ function tests() {
 		assert(f.text.indexOf(".names([") > 0, f.text);
 		equals(sys.io.File.getContent(f.file), f.text);
 		// (its scenario alone fails as the case did)
-		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {cases: 1});
+		// (every choice its simplest: its environment the found scenario's own)
+		var again = Monkey.find({from: [{scenario: f.scenario, path: "found"}], root: wrong, except: ["popups"], steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
 		equals(again?.failure, f.failure);
 	});
 	var orphan = test("a popup left open as its anchor goes: found, shrunk to a few steps", () -> {
-		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200});
+		var f = Monkey.find({from: Monkey.from(broken), root: wrong, except: ["window"], texts: pick(["a", "Hello"])}, {cases: 200, seed: 0});
 		assert(f != null, "found");
 		if (f == null) return;
 		// (a search taking the button away while its popup is open, or one
@@ -71,9 +83,32 @@ function tests() {
 			"wait(0.5)"
 		]);
 	});
+	var sealed = test("a program that trashes a file, lists the user's places or opens a store's file: refused, the case failed, nothing touched", () -> {
+		// (first the seal alone, on nothing there: a broken one trashes nothing)
+		var c = new ScreenContext("probe", true);
+		c.seal = new helder.os.Seal("a probe");
+		var held = c.run(() -> try {
+			helder.os.Trash.move("/helder-monkey-test/not-there");
+			false;
+		} catch (e:helder.os.Seal.SealError) true);
+		assert(held, "the seal refuses the trash");
+		if (!held) return;
+		sys.FileSystem.createDirectory(haxe.io.Path.directory(KEPT));
+		sys.io.File.saveContent(KEPT, "kept");
+		var f = Monkey.find({from: Monkey.from(reckless), root: careless, except: ["window"]}, {cases: 100, seed: 0});
+		assert(f != null && f.failure.indexOf("refused: a monkey's case is sealed off the machine") > 0, f?.failure);
+		assert(f != null && f.steps.length == 1, f?.steps.join(", "));
+		// (each of its effects, a scenario of that tap)
+		for (what in ["Clean up", "Places", "Save"]) {
+			var g = Monkey.find({from: [{scenario: scenario({name: what, steps: [Steps.tap(what)]}), path: "reckless"}], root: careless, steps: 0}, {replay: [for (_ in 0...64) "0"].join(" ")});
+			assert(g != null && g.failure.indexOf("refused") > 0, '$what: ${g?.failure}');
+		}
+		equals(sys.FileSystem.exists(KEPT), true);
+		equals(sys.FileSystem.exists(STORE), false);
+	});
 	#if (hxmc.target == "wasm32-wasi")
 	// (a robustness property's watchdog and the store's files: natively)
-	for (t in [right, outside, orphan])
+	for (t in [right, outside, orphan, sealed])
 		t.skip();
 	#end
 }
@@ -124,4 +159,17 @@ class Broken implements helder.view.Markup {
 			<view flexDirection="row"><text flexShrink={0}>{() -> 'Hello, ${names()[0] ?? "nobody"}'}</text></view>
 		</view>;
 	}
+}
+
+// (what a program must not do in a scenario's screen, each caught and ignored: refused all the same)
+class Reckless implements helder.view.Markup {
+	public static function main()
+		UiWindow.run(<Surface title="Reckless" width={320} height={200}><App/></Surface>);
+
+	static function App(_:{}):View
+		return <view flexGrow={1} rowGap={4} padding={8}>
+			<button onPress={() -> try helder.os.Trash.move(KEPT) catch (_:Dynamic) {}}>Clean up</button>
+			<button onPress={() -> try helder.os.Places.user() catch (_:Dynamic) {}}>Places</button>
+			<button onPress={() -> try helder.os.Store.open("reckless", STORE).set("a", "1") catch (_:Dynamic) {}}>Save</button>
+		</view>;
 }

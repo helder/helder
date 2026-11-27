@@ -461,6 +461,17 @@ test("the app under a monkey", () -> Monkey.check({
   again).
 - **Seeds**: the test lane's fixed (seed 0, 30 cases), the fuzz lane's random (its 20 s soak).
 
+**Sealed off the machine** (`helder.os.Seal`). A scenario's screen in a preview host and each monkey
+case carry a seal on their ScreenContext, current while they run. What would change or open the
+machine's own files calls `Seal.check` where it happens: `helder.os.Trash.move`, `Places.user` and
+`volumes`, `Store.open` past a screen's in-memory stores (a `dir`, the page's localStorage), the
+viewer's `NativeFiles` and its thumbnail cache. Under a seal it throws and is kept, so the screen
+fails, named, even when the program catches the throw. Outside every sealed screen it does nothing.
+A monkey case also holds `Hosting.on` (a program gives a host its in-memory files, as the
+viewer's Sandbox) and makes its Ui in its own screen. Found the hard way: before this, the viewer
+under the monkey made its real-disk explorer, the user's places and the system's trash in reach of
+its Delete key.
+
 Steps gained `resize(w, h)`, `wait(seconds)` and taps and scrolls at `{x, y}` for it (a node no
 query tells apart, a scroller with no name). A resize step changes the screen's Ui, not the studio
 frame's size (its still is drawn at the scenario's).
