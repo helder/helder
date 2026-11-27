@@ -58,6 +58,11 @@ class BlockFlow implements FormattingContext {
 		// (in a fragmentainer, resumed: its start's border, padding and margin were in the one before, box-decoration-break: slice)
 		var fr = space.fragmentation;
 		var resume = fr != null ? fr.resume(box) : null;
+		// (a monolithic box's continuation: laid out whole again, its parent shifting it up)
+		if (resume != null && resume.line == BreakToken.MONO) {
+			resume = null;
+			fr = new Unbroken(fr);
+		}
 		// (box-decoration-break: clone, each fragment its border and padding whole; its bottom ones kept room for in each)
 		var clone = fr != null && box.style.keyword("box-decoration-break") == "clone";
 		if (resume != null) {
@@ -129,13 +134,13 @@ class BlockFlow implements FormattingContext {
 			// (cleared unless a continuation: one carried whole from its start is)
 			var fresh = from == null || !from.resumes.iterator().hasNext();
 			if (fresh && (clr == "left" || clr == "right" || clr == "both")) top = Math.max(top, ex.clear(clr));
-			var f = -1, broken = false;
-			if (from == null) {
+			var f = -1, broken = false, breakable = !monolithic(b);
+			// (laid out whole here: one fresh, or a continuation that can't break, carried whole)
+			if (from == null || !breakable) {
 				var fs = childSpace(w);
 				fs.exclusions = null;
 				f = child(b, fs);
 			}
-			var breakable = b.kind != BlockReplaced && b.kind != InlineReplaced;
 			// (the next fragmentainer's whole, content before it here: a forced break before it, a float before it
 			// gone there, or it doesn't fit, monolithic or avoiding a break and fitting in one; carried from its
 			// start, a zero exclusion here, its fragment not adopted)
@@ -199,8 +204,9 @@ class BlockFlow implements FormattingContext {
 		// (content-visibility: hidden: its contents neither laid out nor painted, its size containment's size)
 		var done = resume != null && resume.line == BreakToken.PAST || box.style.hidden;
 		var hasLines = !done && box.first != null && !hasInFlowBlock(box) && !onlyOutOfFlow(box);
-		// (broken: a break taken inside it, its content goes on in the next fragmentainer)
-		var broken = false;
+		// (broken: a break taken inside it, its content goes on in the next fragmentainer; sliced: inside a monolithic
+		// child, which overflows it, its fragment no taller than the fragmentainer's end)
+		var broken = false, sliced = false;
 		// (own: what breaks the box itself, its content laid out whole or not)
 		var own = contain.has(Size) && box.absolute ? space.fragmentation : fr;
 		if (own != null) own.enter(box, space.pageTop + bt + pt);
@@ -360,12 +366,31 @@ class BlockFlow implements FormattingContext {
 					atTop = false;
 				} else
 					at = y + pos + neg;
+				// (a monolithic box's continuation: up by what the fragmentainers before took of it)
+				var mono = fr != null ? fr.resume(c) : null, before = mono != null && mono.line == BreakToken.MONO ? mono.consumed : 0.0;
+				at -= before;
+				c.flags = before > 0 ? c.flags | Box.SLICED : c.flags & ~Box.SLICED;
 				frags.adopt(frag, cf, bl + pl + shift + c.marginLeft + off.x, bt + pt + at + off.y);
 				empty = false;
 				var b = frags.baseline(cf);
 				if (!Math.isNaN(b)) baseline = at + b + off.y;
 				y = at + frags.height(cf);
 				if (fr != null) fr.placed(space.pageTop + bt + pt + y);
+				// (a monolithic box past the fragmentainer's end: a break inside it, its overflow in the next, unless one
+				// before it is taken)
+				// (its top as unshifted: what it takes here is from there to the end, with what the ones before took)
+				// (its overflow, its content past its border box, sliced too)
+				var reach = fr != null && monolithic(c) ? space.pageTop + bt + pt + at + extent(frags, cf) : 0.0;
+				if (fr != null && reach > fr.size + 0.01) fr.placed(reach);
+				if (fr != null && reach > fr.size + 0.01 && fr.monolithic(c, space.pageTop + bt + pt + at + before)
+					|| fr != null && fr.stopped) {
+					broken = true;
+					if (monolithic(c)) {
+						sliced = true;
+						c.flags |= Box.SLICED;
+					}
+					break;
+				}
 				pos = c.bottomPositive;
 				neg = c.bottomNegative;
 				c = c.next;
@@ -377,7 +402,7 @@ class BlockFlow implements FormattingContext {
 		// whole yet: tests whose references are such boxes need table cells and monolithic overflow broken too)
 		// (size containment's content laid out whole, the box's own height still broken past it: in place of LayoutNG's
 		// monolithic overflow, its pages after)
-		if (own != null && box.absolute && !broken && !autoHeight && (done || space.pageTop + bt + pt < own.size - 0.01)
+		if (own != null && !broken && !autoHeight && (done || space.pageTop + bt + pt < own.size - 0.01)
 			&& space.pageTop + bt + pt + heightSpec > own.size + 0.01) {
 			own.placed(space.pageTop + bt + pt + heightSpec);
 			if (own.after(box, reserve + space.pageTop + bt + pt + y) || own.stopped) broken = true;
@@ -392,7 +417,9 @@ class BlockFlow implements FormattingContext {
 			mb = 0;
 			bpy = pt + pb + bt + bb;
 			bottomCollapses = false;
-			y = Math.max(y, space.fragmentation.size - space.pageTop - bt - pt - (clone ? bb + pb : 0));
+			// (the room its cloned ancestors' and its own bottom edges keep aside)
+			var end = space.fragmentation.size - space.pageTop - bt - pt - reserve;
+			y = sliced ? end : Math.max(y, end);
 			if (!autoHeight) heightSpec = y;
 		}
 		var content = 0.0;
@@ -644,6 +671,25 @@ class BlockFlow implements FormattingContext {
 			}
 		}
 		return {fragment: f, x: left + ml, y: t + a};
+	}
+
+	// (how far a fragment's content reaches down from its top: its border box, what overflows it unless it clips)
+	static function extent(f:Fragments, id:Int):Float {
+		var h = f.height(id), b = f.box(id);
+		if (f.kind(id) == Fragments.BOX && b.style.clips) return h;
+		var k = f.first(id);
+		while (k >= 0) {
+			var e = f.y(k) + extent(f, k);
+			if (e > h) h = e;
+			k = f.next(k);
+		}
+		return h;
+	}
+
+	// (whole wherever it is: a replaced element, a scroll container, one with layout or size containment)
+	public static function monolithic(b:Box):Bool {
+		var c = b.style.containment;
+		return b.kind == BlockReplaced || b.kind == InlineReplaced || scrolls(b.style) || c.has(Layout) || c.has(Size);
 	}
 
 	static function scrolls(s:BoxStyle):Bool {

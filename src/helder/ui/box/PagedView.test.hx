@@ -11,8 +11,9 @@ import helder.test.Test;
 // margin boxes and their running content, the PDF's outline and links.
 function tests() {
 	describe("PagedView", () -> {
+		// (blocks of a line each of a line-height: whole, a line not broken; an empty block of a height is, as Chromium's)
 		test("blocks: a page each that fits, the page area's height", () -> {
-			var v = paged('<div id=a style="height:50px"></div><div id=b style="height:50px"></div><div id=c style="height:20px"></div>');
+			var v = paged('<div id=a style="line-height:50px">a</div><div id=b style="line-height:50px">b</div><div id=c style="line-height:20px">c</div>');
 			equals(v.layout(), 2);
 			equals([v.pages[0].width, v.pages[0].height, v.pages[0].margins[0]], [200.0, 100, 10]);
 			equals([on(v, 0, "a"), on(v, 1, "b"), on(v, 1, "c")], [0.0, 0, 50]);
@@ -25,7 +26,7 @@ function tests() {
 			equals(on(v, 1, "b"), 0.0);
 		});
 		test("break-before: avoid takes the break before, a page's worth less full", () -> {
-			var v = paged('<div id=a style="height:30px"></div><div id=b style="height:30px"></div><div id=c style="height:30px;break-before:avoid"></div>');
+			var v = paged('<div id=a style="line-height:30px">a</div><div id=b style="line-height:30px">b</div><div id=c style="line-height:30px;break-before:avoid">c</div>');
 			equals(v.layout(), 2);
 			equals([on(v, 1, "b"), on(v, 1, "c")], [0.0, 30]);
 		});
@@ -91,7 +92,7 @@ function tests() {
 			equals([t.indexOf("B") >= 0, t.indexOf(".2") >= 0, t.split(".").length > 10], [true, true, true]);
 		});
 		test("box-decoration-break: clone, each fragment's border whole, room kept for the bottom one", () -> {
-			var v = paged('<div id=a style="border:5px solid;box-decoration-break:clone"><div style="height:60px"></div><div style="height:60px"></div></div>');
+			var v = paged('<div id=a style="border:5px solid;box-decoration-break:clone"><div style="line-height:60px">x</div><div style="line-height:60px">x</div></div>');
 			equals(v.layout(), 2);
 			equals([height(v, 0, "a"), height(v, 1, "a")], [80.0, 70]);
 			equals([sliced(v, 0, "a"), sliced(v, 1, "a")], ["", ""]);
@@ -115,7 +116,7 @@ function tests() {
 			equals([on(v, 1, "a"), on(v, 2, "b")], [0.0, 20]);
 		});
 		test("a block across pages: its border sliced, its height to the page's end", () -> {
-			var v = paged('<div id=a style="border:5px solid"><div style="height:60px"></div><div style="height:60px"></div></div>');
+			var v = paged('<div id=a style="border:5px solid"><div style="line-height:60px">x</div><div style="line-height:60px">x</div></div>');
 			equals(v.layout(), 2);
 			// (broken: to the page's end, as its background)
 			equals([height(v, 0, "a"), height(v, 1, "a")], [80.0, 65]);

@@ -13,6 +13,9 @@ class BreakToken {
 	public static inline var PAST = -2;
 	// (a Resume's line where its parallel flows were broken, each at its own break)
 	public static inline var SPLIT = -3;
+	// (a Resume's line in a monolithic box past the fragmentainer's end: laid out whole again, shifted up by what the
+	// ones before took of it, its overflow continuing)
+	public static inline var MONO = -4;
 
 	public final resumes:ObjectMap<Box, Resume>;
 	// a forced break's page side ("left", "right": the next page is that side, a blank one between if not)

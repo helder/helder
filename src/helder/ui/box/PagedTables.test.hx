@@ -18,7 +18,7 @@ function tests() {
 			equals([height(v, 0, "a"), height(v, 1, "b")], [80.0, 20]);
 		});
 		test("a collapsed-border table across pages: each page's fragment its own grid, its rows' lines only", () -> {
-			var rows = [for (k in 0...12) '<tr><td style="height:10px;padding:0;border:1px solid"></td></tr>'].join("");
+			var rows = [for (k in 0...12) '<tr><td style="padding:0;border:1px solid">x</td></tr>'].join("");
 			var v = paged('<table id=t style="border-collapse:collapse">$rows</table>');
 			equals(v.layout(), 2);
 			var shown = [for (p in 0...2) {
@@ -38,7 +38,8 @@ function tests() {
 			equals(on(v, 0, "r6"), Math.NaN);
 		});
 		test("a table broken: its border, padding and spacing sliced, to the page's end; cloned: whole on each page", () -> {
-			var rows = [for (k in 0...6) '<tr><td id=r$k style="height:20px;padding:0"></td></tr>'].join("");
+			// (a line each, of 20px: rows that don't break)
+			var rows = [for (k in 0...6) '<tr><td id=r$k style="line-height:20px;padding:0">x</td></tr>'].join("");
 			var v = paged('<table style="border:5px solid;padding:5px;border-spacing:0 5px">$rows</table>');
 			equals(v.layout(), 3);
 			// (the rows 15 down the first page, at the top of the next: their edges and spacing above there sliced)
@@ -47,7 +48,8 @@ function tests() {
 			equals(v.fragments.height(grid(v, 0)), 80.0);
 			var c = paged('<table style="border:5px solid;padding:5px;border-spacing:0 5px;box-decoration-break:clone">$rows</table>');
 			equals(c.layout(), 3);
-			equals([on(c, 1, "r2"), on(c, 2, "r4")], [15.0, 15]);
+			// (its border and padding again, its spacing not)
+			equals([on(c, 1, "r2"), on(c, 2, "r4")], [10.0, 10]);
 			equals([for (p in 0...3) edges(c, p)], ["", "", ""]);
 		});
 	});

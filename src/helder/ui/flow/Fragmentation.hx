@@ -54,6 +54,12 @@ interface Fragmentation {
 	// is taller than a fragmentainer, its own break-inside: avoid not kept
 	// (Fragmentation 3 §4.4: nowhere it would fit)
 	function split(box:Box, tokens:ObjectMap<Box, BreakToken>, bottom:Float, ?tall:Bool):Bool;
+	// a monolithic box past the fragmentainer's end, its border box's top at
+	// top: true: break inside it (resumed at BreakToken.MONO: whole again,
+	// its overflow continuing in the next, Fragmentation 3 §4.3's slicing
+	// of monolithic content, as LayoutNG's); last resort, a break before it
+	// first
+	function monolithic(box:Box, top:Float):Bool;
 	// a float broken across fragmentainers: its token carried to the next,
 	// wherever the break is (uncarry: its line went to the next itself)
 	function carry(float:Box, token:BreakToken):Void;
