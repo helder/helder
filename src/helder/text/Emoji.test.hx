@@ -32,11 +32,13 @@ function tests() {
 			equals([Emoji.emoji(0x1F600), Emoji.presentation(0x1F600)], [true, true]);
 			equals([Emoji.emoji("A".code), Emoji.emoji("3".code), Emoji.presentation("3".code)], [false, true, false]);
 		});
-		test("normal and unicode: as Emoji_Presentation says, whichever face comes first", () -> {
-			for (p in [FontSet.NORMAL, FontSet.UNICODE]) {
-				equals(faces(heart + star, p, true), "MC");
-				equals(faces(heart + star, p, false), "MC");
-			}
+		test("unicode: as Emoji_Presentation says, whichever face comes first", () -> {
+			equals(faces(heart + star, FontSet.UNICODE, true), "MC");
+			equals(faces(heart + star, FontSet.UNICODE, false), "MC");
+		});
+		test("normal: the first face that has it", () -> {
+			equals(faces(heart + star, FontSet.NORMAL, true), "CC");
+			equals(faces(heart + star, FontSet.NORMAL, false), "MM");
 		});
 		test("text and emoji: the face without colour, the one with it", () -> {
 			equals(faces(heart + star, FontSet.TEXT, true), "MM");

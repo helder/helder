@@ -896,7 +896,9 @@ class TextLayout {
 		return switch asked {
 			case FontSet.TEXT: FontSet.TEXT;
 			case FontSet.EMOJI: FontSet.EMOJI;
-			case _: Emoji.presentation(c) ? FontSet.EMOJI : FontSet.TEXT;
+			case FontSet.UNICODE: Emoji.presentation(c) ? FontSet.EMOJI : FontSet.TEXT;
+			// (normal is the UA's: Chromium's, the font list's order, a keycap in colour)
+			case _: keycap ? FontSet.EMOJI : 0;
 		}
 	}
 
