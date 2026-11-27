@@ -134,7 +134,7 @@ class Board implements Markup {
 		var out:Array<Flow> = [];
 		drawn++;
 		for (name in a.names()) {
-			var size = a.size(name), list = a.list(name);
+			var passes:Array<helder.ui.draw.PassData> = [], size = a.size(name), list = a.list(name, passes);
 			if (size == null || list == null) continue;
 			var cut = name.lastIndexOf("/");
 			var f = cut < 0 ? "Screens" : name.substr(0, cut);
@@ -146,6 +146,7 @@ class Board implements Markup {
 				width: size.width,
 				height: size.height,
 				still: list,
+				passes: passes,
 				looped: a.looped(name),
 				playable: playable.contains(name)
 			});
@@ -165,12 +166,14 @@ class Board implements Markup {
 
 	static function scene(s:Scene):View {
 		var w = WIDTH, h = WIDTH * s.height / Math.max(1, s.width);
-		var frame = new BoardFrame(s.still, s.width, s.height);
+		var frame = new BoardFrame(s.still, s.passes, s.width, s.height);
+		// (its scenes' worlds let go with its card: a flow's cards made again when its scenes come again)
+		onCleanup(() -> frame.dispose());
 		frame.style.set({width: w, height: h});
 		return <view tag={"scene-" + slug(s.name)} width={w} rowGap={8}>
 			<view width={w} height={h} borderRadius={6} overflow="hidden" background="#18181b" onPointerEnter={_ -> if (s.looped) {
-				var l = archive?.loop(s.name);
-				if (l != null) frame.play(l.fps, l.lists);
+				var l = archive?.loop(s.name, true);
+				if (l != null) frame.play(l.fps, l.lists, l.passes);
 			}} onPointerLeave={_ -> frame.stop()}>{frame}</view>
 			<view flexDirection="row" alignItems="center" columnGap={8}>
 				<text fontSize={12} color="#d4d4d8" flexGrow={1} minWidth={0} lineClamp={1}>{s.label + (s.looped ? "  ↻" : "")}</text>
@@ -195,6 +198,7 @@ typedef Scene = {
 	width:Float,
 	height:Float,
 	still:DisplayList,
+	passes:Array<helder.ui.draw.PassData>,
 	looped:Bool,
 	playable:Bool
 }

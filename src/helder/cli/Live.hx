@@ -35,7 +35,6 @@ class Live {
 	var ws:Null<WebSocket> = null;
 	// each scene's frames as last sent (its own file's sha256)
 	var scenes = new Map<String, String>();
-	var framesStamp = 0.0;
 
 	public function new(api:String, name:String, key:String, version:Int, literals:String, frames:Null<String>, release:Null<String>,
 			roots:Array<String>, ship:Ship) {
@@ -53,7 +52,6 @@ class Live {
 
 	@:coroutine public function run():Int {
 		if (frames != null && FileSystem.exists(frames)) {
-			framesStamp = FileSystem.stat(frames).mtime.getTime();
 			for (s in split(File.getBytes(frames), had())) scenes.set(s.name, s.sha);
 		}
 		Async.scope(task -> {
@@ -126,10 +124,10 @@ class Live {
 	}
 
 	// the scenes that changed in the studio's frames file: each uploaded as a file of its own, then named
+	// (each change the watcher saw: a file's time is in seconds, and the
+	// studio writes it twice in one after a live literal's patch, keys then
+	// the still taken again; split is cheap for what did not change)
 	@:coroutine function pushFrames() {
-		var t = FileSystem.exists(frames) ? FileSystem.stat(frames).mtime.getTime() : 0.0;
-		if (t == framesStamp) return;
-		framesStamp = t;
 		var now = split(try File.getBytes(frames) catch (_:Dynamic) return, had());
 		var changed:haxe.DynamicAccess<Null<String>> = {}, n = 0;
 		var seen = new Map<String, Bool>();
@@ -160,21 +158,35 @@ class Live {
 		return a == null ? _ -> false : a.has;
 	}
 
-	// a frames file's scenes, each a portable file of its own (its fonts in it, but those had) and its sha256
-	static function split(b:Bytes, had:String->Bool):Array<{name:String, sha:String, bytes:Bytes}> {
+	// a frames file's scenes, each a portable file of its own (its fonts in
+	// it, but those had; its pictures the Board's size: Run.PICTURES) and its
+	// sha256; made again only for a scene whose content changed (its pictures
+	// encoded again: seconds for a 3D scene's loop). By its content, not its
+	// key: a still keyed by its sources is taken again under the same key
+	// after a live literal's patch
+	function split(b:Bytes, had:String->Bool):Array<{name:String, sha:String, bytes:Bytes}> {
 		var a = FrameArchive.decode(b);
 		if (a == null) return [];
 		return [
 			for (n in a.names()) {
 				var one = new FrameArchive();
-				one.take(a, n, a.key(n) ?? "");
-				var bytes = one.portable(had).encode();
-				{name: n, sha: haxe.crypto.Sha256.make(bytes).toHex(), bytes: bytes};
+				one.take(a, n, "");
+				var content = haxe.crypto.Md5.make(one.encode()).toHex(), was = made.get(n);
+				if (was != null && was.content == content) was.made else {
+					var bytes = one.portable(16 * 1024 * 1024, had, Run.PICTURES).encode();
+					var m = {name: n, sha: haxe.crypto.Sha256.make(bytes).toHex(), bytes: bytes};
+					made.set(n, {content: content, made: m});
+					m;
+				}
 			}
 		];
 	}
 
-	// the sources under the project's roots (bin, node_modules and dotfiles left out), and the frames file
+	final made = new Map<String, {content:String, made:{name:String, sha:String, bytes:Bytes}}>();
+
+	// the sources under the project's roots (bin, node_modules and dotfiles
+	// left out; stories too: Play's build has none, a story's change reaches
+	// the Board through the studio's frames), and the frames file
 	function watch(w:SampledWatcher) {
 		var files = [], dirs = [];
 		function walk(d:String)
@@ -184,14 +196,14 @@ class Live {
 				if (FileSystem.isDirectory(p)) {
 					dirs.push(p);
 					walk(p);
-				} else if (n.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(n)) files.push(p);
+				} else if ((n.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(n)) && !~/\.story\.(hx|tsx?)$/.match(n)) files.push(p);
 			}
 		for (r in roots) {
 			dirs.push(r);
 			walk(r);
 		}
 		if (frames != null) files.push(frames);
-		w.watch(files, dirs, n -> n.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(n));
+		w.watch(files, dirs, n -> (n.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(n)) && !~/\.story\.(hx|tsx?)$/.match(n));
 	}
 }
 

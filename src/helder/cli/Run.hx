@@ -33,6 +33,8 @@ using StringTools;
 // literals' tables beside the release (bin/run/<name>.literals).
 class Run {
 	public static inline var API = "https://helder.build";
+	// a share's pictures at most so many pixels a side (FrameArchive.portable): the Board's 280-point cards at 2x
+	public static inline var PICTURES = 400;
 	// (as helder.build refuses: a file, a release)
 	static inline var MAX_FILE = 25 * 1024 * 1024;
 	static inline var MAX_RELEASE = 100 * 1024 * 1024;
@@ -161,7 +163,7 @@ class Run {
 		var board = frames == null ? null : {
 			var a = helder.ui.draw.FrameArchive.decode(File.getBytes(frames));
 			if (a == null) throw '$frames: not a frames file of this helder (the studio writes it again)';
-			File.saveBytes('$dir/_helder/frames.hframes', a.portable().encode());
+			File.saveBytes('$dir/_helder/frames.hframes', a.portable(16 * 1024 * 1024, null, PICTURES).encode());
 			Term.out(Style.status("board", Info, '${a.names().length} scenes' + Style.dim(Style.sep() + '${r.scenarios.length} to play from' + Style.sep() + frames)));
 			{frames: "_helder/frames.hframes", scenarios: [for (s in r.scenarios) s.name]};
 		};

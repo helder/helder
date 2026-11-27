@@ -1335,6 +1335,8 @@ class Studio {
 		}
 		if (p == null) return;
 		sharing = p;
+		// (a headless run goes on while its share is live: a check acts on the project meanwhile, at most an hour)
+		hold(() -> sharing != p, "Share live", 3600);
 		// (helder share --live's lines: building, the link, then live: each patch, version and scene it sends)
 		var url:Null<String> = null, state = "sharing";
 		function lines(src:Stream.Source)
