@@ -13,7 +13,8 @@ import helder.view.graph.Graph;
 // wall clock its time, its zone, language and settings its own
 class Act {
 	// mounted: what lets it go
-	public static function mount(sc:Scenario, root:RootView, context:ScreenContext, ui:Ui, ?missed:(method:String, url:String) -> Void):Void->Void {
+	// (resumed: a reload's, its signals the last build's: no boot, no steps over them)
+	public static function mount(sc:Scenario, root:RootView, context:ScreenContext, ui:Ui, ?missed:(method:String, url:String) -> Void, resumed = false):Void->Void {
 		// (its requests its fixtures' to answer, strictly: none goes out, one unanswered its screen's failure)
 		if (context.atoms != null) context.atoms.http = new helder.async.http.Fixtures(sc.http ?? {}, #if sys Sys.getCwd() #else "" #end, missed ?? (_, _) -> {});
 		context.epoch = sc.time == null ? null : sc.time - context.now * 1000;
@@ -31,14 +32,14 @@ class Act {
 		context.reducedMotion = sc.settings.reducedMotion;
 		// (run's own: what helder.os reads from here on is the scenario's)
 		@:privateAccess ScreenContext.environ(context);
-		var boot = sc.boot;
+		var boot = resumed ? null : sc.boot;
 		if (boot != null) {
 			boot();
 			// (what it wrote committed: the root reads it as it renders)
 			Graph.flush();
 		}
 		var d = opened(root, props -> Render.insert(props.children, ui.root, null));
-		if (sc.steps.length == 0) return d;
+		if (resumed || sc.steps.length == 0) return d;
 		// (its steps after boot, before the still; one going wrong lets the root go and fails the screen)
 		var p = sc.pos, at = p == null ? null : new helder.view.Source(p.fileName, 0, 0, p.lineNumber, 1, p.lineNumber, 1);
 		try Steps.run(sc.steps, ui, context, at) catch (e:haxe.Exception) {

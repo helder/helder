@@ -75,6 +75,21 @@ function tests() {
 		equals(seen.get("Q"), [0, 0]);
 		equals(h.screens[1].run(() -> total()), 0);
 	});
+	var resumed = test("resumed (a reload's, Player's): neither boot nor steps run over the signals the reload kept", () -> {
+		var ran = 0;
+		var sc = scenario({name: "R", boot: () -> {
+			ran++;
+			score([2, 2]);
+		}});
+		var context = new helder.ui.ScreenContext("resumed", true, null, new helder.view.graph.Atoms("resumed"));
+		var ui = new Ui(new helder.ui.draw.DrawText(), 120, 80);
+		var d = context.run(() -> Act.mount(sc, Hosting.root, context, ui, null, true));
+		equals([ran, context.run(() -> total())], [0, 0]);
+		context.run(() -> d());
+		d = context.run(() -> Act.mount(sc, Hosting.root, context, ui));
+		equals([ran, context.run(() -> total())], [1, 4]);
+		context.run(() -> d());
+	});
 	var time = test("its time: the wall clock of its screen", () -> {
 		var at = -1.0;
 		var h = new Host([], new HeadlessHost(), 1.0, [scenario({name: "T", time: "2026-11-26T09:00Z", boot: () -> at = helder.os.Now.get()})]);
@@ -236,7 +251,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing])
+	for (t in [host, boot, apart, resumed, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing])
 		t.skip();
 	#end
 }

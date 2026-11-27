@@ -18,7 +18,9 @@ import helder.view.graph.Graph;
 // go, Atoms.clear: the top-level effects made again, its clock's steps and
 // timers dropped) and mounts the root after that one's boot: the window,
 // its place and size, hot reload kept, nothing built. Across a reload the
-// one playing is kept (Hot's snapshot), unless the main names another.
+// one playing is kept (Hot's snapshot), unless the main names another, and
+// resumed: its boot not run again over the signals the reload kept (a
+// share's Play, a new version swapped in: its game goes on as it was).
 //
 //   import "./.helder-play-boot";            // hold()
 //   import { dusk, night } from "./app.scenario";
@@ -45,18 +47,21 @@ class Player {
 			return;
 		}
 		var p = new Player(list, root);
-		var start = name;
+		var start = name, resumed = false;
 		#if hxmc.dev
 		// (kept across a reload: the one playing, unless the main names another now)
 		var kept:Null<Array<String>> = helder.dev.Hot.load("helder.scenario.playing", helder.dev.Hot.typeOf((_ : Array<String>)));
-		if (kept != null && kept[0] == name && p.find(kept[1]) != null) start = kept[1];
+		if (kept != null && kept[0] == name && p.find(kept[1]) != null) {
+			start = kept[1];
+			resumed = true;
+		}
 		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.scenario.playing", [name, p.playing], helder.dev.Hot.typeOf((_ : Array<String>))));
 		helder.dev.Agent.method("Scenario.play", q -> {
 			p.play(Std.string(q?.name));
 			return {playing: p.playing};
 		});
 		#end
-		p.play(start);
+		p.play(start, resumed);
 		Hosting.on = false;
 		UiWindow.run();
 	}
@@ -95,7 +100,7 @@ class Player {
 		return Lambda.find(list, s -> s.name == name);
 
 	// one of its scenarios played: the last one's store let go, its boot, the root again
-	public function play(name:String) {
+	public function play(name:String, resumed = false) {
 		var sc = find(name);
 		if (sc == null) throw 'no scenario "$name" (${[for (s in list) s.name].join(", ")})';
 		var u = unrender;
@@ -109,7 +114,7 @@ class Player {
 		playing = name;
 		unrender = context.run(() -> helder.dev.Hot.scope("helder.scenario.play", () -> {
 			helder.os.Seed.random(sc.seed);
-			var d = Act.mount(sc, root, context, window.ui);
+			var d = Act.mount(sc, root, context, window.ui, null, resumed);
 			Graph.flush();
 			d;
 		}));

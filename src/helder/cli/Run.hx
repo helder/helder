@@ -25,6 +25,12 @@ using StringTools;
 // /api/publish/<release>/commit makes it current. helder.build checks the
 // module's imports and that every script is helder's runtime (a runtime
 // changed here is refused). HELDER_API: another helder.build (a local one).
+//
+// A share's write key (helder.build's, once: its sw_...) is kept in
+// bin/studio/<project>/share.json, beside the studio's frames: sharing
+// again is that link's next version (--new: another link). --live keeps
+// it live while it runs (Live): its builds are dev builds, their live
+// literals' tables beside the release (bin/run/<name>.literals).
 class Run {
 	public static inline var API = "https://helder.build";
 	// (as helder.build refuses: a file, a release)
@@ -89,87 +95,150 @@ class Run {
 			if (scenarios.length > 0) e.mainAt(Scenes.entry(at, Scenes.SHARE, e.typescript, scenarios, null, 'helder $command'));
 		}
 		var dir = Entry.clean('${e.root}/bin/run/${e.name}');
+		// (a share's write key, kept beside the studio's frames: the same link's next version, live)
+		var keep = (frames != null ? Path.directory(frames) : '${e.root}/bin/studio/${e.name}') + "/share.json";
+		var live = anonymous && o.has("live");
+		var r:Release = {
+			o: o, e: e, cfg: cfg, run: run, name: name, anonymous: anonymous, auth: auth, dir: dir, frames: frames, scenarios: scenarios,
+			literals: live ? Entry.clean('${e.root}/bin/run/${e.name}.literals') : null,
+			kept: anonymous && !o.has("new") && !dry ? kept(keep) : null, icon: null, shots: [], dry: dry
+		};
 		try {
 			if (FileSystem.exists(dir)) remove(dir);
 			TestCommand.mkdirs(dir);
-			var wasm = '$dir/${e.name}.wasm';
-			if (!BuildCommand.build(e, wasm, Release).ok) return 1;
-			Page.write(e.helder, wasm, e.name, e.manifest == null ? null : {file: e.manifest, cfg: e.config, root: e.root});
-			var page = Page.written;
-			// (what helder.run makes itself, or refuses: the page, the web manifest)
-			for (f in FileSystem.readDirectory(dir)) if (f.endsWith(".html") || f == Manifest.FILE) FileSystem.deleteFile('$dir/$f');
-			TestCommand.mkdirs('$dir/_helder');
-			var icon = new Icons(cfg, e.root).png(["any", "maskable"], 512, 1, null, "helder.run's icon");
-			if (icon != null) File.saveBytes('$dir/_helder/icon.png', icon);
-			var shots = screenshots(o, e, run, dir);
-			var board = frames == null ? null : {
-				var a = helder.ui.draw.FrameArchive.decode(File.getBytes(frames));
-				if (a == null) throw '$frames: not a frames file of this helder (the studio writes it again)';
-				File.saveBytes('$dir/_helder/frames.hframes', a.portable().encode());
-				Term.out(Style.status("board", Info, '${a.names().length} scenes' + Style.dim(Style.sep() + '${scenarios.length} to play from' + Style.sep() + frames)));
-				{frames: "_helder/frames.hframes", scenarios: [for (s in scenarios) s.name]};
+			var done = ship(r, true);
+			if (done == null) return dry ? 0 : 1;
+			if (r.kept != null) {
+				TestCommand.mkdirs(Path.directory(keep));
+				File.saveContent(keep, haxe.Json.stringify(r.kept, null, "  "));
+			}
+			if (!live) return 0;
+			if (r.kept == null) throw "helder.build gave no write key: the share is not live";
+			var roots = [FileSystem.fullPath(e.typescript == null ? e.root : Path.directory(e.typescript))];
+			var next:Live.Ship = () -> {
+				var again = try ship(r, false) catch (err:Dynamic) {
+					Term.err(Style.status("error", Fail, Std.string(err)));
+					null;
+				}
+				again?.version;
 			};
-			var files = list(dir, "");
-			var total = 0;
-			for (f in files) {
-				if (f.size > MAX_FILE) throw '${f.path}: ${mb(f.size)}: helder.run takes files of 25 MB at most';
-				total += f.size;
-			}
-			if (total > (anonymous ? MAX_FILE : MAX_RELEASE)) throw 'the release is ${mb(total)}: helder.run takes ${anonymous ? "25 MB for a share" : "100 MB"} at most';
-			var meta = {
-				name: name,
-				title: cfg.name ?? e.name,
-				label: cfg.label,
-				description: cfg.description,
-				version: cfg.versionName,
-				kind: run?.kind,
-				tags: run?.tags ?? [],
-				listed: run?.listed == true,
-				source: run?.source,
-				theme: cfg.theme == null ? null : Page.css(cfg.theme),
-				background: cfg.background == null ? null : Page.css(cfg.background),
-				orientation: cfg.orientation,
-				fullscreen: cfg.fullscreen == true,
-				icon: icon == null ? null : "_helder/icon.png",
-				screenshots: shots,
-				stores: cfg.stores ?? {},
-				downloads: anonymous ? {} : run?.downloads ?? {},
-				page: page,
-				board: board,
-				helder: helderVersion(e)
-			};
-			Term.out(Style.status("release", Info, '${files.length} files, ${mb(total)}' + Style.dim(Style.sep() + dir)));
-			if (dry) {
-				Term.out(haxe.Json.stringify(meta, null, "  "));
-				for (f in files) Term.out('  ${f.path} ${mb(f.size)}');
-				Term.out(Style.status("dry run", Info, "nothing uploaded"));
-				return 0;
-			}
-			var start = call("POST", "/api/publish", auth, {anonymous: anonymous, meta: meta, files: [for (f in files) {path: f.path, sha256: f.sha256, size: f.size}]});
-			var missing:Array<String> = start.missing ?? [];
-			var upload:String = start.uploadToken;
-			var sent = 0;
-			for (f in files) if (missing.contains(f.sha256)) {
-				missing.remove(f.sha256);
-				Term.spin('uploading ${f.path}');
-				var r = Publish.http("PUT", api() + '/api/blob/${f.sha256}', ["Authorization: Bearer " + upload, "Content-Type: application/octet-stream"], null,
-					{path: '$dir/${f.path}', offset: 0, length: f.size});
-				Term.done();
-				if (r.code != 200 && r.code != 201) throw 'PUT /api/blob/${f.sha256} (${f.path}): HTTP ${r.code} ${message(r.body)}';
-				sent += f.size;
-			}
-			var done = call("POST", '/api/publish/${start.release}/commit', upload, {});
-			Term.out(Style.status("uploaded", Info, mb(sent) + Style.dim(Style.sep() + 'the rest helder.run had')));
-			Term.out(Style.status(anonymous ? "shared" : "published", Ok, '${done.url}' + (done.version != null ? Style.dim(Style.sep() + 'v${done.version}') : "")));
-			// (the page about it: helder.build/<name>)
-			if (done.page != null) Term.out(Style.status("page", Info, '${done.page}'));
-			if (done.expires != null) Term.out(Style.status("expires", Info, '${done.expires}' + Style.dim(Style.sep() + "a share lasts a week")));
-			if (done.listed == false && !anonymous && run?.listed == true) Term.out(Style.status("listing", Info, Std.string(done.listing ?? "not listed yet")));
-			return 0;
+			var board = frames == null ? null : '$dir/_helder/frames.hframes';
+			return new Live(api(), r.kept.name, r.kept.key, done.version, r.literals, frames == null ? null : FileSystem.fullPath(frames), board, roots, next).run();
 		} catch (err:Dynamic) {
 			Term.err(Style.status("error", Fail, Std.string(err)));
 			return 1;
 		}
+	}
+
+	// the share's write key and link, as the last share of this project kept them (null: none)
+	static function kept(file:String):Null<{name:String, url:String, key:String}> {
+		var j:Dynamic = try haxe.Json.parse(File.getContent(file)) catch (_:Dynamic) null;
+		return j?.name != null && j?.key != null ? {name: j.name, url: j.url, key: j.key} : null;
+	}
+
+	// a release built and uploaded (null: a dry run, or the build failed):
+	// the first in full; again (--live), its module, page and frames anew,
+	// the icon and screenshots as they were. A share with a kept write key
+	// is that link's next version; one helder.build no longer takes (expired),
+	// a new link
+	@:coroutine static function ship(r:Release, first:Bool):Null<{url:String, version:Int}> {
+		var e = r.e, dir = r.dir, cfg = r.cfg, run = r.run;
+		var wasm = '$dir/${e.name}.wasm';
+		var built = r.literals == null ? BuildCommand.build(e, wasm, Release) : BuildCommand.build(e, wasm, Dev, null, ["-D", "helder.literals=" + r.literals]);
+		if (!built.ok) return null;
+		Page.write(e.helder, wasm, e.name, e.manifest == null ? null : {file: e.manifest, cfg: e.config, root: e.root});
+		var page = Page.written;
+		// (what helder.run makes itself, or refuses: the page, the web manifest)
+		for (f in FileSystem.readDirectory(dir)) if (f.endsWith(".html") || f == Manifest.FILE) FileSystem.deleteFile('$dir/$f');
+		TestCommand.mkdirs('$dir/_helder');
+		if (first) {
+			var icon = new Icons(cfg, e.root).png(["any", "maskable"], 512, 1, null, "helder.run's icon");
+			if (icon != null) File.saveBytes('$dir/_helder/icon.png', icon);
+			r.icon = icon == null ? null : "_helder/icon.png";
+			r.shots = screenshots(r.o, e, run, dir);
+		}
+		var frames = r.frames;
+		var board = frames == null ? null : {
+			var a = helder.ui.draw.FrameArchive.decode(File.getBytes(frames));
+			if (a == null) throw '$frames: not a frames file of this helder (the studio writes it again)';
+			File.saveBytes('$dir/_helder/frames.hframes', a.portable().encode());
+			Term.out(Style.status("board", Info, '${a.names().length} scenes' + Style.dim(Style.sep() + '${r.scenarios.length} to play from' + Style.sep() + frames)));
+			{frames: "_helder/frames.hframes", scenarios: [for (s in r.scenarios) s.name]};
+		};
+		var files = list(dir, "");
+		var total = 0;
+		for (f in files) {
+			if (f.size > MAX_FILE) throw '${f.path}: ${mb(f.size)}: helder.run takes files of 25 MB at most';
+			total += f.size;
+		}
+		if (total > (r.anonymous ? MAX_FILE : MAX_RELEASE))
+			throw 'the release is ${mb(total)}: helder.run takes ${r.anonymous ? "25 MB for a share" : "100 MB"} at most';
+		var meta = {
+			name: r.name,
+			title: cfg.name ?? e.name,
+			label: cfg.label,
+			description: cfg.description,
+			version: cfg.versionName,
+			kind: run?.kind,
+			tags: run?.tags ?? [],
+			listed: run?.listed == true,
+			source: run?.source,
+			theme: cfg.theme == null ? null : Page.css(cfg.theme),
+			background: cfg.background == null ? null : Page.css(cfg.background),
+			orientation: cfg.orientation,
+			fullscreen: cfg.fullscreen == true,
+			icon: r.icon,
+			screenshots: r.shots,
+			stores: cfg.stores ?? {},
+			downloads: r.anonymous ? {} : run?.downloads ?? {},
+			page: page,
+			board: board,
+			helder: helderVersion(e)
+		};
+		Term.out(Style.status("release", Info, '${files.length} files, ${mb(total)}' + Style.dim(Style.sep() + dir)));
+		if (r.dry) {
+			Term.out(haxe.Json.stringify(meta, null, "  "));
+			for (f in files) Term.out('  ${f.path} ${mb(f.size)}');
+			Term.out(Style.status("dry run", Info, "nothing uploaded"));
+			return null;
+		}
+		var body:Dynamic = {anonymous: r.anonymous, meta: meta, files: [for (f in files) {path: f.path, sha256: f.sha256, size: f.size}]};
+		var start:Dynamic = null;
+		if (r.kept != null) {
+			body.share = r.kept.name;
+			start = try call("POST", "/api/publish", r.kept.key, body) catch (err:Dynamic) {
+				// (that link gone: a new one)
+				if (!~/HTTP (403|404|410)/.match(Std.string(err))) throw err;
+				Term.out(Style.status("share", Info, '${r.kept.url} is no longer this project\'s: a new link' + Style.dim(Style.sep() + Std.string(err))));
+				Reflect.deleteField(body, "share");
+				r.kept = null;
+				null;
+			}
+		}
+		if (start == null) start = call("POST", "/api/publish", r.auth, body);
+		var missing:Array<String> = start.missing == null ? [] : start.missing;
+		var upload:String = start.uploadToken;
+		var sent = 0;
+		for (f in files) if (missing.contains(f.sha256)) {
+			missing.remove(f.sha256);
+			Term.spin('uploading ${f.path}');
+			var res = Publish.http("PUT", api() + '/api/blob/${f.sha256}', ["Authorization: Bearer " + upload, "Content-Type: application/octet-stream"], null,
+				{path: '$dir/${f.path}', offset: 0, length: f.size});
+			Term.done();
+			if (res.code != 200 && res.code != 201) throw 'PUT /api/blob/${f.sha256} (${f.path}): HTTP ${res.code} ${message(res.body)}';
+			sent += f.size;
+		}
+		var done = call("POST", '/api/publish/${start.release}/commit', upload, {});
+		if (start.writeKey != null) r.kept = {name: start.project, url: done.url, key: start.writeKey};
+		Term.out(Style.status("uploaded", Info, mb(sent) + Style.dim(Style.sep() + 'the rest helder.run had')));
+		Term.out(Style.status(r.anonymous ? "shared" : "published", Ok, '${done.url}' + (done.version != null ? Style.dim(Style.sep() + 'v${done.version}') : "")));
+		if (first) {
+			// (the page about it: helder.build/<name>)
+			if (done.page != null) Term.out(Style.status("page", Info, '${done.page}'));
+			if (done.expires != null) Term.out(Style.status("expires", Info, '${done.expires}' + Style.dim(Style.sep() + "a share lasts a week")));
+			if (done.listed == false && !r.anonymous && run?.listed == true) Term.out(Style.status("listing", Info, Std.string(done.listing ?? "not listed yet")));
+		}
+		return {url: done.url, version: done.version};
 	}
 
 	// the frames file a release's Board draws: --frames, else the studio's
@@ -413,4 +482,23 @@ class Run {
 
 	static function mb(n:Int):String
 		return n < 1024 * 1024 ? '${Math.round(n / 102.4) / 10} KB' : '${Math.round(n / 104857.6) / 10} MB';
+}
+
+// what a release is made of (ship's, again for each live version)
+typedef Release = {
+	o:Options,
+	e:Entry,
+	cfg:Manifest.AppConfig,
+	run:Null<HelderJson.RunConfig>,
+	name:Null<String>,
+	anonymous:Bool,
+	auth:Null<String>,
+	dir:String,
+	frames:Null<String>,
+	scenarios:Array<{name:String, binding:String, file:String}>,
+	literals:Null<String>,
+	kept:Null<{name:String, url:String, key:String}>,
+	icon:Null<String>,
+	shots:Array<String>,
+	dry:Bool
 }

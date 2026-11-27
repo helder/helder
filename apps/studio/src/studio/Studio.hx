@@ -1301,10 +1301,20 @@ class Studio {
 	public function share() {
 		#if !(hxmc.target == "wasm32-wasi")
 		if (project == null || shared.peek()?.state == "sharing") return;
+		// (live: Share again stops it, the link kept as it is)
+		var p = sharing;
+		if (p != null) {
+			sharing = null;
+			try p.kill() catch (_:Dynamic) {}
+			var was = shared.peek();
+			shared({state: "shared", note: "not live", url: was?.url});
+			log("shared", {state: "shared", note: "stopped"});
+			return;
+		}
 		previews?.saveStills();
 		var frames = '${project.out}/${Stills.FILE}';
 		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
-		var args = ["share", project.dir].concat(Files.exists(frames) ? ["--frames", frames] : []);
+		var args = ["share", project.dir, "--live"].concat(Files.exists(frames) ? ["--frames", frames] : []);
 		log("share", {args: args});
 		#if helder.headless
 		var stand = Sys.getEnv("HELDER_STUDIO_PLAY_CLI") ?? "";
@@ -1324,22 +1334,27 @@ class Studio {
 			null;
 		}
 		if (p == null) return;
-		var done = false;
+		sharing = p;
+		// (helder share --live's lines: building, the link, then live: each patch, version and scene it sends)
+		var url:Null<String> = null, state = "sharing";
 		function lines(src:Stream.Source)
 			Async.launch(_ -> {
 				var r = new Reader(src), line;
 				try while ((line = r.readLine()) != null) {
 					var text = new EReg(String.fromCharCode(27) + "\\[[0-9;]*m", "g").replace(line, "").trim();
 					var status = ~/^([a-z ]+?)\s+(\S.*)$/;
-					if (done || !status.match(text)) continue;
+					if (sharing != p || !status.match(text)) continue;
 					switch status.matched(1) {
 						case "shared":
-							done = true;
-							told("shared", "", status.matched(2).split(" ")[0]);
-						case "error":
-							done = true;
-							told("failed", status.matched(2));
-						case "release" | "board" | "uploaded" | "built" | "screenshots": told("sharing", text);
+							url = status.matched(2).split(" ")[0];
+							told(state, state == "live" ? text : "", url);
+						case "live" if (url != null && !status.matched(2).startsWith("the room")):
+							state = "live";
+							told("live", status.matched(2), url);
+						case "error" if (url == null):
+							told(state = "failed", status.matched(2));
+						case "error" | "patched" | "frames" | "build": told(state, text, url);
+						case "release" | "board" | "uploaded" | "built" | "screenshots": told(state, text, url);
 						case _:
 					}
 				} catch (_:haxe.Exception) {}
@@ -1348,12 +1363,19 @@ class Studio {
 		lines(p.stderr);
 		Async.launch(_ -> {
 			var code = p.wait();
-			if (!done) told("failed", 'helder share ended (exit code $code)');
+			if (sharing != p) return;
+			sharing = null;
+			if (url != null) told("shared", 'not live (helder share ended: exit code $code)', url) else if (state != "failed") told("failed",
+				'helder share ended (exit code $code)');
 		});
 		#end
 	}
 
-	// what Share is doing (null: nothing yet): "sharing" (its last line), "shared" (the link), "failed" (why)
+	// helder share --live while it runs (Share stops it; the studio's end too)
+	var sharing:Null<Process> = null;
+
+	// what Share is doing (null: nothing yet): "sharing" (its last line), "live" (the link, kept
+	// live: its last patch, version or scenes), "shared" (the link, not live), "failed" (why)
 	public final shared:Signal<Null<{state:String, note:String, url:Null<String>}>> = signal(null);
 
 	// what Play's window is doing (null: none): "starting", "running" or
@@ -2509,6 +2531,9 @@ class Studio {
 		if (previews != null) previews.stop();
 		#if !(hxmc.target == "wasm32-wasi")
 		if (events != null) events.close();
+		var p = sharing;
+		sharing = null;
+		if (p != null) try p.kill() catch (_:Dynamic) {}
 		#end
 	}
 }
