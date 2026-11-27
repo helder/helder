@@ -1190,6 +1190,7 @@ class BlockFlow implements FormattingContext {
 	// A fragment's first baseline from its top (its first line's, through its first boxes; NaN: none):
 	// a table cell's and a table's, where CSS 2.1 §17.5.3 aligns rows.
 	public static function firstBaseline(f:Fragments, id:Int):Float {
+		if (f.box(id).style.containment.has(Layout)) return Math.NaN;
 		var c = f.first(id);
 		while (c >= 0) {
 			switch f.kind(c) {
