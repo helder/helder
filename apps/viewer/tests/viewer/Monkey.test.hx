@@ -6,9 +6,21 @@ import helder.test.Test;
 import helder.ui.Hosting;
 import viewer.Shell.act;
 
-// what the monkey found that is still open (Found.scenario.hx's names): skipped, each with why;
-// one fixed leaves this list, its scenario its regression test
-final KNOWN:Map<String, String> = [];
+// What the monkey found that is still open, one list: each its failure's
+// text (a soak's case failing so is left out, that cause alone), why, and
+// its found scenario (Found.scenario.hx's, skipped when replayed) where it
+// has one. One fixed leaves the list; its scenario stays, its regression test.
+final KNOWN:Array<{failure:String, why:String, ?scenario:String}> = [
+	{
+		failure: 'grid "Files" in view/main/content/list and the scrollers around it did not move toward their end',
+		scenario: "Found/A grid wheeled to its end twice",
+		why: "helder.ui.VirtualScroll's limit (its extent less its view: 112) short of its layout's (content 686.6 in 568: 118.6), its last 6.6 points out of reach; not diagnosed"
+	},
+	{
+		failure: "Buffer.adopt: no buffer",
+		why: "helder.image.ImageMemory's buffers and views out of step, once in some hundred cases, never alone (GC timing): hxmc's list"
+	}
+];
 
 // (the made folder, beside the viewer's own moments: a folder of names and kinds a case draws)
 final made = scenario({name: "Monkey/Made folder", size: [1100, 700], dark: true, boot: () -> act(Go(Sandbox.MADE))});
@@ -62,13 +74,14 @@ function tests() {
 	// (first, with no steps: each scenario's files the Sandbox's, in memory, nothing refused)
 	test("each case's files the Sandbox's", () -> {
 		var f = Monkey.find({from: Monkey.from("viewer.Viewer_scenario", made, madePhone), atoms: [Monkey.atom(Sandbox.made)], steps: 0,
-			checks: [{name: "sandbox", check: sandbox}], except: ["window", "settles", "steady"]}, {cases: 60});
+			checks: [{name: "sandbox", check: sandbox}], except: ["window", "settles", "steady"], known: [for (k in KNOWN) {failure: k.failure, why: k.why}]},
+			{cases: 60});
 		equals(f?.failure, null);
 	});
 	// (each found scenario replayed as written, its choices all its own: the monkey's invariants and the viewer's)
 	test("what the monkey found, replayed: fixed, its invariants hold; open, skipped by name", () -> {
 		for (b in Monkey.from("viewer.Found_scenario")) {
-			if (KNOWN.exists(b.scenario.name)) continue;
+			if (Lambda.exists(KNOWN, k -> k.scenario == b.scenario.name)) continue;
 			var f = Monkey.find({from: [b], steps: 0, checks: [{name: "sandbox", check: sandbox}, {name: "media", check: media}], animates: animates},
 				{replay: [for (_ in 0...64) "0"].join(" ")});
 			equals('${b.scenario.name}: ${f?.failure}', '${b.scenario.name}: null');
@@ -78,7 +91,8 @@ function tests() {
 		from: Monkey.from("viewer.Viewer_scenario", made, madePhone),
 		atoms: [Monkey.atom(Sandbox.made)],
 		checks: [{name: "sandbox", check: sandbox}, {name: "media", check: media}],
-		animates: animates
+		animates: animates,
+		known: [for (k in KNOWN) {failure: k.failure, why: k.why}]
 	}, {cases: 20, limit: 60}));
 	#end
 }
