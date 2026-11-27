@@ -22,7 +22,8 @@ typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool
 // choices 44 points high (slot touch-menu, touch-menu-item: data-selected
 // checked, data-disabled; touch-menu-item-danger), a group's line between
 // them (touch-menu-separator), in a modal popup over
-// the window; taller than the window, as high as it and scrolled. With a preview (a view at where its node is, lifted: slot
+// the window; taller than the window, as high as it and scrolled; the
+// window resized, dismissed. With a preview (a view at where its node is, lifted: slot
 // touch-menu-preview) the menu goes under it, or above it where there is
 // no room, the preview moved up to fit; blur puts a glass over what is
 // behind (slot touch-menu-scrim: a dimmed, blurred window). A press
@@ -78,6 +79,8 @@ class TouchMenu implements Markup {
 			?theme:helder.ui.StyleSheet, ?onClose:Void->Void):Popup {
 		var p = new Popup("touch-menu-layer");
 		p.modal = true;
+		// (a menu: dismissed as the window resizes, a phone turned, as the platforms' are; it was placed for the size it opened at)
+		p.menu = true;
 		p.style.background = helder.gfx.Color.TRANSPARENT;
 		if (theme != null) p.theme = theme;
 		var dispose:Null<Void->Void> = null;
