@@ -416,6 +416,7 @@ class BlockLines {
 				run.ends.resize(left);
 				run.skew = fonts.oblique ? 0.25 : 0;
 				run.bold = fonts.bold ? embolden(fonts.size) : 0;
+				if (face.hasColor) run.palette = space.fonts.palette(face, box.style);
 				runX = glyphs.x(g);
 			}
 			var unit = glyphs.cluster(g) - t0;

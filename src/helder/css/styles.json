@@ -1,7 +1,7 @@
 {
   "about": "Computed styles' storage (generate.mjs writes CssProperty.hx, CssProperties.hx and CssGroups.hx from it): every stored longhand in one group, a group inherited or not as all its properties are, so an element shares its parent's inherited groups and the initial reset ones unless something in them is set. impact: what a change to the property redoes (layout; text: inherited text that lays text out again; paint; composite: opacity and transforms; none: no rendering), the group's unless a property says otherwise. kinds: a property whose typed value isn't what its grammar suggests. Logical properties have ids but no storage: the cascade maps them to their physical ones (horizontal-tb, by direction).",
   "groups": {
-    "font": {"inherited": true, "impact": "text", "properties": ["font-family", "font-feature-settings", "font-kerning", "font-language-override", "font-optical-sizing", "font-size", "font-size-adjust", "font-style", "font-synthesis-position", "font-synthesis-small-caps", "font-synthesis-style", "font-synthesis-weight", "font-variant-alternates", "font-variant-caps", "font-variant-east-asian", "font-variant-emoji", "font-variant-ligatures", "font-variant-numeric", "font-variant-position", "font-variation-settings", "font-weight", "font-width", "line-height"]},
+    "font": {"inherited": true, "impact": "text", "properties": ["font-family", "font-feature-settings", "font-kerning", "font-language-override", "font-optical-sizing", "font-palette", "font-size", "font-size-adjust", "font-style", "font-synthesis-position", "font-synthesis-small-caps", "font-synthesis-style", "font-synthesis-weight", "font-variant-alternates", "font-variant-caps", "font-variant-east-asian", "font-variant-emoji", "font-variant-ligatures", "font-variant-numeric", "font-variant-position", "font-variation-settings", "font-weight", "font-width", "line-height"]},
     "inheritedText": {"inherited": true, "impact": "text", "properties": ["color", "direction", "letter-spacing", "word-spacing", "text-indent", "text-align-all", "text-align-last", "text-justify", "text-transform", "white-space-collapse", "text-wrap-mode", "text-wrap-style", "word-break", "line-break", "overflow-wrap", "hyphens", "tab-size", "text-emphasis-color", "text-emphasis-position", "text-emphasis-style", "text-shadow", "text-underline-position", "text-underline-offset", "quotes", "block-ellipsis", "orphans", "widows"]},
     "list": {"inherited": true, "impact": "layout", "properties": ["list-style-image", "list-style-position", "list-style-type", "marker-side"]},
     "table": {"inherited": true, "impact": "layout", "properties": ["border-collapse", "border-spacing", "caption-side", "empty-cells"]},
@@ -21,7 +21,7 @@
     "control": {"inherited": false, "impact": "none", "properties": ["appearance", "user-select", "scrollbar-width", "transition-property", "transition-duration", "transition-timing-function", "transition-delay", "transition-behavior"]}
   },
   "impact": {
-    "color": "paint", "text-emphasis-color": "paint", "text-shadow": "paint", "text-underline-position": "paint", "text-underline-offset": "paint",
+    "color": "paint", "font-palette": "paint", "text-emphasis-color": "paint", "text-shadow": "paint", "text-underline-position": "paint", "text-underline-offset": "paint",
     "quotes": "layout", "block-ellipsis": "layout", "orphans": "layout", "widows": "layout",
     "cursor": "none", "pointer-events": "none", "image-orientation": "layout",
     "z-index": "paint",

@@ -101,7 +101,7 @@ class Run {
 		var r:Release = {
 			o: o, e: e, cfg: cfg, run: run, name: name, anonymous: anonymous, auth: auth, dir: dir, frames: frames, scenarios: scenarios,
 			literals: live ? Entry.clean('${e.root}/bin/run/${e.name}.literals') : null,
-			kept: anonymous && !o.has("new") && !dry ? kept(keep) : null, icon: null, shots: [], dry: dry, last: null
+			kept: anonymous && !o.has("new") && !dry ? kept(keep) : null, icon: null, shots: [], dry: dry
 		};
 		try {
 			if (FileSystem.exists(dir)) remove(dir);
@@ -157,20 +157,6 @@ class Run {
 			r.icon = icon == null ? null : "_helder/icon.png";
 			r.shots = screenshots(r.o, e, run, dir);
 		}
-		// (a live share's next module as a diff against the last one too: helder.run serves it to a page that has that one)
-		var module = File.getBytes(wasm), sha = haxe.crypto.Sha256.make(module).toHex(), diffs = [];
-		if (FileSystem.exists('$dir/_helder/diffs')) remove('$dir/_helder/diffs');
-		var last = r.last;
-		if (r.literals != null && last != null && last.sha != sha) {
-			var d = BinaryDiff.diff(last.bytes, module);
-			if (d.length < module.length >> 1) {
-				TestCommand.mkdirs('$dir/_helder/diffs');
-				var file = '_helder/diffs/${last.sha.substr(0, 16)}.hdiff';
-				File.saveBytes('$dir/$file', d);
-				diffs.push({path: '${e.name}.wasm', from: last.sha, to: sha, file: file});
-				Term.out(Style.status("diff", Info, '${mb(d.length)}' + Style.dim(Style.sep() + 'the module ${mb(module.length)}, from v${last.version}')));
-			}
-		}
 		var frames = r.frames;
 		var board = frames == null ? null : {
 			var a = helder.ui.draw.FrameArchive.decode(File.getBytes(frames));
@@ -207,7 +193,6 @@ class Run {
 			downloads: r.anonymous ? {} : run?.downloads ?? {},
 			page: page,
 			board: board,
-			diffs: diffs,
 			helder: helderVersion(e)
 		};
 		Term.out(Style.status("release", Info, '${files.length} files, ${mb(total)}' + Style.dim(Style.sep() + dir)));
@@ -253,7 +238,6 @@ class Run {
 			if (done.expires != null) Term.out(Style.status("expires", Info, '${done.expires}' + Style.dim(Style.sep() + "a share lasts a week")));
 			if (done.listed == false && !r.anonymous && run?.listed == true) Term.out(Style.status("listing", Info, Std.string(done.listing ?? "not listed yet")));
 		}
-		r.last = {sha: sha, bytes: module, version: done.version};
 		return {url: done.url, version: done.version};
 	}
 
@@ -516,7 +500,5 @@ typedef Release = {
 	kept:Null<{name:String, url:String, key:String}>,
 	icon:Null<String>,
 	shots:Array<String>,
-	dry:Bool,
-	// the module last published (a live share's: its next one's diff is against it)
-	last:Null<{sha:String, bytes:Bytes, version:Int}>
+	dry:Bool
 }

@@ -46,6 +46,7 @@ class CssStyles {
 	public final pages:Array<CssPageRule> = [];
 	public final fontFaces:Array<CssFontFace> = [];
 	public final counterStyles:Array<CssCounterStyle> = [];
+	public final fontPaletteValues:Array<CssFontPaletteValues> = [];
 	// the first available font's metrics for a style (ex, ch, cap, ic, line-height: normal):
 	// what an engine with fonts installs; null, they stay as written
 	public var metrics:Null<CssFontQuery->CssFontMetrics> = null;
@@ -654,6 +655,7 @@ class CssStyles {
 				pages.push(p);
 			case FontFace(f): fontFaces.push(f);
 			case CounterStyle(c): counterStyles.push(c);
+			case FontPaletteValues(p): fontPaletteValues.push(p);
 		}
 	}
 

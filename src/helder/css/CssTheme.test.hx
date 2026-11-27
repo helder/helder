@@ -82,6 +82,7 @@ private function rules(list:Array<CssSheetRule>):String
 			'page ${deep(rule.selectors)} ${[for (d in rule.declarations) declared(d)].join("; ")} ${[for (d in rule.descriptors) d.name + ":" + Css.serialize(d.value)]} ${[for (k => v in rule.margins) k + ":" + [for (d in v) declared(d)].join("; ")]}';
 		case FontFace(face): 'font-face ${[for (d in face.descriptors) d.name + ":" + Css.serialize(d.value)]}';
 		case CounterStyle(style): 'counter-style ${style.name} ${[for (d in style.descriptors) d.name + ":" + Css.serialize(d.value)]}';
+		case FontPaletteValues(p): 'font-palette-values ${p.name} ${[for (d in p.descriptors) d.name + ":" + Css.serialize(d.value)]}';
 	}].join("\n");
 
 private function selector(s:CssSelector):String

@@ -162,6 +162,175 @@ class FontMatch {
 			case _: named(name, weight, 100, italic ? Italic : Normal);
 		}
 
+	// (the document's @font-palette-values: each a name, families, base palette and overrides)
+	var paletteRules:Array<{name:String, families:Array<String>, base:Null<String>, overrides:Array<{entry:Int, color:Int}>}> = [];
+	final palettes = new Map<String, Null<Array<Int>>>();
+
+	// a document's @font-palette-values rules (CssStyles.fontPaletteValues; the last document's replaced)
+	public function fontPalettes(rules:Array<helder.css.CssSheet.CssFontPaletteValues>) {
+		paletteRules = [];
+		palettes.clear();
+		for (r in rules) {
+			var families = [], base:Null<String> = null, overrides = [];
+			for (d in r.descriptors) switch d.name.toLowerCase() {
+				case "font-family":
+					for (f in helder.css.Css.serialize(d.value).split(",")) families.push(unquote(f.trim()).toLowerCase());
+				case "base-palette": base = helder.css.Css.serialize(d.value).trim().toLowerCase();
+				case "override-colors":
+					// (an index and a colour, comma-separated: each colour computed as color's value)
+					for (pair in split(d.value)) {
+						var entry = switch pair[0] {
+							case Token(_.kind => Number(n, true, _)): Std.int(n);
+							case Function(_):
+								switch helder.css.CssValues.read("z-index", [pair[0]]) {
+									case Terms(t): switch helder.css.CssComputed.terms("z-index", t, helder.css.CssValues.DEFAULT) {
+											case [Number(n, _)]: Std.int(n);
+											case _: -1;
+										}
+									case _: -1;
+								}
+							case _: -1;
+						}
+						var color = switch helder.css.CssValues.read("color", pair.slice(1)) {
+							case Terms(t): helder.css.CssRgba.argb(helder.css.CssComputed.terms("color", helder.css.CssCanonical.terms("color", t), helder.css.CssValues.DEFAULT));
+							case _: null;
+						}
+						if (entry >= 0 && color != null) overrides.push({entry: entry, color: color});
+					}
+				case _:
+			}
+			paletteRules.push({name: r.name, families: families, base: base, overrides: overrides});
+		}
+	}
+
+	// (component values split at their top-level commas, whitespace dropped)
+	static function split(values:Array<helder.css.CssValue>):Array<Array<helder.css.CssValue>> {
+		var out = [[]];
+		for (v in values) switch v {
+			case Token(_.kind => Comma): out.push([]);
+			case Token(_.kind => Whitespace):
+			case _: out[out.length - 1].push(v);
+		}
+		return [for (p in out) if (p.length >= 2) p];
+	}
+
+	// a colour face's palette for an element's font-palette (Fonts 4 §9): normal the
+	// font's first, light and dark the first marked so (else the first), a
+	// @font-palette-values name for the face's family (its base-palette, its
+	// override-colors over it; the last rule of the name; none: normal),
+	// palette-mix() of two of them; null: the font's first
+	public function palette(face:FontFile, style:BoxStyle):Null<Array<Int>> {
+		var c = face.colr;
+		if (c == null || c.palettes.length == 0) return null;
+		var terms = style.terms("font-palette");
+		if (terms.length == 0 || terms[0].match(Keyword("normal"))) return null;
+		var family = (face.alias ?? face.family).toLowerCase(), key = face.id + "|" + Std.string(terms) + "|" + family;
+		if (palettes.exists(key)) return palettes.get(key);
+		var out = paletteOf(c, terms, family);
+		palettes.set(key, out);
+		return out;
+	}
+
+	function paletteOf(c:helder.text.Colr, terms:Array<CssTerm>, family:String):Array<Int>
+		return switch terms {
+			case [Keyword(k = "light" | "dark")]: c.palettes[marked(c, k)];
+			case [Ident(name)]:
+				var rule = null;
+				for (r in paletteRules) if (r.name == name && r.families.contains(family)) rule = r;
+				if (rule == null) return c.palettes[0];
+				var base = switch rule.base {
+					case null: 0;
+					case "light" | "dark": marked(c, rule.base);
+					case n: Std.parseInt(n) ?? 0;
+				}
+				var out = (base >= 0 && base < c.palettes.length ? c.palettes[base] : c.palettes[0]).copy();
+				for (o in rule.overrides) if (o.entry < out.length) out[o.entry] = o.color;
+				out;
+			case [Func("palette-mix", args)]: mix(c, args, family);
+			case _: c.palettes[0];
+		}
+
+	// (palette-mix(in <space>, a [p%], b [p%]): each entry mixed as color-mix() mixes,
+	// premultiplied; srgb, srgb-linear or oklab, others as srgb)
+	function mix(c:helder.text.Colr, args:Array<CssTerm>, family:String):Array<Int> {
+		var parts = [[]];
+		for (t in args) if (t.match(Delim(","))) parts.push([]) else parts[parts.length - 1].push(t);
+		if (parts.length != 3) return c.palettes[0];
+		var space = switch parts[0] {
+			case [Keyword("in"), Keyword(s)] | [Keyword("in"), Keyword(s), _, _]: s;
+			case _: "srgb";
+		}
+		var sides = [for (i in 1...3) {
+			var p = parts[i], pct:Null<Float> = null;
+			var last = p[p.length - 1];
+			switch last {
+				case Percentage(v):
+					pct = v;
+					p = p.slice(0, p.length - 1);
+				case _:
+			}
+			{palette: paletteOf(c, p, family), pct: pct};
+		}];
+		var p1 = sides[0].pct, p2 = sides[1].pct;
+		if (p1 == null && p2 == null) p1 = p2 = 50 else if (p1 == null) p1 = 100 - p2 else if (p2 == null) p2 = 100 - p1;
+		var sum = p1 + p2;
+		if (sum <= 0) return c.palettes[0];
+		var w = p2 / sum, scale = sum < 100 ? sum / 100 : 1;
+		var a = sides[0].palette, b = sides[1].palette;
+		return [for (i in 0...a.length) mixed(a[i], i < b.length ? b[i] : a[i], w, scale, space)];
+	}
+
+	static function mixed(c0:Int, c1:Int, w:Float, scale:Float, space:String):Int {
+		inline function ch(c:Int, s:Int)
+			return ((c >> s) & 255) / 255;
+		var a0 = ((c0 >>> 24) & 255) / 255, a1 = ((c1 >>> 24) & 255) / 255;
+		var x0 = toSpace([ch(c0, 16), ch(c0, 8), ch(c0, 0)], space), x1 = toSpace([ch(c1, 16), ch(c1, 8), ch(c1, 0)], space);
+		var a = a0 + (a1 - a0) * w;
+		var v = [for (k in 0...3) a <= 0 ? 0 : (x0[k] * a0 + (x1[k] * a1 - x0[k] * a0) * w) / a];
+		var rgb = fromSpace(v, space);
+		inline function byte(x:Float)
+			return Std.int(Math.max(0, Math.min(255, Math.round(x * 255))));
+		return byte(a * scale) << 24 | byte(rgb[0]) << 16 | byte(rgb[1]) << 8 | byte(rgb[2]);
+	}
+
+	static inline function linear(x:Float):Float
+		return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+
+	static inline function gamma(x:Float):Float
+		return x <= 0.0031308 ? x * 12.92 : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+
+	static function toSpace(c:Array<Float>, space:String):Array<Float>
+		return switch space {
+			case "srgb-linear": [for (x in c) linear(x)];
+			case "oklab":
+				var r = linear(c[0]), g = linear(c[1]), b = linear(c[2]);
+				var l = Math.pow(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b, 1 / 3);
+				var m = Math.pow(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b, 1 / 3);
+				var s = Math.pow(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b, 1 / 3);
+				[0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+					0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+			case _: c;
+		}
+
+	static function fromSpace(v:Array<Float>, space:String):Array<Float>
+		return switch space {
+			case "srgb-linear": [for (x in v) gamma(x)];
+			case "oklab":
+				var l = Math.pow(v[0] + 0.3963377774 * v[1] + 0.2158037573 * v[2], 3);
+				var m = Math.pow(v[0] - 0.1055613458 * v[1] - 0.0638541728 * v[2], 3);
+				var s = Math.pow(v[0] - 0.0894841775 * v[1] - 1.2914855480 * v[2], 3);
+				[gamma(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s), gamma(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+					gamma(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)];
+			case _: v;
+		}
+
+	// (the first palette marked usable on a light background, or a dark one; else the first)
+	static function marked(c:helder.text.Colr, which:String):Int {
+		var flag = which == "light" ? 1 : 2;
+		for (i in 0...c.paletteFlags.length) if (c.paletteFlags[i] & flag != 0) return i;
+		return 0;
+	}
+
 	final measured = new Map<String, CssFontMetrics>();
 
 	// the first available font's metrics for a font's computed values (CssStyles.metrics,

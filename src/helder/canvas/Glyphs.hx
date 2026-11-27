@@ -36,7 +36,8 @@ final class Glyphs implements helder.text.Outline {
 	// those it does not take as outlines), else filled (style null) or stroked as outlines
 	public function draw(canvas:Painter, layout:TextLayout, x:Float, y:Float, scaleX:Float, paint:Paint, style:Null<Stroke>) {
 		path.clear();
-		if (Std.isOfType(canvas, GlyphText)) runs(cast canvas, layout, x, y, scaleX, paint, style) else add(layout, x, y, scaleX);
+		if (Std.isOfType(canvas, GlyphText)) runs(cast canvas, layout, x, y, scaleX, paint, style) else if (style == null) filled(canvas, layout, x, y, scaleX, paint) else
+			add(layout, x, y, scaleX);
 		if (path.isEmpty()) return;
 		if (style == null) canvas.fill(path, paint) else canvas.stroke(path, style, paint);
 	}
@@ -88,6 +89,30 @@ final class Glyphs implements helder.text.Outline {
 			transform[4] = r.xs[i];
 			transform[5] = r.ys[i];
 			r.face.outline(r.ids[i], this, transform);
+		}
+	}
+
+	// (filled: colour glyphs drawn in their colours as they come, ColorGlyphs; the others' outlines added to path)
+	function filled(canvas:Painter, layout:TextLayout, x:Float, y:Float, scaleX:Float, paint:Paint) {
+		var lines = layout.lines;
+		if (lines.length == 0) return;
+		var first = lines[0];
+		for (line in lines) {
+			var by = y + line.top + line.baseline - (first.top + first.baseline);
+			for (i in line.glyphStart...line.glyphEnd) {
+				if (layout.glyphHidden(i)) continue;
+				var face:FontFile = layout.glyphFont(i), set = layout.glyphFontSet(i), s = set.scale(face);
+				var gx = x + (layout.glyphX(i) + layout.glyphOffsetX(i)) * scaleX, gy = by + layout.glyphOffsetY(i);
+				if (face.hasColor
+					&& ColorGlyphs.draw(canvas, face, layout.glyphId(i), set.size, gx, gy, scaleX, set.oblique ? 0.25 : 0, null, paint.color, paint.alpha)) continue;
+				transform[0] = s * scaleX;
+				transform[1] = 0;
+				transform[2] = set.oblique ? 0.25 * s * scaleX : 0;
+				transform[3] = -s;
+				transform[4] = gx;
+				transform[5] = gy;
+				face.outline(layout.glyphId(i), this, transform);
+			}
 		}
 	}
 

@@ -139,6 +139,34 @@ function tests() {
 			equals(at(35, 45), 0x0000FF);
 		});
 
+		test("COLR v1 glyphs as vectors: gradients as shadings, composites as groups with their blend modes", () -> {
+			var f = FontFile.parse(sys.io.File.getBytes("tests/text/colr/test_glyphs-glyf_colr_1.ttf"));
+			// (a linear and a radial gradient padded, and a multiply composite)
+			var text = String.fromCharCode(0xF0500) + String.fromCharCode(0xF0503) + String.fromCharCode(0xF0A17);
+			var doc = new Document(), p = doc.newPage(240, 100);
+			Glyphs.fill(p, new TextLayout(text, new FontSet(f, 60), 1.2, Math.POSITIVE_INFINITY), 10, 80, Paint.solid(0xFF000000));
+			var bytes = PdfWriter.write(doc), s = bytes.toString();
+			assert(s.indexOf("/ShadingType 2") >= 0, "an axial shading");
+			assert(s.indexOf("/ShadingType 3") >= 0, "a radial shading");
+			assert(s.indexOf("/BM /Multiply") >= 0, "a multiply group");
+			assert(s.indexOf("/Subtype /Image") < 0, "no image");
+			var pdf = Pdf.open(bytes);
+			equals(Pdf.text(pdf.pages[0]), text);
+			// (drawn as the canvas draws them, to within antialiasing)
+			var c = new Canvas(240, 100);
+			c.fill(rect(0, 0, 240, 100), Paint.solid(0xFFFFFFFF));
+			Glyphs.fill(c, new TextLayout(text, new FontSet(f, 60), 1.2, Math.POSITIVE_INFINITY), 10, 80, Paint.solid(0xFF000000));
+			var want = Bytes.alloc(240 * 100 * 4);
+			c.readPixels(want, 0, 0, 240, 100);
+			var got = Pdf.render(pdf, 0, 1).straight(), bad = 0;
+			for (i in 0...240 * 100) {
+				var d = 0;
+				for (ch in 0...3) d = Std.int(Math.max(d, Math.abs(got.get(i * 4 + ch) - want.get(i * 4 + ch))));
+				if (d > 48) bad++;
+			}
+			assert(bad < 240 * 100 * 0.02, '$bad pixels differ');
+		});
+
 		test("one font for a face across pages, its variations apart", () -> {
 			var doc = new Document();
 			for (i in 0...3) {
@@ -378,4 +406,14 @@ private function boxesAt(run:helder.pdf.PdfRun, l:TextLayout, x:Float, y:Float, 
 		var top = Math.min(box.y, box.y + box.uy), bottom = Math.max(box.y, box.y + box.uy);
 		assert(top < y && y < bottom, 'the baseline $y outside $top to $bottom');
 	}
+}
+
+private function rect(x:Float, y:Float, w:Float, h:Float):Path {
+	var p = new Path();
+	p.moveTo(x, y);
+	p.lineTo(x + w, y);
+	p.lineTo(x + w, y + h);
+	p.lineTo(x, y + h);
+	p.close();
+	return p;
 }

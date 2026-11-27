@@ -17,6 +17,8 @@ class ShapedRun {
 	public var skew = 0.0;
 	// synthesized bold: the outlines also stroked this wide, in pixels (0: none)
 	public var bold = 0.0;
+	// a colour font's palette, its entries' colours (font-palette: null, the font's first)
+	public var palette:Null<Array<Int>> = null;
 	public var text = "";
 	public var count(default, null) = 0;
 	public final ids:Array<Int> = [];
@@ -48,6 +50,7 @@ class ShapedRun {
 		r.scaleX = scaleX;
 		r.skew = skew;
 		r.bold = bold;
+		r.palette = palette;
 		r.text = text;
 		for (i in 0...count)
 			r.push(ids[i], xs[i], ys[i], starts[i], ends[i]);

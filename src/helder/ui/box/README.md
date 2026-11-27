@@ -205,8 +205,14 @@ asks for ex, ch, cap, ic and `line-height: normal` (`CssStyles.metrics`,
 DocumentView installs it): the first available font's x-height (OS/2's
 sxHeight, else x's top), the advance of 0, the cap height (sCapHeight,
 else H's top), the advance of 水 in the face that has it, and the line
-height normal has. Ascent, descent and line gap are rounded to pixels as
-Chromium rounds them.
+height normal has. `palette` is a colour face's palette for an element's
+`font-palette` (Fonts 4 §9): normal, light and dark (CPAL's flags), a
+document's `@font-palette-values` for the face's family (`fontPalettes`:
+base-palette, override-colors, each colour computed as `color` is), and
+`palette-mix()` of two (srgb, srgb-linear or oklab, premultiplied, as
+`color-mix()`). BlockLines puts it on each run of a colour face; BoxPainter
+draws the runs through helder.canvas's `ColorGlyphs`. Ascent, descent and line
+gap are rounded to pixels as Chromium rounds them.
 
 ## Tests
 

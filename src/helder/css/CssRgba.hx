@@ -39,6 +39,18 @@ class CssRgba {
 			case _: null;
 		}
 
+	// A computed colour's terms as 0xAARRGGBB, sRGB clipped; null: a keyword's
+	// (currentcolor, a system colour) or not a colour
+	public static function argb(t:Array<CssTerm>):Null<Int> {
+		var c = of(t);
+		if (c == null || c.keyword != null) return null;
+		inline function byte(x:Float):Int {
+			var v = Math.round((Math.isNaN(x) ? 0 : x) * 255);
+			return v < 0 ? 0 : v > 255 ? 255 : v;
+		}
+		return byte(c.a) << 24 | byte(c.r) << 16 | byte(c.g) << 8 | byte(c.b);
+	}
+
 	// (any of Color 4's spaces as sRGB, 0 to 1, not clipped; none as 0)
 	static function srgb(c:CssColorValue):Array<Float> {
 		var v = [for (x in c.c) Math.isNaN(x) ? 0.0 : x];

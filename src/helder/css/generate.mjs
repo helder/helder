@@ -9,7 +9,7 @@ const version = '8.7.10'
 const url = `https://registry.npmjs.org/@webref/css/-/css-${version}.tgz`
 const dir = path.resolve('bin/webref/' + version)
 const out = 'src/helder/css'
-const at = ['@page', '@font-face', '@media']
+const at = ['@page', '@font-face', '@media', '@font-palette-values']
 
 const tgz = path.join(dir, 'css.tgz')
 fs.mkdirSync(dir, {recursive: true})

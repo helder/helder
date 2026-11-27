@@ -72,6 +72,8 @@ class FontFile {
 	public var width(default, null) = 5; // OS/2 usWidthClass, 1 to 9 (5: normal)
 	// the characters an @font-face rule gives the face (inclusive pairs; null: all of its own): has()
 	public var unicodeRange:Null<Array<Int>> = null;
+	// the @font-face family it was added under (FontFaces; null: none, its own name): what @font-palette-values names
+	public var alias:Null<String> = null;
 	public var italic(default, null) = false;
 	public var family(default, null) = "";
 	public var subfamily(default, null) = "";
@@ -163,6 +165,7 @@ class FontFile {
 		gdefClasses = other.gdefClasses;
 		markCache = other.markCache;
 		hasColor = other.hasColor;
+		colrRead = null;
 		ends = other.ends;
 		flags = other.flags;
 		xs = other.xs;
@@ -301,6 +304,7 @@ class FontFile {
 		var f = new FontFile(data, index, cmap >= 0);
 		f.path = path;
 		f.unicodeRange = unicodeRange;
+		f.alias = alias;
 		if (vars == null) return f;
 		f.vars = vars;
 		f.coords = vars.normalize(values);
@@ -1001,6 +1005,25 @@ class FontFile {
 			return {png: png, ppem: bestPpem, left: s16(data, at), top: s16(data, at + 2) + h, width: w, height: h};
 		}
 		return null;
+	}
+
+	var colrRead:Null<Colr> = null;
+
+	// COLR and CPAL read (null: a font without them, or one they don't read in)
+	public var colr(get, never):Null<Colr>;
+
+	function get_colr():Null<Colr> {
+		if (colrRead != null || !tables.exists("COLR")) return colrRead;
+		var cpal = tables.exists("CPAL") ? tables.get("CPAL") : -1;
+		colrRead = try new Colr(data, tables.get("COLR"), lengths.get("COLR"), cpal, cpal < 0 ? 0 : lengths.get("CPAL")) catch (_:String) null;
+		if (colrRead == null) tables.remove("COLR");
+		return colrRead;
+	}
+
+	// a glyph's colour paint (COLR, version 1's or version 0's layers), null: none
+	public function colorPaint(g:Int):Null<ColorPaint> {
+		var c = colr;
+		return c == null ? null : c.paint(g);
 	}
 
 	// a glyph's colour layers (COLR version 0, CPAL's first palette): each a

@@ -394,8 +394,8 @@ checkpoint 1's properties:
   general one. 21 have no grammar: Values 4's and Syntax 3's own
   (`<length>`, `<custom-ident>`, `<declaration-value>`), matched by hand,
   each named in scope.json's `primitives`.
-- `descriptors`: the 69 of `@page`, `@font-face` and `@media` (its
-  features).
+- `descriptors`: those of `@page`, `@font-face`, `@media` (its
+  features) and `@font-palette-values`.
 
 The grammars are each spec's latest level, as webref keeps them, so some
 take more than checkpoint 1 renders (`width`'s `anchor-size()`, `<color>`'s
@@ -593,7 +593,8 @@ styles.pages;                              // @page rules: selectors, declaratio
   @supports is evaluated at once (`CssSupports`); @namespace for
   selectors; @layer blocks, statements and anonymous layers; @page
   (selectors, the page's properties, its descriptors as written, its
-  margin boxes), @font-face and @counter-style kept as data for the later
+  margin boxes), @font-face, @counter-style and @font-palette-values
+  (`CssStyles.fontPaletteValues`: a dashed name and its descriptors) kept as data for the later
   stages. Nested style rules (CSS Nesting) are past checkpoint 1: a
   rule's own declarations apply, its nested rules not.
 - **Matching** (`CssStyles`): each element's rules found through an index
