@@ -432,13 +432,7 @@ sharing again publishes the same link's next version (`--new` for another
 link). `--live` (helder.cli.Live) keeps the link live while it runs:
 builds are dev builds, and a save that changes only live literals' values
 is patched in Play at once, nothing built. Any other change is built and
-published as the next version, which Play swaps in keeping its state.
-Each next version's module also goes up as a binary diff against the
-last one (`helder.cli.BinaryDiff`: bsdiff's matching, the HDF1 format,
-deflate-raw). helder.run serves it to a page that has that version
-(`?from=<sha256>`), and the page applies it and checks the result's
-SHA-256, else fetches the whole file. A line added to pong's court came
-as 53 KB instead of the module's 5.0 MB (899 KB brotli'd). Each
+published as the next version, which Play swaps in keeping its state. Each
 scene the studio draws again goes to the Board, its fonts left out when
 the release's frames file has them. When it stops, the link stays an
 ordinary share for a week. helder.build's side (the room, the write key,

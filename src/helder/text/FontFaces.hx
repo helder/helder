@@ -42,6 +42,7 @@ class FontFaces {
 		if (list == null) families.set(key, list = []);
 		list.push(face);
 		if (face.ranges != null) file.unicodeRange = face.ranges;
+		file.alias = family;
 		return face;
 	}
 

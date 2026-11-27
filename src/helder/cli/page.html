@@ -23,9 +23,7 @@ canvas:focus { outline: none; }
 window.helderPage = JSON.parse(document.getElementById('helder-page').textContent);
 // (the module and the fonts, fetched and compiled from the start, while the
 // scripts load; revalidated, so a rebuild is never served from the cache)
-// (a live share's module kept as bytes too: its next version comes as a diff against them)
-window.helderLoad = { wasm: helderPage.live ? fetch(helderPage.wasm, { cache: 'no-cache' }).then((r) => r.arrayBuffer())
-		.then((b) => WebAssembly.compile(window.helderLoad.bytes = new Uint8Array(b))) : WebAssembly.compileStreaming(fetch(helderPage.wasm, { cache: 'no-cache' })),
+window.helderLoad = { wasm: WebAssembly.compileStreaming(fetch(helderPage.wasm, { cache: 'no-cache' })),
 	fonts: Promise.all(helderPage.fonts.map((u) => fetch(u, { cache: 'no-cache' }).then((r) => r.arrayBuffer()))) };
 window.helderLoad.wasm.catch(() => {});
 window.helderLoad.fonts.catch(() => {});
@@ -111,14 +109,10 @@ async function start(wasm, restoreBytes) {
 	document.getElementById('helder-splash')?.remove();
 }
 // a new build: compiled as it arrives (409: it failed, the running one stays), then swapped in
-// (made: a live share's, its module already compiled)
-async function swap(made) {
-	let module = made ? await made() : null;
-	if (!made) {
-		const r = await fetch(PAGE.wasm + '?swap=' + Date.now());
-		if (!r.ok) return;
-		module = await WebAssembly.compileStreaming(r);
-	}
+async function swap(url = PAGE.wasm + '?swap=' + Date.now()) {
+	const r = await fetch(url);
+	if (!r.ok) return;
+	const module = await WebAssembly.compileStreaming(r);
 	const old = current;
 	let snapshot = null;
 	if (old && old.host) {
@@ -134,7 +128,7 @@ async function swap(made) {
 }
 const failed = (e) => { show(String(e && e.stack || e)); send({ type: 'log', text: 'error: ' + (e && e.stack || e) }); };
 let swaps = Promise.resolve();
-const queueSwap = (made) => (swaps = swaps.then(() => swap(made)).catch(failed));
+const queueSwap = (url) => (swaps = swaps.then(() => swap(url)).catch(failed));
 // (the dev server's socket; gone, it is asked for again, and a build it made meanwhile swapped in)
 function connect(again) {
 	ws = new WebSocket('ws://' + location.host + '/__hxmc/ws');
@@ -160,73 +154,8 @@ if (DEV) connect(false);
 swaps = start(window.helderLoad.wasm, null).catch(failed);
 // (a live share's room: what its owner sends, in order)
 const LIVE = PAGE.live;
-let version = LIVE?.version, asked = 0, sha = LIVE?.sha;
-window.hxmcDev.live = { version, patched: 0, swaps: 0, diffs: 0, bytes: 0 };
-// a live share's next module: a binary diff against this one's bytes when
-// the room has one (helder.cli.BinaryDiff, HDF1: bsdiff's, deflate-raw), its
-// result checked against the build's SHA-256, else the whole file
-async function nextModule(m) {
-	const hex = async (b) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map((x) => x.toString(16).padStart(2, '0')).join('');
-	const old = window.helderLoad.bytes;
-	const r = await fetch(m.wasm + (old && sha ? '?from=' + sha : ''));
-	let bytes = new Uint8Array(await r.arrayBuffer());
-	window.hxmcDev.live.bytes += bytes.length;
-	if (r.headers.get('content-type') === 'application/x-helder-diff') {
-		const made = await patched(old, bytes).catch(() => null);
-		if (made && m.sha && (await hex(made)) === m.sha) {
-			bytes = made;
-			window.hxmcDev.live.diffs++;
-		} else {
-			bytes = new Uint8Array(await (await fetch(m.wasm)).arrayBuffer());
-			window.hxmcDev.live.bytes += bytes.length;
-		}
-	}
-	window.helderLoad.bytes = bytes;
-	sha = m.sha;
-	return WebAssembly.compile(bytes);
-}
-async function patched(old, diff) {
-	const v = new DataView(diff.buffer, diff.byteOffset, diff.byteLength);
-	if (diff.length < 16 || String.fromCharCode(...diff.subarray(0, 4)) !== 'HDF1' || v.getUint32(4, true) !== old.length) return null;
-	const size = v.getUint32(8, true);
-	const p = new Uint8Array(await new Response(new Blob([diff.subarray(16)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
-	if (p.length !== v.getUint32(12, true)) return null;
-	let at = 0;
-	const read = () => {
-		for (let n = 0, s = 0; ; s += 7) {
-			if (at >= p.length || s > 28) throw new Error('binary diff: cut');
-			const b = p[at++];
-			n |= (b & 127) << s;
-			if (b < 128) return n >>> 0;
-		}
-	};
-	const n = read(), ctrl = Array.from({ length: n * 3 }, read);
-	let add = 0;
-	for (let t = 0; t < n; t++) add += ctrl[t * 3];
-	const d = new Uint8Array(add);
-	for (let k = 0; k < add; ) {
-		k += read();
-		const l = read();
-		if (k + l > add) throw new Error('binary diff: runs');
-		d.set(p.subarray(at, at + l), k);
-		at += l;
-		k += l;
-	}
-	const out = new Uint8Array(size);
-	for (let t = 0, o = 0, q = 0, dk = 0; t < n; t++) {
-		const a = ctrl[t * 3], e = ctrl[t * 3 + 1], z = ctrl[t * 3 + 2];
-		if (q < 0 || q + a > old.length || o + a + e > size) throw new Error('binary diff: past the files');
-		for (let i = 0; i < a; i++) out[o + i] = old[q + i] + d[dk + i];
-		o += a;
-		q += a;
-		dk += a;
-		out.set(p.subarray(at, at + e), o);
-		o += e;
-		at += e;
-		q += (z >>> 1) ^ -(z & 1);
-	}
-	return out;
-}
+let version = LIVE?.version, asked = 0;
+window.hxmcDev.live = { version, patched: 0, swaps: 0 };
 function patch(list) {
 	swaps = swaps.then(() => {
 		const s = current;
@@ -245,7 +174,7 @@ function live() {
 			if (!m.wasm || m.shell !== LIVE.shell) return location.reload();
 			version = window.hxmcDev.live.version = m.version;
 			window.hxmcDev.live.swaps++;
-			queueSwap(() => nextModule(m));
+			queueSwap(m.wasm);
 		}
 		if (m.t === 'hello' && m.literals?.build === version) patch(m.literals.patches);
 		if (m.t === 'literals' && m.build === version) patch(m.patches);

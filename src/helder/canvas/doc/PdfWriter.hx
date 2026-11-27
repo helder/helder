@@ -2,6 +2,7 @@ package helder.canvas.doc;
 
 import haxe.io.Bytes;
 import haxe.io.BytesBuffer;
+import helder.canvas.ColorGlyphs;
 import helder.canvas.Gradient;
 import helder.canvas.doc.Recorder;
 import helder.canvas.doc.PdfFonts;
@@ -610,7 +611,7 @@ class PdfWriter {
 
 	// whether text shows a glyph as it is drawn (not a colour one)
 	static function colourGlyph(face:FontFile, g:Int, size:Float):Bool
-		return face.bitmapsOnly || face.hasColor && (face.colorLayers(g) != null || face.colorBitmap(g, size) != null);
+		return face.bitmapsOnly || ColorGlyphs.has(face, g, size);
 
 	// glyphs a to b of a Text op as a text object
 	function textPart(r:Recorder, o:Op, a:Int, b:Int, out:StringBuf) {
@@ -670,41 +671,17 @@ class PdfWriter {
 		out.add("ET\nQ\n");
 	}
 
-	// a colour glyph as it looks: COLR's layers filled, a bitmap's PNG as an image
+	// a colour glyph as it looks: drawn by ColorGlyphs into a recording of its
+	// own, written as the page's ops are (COLR's paints as paths, clips,
+	// transparency groups with their blend modes, linear and radial gradients
+	// as shadings; what PDF cannot say, a conic gradient, an image), a
+	// bitmap's PNG as an image
 	function colourGlyphDrawn(r:Recorder, o:Op, k:Int, out:StringBuf) {
-		var run = o.run, face = run.face, g = run.ids[k], s = run.size / face.unitsPerEm;
-		var x = run.xs[k], y = run.ys[k];
-		var layers = face.colorLayers(g);
-		if (layers != null) {
-			for (l in layers) {
-				var sink = new Glyphs();
-				face.outline(l.glyph, sink, [s * run.scaleX, 0, run.skew * s * run.scaleX, -s, x, y]);
-				var p = new Paint().copyFrom(o.paint);
-				// (a layer's own colour; -1 the text's)
-				if (l.color != -1) {
-					p.shader = null;
-					p.color = l.color;
-				}
-				var f = new Op(Fill, o.matrix);
-				f.path = sink.path;
-				f.paint = p;
-				paintOp(r, f, out);
-			}
-			return;
-		}
-		var bm = face.colorBitmap(g, run.size);
-		if (bm == null) return;
-		var d = try helder.image.PngDecoder.decode(bm.png) catch (_:Dynamic) null;
-		if (d == null) return;
-		var bitmap = new Bitmap(d.width, d.height);
-		bitmap.writeStraight(d.rgba, 0, 0, d.width, d.height);
-		var kx = run.size / bm.ppem;
-		var im = new Op(Image, o.matrix);
-		im.image = bitmap;
-		im.rect = [0, 0, d.width, d.height, x + bm.left * kx * run.scaleX, y - bm.top * kx, d.width * kx * run.scaleX, d.height * kx];
-		im.paint = new Paint();
-		im.paint.alpha = o.paint.alpha;
-		image(im, out);
+		var run = o.run, sub = new Recorder(r.width, r.height);
+		var m = o.matrix;
+		sub.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+		ColorGlyphs.draw(sub, run.face, run.ids[k], run.size, run.xs[k], run.ys[k], run.scaleX, run.skew, run.palette, o.paint.color, o.paint.alpha);
+		body(sub, 0, sub.ops.length, out, false);
 	}
 
 	// ---- gradients and images

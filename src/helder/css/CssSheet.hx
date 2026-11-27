@@ -37,6 +37,8 @@ typedef CssPageRule = {
 // font and list stages.
 typedef CssFontFace = {descriptors:Array<CssDeclaration>, url:Null<String>}
 typedef CssCounterStyle = {name:String, descriptors:Array<CssDeclaration>}
+// @font-palette-values --name { font-family; base-palette; override-colors }
+typedef CssFontPaletteValues = {name:String, descriptors:Array<CssDeclaration>}
 
 enum CssSheetRule {
 	Style(selectors:Array<CssSelector>, declarations:Array<CssDeclared>);
@@ -47,6 +49,7 @@ enum CssSheetRule {
 	Page(rule:CssPageRule);
 	FontFace(face:CssFontFace);
 	CounterStyle(style:CssCounterStyle);
+	FontPaletteValues(palette:CssFontPaletteValues);
 }
 
 typedef CssSheetOptions = {
@@ -192,6 +195,13 @@ private class Builder {
 				[];
 			case "page" if (body != null): [Page(page(prelude, body))];
 			case "font-face" if (body != null): [FontFace({descriptors: declarations(body), url: options.url})];
+			// (a dashed ident's name, Fonts 4 §9.1)
+			case "font-palette-values" if (body != null):
+				var items = [for (v in prelude) if (!v.match(Token(_.kind => Whitespace))) v];
+				switch items {
+					case [Token(_.kind => Ident(n))] if (StringTools.startsWith(n, "--")): [FontPaletteValues({name: n, descriptors: declarations(body)})];
+					case _: [];
+				}
 			case "counter-style" if (body != null):
 				var items = [for (v in prelude) if (!v.match(Token(_.kind => Whitespace))) v];
 				switch items {

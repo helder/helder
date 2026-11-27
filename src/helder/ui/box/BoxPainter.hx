@@ -292,20 +292,22 @@ class BoxPainter {
 			placed.text = run.text;
 			placed.skew = run.skew;
 			placed.bold = run.bold;
+			placed.palette = run.palette;
 			for (k in 0...run.count) {
 				var gx = x + run.xs[k], gy = baseline + run.ys[k];
 				placed.push(run.ids[k], snap ? Math.floor(gx * 4 + 0.5 + 1e-3) / 4 : gx, snap ? Math.round(gy) : gy, run.starts[k], run.ends[k]);
 			}
 			var paint = Paint.solid(color);
 			// (synthesized bold: outlines filled and stroked, not text a painter keeps)
-			if (placed.bold > 0 || !Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(placed, paint)) {
+			// (colour glyphs drawn as their paints; a painter that keeps text, a PDF, draws them itself)
+			if (placed.bold > 0) {
 				glyphs.path.clear();
 				glyphs.addRun(placed);
 				if (!glyphs.path.isEmpty()) {
 					p.fill(glyphs.path, paint);
-					if (placed.bold > 0) p.stroke(glyphs.path, new helder.canvas.Stroke(placed.bold), paint);
+					p.stroke(glyphs.path, new helder.canvas.Stroke(placed.bold), paint);
 				}
-			}
+			} else if (!Std.isOfType(p, GlyphText) || !(cast p : GlyphText).glyphText(placed, paint)) helder.canvas.ColorGlyphs.run(p, glyphs, placed, paint);
 		}
 		for (d in decorations) decorate(p, d, run, x, baseline, f.width(id), true);
 	}

@@ -21,9 +21,21 @@ text with, usable on its own.
   not read; HVAR, MVAR and GPOS's variations are not applied.
   Colour glyphs: CBDT/CBLC and sbix bitmaps (Noto Color Emoji, Apple
   Color Emoji: their PNG files, a font of bitmaps only loads too) and COLR
-  version 0 layers with CPAL's palette (Segoe UI Emoji). WOFF and WOFF2
+  (`colorPaint(g)`: version 1's paint graph, else version 0's layers;
+  `colr`: the palettes, each entry's colour, their light and dark flags).
+  SVG-in-OpenType glyphs are not read (their outlines drawn instead).
+  WOFF and WOFF2
   files read as the fonts they wrap (`parse` and `faceCount` tell them by
   their signature).
+- `Colr`, `ColorPaint`: COLR versions 0 and 1 and CPAL read: a glyph's
+  paint as a graph (layers, solid colours, linear, radial and sweep
+  gradients with their colour lines and extends, a glyph's outline as a
+  clip, every transform as a matrix, composites by COLR's 28 modes, clip
+  boxes, another glyph's paint), variable paints at their defaults.
+  Untrusted fonts: each read checked, a graph at most 64 deep, a glyph
+  referring back into a cycle drawn as nothing (as Skia does). helder.canvas
+  draws it (`ColorGlyphs`). `Colr.test.hx`: every base glyph of
+  googlefonts/color-fonts' test font read, and a fuzz property.
 - `FontFaces`: a document's @font-face faces with their descriptors'
   ranges (`FontFaceDescriptors`: font-weight, font-stretch, font-style and
   its oblique angles, unicode-range; `auto` the font's own, a variable

@@ -90,6 +90,7 @@ class DocumentView {
 			// (ex, ch, cap, ic and line-height: normal from the first available font, as styles compute)
 			styles.metrics = fonts.metrics;
 			if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
+			fonts.fontPalettes(styles.fontPaletteValues);
 			tree = BoxTree.build(document, styles, {contexts: options.contexts, image: image});
 			fragments.clear();
 		}

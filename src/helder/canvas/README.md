@@ -67,7 +67,18 @@ sys.io.File.saveBytes("out.png", c.toPng());
   oblique slants them as Skia does. A painter that keeps text as text
   (`GlyphText`: a recording, for a PDF) is offered each run of one face
   instead (`ShapedRun`: the glyphs, their pens, the characters each
-  shows), the outlines drawn where it does not take one.
+  shows), the outlines drawn where it does not take one. Colour glyphs
+  are drawn in their colours (`ColorGlyphs`): COLR's paint graph as
+  fills, clips to the glyphs' outlines, transforms, layers with their
+  blend modes and gradients (a sweep as a conic gradient, its colour line
+  sampled at each break over the turn: its extend, angles past a turn, an
+  end before its start, Skia's degenerate cases), in a palette
+  (`ShapedRun.palette`: font-palette's; else the font's first) and the
+  text's colour; CBDT's and sbix's bitmaps as images. On any painter: the
+  CPU's, the GPU's, a recording (PdfWriter writes it as paths, groups and
+  shadings, a conic gradient as an image). `ColorGlyphs.test.hx` draws
+  googlefonts/color-fonts' COLR v1 test glyphs and Noto Color Emoji's
+  COLR v1 build against Chromium's drawings (tests/text/colr/goldens.mjs).
 - Pixels: `bitmap` (RGBA8, premultiplied), `readPixels` and `writePixels`
   (straight RGBA, as getImageData and putImageData), `toPng()`
   (helder.image's PNG encoder), `toJpeg(quality, background)`
