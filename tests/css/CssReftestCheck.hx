@@ -124,7 +124,7 @@ class CssReftestCheck {
 	// (the fonts as helder has them, for goldens.mjs to give Chromium the
 	// same: each face's file, family, weight and style, and the generic
 	// families' faces)
-	static function fonts() {
+	public static function fonts() {
 		var system = WptPage.shared().system;
 		var faces = [];
 		var files = [for (n in FileSystem.readDirectory(WptPage.DEJAVU)) if (n.endsWith(".ttf")) '${WptPage.DEJAVU}/$n'].concat(WptPage.installed());
@@ -142,7 +142,7 @@ class CssReftestCheck {
 	}
 
 	// (tests this engine is not for: paged media, and what needs a script or SVG)
-	static function skipped(dir:String, t:Dynamic):Null<String> {
+	public static function skipped(dir:String, t:Dynamic):Null<String> {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
 		if (dir.startsWith("css/css-gcpm")) return null;
 		if (printed(dir, t) && t.type == "noref") return "paged: no goldens of printed pages yet";
@@ -188,7 +188,7 @@ class CssReftestCheck {
 
 	static final SVG = ~/<svg[\s:>]|\.svg\b|image\/svg\+xml/;
 
-	static function printed(dir:String, t:Dynamic):Bool {
+	public static function printed(dir:String, t:Dynamic):Bool {
 		var needs:Array<String> = t.needs != null ? t.needs : [];
 		return needs.contains("print") || paged(dir) && t.type == "crash";
 	}

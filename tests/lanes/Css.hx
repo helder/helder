@@ -6,6 +6,7 @@ class Css {
 	public static final LANES:Array<Lane> = [
 		{name: "css-differential", about: "helder.css's tokens and values against @csstools' on real stylesheets (fetched)", run: differential},
 		{name: "css-reftests", about: "helder.ui.box against WPT's CSS 2.1 reftests, drawn natively, and its noref tests against goldens Chromium draws (Playwright; reftest-manifest.json; args: directories or names to run alone)", run: reftests},
+		{name: "css-geometry", about: "helder.ui.box's layout against Chromium's, box by box: the reftests' pages against snapshots geometry.mjs takes (Playwright), the likely cause of each difference (bin/css/geometry/report.md; args: directories or names to run alone), and a property of generated blocks", run: geometry},
 		{name: "css-paged", about: "real documents on pages (tests/paged: an invoice, a report) against their goldens of our own output, drawn by PagedView (BLESS=1 takes them); a screen-only program without the paged host's fragmentation in its symbols", run: pagedLane},
 		{name: "pdf-docs", about: "real-world documents (tests/pdf-docs) through helder pdf, each page rasterised by helder.pdf against its golden of our own output (BLESS=1 takes them); against WeasyPrint's PDFs where bin/pdf-docs has them (CI: similarity.md, diff/)", run: pdfDocs},
 		{name: "css-app", about: "src/helder/css/ua/app.css against helder.ui today: example screens (todo, mail) mirrored as helder.dom trees, their computed values compared (a report: bin/css/app-ua.md)", run: app},
@@ -143,6 +144,19 @@ class Css {
 		if (laneArgs.length == 0) {
 			paged();
 			boxConformance();
+		}
+	}
+
+	// (Chromium's snapshots taken where missing, kept in bin/css/geometry, the directory in its `current`)
+	static function geometry() {
+		if (!sys.FileSystem.exists("bin/wpt/fonts/Ahem.ttf") || !sys.FileSystem.exists("bin/fonts/dejavu-2.37/DejaVuSansMono.ttf"))
+			run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
+		exe("bin/css/CssGeometryCheck", cps(["src", "tests/css"]).concat(["-main", "CssGeometryCheck"]));
+		run(NODE, ["tests/css/geometry.mjs"].concat(laneArgs));
+		run(exePath("bin/css/CssGeometryCheck", HOST), laneArgs, ["GEOMETRY" => StringTools.trim(sys.io.File.getContent("bin/css/geometry/current"))]);
+		if (laneArgs.length == 0) {
+			exe("bin/css/GeometryProperty", cps(["src", "tests/css"]).concat(["-main", "GeometryProperty"]));
+			run(exePath("bin/css/GeometryProperty", HOST), []);
 		}
 	}
 

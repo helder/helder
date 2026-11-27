@@ -87,6 +87,8 @@ and fast.
   pages; bundled fonts only, one manifest for every OS.
 - `dom`: html5lib and WPT tree construction, parse5 differential, XML.
 - `flow-differential`: the inline engine against Chromium with Ahem.
+- `css-geometry`: the reftests' layouts against Chromium's, box by box; not a
+  gate: each pending test's likely cause, the first node off from its parent.
 - `layout-conformance`: helder.ui's flex and grid against Taffy's Chrome fixtures.
 - `box-conformance`: the same fixtures through the engine (FlexFlow,
   GridFlow); part of the `css-reftests` whole run.
