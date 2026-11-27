@@ -228,7 +228,7 @@ class BlockFlow implements FormattingContext {
 		function float(b:Box, top:Float, ?from:BreakToken):Int {
 			var m = b.style.model();
 			var fmt = res(m.margin[0], w), fmb = res(m.margin[2], w);
-			var clr = b.style.keyword("clear");
+			var clr = b.style.clearSide;
 			// (cleared unless a continuation: one carried whole from its start is)
 			var fresh = from == null || !from.resumes.iterator().hasNext();
 			if (fresh && (clr == "left" || clr == "right" || clr == "both")) top = Math.max(top, ex.clear(clr));
@@ -249,7 +249,7 @@ class BlockFlow implements FormattingContext {
 				if (at > 0.01 && (ex.pushed || fr.forcesBefore(b) || over)) {
 					fr.push(b);
 					ex.pushed = true;
-					ex.place(b.style.keyword("float") == "left", 0, 0, top, cx, cx + w);
+					ex.place(b.style.floatSide == "left", 0, 0, top, cx, cx + w);
 					floatBottom = top;
 					frags.remove(f);
 					return frags.add(Fragments.BOX, b, 0, 0);
@@ -282,7 +282,7 @@ class BlockFlow implements FormattingContext {
 			// bottom one)
 			if (!fresh) fmt = 0;
 			if (broken) fmb = 0;
-			var at = ex.place(b.style.keyword("float") == "left", b.marginLeft + frags.width(f) + b.marginRight, fmt + frags.height(f) + fmb, top, cx, cx + w);
+			var at = ex.place(b.style.floatSide == "left", b.marginLeft + frags.width(f) + b.marginRight, fmt + frags.height(f) + fmb, top, cx, cx + w);
 			var off = offset(b, w, pctBase);
 			frags.adopt(frag, f, at.x + b.marginLeft - bx + off.x, at.y + fmt - by + off.y);
 			floatBottom = at.y + fmt + frags.height(f) + fmb;
@@ -421,7 +421,7 @@ class BlockFlow implements FormattingContext {
 				// (none when truncated, or resumed: a continuation's start has no margin)
 				var strut = truncate || fr != null && fr.resume(c) != null ? {pos: 0.0, neg: 0.0} : predict(c, w);
 				var py = atTop ? 0 : y + Math.max(pos, strut.pos) + Math.min(neg, strut.neg);
-				var clr = cs.keyword("clear");
+				var clr = cs.clearSide;
 				var cleared = false;
 				if ((clr == "left" || clr == "right" || clr == "both") && !ex.empty) {
 					var floor = ex.clear(clr) - cy;
@@ -729,8 +729,8 @@ class BlockFlow implements FormattingContext {
 		var s = b.style.model();
 		var pl = res(s.padding[3], cbw), pr = res(s.padding[1], cbw), pt = res(s.padding[0], cbw), pb = res(s.padding[2], cbw);
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
-		var left = auto(b.style.len("left"), cbw), right = auto(b.style.len("right"), cbw);
-		var top = auto(b.style.len("top"), cbh), bottom = auto(b.style.len("bottom"), cbh);
+		var left = auto(b.style.inset(3), cbw), right = auto(b.style.inset(1), cbw);
+		var top = auto(b.style.inset(0), cbh), bottom = auto(b.style.inset(2), cbh);
 		var ml = auto(s.margin[3], cbw), mr = auto(s.margin[1], cbw), mt = auto(s.margin[0], cbw), mb = auto(s.margin[2], cbw);
 		var replaced = b.kind == BlockReplaced || b.kind == InlineReplaced;
 		var w = replaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
@@ -1188,7 +1188,7 @@ class BlockFlow implements FormattingContext {
 	public static function offset(box:Box, cbw:Float, cbh:Float):{x:Float, y:Float} {
 		var s = box.style;
 		if (s.position != "relative") return ZERO;
-		var left = s.len("left"), right = s.len("right"), top = s.len("top"), bottom = s.len("bottom");
+		var left = s.inset(3), right = s.inset(1), top = s.inset(0), bottom = s.inset(2);
 		var rtl = box.parent != null && box.parent.style.rtl;
 		var x = 0.0, y = 0.0;
 		if (!Lens.isAuto(left) && !(rtl && !Lens.isAuto(right))) x = res(left, cbw) else if (!Lens.isAuto(right)) x = -res(right, cbw);

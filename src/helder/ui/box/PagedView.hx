@@ -195,7 +195,7 @@ class PagedView {
 				continue;
 			}
 			// (broken: its height as set or stretched kept, its content's otherwise)
-			var st = d.box.style, fixedHeight = !Lens.isAuto(st.model().height) || !Lens.isAuto(st.len("top")) && !Lens.isAuto(st.len("bottom"));
+			var st = d.box.style, fixedHeight = !Lens.isAuto(st.model().height) || !Lens.isAuto(st.inset(0)) && !Lens.isAuto(st.inset(2));
 			var token:Null<BreakToken> = null, first = true;
 			while (true) {
 				var breaks = new Breaks(pages[p].area[3], token);
