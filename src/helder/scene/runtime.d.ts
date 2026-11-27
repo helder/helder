@@ -2542,7 +2542,7 @@ export declare class InstanceCulling {
 // along the reflection from a level by roughness (mip levels standing in
 // for a filtered map: a cheap image-based light). A program without one
 // keeps the sky-and-ground ambient and links none of this.
-//   var env = Environment.fromImage(device, "image/png", helder.asset.Asset.embed("sky.png")); // with Images.decode set (Images.png)
+//   var env = Environment.fromImage(device, "image/png", helder.asset.Embed.bytes("sky.png")); // with Images.decode set (Images.png)
 //
 // Prefiltered (Environment.prefiltered): the light filtered once ahead,
 // image-based lighting proper. An atlas of levels + 1 rows, each the whole
