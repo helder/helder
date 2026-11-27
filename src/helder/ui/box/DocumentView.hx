@@ -315,6 +315,12 @@ class DocumentView {
 			var s = swaps.get(b.style);
 			if (s == null) swaps.set(b.style, s = b.style.restyled(now));
 			b.restyle(s);
+			// (the lines it is in keep its old inline style: built again)
+			var p:Null<Box> = b;
+			while (p != null) {
+				p.inlineCache = null;
+				p = p.parent;
+			}
 			if (relayout) stale(b);
 		}
 		var c = b.first;
@@ -328,6 +334,7 @@ class DocumentView {
 	static function stale(b:Null<Box>) {
 		while (b != null) {
 			b.uncache();
+			b.inlineCache = null;
 			b.cacheWidth = b.minContent = b.maxContent = Math.NaN;
 			b = b.parent;
 		}

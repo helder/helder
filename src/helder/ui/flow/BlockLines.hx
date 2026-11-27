@@ -6,6 +6,7 @@ import helder.ui.box.Box;
 import helder.ui.box.BoxInline;
 import helder.ui.box.BoxKind;
 import helder.ui.box.Fragments;
+import helder.ui.box.Len.Lens;
 import helder.ui.flow.InlineLayout;
 
 // A block container's lines: its inline formatting context built from the
@@ -227,7 +228,12 @@ class BlockLines {
 	// (the box tree's inline content: atomics laid out first (measure: their min- or max-content as their
 	// width), the boxes behind its items in the order they come)
 	function build(block:Box, space:Space, width:Float, pct:Float, measure:Bool, min = false):Built {
+		// (kept from a build before: text, inline boxes and breaks alone, none of them a percentage of the width;
+		// on pages none: a cross-reference's text changes between their passes)
+		var kept:Null<Built> = space.exact ? null : cast block.inlineCache;
+		if (kept != null) return kept;
 		var frags = space.fragments;
+		var relative = widthRelative(block, true);
 		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
 		var out:Built = {
 			content: c,
@@ -259,6 +265,7 @@ class BlockLines {
 					case Inline if (k.flags & Box.OUTSIDE != 0):
 						out.markers.push(k);
 					case Inline:
+						if (widthRelative(k, false)) relative = true;
 						out.opened.push(k);
 						c.openBox(BoxInline.of(k, width), k.node);
 						walk(k);
@@ -295,7 +302,19 @@ class BlockLines {
 		}
 		walk(block);
 		c.finish();
+		// (what a later layout and the sizes' questions take again: the same at any width; a live
+		// document's changes let it go, DocumentView.stale)
+		if (!space.exact && !relative && out.atomics.length == 0 && out.floats.length == 0 && out.leaders.length == 0 && out.absolutes.length == 0)
+			block.inlineCache = out;
 		return out;
+	}
+
+	// (whether its inline edges or text-indent take a percentage of the width)
+	static function widthRelative(b:Box, block:Bool):Bool {
+		var m = b.style.model();
+		if (block) return Lens.relative(b.style.len("text-indent"));
+		for (k in 0...4) if (Lens.relative(m.margin[k]) || Lens.relative(m.padding[k])) return true;
+		return false;
 	}
 
 	// ---- fragments

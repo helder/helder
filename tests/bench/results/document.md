@@ -16,6 +16,38 @@ helder.dom trees styled by src/helder/css/ua/app.css (AppUaCheck's
 mirror, :hover looks as rules), 20 rows, then 1,020. Frame ms, median
 (least) of the frames; the Mac's load 5–6 (not quiet: owed again).
 
+### Now: after speed PRs 1–3 (layout cache, flex reuse, inline content)
+
+Load 4.1; frame ms median (least); "ratio" the engine's median over
+helder.ui's (first frame: the least of each, the medians being noisy).
+
+| todo | helder.ui | engine | engine: update / draw | ratio |
+| --- | ---: | ---: | ---: | ---: |
+| first frame (20 rows) | (2.8) | 6.4 (4.3) | 3.9 / 2.5 | 1.5 |
+| scroll the list (1,020 rows) | 1.3 | 2.6 | 0.4 / 2.2 | 2.0 |
+| hover over rows | 1.3 | 1.9 | 0.4 / 1.5 | 1.45 |
+| type into a field | 1.3 | 4.4 | 1.8 / 2.6 | 3.3 |
+| resize, two widths in turn | 4.9 | 4.3 | 1.8 / 2.5 | 0.9 |
+| drag-resize, a new width each frame | 4.4 | 10.1 | 7.5 / 2.6 | 2.3 |
+| add 1,000 rows | 17.6 | 39.2 | 36.4 / 2.8 | 2.2 |
+
+| mail | helder.ui | engine | engine: update / draw | ratio |
+| --- | ---: | ---: | ---: | ---: |
+| first frame (20 rows) | (3.0) | 6.0 (5.9) | 3.2 / 2.9 | 2.0 |
+| scroll the list | 2.1 | 3.4 | 0.4 / 3.1 | 1.6 |
+| hover over rows | 2.1 | 3.1 | 0.3 / 2.8 | 1.5 |
+| type into a field | 1.9 | 3.5 | 1.2 / 2.3 | 1.8 |
+| resize, two widths in turn | 1.8 | 3.9 | 1.1 / 2.8 | 2.2 |
+| drag-resize | 1.8 | 4.0 | 1.2 / 2.8 | 2.2 |
+| add 1,000 rows | 26.7 | 42.2 | 39.1 / 3.2 | 1.6 |
+
+What is left over 1.5×: the draw of any change (the node records as one
+display-list entry: any change records and draws the whole window again,
+2.3–3.1 ms against helder.ui's 1.3–2.1), the paint order made again over
+the whole document after a relayout, a scroll container in the document
+repainted as it scrolls, new rows' styles (the cascade, 29 ms of todo's
+36), first frame's sheets (to come from #456's compiled data).
+
 ### After the layout cache keeps a few layouts per box (speed PR 1)
 
 | todo | helder.ui | engine | engine: update (restyle + relayout) / draw (paint + renderer + GPU) |
