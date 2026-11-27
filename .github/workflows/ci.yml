@@ -25,6 +25,9 @@
 #   each from a random seed, then helder's TypeScript against node for 5
 #   minutes (tests/typescript/fuzz), the failing cases (and a monkey's
 #   scenario file) kept as an artifact;
+# - css-reftests: helder.ui.box against WPT's CSS 2.1 reftests and its
+#   noref tests against goldens headless Chromium draws (bin/wpt and the
+#   goldens cached), the same fonts on every machine;
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
 #   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
@@ -293,6 +296,60 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: 'site-${{ matrix.shard }}', path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
+  # helder.ui.box against WPT's CSS 2.1 reftests, and its noref tests
+  # against goldens Chromium draws (bun run test css-reftests): the same
+  # fonts on every machine (DejaVu, Ahem, WPT's test fonts), so the
+  # manifest blessed on a Mac holds here. bin/wpt is cached by
+  # import-wpt.mjs (its REVISION, DejaVu's version), the goldens by their
+  # directory's key (WPT's revision, Chromium's version, how they're
+  # drawn): restored from the last, saved when the key is new.
+  css-reftests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {node-version: 24, playwright: 1.56.1}
+      - id: wpt
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            bin/wpt
+            bin/fonts
+          key: css-wpt-${{ hashFiles('tests/css/import-wpt.mjs') }}
+      - id: goldens
+        uses: actions/cache/restore@v6
+        with:
+          path: bin/css/goldens
+          key: css-goldens-${{ github.sha }}
+          restore-keys: css-goldens-
+      - name: The reftests and the noref tests' goldens
+        run: bun run test -k css-reftests
+      - id: key
+        if: ${{ !cancelled() }}
+        run: |
+          current=$(basename "$(cat bin/css/goldens/current)")
+          # (the goldens of other keys out: one directory cached)
+          find bin/css/goldens -mindepth 1 -maxdepth 1 -type d ! -name "$current" -exec rm -rf {} +
+          echo "key=css-goldens-$current" >> "$GITHUB_OUTPUT"
+      - if: ${{ !cancelled() && steps.key.outputs.key != '' && steps.goldens.outputs.cache-matched-key != steps.key.outputs.key }}
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with: {path: bin/css/goldens, key: '${{ steps.key.outputs.key }}'}
+      - if: ${{ !cancelled() && steps.wpt.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: |
+            bin/wpt
+            bin/fonts
+          key: ${{ steps.wpt.outputs.cache-primary-key }}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
 
@@ -733,7 +790,7 @@ jobs:
   # removed), saved as the OS's one entry, the older entries deleted (a run
   # that ends after a newer one's: its merge restored first, still warm).
   cache:
-    needs: [changes, headless, typescript, examples, site, site-check, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
+    needs: [changes, headless, typescript, examples, site, site-check, css-reftests, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.changes.outputs.code == 'true' }}
     strategy:
       fail-fast: false

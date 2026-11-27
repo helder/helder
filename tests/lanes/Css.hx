@@ -106,7 +106,9 @@ class Css {
 
 	// (BLESS=1: reftest-manifest.json from the results; the WPT checkout made first when missing)
 	static function reftests() {
-		if (!sys.FileSystem.exists("bin/wpt/fonts/Ahem.ttf")) run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
+		// (the checkout, and DejaVu for the generic families: WptPage)
+		if (!sys.FileSystem.exists("bin/wpt/fonts/Ahem.ttf") || !sys.FileSystem.exists("bin/fonts/dejavu-2.37/DejaVuSansMono.ttf"))
+			run(NODE, ["tests/css/import-wpt.mjs", "--checkout"]);
 		exe("bin/css/CssReftestCheck", cps(["src", "tests/css"]).concat(["-main", "CssReftestCheck"]));
 		if (laneArgs[0] == "--fonts") return run(exePath("bin/css/CssReftestCheck", HOST), laneArgs);
 		// (noref tests against Chromium's goldens: drawn where missing, kept in bin/css/goldens, the directory in its `current`)

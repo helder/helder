@@ -113,15 +113,24 @@ class CssReftestCheck {
 		}
 	}
 
-	// (the faces helder takes for the generic families, for goldens.mjs to give Chromium the same)
+	// (the fonts as helder has them, for goldens.mjs to give Chromium the
+	// same: each face's file, family, weight and style, and the generic
+	// families' faces)
 	static function fonts() {
 		var system = WptPage.shared().system;
-		var out:DynamicAccess<String> = {};
+		var faces = [];
+		var files = [for (n in FileSystem.readDirectory(WptPage.DEJAVU)) if (n.endsWith(".ttf")) '${WptPage.DEJAVU}/$n'].concat(WptPage.installed());
+		files.sort(Reflect.compare);
+		for (path in files) {
+			var f = helder.text.FontFile.parse(File.getBytes(path), 0);
+			faces.push({file: path, family: path.endsWith("/Ahem.ttf") ? "Ahem" : f.family, weight: f.weight, italic: f.italic});
+		}
+		var generic:DynamicAccess<String> = {};
 		for (g in ["serif", "sans-serif", "monospace"]) {
 			var f = system.match(g);
-			if (f != null) out[g] = f.family;
+			if (f != null) generic[g] = f.family;
 		}
-		Sys.println(Json.stringify(out));
+		Sys.println(Json.stringify({generic: generic, faces: faces}));
 	}
 
 	// (tests this engine is not for: paged media, and what needs a script or SVG)
@@ -141,7 +150,9 @@ class CssReftestCheck {
 		var src = try File.getContent('${WptPage.wpt}/$dir/${t.name}').toLowerCase() catch (_:Dynamic) "";
 		src = ~/<style[\s\S]*?<\/style>/g.replace(src, "");
 		if (~/prerequisite:\s*switch to (paged|print)/.match(src)) return "paged: printed pages, not a screen (stage 7)";
-		if (~/prerequisite:|must be installed/.match(src)) return "manual: a test font installed on the system first";
+		// (the test fonts they ask for are installed, WptPage.installed: those run)
+		if (~/default font must be set/.match(src)) return "manual: the default font set to a test font by hand";
+		if (~/scrollbars as the scrolling mechanism/.match(src)) return "manual: scrollbars, which the goldens hide";
 		if (~/alternate style ?sheet|select each/.match(src)) return "manual: an alternate style sheet chosen by hand";
 		return null;
 	}

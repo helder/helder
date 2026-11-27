@@ -5,6 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {spawnSync} from 'node:child_process'
+import {createHash} from 'node:crypto'
 import {bindings, calls} from './wpt-js.mjs'
 
 const REVISION = 'bc5ea7a9006b77c12118534bf7d2953e530d811f'
@@ -24,6 +25,7 @@ if (!fs.existsSync(root)) {
 }
 const head = sh('git', ['-C', root, 'rev-parse', 'HEAD']).trim()
 if (head !== REVISION) throw Error(`${root} is at ${head}, not ${REVISION} (check it out, or move REVISION)`)
+await dejavu()
 if (checkoutOnly) process.exit(0)
 fs.mkdirSync(out, {recursive: true})
 fs.copyFileSync(path.join(root, 'LICENSE.md'), 'tests/css/WPT-LICENSE.md')
@@ -621,4 +623,30 @@ function sh(cmd, args) {
   const r = spawnSync(cmd, args, {encoding: 'utf8', maxBuffer: 1 << 28})
   if (r.status !== 0) throw Error(`${cmd}: ${r.stderr}`)
   return r.stdout
+}
+
+// (the reftests' fonts on every machine, the generic families' faces in
+// helder and in Chromium's goldens: DejaVu 2.37's Serif, Sans and Sans
+// Mono, fetched into bin/fonts/dejavu-2.37, not committed)
+async function dejavu() {
+  const dir = 'bin/fonts/dejavu-2.37'
+  if (fs.existsSync(path.join(dir, 'DejaVuSansMono.ttf'))) return
+  const url = 'https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2'
+  const res = await fetch(url)
+  if (!res.ok) throw Error(`${url}: ${res.status}`)
+  const bytes = Buffer.from(await res.arrayBuffer())
+  const sha = createHash('sha256').update(bytes).digest('hex')
+  if (sha !== 'fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7') throw Error(`${url}: sha256 ${sha}`)
+  const tmp = fs.mkdtempSync(path.join('bin', 'dejavu-'))
+  try {
+    fs.writeFileSync(path.join(tmp, 'dejavu.tar.bz2'), bytes)
+    sh('tar', ['-xjf', path.join(tmp, 'dejavu.tar.bz2'), '-C', tmp])
+    fs.mkdirSync(dir, {recursive: true})
+    for (const family of ['DejaVuSerif', 'DejaVuSans', 'DejaVuSansMono'])
+      for (const face of ['', '-Bold', family === 'DejaVuSerif' ? '-Italic' : '-Oblique', family === 'DejaVuSerif' ? '-BoldItalic' : '-BoldOblique'])
+        fs.copyFileSync(path.join(tmp, 'dejavu-fonts-ttf-2.37/ttf', family + face + '.ttf'), path.join(dir, family + face + '.ttf'))
+    fs.copyFileSync(path.join(tmp, 'dejavu-fonts-ttf-2.37/LICENSE'), path.join(dir, 'LICENSE'))
+  } finally {
+    fs.rmSync(tmp, {recursive: true, force: true})
+  }
 }

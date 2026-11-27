@@ -101,7 +101,8 @@ class InlineFonts {
 		xHeights.push(xHeightOf(f) * s);
 	}
 
-	static function generic(name:String):Bool
+	// (a generic family's keyword; a name in quotes, "serif", is a family's)
+	public static function generic(name:String):Bool
 		return switch name.toLowerCase() {
 			case "serif" | "sans-serif" | "monospace" | "cursive" | "fantasy" | "system-ui" | "ui-sans-serif" | "ui-serif" | "ui-monospace" | "ui-rounded" | "math"
 				| "emoji" | "fangsong":
@@ -112,8 +113,11 @@ class InlineFonts {
 	function make(families:Array<String>, size:Float, weight:Int, italic:Bool, features:Null<Array<FontFeature>>, variations:Null<Map<String, Float>>):FontSet {
 		// (each family the system has, in order; a named one it lacks left out)
 		var faces:Array<FontFile> = [];
-		for (name in families) {
-			var g = generic(name), f = fonts.match(name, weight, italic);
+		for (family in families) {
+			var quoted = family.length > 1 && family.charAt(0) == '"' && family.charAt(family.length - 1) == '"';
+			var name = quoted ? family.substr(1, family.length - 2) : family;
+			var g = !quoted && generic(name);
+			var f = g ? fonts.match(standIn(name), weight, italic) : fonts.named(name, weight, italic);
 			if (f == null) continue;
 			if (!g && f.family.toLowerCase() != name.toLowerCase()) continue;
 			if (variations != null && f.axes.length > 0) f = f.instance(variations);
@@ -129,6 +133,15 @@ class InlineFonts {
 		if (features != null) set.features = features;
 		return set;
 	}
+
+	// (the generic families SystemFonts has no list for, as FontMatch takes them)
+	static function standIn(name:String):String
+		return switch name.toLowerCase() {
+			case "cursive" | "fantasy" | "math" | "fangsong" | "ui-serif": "serif";
+			case "system-ui" | "ui-sans-serif" | "ui-rounded": "sans-serif";
+			case "ui-monospace": "monospace";
+			case n: n;
+		}
 
 	// font-feature-settings with font-kerning and font-variant-ligatures as features
 	static function featuresOf(style:InlineStyle):Null<Array<FontFeature>> {

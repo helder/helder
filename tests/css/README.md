@@ -362,38 +362,48 @@ bun run test css-render bin/wpt/css/CSS2/box/x.xht out.png --tree --ref bin/wpt/
   vertical-align, line-height, white-space and the other line properties,
   ex and ch, which helder.css computes without the font's metrics yet,
   images); a rough guess, kept while it holds.
+- Every page is drawn with the same fonts on every machine
+  (`WptPage.shared`): none of the system's (`HELDER_FONT_DIRS`), DejaVu
+  2.37's Serif, Sans and Sans Mono for the generic families (fetched by
+  `import-wpt.mjs --checkout` into bin/fonts/dejavu-2.37, not committed),
+  and the fonts WPT's runners install: Ahem, fonts/CSSTest's and
+  fonts/ahem-extra's (Ahem as "White Space", "serif", "inherit"...).
 - Paged tests are not drawn. The `noref` tests (WPT's visual tests, no
   reference: 2,350) are drawn against goldens Chromium draws
   (`goldens.mjs`, which the lane runs first): headless Chromium through
   Playwright (the version CI's setup pins, `bun add --no-save
   playwright@1.56.1`, `bunx playwright install chromium`), one browser,
-  two pages at a time, each test at 800 by 600 at its WPT URL, its
-  generic families the faces helder takes (`CssReftestCheck --fonts`:
-  Times New Roman, Helvetica Neue and Menlo on macOS), text antialiased
-  in grayscale as helder draws it. A golden is a PNG in
-  `bin/css/goldens/<WPT revision>-chromium-<version>-<platform>-<arch>/`,
-  not committed: drawn where missing, kept after; a new Chromium, WPT
-  revision or platform is a new directory (a cache keyed by it, for CI).
-  A noref test passes within its `<meta name=fuzzy>`, or when it differs
-  from its golden only as two engines' antialiasing does: no pixel off
-  by more than 8 where the golden is flat, and at most 10 at edges (text,
-  curves) unlike every pixel within a pixel of them by more than 96.
-  The manifest gates them as the drawn ones, by stage. Skipped: those
-  that ask for a paged view, a test font installed on the system or an
-  alternate style sheet chosen by hand, and those Chromium draws against
-  their own words (`CHROMIUM` in CssReftestCheck.hx: row-visibility-003,
-  a cell spanning into a collapsed row not clipped).
+  two pages at a time, each test at 800 by 600 at its WPT URL, with
+  helder's fonts alone: each face (`CssReftestCheck --fonts`) a web font
+  added before the page loads, then every font-family of its sheets and
+  style attributes rewritten (a generic family as the face helder takes,
+  since Chromium's settings can't name a web font; a family neither has
+  renamed to one no machine has, so a Mac's Arial is skipped as on
+  Linux; the UA's monospace elements in a layer below the page's); text
+  antialiased in grayscale as helder draws it. A golden is a PNG in
+  `bin/css/goldens/<WPT revision>-chromium-<version>-<hash>/`, the hash
+  of goldens.mjs and the fonts: the same on every machine, not
+  committed, drawn where missing and kept (CI caches the directory by
+  that key). A noref test passes within its `<meta name=fuzzy>`, or when
+  it differs from its golden only as two engines' antialiasing does: no
+  pixel off by more than 8 where the golden is flat, and at most 10 at
+  edges (text, curves) unlike every pixel within a pixel of them by more
+  than 96. The manifest gates them as the drawn ones, by stage. Skipped:
+  those that ask for a paged view, the default font set by hand,
+  scrollbars (the goldens hide them) or an alternate style sheet chosen
+  by hand, and those Chromium draws against their own words (`CHROMIUM`
+  in CssReftestCheck.hx: row-visibility-003, a cell spanning into a
+  collapsed row not clipped).
 
-At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37 on macOS:
-7,922 drawn, 6,063 pass, 491 skipped.
+At WPT bc5ea7a9006b with goldens from Chromium 141.0.7390.37, the same
+on every machine: 7,940 drawn, 6,182 pass, 473 skipped.
 
 | | Pass | Pending | Skipped |
 | --- | ---: | ---: | ---: |
-| reftests and crash tests | 4,990 | 762 | 311 |
-| noref against goldens | 1,073 | 1,097 | 180 |
+| reftests and crash tests | 5,050 | 702 | 311 |
+| noref against goldens | 1,132 | 1,056 | 162 |
 
-The noref tests pending by stage: tables 522, generated 317, inline 103,
-fonts 53, ui 44, positioning 29, floats 29.
+The noref tests pending by stage: tables 504, generated 311, inline 91, fonts 62, ui 44, positioning 27, floats 17.
 
 At WPT bc5ea7a9006b, the reftests and crash tests by chapter (the box
 tree, block flow, tables and the inline engine), as the css-reftests lane

@@ -512,7 +512,8 @@ class BoxStyle {
 
 	var familyList:Null<Array<String>> = null;
 
-	// font-family's names, generic ones as their keywords (read once)
+	// font-family's names, generic ones as their keywords, a quoted name
+	// that is one ("serif") in its quotes (read once)
 	public function families():Array<String> {
 		if (familyList != null) return familyList;
 		var out = [], word = [];
@@ -520,7 +521,8 @@ class BoxStyle {
 			case Delim(","):
 				if (word.length > 0) out.push(word.join(" "));
 				word = [];
-			case Ident(v) | Str(v) | Keyword(v): word.push(v);
+			case Str(v) if (helder.ui.flow.InlineFonts.generic(v)): word.push('"$v"');
+			case Ident(v) | Str(v) | Keyword(v) | Raw(v): word.push(v);
 			case _:
 		}
 		if (word.length > 0) out.push(word.join(" "));
