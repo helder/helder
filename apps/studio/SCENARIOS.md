@@ -486,8 +486,24 @@ Tests: `src/helder/scenario/Monkey.test.hx` (a small program that holds: 30 case
 the window, to the atom's value alone; a popup left open as a search takes its anchor away, to a
 few steps), in the fuzz lane.
 
-Follow-ups: the viewer (generated folders: huge names, RTL, emoji and combining names, many
-entries, broken files), TypeScript programs (a `helder/scenario` monkey), and the invariants left:
+**The viewer** (`apps/viewer/tests/viewer/Monkey.test.hx`, in the fuzz lane from apps/viewer):
+its 16 scenarios (`Monkey.from("viewer.Viewer_scenario")`: `helder test` links a project's
+`*.scenario.hx` as `Foo_scenario`, as the studio does) and a made folder, desktop and phone:
+`Sandbox.made`, an atom of names and kinds (huge, right to left, emoji and combining names, many
+entries; photos, PNG, GIF, WebP, text, Markdown, PDF, an MP4 video and audio, a broken JPEG, one
+cut short, empty files, folders), files in the Sandbox's memory, under a HELDER_HOME of its own.
+Its failures land in apps/viewer/bin/fuzz. `checks`: each case's files the Sandbox's (a probe of 60 cases first, no steps), and media's (one
+player at most playing, the viewer's, its file shown in it; a test plays the clip and closes it).
+
+Found by it: a decode's key cut a file name at a line break (Null Access opening it); a touch
+menu taller than the window ran off it (its last choices out of reach: the viewer's View options
+on a phone held sideways); a code view's caret blinked on the wall's clock, not its screen's (a
+still's phase the wall's; a scenario never settled). Open: `Buffer.adopt: no buffer`
+(helder.image.ImageMemory's buffers and views out of step) once in about six 60-case runs, never
+alone (GC timing: an hxmc runtime issue, reported, not fixed). Press-on-pointer-down is not
+checked: no control says it acts on pointer-down.
+
+Follow-ups: TypeScript programs (a `helder/scenario` monkey), and the invariants left:
 a press on pointer-down where the control says so, unrelated input recreating stable parts beyond
 idle time and typing, at most one media playing, frames compared (a still built twice the same
 pixels), perf bounds; a resize step as the studio frame's size; `play` scenarios (their clock run
