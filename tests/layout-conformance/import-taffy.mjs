@@ -19,6 +19,9 @@ const CATEGORIES = ['flex', 'grid', 'gridflex', 'leaf'];
 const VARIANTS = ['border_box_ltr', 'border_box_rtl', 'content_box_ltr', 'content_box_rtl'];
 // (set by the variant on every node, not part of the tree)
 const VARIANT_ATTRS = ['direction', 'box-sizing'];
+// (what gentest leaves out, Taffy's default: a node border-box in every variant is so on its own, its
+// fixture's style says it; a content-box variant writes box-sizing only where the variant set it)
+const OMITTED = { 'box-sizing': 'border-box' };
 // (the base sheet's, test_base_style.css: left out)
 const DEFAULTS = { position: 'relative' };
 const revision = execFileSync('git', ['-C', taffy, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -53,6 +56,7 @@ function tree(n, keep) {
 	const style = {};
 	const own = keep.shift();
 	for (const [k, v] of Object.entries(n.attrs)) if ((!VARIANT_ATTRS.includes(k) || own.has(k)) && DEFAULTS[k] !== v) style[k] = v;
+	for (const k of own) if (n.attrs[k] === undefined && OMITTED[k]) style[k] = OMITTED[k];
 	// (gentest writes no position for Taffy's default, static: the base sheet's relative overridden)
 	if (n.tag !== '#root' && n.attrs.position === undefined) style.position = 'static';
 	const out = { style };
@@ -64,7 +68,7 @@ function tree(n, keep) {
 
 // (each node's variant attributes, in order)
 function variantAttrs(n, out = []) {
-	out.push(Object.fromEntries(VARIANT_ATTRS.map((k) => [k, n.attrs[k] ?? ''])));
+	out.push(Object.fromEntries(VARIANT_ATTRS.map((k) => [k, n.attrs[k] ?? OMITTED[k] ?? ''])));
 	for (const c of n.children) variantAttrs(c, out);
 	return out;
 }
