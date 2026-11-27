@@ -718,8 +718,7 @@ private class Screen {
 	// (a step run and waited for, as a scenario runs it)
 	public function act(s:Step)
 		context.run(() -> {
-			@:privateAccess Steps.act(s, ui, context, why -> throw new StepError(why));
-			settled = @:privateAccess Steps.settle(ui, context);
+			settled = @:privateAccess Steps.next(s, ui, context, why -> throw new StepError(why));
 		});
 
 	public function leave()

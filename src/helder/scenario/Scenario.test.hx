@@ -225,7 +225,14 @@ function tests() {
 	var rests = test("steps: each waited for until the screen rests, not a minute of its clock", () -> {
 		var s = stepped([Steps.tap("Add"), Steps.tap("Add")]);
 		equals(s.failure?.message, null);
-		assert(s.context.now < 2, 'its clock at ${s.context.now} s');
+		// (a second's pause before each, then each at rest at once)
+		assert(s.context.now < 2 * @:privateAccess Steps.PAUSE + 1, 'its clock at ${s.context.now} s');
+		s.reset();
+	});
+	var latched = test("steps: two scrollers wheeled in turn, each on its screen's clock (no wheel latched across steps, at any host's speed)", () -> {
+		var s = stepped([Steps.scroll("Rows", "end"), Steps.scroll("More", "end")]);
+		equals(s.failure?.message, null);
+		equals(s.run(() -> [for (v in s.ui.scrollViews()) Math.round(v.offsetY) == Math.round(v.contentHeight - v.height)]), [true, true]);
 		s.reset();
 	});
 	var scrolled = test("steps: a scroll until a row is shown, then a tap on it", () -> {
@@ -260,7 +267,7 @@ function tests() {
 	});
 	// (as wasm32-wasi the host's device is the browser's, which node has not)
 	#if (hxmc.target == "wasm32-wasi")
-	for (t in [host, boot, apart, resumed, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing, sealed])
+	for (t in [host, boot, apart, resumed, time, tasks, story, environ, random, timers, http, steps, rests, scrolled, missing, sealed, latched])
 		t.skip();
 	#end
 }
@@ -283,6 +290,9 @@ class Game implements helder.view.Markup {
 			<button>Twin</button>
 			<scroll role="list" aria-label="Rows" height={120} flexShrink={0}>
 				<For each={[for (i in 0...40) i]}>{i -> <button height={20} flexShrink={0} onPress={() -> picked(i())}>{'Row ${i()}'}</button>}</For>
+			</scroll>
+			<scroll role="list" aria-label="More" height={60} flexShrink={0}>
+				<For each={[for (i in 0...20) i]}>{i -> <view height={20} flexShrink={0}><text>{'More ${i()}'}</text></view>}</For>
 			</scroll>
 		</view>;
 	}

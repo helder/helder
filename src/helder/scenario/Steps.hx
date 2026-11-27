@@ -16,6 +16,10 @@ import helder.ui.*;
 //
 //   steps: [tap("Add habit"), type("Habit", "Stretch"), press("Enter"), waitFor("Stretch")]
 //
+// Each step comes after a second of the screen's clock (a user's pause) and
+// its events are timed on that clock, not the wall's: a scenario runs the
+// same on any host, at any speed.
+//
 // resize and wait are what helder.scenario.Monkey's cases do beside them:
 // a window resized, a user idle on the screen's clock.
 
@@ -90,11 +94,37 @@ class Steps {
 	// each step of list run in the screen, waited for; a failure thrown with its number
 	public static function run(list:Array<Step>, ui:Ui, context:ScreenContext, ?at:helder.view.Source) {
 		settle(ui, context);
-		for (i => s in list) {
-			act(s, ui, context, why -> throw new StepError('step ${i + 1}: $why\n${tree(ui)}', at));
-			settle(ui, context);
-		}
+		for (i => s in list)
+			next(s, ui, context, why -> throw new StepError('step ${i + 1}: $why\n${tree(ui)}', at));
 		leave(ui, context);
+	}
+
+	// (a user's pause before each step, on its screen's clock: two steps never one gesture, a double
+	// click, a wheel latched to the scroller the last one moved)
+	static inline var PAUSE = 1.0;
+
+	// (one step as a scenario runs it: a pause, the step timed on its screen's clock, then rest; whether it settled)
+	static function next(s:Step, ui:Ui, context:ScreenContext, fail:String->Void):Bool
+		return timed(context, () -> {
+			idle(ui, context, PAUSE);
+			act(s, ui, context, fail);
+			settle(ui, context);
+		});
+
+	// (f with the events' clock its screen's: what times them (a double click's window, a wheel's
+	// latch, a glide) read the clock its steps run, not the wall's: the same on any host, at any speed)
+	static function timed<T>(context:ScreenContext, f:Void->T):T {
+		var ui = Ui.now, text = helder.ui.controls.EditableText.now;
+		Ui.now = () -> context.now;
+		helder.ui.controls.EditableText.now = Ui.now;
+		var r = try f() catch (e:haxe.Exception) {
+			Ui.now = ui;
+			helder.ui.controls.EditableText.now = text;
+			throw helder.async.Errors.kept(e);
+		}
+		Ui.now = ui;
+		helder.ui.controls.EditableText.now = text;
+		return r;
 	}
 
 	// (the pointer gone after them: the still not showing a hover it did not ask for)
