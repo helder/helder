@@ -451,6 +451,32 @@ child an item, a run of text an anonymous block (white space alone none).
 - Not yet: aspect-ratio, flex-wrap: balance, scrollbar gutters, safe
   alignment's overflow rule; a few baseline cases in wrap-reverse.
 
+## Grid layout
+
+`GridFlow` (CSS Grid Layout 1, a subset) is helder.ui's GridLayout ported
+to the box tree, its values parsed by helder.ui's `Grid` (track lists,
+placements, areas: one parser for both): the explicit grid's tracks,
+implicit ones as items need, items placed by their lines or auto-placed
+(rows or columns, sparse or dense, negative lines before the explicit
+grid); the tracks sized columns first, then rows at the columns' widths
+(§11.3 to §11.8 as GridLayout has them: minimum, min- and max-content
+contributions, spanning items by span, those crossing flexible tracks
+last, the free space up to the growth limits, fr tracks at an fr's size,
+auto tracks stretched); each item in its area by justify-self and
+align-self, baselines shared in a row (§11.5's shims), laid out by its own
+context. An absolutely positioned child whose containing block is the grid
+is placed in the area its lines give (an auto line, or one the grid hasn't,
+its padding edge). Its intrinsic sizes: its columns under a min-content and
+a max-content constraint.
+
+- On pages a grid is monolithic: its rows aren't broken (pending, stage
+  paged).
+- Taffy's fixtures through the engine (`bun run test box-conformance`):
+  grid 1,941 of 2,368 cases, gridflex 40 of 44.
+- Not yet: aspect-ratio, fit-content() tracks, named lines, repeat()'s
+  auto-fill and auto-fit (as helder.ui's Grid), self-alignment of an
+  absolutely positioned child in its area.
+
 ## Tables
 
 `TableFlow` (CSS 2.1 §17, with CSS Tables 3 where they agree) lays out a

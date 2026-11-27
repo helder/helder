@@ -26,7 +26,7 @@ and fast.
 | --- | --- | --- |
 | 1 | Size gate: binary sizes with a per-class map | parked; a CI-only lane later |
 | 2 | Style storage: property ids, interned groups, typed reads, impact classes | done (#339, #346 sharing: the HTML Standard styled in 238 ms) |
-| 3 | Box tree, block and inline flow, paint, hit testing; the WPT reftest gate | done (#341–#348, #358, #360); flex in the engine (#391), grid next |
+| 3 | Box tree, block and inline flow, paint, hit testing; the WPT reftest gate | done (#341–#348, #358, #360); flex and grid in the engine (#391, grid's PR) |
 | 4 | Live styling: rule index, Bloom filter, state, invalidation, compiled sheets, CSS modules | done (#332, #337, #352, #354); unsupported-CSS diagnostics next |
 | 5 | The port: helder.ui on helder.dom, the app UA sheet (src/helder/css/ua/app.css), the codemod | not started; gated on sizes and benches |
 | 6 | Floats, positioning, tables, lists, generated content | done (#349, #351, #355, #363, #366) |

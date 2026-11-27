@@ -15,6 +15,7 @@ import helder.ui.box.Len;
 // inline lane's engine). Results are cached on the box by the constraint
 // space they were laid out in.
 @:allow(helder.ui.flow.FlexFlow)
+@:allow(helder.ui.flow.GridFlow)
 class BlockFlow implements FormattingContext {
 	final lines:BlockLines;
 
