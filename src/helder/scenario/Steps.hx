@@ -184,6 +184,8 @@ class Steps {
 			if (l != null && !l.turning) l.turn(0);
 			ui.update();
 			painted(ui);
+			// (what layout's events wrote (an onResize's signals): flushed, a frame asked for if it changed anything)
+			helder.view.graph.Graph.flush();
 			var soon = context.nextTimer() <= context.now + 1;
 			if (!ui.needsFrame && !context.animating && !soon) return true;
 			frame(ui, context);
