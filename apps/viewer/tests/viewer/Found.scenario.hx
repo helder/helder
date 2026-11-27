@@ -11,7 +11,8 @@ import helder.scenario.Steps.wait;
 // it wrote them: each replayed by the monkey's invariants
 // (Monkey.test.hx's "found" test), a bug fixed kept as its regression test,
 // one still open skipped there with its reason. Open in the studio as any
-// scenario.
+// scenario: each names only the app's own code (not a test's scenario: the
+// studio builds none of the tests).
 
 // an audio file playing on a phone, the window resized past the phone's width and back: two players
 final twoPlayers = scenario({
@@ -22,7 +23,7 @@ final twoPlayers = scenario({
 	locale: "ar-EG",
 	settings: {textScale: 1.3},
 	boot: () -> {
-		viewer.Monkey_test.madePhone.boot();
+		viewer.Shell.act(Go(viewer.Sandbox.MADE));
 		viewer.Sandbox.made([{name: "", kind: viewer.Sandbox.MadeKind.Audio}, {name: "ma\ttpé!عaéa`اﬁna8^\"\r\"&i‮🇧🇪ωi&éhyY‮ea\t文 b`ṇ̃ﬁ", kind: viewer.Sandbox.MadeKind.Folder}, {name: "", kind: viewer.Sandbox.MadeKind.Folder}, {name: "Name", kind: viewer.Sandbox.MadeKind.Folder}, {name: "Name", kind: viewer.Sandbox.MadeKind.Folder}, {name: "\r\nωm-𝔸]\raא‮$e👨‍👩‍👧hṇ̃Ẃω\n️AاKy1à=؜%`#oAX3‏ IlאT:", kind: viewer.Sandbox.MadeKind.Markdown}, {name: "ma中ש中😀😀WWWmWש中שaa中mWשש😀a😀中😀ששW中😀😀m中שama中", kind: viewer.Sandbox.MadeKind.Folder}]);
 	},
 	steps: [
@@ -53,7 +54,7 @@ final gridEnd = scenario({
 	dark: true,
 	time: "1970-01-09T00:00:05Z",
 	boot: () -> {
-		viewer.Monkey_test.madePhone.boot();
+		viewer.Shell.act(Go(viewer.Sandbox.MADE));
 		viewer.Sandbox.made([{name: "", kind: viewer.Sandbox.MadeKind.Photo}, {name: "", kind: viewer.Sandbox.MadeKind.Webp}, {name: "Name", kind: viewer.Sandbox.MadeKind.Small}, {name: "", kind: viewer.Sandbox.MadeKind.Markdown}, {name: "a", kind: viewer.Sandbox.MadeKind.Folder}, {name: "a", kind: viewer.Sandbox.MadeKind.Markdown}, {name: "h\t8🇧🇪\r\né7�️﻿　بL{srk;qRm~fa\n❤️j`�\\️　,a)\\0`ω ", kind: viewer.Sandbox.MadeKind.Folder}, {name: "Name", kind: viewer.Sandbox.MadeKind.Small}, {name: "", kind: viewer.Sandbox.MadeKind.Audio}, {name: "Name", kind: viewer.Sandbox.MadeKind.Folder}, {name: "a", kind: viewer.Sandbox.MadeKind.Audio}, {name: "a", kind: viewer.Sandbox.MadeKind.Text}, {name: "a", kind: viewer.Sandbox.MadeKind.Pdf}, {name: "b\r\nfef[fr", kind: viewer.Sandbox.MadeKind.Photo}, {name: "WWaWשm😀mWW中שWmשmaWש中am中W😀m中WamWWa中m中maa中中", kind: viewer.Sandbox.MadeKind.Text}, {name: "a", kind: viewer.Sandbox.MadeKind.Webp}, {name: "中中😀aWWmaW😀aששm中שmWשש😀😀a😀aWשש😀ששa😀ש😀😀ששaW", kind: viewer.Sandbox.MadeKind.Pdf}, {name: "Name", kind: viewer.Sandbox.MadeKind.Text}, {name: "é@`kpá éb_3ب}ö g�DعSﬁhب\\`؜j ‍éa❤️k　　\n👍🏽_M", kind: viewer.Sandbox.MadeKind.Pdf}, {name: "", kind: viewer.Sandbox.MadeKind.Photo}, {name: "", kind: viewer.Sandbox.MadeKind.Folder}, {name: "%?à`gbOY‏ת~2bVاb﻿eﬁṇ̃𝔸❤️y　؜zb$שc dnt \n! ß  s", kind: viewer.Sandbox.MadeKind.Empty}, {name: "", kind: viewer.Sandbox.MadeKind.Gif}, {name: " d️eà ÁuN`|\"` é W%ﬁP\rع` n文`A👨‍👩‍👧_🏳️‍🌈ab﻿中文`hF", kind: viewer.Sandbox.MadeKind.Text}, {name: "Name", kind: viewer.Sandbox.MadeKind.Empty}]);
 	},
 	steps: [
