@@ -15,6 +15,7 @@ class Bench {
 		{name: "bench row", about: "helder.css's restyle of a viewer's rows: made, hovered, unhovered, focused, selected", run: rowBench},
 		{name: "bench match", about: "helder.css's selector matching: each selector against the rule index and Bloom filter", run: matchBench},
 		{name: "bench html", about: "helder.dom's parse against @lukeed/html and lexbor", run: htmlBench},
+		{name: "bench woff", about: "helder.text's WOFF and WOFF2 unwrapping, natively", run: woffBench},
 		{name: "bench cascade", about: "helder.css's cascade on the HTML Standard's page, by phase", run: cascadeBench},
 		{name: "bench layout", about: "helder.ui.box on the HTML Standard's page: box tree, layout, paint, memory per box and fragment", run: layoutBench},
 		{name: "bench inline", about: "helder.ui.flow's inline layout on the HTML Standard's paragraphs, against TextLayout", run: inlineBench},
@@ -107,6 +108,15 @@ class Bench {
 		exe("bin/bench/HtmlBench", cp);
 		wasm("bin/bench/HtmlBench.wasm", cp);
 		run(NODE, ["tests/bench/html.mjs", exePath("bin/bench/HtmlBench", HOST), "bin/bench/HtmlBench.wasm"]);
+	}
+
+	// (tests/text/woff's files, and WOFF_BENCH's, space-separated paths)
+	static function woffBench() {
+		exe("bin/bench/WoffBench", cps(["src", "tests/bench"]).concat(["-main", "WoffBench"]));
+		var files = [for (f in ["inter.woff2", "inter-hmtx.woff2", "opensans-latin.woff2", "dejavu-cff.woff2", "inter.woff"]) 'tests/text/woff/$f'];
+		var extra = Sys.getEnv("WOFF_BENCH");
+		if (extra != null && extra != "") files = files.concat(extra.split(" "));
+		run(exePath("bin/bench/WoffBench", HOST), ["20"].concat(files));
 	}
 
 	static function motionBench() {

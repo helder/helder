@@ -172,16 +172,21 @@ class FontFile {
 
 	// the face at index of a font file's bytes (a collection has several)
 	// (unicode false: a face with no Unicode cmap read all the same, its glyph() 0 for every character; a PDF's subset fonts)
+	// (a WOFF or WOFF2 file: the sfnt it wraps, Woff)
 	public static function parse(data:Bytes, index = 0, unicode = true):FontFile
-		return new FontFile(data, index, unicode);
+		return new FontFile(Woff.is(data) ? Woff.sfnt(data) : data, index, unicode);
 
 	// the number of faces in the file (1, or a collection's)
-	public static function faceCount(data:Bytes):Int
+	public static function faceCount(data:Bytes):Int {
+		// (a damaged one: one face, which parse refuses with its error)
+		if (Woff.is(data)) data = try Woff.sfnt(data) catch (_:Dynamic) return 1;
 		return data.length >= 12 && data.getString(0, 4) == "ttcf" ? u32(data, 8) : 1;
+	}
 
 	function new(data:Bytes, index:Int, unicode = true) {
 		this.data = data;
 		this.index = index;
+		if (data.length < 12) throw "FontFile: not an OpenType font";
 		var tag = data.getString(0, 4);
 		var b = 0;
 		if (tag == "ttcf") {
