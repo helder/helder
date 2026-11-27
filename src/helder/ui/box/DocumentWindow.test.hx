@@ -45,6 +45,20 @@ function tests() {
 			v.paint(c);
 			equals([px(c, 40, 5), px(c, 40, 15), px(c, 40, 25)], [0x00FF00FF, 0x0000FFFF, 0xFFFFFFFF]);
 		});
+		test("what scrolls is bounded by its scroller's clip, for culling and hit testing", () -> {
+			var rows = [for (i in 0...200) '<p style="height: 10px">$i</p>'].join("");
+			var v = live('<style>body { margin: 0; font: 10px/1 Ahem } #s { overflow: auto; height: 40px } p { margin: 0 }</style><div id=s>$rows</div><p id=after>z</p>');
+			var r = v.order.chunks(), k = 0, tallest = 0.0;
+			while (k < r.length) {
+				tallest = Math.max(tallest, r[k + 3] - r[k + 1]);
+				k += 4;
+			}
+			// (the 2,000 px the scroller holds, never seen past its 40)
+			equals(tallest < 100, true);
+			equals(v.hit(5, 45).node, el(v, "after").firstChild);
+			v.scrollBy(5, 5, 0, 1000);
+			equals(v.hit(5, 5).node.textContent, "100");
+		});
 		test("UiPainter's shapes", () -> {
 			var c = new Recording();
 			var p = new UiPainter(c, 100, 100);
