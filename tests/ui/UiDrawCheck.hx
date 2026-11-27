@@ -98,7 +98,17 @@ class UiDrawCheck {
 			frames++;
 			// (frames 2 and 3 asked for: with nothing changed the window draws no more)
 			if (frames < 3) w.ui.requestFrame();
-			if (frames == 2) w.capture = pixels = Bytes.alloc((pw = w.device.width) * (ph = w.device.height) * 4);
+			if (frames == 2) {
+				// (the soft build has no device: its frame is the window's size at its scale)
+				#if helder.soft
+				pw = Math.round(W * w.scale);
+				ph = Math.round(H * w.scale);
+				#else
+				pw = w.device.width;
+				ph = w.device.height;
+				#end
+				w.capture = pixels = Bytes.alloc(pw * ph * 4);
+			}
 		};
 		// helder.ui.UiWindow.run's loop, counting the turns with nothing to draw: each
 		// sleeps (App.wait) until an event or 50 ms; closed after half a second idle
