@@ -299,7 +299,7 @@ class Attrs {
 		if (Std.isOfType(v, String)) {
 			var s:String = v;
 			if (s == "currentColor" || s == "currentcolor") return Tint.current;
-			if (s.startsWith("var(--")) return Theme.token(s.substring(6, s.indexOf(")")));
+			if (s.startsWith("var(--")) return (Token(s.substring(6, s.indexOf(")"))) : TintValue);
 			if (s == "transparent") return 0;
 			return (Color.parse(s) : Int);
 		}

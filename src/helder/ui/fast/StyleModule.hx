@@ -23,15 +23,17 @@ using StringTools;
 // &:hover); a class under
 // @media (prefers-color-scheme: dark) is its dark variant; composes: names
 // classes of the same file, merged under it. Values are CSS's (lengths in
-// px, percentages, colours, var(--name): a Theme's token). A descendant or
+// px, percentages, colours, var(--name): a token of the theme file given
+// as its second argument, checked there for its type, a fallback taken
+// where it has none). A descendant or
 // sibling selector, another at-rule or property, or a value a style can't
 // hold is an error of the build, at its line and column in the file. No CSS
 // parser is linked: the file is read when the program is built.
 //
-//   static final s = StyleModule.load("card.module.css");
+//   static final s = StyleModule.load("card.module.css", "app.theme.css");
 //   <view style={s.card}>...</view>
 class StyleModule {
-	public static macro function load(path:ExprOf<String>):Expr {
+	public static macro function load(path:ExprOf<String>, ?theme:ExprOf<String>):Expr {
 		var p = switch path.expr {
 			case EConst(CString(s, _)): s;
 			case _: Context.error("StyleModule.load: a string literal", path.pos);
@@ -40,7 +42,12 @@ class StyleModule {
 		if (file == null) Context.error('StyleModule.load("$p"): no such file beside the module or under a class path', path.pos);
 		file = FileSystem.fullPath(file);
 		Context.registerModuleDependency(Context.getLocalModule(), file);
-		return new Compile(file, sys.io.File.getContent(file)).module(path.pos);
+		var t = switch theme {
+			case null | {expr: EConst(CIdent("null"))}: null;
+			case {expr: EConst(CString(s, _))}: ThemeFile.of(Theme.locate(s, theme.pos));
+			case _: Context.error("StyleModule.load: the theme's path a string literal", theme.pos);
+		}
+		return new Compile(file, sys.io.File.getContent(file), t).module(path.pos);
 	}
 }
 
@@ -54,9 +61,31 @@ private class Compile {
 	final classes = new Map<String, Map<String, Array<CssDeclaration>>>();
 	final composed = new Map<String, Array<{name:String, at:Int}>>();
 
-	public function new(file:String, text:String) {
+	final theme:Null<ThemeFile>;
+
+	public function new(file:String, text:String, theme:Null<ThemeFile>) {
 		this.file = file;
 		this.text = text;
+		this.theme = theme;
+	}
+
+	// (var(--name[, fallback]): the theme's token of that kind, else its fallback's value)
+	function token(v:CssValue, args:Array<CssValue>, d:CssDeclaration, kind:ThemeFile.ThemeKind, fallback:CssValue->Expr):Expr {
+		var text = flat(args).trim(), comma = text.indexOf(","), n = (comma < 0 ? text : text.substr(0, comma)).trim();
+		if (!n.startsWith("--")) fail(Parser.startOf(v), "var(--name): a theme's token");
+		var name = n.substr(2), t = theme?.tokens.get(name);
+		if (t != null) {
+			if (t.kind != kind) fail(Parser.startOf(v), '${d.name}: --$name is a ${t.kind}, not a $kind');
+			return switch kind {
+				case Color: macro(new helder.ui.fast.Token<helder.gfx.Color>($v{name}) : helder.ui.fast.Style.Tint);
+				case _: macro new helder.ui.fast.Token<helder.ui.fast.Token.Length>($v{name});
+			}
+		}
+		if (comma >= 0) {
+			var rest = words(args), k = Lambda.findIndex(rest, x -> x.match(Token({kind: Comma})));
+			if (k + 2 == rest.length) return fallback(rest[k + 1]);
+		}
+		return fail(Parser.startOf(v), theme == null ? 'var(--$name): the theme is StyleModule.load\'s second argument' : 'var(--$name): no such token in ${theme.path}');
 	}
 
 	public function module(pos:Position):Expr {
@@ -414,6 +443,7 @@ private class Compile {
 
 	function px(v:CssValue, d:CssDeclaration):Expr
 		return switch v {
+			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> px(x, d))} : helder.ui.fast.Style.Pixels);
 			case Token({kind: Dimension(n, _, _, "px")}): macro $v{n};
 			case Token({kind: Number(0, _, _)}): macro 0.0;
 			case _: fail(Parser.startOf(v), '${d.name}: a length in px');
@@ -421,6 +451,7 @@ private class Compile {
 
 	function length(v:CssValue, d:CssDeclaration):Expr
 		return switch v {
+			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> length(x, d))} : helder.ui.fast.Style.Size);
 			case Token({kind: Dimension(n, _, _, "px")}): macro $v{n};
 			case Token({kind: Number(0, _, _)}): macro 0.0;
 			case Token({kind: Percentage(n, _, _)}): macro $v{n + "%"};
@@ -442,9 +473,7 @@ private class Compile {
 	function colour(v:CssValue, d:CssDeclaration):Expr {
 		switch v {
 			case Function("var", args, _, _):
-				var n = flat(args).trim();
-				if (!n.startsWith("--")) fail(Parser.startOf(v), "var(--name): a theme's token");
-				return macro helder.ui.fast.Theme.token($v{n.substr(2)});
+				return token(v, args, d, Color, x -> colour(x, d));
 			case Token({kind: Ident("currentColor" | "currentcolor")}):
 				return macro helder.ui.fast.Style.Tint.current;
 			case Token({kind: Ident("transparent")}):

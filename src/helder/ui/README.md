@@ -1659,29 +1659,44 @@ engine's boxes made from code, with no element, selector or cascade
 behind them. A `Style` is an immutable value, interned (`Style.of`; equal
 styles are one object), with its state variants in it (`hover`,
 `pressed`, `focus`, `disabled`, `selected`, `checked`, and `group:` for
-the nearest ancestor marked `group`) and colours as `Theme` tokens. A
-node's style is resolved into the box tree's typed `BoxStyle` once for
-each state, parent text and theme it meets, so a thousand rows of one
-style in one state are one resolve. Only the text's values inherit.
+the nearest ancestor marked `group`). A node's style is resolved into
+the box tree's typed `BoxStyle` once for each state and parent text it
+meets, so a thousand rows of one style in one state are one resolve.
+The text's values and `pointerEvents` inherit.
+
+**Themes.** A theme is a CSS file's tokens: `Theme.load("app.theme.css")`
+reads its `:root` custom properties when the program is built, each a
+typed field (`--surface: #fff` a `Token<Color>`, `--pad: 8px` a
+`Token<Length>`, a number a `Token<Number>`; `--accent-soft` is
+`accentSoft`), its dark values from `@media (prefers-color-scheme: dark)`
+or `light-dark(a, b)`. A colour field takes a colour token and a length
+field a length token, so a misspelt token is an error of the build. A
+node's `theme` is its subtree's; `theme.tone(dark)` is its dark or
+light side and `theme.with(token, value)` overrides a token there. Only
+styles that read a token (or have a dark variant) resolve again when the
+theme changes, and a box is laid out again only where a length token's
+value did.
 
 A literal given to `Style.of` or `with` is checked when the program is
 built (a misspelt name or a value of another type is an error there) and
 made as typed fields; no object is read by name when it runs. A CSS
-module compiles to Styles the same way: `StyleModule.load("card.module.css")`
-is its classes, typed (a misspelt one a type error), each a class alone
+module compiles to Styles the same way: `StyleModule.load("card.module.css",
+"app.theme.css")` is its classes, typed (a misspelt one a type error), each a class alone
 or with one of its own states (`:hover`, `:active`, `:focus-visible`,
 `:disabled`, `:checked`, `[data-state=selected]`, `::placeholder`, or
 nested, `&:hover`), `@media (prefers-color-scheme: dark)` its dark
-variant, `composes:` classes of the same file, `var(--name)` a theme's
-token; a descendant or sibling selector, or a property a style has no
+variant, `composes:` classes of the same file, `var(--name)` a token of
+the theme file given, checked for its type (`var(--name, fallback)`
+takes the fallback where the theme has none); a descendant or sibling selector, or a property a style has no
 field for, is an error of the build at its line in the file
 (examples/mail-fast's mail.module.css).
 
 ```haxe
-final row = Style.of({flexDirection: Row, columnGap: 8, padding: [4, 6], hover: {background: Theme.token("hover")}});
+static final app = Theme.load("app.theme.css");  // :root { --hover: light-dark(#f4f4f5, #27272a); --pad: 6px }
+final row = Style.of({flexDirection: Row, columnGap: 8, padding: [4, app.pad], hover: {background: app.hover}});
 final list = new Node(Style.of({rowGap: 2}));
 list.append(new TextNode("Buy milk"));
-final tree = new Tree(list, new Theme(["hover" => [0xFFF4F4F5, 0xFF27272A]]));
+final tree = new Tree(list, app);
 ```
 
 In markup, fast nodes take helder.ui's elements and attributes inside a

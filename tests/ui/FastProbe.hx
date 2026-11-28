@@ -10,20 +10,19 @@ import helder.view.*;
 // matcher or CSS parser; with -D fast.island, a DocumentNode beside it
 // does (the check's control). `layout` lays it out and prints, else a window.
 class FastProbe implements Markup {
-	static final app = new Theme(["fg" => [0xFF18181B, 0xFFFAFAFA], "muted" => [0xFF71717A, 0xFFA1A1AA], "line" => [0xFFE4E4E7, 0xFF3F3F46],
-		"surface" => [0xFFFFFFFF, 0xFF18181B], "hover" => [0xFFF4F4F5, 0xFF27272A]]);
+	static final app = Theme.load("FastProbe.theme.css");
 
-	static final page = Style.of({padding: 24, rowGap: 12, background: Theme.token("surface"), color: Theme.token("fg")});
+	static final page = Style.of({padding: 24, rowGap: 12, background: app.surface, color: app.fg});
 	static final title = Style.of({fontSize: 28, fontWeight: 600});
 	static final entry = Style.of({flexDirection: Row, columnGap: 8});
-	static final input = Style.of({flexGrow: 1, padding: [8, 12], borderRadius: 6, borderWidth: 1, borderColor: Theme.token("line"), color: Theme.token("muted")});
+	static final input = Style.of({flexGrow: 1, padding: [8, 12], borderRadius: 6, borderWidth: 1, borderColor: app.line, color: app.muted});
 	static final button = Style.of({flexDirection: Row, alignItems: Center, justifyContent: Center, padding: [6, 12], borderRadius: 6, background: 0xFF18181B,
 		color: 0xFFFAFAFA, hover: {background: 0xFF3F3F46}, pressed: {opacity: 0.8}});
-	static final ghost = button.with({background: 0, color: Theme.token("muted"), padding: [4, 8], hover: {background: Theme.token("hover"), color: Theme.token("fg")}});
-	static final row = Style.of({flexDirection: Row, alignItems: Center, columnGap: 8, padding: [4, 6], borderRadius: 6, hover: {background: Theme.token("hover")}});
+	static final ghost = button.with({background: 0, color: app.muted, padding: [4, 8], hover: {background: app.hover, color: app.fg}});
+	static final row = Style.of({flexDirection: Row, alignItems: Center, columnGap: 8, padding: [4, 6], borderRadius: 6, hover: {background: app.hover}});
 	static final check = Style.of({width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: 0xFFA1A1AA, checked: {background: 0xFF18181B, borderColor: 0xFF18181B}});
-	static final label = Style.of({flexGrow: 1, group: {checked: {color: Theme.token("muted")}}});
-	static final footer = Style.of({color: Theme.token("muted"), fontSize: 12});
+	static final label = Style.of({flexGrow: 1, group: {checked: {color: app.muted}}});
+	static final footer = Style.of({color: app.muted, fontSize: 12});
 
 	final list = new Node(Style.of({rowGap: 2}));
 	final left = new TextNode("", footer);

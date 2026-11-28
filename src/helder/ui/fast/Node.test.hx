@@ -25,12 +25,12 @@ function tests() {
 			equals(t.lineClamp, 2);
 		});
 		test("paint fields resolved: corners, a dashed border, shadows first on top, an outline", () -> {
-			var theme = new Theme(["line" => [0xFF101010, 0xFF202020]]);
+			var line = new Token<helder.gfx.Color>("line"), theme = new Theme(["line" => 0xFF101010], ["line" => 0xFF202020]);
 			var n = new Node(Style.of({
 				borderWidth: 1,
 				borderStyle: Dashed,
 				borderRadius: [1, 2, 3, 4],
-				shadows: [{x: 1, y: 2, color: 0xFF0000FF}, {x: 0, y: 0, spread: 1, color: Theme.token("line"), inset: true}],
+				shadows: [{x: 1, y: 2, color: 0xFF0000FF}, {x: 0, y: 0, spread: 1, color: line, inset: true}],
 				outline: {width: 2, color: 0xFF00FF00, offset: 3}
 			}));
 			n.theme = theme;
@@ -117,14 +117,43 @@ function tests() {
 			equals(plain.box.style.text == card.box.style.text, true);
 		});
 		test("a token in its theme, light and dark", () -> {
-			var app = new Theme(["surface" => [0xFFFFFFFF, 0xFF18181B]]);
-			var root = new Node(), card = new Node(Style.of({background: Theme.token("surface"), borderColor: helder.ui.fast.Style.Tint.current, borderWidth: 1}));
+			var surface = new Token<helder.gfx.Color>("surface"), app = new Theme(["surface" => 0xFFFFFFFF], ["surface" => 0xFF18181B]);
+			var root = new Node(), card = new Node(Style.of({background: surface, borderColor: helder.ui.fast.Style.Tint.current, borderWidth: 1}));
 			root.theme = app;
 			root.append(card);
 			equals(card.box.style.backgroundColor, 0xFFFFFFFF);
 			root.theme = app.tone(true);
 			equals(card.box.style.backgroundColor, 0xFF18181B);
 			equals(@:privateAccess card.box.style.sideColors[0], 0xFF000000);
+		});
+		test("length tokens: a box's padding, gap, radius and font size in its theme, laid out again where they change", () -> {
+			var pad = new Token<Token.Length>("pad"), size = new Token<Token.Length>("size");
+			var app = new Theme(["pad" => 8, "size" => 13], new Map());
+			var root = new Node(), card = new Node(Style.of({padding: pad, rowGap: pad, borderRadius: pad, fontSize: size}));
+			root.theme = app;
+			root.append(card);
+			var s = card.box.style.model();
+			equals(s.padding[0], (Px(8) : helder.ui.box.Len));
+			equals(card.box.style.text.size, 13.0);
+			var before = card.box.style;
+			root.theme = app.with(pad, 12);
+			equals(card.box.style.model().padding[0], (Px(12) : helder.ui.box.Len));
+			equals(Resolve.level(before, card.box.style), Resolve.LAYOUT);
+			// (in a list's literal, beside px)
+			equals((Style.of({padding: [4, pad]}).props.padding : Array<Float>)[0], 4.0);
+		});
+		test("a theme changed: a style that reads no token keeps its resolution", () -> {
+			var surface = new Token<helder.gfx.Color>("surface"), app = new Theme(["surface" => 0xFFFFFFFF], ["surface" => 0xFF18181B]);
+			var root = new Node(), plain = new Node(Style.of({padding: 3})), card = new Node(Style.of({background: surface}));
+			root.append(plain);
+			root.append(card);
+			var p = plain.box.style, c = card.box.style;
+			root.theme = app.tone(true);
+			equals(plain.box.style == p, true);
+			equals(card.box.style == c, false);
+			equals(Style.of({padding: 3}).themed, false);
+			equals(Style.of({background: surface}).themed, true);
+			equals(Style.of({dark: {padding: 1}}).themed, true);
 		});
 		test("a group's states reach its descendants", () -> {
 			var hint = Style.of({color: 0xFF777777, group: {hover: {color: 0xFF000000}}});

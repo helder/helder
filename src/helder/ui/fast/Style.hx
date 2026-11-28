@@ -11,6 +11,7 @@ import helder.ui.Overflow;
 import helder.ui.Position;
 import helder.ui.TextAlign;
 import helder.ui.box.Len;
+import helder.ui.fast.Token.Length;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -34,9 +35,9 @@ typedef StyleProps = {
 	?flexGrow:Float,
 	?flexShrink:Float,
 	?flexBasis:Size,
-	?gap:Float,
-	?rowGap:Float,
-	?columnGap:Float,
+	?gap:Pixels,
+	?rowGap:Pixels,
+	?columnGap:Pixels,
 	?width:Size,
 	?height:Size,
 	?minWidth:Size,
@@ -63,13 +64,13 @@ typedef StyleProps = {
 	?left:Size,
 	?zIndex:Int,
 	?color:Tint,
-	?fontSize:Float,
+	?fontSize:Pixels,
 	?fontWeight:Int,
 	?fontFamily:String,
 	?fontStyle:FontStyle,
 	// a multiple of the font size
 	?lineHeight:Float,
-	?letterSpacing:Float,
+	?letterSpacing:Pixels,
 	?textAlign:TextAlign,
 	// false: nowrap
 	?wrap:Bool,
@@ -130,8 +131,8 @@ typedef StateProps = {
 	?checked:StyleProps
 }
 
-// A colour: one, a theme's token (Theme.token: its light and dark), or
-// the text's (current).
+// A colour: one, a theme's token (Token<Color>: its value in the theme in
+// scope), or the text's (current).
 enum TintValue {
 	Plain(argb:Int);
 	Token(name:String);
@@ -144,6 +145,9 @@ abstract Tint(TintValue) from TintValue to TintValue {
 
 	@:from static inline function ofInt(c:Int):Tint
 		return Plain(c);
+
+	@:from static inline function ofToken(t:Token<Color>):Tint
+		return Token(t.name);
 
 	public static var current(get, never):Tint;
 
@@ -159,6 +163,9 @@ abstract Size(Len) from Len to Len {
 	@:from static inline function ofInt(v:Int):Size
 		return Px(v);
 
+	@:from static inline function ofToken(t:Token<Length>):Size
+		return Px(Pixels.ofToken(t));
+
 	@:from static function ofString(s:String):Size {
 		var t = StringTools.trim(s);
 		if (t == "auto") return Auto;
@@ -166,6 +173,34 @@ abstract Size(Len) from Len to Len {
 		var v = Std.parseFloat(StringTools.endsWith(t, "px") ? t.substr(0, t.length - 2) : t);
 		return Math.isNaN(v) ? Auto : Px(v);
 	}
+}
+
+// A length in px, or a theme's length token (Token<Length>): its value in
+// the theme in scope. (A token is a float far below any length, as
+// helder.ui's Length.token.)
+abstract Pixels(Float) from Float from Int to Float {
+	@:from @:allow(helder.ui.fast) static function ofToken(t:Token<Length>):Pixels {
+		names ??= [];
+		ids ??= new Map();
+		var k = ids.get(t.name);
+		if (k == null) {
+			ids.set(t.name, k = names.length);
+			names.push(t.name);
+		}
+		return cast -(BASE + k);
+	}
+
+	static inline var BASE = 1e15;
+	// (no initializers: a style made in another class's static initializer may come first)
+	static var names:Array<String>;
+	static var ids:Map<String, Int>;
+
+	@:allow(helder.ui.fast) static inline function isToken(v:Float):Bool
+		return v <= -BASE;
+
+	// (v in a theme: a token's value there, else itself)
+	@:allow(helder.ui.fast) static inline function resolve(v:Float, theme:Theme):Float
+		return v <= -BASE ? theme.length(names[Std.int(-v - BASE)]) : v;
 }
 
 // Four corners' radii in px (top left, top right, bottom right, bottom
@@ -180,25 +215,28 @@ abstract Corners(Array<Float>) to Array<Float> {
 	@:from static inline function ofInt(v:Int):Corners
 		return new Corners([v, v, v, v]);
 
-	@:from static function ofArray(a:Array<Float>):Corners
+	@:from static inline function ofToken(t:Token<Length>):Corners
+		return ofFloat(Pixels.ofToken(t));
+
+	@:from static function ofArray(a:Array<Pixels>):Corners
 		return new Corners(a.length == 1 ? [a[0], a[0], a[0], a[0]] : a.length == 2 ? [a[0], a[1], a[0], a[1]] : a.length == 3 ? [a[0], a[1], a[2], a[1]] : [a[0], a[1], a[2], a[3]]);
 }
 
 typedef Shadow = {
-	x:Float,
-	y:Float,
-	?blur:Float,
-	?spread:Float,
+	x:Pixels,
+	y:Pixels,
+	?blur:Pixels,
+	?spread:Pixels,
 	color:Tint,
 	?inset:Bool
 }
 
 // drawn outside the border box (offset further out), Solid unless said
 typedef Outline = {
-	width:Float,
+	width:Pixels,
 	color:Tint,
 	?style:helder.ui.BorderStyle,
-	?offset:Float
+	?offset:Pixels
 }
 
 // Four sides' px (top, right, bottom, left): one for all, [vertical,
@@ -213,7 +251,11 @@ abstract Edges(Array<Float>) to Array<Float> {
 	@:from static inline function ofInt(v:Int):Edges
 		return new Edges([v, v, v, v]);
 
-	@:from static function ofArray(a:Array<Float>):Edges
+	@:from static inline function ofToken(t:Token<Length>):Edges
+		return ofFloat(Pixels.ofToken(t));
+
+
+	@:from static function ofArray(a:Array<Pixels>):Edges
 		return new Edges(switch a.length {
 			case 1: [a[0], a[0], a[0], a[0]];
 			case 2: [a[0], a[1], a[0], a[1]];
@@ -237,9 +279,9 @@ final class Props {
 	public var flexGrow:Null<Float> = null;
 	public var flexShrink:Null<Float> = null;
 	public var flexBasis:Null<Size> = null;
-	public var gap:Null<Float> = null;
-	public var rowGap:Null<Float> = null;
-	public var columnGap:Null<Float> = null;
+	public var gap:Null<Pixels> = null;
+	public var rowGap:Null<Pixels> = null;
+	public var columnGap:Null<Pixels> = null;
 	public var width:Null<Size> = null;
 	public var height:Null<Size> = null;
 	public var minWidth:Null<Size> = null;
@@ -264,12 +306,12 @@ final class Props {
 	public var left:Null<Size> = null;
 	public var zIndex:Null<Int> = null;
 	public var color:Null<Tint> = null;
-	public var fontSize:Null<Float> = null;
+	public var fontSize:Null<Pixels> = null;
 	public var fontWeight:Null<Int> = null;
 	public var fontFamily:Null<String> = null;
 	public var fontStyle:Null<FontStyle> = null;
 	public var lineHeight:Null<Float> = null;
-	public var letterSpacing:Null<Float> = null;
+	public var letterSpacing:Null<Pixels> = null;
 	public var textAlign:Null<TextAlign> = null;
 	public var wrap:Null<Bool> = null;
 	public var textOverflow:Null<helder.ui.TextOverflow> = null;
@@ -417,7 +459,7 @@ final class GroupProps {
 // time.
 //
 //   final row = Style.of({flexDirection: Row, padding: [4, 6], hover: {background: 0xFFF4F4F5}});
-//   final picked = row.with({background: Theme.token("accent")});
+//   final picked = row.with({background: app.accent});  // app: a Theme.load
 final class Style {
 	// what it says, its variants in it
 	public final props:Props;
@@ -431,9 +473,13 @@ final class Style {
 	// the style that says nothing
 	public static final none = intern(new Props());
 
-	function new(props:Props, key:String) {
+	// (whether it reads the theme: a token, a dark variant; one that doesn't is resolved once for every theme)
+	@:allow(helder.ui.fast) final themed:Bool;
+
+	function new(props:Props, key:String, themed:Bool) {
 		this.props = props;
 		this.key = key;
+		this.themed = themed;
 	}
 
 	// The style of props: the one made of the same before, else a new one.
@@ -453,6 +499,7 @@ final class Style {
 
 	// (props made typed: the one of the same before, else a style of them)
 	@:noCompletion public static function intern(p:Props):Style {
+		tokens = false;
 		var k = write(p);
 		var s = interned.get(k);
 		if (s != null) return s;
@@ -462,7 +509,7 @@ final class Style {
 			interned.clear();
 			internedCount = 0;
 		}
-		interned.set(k, s = new Style(p, k));
+		interned.set(k, s = new Style(p, k, tokens || dark(p)));
 		internedCount++;
 		return s;
 	}
@@ -813,6 +860,18 @@ final class Style {
 		return out.toString();
 	}
 
+	// (a token seen by the last write)
+	static var tokens = false;
+
+	// (a dark variant anywhere in it)
+	static function dark(p:Null<Props>):Bool {
+		if (p == null) return false;
+		if (p.dark != null) return true;
+		for (v in [p.hover, p.pressed, p.focus, p.disabled, p.selected, p.checked, p.placeholder]) if (dark(v)) return true;
+		var g = p.group;
+		return g != null && (dark(g.hover) || dark(g.pressed) || dark(g.focus) || dark(g.disabled) || dark(g.selected) || dark(g.checked));
+	}
+
 	static function word(out:StringBuf, k:String, v:Any) {
 		out.add(k);
 		out.add("=");
@@ -821,6 +880,7 @@ final class Style {
 	}
 
 	static function float(out:StringBuf, v:Float) {
+		if (Pixels.isToken(v)) tokens = true;
 		var i = Std.int(v);
 		if (i == v) out.add(i) else {
 			var b = haxe.io.FPHelper.doubleToI64(v);
@@ -870,6 +930,7 @@ final class Style {
 				out.add("=");
 				out.add(c);
 			case Token(name):
+				tokens = true;
 				out.add("$");
 				out.add(name);
 			case Current:
