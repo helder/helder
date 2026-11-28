@@ -7006,7 +7006,7 @@
 		"css/CSS2/tables/table-anonymous-objects-211.xht": {"pending":"tables: 930 pixels differ (by up to 255)"},
 		"css/CSS2/tables/table-anonymous-objects-212.xht": {},
 		"css/CSS2/tables/table-anonymous-objects-213.xht": {},
-		"css/CSS2/tables/table-anonymous-whitespace-001.xht": {"pending":"tables: 7024 pixels differ from Chromium's"},
+		"css/CSS2/tables/table-anonymous-whitespace-001.xht": {},
 		"css/CSS2/tables/table-background-edge-and-border-model-001.xht": {},
 		"css/CSS2/tables/table-background-edge-and-border-model-002.xht": {},
 		"css/CSS2/tables/table-backgrounds-bc-cell-001.xht": {"pending":"tables: 18261 pixels differ (by up to 255)"},
