@@ -124,6 +124,7 @@ class Frontend extends ApiCalls {
 			bridge = new Haxe(this, p, api.manifest);
 			tsx = new Tsx(this, bridge, api, dev, dev || definitions.define("helder.headless") != null);
 			tsx.liveTable = definitions.define("helder.literals");
+			helder.view.Live.paths(definitions.define("hxmc.paths"));
 			// (its timers and promises on helder.async's loop: Interop.hostLoop)
 			if (eventLoop) bridge.call(bridge.interop("hostLoop"), []);
 		} else if (eventLoop && dev && src.css.active.iterator().hasNext()) {

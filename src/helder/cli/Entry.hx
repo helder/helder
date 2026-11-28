@@ -274,11 +274,28 @@ class Entry {
 		if (target.startsWith("linux-")) out = out.concat(["-D", "hxmc.libc=glibc"]);
 		// (legacy exception handling: every browser with WebGPU has it, those with WebGL2 since 2021)
 		if (target == "web") out = out.concat(["-D", "hxmc.wasm-eh=legacy"]);
+		// (a web build is published: its strings name its sources by label, never where they are here)
+		if (target == "web") out = out.concat(["-D", "hxmc.paths=" + shownPaths()]);
 		out = out.concat(defines).concat(Compiler.markup(defines));
 		// (assets named by path: found under the class paths, else the project)
 		out = out.concat(["-D", "helder.root=" + FileSystem.fullPath(root).split("\\").join("/")]);
 		if (hxml != null) out.push(hxml);
 		return out;
+	}
+
+	// -D hxmc.paths' dirs: helder's sources <helder>, the project's
+	// <project> (its main's folder for TypeScript), hxmc's std <hxmc>, any
+	// other class path <lib>
+	public function shownPaths():String {
+		var full = (d:String) -> haxe.io.Path.removeTrailingSlashes(FileSystem.fullPath(d).split("\\").join("/"));
+		var project = full(typescript != null ? Path.directory(typescript) : root), own = full(helder), std = Compiler.hxmcStd();
+		var pairs = ['$own=<helder>', '$project=<project>'];
+		if (std != null) pairs.push('${full(std)}=<hxmc>');
+		for (c in classPaths) {
+			var d = full(c);
+			if (!StringTools.startsWith(d + "/", own + "/") && !StringTools.startsWith(d + "/", project + "/")) pairs.push('$d=<lib>');
+		}
+		return pairs.join(",");
 	}
 
 	static function paths(v:Dynamic):Array<String>

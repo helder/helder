@@ -26,7 +26,10 @@ using StringTools;
 //
 // Paths in it are the project's own, from its directory ("Todo.hx"); the
 // page puts the files in OPFS and gives the studio the links and tables
-// with its own directory in front (/projects/<name>/...).
+// with its own directory in front (/projects/<name>/...). The built paths
+// (root, the links' keys, the tables' files) are as the preview names them:
+// a web build's labels (-D hxmc.paths, helder.cli.Entry: <project>/...), never
+// the directory it was built in.
 class WebExport {
 	public static function run(dir:String, out:String):Int {
 		var p = Project.open(dir);
@@ -51,12 +54,18 @@ class WebExport {
 			return 1;
 		}
 		var rel = (f:String) -> f.startsWith(p.dir + "/") ? f.substr(p.dir.length + 1) : f;
+		// (the build's labels: what the preview's sources say)
+		var words = p.entry == null ? [] : p.words('${p.out}/web-preview', true), define = null;
+		for (i in 0...words.length - 1)
+			if (words[i] == "-D" && words[i + 1].startsWith("hxmc.paths=")) define = words[i + 1].substr("hxmc.paths=".length);
+		helder.view.Live.paths(define);
+		var built = (f:String) -> helder.view.Live.shown(f);
 		var files:haxe.DynamicAccess<String> = {};
 		for (f in p.sources())
 			files.set(rel(f), File.getContent(f));
 		var links:haxe.DynamicAccess<String> = {};
 		for (l => real in p.links)
-			links.set(l, rel(real));
+			links.set(built(l), rel(real));
 		var tables = [];
 		if (FileSystem.exists(literals))
 			for (f in FileSystem.readDirectory(literals)) {
@@ -64,14 +73,14 @@ class WebExport {
 				var t:Dynamic = Json.parse(File.getContent('$literals/$f'));
 				var file:String = t.file, real = p.real(file);
 				if (!FileSystem.exists(real) || haxe.crypto.Md5.encode(File.getContent(real)) != f.substr(0, f.length - 5)) continue;
-				tables.push({file: file, content: File.getContent(real), entries: t.entries});
+				tables.push({file: built(file), content: File.getContent(real), entries: t.entries});
 			}
 		var manifest = {
 			name: p.name,
 			label: header(p, "title") ?? p.name,
 			summary: header(p, "summary"),
 			kind: header(p, "kind") ?? (p.entry == null ? "design" : "app"),
-			root: p.dir,
+			root: built(p.dir),
 			files: files,
 			imports: r == null ? [] : helder.cli.Page.packages(BuildInfo.helderSrc(), wasm),
 			links: links,
