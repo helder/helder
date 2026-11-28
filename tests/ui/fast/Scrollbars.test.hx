@@ -7,14 +7,15 @@ import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 
 // A scroller's thumb: its length the view's share of the content, dragged
-// to scroll it; with overlay bars, shown while it moves.
+// to scroll it; with overlay bars, shown while it moves. (Its rows kept
+// at their height: empty, CSS shrinks them to fit, their automatic minimum 0.)
 function tests() {
 	describe("scrollbars", () -> {
 		test("a thumb: its size, dragged, overlay bars", () -> {
 			var ui = new helder.ui.Ui(null, 300, 200), tree:Null<helder.ui.fast.Tree> = null;
 			Render.render(<Fast ref={t -> tree = t}>
 				<scroll tag="list" height={100} width={200}>
-					<For each={[for (i in 0...20) i]}>{i -> <view height={20}/>}</For>
+					<For each={[for (i in 0...20) i]}>{i -> <view height={20} flexShrink={0}/>}</For>
 				</scroll>
 			</Fast>, ui.root);
 			flush();
@@ -35,7 +36,7 @@ function tests() {
 			ui.overlayBars = true;
 			var fresh = new helder.ui.Ui(null, 300, 200), other:Null<helder.ui.fast.Tree> = null;
 			fresh.overlayBars = true;
-			Render.render(<Fast ref={t -> other = t}><scroll height={100}><For each={[for (i in 0...20) i]}>{i -> <view height={20}/>}</For></scroll></Fast>, fresh.root);
+			Render.render(<Fast ref={t -> other = t}><scroll height={100}><For each={[for (i in 0...20) i]}>{i -> <view height={20} flexShrink={0}/>}</For></scroll></Fast>, fresh.root);
 			flush();
 			fresh.update();
 			var b = @:privateAccess other.root.children()[0].box;

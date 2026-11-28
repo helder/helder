@@ -6534,7 +6534,7 @@
 		"css/CSS2/tables/border-conflict-width-032.xht": {"pending":"tables: 4784 pixels differ from Chromium's"},
 		"css/CSS2/tables/border-conflict-width-033.xht": {"pending":"tables: 4388 pixels differ from Chromium's"},
 		"css/CSS2/tables/border-conflict-width-034.xht": {"pending":"tables: 4230 pixels differ from Chromium's"},
-		"css/CSS2/tables/border-conflict-width-035.xht": {"pending":"tables: 3598 pixels differ from Chromium's"},
+		"css/CSS2/tables/border-conflict-width-035.xht": {},
 		"css/CSS2/tables/border-conflict-width-036.xht": {"pending":"tables: 4079 pixels differ from Chromium's"},
 		"css/CSS2/tables/border-conflict-width-037.xht": {},
 		"css/CSS2/tables/border-conflict-width-038.xht": {"pending":"tables: 4129 pixels differ from Chromium's"},
