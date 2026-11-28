@@ -380,6 +380,10 @@ class Ui extends ScrollHost {
 	// run first in each update (a menu bar's states checked: helder.ui.menu.MenuBar)
 	public final beforeUpdate:Array<Void->Void> = [];
 
+	// (the layout: helder.ui's, or the CSS engine's under -D helder.engine, NodeBoxes)
+	static inline function layoutRun(root:Node, width:Float, height:Float, text:TextEngine, ?scrollers:Array<Node>):Bool
+		return #if helder.engine NodeBoxes.run #else Layout.run #end(root, width, height, text, scrollers);
+
 	public function update() {
 		helder.ui.motion.Motions.updating = true;
 		for (f in beforeUpdate.copy())
@@ -397,19 +401,19 @@ class Ui extends ScrollHost {
 			dirtyAll(root);
 			dirtyAll(overlay);
 		}
-		Layout.run(root, width, height, text, rounded);
+		layoutRun(root, width, height, text, rounded);
 		// (the nodes placing what they show by its laid out sizes: laid out again while one changes it)
 		var settled = 0;
 		while (settlers.length > 0 && settled++ < SETTLES && settle()) {
 			helder.view.graph.Graph.flush();
 			flushRestyles();
-			Layout.run(root, width, height, text, rounded);
+			layoutRun(root, width, height, text, rounded);
 		}
 		if (root.inkStale) refreshInk(root);
 		if (overlay.children.length > 0) {
-			Layout.run(overlay, width, height, text, rounded);
+			layoutRun(overlay, width, height, text, rounded);
 			// (placed from their sizes: laid out again when one moved)
-			if (Popups.place(this)) Layout.run(overlay, width, height, text, rounded);
+			if (Popups.place(this)) layoutRun(overlay, width, height, text, rounded);
 			if (overlay.inkStale) refreshInk(overlay);
 		}
 		tellResized();
@@ -420,7 +424,7 @@ class Ui extends ScrollHost {
 		while (@:privateAccess root.dirty && again++ < SETTLES) {
 			helder.view.graph.Graph.flush();
 			flushRestyles();
-			Layout.run(root, width, height, text, rounded);
+			layoutRun(root, width, height, text, rounded);
 			if (root.inkStale) refreshInk(root);
 			tellResized();
 		}

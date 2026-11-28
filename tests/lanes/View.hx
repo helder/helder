@@ -44,6 +44,9 @@ class View {
 		interp(cp, "UiCheck");
 		interp(cp, "MarkupCheck");
 		interp(cp.concat(cps([guideTestSource()])), "GuideCheck");
+		// (helder.ui on the CSS engine's layout, the port's: what it fails so far no more than it did)
+		interp(cp.concat(["-D", "helder.engine"]), "UiCheck");
+		interp(cp.concat(["-D", "helder.engine"]), "MarkupCheck");
 	}
 
 	// (what a fast app must not link, and what it must: its layout and paint)
