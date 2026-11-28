@@ -537,10 +537,7 @@ class TableFlow implements FormattingContext {
 		var maxSpec = Lens.resolve(ts.maxWidth, cb, Math.NaN), minSpec = Lens.resolve(ts.minWidth, cb, Math.NaN);
 		if (!Math.isNaN(maxSpec) && w > maxSpec) w = Math.max(maxSpec, minW);
 		if (!Math.isNaN(minSpec) && w < minSpec) w = minSpec;
-		if (wrapper.blockLevel && !wrapper.floating) BlockFlow.solve(wrapper, w, ml, mr, cb, 0, wrapper.parent != null && wrapper.parent.style.rtl) else {
-			wrapper.marginLeft = Math.isNaN(ml) ? 0 : ml;
-			wrapper.marginRight = Math.isNaN(mr) ? 0 : mr;
-		}
+		var marginWidth = w;
 		var inner = w - outerH;
 		var widths = fixed ? fixedLayout(g, inner) : distribute(g.cols, inner);
 		var sum = Lambda.fold(widths, (x, a) -> x + a, 0.0);
@@ -553,6 +550,36 @@ class TableFlow implements FormattingContext {
 			x += widths[c] + g.spacingH;
 		}
 		colX.push(x);
+		var layoutX = colX;
+		var collapsed = [for (c in 0...cols) {
+			var col = g.colBoxes[c], group = g.colGroups[c];
+			(col != null && col.style.rare.visibility == "collapse") || (group != null && group.style.rare.visibility == "collapse");
+		}];
+		var firstVisible = collapsed.indexOf(false);
+		var hiddenBefore = [0];
+		if (collapsed.indexOf(true) >= 0) {
+			// (collapsed tracks take no space, but their original widths still size the cells' contents)
+			colX = [];
+			x = edges[3];
+			for (c in 0...cols) {
+				hiddenBefore.push(hiddenBefore[c] + (collapsed[c] ? 1 : 0));
+				if (collapsed[c]) {
+					w -= widths[c] + g.spacingH;
+					widths[c] = 0;
+				} else x += g.spacingH;
+				colX.push(x);
+				x += widths[c];
+			}
+			colX.push(x + g.spacingH);
+			if (firstVisible < 0) w = edges[1] + edges[3];
+			marginWidth = w;
+		}
+		if (wrapper.blockLevel && !wrapper.floating) BlockFlow.solve(wrapper, marginWidth, ml, mr, cb, 0, wrapper.parent != null && wrapper.parent.style.rtl) else {
+			wrapper.marginLeft = Math.isNaN(ml) ? 0 : ml;
+			wrapper.marginRight = Math.isNaN(mr) ? 0 : mr;
+		}
+		var gridLeft = colX[firstVisible < 0 ? 0 : firstVisible];
+		var gridWidth = firstVisible < 0 ? 0.0 : colX[cols] - g.spacingH - gridLeft;
 		// (insets use the wrapper's final size, after its rows and captions are laid out)
 		var pending = new Positioned();
 		var parts = space.child(cb, space.height);
@@ -560,7 +587,7 @@ class TableFlow implements FormattingContext {
 		// (the cells laid out at their columns' width, a block each)
 		var rows = g.rows.length;
 		for (cell in g.cells) {
-			var cw = colX[cell.col + cell.cols] - colX[cell.col] - g.spacingH;
+			var cw = layoutX[cell.col + cell.cols] - layoutX[cell.col] - g.spacingH;
 			var cs = parts.child(cw, Math.NaN);
 			cs.fixedWidth = cw;
 			if (collapse) cs.borders = cellBorders(g, cell);
@@ -669,7 +696,7 @@ class TableFlow implements FormattingContext {
 				if ((inside || y + rowH[r] + footerH > fr.size + 0.01) && !Lambda.exists(g.cells, c -> c.rows > 1 && c.row <= r && c.row + c.rows > r)) {
 					var whole = rowH[r];
 					// (its cells keep room for the footer rows, and for its bottom edges only when cloned: sliced at the break)
-					var s = splitRow(g, r, parts, fr, y, clone ? footerH : footerH - edges[2], colX);
+					var s = splitRow(g, r, parts, fr, y, clone ? footerH : footerH - edges[2], layoutX);
 					var going = s.tokens.iterator().hasNext() && s.progress;
 					// (under a repeated header or above a repeated footer, a monolithic overflow not carried on: the row
 					// whole here, past the end, the next after the header there, as LayoutNG's)
@@ -735,8 +762,12 @@ class TableFlow implements FormattingContext {
 			var end = c + 1;
 			while (end < cols && g.colGroups[end] == group) end++;
 			if (group != null) {
-				var gf = frags.add(Fragments.BOX, group, colX[end] - g.spacingH - colX[c], bottom - top);
-				frags.adopt(tf, gf, colX[c], top);
+				var first = c;
+				while (first < end && collapsed[first]) first++;
+				var hidden = first == end;
+				var width = hidden ? 0.0 : colX[end - 1] + widths[end - 1] - colX[first];
+				var gf = frags.add(Fragments.BOX, group, width, hidden ? 0 : bottom - top);
+				frags.adopt(tf, gf, colX[hidden ? c : first], hidden ? 0 : top);
 				group.flags |= mark;
 			}
 			c = end;
@@ -744,8 +775,8 @@ class TableFlow implements FormattingContext {
 		for (c in 0...cols) {
 			var col = g.colBoxes[c];
 			if (col == null) continue;
-			var cf = frags.add(Fragments.BOX, col, widths[c], bottom - top);
-			frags.adopt(tf, cf, colX[c], top);
+			var cf = frags.add(Fragments.BOX, col, widths[c], collapsed[c] ? 0 : bottom - top);
+			frags.adopt(tf, cf, colX[c], collapsed[c] ? 0 : top);
 			col.flags |= mark;
 		}
 		var groupFrag = -1, groupBox:Null<Box> = null, groupTop = 0.0;
@@ -763,8 +794,8 @@ class TableFlow implements FormattingContext {
 					}
 					groupTop = rowY[r];
 					if (any) {
-						groupFrag = frags.add(Fragments.BOX, group, colX[cols] - g.spacingH - colX[0], rowY[end] - g.spacingV - rowY[r]);
-						frags.adopt(tf, groupFrag, colX[0], rowY[r]);
+						groupFrag = frags.add(Fragments.BOX, group, gridWidth, rowY[end] - g.spacingV - rowY[r]);
+						frags.adopt(tf, groupFrag, gridLeft, rowY[r]);
 					}
 					group.flags |= mark;
 				}
@@ -775,31 +806,37 @@ class TableFlow implements FormattingContext {
 			}
 			var row = g.rows[r];
 			row.flags |= mark;
-			var rf = frags.add(Fragments.BOX, row, colX[cols] - g.spacingH - colX[0], rowH[r]);
-			if (groupFrag >= 0) frags.adopt(groupFrag, rf, 0, rowY[r] - groupTop) else frags.adopt(tf, rf, colX[0], rowY[r]);
+			var rf = frags.add(Fragments.BOX, row, gridWidth, rowH[r]);
+			if (groupFrag >= 0) frags.adopt(groupFrag, rf, 0, rowY[r] - groupTop) else frags.adopt(tf, rf, gridLeft, rowY[r]);
 			rowFrags.push(rf);
 		}
 		for (cell in g.cells) {
 			if (!shown[cell.row]) continue;
 			var f = cell.fragment;
 			var h = rowY[cell.row + cell.rows] - g.spacingV - rowY[cell.row];
+			var end = cell.col + cell.cols - 1;
+			var layoutWidth = layoutX[end + 1] - g.spacingH - layoutX[cell.col];
+			var clip = hiddenBefore.length > 1 && hiddenBefore[end + 1] > hiddenBefore[cell.col];
+			var width = clip ? colX[end] + widths[end] - colX[cell.col] : layoutWidth;
+			var dx = clip && t.style.rtl ? width - layoutWidth : 0.0;
 			var shift = split[cell.row] ? 0.0 : switch valign(cell.box) {
 				case "top": 0.0;
 				case "bottom": h - cell.contentHeight;
 				case "middle": (h - cell.contentHeight) / 2;
 				case _: Math.isNaN(cell.baseline) ? 0.0 : baselines[cell.row] - cell.baseline;
 			}
-			if (shift != 0) {
+			if (shift != 0 || dx != 0) {
 				var k = frags.first(f);
 				while (k >= 0) {
-					frags.moveTo(k, frags.x(k), frags.y(k) + shift);
+					frags.moveTo(k, frags.x(k) + dx, frags.y(k) + shift);
 					k = frags.next(k);
 				}
 			}
 			// (its column's width even where its padding and borders are wider: they overflow, as browsers lay it out)
-			frags.resize(f, colX[cell.col + cell.cols] - g.spacingH - colX[cell.col], h);
+			frags.resize(f, width, h);
+			if (clip) frags.clipToBox(f);
 			cell.box.flags = (cell.box.flags & ~(Box.COLLAPSED | Box.EMPTY)) | mark | (empty(cell.box) ? Box.EMPTY : 0);
-			frags.adopt(rowFrags[cell.row], f, colX[cell.col] - colX[0], 0);
+			frags.adopt(rowFrags[cell.row], f, colX[cell.col] - gridLeft, 0);
 		}
 		// (the wrapper: captions above and below the table, at its width)
 		var wf = frags.add(Fragments.BOX, wrapper, w, 0);
