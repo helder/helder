@@ -23,6 +23,10 @@ class Space {
 	// the box's border widths instead of its style's (top, right, bottom, left): a cell's in
 	// the collapsing border model, half of what won on each side
 	public var borders:Null<Array<Float>> = null;
+	// A table cell's natural border-box height, returned for row alignment.
+	@:allow(helder.ui.flow.BlockFlow)
+	@:allow(helder.ui.flow.TableFlow)
+	var cellContentHeight = Math.NaN;
 	// where a line at y of height h may go (y from the box's border box top; offset from its left),
 	// and how far down it widens (next: infinity when it doesn't): floats narrow it (null: the whole width)
 	public var lineWidth:Null<(y:Float, h:Float) -> Null<{offset:Float, width:Float, next:Float}>> = null;
@@ -76,6 +80,7 @@ class Space {
 		fixedWidth = fixedHeight = Math.NaN;
 		ignoreHeight = false;
 		borders = null;
+		cellContentHeight = Math.NaN;
 		lineWidth = null;
 		placeFloat = null;
 		unplace = null;

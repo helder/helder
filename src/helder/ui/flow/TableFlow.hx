@@ -148,7 +148,7 @@ class TableFlow implements FormattingContext {
 					var cs = attr(cell, "colspan", 1, 1, 1000);
 					var rs = attr(cell, "rowspan", 1, 0, 65534);
 					if (rs == 0 || rs > rows.length - k) rs = rows.length - k;
-					g.cells.push({box: cell, row: ri, col: col, rows: rs, cols: cs, fragment: -1, height: 0, baseline: Math.NaN});
+					g.cells.push({box: cell, row: ri, col: col, rows: rs, cols: cs, fragment: -1, height: 0, contentHeight: 0, baseline: Math.NaN});
 					for (dr in 0...rs) for (dc in 0...cs) g.take(ri + dr, col + dc);
 					col += cs;
 					cell = cell.next;
@@ -521,7 +521,8 @@ class TableFlow implements FormattingContext {
 			cell.box.uncache();
 			var f = flow.child(cell.box, cs);
 			cell.fragment = f;
-			cell.height = frags.height(f);
+			cell.contentHeight = Math.isNaN(cs.cellContentHeight) ? frags.height(f) : cs.cellContentHeight;
+			cell.height = Math.max(frags.height(f), cell.contentHeight);
 			var b = BlockFlow.firstBaseline(frags, f);
 			cell.baseline = Math.isNaN(b) ? frags.height(f) - bottomEdge(cell.box, cs) : b;
 		}
@@ -728,8 +729,8 @@ class TableFlow implements FormattingContext {
 			var h = rowY[cell.row + cell.rows] - g.spacingV - rowY[cell.row];
 			var shift = split[cell.row] ? 0.0 : switch valign(cell.box) {
 				case "top": 0.0;
-				case "bottom": h - cell.height;
-				case "middle": (h - cell.height) / 2;
+				case "bottom": h - cell.contentHeight;
+				case "middle": (h - cell.contentHeight) / 2;
 				case _: cell.rows == 1 ? baselines[cell.row] - cell.baseline : 0.0;
 			}
 			if (shift != 0) {
@@ -864,7 +865,7 @@ class TableFlow implements FormattingContext {
 
 // a column for distribute: its min-content and max-content widths, a percentage (0: none), whether a width is set
 typedef TableColumn = {min:Float, max:Float, pct:Float, fixed:Bool};
-private typedef Cell = {box:Box, row:Int, col:Int, rows:Int, cols:Int, fragment:Int, height:Float, baseline:Float};
+private typedef Cell = {box:Box, row:Int, col:Int, rows:Int, cols:Int, fragment:Int, height:Float, contentHeight:Float, baseline:Float};
 
 private class Grid {
 	public final rows:Array<Box> = [];
