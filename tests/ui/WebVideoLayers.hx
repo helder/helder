@@ -13,21 +13,21 @@ class WebVideoLayers {
 	static function main() {
 		var w = new UiWindow({title: "Video", width: 400, height: 300});
 		var page = new Node("page");
-		page.style.set({width: 400, height: 300, background: Color.rgb(0x333333)});
+		page.style = Style.of({width: 400, height: 300, background: Color.rgb(0x333333)});
 		var v = new VideoNode();
-		v.style.set({position: Absolute, left: 20, top: 20, width: 240, height: 180});
+		v.style = v.style.with({position: Absolute, left: 20, top: 20, width: 240, height: 180});
 		v.layer = true;
 		v.muted = true;
 		v.loop = true;
 		v.autoplay = true;
 		v.open("long.webm");
 		var box = new Node("box");
-		box.style.set({position: Absolute, left: 200, top: 150, width: 80, height: 80, background: Color.rgb(0xdc2626)});
+		box.style = Style.of({position: Absolute, left: 200, top: 150, width: 80, height: 80, background: Color.rgb(0xdc2626)});
 		var list = new Node("list");
-		list.style.set({position: Absolute, left: 290, top: 20, width: 100, height: 260, overflow: Scroll, background: Color.rgb(0xffffff)});
+		list.style = Style.of({position: Absolute, left: 290, top: 20, width: 100, height: 260, overflow: Scroll, background: Color.rgb(0xffffff)});
 		for (i in 0...30) {
 			var r = new Node();
-			r.style.set({height: 30, flexShrink: 0, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
+			r.style = Style.of({height: 30, flexShrink: 0, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
 			list.append(r);
 		}
 		page.append(v);

@@ -16,16 +16,14 @@ import helder.ui.draw.*;
 class Pacing {
 	public static function run(w:helder.ui.UiWindow, pace:Float, work:Float):Int {
 		var spin = new Node();
-		spin.style.set({position: Absolute, left: 120, top: 90, width: 90, height: 60, borderRadius: 10, background: 0xFF2A7AE2});
-		spin.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg)");
 		var length = pace > 0 ? pace + 1 : 1.2;
-		spin.style.transition = Transition.parse('transform ${length}s linear, opacity ${length}s linear');
+		spin.style = Style.of({position: Absolute, left: 120, top: 90, width: 90, height: 60, borderRadius: 10, background: 0xFF2A7AE2,
+			transform: Transform.parse("translate(0px, 0px) rotate(0deg)"), transition: Transition.parse('transform ${length}s linear, opacity ${length}s linear')});
 		w.root.append(spin);
 		// (one that never moved: no layer of its own until it is declared)
 		var tap = new Node();
-		tap.style.set({position: Absolute, left: 250, top: 40, width: 60, height: 40, borderRadius: 8, background: 0xFFE2462A});
-		tap.style.transform = Transform.parse("translate(0px, 0px)");
-		tap.style.transition = Transition.parse("transform 1s linear, opacity 1s linear");
+		tap.style = Style.of({position: Absolute, left: 250, top: 40, width: 60, height: 40, borderRadius: 8, background: 0xFFE2462A,
+			transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 1s linear, opacity 1s linear")});
 		w.root.append(tap);
 		var c = w.compositor, lock = new sys.thread.Mutex(), mine:Array<Float> = [], theirs:Array<Float> = [];
 		if (c == null && pace <= 0) {
@@ -60,8 +58,7 @@ class Pacing {
 		App.run(() -> {
 			step++;
 			if (step == 10) {
-				spin.style.transform = Transform.parse("translate(140px, 30px) rotate(270deg)");
-				spin.style.opacity = 0.3;
+				spin.style = spin.style.with({transform: Transform.parse("translate(140px, 30px) rotate(270deg)"), opacity: 0.3});
 			}
 			if (pace <= 0 && step == 16) {
 				// (the program busy while it runs)
@@ -73,8 +70,7 @@ class Pacing {
 			// (once the first is over: nothing else moving, the compositor's frames this one's alone)
 			if (pace <= 0 && step > 24 && tapped < 0 && !Clock.active && !c.moving() && c.due() < 0) {
 				tapped = step;
-				tap.style.transform = Transform.parse("translate(-120px, 150px)");
-				tap.style.opacity = 0.5;
+				tap.style = tap.style.with({transform: Transform.parse("translate(-120px, 150px)"), opacity: 0.5});
 			}
 			if (w.needsFrame()) {
 				w.frame();

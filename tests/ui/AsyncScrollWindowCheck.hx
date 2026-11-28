@@ -29,12 +29,12 @@ class AsyncScrollWindowCheck {
 		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work"), p = a.indexOf("--pace");
 		var w = new helder.ui.UiWindow({title: "AsyncScrollWindowCheck", width: 400, height: 300});
 		var list = new Node();
-		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...300) {
 			var row = new Node();
-			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style = Style.of({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);

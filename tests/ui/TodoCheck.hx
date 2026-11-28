@@ -28,7 +28,6 @@ class TodoCheck {
 		var args = Sys.args();
 		var frame = new DrawFrame(W, H);
 		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
-		ui.theme = Todo.sheet;
 		var app = new Todo();
 		Render.render(app.view(), ui.root);
 		ui.update();
@@ -72,10 +71,10 @@ class TodoCheck {
 		check("the count follows", left.text == "2 items left", left.text);
 		click("filter-active");
 		var list = ui.root.find("list");
-		var rows = [for (c in list.children) if (c.style.display != None) c].length;
+		var rows = [for (c in list.children) if (!c.used.none) c].length;
 		check("a filter hides the done items", rows == 2, '$rows');
 		var active = ui.root.find("filter-active"), all = ui.root.find("filter-all");
-		check("the chosen filter's button restyles", active.variant == null && all.variant == "outline", '${active.variant} ${all.variant}');
+		check("the chosen filter's button restyles", active.style == Todo.button.with(Todo.small) && all.style == Todo.outline.with(Todo.small));
 		click("filter-all");
 		Sys.println('TodoCheck: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		// the frame (its transitions finished)

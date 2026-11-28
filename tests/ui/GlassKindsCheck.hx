@@ -34,54 +34,54 @@ class GlassKindsCheck {
 	// the bands, and (glass) the kinds over them: each kind's name and node
 	public static function build(root:Node, glass = true):Array<{name:String, node:Node}> {
 		helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
-		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
+		root.style = root.style.with({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
 		function band(top:Float, h:Float):Node {
 			var b = new Node();
-			b.style.set({position: Absolute, left: 0, top: top, width: W, height: h, overflow: Hidden});
+			b.style = Style.of({position: Absolute, left: 0, top: top, width: W, height: h, overflow: Hidden});
 			root.append(b);
 			return b;
 		}
-		band(0, 90).style.backgroundImage = Gradient.parse("linear-gradient(135deg, #ff5e62, #ff9966)");
+		band(0, 90).append(GlassScene.gradient("linear-gradient(135deg, #ff5e62, #ff9966)", W, 90));
 		var stripes = band(90, 70);
-		stripes.style.flexDirection = Row;
+		stripes.style = stripes.style.with({flexDirection: Row});
 		for (i in 0...Std.int(W / 10)) {
 			var s = new Node();
-			s.style.set({width: 10, height: 70, background: i % 2 == 0 ? 0xFF111111 : 0xFFFAFAFA});
+			s.style = Style.of({width: 10, height: 70, background: i % 2 == 0 ? 0xFF111111 : 0xFFFAFAFA});
 			stripes.append(s);
 		}
 		var text = band(160, 90);
-		text.style.set({padding: 8, rowGap: 1});
+		text.style = text.style.with({padding: 8, rowGap: 1});
 		for (i in 0...4) {
 			var t = new TextNode("The quick brown fox jumps over the lazy dog. Text behind glass shows the blur and the lens.");
-			t.style.set({fontSize: 13, color: 0xFF18181B});
+			t.style = t.style.with({fontSize: 13, color: 0xFF18181B});
 			text.append(t);
 		}
-		band(250, 80).style.backgroundImage = Gradient.parse("linear-gradient(135deg, #36d1dc, #5b86e5)");
+		band(250, 80).append(GlassScene.gradient("linear-gradient(135deg, #36d1dc, #5b86e5)", W, 80));
 		if (!glass) return [];
 		var out = [];
 		function add(name:String, x:Float, y:Float, w:Float, h:Float, ?set:Glass->Void) {
 			var g = new Glass();
-			g.style.set({position: Absolute, left: x, top: y, width: w, height: h});
+			g.style = g.style.with({position: Absolute, left: x, top: y, width: w, height: h});
 			if (set != null) set(g);
 			root.append(g);
 			out.push({name: name, node: (g : Node)});
 		}
 		add("regular", 16, 64, 120, 56);
-		add("clear", 146, 64, 120, 56, g -> g.variant = "clear");
+		add("clear", 146, 64, 120, 56, g -> g.clear = true);
 		add("blue", 276, 68, 92, 48, g -> g.tint = Color.parse("#0a84ff55"));
 		add("red", 378, 68, 92, 48, g -> g.tint = Color.parse("#ff375f66"));
 		add("green", 16, 136, 92, 48, g -> g.tint = Color.parse("#30d15888"));
 		add("dark", 118, 136, 92, 48, g -> g.tint = Color.parse("#000000aa"));
 		add("capsule", 220, 136, 110, 48);
-		add("radius16", 340, 132, 110, 64, g -> g.style.borderRadius = 16);
-		add("radius4", 16, 222, 90, 64, g -> g.style.borderRadius = 4);
+		add("radius16", 340, 132, 110, 64, g -> g.style = g.style.with({borderRadius: 16}));
+		add("radius4", 16, 222, 90, 64, g -> g.style = g.style.with({borderRadius: 4}));
 		add("circle", 116, 222, 64, 64);
 		var group = new Node();
 		GlassGroup.of(group, 16);
-		group.style.set({position: Absolute, left: 196, top: 228, flexDirection: Row, columnGap: 4});
+		group.style = Style.of({position: Absolute, left: 196, top: 228, flexDirection: Row, columnGap: 4});
 		for (_ in 0...4) {
 			var c = new Glass();
-			c.style.set({width: 52, height: 52});
+			c.style = c.style.with({width: 52, height: 52});
 			group.append(c);
 		}
 		root.append(group);

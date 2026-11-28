@@ -41,10 +41,10 @@ class GlassWindowCheck {
 			if (dir == null) {
 				var g = new Node();
 				GlassGroup.of(g, 20);
-				g.style.set({position: Absolute, left: 200, top: 110, width: 180, height: 44, flexDirection: Row, columnGap: 8});
+				g.style = Style.of({position: Absolute, left: 200, top: 110, width: 180, height: 44, flexDirection: Row, columnGap: 8});
 				for (_ in 0...2) {
 					var c = new Glass();
-					c.style.set({width: 44, height: 44});
+					c.style = c.style.with({width: 44, height: 44});
 					g.append(c);
 				}
 				r.append(g);
@@ -192,26 +192,26 @@ private class Input {
 		while (w.root.children.length > 0)
 			w.root.remove(w.root.children[0]);
 		var r = new Node();
-		r.style.set({width: GlassScene.W, height: GlassScene.H, background: 0xFFFFFFFF});
+		r.style = Style.of({width: GlassScene.W, height: GlassScene.H, background: 0xFFFFFFFF});
 		r.onWheel = _ -> wheels++;
-		list.style.set({overflow: Scroll, height: GlassScene.H, rowGap: 4, padding: 4});
+		list.style = Style.of({overflow: Scroll, height: GlassScene.H, rowGap: 4, padding: 4});
 		for (i in 0...60) {
 			var row = new Node();
-			row.style.set({height: 30, flexShrink: 0, background: i % 2 == 0 ? 0xFF2F7FE8 : 0xFFE8463A});
+			row.style = Style.of({height: 30, flexShrink: 0, background: i % 2 == 0 ? 0xFF2F7FE8 : 0xFFE8463A});
 			list.append(row);
 		}
 		r.append(list);
 		button.interactive = true;
-		button.style.set({position: Absolute, left: 40, top: 40, width: 120, height: 50});
+		button.style = button.style.with({position: Absolute, left: 40, top: 40, width: 120, height: 50});
 		button.onClick = _ -> presses++;
 		r.append(button);
 		var g = new Node();
 		GlassGroup.of(g, 12);
-		g.style.set({position: Absolute, left: 240, top: 40, flexDirection: Row, columnGap: 6});
+		g.style = Style.of({position: Absolute, left: 240, top: 40, flexDirection: Row, columnGap: 6});
 		var first = new Glass();
-		first.style.set({width: 50, height: 50});
+		first.style = first.style.with({width: 50, height: 50});
 		grouped.interactive = true;
-		grouped.style.set({width: 50, height: 50});
+		grouped.style = grouped.style.with({width: 50, height: 50});
 		grouped.onClick = _ -> presses += 10;
 		g.append(first);
 		g.append(grouped);

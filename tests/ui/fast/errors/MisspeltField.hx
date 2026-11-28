@@ -1,4 +1,4 @@
-import helder.ui.fast.Style;
+import helder.ui.Style;
 
 class MisspeltField {
 	static final row = Style.of({flexDirection: Row, paddin: 4});

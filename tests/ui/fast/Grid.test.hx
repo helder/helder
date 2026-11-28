@@ -1,12 +1,12 @@
 package ui.fast;
 
 import helder.test.Test;
-import helder.ui.fast.FastTags.*;
-import helder.ui.fast.GridTerms;
+import helder.ui.GridTerms;
+import helder.ui.Style;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 
-// Grid layout on fast nodes: CSS's grid values read as the cascade
+// Grid layout on helder.ui's nodes: CSS's grid values read as the cascade
 // computes them, laid out by the engine's GridFlow.
 function tests() {
 	describe("grid", () -> {
@@ -23,19 +23,23 @@ function tests() {
 			equals(Std.string(GridTerms.lines("head")), "[[Ident(head)],[Ident(head)]]");
 			equals(Std.string(GridTerms.areas("'head head' 'side main'")), "[Str(head head),Str(side main)]");
 		});
-		test("a grid in markup: its tracks, areas and an item's lines", () -> {
-			var ui = new helder.ui.Ui(null, 400, 300), tree:Null<helder.ui.fast.Tree> = null;
-			Render.render(<Fast ref={t -> tree = t}>
-				<view display="grid" width={300} gridTemplateColumns="100px 1fr" gridTemplateRows="40px 60px" gridTemplateAreas="'head head' 'side main'" columnGap={10}>
-					<view tag="head" gridArea="head"/>
-					<view tag="side" gridArea="side"/>
-					<view tag="main" gridArea="main"/>
-					<view tag="wide" gridColumn="1 / 3" height={20}/>
-				</view>
-			</Fast>, ui.root);
+		test("a grid: its tracks, areas and an item's lines", () -> {
+			var ui = new helder.ui.Ui(null, 400, 300);
+			// (the grid a style literal: what links grid layout)
+			var grid = Style.of({display: Grid, width: 300, gridTemplateColumns: "100px 1fr", gridTemplateRows: "40px 60px",
+				gridTemplateAreas: "'head head' 'side main'", columnGap: 10});
+			Render.render(<view style={grid}>
+				<view tag="head" gridArea="head"/>
+				<view tag="side" gridArea="side"/>
+				<view tag="main" gridArea="main"/>
+				<view tag="wide" gridColumn="1 / 3" height={20}/>
+			</view>, ui.root);
 			flush();
 			ui.update();
-			var g = tree.root.children()[0], r = (tag:String) -> tree.rectOf(g.children().filter(c -> c.tag == tag)[0]).join(",");
+			var r = (tag:String) -> {
+				var n = ui.root.find(tag);
+				[n.x, n.y, n.width, n.height].join(",");
+			}
 			equals(r("head"), "0,0,300,40");
 			equals(r("side"), "0,40,100,60");
 			equals(r("main"), "110,40,190,60");

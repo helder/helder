@@ -30,30 +30,36 @@ class BoxCheck {
 
 	static function box(b:Dynamic):Node {
 		var n = new Node("box");
-		n.style.set({position: Absolute, left: (b.left : Float), top: (b.top : Float), width: (b.width : Float), height: (b.height : Float),
-			background: Color.parse(b.background)});
-		// (one value, or each corner's and each side's)
-		if (Std.isOfType(b.radius, String)) n.style.corners = CornersValue.parse(b.radius) else if (b.radius != null) n.style.borderRadius = b.radius;
+		var outline:Null<Array<String>> = b.outline == null ? null : (b.outline : String).split(" ");
+		n.style = Style.ofProps({position: Absolute, left: (b.left : Float), top: (b.top : Float), width: (b.width : Float), height: (b.height : Float),
+			background: Color.parse(b.background), overflow: b.overflow == "hidden" ? Hidden : null, shadows: layers(b.shadow),
+			outline: outline == null ? null : {width: Std.parseFloat(outline[0]), color: Color.parse(outline[2]), offset: b.outlineOffset ?? 0},
+			transform: b.transform == null ? null : Transform.parse(b.transform), transformOrigin: b.origin == null ? null : Transform.origin(b.origin)});
+		// (one value, or each corner's and each side's, as markup writes them)
+		if (b.radius != null) n.styleAttr("borderRadius", b.radius);
 		if (b.border != null) {
-			if (Std.isOfType(b.border, String)) n.style.borders = [for (p in (b.border : String).split(" ")) Std.parseFloat(p)] else n.style.borderWidth = b.border;
-			n.style.borderColor = Color.parse(b.borderColor);
+			n.styleAttr("borderWidth", b.border);
+			n.styleAttr("borderColor", b.borderColor);
 		}
-		if (b.overflow == "hidden") n.style.overflow = Hidden;
-		if (b.shadow != null) n.style.boxShadow = Shadow.parse(b.shadow);
-		if (b.outline != null) {
-			helder.ui.view.StyleAttrs.apply(n.style, "outline", b.outline);
-			n.style.outlineOffset = b.outlineOffset ?? 0;
-		}
-		if (b.transform != null) n.style.transform = Transform.parse(b.transform);
-		if (b.origin != null) n.style.transformOrigin = Transform.origin(b.origin);
 		if (b.text != null) {
-			n.style.set({fontFamily: "DejaVu Sans", fontSize: (b.fontSize : Float), lineHeight: 1.25, color: Color.parse(b.color),
-				textShadow: Shadow.parse(b.textShadow)});
+			n.style = n.style.with({fontFamily: "DejaVu Sans", fontSize: (b.fontSize : Float), lineHeight: 1.25, color: Color.parse(b.color),
+				textShadow: layers(b.textShadow)});
 			n.append(new TextNode(b.text));
 		}
 		if (b.children != null) for (c in (b.children : Array<Dynamic>))
 			n.append(box(c));
 		return n;
+	}
+
+	// (CSS's shadows as a style's, the first on top)
+	static function layers(css:Null<String>):Null<Array<Style.ShadowLayer>> {
+		if (css == null) return null;
+		var out:Array<Style.ShadowLayer> = [], s = Shadow.parse(css);
+		while (s != null) {
+			out.push({x: s.x, y: s.y, blur: s.blur, spread: s.spread, color: s.color, inset: s.inset});
+			s = s.next;
+		}
+		return out;
 	}
 
 	static function draw(f:DrawFrame, ui:Ui):Bytes {
@@ -65,11 +71,8 @@ class BoxCheck {
 	static function text(size:Float, ?transform:String):Ui {
 		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var t = new TextNode("Transformed");
-		t.style.set({position: Absolute, left: 10.25, top: 10.5, fontSize: size, color: Color.rgb(0x111111)});
-		if (transform != null) {
-			t.style.transform = Transform.parse(transform);
-			t.style.transformOrigin = Transform.origin("left top");
-		}
+		t.style = Style.of({position: Absolute, left: 10.25, top: 10.5, fontSize: size, color: Color.rgb(0x111111),
+			transform: transform == null ? null : Transform.parse(transform), transformOrigin: transform == null ? null : Transform.origin("left top")});
 		ui.root.append(t);
 		return ui;
 	}

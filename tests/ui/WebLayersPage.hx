@@ -15,22 +15,20 @@ class WebLayersPage {
 	static function main() {
 		var w = new UiWindow({title: "Layers", width: 400, height: 300});
 		var page = new Node("page");
-		page.style.set({width: 400, height: 300, background: Color.rgb(0xffffff)});
+		page.style = Style.of({width: 400, height: 300, background: Color.rgb(0xffffff)});
 		var header = new TextNode("Layers");
-		header.style.set({height: 40, flexShrink: 0, padding: 10, fontSize: 16, color: Color.rgb(0xffffff), background: Color.rgb(0x1d4ed8)});
+		header.style = header.style.with({height: 40, flexShrink: 0, padding: 10, fontSize: 16, color: Color.rgb(0xffffff), background: Color.rgb(0x1d4ed8)});
 		var list = new Node("list");
-		list.style.set({flexGrow: 1, overflow: Scroll, background: Color.rgb(0xffffff)});
+		list.style = Style.of({flexGrow: 1, overflow: Scroll, background: Color.rgb(0xffffff)});
 		for (i in 0...60) {
 			var r = new TextNode('Row $i: the quick brown fox');
-			r.style.set({height: 30, flexShrink: 0, padding: 6, fontSize: 14, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
+			r.style = r.style.with({height: 30, flexShrink: 0, padding: 6, fontSize: 14, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xfef3c7)});
 			list.append(r);
 		}
 		var fab = new Node("fab");
-		fab.style.set({position: Absolute, right: 20, bottom: 20, width: 44, height: 44, borderRadius: 22, background: Color.rgb(0xdc2626)});
+		fab.style = Style.of({position: Absolute, right: 20, bottom: 20, width: 44, height: 44, borderRadius: 22, background: Color.rgb(0xdc2626)});
 		var box = new Node("box");
-		box.style.set({position: Absolute, left: 120, top: 8, width: 24, height: 24, borderRadius: 4, background: Color.rgb(0xfacc15)});
-		box.style.transform = Transform.parse("translate(0px, 0px)");
-		box.style.transition = Transition.parse("transform 1s linear");
+		box.style = Style.of({position: Absolute, left: 120, top: 8, width: 24, height: 24, borderRadius: 4, background: Color.rgb(0xfacc15), transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 1s linear")});
 		page.append(header);
 		page.append(list);
 		page.append(fab);
@@ -40,7 +38,7 @@ class WebLayersPage {
 		page.focusable = true;
 		page.onKeyDown = e -> if (e.key == "m".code) {
 			slid++;
-			box.style.transform = Transform.parse(slid % 2 == 1 ? "translate(200px, 0px)" : "translate(0px, 0px)");
+			box.style = box.style.with({transform: Transform.parse(slid % 2 == 1 ? "translate(200px, 0px)" : "translate(0px, 0px)")});
 		} else if (e.key == "b".code) {
 			busy++;
 			var end = haxe.Timer.stamp() + 1.5;

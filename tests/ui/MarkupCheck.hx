@@ -1,4 +1,3 @@
-import helder.os.Edges;
 import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
@@ -46,9 +45,7 @@ class MarkupCheck implements Markup {
 		rightToLeft();
 		wordBreaks();
 		hyphens();
-		autoMargins();
 		baselines();
-		shorthands();
 		password();
 		fieldKeyboard();
 		statesStyle();
@@ -120,7 +117,7 @@ class MarkupCheck implements Markup {
 		check("rtl: text aligned to the right by default", words.textAlign() == Right);
 		// (a field's text at its right, short of the caret's pixel: a click in its middle between its letters)
 		var field:TextField = cast ui.root.find("name");
-		var p = field.laidOut(), right = field.absX + field.width - field.style.borderEdges.right - field.style.padding.right - 1;
+		var p = field.laidOut(), right = field.absX + field.width - field.used.borderPx(1) - field.used.paddingPx(1) - 1;
 		ui.pointerDown(right - p.width / 2, field.absY + field.height / 2, 1);
 		ui.pointerUp(right - p.width / 2, field.absY + field.height / 2, 1);
 		check("rtl: a field's text at the right, clicked there", field.caret == 1 || field.caret == 2, "" + field.caret);
@@ -128,35 +125,6 @@ class MarkupCheck implements Markup {
 		flush();
 		ui.update();
 		check("rtl: changed back, laid out again", ui.root.find("a").absX == 10 && words.textAlign() == Left, "" + ui.root.find("a").absX);
-	}
-
-	// auto margins from markup ("auto") and code (Edges.AUTO)
-	static function autoMargins() {
-		var ui = new Ui(new MonoText(), 300, 200);
-		Render.render(<view>
-			<view flexDirection="row" height={30}><view tag="a" width={40} height={20}/><view tag="b" width={40} height={20} margin="0 0 0 auto"/></view>
-			<view tag="c" width={100} height={20} margin={[0, Edges.AUTO]}/>
-		</view>, ui.root);
-		ui.update();
-		var b = ui.root.find("b"), c = ui.root.find("c");
-		check("auto margins: a row's item pushed to the end (markup)", b.absX == 260, "" + b.absX);
-		check("auto margins: centred across a column (Edges.AUTO)", c.absX == 100, "" + c.absX);
-	}
-
-	// the shorthands' markup forms
-	static function shorthands() {
-		var ui = new Ui(new MonoText(), 300, 200);
-		Render.render(<view tag="holder" gap="4 8" height={200}>
-			<view tag="none" flex="none" width={20}/>
-			<view tag="fill" flex="2 0 40px"/>
-			<view tag="abs" position="absolute" inset="5 10"/>
-		</view>, ui.root);
-		ui.update();
-		var holder = ui.root.find("holder"), none = ui.root.find("none"), fill = ui.root.find("fill"), abs = ui.root.find("abs");
-		check("shorthands: gap \"4 8\"", holder.style.rowGap == 4 && holder.style.columnGap == 8);
-		check("shorthands: flex none and three values", none.style.flexGrow == 0 && none.style.flexShrink == 0 && fill.style.flexGrow == 2 && fill.style.flexShrink == 0
-			&& fill.style.flexBasis.resolve(0) == 40);
-		check("shorthands: inset \"5 10\"", abs.absX == 10 && abs.absY == 5 && abs.width == 280 && abs.height == 190, abs.absX + " " + abs.absY + " " + abs.width + " " + abs.height);
 	}
 
 	// align-items: baseline: texts of two sizes on one baseline (MonoText's: four fifths down a line)
@@ -338,7 +306,7 @@ class MarkupCheck implements Markup {
 		var presses = 0, part:Null<Part> = null, keys = 0;
 		var host = new Node("host");
 		ui.root.append(host);
-		Render.render(<button tag="nb" slot="neutral" id="page-only" onPress={_ -> presses++} ref={p -> part = p}
+		Render.render(<button tag="nb" id="page-only" onPress={_ -> presses++} ref={p -> part = p}
 			onKeyDown={e -> if (e.key == Key.SPACE) {
 				keys++;
 				e.preventDefault();
@@ -353,7 +321,7 @@ class MarkupCheck implements Markup {
 		ui.keyDown(Key.ENTER, 0);
 		ui.keyDown(Key.SPACE, 0);
 		check("neutral elements: button a view, p a text, onPress by a click and Enter, not a Space onKeyDown took",
-			nb != null && !Std.isOfType(nb, TextNode) && Std.isOfType(np, TextNode) && (cast np : TextNode).text == "Go" && nb.slot == "neutral" && presses == 2
+			nb != null && !Std.isOfType(nb, TextNode) && Std.isOfType(np, TextNode) && (cast np : TextNode).text == "Go" && presses == 2
 			&& keys == 1 && part == nb && ui.focus == nb, presses + " " + keys + " " + (part == nb));
 		// (an icon: lucide's of that name, an Svg drawn in the node's colour; mirrored right to left)
 		Render.render(<icon tag="ic" name="chevron-right" mirrored width={16} height={16}/>, host);
@@ -367,10 +335,10 @@ class MarkupCheck implements Markup {
 		var t = new TextNode("aa bb cc dd ee ff"), g = new TextNode("aa bb cc dd ee ff");
 		var w = 14 * ui.text.layout("a", g.font(), Math.NaN).width;
 		for (n in [t, g]) {
-			n.style.width = w;
+			n.style = Style.of({width: w});
 			ui.root.append(n);
 		}
-		t.style.textWrap = Balance;
+		t.style = t.style.with({textWrap: Balance});
 		ui.update();
 		var p = t.laidOut(), q = g.laidOut();
 		check("balanced text: two lines of three words, greedy five and one", p.lineCount == 2 && q.lineCount == 2 && p.width == 8 * w / 14
@@ -378,63 +346,56 @@ class MarkupCheck implements Markup {
 	}
 
 	// a fieldset's legend (CSS's rendered legend): no gap after it, its
-	// margin kept; a rule of the sibling before ([[data-variant=legend]+&]:
-	// "prev:variant=legend"), the description right after it only, again as
-	// one is put before
+	// margin kept; the next description a gap under, again as the one
+	// before it goes
 	static function fieldsetLegend() {
 		var ui = new Ui(new MonoText(), 400, 300), first = signal(true);
-		ui.theme = {
-			rules: [
-				{slot: "field-set", style: {rowGap: 24}}, {slot: "field-legend", style: {marginBottom: 12}},
-				{slot: "field-description", when: ["prev:variant=legend"], style: {marginTop: -6}}
-			]
-		};
 		Render.render(<view padding={10}>
-			<fieldset tag="set" slot="field-set">
-				<legend tag="legend" slot="field-legend" variant="legend">Profile</legend>
-				<Show when={first}><p tag="d0" slot="field-description">Before</p></Show>
-				<p tag="d1" slot="field-description">About</p>
+			<fieldset tag="set" rowGap={24}>
+				<legend tag="legend" margin={[0, 0, 12, 0]}>Profile</legend>
+				<Show when={first}><p tag="d0">Before</p></Show>
+				<p tag="d1">About</p>
 			</fieldset>
 		</view>, ui.root);
 		ui.update();
 		var legend = ui.root.find("legend"), d0 = ui.root.find("d0"), d1 = ui.root.find("d1");
-		check("fieldset: the legend's margin, no gap; the description after it pulled up, the next a gap under",
-			d0.y == legend.y + legend.height + 12 - 6 && d1.y == d0.y + d0.height + 24, '${legend.y} ${legend.height} ${d0.y} ${d0.height} ${d1.y}');
+		check("fieldset: the legend's margin, no gap; the next description a gap under",
+			d0.y == legend.y + legend.height + 12 && d1.y == d0.y + d0.height + 24, '${legend.y} ${legend.height} ${d0.y} ${d0.height} ${d1.y}');
 		first(false);
 		flush();
 		ui.update();
-		check("fieldset: the sibling before gone, the next description's rule follows", d1.y == legend.y + legend.height + 12 - 6, '${legend.y} ${legend.height} ${d1.y} ' + [for (c in d1.parent.children) c.tag].join(","));
+		check("fieldset: the description before gone, the next right after the legend", d1.y == legend.y + legend.height + 12, '${legend.y} ${legend.height} ${d1.y} ' + [for (c in d1.parent.children) c.tag].join(","));
 	}
 
 	// a part's states as signals (React Aria's render props): a node's
-	// style a function of them (states), over the theme's rules, taken
-	// back when it no longer gives a property
+	// style a function of them (states), over its own style, taken back
+	// when it no longer gives a property
 	static function statesStyle() {
 		var ui = new Ui(new MonoText(), 400, 300), ticked = signal(false);
-		ui.theme = {rules: [{slot: "button", style: {background: Color.rgb(0x111111), padding: 4}}]};
 		Render.render(<view alignItems="start" padding={10}>
-			<button tag="b" slot="button" states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : StyleProps)}>Go</button>
-			<view tag="c" data-state={() -> ticked() ? "checked" : "unchecked"} states={(s:States) -> (s.attr("data-state")() == "checked" ? {opacity: 0.5} : {} : StyleProps)}/>
-			<glass tag="g" width={40} height={20} states={(s:States) -> (s.hovered() ? {opacity: 0.5} : {} : StyleProps)}/>
+			<button tag="b" style={Style.of({background: Color.rgb(0x111111), padding: 4})} states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : Style.StyleProps)}>Go</button>
+			<view tag="c" data-state={() -> ticked() ? "checked" : "unchecked"} states={(s:States) -> (s.attr("data-state")() == "checked" ? {opacity: 0.5} : {} : Style.StyleProps)}/>
+			<glass tag="g" width={40} height={20} states={(s:States) -> (s.hovered() ? {opacity: 0.5} : {} : Style.StyleProps)}/>
 		</view>, ui.root);
 		ui.update();
 		var b = ui.root.find("b"), c = ui.root.find("c"), g = ui.root.find("g");
 		// (an element not neutral (<glass>): its states a function too, set once, not read as a hole)
 		ui.pointerMove(g.absX + 2, g.absY + 2);
 		ui.update();
-		check("states: an element of its renderer's own (<glass>), its style a function of its states", g.style.opacity == 0.5, '${g.style.opacity}');
-		var before = b.style.background;
+		check("states: an element of its renderer's own (<glass>), its style a function of its states", g.used.opacity == 0.5, '${g.used.opacity}');
+		var before = b.used.backgroundColor;
 		ui.pointerMove(b.absX + 2, b.absY + 2);
 		ui.update();
-		var hovered = b.style.background, states = States.of(b);
+		var hovered = b.used.backgroundColor, states = States.of(b);
 		ui.pointerMove(390, 290);
 		ui.update();
-		check("states: an instance's style a function of its states, over the theme's, the theme's again after", before == Color.rgb(0x111111)
-			&& hovered == Color.rgb(0xFF0000) && b.style.background == Color.rgb(0x111111) && !states.hovered(), hovered.toHex() + " " + b.style.background.toHex());
+		check("states: an instance's style a function of its states, over its style, its style again after", before == Color.rgb(0x111111)
+			&& hovered == Color.rgb(0xFF0000) && b.used.backgroundColor == Color.rgb(0x111111) && !states.hovered(),
+			StringTools.hex(hovered, 8) + " " + StringTools.hex(b.used.backgroundColor, 8));
 		ticked(true);
 		flush();
 		ui.update();
-		check("states: an attribute as a signal (data-state)", c.style.opacity == 0.5 && States.of(c).attr("data-state")() == "checked");
+		check("states: an attribute as a signal (data-state)", c.used.opacity == 0.5 && States.of(c).attr("data-state")() == "checked");
 		ui.setFocus(b);
 		ui.keyDown(Key.TAB, 0);
 		ui.keyDown(Key.TAB, 0);
@@ -442,21 +403,17 @@ class MarkupCheck implements Markup {
 		check("states: focused, focus-visible", States.of(b).focused());
 	}
 
-	// a link's href (a Link to assistive technology, a document's annotation); paged layout's names in a window: kept, nothing more
+	// a link's href (a Link to assistive technology, a document's annotation)
 	static function documentNames() {
 		var ui = new Ui(new MonoText(), 400, 300);
 		Render.render(<view padding={10}>
 			<a tag="docs" href="https://hxmc.dev/docs" focusable>Docs</a>
-			<view tag="chapter" breakBefore="page" breakInside="avoid" page="wide" height={20}/>
 		</view>, ui.root);
 		ui.update();
 		var link = ui.root.find("docs"), t = ui.accessTree();
 		var an = [for (id in t.order) t.nodes.get(id)].filter(a -> a.href != null)[0];
-		var ch = ui.root.find("chapter");
 		check("document: a link's href, a Link", link.semantics.role == helder.ui.access.Role.Link && an != null && an.href == "https://hxmc.dev/docs"
 			&& an.toJson().href == "https://hxmc.dev/docs");
-		check("document: break-before, break-inside and page kept in a window", ch.style.breakBefore == Page && ch.style.breakInside == Avoid
-			&& ch.style.page == "wide" && ch.height == 20);
 	}
 
 	static function virtualGrid() {
@@ -551,7 +508,8 @@ class MarkupCheck implements Markup {
 		ui.pointerDown(6, 6, 1);
 		ui.pointerMove(30, 9);
 		ui.update();
-		check("grid: a marquee is a node with its own slot", grid.find("marquee").slot == "grid-marquee");
+		check("grid: a marquee is a node with its look's part",
+			grid.find("marquee").style == helder.ui.controls.Look.base.part("grid-marquee").with({position: Absolute, pointerEvents: None}));
 		ui.pointerMove(130, 148);
 		ui.update();
 		check("grid: the marquee intersects cells, not their gaps", s.has("File 0") && s.has("File 1") && !s.has("File 2"));
@@ -678,7 +636,7 @@ class MarkupCheck implements Markup {
 		var list = ui.root.find("list");
 		// (the rows shown: made and in the window; those that left it hidden and kept)
 		function rows():Array<String>
-			return [for (c in list.children) if (c.tag == "row" && c.style.display != None) (cast c.children[0] : TextNode).text];
+			return [for (c in list.children) if (c.tag == "row" && !c.used.none) (cast c.children[0] : TextNode).text];
 		check("virtual: only the rows in view (and 3 more)", rows().length == 14 && rows()[0] == "item 0" && made == 14, rows().join(","));
 		check("virtual: scrolls the whole list", list.contentHeight == 2000000, '${list.contentHeight}');
 		ui.wheel(list.absX + 5, list.absY + 5, 0, 1000);
@@ -722,7 +680,7 @@ class MarkupCheck implements Markup {
 		var l = list;
 		// (the rows shown, in order; each drawn where: its top in the view)
 		function shown():Array<Node>
-			return [for (c in l.children) if (c.tag == "row" && c.style.display != None) c];
+			return [for (c in l.children) if (c.tag == "row" && !c.used.none) c];
 		function idOf(n:Node):Int
 			return Std.parseInt((cast n.children[0].children[0] : TextNode).text.substr(4));
 		function drawnY(n:Node):Float
@@ -1021,7 +979,7 @@ class MarkupCheck implements Markup {
 		check("tracks: per property", spec.opacity.token == "calm" && spec.lead.token == "lead" && spec.trail.duration == 0.5 && spec.trail.bounce == 0.1);
 		check("tracks: ride, matched, instant", pinned.ride == 3 && pinned.matched == "m" && pinned.instant);
 		var row = list.find("row-a");
-		check("tracks: a transition's presence", row.style.transition.presence != null && row.style.transition.presence.dy == 16);
+		check("tracks: a transition's presence", row.props().transition.presence != null && row.props().transition.presence.dy == 16);
 		var t = 1000.0;
 		function frame() {
 			Clock.tick(t += 1 / 60);
@@ -1240,7 +1198,7 @@ class MarkupCheck implements Markup {
 
 	static function rendering() {
 		var ui = new Ui(new MonoText(), 300, 200);
-		ui.root.style.fontSize = 10; // 5 per character, 12.5 a line
+		ui.root.style = Style.of({fontSize: 10}); // 5 per character, 12.5 a line
 		var name = signal("Ann");
 		var wide = signal(false);
 		var items = signal(["a", "b", "c"]);
@@ -1261,9 +1219,9 @@ class MarkupCheck implements Markup {
 		</view>, ui.root);
 		ui.update();
 		var top = ui.root.children[0];
-		check("render: a view with its style", top.style.background == Color.rgb(0xEEEEEE) && top.style.padding.left == 8);
+		check("render: a view with its style", top.used.backgroundColor == Color.rgb(0xEEEEEE) && top.used.paddingPx(3) == 8);
 		var row = top.find("row");
-		check("render: style attributes", row.style.flexDirection == Row && row.style.justifyContent == SpaceBetween && row.width == 100, '$row');
+		check("render: style attributes", row.props().flexDirection == Direction.Row && row.props().justifyContent == Justify.SpaceBetween && row.width == 100, '$row');
 		var hello:TextNode = cast row.children[0];
 		check("render: a text run is one TextNode", row.children.length == 1 && hello.text == "Hello Ann!", [for (c in row.children) c.tag].join(","));
 		name("Bo");
@@ -1307,50 +1265,40 @@ class MarkupCheck implements Markup {
 		name("gone");
 		flush();
 		check("render: and stops its effects", hello.text == "Hello Bo!");
-		// attributes generated from Style's properties (StyleAttrs)
+		// attributes generated from Style's properties (Attrs)
 		var styled:Null<Node> = null;
 		Render.render(<view ref={n -> styled = n} position="sticky" justifyContent="flex-start" alignContent="space-between" cursor="ew-resize" gridAutoFlow="column"
-			fontWeight="700" fontStyle="italic" aspectRatio={2} textAlign="center" padding="8 12" minWidth="50%" borderColor="red" boxShadow="0 2 8 #00000040"
-			textShadow="1px 1px 2px red" outline="2px solid red" outlineOffset={3}/>, ui.root);
-		var st = styled.style;
-		check("render: Style's properties as attributes", st.position == Position.Sticky && st.justifyContent == Justify.Start && st.alignContent == AlignContent.SpaceBetween && st.cursor == Cursor.ResizeEW
-			&& st.gridAutoFlow == Grid.GridFlow.Column && st.fontWeight == 700 && st.fontStyle == FontStyle.Italic && st.aspectRatio == 2 && st.textAlign == TextAlign.Center
-			&& st.padding.left == 12 && st.borderColor == Color.parse("red") && st.boxShadow != null
-			&& st.textShadow != null && st.textShadow.blur == 2 && st.textShadow.color == Color.parse("red") && !st.textShadow.currentColor
-			&& st.outlineWidth == 2 && st.outlineColor == Color.parse("red") && st.outlineOffset == 3);
-		helder.ui.view.StyleAttrs.apply(st, "outline", "none");
-		var badOutline = try {
-			helder.ui.view.StyleAttrs.apply(st, "outline", "2px dashed red");
-			false;
-		} catch (e:Dynamic) true;
-		check("render: outline=\"none\", a style it lacks thrown", st.outlineWidth == 0 && badOutline);
+			fontWeight="700" fontStyle="italic" aspectRatio={2} textAlign="center" padding="8 12" minWidth="50%" borderColor="red"
+			shadows={[{x: 0, y: 2, blur: 8, color: 0x40000000}]} textShadow={[{x: 1, y: 1, blur: 2, color: Color.parse("red")}]}
+			outline={{width: 2, color: Color.parse("red"), offset: 3}}/>, ui.root);
+		var st = styled.props(), u = styled.used;
+		check("render: Style's properties as attributes", st.position == Position.Sticky && st.justifyContent == Justify.Start && st.alignContent == AlignContent.SpaceBetween
+			&& st.cursor == Cursor.ResizeEW && st.gridAutoFlow == "column" && st.fontWeight == 700 && st.fontStyle == FontStyle.Italic && st.aspectRatio == 2
+			&& st.textAlign == TextAlign.Center && u.paddingPx(3) == 12 && u.borderColor(3) == Color.parse("red") && u.shadows != null && u.shadows.length == 1
+			&& styled.textShadow() != null && styled.textShadow()[0].blur == 2 && u.outlineWidth == 2 && u.outlineColor == Color.parse("red") && u.outlineOffset == 3);
 		// font-feature-settings: inherited into the font, "normal" the default ones, a mistake thrown
 		var featured:Null<Node> = null, inner:Null<Node> = null, plain:Null<Node> = null;
 		Render.render(<view ref={n -> featured = n} fontFeatureSettings="'tnum', 'liga' 0"><text ref={n -> inner = n}>12</text><view fontFeatureSettings="normal"><text ref={n -> plain = n}>34</text></view></view>, ui.root);
 		var badFeature = try {
-			featured.style.fontFeatureSettings = "tnum";
+			featured.style = featured.style.with({fontFeatureSettings: "tnum"});
 			false;
 		} catch (e:Dynamic) true;
 		var numeric:Null<Node> = null;
 		Render.render(<view fontVariantNumeric="tabular-nums slashed-zero" fontFeatureSettings="'zero' 0"><text ref={n -> numeric = n}>10</text></view>, ui.root);
-		var badNumeric = try {
-			numeric.style.fontVariantNumeric = "tabular";
-			false;
-		} catch (e:Dynamic) true;
-		var slotted:Null<Node> = null, checkedNow = signal("checked");
-		Render.render(<view ref={n -> slotted = n} slot="button" variant="outline" size="sm" data-state={() -> checkedNow()} data-disabled={true} aria-invalid={true}/>, ui.root);
-		var firstState = slotted.attr("data-state");
+		var stated:Null<Node> = null, checkedNow = signal("checked");
+		Render.render(<view ref={n -> stated = n} data-state={() -> checkedNow()} data-disabled={true} aria-invalid={true}/>, ui.root);
+		var firstState = stated.attr("data-state"), wasChecked = stated.has(Style.CHECKED);
 		checkedNow("unchecked");
 		flush();
-		check("render: slot, variant, size and data-/aria- attributes (reactive)", slotted.slot == "button" && slotted.variant == "outline" && slotted.size == "sm"
-			&& firstState == "checked" && slotted.attr("data-state") == "unchecked" && slotted.attr("data-disabled") == "" && slotted.attr("aria-invalid") == "true");
+		check("render: data-/aria- attributes (reactive), their states", firstState == "checked" && wasChecked && !stated.has(Style.CHECKED)
+			&& stated.attr("data-state") == "unchecked" && stated.attr("data-disabled") == "" && stated.has(Style.DISABLED) && stated.attr("aria-invalid") == "true");
 		var pic:Null<Node> = null;
 		Render.render(<image ref={n -> pic = n} src={new Image(4, 4)} width={10} height={10} objectFit="contain" objectPosition="right 2px top"/>, ui.root);
 		var pn:ImageNode = cast pic;
 		check("render: an image's object-position", pn.positionX == 1 && pn.offsetX == -2 && pn.positionY == 0 && pn.offsetY == 0);
-		check("render: font-variant-numeric as features, font-feature-settings after them", numeric.font().features == "'tnum', 'zero', 'zero' 0" && badNumeric
-			&& helder.text.FontFeature.key(helder.text.FontFeature.parse(numeric.font().features)) == "tnum=1,zero=0", numeric.font().features);
-		check("render: font-feature-settings, inherited", inner.font().features == "'tnum', 'liga' 0" && plain.font().features == "" && badFeature
+		check("render: font-variant-numeric as features, font-feature-settings over them",
+			helder.text.FontFeature.key(helder.text.FontFeature.parse(numeric.font().features)) == "tnum=1,zero=0", numeric.font().features);
+		check("render: font-feature-settings, inherited", inner.font().features == "'tnum' 1, 'liga' 0" && plain.font().features == "" && badFeature
 			&& !inner.font().equals(plain.font()));
 		// (a value known at run time: a literal one is refused at compile time)
 		var side = "sideways";

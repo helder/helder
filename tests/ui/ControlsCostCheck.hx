@@ -7,14 +7,12 @@ import helder.ui.controls.*;
 import helder.ui.controls.Standard;
 import helder.ui.draw.*;
 import helder.view.*;
-import ControlsGlow;
 
 // The controls' cost (bun run test ui-draw): a screen of 500 Buttons drawn
 // in as many passes, pipelines and draws as 500 plain views of the same
 // boxes and text (one pass, one pipeline, one draw: the renderer's single
 // batch); at rest no frame asked for (the window sleeps: nothing drawn,
-// nothing allocated) and an update allocating nothing; a part's shader (the
-// escape hatch, PartShader) a pass and a draw more, its node painted
+// nothing allocated) and an update allocating nothing
 //   ControlsCostCheck
 class ControlsCostCheck implements Markup {
 	static inline var W = 1200;
@@ -41,16 +39,12 @@ class ControlsCostCheck implements Markup {
 			&& buttons.draws == plain.draws, 'buttons ${buttons.passes} pass, ${buttons.pipelines} pipeline, ${buttons.draws} draw (${buttons.quads} quads); views ${plain.passes}, ${plain.pipelines}, ${plain.draws} (${plain.quads} quads)');
 		check('$N buttons at rest', buttons.rests && buttons.bytes <= plain.bytes,
 			'no frame asked for: ${buttons.rests}; an update ${buttons.bytes} bytes (views ${plain.bytes}); a paint, were one asked, ${buttons.paints} bytes (views ${plain.paints})');
-		var glow = Look.base.with({button: t -> {root: {draw: PartShader.of(ControlsGlow)}}});
-		var shaded = measure(device, <Standard.Themed look={glow}><view padding={8}><Standard.Button tag="glow" variant="primary">Glow</Standard.Button></view></Standard.Themed>);
-		check('a part\'s shader', shaded.passes == plain.passes + 1 && shaded.draws > 1 && shaded.painted > 0,
-			'${shaded.passes} passes, ${shaded.pipelines} pipelines, ${shaded.draws} draws, painted ${shaded.painted} times');
 		device.dispose();
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
 
-	// (a screen's frame at rest: its passes, pipelines, draws and quads, bytes allocated a frame, its part shaders' paints)
-	static function measure(device:Device, v:View):{passes:Int, pipelines:Int, draws:Int, quads:Int, bytes:Float, paints:Float, rests:Bool, painted:Int} {
+	// (a screen's frame at rest: its passes, pipelines, draws and quads, bytes allocated a frame)
+	static function measure(device:Device, v:View):{passes:Int, pipelines:Int, draws:Int, quads:Int, bytes:Float, paints:Float, rests:Bool} {
 		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var dispose = Render.render(v, ui.root);
 		var r = new Renderer(device);
@@ -68,15 +62,8 @@ class ControlsCostCheck implements Markup {
 			frame(device, r, ui);
 		var bytes = updated / 20, paints = FrameCounts.uiBytes / 20;
 		var rests = !ui.needsFrame && !Clock.active;
-		var painted = 0;
-		function walk(n:Node) {
-			if (Std.isOfType(n, PartShaderNode)) painted += (cast n : PartShaderNode).painted;
-			for (c in n.children)
-				walk(c);
-		}
-		walk(ui.root);
 		dispose();
-		return {passes: passes, pipelines: pipelines, draws: draws, quads: quads, bytes: bytes, paints: paints, rests: rests, painted: painted};
+		return {passes: passes, pipelines: pipelines, draws: draws, quads: quads, bytes: bytes, paints: paints, rests: rests};
 	}
 
 	static var updated = 0.0;

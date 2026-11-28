@@ -117,7 +117,7 @@ class DamageCheck {
 		var made = [build(tree), build(tree)], rs = [for (k in 0...2) new Renderer(device)];
 		if (glass) for (m in made) {
 			var g = new Glass();
-			g.style.set({position: Absolute, left: 60, top: 40, width: 180, height: 50});
+			g.style = g.style.with({position: Absolute, left: 60, top: 40, width: 180, height: 50});
 			m.ui.root.append(g);
 		}
 		for (k in 0...2) {
@@ -164,7 +164,7 @@ class DamageCheck {
 		if (frame >= 20 && frame < 32) move(m, frame, tiles);
 		switch op {
 			case 0:
-				row.style.background = [0xFFEFF6FF, 0xFFFFFFFF, 0xFFFDE68A][j % 3];
+				row.style = row.style.with({background: [0xFFEFF6FF, 0xFFFFFFFF, 0xFFFDE68A][j % 3]});
 			case 1:
 				(cast row.children[1] : TextNode).text = ["changed", "Row " + j, "a longer label here"][j % 3];
 			case 2:
@@ -181,7 +181,7 @@ class DamageCheck {
 				if (ui.focus != m.field) ui.setFocus(m.field);
 				ui.textInput(["a", "bc", " "][j % 3]);
 			case 7:
-				row.style.display = row.style.display == None ? Flex : None;
+				row.style = row.style.with({display: row.used.none ? Flex : None});
 			case 8:
 				// (light on dark, its width changing with its digits: #98's header)
 				m.title.text = "Header " + [j, j % 10, j * 37 % 1000][i % 3];
@@ -239,8 +239,7 @@ class DamageCheck {
 	// (whole pixels from tiles, as tiles are exact there; turned where replayed)
 	static function move(m:Made, k:Int, tiles:Bool) {
 		var turn = tiles ? '' : ' rotate(${k % 5}deg)';
-		m.card.style.transform = Transform.parse('translate(${k % 7}px, ${k % 3}px)$turn');
-		m.card.style.opacity = [1, 0.75, 0.5][k % 3];
+		m.card.style = m.card.style.with({transform: Transform.parse('translate(${k % 7}px, ${k % 3}px)$turn'), opacity: [1, 0.75, 0.5][k % 3]});
 	}
 
 	// (a box moving to 0.4, then to 0.6, frames drawn only while something
@@ -255,9 +254,8 @@ class DamageCheck {
 			r.groups = true;
 			r.tiles = tiles;
 			r.keep = keep;
-			box.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2});
-			box.style.transform = Transform.parse("translate(0px, 0px)");
-			box.style.transition = Transition.parse("transform 0.5s linear, opacity 0.5s linear");
+			box.style = Style.of({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2,
+				transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 0.5s linear, opacity 0.5s linear")});
 			ui.root.append(box);
 			function frames(n:Int)
 				for (_ in 0...n) {
@@ -267,11 +265,9 @@ class DamageCheck {
 					if (ui.needsFrame || Clock.active) frame(device, ui, r, w, h, pixels);
 				}
 			frames(5);
-			box.style.transform = Transform.parse("translate(100px, 60px)");
-			box.style.opacity = 0.4;
+			box.style = box.style.with({transform: Transform.parse("translate(100px, 60px)"), opacity: 0.4});
 			frames(60);
-			box.style.transform = Transform.parse("translate(60px, 40px)");
-			box.style.opacity = 0.6;
+			box.style = box.style.with({transform: Transform.parse("translate(60px, 40px)"), opacity: 0.6});
 			frames(120);
 			pixels.getInt32((Std.int(102 * scale) * w + Std.int(124 * scale)) * 4);
 		}];
@@ -296,11 +292,11 @@ class DamageCheck {
 			r.scale = ui.scale = scale;
 			r.groups = true;
 			r.tiles = r.keep = tiles;
-			list.style.set({overflow: Scroll, width: 200, height: H, background: 0xFFFFFFFF, rowGap: 2, padding: 4, fontSize: 13});
+			list.style = Style.of({overflow: Scroll, width: 200, height: H, background: 0xFFFFFFFF, rowGap: 2, padding: 4, fontSize: 13});
 			for (i in 0...60) {
 				var row = new Node(), box = new Node();
-				row.style.set({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
-				box.style.set({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+				row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
+				box.style = Style.of({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 				row.append(box);
 				row.append(new TextNode("Row " + i));
 				list.append(row);
@@ -376,7 +372,7 @@ class DamageCheck {
 		for (i in 0...3)
 			frame(device, ui, r, W, H, pixels);
 		var row = m.rows[2], b = row.windowBounds();
-		row.style.background = 0xFFFDE68A;
+		row.style = row.style.with({background: 0xFFFDE68A});
 		frame(device, ui, r, W, H, pixels);
 		var d = ui.damage, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
 		for (i in 0...d.count) {
@@ -417,38 +413,38 @@ class DamageCheck {
 		}
 		var ui = new Ui(helder.ui.TextEngines.standard(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
-		top.style.set({flexDirection: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
+		top.style = Style.of({flexDirection: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
 		var head = new Node(), title = new TextNode("Header");
-		head.style.set({flexShrink: 0, background: 0xFF18181B, padding: 4});
-		title.style.set({color: 0xFFFFFFFF, fontSize: 14});
+		head.style = Style.of({flexShrink: 0, background: 0xFF18181B, padding: 4});
+		title.style = Style.of({color: 0xFFFFFFFF, fontSize: 14});
 		head.append(title);
 		top.append(head);
 		var field = new TextField("some text to edit");
-		field.style.set({background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFFA1A1AA, padding: 3, width: 180, flexShrink: 0});
+		field.style = field.style.with({background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFFA1A1AA, padding: 3, width: 180, flexShrink: 0});
 		top.append(field);
 		var lists = new Node();
-		lists.style.set({flexDirection: Row, flexGrow: 1, minHeight: 0, columnGap: 8});
+		lists.style = Style.of({flexDirection: Row, flexGrow: 1, minHeight: 0, columnGap: 8});
 		top.append(lists);
 		var card = new Node();
-		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, borderRadius: 6, position: Absolute, left: 230, top: 12});
 		// (a blurred shadow turned with it: the one quad whose edge is not wholly clear)
-		card.style.boxShadow = Shadow.parse("0 6px 6px rgba(0,0,0,0.9)");
+		card.style = Style.of({width: 60, height: 40, background: 0xFF3B82F6, borderRadius: 6, position: Absolute, left: 230, top: 12,
+			shadows: [{x: 0, y: 6, blur: 6, color: Color.rgba(0, 0.9)}]});
 		for (k in 0...1 + rnd(2)) {
 			var list = new Node();
-			list.style.set({overflow: Scroll, flexGrow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, borderRadius: [8, 6.5, 12][rnd(3)]});
-			if (rnd(2) == 0) list.style.set({borderWidth: 1, borderColor: 0xFFE4E4E7});
+			list.style = Style.of({overflow: Scroll, flexGrow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, borderRadius: [8, 6.5, 12][rnd(3)]});
+			if (rnd(2) == 0) list.style = list.style.with({borderWidth: 1, borderColor: 0xFFE4E4E7});
 			for (i in 0...30 + rnd(30)) {
 				var row = new Node();
-				row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
-				if (rnd(4) == 0) row.style.boxShadow = Shadow.parse("0 1px 3px rgba(0,0,0,0.3)");
-				if (rnd(5) == 0) row.style.set({borderWidth: 1, borderColor: 0xFF71717A, borderStyle: rnd(2) == 0 ? Solid : Dashed});
-				if (rnd(6) == 0) row.style.opacity = 0.6;
-				if (rnd(7) == 0) row.style.boxShadow = Shadow.parse("inset 1px 1px 3px rgba(0,0,0,0.4)");
-				if (i == 0) row.style.set({position: Sticky, top: 0});
+				row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+				if (rnd(4) == 0) row.style = row.style.with({shadows: [{x: 0, y: 1, blur: 3, color: Color.rgba(0, 0.3)}]});
+				if (rnd(5) == 0) row.style = row.style.with({borderWidth: 1, borderColor: 0xFF71717A, borderStyle: rnd(2) == 0 ? Solid : Dashed});
+				if (rnd(6) == 0) row.style = row.style.with({opacity: 0.6});
+				if (rnd(7) == 0) row.style = row.style.with({shadows: [{x: 1, y: 1, blur: 3, color: Color.rgba(0, 0.4), inset: true}]});
+				if (i == 0) row.style = row.style.with({position: Sticky, top: 0});
 				var box = new Node();
-				box.style.set({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), borderRadius: rnd(2) * 5});
+				box.style = Style.of({width: 10 + rnd(20), height: 10, background: Color.rgb(rnd(0xFFFFFF)), borderRadius: rnd(2) * 5});
 				var text = new TextNode("Row " + i + [" alpha", " beta gamma", " delta"][rnd(3)]);
-				if (rnd(4) == 0) text.style.opacity = 0.5;
+				if (rnd(4) == 0) text.style = text.style.with({opacity: 0.5});
 				row.append(box);
 				row.append(text);
 				rows.push(row);
@@ -461,8 +457,8 @@ class DamageCheck {
 		ui.root.append(card);
 		var popup = new Popup();
 		popup.placement = Manual;
-		popup.style.set({left: 120, top: 60, width: 120, height: 70, background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFF71717A, borderRadius: 6, padding: 6});
-		popup.style.boxShadow = Shadow.parse("0 4px 12px rgba(0,0,0,0.3)");
+		popup.style = popup.style.with({left: 120, top: 60, width: 120, height: 70, background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFF71717A, borderRadius: 6, padding: 6,
+			shadows: [{x: 0, y: 4, blur: 12, color: Color.rgba(0, 0.3)}]});
 		popup.append(new TextNode("A popup"));
 		return {ui: ui, scrollers: scrollers, rows: rows, card: card, field: field, popup: popup, title: title};
 	}
@@ -493,26 +489,25 @@ class Sidebar {
 
 	public function new(how:Swap) {
 		this.how = how;
-		ui.root.style.set({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
-		side.style.set({width: 150, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
+		ui.root.style = Style.of({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
+		side.style = Style.of({width: 150, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
 		if (how == Scrolled) {
-			outer.style.set({overflow: Scroll, width: 170, flexShrink: 0, minHeight: 0});
-			side.style.set({height: 400});
+			outer.style = Style.of({overflow: Scroll, width: 170, flexShrink: 0, minHeight: 0});
+			side.style = side.style.with({height: 400});
 			outer.append(side);
 			ui.root.append(outer);
 		} else
 			ui.root.append(side);
 		if (how == Presence) side.motion = helder.ui.motion.MotionSpec.DEFAULT;
 		var pane = new Node();
-		pane.style.set({flexGrow: 1, background: 0xFFFFFFFF, borderRadius: 10, margin: 8});
+		pane.style = Style.of({flexGrow: 1, background: 0xFFFFFFFF, borderRadius: 10, margin: 8});
 		ui.root.append(pane);
 		show();
 	}
 
 	public function change(op:Int, j:Int) {
 		if (arriving != null) {
-			arriving.style.transform = Transform.parse("translate(0px, 0px)");
-			arriving.style.opacity = 1;
+			arriving.style = arriving.style.with({transform: Transform.parse("translate(0px, 0px)"), opacity: 1});
 			arriving = null;
 		}
 		switch op {
@@ -522,13 +517,13 @@ class Sidebar {
 				show();
 			case 3:
 				var r = rows[j % rows.length];
-				r.style.background = r.style.background == 0xFFE4E4E7 ? 0x00000000 : 0xFFE4E4E7;
+				r.style = r.style.with({background: r.used.backgroundColor == 0xFFE4E4E7 ? 0x00000000 : 0xFFE4E4E7});
 			case 4:
 				if (list != null) ui.scrollTo(list, 0, Math.max(0, list.scrollY + [9, -6, 30][j % 3]));
 			case 5:
 				if (how == Scrolled) ui.scrollTo(outer, 0, Math.max(0, outer.scrollY + [11, -7, 40][j % 3]));
 			case 6:
-				if (button != null) button.style.background = button.style.background == 0xFFE4E4E7 ? 0xFFD4D4D8 : 0xFFE4E4E7;
+				if (button != null) button.style = button.style.with({background: button.used.backgroundColor == 0xFFE4E4E7 ? 0xFFD4D4D8 : 0xFFE4E4E7});
 			case _:
 		}
 	}
@@ -536,11 +531,10 @@ class Sidebar {
 	function show() {
 		if (view != null) side.remove(view);
 		var v = view = level ? makeLevel() : makeOverview();
-		if (how == Presence) v.style.transition = Transition.parse("fade slide-up");
+		if (how == Presence) v.style = v.style.with({transition: Transition.parse("fade slide-up")});
 		if (how == Moving) {
-			v.style.transition = Transition.parse("transform 0.2s linear, opacity 0.2s linear");
-			v.style.transform = Transform.parse('translate(${level ? 24 : -24}px, 0px)');
-			v.style.opacity = 0.3;
+			v.style = v.style.with({transition: Transition.parse("transform 0.2s linear, opacity 0.2s linear"), transform: Transform.parse('translate(${level ? 24 : -24}px, 0px)'),
+				opacity: 0.3});
 			arriving = v;
 		}
 		side.append(v);
@@ -548,15 +542,15 @@ class Sidebar {
 
 	function text(s:String, ?size:Float, ?weight:Int):TextNode {
 		var t = new TextNode(s);
-		if (size != null) t.style.fontSize = size;
-		if (weight != null) t.style.fontWeight = weight;
+		if (size != null) t.style = t.style.with({fontSize: size});
+		if (weight != null) t.style = t.style.with({fontWeight: weight});
 		return t;
 	}
 
 	function row(s:String, selected:Bool):Node {
 		var r = new Node(), icon = new Node();
-		r.style.set({flexDirection: Row, alignItems: Center, columnGap: 6, padding: 4, borderRadius: 5, background: selected ? 0xFFE4E4E7 : 0x00000000});
-		icon.style.set({width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: 0xFF52525B});
+		r.style = Style.of({flexDirection: Row, alignItems: Center, columnGap: 6, padding: 4, borderRadius: 5, background: selected ? 0xFFE4E4E7 : 0x00000000});
+		icon.style = Style.of({width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: 0xFF52525B});
 		r.append(icon);
 		r.append(text(s));
 		rows.push(r);
@@ -567,7 +561,7 @@ class Sidebar {
 		rows = [];
 		button = null;
 		var s = list = new Node();
-		s.style.set({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
+		s.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
 		s.append(text("Locations", 11, 600));
 		for (i in 0...12)
 			s.append(row(["ben", "Desktop", "Documents", "Downloads", "Pictures", "Movies"][i % 6] + (i < 6 ? "" : " " + i), i == 2));
@@ -577,20 +571,20 @@ class Sidebar {
 	function makeLevel():Node {
 		rows = [];
 		var v = new Node(), back = new Node(), head = new Node(), foot = new Node();
-		v.style.set({flexGrow: 1, minHeight: 0, rowGap: 6});
-		back.style.set({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
+		v.style = Style.of({flexGrow: 1, minHeight: 0, rowGap: 6});
+		back.style = Style.of({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
 		back.append(text("< " + ["ben", "Documents", "a longer folder", "x"][depth]));
 		var b = button = new Node();
-		b.style.set({width: 22, height: 22, borderRadius: 6, background: 0xFFE4E4E7});
+		b.style = Style.of({width: 22, height: 22, borderRadius: 6, background: 0xFFE4E4E7});
 		back.append(b);
-		head.style.set({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
+		head.style = Style.of({flexDirection: Row, alignItems: Center, justifyContent: SpaceBetween});
 		head.append(text(["Documents", "CyFun", "Pictures", "A"][depth], 17, 700));
 		head.append(text('${depth + 1} folders', 10));
 		var s = list = new Node();
-		s.style.set({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
+		s.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
 		for (i in 0...depth + 1)
 			s.append(row("Folder " + i, i == 0));
-		foot.style.set({borders: [1, 0, 0, 0], borderColor: 0xFFD4D4D8, paddingTop: 6});
+		foot.style = Style.of({borderWidth: [1, 0, 0, 0], borderColor: 0xFFD4D4D8, padding: [6, 0, 0, 0]});
 		foot.append(text("Macintosh HD"));
 		v.append(back);
 		v.append(head);
@@ -640,16 +634,16 @@ class PlaneStack {
 		r.tiles = true;
 		ui = new Ui(helder.ui.TextEngines.standard(), w / scale, h / scale);
 		ui.scale = scale;
-		ui.root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
-		head.style.set({flexDirection: Row, height: 40, flexShrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});
-		title.style.set({color: 0xFFFFFFFF, fontSize: 15});
-		badge.style.set({width: 18, height: 18, borderRadius: 9, background: 0xFFE2462A});
+		ui.root.style = Style.of({flexDirection: Column, background: 0xFFFFFFFF});
+		head.style = Style.of({flexDirection: Row, height: 40, flexShrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});
+		title.style = Style.of({color: 0xFFFFFFFF, fontSize: 15});
+		badge.style = Style.of({width: 18, height: 18, borderRadius: 9, background: 0xFFE2462A});
 		head.append(title);
 		ui.root.append(head);
-		list.style.set({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...80) {
 			var row = new Node();
-			row.style.set({flexDirection: Row, padding: 4, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style = Style.of({flexDirection: Row, padding: 4, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			row.append(new TextNode("Row " + i));
 			rows.push(row);
 			list.append(row);
@@ -665,12 +659,12 @@ class PlaneStack {
 			case 2:
 				if (badge.parent == null) head.append(badge) else head.remove(badge);
 			case 3:
-				head.style.background = [0xFF18181B, 0xFF1E3A8A, 0xFF18181B][j % 3];
+				head.style = head.style.with({background: [0xFF18181B, 0xFF1E3A8A, 0xFF18181B][j % 3]});
 			case 4:
 				ui.scrollTo(list, 0, Math.max(0, list.scrollY + [7, -5, 23][j % 3]));
 			case _:
 				var row = rows[j % rows.length];
-				row.style.background = row.style.background == 0xFFFDE68A ? 0xFFFFFFFF : 0xFFFDE68A;
+				row.style = row.style.with({background: row.used.backgroundColor == 0xFFFDE68A ? 0xFFFFFFFF : 0xFFFDE68A});
 		}
 	}
 

@@ -47,15 +47,8 @@ class UiProbe {
 	// the padding of the first node with tag: top right bottom left
 	@:typescript public static function padding(tag:String):String {
 		ui.update();
-		var s = ui.root.find(tag).style;
-		return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].join(" ");
-	}
-
-	// the slot of the first node with tag, its variant and size (a look's part)
-	@:typescript public static function slot(tag:String):String {
-		ui.update();
-		var n = ui.root.find(tag);
-		return [n.slot, n.variant, n.size].join(" ");
+		var s = ui.root.find(tag).used;
+		return [for (side in 0...4) s.paddingPx(side)].join(" ");
 	}
 
 	// the background of the first node with tag, as #rrggbbaa (its transitions finished)
@@ -63,8 +56,8 @@ class UiProbe {
 		ui.update();
 		Clock.finish();
 		ui.update();
-		var c = ui.root.find(tag).style.background;
-		return "#" + StringTools.hex(c.r, 2) + StringTools.hex(c.g, 2) + StringTools.hex(c.b, 2) + StringTools.hex(c.a, 2);
+		var c = ui.root.find(tag).used.backgroundColor;
+		return "#" + StringTools.hex(c >> 16 & 0xFF, 2) + StringTools.hex(c >> 8 & 0xFF, 2) + StringTools.hex(c & 0xFF, 2) + StringTools.hex(c >>> 24, 2);
 	}
 
 	// dark mode, as a window's appearance sets it (Ui.dark)
@@ -78,13 +71,13 @@ class UiProbe {
 		ui.update();
 		var out = new StringBuf();
 		function walk(n:Node, depth:Int) {
-			if (n.style.display == None) return;
+			if (n.used.none) return;
 			out.add(StringTools.lpad("", " ", depth * 2) + n.tag);
 			if (Std.isOfType(n, TextNode)) out.add(' "' + (cast n : TextNode).text + '"');
-			var s = n.semantics;
-			if (s != null && s.role != null && n.slot != null) out.add(" " + n.slot);
+			var s = n.semantics, control = s == null || !n.group ? null : control(s.role);
+			if (control != null) out.add(" " + control);
 			if (s != null && s.checked != null) out.add(s.mixed ? " mixed" : s.checked ? " checked" : " unchecked");
-			if (s != null && s.label != null && n.slot != null) out.add(' "' + s.label + '"');
+			if (s != null && s.label != null && control != null) out.add(' "' + s.label + '"');
 			out.add("\n");
 			for (c in n.children)
 				walk(c, depth + 1);
@@ -92,4 +85,13 @@ class UiProbe {
 		walk(ui.root, 0);
 		return out.toString();
 	}
+
+	// (a control's root, a group: what it is)
+	static function control(role:Null<helder.ui.access.Role>):Null<String>
+		return switch role {
+			case Button: "button";
+			case CheckBox: "checkbox";
+			case Switch: "switch";
+			case _: null;
+		}
 }

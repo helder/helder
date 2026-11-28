@@ -1,4 +1,4 @@
-import helder.ui.fast.StyleModule;
+import helder.ui.StyleModule;
 
 class Descendant {
 	static final s = StyleModule.load("descendant.module.css");

@@ -49,22 +49,22 @@ class WaylandLayersWindowCheck {
 		sys.FileSystem.createDirectory(dir);
 		var w = new helder.ui.UiWindow({title: "WaylandLayersWindowCheck", width: 400, height: 300});
 		var root = w.root;
-		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
+		root.style = root.style.with({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();
-		header.style.set({height: 40, flexShrink: 0, background: 0xFF18181B, padding: 10});
+		header.style = Style.of({height: 40, flexShrink: 0, background: 0xFF18181B, padding: 10});
 		var title = new TextNode("Header");
-		title.style.set({color: 0xFFFFFFFF, fontSize: 14});
+		title.style = title.style.with({color: 0xFFFFFFFF, fontSize: 14});
 		header.append(title);
 		root.append(header);
 		var list = new Node();
-		list.style.set({flexGrow: 1, minHeight: 0, width: 240, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({flexGrow: 1, minHeight: 0, width: 240, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		var rows = [];
 		for (i in 0...200) {
 			var row = new Node();
 			rows.push(row);
-			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style = Style.of({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
@@ -72,22 +72,20 @@ class WaylandLayersWindowCheck {
 		root.append(list);
 		// (a node's system layer in a row: its colour a level off the node's own)
 		var slotted = new Node();
-		slotted.style.set({position: Absolute, left: 120, top: 2, width: 60, height: 12, background: 0xFF30A050});
-		rows[40].style.position = Relative;
+		slotted.style = Style.of({position: Absolute, left: 120, top: 2, width: 60, height: 12, background: 0xFF30A050});
+		rows[40].style = rows[40].style.with({position: Relative});
 		rows[40].append(slotted);
 		var round = new Node();
-		round.style.set({position: Absolute, left: 260, top: 56, width: 120, height: 100, borderRadius: 14, overflow: Scroll, background: 0xFFFFE08A});
+		round.style = Style.of({position: Absolute, left: 260, top: 56, width: 120, height: 100, borderRadius: 14, overflow: Scroll, background: 0xFFFFE08A});
 		for (i in 0...12) {
 			var r = new Node();
-			r.style.set({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
+			r.style = Style.of({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
 			round.append(r);
 		}
 		root.append(round);
 		// (square, of one colour: a single-pixel buffer on the layers)
 		var mover = new Node();
-		mover.style.set({position: Absolute, left: 270, top: 180, width: 80, height: 50, background: 0xFF2A7AE2});
-		mover.style.transform = Transform.parse("translate(0px, 0px)");
-		mover.style.transition = Transition.parse("transform 1.5s linear");
+		mover.style = Style.of({position: Absolute, left: 270, top: 180, width: 80, height: 50, background: 0xFF2A7AE2, transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 1.5s linear")});
 		root.append(mover);
 		var c = w.compositor;
 		var layers = c == null ? null : c.layers, wl = layers == null ? null : Std.downcast(layers, helder.ui.layers.linux.Layers);
@@ -270,7 +268,7 @@ class WaylandLayersWindowCheck {
 					strict = true;
 					check("a fling: the program has the compositor's offset", o != null && list.scrollY == o.y && list.scrollY > flung, '$flung to ${list.scrollY} ${o == null ? null : o.y}');
 					strict = was;
-					mover.style.transform = Transform.parse("translate(-200px, -20px)");
+					mover.style = mover.style.with({transform: Transform.parse("translate(-200px, -20px)")});
 					phase = 4;
 					at = step;
 				case 4 if (step - at >= 3 && (c.due() >= 0 || step - at > 60)):
@@ -301,8 +299,7 @@ class WaylandLayersWindowCheck {
 					phase = 7;
 					if (quick) {
 						// (as the timed phases leave it: the box back, the list at the system layer)
-						mover.style.transition = Transition.parse("transform 0.05s linear");
-						mover.style.transform = Transform.parse("translate(0px, 0px)");
+						mover.style = mover.style.with({transition: Transition.parse("transform 0.05s linear"), transform: Transform.parse("translate(0px, 0px)")});
 						list.scrollY = slotted.absY - list.absY + 6;
 						phase = 9;
 						at = now;
@@ -320,8 +317,7 @@ class WaylandLayersWindowCheck {
 						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s (${Math.round(timed / (now - t0))} a second), CPU ${Math.round((Sys.cpuTime() - cpu0) * 1000 / timed * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
 						paced("timed: steady scroll", timed, now - t0);
 						// (an animation the compositor draws, the program idle)
-						mover.style.transition = Transition.parse("transform 3s linear");
-						mover.style.transform = Transform.parse("translate(0px, 0px)");
+						mover.style = mover.style.with({transition: Transition.parse("transform 3s linear"), transform: Transform.parse("translate(0px, 0px)")});
 						phase = 8;
 						at = now;
 						cpu0 = Sys.cpuTime();

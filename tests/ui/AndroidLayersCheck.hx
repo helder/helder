@@ -48,23 +48,23 @@ class AndroidLayersCheck {
 		if ((cast v : CString).toString() != "") Props.setenv(Mem.cstr("HELDER_DAMAGE"), v, 1);
 		var w = new helder.ui.UiWindow({title: "AndroidLayersCheck", width: 0, height: 0});
 		var root = w.root;
-		root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
+		root.style = root.style.with({flexDirection: Column, background: 0xFFFFFFFF});
 		var header = new Node();
-		header.style.set({height: 120, flexShrink: 0, background: 0xFF18181B, padding: 12});
+		header.style = Style.of({height: 120, flexShrink: 0, background: 0xFF18181B, padding: 12});
 		root.append(header);
 		// (a label in the header, changed each frame for a while: what the window's layer draws of it)
 		var title = new TextNode("Header");
-		title.style.set({color: 0xFFFFFFFF, fontSize: 18});
+		title.style = title.style.with({color: 0xFFFFFFFF, fontSize: 18});
 		header.append(title);
 		var list = new Node();
-		list.style.set({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({flexGrow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		var rows = [];
 		for (i in 0...300) {
 			var row = new Node();
 			rows.push(row);
-			row.style.set({flexDirection: Row, padding: 6, columnGap: 8, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style = Style.of({flexDirection: Row, padding: 6, columnGap: 8, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 16, height: 16, borderRadius: 4, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style = Style.of({width: 16, height: 16, borderRadius: 4, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
@@ -72,22 +72,21 @@ class AndroidLayersCheck {
 		root.append(list);
 		// (a node's system layer in the list, and a rounded scroller in the header: drawn, SurfaceControl has no rounded clip)
 		var slotted = new Node();
-		slotted.style.set({position: Absolute, left: 160, top: 6, width: 64, height: 16, background: 0xFF20C060});
-		rows[14].style.position = Relative;
+		slotted.style = Style.of({position: Absolute, left: 160, top: 6, width: 64, height: 16, background: 0xFF20C060});
+		rows[14].style = rows[14].style.with({position: Relative});
 		rows[14].append(slotted);
 		var round = new Node();
-		round.style.set({position: Absolute, right: 16, top: 16, width: 120, height: 88, borderRadius: 16, overflow: Scroll, background: 0xFFFFE08A});
+		round.style = Style.of({position: Absolute, right: 16, top: 16, width: 120, height: 88, borderRadius: 16, overflow: Scroll, background: 0xFFFFE08A});
 		for (i in 0...12) {
 			var r = new Node();
-			r.style.set({height: 24, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
+			r.style = Style.of({height: 24, flexShrink: 0, background: i % 2 == 0 ? 0xFFF59E0B : 0xFFFFE08A});
 			round.append(r);
 		}
 		header.append(round);
 		var mover = new Node();
-		mover.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2});
-		mover.style.transform = Transform.parse("translate(0px, 0px)");
 		// (3 s: still running once a slow device's program frames hand it over)
-		mover.style.transition = Transition.parse("transform 3s linear, opacity 3s linear");
+		mover.style = Style.of({position: Absolute, left: 20, top: 30, width: 88, height: 64, borderRadius: 10, background: 0xFF2A7AE2, transform: Transform.parse("translate(0px, 0px)"),
+			transition: Transition.parse("transform 3s linear, opacity 3s linear")});
 		root.append(mover);
 		var c = w.compositor;
 		var layers = c == null ? null : c.layers;
@@ -258,8 +257,7 @@ class AndroidLayersCheck {
 					}
 				case 2 if (now - at > 2 && (c == null || !c.moving())):
 					// (the box animating while the program is blocked)
-					mover.style.transform = Transform.parse("translate(220px, 90px)");
-					mover.style.opacity = 0.4;
+					mover.style = mover.style.with({transform: Transform.parse("translate(220px, 90px)"), opacity: 0.4});
 					phase = 12;
 					at = step;
 					armFrom = now;
@@ -280,8 +278,7 @@ class AndroidLayersCheck {
 					list.scrollY = 304;
 					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels;
 					// see-through, from 0.4: its colour checked in each mode)
-					mover.style.transform = Transform.parse("translate(100px, 34px)");
-					mover.style.opacity = 0.6;
+					mover.style = mover.style.with({transform: Transform.parse("translate(100px, 34px)"), opacity: 0.6});
 					phase = 5;
 					at = now;
 				case 5 if (now - at > 2 && !rested()):
@@ -318,9 +315,7 @@ class AndroidLayersCheck {
 						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
 						// (where 240 frames take it, however many there were: the same in every mode for the stills)
 						list.scrollY = 304 + 4 * 240;
-						mover.style.transition = Transition.parse("transform 4s linear, opacity 4s linear");
-						mover.style.transform = Transform.parse("translate(240px, 300px)");
-						mover.style.opacity = 1;
+						mover.style = mover.style.with({transition: Transition.parse("transform 4s linear, opacity 4s linear"), transform: Transform.parse("translate(240px, 300px)"), opacity: 1});
 						phase = 8;
 						at = now;
 						timed = 0;
@@ -334,8 +329,7 @@ class AndroidLayersCheck {
 						var ms = (cpu() - cpu0) / timed, q = layers == null ? 0 : layers.quadsTotal - q0;
 						say('timed: animation: $timed frames in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
 						// (a turn: SurfaceControl has none, the box drawn from then on)
-						mover.style.transition = Transition.parse("transform 1s linear");
-						mover.style.transform = Transform.parse("translate(244px, 298px) rotate(90deg)");
+						mover.style = mover.style.with({transition: Transition.parse("transform 1s linear"), transform: Transform.parse("translate(244px, 298px) rotate(90deg)")});
 						phase = 9;
 						at = now;
 					}

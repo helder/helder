@@ -148,7 +148,8 @@ class WinAccessCheck implements Markup {
 					step = 3;
 				case 3:
 					check("Tab from the EDIT: the window's focus on", w.ui.focus != null && w.ui.focus.tag == "save", w.ui.focus == null ? "none" : w.ui.focus.tag);
-					w.root.find("name").style.textAlign = Center;
+					var f = w.root.find("name");
+					f.style = f.style.with({textAlign: Center});
 					step = 4;
 				case 4:
 					var eds:Array<WinEditor> = @:privateAccess Views.editors;

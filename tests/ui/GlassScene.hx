@@ -17,59 +17,67 @@ class GlassScene {
 		// (added whatever the system has: an added face is found before a system's
 		// Inter (fonts-inter's), its every weight (a variable one); added once)
 		helder.text.SystemFonts.get().add(helder.asset.Embed.bytes("helder/text/fonts/Inter.ttf"));
-		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
+		root.style = root.style.with({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
 		var back = new Node();
-		back.style.set({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});
+		back.style = Style.of({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});
 		switch bg {
 			case "stripes":
-				back.style.flexDirection = Row;
+				back.style = back.style.with({flexDirection: Row});
 				for (i in 0...25) {
 					var s = new Node();
-					s.style.set({width: 16, height: H, background: [0xFF111111, 0xFFFFFFFF, 0xFFE8463A, 0xFFFFFFFF, 0xFF2F7FE8][i % 5]});
+					s.style = Style.of({width: 16, height: H, background: [0xFF111111, 0xFFFFFFFF, 0xFFE8463A, 0xFFFFFFFF, 0xFF2F7FE8][i % 5]});
 					back.append(s);
 				}
 			case "gradient":
-				back.style.backgroundImage = Gradient.parse("linear-gradient(135deg, #ff5e62 0%, #ffb347 35%, #5ee7a0 65%, #3b6cf6 100%)");
+				back.append(gradient("linear-gradient(135deg, #ff5e62 0%, #ffb347 35%, #5ee7a0 65%, #3b6cf6 100%)", W, H));
 			case "text":
-				back.style.set({padding: 8, rowGap: 2});
+				back.style = back.style.with({padding: 8, rowGap: 2});
 				for (i in 0...14) {
 					var t = new TextNode("Liquid Glass lenses what is behind it: line " + (i + 1));
-					t.style.set({fontSize: 14, color: i % 3 == 0 ? 0xFF1F5FCF : 0xFF111111});
+					t.style = t.style.with({fontSize: 14, color: i % 3 == 0 ? 0xFF1F5FCF : 0xFF111111});
 					back.append(t);
 				}
 			case _:
 				var img = new ImageNode(helder.image.Image.decode(sys.io.File.getBytes("tests/ui/glass-photo.jpg")));
 				img.fit = Cover;
-				img.style.set({width: W, height: H});
+				img.style = img.style.with({width: W, height: H});
 				back.append(img);
 		}
 		root.append(back);
 		if (!glass) return [];
 		var capsule = new Glass();
-		capsule.style.set({position: Absolute, left: 100, top: 40, width: 200, height: 56, alignItems: Align.Center, justifyContent: Justify.Center});
+		capsule.style = capsule.style.with({position: Absolute, left: 100, top: 40, width: 200, height: 56, alignItems: Align.Center, justifyContent: Justify.Center});
 		var label = new TextNode("Glass");
-		label.style.set({fontSize: 18, fontWeight: 600, color: 0xFF111111});
+		label.style = label.style.with({fontSize: 18, fontWeight: 600, color: 0xFF111111});
 		if (labels) capsule.append(label);
 		var clear = new Glass();
-		clear.variant = "clear";
-		clear.style.set({position: Absolute, left: 40, top: 140, width: 140, height: 120, borderRadius: 24});
+		clear.clear = true;
+		clear.style = clear.style.with({position: Absolute, left: 40, top: 140, width: 140, height: 120, borderRadius: 24});
 		var tinted = new Glass();
 		tinted.tint = Color.rgba(0x2F7FE8, 0.5);
-		tinted.style.set({position: Absolute, left: 250, top: 160, width: 80, height: 80});
+		tinted.style = tinted.style.with({position: Absolute, left: 250, top: 160, width: 80, height: 80});
 		for (g in [capsule, clear, tinted])
 			root.append(g);
 		if (group) {
 			var gg = new Node();
 			GlassGroup.of(gg, 12);
-			gg.style.set({position: Absolute, left: 210, top: 252, flexDirection: Row, columnGap: 6});
+			gg.style = Style.of({position: Absolute, left: 210, top: 252, flexDirection: Row, columnGap: 6});
 			for (_ in 0...2) {
 				var c = new Glass();
-				c.style.set({width: 36, height: 36});
+				c.style = c.style.with({width: 36, height: 36});
 				gg.append(c);
 			}
 			root.append(gg);
 		}
 		return [capsule, clear, tinted];
+	}
+
+	// a gradient over w by h (its image keeps the gradient: drawn as one)
+	public static function gradient(css:String, w:Int, h:Int):ImageNode {
+		var img = new ImageNode(Gradient.parse(css).render(w, h));
+		img.fit = Fill;
+		img.style = Style.of({width: w, height: h});
+		return img;
 	}
 
 	// a glass's box in pixels at scale k: x0, y0, x1, y1

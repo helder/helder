@@ -189,10 +189,10 @@ class RenderThreadCheck {
 	static function closing() {
 		var w = new helder.ui.UiWindow({title: "RenderThreadCheck", width: W, height: H});
 		var node = new Node();
-		node.style.set({width: 100, height: 50, background: 0xFF3B82F6});
+		node.style = Style.of({width: 100, height: 50, background: 0xFF3B82F6});
 		w.root.append(node);
 		w.frame();
-		node.style.background = 0xFFEF4444;
+		node.style = node.style.with({background: 0xFFEF4444});
 		w.ui.requestFrame();
 		w.frame();
 		w.close();
@@ -202,12 +202,12 @@ class RenderThreadCheck {
 	static function time(n:Int, work:Float) {
 		var w = new helder.ui.UiWindow({title: "RenderThreadCheck", width: 800, height: 600});
 		var list = new Node();
-		list.style.set({overflow: Scroll, height: 600, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, height: 600, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...400) {
 			var row = new Node();
-			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, borderRadius: 4});
+			row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, borderRadius: 4});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, background: 0xFF000000 | (i * 40503) & 0xFFFFFF, borderRadius: 6});
+			box.style = Style.of({width: 12, height: 12, background: 0xFF000000 | (i * 40503) & 0xFFFFFF, borderRadius: 6});
 			row.append(box);
 			row.append(new TextNode("Row " + i + " with a label of a few words"));
 			list.append(row);

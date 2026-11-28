@@ -37,9 +37,7 @@ class DocumentWindowCheck {
 		var t0 = Timer.stamp();
 		var node = DocumentNode.html(Dom.parse(html), {url: url, load: u -> files.exists(u) ? sys.io.File.getContent(files[u]) : null});
 		var scroller = new Node("scroll");
-		scroller.style.overflow = Scroll;
-		scroller.style.flexGrow = 1;
-		scroller.style.minHeight = 0;
+		scroller.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0});
 		scroller.append(node);
 		w.root.append(scroller);
 		// (anchors in the table of contents, far apart)

@@ -73,10 +73,10 @@ class AsyncScrollCheck {
 	// then back to 600 by steps: the mirror at the program's 600 (#98: it kept 596)
 	static function comesBack() {
 		var ui = new Ui(new MonoText(), 300, 200), list = new Node(), m = new ScrollMirror(), shot = new ScrollShot();
-		list.style.set({width: 300, height: 200, overflow: Scroll});
+		list.style = Style.of({width: 300, height: 200, overflow: Scroll});
 		for (i in 0...100) {
 			var row = new Node();
-			row.style.set({height: 20, flexShrink: 0});
+			row.style = Style.of({height: 20, flexShrink: 0});
 			list.append(row);
 		}
 		ui.root.append(list);
@@ -124,32 +124,30 @@ class AsyncScrollCheck {
 			holdFrom: 6,
 			holdTo: 30,
 			build: ui -> [
-				box(ui, b -> {
-					b.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg) scale(1)");
-					b.style.transition = Transition.parse("transform 0.4s ease-out, opacity 0.3s linear");
-				})
+				box(ui, b -> b.style = b.style.with({
+					transform: Transform.parse("translate(0px, 0px) rotate(0deg) scale(1)"),
+					transition: Transition.parse("transform 0.4s ease-out, opacity 0.3s linear")
+				}))
 			],
 			act: (k, n) -> if (k == 3) {
-				n[0].style.transform = Transform.parse("translate(40px, 12px) rotate(25deg) scale(1.2)");
-				n[0].style.opacity = 0.25;
+				n[0].style = n[0].style.with({transform: Transform.parse("translate(40px, 12px) rotate(25deg) scale(1.2)"), opacity: 0.25});
 			}
 		});
 		// (declared, then the program blocked at once: handed over in the
-		// declaring frame, set by the program or by a rule's restyle in its update)
+		// declaring frame, set by the program or by a state's restyle in its update)
 		out.push({
 			name: "a transition declared and the program blocked",
 			frames: 40,
 			holdFrom: 4,
 			holdTo: 34,
 			build: ui -> [
-				box(ui, b -> {
-					b.style.transform = Transform.parse("translate(0px, 0px)");
-					b.style.transition = Transition.parse("transform 0.3s ease-out, opacity 0.25s linear");
-				})
+				box(ui, b -> b.style = b.style.with({
+					transform: Transform.parse("translate(0px, 0px)"),
+					transition: Transition.parse("transform 0.3s ease-out, opacity 0.25s linear")
+				}))
 			],
 			act: (k, n) -> if (k == 3) {
-				n[0].style.transform = Transform.parse("translate(60px, 20px)");
-				n[0].style.opacity = 0.3;
+				n[0].style = n[0].style.with({transform: Transform.parse("translate(60px, 20px)"), opacity: 0.3});
 			}
 		});
 		out.push({
@@ -157,13 +155,13 @@ class AsyncScrollCheck {
 			frames: 40,
 			holdFrom: 4,
 			holdTo: 34,
-			build: ui -> {
-				ui.theme = {rules: [
-					{slot: "m", style: {transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 0.3s ease-out, opacity 0.25s linear")}},
-					{slot: "m", when: ["hover"], style: {transform: Transform.parse("translate(60px, 20px)"), opacity: 0.3}}
-				]};
-				[box(ui, b -> b.slot = "m")];
-			},
+			build: ui -> [
+				box(ui, b -> b.style = b.style.with({
+					transform: Transform.parse("translate(0px, 0px)"),
+					transition: Transition.parse("transform 0.3s ease-out, opacity 0.25s linear"),
+					hover: {transform: Transform.parse("translate(60px, 20px)"), opacity: 0.3}
+				}))
+			],
 			act: (k, n) -> if (k == 3) n[0].ui.pointerMove(n[0].absX + 5, n[0].absY + 5)
 		});
 		out.push({
@@ -174,12 +172,10 @@ class AsyncScrollCheck {
 			build: ui -> [box(ui, b -> b.motion = helder.ui.motion.MotionSpec.of({curve: helder.ui.motion.Curve.spring(0.5, 0.3)}))],
 			act: (k, n) -> {
 				if (k == 2) {
-					n[0].style.transform = Transform.translate(80, 0);
-					n[0].style.opacity = 0.4;
+					n[0].style = n[0].style.with({transform: Transform.translate(80, 0), opacity: 0.4});
 				}
 				if (k == 10) {
-					n[0].style.transform = Transform.parse("translate(-30px, 20px) rotate(15deg)");
-					n[0].style.opacity = 0.9;
+					n[0].style = n[0].style.with({transform: Transform.parse("translate(-30px, 20px) rotate(15deg)"), opacity: 0.9});
 				}
 			}
 		});
@@ -190,8 +186,7 @@ class AsyncScrollCheck {
 			holdTo: 32,
 			build: ui -> [box(ui, b -> b.motion = helder.ui.motion.MotionSpec.of({curve: helder.ui.motion.Curve.tween(0.35, Transition.EASE_IN_OUT)}))],
 			act: (k, n) -> if (k == 2) {
-				n[0].style.transform = Transform.scale(1.5, 0.75);
-				n[0].style.opacity = 0.1;
+				n[0].style = n[0].style.with({transform: Transform.scale(1.5, 0.75), opacity: 0.1});
 			}
 		});
 		out.push({
@@ -201,15 +196,15 @@ class AsyncScrollCheck {
 			holdTo: 60,
 			build: ui -> {
 				var list = new Node();
-				list.style.set({width: 300, height: 200, overflow: Scroll, padding: 4});
+				list.style = Style.of({width: 300, height: 200, overflow: Scroll, padding: 4});
 				var heads = [];
 				for (i in 0...6) {
 					var sec = new Node(), head = new Node();
-					head.style.set({position: Sticky, top: 0, height: 24, flexShrink: 0});
+					head.style = Style.of({position: Sticky, top: 0, height: 24, flexShrink: 0});
 					sec.append(head);
 					for (j in 0...5) {
 						var r = new Node();
-						r.style.set({height: 30, flexShrink: 0});
+						r.style = Style.of({height: 30, flexShrink: 0});
 						sec.append(r);
 					}
 					list.append(sec);
@@ -227,14 +222,14 @@ class AsyncScrollCheck {
 
 	static function box(ui:Ui, f:Node->Void):Node {
 		var b = new Node();
-		b.style.set({width: 60, height: 40, background: 0xFF3366CC});
+		b.style = Style.of({width: 60, height: 40, background: 0xFF3366CC});
 		ui.root.append(b);
 		f(b);
 		return b;
 	}
 
 	static function drawn(n:Node) {
-		@:privateAccess n.style.drawn = true;
+		@:privateAccess n.drawn = true;
 		for (c in n.children)
 			drawn(c);
 	}
@@ -242,7 +237,8 @@ class AsyncScrollCheck {
 	// (its transform's matrix and its opacity, as the program draws it)
 	static function values(n:Node):Array<Float> {
 		var m = n.transformMatrix(), p = n.present;
-		var o = p == null ? n.style.opacity : n.style.opacity * p.presenceOpacity();
+		// (an opacity easing: its track's, as Ui draws it)
+		var s = n.used.opacity, o = p == null ? s : (p.opacity != null && p.opacity.moving() ? p.opacity.value : s) * p.presenceOpacity();
 		return m == null ? [1, 0, 0, 1, 0, 0, o] : [m.a, m.b, m.c, m.d, m.e, m.f, o];
 	}
 
@@ -280,7 +276,7 @@ class AsyncScrollCheck {
 				ui.paint(@:privateAccess Ui.nowhere);
 				movers = [
 					for (i in from...nodes.length)
-						@:privateAccess nodes[i].paintLayer != null || nodes[i].style.position == Sticky ? Mover.of(nodes[i], nodes[i].transformMatrix(), values(nodes[i])[6]) : null
+						@:privateAccess nodes[i].paintLayer != null || nodes[i].used.position == "sticky" ? Mover.of(nodes[i], nodes[i].transformMatrix(), values(nodes[i])[6]) : null
 				];
 				last = [for (i in from...nodes.length) values(nodes[i])];
 				out.push([for (v in last) for (x in v) x]);
@@ -306,27 +302,27 @@ class AsyncScrollCheck {
 
 	static function tree(ui:Ui):Array<Node> {
 		var page = new Node("page"), inner = new Node("inner"), slider = new Node("slider"), hears = new Node("hears");
-		page.style.set({width: 300, height: 200, overflow: Scroll});
-		inner.style.set({height: 100, flexShrink: 0, overflow: Scroll});
+		page.style = Style.of({width: 300, height: 200, overflow: Scroll});
+		inner.style = Style.of({height: 100, flexShrink: 0, overflow: Scroll});
 		for (i in 0...10) {
 			var r = new Node("i" + i);
-			r.style.set({height: 30, flexShrink: 0});
+			r.style = Style.of({height: 30, flexShrink: 0});
 			inner.append(r);
 		}
-		slider.style.set({height: 40, flexShrink: 0});
+		slider.style = Style.of({height: 40, flexShrink: 0});
 		slider.onPointerDown = e -> {
 			slider.capture();
 			slid = e.x;
 		};
 		slider.onPointerMove = e -> slid = e.x;
-		hears.style.set({height: 40, flexShrink: 0});
+		hears.style = Style.of({height: 40, flexShrink: 0});
 		hears.onWheel = e -> wheels++;
 		page.append(inner);
 		page.append(slider);
 		page.append(hears);
 		for (i in 0...40) {
 			var r = new Node("r" + i);
-			r.style.set({height: 30, flexShrink: 0});
+			r.style = Style.of({height: 30, flexShrink: 0});
 			page.append(r);
 		}
 		ui.root.append(page);
@@ -537,12 +533,12 @@ class AsyncScrollCheck {
 		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = scale;
 		var list = new Node(), inner = new Node();
-		list.style.set({overflow: Scroll, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...120) {
 			var row = new Node();
-			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, flexShrink: 0});
+			row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, flexShrink: 0});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF), borderRadius: 3});
+			box.style = Style.of({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF), borderRadius: 3});
 			row.append(box);
 			row.append(new TextNode("Row " + i + " of the compositor's frames"));
 			list.append(row);
@@ -623,31 +619,30 @@ class AsyncScrollCheck {
 		ui.scale = scale;
 		ui.overlayBars = true;
 		var list = new Node();
-		list.style.set({overflow: Scroll, height: H, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, height: H, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...12) {
 			var sec = new Node(), head = new Node();
-			head.style.set({position: Sticky, top: 0, height: 22, padding: 3, flexShrink: 0, background: 0xFFDDE6F0});
+			head.style = Style.of({position: Sticky, top: 0, height: 22, padding: 3, flexShrink: 0, background: 0xFFDDE6F0});
 			head.append(new TextNode("Section " + i));
 			sec.append(head);
 			for (j in 0...4) {
 				var row = new Node();
-				row.style.set({height: 26, padding: 3, flexShrink: 0, background: j % 2 == 0 ? 0xFFFFFFFF : 0xFFF6F6F6});
+				row.style = Style.of({height: 26, padding: 3, flexShrink: 0, background: j % 2 == 0 ? 0xFFFFFFFF : 0xFFF6F6F6});
 				row.append(new TextNode("Row " + j + " of section " + i));
 				sec.append(row);
 			}
 			list.append(sec);
 		}
 		var spin = new Node();
-		spin.style.set({position: Absolute, left: 200, top: 60, width: 70, height: 50, borderRadius: 8, background: 0xFF2A7AE2});
-		spin.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg)");
-		spin.style.transition = Transition.parse("transform 0.5s ease-in-out, opacity 0.5s linear");
+		spin.style = Style.of({position: Absolute, left: 200, top: 60, width: 70, height: 50, borderRadius: 8, background: 0xFF2A7AE2,
+			transform: Transform.parse("translate(0px, 0px) rotate(0deg)"), transition: Transition.parse("transform 0.5s ease-in-out, opacity 0.5s linear")});
 		// (a card whose children overlap: faded whole, as CSS's opacity and the program's group fade it)
 		var card = new Node();
-		card.style.set({position: Absolute, left: 150, top: 150, width: 130, height: 70, borderRadius: 10, padding: 8, background: 0xFFFFE08A});
-		card.style.transition = Transition.parse("opacity 0.6s linear");
+		card.style = Style.of({position: Absolute, left: 150, top: 150, width: 130, height: 70, borderRadius: 10, padding: 8, background: 0xFFFFE08A,
+			transition: Transition.parse("opacity 0.6s linear")});
 		for (i in 0...3) {
 			var b = new Node();
-			b.style.set({position: Absolute, left: 10 + i * 30, top: 10 + i * 8, width: 50, height: 40, borderRadius: 6, background: [0xFFE2462A, 0xFF2AA84A, 0xFF2A62E2][i]});
+			b.style = Style.of({position: Absolute, left: 10 + i * 30, top: 10 + i * 8, width: 50, height: 40, borderRadius: 6, background: [0xFFE2462A, 0xFF2AA84A, 0xFF2A62E2][i]});
 			card.append(b);
 		}
 		card.append(new TextNode("overlapping"));
@@ -699,8 +694,7 @@ class AsyncScrollCheck {
 			now += 1 / 60;
 			frame(true);
 		}
-		spin.style.transform = Transform.parse("translate(-30px, 40px) rotate(35deg)");
-		spin.style.opacity = 0.35;
+		spin.style = spin.style.with({transform: Transform.parse("translate(-30px, 40px) rotate(35deg)"), opacity: 0.35});
 		for (_ in 0...4) {
 			now += 1 / 60;
 			frame(true);
@@ -719,7 +713,7 @@ class AsyncScrollCheck {
 		// vsyncs from its last against the program's then, the card a group)
 		now += 1;
 		frame(true);
-		card.style.opacity = 0.2;
+		card.style = card.style.with({opacity: 0.2});
 		for (_ in 0...3) {
 			now += 1 / 60;
 			frame(true);

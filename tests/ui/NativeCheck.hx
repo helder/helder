@@ -22,7 +22,7 @@ class NativeCheck {
 		var field = new TextField();
 		field.host = Native;
 		field.text = "native";
-		field.style.set({height: 22, flexShrink: 0});
+		field.style = field.style.with({height: 22, flexShrink: 0});
 		list.insert(field, 3);
 		var step = 0, failed = 0, lock = new sys.thread.Mutex(), shownY = Math.NaN;
 		// (the offset of the compositor's last frame: with Core Animation's

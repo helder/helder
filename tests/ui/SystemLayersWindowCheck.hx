@@ -180,22 +180,22 @@ class SystemLayersWindowCheck {
 			Ui.now = clock;
 		}
 		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck", width: 400, height: 300});
-		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F4});
+		w.root.style = w.root.style.with({flexDirection: Row, background: 0xFFF4F4F4});
 		var list = new Node();
-		list.style.set({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF, borderRadius: rounded ? 10 : 0});
+		list.style = Style.of({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF, borderRadius: rounded ? 10 : 0});
 		var field:Null<TextField> = null, slotted:Null<Node> = null, web:Null<WebView> = null;
 		for (i in 0...200) {
 			var row = new Node();
-			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			box.style = Style.of({width: 12, height: 12, borderRadius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
 			if (i == 2) {
 				// (a system layer of its own: a CALayer of one colour, the Video series' kind)
 				slotted = new Node();
-				slotted.style.set({height: 30, flexShrink: 0});
+				slotted.style = Style.of({height: 30, flexShrink: 0});
 				@:privateAccess slotted.systemLayer = new LayerSlot(solidLayer(0.2, 0.75, 0.9));
 				list.append(slotted);
 			}
@@ -203,37 +203,34 @@ class SystemLayersWindowCheck {
 				field = new TextField();
 				field.host = Native;
 				field.text = "native";
-				field.style.set({height: 22, flexShrink: 0});
+				field.style = field.style.with({height: 22, flexShrink: 0});
 				list.append(field);
 			}
 			if (i == 7) {
 				web = new WebView();
 				web.html = "<body style='margin:0;background:#3a8a5a'></body>";
-				web.style.set({height: 40, flexShrink: 0});
+				web.style = web.style.with({height: 40, flexShrink: 0});
 				list.append(web);
 			}
 		}
 		var side = new Node();
-		side.style.set({flexGrow: 1, padding: 8, rowGap: 8});
+		side.style = Style.of({flexGrow: 1, padding: 8, rowGap: 8});
 		// (a rounded scroller, its content opaque to its corners: masked by its clip's coverage)
 		var round = new Node();
-		round.style.set({overflow: Scroll, height: 80, borderRadius: 12, background: 0xFFFFF4E0});
+		round.style = Style.of({overflow: Scroll, height: 80, borderRadius: 12, background: 0xFFFFF4E0});
 		for (i in 0...20) {
 			var item = new Node();
-			item.style.set({background: i % 2 == 0 ? 0xFFFFD8A0 : 0xFF90C8F0, padding: 2});
+			item.style = Style.of({background: i % 2 == 0 ? 0xFFFFD8A0 : 0xFF90C8F0, padding: 2});
 			item.append(new TextNode("Item " + i));
 			round.append(item);
 		}
 		var mover = new Node();
-		mover.style.set({width: 60, height: 40, borderRadius: 8, background: 0xFF2A7AE2});
-		mover.style.transform = Transform.parse("translate(0px, 0px)");
-		mover.style.transition = Transition.parse("transform 1s linear");
+		mover.style = Style.of({width: 60, height: 40, borderRadius: 8, background: 0xFF2A7AE2, transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 1s linear")});
 		var card = new Node();
-		card.style.set({height: 70, padding: 6, background: 0xFFE24A2A, borderRadius: 6});
-		card.style.transition = Transition.parse("opacity 1s linear");
+		card.style = Style.of({height: 70, padding: 6, background: 0xFFE24A2A, borderRadius: 6, transition: Transition.parse("opacity 1s linear")});
 		for (k in 0...3) {
 			var c = new Node();
-			c.style.set({position: Absolute, left: 10 + k * 22, top: 10 + k * 8, width: 40, height: 40, borderRadius: 20, background: [0xFF20C060, 0xFF2060E0, 0xFFF0C020][k]});
+			c.style = Style.of({position: Absolute, left: 10 + k * 22, top: 10 + k * 8, width: 40, height: 40, borderRadius: 20, background: [0xFF20C060, 0xFF2060E0, 0xFFF0C020][k]});
 			card.append(c);
 		}
 		side.append(round);
@@ -243,7 +240,7 @@ class SystemLayersWindowCheck {
 		w.root.append(side);
 		// (a popup over the list: over the field and the system layer, drawn over them)
 		var popup = new Node();
-		popup.style.set({position: Absolute, left: 150, top: 60, width: 80, height: 90, background: 0xFF6A3AB0, borderRadius: 6});
+		popup.style = Style.of({position: Absolute, left: 150, top: 60, width: 80, height: 90, background: 0xFF6A3AB0, borderRadius: 6});
 		if (dir != null) w.ui.overlay.append(popup);
 		var c = w.compositor, step = 0;
 		// (the capture's width: the window's)
@@ -267,8 +264,8 @@ class SystemLayersWindowCheck {
 				case 18:
 					capture(w, dir, "scrolled");
 				case 20:
-					mover.style.transform = Transform.parse("translate(60px, 0px)");
-					card.style.opacity = 0.4;
+					mover.style = mover.style.with({transform: Transform.parse("translate(60px, 0px)")});
+					card.style = card.style.with({opacity: 0.4});
 				case 34:
 					capture(w, dir, "moving");
 				case 38 if (c != null):
@@ -305,15 +302,15 @@ class SystemLayersWindowCheck {
 	// still, the window captured and its frame read back, which must match)
 	static function swap() {
 		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck swap", width: 400, height: 300});
-		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
+		w.root.style = w.root.style.with({flexDirection: Row, background: 0xFFF4F4F5, fontSize: 13});
 		var side = new Node(), box = new Node();
-		side.style.set({width: 160, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
-		box.style.set({width: 40, height: 40, borderRadius: 6, background: 0xFF52525B});
+		side.style = Style.of({width: 160, flexShrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
+		box.style = Style.of({width: 40, height: 40, borderRadius: 6, background: 0xFF52525B});
 		var pane = new Node();
-		pane.style.set({flexGrow: 1, overflow: Scroll, background: 0xFFFFFFFF, borderRadius: 10, margin: 8, padding: 8, rowGap: 4});
+		pane.style = Style.of({flexGrow: 1, overflow: Scroll, background: 0xFFFFFFFF, borderRadius: 10, margin: 8, padding: 8, rowGap: 4});
 		for (i in 0...40) {
 			var t = new Node();
-			t.style.set({height: 30, flexShrink: 0, borderRadius: 6, background: i % 2 == 0 ? 0xFFE0ECFF : 0xFFFFE8D0});
+			t.style = Style.of({height: 30, flexShrink: 0, borderRadius: 6, background: i % 2 == 0 ? 0xFFE0ECFF : 0xFFFFE8D0});
 			pane.append(t);
 		}
 		w.root.append(side);
@@ -322,14 +319,14 @@ class SystemLayersWindowCheck {
 		var view:Null<Node> = null;
 		function text(s:String, size = 13.0, weight = 400):TextNode {
 			var t = new TextNode(s);
-			t.style.set({fontSize: size, fontWeight: weight});
+			t.style = t.style.with({fontSize: size, fontWeight: weight});
 			return t;
 		}
 		function show(level:Bool, k:Int) {
 			if (view != null) side.remove(view);
 			var v = view = new Node(), s = new Node();
-			v.style.set({height: 190, flexShrink: 0, rowGap: 6});
-			s.style.set({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
+			v.style = v.style.with({height: 190, flexShrink: 0, rowGap: 6});
+			s.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0, rowGap: 1});
 			if (level) {
 				v.append(text("< " + ["ben", "Documents", "Pictures"][k % 3]));
 				v.append(text(["Documents", "CyFun", "Holiday"][k % 3], 17, 700));
@@ -350,10 +347,10 @@ class SystemLayersWindowCheck {
 			if (step > 60) switch (step - 60) % 12 {
 				case 0:
 					// (a frame first, after the last one read back: the layers shown again)
-					box.style.borderRadius = 6 + k % 2;
+					box.style = box.style.with({borderRadius: 6 + k % 2});
 				case 1:
 					// (two frames at once: the box's, then the switch's)
-					box.style.background = k % 2 == 0 ? 0xFF52525B : 0xFFE2462A;
+					box.style = box.style.with({background: k % 2 == 0 ? 0xFF52525B : 0xFFE2462A});
 					w.frame();
 					show(k % 2 == 0, k);
 				case 9:
@@ -408,13 +405,13 @@ class SystemLayersWindowCheck {
 	// kept at its top left meanwhile)
 	static function resize() {
 		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck resize", width: 400, height: 300});
-		w.root.style.set({flexDirection: Row, background: 0xFFF4F4F5});
+		w.root.style = w.root.style.with({flexDirection: Row, background: 0xFFF4F4F5});
 		var list = new Node(), side = new Node(), mark = new Node();
-		list.style.set({overflow: Scroll, width: 160, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, width: 160, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...60)
 			list.append(new TextNode("Row " + i));
-		mark.style.set({position: Absolute, left: 0, top: 0, width: 40, height: 40, background: 0xFFE2462A});
-		side.style.set({flexGrow: 1, background: 0xFF2A7AE2, margin: 8, borderRadius: 8});
+		mark.style = Style.of({position: Absolute, left: 0, top: 0, width: 40, height: 40, background: 0xFFE2462A});
+		side.style = Style.of({flexGrow: 1, background: 0xFF2A7AE2, margin: 8, borderRadius: 8});
 		w.root.append(list);
 		w.root.append(side);
 		w.ui.overlay.append(mark);
@@ -549,19 +546,19 @@ class SystemLayersWindowCheck {
 	// drawn for a second, Core Animation handed none of its NaN)
 	static function lost() {
 		var w = new helder.ui.UiWindow({title: "SystemLayersWindowCheck NaN", width: 300, height: 200});
-		w.root.style.set({background: 0xFFF4F4F4});
+		w.root.style = w.root.style.with({background: 0xFFF4F4F4});
 		var fine = new Node();
-		fine.style.set({overflow: Scroll, height: 150, background: 0xFFFFFFFF});
+		fine.style = Style.of({overflow: Scroll, height: 150, background: 0xFFFFFFFF});
 		for (i in 0...30)
 			fine.append(new TextNode("Fine " + i));
 		w.root.append(fine);
 		var popup = new Node();
-		popup.style.set({position: Absolute, left: 20, top: 20, width: 200, height: 120, padding: Math.NaN, background: 0xFF6A3AB0});
+		popup.style = Style.of({position: Absolute, left: 20, top: 20, width: 200, height: 120, padding: Math.NaN, background: 0xFF6A3AB0});
 		// (fading: a layer that moves on its own, its quads NaN)
-		popup.style.transition = Transition.parse("opacity 2s linear");
+		popup.style = popup.style.with({transition: Transition.parse("opacity 2s linear")});
 		w.ui.overlay.append(popup);
 		var list = new Node();
-		list.style.set({overflow: Scroll, height: 100, borderRadius: 8, background: 0xFFFFFFFF});
+		list.style = Style.of({overflow: Scroll, height: 100, borderRadius: 8, background: 0xFFFFFFFF});
 		for (i in 0...30)
 			list.append(new TextNode("Lost " + i));
 		var field = new TextField();
@@ -569,20 +566,19 @@ class SystemLayersWindowCheck {
 		field.text = "lost";
 		list.append(field);
 		var slotted = new Node();
-		slotted.style.set({height: 20});
+		slotted.style = Style.of({height: 20});
 		@:privateAccess slotted.systemLayer = new LayerSlot(solidLayer(1, 0, 0));
 		list.append(slotted);
 		var mover = new Node();
-		mover.style.set({width: 40, height: 20, background: 0xFF2A7AE2});
-		mover.style.transition = Transition.parse("transform 2s linear");
+		mover.style = Style.of({width: 40, height: 20, background: 0xFF2A7AE2, transition: Transition.parse("transform 2s linear")});
 		popup.append(list);
 		popup.append(mover);
 		var t0 = haxe.Timer.stamp(), step = 0;
 		App.run(() -> {
 			step++;
 			if (step == 3) {
-				mover.style.transform = Transform.parse("translate(100px, 0px)");
-				popup.style.opacity = 0.5;
+				mover.style = mover.style.with({transform: Transform.parse("translate(100px, 0px)")});
+				popup.style = popup.style.with({opacity: 0.5});
 			}
 			if (step > 3) {
 				list.scrollY = step * 3;
@@ -614,8 +610,7 @@ class SystemLayersWindowCheck {
 			step++;
 			if (step == 30) {
 				if (anim) {
-					mover.style.transition = Transition.parse('transform ${s + 2}s linear');
-					mover.style.transform = Transform.parse("translate(140px, 300px) rotate(90deg)");
+					mover.style = mover.style.with({transition: Transition.parse('transform ${s + 2}s linear'), transform: Transform.parse("translate(140px, 300px) rotate(90deg)")});
 				}
 				t0 = haxe.Timer.stamp();
 				cpu0 = Cpu.seconds();

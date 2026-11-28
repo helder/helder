@@ -41,7 +41,6 @@ class AccessApp implements Markup {
 				w.onFrame = () -> if (f.saved != saved) w.close();
 			case "todo":
 				var t = new Todo();
-				w.ui.theme = Todo.sheet;
 				Render.render(t.view(), w.root);
 				// (two items typed in, as its user does)
 				var typed = false;
@@ -57,7 +56,7 @@ class AccessApp implements Markup {
 			case "mail":
 				Mail.declare();
 				var m = new Mail();
-				w.ui.theme = Mail.sheet;
+				w.ui.theme = Mail.theme;
 				Render.render(m.view(), w.root);
 			case "guide":
 				var text = signal("A draft"), subject = signal("Hi"), body = signal(""), name = signal("Ann");

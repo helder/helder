@@ -29,19 +29,16 @@ class SnapCheck {
 		device = new DrawFrame(PW, PH);
 		ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = SCALE;
-		ui.root.style.background = Color.WHITE;
-		ui.root.style.fontFamily = "DejaVu Sans";
-		ui.root.style.fontSize = 13;
-		ui.root.style.color = Color.BLACK;
+		ui.root.style = ui.root.style.with({background: Color.WHITE, fontFamily: "DejaVu Sans", fontSize: 13, color: Color.BLACK});
 		group = new Node();
-		group.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
+		group.style = Style.of({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		ui.root.append(group);
 		var b = new Node();
 		// (at points whose device pixels are fractions: 10.3 pt is 28.97 px)
-		b.style.set({position: Absolute, left: 10, top: 10, width: 41, height: 19, background: Color.BLACK, borderWidth: 1, borderColor: Color.rgb(0xFF0000)});
+		b.style = Style.of({position: Absolute, left: 10, top: 10, width: 41, height: 19, background: Color.BLACK, borderWidth: 1, borderColor: Color.rgb(0xFF0000)});
 		group.append(b);
 		var t = new TextNode("Hi, fine");
-		t.style.set({position: Absolute, left: 61, top: 12});
+		t.style = Style.of({position: Absolute, left: 61, top: 12});
 		group.append(t);
 		var ok = true;
 		function check(name:String, pass:Bool, detail:String) {
@@ -66,7 +63,7 @@ class SnapCheck {
 	}
 
 	static function draw(dx:Float, dy:Float, snap:Bool):Bytes {
-		group.style.transform = Transform.translate(dx, dy);
+		group.style = group.style.with({transform: Transform.translate(dx, dy)});
 		device.scale = SCALE;
 		device.snap = snap;
 		ui.update();

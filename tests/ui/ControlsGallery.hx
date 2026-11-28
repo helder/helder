@@ -14,7 +14,7 @@ import helder.view.*;
 // state (rest, hover, pressed, the keyboard's focus, disabled), in
 // Look.base light and dark, comfortable and compact (bun run test ui-draw):
 // the states forced on their nodes, the transitions finished, the nodes'
-// slots, states and styles checked, then each frame against its golden image
+// styles, states and resolved styles checked, then each frame against its golden image
 // (tests/ui/controls/; Linux: llvmpipe, the repository's Inter):
 //   ControlsGallery <golden dir> <out dir> [--bless]
 class ControlsGallery implements Markup {
@@ -81,35 +81,37 @@ class ControlsGallery implements Markup {
 		ui.update();
 		Clock.finish();
 		ui.update();
-		var colors = dark ? look.sheet().dark : look.sheet().light;
+		var theme = look.theme.tone(dark);
+		var accent = theme.color("accent");
 		var at = '$density ${dark ? "dark" : "light"}';
-		// (the nodes: their slots and states, the styles their states give)
+		// (the nodes: their looks' styles and states, what their states resolve to)
 		var primary = ui.root.find("primary-rest"), hovered = ui.root.find("primary-hover");
-		check('$at: a primary button', primary.slot == "button" && primary.variant == "primary" && primary.size == "md", '${primary.slot} ${primary.variant}');
-		check('$at: its background', primary.style.background == colors.get("accent"));
-		check('$at: hovered, the accent\'s shade', hovered.style.background == colors.get("accentStrong"));
-		var pressed = ui.root.find("secondary-pressed");
-		check('$at: pressed, it gives', pressed.style.transform != null && Math.abs(@:privateAccess pressed.style.transform.args[0][0] - t.pressScale) < 1e-6,
-			Std.string(pressed.style.transform));
-		check('$at: the ring the keyboard\'s focus', ui.root.find("ghost-focus").style.ringWidth == 2 && ui.root.find("ghost-rest").style.ringWidth == 0);
+		check('$at: a primary button', primary.style == look.style("button", "primary", "md") && primary.group);
+		check('$at: its background', primary.used.backgroundColor == accent);
+		check('$at: hovered, the accent\'s shade', hovered.used.backgroundColor == theme.color("accentStrong"));
+		var pressed = ui.root.find("secondary-pressed"), give = pressed.props().transform;
+		check('$at: pressed, it gives', give != null && Math.abs(@:privateAccess give.args[0][0] - t.pressScale) < 1e-6, Std.string(give));
+		var ring = ui.root.find("ghost-focus").used.shadows, rest = ui.root.find("ghost-rest").used.shadows;
+		check('$at: the ring the keyboard\'s focus', ring != null && ring.length == 2 && ring[1].color == theme.color("focus")
+			&& (rest == null || rest.length == 0));
 		var off = ui.root.find("danger-disabled");
-		check('$at: disabled', off.style.opacity == t.disabledOpacity && off.attr("data-disabled") != null && !off.focusable);
-		check('$at: a size', Type.enumEq(ui.root.find("size-sm").style.height, (t.controlSm : Dim))
-			&& Type.enumEq(ui.root.find("size-lg").style.height, (t.controlLg : Dim)));
+		check('$at: disabled', off.used.opacity == t.disabledOpacity && off.attr("data-disabled") != null && off.has(Style.DISABLED) && !off.focusable);
+		check('$at: a size', Type.enumEq(ui.root.find("size-sm").used.height, Px(t.controlSm))
+			&& Type.enumEq(ui.root.find("size-lg").used.height, Px(t.controlLg)));
 		var icon = ui.root.find("size-icon");
 		check('$at: an icon alone, square', icon.width == icon.height, '${icon.width} x ${icon.height}');
 		var inspector = ui.root.find("inspector");
-		check('$at: a selected ghost', inspector.attr("data-selected") == "" && inspector.style.background == colors.get("accentSoft"));
-		check('$at: a collapsed path', ui.root.find("path-narrow").find("pathbar-overflow").style.display == Flex);
+		check('$at: a selected ghost', inspector.has(Style.SELECTED) && inspector.used.backgroundColor == theme.color("accentSoft"));
+		check('$at: a collapsed path', !ui.root.find("path-narrow").find("pathbar-overflow").used.none);
 		var on = ui.root.find("checked-rest"), mixed = ui.root.find("mixed-rest");
-		check('$at: a checkbox on', on.semantics.role == CheckBox && on.semantics.checked == true && on.attr("data-state") == "checked");
-		check('$at: its box', on.children[0].slot == "checkbox-box" && on.children[0].style.background == colors.get("accent"));
-		check('$at: mixed', mixed.semantics.mixed && mixed.attr("data-state") == "mixed");
-		var sw = ui.root.find("on-rest"), knob = sw.children[0].children[0];
+		check('$at: a checkbox on', on.semantics.role == CheckBox && on.semantics.checked == true && on.attr("data-state") == "checked" && on.has(Style.CHECKED));
+		check('$at: its box', on.children[0].style == look.style("checkbox", null, null, "box") && on.children[0].used.backgroundColor == accent);
+		check('$at: mixed', mixed.semantics.mixed && mixed.attr("data-state") == "mixed" && mixed.has(Style.MIXED));
+		var sw = ui.root.find("on-rest"), knob = sw.children[0].children[0], move = knob.props().transform;
 		var travel = t.track - t.thumb - (t.trackHeight - t.thumb);
-		check('$at: a switch on, its knob across', knob.slot == "switch-knob" && knob.style.transform != null
-			&& Math.abs(@:privateAccess knob.style.transform.args[0][0] - travel) < 1e-6, Std.string(knob.style.transform));
-		check('$at: its track the accent', sw.children[0].style.background == colors.get("accent"));
+		check('$at: a switch on, its knob across', knob.style == look.style("switch", null, null, "knob") && move != null
+			&& Math.abs(@:privateAccess move.args[0][0] - travel) < 1e-6, Std.string(move));
+		check('$at: its track the accent', sw.children[0].used.backgroundColor == accent);
 		var pixels = paint(device, ui);
 		dispose();
 		return pixels;

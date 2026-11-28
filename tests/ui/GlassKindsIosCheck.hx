@@ -8,7 +8,7 @@ class GlassKindsIosCheck {
 	static function main() {
 		var w = new UiWindow({title: "GlassKindsCheck", width: GlassKindsCheck.W, height: 600});
 		var holder = new Node();
-		holder.style.set({position: Absolute, left: 0, top: 140, width: GlassKindsCheck.W, height: GlassKindsCheck.H});
+		holder.style = Style.of({position: Absolute, left: 0, top: 140, width: GlassKindsCheck.W, height: GlassKindsCheck.H});
 		GlassKindsCheck.build(holder);
 		w.root.append(holder);
 		UiWindow.run();

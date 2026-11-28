@@ -1,12 +1,12 @@
 package ui.fast;
 
 import helder.test.Test;
-import helder.ui.fast.Style;
-import helder.ui.fast.Style.TintValue;
-import helder.ui.fast.StyleModule;
-import helder.ui.fast.Theme;
+import helder.ui.Style;
+import helder.ui.Style.TintValue;
+import helder.ui.StyleModule;
+import helder.ui.Theme;
 
-// A CSS module compiled to fast styles when the test is built: what it
+// A CSS module compiled to Styles when the test is built: what it
 // says the same Style as the same written in Haxe.
 function tests() {
 	final t = Theme.load("ui/fast/test.theme.css");
@@ -31,7 +31,7 @@ function tests() {
 			});
 			equals(s.card == card, true);
 			equals(s.cardTitle.props.fontSize, 20);
-			equals(s.cardTitle.props.wrap, false);
+			equals(s.cardTitle.props.textWrap, NoWrap);
 			equals((s.cardTitle.props.padding : Array<Float>).join(","), "0,0,0,12");
 			equals(s.cardTitle.props.dark.color, (Plain(0xFFFAFAFA) : TintValue));
 			// (in a dark theme: its dark variant over it)

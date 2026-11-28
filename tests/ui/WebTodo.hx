@@ -16,8 +16,6 @@ class WebTodo {
 		var w = new UiWindow({title: "Todo", width: 420, height: 480});
 		// (its fields drawn: web.mjs types into the canvas, input methods included; web-field.mjs has the native editors)
 		w.ui.policy["text-field"] = Host.Drawn;
-		// (its buttons' cursor a pointer: what Window.cursor gives the canvas over one)
-		w.ui.theme = Todo.sheet;
 		var app = new Todo();
 		Render.render(app.view(), w.root);
 		var last = "", wheel = 0.0;

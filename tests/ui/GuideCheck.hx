@@ -48,7 +48,7 @@ class GuideCheck implements Markup {
 
 	// "Components"
 	static function Button(props:{label:String, onPress:Void->Void, ?tag:String, ?variant:String}):View
-		return <button tag={props.tag} slot="button" variant={props.variant}
+		return <button tag={props.tag} style={props.variant == "outline" ? outline : button}
 			onPress={() -> props.onPress()}>{props.label}</button>;
 
 	static function Stepper(props:{label:String, value:Signal<Int>, ?step:Int}):View {
@@ -62,7 +62,7 @@ class GuideCheck implements Markup {
 	}
 
 	static function Card(props:{title:String, ?children:Any}):View
-		return <view padding={16} rowGap={8} borderRadius={8} background="#ffffff" boxShadow="0 1 4 #0000001a">
+		return <view padding={16} rowGap={8} borderRadius={8} background="#ffffff" shadows={[{x: 0, y: 1, blur: 4, color: 0x1A000000}]}>
 			<text fontWeight={700}>{props.title}</text>
 			{props.children}
 		</view>;
@@ -136,7 +136,7 @@ class GuideCheck implements Markup {
 
 	static function window():Ui {
 		var ui = new Ui(new MonoText(), 400, 300);
-		ui.root.style.fontSize = 10;
+		ui.root.style = Style.of({fontSize: 10});
 		return ui;
 	}
 
@@ -212,7 +212,7 @@ class GuideCheck implements Markup {
 			<Provider context={Brand} value={{accent: "#e11d48"}}><Accent label="rose"/></Provider>
 		</view>, ui.root);
 		ui.update();
-		var colors = [for (n in ui.root.children[0].children) n.style.color];
+		var colors = [for (n in ui.root.children[0].children) n.textColor()];
 		check("context: the nearest Provider's value, else the default", colors.length == 2 && colors[0] == Color.parse("#3b82f6") && colors[1] == Color.parse("#e11d48"),
 			colors.join(","));
 	}
@@ -239,21 +239,11 @@ class GuideCheck implements Markup {
 			<text tag="c">{count()}</text>
 			<view tag="d" background={() -> on() ? "#22c55e" : "#e4e4e7"}/>
 			<view tag="e" height={height} overflow="hidden"><text>Hello</text></view>
-			<view tag="banner" height={48} borderRadius={8} background="linear-gradient(to right, #6366f1, rgb(236 72 153))"/>
 			<view tag="f" role="button" aria-label="Close" focusable onPress={_ -> close()}><text>×</text></view>
 		</view>, ui.root);
 		count(5);
 		flush();
 		ui.update();
-		var banner = ui.root.find("banner");
-		check("snippets: a gradient background", banner.style.backgroundImage != null && banner.style.background == Color.TRANSPARENT);
-		var bar = new Ui(new MonoText(), 300, 100);
-		Render.render(<view tag="toolbar" flexDirection="row" columnGap={8}>
-			<view tag="back" width={60} height={24}/>
-			<view tag="help" width={60} height={24} margin="0 0 0 auto"/>
-		</view>, bar.root);
-		bar.update();
-		check("snippets: an auto margin pushes to the end", bar.root.find("help").absX == 240, "" + bar.root.find("help").absX);
 		var other = new Ui(new MonoText(), 100, 100);
 		Render.render(<view tag="badge" width={24} height={24} borderRadius={12} background="#ef4444" transform="rotate(15deg) scale(1.2)" transformOrigin="left top"/>, other.root);
 		other.update();
@@ -346,37 +336,37 @@ class GuideCheck implements Markup {
 		check("rich text: the spans' colours drawn", line != null && StringTools.endsWith(line, "colors ff000000,ff000000,ff000000,ff2563eb,ff000000"), line);
 	}
 
-	// "Themes and dark mode": a StyleSheet's rules and colours, light and dark
-	static final sheet:StyleSheet = {
-		rules: [
-			{slot: "button", style: {background: Color.parse("var(--primary)"), color: Color.parse("var(--primary-foreground)"), borderRadius: 6, padding: [8, 16]}},
-			{slot: "button", when: ["hover"], style: {background: Color.parse("var(--primary)/90")}},
-			{slot: "button", variant: "outline", style: {background: Color.TRANSPARENT, color: Color.parse("var(--foreground)"), borderWidth: 1, borderColor: Color.parse("var(--border)")}}
-		],
-		light: ["primary" => Color.parse("oklch(0.205 0 0)"), "primary-foreground" => Color.parse("oklch(0.985 0 0)"), "foreground" => Color.parse("oklch(0.145 0 0)"), "border" => Color.parse("oklch(0.922 0 0)")],
-		dark: ["primary" => Color.parse("oklch(0.922 0 0)"), "primary-foreground" => Color.parse("oklch(0.205 0 0)"), "foreground" => Color.parse("oklch(0.985 0 0)"), "border" => Color.parse("oklch(1 0 0 / 10%)")]
-	};
+	// "Themes and dark mode": a theme's tokens, light and dark
+	static final primary = new Token<Color>("primary");
+	static final primaryFg = new Token<Color>("primary-foreground");
+	static final foreground = new Token<Color>("foreground");
+	static final border = new Token<Color>("border");
+	static final button = Style.of({background: primary, color: primaryFg, borderRadius: 6, padding: [8, 16]});
+	static final outline = button.with({background: Color.TRANSPARENT, color: foreground, borderWidth: 1, borderColor: border});
 
 	static function themes() {
 		var ui = window();
 		Render.render(<view alignItems="start"><Button tag="themed" label="Themed" onPress={() -> {}}/><Button tag="outlined" label="Outlined" variant="outline" onPress={() -> {}}/></view>, ui.root);
 		ui.update();
 		var b = ui.root.find("themed"), o = ui.root.find("outlined");
-		var unstyled = b.style.background == Color.TRANSPARENT && b.style.borderWidth == 0;
-		ui.theme = sheet;
+		var unthemed = b.used.backgroundColor == 0 && b.used.borderPx(0) == 0;
+		ui.theme = Theme.base.with(primary, Color.parse("oklch(0.205 0 0)"), Color.parse("oklch(0.922 0 0)"))
+			.with(primaryFg, Color.parse("oklch(0.985 0 0)"), Color.parse("oklch(0.205 0 0)"))
+			.with(foreground, Color.parse("oklch(0.145 0 0)"), Color.parse("oklch(0.985 0 0)"))
+			.with(border, Color.parse("oklch(0.922 0 0)"), Color.parse("oklch(1 0 0 / 10%)"));
 		ui.update();
-		check("themes: unstyled, then the sheet's looks", unstyled && b.style.background == Color.rgb(0x171717) && b.style.borderRadius == 6
-			&& b.style.borderWidth == 0 && o.style.borderWidth == 1 && o.style.borderColor == Color.rgb(0xE5E5E5), StringTools.hex(b.style.background, 8));
+		check("themes: no tokens, then the theme's", unthemed && b.used.backgroundColor == Color.rgb(0x171717) && b.used.borderPx(0) == 0
+			&& o.used.borderPx(0) == 1 && o.used.borderColor(0) == Color.rgb(0xE5E5E5), StringTools.hex(b.used.backgroundColor, 8));
 		var dark = signal(false);
 		root(_ -> renderEffect(() -> dark(), d -> ui.dark = d));
 		dark(true);
 		flush();
 		ui.update();
-		check("themes: dark colours", b.style.background == Color.rgb(0xE5E5E5) && o.style.borderColor == Color.rgba(0xFFFFFF, 0.1));
+		check("themes: dark colours", b.used.backgroundColor == Color.rgb(0xE5E5E5) && o.used.borderColor(0) == Color.rgba(0xFFFFFF, 0.1));
 		dark(false);
 		flush();
 		ui.update();
-		check("themes: and back", b.style.background == Color.rgb(0x171717));
+		check("themes: and back", b.used.backgroundColor == Color.rgb(0x171717));
 	}
 
 	// "Images and icons"
@@ -494,7 +484,7 @@ class GuideCheck implements Markup {
 		check("drag and drop: a drag starts past 4 pixels", ui.dragging != null && ui.dragging.data == "a");
 		ui.pointerMove(c.x, c.y);
 		ui.update();
-		check("drag and drop: the target under it accepts", ui.root.find("item-c").style.background == Color.parse("#dbeafe"));
+		check("drag and drop: the target under it accepts", ui.root.find("item-c").used.backgroundColor == Color.parse("#dbeafe"));
 		ui.pointerUp(c.x, c.y, 1);
 		ui.update();
 		check("drag and drop: dropped, the list sorted", items().join("") == "bacd" && ui.dragging == null && clicks == 0, items().join("") + " " + clicks);
@@ -503,7 +493,7 @@ class GuideCheck implements Markup {
 		ui.pointerMove(b.x, b.y);
 		ui.keyDown(Key.ESCAPE, 0);
 		ui.pointerUp(b.x, b.y, 1);
-		check("drag and drop: Escape cancels", items().join("") == "bacd" && ui.root.find("item-b").style.background == Color.parse("#ffffff"), items().join(""));
+		check("drag and drop: Escape cancels", items().join("") == "bacd" && ui.root.find("item-b").used.backgroundColor == Color.parse("#ffffff"), items().join(""));
 	}
 
 	static function customNodes() {
@@ -530,7 +520,7 @@ class Sparkline extends Node {
 
 	public function new() {
 		super("sparkline");
-		style.height = 40;
+		style = Style.of({height: 40});
 	}
 
 	function set_values(v:Array<Float>):Array<Float> {

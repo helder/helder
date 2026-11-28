@@ -29,7 +29,7 @@ class TwoWindowsCheck {
 		if (see) {
 			o.background = Color.TRANSPARENT;
 			var box = new Node();
-			box.style.set({position: Absolute, left: 100, top: 50, width: 60, height: 60, background: 0xFFFF0000});
+			box.style = Style.of({position: Absolute, left: 100, top: 50, width: 60, height: 60, background: 0xFFFF0000});
 			o.root.append(box);
 		} else o.background = Color.rgb(0x0000FF);
 		o.window.moveTo(see ? 100 : 450, 100);

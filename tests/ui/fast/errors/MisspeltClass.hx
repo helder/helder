@@ -1,4 +1,4 @@
-import helder.ui.fast.StyleModule;
+import helder.ui.StyleModule;
 
 class MisspeltClass {
 	static final s = StyleModule.load("errors.module.css");

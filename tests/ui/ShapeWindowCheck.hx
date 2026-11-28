@@ -35,11 +35,11 @@ class ShapeWindowCheck {
 		var w = new helder.ui.UiWindow({title: "ShapeWindowCheck", width: W, height: H, antialias: false, titlebar: Standard, transparent: true});
 		w.background = Color.TRANSPARENT;
 		var box = new Node(), half = new Node();
-		box.style.set({position: Absolute, left: 50, top: 40, width: 60, height: 60, background: 0xFFFF0000});
-		half.style.set({position: Absolute, left: 130, top: 40, width: 40, height: 60, background: 0x800000FF});
+		box.style = Style.of({position: Absolute, left: 50, top: 40, width: 60, height: 60, background: 0xFFFF0000});
+		half.style = Style.of({position: Absolute, left: 130, top: 40, width: 40, height: 60, background: 0x800000FF});
 		// (drawn, its clicks passing through: pointer-events none)
 		var bar = new Node();
-		bar.style.set({position: Absolute, left: 10, top: 115, width: 180, height: 20, background: 0xFFFFFF00, pointerEvents: None});
+		bar.style = Style.of({position: Absolute, left: 10, top: 115, width: 180, height: 20, background: 0xFFFFFF00, pointerEvents: None});
 		w.root.append(box);
 		w.root.append(half);
 		w.root.append(bar);
@@ -231,7 +231,7 @@ class ShapeWindowCheck {
 		var e = new helder.ui.UiWindow({title: "ShapeWindowCheck edge", width: EDGE, height: 200, antialias: false, titlebar: None, transparent: true});
 		e.background = Color.TRANSPARENT;
 		var strip = new Node();
-		strip.style.set({position: Absolute, right: 0, top: 0, bottom: 0, width: 8, background: 0xFFFF0000});
+		strip.style = Style.of({position: Absolute, right: 0, top: 0, bottom: 0, width: 8, background: 0xFFFF0000});
 		e.root.append(strip);
 		e.window.onTop = true;
 		e.window.taskbar = false;
