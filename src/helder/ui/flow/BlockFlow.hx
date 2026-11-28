@@ -720,7 +720,7 @@ class BlockFlow implements FormattingContext {
 	function positionedDocument(box:Box, space:Space):Int {
 		var fixed = new Positioned();
 		space.fixed = fixed;
-		var at = positionedBox(box, space, box.style.rtl ? space.width : 0, 0, space.width, space.height);
+		var at = positionedBox(box, space, box.style.rtl ? space.width : 0, 0, space.width, space.height, box.style.rtl);
 		space.fragments.moveTo(at.fragment, at.x, at.y);
 		place(fixed, at.fragment, space, -at.x, -at.y, space.width, space.height);
 		return at.fragment;
@@ -733,13 +733,13 @@ class BlockFlow implements FormattingContext {
 		var spans:Null<ObjectMap<Box, {first:Int, last:Int}>> = null;
 		var k = 0;
 		while (k < list.boxes.length) {
-			var b = list.boxes[k];
+			var b = list.boxes[k], containing = frags.box(owner);
 			var source = list.fragments[k], target = owner;
 			var from = frags.absolute(source), to = frags.absolute(owner);
 			var x = cbx, y = cby, w = cbw, h = cbh;
 			var sx = from.x - to.x + list.xs[k], sy = from.y - to.y + list.ys[k];
 			if (fr == null && b.style.position == "absolute") {
-				var span = b.parent, limit = frags.box(owner);
+				var span = b.parent, limit = containing;
 				while (span != null && span != limit && !(span.kind == Inline && span.style.positioned)) span = span.parent;
 				if (span != null && span != limit) {
 					if (spans == null) spans = positionedSpans(frags, owner);
@@ -750,6 +750,7 @@ class BlockFlow implements FormattingContext {
 						y = bounds.y - to.y;
 						w = bounds.w;
 						h = bounds.h;
+						containing = span;
 						target = range.first;
 						// (a direct inline candidate's static position was recorded in its line before relative offsets)
 						var p = b.parent, start = frags.box(source);
@@ -774,8 +775,8 @@ class BlockFlow implements FormattingContext {
 				k++;
 				continue;
 			}
-			var f = positionedBox(b, space, sx, sy, w, h, list.aligns[k]);
-			if (d != null && space.pageTop + y + f.y + frags.height(f.fragment) > fr.size + 0.01) fr.defer(d) else {
+			var f = positionedBox(b, space, sx, sy, w, h, containing.style.rtl, list.aligns[k]);
+			if (d != null && space.pageTop + y + f.y + extent(frags, f.fragment, true) > fr.size + 0.01) fr.defer(d) else {
 				var at = target == owner ? to : frags.absolute(target);
 				frags.adopt(target, f.fragment, to.x - at.x + x + f.x, to.y - at.y + y + f.y);
 			}
@@ -826,7 +827,7 @@ class BlockFlow implements FormattingContext {
 	}
 
 	// (its border box's place in its containing block, given its static place there: CSS 2.1's equations)
-	public function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float, ?align:Array<Float>):{fragment:Int, x:Float, y:Float} {
+	public function positionedBox(b:Box, space:Space, sx:Float, sy:Float, cbw:Float, cbh:Float, rtl:Bool, ?align:Array<Float>):{fragment:Int, x:Float, y:Float} {
 		var s = b.style.model();
 		var pl = res(s.padding[3], cbw), pr = res(s.padding[1], cbw), pt = res(s.padding[0], cbw), pb = res(s.padding[2], cbw);
 		var bpx = pl + pr + s.border[1] + s.border[3], bpy = pt + pb + s.border[0] + s.border[2];
@@ -836,7 +837,7 @@ class BlockFlow implements FormattingContext {
 		var replaced = b.kind == BlockReplaced || b.kind == InlineReplaced;
 		var w = replaced ? replacedSize(b, cbw, cbh, bpx, bpy).w : size(s.width, cbw, s.borderBox, bpx);
 		var minW = size(s.minWidth, cbw, s.borderBox, bpx), maxW = size(s.maxWidth, cbw, s.borderBox, bpx);
-		var rtl = b.parent?.style.rtl ?? b.style.rtl;
+		var staticRtl = b.parent?.style.rtl ?? b.style.rtl;
 		var ratio = !replaced && !Math.isNaN(Ratio.of(b));
 		// (an aspect-ratio's auto width: its height's through it, the height set or what top and bottom leave,
 		// unless left and right give the width)
@@ -869,7 +870,7 @@ class BlockFlow implements FormattingContext {
 				if (align != null) {
 					w = shrink(cbw - sx - a - c);
 					l = sx + (align[2] - (w + bpx + a + c)) * align[4];
-				} else if (rtl) {
+				} else if (staticRtl) {
 					r = cbw - sx;
 					w = shrink(cbw - r - a - c);
 					l = cbw - r - a - c - w - bpx;
@@ -902,7 +903,7 @@ class BlockFlow implements FormattingContext {
 					w = shrink(cbw - r - a - c);
 					l = cbw - r - a - c - w - bpx;
 				} else if (Math.isNaN(l) && Math.isNaN(r)) {
-					if (align != null) l = sx + (align[2] - (w + bpx + a + c)) * align[4] else if (rtl) {
+				if (align != null) l = sx + (align[2] - (w + bpx + a + c)) * align[4] else if (staticRtl) {
 						r = cbw - sx;
 						l = cbw - r - a - c - w - bpx;
 					} else
@@ -964,8 +965,10 @@ class BlockFlow implements FormattingContext {
 		if (StringTools.startsWith(v, "safe ") || StringTools.startsWith(v, "unsafe ")) v = v.substr(v.indexOf(" ") + 1);
 		return switch v {
 			case "center": "center";
-			case "start" | "self-start" | "flex-start": justify && rtl ? "end" : "start";
-			case "end" | "self-end" | "flex-end": justify && rtl ? "start" : "end";
+			case "start" | "flex-start": justify && rtl ? "end" : "start";
+			case "end" | "flex-end": justify && rtl ? "start" : "end";
+			case "self-start": justify && b.style.rtl ? "end" : "start";
+			case "self-end": justify && b.style.rtl ? "start" : "end";
 			// (a baseline's fallback: start, last baseline's end)
 			case "baseline" | "first baseline": justify && rtl ? "end" : "start";
 			case "last baseline": justify && rtl ? "start" : "end";
@@ -984,13 +987,16 @@ class BlockFlow implements FormattingContext {
 		return p;
 	}
 
-	// (how far a fragment's content reaches down from its top: its border box, what overflows it unless it clips)
-	static function extent(f:Fragments, id:Int):Float {
-		var h = f.height(id), b = f.box(id);
+	// (how far a fragment reaches down from its top, including overflow unless it clips; positioned-only
+	// for the absolute boxes that paginate separately from the in-flow contents)
+	@:allow(helder.ui.box.PagedView)
+	static function extent(f:Fragments, id:Int, positionedOnly = false):Float {
+		var b = f.box(id);
+		var h = !positionedOnly || b.style.position == "absolute" ? f.height(id) : Math.NEGATIVE_INFINITY;
 		if (f.kind(id) == Fragments.BOX && b.style.clips) return h;
 		var k = f.first(id);
 		while (k >= 0) {
-			var e = f.y(k) + extent(f, k);
+			var e = f.y(k) + extent(f, k, positionedOnly);
 			if (e > h) h = e;
 			k = f.next(k);
 		}
