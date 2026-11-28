@@ -57,7 +57,7 @@ class View {
 		for (island in [false, true]) {
 			var out = 'bin/ui/FastProbe${island ? "-island" : ""}';
 			exe(out, cps(["src", "tests/ui"]).concat(["-main", "FastProbe", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"])
-				.concat(island ? ["-D", "fast.island"] : []));
+				.concat(island ? ["-D", "fast.island"] : []).concat(targetArgs(HOST)));
 			var got = StringTools.trim(output(exePath(out, HOST), ["layout"]));
 			var expected = "laid out 480x";
 			if (!got.startsWith(expected) || got.indexOf("3 rows 3 items left") < 0) throw new Failed('$out: "$got", expected "$expected... 3 rows 3 items left"');
@@ -72,7 +72,7 @@ class View {
 		}
 		// (the todo on fast nodes, through its markup: as an app builds it, the same check; driven headless, TodoFastCheck)
 		var todo = "bin/ui/TodoFast";
-		exe(todo, cps(["src", "examples/todo-fast"]).concat(["-main", "TodoFast", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"]));
+		exe(todo, cps(["src", "examples/todo-fast"]).concat(["-main", "TodoFast", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"]).concat(targetArgs(HOST)));
 		var symbols = output("nm", [exePath(todo, HOST)]).split("\n");
 		var none = [for (p in FAST_NONE) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
 		var must = [for (p in FAST_MUST) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
@@ -80,7 +80,7 @@ class View {
 		if (must.length < FAST_MUST.length) throw new Failed('$todo: without ${[for (m in FAST_MUST) if (!must.contains(m)) m].join(", ")}');
 		Sys.println('$todo: ${Math.round(FileSystem.stat(exePath(todo, HOST)).size / 1024)} KB with symbols; no DOM or cascade');
 		var check = "bin/ui/TodoFastCheck";
-		exe(check, cps(["src", "tests/ui", "tests/gfx", "examples/todo-fast", "examples/todo"]).concat(["-main", "TodoFastCheck"]));
+		exe(check, cps(["src", "tests/ui", "tests/gfx", "examples/todo-fast", "examples/todo"]).concat(["-main", "TodoFastCheck"]).concat(targetArgs(HOST)));
 		run(exePath(check, HOST), []);
 	}
 
