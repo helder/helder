@@ -90,6 +90,10 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static inline function isNode(v:Dynamic):Bool
 		return Std.isOfType(v, Node);
 
+	// (a markup template's node: the fixed attributes it was given kept, its look resolved once for all of them)
+	public static inline function cloneNode(n:Node):Node
+		return n.clone();
+
 	@:noCompletion public static function styled(n:Node, v:Dynamic)
 		n.style = styleOf(v);
 

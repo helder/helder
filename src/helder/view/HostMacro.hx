@@ -36,6 +36,8 @@ typedef RendererInfo = {
 	markEnds:Bool,
 	// whether a node removed may still be leaving, drawn until its exit settles (a static function leaving(node, done):Bool, ui's)
 	leaving:Bool,
+	// whether it clones a node (a static function cloneNode(node)): an element's fixed attributes set on a template
+	clones:Bool,
 	// its runtime's class name
 	runtime:String
 };
@@ -107,6 +109,7 @@ class HostMacro {
 					id: id(full),
 					markEnds: have.exists("markEnds"),
 					leaving: have.exists("leaving"),
+					clones: have.exists("cloneNode"),
 					runtime: runtimeName(c.name, full)
 				};
 				infos.set(path, i);
@@ -317,7 +320,7 @@ class HostMacro {
 
 	// a field with Host, HostNode, ViewRuntime, INDEX and NAME those of renderer i
 	static function subst(f:Field, i:RendererInfo):Field
-		return new Subst(i.node, i.path.split("."), i.runtime, i.id, i.path, i.markEnds, i.leaving).field(f);
+		return new Subst(i.node, i.path.split("."), i.runtime, i.id, i.path, i.markEnds, i.leaving, i.clones).field(f);
 
 	// --- after typing: the agnostic literals' code for each reached renderer
 
@@ -471,9 +474,11 @@ private class Subst {
 	final name:String;
 	final markEnds:Bool;
 	final leaving:Bool;
+	final clones:Bool;
 
-	public function new(node, host, self, id, name, markEnds, leaving) {
+	public function new(node, host, self, id, name, markEnds, leaving, clones) {
 		this.leaving = leaving;
+		this.clones = clones;
 		this.node = node;
 		this.host = host;
 		this.self = self;
@@ -516,6 +521,8 @@ private class Subst {
 			case EConst(CIdent("MARK_ENDS")): macro @:pos(e.pos) $v{markEnds};
 			// (LEAVING(node, done): the renderer's leaving, else false)
 			case ECall({expr: EConst(CIdent("LEAVING"))}, args): leaving ? {expr: ECall(macro @:pos(e.pos) $p{host.concat(["leaving"])}, [for (a in args) ex(a)]), pos: e.pos} : macro @:pos(e.pos) false;
+			// (CLONE(node): the renderer's cloneNode, else the node itself: no template made for it)
+			case ECall({expr: EConst(CIdent("CLONE"))}, [a]): clones ? {expr: ECall(macro @:pos(e.pos) $p{host.concat(["cloneNode"])}, [ex(a)]), pos: e.pos} : ex(a);
 			case EVars(vs): {expr: EVars([for (v in vs) {name: v.name, type: ct(v.type), expr: v.expr == null ? null : ex(v.expr), isFinal: v.isFinal}]), pos: e.pos};
 			case ENew(t, args): {expr: ENew({pack: t.pack, name: t.name, sub: t.sub, params: t.params}, [for (a in args) ex(a)]), pos: e.pos};
 			case ECast(x, t): {expr: ECast(ex(x), ct(t)), pos: e.pos};

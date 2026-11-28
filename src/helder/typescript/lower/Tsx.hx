@@ -1072,5 +1072,12 @@ class TsTarget implements Target<TsMarkup> {
 	public function drawing(text:String, where:Where):TsMarkup
 		return error("markup: <svg> in TSX is not supported yet: Icons.parse(text) gives an Svg for <image src>", where);
 
+	// (no templates in TypeScript's lowering yet: each mount makes its elements)
+	public function clones(renderer:String):Bool
+		return false;
+
+	public function template(name:String, at:Int, make:Array<TsMarkup>, built:String):Null<TsMarkup>
+		return null;
+
 	public function view(v:Planned<TsMarkup>):TsMarkup return MView(v);
 }

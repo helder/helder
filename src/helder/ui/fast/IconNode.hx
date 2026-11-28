@@ -24,6 +24,12 @@ class IconNode extends Node {
 		return v;
 	}
 
+	override function blank():Node
+		return new IconNode();
+
+	override function copied(c:Node)
+		(cast c : IconNode).name = name;
+
 	override function kindOf(s:BoxStyle):BoxKind
 		return BlockReplaced;
 

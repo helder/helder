@@ -284,6 +284,13 @@ class Interpreter implements Target<Step> {
 		return renderer == RENDERER ? then : otherwise;
 
 	// (an interpreted literal's drawing: read once, when first set)
+	// (interpreted markup makes each element anew)
+	public function clones(renderer:String):Bool
+		return false;
+
+	public function template(name:String, at:Int, make:Array<Step>, built:String):Null<Step>
+		return null;
+
 	public function drawing(text:String, where:Where):Step {
 		var svg:Null<helder.canvas.Svg> = null;
 		return new Step(_ -> svg != null ? svg : svg = helder.canvas.Svg.read(text));

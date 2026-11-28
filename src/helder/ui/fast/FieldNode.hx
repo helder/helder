@@ -30,6 +30,15 @@ class FieldNode extends TextNode {
 		shown();
 	}
 
+	override function blank():Node
+		return new FieldNode();
+
+	override function copied(c:Node) {
+		var f:FieldNode = cast c;
+		f.placeholder = placeholder;
+		f.value = value;
+	}
+
 	function set_value(v:String):String {
 		v ??= "";
 		if (v == value) return v;
