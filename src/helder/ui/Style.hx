@@ -136,11 +136,11 @@ typedef StyleProps = {
 	// its text's shadows (inherited), CSS's text-shadow: the first on top
 	?textShadow:Array<ShadowLayer>,
 	// how it and its subtree are drawn and hit, not laid out (Transform.parse)
-	?transform:helder.ui.Transform,
+	?transform:TransformRef,
 	// the point the transform is about: x, y in its border box (null: its centre)
 	?transformOrigin:Array<helder.ui.Dim>,
 	// what eases to a new value, and how it enters and leaves (Transition.parse)
-	?transition:helder.ui.Transition,
+	?transition:TransitionRef,
 	// its state variants, over it where the state is on (a later one's over an earlier's)
 	?hover:StyleProps,
 	?pressed:StyleProps,
@@ -164,6 +164,15 @@ typedef StateProps = {
 	?selected:StyleProps,
 	?checked:StyleProps
 }
+
+// (a transform's and a transition's types: Dynamic where Style's macros run, so that they load no canvas or motion)
+#if macro
+typedef TransformRef = Dynamic;
+typedef TransitionRef = Dynamic;
+#else
+typedef TransformRef = helder.ui.Transform;
+typedef TransitionRef = helder.ui.Transition;
+#end
 
 // A colour: one, a theme's token (Token<Color>: its value in the theme in
 // scope), or the text's (current).
@@ -385,9 +394,9 @@ final class Props {
 	public var scrollbarColor:Null<Tint> = null;
 	public var scrollbarTrackColor:Null<Tint> = null;
 	public var textShadow:Null<Array<ShadowLayer>> = null;
-	public var transform:Null<helder.ui.Transform> = null;
+	public var transform:Null<TransformRef> = null;
 	public var transformOrigin:Null<Array<helder.ui.Dim>> = null;
-	public var transition:Null<helder.ui.Transition> = null;
+	public var transition:Null<TransitionRef> = null;
 	public var hover:Null<Props> = null;
 	public var pressed:Null<Props> = null;
 	public var focus:Null<Props> = null;

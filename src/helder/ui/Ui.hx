@@ -79,7 +79,7 @@ class Ui extends ScrollHost {
 	function set_focusVisible(v:Bool):Bool {
 		if (v == focusVisible) return v;
 		focusVisible = v;
-		// (the focused node's rules for focus-visible, its ring)
+		// (the focused node's ring, its States told)
 		if (focus != null) {
 			focus.layerChanged();
 			focus.statesChanged();
@@ -810,16 +810,16 @@ class Ui extends ScrollHost {
 			if (overlay.children.length > 0) paintNode(overlay, l.list);
 			l.list.flights();
 		} else if (l.scroll) {
-			var st = n.used, bg = (st.backgroundColor : helder.gfx.Color), inset = false, sh = st.paintedShadows();
+			var st = n.used, bg = st.backgroundColor, inset = false, sh = st.shadows;
 			if (sh != null)
 				for (x in sh)
 					if (x.inset) inset = true;
-			l.backdrop = bg.a == 255 && st.backgroundImage == null && !inset && !l.hiddenIn ? (bg : Int) : 0;
+			l.backdrop = bg >>> 24 == 255 && st.background == null && !inset && !l.hiddenIn ? bg : 0;
 			paintScrolled(n, l.list);
 		}
 		else {
 			var p = n.present, nw = p == null ? n.width : p.width(), nh = p == null ? n.height : p.height();
-			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + n.style.outlineOffset + n.style.outlineWidth;
+			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + n.used.outlineOffset + n.used.outlineWidth;
 			l.bx0 = n.absX - e;
 			l.by0 = n.absY - e;
 			l.bx1 = n.absX + nw + e;
@@ -1065,12 +1065,11 @@ class Ui extends ScrollHost {
 		// (its entry: at once where its first paint sets something off, else once it is seen to be drawn)
 		var at = -1;
 		if (dl != null) {
-			if (!s.drawn)
+			if (!n.drawn)
 				at = dl.node(n, DisplayList.FIRST | (@:privateAccess n.entering ? DisplayList.ENTERING : 0) | (hidden ? DisplayList.HIDDEN : 0), w.x0, w.y0, w.x1,
 					w.y1);
-		} else if (!s.drawn && marking) @:privateAccess {
-			s.drawn = true;
-			if (s.starting) n.restyleLater();
+		} else if (!n.drawn && marking) @:privateAccess {
+			n.drawn = true;
 			if (n.entering) helder.ui.motion.Motions.enter(n);
 		}
 		// (motion: where its tracks draw it, helder.ui.motion.Present)
@@ -1088,7 +1087,7 @@ class Ui extends ScrollHost {
 			}
 			return;
 		}
-		var opacity = p == null ? s.opacity : s.opacity * p.presenceOpacity();
+		var opacity = p == null ? s.opacity : (p.opacity != null && p.opacity.moving() ? p.opacity.value : s.opacity) * p.presenceOpacity();
 		var m = n.transformMatrix();
 		// (the compositor's walk: what moves on its own drawn at its opacity's 1, all of it, the compositor's to move;
 		// one unseen as its layer is stale: left out)
@@ -1131,7 +1130,8 @@ class Ui extends ScrollHost {
 			w.shift(dx, dy);
 			if (dl != null) dl.cullShift(dx, dy);
 		}
-		var grouped = n.children.length > 0 || n.exits != null || n.hasContent() && ((s.backgroundColor >>> 24) > 0 || s.borderWidth > 0 || s.backgroundImage != null);
+		var grouped = n.children.length > 0 || n.exits != null || n.hasContent()
+			&& ((s.backgroundColor >>> 24) > 0 || s.borderPx(0) + s.borderPx(1) + s.borderPx(2) + s.borderPx(3) > 0);
 		if (mv != null) mv.grouped = grouped && mv.fades();
 		var tagged = mv != null && composing.mover(mv);
 		if (tagged) w.all();

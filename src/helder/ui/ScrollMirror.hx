@@ -100,7 +100,7 @@ class ScrollMirror extends ScrollHost {
 		var i = order.length;
 		while (--i >= 0) {
 			var m = order[i];
-			if (inside(m, x, y)) return m.kind == ScrollShot.COVER && m.scroller == null ? null : m;
+			if (inside(m, x, y)) return m.role == ScrollShot.COVER && m.scroller == null ? null : m;
 		}
 		return null;
 	}
@@ -145,13 +145,13 @@ class ScrollMirror extends ScrollHost {
 			var e = shot.entries[i], n = e.node;
 			if (n == null) continue;
 			// (a scroller again, or for the first time: the program's offsets taken)
-			var m = byNode.get(n), fresh = m == null || e.kind == ScrollShot.SCROLLER && m.kind != ScrollShot.SCROLLER;
+			var m = byNode.get(n), fresh = m == null || e.kind == ScrollShot.SCROLLER && m.role != ScrollShot.SCROLLER;
 			if (m == null) {
 				m = new MirrorNode(n);
 				byNode.set(n, m);
-			} else if (m.kind == ScrollShot.SCROLLER && e.kind != ScrollShot.SCROLLER) letGo(m);
+			} else if (m.role == ScrollShot.SCROLLER && e.kind != ScrollShot.SCROLLER) letGo(m);
 			m.alive = adopted;
-			m.kind = e.kind;
+			m.role = e.kind;
 			m.async = e.async;
 			m.bx = e.x;
 			m.by = e.y;
@@ -186,7 +186,7 @@ class ScrollMirror extends ScrollHost {
 		for (n in gone) {
 			var m = byNode.get(n);
 			byNode.remove(n);
-			if (m.kind == ScrollShot.SCROLLER) letGo(m) else halt(m);
+			if (m.role == ScrollShot.SCROLLER) letGo(m) else halt(m);
 			if (wheelLatch == m) wheelLatch = null;
 			if (drag == m) drag = null;
 		}
@@ -335,7 +335,7 @@ class ScrollMirror extends ScrollHost {
 			g.state = Gate.PROGRAM;
 			return;
 		}
-		var s = m.kind == ScrollShot.SCROLLER ? m : m.scroller, any = false;
+		var s = m.role == ScrollShot.SCROLLER ? m : m.scroller, any = false;
 		while (s != null) {
 			if (!s.async) {
 				g.state = Gate.PROGRAM;
@@ -416,7 +416,7 @@ class ScrollMirror extends ScrollHost {
 		var i = order.length;
 		while (--i >= 0) {
 			var m = order[i];
-			if (m.kind != ScrollShot.SCROLLER || !inside(m, x, y)) continue;
+			if (m.role != ScrollShot.SCROLLER || !inside(m, x, y)) continue;
 			for (k in 0...2) {
 				var b = m.bars, o = k * 7;
 				if (b[o] == 0) continue;
@@ -527,7 +527,7 @@ class ScrollMirror extends ScrollHost {
 			f(m.real, m.real.scrollX, m.real.scrollY, false, false);
 		released.resize(0);
 		for (m in order) {
-			if (m.kind != ScrollShot.SCROLLER) continue;
+			if (m.role != ScrollShot.SCROLLER) continue;
 			var moves = trackpad.holds(m) || glides.exists(m) && glides.get(m).gliding || touch.gliding && wheelNode == m;
 			if (m.scrollX == m.sentX && m.scrollY == m.sentY && moves == m.sentMoving) continue;
 			m.sentX = m.scrollX;
@@ -550,13 +550,13 @@ class ScrollMirror extends ScrollHost {
 	// the mirror's offsets of the program's node n (null: none, or no scroller of its)
 	public function offsets(n:Node):Null<{x:Float, y:Float}> {
 		var m = byNode.get(n);
-		return m == null || m.kind != ScrollShot.SCROLLER ? null : {x: m.scrollX, y: m.scrollY};
+		return m == null || m.role != ScrollShot.SCROLLER ? null : {x: m.scrollX, y: m.scrollY};
 	}
 
 	// the scrollers, in paint order, with their offsets now (the compositor's frame)
 	public function each(f:(n:Node, x:Float, y:Float) -> Void)
 		for (m in order)
-			if (m.kind == ScrollShot.SCROLLER) f(m.real, m.scrollX, m.scrollY);
+			if (m.role == ScrollShot.SCROLLER) f(m.real, m.scrollX, m.scrollY);
 }
 
 // (a node of the mirror: an entry of the program's shot; its parent the
@@ -565,7 +565,7 @@ class ScrollMirror extends ScrollHost {
 private class MirrorNode extends Node {
 	public final real:Node;
 	public var alive = 0;
-	public var kind = 0;
+	public var role = 0;
 	public var async = true;
 	public var claims = 0;
 	public var scroller:Null<MirrorNode> = null;
@@ -588,7 +588,6 @@ private class MirrorNode extends Node {
 	public var sentY = 0.0;
 	public var sentMoving = false;
 	public var sentHeld = false;
-	var rtlNow = false;
 
 	public function new(real:Node) {
 		super("mirror");
@@ -601,14 +600,10 @@ private class MirrorNode extends Node {
 		height = e.viewH;
 		absX = e.vx;
 		absY = e.vy;
-		contentWidth = e.viewW + e.maxX;
-		contentHeight = e.viewH + e.maxY;
-		style.overflowX = e.scrollsX ? Overflow.Scroll : Overflow.Hidden;
-		style.overflowY = e.scrollsY ? Overflow.Scroll : Overflow.Hidden;
-		if (e.rtl != rtlNow) {
-			rtlNow = e.rtl;
-			style.direction = e.rtl ? Dir.Rtl : null;
-		}
+		// (one overflow for both axes: an axis that does not scroll given no range)
+		contentWidth = e.viewW + (e.scrollsX ? e.maxX : 0);
+		contentHeight = e.viewH + (e.scrollsY ? e.maxY : 0);
+		style = Style.of({overflow: e.scrollsX || e.scrollsY ? Overflow.Scroll : Overflow.Hidden, direction: e.rtl ? Dir.Rtl : null});
 	}
 }
 

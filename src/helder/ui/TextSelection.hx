@@ -108,7 +108,7 @@ class TextSelection {
 
 	// (a grid's cell's row: by its columns, else its place)
 	static function gridRow(c:Node):Float {
-		var p = c.parent, cols = p.style.gridTemplateColumns.length;
+		var p = c.parent, t = p.props().gridTemplateColumns, cols = t == null ? 0 : Grid.tracks(t).length;
 		return cols > 0 ? Std.int(p.indexOf(c) / cols) : c.y;
 	}
 

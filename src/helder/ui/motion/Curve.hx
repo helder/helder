@@ -5,9 +5,7 @@ package helder.ui.motion;
 // duration, ζ = 1 − bounce, or 1 / (1 + bounce) below 0, mass 1), a tween
 // (a duration along a cubic Bézier, CSS's), a decay (a fling's: its rate, the
 // target where it comes to rest) or none (instant). A curve may name a token
-// of the palette (Curve.TOKENS; a theme's own, StyleSheet.motion, over
-// them): "snappy", "default", "calm", "lead", "fade"..., resolved where it
-// is used (resolve).
+// of the palette (Curve.TOKENS): "snappy", "default", "calm", "lead", "fade"...
 class Curve {
 	public static inline var INSTANT_KIND = 0;
 	public static inline var SPRING_KIND = 1;
@@ -50,7 +48,7 @@ class Curve {
 	public static function decay(rate = 2.0):Curve
 		return new Curve(DECAY_KIND, 0, 0, null, rate, null);
 
-	// a token of the palette, its values the built-in ones (resolve: a theme's over them)
+	// a token of the palette
 	public static function named(token:String):Curve {
 		var c = TOKENS.get(token);
 		if (c == null) throw 'Curve: no motion token $token (${[for (k in TOKENS.keys()) k].join(", ")})';
@@ -83,15 +81,6 @@ class Curve {
 	// an exit's: 20% shorter, half the bounce (exits run shorter than entrances)
 	public function exit():Curve
 		return kind == SPRING_KIND ? new Curve(kind, duration * 0.8, bounce * 0.5, null, 0, null) : kind == TWEEN_KIND ? scaled(0.8) : this;
-
-	// this curve, its token a theme's when the nearest sheet over n has one (StyleSheet.motion)
-	public function resolve(n:Null<Node>):Curve {
-		if (token == null || n == null) return this;
-		var s = n.sheet();
-		var m = s == null ? null : s.motion;
-		var own = m == null ? null : m.get(token);
-		return own == null ? this : own;
-	}
 
 	// SwiftUI's ω and ζ
 	public inline function omega():Float

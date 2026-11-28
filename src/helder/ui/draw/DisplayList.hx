@@ -649,7 +649,7 @@ class DisplayList implements TextureCanvas {
 		var o = oldInts, w = oldFloats, k = o[at + 2], f = o[at + 5];
 		if (k & NOCOPY != 0 || (k & HIDDEN != 0) != hidden || w[f + 4] != x0 || w[f + 5] != y0 || w[f + 6] != x1 || w[f + 7] != y1) return false;
 		// (a first paint's entry, the node drawn since: recorded again, culled, it records nothing)
-		if (k & FIRST != 0 && @:privateAccess (cast oldResources[o[at + 1]] : Node).style.drawn) return false;
+		if (k & FIRST != 0 && @:privateAccess (cast oldResources[o[at + 1]] : Node).drawn) return false;
 		var i1 = o[at + 3], f1 = o[at + 4], r0 = o[at + 1], r1 = o[at + 6];
 		var di = ni - at, df = nf - f, dr = nr - r0;
 		for (j in f...f1)

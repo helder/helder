@@ -173,7 +173,7 @@ class Trackpad {
 	function axis(n:Node, x:Bool, d:Float, stretches:Bool):Float {
 		var lo = Scrolling.scrollStart(n, x), max = Scrolling.maxScroll(n, x), view = viewSize(n, x);
 		var v = x ? n.scrollX : n.scrollY;
-		if (d == 0 || (x ? n.style.overflowX : n.style.overflowY) != Scroll) return v;
+		if (d == 0 || !n.used.scrollsOn(x)) return v;
 		var f = x ? forceX : forceY;
 		// (stretched: the push on the stretch first, the rest back into the extent)
 		if (f != 0) {

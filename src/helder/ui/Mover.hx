@@ -1,6 +1,7 @@
 package helder.ui;
 
 import helder.canvas.Matrix;
+import helder.ui.box.Len.Lens;
 import helder.ui.motion.Track;
 
 // A node whose transform and opacity the compositor moves between the
@@ -8,14 +9,13 @@ import helder.ui.motion.Track;
 // layer of its own (its transform or opacity moving: a transition, a
 // spring, a tween, its presence), or a sticky node in a scroller. Taken on
 // the program's thread as its frame is drawn (of): each part of its
-// transform and opacity as a closed form of the time (a transition's run,
-// a Track's segment, copied), a sticky node's insets; sampled on the
+// transform and opacity as a closed form of the time (a Track's segment,
+// copied), a sticky node's insets; sampled on the
 // compositor's thread at any time and scroll offset (sample) the way
 // Node.transformMatrix and Ui's paint sample them, so that the two agree at
 // every time. A part whose start is not known yet (its first tick to come)
 // stays where it is, as the program's does until that tick. Its layout
 // moving (its edges' tracks) is not the compositor's: the program's alone.
-@:access(helder.ui.Style)
 @:access(helder.ui.Node)
 class Mover {
 	public final node:Node;
@@ -29,16 +29,10 @@ class Mover {
 	final h:Float;
 	final ox:Float;
 	final oy:Float;
-	// (the style's transform, else its run: from, to, start, duration, easing)
+	// (the style's transform)
 	final transform:Null<Transform>;
-	final tFrom:Null<Transform> = null;
-	final tTo:Null<Transform> = null;
-	final tRun:Array<Float> = [];
-	var tEase:Array<Float> = Transition.EASE;
-	// (the opacity: as it is, a run (from, to, start, duration, easing), or a track)
+	// (the opacity: as it is, or a track)
 	final alpha:Float;
-	final aRun:Array<Float> = [];
-	var aEase:Array<Float> = Transition.EASE;
 	var aTrack:Null<Track> = null;
 	// (its presence and transform's lanes, copied; reduced motion then)
 	var presence:Null<Track> = null;
@@ -60,39 +54,19 @@ class Mover {
 		node = n;
 		this.drawn = drawn == null ? null : drawn.clone();
 		this.opacity = opacity;
-		var s = n.used, p = n.present;
+		var s = n.used, pr = n.props(), p = n.present;
 		x = n.absX;
 		y = n.absY;
 		w = p != null ? p.width() : n.width;
 		h = p != null ? p.height() : n.height;
-		var o = s.transformOrigin;
+		var o = pr.transformOrigin;
 		ox = o == null ? Math.NaN : o[0].resolve(w);
 		oy = o == null ? Math.NaN : o[1].resolve(h);
-		transform = s.transform;
+		transform = pr.transform;
 		alpha = s.opacity;
 		reduced = Clock.reducedMotion;
-		var runs = s.themed == null ? null : s.themed.moving;
-		if (runs != null)
-			for (r in runs) {
-				if (r.start < 0) continue;
-				var at = [r.start, r.duration];
-				if (r.name == "transform") {
-					tFrom = r.from;
-					tTo = r.to;
-					for (v in at)
-						tRun.push(v);
-					tEase = r.easing;
-				} else if (r.name == "opacity") {
-					aRun.push(r.from);
-					aRun.push(r.to);
-					for (v in at)
-						aRun.push(v);
-					aEase = r.easing;
-				} else continue;
-				until = Math.max(until, r.start + r.duration);
-			}
 		if (p != null) {
-			if (aRun.length == 0 && p.opacity != null && p.opacity.moving()) aTrack = track(p.opacity);
+			if (p.opacity != null && p.opacity.moving()) aTrack = track(p.opacity);
 			if (p.presence != null) {
 				presence = track(p.presence);
 				effect = p.effect;
@@ -126,7 +100,7 @@ class Mover {
 
 	// whether its opacity may be other than 1 (faded, or moving)
 	public function fades():Bool
-		return opacity < 1 || aRun.length > 0 || aTrack != null || presence != null;
+		return opacity < 1 || aTrack != null || presence != null;
 
 	// whether it moves with the time or a scroll at all
 	public function moves():Bool
@@ -148,12 +122,13 @@ class Mover {
 			var c0 = 0.0, c1 = 0.0;
 			if (p != null) {
 				var ps = p.used, pbe = ps.borderEdges, ppad = ps.paddingEdges;
-				var m0 = x ? m.left : m.top, m1 = x ? m.right : m.bottom;
-				c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + (Math.isNaN(m0) ? 0 : m0);
-				c1 = (x ? p.absX + p.width - pbe.right - ppad.right : p.absY + p.height - pbe.bottom - ppad.bottom) - (Math.isNaN(m1) ? 0 : m1);
+				// (an auto margin: 0)
+				var m0 = Lens.resolve(m[x ? 3 : 0], Math.NaN, 0), m1 = Lens.resolve(m[x ? 1 : 2], Math.NaN, 0);
+				c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + m0;
+				c1 = (x ? p.absX + p.width - pbe.right - ppad.right : p.absY + p.height - pbe.bottom - ppad.bottom) - m1;
 			}
-			for (v in [x ? n.absX : n.absY, x ? n.width : n.height, v0, v1, c0, c1, (x ? s.left : s.top).resolve(v1 - v0),
-				(x ? s.right : s.bottom).resolve(v1 - v0), p == null ? 0 : 1])
+			for (v in [x ? n.absX : n.absY, x ? n.width : n.height, v0, v1, c0, c1, Lens.resolve(s.inset(x ? 3 : 0), v1 - v0, Math.NaN),
+				Lens.resolve(s.inset(x ? 1 : 2), v1 - v0, Math.NaN), p == null ? 0 : 1])
 				stick.push(v);
 		}
 	}
@@ -173,10 +148,7 @@ class Mover {
 	// none); its opacity then (its presence's share in it)
 	public function sample(t:Float, sx:Float, sy:Float, out:Matrix):Float {
 		var a = alpha;
-		if (aRun.length > 0) {
-			var k = (t - aRun[2]) / aRun[3];
-			a = k >= 1 ? aRun[1] : k > 0 ? aRun[0] + (aRun[1] - aRun[0]) * Transition.ease(aEase, k) : aRun[0];
-		} else if (aTrack != null) {
+		if (aTrack != null) {
 			if (aTrack.moving() && !aTrack.pending()) aTrack.sample(t);
 			a = aTrack.value;
 		}
@@ -190,10 +162,6 @@ class Mover {
 			if (!l[0].moving() && !l[1].moving() && !l[2].moving() && !l[3].moving() && !l[4].moving()) l = lanes = null;
 		}
 		var tf = transform;
-		if (tRun.length > 0) {
-			var k = (t - tRun[0]) / tRun[1];
-			if (k >= 1) tf = tTo else if (k > 0) tf = Transform.between(tFrom, tTo, Transition.ease(tEase, k)) else tf = tFrom;
-		}
 		var stx = 0.0, sty = 0.0;
 		if (sticky) {
 			stx = stuck(0, sx);

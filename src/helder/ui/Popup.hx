@@ -37,6 +37,6 @@ class Popup extends Node {
 
 	public function new(?tag:String) {
 		super(tag == null ? "popup" : tag);
-		style.position = Absolute;
+		style = Style.of({position: Absolute});
 	}
 }

@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.ui.box.Len.Lens;
+
 // Ui's popups: layers over the tree (children of Ui.overlay), opened and
 // closed (the focus taken by a modal one, given back where it was), placed
 // by their anchor and kept in the window, dismissed by a press outside them.
@@ -12,12 +14,14 @@ class Popups {
 		if (p.parent == ui.overlay) return;
 		p.returnFocus = ui.focus;
 		if (p.modal) {
-			p.style.left = 0;
-			p.style.top = 0;
-			p.style.width = DimValue.Percent(100);
-			p.style.height = DimValue.Percent(100);
-			p.style.alignItems = Center;
-			p.style.justifyContent = Center;
+			p.style = p.style.with({
+				left: 0,
+				top: 0,
+				width: "100%",
+				height: "100%",
+				alignItems: Center,
+				justifyContent: Center
+			});
 		}
 		ui.overlay.append(p);
 		if (p.modal) {
@@ -133,9 +137,8 @@ class Popups {
 			}
 			x = Math.round(Math.max(0, Math.min(x, ui.width - w)));
 			y = Math.round(Math.max(0, Math.min(y, ui.height - h)));
-			if (p.style.left.resolve(0) != x || p.style.top.resolve(0) != y) {
-				p.style.left = x;
-				p.style.top = y;
+			if (Lens.resolve(p.used.inset(3), 0, 0) != x || Lens.resolve(p.used.inset(0), 0, 0) != y) {
+				p.style = p.style.with({position: Absolute, left: x, top: y});
 				moved = true;
 			}
 		}

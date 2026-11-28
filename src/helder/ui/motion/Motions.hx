@@ -41,8 +41,6 @@ import helder.async.Errors;
 class Motions {
 	// (a node declared motion: the hooks run)
 	public static var on(default, null) = false;
-	// (the engine writing a style property: its setter takes it as it is)
-	public static var writing = false;
 	// (inside instant(f))
 	static var instantDepth = 0;
 	// (ghosts drawn: nodes leaving)
@@ -93,9 +91,9 @@ class Motions {
 		return false;
 	}
 
-	// (the curve for a property's change under spec, null: none; a token resolved for n)
+	// (the curve for a property's change under spec)
 	static inline function curveOf(c:Curve, n:Node):Curve
-		return c.resolve(n);
+		return c;
 
 	// (a change's start: in a frame's update the Clock's time, else (an event between frames) the next tick's)
 	public static inline function now():Float
@@ -221,27 +219,17 @@ class Motions {
 		// (the one surface from now on: fully present)
 		if (p.presence != null) p.presence.set(1);
 		// (its radius and fill from the source's)
-		var s = n.used;
-		if (src.radius != s.borderRadius) {
-			var to = s.borderRadius;
+		var s = n.used, radius = radiusOf(n);
+		if (src.radius != radius) {
 			if (p.radius == null) p.radius = new Track(src.radius, 1e-3) else p.radius.set(src.radius);
-			p.radius.animate(t, to, curveOf(spec.radiusCurve(), n));
-			write(() -> s.borderRadius = src.radius);
+			p.radius.animate(t, radius, curveOf(spec.radiusCurve(), n));
 		}
-		if (src.background != (s.backgroundColor : helder.gfx.Color) && !src.background.isToken && !(s.backgroundColor : helder.gfx.Color).isToken) {
-			var to = (s.backgroundColor : helder.gfx.Color);
+		if (src.background != (s.backgroundColor : Color)) {
 			if (p.background == null) p.background = new ColorTrack(src.background) else p.background.set(src.background);
-			p.background.animate(t, to, curveOf(spec.colorCurve(), n));
-			write(() -> (s.backgroundColor : helder.gfx.Color) = src.background);
+			p.background.animate(t, (s.backgroundColor : Color), curveOf(spec.colorCurve(), n));
 		}
 		activate(p);
 		return true;
-	}
-
-	static inline function write(f:Void->Void) {
-		writing = true;
-		f();
-		writing = false;
 	}
 
 	// (Ui.update's end: a matched source left over one update forgotten, a consumed one's ghost gone)
@@ -277,7 +265,7 @@ class Motions {
 			return;
 		}
 		// (into a drawn parent: it enters when it is first drawn, by the transition it has then)
-		if (parent.ui != null && @:privateAccess parent.style.drawn && !underInstant(child)) @:privateAccess child.entering = true;
+		if (parent.ui != null && @:privateAccess parent.drawn && !underInstant(child)) @:privateAccess child.entering = true;
 	}
 
 	// (Ui's paint: n, inserted into a drawn parent, drawn for the first time: entering by its transition's presence)
@@ -337,8 +325,8 @@ class Motions {
 				v1: e ? p.t.velocity : 0,
 				v2: e ? p.r.velocity : 0,
 				v3: e ? p.b.velocity : 0,
-				radius: child.style.borderRadius,
-				background: child.style.background,
+				radius: radiusOf(child),
+				background: (child.used.backgroundColor : Color),
 				update: updates,
 				consumed: false
 			});
@@ -393,18 +381,45 @@ class Motions {
 
 	// (a property's change, under motion: moving, whether the setter leaves it where it is)
 	static function gate(n:Node):Null<MotionSpec>
-		return writing || n.ui == null || !@:privateAccess n.style.drawn ? null : specOf(n);
+		return n.ui == null || !@:privateAccess n.drawn ? null : specOf(n);
+
+	// (its corners' radius as drawn: the top left's)
+	static function radiusOf(n:Node):Float {
+		var c = helder.ui.NodePaint.corners(n.used, n.width, n.height, 0);
+		return c == null ? 0 : c.topLeft;
+	}
+
+	// A node restyled (Node.restyled): what its motion spec or its transition eases, from where it is drawn now
+	// to its new style's, on its tracks; what neither eases jumps.
+	public static function restyled(n:Node, was:helder.ui.box.BoxStyle, now:helder.ui.box.BoxStyle) {
+		if (n.ui == null || !@:privateAccess n.drawn) return;
+		if (was.opacity != now.opacity) moveFloat(n, OPACITY, was.opacity, now.opacity);
+		if (was.backgroundColor != now.backgroundColor) moveColor(n, BACKGROUND, was.backgroundColor, now.backgroundColor);
+		if (was.borderColor(0) != now.borderColor(0)) moveColor(n, BORDER, was.borderColor(0), now.borderColor(0));
+		if (was.text.colour != now.text.colour) moveTextColor(n, was.text.colour, now.text.colour);
+		var a = helder.ui.NodePaint.corners(was, n.width, n.height, 0), b = helder.ui.NodePaint.corners(now, n.width, n.height, 0);
+		var ra = a == null ? 0 : a.topLeft, rb = b == null ? 0 : b.topLeft;
+		if (ra != rb) moveFloat(n, RADIUS, ra, rb);
+		var ta = helder.ui.Resolve.propsOf(was)?.transform, tb = helder.ui.Resolve.propsOf(now)?.transform;
+		if (ta != tb) moveTransform(n, ta, tb);
+	}
+
+	// (the curve a change of property (Transition's name for it) takes: its transition's, else its spec's; null: none)
+	static function easing(n:Node, property:String, spec:Null<MotionSpec>, specCurve:MotionSpec->Curve):Null<Curve> {
+		var tr = n.props().transition, t = tr == null ? null : tr.timing(property);
+		if (t != null) return Curve.tween(t.duration, t.easing);
+		return spec == null ? null : curveOf(specCurve(spec), n);
+	}
 
 	public static inline var OPACITY = 0;
 	public static inline var RADIUS = 1;
 
-	// (Style's setters of opacity and radius)
-	public static function moveFloat(n:Node, prop:Int, from:Float, to:Float):Bool {
-		if (writing) return false;
+	// (its opacity or radius changed)
+	static function moveFloat(n:Node, prop:Int, from:Float, to:Float):Bool {
 		var p = n.present, tr = p == null ? null : prop == OPACITY ? p.opacity : p.radius;
-		var spec = gate(n);
 		var fades = prop == OPACITY;
-		if (spec == null || (Clock.reducedMotion && !fades)) {
+		var c = easing(n, prop == OPACITY ? "opacity" : "borderRadius", gate(n), s -> prop == OPACITY ? s.opacityCurve() : s.radiusCurve());
+		if (c == null || (Clock.reducedMotion && !fades)) {
 			if (tr != null && tr.moving()) tr.set(to);
 			return false;
 		}
@@ -414,8 +429,7 @@ class Motions {
 			tr = new Track(from, prop == OPACITY ? 1e-4 : 1e-3);
 			if (prop == OPACITY) p.opacity = tr else p.radius = tr;
 		}
-		var c = Clock.reducedMotion ? Curve.REDUCED_FADE : curveOf(prop == OPACITY ? spec.opacityCurve() : spec.radiusCurve(), n);
-		tr.animate(now(), to, c);
+		tr.animate(now(), to, Clock.reducedMotion ? Curve.REDUCED_FADE : c);
 		activate(p);
 		if (prop == OPACITY) @:privateAccess n.willMove();
 		return true;
@@ -424,12 +438,11 @@ class Motions {
 	public static inline var BACKGROUND = 0;
 	public static inline var BORDER = 1;
 
-	// (Style's setters of background and borderColor)
-	public static function moveColor(n:Node, prop:Int, from:Color, to:Color):Bool {
-		if (writing) return false;
+	// (its background or border colour changed)
+	static function moveColor(n:Node, prop:Int, from:Color, to:Color):Bool {
 		var p = n.present, tr = p == null ? null : prop == BACKGROUND ? p.background : p.border;
-		var spec = gate(n);
-		if (spec == null || from.isToken || to.isToken) {
+		var c = easing(n, prop == BACKGROUND ? "background" : "borderColor", gate(n), s -> s.colorCurve());
+		if (c == null) {
 			if (tr != null && tr.moving()) tr.set(to);
 			return false;
 		}
@@ -439,44 +452,39 @@ class Motions {
 			tr = new ColorTrack(from);
 			if (prop == BACKGROUND) p.background = tr else p.border = tr;
 		}
-		tr.animate(now(), to, Clock.reducedMotion ? Curve.REDUCED_FADE : curveOf(spec.colorCurve(), n));
+		tr.animate(now(), to, Clock.reducedMotion ? Curve.REDUCED_FADE : c);
 		activate(p);
 		return true;
 	}
 
-	// (Style's setter of color: the text colour drawn from its track, Node.textColor, the style set when it settles)
-	public static function moveTextColor(n:Node, from:Null<Color>, to:Null<Color>):Bool {
-		if (writing) return false;
+	// (its text colour changed: drawn from its track, Node.textColor, its style's when it settles)
+	static function moveTextColor(n:Node, from:Color, to:Color):Bool {
 		var p = n.present, tr = p == null ? null : p.color;
-		var spec = gate(n);
-		if (spec == null) {
-			if (tr != null && tr.moving()) tr.set(0);
+		var spec = gate(n), c = easing(n, "color", spec, s -> s.colorCurve());
+		if (c == null) {
+			if (tr != null && tr.moving()) tr.set(to);
 			return false;
 		}
-		var a = from ?? n.textColor(), b = to ?? (n.parent == null ? Style.DEFAULT_COLOR : n.parent.textColor());
-		if (tr != null && tr.moving()) a = tr.value();
-		if (a.isToken || b.isToken || a == b && (tr == null || !tr.moving())) return false;
+		var a = tr != null && tr.moving() ? tr.value() : from;
+		if (a == to && (tr == null || !tr.moving())) return false;
 		if (p == null) p = present(n);
 		if (tr == null) p.color = tr = new ColorTrack(a) else if (!tr.moving()) tr.set(a);
-		p.colorTo = to;
-		var c = curveOf(spec.colorCurve(), n);
-		tr.animate(now(), b, Clock.reducedMotion ? Curve.REDUCED_FADE : spec.textLeads ? c.scaled(0.5) : c);
+		tr.animate(now(), to, Clock.reducedMotion ? Curve.REDUCED_FADE : spec != null && spec.textLeads ? c.scaled(0.5) : c);
 		activate(p);
 		return true;
 	}
 
-	// (Style's setter of transform: its lanes from the transform drawn now to the new one's, the style set at once)
-	public static function moveTransform(n:Node, from:Null<Transform>, to:Null<Transform>) {
-		if (writing) return;
+	// (its transform changed: its lanes from the transform drawn now to the new one's)
+	static function moveTransform(n:Node, from:Null<Transform>, to:Null<Transform>) {
 		var p = n.present;
-		var spec = gate(n);
-		if (spec == null || Clock.reducedMotion) {
+		var c = easing(n, "transform", gate(n), s -> s.transformCurve());
+		if (c == null || Clock.reducedMotion) {
 			if (p != null) p.tx = p.ty = p.sx = p.sy = p.rot = null;
 			return;
 		}
 		if (p == null) p = present(n);
 		if (p.tx == null) p.setLanes(from == null || from.isIdentity() ? null : from.toMatrix(n.width, n.height));
-		p.animateLanes(now(), to == null || to.isIdentity() ? null : to.toMatrix(n.width, n.height), curveOf(spec.transformCurve(), n));
+		p.animateLanes(now(), to == null || to.isIdentity() ? null : to.toMatrix(n.width, n.height), c);
 		activate(p);
 		@:privateAccess n.willMove();
 	}
@@ -518,30 +526,21 @@ class Motions {
 			p.b.sample(now);
 			if (p.flying && !p.l.moving() && !p.t.moving() && !p.r.moving() && !p.b.moving()) p.flying = false;
 		}
-		writing = true;
+		// (the tracks drawn from as they move: NodePaint's style, Node.textColor, the walk's opacity)
+		var painted = false;
 		if (p.opacity != null && p.opacity.moving()) {
 			p.opacity.sample(now);
-			s.opacity = p.opacity.value;
+			@:privateAccess n.compositeChanged();
 		}
-		if (p.radius != null && p.radius.moving()) {
-			p.radius.sample(now);
-			s.borderRadius = p.radius.value;
+		for (tr in [p.radius]) if (tr != null && tr.moving()) {
+			tr.sample(now);
+			painted = true;
 		}
-		if (p.background != null && p.background.moving()) {
-			p.background.sample(now);
-			(s.backgroundColor : helder.gfx.Color) = p.background.value();
+		for (tr in [p.background, p.border, p.color]) if (tr != null && tr.moving()) {
+			tr.sample(now);
+			painted = true;
 		}
-		if (p.border != null && p.border.moving()) {
-			p.border.sample(now);
-			s.borderColor = p.border.value();
-		}
-		if (p.color != null && p.color.moving()) {
-			p.color.sample(now);
-			// (settled: the style's own)
-			if (!p.color.moving()) s.color = p.colorTo;
-			@:privateAccess n.paintChanged();
-		}
-		writing = false;
+		if (painted) @:privateAccess n.paintChanged();
 		if (p.tx != null) {
 			p.tx.sample(now);
 			p.ty.sample(now);

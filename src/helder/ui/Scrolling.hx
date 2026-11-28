@@ -44,7 +44,7 @@ class Scrolling {
 		var alongX = Math.abs(deltaX) > Math.abs(deltaY);
 		n = target;
 		while (n != null) {
-			if (n.used.scrolls && (alongX ? n.style.overflowX : n.style.overflowY) == Scroll && maxScroll(n, alongX) > 0) {
+			if (n.used.scrollsOn(alongX) && maxScroll(n, alongX) > 0) {
 				ui.overNode = n;
 				ui.overX = deltaX;
 				ui.overY = deltaY;
@@ -126,7 +126,7 @@ class Scrolling {
 	}
 
 	static function canScroll(n:Node, d:Float, x:Bool):Bool {
-		if (d == 0 || (x ? n.style.overflowX : n.style.overflowY) != Scroll) return false;
+		if (d == 0 || !n.used.scrollsOn(x)) return false;
 		var lo = scrollStart(n, x), v = x ? n.scrollX : n.scrollY;
 		return d > 0 ? v < lo + maxScroll(n, x) : v > lo;
 	}
@@ -229,9 +229,9 @@ class Scrolling {
 	static function barSize(n:Node):Float {
 		var look = n.ui == null ? ScrollbarLook.Plain : n.ui.scrollbarLook, a = art(n);
 		var full = a != null ? a[1] : look == ScrollbarLook.MacLegacy ? 8.0 : look == ScrollbarLook.MacOverlay ? 7.0 : Ui.SCROLLBAR;
-		return switch n.style.scrollbarWidth {
-			case None: 0;
-			case Thin: full * 2 / 3;
+		return switch n.used.rare.scrollbarWidth {
+			case "none": 0;
+			case "thin": full * 2 / 3;
 			case _: full;
 		}
 	}
@@ -262,8 +262,8 @@ class Scrolling {
 	static function inheritedBar(n:Node, track:Bool):Null<Color> {
 		var p = n;
 		while (p != null) {
-			var c = track ? p.style.scrollbarTrackColor : p.style.scrollbarColor;
-			if (c != null) return c;
+			var r = p.used.rare, c = track ? r.scrollbarTrackColor : r.scrollbarColor;
+			if (c != null) return (c : Color);
 			p = p.parent;
 		}
 		return null;
@@ -275,7 +275,7 @@ class Scrolling {
 	// the thumb's rectangle (x, y, w, h: absolute, unscrolled), or null when n
 	// does not overflow on the axis
 	static function thumb(n:Node, x:Bool):Null<Array<Float>> {
-		if ((x ? n.style.overflowX : n.style.overflowY) != Scroll) return null;
+		if (!n.used.scrollsOn(x)) return null;
 		var max = maxScroll(n, x);
 		if (max <= 0) return null;
 		if (barSize(n) <= 0) return null;

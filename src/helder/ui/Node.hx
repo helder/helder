@@ -4,7 +4,6 @@ import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.Event;
 import helder.canvas.Matrix;
-import helder.image.Image;
 
 // A node of the UI tree: a box laid out by its parent's flexbox (Layout),
 // drawn by a renderer (Canvas) and receiving events (Ui). Its children are
@@ -328,6 +327,12 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (another resolved style: what the change takes, by Resolve.level)
 	function restyled(was:helder.ui.box.BoxStyle, now:helder.ui.box.BoxStyle) {
 		used = now;
+		// (what eases, from where it is drawn: Motions' tracks)
+		if (helder.ui.motion.Motions.on) helder.ui.motion.Motions.restyled(this, was, now);
+		else if (props().transition != null) {
+			helder.ui.motion.Motions.enable();
+			helder.ui.motion.Motions.restyled(this, was, now);
+		}
 		var level = Resolve.level(was, now);
 		if (was.text != now.text) {
 			fontCache = null;
@@ -913,20 +918,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		}
 	}
 
-	// (inherited: a property its descendants' text may inherit; display not one,
-	// a row shown and hidden again (VirtualScroll) keeping its text laid out)
-	@:allow(helder.ui.Style) function styleChanged(layout:Bool, inherited = true) {
-		if (layout) {
-			markDirty();
-			// (its parent's layout reads its style: margins, flex, position...)
-			if (!inherited) return;
-			// (an inherited text property: the descendants' text changes too, the body's: the layers' too)
-			for (c in children)
-				c.inheritedChanged();
-			if (ui != null && this == ui.body) ui.overlay.inheritedChanged();
-		} else paintChanged();
-	}
-
 	// (the paint it was drawn in last: Ui.paintFrame then)
 	var drawnAt = -1;
 	// (its own layer, while its transform or opacity moves; its content's, a scroller's: Ui.paint)
@@ -1268,7 +1259,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public function selectionScope():Null<Node> {
 		var n:Null<Node> = this, scope:Null<Node> = null;
 		while (n != null) {
-			if (n.selectable && n.style.userSelect != None) scope = n;
+			if (n.selectable && n.props().userSelect != None) scope = n;
 			n = n.parent;
 		}
 		return scope;
@@ -1369,10 +1360,10 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// the transform (Style.transform about Style.transformOrigin) in window
 	// pixels, as Canvas.pushTransform takes it; null: none
 	public function transformMatrix():Null<Matrix> {
-		var t = style.transform;
+		var pr = props(), t = pr.transform;
 		// (Sticky: moved where it sticks, then transformed there)
 		var sx = 0.0, sy = 0.0;
-		if (style.position == Sticky) {
+		if (used.position == "sticky") {
 			var s = stickyOffset();
 			sx = s[0];
 			sy = s[1];
@@ -1380,12 +1371,12 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// (motion: its presence's scale and slide, its transform's lanes, about its presented box)
 		var p = present;
 		if (p != null && p.transforms()) {
-			var w = p.width(), h = p.height(), o = style.transformOrigin;
+			var w = p.width(), h = p.height(), o = pr.transformOrigin;
 			var ox = o == null ? Math.NaN : o[0].resolve(w), oy = o == null ? Math.NaN : o[1].resolve(h);
 			return p.matrix(t == null || t.isIdentity() ? null : t.toMatrix(w, h), absX + (Math.isNaN(ox) ? w / 2 : ox), absY + (Math.isNaN(oy) ? h / 2 : oy), sx, sy);
 		}
 		if (t == null || t.isIdentity()) return sx == 0 && sy == 0 ? null : new Matrix(1, 0, 0, 1, sx, sy);
-		var o = style.transformOrigin;
+		var o = pr.transformOrigin;
 		var w = p != null ? p.width() : width, h = p != null ? p.height() : height;
 		var ox = o == null ? Math.NaN : o[0].resolve(w), oy = o == null ? Math.NaN : o[1].resolve(h);
 		ox = absX + (Math.isNaN(ox) ? w / 2 : ox);
@@ -1406,9 +1397,9 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		while (sc != null && !sc.used.scrolls)
 			sc = sc.parent;
 		if (p == null) return [0, 0];
-		var out = [0.0, 0.0];
+		var out = [0.0, 0.0], s = used;
 		for (axis in 0...2) {
-			var x = axis == 0, s = style, m = s.margin;
+			var x = axis == 0;
 			var pos = x ? absX : absY, size = x ? width : height;
 			// (the view: the scroller's content box, scrolled; else the window's)
 			var v0 = 0.0, v1 = ui == null ? 1e9 : x ? ui.width : ui.height;
@@ -1420,10 +1411,10 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			// (the parent's content box, its margins inside)
 			var ps = p.used, pbe = ps.borderEdges, ppad = ps.paddingEdges;
 			// (an auto margin: 0)
-			var m0 = x ? m.left : m.top, m1 = x ? m.right : m.bottom;
-			var c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + (Math.isNaN(m0) ? 0 : m0);
-			var c1 = (x ? p.absX + p.width - pbe.right - ppad.right : p.absY + p.height - pbe.bottom - ppad.bottom) - (Math.isNaN(m1) ? 0 : m1);
-			var start = (x ? s.left : s.top).resolve(v1 - v0), end = (x ? s.right : s.bottom).resolve(v1 - v0);
+			var m0 = helder.ui.box.Len.Lens.resolve(s.margin[x ? 3 : 0], Math.NaN, 0), m1 = helder.ui.box.Len.Lens.resolve(s.margin[x ? 1 : 2], Math.NaN, 0);
+			var c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + m0;
+			var c1 = (x ? p.absX + p.width - pbe.right - ppad.right : p.absY + p.height - pbe.bottom - ppad.bottom) - m1;
+			var start = helder.ui.box.Len.Lens.resolve(s.inset(x ? 3 : 0), v1 - v0, Math.NaN), end = helder.ui.box.Len.Lens.resolve(s.inset(x ? 1 : 2), v1 - v0, Math.NaN);
 			var d = 0.0;
 			if (!Math.isNaN(start) && pos + d < v0 + start) d = Math.min(v0 + start - pos, Math.max(0, c1 - (pos + size)));
 			if (!Math.isNaN(end) && pos + d + size > v1 - end) d = Math.max(v1 - end - (pos + size), Math.min(0, c0 - pos));
@@ -1490,36 +1481,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public function replaceText(start:Int, end:Int, s:String)
 		if (ui != null && s != "") @:privateAccess ui.textInputNow(s);
 
-	// its background gradient drawn at its size in the window's pixels, at
-	// most GRADIENT_PIXELS of them (a large box's at a lower resolution,
-	// stretched over it: a gradient is smooth, and a full-screen one at a
-	// phone's density would be 10 MB with its upload; kept until either changes)
-	static inline var GRADIENT_PIXELS = 262144.0;
-
-	var gradientImage:Null<Image> = null;
-	var gradientW = 0;
-	var gradientH = 0;
-	var gradientScale = 0.0;
-	var gradientOf:Null<Gradient> = null;
-
-	public function backgroundImage(scale:Float):Image {
-		var g = style.backgroundImage, area = width * height * scale * scale;
-		var k = area > GRADIENT_PIXELS ? scale * Math.sqrt(GRADIENT_PIXELS / area) : scale;
-		var w = Std.int(Math.max(1, Math.round(width * k))), h = Std.int(Math.max(1, Math.round(height * k)));
-		if (gradientImage != null && gradientOf == g && gradientScale == scale && (gradientW != w || gradientH != h) && ui != null && ui.live) {
-			if (ui.stretched.indexOf(this) < 0) ui.stretched.push(this);
-			return gradientImage;
-		}
-		if (gradientImage == null || gradientOf != g || gradientW != w || gradientH != h || gradientScale != scale) {
-			gradientImage = g.render(w, h, k);
-			gradientOf = g;
-			gradientW = w;
-			gradientH = h;
-			gradientScale = scale;
-		}
-		return gradientImage;
-	}
-
 	// whether it takes typed text while focused (a text field): keys that type are its, not shortcuts
 	public function takesText():Bool
 		return false;
@@ -1583,7 +1544,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// the topmost node under (px, py) in window pixels, among this subtree
 	// (clipped by Overflow, through the transforms), or null
 	public function hitTest(px:Float, py:Float):Null<Node> {
-		if (style.display == None) return null;
+		if (used.none) return null;
 		// (nothing of it there)
 		if (!inkAll && (px < inkX0 || px >= inkX1 || py < inkY0 || py >= inkY1)) return null;
 		var m = transformMatrix();
@@ -1595,9 +1556,9 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			px = tx;
 		}
 		var inside = px >= absX && py >= absY && px < absX + width && py < absY + height;
-		if (!inside && style.overflow != Visible) return null;
+		if (!inside && used.clips) return null;
 		// (absolute and sticky children first: they are drawn over the others)
-		var sx = px + (style.overflow == Scroll ? scrollX : 0), sy = py + (style.overflow == Scroll ? scrollY : 0);
+		var sx = px + (used.scrolls ? scrollX : 0), sy = py + (used.scrolls ? scrollY : 0);
 		var order = paintOrder();
 		if (order != null) {
 			var i = order.length;
@@ -1629,8 +1590,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// child is not, and its bounds would stay as they were)
 		for (k in children)
 			if (k.inkStale) k.measureInk();
-		var s = style, was0 = inkX0, was1 = inkY0, was2 = inkX1, was3 = inkY1, wasAll = inkAll;
-		inkAll = s.position == Sticky;
+		var s = used, was0 = inkX0, was1 = inkY0, was2 = inkX1, was3 = inkY1, wasAll = inkAll;
+		inkAll = s.position == "sticky";
 		inkX0 = absX;
 		inkY0 = absY;
 		inkX1 = absX + width;
@@ -1638,15 +1599,14 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// (content wider or higher than its box: past it on either side, as aligned)
 		var c = contentInk();
 		if (!Math.isNaN(c.width)) {
-			var be = s.borderEdges, p = s.padding;
-			var ex = c.width - (width - be.horizontal - p.horizontal), ey = c.height - (height - be.vertical - p.vertical);
+			var ex = c.width - (width - s.edgesAcross(true)), ey = c.height - (height - s.edgesAcross(false));
 			if (ex > 0) {
 				inkX0 -= ex;
 				inkX1 += ex;
 			}
 			if (ey > 0) inkY1 += ey;
 		}
-		if (s.overflow == Visible)
+		if (!s.clips)
 			for (k in children) {
 				if (k.used.none) continue;
 				if (k.inkAll) inkAll = true;
@@ -1695,7 +1655,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (!Math.isNaN(lb)) return lb;
 		// (a reversed column's: its last item's, the first from the top, as Chromium)
 		var items = inOrder();
-		if (style.display != Grid && style.flexDirection == ColumnReverse) {
+		if (used.inner != helder.ui.box.BoxStyle.GRID && used.flexDirection == "column-reverse") {
 			items = items.copy();
 			items.reverse();
 		}

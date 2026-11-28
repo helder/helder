@@ -82,7 +82,7 @@ class VirtualScroll extends Node {
 	public function new(?tag:String, estimate = 44.0) {
 		super(tag ?? "virtual-list");
 		heights = new HeightIndex(estimate);
-		style.overflow = Scroll;
+		style = Style.of({overflow: Scroll});
 		before = new Spacer("before");
 		after = new Spacer("after");
 		append(before);
@@ -106,7 +106,7 @@ class VirtualScroll extends Node {
 		fixedHeight = v;
 		if (!Math.isNaN(v)) heights.estimate = v;
 		for (s in slots)
-			s.node.style.height = Math.isNaN(v) ? DimValue.Auto : (v : Dim);
+			s.node.style = s.node.style.with({height: Math.isNaN(v) ? "auto" : v});
 		place();
 		return v;
 	}
@@ -207,7 +207,7 @@ class VirtualScroll extends Node {
 	// may be shorter than it was)
 	public function remeasure(index:Int) {
 		var r = rowAt(index);
-		if (r != null && Math.isNaN(fixedHeight)) r.node.style.minHeight = 0;
+		if (r != null && Math.isNaN(fixedHeight)) r.node.style = r.node.style.with({minHeight: 0});
 	}
 
 	// the made row of index (null: not made)
@@ -319,8 +319,7 @@ class VirtualScroll extends Node {
 	// (the view's height: its content box; no more than the window's, a list
 	// as tall as its rows (not bounded by its parent) making no more than fill it)
 	function viewHeight():Float {
-		var s = style;
-		var h = height - s.borderEdges.vertical - s.padding.vertical;
+		var h = height - used.edgesAcross(false);
 		if (ui != null && h > ui.height) h = ui.height;
 		return h > 0 ? h : 0;
 	}
@@ -389,7 +388,7 @@ class VirtualScroll extends Node {
 			var s = slots[j], on = s.index >= lo && s.index < hi;
 			if (s.shown != on) {
 				s.shown = on;
-				s.node.style.display = on ? Flex : None;
+				s.node.style = s.node.style.with({display: on ? Display.Flex : Display.None});
 				changed = true;
 			}
 		}
@@ -457,8 +456,7 @@ class VirtualScroll extends Node {
 	// (row i made at slot k)
 	function make(i:Int, k:Int) {
 		var n = new Node("row");
-		n.style.flexShrink = 0;
-		if (!Math.isNaN(fixedHeight)) n.style.height = fixedHeight;
+		n.style = Math.isNaN(fixedHeight) ? Style.of({flexShrink: 0}) : Style.of({flexShrink: 0, height: fixedHeight});
 		var s = new VirtualRow(i, n);
 		slots.insert(k, s);
 		// (after the spacer before and the rows before it)
@@ -526,7 +524,7 @@ class VirtualScroll extends Node {
 				// rounding each edge where it is drawn)
 				var raw = @:privateAccess s.node.lh, h = Math.fceil(raw - 1 / 128);
 				if (h != raw) {
-					s.node.style.minHeight = h;
+					s.node.style = s.node.style.with({minHeight: h});
 					changed = true;
 				}
 				if (!heights.isMeasured(s.index) || heights.heightOf(s.index) != h) {
@@ -583,7 +581,7 @@ private class Spacer extends Node {
 
 	public function new(tag:String) {
 		super(tag);
-		style.flexShrink = 0;
+		style = Style.of({flexShrink: 0});
 	}
 
 	@:noCompletion override public function hasContent():Bool

@@ -45,7 +45,7 @@ class NodePaint {
 		var bg = p.background != null && p.background.moving(), bd = p.border != null && p.border.moving(), r = p.radius != null && p.radius.moving();
 		if (!bg && !bd && !r) return s;
 		return @:privateAccess n.scratch = s.paintInto(@:privateAccess n.scratch, bg ? (p.background.value() : Int) : s.backgroundColor,
-			bd ? (p.border.value() : Int) : s.borderColor(0), r ? p.radius.value() : Math.NaN);
+			bd ? (p.border.value() : Int) : s.borderColor(0), r ? p.radius.value : Math.NaN);
 	}
 
 	// its corners' radii (each corner's horizontal one) for a box of w by h, less d (a padding box's: its widest
