@@ -53,18 +53,16 @@ class Vocabulary {
 	// helder's own else (ring*, corners, borders, lineHeightPx...); Style's
 	// fields, which AttrMacro checks this against
 	public static final STYLES = [
-		"display", "position", "flexDirection", "flexWrap", "justifyContent", "alignItems", "alignSelf", "alignContent", "gridTemplateColumns",
-		"gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "justifyItems",
-		"justifySelf", "flexGrow", "flexShrink", "flexBasis", "flex", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "aspectRatio",
-		"padding", "margin", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "marginTop", "marginRight", "marginBottom", "marginLeft",
-		"borderWidth", "borders", "rowGap", "columnGap", "gap", "left", "top", "right", "bottom", "inset", "overflow", "overflowX", "overflowY",
-		"background", "borderColor", "borderStyle", "borderRadius", "corners", "opacity", "cursor", "backgroundImage", "boxShadow", "outlineWidth",
-		"outlineOffset", "outlineColor", "outline", "userSelect", "fieldSizing", "scrollbarWidth", "breakBefore", "breakAfter", "breakInside", "page",
-		"scrollbarColor", "scrollbarTrackColor", "outlineStyle", "ringWidth", "ringColor", "ringOffsetWidth", "ringOffsetColor", "ringInset", "transform",
-		"transformOrigin", "color", "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "lineHeightPx", "letterSpacing", "letterSpacingEm",
-		"wordSpacing", "textAlign", "order", "zIndex", "direction", "visibility", "pointerEvents", "textWrap", "overflowWrap", "wordBreak",
-		"hyphens", "fontFeatureSettings", "fontVariantNumeric", "textTransform", "textOverflow", "lineClamp", "textDecoration", "textDecorationColor",
-		"textDecorationThickness", "textUnderlineOffset", "textShadow", "transition"
+		"display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink",
+		"flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin",
+		"borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position",
+		"top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing",
+		"textAlign", "textWrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric",
+		"aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas",
+		"gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform",
+		"wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness",
+		"textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform",
+		"transformOrigin", "transition", "backgroundColor"
 	];
 
 	// the attributes every element takes, besides the style properties,

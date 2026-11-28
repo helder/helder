@@ -55,7 +55,9 @@ class Attrs {
 			"display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis",
 			"gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth",
 			"borderColor", "borderStyle", "borderRadius", "shadows", "outline", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
-			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textWrap",
+			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens",
+			"fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle",
+			"scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition",
 			"textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
 			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
 		]) n => true
@@ -63,7 +65,78 @@ class Attrs {
 
 	// (v as p's field name; false: no such style attribute)
 	public static function set(p:Props, name:String, v:Dynamic):Bool {
+		// (an enum's value: typed, else its name as CSS writes it)
+		inline function word():String
+			return Std.string(v).toLowerCase();
 		switch name {
+			case "visibility":
+				p.visibility = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.Visibility) : word() == "hidden" ? Hidden : Visible;
+			case "userSelect":
+				p.userSelect = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.UserSelect) : switch word() {
+					case "none": None;
+					case "text": Text;
+					case "all": All;
+					case _: Auto;
+				}
+			case "textTransform":
+				p.textTransform = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.TextTransform) : switch word() {
+					case "uppercase": Uppercase;
+					case "lowercase": Lowercase;
+					case "capitalize": Capitalize;
+					case _: None;
+				}
+			case "wordSpacing":
+				p.wordSpacing = num(v);
+			case "overflowWrap":
+				p.overflowWrap = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.OverflowWrap) : switch word() {
+					case "normal": Normal;
+					case "anywhere": Anywhere;
+					case _: BreakWord;
+				}
+			case "wordBreak":
+				p.wordBreak = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.WordBreak) : switch word() {
+					case "break-all" | "breakall": BreakAll;
+					case "keep-all" | "keepall": KeepAll;
+					case _: Normal;
+				}
+			case "hyphens":
+				p.hyphens = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.Hyphens) : switch word() {
+					case "none": None;
+					case "auto": Auto;
+					case _: Manual;
+				}
+			case "fontFeatureSettings":
+				p.fontFeatureSettings = v == null ? null : Std.string(v);
+			case "order":
+				p.order = v == null ? null : Std.int(num(v) ?? 0);
+			case "textDecorationColor":
+				p.textDecorationColor = tint(v);
+			case "textDecorationThickness":
+				p.textDecorationThickness = num(v);
+			case "textUnderlineOffset":
+				p.textUnderlineOffset = num(v);
+			case "fieldSizing":
+				p.fieldSizing = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.FieldSizing) : word() == "content" ? Content : Fixed;
+			case "outlineStyle":
+				p.outlineStyle = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.OutlineStyle) : switch word() {
+					case "none": None;
+					case "solid": Solid;
+					case "dashed": Dashed;
+					case "dotted": Dotted;
+					case _: Auto;
+				}
+			case "scrollbarColor":
+				p.scrollbarColor = tint(v);
+			case "scrollbarTrackColor":
+				p.scrollbarTrackColor = tint(v);
+			case "textShadow":
+				p.textShadow = v;
+			case "transform":
+				p.transform = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transform.parse(v) : v;
+			case "transformOrigin":
+				p.transformOrigin = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transform.origin(v) : v;
+			case "transition":
+				p.transition = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transition.parse(v) : v;
 			case "display":
 				p.display = v == null ? null : switch Std.string(v) {
 					case "none": None;

@@ -148,6 +148,8 @@ typedef StyleProps = {
 	?disabled:StyleProps,
 	?selected:StyleProps,
 	?checked:StyleProps,
+	// a checkbox's while neither checked nor not (indeterminate)
+	?mixed:StyleProps,
 	// a field's while it shows its placeholder
 	?placeholder:StyleProps,
 	// in a dark theme (Theme.dark: a CSS module's prefers-color-scheme: dark)
@@ -162,7 +164,8 @@ typedef StateProps = {
 	?focus:StyleProps,
 	?disabled:StyleProps,
 	?selected:StyleProps,
-	?checked:StyleProps
+	?checked:StyleProps,
+	?mixed:StyleProps
 }
 
 // (a transform's and a transition's types: Dynamic where Style's macros run, so that they load no canvas or motion)
@@ -403,6 +406,7 @@ final class Props {
 	public var disabled:Null<Props> = null;
 	public var selected:Null<Props> = null;
 	public var checked:Null<Props> = null;
+	public var mixed:Null<Props> = null;
 	public var placeholder:Null<Props> = null;
 	public var dark:Null<Props> = null;
 	public var group:Null<GroupProps> = null;
@@ -504,6 +508,7 @@ final class Props {
 		o.disabled = from(p.disabled);
 		o.selected = from(p.selected);
 		o.checked = from(p.checked);
+		o.mixed = from(p.mixed);
 		o.placeholder = from(p.placeholder);
 		o.dark = from(p.dark);
 		var g = p.group;
@@ -515,6 +520,7 @@ final class Props {
 			q.disabled = from(g.disabled);
 			q.selected = from(g.selected);
 			q.checked = from(g.checked);
+			q.mixed = from(g.mixed);
 			o.group = q;
 		}
 		return o;
@@ -529,6 +535,7 @@ final class GroupProps {
 	public var disabled:Null<Props> = null;
 	public var selected:Null<Props> = null;
 	public var checked:Null<Props> = null;
+	public var mixed:Null<Props> = null;
 
 	public function new() {}
 }
@@ -675,8 +682,8 @@ final class Style {
 		return "";
 	}
 	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition"];
-	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
-	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
+	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "mixed", "placeholder", "dark"];
+	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked", "mixed"];
 	#end
 
 	// a state's bit (Node.state's): hover, pressed, focus, disabled, selected, checked, placeholder; a group's, it shifted by GROUP
@@ -687,6 +694,7 @@ final class Style {
 	public static inline var SELECTED = 16;
 	public static inline var CHECKED = 32;
 	public static inline var PLACEHOLDER = 64;
+	public static inline var MIXED = 128;
 	public static inline var GROUP = 8;
 	// (passed down with the group's states, what it inherits besides its text: an ancestor's pointerEvents None,
 	// its visibility Hidden)
@@ -698,10 +706,15 @@ final class Style {
 	public function at(mask:Int, dark = false):Props {
 		var p = props;
 		if (mask == 0 && (!dark || p.dark == null)) return p;
+		return apply(p, mask, dark);
+	}
+
+	// (p in states: its variants over it, each with its own variants (selected: {hover: ...}) applied first)
+	static function apply(p:Props, mask:Int, dark:Bool):Props {
 		var out = p;
 		inline function over(bit:Int, v:Null<Props>)
-			if (mask & bit != 0 && v != null) out = merge(out, v);
-		if (dark && p.dark != null) out = merge(out, p.dark);
+			if (mask & bit != 0 && v != null) out = merge(out, apply(v, mask, dark));
+		if (dark && p.dark != null) out = merge(out, apply(p.dark, mask, dark));
 		var g = p.group;
 		if (g != null) {
 			over(HOVER << GROUP, g.hover);
@@ -710,6 +723,7 @@ final class Style {
 			over(DISABLED << GROUP, g.disabled);
 			over(SELECTED << GROUP, g.selected);
 			over(CHECKED << GROUP, g.checked);
+			over(MIXED << GROUP, g.mixed);
 		}
 		over(HOVER, p.hover);
 		over(PRESSED, p.pressed);
@@ -717,6 +731,7 @@ final class Style {
 		over(DISABLED, p.disabled);
 		over(SELECTED, p.selected);
 		over(CHECKED, p.checked);
+		over(MIXED, p.mixed);
 		over(PLACEHOLDER, p.placeholder);
 		return out;
 	}
@@ -724,23 +739,33 @@ final class Style {
 	// (the states it has a variant for: what a change of the others leaves it as it is)
 	public var states(get, never):Int;
 
-	function get_states():Int {
-		var p = props, m = 0;
-		if (p.hover != null) m |= HOVER;
-		if (p.pressed != null) m |= PRESSED;
-		if (p.focus != null) m |= FOCUS;
-		if (p.disabled != null) m |= DISABLED;
-		if (p.selected != null) m |= SELECTED;
-		if (p.checked != null) m |= CHECKED;
-		if (p.placeholder != null) m |= PLACEHOLDER;
+	function get_states():Int
+		return statesOf(props);
+
+	// (the states p has a variant for, its variants' variants' too)
+	static function statesOf(p:Null<Props>):Int {
+		if (p == null) return 0;
+		var m = 0;
+		inline function has(bit:Int, v:Null<Props>)
+			if (v != null) m |= bit | statesOf(v);
+		has(HOVER, p.hover);
+		has(PRESSED, p.pressed);
+		has(FOCUS, p.focus);
+		has(DISABLED, p.disabled);
+		has(SELECTED, p.selected);
+		has(CHECKED, p.checked);
+		has(MIXED, p.mixed);
+		has(PLACEHOLDER, p.placeholder);
+		if (p.dark != null) m |= statesOf(p.dark);
 		var g = p.group;
 		if (g != null) {
-			if (g.hover != null) m |= HOVER << GROUP;
-			if (g.pressed != null) m |= PRESSED << GROUP;
-			if (g.focus != null) m |= FOCUS << GROUP;
-			if (g.disabled != null) m |= DISABLED << GROUP;
-			if (g.selected != null) m |= SELECTED << GROUP;
-			if (g.checked != null) m |= CHECKED << GROUP;
+			has(HOVER << GROUP, g.hover);
+			has(PRESSED << GROUP, g.pressed);
+			has(FOCUS << GROUP, g.focus);
+			has(DISABLED << GROUP, g.disabled);
+			has(SELECTED << GROUP, g.selected);
+			has(CHECKED << GROUP, g.checked);
+			has(MIXED << GROUP, g.mixed);
 		}
 		return m;
 	}
@@ -839,6 +864,7 @@ final class Style {
 		o.disabled = both(a.disabled, b.disabled);
 		o.selected = both(a.selected, b.selected);
 		o.checked = both(a.checked, b.checked);
+		o.mixed = both(a.mixed, b.mixed);
 		o.placeholder = both(a.placeholder, b.placeholder);
 		o.dark = both(a.dark, b.dark);
 		o.group = a.group == null ? b.group : b.group == null ? a.group : {
@@ -849,6 +875,7 @@ final class Style {
 			g.disabled = both(a.group.disabled, b.group.disabled);
 			g.selected = both(a.group.selected, b.group.selected);
 			g.checked = both(a.group.checked, b.group.checked);
+			g.mixed = both(a.group.mixed, b.group.mixed);
 			g;
 		}
 		return o;
@@ -977,6 +1004,7 @@ final class Style {
 		sub("disabled", p.disabled);
 		sub("selected", p.selected);
 		sub("checked", p.checked);
+		sub("mixed", p.mixed);
 		sub("placeholder", p.placeholder);
 		sub("dark", p.dark);
 		var g = p.group;
@@ -988,6 +1016,7 @@ final class Style {
 			sub("disabled", g.disabled);
 			sub("selected", g.selected);
 			sub("checked", g.checked);
+			sub("mixed", g.mixed);
 			out.add("}");
 		}
 		return out.toString();

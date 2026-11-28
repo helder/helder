@@ -1753,8 +1753,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			attrs.set(name, value);
 		}
 		var d = attr("data-state"), bits = (d == "checked" ? Style.CHECKED : 0) | (d == "selected" ? Style.SELECTED : 0)
-			| (attr("data-disabled") != null ? Style.DISABLED : 0);
-		var next = states & ~(Style.CHECKED | Style.SELECTED | Style.DISABLED) | bits;
+			| (d == "mixed" || d == "indeterminate" ? Style.MIXED : 0) | (attr("data-disabled") != null ? Style.DISABLED : 0);
+		var next = states & ~(Style.CHECKED | Style.SELECTED | Style.MIXED | Style.DISABLED) | bits;
 		if (next != states) {
 			states = next;
 			resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);

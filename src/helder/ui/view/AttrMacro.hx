@@ -28,78 +28,15 @@ using haxe.macro.TypeTools;
 // literal attribute name in markup calls that alone (setter, NodeRenderer's
 // setProperty macro), so a program links the parsers its attributes use.
 class AttrMacro {
-	public static function build():Array<Field> {
-		var fields = Context.getBuildFields();
-		var own = [for (f in fields) f.name => true];
-		var cases:Array<Case> = [];
-		var names:Array<Expr> = [];
-		var enums = new Map<String, Bool>();
-		var pos = Context.currentPos();
-		// (markup's words are Style's: the two tables one)
-		var props = [for (f in styleProperties()) f.name], words = helder.view.Vocabulary.STYLES;
-		var missing = [for (p in props) if (words.indexOf(p) < 0) p], extra = [for (w in words) if (props.indexOf(w) < 0) w];
-		if (missing.length + extra.length > 0)
-			Context.fatalError("helder.ui: Vocabulary.STYLES is not Style's properties (" + (missing.length > 0 ? "missing " + missing.join(", ") : "")
-				+ (extra.length > 0 ? " not Style's " + extra.join(", ") : "") + ")", pos);
-		for (f in styleProperties()) {
-			var name = f.name;
-			if (!own.exists(name)) {
-				var conv = convert(f.type, fields, enums);
-				fields.push({
-					name: name,
-					access: [AStatic],
-					pos: pos,
-					// (converted as its type is: a literal of an enum's checked, checkValue)
-					meta: [{name: ":converted", pos: pos}],
-					kind: FFun({args: [{name: "style", type: macro :helder.ui.Style}, {name: "v", type: macro :Dynamic}], ret: macro :Void, expr: macro style.$name = $conv})
-				});
-			}
-			fields.push({
-				name: setterName(name),
-				access: [APublic, AStatic],
-				pos: pos,
-				kind: FFun({
-					args: [{name: "n", type: macro :helder.ui.Node}, {name: "name", type: macro :String}, {name: "v", type: macro :Dynamic}],
-					ret: macro :Void,
-					expr: macro $i{name}(n.style, v)
-				})
-			});
-			cases.push({values: [macro $v{name}], expr: macro $i{name}(style, v)});
-			names.push(macro $v{name} => true);
+	// (Style's fields markup sets, StyleProps' but its states' variants: their names and types)
+	static function styleProperties():Array<{name:String, type:Type}> {
+		var t = Context.follow(Context.getType("helder.ui.Style.StyleProps"));
+		return switch t {
+			case TAnonymous(a): [for (f in a.get().fields) if (VARIANTS.indexOf(f.name) < 0) {name: f.name, type: f.type}];
+			case _: Context.fatalError("helder.ui: StyleProps is no structure", Context.currentPos());
 		}
-		var sw = {expr: ESwitch(macro name, cases, macro return false), pos: Context.currentPos()};
-		fields.push({
-			name: "apply",
-			access: [APublic, AStatic],
-			pos: Context.currentPos(),
-			kind: FFun({args: [{name: "style", type: macro :helder.ui.Style}, {name: "name", type: macro :String}, {name: "v", type: macro :Dynamic}],
-				ret: macro :Bool, expr: macro {
-					$sw;
-					return true;
-				}})
-		});
-		fields.push({
-			name: "NAMES",
-			access: [AStatic, AFinal],
-			pos: Context.currentPos(),
-			kind: FVar(macro :Map<String, Bool>, macro [$a{names}])
-		});
-		return fields;
 	}
 
-	// Style's properties that are attributes: the public ones with a setter
-	static function styleProperties():Array<ClassField> {
-		var style = switch Context.getType("helder.ui.Style") {
-			case TInst(c, _): c.get();
-			case _: throw "helder.ui.Style";
-		}
-		return [for (f in style.fields.get()) if (f.isPublic && f.kind.match(FVar(_, AccCall))) f];
-	}
-
-	static function setterName(property:String):String
-		return "set" + property.charAt(0).toUpperCase() + property.substr(1);
-
-	// (an @:attribute function's attribute: as @:attribute("aria-label") names it, else as the function)
 	static function attributeName(meta:Null<Array<MetadataEntry>>, field:String):String {
 		for (m in meta ?? [])
 			if (m.name == ":attribute" && m.params != null && m.params.length == 1)
@@ -110,10 +47,8 @@ class AttrMacro {
 		return field;
 	}
 
-	// NodeRenderer's setAttribute, made from its own attributes (its
-	// @:attribute functions), data-* and aria-*, then Style's
-	// (StyleAttrs.apply); React's names (htmlFor, className) as HTML's; any
-	// other name thrown with the one meant (Vocabulary)
+	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark", "group"];
+
 	public static function renderer():Array<Field> {
 		var fields = Context.getBuildFields();
 		var cases:Array<Case> = [];
@@ -122,7 +57,7 @@ class AttrMacro {
 		for (f in fields)
 			if (Lambda.exists(f.meta, m -> m.name == ":attribute"))
 				cases.push({values: [macro $v{attributeName(f.meta, f.name)}], expr: macro $p{path.concat([f.name])}(n, name, v)});
-		var sw = {expr: ESwitch(macro name, cases, macro if (!StyleAttrs.apply(n.style, name, v)) noAttribute(n, name)), pos: Context.currentPos()};
+		var sw = {expr: ESwitch(macro name, cases, macro if (!n.styleAttr(name, v)) noAttribute(n, name)), pos: Context.currentPos()};
 		fields.push({
 			name: "setAttribute",
 			access: [APublic, AStatic],
@@ -185,19 +120,13 @@ class AttrMacro {
 					if (f.meta.has(":attribute")) add(attributeName(f.meta.get(), f.name), ["helder", "ui", "view", "NodeRenderer", f.name]);
 			case _:
 		}
-		// (StyleAttrs' own converters: a property converted its own way has no keys checked)
-		var own = switch Context.getType("helder.ui.view.StyleAttrs") {
-			case TInst(c, _): [for (f in c.get().statics.get()) if (!f.meta.has(":converted")) f.name => true];
-			case _: new Map<String, Bool>();
-		}
 		enums_ = [];
 		for (f in styleProperties()) {
-			add(f.name, ["helder", "ui", "view", "StyleAttrs", setterName(f.name)]);
-			if (!own.exists(f.name)) {
-				var e = enumKeys(f.type);
-				if (e != null) enums_.set(f.name, e);
-			}
+			add(f.name, ["helder", "ui", "view", "StyleAttrs", "set"]);
+			var e = enumKeys(f.type);
+			if (e != null) enums_.set(f.name, e);
 		}
+		add("backgroundColor", ["helder", "ui", "view", "StyleAttrs", "set"]);
 		return table_ = t;
 	}
 
@@ -255,64 +184,7 @@ class AttrMacro {
 		return out;
 	}
 
-	// v as the type t
-	static function convert(t:Type, fields:Array<Field>, enums:Map<String, Bool>):Expr {
-		var nullable = false;
-		switch lazy(t) {
-			case TAbstract(_.get() => {name: "Null", pack: []}, [inner]):
-				t = lazy(inner);
-				nullable = true;
-			case TType(_.get() => {name: "Null", pack: []}, [inner]):
-				t = lazy(inner);
-				nullable = true;
-			case l = TType(_, _):
-				// (a typedef: its type; ui's Cursor is helder.os's)
-				t = lazy(Context.follow(l, true));
-			case l:
-				t = l;
-		}
-		var e = switch t {
-			case TAbstract(_.get() => {name: "Float", pack: []}, _): macro float(v);
-			case TAbstract(_.get() => {name: "Int", pack: []}, _): macro Std.int(float(v));
-			case TAbstract(_.get() => {name: "Bool", pack: []}, _): return macro v == true || v == "true";
-			case TInst(_.get() => {name: "String", pack: []}, _): return macro v == null ? null : Std.string(v);
-			case TAbstract(_.get() => {name: "Dim"}, _): macro dim(v);
-			case TAbstract(_.get() => {name: "EdgesValue"}, _): macro edges(v);
-			case TAbstract(_.get() => {name: "Color"}, _): macro colorOf(v);
-			case TAbstract(a, _) if (a.get().meta.has(":enum")):
-				var fn = "enum" + a.get().name;
-				if (!enums.exists(fn)) {
-					enums.set(fn, true);
-					fields.push(enumParser(fn, a.get(), t));
-				}
-				return macro $i{fn}(v);
-			case _:
-				var ct = t.toComplexType();
-				if (hasParse(t)) {
-					var path = typeExpr(t);
-					macro Std.isOfType(v, String) ? $path.parse(v) : (v : $ct);
-				} else return macro(v : $ct);
-		}
-		return nullable ? macro v == null ? null : $e : e;
-	}
-
 	// t, typed if it is not yet (a field's type read before its class is typed)
-	static function lazy(t:Type):Type {
-		while (true)
-			switch t {
-				case TLazy(f): t = f();
-				case _: return t;
-			}
-	}
-
-	static function hasParse(t:Type):Bool
-		return switch t {
-			case TInst(c, _): c.get().statics.get().filter(f -> f.name == "parse").length > 0;
-			case TAbstract(a, _): a.get().impl != null && a.get().impl.get().statics.get().filter(f -> f.name == "parse").length > 0;
-			case _: false;
-		}
-
-	// the type's path as an expression (its module's, when it is not the module's main type)
 	static function typeExpr(t:Type):Expr {
 		var b:BaseType = switch t {
 			case TInst(c, _): c.get();
@@ -327,41 +199,14 @@ class AttrMacro {
 		return macro $p{path};
 	}
 
-	// an enum abstract's values by name (key: lower case, no - or _) and @:css
-	static function enumParser(fn:String, a:AbstractType, t:Type):Field {
-		var cases:Array<Case> = [];
-		var path = typeExpr(t);
-		var ct = t.toComplexType();
-		for (f in a.impl.get().statics.get()) {
-			if (!f.meta.has(":enum") || !f.kind.match(FVar(_, _))) continue;
-			var keys = [key(f.name)];
-			// (a string enum's value too: "ew-resize")
-			switch f.expr()?.expr {
-				case TConst(TString(s)) | TCast({expr: TConst(TString(s))}, _) if (keys.indexOf(key(s)) < 0): keys.push(key(s));
-				case _:
+	static function lazy(t:Type):Type {
+		while (true)
+			switch t {
+				case TLazy(f): t = f();
+				case _: return t;
 			}
-			for (m in f.meta.extract(":css"))
-				for (p in m.params)
-					switch p.expr {
-						case EConst(CString(s, _)): keys.push(key(s));
-						case _:
-					}
-			var name = f.name;
-			cases.push({values: [for (k in keys) macro $v{k}], expr: macro $path.$name});
-		}
-		var msg = " is not a " + a.name;
-		var sw = {expr: ESwitch(macro key(v), cases, macro throw "helder.ui: " + v + $v{msg}), pos: Context.currentPos()};
-		return {
-			name: fn,
-			access: [AStatic],
-			pos: Context.currentPos(),
-			kind: FFun({args: [{name: "v", type: macro :Dynamic}], ret: macro :Null<$ct>, expr: macro {
-				if (v == null) return null;
-				if (!Std.isOfType(v, String)) return v;
-				return $sw;
-			}})
-		};
 	}
+
 
 	static inline function key(s:String):String
 		return AttrNames.key(s);
