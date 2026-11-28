@@ -20,7 +20,7 @@ class Generator {
 	// helder's modules (each written, or typed, `known`, so that what they
 	// declare is named as in their own files: a few modules' files are then
 	// the same as all of helder's)
-	public static final MODULES = ["helder.view.TypeScript", "helder.ui.TypeScript", "helder.web.TypeScript", "helder.canvas.TypeScript",
+	public static final MODULES = ["helder.view.TypeScript", "helder.ui.TypeScript", "helder.ui.fast.TypeScript", "helder.web.TypeScript", "helder.canvas.TypeScript",
 		"helder.async.TypeScript", "helder.dev.TypeScript", "helder.scenario.TypeScript", "helder.story.TypeScript", "helder.jobs.TypeScript", "helder.asset.TypeScript",
 		"helder.scene.TypeScript", "helder.test.TypeScript", "helder.native.TypeScript", "helder.ui.actions.TypeScript", "helder.os.TypeScript",
 		"helder.store.TypeScript", "helder.media.TypeScript", "helder.markdown.TypeScript", "helder.scene.view.TypeScript"];

@@ -6,7 +6,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Image} from "helder/asset";
-import type {Edges, PointerType, Rect} from "helder/os";
+import type {Cursor, Edges, PointerType, Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
 declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", DataGrid: "helder.ui.controls.DataGrid", EditableText: "helder.ui.controls.EditableText", GridColumn: "helder.ui.controls.GridColumn", GridTheme: "helder.ui.controls.GridTheme", Icons: "helder.ui.controls.Icons", Pager: "helder.ui.controls.Pager", TextArea: "helder.ui.controls.TextArea", TextField: "helder.ui.controls.TextField", WindowButtons: "helder.ui.controls.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.controls.Pager.create", windowControlsSide: "helder.ui.controls.WindowButtons.side", item: "helder.ui.menu.Menus.menuItem", separator: "helder.ui.menu.Menus.menuSeparator", submenu: "helder.ui.menu.Menus.menuSubmenu", role: "helder.ui.menu.Menus.menuRole", popup: "helder.ui.menu.Menus.popup", resolve: "helder.ui.menu.Menus.menuResolve", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Pages: "helder.ui.controls.Pager.Pages", WindowControls: "helder.ui.controls.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Slider: "helder.ui.controls.Standard.Slider", Segmented: "helder.ui.controls.Standard.Segmented", Tooltip: "helder.ui.controls.Standard.Tooltip", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
@@ -127,6 +127,11 @@ export type Completion = { label: string; detail?: string; insert?: string };
 
 // suggestions for the word that starts at from and ends at the caret
 export type Completions = { from: number; items: Completion[] };
+
+// The pointer's shape over a node (Style.cursor): helder.os's, whose Auto
+// takes the parent's (the root's: Default); a window shows the hovered
+// node's (Ui.cursor).
+export type Cursor = Cursor;
 
 // a menu of the menu bar; role Window: the window menu (macOS's: its own
 // items after Minimize, Zoom and Close)

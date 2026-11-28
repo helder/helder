@@ -26,6 +26,9 @@
     "./ui": {
       "types": "./src/helder/ui/index.d.ts"
     },
+    "./ui/fast": {
+      "types": "./src/helder/ui/fast/index.d.ts"
+    },
     "./ui/actions": {
       "types": "./src/helder/ui/actions/index.ts"
     },
