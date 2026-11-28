@@ -672,7 +672,8 @@ class Tree extends helder.ui.Node {
 			var sem = n.semantics;
 			if (n.box.style.none || n.box.parent == null && n != root || sem != null && sem.hidden) return [];
 			var role:Null<Role> = sem != null ? sem.role : null;
-			if (role == null) role = Std.isOfType(n, FieldNode) ? TextInput : Std.isOfType(n, TextNode) ? (inName || (cast n : TextNode).text == "" ? null : Label) : n.focusable ? Group : null;
+			if (role == null) role = Std.isOfType(n, FieldNode) ? TextInput : Std.isOfType(n, TextNode) ? (inName || (cast n : TextNode).text == "" ? null : Label) : n.focusable
+				|| sem != null && sem.live != Off ? Group : null;
 			var named = inName || role != null && role.namedByContent();
 			if (role == null) return [for (c in @:privateAccess n.kids) for (id in visit(c, named)) id];
 			var r = rectOf(n);
@@ -694,6 +695,17 @@ class Tree extends helder.ui.Node {
 				a.level = sem.level;
 				a.disabled = sem.disabled;
 				a.current = sem.current;
+				a.invalid = sem.invalid;
+				a.required = sem.required;
+				a.modal = sem.modal;
+				if (sem.setSize > 0) {
+					a.posInSet = sem.posInSet;
+					a.setSize = sem.setSize;
+				}
+				if (sem.live != Off) {
+					a.live = sem.live;
+					a.liveText = textOf(n);
+				}
 			}
 			a.name = sem != null && sem.label != null ? sem.label : role == Label ? (cast n : TextNode).text : role.namedByContent() ? textOf(n) : "";
 			if (Std.isOfType(n, FieldNode)) {

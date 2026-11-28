@@ -201,7 +201,9 @@ class AccessTree {
 		if (sem != null && sem.hidden) return;
 		if (s.visibility != null) seen = s.visibility == Visible;
 		var role:Null<Role> = !seen ? null : sem != null ? sem.role : null;
-		if (role == null && seen) {
+		// (what holds parts that are no Node: their container, no node of its own)
+		var parts = n.accessParts();
+		if (role == null && seen && parts == null) {
 			if (Std.isOfType(n, ImageNode)) role = sem != null && sem.label != null ? Image : null else if (Std.isOfType(n, TextNode))
 				role = inName || (cast n : TextNode).allText() == "" ? null : Label else if (n.focusable || sem != null && (sem.live != Off || sem.identifier != null)) role = Group;
 		}
@@ -270,7 +272,6 @@ class AccessTree {
 			sy += n.scrollY;
 		}
 		// (what it holds that is no Node: its parts, theirs under the node they are of)
-		var parts = n.accessParts();
 		if (parts != null) {
 			var inner = new Map<Int, Bool>();
 			for (p in parts) for (c in p.children) inner.set(c, true);

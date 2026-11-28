@@ -323,6 +323,7 @@ class DocumentBench {
 		fresh("mail", [m20, m1020]);
 		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Mail) -> a.messages(messages(1020)), "search");
+		mailFast(w, h);
 	}
 
 	// (each operation on helder.ui's screen, then on the engine's)
@@ -488,20 +489,41 @@ class DocumentBench {
 		boxNode = null;
 	}
 
-	// ---- the todo on fast nodes (examples/todo-fast): its own markup, helder.ui's ops as they are run on it
+	// ---- the examples on fast nodes (examples/todo-fast, mail-fast): their own markup, helder.ui's ops as they are run on them
 
 	static function todoFast(w:Int, h:Int) {
-		variant = "todo-fast";
 		function tasks(n:Int, from = 0):Array<TodoFast.Task>
 			return [for (i in from...from + n) new TodoFast.Task('Task ${i + 1}: water the plants and call back')];
-		function mount():{ui:Ui, doc:Null<DocumentNode>, keep:TodoFast} {
-			var ui = new Ui(new DrawText(), w, h);
+		fastApp(w, h, "todo-fast", ui -> {
 			var app = new TodoFast();
 			app.todos(tasks(20));
-			fastTree = FastMount.todo(app, ui.root);
+			{app: app, tree: FastMount.todo(app, ui.root)};
+		}, app -> app.todos(app.todos().concat(tasks(1000, 20))), "draft");
+	}
+
+	static function mailFast(w:Int, h:Int) {
+		function messages(n:Int):Array<MailFast.MailMessage>
+			return [
+				for (i in 0...n)
+					new MailFast.MailMessage('Sender ${i % 37}', 'Subject number ${i} about the weekly report', 'Body ${i}', "Inbox", 1 + i % 28, i % 3 == 0)
+			];
+		fastApp(w, h, "mail-fast", ui -> {
+			var app = new MailFast();
+			app.dark(false);
+			app.messages(messages(20));
+			{app: app, tree: FastMount.mail(app, ui.root)};
+		}, app -> app.messages(messages(1020)), "search");
+	}
+
+	static function fastApp<A>(w:Int, h:Int, name:String, make:Ui->{app:A, tree:helder.ui.fast.Tree}, add:A->Void, field:String) {
+		variant = name;
+		function mount():{ui:Ui, doc:Null<DocumentNode>, keep:A} {
+			var ui = new Ui(new DrawText(), w, h);
+			var m = make(ui);
+			fastTree = m.tree;
 			Graph.flush();
 			ui.update();
-			return {ui: ui, doc: null, keep: app};
+			return {ui: ui, doc: null, keep: m.app};
 		}
 		function find(tag:String):helder.ui.fast.Node {
 			var stack = [fastTree.root];
@@ -514,7 +536,7 @@ class DocumentBench {
 		}
 		var made = first("first frame (20 rows)", mount);
 		var ui = made.ui, app = made.keep, tree = fastTree;
-		app.todos(app.todos().concat(tasks(1000, 20)));
+		add(app);
 		Graph.flush();
 		step(ui, null);
 		var list = find("list"), box = tree.rectOf(list);
@@ -527,7 +549,7 @@ class DocumentBench {
 			var q = tree.rectOf(rows[i % rows.length]);
 			ui.pointerMove(q[0] + 20, q[1] + q[3] / 2);
 		});
-		var f = tree.rectOf(find("draft"));
+		var f = tree.rectOf(find(field));
 		ui.pointerDown(f[0] + 10, f[1] + f[3] / 2, 1);
 		ui.pointerUp(f[0] + 10, f[1] + f[3] / 2, 1);
 		step(ui, null);
@@ -540,13 +562,13 @@ class DocumentBench {
 		ui.resize(w, h);
 		step(ui, null);
 		addRows("add 1,000 rows", mount, x -> {
-			x.keep.todos(x.keep.todos().concat(tasks(1000, 20)));
+			add(x.keep);
 			Graph.flush();
 		});
 		sys.FileSystem.createDirectory("bin/document-bench");
 		var s = mount();
 		step(s.ui, null);
-		sys.io.File.saveBytes('bin/document-bench/todo-todo-fast.png', crop(w, h));
+		sys.io.File.saveBytes('bin/document-bench/$screen-$name.png', crop(w, h));
 		fastTree = null;
 	}
 

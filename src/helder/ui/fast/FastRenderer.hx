@@ -127,6 +127,12 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "aria-disabled": semantics(n).disabled = v == true || v == "true";
 			case "aria-current": semantics(n).current = v != null && v != false && v != "false";
 			case "aria-level": semantics(n).level = v == null ? null : Std.int(v);
+			case "aria-live": semantics(n).live = v == null || v == "off" ? Off : v == "assertive" ? Assertive : v == "polite" ? Polite : v;
+			case "aria-invalid": semantics(n).invalid = v == true || v == "true";
+			case "aria-required": semantics(n).required = v == true || v == "true";
+			case "aria-modal": semantics(n).modal = v == true || v == "true";
+			case "aria-posinset": semantics(n).posInSet = v == null ? 0 : Std.int(v);
+			case "aria-setsize": semantics(n).setSize = v == null ? 0 : Std.int(v);
 			case _ if (StringTools.startsWith(name, "data-")):
 			case _:
 				throw 'helder.ui.fast: <${n.tag}> has no attribute $name';
