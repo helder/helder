@@ -507,6 +507,15 @@ private class Measured implements FormattingContext {
 		if (!Math.isNaN(box.minContent)) return;
 		var n:Node = cast box.source, s = box.style.model();
 		var bpx = s.border[1] + s.border[3] + Len.Lens.resolve(s.padding[1], 0, 0) + Len.Lens.resolve(s.padding[3], 0, 0);
+		// (a width of its own: that, as a flex container's is, BlockFlow.intrinsic's)
+		var own = helder.ui.flow.BlockFlow.size(s.width, Math.NaN, s.borderBox, bpx);
+		if (!Math.isNaN(own)) {
+			var lo = helder.ui.flow.BlockFlow.size(s.minWidth, Math.NaN, s.borderBox, bpx), hi = helder.ui.flow.BlockFlow.size(s.maxWidth, Math.NaN, s.borderBox, bpx);
+			if (!Math.isNaN(hi)) own = Math.min(own, hi);
+			if (!Math.isNaN(lo)) own = Math.max(own, lo);
+			box.minContent = box.maxContent = own + bpx;
+			return;
+		}
 		var max = n.measureContent(text, Math.NaN, Math.NaN, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY).width;
 		var min = Math.min(n.minContentWidth(text), max);
 		// (a height of its own through its aspect ratio: that width, its content's min-content when wider)

@@ -106,8 +106,8 @@ class LayoutConformanceCheck {
 			Sys.println("FIXED " + f + " (BLESS=1 to require it)");
 		#if !helder.layout
 		// (on the CSS engine's layout, NodeBoxes: Layout's required cases it fails so far, fewer as the port goes on)
-		Sys.println('LayoutConformanceCheck: ${failures.length} required failing on the engine, at most 32');
-		if (failures.length > 32) Sys.exit(1);
+		Sys.println('LayoutConformanceCheck: ${failures.length} required failing on the engine, at most 30');
+		if (failures.length > 30) Sys.exit(1);
 		#else
 		if (failures.length + fixed.length > 0) {
 			Sys.println('LayoutConformanceCheck: ${failures.length} required failing, ${fixed.length} pending passing');
