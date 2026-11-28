@@ -372,6 +372,7 @@ class BlockLines {
 		var root = (cast c.root : BoxInline).box, rtl = root.style.rtl, align = root.style.rare.textAlign;
 		var startAligned = align == "" || align == "start" || align == "justify" || align == (rtl ? "right" : "left");
 		var lines = 0, baseline = Math.NaN;
+		var needsMarker = from == 0 && l.from == null && built.markers.length > 0;
 		for (k in from...to) {
 			var top = l.lineTop(k), h = l.lineHeight(k);
 			// (a leader's line: the leader takes what the line leaves, its copies whole from the end, so
@@ -402,7 +403,10 @@ class BlockLines {
 				baseline = top + l.lineBaseline(k);
 			}
 			// (its marker first, the item's first child)
-			if (k == 0 && l.from == null && built.markers.length > 0) markers(space, built.markers, line, l.lineBaseline(k), 0, rtl, constraints.width);
+			if (needsMarker && !l.lineEmpty(k)) {
+				markers(space, built.markers, line, l.lineBaseline(k), 0, rtl, constraints.width);
+				needsMarker = false;
+			}
 			// (spans made first, outer ones before inner: the boxes' parts on this line, by their Open item;
 			// then everything adopted in the line's order, a span where its first part on the line is, before
 			// what it holds: the tree's order in a line of one direction, as paint and a PDF's text follow it;
@@ -529,10 +533,10 @@ class BlockLines {
 			}
 		}
 		// (a list item with nothing else: a line for its marker, as tall as the marker's)
-		if (l.lines == 0 && built.markers.length > 0) {
+		if (needsMarker && to == l.lines) {
 			var line = frags.add(Fragments.LINE, (cast c.root : BoxInline).box, 0, 0);
 			frags.adopt(frag, line, ox, oy);
-			var room = constraints.lineWidth == null ? null : constraints.lineWidth(0, 1);
+			var room = l.lines > 0 || constraints.lineWidth == null ? null : constraints.lineWidth(0, 1);
 			var shift = room == null ? 0.0 : rtl ? room.offset + room.width - constraints.width : room.offset;
 			var h = markers(space, built.markers, line, -1, shift, rtl, constraints.width);
 			frags.resize(line, 0, h.height);
@@ -685,21 +689,34 @@ class BlockLines {
 				baseline = Math.max(baseline, mb);
 				height = Math.max(height, ml.lineHeight(0));
 			}
-			var span = frags.add(Fragments.SPAN, mk, w, ml.lineHeight(0));
 			// (an image's: 7 before the line, as Chromium's marker padding; a text's own space does that)
 			var gap = laid.length > 0 ? 7 : 0;
 			var start = rtl ? avail : 0.0;
 			// (a marker in its item's own formatting context sits outside its border box)
 			if (item.style.listItem && mk.source == item.source && mk.pseudo == itemMarker)
 				start = (rtl ? frags.width(host) : 0) - frags.x(line);
-			frags.adopt(line, span, shift + (rtl ? start + gap : start - w - gap), own ? 0 : baseline - mb);
+			else if (!Math.isNaN(space.outsideMarkerOffset))
+				start = (rtl ? frags.width(host) : 0) + space.outsideMarkerOffset - frags.x(line);
+			var x = rtl ? start + gap : start - w - gap;
+			var shape = !space.exact && mk.markerSymbol() != null;
+			// (a painted bullet's bounds: its shape and the gap before the item)
+			if (shape) {
+				var fonts = space.fonts.inlines;
+				var offset = Std.int(fonts.ascent(fonts.idOf(BoxInline.of(mk, avail))) * 2 / 3);
+				w = Std.int((offset + 1) / 2) + 2;
+				x = rtl ? start + offset + 8 - w : start - offset - 8;
+			}
+			var span = frags.add(Fragments.SPAN, mk, w, ml.lineHeight(0));
+			frags.adopt(line, span, shift + x, own ? 0 : baseline - mb);
 			frags.setBaseline(span, mb);
 			var atomic = 0;
 			for (f in ml.lineFragmentStart(0)...ml.lineFragmentEnd(0)) switch ml.kind(f) {
-				case TextRun: text(space, ml, f, mk.first ?? mk, mc, span, ml.x(f), ml.y(f));
+				case TextRun: text(space, ml, f, mk.first ?? mk, mc, span, shape ? 0 : ml.x(f), ml.y(f));
 				case Atomic if (atomic < laid.length): frags.adopt(span, laid[atomic++], ml.x(f), ml.y(f));
 				case _:
 			}
+			var glyph = frags.first(span);
+			if (shape && glyph >= 0 && frags.next(glyph) < 0) frags.resize(glyph, w, frags.height(glyph));
 		}
 		return {height: height, baseline: baseline};
 	}

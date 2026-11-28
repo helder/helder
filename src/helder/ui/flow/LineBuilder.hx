@@ -25,6 +25,7 @@ class LineBuilder {
 	public static inline var HYPHENATED = 2;
 	// (an overflow-wrap cut ends it: where floats are, a line moves down before it cuts)
 	public static inline var CUT = 4;
+	static inline var FILLED = 8;
 	static inline var EPSILON = 1e-4;
 	// (a piece on the line being built: removed, hanging)
 	static inline var REMOVED = 1;
@@ -1178,7 +1179,7 @@ class LineBuilder {
 		o.lPiece[k] = p;
 		o.lEnd[k] = endU;
 		o.lLast[k] = o.fragments;
-		o.lFlags[k] = endFlags;
+		o.lFlags[k] = endFlags | (filled ? FILLED : 0);
 		if (offset + shift + used > o.width) o.width = offset + shift + used;
 		return height;
 	}
