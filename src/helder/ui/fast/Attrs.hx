@@ -56,7 +56,8 @@ class Attrs {
 			"gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth",
 			"borderColor", "borderRadius", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
 			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textWrap",
-			"textOverflow", "lineClamp", "textDecoration", "cursor"
+			"textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
+			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
 		]) n => true
 	];
 
@@ -190,6 +191,24 @@ class Attrs {
 				p.textDecoration = v == null ? null : Std.isOfType(v, Int) ? v : decoration(Std.string(v));
 			case "cursor":
 				p.cursor = v;
+			case "justifyItems":
+				p.justifyItems = align(v);
+			case "justifySelf":
+				p.justifySelf = align(v);
+			case "gridTemplateColumns" | "gridTemplateRows" | "gridTemplateAreas" | "gridAutoColumns" | "gridAutoRows" | "gridAutoFlow" | "gridColumn"
+				| "gridRow" | "gridArea":
+				var t:Null<String> = v == null ? null : Std.string(v);
+				switch name {
+					case "gridTemplateColumns": p.gridTemplateColumns = t;
+					case "gridTemplateRows": p.gridTemplateRows = t;
+					case "gridTemplateAreas": p.gridTemplateAreas = t;
+					case "gridAutoColumns": p.gridAutoColumns = t;
+					case "gridAutoRows": p.gridAutoRows = t;
+					case "gridAutoFlow": p.gridAutoFlow = t;
+					case "gridColumn": p.gridColumn = t;
+					case "gridRow": p.gridRow = t;
+					case _: p.gridArea = t;
+				}
 			case _:
 				return false;
 		}

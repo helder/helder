@@ -773,6 +773,9 @@ class Tree extends helder.ui.Node {
 			if (role == null) role = Std.isOfType(n, FieldNode) ? TextInput : Std.isOfType(n, TextNode) ? (inName || (cast n : TextNode).allText() == "" ? null : Label) : n.focusable
 				|| sem != null && sem.live != Off ? Group : null;
 			var named = inName || role != null && role.namedByContent();
+			// (what it holds that is no fast node, a DOM island's paragraphs: its own to say)
+			var own = role == null ? n.accessOwn(this, out) : null;
+			if (own != null) return own;
 			if (role == null) return [for (c in @:privateAccess n.kids) for (id in visit(c, named)) id];
 			var r = rectOf(n);
 			var a:AccessNode = {
@@ -819,6 +822,47 @@ class Tree extends helder.ui.Node {
 		visit(root, false);
 		return out;
 	}
+
+	// (each paragraph under a box, the blocks whose lines hold text: a label of their text, at their place)
+	@:allow(helder.ui.fast) function paragraphs(top:Box, out:Array<AccessNode>):Array<Int> {
+		var texts = new ObjectMap<Box, StringBuf>(), order:Array<Box> = [];
+		function walk(b:Box) {
+			if (b.kind == Text) {
+				var block = b.parent;
+				while (block != null && block.kind == Inline) block = block.parent;
+				var t = texts.get(block);
+				if (t == null) {
+					texts.set(block, t = new StringBuf());
+					order.push(block);
+				}
+				t.add(b.text);
+				return;
+			}
+			var c = b.first;
+			while (c != null) {
+				walk(c);
+				c = c.next;
+			}
+		}
+		walk(top);
+		var ids = [];
+		for (block in order) {
+			var name = StringTools.trim(texts.get(block).toString());
+			if (name == "") continue;
+			var id = paragraphIds.get(block);
+			if (id == null) paragraphIds.set(block, id = AccessTree.newId());
+			var f = fragmentOf(block), r = f < 0 ? [0.0, 0.0, 0.0, 0.0] : {
+				var p = fragments.absolute(f), sh = shift(block);
+				[absX + p.x - sh[0], absY + p.y - sh[1], fragments.width(f), fragments.height(f)];
+			};
+			out.push({id: id, role: Label, name: name, x: r[0], y: r[1], width: r[2], height: r[3]});
+			ids.push(id);
+		}
+		return ids;
+	}
+
+	// (an island's paragraphs' ids, kept while their boxes are)
+	final paragraphIds = new haxe.ds.ObjectMap<Box, Int>();
 
 	// (the text of the texts in n, space separated: a name from its content)
 	static function textOf(n:Node):String {

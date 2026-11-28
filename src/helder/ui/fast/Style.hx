@@ -76,6 +76,21 @@ typedef StyleProps = {
 	?textDecoration:Int,
 	// the pointer over it (inherited)
 	?cursor:helder.ui.Cursor,
+	// a grid's items in their areas, across (Stretch)
+	?justifyItems:Align,
+	?justifySelf:Align,
+	// a grid's tracks as CSS writes them ("1fr 200px", "repeat(3, 1fr)", "[a] minmax(100px, 1fr)"); grid layout linked where a program says grid
+	?gridTemplateColumns:String,
+	?gridTemplateRows:String,
+	// its areas: rows' names, CSS's strings ("'head head' 'side main'")
+	?gridTemplateAreas:String,
+	?gridAutoColumns:String,
+	?gridAutoRows:String,
+	?gridAutoFlow:String,
+	// an item's lines as CSS writes them ("1 / 3", "span 2", an area's name)
+	?gridColumn:String,
+	?gridRow:String,
+	?gridArea:String,
 	// its state variants, over it where the state is on (a later one's over an earlier's)
 	?hover:StyleProps,
 	?pressed:StyleProps,
@@ -210,6 +225,17 @@ final class Props {
 	public var lineClamp:Null<Int> = null;
 	public var textDecoration:Null<Int> = null;
 	public var cursor:Null<helder.ui.Cursor> = null;
+	public var justifyItems:Null<Align> = null;
+	public var justifySelf:Null<Align> = null;
+	public var gridTemplateColumns:Null<String> = null;
+	public var gridTemplateRows:Null<String> = null;
+	public var gridTemplateAreas:Null<String> = null;
+	public var gridAutoColumns:Null<String> = null;
+	public var gridAutoRows:Null<String> = null;
+	public var gridAutoFlow:Null<String> = null;
+	public var gridColumn:Null<String> = null;
+	public var gridRow:Null<String> = null;
+	public var gridArea:Null<String> = null;
 	public var hover:Null<Props> = null;
 	public var pressed:Null<Props> = null;
 	public var focus:Null<Props> = null;
@@ -272,6 +298,17 @@ final class Props {
 		o.lineClamp = p.lineClamp;
 		o.textDecoration = p.textDecoration;
 		o.cursor = p.cursor;
+		o.justifyItems = p.justifyItems;
+		o.justifySelf = p.justifySelf;
+		o.gridTemplateColumns = p.gridTemplateColumns;
+		o.gridTemplateRows = p.gridTemplateRows;
+		o.gridTemplateAreas = p.gridTemplateAreas;
+		o.gridAutoColumns = p.gridAutoColumns;
+		o.gridAutoRows = p.gridAutoRows;
+		o.gridAutoFlow = p.gridAutoFlow;
+		o.gridColumn = p.gridColumn;
+		o.gridRow = p.gridRow;
+		o.gridArea = p.gridArea;
 		o.hover = from(p.hover);
 		o.pressed = from(p.pressed);
 		o.focus = from(p.focus);
@@ -337,6 +374,10 @@ final class Style {
 	// The style of props: the one made of the same before, else a new one.
 	public static macro function of(props:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
 		return switch props.expr {
+			case EObjectDecl(_) if (grid(props)): macro {
+					helder.ui.fast.Grids.use();
+					helder.ui.fast.Style.intern(${typed(props)});
+				};
 			case EObjectDecl(_): macro helder.ui.fast.Style.intern(${typed(props)});
 			case _: macro helder.ui.fast.Style.ofProps($props);
 		}
@@ -356,6 +397,10 @@ final class Style {
 	// This style with p over it (a variant's too: merged); p a literal, an object, or a Style.
 	public macro function with(self:haxe.macro.Expr, p:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
 		return switch p.expr {
+			case EObjectDecl(_) if (grid(p)): macro {
+					helder.ui.fast.Grids.use();
+					$self.over(${typed(p)});
+				};
 			case EObjectDecl(_): macro $self.over(${typed(p)});
 			case _ if (isStyle(p)): macro $self.over(($p : helder.ui.fast.Style).props);
 			case _: macro $self.over(helder.ui.fast.Style.Props.from($p));
@@ -380,6 +425,22 @@ final class Style {
 		}
 		sets.push(macro p);
 		return macro @:pos(e.pos) $b{sets};
+	}
+
+	// (a literal that says grid, its variants' too: grid layout linked where it is written)
+	static function grid(e:Expr):Bool {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: return false;
+		}
+		for (f in fields) {
+			if (StringTools.startsWith(f.field, "grid") || grid(f.expr)) return true;
+			if (f.field == "display") switch f.expr.expr {
+				case EConst(CIdent("Grid")) | EField(_, "Grid"): return true;
+				case _:
+			}
+		}
+		return false;
 	}
 
 	static function group(e:Expr):Expr {
@@ -408,7 +469,7 @@ final class Style {
 		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
 		return "";
 	}
-	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderRadius", "background", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor"];
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderRadius", "background", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
 	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
 	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
 	#end
@@ -524,6 +585,17 @@ final class Style {
 		o.lineClamp = b.lineClamp ?? a.lineClamp;
 		o.textDecoration = b.textDecoration ?? a.textDecoration;
 		o.cursor = b.cursor ?? a.cursor;
+		o.justifyItems = b.justifyItems ?? a.justifyItems;
+		o.justifySelf = b.justifySelf ?? a.justifySelf;
+		o.gridTemplateColumns = b.gridTemplateColumns ?? a.gridTemplateColumns;
+		o.gridTemplateRows = b.gridTemplateRows ?? a.gridTemplateRows;
+		o.gridTemplateAreas = b.gridTemplateAreas ?? a.gridTemplateAreas;
+		o.gridAutoColumns = b.gridAutoColumns ?? a.gridAutoColumns;
+		o.gridAutoRows = b.gridAutoRows ?? a.gridAutoRows;
+		o.gridAutoFlow = b.gridAutoFlow ?? a.gridAutoFlow;
+		o.gridColumn = b.gridColumn ?? a.gridColumn;
+		o.gridRow = b.gridRow ?? a.gridRow;
+		o.gridArea = b.gridArea ?? a.gridArea;
 		o.hover = both(a.hover, b.hover);
 		o.pressed = both(a.pressed, b.pressed);
 		o.focus = both(a.focus, b.focus);
@@ -600,6 +672,17 @@ final class Style {
 		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
 		if (p.textDecoration != null) word(out, "td", p.textDecoration);
 		if (p.cursor != null) word(out, "cu", p.cursor);
+		if (p.justifyItems != null) word(out, "ji", p.justifyItems);
+		if (p.justifySelf != null) word(out, "js", p.justifySelf);
+		if (p.gridTemplateColumns != null) word(out, "gtc", p.gridTemplateColumns);
+		if (p.gridTemplateRows != null) word(out, "gtr", p.gridTemplateRows);
+		if (p.gridTemplateAreas != null) word(out, "gta", p.gridTemplateAreas);
+		if (p.gridAutoColumns != null) word(out, "gac", p.gridAutoColumns);
+		if (p.gridAutoRows != null) word(out, "gar", p.gridAutoRows);
+		if (p.gridAutoFlow != null) word(out, "gaf", p.gridAutoFlow);
+		if (p.gridColumn != null) word(out, "gc", p.gridColumn);
+		if (p.gridRow != null) word(out, "gr", p.gridRow);
+		if (p.gridArea != null) word(out, "ga", p.gridArea);
 		inline function sub(name:String, v:Null<Props>)
 			if (v != null) {
 				out.add(name);
