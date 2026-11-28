@@ -34,5 +34,40 @@ function tests() {
 			var names = [for (id in ui.accessTree().order) ui.accessTree().nodes.get(id).name];
 			equals(names.indexOf("Hello world") >= 0, true);
 		});
+		test("the theme in scope: its tokens the document's custom properties, its scheme prefers-color-scheme's", () -> {
+			final t = Theme.load("ui/fast/test.theme.css");
+			var reads = new Island(helder.dom.Dom.parse("<!doctype html><style>p { color: var(--surface) } @media (prefers-color-scheme: dark) { b { color: #f00 } }</style><p>a <b>b</b></p>"));
+			var plain = new Island(helder.dom.Dom.parse("<!doctype html><p>plain</p>"));
+			var root = new Node();
+			root.theme = t;
+			root.append(reads);
+			root.append(plain);
+			// (the box of its first element of a tag)
+			function find(i:Island, tag:String):helder.ui.box.Box {
+				var el = i.document.getElementsByTagName(tag).item(0);
+				function walk(b:helder.ui.box.Box):Null<helder.ui.box.Box> {
+					if (b.source == el) return b;
+					var c = b.first;
+					while (c != null) {
+						var f = walk(c);
+						if (f != null) return f;
+						c = c.next;
+					}
+					return null;
+				}
+				return walk(@:privateAccess i.built.root);
+			}
+			function p(i:Island)
+				return find(i, "p");
+			function b(i:Island)
+				return find(i, "b");
+			equals(p(reads).style.text.colour, 0xFFFFFFFF);
+			var kept = @:privateAccess plain.built;
+			root.theme = t.tone(true);
+			equals(p(reads).style.text.colour, 0xFF18181B);
+			equals(b(reads).style.text.colour, 0xFFFF0000);
+			// (a document that reads no token and no scheme: its boxes kept)
+			equals(@:privateAccess plain.built == kept, true);
+		});
 	});
 }

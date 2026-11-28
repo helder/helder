@@ -351,8 +351,17 @@ class CssResolver {
 		return v;
 	}
 
-	function inheritedCustom(name:String):Null<Array<CssValue>>
-		return parent?.customs.get(name);
+	// (the parent's; where no ancestor declares it, the theme's token of the name, below every rule, as a registered
+	// property's initial value, the read kept, found or not: what a theme changed styles again)
+	function inheritedCustom(name:String):Null<Array<CssValue>> {
+		if (parent != null && parent.customs.exists(name)) return parent.customs.get(name);
+		// (read with no token of the name too: one given later styles it again)
+		(themeReads ??= []).push(name);
+		return styles.theme?.get(name);
+	}
+
+	// (the theme's tokens this element's values read)
+	@:allow(helder.css) var themeReads:Null<Array<String>> = null;
 
 	function customValue(name:String, from:Int):Null<Array<CssValue>> {
 		var cands = customCandidates.get(name);
