@@ -190,7 +190,10 @@ class TableFlow implements FormattingContext {
 	function measure(g:Grid, space:Space) {
 		for (c in 0...g.columns) {
 			var col = g.colBoxes[c];
-			if (col != null) widthInto(g.cols[c], col.style.model().width, 0, 0);
+			var group = g.colGroups[c];
+			var track = g.cols[c];
+			if (group != null) widthInto(track, group);
+			if (col != null) widthInto(track, col);
 		}
 		var spanning = [];
 		for (cell in g.cells) {
@@ -244,15 +247,23 @@ class TableFlow implements FormattingContext {
 		return half[1] + half[3] - s.border[1] - s.border[3];
 	}
 
-	static function widthInto(col:TableColumn, w:Len, min:Float, bp:Float)
-		switch w {
+	static function widthInto(col:TableColumn, box:Box) {
+		var s = box.style.model();
+		var min = Lens.resolve(s.minWidth, Math.NaN, 0);
+		col.min = Math.max(col.min, min);
+		switch s.width {
 			case Px(v):
 				col.fixed = true;
-				col.max = Math.max(col.max, Math.max(min, v + bp));
+				col.max = Math.max(col.max, Math.min(v, Lens.resolve(s.maxWidth, Math.NaN, v)));
 			case Percent(p):
+				switch s.maxWidth {
+					case Percent(max): p = Math.min(p, max);
+					case _:
+				}
 				col.pct = Math.max(col.pct, p);
 			case _:
 		}
+	}
 
 	// (more min-content or max-content for a spanning cell: over its columns, by their max-content, else evenly)
 	static function spread(g:Grid, cell:Cell, extra:Float, min:Bool, total:Float) {
@@ -426,7 +437,7 @@ class TableFlow implements FormattingContext {
 	static function fixedLayout(g:Grid, w:Float):Array<Float> {
 		var out = [for (_ in 0...g.columns) Math.NaN];
 		for (c in 0...g.columns) {
-			var col = g.colBoxes[c];
+			var col = g.colBoxes[c] ?? g.colGroups[c];
 			if (col != null) {
 				var v = Lens.resolve(col.style.model().width, w, Math.NaN);
 				if (!Math.isNaN(v)) out[c] = v;
