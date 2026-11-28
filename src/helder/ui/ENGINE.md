@@ -35,7 +35,7 @@ and fast.
 
 ## Where it stands (2026-11-27, evening)
 
-- **WPT gate (`css-reftests`):** 7,614 of 9,047 pass, 1,433 pending with reasons, 149 skipped; box conformance (Taffy) 4,671 of 5,232.
+- **WPT gate (`css-reftests`):** 7,765 of 9,047 pass, 1,282 pending with reasons, 149 skipped; box conformance (Taffy) 4,671 of 5,232.
 - **Values:** 19,924 of 20,206 WPT value rows; interpolation 3,500 of 4,456.
 - **Against WeasyPrint** (tests/pdf-docs): 98.5–100% per document with exact metrics (#453), identical page breaks.
 - **Documents in a window, against browsers** (tests/bench/results/document.md, measured on one Mac, pages served locally): the HTML Standard loads in 1.9 s (Chromium 1.8, Ladybird 4.2), relayouts at a new width in ~207 ms (Chromium 139, Ladybird 294), and holds 843 MB RSS (Chromium 1,176, Ladybird 2,298). On the ECMAScript spec, War and Peace and Japanese pitch accent helder uses less memory than both browsers; load is faster than both on the first two.
