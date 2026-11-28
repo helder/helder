@@ -47,6 +47,10 @@ class TextTerms {
 		"full-width" => ["fwid"], "proportional-width" => ["pwid"], "ruby" => ["ruby"], "sub" => ["subs"], "super" => ["sups"], "historical-forms" => ["hist"]
 	];
 
+	// (a font-variant keyword's features' tags: "tabular-nums", tnum)
+	public static function variant(word:String):Array<String>
+		return VARIANTS.get(word) ?? [];
+
 	static function settings(t:Array<CssTerm>):Null<Array<FontFeature>> {
 		if (t.length == 0 || t[0].match(Keyword("normal"))) return null;
 		var text = [for (x in t) switch x {

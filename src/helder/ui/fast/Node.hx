@@ -195,8 +195,9 @@ class Node {
 	inline function scope():Theme
 		return theme ?? passed ?? Theme.base;
 
+	// (what its children inherit with its group's states: whether the pointer passes through it)
 	inline function groupBelow():Int
-		return group ? states : groupStates;
+		return (group ? states : groupStates & ~Style.PASS) | (box.style.rare.pointerEvents == "none" ? Style.PASS : 0);
 
 	// (its style resolved under what it inherits, then its children's where what they inherit changed)
 	@:allow(helder.ui.fast) function resolve(text:InlineBasicStyle, theme:Theme, group:Int) {

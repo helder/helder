@@ -44,5 +44,18 @@ function tests() {
 			fresh.wheel(50, 50, 0, 30);
 			equals(@:privateAccess other.shownOf(b), 1);
 		});
+		test("scrollbarWidth: thin, two thirds as wide; none, no thumb", () -> {
+			var ui = new helder.ui.Ui(null, 300, 200), tree:Null<helder.ui.fast.Tree> = null;
+			Render.render(<Fast ref={t -> tree = t}>
+				<scroll height={100} width={200} scrollbarWidth="thin"><For each={[for (i in 0...20) i]}>{i -> <view height={20} flexShrink={0}/>}</For></scroll>
+				<scroll height={100} width={200} scrollbarWidth="none"><For each={[for (i in 0...20) i]}>{i -> <view height={20} flexShrink={0}/>}</For></scroll>
+			</Fast>, ui.root);
+			flush();
+			ui.update();
+			var kids = @:privateAccess tree.root.children();
+			@:privateAccess tree.fragmentOf(kids[0].box);
+			equals(@:privateAccess tree.thumbOf(kids[0].box, false).rect[2], 4);
+			equals(@:privateAccess tree.thumbOf(kids[1].box, false), null);
+		});
 	});
 }

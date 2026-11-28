@@ -81,6 +81,16 @@ typedef StyleProps = {
 	?textDecoration:Int,
 	// the pointer over it (inherited)
 	?cursor:helder.ui.Cursor,
+	// whether the pointer finds it (inherited: None lets presses and hovers through, its Auto descendants aside)
+	?pointerEvents:helder.ui.PointerEvents,
+	// the inline direction (inherited): Rtl mirrors rows and aligns text right
+	?direction:helder.ui.Dir,
+	// figures' forms as CSS writes them ("tabular-nums"; inherited)
+	?fontVariantNumeric:String,
+	// width / height where one of them is auto
+	?aspectRatio:Float,
+	// a scroller's bar: Auto, Thin, None (none drawn or grabbed; the wheel still scrolls)
+	?scrollbarWidth:helder.ui.ScrollbarWidth,
 	// a grid's items in their areas, across (Stretch)
 	?justifyItems:Align,
 	?justifySelf:Align,
@@ -266,6 +276,11 @@ final class Props {
 	public var lineClamp:Null<Int> = null;
 	public var textDecoration:Null<Int> = null;
 	public var cursor:Null<helder.ui.Cursor> = null;
+	public var pointerEvents:Null<helder.ui.PointerEvents> = null;
+	public var direction:Null<helder.ui.Dir> = null;
+	public var fontVariantNumeric:Null<String> = null;
+	public var aspectRatio:Null<Float> = null;
+	public var scrollbarWidth:Null<helder.ui.ScrollbarWidth> = null;
 	public var justifyItems:Null<Align> = null;
 	public var justifySelf:Null<Align> = null;
 	public var gridTemplateColumns:Null<String> = null;
@@ -342,6 +357,11 @@ final class Props {
 		o.lineClamp = p.lineClamp;
 		o.textDecoration = p.textDecoration;
 		o.cursor = p.cursor;
+		o.pointerEvents = p.pointerEvents;
+		o.direction = p.direction;
+		o.fontVariantNumeric = p.fontVariantNumeric;
+		o.aspectRatio = p.aspectRatio;
+		o.scrollbarWidth = p.scrollbarWidth;
 		o.justifyItems = p.justifyItems;
 		o.justifySelf = p.justifySelf;
 		o.gridTemplateColumns = p.gridTemplateColumns;
@@ -524,7 +544,7 @@ final class Style {
 		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
 		return "";
 	}
-	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
 	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
 	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
 	#end
@@ -538,6 +558,8 @@ final class Style {
 	public static inline var CHECKED = 32;
 	public static inline var PLACEHOLDER = 64;
 	public static inline var GROUP = 8;
+	// (passed down with the group's states: an ancestor's pointerEvents None, what it inherits)
+	@:allow(helder.ui.fast) static inline var PASS = 1 << 12;
 
 	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it
 	// in order; dark: the theme's tone)
@@ -643,6 +665,11 @@ final class Style {
 		o.lineClamp = b.lineClamp ?? a.lineClamp;
 		o.textDecoration = b.textDecoration ?? a.textDecoration;
 		o.cursor = b.cursor ?? a.cursor;
+		o.pointerEvents = b.pointerEvents ?? a.pointerEvents;
+		o.direction = b.direction ?? a.direction;
+		o.fontVariantNumeric = b.fontVariantNumeric ?? a.fontVariantNumeric;
+		o.aspectRatio = b.aspectRatio ?? a.aspectRatio;
+		o.scrollbarWidth = b.scrollbarWidth ?? a.scrollbarWidth;
 		o.justifyItems = b.justifyItems ?? a.justifyItems;
 		o.justifySelf = b.justifySelf ?? a.justifySelf;
 		o.gridTemplateColumns = b.gridTemplateColumns ?? a.gridTemplateColumns;
@@ -741,6 +768,11 @@ final class Style {
 		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
 		if (p.textDecoration != null) word(out, "td", p.textDecoration);
 		if (p.cursor != null) word(out, "cu", p.cursor);
+		if (p.pointerEvents != null) word(out, "pe", p.pointerEvents);
+		if (p.direction != null) word(out, "dir", p.direction);
+		if (p.fontVariantNumeric != null) word(out, "fvn", p.fontVariantNumeric);
+		if (p.aspectRatio != null) num(out, "ar", p.aspectRatio);
+		if (p.scrollbarWidth != null) word(out, "sbw", p.scrollbarWidth);
 		if (p.justifyItems != null) word(out, "ji", p.justifyItems);
 		if (p.justifySelf != null) word(out, "js", p.justifySelf);
 		if (p.gridTemplateColumns != null) word(out, "gtc", p.gridTemplateColumns);

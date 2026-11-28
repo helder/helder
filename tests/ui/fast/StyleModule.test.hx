@@ -37,7 +37,7 @@ function tests() {
 			equals(s.cardTitle.at(0, true).color, (Plain(0xFFFAFAFA) : TintValue));
 			equals(s.cardTitle.at(0, false).color, null);
 		});
-		test("paint: border style, corners, shadows in CSS's order, an outline", () -> {
+		test("paint: border style, corners, shadows in CSS's order, an outline; pointer events, direction, figures, a ratio, a bar", () -> {
 			final s = StyleModule.load("ui/fast/paint.module.css");
 			var chip = Style.of({
 				borderWidth: 1,
@@ -51,6 +51,7 @@ function tests() {
 				outline: {width: 2, color: Theme.token("focus"), style: Solid, offset: 2}
 			});
 			equals(s.chip == chip, true);
+			equals(s.label == Style.of({pointerEvents: None, direction: Rtl, fontVariantNumeric: "tabular-nums", aspectRatio: 16 / 9, scrollbarWidth: Thin}), true);
 		});
 	});
 }

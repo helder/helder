@@ -56,7 +56,7 @@ class Attrs {
 			"gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth",
 			"borderColor", "borderStyle", "borderRadius", "shadows", "outline", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
 			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textWrap",
-			"textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
+			"textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
 			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
 		]) n => true
 	];
@@ -202,6 +202,20 @@ class Attrs {
 				p.textDecoration = v == null ? null : Std.isOfType(v, Int) ? v : decoration(Std.string(v));
 			case "cursor":
 				p.cursor = v;
+			case "pointerEvents":
+				p.pointerEvents = v == null ? null : Std.string(v) == "none" ? None : Auto;
+			case "direction":
+				p.direction = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.Dir) : Std.string(v) == "rtl" ? Rtl : Ltr;
+			case "fontVariantNumeric":
+				p.fontVariantNumeric = v == null ? null : Std.string(v);
+			case "aspectRatio":
+				p.aspectRatio = ratio(v);
+			case "scrollbarWidth":
+				p.scrollbarWidth = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.ScrollbarWidth) : switch Std.string(v) {
+					case "thin": Thin;
+					case "none": None;
+					case _: Auto;
+				}
 			case "justifyItems":
 				p.justifyItems = align(v);
 			case "justifySelf":
@@ -246,6 +260,14 @@ class Attrs {
 			case _:
 		}
 		return bits;
+	}
+
+	// (a number, or CSS's "16 / 9")
+	static function ratio(v:Dynamic):Null<Float> {
+		if (v == null || Std.isOfType(v, Float) || Std.isOfType(v, Int)) return v;
+		var parts = Std.string(v).split("/");
+		var a = num(parts[0]), b = parts.length > 1 ? num(parts[1]) : 1.0;
+		return a == null || b == null || b == 0 ? null : a / b;
 	}
 
 	static function num(v:Dynamic):Null<Float> {
