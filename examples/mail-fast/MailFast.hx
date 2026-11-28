@@ -34,15 +34,11 @@ class MailFast implements Markup {
 		UiWindow.run(<Surface title="Mail" width={860} height={560}>{new MailFast().window()}</Surface>);
 	}
 
-	// (Mail.sheet's colours: light and dark)
-	public static final theme = new Theme([
-		"background" => [0xFFFFFFFF, 0xFF09090B], "foreground" => [0xFF18181B, 0xFFFAFAFA], "muted-background" => [0xFFF4F4F5, 0xFF18181B],
-		"muted" => [0xFF71717A, 0xFFA1A1AA], "border" => [0xFFE4E4E7, 0xFF27272A], "card" => [0xFFFFFFFF, 0xFF09090B], "hover" => [0xFFF4F4F5, 0xFF27272A],
-		"accent" => [0xFFDBEAFE, 0xFF1E3A8A], "accent-foreground" => [0xFF1E3A8A, 0xFFDBEAFE]
-	]);
+	// (Mail.sheet's colours: light and dark, mail.theme.css's tokens)
+	public static final theme = Theme.load("mail.theme.css");
 
 	// (its look, Mail.sheet's rules: mail.module.css, compiled to Styles when the program is)
-	static final s = StyleModule.load("mail.module.css");
+	static final s = StyleModule.load("mail.module.css", "mail.theme.css");
 
 	public final folders:Array<MailFolder> = [
 		{name: "Inbox", level: 0},

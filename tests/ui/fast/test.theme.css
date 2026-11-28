@@ -1,0 +1,12 @@
+:root {
+  --surface: #ffffff;
+  --hover: #f4f4f5;
+  --line: #e4e4e7;
+  --focus: rgb(37 99 235 / 0.6);
+  --pad: 8px;
+  --accent-soft: light-dark(#dbeafe, #1e3a8a);
+  --scale: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --surface: #18181b; --pad: 10px }
+}

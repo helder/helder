@@ -3,6 +3,7 @@ package helder.ui.fast;
 import helder.css.CssTerm;
 import helder.ui.box.BoxStyle;
 import helder.ui.box.Len;
+import helder.ui.fast.Style.Pixels;
 import helder.ui.fast.Style.Props;
 import helder.ui.fast.Style.Tint;
 import helder.ui.flow.InlineBasicStyle;
@@ -48,6 +49,8 @@ class Resolve {
 		// None kept, what it inherits)
 		var pass = mask & Style.PASS << Style.GROUP;
 		mask = mask & style.states | pass;
+		// (one that reads no token and has no dark variant: the same in every theme)
+		if (!style.themed) theme = Theme.base;
 		var list = cache.get(style);
 		if (list == null) {
 			// (bounded as Style's interning is)
@@ -87,6 +90,18 @@ class Resolve {
 	static function make(p:Props, parent:InlineBasicStyle, theme:Theme, kind:Int, passed:Bool):BoxStyle {
 		var s = new Resolved(p);
 		var t = text(p, parent, theme);
+		// (its lengths in the theme: one a token's, its layout the theme's too)
+		var tokened = false;
+		function px(v:Float):Float {
+			if (Pixels.isToken(v)) tokened = true;
+			return Pixels.resolve(v, theme);
+		}
+		function size(v:Null<Style.Size>):Len
+			return switch (v : Null<Len>) {
+				case null: Auto;
+				case Px(n): Px(px(n));
+				case l: l;
+			}
 		s.textPart = t;
 		// (display: a view a column flex container, or a block where it says; a text a block of inline runs, whatever
 		// it says but none)
@@ -99,16 +114,16 @@ class Resolve {
 		// (the box model: border-box)
 		var pad = p.padding, mar = p.margin, bw = p.borderWidth;
 		for (k in 0...4) {
-			s.margin.push(Px(mar == null ? 0 : (mar : Array<Float>)[k]));
-			s.padding.push(Px(pad == null ? 0 : (pad : Array<Float>)[k]));
-			s.border.push(bw == null ? 0 : (bw : Array<Float>)[k]);
+			s.margin.push(Px(mar == null ? 0 : px((mar : Array<Float>)[k])));
+			s.padding.push(Px(pad == null ? 0 : px((pad : Array<Float>)[k])));
+			s.border.push(bw == null ? 0 : px((bw : Array<Float>)[k]));
 		}
-		s.width = p.width ?? Auto;
-		s.height = p.height ?? Auto;
-		s.minWidth = p.minWidth ?? Auto;
-		s.minHeight = p.minHeight ?? Auto;
-		s.maxWidth = p.maxWidth ?? Auto;
-		s.maxHeight = p.maxHeight ?? Auto;
+		s.width = size(p.width);
+		s.height = size(p.height);
+		s.minWidth = size(p.minWidth);
+		s.minHeight = size(p.minHeight);
+		s.maxWidth = size(p.maxWidth);
+		s.maxHeight = size(p.maxHeight);
 		s.borderBox = true;
 		if (p.aspectRatio != null && p.aspectRatio > 0) {
 			s.ratio = p.aspectRatio;
@@ -119,7 +134,7 @@ class Resolve {
 		s.orderValue = 0;
 		s.growValue = p.flexGrow ?? 0;
 		s.shrinkValue = p.flexShrink ?? 1;
-		s.basisValue = p.flexBasis ?? Auto;
+		s.basisValue = size(p.flexBasis);
 		s.basisWord = p.flexBasis == null ? "auto" : "";
 		s.directionValue = switch p.flexDirection {
 			case Row: "row";
@@ -135,9 +150,9 @@ class Resolve {
 		s.aligns.push(p.justifyItems == null ? "legacy" : align(p.justifyItems, "legacy"));
 		s.aligns.push(align(p.justifySelf, "auto"));
 		var rg:Null<Float> = p.rowGap ?? p.gap, cg:Null<Float> = p.columnGap ?? p.gap;
-		s.rowGapValue = rg == null ? Auto : Px(rg);
-		s.columnGapValue = cg == null ? Auto : Px(cg);
-		for (v in [p.top, p.right, p.bottom, p.left]) s.insets.push(v ?? Auto);
+		s.rowGapValue = rg == null ? Auto : Px(px(rg));
+		s.columnGapValue = cg == null ? Auto : Px(px(cg));
+		for (v in [p.top, p.right, p.bottom, p.left]) s.insets.push(size(v));
 		s.layoutRead = true;
 		// (traits: relative, or absolute; its overflow; its text's)
 		s.positionWord = switch p.position {
@@ -165,27 +180,32 @@ class Resolve {
 		// (paint: its background, corners, borders, shadows, outline)
 		s.bgColor = p.background == null ? 0 : tint(p.background, theme, t.colour);
 		var r:Null<Array<Float>> = p.borderRadius;
-		if (r != null && r[0] + r[1] + r[2] + r[3] > 0) s.radiusTerms = [for (k in 0...8) Dimension(r[k >> 1], "px")];
+		if (r != null) {
+			var rs = [for (v in r) px(v)];
+			if (rs[0] + rs[1] + rs[2] + rs[3] > 0) s.radiusTerms = [for (k in 0...8) Dimension(rs[k >> 1], "px")];
+		}
 		var bc = p.borderColor == null ? 0 : tint(p.borderColor, theme, t.colour), style = word(p.borderStyle);
 		for (k in 0...4) {
-			s.sideStyles.push(bw != null && (bw : Array<Float>)[k] > 0 ? style : "none");
+			s.sideStyles.push(s.border[k] > 0 ? style : "none");
 			s.sideColors.push(bc);
 		}
 		if (p.shadows != null) s.shadowList = [for (sh in p.shadows) {
 			var b = new helder.ui.box.BoxStyle.BoxShadow();
 			b.color = tint(sh.color, theme, t.colour);
 			b.inset = sh.inset == true;
-			for (v in [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]) b.lengths.push(v);
+			for (v in [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]) b.lengths.push(px(v));
 			b;
 		}];
 		var o = p.outline;
-		if (o != null && o.width > 0) {
+		var ow = o == null ? 0 : px(o.width);
+		if (o != null && ow > 0) {
 			s.outlineStyleValue = word(o.style);
-			s.outlineWidthValue = o.width;
-			s.outlineOffsetValue = o.offset ?? 0;
+			s.outlineWidthValue = ow;
+			s.outlineOffsetValue = px(o.offset ?? 0);
 			s.outlineColorValue = tint(o.color, theme, t.colour);
 		}
 		s.paintRead = true;
+		if (tokened) s.theme = theme.id;
 		return s;
 	}
 
@@ -199,14 +219,14 @@ class Resolve {
 		if (p.fontSize != null) {
 			// (a line height a multiple of the size: the parent's multiple at the new size)
 			var multiple = parent.height / parent.size;
-			t.size = p.fontSize;
+			t.size = Pixels.resolve(p.fontSize, theme);
 			if (p.lineHeight == null && multiple == multiple) t.height = multiple * t.size;
 		}
 		if (p.lineHeight != null) t.height = p.lineHeight * t.size;
 		if (p.fontWeight != null) t.weight = p.fontWeight;
 		if (p.fontFamily != null) t.families = [p.fontFamily];
 		if (p.fontStyle != null) t.style = p.fontStyle == Italic ? Italic : Normal;
-		if (p.letterSpacing != null) t.letters = p.letterSpacing;
+		if (p.letterSpacing != null) t.letters = Pixels.resolve(p.letterSpacing, theme);
 		if (p.textAlign != null) t.align = switch p.textAlign {
 			case Center: Center;
 			case Right: Right;
@@ -284,6 +304,8 @@ class Resolve {
 private class Resolved extends BoxStyle {
 	public final props:Props;
 	var key:Null<String> = null;
+	// (the theme its lengths were resolved in, where one is a token's: -1 none)
+	public var theme = -1;
 
 	public function new(props:Props) {
 		super();
@@ -335,7 +357,7 @@ private class Resolved extends BoxStyle {
 		p.gridColumn = props.gridColumn;
 		p.gridRow = props.gridRow;
 		p.gridArea = props.gridArea;
-		return key = Style.write(p) + "|" + text.size + " " + text.height + " " + text.weight + " " + text.families.join(",") + " " + text.style + " " + text.letters
+		return key = Style.write(p) + "|" + theme + "|" + text.size + " " + text.height + " " + text.weight + " " + text.families.join(",") + " " + text.style + " " + text.letters
 			+ " " + text.align + " " + text.wrap + " " + text.textOverflowEnd + " " + text.clamp + " " + text.dir + " "
 			+ (text.features == null ? "" : [for (f in text.features) f.tag].join(","));
 	}

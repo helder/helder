@@ -1,31 +1,44 @@
 package helder.ui.fast;
 
-import helder.ui.fast.Style.Tint;
+#if macro
+import haxe.macro.Context;
+import haxe.macro.Expr;
+#end
 
-// A theme: its tokens' colours, light and dark each, and whether it is
-// dark. A style's Theme.token resolves in the theme of the node's scope
-// (Node.theme, else its parent's), part of what a style is resolved for,
-// so that a theme changed restyles what reads its tokens.
+// A theme: its tokens' values, light and dark, and which of the two it is.
+// Loaded from a CSS file when the program is built (load): its :root's
+// custom properties are its tokens, typed by their values, their dark ones
+// under @media (prefers-color-scheme: dark) or light-dark(). A node's theme
+// is its subtree's (Node.theme); a style's tokens resolve in the one in
+// scope, and only styles that read tokens resolve again when it changes.
 //
-//   final app = new Theme(["surface" => [0xFFFFFFFF, 0xFF18181B], "fg" => [0xFF18181B, 0xFFFAFAFA]]);
-//   card = Style.of({background: Theme.token("surface"), color: Theme.token("fg")});
-final class Theme {
-	public final tokens:Map<String, Array<Int>>;
+//   static final app = Theme.load("app.theme.css");  // :root { --surface: #fff; --pad: 8px }
+//   final card = Style.of({background: app.surface, padding: app.pad});
+//   tree.palette = app.tone(dark);
+class Theme {
 	public final dark:Bool;
+	// (each token's value: a colour's ARGB, a length's px, a number; its dark one where it differs)
+	final light:Map<String, Float>;
+	final shade:Map<String, Float>;
+	// (one for each theme: what a style that reads tokens is resolved in)
+	@:allow(helder.ui.fast) final id:Int;
+	static var made = 0;
 
-	// the theme of no tokens (a token's colour transparent), light
-	public static final base = new Theme([]);
+	// the theme of no tokens, light
+	public static final base = new Theme(new Map(), new Map());
 
-	public function new(tokens:Map<String, Array<Int>>, dark = false) {
-		this.tokens = tokens;
+	@:noCompletion public function new(light:Map<String, Float>, shade:Map<String, Float>, dark = false) {
+		this.light = light;
+		this.shade = shade;
 		this.dark = dark;
+		id = made++;
 	}
 
-	// The same tokens, dark or light (one theme each way: what styles resolved in it are cached by).
+	// The same tokens, dark or light (one theme each way).
 	public function tone(dark:Bool):Theme {
 		if (dark == this.dark) return this;
 		if (other == null) {
-			other = new Theme(tokens, dark);
+			other = new Theme(light, shade, dark);
 			other.other = this;
 		}
 		return other;
@@ -33,20 +46,82 @@ final class Theme {
 
 	var other:Null<Theme> = null;
 
-	// This theme with others over its tokens.
-	public function with(more:Map<String, Array<Int>>):Theme {
-		var t = tokens.copy();
-		for (k => v in more) t.set(k, v);
-		return new Theme(t, dark);
+	// This theme with another value for a token (light, and dark where it differs): a subtree's (Node.theme).
+	public function with<T>(token:Token<T>, value:Float, ?darkValue:Float):Theme {
+		var l = light.copy(), s = shade.copy();
+		l.set(token.name, value);
+		if (darkValue != null) s.set(token.name, darkValue) else s.remove(token.name);
+		return new Theme(l, s, dark);
 	}
-
-	// A token of the theme a style resolves in.
-	public static inline function token(name:String):Tint
-		return Style.TintValue.Token(name);
 
 	// a token's colour here (0: none)
 	public function color(name:String):Int {
-		var v = tokens.get(name);
-		return v == null ? 0 : dark && v.length > 1 ? v[1] : v[0];
+		var v = value(name);
+		return v == null ? 0 : Std.int(v);
 	}
+
+	// a length or number token's value here (0: none)
+	public function length(name:String):Float
+		return value(name) ?? 0;
+
+	inline function value(name:String):Null<Float>
+		return dark ? shade.get(name) ?? light.get(name) : light.get(name);
+
+	// A theme of a CSS file's tokens (beside the calling file, else under a class path), its fields typed tokens.
+	public static macro function load(path:ExprOf<String>):Expr {
+		var p = switch path.expr {
+			case EConst(CString(s, _)): s;
+			case _: Context.error("Theme.load: a string literal", path.pos);
+		}
+		var file = locate(p, path.pos);
+		var f = ThemeFile.of(file);
+		var name = "Theme" + haxe.crypto.Md5.encode(file).substr(0, 12);
+		var exists = try Context.getType("helder.ui.fast.themes." + name) != null catch (_:Dynamic) false;
+		if (!exists) {
+			var pos = Context.currentPos(), fields:Array<Field> = [], light:Array<Expr> = [], shade:Array<Expr> = [];
+			for (k in f.order) {
+				var t = f.tokens.get(k), field = camel(k, path.pos);
+				var type = switch t.kind {
+					case Color: macro :helder.gfx.Color;
+					case Length: macro :helder.ui.fast.Token.Length;
+					case Number: macro :helder.ui.fast.Token.Number;
+				}
+				fields.push({name: field, access: [APublic, AFinal], kind: FVar(macro :helder.ui.fast.Token<$type>, macro new helder.ui.fast.Token($v{k})), pos: pos});
+				light.push(macro $v{k} => $v{t.light});
+				if (t.dark != null) shade.push(macro $v{k} => $v{t.dark});
+			}
+			fields.push({
+				name: "new",
+				access: [APublic],
+				kind: FFun({args: [], expr: macro super(${light.length == 0 ? macro new Map() : macro $a{light}}, ${shade.length == 0 ? macro new Map() : macro $a{shade}})}),
+				pos: pos
+			});
+			Context.defineType({
+				pack: ["helder", "ui", "fast", "themes"],
+				name: name,
+				pos: pos,
+				kind: TDClass({pack: ["helder", "ui", "fast"], name: "Theme"}),
+				fields: fields
+			});
+		}
+		return macro new helder.ui.fast.themes.$name();
+	}
+
+	#if macro
+	@:allow(helder.ui.fast) static function locate(p:String, pos:Position):String {
+		var file = @:privateAccess helder.css.CssModule.locate(p, haxe.io.Path.directory(Context.getPosInfos(pos).file));
+		if (file == null) Context.error('"$p": no such file beside the module or under a class path', pos);
+		file = sys.FileSystem.fullPath(file);
+		Context.registerModuleDependency(Context.getLocalModule(), file);
+		return file;
+	}
+
+	// (--accent-soft: accentSoft)
+	static function camel(name:String, pos:Position):String {
+		var parts = name.split("-"), out = parts[0];
+		for (q in parts.slice(1)) if (q.length > 0) out += q.charAt(0).toUpperCase() + q.substr(1);
+		if (!~/^[a-z_][a-zA-Z0-9_]*$/.match(out)) Context.error('Theme.load: --$name is no Haxe field name', pos);
+		return out;
+	}
+	#end
 }
