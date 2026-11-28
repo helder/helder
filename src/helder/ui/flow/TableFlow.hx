@@ -527,7 +527,7 @@ class TableFlow implements FormattingContext {
 		var maxSpec = Lens.resolve(ts.maxWidth, cb, Math.NaN), minSpec = Lens.resolve(ts.minWidth, cb, Math.NaN);
 		if (!Math.isNaN(maxSpec) && w > maxSpec) w = Math.max(maxSpec, minW);
 		if (!Math.isNaN(minSpec) && w < minSpec) w = minSpec;
-		if (wrapper.blockLevel) BlockFlow.solve(wrapper, w, ml, mr, cb, 0, wrapper.parent != null && wrapper.parent.style.rtl) else {
+		if (wrapper.blockLevel && !wrapper.floating) BlockFlow.solve(wrapper, w, ml, mr, cb, 0, wrapper.parent != null && wrapper.parent.style.rtl) else {
 			wrapper.marginLeft = Math.isNaN(ml) ? 0 : ml;
 			wrapper.marginRight = Math.isNaN(mr) ? 0 : mr;
 		}
@@ -535,6 +535,7 @@ class TableFlow implements FormattingContext {
 		var widths = fixed ? fixedLayout(g, inner) : distribute(g.cols, inner);
 		var sum = Lambda.fold(widths, (x, a) -> x + a, 0.0);
 		if (sum > inner) w += sum - inner;
+		BlockFlow.alignRootFloat(wrapper, cb, w);
 		// (column edges from the table's border box)
 		var colX = [], x = edges[3] + g.spacingH;
 		for (c in 0...cols) {
