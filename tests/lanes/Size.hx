@@ -11,6 +11,8 @@ private typedef Program = {
 	var dir:String;
 	var ?src:String;
 	var main:String;
+	// (its build's defines, as its project gives them: helder.hxml's -D helder.engine)
+	var ?defines:Array<String>;
 }
 
 class Size {
@@ -35,6 +37,7 @@ class Size {
 			var cp = p.src == null ? p.dir : '${p.dir}/${p.src}';
 			var args = cps(["src", cp]).concat(["-main", p.main, "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols",
 				"-D", "helder.root=" + FileSystem.fullPath(p.dir)]);
+			for (d in p.defines ?? []) args = args.concat(["-D", d]);
 			var out = 'bin/size/${p.name}';
 			native(out, args, HOST);
 			wasm('$out.wasm', args);
