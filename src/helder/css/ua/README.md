@@ -87,7 +87,7 @@ support table as ours.
     material (glass on 26); Acrylic on Windows; KDE's blur.
 
   Where the host has none, the element's `background-color` alone
-  shows. The codemod maps today's values: blur to popover, mica and
+  shows. The port maps today's values: blur to popover, mica and
   glass to auto, sidebar to sidebar.
 - **`-helder-scrollbar: system | overlay | always`**, inherited, initial
   system, computed as a keyword. Today `<Surface scrollbars>`
@@ -109,46 +109,47 @@ support table as ours.
 The rethinks, as decided:
 
 - **Rings** (`ring*`, composed over `boxShadow`): drop them as
-  properties. The codemod writes each ring as `box-shadow` layers (`0 0
+  properties. The port writes each ring as `box-shadow` layers (`0 0
   0 offset offsetColor, 0 0 0 offset+width color`, `inset` for
   ringInset) ahead of the shadow, per state, since it compiles the
   theme's states anyway. Shadows interpolate (CssInterpolate), so rings
   still ease.
 - **A shadow's default colour** (`#00000040`, not currentcolor): drop
-  it; the codemod writes the colour where a shadow leaves it out.
+  it; the port writes the colour where a shadow leaves it out.
 - **Sibling-only `zIndex`**: CSS's stacking, as standard; app.css adds
-  no `isolation`. The codemod writes `isolation: isolate` only where an
+  no `isolation`. The port writes `isolation: isolate` only where an
   app relies on z-index ordering siblings alone: on a node whose
   descendants set z-index, so they stay inside it as today.
 - **`order` in paint and hit order**: standard already. Flexbox paints
   in order-modified document order, and hit testing follows paint; the
   engine has to implement that, nothing more.
 - **`lineHeightPx` over `lineHeight`**: one `line-height` (a number or
-  a length), the effective one per node written by the codemod. Markup's
+  a length), the effective one per node written by the port. Markup's
   `"normal"` (today inherited, 1.25 at the root) is written as nothing,
   not CSS's `normal` (the font's metrics).
 - **A default-valued own field counting as unset** (Rules.keep): drop
-  it. The style attribute wins whatever its value, so the codemod drops
-  an attribute equal to its default where a theme rule sets the same
-  property and the node isn't under `Rules.keep`; the look stays.
+  it. The style attribute wins whatever its value.
 
 Others the port keeps as they are: motion and layout animation, window
 chrome (`dragRegion`, `titleHit`, `<WindowControls>`), `host="native"`,
 `<icon name>` (elements and attributes, not style); safe areas and the
 titlebar area are CSS's (`env(safe-area-inset-*)`,
 `env(titlebar-area-*)`); `display: block` as a non-growing column
-becomes CSS's block in the codemod only where it lays out alike.
+becomes CSS's block in the port only where it lays out alike.
 
-## The codemod (a plan)
+## The port (a plan)
 
-The port rewrites each app once. A node's own style (its markup's style
-attributes, Style's fields set in code) becomes its `style` attribute in
-CSS's names and values: numbers as px, Dim's `Percent` as `%`, `Calc` as
-`calc()`. A theme's rules (a `Look`, Compile.hx) become a theme sheet:
-slot, variant and size as attribute selectors, states as Compile.hx maps
-them, tokens as custom properties. The elements' defaults are app.css.
+No codemod: the repo's examples and apps are ported by hand (#553's
+design). helder.ui's API was never released, so nothing is kept for
+parity. A node's style becomes a fast Style (`style={...}`,
+`node.set`). A `Look` becomes CSS modules (StyleModule, compiled to
+fast Styles) over a theme of typed tokens, which are registered custom
+properties shared with documents. A feature with no typed equivalent
+moves to a CSS module or a DOM island where an app needs it, and is
+dropped where none does. The elements' defaults are app.css.
 
-Where the name or the value changes:
+Where a CSS module or a document writes a helder.ui property, the name
+or the value changes:
 
 | helder.ui | CSS |
 | --- | --- |
@@ -173,12 +174,8 @@ Where the name or the value changes:
 The rest of Style's fields keep their name in kebab case (`flexGrow` to
 `flex-grow`, `gridTemplateColumns` to `grid-template-columns`).
 
-**Rules.keep.** Today an own value equal to Style's default counts as
-unset, so a theme rule for the node's slot wins over it. The codemod
-drops such an attribute where a rule sets the property for the node's
-slot and the node doesn't keep it (`Rules.keep`): the rule still wins,
-now by the cascade. Where the node keeps it, or no rule sets it, the
-attribute stays as written, and the style attribute wins as CSS's does.
+**Rules.keep** is dropped: a node's own style wins, whatever its
+value.
 
 **What stays an attribute.** Behaviour, state and content, not style:
 `id`, `class`, `role`, `hidden` (app.css's `[hidden]`), `disabled`,
