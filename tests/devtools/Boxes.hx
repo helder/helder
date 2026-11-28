@@ -9,13 +9,10 @@ class Boxes implements helder.view.Markup {
 	static function main() {
 		var ui = new Ui(new NoText(), 320, 200);
 		var row = new Node("row");
-		row.style.flexDirection = Row;
-		row.style.padding = 8;
-		row.style.background = Color.rgb(0x18181b);
+		row.style = Style.of({flexDirection: Row, padding: 8, background: Color.rgb(0x18181b)});
 		for (i in 0...3) {
 			var b = new Node("box");
-			b.style.width = 60;
-			b.style.height = 40;
+			b.style = Style.of({width: 60, height: 40});
 			row.append(b);
 		}
 		ui.root.append(row);

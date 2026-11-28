@@ -1,6 +1,7 @@
 package helder.ui.gesture;
 
 import helder.test.Test;
+import helder.ui.Style;
 import helder.ui.view.NodeRenderer;
 
 // helder.ui's gesture arena (natively and as wasm32-wasi: `bun run
@@ -23,16 +24,13 @@ function tests() {
 			log = [];
 			// a scroller filling the window, a card in it (its first 100 points)
 			list = new Node("list");
-			list.style.overflow = Scroll;
-			list.style.height = 300;
+			list.style = Style.of({overflow: Scroll, height: 300});
 			ui.root.append(list);
 			card = new Node("card");
-			card.style.height = 100;
-			card.style.flexShrink = 0;
+			card.style = Style.of({height: 100, flexShrink: 0});
 			list.append(card);
 			var rest = new Node("rest");
-			rest.style.height = 600;
-			rest.style.flexShrink = 0;
+			rest.style = Style.of({height: 600, flexShrink: 0});
 			list.append(rest);
 			card.onClick = e -> log.push("click");
 			ui.update();

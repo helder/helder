@@ -18,7 +18,7 @@ function tests() {
 	afterEach(() -> Ui.now = haxe.Timer.stamp);
 	function window(w = 400.0, h = 300.0):Ui {
 		var ui = new Ui(new EngineText(), w, h);
-		ui.root.style.alignItems = Start;
+		ui.root.style = ui.root.style.with({alignItems: Start});
 		return ui;
 	}
 	function para(texts:Array<String>):TextNode {
@@ -48,8 +48,7 @@ function tests() {
 			var ui = window();
 			var t = para(["left ", "link"]), pressed = 0;
 			t.selectable = true;
-			t.style.width = 300;
-			t.style.textAlign = Center;
+			t.style = t.style.with({width: 300, textAlign: Center});
 			t.children[1].onClick = _ -> pressed++;
 			ui.root.append(t);
 			ui.update();
@@ -73,7 +72,7 @@ function tests() {
 		});
 		test("a drag below the text, to its end; above it, to its start", () -> {
 			var ui = window();
-			ui.root.style.padding = 40;
+			ui.root.style = ui.root.style.with({padding: 40});
 			var t = new TextNode("hello world");
 			t.selectable = true;
 			ui.root.append(t);
@@ -105,7 +104,7 @@ function tests() {
 		function doc(ui:Ui, texts:Array<String>):{view:Node, texts:Array<TextNode>} {
 			var v = new Node("doc");
 			v.selectable = true;
-			v.style.rowGap = 10;
+			v.style = Style.of({rowGap: 10});
 			var ts = [for (s in texts) new TextNode(s)];
 			for (t in ts)
 				v.append(t);
@@ -168,7 +167,7 @@ function tests() {
 			var d = doc(ui, ["one", "two"]);
 			var field = new Node("field");
 			field.focusable = true;
-			field.style.set({width: 40, height: 20});
+			field.style = Style.of({width: 40, height: 20});
 			ui.root.append(field);
 			ui.update();
 			ui.keyDown("a".code, Mods.CONTROL);
@@ -192,7 +191,7 @@ function tests() {
 			var label = new TextNode("Press");
 			button.append(label);
 			var field = new helder.ui.controls.TextField();
-			field.style.width = 100;
+			field.style = field.style.with({width: 100});
 			field.text = "typed";
 			d.view.append(button);
 			d.view.append(field);
@@ -227,11 +226,10 @@ function tests() {
 		test("a drag past a scroller's edge scrolls it, the selection with it", () -> {
 			var ui = window(400, 200);
 			var s = new Node("scroller");
-			s.style.set({height: 100, width: 300});
-			s.style.overflow = Scroll;
+			s.style = Style.of({height: 100, width: 300, overflow: Scroll});
 			var v = new Node("doc");
 			v.selectable = true;
-			v.style.flexShrink = 0;
+			v.style = Style.of({flexShrink: 0});
 			var ts = [for (k in 0...20) new TextNode('line $k')];
 			for (t in ts)
 				v.append(t);

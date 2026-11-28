@@ -6,6 +6,8 @@ import helder.dom.Dom;
 import helder.dom.Element;
 import helder.gfx.Color;
 import helder.ui.*;
+import helder.ui.box.BoxStyle;
+import helder.ui.box.Len;
 import helder.view.Render;
 import helder.view.graph.Graph;
 import sys.io.File;
@@ -14,11 +16,11 @@ using StringTools;
 
 // The app user agent sheet (src/helder/css/ua/app.css) against helder.ui
 // today (bun run test css-app): example screens (examples/todo, as its
-// window has it, with its sheet; examples/mail, its story's) mounted
-// headless, each node mirrored as a helder.dom element (its tag, its
-// attributes, slot, variant and size, its text; the Style values it holds
-// that aren't Style's defaults, its rules' and its own, as its style
-// attribute: what the port carries over as the author's), the mirror
+// window has it; examples/mail, its story's) mounted headless, each node
+// mirrored as a helder.dom element (its tag, its attributes, its text; its
+// resolved values that aren't a plain node's, and the text its own style
+// says, as its style attribute: what the port carries over as the
+// author's), the mirror
 // cascaded with app.css as its user agent sheet alone, and each node's
 // values compared for the properties both have: what the user agent sheet
 // and CSS's inheritance give where helder.ui's defaults do today. It
@@ -30,7 +32,6 @@ class AppUaCheck {
 		var total = 0, differing = 0, decided = 0;
 		for (screen in [
 			{name: "todo", width: 480, height: 560, mount: (ui:Ui) -> {
-				ui.theme = Todo.sheet;
 				Render.render(new Todo().view(), ui.root);
 			}},
 			{name: "mail", width: 860, height: 560, mount: (ui:Ui) -> {
@@ -83,38 +84,34 @@ class AppUaCheck {
 		var el = doc.createElement(tag);
 		var attrs:Null<Map<String, String>> = @:privateAccess n.attrs;
 		if (attrs != null) for (k => v in attrs) if (k != "style") el.setAttribute(k, v);
-		if (n.slot != null) el.setAttribute("slot", n.slot);
-		if (n.variant != null) el.setAttribute("variant", n.variant);
-		if (n.size != null) el.setAttribute("size", n.size);
 		var own = declarations(n);
 		if (own != "") el.setAttribute("style", own);
 		if (Std.isOfType(n, TextNode)) el.append(doc.createTextNode((cast n : TextNode).text ?? ""));
 		parent.append(el);
-		var here = '$path > $tag${n.slot == null ? "" : '[${n.slot}]'}';
+		var here = '$path > $tag';
 		out.push({node: n, el: el, path: here});
 		for (c in n.children) mirror(doc, c, el, here, out);
 	}
 
-	static final DEFAULTS = new Node().style;
+	static final DEFAULTS = layout(new Node());
 	static final TEXT = ["text", "p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "legend", "a", "strong", "em", "code", "span"];
 
-	// (the node's Style values that aren't its defaults: its rules' and its own, as CSS)
+	// (the node's resolved values that aren't a plain node's, and the text its style says, as CSS)
 	static function declarations(n:Node):String {
-		var s = n.style, d = DEFAULTS, out = [];
-		var mine = layout(s), theirs = layout(d);
-		for (k => v in mine) if (theirs.get(k) != v) out.push('$k: $v');
-		if (s.color != null) out.push('color: ${color(s.color)}');
-		if (s.fontFamily != null) out.push('font-family: ${s.fontFamily}');
-		if (s.fontSize != null) out.push('font-size: ${num(s.fontSize)}px');
-		if (s.fontWeight != null) out.push('font-weight: ${s.fontWeight}');
-		if (s.lineHeightPx != null) out.push('line-height: ${num(s.lineHeightPx)}px') else if (s.lineHeight != null) out.push('line-height: ${num(s.lineHeight)}');
-		if (s.textAlign != null) out.push('text-align: ${s.textAlign}');
+		var p = n.props(), out = [];
+		for (k => v in layout(n)) if (DEFAULTS.get(k) != v) out.push('$k: $v');
+		if (p.color != null) out.push('color: ${color(n.used.text.colour)}');
+		if (p.fontFamily != null) out.push('font-family: ${p.fontFamily}');
+		if (p.fontSize != null) out.push('font-size: ${num(n.used.text.size)}px');
+		if (p.fontWeight != null) out.push('font-weight: ${p.fontWeight}');
+		if (p.lineHeight != null) out.push('line-height: ${num(p.lineHeight)}');
+		if (p.textAlign != null) out.push('text-align: ${n.textAlign()}');
 		return out.join("; ");
 	}
 
 	// (what helder.ui gives the node today, as CSS's computed values would say it)
 	static function values(n:Node):Map<String, String> {
-		var out = layout(n.style);
+		var out = layout(n);
 		var f = n.font();
 		out.set("color", color(n.textColor()));
 		out.set("font-family", f.family);
@@ -125,90 +122,47 @@ class AppUaCheck {
 		return out;
 	}
 
-	// (the non-inherited properties Style holds, as CSS)
-	static function layout(s:Style):Map<String, String> {
-		var m = new Map<String, String>();
-		m.set("display", switch s.display {
-			case Flex: "flex";
-			case None: "none";
-			case Grid: "grid";
-			case Block: "block";
-			case _: "?";
-		});
-		m.set("flex-direction", switch s.flexDirection {
-			case Column: "column";
-			case Row: "row";
-			case ColumnReverse: "column-reverse";
-			case RowReverse: "row-reverse";
-		});
-		m.set("flex-wrap", s.flexWrap ? "wrap" : "nowrap");
-		m.set("position", switch s.position {
-			case Relative: "relative";
-			case Absolute: "absolute";
-			case Sticky: "sticky";
-			case _: "?";
-		});
-		m.set("justify-content", switch s.justifyContent {
-			case Start: "flex-start";
-			case End: "flex-end";
-			case Center: "center";
-			case SpaceBetween: "space-between";
-			case SpaceAround: "space-around";
-			case SpaceEvenly: "space-evenly";
-			case Normal: "normal";
-		});
-		m.set("align-items", align(s.alignItems));
-		m.set("align-self", align(s.alignSelf));
+	// (the non-inherited properties its resolved style has, as CSS)
+	static function layout(n:Node):Map<String, String> {
+		var s = n.used, m = new Map<String, String>();
+		m.set("display", s.none ? "none" : s.inner == BoxStyle.FLEX ? "flex" : s.inner == BoxStyle.GRID ? "grid" : s.outer == BoxStyle.INLINE ? "inline" : "block");
+		m.set("flex-direction", s.flexDirection);
+		m.set("flex-wrap", s.flexWrap);
+		m.set("position", s.position);
+		m.set("justify-content", s.justifyContent);
+		m.set("align-items", s.alignItems);
+		m.set("align-self", s.alignSelf);
 		m.set("flex-grow", num(s.flexGrow));
 		m.set("flex-shrink", num(s.flexShrink));
-		m.set("flex-basis", dim(s.flexBasis, "auto"));
-		m.set("width", dim(s.width, "auto"));
-		m.set("height", dim(s.height, "auto"));
-		m.set("min-width", dim(s.minWidth, "auto"));
-		m.set("min-height", dim(s.minHeight, "auto"));
-		m.set("max-width", dim(s.maxWidth, "none"));
-		m.set("max-height", dim(s.maxHeight, "none"));
-		var zero = helder.os.Edges.ZERO;
-		var p:helder.os.Edges = s.padding ?? zero, g:helder.os.Edges = s.margin ?? zero, b = s.borderEdges ?? zero;
-		for (side in ["top", "right", "bottom", "left"]) {
-			inline function of(e:helder.os.Edges):Float
-				return side == "top" ? e.top : side == "right" ? e.right : side == "bottom" ? e.bottom : e.left;
-			m.set('padding-$side', num(of(p)) + "px");
-			var mv = of(g);
-			m.set('margin-$side', Math.isNaN(mv) ? "auto" : num(mv) + "px");
-			m.set('border-$side-width', num(of(b)) + "px");
+		m.set("flex-basis", len(s.flexBasis, "auto"));
+		m.set("width", len(s.width, "auto"));
+		m.set("height", len(s.height, "auto"));
+		m.set("min-width", len(s.minWidth, "auto"));
+		m.set("min-height", len(s.minHeight, "auto"));
+		m.set("max-width", len(s.maxWidth, "none"));
+		m.set("max-height", len(s.maxHeight, "none"));
+		for (k => side in ["top", "right", "bottom", "left"]) {
+			m.set('padding-$side', num(s.paddingPx(k)) + "px");
+			m.set('margin-$side', len(s.margin[k], "auto"));
+			m.set('border-$side-width', num(s.borderPx(k)) + "px");
 		}
-		m.set("border-top-left-radius", num(s.borderRadius) + "px");
-		m.set("row-gap", num(s.rowGap) + "px");
-		m.set("column-gap", num(s.columnGap) + "px");
-		inline function overflow(o:Overflow):String
-			return o == Hidden ? "hidden" : o == Scroll ? "scroll" : "visible";
-		m.set("overflow-x", overflow(s.overflowX));
-		m.set("overflow-y", overflow(s.overflowY));
+		var r = NodePaint.corners(s, n.width, n.height, 0);
+		m.set("border-top-left-radius", num(r == null ? 0 : r.topLeft) + "px");
+		m.set("row-gap", len(s.rowGap, "normal"));
+		m.set("column-gap", len(s.columnGap, "normal"));
+		m.set("overflow-x", s.overflowX);
+		m.set("overflow-y", s.overflowY);
 		m.set("opacity", num(s.opacity));
-		m.set("background-color", color(s.background));
+		m.set("background-color", color(s.backgroundColor));
 		return m;
 	}
 
-	static function align(a:Align):String
-		return switch a {
-			case Auto: "auto";
-			case Start: "flex-start";
-			case End: "flex-end";
-			case Center: "center";
-			case Stretch: "stretch";
-			case Baseline: "baseline";
-		}
-
-	static function dim(d:Dim, auto:String):String
-		return switch (d : DimValue) {
+	static function len(l:Len, auto:String):String
+		return switch l {
 			case Auto: auto;
 			case Px(v): num(v) + "px";
 			case Percent(p): num(p) + "%";
-			case Calc(p, px): 'calc(${num(p)}% + ${num(px)}px)';
-			case MinContent: "min-content";
-			case MaxContent: "max-content";
-			case FitContent: "fit-content";
+			case _: Std.string(l);
 		}
 
 	static function color(c:Color):String

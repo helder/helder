@@ -16,8 +16,8 @@ function tests() {
 		var now = 1.0;
 		function list(ui:Ui):{list:Node, content:Node} {
 			var l = new Node("list"), c = new Node();
-			l.style.set({overflow: Scroll, width: 300, height: 200});
-			c.style.set({height: 1000, flexShrink: 0});
+			l.style = Style.of({overflow: Scroll, width: 300, height: 200});
+			c.style = Style.of({height: 1000, flexShrink: 0});
 			// (a wheel of its own: a gate where it has no range)
 			l.onWheel = _ -> {};
 			l.append(c);
@@ -38,12 +38,12 @@ function tests() {
 			adopt(ui, m);
 			equals(m.offsets(t.list).y, 300.0);
 			// (another folder, which fits)
-			t.content.style.height = 100;
+			t.content.style = t.content.style.with({height: 100});
 			ui.update();
 			adopt(ui, m);
 			equals(t.list.scrollY, 0.0);
 			equals(m.offsets(t.list), null);
-			t.content.style.height = 1000;
+			t.content.style = t.content.style.with({height: 1000});
 			ui.update();
 			ui.scrollTo(t.list, 0, 50);
 			ui.update();
@@ -78,7 +78,7 @@ function tests() {
 			assert(t.list.scrollY < 0, 'stretched: ${t.list.scrollY}');
 			equals(@:privateAccess ui.mirrorHeld.exists(t.list), true);
 			// (no longer the compositor's: under a node that takes no input)
-			t.list.style.pointerEvents = None;
+			t.list.style = t.list.style.with({pointerEvents: None});
 			ui.update();
 			adopt(ui, m);
 			m.drain((n, x, y, held, moving) -> ui.mirrored(n, x, y, held, moving));
@@ -135,10 +135,10 @@ private class Fixture {
 	public function new() {
 		Ui.now = () -> 0;
 		ui = new Ui(new helder.story.StoryText(), 300, H);
-		list.style.set({width: 300, height: H, overflow: Scroll});
+		list.style = Style.of({width: 300, height: H, overflow: Scroll});
 		for (_ in 0...ROWS) {
 			var r = new Node();
-			r.style.set({height: ROW, flexShrink: 0});
+			r.style = Style.of({height: ROW, flexShrink: 0});
 			list.append(r);
 		}
 		ui.root.append(list);

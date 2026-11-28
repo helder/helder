@@ -16,8 +16,7 @@ function tests() {
 			ui.window = host;
 			log = [];
 			a = new Node("a");
-			a.style.width = 100;
-			a.style.height = 50;
+			a.style = Style.of({width: 100, height: 50});
 			ui.root.append(a);
 			a.onClick = e -> log.push("click");
 			a.onPointerCancel = e -> log.push("cancel");

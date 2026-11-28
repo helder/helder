@@ -8,8 +8,8 @@ function tests() {
 		var ui = new Ui(new helder.story.StoryText(), 200, 200);
 		function scroller():Node {
 			var s = new Node("scroll"), tall = new Node("tall");
-			s.style.set({width: 200, height: 100, flexShrink: 0, overflow: Scroll});
-			tall.style.set({height: 300, flexShrink: 0});
+			s.style = Style.of({width: 200, height: 100, flexShrink: 0, overflow: Scroll});
+			tall.style = Style.of({height: 300, flexShrink: 0});
 			s.append(tall);
 			ui.root.append(s);
 			return s;

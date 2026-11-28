@@ -88,6 +88,6 @@ private function rolling(name:String, seconds:Float):Story
 		c.play(seconds);
 		View.view(<view>
 			<text tag="ball" position="absolute" left={frames()} top={10}>o</text>
-			<text tag="time" marginTop={40}>{frames() + " frames, " + at() + " s"}</text>
+			<text tag="time" margin={[40, 0, 0, 0]}>{frames() + " frames, " + at() + " s"}</text>
 		</view>);
 	});

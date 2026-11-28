@@ -9,6 +9,7 @@ import helder.image.Image;
 import helder.test.Choices;
 import helder.test.Gen;
 import helder.test.Test;
+import helder.ui.Style;
 
 // The renderer's textures given back when the system wants memory (trim:
 // helder.os.App.lowMemory, an iOS app gone to the background): an image
@@ -125,9 +126,9 @@ private class Owned {
 		r.scale = ui.scale = 2;
 		r.background = 0xFFFFFFFF;
 		var row = new helder.ui.Node();
-		row.style.set({flexDirection: Row, width: W, height: H, alignItems: Start});
-		node.style.set({width: 300, height: 200, flexShrink: 0});
-		side.style.set({flexDirection: Row, columnGap: 2});
+		row.style = Style.of({flexDirection: Row, width: W, height: H, alignItems: Start});
+		node.style = Style.of({width: 300, height: 200, flexShrink: 0});
+		side.style = Style.of({flexDirection: Row, columnGap: 2});
 		row.append(node);
 		row.append(text);
 		row.append(side);
@@ -139,12 +140,10 @@ private class Owned {
 
 	// (its size; entering: a node fading in, in the same frame)
 	public function size(w:Int, h:Int, entering:Bool) {
-		node.style.width = w;
-		node.style.height = h;
+		node.style = node.style.with({width: w, height: h});
 		if (entering) {
 			var n = new helder.ui.Node();
-			n.style.set({width: 4, height: 4, background: 0xFF808080});
-			n.props().transition = helder.ui.Transition.parse("fade");
+			n.style = Style.of({width: 4, height: 4, background: 0xFF808080, transition: helder.ui.Transition.parse("fade")});
 			side.append(n);
 		}
 		frame();
@@ -274,12 +273,12 @@ private class Grid {
 		r.background = 0xFFFFFFFF;
 		r.tileBudget = 12 * Renderer.TILE * Renderer.TILE * 4;
 		var row = new helder.ui.Node(), side = new helder.ui.Node();
-		row.style.set({flexDirection: Row, width: W, height: H, columnGap: 40});
-		list.style.set({overflow: Scroll, width: GRID, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF, flexShrink: 0});
+		row.style = Style.of({flexDirection: Row, width: W, height: H, columnGap: 40});
+		list.style = Style.of({overflow: Scroll, width: GRID, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF, flexShrink: 0});
 		for (i in 0...60) {
 			var item = new helder.ui.Node(), badge = new helder.ui.Node(), img = swatch(i);
-			item.style.set({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, flexShrink: 0});
-			badge.style.set({width: 40, opacity: 0.5, background: 0xFF2060C0});
+			item.style = Style.of({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, flexShrink: 0});
+			badge.style = Style.of({width: 40, opacity: 0.5, background: 0xFF2060C0});
 			badge.append(new helder.ui.TextNode("new"));
 			rows.push({node: item, image: img});
 			item.append(new helder.ui.ImageNode(img));
@@ -287,8 +286,8 @@ private class Grid {
 			item.append(badge);
 			list.append(item);
 		}
-		side.style.set({width: 80, height: H, flexShrink: 0});
-		notes.style.set({overflow: Scroll, height: H - 40, padding: 8, background: 0xFFEEEEEE, flexShrink: 0});
+		side.style = Style.of({width: 80, height: H, flexShrink: 0});
+		notes.style = Style.of({overflow: Scroll, height: H - 40, padding: 8, background: 0xFFEEEEEE, flexShrink: 0});
 		for (i in 0...400)
 			notes.append(new helder.ui.TextNode("Note " + i));
 		side.append(label);

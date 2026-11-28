@@ -62,7 +62,7 @@ class MenuCheck {
 			frames++;
 			if (frames == 3) {
 				if (Platform.os() == 1) cocoa(w, bar) else if (Platform.os() == 2) win32(w, bar) else {
-					check("linux: drawn, not the platform's", !bar.native && bar.node.style.display != None);
+					check("linux: drawn, not the platform's", !bar.native && !bar.node.used.none);
 					check("linux: the bar's titles", [for (c in bar.node.children) c.children.length].length == 3);
 					w.ui.keyDown(Key.F10, 0);
 					var m = bar.current;

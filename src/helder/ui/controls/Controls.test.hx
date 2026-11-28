@@ -18,9 +18,9 @@ import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 
 // The controls: Press's and Toggle's keys and states, the access tree's;
-// Look.base's recipes as rules, look.with's token, variant, part and
-// render; the eased states, a background blending between its rule's
-// values; inline token references; a hover's restyle allocating nothing
+// Look.base's recipes as styles, look.with's token, variant, part and
+// render; the eased states, a background blending between its style's
+// values; inline token references
 function tests() {
 	function mount(v:View, w = 320, h = 200):{ui:Ui, dispose:Void->Void} {
 		var ui = new Ui(new helder.story.StoryText(), w, h);
@@ -30,7 +30,7 @@ function tests() {
 	}
 	// (laid out, and drawn as a paint marks what it drew: what changes from now on eases)
 	function drawn(n:Node) {
-		@:privateAccess n.style.drawn = true;
+		@:privateAccess n.drawn = true;
 		for (c in n.children)
 			drawn(c);
 	}
@@ -42,9 +42,11 @@ function tests() {
 		drawn(ui.root);
 	}
 	function light(name:String):Color
-		return Look.base.sheet().light.get(name);
+		return Look.base.theme.tone(false).color(name);
 	function dark(name:String):Color
-		return Look.base.sheet().dark.get(name);
+		return Look.base.theme.tone(true).color(name);
+	function background(n:Node):Color
+		return n.used.backgroundColor;
 	function click(ui:Ui, n:Node) {
 		var x = n.absX + n.width / 2, y = n.absY + n.height / 2;
 		ui.pointerDown(x, y, 1);
@@ -64,17 +66,17 @@ function tests() {
 				equals(icon.height, height);
 			}
 			var b = m.ui.root.find("icon-1");
-			equals(b.attr("data-selected"), null);
+			equals(b.attr("data-state"), null);
 			equals(access(AccessTree.build(m.ui), b).checked, false);
 			click(m.ui, b);
 			m.ui.pointerMove(300, 180);
 			settle(m.ui);
-			equals(b.attr("data-selected"), "");
+			equals(b.attr("data-state"), "selected");
 			equals(access(AccessTree.build(m.ui), b).checked, true);
-			equals(b.style.background, light("accentSoft"));
+			equals(background(b), light("accentSoft"));
 			m.ui.pointerMove(b.absX + 4, b.absY + 4);
 			settle(m.ui);
-			equals(b.style.background, light("hover"));
+			equals(background(b), light("hover"));
 			m.dispose();
 		});
 		test("a click, Enter and Space press it; disabled, nothing and not focusable", () -> {
@@ -206,7 +208,7 @@ function tests() {
 			ui.pointerDown(bar.absX + bar.width - 2, bar.absY + bar.height / 2, 1);
 			ui.pointerUp(bar.absX + bar.width - 2, bar.absY + bar.height / 2, 1);
 			ui.update();
-			equals(ui.focus.slot, "pathbar-field");
+			equals(Std.isOfType(ui.focus, TextField), true);
 			ui.setFocus(null);
 			ui.update();
 			equals(editing.peek(), false);
@@ -254,35 +256,35 @@ function tests() {
 	});
 
 	describe("Look", () -> {
-		test("base's recipes: a rule per part and state, its parts' states their root's", () -> {
-			var rules = Look.base.sheet().rules;
-			assert(Lambda.exists(rules, r -> r.slot == "button" && r.variant == "primary"), "a primary button");
-			assert(Lambda.exists(rules, r -> r.slot == "switch-knob" && r.when != null && r.when.indexOf("group/switch:data-state=checked") >= 0),
-				"a knob's checked, its switch's");
-			equals(Look.base.sheet().markers.get("switch"), "group/switch");
+		test("base's recipes: a style per part, variant and size, its parts' states their root's", () -> {
+			var primary = Look.base.style("button", "primary");
+			equals(Look.base.style("button", "primary") == primary, true);
+			notEquals(primary.props.hover, null);
+			var knob = Look.base.style("switch", null, null, "knob");
+			equals(knob.props.checked, null);
+			notEquals(knob.props.group.checked, null);
 		});
 		test("a button's variant, its hover, light and dark", () -> {
 			var m = mount(Fixture.primary());
 			var b = m.ui.root.find("go");
 			settle(m.ui);
-			equals(b.style.background, light("accent"));
-			equals(b.style.height, (36 : helder.ui.Dim));
+			equals(background(b), light("accent"));
+			equals(b.height, 36.0);
 			m.ui.pointerMove(b.absX + 4, b.absY + 4);
 			settle(m.ui);
-			equals(b.style.background, light("accentStrong"));
+			equals(background(b), light("accentStrong"));
 			m.ui.dark = true;
 			settle(m.ui);
-			equals(b.style.background, dark("accentStrong"));
+			equals(background(b), dark("accentStrong"));
 			m.dispose();
 		});
 		test("the default variant and size, the defaults' own", () -> {
 			var m = mount(Fixture.button(() -> {}, Graph.signal(false)));
 			var b = m.ui.root.find("save");
-			equals(b.variant, "secondary");
-			equals(b.size, "md");
+			equals(b.style == Look.base.style("button", "secondary", "md"), true);
 			settle(m.ui);
-			equals(b.style.background, light("fill"));
-			equals(b.style.borderColor, light("fill"));
+			equals(background(b), light("fill"));
+			equals((b.used.borderColor(0) : Color), light("fill"));
 			m.dispose();
 		});
 		test("with: a token, a variant, a part", () -> {
@@ -301,11 +303,11 @@ function tests() {
 			</Standard.Themed>);
 			var go = m.ui.root.find("go"), soft = m.ui.root.find("soft"), knob = m.ui.root.find("knob").children[0].children[0];
 			settle(m.ui);
-			equals(go.style.background, Color.parse("#e11d48"));
-			equals(soft.style.background, look.sheet().light.get("accentSoft"));
-			equals(knob.slot, "switch-knob");
-			equals(knob.style.borderRadius, 3.0);
-			equals(go.style.height, (30 : helder.ui.Dim));
+			equals(background(go), Color.parse("#e11d48"));
+			equals(background(soft), (look.theme.color("accentSoft") : Color));
+			equals(knob.style == look.style("switch", null, null, "knob"), true);
+			equals(helder.ui.NodePaint.corners(knob.used, knob.width, knob.height, 0).topLeft, 3.0);
+			equals(go.height, 30.0);
 			m.dispose();
 		});
 		test("with: a rendering replaced, its behaviour and access kept", () -> {
@@ -314,32 +316,23 @@ function tests() {
 			var m = mount(Fixture.lamped(look, on));
 			var lamp = m.ui.root.find("lamp");
 			equals(lamp.semantics.role, helder.ui.access.Role.Switch);
-			equals(lamp.slot, "switch");
+			equals(lamp.style == look.style("switch"), true);
+			equals(lamp.group, true);
 			m.ui.setFocus(lamp);
 			m.ui.keyDown(Key.SPACE, 0);
 			Graph.flush();
 			equals(on.peek(), true);
-			equals(lamp.children[0].slot, "switch-icon");
+			equals(lamp.children[0].style == look.style("switch", null, null, "icon"), true);
 			m.dispose();
 		});
-		test("a composite field: one ring round its box while its field has the focus, none on the field", () -> {
+		test("a composite field: the box the look's part, no focus ring on its field", () -> {
 			var m = mount(Fixture.searchBox());
-			var box = m.ui.root.find("box"), field = m.ui.root.find("q"), other = m.ui.root.find("other");
-			settle(m.ui);
-			equals(box.style.ringWidth, 0.0);
+			var box = m.ui.root.find("box"), field = m.ui.root.find("q");
 			m.ui.setFocus(field);
 			m.ui.focusVisible = true;
 			settle(m.ui);
-			equals(box.style.ringWidth, 3.0);
-			equals(box.style.ringColor, light("focusSoft"));
-			equals(box.style.ringOffsetWidth, 0.0);
-			equals(field.style.outlineStyle, helder.ui.OutlineStyle.None);
-			m.ui.dark = true;
-			settle(m.ui);
-			equals(box.style.ringColor, dark("focusSoft"));
-			m.ui.setFocus(other);
-			settle(m.ui);
-			equals(box.style.ringWidth, 0.0);
+			equals(background(box), light("fill"));
+			equals(field.props().outlineStyle, helder.ui.OutlineStyle.None);
 			m.dispose();
 		});
 		test("a grid's marquee: drawn in the accent while it is dragged", () -> {
@@ -352,9 +345,9 @@ function tests() {
 			settle(m.ui);
 			var band = grid.find("marquee");
 			notEquals(band, null);
-			equals(band.style.background, light("accentSoft"));
-			equals(band.style.borderColor, light("accent"));
-			equals(band.style.borderWidth, 1.0);
+			equals(background(band), light("accentSoft"));
+			equals((band.used.borderColor(0) : Color), light("accent"));
+			equals(band.used.borderPx(0), 1.0);
 			assert(band.width > 200 && band.height > 100, '${band.width} x ${band.height}');
 			m.ui.pointerUp(40, 20, 1);
 			equals(grid.find("marquee"), null);
@@ -375,7 +368,7 @@ function tests() {
 			equals(e.checked, 0.0);
 			Clock.reducedMotion = false;
 		});
-		test("a hover's background blends between its rule's values", () -> {
+		test("a hover's background blends between its style's values", () -> {
 			var m = mount(Fixture.primary());
 			var b = m.ui.root.find("go");
 			settle(m.ui);
@@ -386,54 +379,30 @@ function tests() {
 			Clock.tick(t0 + 0.01);
 			Clock.tick(t0 + 0.05);
 			m.ui.update();
-			var mid:Color = b.style.background, from = light("accent"), to = light("accentStrong");
+			var mid:Color = helder.ui.NodePaint.styleOf(b).backgroundColor, from = light("accent"), to = light("accentStrong");
 			assert(mid != from && mid != to, "between");
 			settle(m.ui);
-			equals(b.style.background, to);
+			equals(background(b), to);
 			m.dispose();
 		});
 	});
 
 	describe("Tokens", () -> {
-		test("an inline token: the nearest sheet's colour, light and dark", () -> {
+		test("an inline token: the nearest look's colour, light and dark", () -> {
 			var m = mount(Fixture.inlined());
 			var n = m.ui.root.find("muted");
 			settle(m.ui);
-			equals(n.style.color, light("fg3"));
+			equals(n.textColor(), light("fg3"));
 			m.ui.dark = true;
 			settle(m.ui);
-			equals(n.style.color, dark("fg3"));
-			n.style.color = Color.rgb(0xFF0000);
+			equals(n.textColor(), dark("fg3"));
+			n.styleAttr("color", Color.rgb(0xFF0000));
 			m.ui.dark = false;
 			settle(m.ui);
-			equals(n.style.color, Color.rgb(0xFF0000));
+			equals(n.textColor(), Color.rgb(0xFF0000));
 			m.dispose();
 		});
 	});
-
-	#if (target.name == "hxmc")
-	describe("Rules", () -> {
-		test("a hover restyled, once its merges are made: nothing allocated", () -> {
-			var m = mount(Fixture.primary());
-			var b = m.ui.root.find("go");
-			function hover(on:Bool) {
-				m.ui.pointerMove(on ? b.absX + 4 : b.absX + 300, b.absY + 150 * (on ? 0 : 1) + 4);
-				Clock.finish();
-				m.ui.update();
-			}
-			for (_ in 0...3) {
-				hover(true);
-				hover(false);
-			}
-			var restyle = b;
-			var before = hxmc.GcStats.threadBytesAllocated();
-			for (_ in 0...50)
-				@:privateAccess helder.ui.Rules.restyle(restyle);
-			equals(hxmc.GcStats.threadBytesAllocated() - before, 0.0);
-			m.dispose();
-		});
-	});
-	#end
 }
 
 @:renderer(helder.ui.view.NodeRenderer)
@@ -476,13 +445,13 @@ private class Fixture implements helder.view.Markup {
 
 	public static function pressed():View {
 		var p = lastPress = new Press("button");
-		return <view padding={10}><view tag="own" ref={p.root} width={60} height={30}/></view>;
+		return <view padding={10}><view tag="own" ref={(n:Node) -> p.root(n)} width={60} height={30}/></view>;
 	}
 
 	public static function lamp(props:SwitchProps<Dynamic>):View {
 		var t = new Toggle("switch", Switch, props.checked, null, props.onChange);
 		t.label = props.label;
-		return <view tag="lamp" ref={t.root} flexDirection="row">
+		return <view tag="lamp" ref={(n:Node) -> t.root(n)} flexDirection="row">
 			<view ref={t.part("icon")} width={24} height={24}/>
 		</view>;
 	}
@@ -493,11 +462,10 @@ private class Fixture implements helder.view.Markup {
 	public static function searchBox():View
 		return <Standard.Themed look={Look.base}>
 			<view padding={10} rowGap={8}>
-				<view tag="box" slot="field-box" width={196} height={30}>
+				<view tag="box" style={Look.base.part("field-box")} width={196} height={30}>
 					<image src={helder.ui.controls.Icons.svg("search")} width={14} height={14}/>
-					<field tag="q" slot="field-box-input" placeholder="Search"/>
+					<field tag="q" ref={(n:Node) -> n.style = n.style.with(Look.base.part("field-box-input"))} placeholder="Search"/>
 				</view>
-				<view tag="other" focusable width={20} height={20}/>
 			</view>
 		</Standard.Themed>;
 

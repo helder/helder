@@ -130,7 +130,7 @@ function tests() {
 	describe("layout", () -> {
 		test("edges move from where they are drawn; a stationary edge never moves", () -> {
 			var s = scene();
-			s.a.style.height = 60;
+			s.a.style = s.a.style.with({height: 60});
 			frame(s, 0.016);
 			var b0 = bounds(s.b), a0 = bounds(s.a), list0 = bounds(s.list);
 			equals(b0.y, 40.0, "b as it was drawn the frame its layout moved");
@@ -154,7 +154,7 @@ function tests() {
 		});
 		test("children ride their parent", () -> {
 			var s = scene();
-			s.list.style.marginLeft = 100;
+			s.list.style = s.list.style.with({margin: [0, 0, 0, 100]});
 			frame(s, 0.016);
 			for (i in 2...20) {
 				frame(s, i * 0.016);
@@ -168,7 +168,7 @@ function tests() {
 		test("lead and trail: the edge in the direction of travel leads", () -> {
 			var s = scene();
 			s.list.motion = MotionSpec.of({curve: "default", lead: "lead", trail: "calm"});
-			s.a.style.marginLeft = 100;
+			s.a.style = s.a.style.with({margin: [0, 0, 0, 100]});
 			frame(s, 0.016);
 			frame(s, 0.1);
 			var a = bounds(s.a);
@@ -178,13 +178,11 @@ function tests() {
 		});
 		test("riding the trailing edge", () -> {
 			var s = scene();
-			s.b.style.position = Absolute;
-			s.b.style.right = 0;
-			s.b.style.width = 20;
+			s.b.style = s.b.style.with({position: Absolute, right: 0, width: 20});
 			s.b.ride = 3;
 			finish(s);
 			base = Clock.now;
-			s.list.style.width = 300;
+			s.list.style = s.list.style.with({width: 300});
 			frame(s, 0.016);
 			assert(bounds(s.list).width == 400, "the list's width on its way");
 			for (i in 3...20) {
@@ -197,7 +195,7 @@ function tests() {
 		test("instant: a subtree's changes without motion", () -> {
 			var s = scene();
 			s.list.instant = true;
-			s.a.style.height = 60;
+			s.a.style = s.a.style.with({height: 60});
 			frame(s, 0.016);
 			equals(bounds(s.b).y, 80.0, "b there at once");
 		});
@@ -205,8 +203,8 @@ function tests() {
 			var s = scene();
 			Clock.reducedMotion = true;
 			try {
-				s.a.style.height = 60;
-				s.b.style.opacity = 0;
+				s.a.style = s.a.style.with({height: 60});
+				s.b.style = s.b.style.with({opacity: 0});
 				frame(s, 0.016);
 				equals(bounds(s.b).y, 80.0, "b at its place at once");
 				frame(s, 0.016 + 0.075);
@@ -225,7 +223,7 @@ function tests() {
 		test("nothing animates on the first frame", () -> {
 			var ui = new Ui(null, 300, 300), c = new Rec();
 			var row = box(100, 20);
-			row.props().transition = Transition.parse("fade scale");
+			row.style = row.style.with({transition: Transition.parse("fade scale")});
 			var list = new Node();
 			list.motion = MotionSpec.DEFAULT;
 			list.append(row);
@@ -244,8 +242,7 @@ function tests() {
 			var t = now();
 			tick(ui, c, t);
 			var row = box(100, 20);
-			row.style.background = 0xFF3366FF;
-			row.props().transition = Transition.parse("fade slide-up");
+			row.style = row.style.with({background: 0xFF3366FF, transition: Transition.parse("fade slide-up")});
 			list.append(row);
 			tick(ui, c, t += 0.016);
 			// (a change between frames moves from the next frame on: absent, not drawn, in the first)
@@ -302,24 +299,22 @@ function tests() {
 			var ui = new Ui(null, 300, 300), c = new Rec();
 			var card = box(100, 40);
 			card.motion = MotionSpec.of("calm");
-			card.style.background = 0xFFFFFFFF;
-			card.style.color = 0xFF000000;
+			card.style = card.style.with({background: 0xFFFFFFFF, color: 0xFF000000});
 			ui.root.append(card);
 			var t = now();
 			tick(ui, c, t);
-			card.style.background = 0xFF000000;
-			card.style.color = 0xFFFFFFFF;
-			equals(card.style.target("background"), (0xFF000000 : Color), "the background's target");
+			card.style = card.style.with({background: 0xFF000000, color: 0xFFFFFFFF});
+			equals(card.present.background.target, (0xFF000000 : Color), "the background's target");
 			tick(ui, c, t += 0.016);
 			tick(ui, c, t += 0.1);
-			var fg = card.textColor(), bg = card.style.background;
+			var fg = card.textColor(), bg:Color = NodePaint.styleOf(card).backgroundColor;
 			var fgWay = fg.r / 255, bgWay = 1 - bg.r / 255;
 			assert(fgWay > bgWay + 0.1, 'the text colour ahead of the background: ${fg.toHex()} on ${bg.toHex()}');
 			assert(bgWay > 0.05 && bgWay < 0.95, 'the background on its way: ${bg.toHex()}');
 			ui.update();
 			Clock.finish();
 			equals(card.textColor(), (0xFFFFFFFF : Color), "the text colour settled");
-			equals(card.style.background, (0xFF000000 : Color), "the background settled");
+			equals((NodePaint.styleOf(card).backgroundColor : Color), (0xFF000000 : Color), "the background settled");
 		});
 		test("opacity and radius springs; transform as lanes", () -> {
 			var ui = new Ui(null, 300, 300), c = new Rec();
@@ -328,19 +323,18 @@ function tests() {
 			ui.root.append(card);
 			var t = now();
 			tick(ui, c, t);
-			card.style.opacity = 0.2;
-			card.style.borderRadius = 20;
-			card.props().transform = Transform.translate(50, 0);
+			card.style = card.style.with({opacity: 0.2, borderRadius: 20, transform: Transform.translate(50, 0)});
 			tick(ui, c, t += 0.016);
 			tick(ui, c, t += 0.1);
-			assert(card.used.opacity < 1 && card.used.opacity > 0.2, 'opacity moving: ${card.used.opacity}');
-			assert(card.style.borderRadius > 0 && card.style.borderRadius < 20, 'radius moving: ${card.style.borderRadius}');
+			var o = card.present.opacity.value, r = radius(card);
+			assert(o < 1 && o > 0.2, 'opacity moving: $o');
+			assert(r > 0 && r < 20, 'radius moving: $r');
 			var b = card.windowBounds();
 			assert(b.x > 0 && b.x < 50, 'translated part of the way: ${b.x}');
 			ui.update();
 			Clock.finish();
 			equals(card.used.opacity, 0.2);
-			equals(card.style.borderRadius, 20.0);
+			equals(radius(card), 20.0);
 			equals(card.windowBounds().x, 50.0);
 		});
 	});
@@ -350,15 +344,14 @@ function tests() {
 			var ui = new Ui(null, 400, 400), c = new Rec();
 			var stage = new Node();
 			stage.motion = MotionSpec.DEFAULT;
-			stage.style.width = 400;
-			stage.style.height = 400;
+			stage.style = Style.of({width: 400, height: 400});
 			ui.root.append(stage);
 			var grid = new Node();
-			grid.style.padding = 20;
+			grid.style = Style.of({padding: 20});
 			stage.append(grid);
 			var small = box(80, 60);
 			small.matched = "tile";
-			small.style.borderRadius = 12;
+			small.style = small.style.with({borderRadius: 12});
 			grid.append(small);
 			var t = now();
 			tick(ui, c, t);
@@ -366,15 +359,13 @@ function tests() {
 			stage.remove(grid);
 			var big = new Node();
 			big.matched = "tile";
-			big.style.background = 0xFF3366FF;
-			big.style.width = 400;
-			big.style.height = 400;
+			big.style = Style.of({background: 0xFF3366FF, width: 400, height: 400});
 			stage.append(big);
 			tick(ui, c, t += 0.016);
 			var b = bounds(big);
 			assert(Math.abs(b.x - 20) < 6 && Math.abs(b.width - 80) < 30, 'from where the small one was: $b');
 			assert(c.drawn(big) > 0, "drawn");
-			equals(big.style.borderRadius, 12.0, "its radius the small one's at first");
+			equals(radius(big), 12.0, "its radius the small one's at first");
 			for (i in 0...10)
 				tick(ui, c, t += 0.016);
 			var m = bounds(big);
@@ -384,7 +375,7 @@ function tests() {
 			tick(ui, c, Clock.now + 0.016);
 			var e = bounds(big);
 			equals([e.x, e.y, e.width, e.height], [0.0, 0.0, 400.0, 400.0], "landed");
-			equals(big.style.borderRadius, 0.0, "its own radius");
+			equals(radius(big), 0.0, "its own radius");
 		});
 	});
 }
@@ -394,9 +385,9 @@ private function scene():{ui:Ui, c:Rec, list:Node, a:Node, b:Node} {
 	var ui = new Ui(null, 400, 400), c = new Rec();
 	var list = new Node("list");
 	list.motion = MotionSpec.DEFAULT;
-	list.style.alignItems = Start;
+	list.style = Style.of({alignItems: Start});
 	var a = box(100, 20), b = box(100, 20);
-	b.style.marginTop = 20;
+	b.style = b.style.with({margin: [20, 0, 0, 0]});
 	list.append(a);
 	list.append(b);
 	ui.root.append(list);
@@ -430,11 +421,13 @@ private function now():Float
 private function bounds(n:Node):Rect
 	return n.windowBounds();
 
+// (its top left corner's radius as it is drawn)
+private function radius(n:Node):Float
+	return NodePaint.corners(NodePaint.styleOf(n), n.width, n.height, 0)?.topLeft ?? 0;
+
 private function box(w:Float, h:Float):Node {
 	var n = new Node();
-	n.style.width = w;
-	n.style.height = h;
-	n.style.background = 0xFF808080;
+	n.style = Style.of({width: w, height: h, background: 0xFF808080});
 	return n;
 }
 
@@ -450,7 +443,7 @@ private class Rec implements Canvas {
 
 	// the opacity a node's box was last drawn at (-1: not drawn); a node is known by its size and fill
 	public function drawn(n:Node):Float {
-		var k = key(n.style.background);
+		var k = key(n.used.backgroundColor);
 		return seen.exists(k) ? seen.get(k) : -1;
 	}
 

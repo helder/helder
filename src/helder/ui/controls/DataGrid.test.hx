@@ -123,8 +123,7 @@ function tests() {
 		test("after a press in it, the cursor over a node outside the grid is that node's", () -> {
 			var ui = new Ui(new Mono(), 400, 260);
 			var button = new Node("button");
-			button.style.height = 40;
-			(button.props().cursor ?? Auto) = Pointer;
+			button.style = helder.ui.Style.of({height: 40, cursor: Pointer});
 			var g = new DataGrid();
 			g.rowNumbers = false;
 			g.columns = [new GridColumn("id", 60), new GridColumn("name", 200)];

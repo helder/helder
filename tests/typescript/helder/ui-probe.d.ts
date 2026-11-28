@@ -37,8 +37,6 @@ export declare class UiProbe {
 	static insets(top: number, right: number, bottom: number, left: number): void;
 	// the padding of the first node with tag: top right bottom left
 	static padding(tag: string): string;
-	// the slot of the first node with tag, its variant and size (a look's part)
-	static slot(tag: string): string;
 	// the background of the first node with tag, as #rrggbbaa (its transitions finished)
 	static background(tag: string): string;
 	// dark mode, as a window's appearance sets it (Ui.dark)

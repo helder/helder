@@ -30,10 +30,9 @@ function tests() {
 			a = box(ui.root, 0, 0, 100, 50);
 			b = box(ui.root, 100, 0, 100, 50);
 			list = box(ui.root, 0, 50, 300, 150);
-			list.style.overflow = Scroll;
+			list.style = list.style.with({overflow: Scroll});
 			item = new Node("item");
-			item.style.height = 600;
-			item.style.flexShrink = 0;
+			item.style = Style.of({height: 600, flexShrink: 0});
 			list.append(item);
 			listen(a, "a");
 			listen(b, "b");
@@ -144,10 +143,9 @@ function tests() {
 				t = 10;
 				ui = new Ui(null, 300, 200);
 				list = box(ui.root, 0, 50, 300, 150);
-				list.style.overflow = Scroll;
+				list.style = list.style.with({overflow: Scroll});
 				item = new Node("item");
-				item.style.height = 6000;
-				item.style.flexShrink = 0;
+				item.style = Style.of({height: 6000, flexShrink: 0});
 				list.append(item);
 				ui.update();
 				var times = [11000.0, 11050, 11100], ys = [190.0, 150, 110];
@@ -210,11 +208,7 @@ function tests() {
 
 private function box(parent:Node, x:Float, y:Float, w:Float, h:Float, ?n:Node):Node {
 	if (n == null) n = new Node("box");
-	n.style.position = Absolute;
-	n.style.left = x;
-	n.style.top = y;
-	n.style.width = w;
-	n.style.height = h;
+	n.style = n.style.with({position: Absolute, left: x, top: y, width: w, height: h});
 	parent.append(n);
 	return n;
 }

@@ -7,6 +7,7 @@ import helder.ui.SizeClass;
 import helder.ui.Stack;
 import helder.ui.NavScreen;
 import helder.ui.Sheet;
+import helder.ui.Style;
 import helder.ui.TextNode;
 import helder.ui.Ui;
 import helder.ui.actions.Actions;
@@ -215,7 +216,7 @@ function tests() {
 		test("held still it wins: no click; moved first it fails", () -> {
 			var u = ui(300, 300), log = [];
 			var n = new Node("card");
-			n.style.height = 100;
+			n.style = Style.of({height: 100});
 			n.onClick = _ -> log.push("click");
 			u.root.append(n);
 			n.addGesture(new LongPress()).onGesture = g -> log.push(g.state == Began ? "Began" : g.state == Ended ? "Ended" : "other");
@@ -236,7 +237,7 @@ function tests() {
 			var u = ui(390, 844), log = [];
 			actions("nav_test", NavTestAction);
 			var n = new Node("tile");
-			n.style.height = 100;
+			n.style = Style.of({height: 100});
 			n.on(NavTestAction, a -> {
 				log.push(Std.string(a));
 				true;
@@ -248,7 +249,7 @@ function tests() {
 			press(u, n, 0.6);
 			var layer = u.overlay.find("touch-menu-layer");
 			assert(layer.find("lifted") != null);
-			equals(layer.find("menu-Move to Trash").slot, "touch-menu-item-danger");
+			equals(part(layer.find("menu-Move to Trash")), "touch-menu-item-danger");
 			press(u, layer.find("menu-Open"));
 			equals(log, ["Open"]);
 			equals(u.overlay.children.length, 0);
@@ -257,7 +258,7 @@ function tests() {
 			for (size in [{w: 390.0, menu: true}, {w: 820.0, menu: false}, {w: 1400.0, menu: false}]) {
 				var u = ui(size.w, 600), clicks = 0;
 				var n = new Node("row");
-				n.style.height = 100;
+				n.style = Style.of({height: 100});
 				n.onPress = _ -> clicks++;
 				u.root.append(n);
 				helder.ui.menu.ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)]);
@@ -272,7 +273,7 @@ function tests() {
 				equals('${size.w}: ${layer != null} ${clicks}', '${size.w}: ${size.menu} ${size.menu ? 0 : 1}');
 				if (layer == null) continue;
 				var items = layer.find("touch-menu").children;
-				equals([for (c in items) c.slot], ["touch-menu-item", "touch-menu-separator", "touch-menu-item"]);
+				equals([for (c in items) part(c)], ["touch-menu-item", "touch-menu-separator", "touch-menu-item"]);
 				var line = items[1];
 				equals([line.height, line.y - items[0].y - items[0].height, items[2].y - line.y - line.height], [1.0, 4.0, 4.0]);
 			}
@@ -310,6 +311,13 @@ function tests() {
 			dispose();
 		});
 	});
+}
+
+// (the touch menu's part a node's style is: Look.base's)
+private function part(n:Node):Null<String> {
+	for (p in ["touch-menu-item", "touch-menu-item-danger", "touch-menu-separator"])
+		if (n.style == helder.ui.controls.Look.base.part(p)) return p;
+	return null;
 }
 
 enum NavTestAction {

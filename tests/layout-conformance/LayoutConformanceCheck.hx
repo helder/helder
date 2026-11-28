@@ -1,5 +1,4 @@
 import helder.ui.*;
-import helder.ui.DimValue;
 import haxe.DynamicAccess;
 import sys.FileSystem;
 import sys.io.File;
@@ -104,16 +103,9 @@ class LayoutConformanceCheck {
 			Sys.println("FAIL " + f);
 		for (f in fixed)
 			Sys.println("FIXED " + f + " (BLESS=1 to require it)");
-		#if !helder.layout
-		// (on the CSS engine's layout, NodeBoxes: Layout's required cases it fails so far, fewer as the port goes on)
+		// (on the CSS engine's layout, NodeBoxes: the required cases it fails so far, fewer as the port goes on)
 		Sys.println('LayoutConformanceCheck: ${failures.length} required failing on the engine, at most 30');
 		if (failures.length > 30) Sys.exit(1);
-		#else
-		if (failures.length + fixed.length > 0) {
-			Sys.println('LayoutConformanceCheck: ${failures.length} required failing, ${fixed.length} pending passing');
-			Sys.exit(1);
-		}
-		#end
 	}
 
 	static function need(ok:Bool, what:String)
@@ -150,25 +142,24 @@ class LayoutConformanceCheck {
 	static function layout(f:Dynamic, variant:String):{ok:Bool, reason:String} {
 		var notes = [];
 		var ui = new Ui(new MonoText(), 100000, 100000);
-		ui.root.style.fontSize = 10;
-		ui.root.style.lineHeight = 1;
+		ui.root.style = ui.root.style.with({fontSize: 10, lineHeight: 1});
 		// (the viewport: a flex row of the test's root at its start, max-content unless given)
-		var viewport = new Node();
-		var vs = viewport.style;
-		vs.position = Absolute;
-		vs.left = 0;
-		vs.top = 0;
-		vs.flexDirection = Row;
-		vs.alignItems = Start;
-		vs.width = Dim.parse(f.viewport.width);
-		vs.height = Dim.parse(f.viewport.height);
+		var viewport = new Node(), rtl = variant.endsWith("rtl");
+		viewport.style = Style.of({
+			position: Absolute,
+			left: 0,
+			top: 0,
+			flexDirection: Row,
+			alignItems: Start,
+			width: (f.viewport.width : String),
+			height: (f.viewport.height : String),
+			direction: rtl ? Rtl : Ltr
+		});
 		ui.root.append(viewport);
-		var rtl = variant.endsWith("rtl");
-		vs.direction = rtl ? Rtl : Ltr;
 		var nodes = [];
 		var root = build(f.tree, rtl, notes, nodes);
 		// (the root: laid out in the available space, not by its position, as Taffy's)
-		if (f.viewport.width == "max-content") root.style.position = Relative;
+		if (f.viewport.width == "max-content") root.style = root.style.with({position: Relative});
 		viewport.append(root);
 		ui.update();
 		var want:Array<Array<Float>> = Reflect.field(f.variants, variant);
@@ -177,7 +168,7 @@ class LayoutConformanceCheck {
 			var hidden = false;
 			var p = n;
 			while (p != viewport) {
-				if (p.style.display == None) hidden = true;
+				if (p.used.none) hidden = true;
 				p = p.parent;
 			}
 			var got = hidden ? [0.0, 0, 0, 0] : [n.absX - n.parent.absX, n.absY - n.parent.absY, n.width, n.height];
@@ -196,12 +187,10 @@ class LayoutConformanceCheck {
 	static function build(t:Dynamic, rtl:Bool, notes:Array<String>, nodes:Array<Node>):Node {
 		var n:Node = t.text != null ? new AhemNode(t.text) : new Node();
 		nodes.push(n);
-		var s = n.style;
-		s.direction = rtl ? Rtl : Ltr;
 		// (CSS's initial values where helder.ui's differ)
-		s.flexDirection = Row;
-		s.alignItems = Stretch;
+		var s:Style.StyleProps = {direction: rtl ? Rtl : Ltr, flexDirection: Row, alignItems: Stretch};
 		var style:DynamicAccess<String> = t.style;
+		var margin = [0.0, 0, 0, 0], padding = [0.0, 0, 0, 0], overflows = [];
 		var rowStart = "auto", rowEnd = "auto", colStart = "auto", colEnd = "auto";
 		function note(what:String)
 			if (!notes.contains(what)) notes.push(what);
@@ -212,14 +201,13 @@ class LayoutConformanceCheck {
 			}
 			return Std.parseFloat(v);
 		}
-		function margin(k:String, v:String):Float
-			return v == "auto" ? Math.NaN : px(k, v);
-		function dim(k:String, v:String):Dim {
-			if (v == "stretch" || v == "content" || v.startsWith("fit-content(")) {
+		// (a length: px, a percentage or auto; the content's sizes a style has not)
+		function dim(k:String, v:String):Style.Measure {
+			if (!~/^(auto|-?[0-9.]+(px|%)?)$/.match(v)) {
 				note('$k: $v');
-				return DimValue.Auto;
+				return "auto";
 			}
-			return Dim.parse(v);
+			return v;
 		}
 		function unsafe(k:String, v:String):String {
 			if (v.startsWith("safe ")) {
@@ -241,14 +229,11 @@ class LayoutConformanceCheck {
 				case _: note('$k: $v'); Auto;
 			}
 		}
-		function tracks(k:String, v:String):Array<Grid.Track> {
+		function tracks(k:String, v:String):String {
 			if (v.indexOf("[") >= 0) note('$k: named lines');
 			if (v.indexOf("fit-content(") >= 0) note('$k: fit-content()');
 			if (v.indexOf("auto-fit") >= 0 || v.indexOf("auto-fill") >= 0) note('$k: repeat(auto-fit/auto-fill)');
-			return try Grid.tracks(v) catch (e:Dynamic) {
-				note('$k: not parsed');
-				[];
-			}
+			return v;
 		}
 		for (k => v in style)
 			switch k {
@@ -290,14 +275,10 @@ class LayoutConformanceCheck {
 				case "right": s.right = dim(k, v);
 				case "bottom": s.bottom = dim(k, v);
 				case "aspect-ratio": s.aspectRatio = Std.parseFloat(v);
-				case "margin-top": s.marginTop = margin(k, v);
-				case "margin-right": s.marginRight = margin(k, v);
-				case "margin-bottom": s.marginBottom = margin(k, v);
-				case "margin-left": s.marginLeft = margin(k, v);
-				case "padding-top": s.paddingTop = px(k, v);
-				case "padding-right": s.paddingRight = px(k, v);
-				case "padding-bottom": s.paddingBottom = px(k, v);
-				case "padding-left": s.paddingLeft = px(k, v);
+				case "margin-top" | "margin-right" | "margin-bottom" | "margin-left":
+					margin[SIDES.indexOf(k.substr(7))] = v == "auto" ? Math.NaN : px(k, v);
+				case "padding-top" | "padding-right" | "padding-bottom" | "padding-left":
+					padding[SIDES.indexOf(k.substr(8))] = px(k, v);
 				case "border-top" | "border-right" | "border-bottom" | "border-left": // (below)
 				case "row-gap": s.rowGap = px(k, v);
 				case "column-gap": s.columnGap = px(k, v);
@@ -325,8 +306,7 @@ class LayoutConformanceCheck {
 						case "stretch": Normal;
 						case _: note('$k: $v'); Normal;
 					}
-				case "overflow-x": s.overflowX = overflow(v);
-				case "overflow-y": s.overflowY = overflow(v);
+				case "overflow-x" | "overflow-y": overflows.push(v);
 				case "scrollbar-width": note("scrollbar-width: a gutter");
 				case "direction": s.direction = v == "rtl" ? Rtl : Ltr;
 				case "box-sizing": if (v != "border-box") note('box-sizing: $v');
@@ -334,16 +314,9 @@ class LayoutConformanceCheck {
 				case "flex-line-count":
 				case "grid-template-columns": s.gridTemplateColumns = tracks(k, v);
 				case "grid-template-rows": s.gridTemplateRows = tracks(k, v);
-				case "grid-auto-columns" | "grid-auto-rows":
-					var t = tracks(k, v);
-					if (t.length > 1) note('$k: several tracks');
-					if (t.length > 0) if (k == "grid-auto-columns") s.gridAutoColumns = t[0] else s.gridAutoRows = t[0];
-				case "grid-auto-flow": s.gridAutoFlow = switch v {
-						case "column": Grid.GridFlow.Column;
-						case "row dense": Grid.GridFlow.RowDense;
-						case "column dense": Grid.GridFlow.ColumnDense;
-						case _: Grid.GridFlow.Row;
-					}
+				case "grid-auto-columns": s.gridAutoColumns = tracks(k, v);
+				case "grid-auto-rows": s.gridAutoRows = tracks(k, v);
+				case "grid-auto-flow": s.gridAutoFlow = v;
 				case "grid-row-start": rowStart = v;
 				case "grid-row-end": rowEnd = v;
 				case "grid-column-start": colStart = v;
@@ -359,20 +332,25 @@ class LayoutConformanceCheck {
 		if (style.exists("border-top") || style.exists("border-right") || style.exists("border-bottom") || style.exists("border-left")) {
 			inline function b(k:String)
 				return style.exists(k) ? px(k, style[k]) : 0.0;
-			s.borders = [b("border-top"), b("border-right"), b("border-bottom"), b("border-left")];
+			s.borderWidth = [b("border-top"), b("border-right"), b("border-bottom"), b("border-left")];
 		}
-		inline function place(a:String, b:String)
-			return try Grid.GridPlacement.parse('$a / $b') catch (e:Dynamic) {
-				note('grid line: $a / $b');
-				Grid.GridPlacement.AUTO;
-			}
-		if (rowStart != "auto" || rowEnd != "auto") s.gridRow = place(rowStart, rowEnd);
-		if (colStart != "auto" || colEnd != "auto") s.gridColumn = place(colStart, colEnd);
+		// (one overflow for both axes)
+		if (overflows.length > 0) {
+			if (overflows.length > 1 && overflows[0] != overflows[1]) note('overflow: ${overflows.join(" ")}');
+			s.overflow = overflow(overflows[0]);
+		}
+		s.margin = margin;
+		s.padding = padding;
+		if (rowStart != "auto" || rowEnd != "auto") s.gridRow = '$rowStart / $rowEnd';
+		if (colStart != "auto" || colEnd != "auto") s.gridColumn = '$colStart / $colEnd';
+		n.style = Style.ofProps(s);
 		var children:Array<Dynamic> = t.children ?? [];
 		for (c in children)
 			n.append(build(c, rtl, notes, nodes));
 		return n;
 	}
+
+	static final SIDES = ["top", "right", "bottom", "left"];
 
 	static function overflow(v:String):Overflow
 		return v == "hidden" ? Hidden : v == "scroll" || v == "auto" ? Scroll : Visible;
@@ -414,5 +392,5 @@ class AhemNode extends Node {
 	}
 
 	override public function firstBaseline():Float
-		return style.paddingTop + style.borderEdges.top + 8;
+		return used.paddingPx(0) + used.borderPx(0) + 8;
 }

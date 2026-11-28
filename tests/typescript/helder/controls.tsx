@@ -20,7 +20,7 @@ render(
 	root
 );
 UiProbe.click("save");
-console.log(saved(), "|", UiProbe.slot("save"), "|", UiProbe.slot("cancel"));
+console.log(saved());
 console.log(UiProbe.background("save"), UiProbe.background("cancel"));
 UiProbe.dark(true);
 console.log(UiProbe.background("save"), UiProbe.background("cancel"));
@@ -54,12 +54,12 @@ render(
 			<look.Button tag="go" variant="primary">Go</look.Button>
 			<look.Button tag="soft" variant="soft">Soft</look.Button>
 			<Checkbox label="Porch" checked={porch} onChange={porch}/>
-			<view tag="badge" slot="badge"><text>3</text></view>
+			<view tag="badge" style={look.part("badge")}><text>3</text></view>
 		</view>
 	</Themed>,
 	UiProbe.root(320, 200)
 );
-console.log(UiProbe.background("go"), UiProbe.background("soft"), UiProbe.slot("soft"), UiProbe.padding("soft"));
+console.log(UiProbe.background("go"), UiProbe.background("soft"), UiProbe.padding("soft"));
 console.log(UiProbe.background("badge"), UiProbe.padding("badge"));
 UiProbe.click("lamp");
 console.log(porch());
@@ -77,13 +77,13 @@ let visited = -1, separator = "", submitted = "";
 render(
 	<PathBar tag="location" segments={path} size="md" editing={editing} text="/Home/Pictures"
 		onNavigate={i => { visited = i; }}
-		onSeparator={(i, anchor) => { separator = i + " " + anchor.slot; }}
+		onSeparator={(i, anchor) => { separator = i + " " + anchor.tag; }}
 		onSubmit={text => { submitted = text; }}/>,
 	UiProbe.root(320, 160)
 );
 UiProbe.click("pathbar-segment");
 UiProbe.click("pathbar-separator");
-console.log(visited, separator, UiProbe.slot("location"));
+console.log(visited, separator);
 editing(true);
 UiProbe.dump();
 UiProbe.type("/New");

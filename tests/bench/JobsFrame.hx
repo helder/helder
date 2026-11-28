@@ -43,47 +43,30 @@ class JobsFrame {
 		var fonts = new SystemFonts();
 		fonts.add(font);
 		ui = new Ui(new DrawText(fonts), 1200, 800);
-		ui.root.style.fontFamily = "DejaVu Sans";
-		ui.root.style.fontSize = 13;
+		ui.root.style = ui.root.style.with({fontFamily: "DejaVu Sans", fontSize: 13});
 		var page = new Node("page");
-		page.style.overflow = Scroll;
-		page.style.flexGrow = 1;
-		page.style.minHeight = 0;
-		page.style.padding = 12;
-		page.style.rowGap = 12;
+		page.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0, padding: 12, rowGap: 12});
 		ui.root.append(page);
 		for (s in 0...20) {
 			var section = new Node("section");
-			section.style.flexDirection = Row;
-			section.style.flexWrap = true;
-			section.style.columnGap = 8;
-			section.style.rowGap = 8;
+			section.style = Style.of({flexDirection: Row, flexWrap: true, columnGap: 8, rowGap: 8});
 			page.append(section);
 			for (c in 0...10) {
 				var card = new Node("card");
-				card.style.flexGrow = 1;
-				card.style.flexBasis = 200;
-				card.style.padding = 8;
-				card.style.rowGap = 6;
-				card.style.borderWidth = 1;
+				card.style = Style.of({flexGrow: 1, flexBasis: 200, padding: 8, rowGap: 6, borderWidth: 1});
 				section.append(card);
 				card.append(new TextNode('Card ${s * 10 + c}'));
 				var row = new Node("row");
-				row.style.flexDirection = Row;
-				row.style.columnGap = 4;
+				row.style = Style.of({flexDirection: Row, columnGap: 4});
 				card.append(row);
 				for (b in 0...6) {
 					var box = new Node("box");
-					box.style.flexGrow = b % 3;
-					box.style.width = 10 + b * 3;
-					box.style.height = 12 + (b & 1) * 6;
+					box.style = Style.of({flexGrow: b % 3, width: 10 + b * 3, height: 12 + (b & 1) * 6});
 					row.append(box);
 				}
 				card.append(new TextNode("The quick brown fox jumps over the lazy dog, then a wizard's job is to vex chumps quickly in fog.".substr(0, 40 + (c * 13) % 50)));
 				var button = new Node("button");
-				button.style.alignSelf = End;
-				button.style.width = 60;
-				button.style.height = 20;
+				button.style = Style.of({alignSelf: End, width: 60, height: 20});
 				card.append(button);
 			}
 		}

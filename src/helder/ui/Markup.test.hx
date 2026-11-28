@@ -8,8 +8,7 @@ import helder.view.graph.Signal;
 
 // ui's markup attributes at run time: a transform from a string built
 // then, pointer-events inherited by what a transform moves, onResize told
-// a node's laid-out size, line-height in pixels or as a multiple, a
-// wheel's modifiers
+// a node's laid-out size, line-height as a multiple, a wheel's modifiers
 function tests() {
 	describe("Markup", () -> {
 		test("<svg>: an image of its drawing, read when compiled, one per text", () -> {
@@ -47,7 +46,7 @@ function tests() {
 			var x = Graph.signal(10.0);
 			var dispose = Render.render(Fixture.moved(x), ui.root);
 			ui.update();
-			notEquals(ui.root.find("box").style.transform, null);
+			notEquals(ui.root.find("box").props().transform, null);
 			equals(tag(ui.root.hitTest(15, 5)), "box");
 			x(100.0);
 			Graph.flush();
@@ -99,13 +98,10 @@ function tests() {
 			equals(seen, [Mods.CONTROL, 0]);
 			dispose();
 		});
-		test("line-height in pixels or as a multiple", () -> {
+		test("line-height as a multiple of the font size", () -> {
 			var ui = new Ui(null, 200, 200);
 			var dispose = Render.render(Fixture.leading(), ui.root);
-			equals(ui.root.find("px").style.lineHeightPx, 22.0);
-			equals(ui.root.find("px").style.lineHeight, null);
-			equals(ui.root.find("times").style.lineHeight, 1.5);
-			equals(ui.root.find("times").style.lineHeightPx, null);
+			equals(ui.root.find("times").used.text.height, 24.0);
 			dispose();
 		});
 	});
@@ -123,7 +119,7 @@ private class Fixture implements helder.view.Markup {
 	public static function glassStates(seen:Array<Bool>)
 		return <view><glass width={40} height={40} states={(s:helder.ui.view.States) -> noted(s, seen)}/></view>;
 
-	static function noted(s:helder.ui.view.States, seen:Array<Bool>):StyleProps {
+	static function noted(s:helder.ui.view.States, seen:Array<Bool>):Style.StyleProps {
 		seen.push(s != null);
 		return {};
 	}
@@ -144,8 +140,7 @@ private class Fixture implements helder.view.Markup {
 
 	public static function leading()
 		return <view>
-			<text tag="px" lineHeight="22px">a</text>
-			<text tag="times" lineHeight={1.5}>b</text>
+			<text tag="times" fontSize={16} lineHeight={1.5}>b</text>
 		</view>;
 
 	public static function dialog(open:Signal<Bool>)

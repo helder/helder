@@ -62,7 +62,7 @@ class Vocabulary {
 		"gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform",
 		"wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness",
 		"textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform",
-		"transformOrigin", "transition", "backgroundColor"
+		"transformOrigin", "transition", "backgroundImage", "backgroundColor", "flex", "inset"
 	];
 
 	// the attributes every element takes, besides the style properties,

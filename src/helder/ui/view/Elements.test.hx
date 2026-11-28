@@ -49,7 +49,7 @@ function tests() {
 			equals(a.semantics.role, Role.Link);
 			equals(a.semantics.href, "https://helder.build");
 			equals([h.semantics.role, h.semantics.level], [Role.Heading, 2]);
-			equals(h.slot, "h2");
+			equals(h.style == helder.ui.controls.Look.base.part("h2"), true);
 			equals(Std.isOfType(h, TextNode), true);
 			equals(m.ui.root.find("list").semantics.role, Role.List);
 			equals(li.semantics.role, Role.ListItem);
@@ -76,7 +76,7 @@ function tests() {
 		test("hidden: not rendered", () -> {
 			var m = mount(Fixture.hidden());
 			var n = m.ui.root.find("gone");
-			equals(n.style.display, Display.None);
+			equals(n.used.none, true);
 			// (no place in the layout: the next one where it would be)
 			equals(m.ui.root.find("next").x, 0.0);
 			m.dispose();

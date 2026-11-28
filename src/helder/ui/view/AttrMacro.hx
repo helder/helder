@@ -126,7 +126,7 @@ class AttrMacro {
 			var e = enumKeys(f.type);
 			if (e != null) enums_.set(f.name, e);
 		}
-		add("backgroundColor", ["helder", "ui", "view", "StyleAttrs", "set"]);
+		for (n in ["backgroundColor", "flex", "inset"]) add(n, ["helder", "ui", "view", "StyleAttrs", "set"]);
 		return table_ = t;
 	}
 

@@ -12,7 +12,7 @@ function HabitRow(props: { habit: Habit; today: Date; onToggle: () => void }) {
 	const done = isDone(h, props.today);
 	const s = streak(h, props.today);
 	return <view flexDirection="row" alignItems="center" columnGap={14} padding="14 16" borderRadius={14}
-		background="#ffffff" boxShadow="0 1 3 rgba(0,0,0,0.06)">
+		background="#ffffff" shadows={[{x: 0, y: 1, blur: 3, color: 0x0F000000}]}>
 		<view width={6} height={40} borderRadius={3} background={h.color}/>
 		<view flexGrow={1} flexShrink={1} rowGap={8}>
 			<view rowGap={2}>

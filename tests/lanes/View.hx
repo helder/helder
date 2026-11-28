@@ -10,8 +10,7 @@ class View {
 	public static final LANES:Array<Lane> = [
 		{name: "view", about: "helder.view on Eval, natively and as JavaScript", run: view},
 		{name: "view-stores", about: "helder.view's graph tests through stores (atoms)", run: viewStores},
-		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup", run: ui},
-		{name: "fast-probe", about: "fast nodes as an app has them (tests/ui/FastProbe.hx, -dce full with symbols): laid out, no helder.dom, cascade, matcher or CSS parser in its symbols; with a DocumentNode beside it (-D fast.island) they are: the check's control; the todo and the mail client on fast nodes (examples/todo-fast, mail-fast) the same, and driven headless (TodoFastCheck, MailFastCheck: focus, Tab, keys, typing, selection, the keymap, dark mode, their accessibility trees against helder.ui's)", run: fastProbe},
+		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup; a style's literal and a CSS module (StyleModule) checked when built", run: ui},
 		{name: "layout-conformance", about: "flexbox and grid against Taffy's fixtures", run: layoutConformance},
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
@@ -44,65 +43,22 @@ class View {
 		interp(cp, "UiCheck");
 		interp(cp, "MarkupCheck");
 		interp(cp.concat(cps([guideTestSource()])), "GuideCheck");
-		// (helder.ui's own layout, until it goes: all of it)
-		interp(cp.concat(["-D", "helder.layout"]), "UiCheck");
-		interp(cp.concat(["-D", "helder.layout"]), "MarkupCheck");
+		styleErrors();
 	}
 
-	// (what a fast app must not link, and what it must: its layout and paint; GridFlow it does, as every helder.ui
-	// program: its host, Ui, lays out by the engine, whose grid any style may ask for by name, StyleFields)
-	static final FAST_NONE = ["helder_dom_", "helder_css_CssStyles", "helder_css_CssResolver", "helder_css_CssMatcher", "helder_css_CssRuleIndex", "helder_css_CssBloom",
-		"helder_css_Tokenizer", "helder_css_Parser", "helder_css_SelectorParser", "helder_css_CssData", "helder_css_CssShorthands", "helder_css_CssComputed",
-		"helder_ui_flow_TableFlow"];
-	static final FAST_MUST = ["helder_ui_flow_BlockFlow", "helder_ui_flow_FlexFlow", "helder_ui_flow_InlineLayout", "helder_ui_box_BoxPainter", "helder_ui_fast_Tree"];
-
-	static function fastProbe() {
-		if (Sys.systemName() == "Windows") return;
-		for (island in [false, true]) {
-			var out = 'bin/ui/FastProbe${island ? "-island" : ""}';
-			exe(out, cps(["src", "tests/ui"]).concat(["-main", "FastProbe", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"])
-				.concat(island ? ["-D", "fast.island"] : []).concat(targetArgs(HOST)));
-			var got = StringTools.trim(output(exePath(out, HOST), ["layout"]));
-			var expected = "laid out 480x";
-			if (!got.startsWith(expected) || got.indexOf("3 rows 3 items left") < 0) throw new Failed('$out: "$got", expected "$expected... 3 rows 3 items left"');
-			var symbols = output("nm", [exePath(out, HOST)]).split("\n");
-			function linked(names:Array<String>)
-				return [for (p in names) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
-			var none = linked(FAST_NONE), must = linked(FAST_MUST);
-			if (must.length < FAST_MUST.length) throw new Failed('$out: without ${[for (m in FAST_MUST) if (!must.contains(m)) m].join(", ")}');
-			if (!island && none.length > 0) throw new Failed('$out links ${none.join(", ")}');
-			if (island && none.length < 8) throw new Failed('$out: the island links only ${none.join(", ")}: the check checks nothing');
-			Sys.println('$out: $got; ${Math.round(FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols; ${none.length == 0 ? "no DOM or cascade" : "links " + none.join(", ")}');
-		}
-		// (a style's literal and a CSS module checked when the program is built: a misspelt name, a selector no
-		// fast style has, an error of the build at its place)
+	// (a style's literal and a CSS module checked when the program is built: a misspelt name, a selector no
+	// style has, an error of the build at its place)
+	static function styleErrors() {
 		for (f in [
 			{main: "MisspeltField", says: "a style has no field paddin; did you mean padding?"},
 			{main: "MisspeltClass", says: "has no field cardd"},
 			{main: "Descendant", says: "descendant.module.css:2: characters 7-8"}
 		]) {
-			var out = 'bin/ui/fast-errors/${f.main}';
+			var out = 'bin/ui/style-errors/${f.main}';
 			var r = build(cps(["src", "tests/ui/fast/errors"]).concat(["-main", f.main, "--custom-target", 'hxmc=$out']).concat(os([])), '$out.log');
 			if (r.code == 0) throw new Failed('${f.main}: built, expected to fail');
 			if (r.log.indexOf(f.says) < 0) throw new Failed('${f.main}: failed without "${f.says}":\n${r.log}');
 			Sys.println('${f.main}: fails as it should (${f.says})');
-		}
-		// (the todo and the mail client on fast nodes, through their markup: as an app builds them, the same check;
-		// driven headless, TodoFastCheck and MailFastCheck)
-		for (app in [{main: "TodoFast", dir: "todo"}, {main: "MailFast", dir: "mail"}]) {
-			var out = 'bin/ui/${app.main}';
-			exe(out, cps(["src", 'examples/${app.dir}-fast']).concat(["-main", app.main, "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"])
-				.concat(targetArgs(HOST)));
-			var symbols = output("nm", [exePath(out, HOST)]).split("\n");
-			var none = [for (p in FAST_NONE) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
-			var must = [for (p in FAST_MUST) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
-			if (none.length > 0) throw new Failed('$out links ${none.join(", ")}');
-			if (must.length < FAST_MUST.length) throw new Failed('$out: without ${[for (m in FAST_MUST) if (!must.contains(m)) m].join(", ")}');
-			Sys.println('$out: ${Math.round(FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols; no DOM or cascade');
-			var check = 'bin/ui/${app.main}Check';
-			exe(check, cps(["src", "tests/ui", "tests/gfx", 'examples/${app.dir}-fast', 'examples/${app.dir}']).concat(["-main", '${app.main}Check'])
-				.concat(targetArgs(HOST)));
-			run(exePath(check, HOST), []);
 		}
 	}
 
@@ -127,8 +83,6 @@ class View {
 
 	static function layoutConformance() {
 		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformanceCheck");
-		// (helder.ui's own layout, until it goes)
-		interp(cps(["src", "tests/ui", "tests/layout-conformance"]).concat(["-D", "helder.layout"]), "LayoutConformanceCheck");
 	}
 
 	static function web() {

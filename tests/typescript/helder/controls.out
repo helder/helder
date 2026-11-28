@@ -1,4 +1,4 @@
-1 | button primary md | button secondary md
+1
 #2E2E2EFF #EDEDEDFF
 #CECECEFF #242424FF
 true true
@@ -17,7 +17,7 @@ root
         view
       text "Dark mode"
 
-#E11D48FF #E11D481F button soft md 0 20 0 20
+#E11D48FF #E11D481F 0 20 0 20
 #E11D48FF 0 6 0 6
 true
 root
@@ -34,5 +34,5 @@ root
         text "3"
 
 function
-0 0 pathbar-separator pathbar null md
+0 0 pathbar-separator
 /New false

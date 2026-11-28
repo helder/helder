@@ -149,7 +149,7 @@ private class Fixture implements helder.view.Markup {
 
 	public static function bar()
 		return <view tag="page">
-			<view tag="bar" flexDirection="row" alignItems="center" dragRegion paddingLeft="env(titlebar-area-x, 12px)" height="env(titlebar-area-height, 40px)">
+			<view tag="bar" flexDirection="row" alignItems="center" dragRegion padding="0 0 0 env(titlebar-area-x, 12px)" height="env(titlebar-area-height, 40px)">
 				<view tag="button" width={60} height={20} onPress={_ -> {}}/>
 				<view flexGrow={1}/>
 				<WindowControls/>

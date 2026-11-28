@@ -145,13 +145,13 @@ class BoxBuild {
 		if (spec == null) return;
 		var s = styles.of(spec.tag, spec.cls, parent, hovered) ?? styles.of(spec.tag, spec.cls, parent);
 		if (s == null) return;
-		if (b.style != s) node.restyled(b, s);
+		if (b.style != s) node.swapped(b, s);
 		function inner(x:Box, el:BoxStyle) {
 			var c = x.first;
 			while (c != null) {
 				if (specs.exists(c)) restyle(node, c, el, false) else {
 					var cs = c.kind == Text ? el : styles.anonymousOf(el);
-					if (c.style != cs) node.restyled(c, cs);
+					if (c.style != cs) node.swapped(c, cs);
 					inner(c, el);
 				}
 				c = c.next;
@@ -272,7 +272,7 @@ class BoxNode extends helder.ui.Node {
 	}
 
 	// (a style swapped on a box: its paint order's steps may hold what it changed)
-	public function restyled(b:Box, s:BoxStyle) {
+	public function swapped(b:Box, s:BoxStyle) {
 		@:privateAccess b.style = s;
 		orderFresh = true;
 		spans.fresh = true;

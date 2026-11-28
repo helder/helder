@@ -126,14 +126,10 @@ class DocumentBench {
 	}
 
 	static function engine(doc:Null<DocumentNode>):Array<Float>
-		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : fastTree != null ? [0,
-			fastTree.layoutMs, fastTree.paintMs] : [0, 0, 0];
+		return doc != null ? [doc.stats.restyleMs, doc.stats.layoutMs, doc.stats.paintMs] : boxNode != null ? [0, boxNode.layoutMs, boxNode.paintMs] : [0, 0, 0];
 
 	static function spansOf(doc:Null<DocumentNode>):helder.ui.box.PaintSpans
-		return doc != null ? @:privateAccess doc.view.spans : boxNode != null ? @:privateAccess boxNode.spans : fastTree != null ? @:privateAccess fastTree.spans : new helder.ui.box.PaintSpans();
-
-	// (the fast variant's tree, its engine work)
-	static var fastTree:Null<helder.ui.fast.Tree> = null;
+		return doc != null ? @:privateAccess doc.view.spans : boxNode != null ? @:privateAccess boxNode.spans : new helder.ui.box.PaintSpans();
 
 	// (the box variant's node, its engine work: BoxScreen's)
 	static var boxNode:Null<BoxScreen.BoxNode> = null;
@@ -274,7 +270,6 @@ class DocumentBench {
 			return [for (i in from...from + n) new Item('Task ${i + 1}: water the plants and call back')];
 		function mount(n:Int):{ui:Ui, app:Todo} {
 			var ui = new Ui(TextEngines.standard(), w, h);
-			ui.theme = Todo.sheet;
 			var app = new Todo();
 			app.todos(items(n));
 			Render.render(app.view(), ui.root);
@@ -289,7 +284,6 @@ class DocumentBench {
 		fresh("todo", [m20, m1020]);
 		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Todo) -> a.todos(a.todos().concat(items(1000, 20))), "draft");
-		todoFast(w, h);
 	}
 
 	static function mail() {
@@ -309,8 +303,8 @@ class DocumentBench {
 			app.dark(false);
 			if (n > 0) app.messages(messages(n));
 			var root = new Node();
-			root.theme = Mail.sheet;
-			root.style.flexGrow = 1;
+			root.theme = Mail.theme;
+			root.style = Style.of({flexGrow: 1});
 			ui.root.append(root);
 			Render.render(app.view(), root);
 			Graph.flush();
@@ -323,7 +317,6 @@ class DocumentBench {
 		fresh("mail", [m20, m1020]);
 		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Mail) -> a.messages(messages(1020)), "search");
-		mailFast(w, h);
 	}
 
 	// (each operation on helder.ui's screen, then on the engine's)
@@ -370,7 +363,7 @@ class DocumentBench {
 			var ui = new Ui(TextEngines.standard(), w, h);
 			var d = build(m);
 			var node = engineNode(d);
-			node.style.flexGrow = 1;
+			node.style = node.style.with({flexGrow: 1});
 			ui.root.append(node);
 			return {ui: ui, doc: node, keep: d};
 		}
@@ -398,7 +391,6 @@ class DocumentBench {
 		addRows("add 1,000 rows", mountDoc, x -> appendRows(x.keep, byTag(x.keep, "list"), rowsAdded));
 		Sys.println(haxe.Json.stringify({screen: screen, mirror: m.nodes, hovers: m.hovers}));
 		boxes(w, h, m, rowsAdded, field);
-		fast(w, h, m, rowsAdded, field);
 		snapshots(w, h, mount, mountDoc);
 	}
 
@@ -416,7 +408,7 @@ class DocumentBench {
 			var bb = new BoxScreen.BoxBuild(styles), out = [];
 			bb.box(m.root, null, out);
 			var node = new BoxScreen.BoxNode(out[0], bb.contexts);
-			node.style.flexGrow = 1;
+			node.style = node.style.with({flexGrow: 1});
 			ui.root.append(node);
 			boxNode = node;
 			return {ui: ui, doc: null, keep: bb};
@@ -487,142 +479,6 @@ class DocumentBench {
 		step(s.ui, null);
 		sys.io.File.saveBytes('bin/document-bench/$screen-boxes.png', crop(w, h));
 		boxNode = null;
-	}
-
-	// ---- the examples on fast nodes (examples/todo-fast, mail-fast): their own markup, helder.ui's ops as they are run on them
-
-	static function todoFast(w:Int, h:Int) {
-		function tasks(n:Int, from = 0):Array<TodoFast.Task>
-			return [for (i in from...from + n) new TodoFast.Task('Task ${i + 1}: water the plants and call back')];
-		fastApp(w, h, "todo-fast", ui -> {
-			var app = new TodoFast();
-			app.todos(tasks(20));
-			{app: app, tree: FastMount.todo(app, ui.root)};
-		}, app -> app.todos(app.todos().concat(tasks(1000, 20))), "draft");
-	}
-
-	static function mailFast(w:Int, h:Int) {
-		function messages(n:Int):Array<MailFast.MailMessage>
-			return [
-				for (i in 0...n)
-					new MailFast.MailMessage('Sender ${i % 37}', 'Subject number ${i} about the weekly report', 'Body ${i}', "Inbox", 1 + i % 28, i % 3 == 0)
-			];
-		fastApp(w, h, "mail-fast", ui -> {
-			var app = new MailFast();
-			app.dark(false);
-			app.messages(messages(20));
-			{app: app, tree: FastMount.mail(app, ui.root)};
-		}, app -> app.messages(messages(1020)), "search");
-	}
-
-	static function fastApp<A>(w:Int, h:Int, name:String, make:Ui->{app:A, tree:helder.ui.fast.Tree}, add:A->Void, field:String) {
-		variant = name;
-		function mount():{ui:Ui, doc:Null<DocumentNode>, keep:A} {
-			var ui = new Ui(TextEngines.standard(), w, h);
-			var m = make(ui);
-			fastTree = m.tree;
-			Graph.flush();
-			ui.update();
-			return {ui: ui, doc: null, keep: m.app};
-		}
-		function find(tag:String):helder.ui.fast.Node {
-			var stack = [fastTree.root];
-			while (stack.length > 0) {
-				var n = stack.shift();
-				if (n.tag == tag) return n;
-				for (c in n.children()) stack.push(c);
-			}
-			throw 'no $tag';
-		}
-		var made = first("first frame (20 rows)", mount);
-		var ui = made.ui, app = made.keep, tree = fastTree;
-		add(app);
-		Graph.flush();
-		step(ui, null);
-		var list = find("list"), box = tree.rectOf(list);
-		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
-		var rows = [for (r in list.children()) {
-			var q = tree.rectOf(r);
-			if (q[3] > 0 && q[1] > box[1] && q[1] + q[3] < box[1] + box[3]) r;
-		}];
-		run("hover over rows", ui, null, 120, i -> {
-			var q = tree.rectOf(rows[i % rows.length]);
-			ui.pointerMove(q[0] + 20, q[1] + q[3] / 2);
-		});
-		var f = tree.rectOf(find(field));
-		ui.pointerDown(f[0] + 10, f[1] + f[3] / 2, 1);
-		ui.pointerUp(f[0] + 10, f[1] + f[3] / 2, 1);
-		step(ui, null);
-		run("type into a field", ui, null, 60, i -> {
-			ui.textInput(String.fromCharCode(97 + i % 26));
-			Graph.flush();
-		});
-		run("resize the window", ui, null, 40, i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
-		run("drag-resize (a new width each frame)", ui, null, 40, i -> ui.resize(w - 1 - i, h));
-		ui.resize(w, h);
-		step(ui, null);
-		addRows("add 1,000 rows", mount, x -> {
-			add(x.keep);
-			Graph.flush();
-		});
-		sys.FileSystem.createDirectory("bin/document-bench");
-		var s = mount();
-		step(s.ui, null);
-		sys.io.File.saveBytes('bin/document-bench/$screen-$name.png', crop(w, h));
-		fastTree = null;
-	}
-
-	// ---- the fast variant: fast nodes (helder.ui.fast), each styled by a Style typed from helder.ui's look (FastMirror): no DOM, no cascade
-
-	static function fast(w:Int, h:Int, m:Mirror, rowsAdded:Array<MirrorNode>, field:String) {
-		variant = "fast";
-		function build(n:MirrorNode, tags:Map<String, helder.ui.fast.Node>):helder.ui.fast.Node {
-			// (its style made with the mirror: an app's are constants, made once)
-			var style = n.style ?? helder.ui.fast.Style.none;
-			var made:helder.ui.fast.Node = n.text != null ? new helder.ui.fast.TextNode(n.text, style) : new helder.ui.fast.Node(style);
-			if (n.text == null) for (c in n.children) made.append(build(c, tags));
-			if (!tags.exists(n.tag)) tags.set(n.tag, made);
-			return made;
-		}
-		function mountFast():{ui:Ui, doc:Null<DocumentNode>, keep:Map<String, helder.ui.fast.Node>} {
-			var ui = new Ui(TextEngines.standard(), w, h);
-			var tags = new Map();
-			var tree = new helder.ui.fast.Tree(build(m.root, tags));
-			tree.style.flexGrow = 1;
-			ui.root.append(tree);
-			fastTree = tree;
-			return {ui: ui, doc: null, keep: tags};
-		}
-		var made = first("first frame (20 rows)", mountFast);
-		var ui = made.ui, tags = made.keep, tree = fastTree;
-		var list = tags.get("list");
-		function addTo(list:helder.ui.fast.Node) {
-			var t = new Map();
-			for (r in rowsAdded) list.append(build(r, t));
-		}
-		addTo(list);
-		step(ui, null);
-		var box = tree.rectOf(list);
-		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
-		var rows = list.children().slice(0, 12);
-		run("hover over rows", ui, null, 120, i -> {
-			var r = tree.rectOf(rows[i % rows.length]);
-			ui.pointerMove(r[0] + 20, r[1] + r[3] / 2);
-		});
-		var text = new helder.ui.fast.TextNode(" ");
-		tags.get(field).append(text);
-		step(ui, null);
-		run("type into a field", ui, null, Std.parseInt(Sys.getEnv("TYPES") ?? "60"), i -> text.text = (text.text.length > 40 ? " " : text.text) + String.fromCharCode(97 + i % 26));
-		run("resize the window", ui, null, Std.parseInt(Sys.getEnv("RESIZES") ?? "40"), i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
-		run("drag-resize (a new width each frame)", ui, null, Std.parseInt(Sys.getEnv("DRAGS") ?? "40"), i -> ui.resize(w - 1 - i % 200, h));
-		ui.resize(w, h);
-		step(ui, null);
-		addRows("add 1,000 rows", mountFast, x -> addTo(x.keep.get("list")));
-		sys.FileSystem.createDirectory("bin/document-bench");
-		var s = mountFast();
-		step(s.ui, null);
-		sys.io.File.saveBytes('bin/document-bench/$screen-fast.png', crop(w, h));
-		fastTree = null;
 	}
 
 	// (each document's elements' computed styles by tag, class and the parent's style ("|h": hovered, where a
@@ -821,16 +677,14 @@ class DocumentBench {
 
 	static function mirror(ui:Ui):Mirror {
 		var rules = new Map<String, String>(), count = 0, hovers = 0;
-		// (each kind of node's look hovered, probed once: its slot, variant, size and state)
-		var kinds = new Map<String, Null<String>>(), fastKinds = new Map<String, Null<helder.ui.fast.Style.StyleProps>>();
+		// (each kind of node's look hovered, probed once: its style and state)
+		var kinds = new Map<String, Null<String>>(), styles = new haxe.ds.ObjectMap<Style, Int>();
 		function node(n:Node):MirrorNode {
 			count++;
 			var tag = n.tag == "textfield" ? "field" : n.tag == null || n.tag == "" ? "view" : n.tag;
 			if (!~/^[a-z][a-z0-9-]*$/.match(tag)) tag = "view";
 			var attrs = [], classes = [];
 			if (n.tag != null && n.tag != "") attrs.push(["data-tag", n.tag]);
-			if (n.slot != null) attrs.push(["slot", n.slot]);
-			if (n.variant != null) attrs.push(["variant", n.variant]);
 			// (its own style as a class of the screen's sheet)
 			var style = declarations(n);
 			if (style != "") {
@@ -838,8 +692,9 @@ class DocumentBench {
 				rules.set('.$c', style);
 				classes.push(c);
 			}
-			if (n.slot != null) {
-				var kind = '${n.slot}-${n.variant}-${n.size}-${n.attr("data-state")}';
+			if (n.style.states & Style.HOVER != 0) {
+				if (!styles.exists(n.style)) styles.set(n.style, Lambda.count(styles));
+				var kind = '${styles.get(n.style)}-${n.attr("data-state")}';
 				if (!kinds.exists(kind)) {
 					var look = hoverLook(ui, n);
 					kinds.set(kind, look);
@@ -853,14 +708,7 @@ class DocumentBench {
 			}
 			if (classes.length > 0) attrs.push(["class", classes.join(" ")]);
 			var text = Std.isOfType(n, TextNode) ? (cast n : TextNode).text : null;
-			// (the fast variant's: its look as a fast style, hovered as a variant)
-			var hover = null;
-			if (n.slot != null) {
-				var kind = '${n.slot}-${n.variant}-${n.size}-${n.attr("data-state")}';
-				if (!fastKinds.exists(kind)) fastKinds.set(kind, FastMirror.hovered(ui, n));
-				hover = fastKinds.get(kind);
-			}
-			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)], style: helder.ui.fast.Style.of(FastMirror.props(n, hover))};
+			return {tag: tag, attrs: attrs, text: text, children: [for (c in n.children) node(c)]};
 		}
 		var root:MirrorNode = {tag: "root", attrs: [], text: null, children: [for (c in ui.root.children) node(c)]};
 		return {root: root, rules: rules, nodes: count, hovers: hovers};
@@ -871,24 +719,23 @@ class DocumentBench {
 
 	// (its background, colour and border colour while hovered, where they differ: CSS)
 	static function hoverLook(ui:Ui, n:Node):Null<String> {
-		if (n.slot == null) return null;
-		var s = n.style, bg = s.background, fg = n.textColor(), bc = s.borderColor;
-		@:privateAccess n.setState(true, false, false);
+		var bg = n.used.backgroundColor, fg = n.textColor(), bc = n.used.borderColor(0);
+		n.state(Style.HOVER, true);
 		ui.update();
 		var out = [];
-		if (s.background != bg) out.push('background-color: ${color(s.background)} !important');
+		if (n.used.backgroundColor != bg) out.push('background-color: ${color(n.used.backgroundColor)} !important');
 		if (n.textColor() != fg) out.push('color: ${color(n.textColor())} !important');
-		if (s.borderColor != bc) out.push('border-color: ${color(s.borderColor)} !important');
-		@:privateAccess n.setState(false, false, false);
+		if (n.used.borderColor(0) != bc) out.push('border-color: ${color(n.used.borderColor(0))} !important');
+		n.state(Style.HOVER, false);
 		ui.update();
 		return out.length == 0 ? null : out.join("; ");
 	}
 
 	// (AppUaCheck's declarations, and what is drawn)
 	static function declarations(n:Node):String {
-		var s = n.style, out = [@:privateAccess AppUaCheck.declarations(n)];
-		if (s.borderColor.a > 0) out.push('border-color: ${color(s.borderColor)}');
-		if (s.borderRadius > 0) out.push('border-radius: ${s.borderRadius}px');
+		var s = n.used, out = [@:privateAccess AppUaCheck.declarations(n)], r = NodePaint.corners(s, n.width, n.height, 0);
+		if (s.borderColor(0) >>> 24 > 0) out.push('border-color: ${color(s.borderColor(0))}');
+		if (r != null && r.topLeft > 0) out.push('border-radius: ${r.topLeft}px');
 		if (s.opacity < 1) out.push('opacity: ${s.opacity}');
 		var c = n.textColor();
 		if (n.parent != null && c != n.parent.textColor()) out.push('color: ${color(c)}');
@@ -913,7 +760,7 @@ class DocumentBench {
 			screen = name;
 			var d = build(m);
 			var node = engineNode(d);
-			node.style.flexGrow = 1;
+			node.style = node.style.with({flexGrow: 1});
 			ui.root.append(node);
 			step(ui, node);
 			base = b2;
@@ -925,14 +772,13 @@ class DocumentBench {
 			var bb = new BoxScreen.BoxBuild(new BoxScreen.BoxStyles(boxData[name])), out = [];
 			bb.box(m.root, null, out);
 			var node = new BoxScreen.BoxNode(out[0], bb.contexts);
-			node.style.flexGrow = 1;
+			node.style = node.style.with({flexGrow: 1});
 			ui.root.append(node);
 			step(ui, null);
 			base = b2;
 			held = node;
 		} else {
 			if (name == "todo") {
-				ui.theme = Todo.sheet;
 				var app = new Todo();
 				app.todos([for (i in 0...1020) new Item('Task ${i + 1}: water the plants and call back')]);
 				Render.render(app.view(), ui.root);
@@ -945,8 +791,8 @@ class DocumentBench {
 				app.dark(false);
 				app.messages(mailMessages(1020));
 				var root = new Node();
-				root.theme = Mail.sheet;
-				root.style.flexGrow = 1;
+				root.theme = Mail.theme;
+				root.style = Style.of({flexGrow: 1});
 				ui.root.append(root);
 				Render.render(app.view(), root);
 				held = app;
@@ -961,7 +807,6 @@ class DocumentBench {
 
 	static function todoMirror(n:Int):Mirror {
 		var ui = new Ui(TextEngines.standard(), 480, 560);
-		ui.theme = Todo.sheet;
 		var app = new Todo();
 		app.todos([for (i in 0...n) new Item('Task ${i + 1}: water the plants and call back')]);
 		Render.render(app.view(), ui.root);
@@ -979,8 +824,8 @@ class DocumentBench {
 		app.dark(false);
 		app.messages(mailMessages(n));
 		var root = new Node();
-		root.theme = Mail.sheet;
-		root.style.flexGrow = 1;
+		root.theme = Mail.theme;
+		root.style = Style.of({flexGrow: 1});
 		ui.root.append(root);
 		Render.render(app.view(), root);
 		Graph.flush();
@@ -1023,9 +868,7 @@ class DocumentBench {
 			parse = (Timer.stamp() - t0) * 1000;
 			var node = DocumentNode.html(d, {url: url, load: load, image: image});
 			var sc = new Node("scroll");
-			sc.style.overflow = Scroll;
-			sc.style.flexGrow = 1;
-			sc.style.minHeight = 0;
+			sc.style = Style.of({overflow: Scroll, flexGrow: 1, minHeight: 0});
 			sc.append(node);
 			ui.root.append(sc);
 			return {ui: ui, doc: node, keep: sc};
@@ -1085,5 +928,5 @@ class DocumentBench {
 }
 
 // (a helder.ui tree as the elements to make: tag, attributes, text, children)
-private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>, ?style:helder.ui.fast.Style};
+private typedef MirrorNode = {tag:String, attrs:Array<Array<String>>, text:Null<String>, children:Array<MirrorNode>};
 private typedef Mirror = {root:MirrorNode, rules:Map<String, String>, nodes:Int, hovers:Int};

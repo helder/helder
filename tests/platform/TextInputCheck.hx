@@ -52,7 +52,7 @@ class TextInputCheck implements Markup {
 	}
 
 	public function view():View
-		return <view width="100%" height="100%" background="#f1f5f9" paddingTop="env(safe-area-inset-top)" paddingBottom="env(safe-area-inset-bottom)">
+		return <view width="100%" height="100%" background="#f1f5f9" padding="env(safe-area-inset-top) 0 env(safe-area-inset-bottom)">
 			<scroll tag="scroll" flexGrow={1} padding={16} gap={12}>
 				<text fontSize={20}>Text input</text>
 				<field tag="email" keyboard="email" enterKeyHint="next" onComposition={e -> if (e.text != "") composed.push(e.text)} placeholder="Email" padding={10} background="#fff" borderRadius={8} flexShrink={0}/>

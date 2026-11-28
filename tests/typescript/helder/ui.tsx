@@ -81,8 +81,8 @@ console.log(UiProbe.dump());
 // a literal attribute naming env(): bound to the safe area (SafeArea), as Haxe's markup
 const safe = UiProbe.root(390, 844);
 render(
-	<view tag="page" paddingLeft="calc(env(safe-area-inset-left) + 16px)">
-		<view tag="bar" paddingTop="env(safe-area-inset-top)" paddingBottom="max(12px, env(safe-area-inset-bottom))"/>
+	<view tag="page" padding="0 0 0 calc(env(safe-area-inset-left) + 16px)">
+		<view tag="bar" padding="env(safe-area-inset-top) 0 max(12px, env(safe-area-inset-bottom))"/>
 	</view>,
 	safe
 );

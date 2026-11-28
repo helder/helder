@@ -50,6 +50,6 @@ private class Fixture implements helder.view.Markup {
 
 	public static function boxShadow()
 		return <view width={240} height={60} padding="20 12" background="#000000">
-			<text color="#ffffff" fontSize={16} boxShadow="0 0 8 #22d3ee">Hi</text>
+			<text color="#ffffff" fontSize={16} shadows={[{x: 0, y: 0, blur: 8, color: 0xFF22D3EE}]}>Hi</text>
 		</view>;
 }

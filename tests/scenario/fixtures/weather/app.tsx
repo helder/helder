@@ -22,7 +22,7 @@ export function Icon(props: { sky: Sky; size: number }) {
 	const cloudColor = props.sky === "storm" ? "#94a3b8" : cloud;
 	return <view width={s} height={s}>
 		{hasSun && (props.sky === "clear"
-			? <view position="absolute" left={2 * u} top={2 * u} width={6 * u} height={6 * u} borderRadius={3 * u} background={sun} boxShadow={`0 0 ${2 * u} rgba(251,191,36,0.6)`}/>
+			? <view position="absolute" left={2 * u} top={2 * u} width={6 * u} height={6 * u} borderRadius={3 * u} background={sun} shadows={[{x: 0, y: 0, blur: 2 * u, color: 0x99FBBF24}]}/>
 			: <view position="absolute" left={1 * u} top={0.8 * u} width={5 * u} height={5 * u} borderRadius={2.5 * u} background={sun}/>)}
 		{hasCloud && <view position="absolute" left={1 * u} top={cloudTop} width={8 * u} height={4 * u}>
 			<view position="absolute" left={0} top={1.6 * u} width={8 * u} height={2.4 * u} borderRadius={1.2 * u} background={cloudColor}/>

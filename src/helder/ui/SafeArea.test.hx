@@ -69,8 +69,8 @@ function tests() {
 
 private class Fixture implements helder.view.Markup {
 	public static function view()
-		return <view tag="page" paddingLeft="calc(env(safe-area-inset-left) + 16px)">
-			<view tag="bar" paddingTop="env(safe-area-inset-top)" paddingBottom="max(12px, env(safe-area-inset-bottom))">
+		return <view tag="page" padding="0 0 0 calc(env(safe-area-inset-left) + 16px)">
+			<view tag="bar" padding="env(safe-area-inset-top) 0 max(12px, env(safe-area-inset-bottom))">
 				<view height={20}/>
 			</view>
 		</view>;

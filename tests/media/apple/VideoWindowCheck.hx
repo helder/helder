@@ -181,26 +181,26 @@ class VideoWindowCheck {
 
 	static function scene(mode:String, dir:String) {
 		var w = new helder.ui.UiWindow({title: "VideoWindowCheck", width: 400, height: 300});
-		w.root.style.set({background: 0xFFF4F4F4, paddingTop: 30, paddingLeft: 20});
+		w.root.style = w.root.style.with({background: 0xFFF4F4F4, padding: [30, 0, 0, 20]});
 		var list = new Node();
-		list.style.set({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});
+		list.style = list.style.with({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});
 		var video = new VideoNode();
 		video.layer = mode != "drawn";
-		video.style.set({width: 192, height: 144, flexShrink: 0});
+		video.style = video.style.with({width: 192, height: 144, flexShrink: 0});
 		for (i in 0...30) {
 			var row = new Node();
-			row.style.set({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
+			row.style = row.style.with({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
 			list.append(row);
 			if (i == 2) list.append(video);
 		}
 		w.root.append(list);
 		var popup = new Node();
-		popup.style.set({position: Absolute, left: 180, top: 210, width: 60, height: 40, background: 0xFF6A3AB0});
+		popup.style = popup.style.with({position: Absolute, left: 180, top: 210, width: 60, height: 40, background: 0xFF6A3AB0});
 		w.ui.overlay.append(popup);
 		// (the controls: sRGB's (51, 153, 230) drawn by helder, and a CALayer of it in a slot)
 		var swatch = new Node(), layered = new Node();
-		swatch.style.set({position: Absolute, left: 290, top: 40, width: 40, height: 40, background: 0xFF3399E6});
-		layered.style.set({position: Absolute, left: 340, top: 40, width: 40, height: 40});
+		swatch.style = swatch.style.with({position: Absolute, left: 290, top: 40, width: 40, height: 40, background: 0xFF3399E6});
+		layered.style = layered.style.with({position: Absolute, left: 340, top: 40, width: 40, height: 40});
 		@:privateAccess layered.systemLayer = new LayerSlot(@:privateAccess SystemLayersWindowCheck.solidLayer(0.2, 0.6, 0.9));
 		w.root.append(swatch);
 		w.root.append(layered);

@@ -42,7 +42,6 @@ class SoftBench {
 		}
 		scene("sample", 480, 320, 1, ui -> Sample.build(ui.root));
 		scene("todo", 480, 560, 1, ui -> {
-			ui.theme = Todo.sheet;
 			var app = new Todo();
 			Render.render(app.view(), ui.root);
 		});

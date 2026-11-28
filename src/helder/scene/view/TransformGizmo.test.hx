@@ -34,8 +34,7 @@ function tests() {
 			eye.lookAt(new Vec3(0, 0, 0));
 			camera = Camera.attach(eye, Camera.perspective(1, 0.1, 100));
 			box = new SceneBox(world, camera);
-			box.style.width = 200;
-			box.style.height = 200;
+			box.style = box.style.with({width: 200, height: 200});
 			ui.root.append(box);
 			ui.update();
 			orbit = new OrbitControls(box, camera);

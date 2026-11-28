@@ -9,13 +9,12 @@ function tests() {
 	describe("Gradient", () -> {
 		test("its image kept in a live resize, made again after it", () -> {
 			var ui = new Ui(null, 200, 100), n = new Node();
-			n.style.set({width: 80, height: 40});
-			n.style.backgroundImage = Gradient.parse("linear-gradient(90deg, #ff0000, #0000ff)");
+			n.style = Style.of({width: 80, height: 40, backgroundImage: Gradient.parse("linear-gradient(90deg, #ff0000, #0000ff)")});
 			ui.root.append(n);
 			ui.update();
 			var img = n.backgroundImage(2);
 			equals([img.width, img.height], [160, 80]);
-			n.style.width = 100;
+			n.style = n.style.with({width: 100});
 			ui.update();
 			ui.live = true;
 			equals(n.backgroundImage(2) == img, true);

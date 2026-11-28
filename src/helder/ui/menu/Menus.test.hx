@@ -3,6 +3,7 @@ package helder.ui.menu;
 import helder.test.Test;
 import helder.ui.Key;
 import helder.ui.Node;
+import helder.ui.Style;
 import helder.ui.platform.PlatformMenuItem;
 import helder.ui.Ui;
 import helder.ui.actions.Actions;
@@ -123,10 +124,10 @@ function tests() {
 		test("a menu button: opened as the mouse goes down, closed by a press on it, the press taken", () -> {
 			var f = setup(), log = [];
 			var button = new Node("button");
-			button.style.set({width: 80, height: 24});
+			button.style = Style.of({width: 80, height: 24});
 			button.focusable = true;
 			var below = new Node("below");
-			below.style.set({width: 400, height: 250});
+			below.style = Style.of({width: 400, height: 250});
 			below.onPointerDown = _ -> log.push("down");
 			below.onClick = _ -> log.push("click");
 			f.view.append(button);
@@ -171,7 +172,7 @@ function tests() {
 		test("a menu button: held, dragged onto an item and let go there chooses it", () -> {
 			var f = setup();
 			var button = new Node("button");
-			button.style.set({width: 80, height: 24});
+			button.style = Style.of({width: 80, height: 24});
 			f.view.append(button);
 			Menus.button(button, () -> MODEL);
 			f.ui.update();
@@ -199,19 +200,23 @@ function tests() {
 			f.ui.resize(380, 300);
 			equals(f.ui.overlay.children.length, 0);
 			var anchor = new Node("anchor");
-			anchor.style.set({position: Absolute, right: 10, top: 10, width: 100, height: 20});
+			anchor.style = Style.of({position: Absolute, right: 10, top: 10, width: 100, height: 20});
 			f.ui.root.append(anchor);
 			var pop = new helder.ui.Popup("popover");
-			pop.style.set({width: 100, height: 50});
+			pop.style = pop.style.with({width: 100, height: 50});
 			pop.anchor = anchor;
 			f.ui.open(pop);
 			f.ui.update();
-			equals(pop.style.left.resolve(0), 380 - 10 - 100.0);
+			function left(n:Node):Float
+				return helder.ui.box.Len.Lens.resolve(n.used.inset(3), 0, 0);
+			function top(n:Node):Float
+				return helder.ui.box.Len.Lens.resolve(n.used.inset(0), 0, 0);
+			equals(left(pop), 380 - 10 - 100.0);
 			f.ui.resize(300, 300);
 			f.ui.update();
 			equals(f.ui.overlay.children.length, 1);
-			equals(pop.style.left.resolve(0), 300 - 10 - 100.0);
-			equals(pop.style.top.resolve(0), 10 + 20 + 4.0);
+			equals(left(pop), 300 - 10 - 100.0);
+			equals(top(pop), 10 + 20 + 4.0);
 		});
 		test("a drawn menu bar: F10, Right to the next menu, a hover while open, a choice", () -> {
 			var f = setup();

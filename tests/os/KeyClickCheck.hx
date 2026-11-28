@@ -23,7 +23,7 @@ class KeyClickCheck {
 		if (plain) win = new Window({title: "KeyClickCheck", width: 300, height: 200}) else {
 			ui = new UiWindow({title: "KeyClickCheck", width: 300, height: 200});
 			var n = new Node();
-			n.style.set({width: 300, height: 200, background: 0xFF2F7FE8});
+			n.style = n.style.with({width: 300, height: 200, background: 0xFF2F7FE8});
 			n.onClick = _ -> presses++;
 			ui.root.append(n);
 			win = ui.window;

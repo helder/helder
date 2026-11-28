@@ -134,7 +134,7 @@ class WebViewCheck implements Markup {
 
 	public function view():View
 		return <view tag="app" width="100%" height="100%" background="#fef3c7">
-			<view tag="header" padding={16} paddingTop="env(safe-area-inset-top)" background="#f59e0b">
+			<view tag="header" padding="env(safe-area-inset-top) 16px 16px" background="#f59e0b">
 				<text fontSize={20}>helder: a web view below</text>
 			</view>
 			<webview tag="web" ref={n -> attached(cast n)} content={content} src="index.html" inspectable flexGrow={1} margin={12}
