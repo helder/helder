@@ -1,6 +1,7 @@
 package helder.ui.fast;
 
 import helder.css.CssCascade;
+import helder.css.CssTerm;
 import helder.dom.Dom;
 import helder.test.Test;
 import helder.ui.box.Box;
@@ -22,6 +23,48 @@ function tests() {
 			equals(t.textDecoration, 2);
 			equals(t.textOverflow, Ellipsis);
 			equals(t.lineClamp, 2);
+		});
+		test("paint fields resolved: corners, a dashed border, shadows first on top, an outline", () -> {
+			var theme = new Theme(["line" => [0xFF101010, 0xFF202020]]);
+			var n = new Node(Style.of({
+				borderWidth: 1,
+				borderStyle: Dashed,
+				borderRadius: [1, 2, 3, 4],
+				shadows: [{x: 1, y: 2, color: 0xFF0000FF}, {x: 0, y: 0, spread: 1, color: Theme.token("line"), inset: true}],
+				outline: {width: 2, color: 0xFF00FF00, offset: 3}
+			}));
+			n.theme = theme;
+			var s = n.box.style;
+			equals(s.borderStyle(0), "dashed");
+			equals([for (t in s.radii) switch t {
+				case Dimension(v, _): v;
+				case _: -1.0;
+			}].join(","), "1,1,2,2,3,3,4,4");
+			equals(s.shadows.length, 2);
+			equals(s.shadows[0].color, 0xFF0000FF);
+			equals(s.shadows[0].lengths.join(","), "1,2,0,0");
+			equals(s.shadows[1].inset, true);
+			equals(s.shadows[1].color, 0xFF101010);
+			equals(s.outlineStyle, "solid");
+			equals(s.outlineWidth, 2.0);
+			equals(s.outlineOffset, 3.0);
+			equals(s.outlineColor, 0xFF00FF00);
+		});
+		test("markup's paint attributes: corners as CSS writes them, a border style's word", () -> {
+			var p = new Style.Props();
+			Attrs.set(p, "borderRadius", "4 0");
+			Attrs.set(p, "borderStyle", "dotted");
+			equals((p.borderRadius : Array<Float>).join(","), "4,0,4,0");
+			equals(p.borderStyle, Dotted);
+		});
+		test("styles made of ever new values: interning and resolutions bounded", () -> {
+			for (i in 0...Style.BOUND * 2 + 10) new Node(Style.ofProps({width: i}));
+			equals(@:privateAccess Style.internedCount <= Style.BOUND, true);
+			equals(@:privateAccess Resolve.cached <= Style.BOUND, true);
+			// (a style made again after a clear: equal, and resolved alike)
+			var a = Style.of({padding: 3});
+			for (i in 0...Style.BOUND) Style.ofProps({width: i + 0.5});
+			equals(Style.of({padding: 3}).props.padding, a.props.padding);
 		});
 		test("one resolution for a style in one state under one parent", () -> {
 			var row = Style.of({padding: 4, hover: {background: 0xFF00FF00}});

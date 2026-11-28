@@ -196,7 +196,7 @@ private class Compile {
 
 	// (declarations as a style's fields, each at its place in the file)
 	function props(decls:Array<CssDeclaration>):Array<ObjectField> {
-		var out = new Map<String, Expr>(), sides = new Map<String, Array<Expr>>();
+		var out = new Map<String, Expr>(), sides = new Map<String, Array<Expr>>(), outline = new OutlineParts();
 		function side(field:String, k:Int, v:Expr) {
 			var s = sides.get(field) ?? (switch out.get(field) {
 				case {expr: EArrayDecl(a)} if (a.length == 4): a.copy();
@@ -250,13 +250,36 @@ private class Compile {
 					for (v in w) switch v {
 						case Token({kind: Dimension(_) | Number(_)}): width = px(v, d);
 						case Token({kind: Ident("none")}): width = macro 0;
-						case Token({kind: Ident("solid")}):
+						case Token({kind: Ident("solid" | "dashed" | "dotted")}): set("borderStyle", borderStyle([v], d));
 						case _: color = colour(v, d);
 					}
 					set("borderWidth", width);
 					if (color != null) set("borderColor", color);
+				case "border-style": set("borderStyle", borderStyle(w, d));
 				case "border-color": set("borderColor", colour(w[0], d));
-				case "border-radius": set("borderRadius", px(w[0], d));
+				case "border-radius": set("borderRadius", macro $a{edges(w, d)});
+				case "box-shadow": set("shadows", shadows(w, d));
+				case "outline":
+					// (a width, a style and a colour, any order: none no outline)
+					for (v in w) switch v {
+						case Token({kind: Dimension(_) | Number(_)}): outline.width = px(v, d);
+						case Token({kind: Ident("none")}): outline.width = macro 0;
+						case Token({kind: Ident("solid" | "dashed" | "dotted")}): outline.style = borderStyle([v], d);
+						case _: outline.color = colour(v, d);
+					}
+					set("outline", outline.expr());
+				case "outline-width":
+					outline.width = px(w[0], d);
+					set("outline", outline.expr());
+				case "outline-style":
+					outline.style = borderStyle(w, d);
+					set("outline", outline.expr());
+				case "outline-color":
+					outline.color = colour(w[0], d);
+					set("outline", outline.expr());
+				case "outline-offset":
+					outline.offset = px(w[0], d);
+					set("outline", outline.expr());
 				case "background" | "background-color": set("background", colour(w[0], d));
 				case "color": set("color", colour(w[0], d));
 				case "opacity": set("opacity", num(w, d));
@@ -309,6 +332,8 @@ private class Compile {
 		return switch name {
 			case "background-color": "background";
 			case "border": "borderWidth";
+			case "box-shadow": "shadows";
+			case "outline-width" | "outline-style" | "outline-color" | "outline-offset": "outline";
 			case "line-clamp" | "-webkit-line-clamp": "lineClamp";
 			case "white-space" | "text-wrap" | "text-wrap-mode": "wrap";
 			case "text-decoration-line": "textDecoration";
@@ -325,6 +350,31 @@ private class Compile {
 		if (v == null) fail(d.start, '${d.name}: ${[for (k in names.keys()) k].join(", ")}');
 		var path = type.split(".").concat([v]);
 		return macro $p{path};
+	}
+
+	function borderStyle(w:Array<CssValue>, d:CssDeclaration):Expr
+		return word(w, d, ["solid" => "Solid", "dashed" => "Dashed", "dotted" => "Dotted"], "helder.ui.BorderStyle");
+
+	// (box-shadow's list: each two to four lengths, inset, a colour (currentcolor where none))
+	function shadows(w:Array<CssValue>, d:CssDeclaration):Expr {
+		if (w.length == 1 && w[0].match(Token({kind: Ident("none")}))) return macro [];
+		var list:Array<Expr> = [], lengths:Array<Expr> = [], inset = false, color:Expr = macro helder.ui.fast.Style.Tint.current;
+		function end() {
+			if (lengths.length < 2 || lengths.length > 4) fail(d.start, 'box-shadow: two to four lengths a shadow');
+			var blur = lengths[2] ?? macro 0.0, spread = lengths[3] ?? macro 0.0;
+			list.push(macro {x: ${lengths[0]}, y: ${lengths[1]}, blur: $blur, spread: $spread, color: $color, inset: $v{inset}});
+			lengths = [];
+			inset = false;
+			color = macro helder.ui.fast.Style.Tint.current;
+		}
+		for (v in w) switch v {
+			case Token({kind: Comma}): end();
+			case Token({kind: Dimension(_) | Number(_)}): lengths.push(px(v, d));
+			case Token({kind: Ident("inset")}): inset = true;
+			case _: color = colour(v, d);
+		}
+		end();
+		return macro $a{list};
 	}
 
 	function align(w:Array<CssValue>, d:CssDeclaration):Expr
@@ -448,4 +498,17 @@ private class Compile {
 }
 
 private typedef Parser = helder.css.Parser;
+
+// (outline's longhands as they come, one Outline of them)
+private class OutlineParts {
+	public var width:Expr = macro 0.0;
+	public var style:Null<Expr> = null;
+	public var color:Expr = macro helder.ui.fast.Style.Tint.current;
+	public var offset:Expr = macro 0.0;
+
+	public function new() {}
+
+	public function expr():Expr
+		return style == null ? macro {width: $width, color: $color, offset: $offset} : macro {width: $width, color: $color, style: $style, offset: $offset};
+}
 #end

@@ -54,7 +54,7 @@ class Attrs {
 		for (n in [
 			"display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis",
 			"gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth",
-			"borderColor", "borderRadius", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
+			"borderColor", "borderStyle", "borderRadius", "shadows", "outline", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
 			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textWrap",
 			"textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
 			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
@@ -138,7 +138,18 @@ class Attrs {
 			case "borderColor":
 				p.borderColor = tint(v);
 			case "borderRadius":
-				p.borderRadius = num(v);
+				var e = edges(v);
+				p.borderRadius = e == null ? null : (e : Array<Float>);
+			case "borderStyle":
+				p.borderStyle = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.BorderStyle) : switch Std.string(v) {
+					case "dashed": Dashed;
+					case "dotted": Dotted;
+					case _: Solid;
+				}
+			case "shadows":
+				p.shadows = v;
+			case "outline":
+				p.outline = v;
 			case "background" | "backgroundColor":
 				p.background = tint(v);
 			case "opacity":

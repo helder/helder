@@ -47,8 +47,13 @@ typedef StyleProps = {
 	?margin:Edges,
 	?borderWidth:Edges,
 	?borderColor:Tint,
-	?borderRadius:Float,
+	// (Solid where a width is set)
+	?borderStyle:helder.ui.BorderStyle,
+	?borderRadius:Corners,
 	?background:Tint,
+	// CSS's box-shadow: the first on top
+	?shadows:Array<Shadow>,
+	?outline:Outline,
 	?opacity:Float,
 	?overflow:Overflow,
 	?position:Position,
@@ -153,6 +158,39 @@ abstract Size(Len) from Len to Len {
 	}
 }
 
+// Four corners' radii in px (top left, top right, bottom right, bottom
+// left): one for all, or all four.
+abstract Corners(Array<Float>) to Array<Float> {
+	inline function new(a:Array<Float>)
+		this = a;
+
+	@:from static inline function ofFloat(v:Float):Corners
+		return new Corners([v, v, v, v]);
+
+	@:from static inline function ofInt(v:Int):Corners
+		return new Corners([v, v, v, v]);
+
+	@:from static function ofArray(a:Array<Float>):Corners
+		return new Corners(a.length == 1 ? [a[0], a[0], a[0], a[0]] : a.length == 2 ? [a[0], a[1], a[0], a[1]] : a.length == 3 ? [a[0], a[1], a[2], a[1]] : [a[0], a[1], a[2], a[3]]);
+}
+
+typedef Shadow = {
+	x:Float,
+	y:Float,
+	?blur:Float,
+	?spread:Float,
+	color:Tint,
+	?inset:Bool
+}
+
+// drawn outside the border box (offset further out), Solid unless said
+typedef Outline = {
+	width:Float,
+	color:Tint,
+	?style:helder.ui.BorderStyle,
+	?offset:Float
+}
+
 // Four sides' px (top, right, bottom, left): one for all, [vertical,
 // horizontal], or all four.
 abstract Edges(Array<Float>) to Array<Float> {
@@ -202,8 +240,11 @@ final class Props {
 	public var margin:Null<Edges> = null;
 	public var borderWidth:Null<Edges> = null;
 	public var borderColor:Null<Tint> = null;
-	public var borderRadius:Null<Float> = null;
+	public var borderStyle:Null<helder.ui.BorderStyle> = null;
+	public var borderRadius:Null<Corners> = null;
 	public var background:Null<Tint> = null;
+	public var shadows:Null<Array<Shadow>> = null;
+	public var outline:Null<Outline> = null;
 	public var opacity:Null<Float> = null;
 	public var overflow:Null<Overflow> = null;
 	public var position:Null<Position> = null;
@@ -275,8 +316,11 @@ final class Props {
 		o.margin = p.margin;
 		o.borderWidth = p.borderWidth;
 		o.borderColor = p.borderColor;
+		o.borderStyle = p.borderStyle;
 		o.borderRadius = p.borderRadius;
 		o.background = p.background;
+		o.shadows = p.shadows;
+		o.outline = p.outline;
 		o.opacity = p.opacity;
 		o.overflow = p.overflow;
 		o.position = p.position;
@@ -362,6 +406,7 @@ final class Style {
 
 	// (each by its key; before none, made of it)
 	static final interned = new Map<String, Style>();
+	static var internedCount = 0;
 
 	// the style that says nothing
 	public static final none = intern(new Props());
@@ -390,9 +435,19 @@ final class Style {
 	@:noCompletion public static function intern(p:Props):Style {
 		var k = write(p);
 		var s = interned.get(k);
-		if (s == null) interned.set(k, s = new Style(p, k));
+		if (s != null) return s;
+		// (styles made of values that change every frame, a dragged width's: forgotten past a bound, their nodes
+		// keeping theirs, only sharing lost)
+		if (internedCount >= BOUND) {
+			interned.clear();
+			internedCount = 0;
+		}
+		interned.set(k, s = new Style(p, k));
+		internedCount++;
 		return s;
 	}
+
+	@:allow(helder.ui.fast) static inline var BOUND = 4096;
 
 	// This style with p over it (a variant's too: merged); p a literal, an object, or a Style.
 	public macro function with(self:haxe.macro.Expr, p:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
@@ -469,7 +524,7 @@ final class Style {
 		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
 		return "";
 	}
-	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderRadius", "background", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
 	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
 	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
 	#end
@@ -562,8 +617,11 @@ final class Style {
 		o.margin = b.margin ?? a.margin;
 		o.borderWidth = b.borderWidth ?? a.borderWidth;
 		o.borderColor = b.borderColor ?? a.borderColor;
+		o.borderStyle = b.borderStyle ?? a.borderStyle;
 		o.borderRadius = b.borderRadius ?? a.borderRadius;
 		o.background = b.background ?? a.background;
+		o.shadows = b.shadows ?? a.shadows;
+		o.outline = b.outline ?? a.outline;
 		o.opacity = b.opacity ?? a.opacity;
 		o.overflow = b.overflow ?? a.overflow;
 		o.position = b.position ?? a.position;
@@ -649,8 +707,19 @@ final class Style {
 		if (p.margin != null) edges(out, "m", p.margin);
 		if (p.borderWidth != null) edges(out, "bw", p.borderWidth);
 		if (p.borderColor != null) tint(out, "bc", p.borderColor);
-		if (p.borderRadius != null) num(out, "br", p.borderRadius);
+		if (p.borderStyle != null) word(out, "bs", p.borderStyle);
+		if (p.borderRadius != null) edges(out, "br", p.borderRadius);
 		if (p.background != null) tint(out, "bg", p.background);
+		if (p.shadows != null) for (sh in p.shadows) {
+			out.add("sh");
+			edges(out, sh.inset == true ? "i" : "", [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]);
+			tint(out, "", sh.color);
+		}
+		if (p.outline != null) {
+			var o = p.outline;
+			edges(out, "ol" + (o.style ?? Solid), [o.width, o.offset ?? 0]);
+			tint(out, "", o.color);
+		}
 		if (p.opacity != null) num(out, "o", p.opacity);
 		if (p.overflow != null) word(out, "ov", p.overflow);
 		if (p.position != null) word(out, "pos", p.position);
