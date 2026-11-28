@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.ui.Style;
 import helder.pdf.ui.PdfText;
 import helder.ui.Event;
 import helder.ui.Node;
@@ -13,10 +14,7 @@ class PdfTextLayer {
 	public static function of(doc:PdfDoc):Node {
 		var n = new Node("pdf-text");
 		n.selectable = true;
-		n.style.position = Absolute;
-		n.style.left = n.style.top = 0;
-		n.style.zIndex = 1;
-		n.style.pointerEvents = None;
+		n.style = Style.of({position: Absolute, left: 0, top: 0, zIndex: 1, pointerEvents: None});
 		var pages = [for (i in 0...doc.pages) new PdfText(doc.layout.sizes[i].width)];
 		for (p in pages) {
 			p.onSelect = doc.wantText;
@@ -27,14 +25,9 @@ class PdfTextLayer {
 			doc.laid();
 		}, _ -> {
 			var l = doc.layout;
-			n.style.width = l.width();
-			n.style.height = l.height();
-			for (i => p in pages) {
-				p.style.left = l.left(i);
-				p.style.top = l.top(i);
-				p.style.width = l.pageWidth(i);
-				p.style.height = l.pageHeight(i);
-			}
+			n.style = n.style.with({width: l.width(), height: l.height()});
+			for (i => p in pages)
+				p.style = p.style.with({left: l.left(i), top: l.top(i), width: l.pageWidth(i), height: l.pageHeight(i)});
 		});
 		renderEffect(() -> doc.texted(), _ -> for (i => p in pages) p.text = doc.text(i));
 		return n;

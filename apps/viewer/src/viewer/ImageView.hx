@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.ui.Style;
 import helder.math.Vec4;
 
 import haxe.io.Bytes;
@@ -78,9 +79,7 @@ class ImageView extends helder.ui.Node {
 	public function new(viewer:Viewer) {
 		super("photo");
 		this.viewer = viewer;
-		frame.style.position = Absolute;
-		frame.style.pointerEvents = None;
-		frame.style.display = None;
+		frame.style = Style.of({position: Absolute, pointerEvents: None, display: None});
 		append(frame);
 		onPointerDown = down;
 		onPointerMove = move;
@@ -272,13 +271,10 @@ class ImageView extends helder.ui.Node {
 	// asks for a frame (the viewer changed); the image's rectangle placed
 	public function redraw() {
 		var d = viewer.shown;
-		frame.style.display = d == null ? None : Flex;
+		frame.style = frame.style.with({display: d == null ? None : Flex});
 		if (d != null) {
 			var r = viewer.camera.rect(), k = density;
-			frame.style.left = r.x / k;
-			frame.style.top = r.y / k;
-			frame.style.width = r.width / k;
-			frame.style.height = r.height / k;
+			frame.style = frame.style.with({left: r.x / k, top: r.y / k, width: r.width / k, height: r.height / k});
 		}
 		if (ui != null) ui.requestFrame();
 	}

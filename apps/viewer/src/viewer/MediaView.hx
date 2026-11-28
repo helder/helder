@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.ui.Style;
 import helder.media.ui.VideoNode;
 import helder.ui.Event;
 import helder.ui.ImageNode;
@@ -21,46 +22,47 @@ class MediaView {
 	public static function make(viewer:Viewer, files:Files):Node {
 		// (the look's colours: light or dark as the window)
 		var t = helder.ui.controls.Look.ref;
-		var root = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
+		var root = box(Style.of({position: Absolute, left: 0, top: 0, right: 0, bottom: 0}));
 		var video = new VideoNode(), thumbs:Null<Thumbs> = null;
 		viewer.video = video;
 		video.autoplay = true;
-		video.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
+		video.style = video.style.with({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		root.append(video);
 		// (an audio file: its name where the picture would be)
 		var name = new TextNode("");
-		name.style.set({fontSize: 17, color: t.fg3});
-		var audio = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, alignItems: Center, justifyContent: Center, pointerEvents: None, display: None});
+		name.style = name.style.with({fontSize: 17, color: t.fg3});
+		var audio = box(Style.of({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, alignItems: Center, justifyContent: Center, pointerEvents: None,
+			display: None}));
 		audio.append(name);
 		root.append(audio);
-		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
-			borders: [1, 0, 0, 0]});
+		var bar = box(Style.of({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
+			borderWidth: [1, 0, 0, 0]}));
 		bar.tag = "media-bar";
 		var scrub = new Scrub((at, exact) -> {
 			video.seek(at, exact);
 			if (viewer.refreshMedia != null) viewer.refreshMedia();
 		});
 		// (the thumbnail over the scrub bar, within the stage's content: never over the status line under it)
-		var thumb = box({position: Absolute, bottom: 26, padding: 3, borderRadius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
-			pointerEvents: None, alignItems: Center, rowGap: 2, display: None});
+		var thumb = box(Style.of({position: Absolute, bottom: 26, padding: 3, borderRadius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
+			pointerEvents: None, alignItems: Center, rowGap: 2, display: None}));
 		var picture = new ImageNode();
-		picture.style.set({width: Thumbs.WIDTH, borderRadius: 3});
+		picture.style = picture.style.with({width: Thumbs.WIDTH, borderRadius: 3});
 		var at = new TextNode("");
-		at.style.set({color: t.fg2, fontSize: 11});
+		at.style = at.style.with({color: t.fg2, fontSize: 11});
 		thumb.append(picture);
 		thumb.append(at);
 		scrub.node.append(thumb);
 		var play = new MediaIcon("play"), mute = new MediaIcon("sound"), clockText = new TextNode("0:00 / 0:00");
-		clockText.style.color = t.fg2;
-		var volume = box({width: 80, height: 14, justifyContent: Center}), levels = box({height: 4, borderRadius: 2, background: t.fill});
-		var level = box({height: 4, borderRadius: 2, background: t.fg, width: 80});
+		clockText.style = clockText.style.with({color: t.fg2});
+		var volume = box(Style.of({width: 80, height: 14, justifyContent: Center})), levels = box(Style.of({height: 4, borderRadius: 2, background: t.fill}));
+		var level = box(Style.of({height: 4, borderRadius: 2, background: t.fg, width: 80}));
 		levels.append(level);
 		volume.append(levels);
-		var row = box({flexDirection: Row, alignItems: Center, columnGap: 10});
+		var row = box(Style.of({flexDirection: Row, alignItems: Center, columnGap: 10}));
 		var playing = button(play, "Play", () -> toggle(viewer));
 		row.append(playing);
 		row.append(clockText);
-		row.append(box({flexGrow: 1}));
+		row.append(box(Style.of({flexGrow: 1})));
 		row.append(button(mute, "Mute", () -> toggleMute(viewer)));
 		row.append(volume);
 		bar.append(scrub.node);
@@ -74,18 +76,18 @@ class MediaView {
 			scrub.duration = d;
 			scrub.show(t);
 			clockText.text = clock(scrub.time) + " / " + clock(d);
-			play.kind = video.playing.peek() ? "pause" : "play";
+			play.glyph = video.playing.peek() ? "pause" : "play";
 			// (its name what it does: Pause while it plays, a screen reader's and the web check's)
 			var label = video.playing.peek() ? "Pause" : "Play";
 			if (playing.semantics.label != label) playing.semantics = {role: helder.ui.access.Role.Button, label: label};
-			mute.kind = video.muted ? "muted" : "sound";
-			level.style.width = video.muted ? 0 : 80 * video.volume;
+			mute.glyph = video.muted ? "muted" : "sound";
+			level.style = level.style.with({width: video.muted ? 0 : 80 * video.volume});
 		}
 		viewer.refreshMedia = shown;
 		video.onTime = _ -> shown();
 		video.onLoaded = () -> {
 			var p = video.player, v = p.video, a = p.audio, s = video.picture();
-			audio.style.display = v == null ? Flex : None;
+			audio.style = audio.style.with({display: v == null ? Flex : None});
 			viewer.described(v == null ? clock(p.duration()) : '${s.width}×${s.height} · ${clock(p.duration())}',
 				[for (t in [v, a]) if (t != null) Std.string(t.codec)].join(" · "));
 			shown();
@@ -114,14 +116,14 @@ class MediaView {
 		scrub.hover = k -> {
 			var p = video.player, th = thumbs;
 			if (p == null || p.video == null || th == null) return;
-			thumb.style.left = scrub.node.width * k - Thumbs.WIDTH / 2 - 3;
+			thumb.style = thumb.style.with({left: scrub.node.width * k - Thumbs.WIDTH / 2 - 3});
 			th.at(k * p.duration(), img -> {
 				picture.image = img;
 				at.text = clock(k * p.duration());
-				thumb.style.display = img == null ? None : Flex;
+				thumb.style = thumb.style.with({display: img == null ? None : Flex});
 			});
 		};
-		scrub.node.onPointerLeave = _ -> thumb.style.display = None;
+		scrub.node.onPointerLeave = _ -> thumb.style = thumb.style.with({display: None});
 		var dragging = false;
 		function ratio(e:Event):Float
 			return volume.width <= 0 ? 0 : Math.max(0, Math.min(1, e.localX / volume.width));
@@ -141,18 +143,18 @@ class MediaView {
 		return h > 0 ? '$h:${StringTools.lpad(Std.string(m % 60), "0", 2)}:$ss' : '$m:$ss';
 	}
 
-	static function box(s:helder.ui.StyleProps):Node {
+	static function box(s:Style):Node {
 		var n = new Node();
-		n.style.set(s);
+		n.style = s;
 		return n;
 	}
 
 	static function button(icon:MediaIcon, label:String, press:Void->Void):Node {
-		var b = box({width: 28, height: 28, borderRadius: 6, alignItems: Center, justifyContent: Center});
+		var b = box(Style.of({width: 28, height: 28, borderRadius: 6, alignItems: Center, justifyContent: Center}));
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
 		b.focusable = true;
 		b.onPress = _ -> press();
-		icon.style.set({width: 18, height: 18, color: helder.ui.controls.Look.ref.fg});
+		icon.style = icon.style.with({width: 18, height: 18, color: helder.ui.controls.Look.ref.fg});
 		b.append(icon);
 		return b;
 	}

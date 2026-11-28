@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.ui.Style;
 import helder.ui.Event;
 import helder.ui.Node;
 
@@ -24,11 +25,11 @@ class Scrub {
 		this.seek = seek;
 		var t = helder.ui.controls.Look.ref;
 		node = new Node();
-		node.style.set({height: 14, justifyContent: Center});
+		node.style = Style.of({height: 14, justifyContent: Center});
 		var track = new Node();
-		track.style.set({height: 4, borderRadius: 2, background: t.fill});
+		track.style = Style.of({height: 4, borderRadius: 2, background: t.fill});
 		done = new Node();
-		done.style.set({height: 4, borderRadius: 2, background: t.fg, width: 0});
+		done.style = Style.of({height: 4, borderRadius: 2, background: t.fg, width: 0});
 		track.append(done);
 		node.append(track);
 		node.onPointerDown = e -> {
@@ -69,5 +70,5 @@ class Scrub {
 		return node.width <= 0 ? 0 : Math.max(0, Math.min(1, e.localX / node.width));
 
 	function fill()
-		done.style.width = duration > 0 ? node.width * Math.min(1, time / duration) : 0;
+		done.style = done.style.with({width: duration > 0 ? node.width * Math.min(1, time / duration) : 0});
 }

@@ -64,7 +64,7 @@ class MarkdownPage implements Markup {
 		var e = path == null ? null : x.files.stat(path);
 		if (e == null || e.kind == Folder) return null;
 		var n = new ImageNode();
-		n.style.maxWidth = "100%";
+		n.style = n.style.with({maxWidth: "100%"});
 		var s = d.sizes.get(path);
 		if (s != null) size(n, s.width, s.height);
 		x.viewer.decode(path, SIDE, dec -> {
@@ -82,7 +82,6 @@ class MarkdownPage implements Markup {
 	}
 
 	static function size(n:ImageNode, width:Int, height:Int) {
-		n.style.width = Math.min(width, COLUMN);
-		n.style.aspectRatio = width / height;
+		n.style = n.style.with({width: Math.min(width, COLUMN), aspectRatio: width / height});
 	}
 }

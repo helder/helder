@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.os.Settings;
 import helder.image.Image;
 import helder.ui.Node;
@@ -118,11 +119,11 @@ class Tiles implements Markup {
 			return b.selection.has(e().name);
 		}
 		// (a trackpad's pinch out on it: the file opened following the fingers, Flight)
-		return <view slot="grid-tile" flexGrow={1} alignItems="center" rowGap={6} padding="4 4 8 4" ref={(n:Node) -> {
+		return <view style={Shell.look.part("grid-tile")} flexGrow={1} alignItems="center" rowGap={6} padding="4 4 8 4" ref={(n:Node) -> {
 			DragOut.from(x, n, () -> e().name);
 			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
 		}} onWheel={ev -> if (x.zoom.tileWheel(e().name, ev)) ev.preventDefault()}>
-			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} flexShrink={0} alignItems="center" justifyContent="center"
+			<view style={Shell.look.part("thumb-box")} data-state={on() && e().kind == Folder ? "selected" : null} width={box} height={box} flexShrink={0} alignItems="center" justifyContent="center"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
 				{() -> picture(x, e(), on, k)}
 			</view>
@@ -130,10 +131,10 @@ class Tiles implements Markup {
 				{NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""), true)}
 			</view>}</Show>
 			<Show when={b.renaming() != e().name}>
-				<text slot="name-pill" data-selected={on()} maxWidth={width - 8} lineClamp={2} textOverflow="middle" textAlign="center"
+				<text style={Shell.look.part("name-pill")} data-state={on() ? "selected" : null} maxWidth={width - 8} lineClamp={2} textOverflow="middle" textAlign="center"
 					direction={helder.ui.Dir.Ltr}>{e().name}</text>
 			</Show>
-			<text fontSize={11.5} color={Look.ref.fg3} marginTop={-5} lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
+			<text fontSize={11.5} color={Look.ref.fg3} margin="-5 0 0 0" lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
 		</view>;
 	}
 
@@ -144,7 +145,8 @@ class Tiles implements Markup {
 		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name)), side = px(108);
 		return <>
 			<Show when={t().image != null || t().waiting}>
-				<view slot="photo" data-selected={on()} width={side} height={side} overflow="hidden" boxShadow="0 1px 3px rgba(0,0,0,0.35)"
+				<view style={Shell.look.part("photo")} data-state={on() ? "selected" : null} width={side} height={side} overflow="hidden"
+					shadows={[{x: 0, y: 1, blur: 3, color: Color.rgba(0, 0.35)}]}
 					ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
 					<Show when={t().image != null}><image src={t().image} width={side} height={side} objectFit="cover"/></Show>
 					<Show when={raw}>
@@ -165,7 +167,7 @@ class Tiles implements Markup {
 	static function document(x:Explorer, e:Entry, k:Float):View {
 		var title = heading(x, e);
 		return <view tag="document-tile" width={Math.round(84 * k)} height={Math.round(108 * k)} borderRadius={6} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
-			padding="11 9" rowGap={5} overflow="hidden" boxShadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
+			padding="11 9" rowGap={5} overflow="hidden" shadows={[{x: 0, y: 1, blur: 2, color: Color.rgba(0, 0.25)}]} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
 			<text tag="document-title" fontSize={9.5} fontWeight={700} lineHeight={1.2} lineClamp={4} textOverflow="ellipsis" color={Look.ref.fg}
 				flexShrink={0}>{title}</text>
 			{[for (w in ["100%", "88%", "94%", "62%", "90%", "76%"]) <view height={2.5} flexShrink={0} borderRadius={1} width={w} background={Look.ref.line}/>]}
@@ -198,8 +200,8 @@ class Tiles implements Markup {
 		if (e.kind == Folder) return <image src={Glyphs.folder(Settings.dark())} width={Math.round(96 * k)} height={Math.round(78 * k)}/>;
 		var ext = Kinds.extension(e.name).toUpperCase();
 		return <view width={Math.round(72 * k)} height={Math.round(92 * k)} borderRadius={7} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge} alignItems="center"
-			justifyContent="center" boxShadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>
-			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} marginTop={-12}/>
+			justifyContent="center" shadows={[{x: 0, y: 1, blur: 2, color: Color.rgba(0, 0.25)}]} ref={(n:Node) -> if (mark != null) mark(n)}>
+			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} margin="-12 0 0 0"/>
 			<Show when={ext != ""}>
 				<text position="absolute" bottom={10} fontSize={9.5} fontWeight={700} color="#ffffff" padding="1 5" borderRadius={3}
 					background={Kinds.tint(ext.toLowerCase())}>{ext}</text>

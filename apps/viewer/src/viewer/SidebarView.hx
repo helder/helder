@@ -108,8 +108,8 @@ class SidebarView implements Markup {
 		var t = helder.ui.SafeArea.titlebar.peek(), start = signal(t != null && t.x > 0);
 		renderEffect(() -> WindowButtons.side(), side -> if (side != null) start(side == "start"));
 		// (Windows' and Linux's: its 30-point bar centred on the 40-point toolbar's line, the window's buttons at that row's end)
-		return <view tag="sidebar" width={WIDTH} flexShrink={0} padding="0 10" rowGap={6} overflow="hidden"
-			paddingTop={start() ? 0 : WindowButtons.side() == "end" ? 5 : 8}>
+		return <view tag="sidebar" width={WIDTH} flexShrink={0} padding={'${start() ? 0 : WindowButtons.side() == "end" ? 5 : 8} 10 0 10'} rowGap={6}
+			overflow="hidden">
 			{bar(x, start)}
 			<view tag="sidebar-body" flexGrow={1} minHeight={0} ref={(n:Node) -> {
 				body = n;
@@ -172,7 +172,7 @@ class SidebarView implements Markup {
 		});
 		return <view tag="level-bar" flexDirection="row" alignItems="center" columnGap={2} flexShrink={0} height={start() ? Shell.BAR : null}
 			padding={start() ? '0 2 0 ${Shell.BUTTONS - 10}' : "0 2"} dragRegion={start()} ref={(n:Node) -> node = n}>
-			<button slot="side-back" tag="level-back" focusable={!top()} aria-label={() -> "Back to " + s.backLabel()}
+			<button style={Shell.look.part("side-back")} tag="level-back" focusable={!top()} aria-label={() -> "Back to " + s.backLabel()}
 				flexShrink={1} minWidth={0} opacity={shown()} pointerEvents={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
 				<image src={Glyphs.get("back")} width={14} height={14} flexShrink={0}/>
 				<view flexShrink={1} minWidth={0}>
@@ -198,15 +198,15 @@ class SidebarView implements Markup {
 
 	static function overview(x:Explorer, c:Clicks):View {
 		var s = x.sidebar, b = x.browser;
-		return <scroll tag="overview" flexGrow={1} minHeight={0} rowGap={12} paddingBottom={10}>
+		return <scroll tag="overview" flexGrow={1} minHeight={0} rowGap={12} padding="0 0 10 0">
 			<view rowGap={1}>
-				<text slot="side-head">Locations</text>
+				<text style={Shell.look.part("side-head")}>Locations</text>
 				<For each={() -> s.places()}>{p -> row(c, p().name, Glyphs.place(p().kind), () -> b.dir() == Browser.normalize(p().path),
 					() -> StringTools.startsWith(b.dir(), Browser.normalize(p().path) + "/"), "", () -> x.choose(p().path))}</For>
 			</view>
 			<Show when={s.volumes.length > 0}>
 				<view rowGap={1}>
-					<text slot="side-head">Devices</text>
+					<text style={Shell.look.part("side-head")}>Devices</text>
 					{[for (v in s.volumes) row(c, v.name, Glyphs.volume(v), () -> b.dir() == Browser.normalize(v.path), () -> false,
 						v.root && v.total > 0 ? Kinds.size(v.free) + " free" : "", () -> x.choose(v.path))]}
 				</view>
@@ -241,7 +241,7 @@ class SidebarView implements Markup {
 				case _:
 			}
 		// (its context menu: Open, Rename…, Move to Trash, Show in Finder, Copy Path; a folder dropped on: moved into it)
-		return <button slot="side-row" aria-label={r.name} data-selected={b.dir() == r.path} onPress={press}
+		return <button style={Shell.look.part("side-row")} aria-label={r.name} data-state={b.dir() == r.path ? "selected" : null} onPress={press}
 			ref={(n:Node) -> {
 				helder.ui.menu.ContextMenu.attach(n, () -> ViewerActions.sidebarFolder(r.path));
 				Drops.folder(x, n, () -> r.path);
@@ -264,10 +264,11 @@ class SidebarView implements Markup {
 		</button>;
 	}
 
-	// (a row of the overview: on when it is the folder shown, a path when the folder is inside it)
+	// (a row of the overview: on when it is the folder shown, a path when the folder is inside it, in the text's colour
+	// and weight as a selected one)
 	static function row(c:Clicks, name:String, icon:String, on:Void->Bool, inside:Void->Bool, meta:String, press:Void->Void):View
-		return <button slot="side-row" aria-label={name} data-selected={on()} data-state={inside() ? "open" : null}
-			onPress={e -> if (c.of(e, "overview:" + name) == 1) press()}>
+		return <button style={Shell.look.part("side-row")} aria-label={name} data-state={on() ? "selected" : null} color={inside() ? Look.ref.fg : null}
+			fontWeight={inside() ? 500 : null} onPress={e -> if (c.of(e, "overview:" + name) == 1) press()}>
 			<image src={Glyphs.get(icon)} width={16} height={16} flexShrink={0} color={on() || inside() ? Look.ref.fg : Look.ref.fg3}/>
 			<text flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{name}</text>
 			<Show when={meta != ""}><text fontSize={11.5} color={Look.ref.fg3} flexShrink={0}>{meta}</text></Show>

@@ -33,8 +33,8 @@ class ContentView implements Markup {
 	// (medium: a tablet's, its sidebar a button's, its inspector a sheet's, no path bar)
 	public static function make(x:Explorer, ?medium:Read<Bool>):View {
 		var tablet:Read<Bool> = medium ?? () -> false;
-		return <view tag="main" slot="panel" flexGrow={1} minWidth={0} flexDirection="column" overflow="hidden"
-			borders="0 0 0 1" borderColor={Look.ref.line}>
+		return <view tag="main" style={Shell.look.part("panel")} flexGrow={1} minWidth={0} flexDirection="column" overflow="hidden"
+			borderWidth="0 0 0 1" borderColor={Look.ref.line}>
 			{toolbar(x, tablet)}
 			{content(x, tablet)}
 			<Show when={!tablet()}>{pathBar(x)}</Show>
@@ -47,10 +47,9 @@ class ContentView implements Markup {
 		var b = x.browser;
 		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear; Windows' and Linux's at the
 		// window's top right, over its end when no inspector is right of it, kept clear: the toolbar the title bar)
-		return <view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} height={tablet() ? 52 : Shell.BAR} flexShrink={0} padding="0 8" dragRegion
-			paddingLeft={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
-			paddingRight={WindowButtons.side() == "end" && (tablet() || !b.inspector()) ? Shell.END_BUTTONS : 8}
-			borders="0 0 1 0" borderColor={Look.ref.line}>
+		return <view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} height={tablet() ? 52 : Shell.BAR} flexShrink={0} dragRegion
+			padding={'0 ${WindowButtons.side() == "end" && (tablet() || !b.inspector()) ? Shell.END_BUTTONS : 8} 0 ${tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}'}
+			borderWidth="0 0 1 0" borderColor={Look.ref.line}>
 			<Show when={tablet()}>
 				<Standard.Button tag="sidebar-toggle" variant="ghost" icon={Glyphs.get("sidebar")} label="Sidebar" onPress={() -> x.sidebarOpen(true)}/>
 			</Show>
@@ -60,7 +59,7 @@ class ContentView implements Markup {
 				<Standard.Button tag="forward" variant="ghost" size="sm" icon={Glyphs.get("forward")} label="Forward" disabled={() -> !b.canForward()}
 					onPress={() -> b.goForward()}/>
 			</view>
-			<button tag="folder-title" slot="title-button" aria-label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
+			<button tag="folder-title" style={Shell.look.part("title-button")} aria-label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
 				ref={(n:Node) -> Menus.button(n, () -> enclosing(x))}>
 				<text lineClamp={1} textOverflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
 				<image src={Glyphs.get("down")} width={14} height={14} flexShrink={0} color={Look.ref.fg3}/>
@@ -74,7 +73,7 @@ class ContentView implements Markup {
 				<Standard.Button tag="search" variant="ghost" size="sm" icon={Glyphs.get("search")} label="Search" onPress={() -> b.searching(true)}/>
 			</Show>
 			<Show when={b.searching()}>{search(x)}</Show>
-			<button tag="view-menu" slot="tool" aria-label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
+			<button tag="view-menu" style={Shell.look.part("tool")} aria-label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
 				<image src={() -> Glyphs.get(b.layout() == Grid ? "grid" : "list")} width={16} height={16}/>
 				<image src={Glyphs.get("down")} width={12} height={12}/>
 			</button>
@@ -93,18 +92,21 @@ class ContentView implements Markup {
 
 	static function search(x:Explorer):View {
 		var b = x.browser;
-		// (Look's composite field: one ring round the box while the field has the focus)
-		return <view tag="search-box" slot="field-box" width={196} height={30} flexShrink={0} borderRadius={8} keyContext="search">
+		// (Look's composite field: the box filled, the field in it without a ring of its own)
+		return <view tag="search-box" style={Shell.look.part("field-box")} width={196} height={30} flexShrink={0} borderRadius={8} keyContext="search">
 			<image src={Glyphs.get("search")} width={14} height={14} color={Look.ref.fg3}/>
-			<field tag="search-field" slot="field-box-input" value={() -> b.query()} placeholder="Search" aria-label="Search this folder" fontSize={13}
+			<field tag="search-field" value={() -> b.query()} placeholder="Search" aria-label="Search this folder" fontSize={13}
 				onInput={e -> b.search(e.text)}
 				onKeyDown={e -> if (e.key == helder.ui.Key.ESCAPE) {
 					b.closeSearch();
 					e.stop();
-				}} ref={n -> Clock.add(_ -> {
-					n.focus();
-					false;
-				})}/>
+				}} ref={n -> {
+					n.style = n.style.with(Shell.look.part("field-box-input"));
+					Clock.add(_ -> {
+						n.focus();
+						false;
+					});
+				}}/>
 			<Show when={b.query() != ""}>
 				<button aria-label="Clear" onPress={() -> b.search("")}>
 					<image src={Glyphs.get("x")} width={14} height={14} color={Look.ref.fg3}/>
@@ -250,16 +252,17 @@ class ContentView implements Markup {
 	static function header(x:Explorer):View {
 		var b = x.browser;
 		function column(label:String, key:Listing.SortKey, width:Float, right:Bool):View
-			return <button slot="head-cell" aria-label={"Sort by " + label} width={width > 0 ? width : "auto"} flexGrow={width > 0 ? 0 : 1}
-				flexShrink={width > 0 ? 0 : 1} justifyContent={right ? "flex-end" : "flex-start"} data-selected={b.order().key == key} onPress={() -> b.sortBy(key)}>
+			return <button style={Shell.look.part("head-cell")} aria-label={"Sort by " + label} width={width > 0 ? width : "auto"} flexGrow={width > 0 ? 0 : 1}
+				flexShrink={width > 0 ? 0 : 1} justifyContent={right ? "flex-end" : "flex-start"} data-state={b.order().key == key ? "selected" : null}
+				onPress={() -> b.sortBy(key)}>
 				<text lineClamp={1}>{label}</text>
 				<Show when={b.order().key == key}>
 					<image src={() -> Glyphs.get(b.order().ascending ? "up" : "down")} width={12} height={12}/>
 				</Show>
 			</button>;
 		return <view tag="list-head" flexDirection="row" alignItems="center" columnGap={12} height={30} flexShrink={0} padding="0 20 0 16"
-			borders="0 0 1 0" borderColor={Look.ref.line} fontSize={11.5} fontWeight={500} color={Look.ref.fg3}>
-			<view flexGrow={1} minWidth={0} paddingLeft={28} flexDirection="row">{column("Name", Name, 0, false)}</view>
+			borderWidth="0 0 1 0" borderColor={Look.ref.line} fontSize={11.5} fontWeight={500} color={Look.ref.fg3}>
+			<view flexGrow={1} minWidth={0} padding="0 0 0 28" flexDirection="row">{column("Name", Name, 0, false)}</view>
 			{column("Date modified", Modified, 156, false)}
 			{column("Size", Size, 84, true)}
 			{column("Kind", Kind, 124, false)}
@@ -272,7 +275,7 @@ class ContentView implements Markup {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
-		return <view slot="list-row" data-selected={on()} ref={(n:Node) -> {
+		return <view style={Shell.look.part("list-row")} data-state={on() ? "selected" : null} ref={(n:Node) -> {
 			DragOut.from(x, n, () -> e().name);
 			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
 		}}>
@@ -303,7 +306,7 @@ class ContentView implements Markup {
 		}
 		function segments():Array<PathSegment>
 			return [for (p in folders()) ({label: s.title(p), icon: icon(x, p)} : PathSegment)];
-		return <view tag="pathbar" flexDirection="row" alignItems="center" height={FOOT} flexShrink={0} padding="0 8 0 4" borders="1 0 0 0"
+		return <view tag="pathbar" flexDirection="row" alignItems="center" height={FOOT} flexShrink={0} padding="0 8 0 4" borderWidth="1 0 0 0"
 			borderColor={Look.ref.line}>
 			<view flexGrow={1} minWidth={0}>
 				<Standard.PathBar segments={segments} text={() -> b.dir()} editing={x.editingPath}

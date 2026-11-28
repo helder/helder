@@ -19,6 +19,10 @@ class Fixtures implements Markup {
 		return m;
 	}
 
+	// whether n is in the look's part of name (Shell.look's: a grid's tile, a sidebar's row)
+	public static function part(n:Node, name:String):Bool
+		return n.style == Shell.look.part(name);
+
 	// an explorer of them, decoding at once on this thread (volumes: the sidebar's devices)
 	public static function explorer(?dirs:Array<String>, ?volumes:Array<helder.os.Places.Volume>):Explorer {
 		Kinds.utc(true);

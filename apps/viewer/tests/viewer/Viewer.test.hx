@@ -161,8 +161,8 @@ function tests() {
 			ui.update();
 			var band = grid.find("marquee");
 			notEquals(band, null);
-			equals(band.style.background, Shell.look.sheet().dark.get("accentSoft"));
-			equals(band.style.borderWidth, 1.0);
+			equals(band.used.backgroundColor, Shell.look.theme.tone(true).color("accentSoft"));
+			equals(band.used.borderPx(0), 1.0);
 			assert(band.width > 300 && band.height > 300, '${band.width} x ${band.height}');
 			assert(x.browser.selection.size() > 1, "the cells it crosses selected");
 			ui.pointerUp(grid.absX + 40, grid.absY + 40, 1);

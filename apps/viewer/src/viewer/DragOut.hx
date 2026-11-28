@@ -40,15 +40,15 @@ class DragOut {
 		if (ui == null) return;
 		var ghost = new Popup("drag-ghost");
 		ghost.placement = Manual;
-		ghost.style.set({pointerEvents: None, opacity: 0.85, alignItems: Center});
+		ghost.style = ghost.style.with({pointerEvents: None, opacity: 0.85, alignItems: Center});
 		if (image != null) {
 			var pic = new helder.ui.ImageNode(image);
-			pic.style.set({width: image.width, height: image.height, borderRadius: 6});
+			pic.style = pic.style.with({width: image.width, height: image.height, borderRadius: 6});
 			ghost.append(pic);
 		}
 		if (count > 1) {
 			var badge = new helder.ui.TextNode(Std.string(count));
-			badge.style.set({position: Absolute, right: -6, top: -6, minWidth: 20, height: 20, padding: [0, 6], borderRadius: 10, background: 0xFFFF3B30,
+			badge.style = badge.style.with({position: Absolute, right: -6, top: -6, minWidth: 20, height: 20, padding: [0, 6], borderRadius: 10, background: 0xFFFF3B30,
 				color: 0xFFFFFFFF, fontSize: 12, fontWeight: 600, textAlign: Center});
 			ghost.append(badge);
 		}
@@ -60,8 +60,7 @@ class DragOut {
 				return false;
 			}
 			var w = image == null ? 0.0 : image.width / 2, h = image == null ? 0.0 : image.height / 2;
-			ghost.style.left = d.x - w;
-			ghost.style.top = d.y - h;
+			ghost.style = ghost.style.with({left: d.x - w, top: d.y - h});
 			ui.requestFrame();
 			if (d.x >= 0 && d.y >= 0 && d.x < ui.width && d.y < ui.height) return true;
 			ui.close(ghost);

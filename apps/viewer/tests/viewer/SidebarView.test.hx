@@ -58,8 +58,8 @@ function tests() {
 		function panes(ui:Ui):Array<{x:Float, o:Float, title:String}> {
 			var body = ui.root.find("sidebar-body");
 			return [for (n in body.children) if (n.tag == "sidebar-pane") {
-				var tr = n.style.transform, title = n.find("level-title");
-				{x: tr == null ? 0.0 : tr.toMatrix(1, 1).e, o: n.style.opacity, title: title == null ? "" : text(title)};
+				var tr = n.props().transform, title = n.find("level-title");
+				{x: tr == null ? 0.0 : tr.toMatrix(1, 1).e, o: n.used.opacity, title: title == null ? "" : text(title)};
 			}];
 		}
 		function pane(ui:Ui, title:String):Null<{x:Float, o:Float, title:String}> {
@@ -72,7 +72,8 @@ function tests() {
 			equals(text(ui.root.find("capacity-name")), "Macintosh HD");
 			equals(text(ui.root.find("capacity-used")), "91%");
 			equals(text(ui.root.find("capacity-free")), "45.3 GB free of 494.0 GB");
-			assert(ui.root.find("capacity").style.borderRadius > 0, "a card's corners");
+			var card = ui.root.find("capacity");
+			assert(helder.ui.NodePaint.corners(card.used, card.width, card.height, 0) != null, "a card's corners");
 		});
 		test("back: both levels moving together, whole points, settled soon", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
@@ -134,9 +135,9 @@ function tests() {
 			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home", "capacity"]);
 			// (to the overview: the back row faded where it is, the overview's button put)
 			change(() -> x.sidebar.show(""), ["level-bar", "level-home"]);
-			equals(ui.root.find("level-back").style.opacity, 0.0);
+			equals(ui.root.find("level-back").used.opacity, 0.0);
 			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home"]);
-			equals(ui.root.find("level-back").style.opacity, 1.0);
+			equals(ui.root.find("level-back").used.opacity, 1.0);
 		});
 		test("macOS: the bar the title bar's row, on the window's buttons' centre, the level right under it, still in full screen", () -> {
 			t = 0;
@@ -197,7 +198,7 @@ function tests() {
 			// (a declaration (motion, matched, ride, a presence's transition) turns on
 			// helder.ui's motions for the window, each frame walked twice for them)
 			function declared(n:helder.ui.Node):Array<String> {
-				var t = n.style.transition, out = n.motion != null || n.matched != null || n.ride != 0 || t != null && t.presence != null ? [n.tag] : [];
+				var t = n.props().transition, out = n.motion != null || n.matched != null || n.ride != 0 || t != null && t.presence != null ? [n.tag] : [];
 				for (c in n.children)
 					out = out.concat(declared(c));
 				return out;
@@ -525,7 +526,7 @@ private class Levels {
 		function named(n:helder.ui.Node):Bool
 			return Std.isOfType(n, TextNode) && (cast n : TextNode).text == name || Lambda.exists(n.children, named);
 		function walk(n:helder.ui.Node) {
-			if (n.slot == "side-row" && named(n)) row = n;
+			if (Fixtures.part(n, "side-row") && named(n)) row = n;
 			for (c in n.children)
 				walk(c);
 		}

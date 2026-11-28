@@ -59,7 +59,7 @@ function tests() {
 			}
 			function grid():String {
 				var g = ui.root.find("grid");
-				return [for (c in cells(g)) if (c.slot == "grid-tile") Math.round(c.windowBounds().y) + ":" + Math.round(c.windowBounds().x)].join(" ");
+				return [for (c in cells(g)) if (Fixtures.part(c, "grid-tile")) Math.round(c.windowBounds().y) + ":" + Math.round(c.windowBounds().x)].join(" ");
 			}
 			for (_ in 0...60)
 				tick();
@@ -126,8 +126,8 @@ function tests() {
 						tick();
 					equals(grid.scrollY, 0.0);
 				}
-				var first = cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y;
-				var rows = [for (c in cells(side)) if (c.slot == "side-row") c];
+				var first = cells(grid).filter(c -> Fixtures.part(c, "grid-tile"))[0].windowBounds().y;
+				var rows = [for (c in cells(side)) if (Fixtures.part(c, "side-row")) c];
 				assert(rows.length >= 17, "the sidebar's rows");
 				for (r in rows) {
 					var b = r.windowBounds();
@@ -135,7 +135,7 @@ function tests() {
 						ui.pointerMove(b.x + 40, b.y + dy);
 						tick();
 						equals(grid.scrollY, 0.0);
-						equals(cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y, first);
+						equals(cells(grid).filter(c -> Fixtures.part(c, "grid-tile"))[0].windowBounds().y, first);
 					}
 				}
 			});
@@ -177,8 +177,8 @@ function tests() {
 				tick();
 			var grid = ui.root.find("grid"), browser = ui.root.find("browser");
 			equals(x.full.value, false);
-			assert(browser.visible() && browser.style.opacity == 1, 'the browser shown: ${browser.visible()} ${browser.style.opacity}');
-			equals([for (c in cells(grid)) if (c.slot == "grid-tile" && c.visible()) c].length, 9);
+			assert(browser.visible() && browser.used.opacity == 1, 'the browser shown: ${browser.visible()} ${browser.used.opacity}');
+			equals([for (c in cells(grid)) if (Fixtures.part(c, "grid-tile") && c.visible()) c].length, 9);
 			// (still: nothing asked for, and what a frame would draw the same each time, every tile's picture whole)
 			asked = 0;
 			var frames = [for (_ in 0...5) {
@@ -219,7 +219,7 @@ function tests() {
 			}
 			for (_ in 0...60)
 				tick();
-			var tile = [for (c in cells(ui.root.find("grid"))) if (c.slot == "grid-tile") c][0].windowBounds();
+			var tile = [for (c in cells(ui.root.find("grid"))) if (Fixtures.part(c, "grid-tile")) c][0].windowBounds();
 			var side = ui.root.find("sidebar").windowBounds();
 			for (spot in [{x: tile.x + 30, y: tile.y + 30}, {x: side.x + 100, y: side.y + side.height - 10}]) {
 				ui.pointerMove(spot.x, spot.y);
@@ -330,7 +330,7 @@ function tests() {
 			equals(x.sidebar.level.value, "/many");
 			var side = ui.root.find("sidebar"), last = named(side, "d39");
 			var list = last.parent;
-			while (list.style.overflow != Scroll)
+			while (!list.used.scrolls)
 				list = list.parent;
 			var b = list.windowBounds();
 			assert(b.y + b.height <= 300, "within the window");

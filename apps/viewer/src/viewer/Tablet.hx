@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.ui.Sheet;
 import helder.ui.controls.Look;
 import helder.view.*;
@@ -29,8 +30,9 @@ class Tablet implements Markup {
 				onPan={g -> if (g.state == Ended && (g.tx > 40 || g.vx > 400)) x.sidebarOpen(true)}/>
 			<Show when={x.sidebarOpen() && !x.full()}>
 				<view tag="drawer-scrim" position="absolute" inset={0} background={Look.ref.scrim} transition="fade" onPress={_ -> x.sidebarOpen(false)}/>
-				<view tag="drawer" slot="panel" position="absolute" left={0} top={0} bottom={0} width={DRAWER} padding="8 12 0 20"
-					paddingTop="calc(env(safe-area-inset-top) + 8px)" boxShadow="0 10px 40px rgba(0,0,0,0.3)" transition="fade slide-right" panAxis="x"
+				<view tag="drawer" style={Shell.look.part("panel")} position="absolute" left={0} top={0} bottom={0} width={DRAWER}
+					padding="calc(env(safe-area-inset-top) + 8px) 12 0 20" shadows={[{x: 0, y: 10, blur: 40, color: Color.rgba(0, 0.3)}]}
+					transition="fade slide-right" panAxis="x"
 					onPan={g -> if (g.state == Ended && (g.tx < -60 || g.vx < -400)) x.sidebarOpen(false)}>{SidebarView.make(x)}</view>
 			</Show>
 			<Sheet open={() -> x.infoOpen() && !x.full()} detents={[Medium, Large]} anchor={() -> x.infoAnchor} label="Info"

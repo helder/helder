@@ -18,7 +18,7 @@ class States implements Markup {
 		return <view tag="empty" position="absolute" inset={14} top={44} borderRadius={12} borderWidth={1.5} borderStyle="dashed" borderColor={Look.ref.edge}
 			alignItems="center" justifyContent="center" rowGap={8} padding="0 40" pointerEvents="none">
 			<image src={Glyphs.get("folder")} width={40} height={40} color={Look.ref.fg3}/>
-			<text tag="state-title" fontSize={15} fontWeight={600} marginTop={6}>This folder is empty</text>
+			<text tag="state-title" fontSize={15} fontWeight={600} margin="6 0 0 0">This folder is empty</text>
 			<text fontSize={12.5} color={Look.ref.fg3} textAlign="center" maxWidth={360}>Its images, videos and PDFs show up here as they are added.</text>
 		</view>;
 
@@ -43,9 +43,9 @@ class States implements Markup {
 			<view width={44} height={44} borderRadius={12} background={Look.ref.fill} alignItems="center" justifyContent="center" color={Look.ref.fg2}>
 				<image src={Glyphs.get(b.error() == "denied" ? "lock" : "folder")} width={18} height={18}/>
 			</view>
-			<text tag="state-title" fontSize={15} fontWeight={600} marginTop={6} textAlign="center">{title}</text>
+			<text tag="state-title" fontSize={15} fontWeight={600} margin="6 0 0 0" textAlign="center">{title}</text>
 			<text fontSize={12.5} color={Look.ref.fg3} textAlign="center" maxWidth={360}>{why}</text>
-			<view flexDirection="row" columnGap={6} paddingTop={10}>
+			<view flexDirection="row" columnGap={6} padding="10 0 0 0">
 				<Standard.Button tag="retry" onPress={() -> b.reload()}>Try again</Standard.Button>
 				<Show when={Browser.parent(b.dir()) != null}>
 					<Standard.Button variant="primary" onPress={() -> b.up()}>Enclosing Folder</Standard.Button>
@@ -59,14 +59,14 @@ class States implements Markup {
 		return <view tag="no-results" position="absolute" inset={0} top={30} alignItems="center" justifyContent="center" rowGap={8} padding="0 40"
 			pointerEvents="none">
 			<image src={Glyphs.get("search")} width={36} height={36} color={Look.ref.fg3}/>
-			<text tag="state-title" fontSize={15} fontWeight={600} marginTop={6} textAlign="center">{() -> 'No results for “${b.query()}” in ${x.sidebar.title(b.dir())}'}</text>
+			<text tag="state-title" fontSize={15} fontWeight={600} margin="6 0 0 0" textAlign="center">{() -> 'No results for “${b.query()}” in ${x.sidebar.title(b.dir())}'}</text>
 			<text fontSize={12.5} color={Look.ref.fg3} textAlign="center">Search looks at the names in this folder.</text>
 		</view>;
 	}
 
 	// (rows of skeleton fading out, where the list will be)
 	public static function slow(x:Explorer):View
-		return <view tag="slow" position="absolute" inset={0} top={30} paddingTop={8} pointerEvents="none" background={Look.ref.surface}>
+		return <view tag="slow" position="absolute" inset={0} top={30} padding="8 0 0 0" pointerEvents="none" background={Look.ref.surface}>
 			{[for (i in 0...6) <view flexDirection="row" alignItems="center" columnGap={10} height={30} padding="0 16" opacity={i < 4 ? 1 : i == 4 ? 0.6 : 0.35}>
 				<view width={20} height={15} borderRadius={3} background={Look.ref.fill}/>
 				<view width={[220, 180, 240, 160, 200, 210][i]} height={8} borderRadius={4} background={Look.ref.fill}/>

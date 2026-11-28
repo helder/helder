@@ -246,7 +246,11 @@ class Attrs {
 					case _: Solid;
 				}
 			case "shadows":
-				p.shadows = v;
+				// (each layer's colour as a tint: markup's values are untyped, a literal colour a plain Int)
+				p.shadows = v == null ? null : [
+					for (l in (v : Array<Dynamic>))
+						({x: l.x, y: l.y, blur: l.blur, spread: l.spread, color: tint(l.color), inset: l.inset} : Style.ShadowLayer)
+				];
 			case "outline":
 				p.outline = v;
 			case "background" | "backgroundColor":
@@ -298,7 +302,8 @@ class Attrs {
 					case _: Wrap;
 				}
 			case "textOverflow":
-				p.textOverflow = v == null ? null : v == "ellipsis" || v == helder.ui.TextOverflow.Ellipsis ? helder.ui.TextOverflow.Ellipsis : helder.ui.TextOverflow.Clip;
+				p.textOverflow = v == null ? null : v == "ellipsis" || v == helder.ui.TextOverflow.Ellipsis ? helder.ui.TextOverflow.Ellipsis : v == "middle"
+					|| v == helder.ui.TextOverflow.Middle ? helder.ui.TextOverflow.Middle : helder.ui.TextOverflow.Clip;
 			case "lineClamp":
 				p.lineClamp = v == null ? null : Std.int(num(v));
 			case "textDecoration":

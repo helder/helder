@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.os.Mods;
 import helder.ui.Key;
 import helder.ui.Node;
@@ -66,7 +67,7 @@ class PdfView implements Markup {
 			</scroll>
 			<Show when={doc.pages > 1}>
 				<view position="absolute" top={12} right={16} flexDirection="row" alignItems="center" columnGap={4} padding="3 9" borderRadius={8} fontSize={12}
-					background={Look.ref.raised} color={Look.ref.fg2} borderWidth={1} borderColor={Look.ref.edge} boxShadow="0 2px 8px rgba(0,0,0,0.15)">
+					background={Look.ref.raised} color={Look.ref.fg2} borderWidth={1} borderColor={Look.ref.edge} shadows={[{x: 0, y: 2, blur: 8, color: Color.rgba(0, 0.15)}]}>
 					<Show when={!editing()}>
 						<button tag="page-indicator" focusable={false} aria-label="Go to page" onPress={() -> editing(true)}>
 							<text>{() -> '${doc.page() + 1} / ${doc.pages}'}</text>
@@ -101,7 +102,7 @@ class PdfView implements Markup {
 	}
 
 	static function page(doc:PdfDoc, i:Int):View
-		return <view tag="page" position="absolute" background="#ffffff" borderWidth={1} borderColor="rgba(0,0,0,0.08)" boxShadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
+		return <view tag="page" position="absolute" background="#ffffff" borderWidth={1} borderColor="rgba(0,0,0,0.08)" shadows={[{x: 0, y: 1, blur: 4, color: Color.rgba(0, 0.28)}]} left={() -> {
 			doc.zoom();
 			doc.laid();
 			doc.layout.left(i);

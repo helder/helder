@@ -146,7 +146,7 @@ function tests() {
 		function photo(ui:Ui, name:String):Node {
 			var found:Null<Node> = null;
 			function walk(n:Node) {
-				if (found == null && n.slot == "photo" && near(n, ui.root.find("grid"), name)) found = n;
+				if (found == null && Fixtures.part(n, "photo") && near(n, ui.root.find("grid"), name)) found = n;
 				for (c in n.children)
 					walk(c);
 			}
@@ -182,9 +182,9 @@ function tests() {
 			at(ui, 0.05);
 			// (the folder behind darker; nothing of the browser moved or scaled)
 			var depth = ui.root.find("content").find("depth");
-			assert(depth != null && depth.style.opacity > 0, "the folder darker");
+			assert(depth != null && depth.used.opacity > 0, "the folder darker");
 			for (n in [ui.root.find("browser"), ui.root.find("sidebar"), ui.root.find("toolbar")])
-				assert(n.style.transform == null || n.style.transform.isIdentity(), n.tag + " not moved");
+				assert(n.props().transform == null || n.props().transform.isIdentity(), n.tag + " not moved");
 			var fit = fitted(ui), boxes = flown(ui, x);
 			assert(boxes.length > 5, 'its frames: ${boxes.length}');
 			for (b in boxes)
@@ -379,7 +379,7 @@ function tests() {
 			for (_ in 0...9) {
 				at(ui, 1 / 60);
 				var s = ui.root.find("zoom-sharp");
-				if (s != null) sharp = Math.max(sharp, s.style.opacity);
+				if (s != null) sharp = Math.max(sharp, s.used.opacity);
 			}
 			assert(sharp > 0.9, 'the sharp picture: $sharp');
 			// (near the end: the whole picture, all but uncropped)
@@ -517,7 +517,7 @@ function picture(w:Int, h:Int):Image {
 function hidden(n:Node):Bool {
 	var a = n;
 	while (a != null) {
-		if (a.style.opacity == 0) return true;
+		if (a.used.opacity == 0) return true;
 		a = a.parent;
 	}
 	return false;
@@ -527,7 +527,7 @@ function hidden(n:Node):Bool {
 function near(n:Node, grid:Node, name:String):Bool {
 	var a = n;
 	while (a != null && a != grid) {
-		if (a.slot == "grid-tile") return Lambda.exists(cells(a), c -> Std.isOfType(c, helder.ui.TextNode) && (cast c : helder.ui.TextNode).text == name);
+		if (Fixtures.part(a, "grid-tile")) return Lambda.exists(cells(a), c -> Std.isOfType(c, helder.ui.TextNode) && (cast c : helder.ui.TextNode).text == name);
 		a = a.parent;
 	}
 	return false;

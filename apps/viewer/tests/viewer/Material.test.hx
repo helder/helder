@@ -37,14 +37,13 @@ function tests() {
 			return ui;
 		}
 		function opaque(n:Node):Bool {
-			var c = n.style.background;
-			return c.isToken || c.a == 255;
+			return n.used.backgroundColor >>> 24 == 255;
 		}
 		test("through the sidebar alone", () -> {
 			var ui = mount(true, 1100);
 			var window = ui.root.find("window"), side = ui.root.find("sidebar");
-			equals(window.style.background, Color.TRANSPARENT);
-			equals(side.style.background, Color.TRANSPARENT);
+			equals(window.used.backgroundColor, (Color.TRANSPARENT : Int));
+			equals(side.used.backgroundColor, (Color.TRANSPARENT : Int));
 			// (the folder's side, its panel and the inspector: opaque)
 			assert(opaque(ui.root.find("main").parent), "the folder's side");
 			assert(opaque(ui.root.find("main")), "the folder's panel");

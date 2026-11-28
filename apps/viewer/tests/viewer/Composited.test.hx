@@ -229,7 +229,7 @@ private class Window {
 	function tiles():Array<Node> {
 		var out = [];
 		function walk(n:Node) {
-			if (n.slot == "grid-tile") out.push(n);
+			if (Fixtures.part(n, "grid-tile")) out.push(n);
 			for (k in n.children)
 				walk(k);
 		}

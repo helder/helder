@@ -102,7 +102,7 @@ function tests() {
 				// (the last file pressed, as a user does at the folder's end)
 				view.scrollY = 1e6;
 				frame();
-				var shown = [for (r in (cast view : helder.ui.VirtualScroll).rows()) if (r.node.style.display != None) r];
+				var shown = [for (r in (cast view : helder.ui.VirtualScroll).rows()) if (!r.node.used.none) r];
 				var last = shown[shown.length - 1].node;
 				var b = (layout == List ? last : last.children[last.children.length - 1]).windowBounds();
 				ui.pointerDown(b.x + 10, b.y + 10, 1);
@@ -240,7 +240,7 @@ function tests() {
 						v.scrollToIndex(x.browser.items.value.length - 1);
 					}
 					frame();
-					var shown = [for (r in v.rows()) if (r.node.style.display != None) r];
+					var shown = [for (r in v.rows()) if (!r.node.used.none) r];
 					var last = shown[shown.length - 1].node, end = last.absY - v.scrollY + last.height;
 					var room = v.absY + v.height - end, bar = ui.root.find("pathbar");
 					assert(room >= 6 && room <= 12, '$way: the last row ends $room above the view\'s end');
@@ -290,7 +290,7 @@ function tests() {
 			function tiles():Int {
 				var n = 0;
 				function walk(c:Node) {
-					if (c.slot == "grid-tile" && c.visible()) n++;
+					if (Fixtures.part(c, "grid-tile") && c.visible()) n++;
 					for (k in c.children)
 						walk(k);
 				}
@@ -341,7 +341,7 @@ function tests() {
 		function tile(ui:Ui, name:String):Node {
 			var found:Null<Node> = null;
 			function walk(c:Node) {
-				if (found == null && c.slot == "grid-tile" && c.visible() && texts(c).contains(name)) found = c;
+				if (found == null && Fixtures.part(c, "grid-tile") && c.visible() && texts(c).contains(name)) found = c;
 				for (k in c.children)
 					walk(k);
 			}
@@ -427,7 +427,7 @@ function tests() {
 		function sideRow(ui:Ui, name:String):Null<Node> {
 			var found:Null<Node> = null;
 			function walk(c:Node) {
-				if (found == null && c.slot == "side-row" && texts(c).contains(name)) found = c;
+				if (found == null && Fixtures.part(c, "side-row") && texts(c).contains(name)) found = c;
 				for (k in c.children)
 					walk(k);
 			}
@@ -542,7 +542,7 @@ private class Pressed {
 		var spots = [];
 		function walk(n:Node) {
 			if (!n.visible()) return;
-			if (n.slot == "side-row" || n.slot == "grid-tile") {
+			if (Fixtures.part(n, "side-row") || Fixtures.part(n, "grid-tile")) {
 				var b = n.windowBounds();
 				if (b.width > 4 && b.height > 4 && b.x >= 0 && b.y >= 0 && b.x + b.width / 2 < ui.width && b.y + b.height / 2 < ui.height)
 					spots.push({x: b.x + b.width / 2, y: b.y + b.height / 2});
@@ -582,7 +582,7 @@ private class Pressed {
 		equals(ui.overlay.find("touch-menu-layer"), null, "the touch menu");
 		var glass = false;
 		function walk(n:Node) {
-			if (n.slot == "touch-menu-scrim") glass = true;
+			if (n.tag == "touch-menu-scrim") glass = true;
 			for (c in n.children)
 				walk(c);
 		}

@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.os.Settings;
 import helder.ui.Clock;
 import helder.ui.controls.Look;
@@ -31,7 +32,7 @@ class ViewerView implements Markup {
 		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} fontSize={13}
 			opacity={x.zoom.shown()} pointerEvents={x.full() ? "auto" : "none"} aria-hidden={!x.full()}>
 			<view tag="viewer-bar" flexDirection="row" alignItems="center" columnGap={8} height={WindowButtons.side() == "end" ? Shell.BAR : BAR} flexShrink={0} dragRegion
-				paddingLeft={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} paddingRight={WindowButtons.side() == "end" ? Shell.END_BUTTONS : 14}
+				padding={'0 ${WindowButtons.side() == "end" ? Shell.END_BUTTONS : 14} 0 ${WindowButtons.side() == "start" ? Shell.BUTTONS : 14}'}
 				display={viewer.fullscreen() ? "none" : "flex"}>
 				<button tag="back-pill" aria-label={() -> "Back to " + x.sidebar.title(x.browser.dir())} flexDirection="row"
 					alignItems="center" columnGap={6} height={30} padding="0 12 0 6" borderRadius={8} background={Look.ref.fill} color={Look.ref.fg}
@@ -43,7 +44,7 @@ class ViewerView implements Markup {
 				<text tag="viewer-title" flexGrow={1} flexShrink={1} minWidth={0} textAlign="center" lineClamp={1} textOverflow="ellipsis" color={Look.ref.fg2}
 					direction={helder.ui.Dir.Ltr}>{viewer.title}</text>
 				<Show when={viewer.markdown() != null}>
-					<button tag="viewer-source" aria-label="Show Source" data-selected={viewer.markdown()?.source() == true}
+					<button tag="viewer-source" aria-label="Show Source" data-state={viewer.markdown()?.source() == true ? "selected" : null}
 						flexDirection="row" alignItems="center" columnGap={5} height={30} padding="0 10 0 8" borderRadius={8}
 						background={viewer.markdown()?.source() == true ? Look.ref.fill : null} color={Look.ref.fg2}
 						onPress={() -> x.perform(ToggleSource)}>
@@ -78,8 +79,7 @@ class ViewerView implements Markup {
 		// (its picture in flight: the image under it not drawn)
 		renderEffect(() -> x.zoom.flying() != "", on -> image.veiled = on);
 		renderEffect(() -> Settings.dark(), d -> image.background = canvas(d));
-		image.style.position = Absolute;
-		image.style.left = image.style.top = image.style.right = image.style.bottom = 0;
+		image.style = image.style.with({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		// (to assistive technology an image, named as the window is: the file, its place, its size)
 		image.semantics = {role: helder.ui.access.Role.Image, label: viewer.title.peek()};
 		renderEffect(() -> viewer.title(), t -> image.semantics.label = t);
@@ -147,7 +147,7 @@ class ViewerView implements Markup {
 				<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
 			</view>
 			<Show when={viewer.statusOn()}>
-				<view tag="status" flexShrink={0} padding="6 12" opacity={Math.max(0, Math.min(1, (x.zoom.shown() - 0.6) / 0.4))} background={Look.ref.raised} borders="1 0 0 0" borderColor={Look.ref.line} flexDirection="row">
+				<view tag="status" flexShrink={0} padding="6 12" opacity={Math.max(0, Math.min(1, (x.zoom.shown() - 0.6) / 0.4))} background={Look.ref.raised} borderWidth="1 0 0 0" borderColor={Look.ref.line} flexDirection="row">
 					<text flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis" color={Look.ref.fg2}>{viewer.status}</text>
 				</view>
 			</Show>
@@ -158,7 +158,7 @@ class ViewerView implements Markup {
 		return <view tag="goto-backdrop" position="absolute" inset={0} background={Look.ref.scrim} alignItems="center" justifyContent="center"
 			onPress={_ -> viewer.gotoOpen(false)}>
 			<view tag="goto" width={260} padding={12} rowGap={8} borderRadius={10} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
-				boxShadow="0 8px 30px rgba(0, 0, 0, 0.25)" onPress={e -> e.stop()}>
+				shadows={[{x: 0, y: 8, blur: 30, color: Color.rgba(0, 0.25)}]} onPress={e -> e.stop()}>
 				<text color={Look.ref.fg3}>{"Go to page (1–" + viewer.pagesSignal() + ")"}</text>
 				<field tag="goto-field" value={viewer.gotoText} placeholder={Std.string(viewer.pageSignal() + 1)} aria-label="Page number" height={28} padding="0 8"
 					borderRadius={6} background={Look.ref.well} borderWidth={1} borderColor={Look.ref.edge} onInput={e -> viewer.gotoText(e.text)}

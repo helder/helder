@@ -214,7 +214,7 @@ private class Opened {
 	function text():String {
 		var layer = ui.root.find("pdf-text"), pages = ui.root.find("pdf-pages"), d = x.viewer.document();
 		if (layer == null || pages == null || d == null) return "";
-		if (x.zoom.flying.peek() != "" && ui.root.find("pdf-scroll").style.opacity > 0) return "shown in flight";
+		if (x.zoom.flying.peek() != "" && ui.root.find("pdf-scroll").used.opacity > 0) return "shown in flight";
 		var drawn = [for (n in pages.children) if (n.tag == "page") n], shown = d.shown.value;
 		for (k in 0...Std.int(Math.min(drawn.length, shown.length))) {
 			var i = shown[k], p = drawn[k].windowBounds(), b = layer.children[i].windowBounds();

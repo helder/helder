@@ -53,8 +53,8 @@ class Phone implements Markup {
 	// (the list's rows)
 	public static inline var ROW = 62.0;
 	// (the check's ring and its wash over a picture, whatever the theme)
-	static final WHITE = helder.gfx.Color.parse("#ffffff");
-	static final SHADE = helder.gfx.Color.parse("rgba(0,0,0,0.25)");
+	static inline var WHITE = "#ffffff";
+	static inline var SHADE = "rgba(0,0,0,0.25)";
 
 	// (at: the state once made, a story's to bring it to its moment)
 	public static function Root(props:{x:Explorer, ?at:PhoneState->Void}):View {
@@ -98,7 +98,7 @@ class Phone implements Markup {
 
 	static function Locations(props:{p:PhoneState}):View {
 		var p = props.p, x = p.x, s = x.sidebar;
-		return <view paddingBottom={24}>
+		return <view padding="0 0 24 0">
 			<text tag="locations-head" fontSize={20} fontWeight={700} padding="18 16 8 16">Locations</text>
 			<view tag="locations" margin="0 16" borderRadius={12} background={Look.ref.surface} overflow="hidden">
 				<For each={() -> s.places()}>{place -> row(place().name, Glyphs.place(place().kind), "", () -> p.browse(place().path))}</For>
@@ -117,7 +117,7 @@ class Phone implements Markup {
 	// (a grouped row: its glyph, its name, a detail, the chevron)
 	static function row(name:String, glyph:String, meta:String, press:Void->Void):View
 		return <button tag={"place-" + name} aria-label={name} flexDirection="row" alignItems="center" columnGap={13} height={50}
-			padding="0 14" borders="0 0 1 0" borderColor={Look.ref.line} onPress={press}>
+			padding="0 14" borderWidth="0 0 1 0" borderColor={Look.ref.line} onPress={press}>
 			<image src={Glyphs.get(glyph)} width={22} height={22} margin="0 2" color={Look.ref.fg2}/>
 			<text flexGrow={1} flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis">{name}</text>
 			<Show when={meta != ""}><text fontSize={15} color={Look.ref.fg3}>{meta}</text></Show>
@@ -126,7 +126,7 @@ class Phone implements Markup {
 
 	static function Recents(props:{p:PhoneState}):View {
 		var p = props.p, x = p.x;
-		return <view paddingBottom={24}>
+		return <view padding="0 0 24 0">
 			<Show when={x.recent().length == 0}>
 				<text tag="no-recents" padding="40 32" textAlign="center" color={Look.ref.fg3}>The files you open show up here.</text>
 			</Show>
@@ -243,8 +243,8 @@ class Phone implements Markup {
 			return x.browser.selection.has(e().name);
 		}
 		return <view tag={"tile-" + e().name} flexGrow={1} alignItems="center" rowGap={4} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
-			<view slot="photo" data-selected={on() && p.selecting()} width={side} height={side} flexShrink={0} alignItems="center" justifyContent="center" borderRadius={9}
-				background={e().kind == Folder ? helder.gfx.Color.TRANSPARENT : Look.ref.fill} overflow="hidden"
+			<view style={Shell.look.part("photo")} data-state={on() && p.selecting() ? "selected" : null} width={side} height={side} flexShrink={0} alignItems="center" justifyContent="center" borderRadius={9}
+				background={e().kind == Folder ? "transparent" : Look.ref.fill} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 				{() -> square(x, e(), side)}
 				<Show when={p.selecting()}>
@@ -255,9 +255,9 @@ class Phone implements Markup {
 					</view>
 				</Show>
 			</view>
-			<text slot="name-pill" data-selected={on() && p.selecting()} fontSize={13} fontWeight={500} maxWidth={side} lineClamp={1}
+			<text style={Shell.look.part("name-pill")} data-state={on() && p.selecting() ? "selected" : null} fontSize={13} fontWeight={500} maxWidth={side} lineClamp={1}
 				textOverflow="ellipsis" direction={helder.ui.Dir.Ltr}>{e().name}</text>
-			<text fontSize={11.5} color={Look.ref.fg3} marginTop={-4} lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.date(e().modified)}</text>
+			<text fontSize={11.5} color={Look.ref.fg3} margin="-4 0 0 0" lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.date(e().modified)}</text>
 		</view>;
 	}
 
@@ -277,7 +277,7 @@ class Phone implements Markup {
 			return x.browser.selection.has(e().name);
 		}
 		return <view flexDirection="row" alignItems="center" columnGap={12} height={ROW} padding="0 16" flexGrow={1}
-			background={on() && p.selecting() ? Look.ref.accentSoft : helder.gfx.Color.TRANSPARENT} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
+			background={on() && p.selecting() ? Look.ref.accentSoft : null} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
 			<view width={42} height={42} alignItems="center" justifyContent="center" borderRadius={6} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>{() -> square(x, e(), 42)}</view>
 			<view flexGrow={1} minWidth={0} rowGap={2}>
@@ -539,6 +539,6 @@ class PhoneState implements Markup {
 	// a menu of the model at a node (the View menu: its choices checked)
 	public function menu(at:Node, items:Array<MenuItem>) {
 		if (at.ui == null) return;
-		TouchMenu.open(at.ui, TouchMenu.choices(at.ui, items, at), at.windowBounds(), null, false, at.sheet());
+		TouchMenu.open(at.ui, TouchMenu.choices(at.ui, items, at), at.windowBounds(), null, false, at.scope());
 	}
 }

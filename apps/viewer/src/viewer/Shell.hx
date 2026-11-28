@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.os.Settings;
 import helder.os.Rect;
 import helder.async.Async;
@@ -53,8 +54,7 @@ class Shell implements Markup {
 			panel: t -> {background: t.surface},
 			"side-head": t -> {padding: [6, 8, 4, 8], fontSize: 11, fontWeight: 600, color: t.fg3},
 			"side-row": t -> {flexDirection: Row, alignItems: Center, columnGap: 8, height: 28, flexShrink: 0, padding: [0, 8], borderRadius: 8, color: t.fg2,
-				hover: {background: t.hover, color: t.fg}, selected: {background: t.accentSoft, color: t.fg, fontWeight: 500},
-				open: {color: t.fg, fontWeight: 500}},
+				hover: {background: t.hover, color: t.fg}, selected: {background: t.accentSoft, color: t.fg, fontWeight: 500}},
 			"side-back": t -> {flexDirection: Row, alignItems: Center, columnGap: 2, height: 26, flexShrink: 1, minWidth: 0, padding: [0, 8, 0, 2], borderRadius: 7,
 				color: t.fg3, fontSize: 12, hover: {background: t.hover, color: t.fg}},
 			"title-button": t -> {flexDirection: Row, alignItems: Center, columnGap: 4, height: 30, flexShrink: 1, minWidth: 0, padding: [0, 6, 0, 8],
@@ -64,7 +64,9 @@ class Shell implements Markup {
 			"head-cell": t -> {flexDirection: Row, alignItems: Center, columnGap: 4, height: 30, color: t.fg3, hover: {color: t.fg}, selected: {color: t.fg}},
 			"grid-tile": t -> {borderRadius: 10, hover: {background: t.hover}},
 			"thumb-box": t -> {borderRadius: 10, selected: {background: t.accentSoft}},
-			photo: t -> {borderRadius: 8, background: t.fill, selected: {ringWidth: 2.5, ringColor: t.accent, ringOffsetWidth: 2, ringOffsetColor: t.surface}},
+			// (selected: a ring of the accent, a gap of the surface inside it)
+			photo: t -> {borderRadius: 8, background: t.fill,
+				selected: {shadows: [{x: 0, y: 0, spread: 2, color: t.surface}, {x: 0, y: 0, spread: 4.5, color: t.accent}]}},
 			"name-pill": t -> {fontSize: 12.5, padding: [1, 6, 1, 6], borderRadius: 5, color: t.fg, selected: {background: t.accent, color: t.accentFg, fontWeight: 500}},
 			"list-row": t -> {flexDirection: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], borderRadius: 7,
 				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}},
@@ -72,27 +74,27 @@ class Shell implements Markup {
 			"markdown": t -> {background: t.canvas, color: t.fg},
 			"markdown-scroll": t -> {padding: [36, 0, 56, 0]},
 			"markdown-row": t -> {width: "100%", maxWidth: 760, padding: [0, 40, 14, 40]},
-			"markdown-h1": t -> {fontSize: 28, fontWeight: 650, lineHeight: 1.25, margin: [6, 0, 2, 0], padding: [0, 0, 8, 0], borders: [0, 0, 1, 0],
+			"markdown-h1": t -> {fontSize: 28, fontWeight: 650, lineHeight: 1.25, margin: [6, 0, 2, 0], padding: [0, 0, 8, 0], borderWidth: [0, 0, 1, 0],
 				borderColor: t.line},
-			"markdown-h2": t -> {fontSize: 21, fontWeight: 650, lineHeight: 1.3, margin: [10, 0, 0, 0], padding: [0, 0, 6, 0], borders: [0, 0, 1, 0],
+			"markdown-h2": t -> {fontSize: 21, fontWeight: 650, lineHeight: 1.3, margin: [10, 0, 0, 0], padding: [0, 0, 6, 0], borderWidth: [0, 0, 1, 0],
 				borderColor: t.line},
-			"markdown-h3": t -> {fontSize: 17, fontWeight: 650, lineHeight: 1.35, marginTop: 6},
-			"markdown-h4": t -> {fontSize: 15, fontWeight: 650, marginTop: 4},
+			"markdown-h3": t -> {fontSize: 17, fontWeight: 650, lineHeight: 1.35, margin: [6, 0, 0, 0]},
+			"markdown-h4": t -> {fontSize: 15, fontWeight: 650, margin: [4, 0, 0, 0]},
 			"markdown-h5": t -> {fontSize: 14, fontWeight: 650},
 			"markdown-h6": t -> {fontSize: 13, fontWeight: 650, color: t.fg2},
 			"markdown-p": t -> {fontSize: 15, lineHeight: 1.6},
-			"markdown-quote": t -> {rowGap: 10, padding: [2, 0, 2, 16], borders: [0, 0, 0, 3], borderColor: t.edgeStrong, color: t.fg2},
+			"markdown-quote": t -> {rowGap: 10, padding: [2, 0, 2, 16], borderWidth: [0, 0, 0, 3], borderColor: t.edgeStrong, color: t.fg2},
 			"markdown-list": t -> {rowGap: 6},
 			"markdown-item-body": t -> {rowGap: 6},
-			"markdown-marker": t -> {minWidth: 24, paddingRight: 6, fontSize: 15, lineHeight: 1.6, color: t.fg2},
+			"markdown-marker": t -> {minWidth: 24, padding: [0, 6, 0, 0], fontSize: 15, lineHeight: 1.6, color: t.fg2},
 			"markdown-task": t -> {width: 15, height: 15, margin: [5, 9, 0, 0], borderRadius: 4, borderWidth: 1.5, borderColor: t.edgeStrong, fontSize: 10,
 				fontWeight: 700, checked: {background: t.accent, borderColor: t.accent, color: t.accentFg}},
 			"markdown-code": t -> {padding: [12, 14, 12, 0], borderRadius: 8, background: t.fill},
 			"markdown-code-span": t -> {fontFamily: "JetBrains Mono", fontSize: 13.5, color: t.fg},
 			"markdown-link": t -> {color: t.info, cursor: Pointer, hover: {textDecoration: 1}},
-			"markdown-table": t -> {borders: [1, 0, 0, 1], borderColor: t.line},
-			"markdown-th": t -> {fontSize: 14, fontWeight: 600, padding: [7, 12], borders: [0, 1, 1, 0], borderColor: t.line, background: t.fill},
-			"markdown-td": t -> {fontSize: 14, lineHeight: 1.45, padding: [7, 12], borders: [0, 1, 1, 0], borderColor: t.line},
+			"markdown-table": t -> {borderWidth: [1, 0, 0, 1], borderColor: t.line},
+			"markdown-th": t -> {fontSize: 14, fontWeight: 600, padding: [7, 12], borderWidth: [0, 1, 1, 0], borderColor: t.line, background: t.fill},
+			"markdown-td": t -> {fontSize: 14, lineHeight: 1.45, padding: [7, 12], borderWidth: [0, 1, 1, 0], borderColor: t.line},
 			"markdown-rule": t -> {height: 1, margin: [8, 0], background: t.line},
 			"markdown-html": t -> {fontFamily: "JetBrains Mono", fontSize: 12.5, color: t.fg3},
 			"markdown-image": t -> {borderRadius: 6},
@@ -643,7 +645,7 @@ class Shell implements Markup {
 		return <view tag="about-backdrop" position="absolute" inset={0} background={Look.ref.scrim} alignItems="center" justifyContent="center"
 			onPress={_ -> viewer.aboutOpen(false)}>
 			<view tag="about" width={340} padding={20} rowGap={6} borderRadius={12} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
-				alignItems="center" boxShadow="0 8px 30px rgba(0, 0, 0, 0.25)">
+				alignItems="center" shadows={[{x: 0, y: 8, blur: 30, color: Color.rgba(0, 0.25)}]}>
 				<image src={helder.image.Image.decode(helder.asset.Embed.bytes("about-icon.png"))} width={72} height={72}/>
 				<text tag="about-name" fontSize={18} color={Look.ref.fg}>Viewer</text>
 				<text tag="about-version" color={Look.ref.fg3}>{"Version " + Version.NAME}</text>

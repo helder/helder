@@ -25,10 +25,10 @@ function tests() {
 	describe("Markdown", () -> {
 		beforeEach(() -> helder.ui.actions.Keymap.mac = false);
 		var dir = "tests/fixtures/markdown";
-		function all(n:Node, slot:String, out:Array<Node>):Array<Node> {
-			if (n.slot == slot) out.push(n);
+		function all(n:Node, part:String, out:Array<Node>):Array<Node> {
+			if (n.tag == part) out.push(n);
 			for (c in n.children)
-				all(c, slot, out);
+				all(c, part, out);
 			return out;
 		}
 		function open():{x:Explorer, ui:Ui, frame:Void->Void, urls:Array<String>} {
@@ -102,7 +102,7 @@ function tests() {
 			x.start('$dir/other.md');
 			t.frame();
 			var md = viewer.markdownDoc(), page = md.view.scroller;
-			equals(t.ui.root.find("markdown-source").style.display, None);
+			equals(t.ui.root.find("markdown-source").used.none, true);
 			// (the keys: a line, a screen, the end, the top)
 			t.ui.keyDown(Key.DOWN, 0);
 			t.frame();
@@ -120,7 +120,7 @@ function tests() {
 			t.ui.keyDown("u".code, Mods.CONTROL);
 			t.frame();
 			equals(md.source.peek(), true);
-			equals(t.ui.root.find("markdown-doc").style.display, None);
+			equals(t.ui.root.find("markdown-doc").used.none, true);
 			// (line ends aside: a checkout on Windows gives this file's strings CRLF)
 			equals(md.code.model.text().split("\r\n").join("\n"), md.text.split("\r\n").join("\n"));
 			assert(md.code.model.readOnly);
@@ -153,7 +153,7 @@ function tests() {
 			function blocks():Array<String> {
 				var out = [];
 				function walk(n:Node) {
-					if (n.slot != null && StringTools.startsWith(n.slot, "markdown-")) out.push(n.slot + " " + n.rect().y + " " + n.rect().height);
+					if (StringTools.startsWith(n.tag, "markdown-")) out.push(n.tag + " " + n.rect().y + " " + n.rect().height);
 					for (c in n.children)
 						walk(c);
 				}

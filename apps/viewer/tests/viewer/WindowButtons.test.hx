@@ -66,9 +66,9 @@ function overlaps(kind:String, w:Float, h:Float, full:Bool, lay:String):String {
 	}
 	var b = controls.windowBounds(), out = [];
 	function walk(n:Node, clip:{x0:Float, y0:Float, x1:Float, y1:Float}) {
-		if (n == controls || n.style.display == None || n.style.opacity == 0 || !n.visible()) return;
+		if (n == controls || n.used.none || n.used.opacity == 0 || !n.visible()) return;
 		var r = n.windowBounds();
-		if (n.style.overflow != Visible) clip = {
+		if (n.used.clips) clip = {
 			x0: Math.max(clip.x0, r.x),
 			y0: Math.max(clip.y0, r.y),
 			x1: Math.min(clip.x1, r.x + r.width),

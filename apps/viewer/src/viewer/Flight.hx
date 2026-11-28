@@ -1,11 +1,13 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.os.Rect;
 import helder.image.Image;
 import helder.ui.Clock;
 import helder.ui.Event;
 import helder.ui.Key;
 import helder.ui.Node;
+import helder.ui.NodePaint;
 import helder.ui.Transition;
 import helder.ui.controls.Look;
 import helder.ui.motion.Curve;
@@ -561,7 +563,7 @@ class Flight implements Markup {
 			var n = tiles[i].node;
 			if (tiles[i].path != path || n.ui == null || !n.visible() || n.width <= 0) continue;
 			var b = n.windowBounds(), clip = n.parent;
-			while (clip != null && clip.style.overflow == Visible)
+			while (clip != null && !clip.used.clips)
 				clip = clip.parent;
 			tileWhole = null;
 			if (clip == null) return b;
@@ -585,7 +587,7 @@ class Flight implements Markup {
 
 	function tileRadius(path:String):Float {
 		for (t in tiles)
-			if (t.path == path && t.node.ui != null) return t.node.style.borderRadius;
+			if (t.path == path && t.node.ui != null) return NodePaint.corners(t.node.used, t.node.width, t.node.height, 0)?.topLeft ?? 0;
 		return 0;
 	}
 
@@ -700,7 +702,7 @@ class Flight implements Markup {
 					var b = z.box(), w = Math.max(1, Math.round(b.width)), h = Math.max(1, Math.round(b.height));
 					'translate(${b.x - Math.floor(b.x)}px, ${b.y - Math.floor(b.y)}px) scale(${b.width / w}, ${b.height / h})';
 				}} borderRadius={z.radius()} overflow="hidden" pointerEvents="none"
-				boxShadow={() -> '0 ${Math.round(14 * z.lift())}px ${Math.round(44 * z.lift())}px rgba(0,0,0,${Math.round(35 * z.lift()) / 100})'}>
+				shadows={() -> [{x: 0, y: Math.round(14 * z.lift()), blur: Math.round(44 * z.lift()), color: Color.rgba(0, Math.round(35 * z.lift()) / 100)}]}>
 				<Show when={z.image() != null}>
 					<image tag="zoom-thumb" src={z.image()} position="absolute" left={z.crop().x} top={z.crop().y} width={z.crop().width}
 						height={z.crop().height}/>

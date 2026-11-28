@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.gfx.Color;
 import helder.ui.Node;
 import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
@@ -62,10 +63,10 @@ class InspectorView implements Markup {
 		});
 		onCleanup(() -> if (stop != null) stop());
 		// (Windows' and Linux's window buttons over its top: the toolbar's row carried on, a title bar's)
-		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={fill ? 1 : 0} minHeight={0} overflow="hidden"
-			borders={fill ? "0 0 0 0" : "0 0 0 1"} borderColor={Look.ref.line}>
+		return <view tag="inspector" style={Shell.look.part("panel")} width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={fill ? 1 : 0} minHeight={0} overflow="hidden"
+			borderWidth={fill ? "0 0 0 0" : "0 0 0 1"} borderColor={Look.ref.line}>
 			<Show when={!fill && WindowButtons.side() == "end"}>
-				<view tag="inspector-bar" height={Shell.BAR} flexShrink={0} dragRegion borders="0 0 1 0" borderColor={Look.ref.line}/>
+				<view tag="inspector-bar" height={Shell.BAR} flexShrink={0} dragRegion borderWidth="0 0 1 0" borderColor={Look.ref.line}/>
 			</Show>
 			<scroll tag="inspector-body" flexGrow={1} flexShrink={1} minHeight={0}>
 				<Show when={many() != ""}>{() -> {
@@ -115,7 +116,7 @@ class InspectorView implements Markup {
 					</view>
 				</Show>
 			</view>
-			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" borderColor={Look.ref.line}>
+			<view tag="details" padding="10 16 6 16" borderWidth="1 0 0 0" borderColor={Look.ref.line}>
 				<view flexDirection="row" alignItems="center" columnGap={6} height={24}>
 					<image src={Glyphs.get("info")} width={14} height={14} color={Look.ref.fg3}/>
 					<text fontSize={11} fontWeight={600} color={Look.ref.fg3}>DETAILS</text>
@@ -162,7 +163,7 @@ class InspectorView implements Markup {
 					<Standard.Button tag="trash" size="sm" icon={Glyphs.get("trash")} label={ViewerActions.trashLabel()} onPress={() -> x.perform(Trash)}/>
 				</Show>
 			</view>
-			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" borderColor={Look.ref.line}>
+			<view tag="details" padding="10 16 6 16" borderWidth="1 0 0 0" borderColor={Look.ref.line}>
 				<view flexDirection="row" alignItems="center" columnGap={6} height={24}>
 					<image src={Glyphs.get("info")} width={14} height={14} color={Look.ref.fg3}/>
 					<text fontSize={11} fontWeight={600} color={Look.ref.fg3}>SELECTION</text>
@@ -180,7 +181,7 @@ class InspectorView implements Markup {
 	static function card(x:Explorer, e:Entry, side:Float, transform:String):View {
 		var t = Tiles.thumbnail(x, e);
 		return <view position="absolute" width={side} height={side} borderRadius={8} padding={3} background="#ffffff" transform={transform}
-			boxShadow="0 4px 14px rgba(0,0,0,0.22)" alignItems="center" justifyContent="center" overflow="hidden">
+			shadows={[{x: 0, y: 4, blur: 14, color: Color.rgba(0, 0.22)}]} alignItems="center" justifyContent="center" overflow="hidden">
 			<Show when={t().image != null}><image src={t().image} width={side - 6} height={side - 6} objectFit="cover" borderRadius={6}/></Show>
 			<Show when={t().image == null}>{Tiles.large(e)}</Show>
 		</view>;
@@ -214,7 +215,7 @@ class InspectorView implements Markup {
 		// (the thumbnail while the preview comes: nothing known of it yet; a Show's children are made with it)
 		var pages = s == null ? 0 : s.pages, duration = s == null ? 0.0 : s.duration;
 		return <view alignItems="center" justifyContent="center" width="100%" height="100%">
-			<image tag="preview-image" src={img} width={w} height={h} borderRadius={4} boxShadow="0 4px 16px rgba(0,0,0,0.4)"/>
+			<image tag="preview-image" src={img} width={w} height={h} borderRadius={4} shadows={[{x: 0, y: 4, blur: 16, color: Color.rgba(0, 0.4)}]}/>
 			<Show when={pages > 1}>
 				<text tag="pages" position="absolute" bottom={8} padding="2 8" borderRadius={9} background="rgba(10,10,10,0.6)" color="#ffffff" fontSize={11.5}>{'1 / $pages'}</text>
 			</Show>
@@ -231,7 +232,7 @@ class InspectorView implements Markup {
 		var k = 0.38, w = 600, h = Math.round(188 / k);
 		var view = new helder.markdown.MarkdownView({doc: d.doc, scroll: false, blocks: 12});
 		return <view tag="preview-page" width={Math.round(w * k)} height={188} borderRadius={4} overflow="hidden" background={Look.ref.canvas}
-			boxShadow="0 4px 16px rgba(0,0,0,0.4)">
+			shadows={[{x: 0, y: 4, blur: 16, color: Color.rgba(0, 0.4)}]}>
 			<view position="absolute" left={0} top={0} width={w} height={h} padding="22 0 0 0" transform={'scale($k)'} transformOrigin="0 0"
 				pointerEvents="none">{view}</view>
 		</view>;

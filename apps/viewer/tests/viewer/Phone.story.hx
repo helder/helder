@@ -63,7 +63,7 @@ final menu = story({
 				{label: "Select", run: () -> {}},
 				{label: "Move to Trash", destructive: true, separated: true, run: () -> {}}
 			], t.windowBounds(), Fixtures.tile("Murmuration.jpg"), true,
-				t.sheet());
+				t.scope());
 		}
 	})
 });
