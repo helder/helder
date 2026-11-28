@@ -51,12 +51,16 @@ class DocumentNode extends helder.ui.Node {
 	var anchor:Null<DomPosition> = null;
 	var dragged = false;
 	var hooked:Null<helder.ui.Ui> = null;
-
+	// (the theme its document's tokens and scheme are of: another in its scope rethemes it)
+	var themed:helder.ui.Theme;
 
 	// cascade: how the document is styled (DocumentView's), the program's choice so that it links only that one
 	public function new(document:Document, cascade:DocumentView.DocumentCascade, ?options:DocumentViewOptions) {
 		super("document");
 		this.options = options ?? {};
+		themed = scope();
+		this.options.theme = themed.properties();
+		this.options.scheme = themed.dark ? "dark" : "light";
 		view = new DocumentView(document, cascade, this.options);
 		focusable = true;
 		onPointerMove = moved;
@@ -97,17 +101,28 @@ class DocumentNode extends helder.ui.Node {
 		view.watch();
 		var t0 = Timer.stamp();
 		var redo = view.update();
-		if (redo != DocumentView.NOTHING) {
-			stats.restyled(Timer.stamp() - t0, redo);
-			if (redo >= DocumentView.LAYOUT) {
-				docHeight = heightOf();
-				markDirty();
-			} else {
-				layerChanged();
-				ui.requestFrame();
-			}
-		}
+		if (redo != DocumentView.NOTHING) stats.restyled(Timer.stamp() - t0, redo);
+		redone(redo);
 		slice();
+	}
+
+	// (what the view redid, by its level: laid out again, else drawn again)
+	function redone(redo:Int) {
+		if (redo >= DocumentView.LAYOUT) {
+			docHeight = heightOf();
+			markDirty();
+		} else if (redo != DocumentView.NOTHING) {
+			layerChanged();
+			if (ui != null) ui.requestFrame();
+		}
+	}
+
+	@:allow(helder.ui) override function resolve(text:helder.ui.flow.InlineBasicStyle, theme:helder.ui.Theme, group:Int) {
+		super.resolve(text, theme, group);
+		var th = scope();
+		if (th == themed) return;
+		themed = th;
+		redone(view.retheme(th.properties(), th.dark ? "dark" : "light"));
 	}
 
 	// (a long document laid out to a cut: a slice more of it between frames, about SLICE ms, until it is whole,
@@ -172,7 +187,7 @@ class DocumentNode extends helder.ui.Node {
 	// clamp after the settles leaves it, the document shorter for what was laid out at its end)
 	function scrolled():Null<{scroller:Node, top:Float, height:Float}> {
 		var sc = parent;
-		while (sc != null && sc.style.overflow != Scroll) sc = sc.parent;
+		while (sc != null && !sc.used.scrolls) sc = sc.parent;
 		if (sc == null) return null;
 		var y = Math.max(0, Math.min(sc.scrollY, @:privateAccess helder.ui.Scrolling.maxScroll(sc, false)));
 		return {scroller: sc, top: y - (absY - sc.absY), height: sc.height};
@@ -284,7 +299,7 @@ class DocumentNode extends helder.ui.Node {
 		for (h in hoverChain) if (chain.indexOf(h) < 0) h.setState(ElementState.HOVER, false);
 		for (h in chain) h.setState(ElementState.HOVER, true);
 		hoverChain = chain;
-		style.cursor = cursorOf(el);
+		style = style.with({cursor: cursorOf(el)});
 		changed();
 	}
 
@@ -478,7 +493,7 @@ class DocumentNode extends helder.ui.Node {
 		var id = view.fragmentOf(boxes[0]);
 		if (id < 0) return;
 		var p = f.absolute(id), sc = parent;
-		while (sc != null && sc.style.overflow != Scroll) sc = sc.parent;
+		while (sc != null && !sc.used.scrolls) sc = sc.parent;
 		if (sc == null) return;
 		var at = absY - sc.absY + p.y - sc.scrollY, h = f.height(id);
 		if (top) ui.scrollTo(sc, sc.scrollX, Math.max(0, sc.scrollY + at));

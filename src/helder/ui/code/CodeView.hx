@@ -115,12 +115,7 @@ class CodeView extends Node {
 		CodeActions.declare();
 		addFont();
 		focusable = true;
-		style.flexGrow = 1;
-		style.flexShrink = 1;
-		style.minHeight = 0;
-		style.minWidth = 0;
-		style.overflow = Hidden;
-		style.cursor = Text;
+		style = Style.of({flexGrow: 1, flexShrink: 1, minHeight: 0, minWidth: 0, overflow: Hidden, cursor: Text});
 		keyContext = helder.ui.actions.KeyContext.parse("CodeEditor");
 		semantics = {role: helder.ui.access.Role.MultilineTextInput, label: "Code editor"};
 		tick = t -> step(t);

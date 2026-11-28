@@ -653,8 +653,8 @@ class UiWindow {
 	function boxes(n:Node, dx:Float, dy:Float, out:Array<Int>) {
 		if (n.used.none || !n.visible()) return;
 		var st = n.used;
-		var draws = Type.getClass(n) != Node || (st.backgroundColor >>> 24) > 0 || (st.backgroundColor : helder.gfx.Color).isToken || st.borderWidth > 0 || st.backgroundImage != null
-			|| st.boxShadow != null;
+		var draws = Type.getClass(n) != Node || (st.backgroundColor >>> 24) > 0 || st.borderPx(0) > 0 || st.borderPx(1) > 0
+			|| st.borderPx(2) > 0 || st.borderPx(3) > 0 || st.background != null || st.shadows != null;
 		if (draws && n.hittable()) {
 			var k = scale, x0 = Math.floor((n.absX - dx) * k), y0 = Math.floor((n.absY - dy) * k);
 			out.push(x0);

@@ -73,13 +73,13 @@ class WebView extends Node implements WebViewListener {
 	}
 
 	// a src's URL: as it is when it has a scheme, else its content's
-	public function resolve(s:String):String
+	public function urlOf(s:String):String
 		return s.indexOf(":") > 0 || content == null ? s : content.url(s);
 
 	function loadNow() {
 		if (loaded || native == null) return;
 		if (html != null) native.loadHtml(html);
-		else if (src != null) native.load(resolve(src));
+		else if (src != null) native.load(urlOf(src));
 		else return;
 		loaded = true;
 		loading = true;
@@ -164,7 +164,7 @@ class WebView extends Node implements WebViewListener {
 			for (f in calls)
 				f(native);
 		}
-		var be = style.borderEdges;
+		var be = used.borderEdges;
 		var w = width - be.left - be.right, h = height - be.top - be.bottom;
 		var b = windowBounds();
 		var on = visible() && w > 0 && h > 0;

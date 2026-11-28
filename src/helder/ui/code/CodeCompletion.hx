@@ -26,8 +26,7 @@ class CodeCompletion extends Node {
 	public function new(editor:CodeEditor) {
 		super("code-completion");
 		this.editor = editor;
-		style.position = Absolute;
-		style.display = None;
+		style = Style.of({position: Absolute, display: None});
 		semantics = {role: helder.ui.access.Role.ListBox, label: "Suggestions"};
 		onPointerDown = e -> {
 			var i = first + Std.int(localY(e.x, e.y) / rowHeight());
@@ -58,11 +57,13 @@ class CodeCompletion extends Node {
 				if (t + PAD * 2 > w) w = t + PAD * 2;
 			}
 		}
-		style.width = Math.min(w, 480);
-		style.height = Math.min(list.length, ROWS) * rowHeight() + 2;
-		style.left = x;
-		style.top = y;
-		style.display = Flex;
+		style = style.with({
+			width: Math.min(w, 480),
+			height: Math.min(list.length, ROWS) * rowHeight() + 2,
+			left: x,
+			top: y,
+			display: Flex
+		});
 		describe();
 		if (ui != null) ui.requestFrame();
 	}
@@ -71,7 +72,7 @@ class CodeCompletion extends Node {
 		if (!open) return;
 		open = false;
 		items = [];
-		style.display = None;
+		style = style.with({display: None});
 		if (ui != null) ui.requestFrame();
 	}
 

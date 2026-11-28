@@ -81,6 +81,7 @@ class Ui extends ScrollHost {
 		focusVisible = v;
 		// (the focused node's ring, its States told)
 		if (focus != null) {
+			focus.pointerStates();
 			focus.layerChanged();
 			focus.statesChanged();
 		}

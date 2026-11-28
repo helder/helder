@@ -99,8 +99,7 @@ class WebShell implements WebViewListener {
 		n.inspectable = options.inspectable;
 		n.zoom = options.zoom == true;
 		n.transparent = options.transparent == true;
-		n.style.width = helder.ui.Dim.parse("100%");
-		n.style.height = helder.ui.Dim.parse("100%");
+		n.style = helder.ui.Style.of({width: "100%", height: "100%"});
 		n.onMessage = n.onNavigate = n.onUrlChange = n.onLoad = n.onTitle = n.onProgress = n.onLoadError = n.onConsole = n.onCrash = e -> onEvent(this, e);
 		if (options.html != null) n.html = options.html else if (options.src != null) n.src = options.src;
 		node = n;

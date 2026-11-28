@@ -28,10 +28,10 @@ class AccessTree {
 		root = top.id;
 		add(ui.root, top);
 		for (c in ui.root.children)
-			visit(c, top, 0, 0, false, ui.root.visible(), ui);
+			visit(c, top, 0, 0, false, ui);
 		// (the popups: after the tree)
 		for (c in ui.overlay.children)
-			visit(c, top, 0, 0, false, ui.overlay.visible(), ui);
+			visit(c, top, 0, 0, false, ui);
 		var f = ui.focus, id = f == null ? 0 : f.accessFocus();
 		focus = byId.exists(id) ? id : 0;
 		counted();
@@ -191,15 +191,14 @@ class AccessTree {
 	}
 
 	// n under parent (the nearest node in the tree); sx, sy: the ancestors'
-	// scrolling; inName: inside a node named by its content (its text taken);
-	// seen: the parent visible (Style.visibility: a hidden node's own
-	// semantics left out, its visible descendants not)
-	function visit(n:Node, parent:AccessNode, sx:Float, sy:Float, inName:Bool, seen:Bool, ui:Ui) {
+	// scrolling; inName: inside a node named by its content (its text taken)
+	// (a hidden node's own semantics left out, its visible descendants not)
+	function visit(n:Node, parent:AccessNode, sx:Float, sy:Float, inName:Bool, ui:Ui) {
 		var s = n.used;
 		if (s.none || s.opacity <= 0) return;
 		var sem = n.semantics;
 		if (sem != null && sem.hidden) return;
-		if (s.visibility != null) seen = s.visibility == Visible;
+		var seen = s.visible;
 		var role:Null<Role> = !seen ? null : sem != null ? sem.role : null;
 		// (what holds parts that are no Node: their container, no node of its own)
 		var parts = n.accessParts();
@@ -283,7 +282,7 @@ class AccessTree {
 		// (a TextNode's text is its own, its spans' included: no children to visit)
 		if (!Std.isOfType(n, TextNode))
 			for (c in n.children)
-				visit(c, here, sx, sy, named, seen, ui);
+				visit(c, here, sx, sy, named, ui);
 	}
 
 	// whether it or an ancestor has a transform

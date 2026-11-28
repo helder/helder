@@ -60,10 +60,7 @@ class CodeEditor extends Node {
 		super("code-editor");
 		model = new CodeModel(text);
 		view = new CodeView(model);
-		style.flexGrow = 1;
-		style.minHeight = 0;
-		style.minWidth = 0;
-		style.overflow = Hidden;
+		style = Style.of({flexGrow: 1, minHeight: 0, minWidth: 0, overflow: Hidden});
 		append(view);
 		model.onChange = changes -> {
 			if (findOpen) refreshMatches();
@@ -100,9 +97,7 @@ class CodeEditor extends Node {
 		findField = field("find", "Find", 180);
 		replaceField = field("replace", "Replace", 180);
 		count = new TextNode("", "find-count");
-		count.style.fontSize = 12;
-		count.style.minWidth = 64;
-		count.style.alignSelf = Center;
+		count.style = count.style.with({fontSize: 12, minWidth: 64, alignSelf: Center});
 		findField.onChange = t -> {
 			query = t;
 			refreshMatches();
@@ -424,7 +419,7 @@ class CodeEditor extends Node {
 		}
 		var on = k == 0 ? caseSensitive : k == 1 ? wholeWord : regex;
 		toggles[k].semantics.checked = on;
-		toggles[k].style.background = on ? view.codeTheme.colors[CodeTheme.SELECTION] : Color.TRANSPARENT;
+		toggles[k].style = toggles[k].style.with({background: on ? view.codeTheme.colors[CodeTheme.SELECTION] : Color.TRANSPARENT});
 		refreshMatches();
 	}
 
@@ -482,15 +477,17 @@ class CodeEditor extends Node {
 
 	function panel(tag:String, label:String):Node {
 		var p = new Node(tag);
-		p.style.position = Absolute;
-		p.style.top = 6;
-		p.style.right = 18;
-		p.style.padding = 4;
-		p.style.rowGap = 4;
-		p.style.borderRadius = 6;
-		p.style.borderWidth = 1;
-		p.style.fontSize = 13;
-		p.style.boxShadow = ({y: 2, blur: 8, color: Color.rgba(0, 0.15)} : Shadow);
+		p.style = Style.of({
+			position: Absolute,
+			top: 6,
+			right: 18,
+			padding: 4,
+			rowGap: 4,
+			borderRadius: 6,
+			borderWidth: 1,
+			fontSize: 13,
+			shadows: [{x: 0, y: 2, blur: 8, color: Color.rgba(0, 0.15)}]
+		});
 		p.keyContext = helder.ui.actions.KeyContext.parse("CodeFind");
 		p.semantics = {role: helder.ui.access.Role.Group, label: label};
 		return p;
@@ -498,21 +495,14 @@ class CodeEditor extends Node {
 
 	function themePanel(p:Node) {
 		var c = view.codeTheme.colors;
-		p.style.background = c[CodeTheme.PANEL];
-		p.style.borderColor = c[CodeTheme.PANEL_BORDER];
-		p.style.color = c[CodeTheme.FOREGROUND];
-		for (f in [findField, replaceField, gotoField]) {
-			f.style.background = c[CodeTheme.BACKGROUND];
-			f.style.borderColor = c[CodeTheme.PANEL_BORDER];
-			f.style.color = c[CodeTheme.FOREGROUND];
-		}
+		p.style = p.style.with({background: c[CodeTheme.PANEL], borderColor: c[CodeTheme.PANEL_BORDER], color: c[CodeTheme.FOREGROUND]});
+		for (f in [findField, replaceField, gotoField])
+			f.style = f.style.with({background: c[CodeTheme.BACKGROUND], borderColor: c[CodeTheme.PANEL_BORDER], color: c[CodeTheme.FOREGROUND]});
 	}
 
 	function row(tag:String, kids:Array<Node>):Node {
 		var r = new Node(tag);
-		r.style.flexDirection = Row;
-		r.style.columnGap = 4;
-		r.style.alignItems = Center;
+		r.style = Style.of({flexDirection: Row, columnGap: 4, alignItems: Center});
 		for (k in kids)
 			r.append(k);
 		return r;
@@ -523,10 +513,7 @@ class CodeEditor extends Node {
 		f.tag = tag;
 		f.placeholder = label;
 		f.semantics.label = label;
-		f.style.width = w;
-		f.style.padding = [3, 6, 3, 6];
-		f.style.borderWidth = 1;
-		f.style.borderRadius = 4;
+		f.style = f.style.with({width: w, padding: [3, 6, 3, 6], borderWidth: 1, borderRadius: 4});
 		return f;
 	}
 
@@ -534,9 +521,7 @@ class CodeEditor extends Node {
 		var b = new Node("find-button");
 		b.focusable = true;
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
-		b.style.padding = [2, 6, 2, 6];
-		b.style.borderRadius = 4;
-		(b.props().cursor ?? Auto) = Pointer;
+		b.style = Style.of({padding: [2, 6, 2, 6], borderRadius: 4, cursor: Pointer});
 		b.onClick = _ -> press();
 		b.append(new TextNode(text));
 		return b;

@@ -25,7 +25,7 @@ class ImageNode extends Node {
 	// drawn flipped where it is right to left (an icon pointing the way the line reads)
 	public var mirrored(default, set) = false;
 	// what the svg was last drawn as: its pixel size and colour
-	var drawn = "";
+	var rasterKey = "";
 
 	// the drawings rasterized lately, shared by every node: an svg at a pixel
 	// size and colour drawn once, not again for each node showing it or each
@@ -115,7 +115,7 @@ class ImageNode extends Node {
 	function set_svg(v:Null<Svg>):Null<Svg> {
 		if (v == svg) return v;
 		svg = v;
-		drawn = "";
+		rasterKey = "";
 		markDirty();
 		return v;
 	}
@@ -249,8 +249,8 @@ class ImageNode extends Node {
 		if (image == null && svg == null) return new Size(Math.isNaN(knownWidth) ? 0 : knownWidth, Math.isNaN(knownHeight) ? 0 : knownHeight);
 		var iw = intrinsicWidth(), ih = intrinsicHeight();
 		// (a ratio given, CSS's aspect-ratio without auto: the image's own not, a 4:7 photo in a 3:4 frame)
-		var ar = style.aspectRatio;
-		if (ar > 0) ih = iw / ar;
+		var ar = used.ratio;
+		if (!used.ratioAuto && ar > 0) ih = iw / ar;
 		var kw = !Math.isNaN(knownWidth), kh = !Math.isNaN(knownHeight);
 		return if (kw && kh) new Size(knownWidth, knownHeight) else if (kw) new Size(knownWidth, knownWidth * ih / iw) else if (kh)
 			new Size(knownHeight * iw / ih, knownHeight) else new Size(iw, ih);
@@ -284,17 +284,17 @@ class ImageNode extends Node {
 			var fw = p[2] / (p[6] - p[4]), fh = p[3] / (p[7] - p[5]);
 			var pw = Std.int(Math.max(1, Math.round(fw * k))), ph = Std.int(Math.max(1, Math.round(fh * k))), c = textColor();
 			var key = pw + "x" + ph + " " + c;
-			if (key != drawn) {
-				drawn = key;
+			if (key != rasterKey) {
+				rasterKey = key;
 				@:bypassAccessor image = raster(svg, pw, ph, c);
 			}
 		}
-		var s = style, be = s.borderEdges;
+		var be = used.borderEdges, pe = used.paddingEdges;
 		var inset = Math.max(Math.max(be.left, be.right), Math.max(be.top, be.bottom))
-			+ Math.max(Math.max(s.padding.left, s.padding.right), Math.max(s.padding.top, s.padding.bottom));
+			+ Math.max(Math.max(pe.left, pe.right), Math.max(pe.top, pe.bottom));
 		var flip = mirrored && rtl();
 		if (flip) canvas.pushTransform(-1, 0, 0, 1, 2 * x + width, 0);
-		canvas.image(image, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], Math.max(0, s.borderRadius - inset), s.corners == null ? null : s.cornerRadii().grow(-inset));
+		canvas.image(image, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], 0, NodePaint.corners(used, this.width, this.height, inset));
 		if (flip) canvas.popTransform();
 	}
 }

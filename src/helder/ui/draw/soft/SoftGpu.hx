@@ -8,6 +8,7 @@ import helder.gfx.Encoder;
 // runs at once (beforePass), or as the display list it was recorded into
 // is replayed onto the canvas (SoftCanvas.pass), so that its texture is
 // drawn when the canvas composites it (gpuTexture) right after
+#if helder.soft
 class SoftGpu {
 	public final device:Device;
 	public final canvas:SoftCanvas;
@@ -70,3 +71,4 @@ class SoftGpu {
 		device.endFrame();
 	}
 }
+#end

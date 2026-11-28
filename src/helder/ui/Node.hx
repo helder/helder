@@ -1719,14 +1719,19 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		this.pressed = pressed;
 		this.focused = focused;
 		if (!changed) return;
-		var bits = (hovered ? Style.HOVER : 0) | (pressed ? Style.PRESSED : 0) | (focused ? Style.FOCUS : 0);
-		var next = states & ~(Style.HOVER | Style.PRESSED | Style.FOCUS) | bits;
-		if (next != states) {
-			states = next;
-			resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
-		}
+		pointerStates();
 		if (ui != null) ui.requestFrame();
 		statesChanged();
+	}
+
+	// (its hover, press and focus as its style's states: the focus while it is shown, the keyboard's, as CSS's
+	// :focus-visible)
+	@:allow(helder.ui.Ui) function pointerStates() {
+		var bits = (hovered ? Style.HOVER : 0) | (pressed ? Style.PRESSED : 0) | (focused && ui != null && ui.focusVisible ? Style.FOCUS : 0);
+		var next = states & ~(Style.HOVER | Style.PRESSED | Style.FOCUS) | bits;
+		if (next == states) return;
+		states = next;
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
 	}
 
 	// called when its states (hover, press, focus, the focus ring's
