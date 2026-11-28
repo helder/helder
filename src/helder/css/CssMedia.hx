@@ -12,7 +12,9 @@ typedef CssMediaContext = {
 	width:Float,
 	height:Float,
 	?resolution:Float,
-	?color:Int
+	?color:Int,
+	// prefers-color-scheme's: light (the default) or dark
+	?scheme:String
 }
 
 // A media query list (Media Queries 4): parsed from component values,
@@ -281,7 +283,7 @@ class CssMedia {
 			case "hover" | "any-hover" | "pointer" | "any-pointer" | "update" | "scripting" | "overflow-inline":
 				o == null ? 0 : keyword(value, "none");
 			case "overflow-block": o == null ? 1 : keyword(value, "paged");
-			case "prefers-color-scheme": o == null ? 1 : keyword(value, "light");
+			case "prefers-color-scheme": o == null ? 1 : keyword(value, ctx.scheme ?? "light");
 			case "prefers-reduced-motion" | "prefers-reduced-transparency" | "prefers-reduced-data" | "prefers-contrast" | "forced-colors" | "inverted-colors":
 				o == null ? 0 : keyword(value, base == "prefers-contrast" ? "no-preference" : base == "forced-colors" || base == "inverted-colors" ? "none" : "no-preference");
 			case "color-gamut": o == null ? 1 : keyword(value, "srgb");

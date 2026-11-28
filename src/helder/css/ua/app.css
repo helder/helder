@@ -39,7 +39,7 @@
   font-size: 14px;
   font-weight: 400;
   line-height: 1.25;
-  color: #000;
+  color: var(--fg, #000);
   overflow-wrap: break-word;
   cursor: default;
   scrollbar-color: rgb(0 0 0 / 0.35) transparent;
@@ -90,14 +90,16 @@ glass {
 }
 
 /* The window's focus ring, outlineStyle Auto (Ui.hx:169-172, 1363-1367),
-   text selection (Ui.hx:2046), placeholders (EditableText.hx:57-60) */
+   text selection (Ui.hx:2046), placeholders (EditableText.hx:57-60); the
+   ring, the root's text and placeholders a theme's tokens where it gives
+   them (--focus, --fg, --fg3: a Look's names), today's colours where not */
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--focus, #3b82f6);
   outline-offset: 2px;
 }
 ::selection {
   background-color: rgb(59 130 246 / 0.3);
 }
 ::placeholder {
-  color: rgb(0 0 0 / 0.4);
+  color: var(--fg3, rgb(0 0 0 / 0.4));
 }

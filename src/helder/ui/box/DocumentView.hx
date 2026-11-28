@@ -43,7 +43,12 @@ typedef DocumentViewOptions = {
 	// the user agent's sheet (default: HTML's; an app's, helder.css's ua/app.css)
 	?userAgent:helder.css.CssSheet,
 	// author sheets after the document's own
-	?author:Array<helder.css.CssSheet>
+	?author:Array<helder.css.CssSheet>,
+	// the theme's tokens: custom properties (name without its "--" to value) every element has where none of its
+	// ancestors declares them (retheme)
+	?theme:Map<String, String>,
+	// prefers-color-scheme's: light (the default) or dark
+	?scheme:String
 }
 
 // How a view's document is styled at a viewport: DocumentView.html (HTML's
@@ -188,7 +193,7 @@ class DocumentView {
 	// or a viewport unit reads it), then layout in a viewport of width by
 	// height, the boxes' layout cache reused: the root's fragment.
 	public function layout(width:Float, height:Float):Int {
-		var media = options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8};
+		var media = mediaOf(width, height);
 		// (at another size where only viewport units read it: the elements they styled, styled again, the
 		// boxes and their kept content stay)
 		var resizedWidth = width != viewWidth;
@@ -202,6 +207,7 @@ class DocumentView {
 		}) : null;
 		if (styles == null || resized && restyled == null) {
 			styles = cascade(document, media, options);
+			if (options.theme != null) styles.retheme(options.theme);
 			// (ex, ch, cap, ic and line-height: normal from the first available font, as styles compute)
 			styles.metrics = fonts.metrics;
 			if (options.font != null) fonts.fontFaces(styles.fontFaces, options.font);
@@ -649,6 +655,12 @@ class DocumentView {
 			redo = LAYOUT;
 		}
 		c.clear();
+		redone(redo);
+		return redo;
+	}
+
+	// (what a restyle redid, carried on: the tree made again and laid out, laid out, a paint order made again)
+	function redone(redo:Int) {
 		switch redo {
 			case TREE:
 				// (the elements under one whose display changed: blockified again)
@@ -662,7 +674,49 @@ class DocumentView {
 				order = new PaintOrder(fragments, root);
 			case _:
 		}
+	}
+
+	// The theme's tokens (CssStyles.retheme: custom properties every element
+	// has where no ancestor declares them) and colour scheme
+	// (prefers-color-scheme's, light or dark): what read a token that changed,
+	// or what a query that flips with the scheme matches, styled again, its
+	// boxes swapped and laid out at the last size. What it redid.
+	public function retheme(tokens:Null<Map<String, String>>, ?scheme:String):Int {
+		options.theme = tokens;
+		var flips = scheme != null && scheme != (options.scheme ?? "light");
+		if (scheme != null) options.scheme = scheme;
+		if (styles == null) return NOTHING;
+		var els = styles.retheme(tokens);
+		if (flips) {
+			var flipped = styles.resize(mediaOf(viewWidth, viewHeight));
+			if (flipped == null) {
+				styles = null;
+				layout(viewWidth, viewHeight);
+				return TREE;
+			}
+			els = els.concat(flipped);
+			if (changes != null) {
+				changes.detach();
+				changes = new DocumentChanges(document, styles);
+			}
+		}
+		if (els.length == 0) return NOTHING;
+		var redo = restyle(later(els), NOTHING);
+		redone(redo);
 		return redo;
+	}
+
+	// (what @media matches at this size: the options' media, else a screen of it; the scheme's)
+	function mediaOf(width:Float, height:Float):CssMediaContext {
+		var m = options.media;
+		return m == null ? {type: "screen", width: width, height: height, resolution: 1, color: 8, scheme: options.scheme} : {
+			type: m.type,
+			width: m.width,
+			height: m.height,
+			resolution: m.resolution,
+			color: m.color,
+			scheme: options.scheme ?? m.scheme
+		};
 	}
 
 	// (the elements marked styled again, those their changes reach too, their

@@ -35,6 +35,43 @@ class CssStyles {
 	var viewportSize:Null<{width:Float, height:Float}> = null;
 	// (the cascade's own viewport: not the media's size)
 	var fixedViewport = false;
+	// (the theme's tokens, custom properties by name ("--surface"), each element's where no ancestor declares it;
+	// their texts as given, what a theme changed compares)
+	@:allow(helder.css) var theme:Null<Map<String, Array<CssValue>>> = null;
+	var themeText:Map<String, String> = new Map();
+
+	// The theme's tokens (name without its "--" to value as CSS writes it,
+	// "#3b82f6", "8px"): custom properties every element has where none of
+	// its ancestors declares them, below every rule. The elements whose
+	// styles read a token that changed, to work out again (forget, then
+	// computed; what inherits from them is the caller's): none but those.
+	public function retheme(tokens:Null<Map<String, String>>):Array<Element> {
+		var next = tokens ?? new Map(), changed = new Map<String, Bool>();
+		for (k => v in next) if (themeText.get(k) != v) changed.set("--" + k, true);
+		for (k in themeText.keys()) if (!next.exists(k)) changed.set("--" + k, true);
+		themeText = next.copy();
+		var values = new Map<String, Array<CssValue>>();
+		for (k => v in next) {
+			var d = new Parser('--$k: $v').declarationList();
+			if (d.length == 1) values.set("--" + k, d[0].value);
+		}
+		theme = Lambda.count(values) == 0 ? null : values;
+		function reads(s:CssStyle):Bool {
+			if (s.reads != null) for (n in s.reads) if (changed.exists(n)) return true;
+			return false;
+		}
+		var out = new ObjectMap<Element, Bool>();
+		if (Lambda.count(changed) == 0) return [];
+		for (el => s in cache) if (reads(s)) out.set(el, true);
+		for (m in pseudoCache) for (el => s in m) if (reads(s)) out.set(el, true);
+		// (the cascades shared by parent and rules whose style read one: worked out again)
+		for (k => bucket in shared) {
+			var kept = [for (x in bucket) if (!reads(x.style)) x];
+			if (kept.length != bucket.length) shared.set(k, kept);
+		}
+		return [for (el in out.keys()) el];
+	}
+
 	// (the elements a declaration with a viewport unit styled: what another size styles again)
 	final viewported = new ObjectMap<Element, Bool>();
 	// (the rules each resize found changing that skipped elements: what rematch matches in them)
@@ -648,7 +685,9 @@ class CssStyles {
 			if (g == BOX && r.unblockified != null) @:privateAccess (cast copy : CssGroups.CssBoxGroup).display = intern.display(r.get(Display), r.unblockified);
 			groups.push(intern.group(g, copy));
 		}
-		return made(groups, r.allCustoms());
+		var s = made(groups, r.allCustoms());
+		if (r.themeReads != null) s.read(r.themeReads);
+		return s;
 	}
 
 	static inline function push(m:IntMap<Array<CssCandidate>>, id:Int, c:CssCandidate) {

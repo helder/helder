@@ -24,6 +24,13 @@ class CssStyle extends CssStyleGroups {
 	public final customs:Map<String, Null<Array<CssValue>>>;
 	@:allow(helder.css) final styles:CssStyles;
 	@:allow(helder.css) var id = -1;
+	// the theme's tokens it read (CssStyles.theme: custom properties no element declared; null: none)
+	public var reads(default, null):Null<Array<String>> = null;
+
+	@:allow(helder.css) function read(names:Array<String>) {
+		var r = reads ??= [];
+		for (n in names) if (r.indexOf(n) < 0) r.push(n);
+	}
 
 	@:allow(helder.css)
 	function new(styles:CssStyles, groups:Array<CssGroup>, customs:Map<String, Null<Array<CssValue>>>) {
