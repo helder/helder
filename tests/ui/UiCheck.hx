@@ -83,7 +83,7 @@ class UiCheck {
 		// (last: it turns motion on, for good)
 		layered();
 		layerRecords();
-		#if helder.engine
+		#if !helder.layout
 		// (on the CSS engine's layout, NodeBoxes: what it does not do yet, fewer as the port goes on)
 		Sys.println('UiCheck: $checks checks, $failed failed on the engine, at most 3');
 		if (failed < 3) Sys.println('UiCheck: lower the engine\'s failures to $failed');
@@ -1704,10 +1704,10 @@ class UiCheck {
 			}
 		});
 		// (Layout's own in-place layouts counted: on the engine, its caches instead, the layouts only compared)
-		check("in place: a field typed into laid out alone", typed && #if helder.engine true #else after == before + 1 #end, typed + " " + (after - before));
+		check("in place: a field typed into laid out alone", typed && #if !helder.layout true #else after == before + 1 #end, typed + " " + (after - before));
 		var placed = Layout.inPlaces - was;
 		check("in place: drawn, hit and told assistive technology as from the root, " + steps + " changes", drawn == 0, drawn + " differ, the first: " + drawnFirst);
-		check("in place: as laid out from the root, " + steps + " changes (" + placed + " in place)", bad == 0 && #if helder.engine true #else placed > steps / 4 #end,
+		check("in place: as laid out from the root, " + steps + " changes (" + placed + " in place)", bad == 0 && #if !helder.layout true #else placed > steps / 4 #end,
 			bad + " differ, the first: " + first + "; " + placed + " in place");
 	}
 

@@ -11,9 +11,6 @@
     ]
   },
   "helder": {
-    "main": "Main",
-    "defines": {
-      "helder.engine": "1"
-    }
+    "main": "Main"
   }
 }

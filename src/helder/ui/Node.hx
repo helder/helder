@@ -1674,7 +1674,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// --- set by Layout and Ui ---
 
-	#if helder.engine
+	#if !helder.layout
 	// (its box in the CSS engine's tree: NodeBoxes')
 	@:allow(helder.ui) var laidBox:Null<helder.ui.box.Box> = null;
 	// (the fragment it was last told its place from: the same one, nothing in it moved)

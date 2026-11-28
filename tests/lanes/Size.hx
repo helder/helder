@@ -11,7 +11,7 @@ private typedef Program = {
 	var dir:String;
 	var ?src:String;
 	var main:String;
-	// (its build's defines, as its project gives them: helder.hxml's -D helder.engine)
+	// (its build's defines, as its project gives them)
 	var ?defines:Array<String>;
 }
 
