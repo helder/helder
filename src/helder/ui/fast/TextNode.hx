@@ -31,6 +31,15 @@ class TextNode extends Node {
 	override function textual():Bool
 		return true;
 
+	// Its text and its spans', in order.
+	public function allText():String {
+		if (kids.length == 0) return text;
+		var out = new StringBuf();
+		out.add(text);
+		for (c in kids) if (Std.isOfType(c, TextNode) && !c.box.style.none) out.add((cast c : TextNode).allText());
+		return out.toString();
+	}
+
 	override function blank():Node
 		return new TextNode("");
 

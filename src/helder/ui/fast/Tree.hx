@@ -59,6 +59,10 @@ class Tree extends helder.ui.Node {
 	var ringed = false;
 	var pressing = false;
 	var dragging:Null<FieldNode> = null;
+	// (the scrollers of the last layout, each one's last move (Ui.now), a thumb dragged)
+	var scrollers:Array<Box> = [];
+	final barMoved = new ObjectMap<Box, Float>();
+	var barDrag:Null<{box:Box, x:Bool, from:Float, scroll:Float, ratio:Float}> = null;
 	// (its text by box positions, of the last layout; its text boxes in tree order and where each starts in its text)
 	var boxTexts:Null<BoxTexts> = null;
 	var flat:Null<{text:String, boxes:Array<Box>, starts:Array<Int>, index:ObjectMap<Box, Int>}> = null;
@@ -265,10 +269,14 @@ class Tree extends helder.ui.Node {
 	// (a box's fragment in the last layout; -1: none)
 	function fragmentOf(b:Box):Int {
 		if (boxIndex == null) {
-			var m = new ObjectMap<Box, Int>(), stack = [rootFragment];
+			var m = new ObjectMap<Box, Int>(), stack = [rootFragment], found = [];
 			while (stack.length > 0) {
 				var id = stack.pop();
-				if (fragments.kind(id) == Fragments.BOX && !m.exists(fragments.box(id))) m.set(fragments.box(id), id);
+				var k = fragments.kind(id);
+				if ((k == Fragments.BOX || k == Fragments.SPAN) && !m.exists(fragments.box(id))) {
+					m.set(fragments.box(id), id);
+					if (k == Fragments.BOX && fragments.box(id).style.scrolls) found.push(fragments.box(id));
+				}
 				var c = fragments.first(id);
 				while (c >= 0) {
 					stack.push(c);
@@ -276,6 +284,7 @@ class Tree extends helder.ui.Node {
 				}
 			}
 			boxIndex = m;
+			scrollers = found;
 		}
 		return boxIndex.exists(b) ? boxIndex.get(b) : -1;
 	}
@@ -296,9 +305,8 @@ class Tree extends helder.ui.Node {
 		}
 	}
 
-	function scrollBy(b:Box, dx:Float, dy:Float):Bool {
-		var id = fragmentOf(b);
-		if (id < 0) return false;
+	// (a scroller's view and content: its padding box's width and height, its content's extent in it)
+	function extent(b:Box, id:Int):Array<Float> {
 		var m = b.style.model();
 		var cw = fragments.width(id) - m.border[1] - m.border[3], ch = fragments.height(id) - m.border[0] - m.border[2];
 		var ew = 0.0, eh = 0.0, c = fragments.first(id);
@@ -309,10 +317,18 @@ class Tree extends helder.ui.Node {
 		}
 		eh += helder.ui.box.Len.Lens.resolve(m.padding[2], cw, 0) - m.border[0];
 		ew -= m.border[3];
+		return [cw, ch, ew, eh];
+	}
+
+	function scrollBy(b:Box, dx:Float, dy:Float):Bool {
+		var id = fragmentOf(b);
+		if (id < 0) return false;
+		var e = extent(b, id), cw = e[0], ch = e[1], ew = e[2], eh = e[3];
 		var o = scrolls.get(Box.scrollKey(b)) ?? [0.0, 0.0];
 		var sx = Math.max(0, Math.min(o[0] + dx, ew - cw)), sy = Math.max(0, Math.min(o[1] + dy, eh - ch));
 		if (sx == o[0] && sy == o[1]) return false;
 		scrolls.set(Box.scrollKey(b), [sx, sy]);
+		barMoved.set(b, helder.ui.Ui.now());
 		// (its content ordered for the pages around the one shown: another page shown, the order made afresh)
 		if (PaintOrder.pageOf(fragments, id, sy) != PaintOrder.pageOf(fragments, id, o[1])) {
 			orderDue = true;
@@ -323,6 +339,12 @@ class Tree extends helder.ui.Node {
 	// ---- the pointer: hover, presses, a field's caret placed and dragged
 
 	function moved(e:Event) {
+		if (barDrag != null) {
+			var d = barDrag, o = scrolls.get(Box.scrollKey(d.box)) ?? [0.0, 0.0];
+			var want = d.scroll + ((d.x ? e.localX : e.localY) - d.from) * d.ratio;
+			if (scrollBy(d.box, d.x ? want - o[0] : 0, d.x ? 0 : want - o[1])) repaint();
+			return;
+		}
 		var n = hit(e.localX, e.localY);
 		hover(n);
 		if (dragging != null) {
@@ -335,6 +357,14 @@ class Tree extends helder.ui.Node {
 	}
 
 	function down(e:Event) {
+		// (a thumb pressed: dragged, its scroller following)
+		var t = thumbAt(e.localX, e.localY);
+		if (t != null) {
+			barDrag = {box: t.box, x: t.x, from: t.x ? e.localX : e.localY, scroll: (scrolls.get(Box.scrollKey(t.box)) ?? [0.0, 0.0])[t.x ? 0 : 1], ratio: t.ratio};
+			capture();
+			repaint();
+			return;
+		}
 		var n = hit(e.localX, e.localY), at = chain(n);
 		pressing = true;
 		press(at);
@@ -356,6 +386,11 @@ class Tree extends helder.ui.Node {
 	}
 
 	function up(e:Event) {
+		if (barDrag != null) {
+			barDrag = null;
+			repaint();
+			return;
+		}
 		var at = chain(hit(e.localX, e.localY)), was = held;
 		press([]);
 		dragging = null;
@@ -567,11 +602,14 @@ class Tree extends helder.ui.Node {
 		function walk(b:Box) {
 			if (b.kind == Text) {
 				if (Std.isOfType(b.source, FieldNode)) return;
-				if (last != null && b.parent != last) {
+				// (a paragraph's runs one text, its spans' too: a line between paragraphs alone)
+				var block = b.parent;
+				while (block != null && block.kind == Inline) block = block.parent;
+				if (last != null && block != last) {
 					buf.add("\n");
 					n++;
 				}
-				last = b.parent;
+				last = block;
 				index.set(b, boxes.length);
 				boxes.push(b);
 				starts.push(n);
@@ -646,6 +684,7 @@ class Tree extends helder.ui.Node {
 			var c = caretOf(fd);
 			if (c != null) canvas.rect(Math.round(c.x), c.y, 1.5, c.height, 0, fd.box.style.text.colour, 0, 0);
 		}
+		bars(canvas);
 		if (active != null && ringed && ui.focus == this && ui.focusRingWidth > 0) {
 			var id = fragmentOf(active.box);
 			if (id >= 0) {
@@ -653,6 +692,65 @@ class Tree extends helder.ui.Node {
 				var radius = active.props().borderRadius ?? 0;
 				canvas.rect(p.x - s[0] - o, p.y - s[1] - o, fragments.width(id) + 2 * o, fragments.height(id) + 2 * o, radius > 0 ? radius + o : 0,
 					helder.gfx.Color.TRANSPARENT, ui.focusRingWidth, ui.focusRingColor);
+			}
+		}
+	}
+
+	// ---- scrollbars: helder's thumbs (Ui.scrollbarColor, SCROLLBAR wide, SCROLLBAR_INSET in), shown while
+	// scrolling where the window's are overlay bars, a thumb dragged
+
+	// (a scroller's thumb on an axis, in the tree: x, y, width, height; its track's scroll a pixel of thumb moves; null: none)
+	function thumbOf(b:Box, x:Bool):Null<{rect:Array<Float>, ratio:Float}> {
+		var id = fragmentOf(b);
+		if (id < 0) return null;
+		var e = extent(b, id), view = x ? e[0] : e[1], content = x ? e[2] : e[3];
+		if (content - view <= 0.5) return null;
+		var m = b.style.model(), p = fragments.absolute(id), s = shift(b), o = scrolls.get(Box.scrollKey(b)) ?? [0.0, 0.0];
+		var size = helder.ui.Ui.SCROLLBAR, inset = helder.ui.Ui.SCROLLBAR_INSET;
+		var track = view - 2 * inset, len = Math.min(track, Math.max(helder.ui.Ui.MIN_THUMB, track * view / content));
+		var f = Math.max(0, Math.min(1, (x ? o[0] : o[1]) / (content - view))), at = inset + (track - len) * f;
+		var left = p.x - s[0] + m.border[3], top = p.y - s[1] + m.border[0];
+		var rect = x ? [left + at, top + e[1] - inset - size, len, size] : [left + e[0] - inset - size, top + at, size, len];
+		return {rect: rect, ratio: (content - view) / Math.max(1, track - len)};
+	}
+
+	// (how shown a scroller's bars are: always, or while it moves, where the window's are overlay bars)
+	function shownOf(b:Box):Float {
+		if (ui == null || !ui.overlayBars || barDrag != null && barDrag.box == b) return 1;
+		var at = barMoved.get(b);
+		if (at == null) return 0;
+		var age = helder.ui.Ui.now() - at;
+		if (age < 1.1 && ui != null) ui.requestFrame();
+		return age < 0.8 ? 1 : Math.max(0, 1 - (age - 0.8) / 0.3);
+	}
+
+	function thumbAt(x:Float, y:Float):Null<{box:Box, x:Bool, ratio:Float}> {
+		if (rootFragment < 0) return null;
+		fragmentOf(root.box);
+		for (b in scrollers) {
+			if (shownOf(b) <= 0) continue;
+			for (axis in [false, true]) {
+				var t = thumbOf(b, axis);
+				// (a few pixels around it: a thin thumb still found)
+				if (t != null && x >= t.rect[0] - 3 && x <= t.rect[0] + t.rect[2] + 3 && y >= t.rect[1] - 3 && y <= t.rect[1] + t.rect[3] + 3)
+					return {box: b, x: axis, ratio: t.ratio};
+			}
+		}
+		return null;
+	}
+
+	function bars(canvas:helder.ui.Canvas) {
+		if (rootFragment < 0) return;
+		fragmentOf(root.box);
+		for (b in scrollers) {
+			var shown = shownOf(b);
+			if (shown <= 0) continue;
+			for (axis in [false, true]) {
+				var t = thumbOf(b, axis);
+				if (t == null) continue;
+				var c:Int = barDrag != null && barDrag.box == b && barDrag.x == axis ? ui.scrollbarActiveColor : ui.scrollbarColor;
+				if (shown < 1) c = Math.round((c >>> 24) * shown) << 24 | c & 0xFFFFFF;
+				canvas.rect(t.rect[0], t.rect[1], t.rect[2], t.rect[3], helder.ui.Ui.SCROLLBAR / 2, c, 0, 0);
 			}
 		}
 	}
@@ -672,7 +770,7 @@ class Tree extends helder.ui.Node {
 			var sem = n.semantics;
 			if (n.box.style.none || n.box.parent == null && n != root || sem != null && sem.hidden) return [];
 			var role:Null<Role> = sem != null ? sem.role : null;
-			if (role == null) role = Std.isOfType(n, FieldNode) ? TextInput : Std.isOfType(n, TextNode) ? (inName || (cast n : TextNode).text == "" ? null : Label) : n.focusable
+			if (role == null) role = Std.isOfType(n, FieldNode) ? TextInput : Std.isOfType(n, TextNode) ? (inName || (cast n : TextNode).allText() == "" ? null : Label) : n.focusable
 				|| sem != null && sem.live != Off ? Group : null;
 			var named = inName || role != null && role.namedByContent();
 			if (role == null) return [for (c in @:privateAccess n.kids) for (id in visit(c, named)) id];
@@ -707,7 +805,7 @@ class Tree extends helder.ui.Node {
 					a.liveText = textOf(n);
 				}
 			}
-			a.name = sem != null && sem.label != null ? sem.label : role == Label ? (cast n : TextNode).text : role.namedByContent() ? textOf(n) : "";
+			a.name = sem != null && sem.label != null ? sem.label : role == Label ? (cast n : TextNode).allText() : role.namedByContent() ? textOf(n) : "";
 			if (Std.isOfType(n, FieldNode)) {
 				var f:FieldNode = cast n;
 				a.value = f.value;
@@ -728,7 +826,7 @@ class Tree extends helder.ui.Node {
 		function walk(m:Node) {
 			if (m.box.style.none || m.semantics != null && m.semantics.hidden) return;
 			if (Std.isOfType(m, TextNode) && !Std.isOfType(m, FieldNode)) {
-				var t = StringTools.trim((cast m : TextNode).text);
+				var t = StringTools.trim((cast m : TextNode).allText());
 				if (t != "") parts.push(t);
 				return;
 			}

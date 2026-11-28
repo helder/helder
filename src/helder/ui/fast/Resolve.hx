@@ -16,6 +16,8 @@ import helder.ui.flow.InlineBasicStyle;
 class Resolve {
 	public static inline var VIEW = 0;
 	public static inline var TEXT = 1;
+	// (a text in a text: one of its runs, an inline box)
+	public static inline var SPAN = 2;
 
 	// what a change of one resolved style to another takes (Tree's): nothing, a paint, a paint order, a layout
 	public static inline var NOTHING = 0;
@@ -73,8 +75,8 @@ class Resolve {
 		s.displayRead = true;
 		var d = p.display;
 		if (d == None) s.displayNone = true;
-		s.displayOuter = BoxStyle.BLOCK;
-		s.displayInner = kind == TEXT || d == Block ? BoxStyle.FLOW : BoxStyle.FLEX;
+		s.displayOuter = kind == SPAN ? BoxStyle.INLINE : BoxStyle.BLOCK;
+		s.displayInner = kind != VIEW || d == Block ? BoxStyle.FLOW : BoxStyle.FLEX;
 		// (the box model: border-box)
 		var pad = p.padding, mar = p.margin, bw = p.borderWidth;
 		for (k in 0...4) {
