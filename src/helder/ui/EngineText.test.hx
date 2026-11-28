@@ -59,5 +59,17 @@ function tests() {
 			near(b.width, a.width);
 			near(b.caret(9).x, a.caret(9).x);
 		});
+		test("spans in its own font: drawn at DrawText's baseline", () -> {
+			var spans = [new TextSpan(0, 6, font), new TextSpan(7, 10, font)];
+			var a = draw.layout("import { x }", font, Math.NaN, spans), b = engine.layout("import { x }", font, Math.NaN, spans);
+			var ra = a.runs(200, Left), rb = b.runs(200, Left);
+			near(b.baseline, a.baseline);
+			for (r in rb) near(r.y[0], ra[0].y[0]);
+		});
+		test("a larger span: its glyphs on the line's baseline", () -> {
+			var big = new Font("sans-serif", 20, 400, false, 1.25), p = engine.layout("a big b", font, Math.NaN, [new TextSpan(2, 5, big)]);
+			var ys = [for (r in p.runs(200, Left)) for (y in r.y) y];
+			for (y in ys) near(y, ys[0]);
+		});
 	});
 }
