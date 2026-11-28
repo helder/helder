@@ -624,6 +624,7 @@ class BlockFlow implements FormattingContext {
 		box.topNegative = topNeg;
 		box.bottomPositive = bottomPos;
 		box.bottomNegative = bottomNeg;
+		if (box.style.part == BoxStyle.CELL) space.cellContentHeight = content + bpy;
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!clone && (resume != null || broken)) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
 		// (a scroll container's too: its last line's, as CSS Align 3 and browsers have it now, not CSS 2.1's bottom edge)
