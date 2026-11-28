@@ -165,6 +165,32 @@ class NodeBoxes {
 		if (rtl) ext[0] = n.lw - padL - m.border[1] - Len.Lens.resolve(m.padding[1], n.lw, 0) - ext[2];
 		@:privateAccess n.contentWidth = ext[0];
 		@:privateAccess n.contentHeight = ext[1];
+		if (Layout.warnings != null) trapped(n, m);
+	}
+
+	// (as Layout's: a column its items overflow, an item there held at its content's height by its min-height auto,
+	// a scroller in it grown to its content instead of scrolling: told once)
+	function trapped(n:Node, m:BoxStyle) {
+		var s = n.style;
+		if (s.display == Grid || s.flexDirection != Column && s.flexDirection != ColumnReverse) return;
+		var inner = n.lh - m.border[0] - m.border[2] - Len.Lens.resolve(m.padding[0], n.lw, 0) - Len.Lens.resolve(m.padding[2], n.lw, 0);
+		var used = 0.0, shown = 0;
+		for (c in n.children) {
+			var cs = c.style;
+			if (cs.display == None || cs.position == Absolute) continue;
+			var cm:helder.os.Edges = cs.margin ?? helder.os.Edges.ZERO;
+			used += c.lh + (Math.isNaN(cm.top) ? 0 : cm.top) + (Math.isNaN(cm.bottom) ? 0 : cm.bottom) + (shown++ > 0 ? s.rowGap : 0);
+		}
+		if (!(used > inner + 0.5)) return;
+		@:privateAccess for (c in n.children) {
+			var cs = c.style;
+			if (cs.display == None || cs.position == Absolute || cs.flexShrink == 0 || cs.minHeight != DimValue.Auto || cs.overflow != Visible
+				|| Layout.warned.exists(c)) continue;
+			var sc = Layout.scrollerIn(c, used - inner);
+			if (sc == null) continue;
+			Layout.warned.set(c, true);
+			Layout.warnings('helder.ui: <${c.tag}>${Layout.at(c)} holds the scroller <${sc.tag}>${Layout.at(sc)} at its content\'s height, past its flex column, so it does not scroll: give it minHeight 0 (a flex item\'s min-height auto is its content\'s)');
+		}
 	}
 
 	// (the fragments under id, in order, through those of no node of their own (anonymous blocks, lines): each
@@ -481,6 +507,15 @@ private class Measured implements FormattingContext {
 		if (!Math.isNaN(box.minContent)) return;
 		var n:Node = cast box.source, s = box.style.model();
 		var bpx = s.border[1] + s.border[3] + Len.Lens.resolve(s.padding[1], 0, 0) + Len.Lens.resolve(s.padding[3], 0, 0);
+		// (a width of its own: that, as a flex container's is, BlockFlow.intrinsic's)
+		var own = helder.ui.flow.BlockFlow.size(s.width, Math.NaN, s.borderBox, bpx);
+		if (!Math.isNaN(own)) {
+			var lo = helder.ui.flow.BlockFlow.size(s.minWidth, Math.NaN, s.borderBox, bpx), hi = helder.ui.flow.BlockFlow.size(s.maxWidth, Math.NaN, s.borderBox, bpx);
+			if (!Math.isNaN(hi)) own = Math.min(own, hi);
+			if (!Math.isNaN(lo)) own = Math.max(own, lo);
+			box.minContent = box.maxContent = own + bpx;
+			return;
+		}
 		var max = n.measureContent(text, Math.NaN, Math.NaN, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY).width;
 		var min = Math.min(n.minContentWidth(text), max);
 		// (a height of its own through its aspect ratio: that width, its content's min-content when wider)

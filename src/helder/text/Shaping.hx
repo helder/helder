@@ -33,7 +33,7 @@ class Shaping {
 			#if (helder.text.engine == "helder")
 			chosen = HELDER;
 			#else
-			var e = Sys.getEnv("HELDER_TEXT_ENGINE");
+			var e = (#if sys Sys.getEnv("HELDER_TEXT_ENGINE") #else null #end);
 			chosen = e != null && e.toLowerCase() == "helder" ? HELDER : SYSTEM;
 			#end
 		}
@@ -51,7 +51,7 @@ class Shaping {
 			#if (helder.text.smoothing == "off")
 			smoothingChosen = Off;
 			#else
-			var e = FontSmoothing.parse(Sys.getEnv("HELDER_FONT_SMOOTHING"));
+			var e = FontSmoothing.parse((#if sys Sys.getEnv("HELDER_FONT_SMOOTHING") #else null #end));
 			smoothingChosen = e == null ? On : e;
 			#end
 		}

@@ -115,8 +115,7 @@ class PageTexts {
 			first = -1;
 		}
 		for (i in (start < 0 ? 0 : start)...(end > t.text.length ? t.text.length : end)) {
-			if (StringTools.fastCodeAt(t.text, i) == "
-".code) close();
+			if (StringTools.fastCodeAt(t.text, i) == "\n".code) close();
 			if (!has(t, i)) continue;
 			var q = i * 6;
 			if (first < 0) {

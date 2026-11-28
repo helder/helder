@@ -253,10 +253,10 @@ class FlexFlow implements FormattingContext {
 				var crossRoom = lc - it.cross - it.crossStart - it.crossEnd;
 				var cpos = it.crossStart;
 				if (it.autoCross != 0 && crossRoom > 0) {
-					cpos += it.autoCross == 3 ? crossRoom / 2 : it.autoCross == 1 ? crossRoom : 0;
+					cpos += it.autoCross == 3 ? lu(crossRoom / 2) : it.autoCross == 1 ? crossRoom : 0;
 				} else switch it.align {
 					case "flex-end": cpos += crossRoom;
-					case "center": cpos += crossRoom / 2;
+					case "center": cpos += lu(crossRoom / 2);
 					case "baseline" if (it.autoCross == 0): cpos = lineBase[k] - (row ? it.baseline : 0);
 					case _:
 				}
@@ -669,7 +669,7 @@ class FlexFlow implements FormattingContext {
 		if (how.startsWith("safe ") || how.startsWith("unsafe ")) how = how.substr(how.indexOf(" ") + 1);
 		return switch how {
 			case "flex-end" | "end": {start: free, between: 0};
-			case "center": {start: free / 2, between: 0};
+			case "center": {start: lu(free / 2), between: 0};
 			case "space-between": free > 0 && count > 1 ? {start: 0, between: free / (count - 1)} : {start: 0, between: 0};
 			// (with no free space, their fallback: safe center, the start when overflowing: the writing mode's, the
 			// other end of a reversed axis)
@@ -907,6 +907,10 @@ class FlexFlow implements FormattingContext {
 		var d = b.style.flexDirection, w = b.style.flexWrap;
 		return (d == "column" || d == "column-reverse") && w != "nowrap" && w != "";
 	}
+
+	// (a share of free space in Chromium's LayoutUnit, a 64th of a pixel, as it divides it: toward 0)
+	static inline function lu(v:Float):Float
+		return (v < 0 ? Math.ceil(v * 64) : Math.floor(v * 64)) / 64;
 
 	static inline function clamp(v:Float, lo:Float, hi:Float):Float
 		return v > hi ? (hi < lo ? lo : hi) : v < lo ? lo : v;
