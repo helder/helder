@@ -19,7 +19,7 @@ import helder.ui.flow.Space;
 // what it was measured as. Its results written back as Layout's are
 // (Layout.round), so the rest of helder.ui (its paint walk, layers and
 // compositor, events, focus, assistive technology) runs on as it does.
-// Layout.run's drop-in: Ui.layout, -D helder.engine.
+// Layout.run's drop-in: Ui.layout (-D helder.layout: Layout's, until it goes).
 @:allow(helder.ui)
 @:access(helder.ui.Node)
 class NodeBoxes {

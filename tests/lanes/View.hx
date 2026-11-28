@@ -44,15 +44,16 @@ class View {
 		interp(cp, "UiCheck");
 		interp(cp, "MarkupCheck");
 		interp(cp.concat(cps([guideTestSource()])), "GuideCheck");
-		// (helder.ui on the CSS engine's layout, the port's: what it fails so far no more than it did)
-		interp(cp.concat(["-D", "helder.engine"]), "UiCheck");
-		interp(cp.concat(["-D", "helder.engine"]), "MarkupCheck");
+		// (helder.ui's own layout, until it goes: all of it)
+		interp(cp.concat(["-D", "helder.layout"]), "UiCheck");
+		interp(cp.concat(["-D", "helder.layout"]), "MarkupCheck");
 	}
 
-	// (what a fast app must not link, and what it must: its layout and paint)
+	// (what a fast app must not link, and what it must: its layout and paint; GridFlow it does, as every helder.ui
+	// program: its host, Ui, lays out by the engine, whose grid any style may ask for by name, StyleFields)
 	static final FAST_NONE = ["helder_dom_", "helder_css_CssStyles", "helder_css_CssResolver", "helder_css_CssMatcher", "helder_css_CssRuleIndex", "helder_css_CssBloom",
 		"helder_css_Tokenizer", "helder_css_Parser", "helder_css_SelectorParser", "helder_css_CssData", "helder_css_CssShorthands", "helder_css_CssComputed",
-		"helder_ui_flow_GridFlow", "helder_ui_flow_TableFlow"];
+		"helder_ui_flow_TableFlow"];
 	static final FAST_MUST = ["helder_ui_flow_BlockFlow", "helder_ui_flow_FlexFlow", "helder_ui_flow_InlineLayout", "helder_ui_box_BoxPainter", "helder_ui_fast_Tree"];
 
 	static function fastProbe() {
@@ -126,8 +127,8 @@ class View {
 
 	static function layoutConformance() {
 		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformanceCheck");
-		// (helder.ui on the CSS engine's layout, the port's: held to what it fails now)
-		interp(cps(["src", "tests/ui", "tests/layout-conformance"]).concat(["-D", "helder.engine"]), "LayoutConformanceCheck");
+		// (helder.ui's own layout, until it goes)
+		interp(cps(["src", "tests/ui", "tests/layout-conformance"]).concat(["-D", "helder.layout"]), "LayoutConformanceCheck");
 	}
 
 	static function web() {
@@ -186,15 +187,6 @@ class View {
 		shell('$b/GlassCheck tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
-		// (helder.ui on the CSS engine's layout, the port's: the same goldens)
-		var e = '$b/engine', engine = soft.concat(["-D", "helder.engine"]), drawn = ["UiDrawCheck", "TodoCheck", "ControlsGallery"];
-		prebuild([for (m in drawn) {out: exePath('$e/$m', HOST), args: uiCp().concat(["-main", m]).concat(engine)}]);
-		for (m in drawn)
-			hxmc(exePath('$e/$m', HOST), uiCp().concat(["-main", m]).concat(engine));
-		shell('$e/UiDrawCheck tests/ui/draw.png $e/draw.png');
-		shell('$e/TodoCheck tests/ui/todo.png $e/todo.png');
-		mkdirs('$e/controls');
-		shell('$e/ControlsGallery tests/ui/controls $e/controls');
 		Sys.putEnv("HELDER_FONT_DIRS", "");
 	}
 

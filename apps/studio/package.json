@@ -8,8 +8,7 @@
   "helder": {
     "main": "Main",
     "defines": {
-      "hxmc.symbols": "1",
-      "helder.engine": "1"
+      "hxmc.symbols": "1"
     }
   }
 }

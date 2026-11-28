@@ -6,9 +6,6 @@
   "author": "Ben Merckx",
   "homepage": "https://github.com/helder/helder/tree/main/apps/foundry",
   "helder": {
-    "main": "Foundry",
-    "defines": {
-      "helder.engine": "1"
-    }
+    "main": "Foundry"
   }
 }
