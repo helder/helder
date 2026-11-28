@@ -232,6 +232,10 @@ class TableFlow implements FormattingContext {
 			}
 			var d = delta(g, cell);
 			spread(g, cell, b.minContent + d - inner - min, true, max);
+			// (raising the minimum can also raise a column's maximum)
+			max = 0;
+			for (c in cell.col...cell.col + cell.cols)
+				max += g.cols[c].max;
 			spread(g, cell, b.maxContent + d - inner - max, false, max);
 		}
 		for (c in g.cols) if (c.max < c.min) c.max = c.min;
@@ -443,8 +447,13 @@ class TableFlow implements FormattingContext {
 		}
 		var used = 0.0, auto = 0;
 		for (v in out) if (Math.isNaN(v)) auto++ else used += v;
-		var share = auto > 0 ? Math.max(0, (w - used) / auto) : 0;
-		return [for (v in out) Math.isNaN(v) ? share : v];
+		if (auto > 0) {
+			var share = Math.max(0, (w - used) / auto);
+			return [for (v in out) Math.isNaN(v) ? share : v];
+		}
+		if (out.length == 0 || used >= w) return out;
+		if (used == 0) return [for (_ in out) w / out.length];
+		return [for (v in out) v * w / used];
 	}
 
 	// ---- layout
