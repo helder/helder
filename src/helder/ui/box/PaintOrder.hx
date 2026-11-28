@@ -325,10 +325,25 @@ class PaintOrder {
 		if (hasBackground(root) || (root.style.containment : Int) != 0) return root;
 		var c = root.first;
 		while (c != null) {
-			if (c.flags & Box.BODY != 0) return (c.style.containment : Int) != 0 ? root : c;
+			var body = c.flags & Box.BODY != 0 ? c : root.kind == TableWrapper && c.source == root.source ? tableBody(c) : null;
+			if (body != null) return (body.style.containment : Int) != 0 ? root : body;
 			c = c.next;
 		}
 		return root;
+	}
+
+	// (a root table can wrap its body in anonymous rows and cells)
+	static function tableBody(table:Box):Null<Box> {
+		var c = table.first;
+		while (c != null) {
+			if (c.flags & Box.BODY != 0) return c;
+			if (c.source == null) {
+				var body = tableBody(c);
+				if (body != null) return body;
+			}
+			c = c.next;
+		}
+		return null;
 	}
 
 	public static function hasBackground(b:Box):Bool

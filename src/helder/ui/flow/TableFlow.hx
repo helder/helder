@@ -36,10 +36,12 @@ class TableFlow implements FormattingContext {
 		if (!paged && wrapper.cacheFragment >= 0 && wrapper.cacheWidth == key && (wrapper.cacheHeight == space.height || Math.isNaN(wrapper.cacheHeight)
 			&& Math.isNaN(space.height)))
 			return wrapper.cacheFragment;
+		var abs = space.positioned?.boxes.length ?? 0, fixed = space.fixed?.boxes.length ?? 0;
 		var f = place(wrapper, space);
+		var escaped = (space.positioned?.boxes.length ?? 0) > abs || (space.fixed?.boxes.length ?? 0) > fixed;
 		wrapper.cacheWidth = key;
 		wrapper.cacheHeight = space.height;
-		wrapper.cacheFragment = paged ? -1 : f;
+		wrapper.cacheFragment = paged || escaped ? -1 : f;
 		return f;
 	}
 
@@ -53,7 +55,7 @@ class TableFlow implements FormattingContext {
 		var g = grid(t, space);
 		var s = t.style.model();
 		var edges = outerEdges(t, g, 0);
-		var spacing = g.spacingH * (g.columns + 1);
+		var spacing = g.spacingH * Math.max(2, g.columns + 1);
 		var min = edges + spacing, max = edges + spacing;
 		for (c in g.cols) {
 			min += c.min;
@@ -473,7 +475,7 @@ class TableFlow implements FormattingContext {
 			ts.border[3] + BlockFlow.res(ts.padding[3], cb)
 		];
 		var cols = g.columns;
-		var outerH = edges[1] + edges[3] + g.spacingH * (cols + 1);
+		var outerH = edges[1] + edges[3] + g.spacingH * Math.max(2, cols + 1);
 		var minW = outerH, maxW = outerH;
 		for (c in g.cols) {
 			minW += c.min;
@@ -511,11 +513,15 @@ class TableFlow implements FormattingContext {
 			x += widths[c] + g.spacingH;
 		}
 		colX.push(x);
+		// (insets use the wrapper's final size, after its rows and captions are laid out)
+		var pending = new Positioned();
+		var parts = space.child(cb, space.height);
+		parts.positioned = parts.fixed = pending;
 		// (the cells laid out at their columns' width, a block each)
 		var rows = g.rows.length;
 		for (cell in g.cells) {
 			var cw = colX[cell.col + cell.cols] - colX[cell.col] - g.spacingH;
-			var cs = space.child(cw, Math.NaN);
+			var cs = parts.child(cw, Math.NaN);
 			cs.fixedWidth = cw;
 			if (collapse) cs.borders = cellBorders(g, cell);
 			cell.box.uncache();
@@ -541,7 +547,9 @@ class TableFlow implements FormattingContext {
 			if (cell.height > have) rowH[cell.row + cell.rows - 1] += cell.height - have;
 		}
 		for (r in 0...rows) if (g.rows[r].style.rare.visibility == "collapse") rowH[r] = 0;
-		var edgesV = edges[0] + edges[2] + g.spacingV * (rows + 1);
+		// (a grid without rows has no block-axis row spacing)
+		var beforeRows = rows == 0 ? 0.0 : g.spacingV;
+		var edgesV = edges[0] + edges[2] + beforeRows + g.spacingV * rows;
 		var gridH = edgesV;
 		for (h in rowH) gridH += h;
 		var specH = Lens.resolve(ts.height, space.height, Math.NaN);
@@ -587,12 +595,14 @@ class TableFlow implements FormattingContext {
 			// (resumed: its top border, padding and spacing were in the fragmentainer before, sliced)
 			var y = space.pageTop;
 			if (!resumed) for (k in wrapper.children()) if (k != t && k.style.rare.captionSide != "bottom") {
-				var f = flow.child(k, space.child(w, Math.NaN));
+				var probe = space.child(w, Math.NaN);
+				probe.positioned = probe.fixed = new Positioned();
+				var f = flow.child(k, probe);
 				y += k.topPositive + k.topNegative + frags.height(f) + k.bottomPositive + k.bottomNegative;
 			} else if (k == t) break;
 			tableTop = y;
 			// (cloned: its border and padding again, its spacing not)
-			if (!resumed) y += edges[0] + g.spacingV else if (clone) y += edges[0];
+			if (!resumed) y += edges[0] + beforeRows else if (clone) y += edges[0];
 			for (r in 0...hEnd) y += rowH[r] + g.spacingV;
 			var footerH = edges[2] + space.reserve;
 			for (r in fStart...rows) footerH += rowH[r] + g.spacingV;
@@ -612,7 +622,7 @@ class TableFlow implements FormattingContext {
 				if ((inside || y + rowH[r] + footerH > fr.size + 0.01) && !Lambda.exists(g.cells, c -> c.rows > 1 && c.row <= r && c.row + c.rows > r)) {
 					var whole = rowH[r];
 					// (its cells keep room for the footer rows, and for its bottom edges only when cloned: sliced at the break)
-					var s = splitRow(g, r, space, fr, y, clone ? footerH : footerH - edges[2], colX);
+					var s = splitRow(g, r, parts, fr, y, clone ? footerH : footerH - edges[2], colX);
 					var going = s.tokens.iterator().hasNext() && s.progress;
 					// (under a repeated header or above a repeated footer, a monolithic overflow not carried on: the row
 					// whole here, past the end, the next after the header there, as LayoutNG's)
@@ -640,7 +650,7 @@ class TableFlow implements FormattingContext {
 			}
 			for (r in hEnd...fStart) shown[r] = r >= r0 && r < end;
 		}
-		var rowY = [], y = !resumed ? edges[0] + g.spacingV : clone ? edges[0] : 0;
+		var rowY = [], y = !resumed ? edges[0] + beforeRows : clone ? edges[0] : 0;
 		for (r in 0...rows) {
 			rowY.push(y);
 			if (shown[r]) y += rowH[r] + g.spacingV;
@@ -757,7 +767,7 @@ class TableFlow implements FormattingContext {
 				// (a caption above where it doesn't start, below where it doesn't end: none)
 			} else {
 				// (a caption: a block in the table's width)
-				var f = flow.child(k, space.child(w, Math.NaN));
+				var f = flow.child(k, parts.child(w, Math.NaN));
 				var top = k.topPositive + k.topNegative;
 				frags.adopt(wf, f, k.marginLeft, wy + top);
 				wy += top + frags.height(f) + k.bottomPositive + k.bottomNegative;
@@ -766,7 +776,34 @@ class TableFlow implements FormattingContext {
 		}
 		frags.resize(wf, w, wy);
 		if (!Math.isNaN(baseline)) frags.setBaseline(wf, baseline);
+		if (pending.boxes.length > 0) placePositioned(wrapper, wf, space, pending, resumed, broken);
 		return wf;
+	}
+
+	function placePositioned(wrapper:Box, wf:Int, space:Space, pending:Positioned, resumed:Bool, broken:Bool) {
+		var frags = space.fragments;
+		var root = wrapper.parent == null;
+		var contained = wrapper.style.containment.containingBlock;
+		var owner = wrapper.style.positioned || contained;
+		var abs = new Positioned(), fixed = new Positioned();
+		var absTarget = owner || root ? abs : space.positioned;
+		var fixedTarget = contained ? abs : space.fixed ?? (root ? fixed : null);
+		for (k in 0...pending.boxes.length) {
+			var from = pending.fragments[k], at = from;
+			// (only the cell or caption fragments that made it into this wrapper)
+			while (at >= 0 && at != wf) at = frags.parent(at);
+			if (at < 0) continue;
+			var b = pending.boxes[k];
+			var list = b.style.position == "fixed" ? fixedTarget : absTarget;
+			if (list != null) list.add(b, from, pending.xs[k], pending.ys[k], pending.aligns[k]);
+		}
+		if (owner) flow.place(abs, wf, space, 0, 0, frags.width(wf), frags.height(wf), resumed || broken);
+		if (root && (!owner || fixed.boxes.length > 0)) {
+			var off = space.fragmentation == null ? BlockFlow.offset(wrapper, space.width, space.height) : {x: 0.0, y: 0.0};
+			var x = -wrapper.marginLeft - off.x, y = -wrapper.topPositive - wrapper.topNegative - off.y;
+			if (!owner) flow.place(abs, wf, space, x, y, space.width, space.height, resumed);
+			flow.place(fixed, wf, space, x, y, space.width, space.height);
+		}
 	}
 
 	// (a row's cells laid out from its top in the fragmentainer, each a parallel flow with its own breaks (one
