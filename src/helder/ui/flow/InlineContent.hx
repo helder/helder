@@ -90,8 +90,11 @@ class InlineContent {
 	// (what the builder was given, before finish processes it)
 	var raw:Array<RawItem> = [];
 
-	public function new(root:InlineStyle, ?fonts:InlineFonts, ?shaper:InlineShaper) {
+	public final startsBlock:Bool;
+
+	public function new(root:InlineStyle, ?fonts:InlineFonts, ?shaper:InlineShaper, startsBlock = true) {
 		this.root = root;
+		this.startsBlock = startsBlock;
 		this.fonts = fonts == null ? InlineFonts.shared : fonts;
 		// (the fonts' own: the shaped-word cache is keyed by their sets' numbers)
 		this.shaper = shaper == null ? this.fonts.shaper : shaper;

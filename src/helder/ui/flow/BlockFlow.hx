@@ -634,9 +634,12 @@ class BlockFlow implements FormattingContext {
 		if (box.style.part == BoxStyle.CELL) space.cellContentHeight = content + bpy;
 		frags.resize(frag, w + bpx, h + bpy);
 		if (!clone && (resume != null || broken)) frags.setRange(frag, resume != null ? Box.NO_START : 0, broken ? Box.NO_END : 0);
-		// (a scroll container's too: its last line's, as CSS Align 3 and browsers have it now, not CSS 2.1's bottom edge)
 		// (layout containment: no baseline for its parent, Contain 2 §3.2)
-		if (!Math.isNaN(baseline) && !contain.has(Layout)) frags.setBaseline(frag, bt + pt + baseline);
+		if (!contain.has(Layout)) {
+			// (a block-axis scroll container exports its bottom margin edge as its last baseline, Align 3 §9.1)
+			if (box.style.scrollContainer) frags.setBaseline(frag, h + bpy + bottomPos + bottomNeg);
+			else if (!Math.isNaN(baseline)) frags.setBaseline(frag, bt + pt + baseline);
+		}
 		// (the absolutely positioned boxes this is the containing block of: its padding box, the root's
 		// the initial containing block, §10.1)
 		if (box.parent == null) {

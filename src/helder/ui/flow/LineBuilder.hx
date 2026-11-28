@@ -72,13 +72,13 @@ class LineBuilder {
 		var strut = strutHeight();
 		var clamp = root.lineClamp();
 		clamped = false;
-		var p = 0, u = startOf(0), y = 0.0, first = true, afterForced = false;
+		var p = 0, u = startOf(0), y = 0.0, first = c.startsBlock, afterForced = false;
 		// (a continuation: from its token; line-clamp counting the lines before it)
 		var before = 0;
 		if (from != null) {
 			p = from.piece;
 			u = from.unit;
-			first = from.line == 0;
+			first = c.startsBlock && from.line == 0;
 			afterForced = from.afterForced;
 			before = from.line;
 		}
@@ -149,7 +149,7 @@ class LineBuilder {
 		c = content;
 		minimum = width == 0;
 		var root = c.root, indent = root.textIndent(), eachLine = root.textIndentEachLine(), hanging = root.textIndentHanging();
-		var p = 0, u = startOf(0), widest = 0.0, first = true, afterForced = false;
+		var p = 0, u = startOf(0), widest = 0.0, first = c.startsBlock, afterForced = false;
 		while (p < c.pieces) {
 			var indented = first || eachLine && afterForced;
 			breakLine(p, u, indented != hanging ? indent : 0.0, width);

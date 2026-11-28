@@ -4,6 +4,7 @@ import helder.canvas.ShapedRun;
 import helder.ui.box.Box;
 import helder.ui.box.BoxInline;
 import helder.ui.box.BoxKind;
+import helder.ui.box.BoxStyle;
 import helder.ui.box.Fragments;
 import helder.ui.box.Len.Lens;
 import helder.ui.flow.InlineLayout;
@@ -268,7 +269,15 @@ class BlockLines {
 		if (kept != null) return kept;
 		var frags = space.fragments;
 		var relative = widthRelative(block, true);
-		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
+		var style = BoxInline.of(block, width), startsBlock = true;
+		// (a later anonymous block's lines continue its parent's formatted lines for text-indent)
+		var parent = block.parent;
+		if (block.anonymous && parent != null && parent.style.inner != BoxStyle.FLEX && parent.style.inner != BoxStyle.GRID && style.textIndent() != 0) {
+			var first = parent.first;
+			while (first != block && (first.floating || first.absolute)) first = first.next;
+			startsBlock = first == block;
+		}
+		var c = new InlineContent(style, space.fonts.inlines, startsBlock);
 		var out = new Built(c);
 		function walk(b:Box) {
 			var k = b.first;
