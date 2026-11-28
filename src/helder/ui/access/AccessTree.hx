@@ -32,8 +32,8 @@ class AccessTree {
 		// (the popups: after the tree)
 		for (c in ui.overlay.children)
 			visit(c, top, 0, 0, false, ui.overlay.visible(), ui);
-		var f = ui.focus;
-		focus = f != null && byId.exists(f.accessId) ? f.accessId : 0;
+		var f = ui.focus, id = f == null ? 0 : f.accessFocus();
+		focus = byId.exists(id) ? id : 0;
 		counted();
 	}
 
@@ -175,6 +175,10 @@ class AccessTree {
 	public function node(id:Int):Null<Node>
 		return byId.get(id);
 
+	// An id for what is no Node (Node.accessParts'), unique in a program.
+	public static function newId():Int
+		return nextId++;
+
 	static function idOf(n:Node):Int {
 		if (n.accessId == 0) n.accessId = nextId++;
 		return n.accessId;
@@ -264,6 +268,16 @@ class AccessTree {
 		if (s.overflow == Scroll) {
 			sx += n.scrollX;
 			sy += n.scrollY;
+		}
+		// (what it holds that is no Node: its parts, theirs under the node they are of)
+		var parts = n.accessParts();
+		if (parts != null) {
+			var inner = new Map<Int, Bool>();
+			for (p in parts) for (c in p.children) inner.set(c, true);
+			for (p in parts) {
+				if (!inner.exists(p.id)) here.children.push(p.id);
+				add(n, p);
+			}
 		}
 		// (a TextNode's text is its own, its spans' included: no children to visit)
 		if (!Std.isOfType(n, TextNode))

@@ -482,7 +482,7 @@ class Plan<E> {
 	function words(tag:String, attrs:Array<PAttr>)
 		for (a in attrs) {
 			var n = a.name, where = {at: a.at, length: n.length};
-			if (a.value.match(ASpread(_, _)) || n == "key" || n == "ref") continue;
+			if (a.value.match(ASpread(_, _)) || n == "key" || n == "ref" || n == "style") continue;
 			var bad = isEvent(n) ? Vocabulary.event(tag, n) : Vocabulary.attribute(tag, n);
 			if (bad == null) bad = switch a.value {
 				case AStatic(v): Vocabulary.value(n, v);

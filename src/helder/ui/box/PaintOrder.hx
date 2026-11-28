@@ -104,12 +104,24 @@ class PaintOrder {
 	var runs:Null<Array<Float>> = null;
 
 	final spare:Array<Collected> = [];
+	var scrolls:Null<haxe.ds.ObjectMap<{}, Array<Float>>> = null;
+
+	// A scroller's page: its offset over its height, whole (0: not a scroller, or none given).
+	public static function pageOf(f:Fragments, id:Int, offset:Float):Int {
+		var h = f.height(id);
+		return h <= 0 ? 0 : Math.floor(offset / h);
+	}
 
 	// (steps: about how many there will be, its columns made that long at once: the last order's count, say;
 	// window: a long document's top and bottom in the root's space, what paints outside them left out, the
 	// order a window's, for paints and hit tests inside it)
-	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0, ?window:Array<Float>, ?last:PaintOrder) {
+	// scrolls: its scrollers' offsets by Box.scrollKey, given: their content ordered only in a band of pages around
+	// what they show (a page their height: the band one above the page shown, it and one below), made afresh by the
+	// caller when a scroller's page changes)
+	public function new(fragments:Fragments, root:Int, ?area:Array<Float>, steps = 0, ?window:Array<Float>, ?last:PaintOrder,
+			?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>) {
 		f = fragments;
+		this.scrolls = scrolls;
 		if (steps > 0) {
 			this.steps.resize(steps);
 			this.fragments.resize(steps);
@@ -123,7 +135,8 @@ class PaintOrder {
 	// This order made again for another layout (its arrays' room kept: a
 	// frame's order allocates nothing once they are as long as it), the last
 	// one's contexts copied where they are the same (last: not this one).
-	public function again(root:Int, ?window:Array<Float>, ?last:PaintOrder):PaintOrder {
+	public function again(root:Int, ?window:Array<Float>, ?last:PaintOrder, ?scrolls:haxe.ds.ObjectMap<{}, Array<Float>>):PaintOrder {
+		this.scrolls = scrolls;
 		count = 0;
 		parents.resize(1);
 		kinds.resize(1);
@@ -530,16 +543,49 @@ class PaintOrder {
 	}
 
 	// (a group whose children all paint within it can use the regular context's reuse)
+	// (each fragment's answer, kept while its fragments are: a fragment and what is in it never change, an
+	// app's boxes all relative, each asked of all under it; the orders made again from this one keep them)
+	// (made afresh, no order before it: what was restyled may answer otherwise, a z-index changed)
+	var deferMemo:Array<Int> = [];
+	var deferFor:Null<Fragments> = null;
+	var deferStamp = -1;
+
 	function containsDeferred(id:Int):Bool {
+		if (deferStamp != stamp) {
+			deferStamp = stamp;
+			deferMemo = last != null && last.deferFor == f ? last.deferMemo : [];
+			deferFor = f;
+		}
+		var memo = deferMemo, mark = f.epoch + 1;
+		if (id < memo.length && memo[id] >> 1 == mark) return memo[id] & 1 != 0;
+		var v = scanDeferred(id);
+		if (id >= memo.length) memo.resize(id + 1 + (id >> 2));
+		memo[id] = mark << 1 | (v ? 1 : 0);
+		return v;
+	}
+
+	// (a descendant painted elsewhere than in tree order after it: positioned or a stacking context at a z-index
+	// other than 0, not inside a stacking context of its own between; at z-index auto or 0 they come right after
+	// it in tree order either way, an app's all-relative tree its contexts as they were)
+	function scanDeferred(id:Int):Bool {
 		var inlineParent = f.kind(id) == Fragments.LINE || f.kind(id) == Fragments.SPAN;
 		var k = f.first(id);
 		while (k >= 0) {
 			switch f.kind(k) {
 				case Fragments.BOX:
 					var b = f.box(k);
-					if (apart(b) || !inlineParent && !b.floating && containsDeferred(k)) return true;
+					if (apart(b)) {
+						var z = b.style.zIndex();
+						if (z != null && z != 0) return true;
+						if (!b.style.stacking() && containsDeferred(k)) return true;
+					} else if (!inlineParent && !b.floating && containsDeferred(k)) return true;
 				case Fragments.SPAN:
-					if (apart(f.box(k)) || containsDeferred(k)) return true;
+					var b = f.box(k);
+					if (apart(b)) {
+						var z = b.style.zIndex();
+						if (z != null && z != 0) return true;
+						if (!b.style.stacking() && containsDeferred(k)) return true;
+					} else if (containsDeferred(k)) return true;
 				case Fragments.LINE:
 					if (containsDeferred(k)) return true;
 				case _:
@@ -563,10 +609,20 @@ class PaintOrder {
 	// (a context's descendants in flow: blocks, lines, and what paints apart)
 	function walk(id:Int, x:Float, y:Float, c:Collected, st:Int, scope:Collected) {
 		var k = f.first(id);
+		// (a scroller's content: its band of pages alone, a long list's rows out of it left out)
+		var lo = Math.NEGATIVE_INFINITY, hi = Math.POSITIVE_INFINITY;
+		if (scrolls != null && f.kind(id) == Fragments.BOX && f.box(id).style.scrolls) {
+			var o = scrolls.get(Box.scrollKey(f.box(id))), h = f.height(id);
+			if (h > 0) {
+				var top = y + pageOf(f, id, o == null ? 0 : o[1]) * h;
+				lo = top - h;
+				hi = top + 2 * h;
+			}
+		}
 		while (k >= 0) {
 			var kx = x + f.x(k), ky = y + f.y(k);
 			// (in a window: what paints wholly above or below it left out)
-			if (window != null && (ky + f.inkBottom(k) < window[0] || ky + f.inkTop(k) > window[1])) {
+			if (window != null && (ky + f.inkBottom(k) < window[0] || ky + f.inkTop(k) > window[1]) || ky + f.inkBottom(k) < lo || ky + f.inkTop(k) > hi) {
 				k = f.next(k);
 				continue;
 			}

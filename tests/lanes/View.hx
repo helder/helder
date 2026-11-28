@@ -11,7 +11,7 @@ class View {
 		{name: "view", about: "helder.view on Eval, natively and as JavaScript", run: view},
 		{name: "view-stores", about: "helder.view's graph tests through stores (atoms)", run: viewStores},
 		{name: "ui", about: "helder.ui on Eval: layout, events, focus, markup", run: ui},
-		{name: "fast-probe", about: "fast nodes as an app has them (tests/ui/FastProbe.hx, -dce full with symbols): laid out, no helder.dom, cascade, matcher or CSS parser in its symbols; with a DocumentNode beside it (-D fast.island) they are: the check's control", run: fastProbe},
+		{name: "fast-probe", about: "fast nodes as an app has them (tests/ui/FastProbe.hx, -dce full with symbols): laid out, no helder.dom, cascade, matcher or CSS parser in its symbols; with a DocumentNode beside it (-D fast.island) they are: the check's control; the todo on fast nodes (examples/todo-fast) the same, and driven headless (TodoFastCheck: focus, Tab, keys, typing, selection, its accessibility tree against helder.ui todo's)", run: fastProbe},
 		{name: "layout-conformance", about: "flexbox and grid against Taffy's fixtures", run: layoutConformance},
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
@@ -70,6 +70,18 @@ class View {
 			if (island && none.length < 8) throw new Failed('$out: the island links only ${none.join(", ")}: the check checks nothing');
 			Sys.println('$out: $got; ${Math.round(FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols; ${none.length == 0 ? "no DOM or cascade" : "links " + none.join(", ")}');
 		}
+		// (the todo on fast nodes, through its markup: as an app builds it, the same check; driven headless, TodoFastCheck)
+		var todo = "bin/ui/TodoFast";
+		exe(todo, cps(["src", "examples/todo-fast"]).concat(["-main", "TodoFast", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"]));
+		var symbols = output("nm", [exePath(todo, HOST)]).split("\n");
+		var none = [for (p in FAST_NONE) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
+		var must = [for (p in FAST_MUST) if (Lambda.exists(symbols, s -> s.indexOf(p) >= 0)) p];
+		if (none.length > 0) throw new Failed('$todo links ${none.join(", ")}');
+		if (must.length < FAST_MUST.length) throw new Failed('$todo: without ${[for (m in FAST_MUST) if (!must.contains(m)) m].join(", ")}');
+		Sys.println('$todo: ${Math.round(FileSystem.stat(exePath(todo, HOST)).size / 1024)} KB with symbols; no DOM or cascade');
+		var check = "bin/ui/TodoFastCheck";
+		exe(check, cps(["src", "tests/ui", "tests/gfx", "examples/todo-fast", "examples/todo"]).concat(["-main", "TodoFastCheck"]));
+		run(exePath(check, HOST), []);
 	}
 
 	static function guideTestSource():String {

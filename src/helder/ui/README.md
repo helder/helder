@@ -1671,9 +1671,28 @@ list.append(new TextNode("Buy milk"));
 final tree = new Tree(list, new Theme(["hover" => [0xFFF4F4F5, 0xFF27272A]]));
 ```
 
+In markup, fast nodes take helder.ui's elements and attributes inside a
+`<Fast>` (`helder.ui.fast.FastTags`): `view`, `text`, `field`, `icon`,
+`button`, `scroll`, the style's fields as attributes (`padding="4 6"`,
+`color="#a1a1aa"`), `style={Style}`, `role`, `aria-*`, `data-state`,
+and the events. A sheet's slots and variants become Styles with their
+state variants (examples/todo-fast is examples/todo so ported).
+
+```haxe
+<Surface title="Todo"><Fast><view padding={24} rowGap={14}>
+	<field style={input} value={draft()} placeholder="What needs to be done?" onInput={e -> draft(e.text)}/>
+	<button style={button} onPress={add}>Add</button>
+</view></Fast></Surface>
+```
+
 A `Tree` is the helder.ui node that hosts one: the engine's block, flex
-and inline layout, its paint order and reused display-list spans, hit
-testing, hover, press and wheel scrolling. A view is a column flex
+and inline layout, its paint order and reused display-list spans (a
+scroller's rows ordered a few pages around what it shows), hit testing,
+hover, press and wheel scrolling; the focus among its nodes (Tab, a
+press, Enter and Space pressing a button, its ring drawn), a field's
+typing, caret, selection and the window's input method; text selected
+and copied through the Ui's selection; its nodes to assistive technology
+as helder.ui's would be (Node.accessParts). A view is a column flex
 container, as `ua/app.css` has it; a text is a block of one paragraph.
 Grid and tables are not linked (a grid lays out as flex for now), and an
 app of fast nodes alone links no helder.dom and no cascade, matcher or CSS

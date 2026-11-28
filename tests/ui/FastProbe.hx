@@ -36,7 +36,7 @@ class FastProbe implements Markup {
 		var bar = new Node(entry), add = new Node(button);
 		bar.append(new TextNode("What needs to be done?", input));
 		add.append(new TextNode("Add"));
-		add.onPress = () -> item('Task ${list.children().length + 1}');
+		add.onPress = _ -> item('Task ${list.children().length + 1}');
 		bar.append(add);
 		root.append(bar);
 		root.append(list);
@@ -48,13 +48,13 @@ class FastProbe implements Markup {
 	function item(text:String) {
 		var r = new Node(row), box = new Node(check), x = new Node(ghost);
 		r.group = true;
-		box.onPress = () -> {
+		box.onPress = _ -> {
 			r.state(Style.CHECKED, !r.has(Style.CHECKED));
 			box.state(Style.CHECKED, r.has(Style.CHECKED));
 			count();
 		}
 		x.append(new TextNode("×"));
-		x.onPress = () -> {
+		x.onPress = _ -> {
 			r.remove();
 			count();
 		}

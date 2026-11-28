@@ -1393,6 +1393,20 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	@:noCompletion public function accessSetValue(value:String):Bool
 		return false;
 
+	// What it holds that is no Node, for assistive technology (a fast tree's
+	// nodes): their nodes in tree order, each id from AccessTree.newId,
+	// those no other lists as a child its own children; null: none.
+	@:noCompletion public function accessParts():Null<Array<helder.ui.access.AccessNode>>
+		return null;
+
+	// the id of what in it has the focus when it has (one of its parts'), else its own
+	@:noCompletion public function accessFocus():Int
+		return accessId;
+
+	// assistive technology acts on one of its parts: false when it can't
+	@:noCompletion public function accessPartAction(id:Int, action:helder.ui.access.AccessAction, value:Null<String>):Bool
+		return false;
+
 	// a text input's value for assistive technology when it is not a
 	// TextNode's text (a code editor's document); null: none
 	public function accessValue():Null<String>

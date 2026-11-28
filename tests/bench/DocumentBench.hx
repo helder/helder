@@ -289,6 +289,7 @@ class DocumentBench {
 		fresh("todo", [m20, m1020]);
 		var rowsAdded = rowsOf(m1020.root, "list", 20);
 		app(w, h, () -> mount(20), m20, rowsAdded, (u:Ui, a:Todo) -> a.todos(a.todos().concat(items(1000, 20))), "draft");
+		todoFast(w, h);
 	}
 
 	static function mail() {
@@ -485,6 +486,68 @@ class DocumentBench {
 		step(s.ui, null);
 		sys.io.File.saveBytes('bin/document-bench/$screen-boxes.png', crop(w, h));
 		boxNode = null;
+	}
+
+	// ---- the todo on fast nodes (examples/todo-fast): its own markup, helder.ui's ops as they are run on it
+
+	static function todoFast(w:Int, h:Int) {
+		variant = "todo-fast";
+		function tasks(n:Int, from = 0):Array<TodoFast.Task>
+			return [for (i in from...from + n) new TodoFast.Task('Task ${i + 1}: water the plants and call back')];
+		function mount():{ui:Ui, doc:Null<DocumentNode>, keep:TodoFast} {
+			var ui = new Ui(new DrawText(), w, h);
+			var app = new TodoFast();
+			app.todos(tasks(20));
+			fastTree = FastMount.todo(app, ui.root);
+			Graph.flush();
+			ui.update();
+			return {ui: ui, doc: null, keep: app};
+		}
+		function find(tag:String):helder.ui.fast.Node {
+			var stack = [fastTree.root];
+			while (stack.length > 0) {
+				var n = stack.shift();
+				if (n.tag == tag) return n;
+				for (c in n.children()) stack.push(c);
+			}
+			throw 'no $tag';
+		}
+		var made = first("first frame (20 rows)", mount);
+		var ui = made.ui, app = made.keep, tree = fastTree;
+		app.todos(app.todos().concat(tasks(1000, 20)));
+		Graph.flush();
+		step(ui, null);
+		var list = find("list"), box = tree.rectOf(list);
+		run("scroll the list (1,020 rows, 40 px a frame)", ui, null, 120, i -> ui.wheel(box[0] + box[2] / 2, box[1] + box[3] / 2, 0, i % 60 < 30 ? 40 : -40));
+		var rows = [for (r in list.children()) {
+			var q = tree.rectOf(r);
+			if (q[3] > 0 && q[1] > box[1] && q[1] + q[3] < box[1] + box[3]) r;
+		}];
+		run("hover over rows", ui, null, 120, i -> {
+			var q = tree.rectOf(rows[i % rows.length]);
+			ui.pointerMove(q[0] + 20, q[1] + q[3] / 2);
+		});
+		var f = tree.rectOf(find("draft"));
+		ui.pointerDown(f[0] + 10, f[1] + f[3] / 2, 1);
+		ui.pointerUp(f[0] + 10, f[1] + f[3] / 2, 1);
+		step(ui, null);
+		run("type into a field", ui, null, 60, i -> {
+			ui.textInput(String.fromCharCode(97 + i % 26));
+			Graph.flush();
+		});
+		run("resize the window", ui, null, 40, i -> ui.resize(i % 2 == 0 ? w - 60 : w, h));
+		run("drag-resize (a new width each frame)", ui, null, 40, i -> ui.resize(w - 1 - i, h));
+		ui.resize(w, h);
+		step(ui, null);
+		addRows("add 1,000 rows", mount, x -> {
+			x.keep.todos(x.keep.todos().concat(tasks(1000, 20)));
+			Graph.flush();
+		});
+		sys.FileSystem.createDirectory("bin/document-bench");
+		var s = mount();
+		step(s.ui, null);
+		sys.io.File.saveBytes('bin/document-bench/todo-todo-fast.png', crop(w, h));
+		fastTree = null;
 	}
 
 	// ---- the fast variant: fast nodes (helder.ui.fast), each styled by a Style typed from helder.ui's look (FastMirror): no DOM, no cascade
