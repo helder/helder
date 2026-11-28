@@ -115,7 +115,7 @@ class Resolve {
 		s.aligns.push(align(p.alignSelf, "auto"));
 		s.aligns.push(p.justifyItems == null ? "legacy" : align(p.justifyItems, "legacy"));
 		s.aligns.push(align(p.justifySelf, "auto"));
-		var rg = p.rowGap ?? p.gap, cg = p.columnGap ?? p.gap;
+		var rg:Null<Float> = p.rowGap ?? p.gap, cg:Null<Float> = p.columnGap ?? p.gap;
 		s.rowGapValue = rg == null ? Auto : Px(rg);
 		s.columnGapValue = cg == null ? Auto : Px(cg);
 		for (v in [p.top, p.right, p.bottom, p.left]) s.insets.push(v ?? Auto);
