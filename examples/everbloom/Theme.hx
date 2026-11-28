@@ -94,12 +94,12 @@ class Theme implements Markup {
 			{icon(ERROR, 48, MUTED)}
 			<text fontSize={17} fontWeight={700}>Couldn't load products</text>
 			<text fontSize={15} lineHeight="22px" color={MUTED} textAlign="center">Check your connection and try again.</text>
-			<view marginTop={8}><Button id="error-retry" label="Retry" secondary height={48} onPress={props.onRetry}/></view>
+			<view margin="8 0 0 0"><Button id="error-retry" label="Retry" secondary height={48} onPress={props.onRetry}/></view>
 		</view>;
 
 	public static function Spinner():View
 		return <view padding={24} alignItems="center" role="progressbar" aria-label="Loading">
-			<view width={24} height={24} borderRadius={12} borderWidth={3} borderColor={BORDER} borders="3" />
+			<view width={24} height={24} borderRadius={12} borderWidth={3} borderColor={BORDER}/>
 		</view>;
 
 	// the round back button (over a product's image) or a nav bar's

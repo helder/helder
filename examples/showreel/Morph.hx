@@ -1,5 +1,6 @@
 import Reel.*;
 import Reel.SceneDef;
+import helder.ui.Style;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Read;
@@ -47,11 +48,13 @@ class Morph implements Markup {
 		</view>;
 	}
 
+	static final knob = Style.of({width: 22, height: 22, borderRadius: 11, background: 0xFFFFFFFF, shadows: [{x: 0, y: 1, blur: 3, color: 0x40000000}]});
+
 	static function Switch(props:{t:Read<Float>, on:Read<Bool>}):View {
 		var th = () -> THEMES[themeAt(props.t())];
 		return <view width={46} height={28} borderRadius={14} padding={3} flexDirection="row" justifyContent={props.on() ? "end" : "start"}
 			background={props.on() ? th().accent : th().line}>
-			<view width={22} height={22} borderRadius={11} background="#ffffff" boxShadow="0 1px 3px rgba(0,0,0,0.25)"/>
+			<view style={knob}/>
 		</view>;
 	}
 

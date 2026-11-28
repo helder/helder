@@ -10,6 +10,7 @@ import helder.canvas.Path;
 import helder.canvas.Stroke;
 import helder.image.Image;
 import helder.ui.Clock;
+import helder.ui.Style;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.view.*;
@@ -63,6 +64,37 @@ class Literal implements Markup {
 
 	static final svgs = new Map<String, helder.ui.Svg>();
 
+	static final knob = Style.of({width: 24, height: 24, borderRadius: 12, background: 0xFFFFFFFF, shadows: [{x: 0, y: 1, blur: 3, color: 0x4D000000}]});
+	static final sun = Style.of({
+		position: Absolute,
+		left: 170,
+		top: 150,
+		width: 110,
+		height: 110,
+		borderRadius: 55,
+		background: 0xFFFFD36E,
+		shadows: [{x: 0, y: 0, blur: 60, color: 0xCCFFC85A}]
+	});
+	static final moon = Style.of({
+		position: Absolute,
+		left: 1010,
+		top: 110,
+		width: 70,
+		height: 70,
+		borderRadius: 35,
+		background: 0xFFF1F0FF,
+		shadows: [{x: 0, y: 0, blur: 40, color: 0x99DCDCFF}]
+	});
+	static final panel = Style.of({
+		zIndex: 1,
+		width: 560,
+		height: PANEL_H,
+		borderRadius: 22,
+		overflow: Hidden,
+		borderWidth: 1,
+		shadows: [{x: 0, y: 30, blur: 80, color: 0x590A1432}]
+	});
+
 	static function icon(markup:String):helder.ui.Svg {
 		var s = svgs.get(markup);
 		if (s == null) svgs.set(markup, s = helder.ui.Svg.parse(helder.ui.controls.Icons.OPEN + markup + "</svg>"));
@@ -84,7 +116,7 @@ class Literal implements Markup {
 	static function Switch(props:{on:Read<Bool>, tint:String}):View
 		return <view width={50} height={30} borderRadius={15} padding={3} flexDirection="row" justifyContent={props.on() ? "end" : "start"}
 			background={props.on() ? props.tint : night() ? "#2a3048" : "#d9dce5"}>
-			<view width={24} height={24} borderRadius={12} background="#ffffff" boxShadow="0 1px 3px rgba(0,0,0,0.3)"/>
+			<view style={knob}/>
 		</view>;
 
 	static function Row(props:{i:Int}):View {
@@ -146,10 +178,8 @@ class Literal implements Markup {
 			background={night() ? "linear-gradient(180deg, #070b1f 0%, #1b1a46 70%, #3a2a5c 100%)" : "linear-gradient(180deg, #7fb8ff 0%, #bfe0ff 60%, #ffe7cf 100%)"}>
 			<Repeat count={46}>{i -> <view position="absolute" left={(hash(i) % 1280)} top={(hash(i + 99) % 420)} width={i % 7 == 0 ? 3 : 2}
 				height={i % 7 == 0 ? 3 : 2} borderRadius={2} background="#ffffff" opacity={night() ? 0.35 + (hash(i + 5) % 60) / 100 : 0} motionOpacity="calm"/>}</Repeat>
-			<view position="absolute" left={170} top={150} width={110} height={110} borderRadius={55} background="#ffd36e" boxShadow="0 0 60px rgba(255, 200, 90, 0.8)"
-				transform={night() ? "translate(0px, 460px)" : "none"} motionTransform="1.4 0"/>
-			<view position="absolute" left={1010} top={110} width={70} height={70} borderRadius={35} background="#f1f0ff" boxShadow="0 0 40px rgba(220, 220, 255, 0.6)"
-				transform={night() ? "none" : "translate(0px, 520px)"} motionTransform="1.6 0"/>
+			<view style={sun} transform={night() ? "translate(0px, 460px)" : "none"} motionTransform="1.4 0"/>
+			<view style={moon} transform={night() ? "none" : "translate(0px, 520px)"} motionTransform="1.6 0"/>
 			<view position="absolute" left={-200} right={-200} bottom={-520} height={760} borderRadius={380} background={night() ? "#141a33" : "#7fc28a"}/>
 			<view position="absolute" left={520} right={-300} bottom={-560} height={760} borderRadius={380} background={night() ? "#0d1226" : "#5aa66a"}/>
 		</view>;
@@ -163,9 +193,8 @@ class Literal implements Markup {
 	public static function view():View
 		return <view flexGrow={1} alignItems="center" justifyContent="center" fontFamily="Inter" motion={freeze() ? "2.8 0.1" : "default"}>
 			{Sky()}
-			<view tag="panel" zIndex={1} width={560} height={PANEL_H} borderRadius={22} overflow="hidden" direction={rtl() ? "rtl" : "ltr"}
-				background={freeze() ? (night() ? "#16243cee" : "#e6f4ffee") : night() ? "#11152aee" : "#f7f8fbee"} color={night() ? "#eef1fb" : "#14161d"}
-				boxShadow="0 30px 80px rgba(10, 20, 50, 0.35)" borderWidth={1} borderColor={night() ? "#2a3150" : "#ffffffaa"}>
+			<view tag="panel" style={panel} direction={rtl() ? "rtl" : "ltr"} background={freeze() ? (night() ? "#16243cee" : "#e6f4ffee") : night() ? "#11152aee" : "#f7f8fbee"}
+				color={night() ? "#eef1fb" : "#14161d"} borderColor={night() ? "#2a3150" : "#ffffffaa"}>
 				<view height={HEAD} padding="26 24 0 24" rowGap={4}>
 					<text fontSize={26} fontWeight={700} letterSpacing={-0.5}>Preferences</text>
 					<text fontSize={14} color={night() ? "#8f97b3" : "#6b7080"}>Every setting here does exactly what it says.</text>

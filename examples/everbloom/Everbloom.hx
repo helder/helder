@@ -3,6 +3,7 @@
 // tags: ui, view, network
 // demo: none
 import Api;
+import Theme;
 import helder.async.Async;
 import helder.os.App;
 import helder.os.SystemLog;
@@ -126,8 +127,8 @@ class Everbloom implements Markup {
 		</view>;
 
 	static function TabBar():View
-		return <view role="tablist" flexDirection="row" background={Theme.BACKGROUND} borders="1 0 0 0" borderColor={Theme.BORDER}
-			paddingBottom="env(safe-area-inset-bottom)">
+		return <view role="tablist" flexDirection="row" background={Theme.BACKGROUND} borderWidth="1 0 0 0" borderColor={Theme.BORDER}
+			padding="0 0 env(safe-area-inset-bottom) 0">
 			<Repeat count={3}>{t -> <button id={["tab-home", "tab-search", "tab-cart"][t]} role="tab" aria-selected={tab() == t} flexGrow={1} flexBasis={0}
 				height={49} alignItems="center" justifyContent="center" rowGap={2} onPress={() -> tab(t)}>
 				<view>

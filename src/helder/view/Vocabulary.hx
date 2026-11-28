@@ -69,7 +69,7 @@ class Vocabulary {
 	// ARIA's (aria-*), data-*, key, ref and style
 	public static final COMMON = [
 		"id", "class", "role", "hidden", "disabled", "required", "tabIndex", "autoFocus", "focusable", "selectable", "slot", "variant", "size",
-		"host", "group", "peer", "tag", "states", "keyContext", "actions", "trackFocus", "dragRegion", "dragData", "panAxis", "panMinPointers",
+		"host", "group", "peer", "theme", "tag", "states", "keyContext", "actions", "trackFocus", "dragRegion", "dragData", "panAxis", "panMinPointers",
 		"motion", "motionLayout", "motionOpacity", "motionColor", "motionTransform", "motionRadius", "motionPresence", "lead", "trail", "instant",
 		"matched", "ride", "lang"
 	];

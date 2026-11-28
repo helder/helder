@@ -1,4 +1,4 @@
-/* Mail.sheet's colours, light and dark: mail.module.css's tokens (Theme.load). */
+/* The client's colours, light and dark: mail.module.css's tokens (Theme.load). */
 :root {
   --background: light-dark(#ffffff, #09090b);
   --foreground: light-dark(#18181b, #fafafa);

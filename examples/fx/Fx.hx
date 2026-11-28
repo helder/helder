@@ -7,6 +7,7 @@ import FxBox;
 import helder.math.Vec4;
 import helder.ui.Clock;
 import helder.ui.Key;
+import helder.ui.Style;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.view.*;
@@ -88,7 +89,7 @@ class Fx implements Markup {
 		var a = vec(e.a), b = vec(e.b);
 		if (e.shader == null) {
 			var n = new Neon();
-			n.style.flexGrow = 1;
+			n.style = Style.of({flexGrow: 1});
 			renderEffect(() -> values[props.i](), v -> n.setKnobs(v));
 			renderEffect(() -> timeOf(props.i), t -> {
 				n.time = t;
@@ -97,7 +98,7 @@ class Fx implements Markup {
 			return n;
 		}
 		var n = new FxBox(e.shader);
-		n.style.flexGrow = 1;
+		n.style = Style.of({flexGrow: 1});
 		n.a = a;
 		n.b = b;
 		renderEffect(() -> values[props.i](), v -> n.setKnobs(v));
@@ -136,6 +137,8 @@ class Fx implements Markup {
 		values[i](next);
 	}
 
+	static final thumb = Style.of({position: Absolute, top: 3, width: 16, height: 16, borderRadius: 8, shadows: [{x: 0, y: 1, blur: 4, color: 0x80000000}]});
+
 	static function Slider(props:{i:Int, k:Int}):View {
 		var e = EFFECTS[props.i];
 		var dragging = false;
@@ -154,8 +157,7 @@ class Fx implements Markup {
 				<view height={4} borderRadius={2} background={LINE}>
 					<view height={4} borderRadius={2} background={knob() == props.k ? ACCENT : "#5a6280"} width={(values[props.i]()[props.k] * 100) + "%"}/>
 				</view>
-				<view position="absolute" top={3} left={"calc(" + (values[props.i]()[props.k] * 100) + "% - 8px)"} width={16} height={16} borderRadius={8}
-					background={INK} boxShadow="0 1px 4px rgba(0,0,0,0.5)"/>
+				<view style={thumb} left={"calc(" + (values[props.i]()[props.k] * 100) + "% - 8px)"} background={INK}/>
 			</view>
 		</view>;
 	}

@@ -4,7 +4,6 @@
 // demo: canvas 860x560
 
 import helder.os.Settings;
-import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.actions.Actions;
 import helder.ui.actions.Keymap;
@@ -25,9 +24,11 @@ import helder.view.graph.Read;
 // pane (which marks it read). The toolbar archives, deletes (a line at the
 // bottom offers to undo) or marks it unread again, and switches dark mode;
 // the same actions have shortcuts (MailAction, bound in the keymap: E,
-// Delete, secondary-shift-u), from anywhere but the search field. Its look is Mail.sheet: rules by slot and
-// state, colours with a light and a dark value (the window's Ui.dark, at
-// first the system's). In a window:
+// Delete, secondary-shift-u), from anywhere but the search field. Its look
+// is a CSS module (mail.module.css, compiled to Styles when the program
+// is), its colours a theme's tokens with a light and a dark value
+// (mail.theme.css; the window's Ui.dark, at first the system's). In a
+// window:
 //
 //   haxe -lib helder -cp examples/mail -main Mail --custom-target hxmc=mail -D hxmc.libc=glibc
 class Mail implements Markup {
@@ -38,13 +39,17 @@ class Mail implements Markup {
 	static function main() {
 		declare();
 		Keymap.global.bind("e", Archive).bind("delete", Delete).bind("secondary-shift-u", MarkUnread);
-		UiWindow.run(<Surface title="Mail" width={860} height={560} theme={sheet}>{new Mail().view()}</Surface>);
+		UiWindow.run(<Surface title="Mail" width={860} height={560} theme={theme}>{new Mail().view()}</Surface>);
 	}
 
-	// (the client in its sheet, as the window shows it: Mail.story.hx's screen)
+	public static final theme = Theme.load("mail.theme.css");
+
+	static final s = StyleModule.load("mail.module.css", "mail.theme.css");
+
+	// (the client in its theme, as the window shows it: Mail.story.hx's screen)
 	public static function themed():View {
 		declare();
-		return <view flexGrow={1} ref={(__part:helder.ui.Part) -> {var n:Node = cast __part; n.theme = sheet;}}>{new Mail().view()}</view>;
+		return <view flexGrow={1} theme={theme}>{new Mail().view()}</view>;
 	}
 
 	public final folders:Array<Folder> = [
@@ -149,12 +154,11 @@ class Mail implements Markup {
 	}
 
 	static function Button(props:{label:String, onPress:Void->Void, ?tag:String, ?variant:String}):View
-		return <button tag={props.tag ?? "button"} slot="button" variant={props.variant}
-			onPress={props.onPress}>{props.label}</button>;
+		return <button tag={props.tag ?? "button"} style={props.variant == "ghost" ? s.ghost : s.button} onPress={props.onPress}>{props.label}</button>;
 
 	// a column's title: sorts by it, an arrow where it is sorted
 	function Column(props:{title:String, by:String, ?width:Float}):View
-		return <button tag={"sort-" + props.by} slot="column" width={props.width} flexGrow={props.width == null ? 1 : 0}
+		return <button tag={"sort-" + props.by} style={s.column} width={props.width} flexGrow={props.width == null ? 1 : 0}
 			onPress={() -> sortBy(props.by)}>
 			{props.title + (sort().by == props.by ? (sort().down ? " ↓" : " ↑") : "")}
 		</button>;
@@ -165,7 +169,7 @@ class Mail implements Markup {
 			textWrap="nowrap" textOverflow="ellipsis">{text}</text>;
 
 	public function view():View
-		return <view slot="body" ref={(__part:helder.ui.Part) -> {var n:helder.ui.Node = cast __part; root = n;}} flexGrow={1} fontSize={13} actions={[Actions.handle(MailAction, a -> {
+		return <view style={s.body} ref={(__part:helder.ui.Part) -> {var n:helder.ui.Node = cast __part; root = n;}} flexGrow={1} minHeight={0} actions={[Actions.handle(MailAction, a -> {
 			switch a {
 				case Archive: moveTo("Archive");
 				case Delete: moveTo("Trash");
@@ -173,31 +177,31 @@ class Mail implements Markup {
 			}
 			true;
 		})]}>
-			<view slot="bar" flexDirection="row" alignItems="center" columnGap={8} padding="8 12">
+			<view style={s.bar}>
 				<text fontWeight={700} fontSize={15} padding="0 8 0 0">Mail</text>
 				<Button tag="archive" label="Archive" onPress={() -> moveTo("Archive")}/>
 				<Button tag="delete" label="Delete" onPress={() -> moveTo("Trash")}/>
 				<Button tag="unread" label="Mark unread" onPress={markUnread}/>
 				<view flexGrow={1}/>
 				<Button tag="dark" label="Dark mode" variant="ghost" onPress={() -> dark(!dark.peek())}/>
-				<field tag="search" slot="input" width={200} value={query} placeholder="Search" aria-label="Search messages" onInput={e -> query(e.text)}/>
+				<field tag="search" style={s.input} value={query} placeholder="Search" aria-label="Search messages" onInput={e -> query(e.text)}/>
 			</view>
 			<view flexDirection="row" flexGrow={1} minHeight={0} columnGap={12} padding={12}>
 				<view tag="folders" width={170} flexShrink={0} rowGap={2} role="list" aria-label="Folders">
 					<For each={folders}>{(folderOf:Read<Folder>) -> {
 						var f = folderOf();
-						<button slot="folder" role="listitem" aria-selected={folder() == f} data-state={folder() == f ? "selected" : null}
+						<button style={s.folder} role="listitem" aria-selected={folder() == f} data-state={folder() == f ? "selected" : null}
 							padding={[5, 8, 5, 8 + 16 * f.level]} onPress={() -> {
 								folder(f);
 								selected(null);
 							}}>
 							<text flexGrow={1}>{f.name}</text>
-							<text slot="muted">{count(unread(f))}</text>
+							<text style={s.muted}>{count(unread(f))}</text>
 						</button>;
 					}}</For>
 				</view>
-				<view slot="panel" width={340} flexShrink={0} minHeight={0}>
-					<view slot="head" flexDirection="row" columnGap={8}>
+				<view style={s.panel} width={340} flexShrink={0} minHeight={0}>
+					<view style={s.head}>
 						<Column title="From" by="from" width={90}/>
 						<Column title="Subject" by="subject"/>
 						<Column title="Date" by="date" width={52}/>
@@ -213,25 +217,25 @@ class Mail implements Markup {
 					}}>
 						<For each={shown()}>{(message:Read<Message>) -> {
 							var m = message();
-							<view slot="row" role="listitem" flexDirection="row" columnGap={8} aria-selected={selected() == m}
-								data-state={selected() == m ? "selected" : null} onPress={() -> selected(m)}>
+							<view style={s.row} role="listitem" aria-selected={selected() == m} data-state={selected() == m ? "selected" : null}
+								onPress={() -> selected(m)}>
 								{cell(m, m.from, 90)}{cell(m, m.subject)}{cell(m, "Oct " + m.day, 52)}
 							</view>;
 						}}</For>
-						<Show when={shown().length == 0}><text slot="muted" padding={12}>No messages</text></Show>
+						<Show when={shown().length == 0}><text style={s.muted} padding={12}>No messages</text></Show>
 					</scroll>
 				</view>
-				<view tag="reader" slot="panel" flexGrow={1} minWidth={0} padding={16} rowGap={10}>
-					<Show when={selected() != null} fallback={<text slot="muted">No message selected</text>}>
+				<view tag="reader" style={s.panel} flexGrow={1} minWidth={0} padding={16} rowGap={10}>
+					<Show when={selected() != null} fallback={<text style={s.muted}>No message selected</text>}>
 						<text tag="reader-subject" fontSize={16} fontWeight={600}>{selected()?.subject}</text>
-						<text slot="muted">{selected() == null ? "" : "From " + selected().from + ", October " + selected().day}</text>
-						<view slot="rule" height={1}/>
+						<text style={s.muted}>{selected() == null ? "" : "From " + selected().from + ", October " + selected().day}</text>
+						<view style={s.rule}/>
 						<text tag="reader-body" lineHeight={1.5}>{selected()?.body}</text>
 					</Show>
 				</view>
 			</view>
 			<Show when={undo() != null}>
-				<view slot="bar" flexDirection="row" alignItems="center" columnGap={12} padding="6 12" aria-live="polite">
+				<view style={s.bar} columnGap={12} padding="6 12" aria-live="polite">
 					<text flexGrow={1}>{undo()?.text}</text>
 					<Button tag="undo" label="Undo" variant="ghost" onPress={() -> undo.peek()?.run()}/>
 					<Button tag="dismiss" label="×" variant="ghost" onPress={() -> undo(null)}/>
@@ -241,46 +245,6 @@ class Mail implements Markup {
 
 	static function count(n:Int):String
 		return n == 0 ? "" : Std.string(n);
-
-	static inline function token(name:String):Color
-		return Color.parse('var(--$name)');
-
-	public static final sheet:StyleSheet = {
-		rules: [
-			{slot: "body", style: {background: token("background"), color: token("foreground")}},
-			{slot: "bar", style: {background: token("muted-background")}},
-			{slot: "muted", style: {color: token("muted")}},
-			{slot: "rule", style: {background: token("border")}},
-			{slot: "panel", style: {borderRadius: 8, borderWidth: 1, borderColor: token("border"), background: token("card")}},
-			{slot: "head", style: {padding: [6, 10], borders: [0, 0, 1, 0], borderColor: token("border")}},
-			{slot: "column", style: {flexDirection: Row, color: token("muted"), fontWeight: 600, cursor: Pointer}},
-			{slot: "column", when: ["hover"], style: {color: token("foreground")}},
-			{slot: "row", style: {padding: [5, 10], cursor: Pointer}},
-			{slot: "row", when: ["hover"], style: {background: token("hover")}},
-			{slot: "row", when: ["data-state=selected"], style: {background: token("accent"), color: token("accent-foreground")}},
-			{slot: "folder", style: {flexDirection: Row, alignItems: Center, borderRadius: 6, cursor: Pointer}},
-			{slot: "folder", when: ["hover"], style: {background: token("hover")}},
-			{slot: "folder", when: ["data-state=selected"], style: {background: token("accent"), color: token("accent-foreground"), fontWeight: 600}},
-			{slot: "button", style: {flexDirection: Row, alignItems: Center, padding: [5, 10], borderRadius: 6, borderWidth: 1, borderColor: token("border"),
-				background: token("card"), cursor: Pointer}},
-			{slot: "button", when: ["hover"], style: {background: token("hover")}},
-			{slot: "button", variant: "ghost", style: {borderColor: Color.TRANSPARENT, background: Color.TRANSPARENT}},
-			{slot: "button", variant: "ghost", when: ["hover"], style: {background: token("hover")}},
-			{slot: "input", style: {padding: [5, 10], borderRadius: 6, borderWidth: 1, borderColor: token("border"), background: token("card")}},
-			{slot: "input", when: ["focus"], style: {borderColor: token("muted")}},
-			{slot: "input", when: ["placeholder"], style: {color: token("muted")}}
-		],
-		light: [
-			"background" => Color.rgb(0xFFFFFF), "foreground" => Color.rgb(0x18181B), "muted-background" => Color.rgb(0xF4F4F5), "muted" => Color.rgb(0x71717A),
-			"border" => Color.rgb(0xE4E4E7), "card" => Color.rgb(0xFFFFFF), "hover" => Color.rgb(0xF4F4F5), "accent" => Color.rgb(0xDBEAFE),
-			"accent-foreground" => Color.rgb(0x1E3A8A)
-		],
-		dark: [
-			"background" => Color.rgb(0x09090B), "foreground" => Color.rgb(0xFAFAFA), "muted-background" => Color.rgb(0x18181B), "muted" => Color.rgb(0xA1A1AA),
-			"border" => Color.rgb(0x27272A), "card" => Color.rgb(0x09090B), "hover" => Color.rgb(0x27272A), "accent" => Color.rgb(0x1E3A8A),
-			"accent-foreground" => Color.rgb(0xDBEAFE)
-		]
-	};
 
 	// from, subject, body, folder, day of October, read or unread
 	static final MESSAGES = [

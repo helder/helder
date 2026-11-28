@@ -1,5 +1,6 @@
 import Api;
 import Everbloom.Route;
+import Theme;
 import Theme.*;
 import helder.async.Async;
 import helder.async.Task;
@@ -40,7 +41,7 @@ class Screens implements Markup {
 
 	// (the safe area's top, then a bar of 44)
 	public static function NavBar(props:{title:String}):View
-		return <view paddingTop="env(safe-area-inset-top)" flexShrink={0}>
+		return <view padding="env(safe-area-inset-top) 0 0 0" flexShrink={0}>
 			<view height={44} padding="0 8" flexDirection="row" alignItems="center">
 				<Back/>
 				<text flexGrow={1} flexBasis={0} minWidth={0} fontSize={17} fontWeight={600} textAlign="center" lineClamp={1} textOverflow="ellipsis">{props.title}</text>
@@ -164,9 +165,9 @@ class HomeScreen implements Markup {
 
 	public function view():View
 		return <view flexGrow={1} minHeight={0}>
-			<Show when={!failed()} fallback={<view flexGrow={1} paddingTop="env(safe-area-inset-top)">{header()}<Failed onRetry={load}/></view>}>
+			<Show when={!failed()} fallback={<view flexGrow={1} padding="env(safe-area-inset-top) 0 0 0">{header()}<Failed onRetry={load}/></view>}>
 				<scroll id="home-scroll" flexGrow={1} minHeight={0} scrollbarWidth="none">
-					<view paddingTop="env(safe-area-inset-top)" paddingBottom={24}>
+					<view padding="env(safe-area-inset-top) 0 24 0">
 						{header()}
 						<Show when={data() != null} fallback={skeleton()}>{content(data())}</Show>
 					</view>
@@ -283,7 +284,7 @@ class CollectionScreen implements Markup {
 							<Card product={a} id={"product-card-" + i} onOpen={Screens.openProduct}/>
 							{b == null ? <view flexGrow={1} flexBasis={0}/> : <Card product={b} id={"product-card-" + (i + 1)} onOpen={Screens.openProduct}/>}
 						</view>;
-					case End: <view paddingBottom={16}>
+					case End: <view padding="0 0 16 0">
 							<Show when={paged.loading()}>{Spinner()}</Show>
 							<Show when={paged.failed() && !paged.first()}>
 								<view alignItems="center" padding={12}><Button id="error-retry" label="Retry" secondary height={40} onPress={paged.retry}/></view>
@@ -375,7 +376,7 @@ class ProductScreen implements Markup {
 		var options = [for (o in d.options) if (!(o.name == "Title" && o.values.length == 1 && o.values[0] == "Default Title")) o];
 		return <view flexGrow={1} minHeight={0}>
 			<scroll flexGrow={1} minHeight={0}>
-				<view paddingBottom={32}>
+				<view padding="0 0 32 0">
 					<view>
 						<Carousel images={d.images}/>
 						<view position="absolute" left={12} top="calc(env(safe-area-inset-top) + 4px)"><Back round/></view>
@@ -388,7 +389,7 @@ class ProductScreen implements Markup {
 						var opt = o();
 						<view padding="24 16 0" rowGap={12}>
 							<view flexDirection="row">
-								<text fontSize={15} fontWeight={600} paddingRight={4}>{opt.name + ":"}</text>
+								<text fontSize={15} fontWeight={600} padding="0 4 0 0">{opt.name + ":"}</text>
 								<text fontSize={15} color={MUTED}>{variant()?.options.get(opt.name) ?? ""}</text>
 							</view>
 							<view flexDirection="row" flexWrap columnGap={8} rowGap={8}>
@@ -418,7 +419,7 @@ class ProductScreen implements Markup {
 					</Show>
 				</view>
 			</scroll>
-			<view padding="12 16" paddingBottom="max(12px, env(safe-area-inset-bottom))" borders="1 0 0 0" borderColor={BORDER} background={BACKGROUND}>
+			<view padding="12 16 max(12px, env(safe-area-inset-bottom)) 16" borderWidth="1 0 0 0" borderColor={BORDER} background={BACKGROUND}>
 				<Button id="add-to-cart" label={"Add to cart · " + (variant()?.price.toString() ?? "")} disabled={() -> adding() || Everbloom.cartBusy()}
 					onPress={add}/>
 			</view>
@@ -489,7 +490,7 @@ class SearchScreen implements Markup {
 		return [for (i => p in paged.products()) ({i: i, p: p} : Hit)];
 
 	public function view():View
-		return <view flexGrow={1} paddingTop="env(safe-area-inset-top)">
+		return <view flexGrow={1} padding="env(safe-area-inset-top) 0 0 0">
 			<view padding="4 16 12" flexShrink={0}>
 				<view height={44} borderRadius={12} background={SURFACE} flexDirection="row" alignItems="center" columnGap={8} padding="0 12">
 					{icon(SEARCH, 20, MUTED)}
@@ -527,14 +528,14 @@ class SearchScreen implements Markup {
 
 class CartScreen implements Markup {
 	public static function view():View
-		return <view flexGrow={1} paddingTop="env(safe-area-inset-top)">
+		return <view flexGrow={1} padding="env(safe-area-inset-top) 0 0 0">
 			<view height={44} padding="0 16" justifyContent="center" flexShrink={0}><text fontSize={22} fontWeight={700} role="heading">Cart</text></view>
 			<Show when={(Everbloom.cart()?.lines.length ?? 0) > 0} fallback={empty()}>
 				<scroll flexGrow={1} minHeight={0}>
 					<view padding="0 16">
 						<For each={Everbloom.cart()?.lines ?? []} keyed={false}>{(line:Read<CartLine>) -> {
 							var i = (Everbloom.cart()?.lines ?? []).indexOf(line());
-							<view id={"cart-line-" + i} flexDirection="row" columnGap={12} padding="16 0" borders="0 0 1 0" borderColor={BORDER}>
+							<view id={"cart-line-" + i} flexDirection="row" columnGap={12} padding="16 0" borderWidth="0 0 1 0" borderColor={BORDER}>
 								<Picture url={line().image} width={240} w={80} h={107}/>
 								<view flexGrow={1} minWidth={0} rowGap={4}>
 									<text fontSize={15} lineHeight="20px" fontWeight={600}>{line().title}</text>
@@ -553,7 +554,7 @@ class CartScreen implements Markup {
 						}}</For>
 					</view>
 				</scroll>
-				<view padding={16} rowGap={12} borders="1 0 0 0" borderColor={BORDER} flexShrink={0}>
+				<view padding={16} rowGap={12} borderWidth="1 0 0 0" borderColor={BORDER} flexShrink={0}>
 					<view flexDirection="row" justifyContent="space-between" alignItems="baseline">
 						<text fontSize={15}>Subtotal</text>
 						<text id="cart-subtotal" fontSize={17} fontWeight={700}>{Everbloom.cart()?.subtotal.toString() ?? ""}</text>
@@ -567,7 +568,7 @@ class CartScreen implements Markup {
 			</Show>
 		</view>;
 
-	static function stepper(id:String, label:String, glyph:Theme.Icon, f:Void->Void):View
+	static function stepper(id:String, label:String, glyph:Icon, f:Void->Void):View
 		return <button id={id} aria-label={label} width={36} height={34} alignItems="center" justifyContent="center"
 			disabled={Everbloom.cartBusy()} onPress={() -> if (!Everbloom.cartBusy.peek()) f()}>{icon(glyph, 16, TEXT)}</button>;
 
@@ -577,6 +578,6 @@ class CartScreen implements Markup {
 			{icon(Theme.CART, 48, MUTED)}
 			<text fontSize={17} fontWeight={700}>Your cart is empty</text>
 			<text fontSize={15} lineHeight="22px" color={MUTED} textAlign="center">Items you add will appear here.</text>
-			<view marginTop={8}><Button label="Start shopping" height={48} onPress={() -> Everbloom.tab(0)}/></view>
+			<view margin="8 0 0 0"><Button label="Start shopping" height={48} onPress={() -> Everbloom.tab(0)}/></view>
 		</view>;
 }

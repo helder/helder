@@ -7,6 +7,7 @@ import helder.canvas.Paint;
 import helder.canvas.Path;
 import helder.canvas.Stroke;
 import helder.image.Image;
+import helder.ui.Style;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -121,7 +122,7 @@ class Threads implements Markup {
 
 	static function Field(props:{t:Read<Float>}):helder.ui.Node {
 		var f = new FlowField(W, H);
-		f.style.flexGrow = 1;
+		f.style = Style.of({flexGrow: 1});
 		renderEffect(() -> props.t(), t -> f.time = t);
 		return f;
 	}

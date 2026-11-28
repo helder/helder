@@ -21,7 +21,7 @@ class Neon extends helder.ui.Node {
 
 	var canvas:Null<Canvas> = null;
 	var image:Null<Image> = null;
-	var drawn = "";
+	var last = "";
 	final shape = new Path();
 	final ring = new Path();
 
@@ -98,10 +98,10 @@ class Neon extends helder.ui.Node {
 		var w = Std.int(Math.max(8, Math.round(width * scale))), h = Std.int(Math.max(8, Math.round(height * scale)));
 		var on = lit(time);
 		var key = '$w $h $on ${knobs.x} ${knobs.y} ${knobs.z} ${knobs.w}';
-		if (key != drawn) {
-			drawn = key;
+		if (key != last) {
+			last = key;
 			render(w, h, on);
 		}
-		g.image(image, x, y, width, height, 0, 0, 1, 1, style.borderRadius);
+		g.image(image, x, y, width, height, 0, 0, 1, 1, 0, helder.ui.NodePaint.corners(used, width, height, 0));
 	}
 }

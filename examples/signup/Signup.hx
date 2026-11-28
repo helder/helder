@@ -13,8 +13,8 @@ import helder.view.graph.Signal;
 
 // A card of helder's controls (helder.ui.controls: a Checkbox, a Switch,
 // Buttons; their keys, states and accessibility theirs), in Look.base with
-// the card's own parts (a slot each: card, muted, badge, input), its colours
-// the look's tokens, inline too (Look.ref). The switch turns dark mode on
+// the card's own parts (card, muted, badge, input: look.part's Styles), its
+// colours the look's tokens, inline too (Look.ref). The switch turns dark mode on
 // (the window's Ui.dark); Sign up waits for the terms.
 class Signup implements Markup {
 	static function main() {
@@ -57,16 +57,16 @@ class Signup implements Markup {
 	public static function view(dark:Signal<Bool>):View {
 		var email = signal(""), terms = signal(false), sent = signal(false);
 		return <view flexGrow={1} padding={24} background={Look.ref.canvas} color={Look.ref.fg} fontFamily="Inter" fontSize={14}>
-			<view slot="card">
+			<view style={look.part("card")}>
 				<view flexDirection="row" alignItems="start">
 					<view flexGrow={1} rowGap={4}>
 						<text fontSize={16} fontWeight={600}>Create an account</text>
-						<text slot="muted">{() -> sent() ? "Check your inbox" : "Enter your email below"}</text>
+						<text style={look.part("muted")}>{() -> sent() ? "Check your inbox" : "Enter your email below"}</text>
 					</view>
-					<text slot="badge">Beta</text>
+					<text style={look.part("badge")}>Beta</text>
 				</view>
 				<view rowGap={12}>
-					<field slot="input" value={email} placeholder="m@example.com" aria-label="Email" onInput={e -> email(e.text)}/>
+					<field style={look.part("input")} value={email} placeholder="m@example.com" aria-label="Email" onInput={e -> email(e.text)}/>
 					<Standard.Checkbox label="Accept terms" checked={terms} onChange={v -> terms(v)}/>
 					<Standard.Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
 				</view>

@@ -1689,7 +1689,7 @@ variant, `composes:` classes of the same file, `var(--name)` a token of
 the theme file given, checked for its type (`var(--name, fallback)`
 takes the fallback where the theme has none); a descendant or sibling selector, or a property a style has no
 field for, is an error of the build at its line in the file
-(examples/mail-fast's mail.module.css).
+(examples/mail's mail.module.css).
 
 ```haxe
 static final app = Theme.load("app.theme.css");  // :root { --hover: light-dark(#f4f4f5, #27272a); --pad: 6px }

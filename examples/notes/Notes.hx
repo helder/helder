@@ -4,6 +4,7 @@
 // demo: canvas 1280x720
 import helder.os.Mods;
 import helder.ui.Key;
+import helder.ui.Style;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.view.*;
@@ -196,11 +197,15 @@ class Notes implements Markup {
 			}</text>
 		</view>;
 
+	static final item = Style.of({cursor: Pointer, padding: [12, 14], borderRadius: 10, rowGap: 4});
+	static final raised = item.with({shadows: [{x: 0, y: 1, blur: 3, color: 0x1F141E3C}]});
+	static final raisedDark = item.with({shadows: [{x: 0, y: 1, color: 0x66000000}]});
+	static final panel = Style.of({width: 620, borderRadius: 16, borderWidth: 1, shadows: [{x: 0, y: 30, blur: 80, color: 0x590A0F28}]});
+
 	static function Item(props:{note:Note}):View {
 		var n = props.note;
-		return <view tag={"note-" + n.id} role="option" aria-selected={selected() == n.id} focusable cursor="pointer" padding="12 14" borderRadius={10} rowGap={4}
-			transition="fade slide-up(10)" background={selected() == n.id ? c("#ffffff", "#1d2232") : c("#00000000", "#00000000")}
-			boxShadow={selected() == n.id ? (dark() ? "0 1px 0 rgba(0,0,0,0.4)" : "0 1px 3px rgba(20,30,60,0.12)") : "none"} onPress={() -> selected(n.id)}>
+		return <view tag={"note-" + n.id} role="option" aria-selected={selected() == n.id} focusable style={selected() == n.id ? (dark() ? raisedDark : raised) : item}
+			transition="fade slide-up(10)" background={selected() == n.id ? c("#ffffff", "#1d2232") : c("#00000000", "#00000000")} onPress={() -> selected(n.id)}>
 			<view flexDirection="row" alignItems="center" columnGap={6}>
 				<Show when={n.pinned}><view width={6} height={6} borderRadius={3} background="#f59e0b" transition="pop"/></Show>
 				<text flexGrow={1} fontSize={15} fontWeight={600} textOverflow="ellipsis" textWrap="nowrap">{n.title() == "" ? "Untitled" : n.title()}</text>
@@ -252,8 +257,8 @@ class Notes implements Markup {
 		onSettled(() -> if (input != null) input.focus());
 		return <view position="absolute" left={0} top={0} right={0} bottom={0} zIndex={10} alignItems="center" padding="110 0 0 0" transition="fade"
 			background={dark() ? "#00000088" : "#1a1f3355"} onPress={() -> closeLauncher()}>
-			<view tag="launcher" width={620} borderRadius={16} background={c("#ffffff", "#141824")} borderWidth={1} borderColor={c("#e3e6ee", "#2a3048")}
-				boxShadow="0 30px 80px rgba(10, 15, 40, 0.35)" transition="fade scale" onPress={e -> e.stop()}>
+			<view tag="launcher" style={panel} background={c("#ffffff", "#141824")} borderColor={c("#e3e6ee", "#2a3048")} transition="fade scale"
+				onPress={e -> e.stop()}>
 				<view flexDirection="row" alignItems="center" columnGap={10} padding="14 18" borderWidth="0 0 1 0" borderColor={c("#eceef3", "#232838")}>
 					<icon name="search" width={18} height={18} color={c("#8b90a0", "#7d849c")}/>
 					<field tag="query" flexGrow={1} value={query} placeholder="Type a command or a note's name" aria-label="Command" fontSize={17} padding={0}

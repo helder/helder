@@ -115,7 +115,7 @@ class GltfShowcase implements Markup {
 				<view width={190} padding={14} rowGap={6} background="#18181d">
 					<text fontSize={15} fontWeight={700}>Model</text>
 					{[for (k in 0...Showcase.MODELS.length) <Pick label={Showcase.MODELS[k].name} on={() -> model() == k} onPress={() -> load(k)}/>]}
-					<text fontSize={15} fontWeight={700} marginTop={10}>Environment</text>
+					<text fontSize={15} fontWeight={700} margin="10 0 0 0">Environment</text>
 					{[for (k in 0...Showcase.ENVIRONMENTS.length) <Pick label={Showcase.ENVIRONMENTS[k].label} on={() -> env() == k} onPress={() -> {
 						env(k);
 						if (renderer != null) show.environment(renderer, k);

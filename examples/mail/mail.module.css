@@ -1,5 +1,5 @@
-/* Mail.sheet's rules as a CSS module for fast nodes (StyleModule): a class
-   alone, its own states, colours from the theme's tokens (var(--name)). */
+/* The client's look (StyleModule): a class alone, its own states, colours
+   from mail.theme.css's tokens (var(--name)). */
 .body { background: var(--background); color: var(--foreground); font-size: 13px }
 .bar { flex-direction: row; align-items: center; column-gap: 8px; padding: 8px 12px; background: var(--muted-background) }
 .muted { color: var(--muted) }
