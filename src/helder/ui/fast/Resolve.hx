@@ -72,6 +72,10 @@ class Resolve {
 		return s;
 	}
 
+	// (what a box's style was resolved from, in its states: null for another's)
+	public static function propsOf(s:BoxStyle):Null<Props>
+		return Std.isOfType(s, Resolved) ? (cast s : Resolved).props : null;
+
 	public static function level(a:BoxStyle, b:BoxStyle):Int {
 		if (a == b) return NOTHING;
 		var x:Resolved = cast a, y:Resolved = cast b;

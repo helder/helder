@@ -704,7 +704,7 @@ class Tree extends helder.ui.Node {
 		var id = fragmentOf(b);
 		if (id < 0) return null;
 		var e = extent(b, id), view = x ? e[0] : e[1], content = x ? e[2] : e[3];
-		var bar = Node.of(b)?.props().scrollbarWidth;
+		var bar = Resolve.propsOf(b.style)?.scrollbarWidth;
 		if (content - view <= 0.5 || bar == None) return null;
 		var m = b.style.model(), p = fragments.absolute(id), s = shift(b), o = scrolls.get(Box.scrollKey(b)) ?? [0.0, 0.0];
 		var size = helder.ui.Ui.SCROLLBAR * (bar == Thin ? 2 / 3 : 1), inset = helder.ui.Ui.SCROLLBAR_INSET;
