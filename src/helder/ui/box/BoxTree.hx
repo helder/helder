@@ -585,11 +585,11 @@ class BoxTree {
 		return c;
 	}
 
-	// (a part's proper children kept, each run of others in one made by wrap; white space alone dropped)
+	// (table fixup ignores whitespace-only runs between table parts, even under white-space: pre)
 	static function runs(b:Box, kids:Array<Box>, proper:Box->Bool, wrap:Array<Box>->Box) {
 		var run = [];
 		function flush() {
-			if (run.length > 0 && !Lambda.foreach(run, blank)) b.append(wrap(run));
+			if (run.length > 0 && !Lambda.foreach(run, whitespaceText)) b.append(wrap(run));
 			run = [];
 		}
 		for (k in kids) {
@@ -615,7 +615,7 @@ class BoxTree {
 			run = [];
 		}
 		for (k in kids) {
-			if (isPart(k) || run.length > 0 && blank(k)) run.push(k) else {
+			if (isPart(k) || run.length > 0 && whitespaceText(k)) run.push(k) else {
 				flush();
 				out.push(k);
 			}
@@ -625,7 +625,10 @@ class BoxTree {
 	}
 
 	static function blank(b:Box):Bool
-		return b.kind == Text && b.style.collapse && ~/^[ \t\n\r\x0C]*$/.match(b.text);
+		return b.style.collapse && whitespaceText(b);
+
+	static function whitespaceText(b:Box):Bool
+		return b.kind == Text && ~/^[ \t\n\r\x0C]*$/.match(b.text);
 
 	// ---- generated content
 
