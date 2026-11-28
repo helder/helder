@@ -1138,19 +1138,39 @@ class BlockFlow implements FormattingContext {
 		// (its natural ratio, or aspect-ratio's over it)
 		var ratio = Ratio.of(box);
 		var w = size(s.width, cbw, s.borderBox, bpx), h = size(s.height, cbh, s.borderBox, bpy);
+		var minW = size(s.minWidth, cbw, s.borderBox, bpx), maxW = size(s.maxWidth, cbw, s.borderBox, bpx);
+		var minH = size(s.minHeight, cbh, s.borderBox, bpy), maxH = size(s.maxHeight, cbh, s.borderBox, bpy);
+		if (Math.isNaN(minW)) minW = 0;
+		if (Math.isNaN(minH)) minH = 0;
+		maxW = Math.isNaN(maxW) ? Math.POSITIVE_INFINITY : Math.max(minW, maxW);
+		maxH = Math.isNaN(maxH) ? Math.POSITIVE_INFINITY : Math.max(minH, maxH);
+		inline function clamp(v:Float, min:Float, max:Float):Float
+			return Math.max(min, Math.min(max, v));
 		if (Math.isNaN(w) && Math.isNaN(h)) {
 			w = iw;
+			h = ih;
+			if (!Math.isNaN(ratio)) {
+				// (CSS 2 §10.4: intersect the constraints through the ratio, or use both bounds when they conflict)
+				var low = Ratio.width(box, minH, bpx, bpy), high = Ratio.width(box, maxH, bpx, bpy);
+				if (minW > high) {
+					w = minW;
+					h = maxH;
+				} else if (maxW < low) {
+					w = maxW;
+					h = minH;
+				} else {
+					w = clamp(w, Math.max(minW, low), Math.min(maxW, high));
+					h = Ratio.height(box, w, bpx, bpy);
+				}
+			}
+		} else if (Math.isNaN(w)) {
+			h = clamp(h, minH, maxH);
+			w = Math.isNaN(ratio) ? iw : Ratio.width(box, h, bpx, bpy);
+		} else if (Math.isNaN(h)) {
+			w = clamp(w, minW, maxW);
 			h = Math.isNaN(ratio) ? ih : Ratio.height(box, w, bpx, bpy);
-		} else if (Math.isNaN(w))
-			w = Math.isNaN(ratio) ? iw : Ratio.width(box, h, bpx, bpy)
-		else if (Math.isNaN(h)) h = Math.isNaN(ratio) ? ih : Ratio.height(box, w, bpx, bpy);
-		var maxW = size(s.maxWidth, cbw, s.borderBox, bpx), minW = size(s.minWidth, cbw, s.borderBox, bpx);
-		var maxH = size(s.maxHeight, cbh, s.borderBox, bpy), minH = size(s.minHeight, cbh, s.borderBox, bpy);
-		if (!Math.isNaN(maxW) && w > maxW) w = maxW;
-		if (!Math.isNaN(minW) && w < minW) w = minW;
-		if (!Math.isNaN(maxH) && h > maxH) h = maxH;
-		if (!Math.isNaN(minH) && h < minH) h = minH;
-		return {w: Math.max(0, w), h: Math.max(0, h)};
+		}
+		return {w: clamp(w, minW, maxW), h: clamp(h, minH, maxH)};
 	}
 
 	// (an SVG's natural size where it has one, else its ratio's at the
