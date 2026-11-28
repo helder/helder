@@ -41,12 +41,21 @@ class Resolve {
 
 	// (each style's resolutions: mask, parent text, theme, kind, the box style, 5 a resolution)
 	static final cache = new haxe.ds.ObjectMap<Style, Array<Dynamic>>();
+	static var cached = 0;
 
 	public static function of(style:Style, mask:Int, parent:InlineBasicStyle, theme:Theme, kind:Int):BoxStyle {
 		// (states it has no variant for change nothing: one resolution for them all)
 		mask &= style.states;
 		var list = cache.get(style);
-		if (list == null) cache.set(style, list = []);
+		if (list == null) {
+			// (bounded as Style's interning is)
+			if (cached >= Style.BOUND) {
+				cache.clear();
+				cached = 0;
+			}
+			cache.set(style, list = []);
+			cached++;
+		}
 		var k = 0;
 		while (k < list.length) {
 			if (list[k] == mask && list[k + 1] == parent && list[k + 2] == theme && list[k + 3] == kind) return list[k + 4];
@@ -142,14 +151,28 @@ class Resolve {
 		// (a grid's terms: Grids', linked where a program says grid)
 		if (grids != null) grids(p, rare1);
 		if (rare != null) s.rareRead = rare;
-		// (paint: its background, corners, borders)
+		// (paint: its background, corners, borders, shadows, outline)
 		s.bgColor = p.background == null ? 0 : tint(p.background, theme, t.colour);
-		var r = p.borderRadius;
-		if (r != null && r > 0) s.radiusTerms = [for (_ in 0...8) Dimension(r, "px")];
-		var bc = p.borderColor == null ? 0 : tint(p.borderColor, theme, t.colour);
+		var r:Null<Array<Float>> = p.borderRadius;
+		if (r != null && r[0] + r[1] + r[2] + r[3] > 0) s.radiusTerms = [for (k in 0...8) Dimension(r[k >> 1], "px")];
+		var bc = p.borderColor == null ? 0 : tint(p.borderColor, theme, t.colour), style = word(p.borderStyle);
 		for (k in 0...4) {
-			s.sideStyles.push(bw != null && (bw : Array<Float>)[k] > 0 ? "solid" : "none");
+			s.sideStyles.push(bw != null && (bw : Array<Float>)[k] > 0 ? style : "none");
 			s.sideColors.push(bc);
+		}
+		if (p.shadows != null) s.shadowList = [for (sh in p.shadows) {
+			var b = new helder.ui.box.BoxStyle.BoxShadow();
+			b.color = tint(sh.color, theme, t.colour);
+			b.inset = sh.inset == true;
+			for (v in [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]) b.lengths.push(v);
+			b;
+		}];
+		var o = p.outline;
+		if (o != null && o.width > 0) {
+			s.outlineStyleValue = word(o.style);
+			s.outlineWidthValue = o.width;
+			s.outlineOffsetValue = o.offset ?? 0;
+			s.outlineColorValue = tint(o.color, theme, t.colour);
 		}
 		s.paintRead = true;
 		return s;
@@ -196,6 +219,13 @@ class Resolve {
 			case Plain(c): c;
 			case Token(name): theme.color(name);
 			case Current: current;
+		}
+
+	static function word(b:Null<helder.ui.BorderStyle>):String
+		return switch b {
+			case Dashed: "dashed";
+			case Dotted: "dotted";
+			case _: "solid";
 		}
 
 	static function justify(j:Null<helder.ui.Justify>):String

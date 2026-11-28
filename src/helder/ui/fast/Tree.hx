@@ -689,7 +689,7 @@ class Tree extends helder.ui.Node {
 			var id = fragmentOf(active.box);
 			if (id >= 0) {
 				var p = fragments.absolute(id), s = shift(active.box), o = ui.focusRingOffset + ui.focusRingWidth;
-				var radius = active.props().borderRadius ?? 0;
+				var corners:Null<Array<Float>> = active.props().borderRadius, radius = corners == null ? 0 : corners[0];
 				canvas.rect(p.x - s[0] - o, p.y - s[1] - o, fragments.width(id) + 2 * o, fragments.height(id) + 2 * o, radius > 0 ? radius + o : 0,
 					helder.gfx.Color.TRANSPARENT, ui.focusRingWidth, ui.focusRingColor);
 			}

@@ -22,6 +22,7 @@ function tests() {
 				background: Theme.token("surface"),
 				color: 0xFF18181B,
 				borderWidth: 1,
+				borderStyle: Solid,
 				borderColor: 0xFFE4E4E7,
 				cursor: Pointer,
 				hover: {background: Theme.token("hover")},
@@ -35,6 +36,21 @@ function tests() {
 			// (in a dark theme: its dark variant over it)
 			equals(s.cardTitle.at(0, true).color, (Plain(0xFFFAFAFA) : TintValue));
 			equals(s.cardTitle.at(0, false).color, null);
+		});
+		test("paint: border style, corners, shadows in CSS's order, an outline", () -> {
+			final s = StyleModule.load("ui/fast/paint.module.css");
+			var chip = Style.of({
+				borderWidth: 1,
+				borderStyle: Dashed,
+				borderColor: 0xFFE4E4E7,
+				borderRadius: [4, 4, 0, 0],
+				shadows: [
+					{x: 0, y: 1, blur: 2, spread: 0, color: 0x1A000000, inset: false},
+					{x: 0, y: 0, blur: 0, spread: 1, color: Theme.token("line"), inset: true}
+				],
+				outline: {width: 2, color: Theme.token("focus"), style: Solid, offset: 2}
+			});
+			equals(s.chip == chip, true);
 		});
 	});
 }
