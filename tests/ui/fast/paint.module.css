@@ -5,3 +5,10 @@
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+.label {
+  pointer-events: none;
+  direction: rtl;
+  font-variant-numeric: tabular-nums;
+  aspect-ratio: 16 / 9;
+  scrollbar-width: thin;
+}

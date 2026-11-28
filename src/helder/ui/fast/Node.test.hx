@@ -57,6 +57,27 @@ function tests() {
 			equals((p.borderRadius : Array<Float>).join(","), "4,0,4,0");
 			equals(p.borderStyle, Dotted);
 		});
+		test("pointerEvents inherited: None through its descendants, an Auto one found again", () -> {
+			var a = new Node(Style.of({pointerEvents: None})), b = new Node(), c = new Node(Style.of({pointerEvents: Auto}));
+			a.append(b);
+			b.append(c);
+			equals(a.box.style.rare.pointerEvents, "none");
+			equals(b.box.style.rare.pointerEvents, "none");
+			equals(c.box.style.rare.pointerEvents, "auto");
+			a.style = Style.none;
+			equals(b.box.style.rare.pointerEvents, "auto");
+		});
+		test("direction, figures' forms (inherited), an aspect ratio", () -> {
+			var a = new Node(Style.of({direction: Rtl, fontVariantNumeric: "tabular-nums slashed-zero"})), b = new Node(Style.of({aspectRatio: 2}));
+			a.append(b);
+			equals(a.box.style.rtl, true);
+			equals(b.box.style.rtl, true);
+			equals([for (f in b.box.style.text.features) f.tag].join(","), "tnum,zero");
+			equals(b.box.style.model().ratio, 2.0);
+			var p = new Style.Props();
+			Attrs.set(p, "aspectRatio", "16 / 8");
+			equals(p.aspectRatio, 2.0);
+		});
 		test("styles made of ever new values: interning and resolutions bounded", () -> {
 			for (i in 0...Style.BOUND * 2 + 10) new Node(Style.ofProps({width: i}));
 			equals(@:privateAccess Style.internedCount <= Style.BOUND, true);

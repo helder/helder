@@ -319,6 +319,25 @@ private class Compile {
 					}
 					set("textDecoration", macro $v{bits});
 				case "cursor": set("cursor", macro($v{flat(d.value).trim()} : helder.ui.Cursor));
+				case "pointer-events": set("pointerEvents", word(w, d, ["auto" => "Auto", "none" => "None"], "helder.ui.PointerEvents"));
+				case "direction": set("direction", word(w, d, ["ltr" => "Ltr", "rtl" => "Rtl"], "helder.ui.Dir"));
+				case "font-variant-numeric":
+					for (v in w) switch v {
+						case Token({kind: Ident("normal" | "lining-nums" | "oldstyle-nums" | "proportional-nums" | "tabular-nums" | "diagonal-fractions"
+							| "stacked-fractions" | "ordinal" | "slashed-zero")}):
+						case _: fail(Parser.startOf(v), "font-variant-numeric: its keywords");
+					}
+					set("fontVariantNumeric", macro $v{flat(d.value).trim()});
+				case "aspect-ratio":
+					// (a number, or a / b)
+					var nums = [for (v in w) switch v {
+						case Token({kind: Number(n, _, _)}): n;
+						case Token({kind: Delim("/")}): continue;
+						case _: fail(Parser.startOf(v), "aspect-ratio: a number, or a / b");
+					}];
+					if (nums.length == 0 || nums.length > 2 || nums.length == 2 && nums[1] == 0) fail(d.start, "aspect-ratio: a number, or a / b");
+					set("aspectRatio", macro $v{nums.length == 2 ? nums[0] / nums[1] : nums[0]});
+				case "scrollbar-width": set("scrollbarWidth", word(w, d, ["auto" => "Auto", "thin" => "Thin", "none" => "None"], "helder.ui.ScrollbarWidth"));
 				case name: fail(d.start, 'a fast style has no property $name');
 			}
 			// (where it was written: a value's type error there)
