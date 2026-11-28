@@ -55,7 +55,7 @@ class NodeBoxes {
 	// Layout.run's: the tree at root laid out at width by height (the root as large), its nodes told; false: nothing to do
 	public static function run(root:Node, width:Float, height:Float, text:TextEngine, ?scrollers:Array<Node>):Bool {
 		if (!root.dirty && root.lw == width && root.lh == height && !root.relaid) return false;
-		var e = root.boxes ?? (root.boxes = new NodeBoxes());
+		var e = root.laidBy ?? (root.laidBy = new NodeBoxes());
 		e.measured.text = text;
 		if (e.width != width || e.height != height) {
 			e.width = width;
@@ -90,7 +90,7 @@ class NodeBoxes {
 
 	// (a node's box: made, or styled again with its children's where it is dirty; its ancestors' caches let go)
 	function sync(n:Node):Box {
-		var b = n.box;
+		var b = n.laidBox;
 		if (b != null && !n.dirty) return b;
 		var s = styleOf(n);
 		// (a fieldset's legend first in its column: outside the flex container in CSS, so no gap after it, as Layout
@@ -116,7 +116,7 @@ class NodeBoxes {
 		if (b == null || b.kind != kind) {
 			b = new Box(kind, s, n);
 			b.flags |= Box.MADE;
-			n.box = b;
+			n.laidBox = b;
 		} else @:privateAccess b.restyle(s);
 		b.context = own ? measured : contexts.of(s.inner, _ -> {});
 		// (its children's boxes, in order: none for a node whose content they are, nor for those not shown)
@@ -151,10 +151,10 @@ class NodeBoxes {
 		if (n.lw != f.width(id) || n.lh != f.height(id)) n.relaid = true;
 		n.lw = f.width(id);
 		n.lh = f.height(id);
-		if (id == n.boxFragment && !n.relaid) return;
-		n.boxFragment = id;
+		if (id == n.laidFragment && !n.relaid) return;
+		n.laidFragment = id;
 		// (content measured is its own, its extent left as Layout leaves it)
-		var b = n.box;
+		var b = n.laidBox;
 		if (b == null || b.context == measured) return;
 		// (as Layout's: from its content box's start, each child's end margin, what a child not clipping overflows)
 		var m = b.style.model(), padL = m.border[3] + Len.Lens.resolve(m.padding[3], n.lw, 0),
