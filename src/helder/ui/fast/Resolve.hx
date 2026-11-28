@@ -3,7 +3,7 @@ package helder.ui.fast;
 import helder.css.CssTerm;
 import helder.ui.box.BoxStyle;
 import helder.ui.box.Len;
-import helder.ui.fast.Style.StyleProps;
+import helder.ui.fast.Style.Props;
 import helder.ui.fast.Style.Tint;
 import helder.ui.flow.InlineBasicStyle;
 
@@ -47,7 +47,7 @@ class Resolve {
 			if (list[k] == mask && list[k + 1] == parent && list[k + 2] == theme && list[k + 3] == kind) return list[k + 4];
 			k += 5;
 		}
-		var s = make(style.at(mask), parent, theme, kind);
+		var s = make(style.at(mask, theme.dark), parent, theme, kind);
 		list.push(mask);
 		list.push(parent);
 		list.push(theme);
@@ -64,7 +64,7 @@ class Resolve {
 		return PAINT;
 	}
 
-	static function make(p:StyleProps, parent:InlineBasicStyle, theme:Theme, kind:Int):BoxStyle {
+	static function make(p:Props, parent:InlineBasicStyle, theme:Theme, kind:Int):BoxStyle {
 		var s = new Resolved(p);
 		var t = text(p, parent, theme);
 		s.textPart = t;
@@ -148,7 +148,7 @@ class Resolve {
 
 	// (the text part: the parent's where the style says nothing inherited; else a copy with what it says, for
 	// all that resolve it under that parent)
-	static function text(p:StyleProps, parent:InlineBasicStyle, theme:Theme):InlineBasicStyle {
+	static function text(p:Props, parent:InlineBasicStyle, theme:Theme):InlineBasicStyle {
 		if (p.color == null && p.fontSize == null && p.fontWeight == null && p.fontFamily == null && p.fontStyle == null && p.lineHeight == null
 			&& p.letterSpacing == null && p.textAlign == null && p.wrap == null && p.textOverflow == null && p.lineClamp == null && p.textDecoration == null) return parent;
 		var t = parent.copy();
@@ -226,45 +226,47 @@ class Resolve {
 
 // (a style resolved: what it was resolved from, what of it a layout reads written out once)
 private class Resolved extends BoxStyle {
-	public final props:StyleProps;
+	public final props:Props;
 	var key:Null<String> = null;
 
-	public function new(props:StyleProps) {
+	public function new(props:Props) {
 		super();
 		this.props = props;
 	}
 
 	// (all but what paints alone: colours, corners, opacity and z-index; its text's size and font in it)
-	public function layoutKey():String
-		return key ??= Style.write({
-			display: props.display,
-			flexDirection: props.flexDirection,
-			flexWrap: props.flexWrap,
-			alignItems: props.alignItems,
-			alignSelf: props.alignSelf,
-			justifyContent: props.justifyContent,
-			alignContent: props.alignContent,
-			flexGrow: props.flexGrow,
-			flexShrink: props.flexShrink,
-			flexBasis: props.flexBasis,
-			gap: props.gap,
-			rowGap: props.rowGap,
-			columnGap: props.columnGap,
-			width: props.width,
-			height: props.height,
-			minWidth: props.minWidth,
-			minHeight: props.minHeight,
-			maxWidth: props.maxWidth,
-			maxHeight: props.maxHeight,
-			padding: props.padding,
-			margin: props.margin,
-			borderWidth: props.borderWidth,
-			overflow: props.overflow,
-			position: props.position,
-			top: props.top,
-			right: props.right,
-			bottom: props.bottom,
-			left: props.left
-		}) + "|" + text.size + " " + text.height + " " + text.weight + " " + text.families.join(",") + " " + text.style + " " + text.letters + " "
-			+ text.align + " " + text.wrap + " " + text.textOverflowEnd + " " + text.clamp;
+	public function layoutKey():String {
+		if (key != null) return key;
+		var p = new Props();
+		p.display = props.display;
+		p.flexDirection = props.flexDirection;
+		p.flexWrap = props.flexWrap;
+		p.alignItems = props.alignItems;
+		p.alignSelf = props.alignSelf;
+		p.justifyContent = props.justifyContent;
+		p.alignContent = props.alignContent;
+		p.flexGrow = props.flexGrow;
+		p.flexShrink = props.flexShrink;
+		p.flexBasis = props.flexBasis;
+		p.gap = props.gap;
+		p.rowGap = props.rowGap;
+		p.columnGap = props.columnGap;
+		p.width = props.width;
+		p.height = props.height;
+		p.minWidth = props.minWidth;
+		p.minHeight = props.minHeight;
+		p.maxWidth = props.maxWidth;
+		p.maxHeight = props.maxHeight;
+		p.padding = props.padding;
+		p.margin = props.margin;
+		p.borderWidth = props.borderWidth;
+		p.overflow = props.overflow;
+		p.position = props.position;
+		p.top = props.top;
+		p.right = props.right;
+		p.bottom = props.bottom;
+		p.left = props.left;
+		return key = Style.write(p) + "|" + text.size + " " + text.height + " " + text.weight + " " + text.families.join(",") + " " + text.style + " " + text.letters
+			+ " " + text.align + " " + text.wrap + " " + text.textOverflowEnd + " " + text.clamp;
+	}
 }

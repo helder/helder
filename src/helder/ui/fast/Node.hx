@@ -94,8 +94,8 @@ class Node {
 	}
 
 	// what its style says now, its states' variants over it
-	@:allow(helder.ui.fast) function props():Style.StyleProps
-		return (look ??= attrs == null ? style : Attrs.styled(style, attrs)).at(states | groupStates << Style.GROUP);
+	@:allow(helder.ui.fast) function props():Style.Props
+		return (look ??= attrs == null ? style : Attrs.styled(style, attrs)).at(states | groupStates << Style.GROUP, scope().dark);
 
 	// (a text's: TextNode's)
 	function textual():Bool

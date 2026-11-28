@@ -1664,6 +1664,19 @@ node's style is resolved into the box tree's typed `BoxStyle` once for
 each state, parent text and theme it meets, so a thousand rows of one
 style in one state are one resolve. Only the text's values inherit.
 
+A literal given to `Style.of` or `with` is checked when the program is
+built (a misspelt name or a value of another type is an error there) and
+made as typed fields; no object is read by name when it runs. A CSS
+module compiles to Styles the same way: `StyleModule.load("card.module.css")`
+is its classes, typed (a misspelt one a type error), each a class alone
+or with one of its own states (`:hover`, `:active`, `:focus-visible`,
+`:disabled`, `:checked`, `[data-state=selected]`, `::placeholder`, or
+nested, `&:hover`), `@media (prefers-color-scheme: dark)` its dark
+variant, `composes:` classes of the same file, `var(--name)` a theme's
+token; a descendant or sibling selector, or a property a style has no
+field for, is an error of the build at its line in the file
+(examples/mail-fast's mail.module.css).
+
 ```haxe
 final row = Style.of({flexDirection: Row, columnGap: 8, padding: [4, 6], hover: {background: Theme.token("hover")}});
 final list = new Node(Style.of({rowGap: 2}));

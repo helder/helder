@@ -1,0 +1,36 @@
+/* Mail.sheet's rules as a CSS module for fast nodes (StyleModule): a class
+   alone, its own states, colours from the theme's tokens (var(--name)). */
+.body { background: var(--background); color: var(--foreground); font-size: 13px }
+.bar { flex-direction: row; align-items: center; column-gap: 8px; padding: 8px 12px; background: var(--muted-background) }
+.muted { color: var(--muted) }
+.rule { height: 1px; background: var(--border) }
+.panel { border-radius: 8px; border: 1px solid var(--border); background: var(--card) }
+.head { flex-direction: row; column-gap: 8px; padding: 6px 10px; border-bottom-width: 1px; border-color: var(--border) }
+.column { flex-direction: row; color: var(--muted); font-weight: 600; cursor: pointer }
+.column:hover { color: var(--foreground) }
+.row { flex-direction: row; column-gap: 8px; padding: 5px 10px; cursor: pointer }
+.row:hover { background: var(--hover) }
+.row[data-state=selected] { background: var(--accent); color: var(--accent-foreground) }
+.folder { flex-direction: row; align-items: center; border-radius: 6px; cursor: pointer }
+.folder:hover { background: var(--hover) }
+.folder[data-state=selected] { background: var(--accent); color: var(--accent-foreground); font-weight: 600 }
+.button {
+  flex-direction: row;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  &:hover { background: var(--hover) }
+}
+.ghost { composes: button; border-color: transparent; background: transparent }
+.input {
+  width: 200px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  &:focus { border-color: var(--muted) }
+  &::placeholder { color: var(--muted) }
+}

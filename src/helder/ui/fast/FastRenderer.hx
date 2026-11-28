@@ -1,7 +1,9 @@
 package helder.ui.fast;
 
+#if !macro
 import helder.ui.access.Role;
 import helder.ui.access.Semantics;
+#end
 
 // helder.view's renderer for fast nodes (Node names it: @:rendered; a
 // <Fast>'s children). Its elements are helder.ui's names: view (a Node),
@@ -9,7 +11,7 @@ import helder.ui.access.Semantics;
 // yet), scroll (a Node that scrolls), field (a FieldNode), icon (an
 // IconNode, its name), button (focusable, a Button to assistive
 // technology), and the rest of HTML's names as views with their roles.
-// Attributes: style={Style} (or StyleProps), the style's fields by name
+// Attributes: style={Style} (a literal: one made when built), the style's fields by name
 // (Attrs: CSS's values as markup writes them), tag, role, aria-*,
 // focusable, tabIndex, group, the states (hover... as checked={Bool},
 // data-state="checked"), a field's value and placeholder, an icon's name,
@@ -17,6 +19,15 @@ import helder.ui.access.Semantics;
 // onFocus, onBlur, onPointerDown, onPointerUp, onPointerEnter, onPointerLeave.
 @:events(helder.ui.view.NodeEvents)
 class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
+	// a Style (a literal written in markup made one when the program is built: Style.of), or a list of them (the
+	// later over the earlier, nulls and false skipped)
+	public static macro function setStyle(n:haxe.macro.Expr, v:haxe.macro.Expr):haxe.macro.Expr
+		return switch v.expr {
+			case EObjectDecl(_): macro $n.style = helder.ui.fast.Style.of($v);
+			case _: macro helder.ui.fast.FastRenderer.styled($n, $v);
+		}
+
+	#if !macro
 	// (the neutral elements, view, text, button...: its own, made by createElement)
 	public static inline var neutralNative = true;
 
@@ -79,8 +90,7 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static inline function isNode(v:Dynamic):Bool
 		return Std.isOfType(v, Node);
 
-	// a Style, StyleProps, or a list of them (the later over the earlier, nulls and false skipped)
-	public static function setStyle(n:Node, v:Dynamic)
+	@:noCompletion public static function styled(n:Node, v:Dynamic)
 		n.style = styleOf(v);
 
 	static function styleOf(v:Dynamic):Style {
@@ -88,16 +98,16 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 		if (Std.isOfType(v, Style)) return v;
 		if (Std.isOfType(v, Array)) {
 			var s = Style.none;
-			for (x in (v : Array<Dynamic>)) if (x != null && x != false) s = s.with(styleOf(x).props);
+			for (x in (v : Array<Dynamic>)) if (x != null && x != false) s = s.over(styleOf(x).props);
 			return s;
 		}
-		return Style.of(v);
+		throw "helder.ui.fast: a style given when the program runs is a Style (Style.of({...})), or a list of them";
 	}
 
 	public static function setProperty(n:Node, name:String, v:Dynamic) {
 		if (n.attr(name, v)) return;
 		switch name {
-			case "style": setStyle(n, v);
+			case "style": styled(n, v);
 			case "tag": n.tag = v;
 			case "role": semantics(n).role = roleOf(v);
 			case "focusable": n.focusable = v == true;
@@ -169,4 +179,5 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 	}
 
 	static final ROLES:Array<Role> = helder.ui.view.Enums.values(Role);
+	#end
 }
