@@ -81,6 +81,10 @@ class WptPage {
 				var f = file(u);
 				f == null ? null : File.getContent(f);
 			},
+			loadBytes: u -> {
+				var f = file(u);
+				f == null ? null : {bytes: File.getBytes(f)};
+			},
 			font: u -> {
 				var f = file(u);
 				f == null ? null : File.getBytes(f);

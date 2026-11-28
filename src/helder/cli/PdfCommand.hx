@@ -57,7 +57,8 @@ class PdfCommand {
 				Term.err(Style.status("error", Fail, 'helder pdf: no stylesheet $s'));
 				return 1;
 			}
-			user.push(helder.css.CssSheet.parse(File.getContent(s), User, {url: url(s), load: u -> read(u)?.toString()}));
+			var decoded = helder.css.Css.decode(File.getBytes(s));
+			user.push(helder.css.CssSheet.parse(decoded.text, User, {url: url(s), loadBytes: u -> sheetBytes(read(u)), encoding: decoded.encoding}));
 		}
 		var t0 = haxe.Timer.stamp();
 		var pages = 0;
@@ -86,6 +87,7 @@ class PdfCommand {
 			media: media,
 			user: user,
 			load: u -> read(u)?.toString(),
+			loadBytes: u -> sheetBytes(read(u)),
 			font: read,
 			image: u -> {
 				if (u.toLowerCase().split("?")[0].endsWith(".svg")) return null;
@@ -96,6 +98,9 @@ class PdfCommand {
 				bitmap;
 			}
 		};
+
+	static function sheetBytes(bytes:Null<haxe.io.Bytes>):Null<{bytes:haxe.io.Bytes, ?charset:String}>
+		return bytes == null ? null : {bytes: bytes};
 
 	// (a path's file: URL, forward slashes)
 	static function url(path:String):String

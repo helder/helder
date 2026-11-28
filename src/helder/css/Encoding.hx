@@ -6,16 +6,15 @@ using StringTools;
 
 // A stylesheet's bytes as text (§3.2): the BOM, else the fallback
 // encoding (the protocol's label, the "@charset" bytes, the
-// environment's, UTF-8), decoded as WHATWG Encoding does. UTF-8, UTF-16
-// and the single-byte encodings decode; the multi-byte CJK ones (GBK,
-// gb18030, Big5, EUC-JP, ISO-2022-JP, Shift_JIS, EUC-KR) do not, so their
-// labels count as unknown ones.
+// environment's, UTF-8), decoded as WHATWG Encoding does. UTF-8, UTF-16,
+// Shift_JIS and the single-byte encodings decode; the other multi-byte
+// legacy labels count as unknown ones.
 class Encoding {
 	// an encoding's name from a label (WHATWG's get an encoding), null for none this decodes
 	public static function get(label:String):Null<String> {
 		var name = EncodingData.name(Css.lower(label.trim()));
 		if (name == null) return null;
-		return name == "utf-8" || name == "utf-16le" || name == "utf-16be" || name == "replacement" || name == "x-user-defined"
+		return name == "utf-8" || name == "utf-16le" || name == "utf-16be" || name == "replacement" || name == "x-user-defined" || name == "shift_jis"
 			|| EncodingData.single(name) != null ? name : null;
 	}
 
@@ -58,11 +57,35 @@ class Encoding {
 			case "utf-8": utf8(bytes, 0);
 			case "utf-16be": utf16(bytes, 0, true);
 			case "utf-16le": utf16(bytes, 0, false);
+			case "shift_jis": shiftJis(bytes);
 			case "replacement": n == 0 ? "" : "\u{FFFD}";
 			case "x-user-defined": single(bytes, null);
 			default: single(bytes, EncodingData.single(encoding));
 		}
 		return {text: text, encoding: encoding};
+	}
+
+	static function shiftJis(bytes:Bytes):String {
+		var out = new StringBuf(), k = 0;
+		var index = EncodingData.jis0208;
+		while (k < bytes.length) {
+			var lead = bytes.get(k++);
+			if (lead <= 0x80) out.addChar(lead);
+			else if (lead >= 0xA1 && lead <= 0xDF) out.addChar(0xFF61 + lead - 0xA1);
+			else if ((lead >= 0x81 && lead <= 0x9F || lead >= 0xE0 && lead <= 0xFC) && k < bytes.length) {
+				var trail = bytes.get(k), cp = 0xFFFD;
+				if (trail >= 0x40 && trail <= 0x7E || trail >= 0x80 && trail <= 0xFC) {
+					var pointer = (lead - (lead < 0xA0 ? 0x81 : 0xC1)) * 188 + trail - (trail < 0x7F ? 0x40 : 0x41);
+					if (pointer >= 8836 && pointer <= 10715) cp = 0xE000 + pointer - 8836;
+					else if (pointer < index.length) cp = StringTools.fastCodeAt(index, pointer);
+				}
+				// (an ASCII byte after a failed pair still starts the next character)
+				if (cp != 0xFFFD || trail >= 0x80) k++;
+				out.addChar(cp);
+			} else
+				out.addChar(0xFFFD);
+		}
+		return out.toString();
 	}
 
 	static function utf8(bytes:Bytes, from:Int):String {

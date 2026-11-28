@@ -373,7 +373,7 @@ class CssReftestCheck {
 		if (cached != null) return cached;
 		var o = WptPage.options(path);
 		printPage ??= CssSheet.parse("@page { size: 5in 3in; margin: 0.5in }", User);
-		var v = new PagedView(WptPage.parse(path), {url: o.url, fonts: o.fonts, load: o.load, font: o.font, image: o.image, user: [printPage], media: PRINT, limit: MAX_PAGES + 1});
+		var v = new PagedView(WptPage.parse(path), {url: o.url, fonts: o.fonts, load: o.load, loadBytes: o.loadBytes, font: o.font, image: o.image, user: [printPage], media: PRINT, limit: MAX_PAGES + 1});
 		var n = v.layout();
 		if (n > MAX_PAGES) throw '$n pages';
 		var out = [];

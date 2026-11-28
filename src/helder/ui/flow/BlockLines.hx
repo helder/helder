@@ -4,6 +4,7 @@ import helder.canvas.ShapedRun;
 import helder.ui.box.Box;
 import helder.ui.box.BoxInline;
 import helder.ui.box.BoxKind;
+import helder.ui.box.BoxStyle;
 import helder.ui.box.Fragments;
 import helder.ui.box.Len.Lens;
 import helder.ui.flow.InlineLayout;
@@ -63,12 +64,14 @@ class BlockLines {
 		if (shift > 0) block.flags |= Box.SLICED;
 		oy -= shift;
 		// (the function, not the space's field: the lines are laid out again for hit testing, the space gone on)
-		var lineWidth = space.lineWidth, narrowed = false;
+		var lineWidth = space.lineWidth, narrowed = false, nextFloatEdge = Math.POSITIVE_INFINITY;
 		var constraints = new InlineConstraints(width, lineWidth == null ? null : (y, h) -> {
 			var lw = lineWidth(oy + y, h);
+			nextFloatEdge = lw == null ? Math.POSITIVE_INFINITY : lw.next - oy;
 			if (lw != null) narrowed = true;
 			return lw == null ? {offset: 0.0, width: width} : {offset: lw.offset - ox, width: lw.width};
 		});
+		constraints.floatEdge = lineWidth == null ? null : _ -> nextFloatEdge;
 		constraints.exactMetrics = space.exact;
 		constraints.lazyText = true;
 		try {
@@ -86,12 +89,17 @@ class BlockLines {
 				for (round in 0...(floats.length > 0 && space.placeFloat != null ? 4 : 1)) {
 					l.layout(c, constraints, from);
 					if (floats.length == 0 || space.placeFloat == null) break;
-					var at = statics(l, InlineFragment.Float);
-					var same = round > 0 && at.length == tops.length;
-					if (same) for (k in 0...at.length) if (at[k].y != tops[k]) same = false;
+					var at = floatStatics(l);
+					var nextTops = [for (k in 0...at.length) {
+						var a = at[k];
+						// (when a leading float pushes its line down, it stays at its earlier placement)
+						a.leading && k < tops.length ? Math.min(tops[k], a.y) : a.y;
+					}];
+					var same = round > 0 && nextTops.length == tops.length;
+					if (same) for (k in 0...nextTops.length) if (nextTops[k] != tops[k]) same = false;
 					if (same) break;
 					if (round > 0 && space.unplace != null) space.unplace(placed);
-					tops = [for (a in at) a.y];
+					tops = nextTops;
 					bottoms = [];
 					placed = 0;
 					for (k in 0...floats.length) {
@@ -213,10 +221,25 @@ class BlockLines {
 		return changed;
 	}
 
-	// (the places of the fragments of a kind, in order)
-	static function statics(l:InlineLayout, kind:InlineFragment):Array<{x:Float, y:Float}> {
+	static function floatStatics(l:InlineLayout):Array<{item:Int, y:Float, leading:Bool}> {
 		var out = [];
-		for (f in 0...l.fragments) if (l.kind(f) == kind) out.push({x: l.x(f), y: l.y(f)});
+		for (line in 0...l.lines) {
+			var start = l.lineFragmentStart(line), end = l.lineFragmentEnd(line);
+			var first = l.content.items;
+			for (f in start...end) {
+				var item = l.item(f);
+				if (item >= 0 && item < first) switch l.kind(f) {
+					case TextRun | Atomic: first = item;
+					case BoxStart | BoxEnd if (l.content.edged(item)): first = item;
+					case _:
+				}
+			}
+			for (f in start...end) if (l.kind(f) == Float) {
+				var item = l.item(f);
+				out.push({item: item, y: l.y(f), leading: item < first});
+			}
+		}
+		out.sort((a, b) -> a.item - b.item);
 		return out;
 	}
 
@@ -268,7 +291,15 @@ class BlockLines {
 		if (kept != null) return kept;
 		var frags = space.fragments;
 		var relative = widthRelative(block, true);
-		var c = new InlineContent(BoxInline.of(block, width), space.fonts.inlines);
+		var style = BoxInline.of(block, width), startsBlock = true;
+		// (a later anonymous block's lines continue its parent's formatted lines for text-indent)
+		var parent = block.parent;
+		if (block.anonymous && parent != null && parent.style.inner != BoxStyle.FLEX && parent.style.inner != BoxStyle.GRID && style.textIndent() != 0) {
+			var first = parent.first;
+			while (first != block && (first.floating || first.absolute)) first = first.next;
+			startsBlock = first == block;
+		}
+		var c = new InlineContent(style, space.fonts.inlines, startsBlock);
 		var out = new Built(c);
 		function walk(b:Box) {
 			var k = b.first;

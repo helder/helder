@@ -17,6 +17,8 @@ typedef CssCascadeOptions = {
 	?viewport:{width:Float, height:Float},
 	// a <link>'s or @import's text by its absolute URL; null: not loaded
 	?load:(url:String) -> Null<String>,
+	// a <link>'s or @import's bytes and optional transport charset
+	?loadBytes:CssSheetLoader,
 	// the document's URL, what links and url() resolve against
 	?url:String,
 	// the user agent's sheet (default: HTML's rendering rules and print's, CssUserAgent)
@@ -77,6 +79,7 @@ class CssCascade {
 		var out = [];
 		var n:Null<Node> = doc.documentElement;
 		var base = baseUrl(doc, o.url);
+		var sheetOptions:CssSheetOptions = {url: base, load: o.load, loadBytes: o.loadBytes, encoding: doc.characterSet};
 		while (n != null) {
 			if (n.nodeType == Node.ELEMENT_NODE) {
 				var el:Element = cast n;
@@ -87,14 +90,17 @@ class CssCascade {
 						case "style":
 							var type = el.getAttribute("type");
 							if (type == null || type == "" || Css.lower(type) == "text/css")
-								out.push({sheet: CssSheet.parse(el.textContent, Author, {url: base, load: o.load}), media: m});
+								out.push({sheet: CssSheet.parse(el.textContent, Author, sheetOptions), media: m});
 						case "link" if (el.namespaceURI == HTML):
 							var rel = " " + Css.lower(el.getAttribute("rel") ?? "").replace("\t", " ").replace("\n", " ") + " ";
 							var href = el.getAttribute("href");
-							if (rel.indexOf(" stylesheet ") >= 0 && rel.indexOf(" alternate ") < 0 && href != null && href != "" && o.load != null) {
+							if (rel.indexOf(" stylesheet ") >= 0 && rel.indexOf(" alternate ") < 0 && href != null && href != ""
+								&& (o.load != null || o.loadBytes != null)) {
 								var url = CssUrl.resolve(base, href);
-								var text = o.load(url);
-								if (text != null) out.push({sheet: CssSheet.parse(text, Author, {url: url, load: o.load}), media: m});
+								var charset = el.getAttribute("charset");
+								var encoding = (charset == null ? null : Encoding.get(charset)) ?? doc.characterSet;
+								var sheet = CssSheet.fromUrl(url, Author, {load: o.load, loadBytes: o.loadBytes, encoding: encoding});
+								if (sheet != null) out.push({sheet: sheet, media: m});
 							}
 						case _:
 					}

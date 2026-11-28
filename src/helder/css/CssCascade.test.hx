@@ -22,6 +22,27 @@ using Lambda;
 // computed value, and equal groups of values are one object.
 function tests() {
 	describe("CssCascade", () -> {
+		test("a theme's tokens: custom properties where no ancestor declares them; changed, its readers alone styled again", () -> {
+			var s = styles('<div id=d><p id=a>a</p><p id=b>b</p></div><section id=own><p id=c>c</p></section>',
+				"#a { color: var(--fg) } #d { background-color: var(--bg) } #b { color: blue } #own { --fg: green } #c { color: var(--fg) } @media (prefers-color-scheme: dark) { #b { color: white } }",
+				{media: {type: "screen", width: 800, height: 600, scheme: "dark"}});
+			function theme(m:Map<String, String>):Map<String, Array<CssValue>>
+				return [for (k => v in m) k => Css.values(v)];
+			equals(s.retheme(theme(["fg" => "#ff0000"])).length, 0);
+			equals(text(s, "a", "color"), "rgb(255, 0, 0)");
+			equals(text(s, "b", "color"), "rgb(255, 255, 255)");
+			// (an ancestor's own declaration over the theme's)
+			equals(text(s, "c", "color"), "rgb(0, 128, 0)");
+			equals([for (el in s.retheme(theme(["fg" => "#00ff00"]))) el.id], ["a"]);
+			s.forget([s.document.getElementById("a")]);
+			equals(text(s, "a", "color"), "rgb(0, 255, 0)");
+			// (the same value again: nothing to style)
+			equals(s.retheme(theme(["fg" => "#00ff00"])).length, 0);
+			// (a token read before the theme had one: given, its reader styled again)
+			var d = s.computed(s.document.getElementById("d"));
+			equals(d.text("background-color"), "rgba(0, 0, 0, 0)");
+			equals([for (el in s.retheme(theme(["fg" => "#00ff00", "bg" => "#000"]))) el.id], ["d"]);
+		});
 		test("origins and importance", () -> {
 			var ua = CssSheet.parse("p { color: red; margin-top: 1px !important } div { color: blue }", UserAgent);
 			var user = CssSheet.parse("p { color: green; margin-left: 5px !important } div { color: yellow !important }", User);

@@ -104,10 +104,10 @@ class TableFlow implements FormattingContext {
 		g.exact = space.exact;
 		if (!g.collapse) switch s.rare.borderSpacing {
 			case [h, v]:
-				g.spacingH = h;
-				g.spacingV = v;
+				g.spacingH = g.exact ? h : Math.floor(h);
+				g.spacingV = g.exact ? v : Math.floor(v);
 			case [h]:
-				g.spacingH = g.spacingV = h;
+				g.spacingH = g.spacingV = g.exact ? h : Math.floor(h);
 			case _:
 		}
 		// (row groups in order: the first header, the bodies and lone rows, the first footer, §17.2)
@@ -230,6 +230,9 @@ class TableFlow implements FormattingContext {
 			switch s.width {
 				// (a cell's width: its column's max-content, at least its min-content)
 				case Px(v):
+					// (a specified width cannot shrink an auto-layout column below its unbreakable content)
+					min = Math.max(min, flow.contentSizes(b, space).min + d);
+					col.min = Math.max(col.min, min);
 					col.fixed = true;
 					switch s.maxWidth {
 						case Px(m) if (m < v): v = m;
@@ -609,7 +612,8 @@ class TableFlow implements FormattingContext {
 		}
 		for (cell in g.cells) {
 			var need = cell.rows == 1 ? cell.height : 0.0;
-			if (!Math.isNaN(cell.baseline)) need = cell.rows == 1 ? need + baselines[cell.row] - cell.baseline : baselines[cell.row];
+			if (!Math.isNaN(cell.baseline))
+				need = cell.rows == 1 ? Math.max(need, cell.contentHeight + baselines[cell.row] - cell.baseline) : baselines[cell.row];
 			rowH[cell.row] = Math.max(rowH[cell.row], need);
 		}
 		for (cell in g.cells) {
@@ -617,7 +621,7 @@ class TableFlow implements FormattingContext {
 			var have = g.spacingV * (cell.rows - 1);
 			for (r in cell.row...cell.row + cell.rows) have += rowH[r];
 			var need = cell.height;
-			if (!Math.isNaN(cell.baseline)) need += baselines[cell.row] - cell.baseline;
+			if (!Math.isNaN(cell.baseline)) need = Math.max(need, cell.contentHeight + baselines[cell.row] - cell.baseline);
 			if (need > have) rowH[cell.row + cell.rows - 1] += need - have;
 		}
 		for (r in 0...rows) if (g.rows[r].style.rare.visibility == "collapse") rowH[r] = 0;
@@ -984,8 +988,8 @@ class TableFlow implements FormattingContext {
 
 	static function valign(b:Box):String
 		return switch b.style.verticalAlign().kind {
-			case "top" | "text-top": "top";
-			case "bottom" | "text-bottom": "bottom";
+			case "top": "top";
+			case "bottom": "bottom";
 			case "middle": "middle";
 			case _: "baseline";
 		}
