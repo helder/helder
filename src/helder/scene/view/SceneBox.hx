@@ -122,7 +122,7 @@ class SceneBox extends helder.ui.Node {
 	inline function get_drawnHeight():Int
 		return th;
 	var fallback:Null<Camera>;
-	var under = SceneGraphNode.NONE;
+	var pointed = SceneGraphNode.NONE;
 	// (its texture's id for ui's renderer: negative, one per box)
 	final id = -(++ids);
 
@@ -169,10 +169,10 @@ class SceneBox extends helder.ui.Node {
 			if (e.pointerType == Touch || ui != null && ui.captureOf(id) != null) return;
 			var hit = hoverHit;
 			var now = pick(e, hit) ? hit.node : SceneGraphNode.NONE;
-			if (now != under) {
-				if (!under.isNone && under.valid) dispatch(event.set(under, null, e, null, id), LEAVE);
+			if (now != pointed) {
+				if (!pointed.isNone && pointed.valid) dispatch(event.set(pointed, null, e, null, id), LEAVE);
 				if (!now.isNone) dispatch(event.set(now, hit, e, null, id), ENTER);
-				under = now;
+				pointed = now;
 			}
 			if (!now.isNone) dispatch(event.set(now, hit, e, null, id), MOVE);
 		};
@@ -197,8 +197,8 @@ class SceneBox extends helder.ui.Node {
 			if (id >= 0 && id < helder.ui.Ui.POINTERS) send(id, TAP, null, lifted[id], g);
 		};
 		onPointerLeave = e -> {
-			if (!under.isNone && under.valid) dispatch(event.set(under, null, e, null, 0), LEAVE);
-			under = SceneGraphNode.NONE;
+			if (!pointed.isNone && pointed.valid) dispatch(event.set(pointed, null, e, null, 0), LEAVE);
+			pointed = SceneGraphNode.NONE;
 		};
 	}
 
@@ -431,12 +431,9 @@ class SceneBox extends helder.ui.Node {
 		for (o in overlays) {
 			var p = MathTools.transformPoint(vp, o.node.node.worldPosition());
 			var x = (p.x + 1) / 2 * width - o.ui.rect().width / 2, y = (1 - p.y) / 2 * height - o.ui.rect().height / 2;
-			if (x != o.x || y != o.y) {
-				o.ui.style.left = o.x = x;
-				o.ui.style.top = o.y = y;
-			}
 			var shown:helder.ui.Visibility = p.z >= -1 && p.z <= 1 ? Visible : Hidden;
-			if (o.ui.style.visibility != shown) o.ui.style.visibility = shown;
+			if (x != o.x || y != o.y || o.ui.props().visibility != shown)
+				o.ui.style = o.ui.style.with({left: o.x = x, top: o.y = y, visibility: shown});
 		}
 	}
 }

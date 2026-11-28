@@ -298,7 +298,7 @@ class Monkey {
 		}
 		if (on("window")) for (n in now.nodes) {
 			// (what draws: its content (a text, an image), else a background; an empty box draws nothing)
-			if (n.clipped || !n.shown || !(n.node.hasContent() || n.node.style.background.a > 0)) continue;
+			if (n.clipped || !n.shown || !(n.node.hasContent() || n.node.used.backgroundColor >>> 24 > 0)) continue;
 			// (its layout's box: a transform's move is the program's own (a sheet at a detent, a drawer), not an overflow)
 			var b = n.laid, e = 0.5;
 			if (b.x < -e || b.y < -e || b.x + b.width > s.ui.width + e || b.y + b.height > s.ui.height + e) {
@@ -751,8 +751,8 @@ private class Screen {
 			// (what moves: its transitions, its motion; else a clock step of its own)
 			var moving = [];
 			function walk(n:Node) {
-				var t = @:privateAccess n.style.themed, p = n.present;
-				if (t != null && t.moving != null || p != null && p.active) moving.push(Monkey.describe(n));
+				var p = n.present;
+				if (p != null && p.active) moving.push(Monkey.describe(n));
 				for (c in n.children)
 					if (moving.length < 3) walk(c);
 			}
@@ -902,13 +902,13 @@ private class Snapshot {
 	}
 
 	function visit(n:Node, clipped:Bool, opacity:Float) {
-		var st = n.style;
-		if (st.display == None || n.present != null && n.present.away) return;
+		var st = n.used;
+		if (st.none || n.present != null && n.present.away) return;
 		var b = n.windowBounds(), op = opacity * st.opacity;
 		nodes.push({node: n, parent: n.parent, box: b, laid: {x: n.absX, y: n.absY, width: n.width, height: n.height}, clipped: clipped,
 			shown: op > 0 && b.width > 0 && b.height > 0});
 		boxes.set(n, b);
-		var clips = clipped || st.overflowX != Visible || st.overflowY != Visible;
+		var clips = clipped || st.clips;
 		for (c in n.children)
 			visit(c, clips, op);
 	}

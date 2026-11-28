@@ -1,8 +1,9 @@
 package helder.markdown;
 
+import helder.gfx.Color;
 import helder.markdown.Doc;
 import helder.ui.Node;
-import helder.ui.Rules;
+import helder.ui.Style;
 import helder.ui.TextNode;
 import helder.ui.VirtualScroll;
 import helder.ui.access.Role;
@@ -10,6 +11,7 @@ import helder.ui.access.Semantics;
 import helder.ui.code.CodeLanguage.CodeLanguages;
 import helder.ui.code.CodeModel;
 import helder.ui.code.CodeView;
+import helder.ui.controls.Look;
 
 using Lambda;
 using StringTools;
@@ -27,23 +29,25 @@ typedef MarkdownProps = {
 	?blocks:Int,
 	// code blocks' font (a monospace family: CodeView's JetBrains Mono by default) and size
 	?codeFont:String,
-	// a link's slot by its href (an app's chips: null, or no function: markdown-link)
-	?linkSlot:(href:String) -> Null<String>,
+	// a link's part by its href (an app's chips: null, or no function: markdown-link)
+	?linkPart:(href:String) -> Null<String>,
 	?codeSize:Float
 }
 
-// A Markdown document (Markdown.parse's Doc) as nodes, unstyled: each part
-// has a slot that the app's look styles (a Look's parts, a StyleSheet's
-// rules; without a sheet the base rules here give a plain default). The
-// top-level blocks are each in a row ("markdown-row": the column's width
-// and the space between blocks), in a scroller ("markdown-scroll"), a
-// VirtualScroll past VIRTUAL blocks (only the rows in view made). Slots:
-// markdown-h1 to -h6, -p, -quote, -list (data-tight when tight),
-// -item, -marker, -task (data-state checked or unchecked), -item-body,
+// A Markdown document (Markdown.parse's Doc) as nodes: each node's tag is
+// its part, its style the plain look's here (GitHub's proportions) with the
+// look's part of that name over it (Look.with's parts: the look in scope
+// when it is made). The top-level blocks are each in a row ("markdown-row":
+// the column's width and the space between blocks), in a scroller
+// ("markdown-scroll"), a VirtualScroll past VIRTUAL blocks (only the rows
+// in view made). Parts: markdown-h1 to -h6, -p, -quote, -list,
+// -list-tight (over a tight list's -list), -item, -marker, -task (checked
+// by data-state), -task-mark, -item-body,
 // -code (a box around a read-only CodeView: the fence's language by its
 // info string, CodeLanguages; plain text otherwise), -table, -th, -td,
-// -rule, -html (raw HTML, as text), -image-alt; in text -em, -strong,
-// -del, -code-span, -link. Links call onLink; images ask image for a node.
+// -rule, -html (raw HTML, as text), -image (over an image's own style),
+// -image-alt; in text -p-text, -em, -strong, -del, -code-span, -link.
+// Links call onLink; images ask image for a node.
 // It is one selectable scope (Node.selectable): a selection runs across
 // its blocks, a long document's rows out of view too, copied with a blank
 // line between blocks and a line between list items (markers not in it).
@@ -57,7 +61,9 @@ class MarkdownView extends Node {
 	// the scroller (a VirtualScroll past VIRTUAL blocks; null with scroll false)
 	public final scroller:Null<Node>;
 
-	final props:MarkdownProps;
+	final options:MarkdownProps;
+	final look:Look<Dynamic>;
+	final parts = new Map<String, Style>();
 	var shown:Array<Block>;
 	final virtual:Null<VirtualScroll>;
 	final rows:Array<Node> = [];
@@ -70,16 +76,14 @@ class MarkdownView extends Node {
 
 	public function new(props:MarkdownProps) {
 		super("markdown");
-		this.props = props;
+		options = props;
+		look = Look.current();
 		doc = props.doc;
-		slot = "markdown";
 		selectable = true;
-		Rules.addBase("markdown", BASE);
 		shown = props.blocks == null ? doc.blocks : doc.blocks.slice(0, props.blocks);
 		for (i in 0...shown.length)
 			collectAnchors(shown[i], i);
-		style.minHeight = 0;
-		style.minWidth = 0;
+		style = part("markdown").with({minHeight: 0, minWidth: 0});
 		if (props.scroll == false) {
 			virtual = null;
 			scroller = null;
@@ -90,8 +94,7 @@ class MarkdownView extends Node {
 			}
 			return;
 		}
-		style.flexGrow = 1;
-		style.overflow = Hidden;
+		style = style.with({flexGrow: 1, overflow: Hidden});
 		if (shown.length > VIRTUAL) {
 			var v = new VirtualScroll("markdown-scroll", 80);
 			v.rowRole = null;
@@ -100,7 +103,7 @@ class MarkdownView extends Node {
 			// (a document's keys: the window's scrolling, not a list's focus moving)
 			v.onKeyDown = null;
 			v.onMakeRow = (i, r) -> {
-				r.slot = "markdown-row";
+				r.style = r.style.with(part("markdown-row"));
 				textOnly = r.parent == null;
 				r.append(block(shown[i]));
 				textOnly = false;
@@ -112,7 +115,7 @@ class MarkdownView extends Node {
 		} else {
 			virtual = null;
 			var s = new Node("markdown-scroll");
-			s.style.overflow = Scroll;
+			s.style = Style.of({overflow: Scroll});
 			for (b in shown) {
 				var r = row(b);
 				rows.push(r);
@@ -120,10 +123,7 @@ class MarkdownView extends Node {
 			}
 			scroller = s;
 		}
-		scroller.slot = "markdown-scroll";
-		scroller.style.flexGrow = 1;
-		scroller.style.minHeight = 0;
-		scroller.style.alignItems = Center;
+		scroller.style = scroller.style.with(part("markdown-scroll")).with({flexGrow: 1, minHeight: 0, alignItems: Center});
 		append(scroller);
 		if (virtual != null) virtual.reset(shown.length);
 	}
@@ -135,7 +135,7 @@ class MarkdownView extends Node {
 	public function update(next:Doc) {
 		doc = next;
 		var old = shown;
-		shown = props.blocks == null ? next.blocks : next.blocks.slice(0, props.blocks);
+		shown = options.blocks == null ? next.blocks : next.blocks.slice(0, options.blocks);
 		anchors.clear();
 		ids.resize(0);
 		for (i in 0...shown.length)
@@ -209,11 +209,26 @@ class MarkdownView extends Node {
 		}
 
 	function row(b:Block):Node {
-		var r = new Node("markdown-row");
-		r.slot = "markdown-row";
+		var r = node("markdown-row");
 		r.append(block(b));
 		return r;
 	}
+
+	// (a part's style: the plain look's, the look's part over it)
+	function part(name:String):Style {
+		var s = parts.get(name);
+		if (s == null) parts.set(name, s = (BASE.get(name) ?? Style.none).with(look.part(name)));
+		return s;
+	}
+
+	// (a node in the style of its part, its tag)
+	function dress<T:Node>(n:T):T {
+		n.style = n.style.with(part(n.tag));
+		return n;
+	}
+
+	function node(part:String):Node
+		return dress(new Node(part));
 
 	// --- blocks
 
@@ -232,55 +247,40 @@ class MarkdownView extends Node {
 				var n = node("markdown-rule");
 				n.semantics = ({role: Separator} : Semantics);
 				n;
-			case Html(text):
-				var t = new TextNode(text, "markdown-html");
-				t.slot = "markdown-html";
-				t;
+			case Html(text): dress(new TextNode(text, "markdown-html"));
 		}
 
-	function container(slot:String, blocks:Array<Block>):Node {
-		var n = node(slot);
+	function container(part:String, blocks:Array<Block>):Node {
+		var n = node(part);
 		for (b in blocks)
 			n.append(block(b));
-		return n;
-	}
-
-	static function node(slot:String):Node {
-		var n = new Node(slot);
-		n.slot = slot;
 		return n;
 	}
 
 	function list(ordered:Bool, start:Int, tight:Bool, items:Array<ListItem>):Node {
 		var l = node("markdown-list");
 		l.semantics = ({role: List} : Semantics);
-		if (tight) l.setAttr("data-tight", "");
+		if (tight) l.style = l.style.with(part("markdown-list-tight"));
 		listDepth++;
 		for (k in 0...items.length) {
 			var it = items[k];
 			var item = node("markdown-item");
-			item.style.flexDirection = Row;
+			item.style = item.style.with({flexDirection: Row});
 			item.semantics = ({role: ListItem} : Semantics);
 			if (it.task != null) {
 				var box = node("markdown-task");
 				box.setAttr("data-state", it.task ? "checked" : "unchecked");
 				box.semantics = ({role: CheckBox, checked: it.task} : Semantics);
-				box.style.flexShrink = 0;
-				box.style.alignItems = Center;
-				box.style.justifyContent = Center;
-				box.style.userSelect = None;
-				if (it.task) box.append(new TextNode("✓", "markdown-task-mark"));
+				box.style = box.style.with({flexShrink: 0, alignItems: Center, justifyContent: Center, userSelect: None});
+				if (it.task) box.append(dress(new TextNode("✓", "markdown-task-mark")));
 				item.append(box);
 			} else {
-				var marker = new TextNode(ordered ? '${start + k}.' : BULLETS[(listDepth - 1) % BULLETS.length], "markdown-marker");
-				marker.slot = "markdown-marker";
-				marker.style.flexShrink = 0;
-				marker.style.userSelect = None;
+				var marker = dress(new TextNode(ordered ? '${start + k}.' : BULLETS[(listDepth - 1) % BULLETS.length], "markdown-marker"));
+				marker.style = marker.style.with({flexShrink: 0, userSelect: None});
 				item.append(marker);
 			}
 			var body = container("markdown-item-body", it.blocks);
-			body.style.flexGrow = 1;
-			body.style.minWidth = 0;
+			body.style = body.style.with({flexGrow: 1, minWidth: 0});
 			item.append(body);
 			l.append(item);
 		}
@@ -304,12 +304,11 @@ class MarkdownView extends Node {
 		v.background = false;
 		// (its text the document's selection's: no focus, no selection of its own)
 		v.focusable = false;
-		if (props.codeFont != null) v.fontFamily = props.codeFont;
-		var size = props.codeSize ?? 13;
+		if (options.codeFont != null) v.fontFamily = options.codeFont;
+		var size = options.codeSize ?? 13;
 		v.fontSize = size;
 		v.lineHeight = Math.round(size * 1.5);
-		v.style.flexGrow = 0;
-		v.style.height = model.lineCount * v.lineHeight;
+		v.style = v.style.with({flexGrow: 0, height: model.lineCount * v.lineHeight});
 		v.semantics = ({role: MultilineTextInput, label: lang == "" ? "Code" : lang} : Semantics);
 		box.append(v);
 		return box;
@@ -321,19 +320,17 @@ class MarkdownView extends Node {
 	function table(align:Array<TableAlign>, head:Array<Array<Inline>>, rows:Array<Array<Array<Inline>>>):Node {
 		// (wider than the column: scrolled sideways)
 		var wrap = node("markdown-table-scroll");
-		wrap.style.overflowX = Scroll;
-		wrap.style.alignItems = Start;
+		wrap.style = wrap.style.with({overflow: Scroll, alignItems: Start});
 		var t = node("markdown-table");
 		t.semantics = ({role: Table} : Semantics);
-		t.style.display = Grid;
-		t.style.gridTemplateColumns = [for (_ in 0...head.length) helder.ui.Grid.Track.AUTO];
-		function cell(content:Array<Inline>, slot:String, k:Int) {
-			var c = text(content, slot);
+		t.style = t.style.with({display: Grid, gridTemplateColumns: [for (_ in 0...head.length) "auto"].join(" ")});
+		function cell(content:Array<Inline>, part:String, k:Int) {
+			var c = text(content, part);
 			c.semantics = ({role: Cell} : Semantics);
 			switch align[k] {
-				case Left: c.style.textAlign = Left;
-				case Center: c.style.textAlign = Center;
-				case Right: c.style.textAlign = Right;
+				case Left: c.style = c.style.with({textAlign: Left});
+				case Center: c.style = c.style.with({textAlign: Center});
+				case Right: c.style = c.style.with({textAlign: Right});
 				case Auto:
 			}
 			t.append(c);
@@ -353,9 +350,7 @@ class MarkdownView extends Node {
 	function paragraph(content:Array<Inline>):Node {
 		if (!content.exists(hasImage)) return text(content, "markdown-p");
 		var p = node("markdown-p");
-		p.style.flexDirection = Row;
-		p.style.flexWrap = true;
-		p.style.alignItems = End;
+		p.style = p.style.with({flexDirection: Row, flexWrap: true, alignItems: End});
 		var run:Array<Inline> = [];
 		function flush() {
 			if (run.length > 0 && Markdown.plain(run).trim() != "") p.append(text(run, "markdown-p-text"));
@@ -387,27 +382,22 @@ class MarkdownView extends Node {
 		}
 
 	function image(src:String, alt:String, href:Null<String>):Node {
-		if (textOnly && props.image != null) return new Node("markdown-image");
-		var n = props.image == null ? null : props.image(src, alt);
-		if (n == null) {
-			var t = new TextNode(alt == "" ? src : alt, "markdown-image-alt");
-			t.slot = "markdown-image-alt";
-			n = t;
-		} else if (n.slot == null) n.slot = "markdown-image";
+		if (textOnly && options.image != null) return new Node("markdown-image");
+		var n = options.image == null ? null : options.image(src, alt);
+		if (n == null) n = dress(new TextNode(alt == "" ? src : alt, "markdown-image-alt")) else n.style = n.style.with(part("markdown-image"));
 		if (n.semantics == null) n.semantics = ({role: Image, label: alt} : Semantics);
 		if (href != null) link(n, href);
 		return n;
 	}
 
 	function link(n:Node, href:String) {
-		(n.props().cursor ?? Auto) = Pointer;
-		n.onClick = e -> if (props.onLink != null) props.onLink(href);
+		n.style = n.style.with({cursor: Pointer});
+		n.onClick = e -> if (options.onLink != null) options.onLink(href);
 	}
 
-	// a text node of inlines, its spans in their slots
-	function text(content:Array<Inline>, slot:String):TextNode {
-		var t = new TextNode("", slot);
-		t.slot = slot;
+	// a text node of inlines, its spans in their parts
+	function text(content:Array<Inline>, part:String):TextNode {
+		var t = dress(new TextNode("", part));
 		spans(content, t);
 		if (t.children.length == 0) t.text = "";
 		return t;
@@ -420,74 +410,67 @@ class MarkdownView extends Node {
 			case HardBreak: into.append(new TextNode("\n"));
 			case Emphasis(c):
 				var s = span(into, "markdown-em", c);
-				s.style.fontStyle = Italic;
+				s.style = s.style.with({fontStyle: Italic});
 			case Strong(c):
 				var s = span(into, "markdown-strong", c);
-				s.style.fontWeight = 700;
+				s.style = s.style.with({fontWeight: 700});
 			case Strike(c):
 				var s = span(into, "markdown-del", c);
-				s.style.textDecoration = helder.ui.TextDecoration.LineThrough;
-			case CodeSpan(code):
-				var s = new TextNode(code, "markdown-code-span");
-				s.slot = "markdown-code-span";
-				into.append(s);
-			case Link(href, _, c): link(span(into, linkSlot(href), c), href);
+				s.style = s.style.with({textDecoration: helder.ui.TextDecoration.LineThrough});
+			case CodeSpan(code): into.append(dress(new TextNode(code, "markdown-code-span")));
+			case Link(href, _, c): link(span(into, linkPart(href), c), href);
 			case Autolink(href, shown):
-				var slot = linkSlot(href);
-				var s = new TextNode(shown, slot);
-				s.slot = slot;
+				var s = dress(new TextNode(shown, linkPart(href)));
 				link(s, href);
 				into.append(s);
-			case Image(_, alt, _):
-				var s = new TextNode(alt, "markdown-image-alt");
-				s.slot = "markdown-image-alt";
-				into.append(s);
-			case Html(s):
-				var h = new TextNode(s, "markdown-html");
-				h.slot = "markdown-html";
-				into.append(h);
+			case Image(_, alt, _): into.append(dress(new TextNode(alt, "markdown-image-alt")));
+			case Html(s): into.append(dress(new TextNode(s, "markdown-html")));
 		}
 
-	function linkSlot(href:String):String
-		return (props.linkSlot == null ? null : props.linkSlot(href)) ?? "markdown-link";
+	function linkPart(href:String):String
+		return (options.linkPart == null ? null : options.linkPart(href)) ?? "markdown-link";
 
-	function span(into:Node, slot:String, content:Array<Inline>):TextNode {
-		var s = new TextNode("", slot);
-		s.slot = slot;
+	function span(into:Node, part:String, content:Array<Inline>):TextNode {
+		var s = dress(new TextNode("", part));
 		spans(content, s);
 		into.append(s);
 		return s;
 	}
 
-	// (the look without a sheet: a plain document, GitHub's proportions)
-	static final BASE:Array<helder.ui.Rule> = [
-		{slot: "markdown-scroll", style: {padding: [24, 0]}},
-		{slot: "markdown-row", style: {width: "100%", maxWidth: 760, padding: [0, 24, 16, 24]}},
-		{slot: "markdown-h1", style: {fontSize: 30, fontWeight: 600, marginTop: 8}},
-		{slot: "markdown-h2", style: {fontSize: 23, fontWeight: 600, marginTop: 8}},
-		{slot: "markdown-h3", style: {fontSize: 19, fontWeight: 600, marginTop: 4}},
-		{slot: "markdown-h4", style: {fontSize: 16, fontWeight: 600}},
-		{slot: "markdown-h5", style: {fontSize: 14, fontWeight: 600}},
-		{slot: "markdown-h6", style: {fontSize: 13, fontWeight: 600, color: helder.gfx.Color.rgb(0x59636E)}},
-		{slot: "markdown-p", style: {lineHeight: 1.5}},
-		{slot: "markdown-quote", style: {rowGap: 12, padding: [0, 0, 0, 14], borders: [0, 0, 0, 3], borderColor: helder.gfx.Color.rgb(0xD1D9E0),
-			color: helder.gfx.Color.rgb(0x59636E)}},
-		{slot: "markdown-list", style: {rowGap: 8}},
-		{slot: "markdown-list", when: ["data-tight"], style: {rowGap: 2}},
-		{slot: "markdown-item-body", style: {rowGap: 8}},
-		{slot: "markdown-marker", style: {minWidth: 22, paddingRight: 6, lineHeight: 1.5}},
-		{slot: "markdown-task", style: {width: 14, height: 14, margin: [4, 8, 0, 0], borderRadius: 3, borderWidth: 1, borderColor: helder.gfx.Color.rgb(0x818B98),
-			fontSize: 10}},
-		{slot: "markdown-task", when: ["data-state=checked"], style: {background: helder.gfx.Color.rgb(0x0969DA), borderColor: helder.gfx.Color.rgb(0x0969DA),
-			color: helder.gfx.Color.rgb(0xFFFFFF)}},
-		{slot: "markdown-code", style: {padding: [12, 12, 12, 0], borderRadius: 6, background: helder.gfx.Color.rgb(0xF6F8FA)}},
-		{slot: "markdown-code-span", style: {fontFamily: "JetBrains Mono", fontSize: 13, background: helder.gfx.Color.rgba(0x818B98, 0.15)}},
-		{slot: "markdown-link", style: {color: helder.gfx.Color.rgb(0x0969DA), textDecoration: 1}},
-		{slot: "markdown-table", style: {borders: [1, 0, 0, 1], borderColor: helder.gfx.Color.rgb(0xD1D9E0)}},
-		{slot: "markdown-th", style: {fontWeight: 600, padding: [6, 12], borders: [0, 1, 1, 0], borderColor: helder.gfx.Color.rgb(0xD1D9E0)}},
-		{slot: "markdown-td", style: {padding: [6, 12], borders: [0, 1, 1, 0], borderColor: helder.gfx.Color.rgb(0xD1D9E0)}},
-		{slot: "markdown-rule", style: {height: 2, background: helder.gfx.Color.rgb(0xD1D9E0)}},
-		{slot: "markdown-html", style: {fontFamily: "JetBrains Mono", fontSize: 13, color: helder.gfx.Color.rgb(0x59636E)}},
-		{slot: "markdown-image-alt", style: {color: helder.gfx.Color.rgb(0x59636E), fontStyle: Italic}}
+	// (the plain look: a document in GitHub's proportions)
+	static final BASE = [
+		"markdown-scroll" => Style.of({padding: [24, 0]}),
+		"markdown-row" => Style.of({width: "100%", maxWidth: 760, padding: [0, 24, 16, 24]}),
+		"markdown-h1" => Style.of({fontSize: 30, fontWeight: 600, margin: [8, 0, 0, 0]}),
+		"markdown-h2" => Style.of({fontSize: 23, fontWeight: 600, margin: [8, 0, 0, 0]}),
+		"markdown-h3" => Style.of({fontSize: 19, fontWeight: 600, margin: [4, 0, 0, 0]}),
+		"markdown-h4" => Style.of({fontSize: 16, fontWeight: 600}),
+		"markdown-h5" => Style.of({fontSize: 14, fontWeight: 600}),
+		"markdown-h6" => Style.of({fontSize: 13, fontWeight: 600, color: Color.rgb(0x59636E)}),
+		"markdown-p" => Style.of({lineHeight: 1.5}),
+		"markdown-quote" => Style.of({rowGap: 12, padding: [0, 0, 0, 14], borderWidth: [0, 0, 0, 3], borderColor: Color.rgb(0xD1D9E0), color: Color.rgb(0x59636E)}),
+		"markdown-list" => Style.of({rowGap: 8}),
+		"markdown-list-tight" => Style.of({rowGap: 2}),
+		"markdown-item-body" => Style.of({rowGap: 8}),
+		"markdown-marker" => Style.of({minWidth: 22, padding: [0, 6, 0, 0], lineHeight: 1.5}),
+		"markdown-task" => Style.of({
+			width: 14,
+			height: 14,
+			margin: [4, 8, 0, 0],
+			borderRadius: 3,
+			borderWidth: 1,
+			borderColor: Color.rgb(0x818B98),
+			fontSize: 10,
+			checked: {background: Color.rgb(0x0969DA), borderColor: Color.rgb(0x0969DA), color: Color.rgb(0xFFFFFF)}
+		}),
+		"markdown-code" => Style.of({padding: [12, 12, 12, 0], borderRadius: 6, background: Color.rgb(0xF6F8FA)}),
+		"markdown-code-span" => Style.of({fontFamily: "JetBrains Mono", fontSize: 13, background: Color.rgba(0x818B98, 0.15)}),
+		"markdown-link" => Style.of({color: Color.rgb(0x0969DA), textDecoration: 1}),
+		"markdown-table" => Style.of({borderWidth: [1, 0, 0, 1], borderColor: Color.rgb(0xD1D9E0)}),
+		"markdown-th" => Style.of({fontWeight: 600, padding: [6, 12], borderWidth: [0, 1, 1, 0], borderColor: Color.rgb(0xD1D9E0)}),
+		"markdown-td" => Style.of({padding: [6, 12], borderWidth: [0, 1, 1, 0], borderColor: Color.rgb(0xD1D9E0)}),
+		"markdown-rule" => Style.of({height: 2, background: Color.rgb(0xD1D9E0)}),
+		"markdown-html" => Style.of({fontFamily: "JetBrains Mono", fontSize: 13, color: Color.rgb(0x59636E)}),
+		"markdown-image-alt" => Style.of({color: Color.rgb(0x59636E), fontStyle: Italic})
 	];
 }

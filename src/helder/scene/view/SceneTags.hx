@@ -218,7 +218,7 @@ class SceneTags {
 		var n = SceneRenderer.createElement("ui");
 		if (props.position != null) n.node.position = props.position;
 		var overlay = new helder.ui.Node("ui");
-		overlay.style.position = Absolute;
+		overlay.style = helder.ui.Style.of({position: Absolute});
 		box.append(overlay);
 		box.overlays.push({node: n, ui: overlay, x: Math.NaN, y: Math.NaN});
 		Render.insert(props.children, overlay, null);

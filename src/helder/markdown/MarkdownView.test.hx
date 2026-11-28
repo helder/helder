@@ -9,7 +9,7 @@ import helder.ui.VirtualScroll;
 import helder.ui.code.CodeView;
 import helder.markdown.MarkdownView.MarkdownProps;
 
-// MarkdownView headless: each block in its slot, a link's press, images
+// MarkdownView headless: each block in its part, a link's press, images
 // asked for and their alt text without one, a long document's rows made in
 // part and a heading scrolled to, spans in spans drawn once (by their
 // text: Ui.drawNode), the first blocks alone without a scroller; its text
@@ -17,10 +17,10 @@ import helder.markdown.MarkdownView.MarkdownProps;
 // block, copied; a table's cells; a word and a line in the code; a long
 // document's rows let go and made again under it, all of it copied)
 function tests() {
-	function slots(n:Node, out:Array<String>):Array<String> {
-		if (n.slot != null && n.slot != "markdown-row") out.push(n.slot);
+	function parts(n:Node, out:Array<String>):Array<String> {
+		if (StringTools.startsWith(n.tag, "markdown") && n.tag != "markdown-row") out.push(n.tag);
 		for (c in n.children)
-			slots(c, out);
+			parts(c, out);
 		return out;
 	}
 	function view(text:String, ?props:Dynamic):{ui:Ui, view:MarkdownView} {
@@ -33,11 +33,11 @@ function tests() {
 		return {ui: ui, view: v};
 	}
 	describe("MarkdownView", () -> {
-		test("blocks in their slots", () -> {
+		test("blocks in their parts", () -> {
 			var v = view("# Title\n\nSome *text* and `code`.\n\n- [x] one\n- two\n\n> quoted\n\n```ts\nlet a = 1\n```\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n---\n").view;
-			equals(slots(v, []), [
+			equals(parts(v, []), [
 				"markdown", "markdown-scroll", "markdown-h1", "markdown-p", "markdown-em", "markdown-code-span", "markdown-list", "markdown-item", "markdown-task",
-				"markdown-item-body", "markdown-p", "markdown-item", "markdown-marker", "markdown-item-body", "markdown-p", "markdown-quote", "markdown-p",
+				"markdown-task-mark", "markdown-item-body", "markdown-p", "markdown-item", "markdown-marker", "markdown-item-body", "markdown-p", "markdown-quote", "markdown-p",
 				"markdown-code", "markdown-table-scroll", "markdown-table", "markdown-th", "markdown-th", "markdown-td", "markdown-td", "markdown-rule"
 			]);
 			var code:CodeView = cast v.find("code-view");
@@ -64,8 +64,8 @@ function tests() {
 				}
 			}).view;
 			equals(asked, ["cat.png", "dog.png"]);
-			equals(v.find("markdown-image")?.slot, null);
-			equals(slots(v, []), ["markdown", "markdown-scroll", "markdown-p", "markdown-image", "markdown-image-alt"]);
+			equals(v.find("markdown-image"), null);
+			equals(parts(v, []), ["markdown", "markdown-scroll", "markdown-p", "markdown-image-alt"]);
 			equals((cast v.find("markdown-image-alt") : TextNode).text, "a dog");
 		});
 		test("a long document: its rows made in part, a heading scrolled to", () -> {
@@ -90,10 +90,10 @@ function tests() {
 			var c = n.selectableCaret(i);
 			return {x: c.x + 0.5, y: c.y + c.height / 2};
 		}
-		function all(n:Node, slot:String, out:Array<Node>):Array<Node> {
-			if (n.slot == slot) out.push(n);
+		function all(n:Node, tag:String, out:Array<Node>):Array<Node> {
+			if (n.tag == tag) out.push(n);
 			for (c in n.children)
-				all(c, slot, out);
+				all(c, tag, out);
 			return out;
 		}
 		// (Mod: Command on a Mac, Control elsewhere)
@@ -217,14 +217,14 @@ function tests() {
 			equals([for (i in all(t.view, "markdown-item", [])) (cast i.find("markdown-p") : TextNode).allText()], ["one", "two", "three"]);
 			equals(all(t.view, "markdown-list", []).length, 1);
 		});
-		test("a link's slot by its href", () -> {
-			var v = view("[Pond](studio:screen/Pond) and [web](https://x.y)\n", {linkSlot: (h:String) -> StringTools.startsWith(h, "studio:") ? "chip" : null}).view;
-			equals(slots(v, []), ["markdown", "markdown-scroll", "markdown-p", "chip", "markdown-link"]);
+		test("a link's part by its href", () -> {
+			var v = view("[Pond](studio:screen/Pond) and [web](https://x.y)\n", {linkPart: (h:String) -> StringTools.startsWith(h, "studio:") ? "markdown-chip" : null}).view;
+			equals(parts(v, []), ["markdown", "markdown-scroll", "markdown-p", "markdown-chip", "markdown-link"]);
 		});
 		test("the first blocks alone, without a scroller", () -> {
 			var v = view("# A\n\nb\n\nc\n\nd\n", {scroll: false, blocks: 2}).view;
 			equals(v.scroller, null);
-			equals(slots(v, []), ["markdown", "markdown-h1", "markdown-p"]);
+			equals(parts(v, []), ["markdown", "markdown-h1", "markdown-p"]);
 		});
 	});
 }

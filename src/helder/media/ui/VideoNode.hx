@@ -4,6 +4,7 @@ import helder.media.*;
 import helder.ui.Canvas;
 import helder.ui.ImageFit;
 import helder.ui.Node;
+import helder.ui.NodePaint;
 import helder.ui.TextEngine;
 import helder.ui.draw.Renderer;
 import helder.ui.draw.TextureCanvas;
@@ -62,7 +63,7 @@ class VideoNode extends Node {
 	var texture:Null<VideoTexture>;
 	var sample:Null<SampleLayer>;
 	var ticking = false;
-	var drawn:Null<VideoFrame>;
+	var painted:Null<VideoFrame>;
 	var queued = -1;
 	var placing = false;
 	var drawing = true;
@@ -170,11 +171,11 @@ class VideoNode extends Node {
 		// (the system's layer shows it: nothing of helder's drawn again,
 		// once it does; else a frame asked for: a clock's step alone paints none)
 		var own = sample == null || !sample.showing;
-		if (own && f != drawn || own != drawing) {
+		if (own && f != painted || own != drawing) {
 			layerChanged();
 			ui.requestFrame();
 		}
-		drawn = f;
+		painted = f;
 		drawing = own;
 	}
 
@@ -240,7 +241,7 @@ class VideoNode extends Node {
 
 	// (the system's layer, where the window has them and it is a plain rectangle)
 	@:allow(helder.ui) override function syncNative() {
-		var want = layer && ui != null && ui.layered && style.borderRadius == 0 && style.corners == null && player != null && player.video != null
+		var want = layer && ui != null && ui.layered && NodePaint.corners(used, width, height, 0) == null && player != null && player.video != null
 			&& player.video.rotation == 0;
 		if (!want && sample != null) {
 			sample.dispose();
@@ -252,7 +253,7 @@ class VideoNode extends Node {
 				sl.fit(fit);
 				// (the frame shown queued on it at the next tick, which asks
 				// for a frame that places the slot: this one, a frame's, is done)
-				drawn = null;
+				painted = null;
 				placing = true;
 				tick();
 			}
@@ -290,15 +291,16 @@ class VideoNode extends Node {
 		}
 		var dw = fit == Fill ? width : iw * k, dh = fit == Fill ? height : ih * k;
 		var dx = x + (width - dw) / 2, dy = y + (height - dh) / 2, cut = dw > width + 1e-6 || dh > height + 1e-6;
-		if (cut) canvas.pushClip(x, y, width, height, style.borderRadius);
-		g.gpuTexture(c, id, dx, dy, dw, dh, cut ? 0 : style.borderRadius);
+		var corners = NodePaint.corners(used, this.width, this.height, 0);
+		if (cut) canvas.pushClip(x, y, width, height, 0, corners);
+		g.gpuTexture(c, id, dx, dy, dw, dh, 0, cut ? null : corners);
 		if (cut) canvas.popClip();
 	}
 
 	function close() {
 		if (player != null) player.close();
 		player = null;
-		drawn = null;
+		painted = null;
 		if (sample != null) sample.clear();
 	}
 

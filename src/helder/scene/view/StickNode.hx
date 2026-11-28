@@ -20,9 +20,7 @@ class StickNode extends helder.ui.Node {
 	public function new(stick:VirtualStick) {
 		super("stick");
 		this.stick = stick;
-		style.position = Absolute;
-		style.inset = 0;
-		style.pointerEvents = None;
+		style = helder.ui.Style.of({position: Absolute, top: 0, right: 0, bottom: 0, left: 0, pointerEvents: None});
 		stick.changed = redraw;
 	}
 

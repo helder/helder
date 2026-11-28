@@ -3,6 +3,7 @@ package helder.pdf.ui;
 import helder.pdf.PageText;
 import helder.ui.Canvas;
 import helder.ui.Node;
+import helder.ui.Style;
 
 // A PDF page's text over its drawing, for helder.ui's text selection: a
 // node placed and sized as the page is shown, its text a PageText (none
@@ -24,9 +25,7 @@ class PdfText extends Node {
 	public function new(points:Float) {
 		super("page-text");
 		this.points = points;
-		style.position = Absolute;
-		style.pointerEvents = Auto;
-		style.cursor = Text;
+		style = Style.of({position: Absolute, pointerEvents: Auto, cursor: Text});
 	}
 
 	function set_text(t:Null<PageText>):Null<PageText> {
