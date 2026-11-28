@@ -1676,7 +1676,7 @@ In markup, fast nodes take helder.ui's elements and attributes inside a
 `button`, `scroll`, the style's fields as attributes (`padding="4 6"`,
 `color="#a1a1aa"`), `style={Style}`, `role`, `aria-*`, `data-state`,
 and the events. A sheet's slots and variants become Styles with their
-state variants (examples/todo-fast is examples/todo so ported).
+state variants (examples/todo-fast and mail-fast are examples/todo and mail so ported; mail's light and dark colours a Theme's tokens, its keymap's actions on the <Fast>).
 
 ```haxe
 <Surface title="Todo"><Fast><view padding={24} rowGap={14}>
