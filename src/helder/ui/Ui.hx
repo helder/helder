@@ -367,9 +367,9 @@ class Ui extends ScrollHost {
 	// run first in each update (a menu bar's states checked: helder.ui.menu.MenuBar)
 	public final beforeUpdate:Array<Void->Void> = [];
 
-	// (the layout: the CSS engine's, NodeBoxes; helder.ui's own under -D helder.layout, until it goes)
+	// (the layout: the CSS engine's, NodeBoxes)
 	static inline function layoutRun(root:Node, width:Float, height:Float, text:TextEngine, ?scrollers:Array<Node>):Bool
-		return #if helder.layout Layout.run #else NodeBoxes.run #end(root, width, height, text, scrollers);
+		return NodeBoxes.run(root, width, height, text, scrollers);
 
 	public function update() {
 		helder.ui.motion.Motions.updating = true;

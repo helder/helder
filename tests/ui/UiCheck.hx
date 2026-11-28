@@ -82,15 +82,10 @@ class UiCheck {
 		// (last: it turns motion on, for good)
 		layered();
 		layerRecords();
-		#if !helder.layout
 		// (on the CSS engine's layout, NodeBoxes: what it does not do yet, fewer as the port goes on)
 		Sys.println('UiCheck: $checks checks, $failed failed on the engine, at most 3');
 		if (failed < 3) Sys.println('UiCheck: lower the engine\'s failures to $failed');
 		Sys.exit(failed <= 3 ? 0 : 1);
-		#else
-		Sys.println('UiCheck: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
-		Sys.exit(failed == 0 ? 0 : 1);
-		#end
 	}
 
 	// a field's keyboard (TextKind): its defaults by kind, Enter's next and
