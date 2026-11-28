@@ -1183,9 +1183,16 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public inline function rtl():Bool
 		return used.text.dir == Rtl;
 
-	// its direction (inherited)
-	public function dir():Dir
-		return rtl() ? Rtl : Ltr;
+	// its direction as set on it or an ancestor (null: none set, a paragraph's its text's)
+	public function dir():Null<Dir> {
+		var n = this;
+		while (n != null) {
+			var d = n.props().direction;
+			if (d != null) return d;
+			n = n.inheritsFrom();
+		}
+		return null;
+	}
 
 	// a window position in this node's coordinates (from its border box's
 	// top left), its ancestors' scrolling and transforms (its own too) taken

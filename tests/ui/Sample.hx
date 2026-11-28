@@ -7,19 +7,14 @@ import helder.image.Image;
 // in a window)
 class Sample {
 	public static function build(root:Node) {
-		root.style.background = Color.rgb(0xF4F4F5);
-		root.style.fontFamily = "DejaVu Sans";
-		root.style.fontSize = 13;
-		root.style.color = Color.rgb(0x18181B);
+		root.style = Style.of({background: Color.rgb(0xF4F4F5), fontFamily: "DejaVu Sans", fontSize: 13, color: Color.rgb(0x18181B)});
 		var bar = box(root, {flexDirection: Row, alignItems: Center, padding: [8, 12], columnGap: 8, background: Color.rgb(0x18181B)});
 		var title = text(bar, "helder.ui");
-		title.style.color = Color.WHITE;
-		title.style.fontWeight = 700;
-		title.style.fontSize = 15;
+		title.style = Style.of({color: Color.WHITE, fontWeight: 700, fontSize: 15});
 		box(bar, {flexGrow: 1});
 		for (t in ["File", "Edit", "View"]) {
 			var b = text(bar, t);
-			b.style.color = Color.rgb(0xD4D4D8);
+			b.style = Style.of({color: Color.rgb(0xD4D4D8)});
 		}
 		// (minHeight 0: the body takes the window's height left, its main part scrolls)
 		var body = box(root, {flexDirection: Row, flexGrow: 1, minHeight: 0});
@@ -27,19 +22,18 @@ class Sample {
 		for (i in 0...5) {
 			var item = box(side, {padding: [6, 8], borderRadius: 6, background: i == 1 ? Color.rgb(0x3B82F6) : Color.TRANSPARENT});
 			var t = text(item, ["Inbox", "Projects", "Calendar", "Notes", "Settings"][i]);
-			if (i == 1) t.style.color = Color.WHITE;
+			if (i == 1) t.style = Style.of({color: Color.WHITE});
 		}
 		// (an image, covering a box with rounded corners)
 		var pic = new ImageNode(landscape(96, 64));
 		pic.fit = Cover;
-		pic.style.set({height: 64, borderRadius: 8, margin: [12, 0, 0, 0]});
+		pic.style = Style.of({height: 64, borderRadius: 8, margin: [12, 0, 0, 0]});
 		side.append(pic);
 		var main = box(body, {flexGrow: 1, padding: 16, rowGap: 12, overflow: Scroll});
 		var card = box(main, {padding: 14, rowGap: 10, borderRadius: 10, background: Color.WHITE, borderWidth: 1, borderColor: Color.rgb(0xD4D4D8),
-			boxShadow: {x: 0, y: 3, blur: 8, color: Color.rgba(0x000000, 0.18)}});
+			shadows: [{x: 0, y: 3, blur: 8, color: Color.rgba(0x000000, 0.18)}]});
 		var h = text(card, "Flexbox, text and the GPU");
-		h.style.fontSize = 18;
-		h.style.fontWeight = 700;
+		h.style = Style.of({fontSize: 18, fontWeight: 700});
 		text(card, "This card is laid out by helder.ui's flexbox, its text shaped and wrapped by helder.text, and everything drawn by one shader on helder.gfx: rounded rectangles with borders, shadows, rounded clips and glyphs from an atlas.");
 		// (a rounded clip: the bar's square fill is cut to its track's corners)
 		var track = box(card, {height: 12, borderRadius: 6, overflow: Hidden, background: Color.rgb(0xE4E4E7), flexDirection: Row});
@@ -50,7 +44,7 @@ class Sample {
 		text(cancel, "Cancel");
 		var ok = box(row, {padding: [6, 14], borderRadius: 6, background: Color.rgb(0x16A34A)});
 		var okText = text(ok, "Save");
-		okText.style.color = Color.WHITE;
+		okText.style = Style.of({color: Color.WHITE});
 		var chips = box(main, {flexDirection: Row, flexWrap: true, columnGap: 6, rowGap: 6});
 		for (c in ["red", "orange", "amber", "green", "teal", "blue", "violet", "pink"]) {
 			var chip = box(chips, {padding: [4, 10], borderRadius: 12, background: Color.rgba(0x3B82F6, 0.15)});
@@ -93,9 +87,9 @@ class Sample {
 		return img;
 	}
 
-	public static function box(parent:Node, style:StyleProps):Node {
+	public static function box(parent:Node, style:Style.StyleProps):Node {
 		var n = new Node();
-		n.style.set(style);
+		n.style = Style.ofProps(style);
 		parent.append(n);
 		return n;
 	}
