@@ -273,7 +273,7 @@ class DocumentBench {
 		function items(n:Int, from = 0):Array<Item>
 			return [for (i in from...from + n) new Item('Task ${i + 1}: water the plants and call back')];
 		function mount(n:Int):{ui:Ui, app:Todo} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			ui.theme = Todo.sheet;
 			var app = new Todo();
 			app.todos(items(n));
@@ -301,7 +301,7 @@ class DocumentBench {
 					new Message('Sender ${i % 37}', 'Subject number ${i} about the weekly report', 'Body ${i}', "Inbox", 1 + i % 28, i % 3 == 0)
 			];
 		function mount(n:Int):{ui:Ui, app:Mail} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			if (!declared) Mail.declare();
 			declared = true;
 			var app = new Mail();
@@ -367,7 +367,7 @@ class DocumentBench {
 		// (the engine)
 		variant = "engine";
 		function mountDoc():{ui:Ui, doc:Null<DocumentNode>, keep:Document} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			var d = build(m);
 			var node = engineNode(d);
 			node.style.flexGrow = 1;
@@ -412,7 +412,7 @@ class DocumentBench {
 		if (boxData[screen] == "") return;
 		var styles = new BoxScreen.BoxStyles(boxData[screen]);
 		function mountBoxes():{ui:Ui, doc:Null<DocumentNode>, keep:BoxScreen.BoxBuild} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			var bb = new BoxScreen.BoxBuild(styles), out = [];
 			bb.box(m.root, null, out);
 			var node = new BoxScreen.BoxNode(out[0], bb.contexts);
@@ -518,7 +518,7 @@ class DocumentBench {
 	static function fastApp<A>(w:Int, h:Int, name:String, make:Ui->{app:A, tree:helder.ui.fast.Tree}, add:A->Void, field:String) {
 		variant = name;
 		function mount():{ui:Ui, doc:Null<DocumentNode>, keep:A} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			var m = make(ui);
 			fastTree = m.tree;
 			Graph.flush();
@@ -585,7 +585,7 @@ class DocumentBench {
 			return made;
 		}
 		function mountFast():{ui:Ui, doc:Null<DocumentNode>, keep:Map<String, helder.ui.fast.Node>} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			var tags = new Map();
 			var tree = new helder.ui.fast.Tree(build(m.root, tags));
 			tree.style.flexGrow = 1;
@@ -639,7 +639,7 @@ class DocumentBench {
 			return i;
 		}
 		for (d in docs) {
-			var ui = new Ui(new DrawText(), 800, 600), node = nodeOf != null ? nodeOf(d) : engineNode(d);
+			var ui = new Ui(TextEngines.standard(), 800, 600), node = nodeOf != null ? nodeOf(d) : engineNode(d);
 			ui.root.append(node);
 			ui.update();
 			var styles = node.view.styles;
@@ -905,7 +905,7 @@ class DocumentBench {
 	static function memory(name:String, what:String) {
 		var w = name == "todo" ? 480 : 860, h = 560;
 		var base = live();
-		var ui = new Ui(new DrawText(), w, h);
+		var ui = new Ui(TextEngines.standard(), w, h);
 		if (what == "engine") {
 			// (the mirror made by helder.ui, let go before the engine's screen is)
 			var m = name == "todo" ? todoMirror(1020) : mailMirror(1020);
@@ -960,7 +960,7 @@ class DocumentBench {
 	}
 
 	static function todoMirror(n:Int):Mirror {
-		var ui = new Ui(new DrawText(), 480, 560);
+		var ui = new Ui(TextEngines.standard(), 480, 560);
 		ui.theme = Todo.sheet;
 		var app = new Todo();
 		app.todos([for (i in 0...n) new Item('Task ${i + 1}: water the plants and call back')]);
@@ -971,7 +971,7 @@ class DocumentBench {
 	}
 
 	static function mailMirror(n:Int):Mirror {
-		var ui = new Ui(new DrawText(), 860, 560);
+		var ui = new Ui(TextEngines.standard(), 860, 560);
 		if (!declared) Mail.declare();
 		declared = true;
 		var app = new Mail();
@@ -1017,7 +1017,7 @@ class DocumentBench {
 	static function page(html:String, url:String, load:String->Null<String>, w:Int, h:Int, image:Null<String->Null<helder.canvas.Bitmap>>) {
 		var parse = 0.0;
 		function make():{ui:Ui, doc:Null<DocumentNode>, keep:Node} {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(TextEngines.standard(), w, h);
 			var t0 = Timer.stamp();
 			var d = Dom.parse(html);
 			parse = (Timer.stamp() - t0) * 1000;

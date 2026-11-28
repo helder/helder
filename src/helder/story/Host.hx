@@ -87,7 +87,7 @@ class Host {
 		this.scale = scale;
 		// (helder.text's own shaping: a screen looks the same everywhere)
 		helder.text.Shaping.engine = helder.text.Shaping.HELDER;
-		text = new DrawText();
+		text = helder.ui.TextEngines.standard();
 		device = Device.create(runtime.surface, {antialias: false});
 		renderer = new Renderer(device);
 		renderer.groups = true;

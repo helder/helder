@@ -254,7 +254,8 @@ class InlineContent {
 			return kind(i) == Text ? {box: iSource[i], offset: iEnd[i] > iStart[i] ? sourceOffset(iEnd[i] - 1) + 1 : 0} : {box: iSource[i], offset: 1};
 		}
 		var i = itemAt(u);
-		return kind(i) == Text ? {box: iSource[i], offset: sourceOffset(u)} : {box: iSource[i], offset: 0};
+		// (a text box's own break, a preserved newline: its place in the text)
+		return kind(i) == Text || iSource[i] != null && iSource[i].kind == Text ? {box: iSource[i], offset: sourceOffset(u)} : {box: iSource[i], offset: 0};
 	}
 
 	// the unit of a position (a source box of the content and an offset in
@@ -265,6 +266,12 @@ class InlineContent {
 		var found = -1;
 		for (i in 0...items) {
 			if (iSource[i] != box) continue;
+			// (a text box's own break, a preserved newline: at its place in the text, as its characters are)
+			if (kind(i) != Text && box.kind == Text && iEnd[i] > iStart[i]) {
+				if (sourceOffset(iStart[i]) >= offset) return iStart[i];
+				found = iEnd[i];
+				continue;
+			}
 			if (kind(i) != Text) return offset > 0 ? iEnd[i] : iStart[i];
 			for (u in iStart[i]...iEnd[i])
 				if (sourceOffset(u) >= offset) return u;
