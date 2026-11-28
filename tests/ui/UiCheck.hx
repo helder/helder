@@ -2296,7 +2296,7 @@ class UiCheck {
 		// Left and Right in right-to-left text move the caret as it looks (real fonts: DrawText, with DejaVu Sans)
 		var dejavu = helder.text.SystemFonts.get().match("DejaVu Sans");
 		if (dejavu != null && dejavu.family == "DejaVu Sans") {
-			var rui = new Ui(new helder.ui.draw.DrawText(), 300, 100);
+			var rui = new Ui(helder.ui.TextEngines.standard(), 300, 100);
 			rui.root.style.fontFamily = "DejaVu Sans";
 			rui.root.style.alignItems = Start;
 			var r = new TextField("ab \u05D0\u05D1\u05D2");

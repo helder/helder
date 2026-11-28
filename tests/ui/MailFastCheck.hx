@@ -26,7 +26,7 @@ class MailFastCheck {
 	static function main() {
 		MailFast.declare();
 		helder.ui.actions.Keymap.global.bind("e", MailFastAction.Archive);
-		var ui = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var app = new MailFast();
 		Render.render(app.window(), ui.root);
 		helder.view.graph.Graph.flush();
@@ -124,7 +124,7 @@ class MailFastCheck {
 		// (assistive technology: helder.ui mail's tree, in the same state)
 		var mine = access(ui);
 		Mail.declare();
-		var other = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var other = new Ui(helder.ui.TextEngines.standard(), W, H);
 		other.theme = Mail.sheet;
 		var ref = new Mail();
 		for (k in 0...ref.messages.peek().length) {

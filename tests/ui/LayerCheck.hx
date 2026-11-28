@@ -117,7 +117,7 @@ class LayerCheck {
 			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
 			return (seed >> 8) % n;
 		}
-		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
 		top.style.set({flexDirection: Row, height: H, padding: 8, columnGap: 8, background: 0xFFF4F4F5, fontSize: 13});
 		var card = new Node();

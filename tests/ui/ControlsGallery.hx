@@ -58,7 +58,7 @@ class ControlsGallery implements Markup {
 
 	// (a gallery's frame: mounted, drawn once, its states forced, its transitions finished, checked, drawn)
 	static function frame(device:DrawFrame, look:Look<Dynamic>, dark:Bool, density:Tokens.Density):Bytes {
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.dark = dark;
 		var dispose = Render.render(gallery(look), ui.root);
 		ui.update();

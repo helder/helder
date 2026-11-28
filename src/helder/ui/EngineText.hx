@@ -62,7 +62,8 @@ class EngineText implements TextEngine {
 		// (its min-content width: its widest word as CSS's min-content has it (not broken where overflow-wrap
 		// alone would), whether it wraps or not)
 		var root = t.root;
-		p.measure = () -> minOf(cut < 0 ? root : tree(text, font, spans, true, maxLines, justify, base, -1).root);
+		// (an empty text's none: its line's zero-width space aside)
+		p.measure = text == "" ? () -> 0.0 : () -> minOf(cut < 0 ? root : tree(text, font, spans, true, maxLines, justify, base, -1).root);
 		if (plain && !wrap) shared.set(key, p);
 		return p;
 	}
@@ -133,6 +134,14 @@ class EngineText implements TextEngine {
 			b = b.first != null ? b.first : b.next != null ? b.next : b.parent != null && b.parent != root ? b.parent.next : null;
 		}
 		holding = null;
+		// (unbounded, its lines not from the left (right to left, its own direction, justified): as wide as its
+		// widest line, its max-content, not an infinite line's other end)
+		var t = root.style.text;
+		if (room == Math.POSITIVE_INFINITY && (t.dir == Rtl || t.bidi == Plaintext || t.align == Justify)) {
+			root.maxContent = Math.NaN;
+			flow.intrinsic(root, new Space(fragments, fonts, room, Math.NaN));
+			room = root.maxContent;
+		}
 		var space = new Space(fragments, fonts, room, Math.NaN);
 		if (room < Math.POSITIVE_INFINITY) space.fixedWidth = room;
 		return flow.layout(root, space);
@@ -143,6 +152,10 @@ class EngineText implements TextEngine {
 		p.fragment = id;
 		holding = p;
 	}
+
+	@:allow(helder.ui.EngineParagraph)
+	inline function inlines():helder.ui.flow.InlineFonts
+		return fonts.inlines;
 
 	@:allow(helder.ui.EngineParagraph)
 	inline function frags():Fragments
@@ -162,7 +175,11 @@ class EngineText implements TextEngine {
 			return lastStyle = made;
 		}
 		var t = new InlineBasicStyle();
-		t.families = [font.family];
+		t.families = [familyOf(font)];
+		// (a variable face's optical size axis left at its default, as helder.text draws it: DrawText's widths)
+		t.opticalSizing = false;
+		// (its OpenType features, as DrawText's: tabular figures, a stylistic set)
+		if (font.features != "") t.features = helder.text.FontFeature.parse(font.features);
 		t.size = font.size;
 		t.weight = font.weight;
 		t.style = font.italic ? Italic : Normal;
@@ -213,6 +230,13 @@ class EngineText implements TextEngine {
 	var lastFlags = -1;
 	var lastStyle:Null<BoxStyle> = null;
 
+	// (the face DrawText would draw it in, SystemFonts.match's, by its own family name: a generic one
+	// (system-ui, sans-serif) the same face as before on every system, the engine's matching not another's)
+	function familyOf(font:Font):String {
+		var face = fonts.system.match(font.family, font.weight, font.italic);
+		return face == null ? font.family : face.family;
+	}
+
 	static function keyOf(font:Font):String
 		return font.family + "|" + font.size + "|" + font.weight + "|" + font.italic + "|" + font.lineHeight + "|" + font.letterSpacing + "|"
 			+ font.wordSpacing + "|" + font.overflowWrap + "|" + font.wordBreak + "|" + font.hyphens + "|" + font.lang + "|" + font.features;
@@ -251,6 +275,17 @@ class EngineParagraph extends RunParagraph {
 			}
 			k = f.next(k);
 		}
+		// (one font: drawn at its exact baseline, its face's ascent and descent unrounded, as DrawText draws it, so
+		// that a text scaled is the larger one's; the lines' boxes the engine's, Blink's rounded metrics)
+		if (spanOf.length == 1 && spanOf[0] < 0 && lines.length > 0) {
+			var t = root.style.text, fonts = engine.inlines(), font = fonts.idOf(t);
+			var a = fonts.ascent(font, true), d = fonts.descent(font, true);
+			var lh = Math.isNaN(t.height) ? fonts.normalLineHeight(font, true) : t.height;
+			var shift = (lh - (a + d)) / 2 + a - lines[0].baseline;
+			if (Math.abs(shift) < 1)
+				for (l in lines) l.baseline += shift;
+			first += shift;
+		}
 		super(widest, f.height(id), Math.NaN, Math.isNaN(first) ? 0 : first, size, lines);
 		this.engine = engine;
 		this.root = root;
@@ -281,6 +316,27 @@ class EngineParagraph extends RunParagraph {
 			k = f.next(k);
 		}
 	}
+
+	// (each glyph's characters: its text box and their range in it)
+	final glyphBox:Array<Int> = [];
+	final glyphFrom:Array<Int> = [];
+	final glyphTo:Array<Int> = [];
+
+	// (its glyphs as runs, a document writer's: placed first, each glyph its characters (a ligature's all))
+	override public function runs(width:Float, align:TextAlign):Array<GlyphRun> {
+		ready();
+		var out = super.runs(width, align), i = 0;
+		for (l in lines)
+			for (g in l.start...l.end) {
+				var b = glyphBox[g];
+				glyphText[g] = b < 0 ? "" : boxes[b].text.substring(glyphFrom[g], glyphTo[g]);
+			}
+		for (r in out)
+			for (k in 0...r.text.length) r.text[k] = glyphText[i++];
+		return out;
+	}
+
+	final glyphText:Array<String> = [];
 
 	static inline function blank(c:Int):Bool
 		return c == " ".code || c == "\t".code || c == "\n".code || c == 0x200B;
@@ -331,6 +387,7 @@ class EngineParagraph extends RunParagraph {
 				var run = f.glyphs(k);
 				if (run != null) {
 					var i = boxes.length == 1 ? 0 : boxes.indexOf(f.box(k)), span = i < 0 ? -1 : spanOf[i];
+					var chars = Std.downcast(out, EngineParagraph);
 					var dy = f.y(k) + f.baseline(k) - lineBase, oblique = run.skew != 0;
 					// (a span's glyphs its own: its colour, its size)
 					var mark = span >= 0 ? span : run.size != size ? 0 : -1;
@@ -342,6 +399,11 @@ class EngineParagraph extends RunParagraph {
 						out.sizes.push(run.size);
 						out.obliques.push(oblique);
 						out.spans.push(mark);
+						if (chars != null) {
+							chars.glyphBox.push(i);
+							chars.glyphFrom.push(run.start(n));
+							chars.glyphTo.push(run.end(n));
+						}
 					}
 				}
 			} else collect(f, k, kx, lineBase, out, size, boxes, spanOf);

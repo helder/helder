@@ -19,7 +19,7 @@ class MillionBench {
 	static final canvas = new NullCanvas();
 
 	static function main() {
-		var text = new DrawText();
+		var text = helder.ui.TextEngines.standard();
 		// (the fonts and the program warmed: a Ui of ten rows drawn first, let go)
 		ui = new Ui(text, 480, 640);
 		var warm = new Million(10);

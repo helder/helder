@@ -41,7 +41,7 @@ class UiDrawCheck {
 			return;
 		}
 		#end
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		Sample.build(ui.root);
 		var pixels = Bytes.alloc(W * H * 4);
 		var t0 = haxe.Timer.stamp();
@@ -59,7 +59,7 @@ class UiDrawCheck {
 			Sys.exit(0);
 		}
 		if (smoke) {
-			var face = (cast ui.text : DrawText).face(ui.root.font());
+			var face = new DrawText().face(ui.root.font());
 			// the card's paragraph: dark text on white
 			var dark = 0;
 			for (y in 110...190)
@@ -137,7 +137,7 @@ class UiDrawCheck {
 
 	// (a window's frame at scale s against the sample drawn headless at s, with the window's kind of scrollbars)
 	static function scaled(pixels:Bytes, pw:Int, ph:Int, s:Float, overlay:Bool):Bool {
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = s;
 		ui.overlayBars = overlay;
 		Sample.build(ui.root);

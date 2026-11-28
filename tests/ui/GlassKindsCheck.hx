@@ -91,7 +91,7 @@ class GlassKindsCheck {
 
 	// (the scene laid out at scale k: its pixels drawn, its kinds)
 	static function draw(f:DrawFrame, k:Float, glass:Bool, active:Bool):{pixels:Bytes, kinds:Array<{name:String, node:Node}>} {
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var kinds = build(ui.root, glass);
 		for (g in glassOf(kinds))
 			g.active = active;
@@ -113,7 +113,7 @@ class GlassKindsCheck {
 		File.saveBytes('$dir/bands.png', Png.encode(draw(f, k, false, true).pixels, w, h));
 		f.dispose();
 		// (each glass: kind x y w h radius style tint; a group: group x y w h spacing, then its glass)
-		var ui = new Ui(new DrawText(), W, H), lines = [];
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H), lines = [];
 		var kinds = build(ui.root);
 		ui.update();
 		for (kd in kinds) {
@@ -136,7 +136,7 @@ class GlassKindsCheck {
 	static function tune(ref:String, k:Float, look:Array<Float>, which:Array<Int>, names:Array<String>, inactive:Bool) {
 		var w = Math.round(W * k), h = Math.round(H * k), f = new DrawFrame(w, h), want = helder.image.PngDecoder.decode(File.getBytes(ref)).rgba;
 		// (one tree drawn again at each step: the look is GlassPass's, read as it draws)
-		var ui = new Ui(new DrawText(), W, H), kinds = build(ui.root);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H), kinds = build(ui.root);
 		for (g in glassOf(kinds))
 			g.active = !inactive;
 		f.scale = k;

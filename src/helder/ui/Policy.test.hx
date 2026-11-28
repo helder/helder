@@ -32,7 +32,7 @@ private class Views implements PlatformViews {
 function tests() {
 	describe("Ui.policy", () -> {
 		test("the defaults: drawn text on the desktop, the platform's elsewhere", () -> {
-			var ui = new Ui(new helder.ui.draw.DrawText(), 200, 100);
+			var ui = new Ui(helder.ui.TextEngines.standard(), 200, 100);
 			ui.platform = new Views();
 			var f = new TextField("hi"), a = new TextArea("");
 			ui.root.append(f);
@@ -49,7 +49,7 @@ function tests() {
 			equals(ui.hostOf(f, "menubar"), Native);
 		});
 		test("native asked for: on a node, or by the policy", () -> {
-			var ui = new Ui(new helder.ui.draw.DrawText(), 200, 100);
+			var ui = new Ui(helder.ui.TextEngines.standard(), 200, 100);
 			var views = new Views();
 			ui.platform = views;
 			var f = new TextField("hi"), g = new TextField("ho");

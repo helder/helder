@@ -25,7 +25,7 @@ class TodoFastCheck implements Markup {
 	}
 
 	static function main() {
-		var ui = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var app = new TodoFast(), tree:Null<helder.ui.fast.Tree> = null;
 		Render.render(<Fast ref={t -> tree = t}>{app.view()}</Fast>, ui.root);
 		ui.update();
@@ -151,7 +151,7 @@ class TodoFastCheck implements Markup {
 		ui.update();
 		// (assistive technology: the same tree as helder.ui todo's with the same items)
 		var mine = access(ui);
-		var other = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var other = new Ui(helder.ui.TextEngines.standard(), W, H);
 		other.theme = Todo.sheet;
 		var ref = new Todo();
 		var items:Array<Todo.Item> = [];

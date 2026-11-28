@@ -250,7 +250,7 @@ class DamageCheck {
 	static function see(device:Device, scale:Float, tiles:Bool) {
 		var w = device.width, h = device.height, pixels = Bytes.alloc(w * h * 4), t = Clock.now + 10;
 		var got = [for (keep in [false, true]) {
-			var ui = new Ui(new DrawText(), W, H), r = new Renderer(device), box = new Node();
+			var ui = new Ui(helder.ui.TextEngines.standard(), W, H), r = new Renderer(device), box = new Node();
 			r.scale = ui.scale = scale;
 			r.groups = true;
 			r.tiles = tiles;
@@ -292,7 +292,7 @@ class DamageCheck {
 	static function rests(device:Device, scale:Float) {
 		var w = device.width, h = device.height, t = Clock.now + 10;
 		var got = [for (tiles in [true, false]) {
-			var ui = new Ui(new DrawText(), W, H), r = new Renderer(device), list = new Node(), pixels = Bytes.alloc(w * h * 4);
+			var ui = new Ui(helder.ui.TextEngines.standard(), W, H), r = new Renderer(device), list = new Node(), pixels = Bytes.alloc(w * h * 4);
 			r.scale = ui.scale = scale;
 			r.groups = true;
 			r.tiles = r.keep = tiles;
@@ -415,7 +415,7 @@ class DamageCheck {
 			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
 			return (seed >> 8) % n;
 		}
-		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
 		top.style.set({flexDirection: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
 		var head = new Node(), title = new TextNode("Header");
@@ -479,7 +479,7 @@ enum Swap {
 // scroller of a heading and rows) or a folder's level (a back row with a
 // button, a title, a scroller of a few rows, a foot), one at a time)
 class Sidebar {
-	public final ui = new Ui(new DrawText(), 320, 240);
+	public final ui = new Ui(helder.ui.TextEngines.standard(), 320, 240);
 	final how:Swap;
 	final side = new Node();
 	final outer = new Node();
@@ -638,7 +638,7 @@ class PlaneStack {
 		r.scale = scale;
 		r.groups = true;
 		r.tiles = true;
-		ui = new Ui(new DrawText(), w / scale, h / scale);
+		ui = new Ui(helder.ui.TextEngines.standard(), w / scale, h / scale);
 		ui.scale = scale;
 		ui.root.style.set({flexDirection: Column, background: 0xFFFFFFFF});
 		head.style.set({flexDirection: Row, height: 40, flexShrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});

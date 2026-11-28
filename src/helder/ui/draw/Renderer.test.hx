@@ -111,7 +111,7 @@ private class Owned {
 	final keep:Bool;
 	final device = Device.create(Surface.headless(W * 2, H * 2));
 	final r:Renderer;
-	final ui = new helder.ui.Ui(new DrawText(), W, H);
+	final ui = new helder.ui.Ui(helder.ui.TextEngines.standard(), W, H);
 	final c:helder.ui.layers.Compositor;
 	final node = new OwnTexture();
 	final side = new helder.ui.Node();
@@ -257,7 +257,7 @@ private class Grid {
 	final keep:Bool;
 	final device = Device.create(Surface.headless(W * 2, H * 2));
 	final r:Renderer;
-	final ui = new helder.ui.Ui(new DrawText(), W, H);
+	final ui = new helder.ui.Ui(helder.ui.TextEngines.standard(), W, H);
 	final c:helder.ui.layers.Compositor;
 	final label = new helder.ui.TextNode("0");
 	final notes = new helder.ui.Node();

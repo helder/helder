@@ -102,7 +102,7 @@ private class Window {
 		r = new helder.ui.draw.Renderer(device);
 		r.tiles = r.groups = true;
 		r.scale = S;
-		ui = new Ui(new helder.ui.draw.DrawText(), W, H);
+		ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = S;
 		// (macOS's: a trackpad's stretch past the ends)
 		ui.elastic = true;

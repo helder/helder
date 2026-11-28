@@ -24,7 +24,7 @@ class CodeBench {
 	static function main() {
 		var path = Sys.args()[0];
 		var text = sys.io.File.getContent(path);
-		ui = new Ui(new DrawText(), 900, 640);
+		ui = new Ui(helder.ui.TextEngines.standard(), 900, 640);
 		var t0 = Timer.stamp();
 		editor = new CodeEditor(text, path);
 		ui.root.append(editor);

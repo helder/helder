@@ -27,7 +27,7 @@ class SnapCheck {
 
 	static function main() {
 		device = new DrawFrame(PW, PH);
-		ui = new Ui(new DrawText(), W, H);
+		ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = SCALE;
 		ui.root.style.background = Color.WHITE;
 		ui.root.style.fontFamily = "DejaVu Sans";

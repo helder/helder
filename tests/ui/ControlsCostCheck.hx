@@ -51,7 +51,7 @@ class ControlsCostCheck implements Markup {
 
 	// (a screen's frame at rest: its passes, pipelines, draws and quads, bytes allocated a frame, its part shaders' paints)
 	static function measure(device:Device, v:View):{passes:Int, pipelines:Int, draws:Int, quads:Int, bytes:Float, paints:Float, rests:Bool, painted:Int} {
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var dispose = Render.render(v, ui.root);
 		var r = new Renderer(device);
 		for (_ in 0...4)

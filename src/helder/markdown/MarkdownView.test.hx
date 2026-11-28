@@ -24,7 +24,7 @@ function tests() {
 		return out;
 	}
 	function view(text:String, ?props:Dynamic):{ui:Ui, view:MarkdownView} {
-		var ui = new Ui(new helder.ui.draw.DrawText(), 600, 400);
+		var ui = new Ui(helder.ui.TextEngines.standard(), 600, 400);
 		var p:MarkdownProps = {doc: Markdown.parse(text)};
 		if (props != null) for (f in Reflect.fields(props)) Reflect.setField(p, f, Reflect.field(props, f));
 		var v = new MarkdownView(p);
