@@ -66,6 +66,10 @@ typedef StyleProps = {
 	?textOverflow:helder.ui.TextOverflow,
 	// at most so many lines (0: no limit)
 	?lineClamp:Int,
+	// lines drawn through its text (TextDecoration's bits; 0: none)
+	?textDecoration:Int,
+	// the pointer over it (inherited)
+	?cursor:helder.ui.Cursor,
 	// its state variants, over it where the state is on (a later one's over an earlier's)
 	?hover:StyleProps,
 	?pressed:StyleProps,
@@ -73,6 +77,8 @@ typedef StyleProps = {
 	?disabled:StyleProps,
 	?selected:StyleProps,
 	?checked:StyleProps,
+	// a field's while it shows its placeholder
+	?placeholder:StyleProps,
 	// the nearest ancestor marked group's states
 	?group:StateProps
 }
@@ -173,7 +179,7 @@ final class Style {
 	public static function of(props:StyleProps):Style {
 		var k = write(props);
 		var s = interned.get(k);
-		if (s == null) interned.set(k, s = new Style(props, k));
+		if (s == null) interned.set(k, s = new Style(full(props), k));
 		return s;
 	}
 
@@ -188,6 +194,7 @@ final class Style {
 	public static inline var DISABLED = 8;
 	public static inline var SELECTED = 16;
 	public static inline var CHECKED = 32;
+	public static inline var PLACEHOLDER = 64;
 	public static inline var GROUP = 8;
 
 	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it in order)
@@ -212,6 +219,7 @@ final class Style {
 		over(DISABLED, p.disabled);
 		over(SELECTED, p.selected);
 		over(CHECKED, p.checked);
+		over(PLACEHOLDER, p.placeholder);
 		return out;
 	}
 
@@ -226,6 +234,7 @@ final class Style {
 		if (p.disabled != null) m |= DISABLED;
 		if (p.selected != null) m |= SELECTED;
 		if (p.checked != null) m |= CHECKED;
+		if (p.placeholder != null) m |= PLACEHOLDER;
 		var g = p.group;
 		if (g != null) {
 			if (g.hover != null) m |= HOVER << GROUP;
@@ -283,12 +292,17 @@ final class Style {
 			letterSpacing: b.letterSpacing ?? a.letterSpacing,
 			textAlign: b.textAlign ?? a.textAlign,
 			wrap: b.wrap ?? a.wrap,
+			textOverflow: b.textOverflow ?? a.textOverflow,
+			lineClamp: b.lineClamp ?? a.lineClamp,
+			textDecoration: b.textDecoration ?? a.textDecoration,
+			cursor: b.cursor ?? a.cursor,
 			hover: both(a.hover, b.hover),
 			pressed: both(a.pressed, b.pressed),
 			focus: both(a.focus, b.focus),
 			disabled: both(a.disabled, b.disabled),
 			selected: both(a.selected, b.selected),
 			checked: both(a.checked, b.checked),
+			placeholder: both(a.placeholder, b.placeholder),
 			group: a.group == null ? b.group : b.group == null ? a.group : {
 				hover: both(a.group.hover, b.group.hover),
 				pressed: both(a.group.pressed, b.group.pressed),
@@ -298,6 +312,90 @@ final class Style {
 				checked: both(a.group.checked, b.group.checked)
 			}
 		};
+
+	// (every field there, null: what the fields read fast in, an object of a literal's layout)
+	public static function blank():StyleProps
+		return {
+			display: null,
+			flexDirection: null,
+			flexWrap: null,
+			alignItems: null,
+			alignSelf: null,
+			justifyContent: null,
+			alignContent: null,
+			flexGrow: null,
+			flexShrink: null,
+			flexBasis: null,
+			gap: null,
+			rowGap: null,
+			columnGap: null,
+			width: null,
+			height: null,
+			minWidth: null,
+			minHeight: null,
+			maxWidth: null,
+			maxHeight: null,
+			padding: null,
+			margin: null,
+			borderWidth: null,
+			borderColor: null,
+			borderRadius: null,
+			background: null,
+			opacity: null,
+			overflow: null,
+			position: null,
+			top: null,
+			right: null,
+			bottom: null,
+			left: null,
+			zIndex: null,
+			color: null,
+			fontSize: null,
+			fontWeight: null,
+			fontFamily: null,
+			fontStyle: null,
+			lineHeight: null,
+			letterSpacing: null,
+			textAlign: null,
+			wrap: null,
+			textOverflow: null,
+			lineClamp: null,
+			textDecoration: null,
+			cursor: null,
+			hover: null,
+			pressed: null,
+			focus: null,
+			disabled: null,
+			selected: null,
+			checked: null,
+			placeholder: null,
+			group: null
+		};
+
+	// (p with every field there, its variants' too: read fast from then on)
+	static function full(p:StyleProps):StyleProps {
+		var f = merge(blank(), p);
+		f.hover = whole(f.hover);
+		f.pressed = whole(f.pressed);
+		f.focus = whole(f.focus);
+		f.disabled = whole(f.disabled);
+		f.selected = whole(f.selected);
+		f.checked = whole(f.checked);
+		f.placeholder = whole(f.placeholder);
+		var g = f.group;
+		if (g != null) f.group = {
+			hover: whole(g.hover),
+			pressed: whole(g.pressed),
+			focus: whole(g.focus),
+			disabled: whole(g.disabled),
+			selected: whole(g.selected),
+			checked: whole(g.checked)
+		};
+		return f;
+	}
+
+	static inline function whole(p:Null<StyleProps>):Null<StyleProps>
+		return p == null ? null : merge(blank(), p);
 
 	static function both(a:Null<StyleProps>, b:Null<StyleProps>):Null<StyleProps>
 		return a == null ? b : b == null ? a : merge(a, b);
@@ -352,6 +450,8 @@ final class Style {
 		if (p.wrap != null) word(out, "wr", p.wrap);
 		if (p.textOverflow != null) word(out, "to", p.textOverflow);
 		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
+		if (p.textDecoration != null) word(out, "td", p.textDecoration);
+		if (p.cursor != null) word(out, "cu", p.cursor);
 		inline function sub(name:String, v:Null<StyleProps>)
 			if (v != null) {
 				out.add(name);
@@ -365,6 +465,7 @@ final class Style {
 		sub("disabled", p.disabled);
 		sub("selected", p.selected);
 		sub("checked", p.checked);
+		sub("placeholder", p.placeholder);
 		var g = p.group;
 		if (g != null) {
 			out.add("group{");

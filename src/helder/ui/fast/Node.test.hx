@@ -16,6 +16,12 @@ function tests() {
 			equals(Style.of({padding: 4, background: 0xFFFF0000}) == a, true);
 			equals(a.with({padding: 8}) == Style.of({padding: 8, background: 0xFFFF0000}), true);
 			equals(a == Style.of({padding: 5}), false);
+			// (every field kept by with(): the text's too)
+			var t = Style.of({cursor: Pointer, textDecoration: 2, textOverflow: Ellipsis, lineClamp: 2}).with({padding: 1}).props;
+			equals(t.cursor, Pointer);
+			equals(t.textDecoration, 2);
+			equals(t.textOverflow, Ellipsis);
+			equals(t.lineClamp, 2);
 		});
 		test("one resolution for a style in one state under one parent", () -> {
 			var row = Style.of({padding: 4, hover: {background: 0xFF00FF00}});
@@ -88,7 +94,7 @@ function tests() {
 			var button = new Node(Style.of({padding: 5, background: 0xFF000001, hover: {background: 0xFF000002}, pressed: {background: 0xFF000003}}));
 			var label = new TextNode("ab");
 			var presses = 0;
-			button.onPress = () -> presses++;
+			button.onPress = _ -> presses++;
 			button.append(label);
 			root.append(button);
 			var tree = new Tree(root);

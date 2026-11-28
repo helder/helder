@@ -150,7 +150,7 @@ class Resolve {
 	// all that resolve it under that parent)
 	static function text(p:StyleProps, parent:InlineBasicStyle, theme:Theme):InlineBasicStyle {
 		if (p.color == null && p.fontSize == null && p.fontWeight == null && p.fontFamily == null && p.fontStyle == null && p.lineHeight == null
-			&& p.letterSpacing == null && p.textAlign == null && p.wrap == null && p.textOverflow == null && p.lineClamp == null) return parent;
+			&& p.letterSpacing == null && p.textAlign == null && p.wrap == null && p.textOverflow == null && p.lineClamp == null && p.textDecoration == null) return parent;
 		var t = parent.copy();
 		if (p.fontSize != null) {
 			// (a line height a multiple of the size: the parent's multiple at the new size)
@@ -173,6 +173,10 @@ class Resolve {
 		// (not inherited in CSS: a text's alone, its runs' in it)
 		if (p.textOverflow != null) t.textOverflowEnd = p.textOverflow == Clip ? Clip : Ellipsis;
 		if (p.lineClamp != null) t.clamp = p.lineClamp;
+		if (p.textDecoration != null) {
+			var d = p.textDecoration;
+			t.decoration = (d & (helder.ui.TextDecoration.Underline : Int) != 0 ? 1 : 0) | (d & (helder.ui.TextDecoration.Overline : Int) != 0 ? 2 : 0) | (d & (helder.ui.TextDecoration.LineThrough : Int) != 0 ? 4 : 0);
+		}
 		if (p.color != null) t.colour = tint(p.color, theme, parent.colour);
 		t.decorationColour = t.colour;
 		return t;

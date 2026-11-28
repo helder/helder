@@ -2781,6 +2781,8 @@ class Ui extends ScrollHost {
 	function accessActionNow(id:Int, action:helder.ui.access.AccessAction, ?value:String):Bool {
 		var n = lastAccess == null ? null : lastAccess.node(id);
 		if (n == null || n.ui != this) return false;
+		// (one of its parts': its own to act on)
+		if (id != @:privateAccess n.accessId) return n.accessPartAction(id, action, value);
 		switch action {
 			case Click:
 				var x = n.absX + n.width / 2, y = n.absY + n.height / 2;

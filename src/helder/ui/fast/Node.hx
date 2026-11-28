@@ -1,5 +1,7 @@
 package helder.ui.fast;
 
+import helder.ui.Event;
+import helder.ui.access.Semantics;
 import helder.ui.box.Box;
 import helder.ui.box.BoxKind;
 import helder.ui.box.BoxStyle;
@@ -13,21 +15,45 @@ import helder.ui.flow.InlineBasicStyle;
 //
 //   final list = new Node(Style.of({rowGap: 4, padding: 8}));
 //   list.append(new TextNode("Buy milk", Style.of({fontSize: 16})));
+@:rendered(helder.ui.fast.FastRenderer)
 class Node {
+	// its style (markup's style={...}; its style attributes over it)
 	public var style(default, set):Style;
 	public var parent(default, null):Null<Node> = null;
 	// its subtree's theme (null: its parent's)
 	public var theme(default, set):Null<Theme> = null;
 	// its states are its descendants' group states (a style's group: {...})
 	public var group(default, set) = false;
-	// pressed and let go over it (the innermost node with one)
-	public var onPress:Null<Void->Void> = null;
+	// a name to find it by (markup's tag)
+	public var tag:Null<String> = null;
+	// what it is to assistive technology (its role, label, checked...)
+	public var semantics:Null<Semantics> = null;
+	// focused by Tab and a press (a button and a field are)
+	public var focusable = false;
+	// above 0: first, in order; 0: in tree order; below 0: by a press alone
+	public var tabIndex = 0;
+
+	// pressed: a click let go over it, or Enter or Space while it has the focus (the innermost node with one)
+	public var onPress:Null<Event->Void> = null;
+	// a key while it or a node in it has the focus (then its parent's, unless stopped)
+	public var onKeyDown:Null<Event->Void> = null;
+	public var onFocus:Null<Event->Void> = null;
+	public var onBlur:Null<Event->Void> = null;
+	public var onPointerDown:Null<Event->Void> = null;
+	public var onPointerUp:Null<Event->Void> = null;
+	public var onPointerEnter:Null<Event->Void> = null;
+	public var onPointerLeave:Null<Event->Void> = null;
 
 	@:allow(helder.ui.fast) var box:Box;
 	@:allow(helder.ui.fast) var tree:Null<Tree> = null;
+	@:allow(helder.ui.fast) var accessId = 0;
 	final kids:Array<Node> = [];
 	final kind:Int;
 	var states = 0;
+	// (markup's style attributes; its style with them over it, what is resolved)
+	// (as markup gave them, name and value in turn: parsed once for all the nodes given the same, Attrs.styled)
+	var attrs:Null<Array<Dynamic>> = null;
+	var look:Null<Style> = null;
 	// (what it was resolved under: its parent's text part, the theme passed down, its group's states)
 	var under:Null<InlineBasicStyle> = null;
 	var passed:Null<Theme> = null;
@@ -37,6 +63,39 @@ class Node {
 		kind = textual() ? Resolve.TEXT : Resolve.VIEW;
 		this.style = style ?? Style.none;
 	}
+
+	// A style attribute (markup's: padding={8}, color="#3b82f6"), over its style.
+	public function attr(name:String, value:Dynamic):Bool {
+		if (!Attrs.styles(name)) return false;
+		var a = attrs ??= [], i = 0;
+		while (i < a.length && a[i] != name) i += 2;
+		if (i < a.length) {
+			if (a[i + 1] == value) return true;
+			a[i + 1] = value;
+		} else {
+			a.push(name);
+			a.push(value);
+		}
+		if (fresh()) look = null else refresh();
+		return true;
+	}
+
+	// (being made: no parent, no children, never resolved; markup's attributes on it resolved once, when it is put in)
+	inline function fresh():Bool
+		return under == null && parent == null && kids.length == 0 && box != null;
+
+	// (its style and attributes, interned: resolved again where they changed)
+	function refresh() {
+		var next = attrs == null ? style : Attrs.styled(style, attrs);
+		if (next == look) return;
+		look = next;
+		if (box == null) box = made(Resolve.of(next, 0, Resolve.root, Theme.base, kind));
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+	}
+
+	// what its style says now, its states' variants over it
+	@:allow(helder.ui.fast) function props():Style.StyleProps
+		return (look ??= attrs == null ? style : Attrs.styled(style, attrs)).at(states | groupStates << Style.GROUP);
 
 	// (a text's: TextNode's)
 	function textual():Bool
@@ -52,7 +111,7 @@ class Node {
 	// child before another of its children (null: last); taken from where it was
 	public function insert(child:Node, before:Null<Node>) {
 		if (child.parent != null) child.remove();
-		var i = before == null ? kids.length : kids.indexOf(before);
+		var i = before == null ? kids.length : kids.lastIndexOf(before);
 		if (i < 0) throw "Not a child";
 		kids.insert(i, child);
 		child.parent = this;
@@ -85,8 +144,7 @@ class Node {
 	function set_style(s:Style):Style {
 		if (s == style) return s;
 		style = s;
-		if (box == null) box = made(Resolve.of(s, 0, Resolve.root, Theme.base, kind));
-		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+		if (fresh()) look = null else refresh();
 		return s;
 	}
 
@@ -115,7 +173,8 @@ class Node {
 		under = text;
 		passed = theme;
 		groupStates = group;
-		var s = Resolve.of(style, states | group << Style.GROUP, text, scope(), kind), was = box.style;
+		look ??= attrs == null ? style : Attrs.styled(style, attrs);
+		var s = Resolve.of(look, states | group << Style.GROUP, text, scope(), kind), was = box.style;
 		if (s != was) restyled(was, s);
 		var t = s.text, th = scope(), below = groupBelow();
 		for (c in kids) if (c.under != t || c.passed != th || c.groupStates != below) c.resolve(t, th, below);
@@ -152,12 +211,13 @@ class Node {
 	// (a style swapped on its box: on the boxes it has inside too, TextNode's run)
 	function swapped(now:BoxStyle) {}
 
-	// (child's box into its box, before the next shown child's)
+	// (child's box into its box, after the shown child's before it (a box knows its next alone: no walk from the
+	// first, a list's rows put in one after another))
 	function attach(child:Node) {
 		if (child.box.style.none) return;
-		var i = kids.indexOf(child) + 1;
-		while (i < kids.length && kids[i].box.parent != box) i++;
-		box.insert(child.box, i < kids.length ? kids[i].box : null);
+		var i = kids.lastIndexOf(child) - 1;
+		while (i >= 0 && kids[i].box.parent != box) i--;
+		if (i >= 0) box.insertAfter(child.box, kids[i].box) else box.insert(child.box, box.first);
 	}
 
 	// (what a change takes, to its tree: at its box, or one in it)
@@ -170,13 +230,17 @@ class Node {
 
 	function made(s:BoxStyle):Box {
 		var b = new Box(kindOf(s), s, this);
+		dressed(b);
 		b.flags |= Box.MADE;
 		if (b.container) b.context = contexts().of(s.inner, _ -> {});
 		return b;
 	}
 
-	static function kindOf(s:BoxStyle):BoxKind
+	function kindOf(s:BoxStyle):BoxKind
 		return s.inner == BoxStyle.FLEX || s.inner == BoxStyle.GRID ? Container : Block;
+
+	// (a box made for it: what it holds besides its style, IconNode's svg)
+	function dressed(b:Box) {}
 
 	static var shared:Null<Contexts> = null;
 

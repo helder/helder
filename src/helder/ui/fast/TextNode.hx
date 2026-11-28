@@ -9,7 +9,7 @@ import helder.ui.box.BoxStyle;
 //   title.text = "Inbox (3)";
 class TextNode extends Node {
 	public var text(default, set):String;
-	final run:Box;
+	@:allow(helder.ui.fast) final run:Box;
 
 	public function new(text:String, ?style:Style) {
 		super(style);

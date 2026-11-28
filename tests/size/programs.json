@@ -4,5 +4,6 @@
   { "name": "counter", "dir": "examples/counter", "main": "Counter" },
   { "name": "pdf", "dir": "tests/size", "main": "HtmlToPdf" },
   { "name": "engine", "dir": "tests/bench/document", "main": "TodoDocument" },
-  { "name": "fast", "dir": "tests/ui", "main": "FastProbe" }
+  { "name": "fast", "dir": "tests/ui", "main": "FastProbe" },
+  { "name": "todo-fast", "dir": "examples/todo-fast", "main": "TodoFast" }
 ]

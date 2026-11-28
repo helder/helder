@@ -368,6 +368,14 @@ class Box {
 		}
 	}
 
+	// child after another of its children
+	public function insertAfter(child:Box, after:Box) {
+		child.parent = this;
+		child.next = after.next;
+		after.next = child;
+		if (last == after) last = child;
+	}
+
 	// it out of its parent
 	public function remove() {
 		var p = parent;
