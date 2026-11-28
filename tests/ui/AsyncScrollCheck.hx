@@ -534,7 +534,7 @@ class AsyncScrollCheck {
 		r.tiles = true;
 		r.groups = true;
 		r.scale = scale;
-		var ui = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = scale;
 		var list = new Node(), inner = new Node();
 		list.style.set({overflow: Scroll, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
@@ -619,7 +619,7 @@ class AsyncScrollCheck {
 		r.scale = scale;
 		now = 10;
 		Clock.tick(now);
-		var ui = new Ui(new helder.ui.draw.DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.scale = scale;
 		ui.overlayBars = true;
 		var list = new Node();

@@ -63,7 +63,7 @@ class BoxCheck {
 
 	// a text at (10.25, 10.5): at a size, under a transform about its top left
 	static function text(size:Float, ?transform:String):Ui {
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var t = new TextNode("Transformed");
 		t.style.set({position: Absolute, left: 10.25, top: 10.5, fontSize: size, color: Color.rgb(0x111111)});
 		if (transform != null) {
@@ -78,7 +78,7 @@ class BoxCheck {
 		var args = Sys.args();
 		var dir = haxe.io.Path.directory(args[0]);
 		var boxes:Array<Dynamic> = haxe.Json.parse(sys.io.File.getContent(dir + "/boxes.json"));
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		for (b in boxes)
 			ui.root.append(box(b));
 		var f = new DrawFrame(W, H);

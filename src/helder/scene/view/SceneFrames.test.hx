@@ -217,7 +217,7 @@ private class Golden {
 		device = Device.create(Surface.headless(w, h));
 		r = new Renderer(device);
 		r.background = 0xFFFFFFFF;
-		ui = new Ui(new DrawText(), w, h);
+		ui = new Ui(helder.ui.TextEngines.standard(), w, h);
 	}
 
 	public function frame(draw:() -> Void):Bytes {

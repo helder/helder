@@ -13,7 +13,7 @@ function tests() {
 		#if (target.name == "hxmc")
 		// (its cyan channel, 240 by 60 on black: the text's own white is cyan too)
 		function cyan(kind:Int):Array<Int> {
-			var ui = new Ui(new DrawText(), 240, 60);
+			var ui = new Ui(helder.ui.TextEngines.standard(), 240, 60);
 			var dispose = Render.render(kind == 0 ? Fixture.plain() : kind == 1 ? Fixture.textShadow() : Fixture.boxShadow(), ui.root);
 			ui.update();
 			var c = new helder.ui.draw.soft.SoftCanvas();

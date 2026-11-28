@@ -23,7 +23,7 @@ class GlassCheck {
 
 	// (scene bg drawn at scale k: its pixels, its glass)
 	static function draw(f:DrawFrame, bg:String, k:Float, glass = true, labels = true, group = false):{pixels:Bytes, glass:Array<Glass>} {
-		var ui = new Ui(new DrawText(), Std.int(GlassScene.W), Std.int(GlassScene.H));
+		var ui = new Ui(helder.ui.TextEngines.standard(), Std.int(GlassScene.W), Std.int(GlassScene.H));
 		var gs = GlassScene.build(ui.root, bg, glass, labels, group);
 		f.scale = k;
 		ui.update();

@@ -258,7 +258,7 @@ private class Golden {
 	public function new(w:Int, h:Int) {
 		this.w = w;
 		this.h = h;
-		ui = new Ui(new DrawText(), w, h);
+		ui = new Ui(helder.ui.TextEngines.standard(), w, h);
 		device = Device.create(Surface.headless(w * 2, h * 2));
 		r = new Renderer(device);
 		r.scale = ui.scale = 2;

@@ -27,7 +27,7 @@ class TodoCheck {
 	static function main() {
 		var args = Sys.args();
 		var frame = new DrawFrame(W, H);
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		ui.theme = Todo.sheet;
 		var app = new Todo();
 		Render.render(app.view(), ui.root);

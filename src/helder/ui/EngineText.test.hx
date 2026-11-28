@@ -4,8 +4,7 @@ import helder.test.Test;
 
 // The CSS engine's text (EngineText) against helder.text's own (DrawText):
 // the same widths, heights, lines, min-content widths, carets, hits and
-// selections for one font; its baseline the engine's, a font's ascent
-// rounded as Chromium has it.
+// selections and baselines for one font.
 function tests() {
 	final draw = new helder.ui.draw.DrawText(), engine = new EngineText();
 	final font = new Font("sans-serif", 14, 400, false, 1.25);
@@ -27,8 +26,7 @@ function tests() {
 				near(b.height, a.height);
 				equals(b.lineCount, a.lineCount);
 				near(b.minWidth, a.minWidth);
-				// (the engine's a whole pixel: its font's ascent rounded)
-				equals(b.baseline > a.baseline - 1 && b.baseline <= a.baseline + 0.5, true);
+				near(b.baseline, a.baseline);
 			}
 		});
 		test("carets and hits, across hard breaks", () -> {

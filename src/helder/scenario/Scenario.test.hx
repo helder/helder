@@ -82,7 +82,7 @@ function tests() {
 			score([2, 2]);
 		}});
 		var context = new helder.ui.ScreenContext("resumed", true, null, new helder.view.graph.Atoms("resumed"));
-		var ui = new Ui(new helder.ui.draw.DrawText(), 120, 80);
+		var ui = new Ui(helder.ui.TextEngines.standard(), 120, 80);
 		var d = context.run(() -> Act.mount(sc, Hosting.root, context, ui, null, true));
 		equals([ran, context.run(() -> total())], [0, 0]);
 		context.run(() -> d());

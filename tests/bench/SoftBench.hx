@@ -19,7 +19,7 @@ class SoftBench {
 			helder.text.SystemFonts.get().add(sys.io.File.getBytes(f));
 		var out = [];
 		function scene(name:String, w:Int, h:Int, scale:Float, build:Ui->Void) {
-			var ui = new Ui(new DrawText(), w, h);
+			var ui = new Ui(helder.ui.TextEngines.standard(), w, h);
 			ui.scale = scale;
 			build(ui);
 			ui.update();

@@ -22,10 +22,10 @@ class EmojiCheck {
 
 	static function main() {
 		var args = Sys.args();
-		var text = new DrawText();
+		var text = helder.ui.TextEngines.standard();
 		var family = "";
 		for (f in ["Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji"]) {
-			var face = text.fonts.match(f);
+			var face = helder.text.SystemFonts.get().match(f);
 			if (family == "" && face != null && face.family == f && face.hasColor) family = f;
 		}
 		if (family == "") {

@@ -67,7 +67,7 @@ class StressCheck implements Markup {
 	static function main() {
 		var n = Sys.args().length > 0 ? Std.parseInt(Sys.args()[0]) : 1000;
 		var device = Device.create(Surface.headless(W, H));
-		var ui = new Ui(new DrawText(), W, H);
+		var ui = new Ui(helder.ui.TextEngines.standard(), W, H);
 		var r = new Renderer(device);
 		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 		var pixels = Bytes.alloc(W * H * 4);
