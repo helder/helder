@@ -451,6 +451,9 @@ jobs:
       - id: setup
         uses: ./.github/actions/setup
         with: {node-version: 24}
+      # (the monkey's program links the window's GPU code: EGL, as the headless job has it; fonts for its text)
+      - name: System packages
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: the robustness properties soaked for 20 s each, the TypeScript fuzzer for 5 minutes (bun run test fuzz)
         run: bun run test fuzz
       # (a case that failed, hung, crashed or blew up: replayed first by helder test)
