@@ -45,6 +45,7 @@ class Fragments {
 	final lazyEnd:Array<Int> = [];
 	final lazyFonts:Array<Null<helder.text.FontSet>> = [];
 	var palettes:Null<FontMatch> = null;
+	var boxClips:Null<haxe.ds.IntMap<Bool>> = null;
 
 	public function new() {}
 
@@ -54,7 +55,16 @@ class Fragments {
 		runs.resize(0);
 		lazyContent.resize(0);
 		lazyFonts.resize(0);
+		boxClips = null;
 	}
+
+	public function clipToBox(id:Int) {
+		if (boxClips == null) boxClips = new haxe.ds.IntMap();
+		boxClips.set(id, true);
+	}
+
+	public inline function clipsToBox(id:Int):Bool
+		return boxClips != null && boxClips.exists(id);
 
 	var capacity = 0;
 

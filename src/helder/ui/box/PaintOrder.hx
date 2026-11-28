@@ -644,17 +644,28 @@ class PaintOrder {
 			switch f.kind(k) {
 				case Fragments.BOX:
 					var b = f.box(k);
-					if (apart(b)) queueContext(scope, k, kx, ky, st) else if (b.floating) {
+					var boxState = st;
+					if (f.clipsToBox(k)) {
+						if (f.width(k) <= 0 || f.height(k) <= 0) {
+							k = f.next(k);
+							continue;
+						}
+						var saved = state;
+						state = st;
+						boxState = push(CLIP, 1, null, [kx, ky, f.width(k), f.height(k)], -1);
+						state = saved;
+					}
+					if (apart(b)) queueContext(scope, k, kx, ky, boxState) else if (b.floating) {
 						// (a float: after the blocks' backgrounds, before the inline content, painted whole, step 5)
 						c.floats.push(k);
 						c.floatX.push(kx);
 						c.floatY.push(ky);
-						c.floatState.push(st);
+						c.floatState.push(boxState);
 					} else {
 						var saved = state;
-						state = st;
+						state = boxState;
 						// (sliced across pages: it and its contents clipped to the page's area)
-						var bs = area != null && b.flags & Box.SLICED != 0 ? push(CLIP, 1, null, area, k) : st;
+						var bs = area != null && b.flags & Box.SLICED != 0 ? push(CLIP, 1, null, area, k) : boxState;
 						c.block(BACKGROUND, k, kx, ky, bs);
 						c.outline(k, kx, ky, bs);
 						state = bs;
