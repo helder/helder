@@ -11,6 +11,9 @@ import helder.ui.box.Len;
 class BoxRare {
 	// width's keyword where it is one (min-content, max-content, fit-content: BoxStyle.contentSized)
 	public var widthKeyword(default, null) = "";
+	// min-width's and max-width's (a flex item's: FlexFlow)
+	public var minWidthKeyword(default, null) = "";
+	public var maxWidthKeyword(default, null) = "";
 	// clip: rect()'s top, right, bottom, left (null: auto)
 	public var clip(default, null):Null<Array<Len>> = null;
 	// z-index (null: auto)

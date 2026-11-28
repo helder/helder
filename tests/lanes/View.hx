@@ -124,8 +124,11 @@ class View {
 		return dir;
 	}
 
-	static function layoutConformance()
+	static function layoutConformance() {
 		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformanceCheck");
+		// (helder.ui on the CSS engine's layout, the port's: held to what it fails now)
+		interp(cps(["src", "tests/ui", "tests/layout-conformance"]).concat(["-D", "helder.engine"]), "LayoutConformanceCheck");
+	}
 
 	static function web() {
 		var cp = cps(["src", "tests/web", "examples/web-demo"]);
@@ -183,6 +186,15 @@ class View {
 		shell('$b/GlassCheck tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
+		// (helder.ui on the CSS engine's layout, the port's: the same goldens)
+		var e = '$b/engine', engine = soft.concat(["-D", "helder.engine"]), drawn = ["UiDrawCheck", "TodoCheck", "ControlsGallery"];
+		prebuild([for (m in drawn) {out: exePath('$e/$m', HOST), args: uiCp().concat(["-main", m]).concat(engine)}]);
+		for (m in drawn)
+			hxmc(exePath('$e/$m', HOST), uiCp().concat(["-main", m]).concat(engine));
+		shell('$e/UiDrawCheck tests/ui/draw.png $e/draw.png');
+		shell('$e/TodoCheck tests/ui/todo.png $e/todo.png');
+		mkdirs('$e/controls');
+		shell('$e/ControlsGallery tests/ui/controls $e/controls');
 		Sys.putEnv("HELDER_FONT_DIRS", "");
 	}
 

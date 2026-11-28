@@ -61,15 +61,8 @@ class MarkupCheck implements Markup {
 		virtualGridItems();
 		virtualGridShort();
 		virtualSelection();
-		#if helder.engine
-		// (on the CSS engine's layout, NodeBoxes: what it does not do yet, fewer as the port goes on)
-		Sys.println('MarkupCheck: $checks checks, $failed failed on the engine, at most 2');
-		if (failed < 2) Sys.println('MarkupCheck: lower the engine\'s failures to $failed');
-		Sys.exit(failed <= 2 ? 0 : 1);
-		#else
 		Sys.println('MarkupCheck: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
-		#end
 	}
 
 	static function check(what:String, ok:Bool, ?detail:String) {
