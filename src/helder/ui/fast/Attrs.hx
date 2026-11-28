@@ -3,7 +3,7 @@ package helder.ui.fast;
 import helder.gfx.Color;
 import helder.ui.fast.Style.Edges;
 import helder.ui.fast.Style.Size;
-import helder.ui.fast.Style.StyleProps;
+import helder.ui.fast.Style.Props;
 import helder.ui.fast.Style.Tint;
 import helder.ui.fast.Style.TintValue;
 import helder.ui.box.Len;
@@ -35,13 +35,13 @@ class Attrs {
 		}
 		var k = key.toString(), s = made.get(k);
 		if (s == null) {
-			var p = Style.blank();
+			var p = new Props();
 			i = 0;
 			while (i < attrs.length) {
 				set(p, attrs[i], attrs[i + 1]);
 				i += 2;
 			}
-			made.set(k, s = style.with(p));
+			made.set(k, s = style.over(p));
 		}
 		return s;
 	}
@@ -61,7 +61,7 @@ class Attrs {
 	];
 
 	// (v as p's field name; false: no such style attribute)
-	public static function set(p:StyleProps, name:String, v:Dynamic):Bool {
+	public static function set(p:Props, name:String, v:Dynamic):Bool {
 		switch name {
 			case "display":
 				p.display = v == null ? null : switch Std.string(v) {

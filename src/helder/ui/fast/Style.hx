@@ -11,11 +11,17 @@ import helder.ui.Overflow;
 import helder.ui.Position;
 import helder.ui.TextAlign;
 import helder.ui.box.Len;
+#if macro
+import haxe.macro.Context;
+import haxe.macro.Expr;
+#end
 
 // What a style says, each optional: unset, the initial value (an
 // inherited one's: the parent's). The inherited ones are the text's:
 // color, fontSize, fontWeight, fontFamily, fontStyle, lineHeight,
-// letterSpacing, textAlign, wrap.
+// letterSpacing, textAlign, wrap. A literal given to Style.of or with()
+// is checked and made typed when the program is built (Props); another
+// is read when it runs.
 typedef StyleProps = {
 	// (Grid: laid out as flex, grid layout not linked yet)
 	?display:Display,
@@ -79,6 +85,8 @@ typedef StyleProps = {
 	?checked:StyleProps,
 	// a field's while it shows its placeholder
 	?placeholder:StyleProps,
+	// in a dark theme (Theme.dark: a CSS module's prefers-color-scheme: dark)
+	?dark:StyleProps,
 	// the nearest ancestor marked group's states
 	?group:StateProps
 }
@@ -151,16 +159,167 @@ abstract Edges(Array<Float>) to Array<Float> {
 		});
 }
 
+// (what a style says as a class's fields: read fast and small where an
+// anonymous object's are neither; a literal made one when the program is
+// built, Style.of's)
+@:allow(helder.ui.fast)
+final class Props {
+	public var display:Null<Display> = null;
+	public var flexDirection:Null<Direction> = null;
+	public var flexWrap:Null<Bool> = null;
+	public var alignItems:Null<Align> = null;
+	public var alignSelf:Null<Align> = null;
+	public var justifyContent:Null<Justify> = null;
+	public var alignContent:Null<AlignContent> = null;
+	public var flexGrow:Null<Float> = null;
+	public var flexShrink:Null<Float> = null;
+	public var flexBasis:Null<Size> = null;
+	public var gap:Null<Float> = null;
+	public var rowGap:Null<Float> = null;
+	public var columnGap:Null<Float> = null;
+	public var width:Null<Size> = null;
+	public var height:Null<Size> = null;
+	public var minWidth:Null<Size> = null;
+	public var minHeight:Null<Size> = null;
+	public var maxWidth:Null<Size> = null;
+	public var maxHeight:Null<Size> = null;
+	public var padding:Null<Edges> = null;
+	public var margin:Null<Edges> = null;
+	public var borderWidth:Null<Edges> = null;
+	public var borderColor:Null<Tint> = null;
+	public var borderRadius:Null<Float> = null;
+	public var background:Null<Tint> = null;
+	public var opacity:Null<Float> = null;
+	public var overflow:Null<Overflow> = null;
+	public var position:Null<Position> = null;
+	public var top:Null<Size> = null;
+	public var right:Null<Size> = null;
+	public var bottom:Null<Size> = null;
+	public var left:Null<Size> = null;
+	public var zIndex:Null<Int> = null;
+	public var color:Null<Tint> = null;
+	public var fontSize:Null<Float> = null;
+	public var fontWeight:Null<Int> = null;
+	public var fontFamily:Null<String> = null;
+	public var fontStyle:Null<FontStyle> = null;
+	public var lineHeight:Null<Float> = null;
+	public var letterSpacing:Null<Float> = null;
+	public var textAlign:Null<TextAlign> = null;
+	public var wrap:Null<Bool> = null;
+	public var textOverflow:Null<helder.ui.TextOverflow> = null;
+	public var lineClamp:Null<Int> = null;
+	public var textDecoration:Null<Int> = null;
+	public var cursor:Null<helder.ui.Cursor> = null;
+	public var hover:Null<Props> = null;
+	public var pressed:Null<Props> = null;
+	public var focus:Null<Props> = null;
+	public var disabled:Null<Props> = null;
+	public var selected:Null<Props> = null;
+	public var checked:Null<Props> = null;
+	public var placeholder:Null<Props> = null;
+	public var dark:Null<Props> = null;
+	public var group:Null<GroupProps> = null;
+
+	public function new() {}
+
+	// (an object's, read when the program runs: a style not given as a literal)
+	public static function from(p:Null<StyleProps>):Null<Props> {
+		if (p == null) return null;
+		var o = new Props();
+		o.display = p.display;
+		o.flexDirection = p.flexDirection;
+		o.flexWrap = p.flexWrap;
+		o.alignItems = p.alignItems;
+		o.alignSelf = p.alignSelf;
+		o.justifyContent = p.justifyContent;
+		o.alignContent = p.alignContent;
+		o.flexGrow = p.flexGrow;
+		o.flexShrink = p.flexShrink;
+		o.flexBasis = p.flexBasis;
+		o.gap = p.gap;
+		o.rowGap = p.rowGap;
+		o.columnGap = p.columnGap;
+		o.width = p.width;
+		o.height = p.height;
+		o.minWidth = p.minWidth;
+		o.minHeight = p.minHeight;
+		o.maxWidth = p.maxWidth;
+		o.maxHeight = p.maxHeight;
+		o.padding = p.padding;
+		o.margin = p.margin;
+		o.borderWidth = p.borderWidth;
+		o.borderColor = p.borderColor;
+		o.borderRadius = p.borderRadius;
+		o.background = p.background;
+		o.opacity = p.opacity;
+		o.overflow = p.overflow;
+		o.position = p.position;
+		o.top = p.top;
+		o.right = p.right;
+		o.bottom = p.bottom;
+		o.left = p.left;
+		o.zIndex = p.zIndex;
+		o.color = p.color;
+		o.fontSize = p.fontSize;
+		o.fontWeight = p.fontWeight;
+		o.fontFamily = p.fontFamily;
+		o.fontStyle = p.fontStyle;
+		o.lineHeight = p.lineHeight;
+		o.letterSpacing = p.letterSpacing;
+		o.textAlign = p.textAlign;
+		o.wrap = p.wrap;
+		o.textOverflow = p.textOverflow;
+		o.lineClamp = p.lineClamp;
+		o.textDecoration = p.textDecoration;
+		o.cursor = p.cursor;
+		o.hover = from(p.hover);
+		o.pressed = from(p.pressed);
+		o.focus = from(p.focus);
+		o.disabled = from(p.disabled);
+		o.selected = from(p.selected);
+		o.checked = from(p.checked);
+		o.placeholder = from(p.placeholder);
+		o.dark = from(p.dark);
+		var g = p.group;
+		if (g != null) {
+			var q = new GroupProps();
+			q.hover = from(g.hover);
+			q.pressed = from(g.pressed);
+			q.focus = from(g.focus);
+			q.disabled = from(g.disabled);
+			q.selected = from(g.selected);
+			q.checked = from(g.checked);
+			o.group = q;
+		}
+		return o;
+	}
+}
+
+@:allow(helder.ui.fast)
+final class GroupProps {
+	public var hover:Null<Props> = null;
+	public var pressed:Null<Props> = null;
+	public var focus:Null<Props> = null;
+	public var disabled:Null<Props> = null;
+	public var selected:Null<Props> = null;
+	public var checked:Null<Props> = null;
+
+	public function new() {}
+}
+
 // A node's style: an immutable value, interned (equal styles are one
 // object, a style on a thousand rows resolved once for each state, parent
 // text and theme it meets), with its state variants. with() makes another
-// over it.
+// over it. A literal given to Style.of or with() is checked when the
+// program is built (a misspelt name, a value of another type: an error
+// there) and made as typed fields, no object read field by name at run
+// time.
 //
 //   final row = Style.of({flexDirection: Row, padding: [4, 6], hover: {background: 0xFFF4F4F5}});
 //   final picked = row.with({background: Theme.token("accent")});
 final class Style {
 	// what it says, its variants in it
-	public final props:StyleProps;
+	public final props:Props;
 	// (its interning key: what it says, written out)
 	final key:String;
 
@@ -168,26 +327,93 @@ final class Style {
 	static final interned = new Map<String, Style>();
 
 	// the style that says nothing
-	public static final none = of({});
+	public static final none = intern(new Props());
 
-	function new(props:StyleProps, key:String) {
+	function new(props:Props, key:String) {
 		this.props = props;
 		this.key = key;
 	}
 
 	// The style of props: the one made of the same before, else a new one.
-	public static function of(props:StyleProps):Style {
-		var k = write(props);
+	public static macro function of(props:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
+		return switch props.expr {
+			case EObjectDecl(_): macro helder.ui.fast.Style.intern(${typed(props)});
+			case _: macro helder.ui.fast.Style.ofProps($props);
+		}
+
+	// (a style of props an object read when the program runs)
+	public static function ofProps(props:StyleProps):Style
+		return intern(Props.from(props));
+
+	// (props made typed: the one of the same before, else a style of them)
+	@:noCompletion public static function intern(p:Props):Style {
+		var k = write(p);
 		var s = interned.get(k);
-		if (s == null) interned.set(k, s = new Style(full(props), k));
+		if (s == null) interned.set(k, s = new Style(p, k));
 		return s;
 	}
 
-	// This style with p over it (a variant's too: merged).
-	public function with(p:StyleProps):Style
-		return of(merge(props, p));
+	// This style with p over it (a variant's too: merged); p a literal, an object, or a Style.
+	public macro function with(self:haxe.macro.Expr, p:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
+		return switch p.expr {
+			case EObjectDecl(_): macro $self.over(${typed(p)});
+			case _ if (isStyle(p)): macro $self.over(($p : helder.ui.fast.Style).props);
+			case _: macro $self.over(helder.ui.fast.Style.Props.from($p));
+		}
 
-	// a state's bit (Node.state's): hover, pressed, focus, disabled, selected, checked; a group's, it shifted by GROUP
+	// This style with typed props over it.
+	@:noCompletion public function over(p:Props):Style
+		return intern(merge(props, p));
+
+	#if macro
+	// (a literal as typed fields: each name one of Props', its value typed as that field is, where it is written)
+	static function typed(e:Expr):Expr {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: return macro helder.ui.fast.Style.Props.from($e);
+		}
+		var sets = [macro var p = new helder.ui.fast.Style.Props()];
+		for (f in fields) {
+			var n = f.field, v = f.expr;
+			if (VARIANTS.indexOf(n) >= 0) sets.push(macro @:pos(v.pos) p.$n = ${typed(v)}) else if (n == "group") sets.push(macro @:pos(v.pos) p.group = ${group(v)}) else if (FIELDS.indexOf(n) >= 0)
+				sets.push(macro @:pos(v.pos) p.$n = $v) else Context.error('helder.ui.fast: a style has no field $n' + near(n), v.pos);
+		}
+		sets.push(macro p);
+		return macro @:pos(e.pos) $b{sets};
+	}
+
+	static function group(e:Expr):Expr {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: Context.error("helder.ui.fast: a style's group is a literal of its states' styles", e.pos);
+		}
+		var sets = [macro var g = new helder.ui.fast.Style.GroupProps()];
+		for (f in fields) {
+			var n = f.field;
+			if (GROUP_STATES.indexOf(n) < 0) Context.error('helder.ui.fast: a group has no state $n (${GROUP_STATES.join(", ")})', f.expr.pos);
+			sets.push(macro g.$n = ${typed(f.expr)});
+		}
+		sets.push(macro g);
+		return macro $b{sets};
+	}
+
+	static function isStyle(e:Expr):Bool
+		return try switch Context.follow(Context.typeof(e)) {
+			case TInst(_.get() => c, _): c.name == "Style" && c.pack.join(".") == "helder.ui.fast";
+			case _: false;
+		} catch (_:Dynamic) false;
+
+	// (the field meant: one a letter or two away)
+	static function near(n:String):String {
+		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
+		return "";
+	}
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderRadius", "background", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor"];
+	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
+	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
+	#end
+
+	// a state's bit (Node.state's): hover, pressed, focus, disabled, selected, checked, placeholder; a group's, it shifted by GROUP
 	public static inline var HOVER = 1;
 	public static inline var PRESSED = 2;
 	public static inline var FOCUS = 4;
@@ -197,13 +423,15 @@ final class Style {
 	public static inline var PLACEHOLDER = 64;
 	public static inline var GROUP = 8;
 
-	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it in order)
-	public function at(mask:Int):StyleProps {
+	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it
+	// in order; dark: the theme's tone)
+	public function at(mask:Int, dark = false):Props {
 		var p = props;
-		if (mask == 0) return p;
+		if (mask == 0 && (!dark || p.dark == null)) return p;
 		var out = p;
-		inline function over(bit:Int, v:Null<StyleProps>)
+		inline function over(bit:Int, v:Null<Props>)
 			if (mask & bit != 0 && v != null) out = merge(out, v);
+		if (dark && p.dark != null) out = merge(out, p.dark);
 		var g = p.group;
 		if (g != null) {
 			over(HOVER << GROUP, g.hover);
@@ -248,162 +476,82 @@ final class Style {
 	}
 
 	// (b over a, field by field; variants merged too)
-	public static function merge(a:StyleProps, b:StyleProps):StyleProps
-		return {
-			display: b.display ?? a.display,
-			flexDirection: b.flexDirection ?? a.flexDirection,
-			flexWrap: b.flexWrap ?? a.flexWrap,
-			alignItems: b.alignItems ?? a.alignItems,
-			alignSelf: b.alignSelf ?? a.alignSelf,
-			justifyContent: b.justifyContent ?? a.justifyContent,
-			alignContent: b.alignContent ?? a.alignContent,
-			flexGrow: b.flexGrow ?? a.flexGrow,
-			flexShrink: b.flexShrink ?? a.flexShrink,
-			flexBasis: b.flexBasis ?? a.flexBasis,
-			gap: b.gap ?? a.gap,
-			rowGap: b.rowGap ?? (b.gap != null ? b.gap : a.rowGap),
-			columnGap: b.columnGap ?? (b.gap != null ? b.gap : a.columnGap),
-			width: b.width ?? a.width,
-			height: b.height ?? a.height,
-			minWidth: b.minWidth ?? a.minWidth,
-			minHeight: b.minHeight ?? a.minHeight,
-			maxWidth: b.maxWidth ?? a.maxWidth,
-			maxHeight: b.maxHeight ?? a.maxHeight,
-			padding: b.padding ?? a.padding,
-			margin: b.margin ?? a.margin,
-			borderWidth: b.borderWidth ?? a.borderWidth,
-			borderColor: b.borderColor ?? a.borderColor,
-			borderRadius: b.borderRadius ?? a.borderRadius,
-			background: b.background ?? a.background,
-			opacity: b.opacity ?? a.opacity,
-			overflow: b.overflow ?? a.overflow,
-			position: b.position ?? a.position,
-			top: b.top ?? a.top,
-			right: b.right ?? a.right,
-			bottom: b.bottom ?? a.bottom,
-			left: b.left ?? a.left,
-			zIndex: b.zIndex ?? a.zIndex,
-			color: b.color ?? a.color,
-			fontSize: b.fontSize ?? a.fontSize,
-			fontWeight: b.fontWeight ?? a.fontWeight,
-			fontFamily: b.fontFamily ?? a.fontFamily,
-			fontStyle: b.fontStyle ?? a.fontStyle,
-			lineHeight: b.lineHeight ?? a.lineHeight,
-			letterSpacing: b.letterSpacing ?? a.letterSpacing,
-			textAlign: b.textAlign ?? a.textAlign,
-			wrap: b.wrap ?? a.wrap,
-			textOverflow: b.textOverflow ?? a.textOverflow,
-			lineClamp: b.lineClamp ?? a.lineClamp,
-			textDecoration: b.textDecoration ?? a.textDecoration,
-			cursor: b.cursor ?? a.cursor,
-			hover: both(a.hover, b.hover),
-			pressed: both(a.pressed, b.pressed),
-			focus: both(a.focus, b.focus),
-			disabled: both(a.disabled, b.disabled),
-			selected: both(a.selected, b.selected),
-			checked: both(a.checked, b.checked),
-			placeholder: both(a.placeholder, b.placeholder),
-			group: a.group == null ? b.group : b.group == null ? a.group : {
-				hover: both(a.group.hover, b.group.hover),
-				pressed: both(a.group.pressed, b.group.pressed),
-				focus: both(a.group.focus, b.group.focus),
-				disabled: both(a.group.disabled, b.group.disabled),
-				selected: both(a.group.selected, b.group.selected),
-				checked: both(a.group.checked, b.group.checked)
-			}
-		};
-
-	// (every field there, null: what the fields read fast in, an object of a literal's layout)
-	public static function blank():StyleProps
-		return {
-			display: null,
-			flexDirection: null,
-			flexWrap: null,
-			alignItems: null,
-			alignSelf: null,
-			justifyContent: null,
-			alignContent: null,
-			flexGrow: null,
-			flexShrink: null,
-			flexBasis: null,
-			gap: null,
-			rowGap: null,
-			columnGap: null,
-			width: null,
-			height: null,
-			minWidth: null,
-			minHeight: null,
-			maxWidth: null,
-			maxHeight: null,
-			padding: null,
-			margin: null,
-			borderWidth: null,
-			borderColor: null,
-			borderRadius: null,
-			background: null,
-			opacity: null,
-			overflow: null,
-			position: null,
-			top: null,
-			right: null,
-			bottom: null,
-			left: null,
-			zIndex: null,
-			color: null,
-			fontSize: null,
-			fontWeight: null,
-			fontFamily: null,
-			fontStyle: null,
-			lineHeight: null,
-			letterSpacing: null,
-			textAlign: null,
-			wrap: null,
-			textOverflow: null,
-			lineClamp: null,
-			textDecoration: null,
-			cursor: null,
-			hover: null,
-			pressed: null,
-			focus: null,
-			disabled: null,
-			selected: null,
-			checked: null,
-			placeholder: null,
-			group: null
-		};
-
-	// (p with every field there, its variants' too: read fast from then on)
-	static function full(p:StyleProps):StyleProps {
-		var f = merge(blank(), p);
-		f.hover = whole(f.hover);
-		f.pressed = whole(f.pressed);
-		f.focus = whole(f.focus);
-		f.disabled = whole(f.disabled);
-		f.selected = whole(f.selected);
-		f.checked = whole(f.checked);
-		f.placeholder = whole(f.placeholder);
-		var g = f.group;
-		if (g != null) f.group = {
-			hover: whole(g.hover),
-			pressed: whole(g.pressed),
-			focus: whole(g.focus),
-			disabled: whole(g.disabled),
-			selected: whole(g.selected),
-			checked: whole(g.checked)
-		};
-		return f;
+	@:noCompletion public static function merge(a:Props, b:Props):Props {
+		var o = new Props();
+		o.display = b.display ?? a.display;
+		o.flexDirection = b.flexDirection ?? a.flexDirection;
+		o.flexWrap = b.flexWrap ?? a.flexWrap;
+		o.alignItems = b.alignItems ?? a.alignItems;
+		o.alignSelf = b.alignSelf ?? a.alignSelf;
+		o.justifyContent = b.justifyContent ?? a.justifyContent;
+		o.alignContent = b.alignContent ?? a.alignContent;
+		o.flexGrow = b.flexGrow ?? a.flexGrow;
+		o.flexShrink = b.flexShrink ?? a.flexShrink;
+		o.flexBasis = b.flexBasis ?? a.flexBasis;
+		o.gap = b.gap ?? a.gap;
+		o.rowGap = b.rowGap ?? (b.gap != null ? b.gap : a.rowGap);
+		o.columnGap = b.columnGap ?? (b.gap != null ? b.gap : a.columnGap);
+		o.width = b.width ?? a.width;
+		o.height = b.height ?? a.height;
+		o.minWidth = b.minWidth ?? a.minWidth;
+		o.minHeight = b.minHeight ?? a.minHeight;
+		o.maxWidth = b.maxWidth ?? a.maxWidth;
+		o.maxHeight = b.maxHeight ?? a.maxHeight;
+		o.padding = b.padding ?? a.padding;
+		o.margin = b.margin ?? a.margin;
+		o.borderWidth = b.borderWidth ?? a.borderWidth;
+		o.borderColor = b.borderColor ?? a.borderColor;
+		o.borderRadius = b.borderRadius ?? a.borderRadius;
+		o.background = b.background ?? a.background;
+		o.opacity = b.opacity ?? a.opacity;
+		o.overflow = b.overflow ?? a.overflow;
+		o.position = b.position ?? a.position;
+		o.top = b.top ?? a.top;
+		o.right = b.right ?? a.right;
+		o.bottom = b.bottom ?? a.bottom;
+		o.left = b.left ?? a.left;
+		o.zIndex = b.zIndex ?? a.zIndex;
+		o.color = b.color ?? a.color;
+		o.fontSize = b.fontSize ?? a.fontSize;
+		o.fontWeight = b.fontWeight ?? a.fontWeight;
+		o.fontFamily = b.fontFamily ?? a.fontFamily;
+		o.fontStyle = b.fontStyle ?? a.fontStyle;
+		o.lineHeight = b.lineHeight ?? a.lineHeight;
+		o.letterSpacing = b.letterSpacing ?? a.letterSpacing;
+		o.textAlign = b.textAlign ?? a.textAlign;
+		o.wrap = b.wrap ?? a.wrap;
+		o.textOverflow = b.textOverflow ?? a.textOverflow;
+		o.lineClamp = b.lineClamp ?? a.lineClamp;
+		o.textDecoration = b.textDecoration ?? a.textDecoration;
+		o.cursor = b.cursor ?? a.cursor;
+		o.hover = both(a.hover, b.hover);
+		o.pressed = both(a.pressed, b.pressed);
+		o.focus = both(a.focus, b.focus);
+		o.disabled = both(a.disabled, b.disabled);
+		o.selected = both(a.selected, b.selected);
+		o.checked = both(a.checked, b.checked);
+		o.placeholder = both(a.placeholder, b.placeholder);
+		o.dark = both(a.dark, b.dark);
+		o.group = a.group == null ? b.group : b.group == null ? a.group : {
+			var g = new GroupProps();
+			g.hover = both(a.group.hover, b.group.hover);
+			g.pressed = both(a.group.pressed, b.group.pressed);
+			g.focus = both(a.group.focus, b.group.focus);
+			g.disabled = both(a.group.disabled, b.group.disabled);
+			g.selected = both(a.group.selected, b.group.selected);
+			g.checked = both(a.group.checked, b.group.checked);
+			g;
+		}
+		return o;
 	}
 
-	static inline function whole(p:Null<StyleProps>):Null<StyleProps>
-		return p == null ? null : merge(blank(), p);
-
-	static function both(a:Null<StyleProps>, b:Null<StyleProps>):Null<StyleProps>
+	static function both(a:Null<Props>, b:Null<Props>):Null<Props>
 		return a == null ? b : b == null ? a : merge(a, b);
 
 	// (what it says written out: its key. Floats as their bits or integers:
 	// hxmc's Float to String throws in a static initializer, where styles are
 	// made)
-	@:allow(helder.ui.fast) static function write(p:Null<StyleProps>):String {
+	@:allow(helder.ui.fast) static function write(p:Null<Props>):String {
 		if (p == null) return "";
 		var out = new StringBuf();
 		if (p.display != null) word(out, "d", p.display);
@@ -452,7 +600,7 @@ final class Style {
 		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
 		if (p.textDecoration != null) word(out, "td", p.textDecoration);
 		if (p.cursor != null) word(out, "cu", p.cursor);
-		inline function sub(name:String, v:Null<StyleProps>)
+		inline function sub(name:String, v:Null<Props>)
 			if (v != null) {
 				out.add(name);
 				out.add("{");
@@ -466,6 +614,7 @@ final class Style {
 		sub("selected", p.selected);
 		sub("checked", p.checked);
 		sub("placeholder", p.placeholder);
+		sub("dark", p.dark);
 		var g = p.group;
 		if (g != null) {
 			out.add("group{");

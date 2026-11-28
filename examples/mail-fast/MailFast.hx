@@ -11,8 +11,7 @@ import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.ui.fast.FastTags.FastView;
 import helder.ui.fast.FastTags.*;
-import helder.ui.fast.Style;
-import helder.ui.fast.Style.Tint;
+import helder.ui.fast.StyleModule;
 import helder.ui.fast.Theme;
 import helder.view.*;
 import helder.view.Flow.*;
@@ -21,8 +20,8 @@ import helder.view.graph.Signal;
 import helder.view.graph.Read;
 
 // examples/mail's client on fast nodes (helder.ui.fast): the same markup,
-// its sheet's slots and states typed Styles with hover and selected
-// variants, its light and dark colours a Theme's tokens (dark mode the
+// its sheet's slots and states a CSS module compiled to Styles
+// (mail.module.css: hover and selected as their variants), its light and dark colours a Theme's tokens (dark mode the
 // theme's other tone), its actions on the <Fast>. Its nodes are the CSS
 // engine's boxes; it links no helder.dom and no cascade.
 class MailFast implements Markup {
@@ -42,55 +41,8 @@ class MailFast implements Markup {
 		"accent" => [0xFFDBEAFE, 0xFF1E3A8A], "accent-foreground" => [0xFF1E3A8A, 0xFFDBEAFE]
 	]);
 
-	static inline function t(name:String):Tint
-		return Theme.token(name);
-
-	// (Mail.sheet's rules as styles)
-	static final body = Style.of({background: t("background"), color: t("foreground"), fontSize: 13});
-	static final bar = Style.of({flexDirection: Row, alignItems: Center, columnGap: 8, padding: [8, 12], background: t("muted-background")});
-	static final muted = Style.of({color: t("muted")});
-	static final rule = Style.of({height: 1, background: t("border")});
-	static final panel = Style.of({borderRadius: 8, borderWidth: 1, borderColor: t("border"), background: t("card")});
-	static final head = Style.of({flexDirection: Row, columnGap: 8, padding: [6, 10], borderWidth: [0, 0, 1, 0], borderColor: t("border")});
-	static final column = Style.of({flexDirection: Row, color: t("muted"), fontWeight: 600, cursor: Pointer, hover: {color: t("foreground")}});
-	static final row = Style.of({
-		flexDirection: Row,
-		columnGap: 8,
-		padding: [5, 10],
-		cursor: Pointer,
-		hover: {background: t("hover")},
-		selected: {background: t("accent"), color: t("accent-foreground")}
-	});
-	static final folderStyle = Style.of({
-		flexDirection: Row,
-		alignItems: Center,
-		borderRadius: 6,
-		cursor: Pointer,
-		hover: {background: t("hover")},
-		selected: {background: t("accent"), color: t("accent-foreground"), fontWeight: 600}
-	});
-	static final button = Style.of({
-		flexDirection: Row,
-		alignItems: Center,
-		padding: [5, 10],
-		borderRadius: 6,
-		borderWidth: 1,
-		borderColor: t("border"),
-		background: t("card"),
-		cursor: Pointer,
-		hover: {background: t("hover")}
-	});
-	static final ghost = button.with({borderColor: 0, background: 0});
-	static final input = Style.of({
-		width: 200,
-		padding: [5, 10],
-		borderRadius: 6,
-		borderWidth: 1,
-		borderColor: t("border"),
-		background: t("card"),
-		focus: {borderColor: t("muted")},
-		placeholder: {color: t("muted")}
-	});
+	// (its look, Mail.sheet's rules: mail.module.css, compiled to Styles when the program is)
+	static final s = StyleModule.load("mail.module.css");
 
 	public final folders:Array<MailFolder> = [
 		{name: "Inbox", level: 0},
@@ -183,10 +135,10 @@ class MailFast implements Markup {
 	}
 
 	static function Button(props:{label:String, onPress:Void->Void, ?tag:String, ?variant:String}):FastView
-		return <button tag={props.tag ?? "button"} style={props.variant == "ghost" ? ghost : button} onPress={props.onPress}>{props.label}</button>;
+		return <button tag={props.tag ?? "button"} style={props.variant == "ghost" ? s.ghost : s.button} onPress={props.onPress}>{props.label}</button>;
 
 	function Column(props:{title:String, by:String, ?width:Float}):FastView
-		return <button tag={"sort-" + props.by} style={column} width={props.width} flexGrow={props.width == null ? 1 : 0}
+		return <button tag={"sort-" + props.by} style={s.column} width={props.width} flexGrow={props.width == null ? 1 : 0}
 			onPress={() -> sortBy(props.by)}>
 			{props.title + (sort().by == props.by ? (sort().down ? " ↓" : " ↑") : "")}
 		</button>;
@@ -207,32 +159,32 @@ class MailFast implements Markup {
 		})]}>{view()}</Fast>;
 
 	public function view():FastView
-		return <view style={body} flexGrow={1} minHeight={0}>
-			<view style={bar}>
+		return <view style={s.body} flexGrow={1} minHeight={0}>
+			<view style={s.bar}>
 				<text fontWeight={700} fontSize={15} padding="0 8 0 0">Mail</text>
 				<Button tag="archive" label="Archive" onPress={() -> moveTo("Archive")}/>
 				<Button tag="delete" label="Delete" onPress={() -> moveTo("Trash")}/>
 				<Button tag="unread" label="Mark unread" onPress={markUnread}/>
 				<view flexGrow={1}/>
 				<Button tag="dark" label="Dark mode" variant="ghost" onPress={() -> dark(!dark.peek())}/>
-				<field tag="search" style={input} value={query()} placeholder="Search" aria-label="Search messages" onInput={e -> query(e.text)}/>
+				<field tag="search" style={s.input} value={query()} placeholder="Search" aria-label="Search messages" onInput={e -> query(e.text)}/>
 			</view>
 			<view flexDirection="row" flexGrow={1} minHeight={0} columnGap={12} padding={12}>
 				<view tag="folders" width={170} flexShrink={0} rowGap={2} role="list" aria-label="Folders">
 					<For each={folders}>{(folderOf:Read<MailFolder>) -> {
 						var f = folderOf();
-						<button style={folderStyle} role="listitem" aria-selected={folder() == f} data-state={folder() == f ? "selected" : null}
+						<button style={s.folder} role="listitem" aria-selected={folder() == f} data-state={folder() == f ? "selected" : null}
 							padding={[5, 8, 5, 8 + 16 * f.level]} onPress={() -> {
 								folder(f);
 								selected(null);
 							}}>
 							<text flexGrow={1}>{f.name}</text>
-							<text style={muted}>{count(unread(f))}</text>
+							<text style={s.muted}>{count(unread(f))}</text>
 						</button>;
 					}}</For>
 				</view>
-				<view style={panel} width={340} flexShrink={0} minHeight={0}>
-					<view style={head}>
+				<view style={s.panel} width={340} flexShrink={0} minHeight={0}>
+					<view style={s.head}>
 						<Column title="From" by="from" width={90}/>
 						<Column title="Subject" by="subject"/>
 						<Column title="Date" by="date" width={52}/>
@@ -248,25 +200,25 @@ class MailFast implements Markup {
 					}}>
 						<For each={shown()}>{(message:Read<MailMessage>) -> {
 							var m = message();
-							<view style={row} role="listitem" aria-selected={selected() == m} data-state={selected() == m ? "selected" : null}
+							<view style={s.row} role="listitem" aria-selected={selected() == m} data-state={selected() == m ? "selected" : null}
 								onPress={() -> selected(m)}>
 								{cell(m, m.from, 90)}{cell(m, m.subject)}{cell(m, "Oct " + m.day, 52)}
 							</view>;
 						}}</For>
-						<Show when={shown().length == 0}><text style={muted} padding={12}>No messages</text></Show>
+						<Show when={shown().length == 0}><text style={s.muted} padding={12}>No messages</text></Show>
 					</scroll>
 				</view>
-				<view tag="reader" style={panel} flexGrow={1} minWidth={0} padding={16} rowGap={10}>
-					<Show when={selected() != null} fallback={<text style={muted}>No message selected</text>}>
+				<view tag="reader" style={s.panel} flexGrow={1} minWidth={0} padding={16} rowGap={10}>
+					<Show when={selected() != null} fallback={<text style={s.muted}>No message selected</text>}>
 						<text tag="reader-subject" fontSize={16} fontWeight={600}>{selected()?.subject}</text>
-						<text style={muted}>{selected() == null ? "" : "From " + selected().from + ", October " + selected().day}</text>
-						<view style={rule}/>
+						<text style={s.muted}>{selected() == null ? "" : "From " + selected().from + ", October " + selected().day}</text>
+						<view style={s.rule}/>
 						<text tag="reader-body" lineHeight={1.5}>{selected()?.body}</text>
 					</Show>
 				</view>
 			</view>
 			<Show when={undo() != null}>
-				<view style={bar} columnGap={12} padding="6 12" aria-live="polite">
+				<view style={s.bar} columnGap={12} padding="6 12" aria-live="polite">
 					<text flexGrow={1}>{undo()?.text}</text>
 					<Button tag="undo" label="Undo" variant="ghost" onPress={() -> undo.peek()?.run()}/>
 					<Button tag="dismiss" label="×" variant="ghost" onPress={() -> undo(null)}/>

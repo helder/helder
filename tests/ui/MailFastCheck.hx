@@ -61,6 +61,9 @@ class MailFastCheck {
 			ui.keyDown(k, mods);
 			settle();
 		}
+		var search = find("search");
+		check("the search's placeholder in its module's muted colour", @:privateAccess search.box.style.text.colour == 0xFF71717A,
+			StringTools.hex(@:privateAccess search.box.style.text.colour));
 		var list = find("list");
 		var rows = () -> [for (r in list.children()) if (!@:privateAccess r.box.style.none) r];
 		check("the inbox's seven messages", rows().length == 7, '${rows().length}');

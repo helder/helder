@@ -9,7 +9,6 @@ import helder.ui.UiWindow.Surface;
 import helder.ui.fast.FastTags.*;
 import helder.ui.fast.FastTags;
 import helder.ui.fast.Style;
-import helder.ui.fast.Style.StyleProps;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -45,7 +44,7 @@ class TodoFast implements Markup {
 		hover: {background: 0xFFF4F4F5}
 	});
 	public static final ghost = button.with({background: 0, color: 0xFF71717A, hover: {background: 0xFFF4F4F5, color: 0xFF18181B}});
-	public static final small:StyleProps = {padding: [4, 8]};
+	public static final small = Style.of({padding: [4, 8]});
 	public static final input = Style.of({
 		padding: [8, 12],
 		borderRadius: 6,

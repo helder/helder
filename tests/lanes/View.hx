@@ -70,6 +70,19 @@ class View {
 			if (island && none.length < 8) throw new Failed('$out: the island links only ${none.join(", ")}: the check checks nothing');
 			Sys.println('$out: $got; ${Math.round(FileSystem.stat(exePath(out, HOST)).size / 1024)} KB with symbols; ${none.length == 0 ? "no DOM or cascade" : "links " + none.join(", ")}');
 		}
+		// (a style's literal and a CSS module checked when the program is built: a misspelt name, a selector no
+		// fast style has, an error of the build at its place)
+		for (f in [
+			{main: "MisspeltField", says: "a style has no field paddin; did you mean padding?"},
+			{main: "MisspeltClass", says: "has no field cardd"},
+			{main: "Descendant", says: "descendant.module.css:2: characters 7-8"}
+		]) {
+			var out = 'bin/ui/fast-errors/${f.main}';
+			var r = build(cps(["src", "tests/ui/fast/errors"]).concat(["-main", f.main, "--custom-target", 'hxmc=$out']).concat(os([])), '$out.log');
+			if (r.code == 0) throw new Failed('${f.main}: built, expected to fail');
+			if (r.log.indexOf(f.says) < 0) throw new Failed('${f.main}: failed without "${f.says}":\n${r.log}');
+			Sys.println('${f.main}: fails as it should (${f.says})');
+		}
 		// (the todo and the mail client on fast nodes, through their markup: as an app builds them, the same check;
 		// driven headless, TodoFastCheck and MailFastCheck)
 		for (app in [{main: "TodoFast", dir: "todo"}, {main: "MailFast", dir: "mail"}]) {
