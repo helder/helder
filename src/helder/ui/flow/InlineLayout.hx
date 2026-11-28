@@ -312,6 +312,10 @@ class InlineLayout {
 	public inline function lineForced(k:Int):Bool
 		return lFlags[k] & LineBuilder.FORCED != 0;
 
+	@:allow(helder.ui.flow.BlockLines)
+	inline function lineEmpty(k:Int):Bool
+		return lFlags[k] & LineBuilder.FILLED == 0;
+
 	// --- fragments ---
 
 	public inline function kind(f:Int):InlineFragment

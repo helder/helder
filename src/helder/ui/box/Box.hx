@@ -85,7 +85,7 @@ class Box {
 	public inline function markerPseudo():Bool
 		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";
 
-	@:allow(helder.ui.box.BoxInline, helder.ui.box.BoxPainter)
+	@:allow(helder.ui.box.BoxInline, helder.ui.box.BoxPainter, helder.ui.flow.BlockLines)
 	function markerSymbol():Null<String> {
 		if (!style.rare.contentNormal || first == null || first.kind != Text || first.next != null) return null;
 		var symbol = switch style.rare.listStyleType {

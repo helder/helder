@@ -36,7 +36,8 @@ class BlockFlow implements FormattingContext {
 		var escapes = box.flags & Box.ESCAPES != 0;
 		var reusable = space.fragmentation == null && (ex == null || ex.empty || clear && box.flags & Box.UNFLOATED != 0)
 			&& (!escapes || box.escapes != null);
-		var cached = reusable ? hit(box, key, space) : -1;
+		var marker = !Math.isNaN(space.outsideMarkerOffset);
+		var cached = reusable && !marker ? hit(box, key, space) : -1;
 		if (cached >= 0 && (!escapes || cached == box.cacheFragment && box.cacheWidth == key)) {
 			if (escapes) {
 				var e = box.escapes;
@@ -60,7 +61,7 @@ class BlockFlow implements FormattingContext {
 			box.uncache();
 			return f;
 		}
-		keep(box, key, space, space.fragmentation == null ? f : -1);
+		keep(box, key, space, space.fragmentation == null && !marker ? f : -1);
 		return f;
 	}
 
@@ -334,6 +335,7 @@ class BlockFlow implements FormattingContext {
 		if (own != null) own.enter(box, space.pageTop + bt + pt);
 		if (hasLines) {
 			var ls = childSpace(w);
+			ls.outsideMarkerOffset = space.outsideMarkerOffset;
 			ls.fragmentation = fr;
 			ls.pageTop = space.pageTop + bt + pt;
 			ls.reserve = reserve;
@@ -433,6 +435,9 @@ class BlockFlow implements FormattingContext {
 				}
 				var space2 = childSpace(w);
 				space2.top = cy + py;
+				var marker = c.first;
+				if (box.style.listItem && c.source == null && marker != null && marker.flags & Box.OUTSIDE != 0 && marker.source == box.source)
+					space2.outsideMarkerOffset = box.style.rtl ? br + pr : -(bl + pl);
 				// (a formatting context's root beside floats: in the room they leave, §9.5)
 				var shift = 0.0;
 				if (formattingRoot(c) && !ex.empty) {

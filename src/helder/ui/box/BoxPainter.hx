@@ -399,7 +399,7 @@ class BoxPainter {
 	// (a list marker's disc, circle or square: laid out as its text, drawn as
 	// Chromium draws it, a shape of the font's ascent a: two thirds of it
 	// halved, three halves of the rest below the text's top; at the text's
-	// start inside its item, two thirds of a and 7 before the line outside)
+	// start inside its item, in the marker's span outside)
 	function symbol(p:Painter, id:Int, b:Box, run:ShapedRun, x:Float, baseline:Float, color:Int):Bool {
 		// (the text's box: the marker's, or its text's)
 		var marker = b.kind == Text ? b.parent : b;
@@ -408,13 +408,8 @@ class BoxPainter {
 		if (symbol == null || StringTools.trim(run.shown()) != symbol) return false;
 		if (color >>> 24 == 0) return true;
 		var a = Math.round(FontMatch.ascent(run.face, run.size)), offset = Std.int(a * 2 / 3), size = Std.int((offset + 1) / 2);
-		// (outside: from the line's start, its marker span's end: whatever its text's trailing space)
 		var span = f.parent(id);
-		var hasSpan = span >= 0 && f.kind(span) == Fragments.SPAN;
-		var start = hasSpan ? x - f.x(id) : x, width = f.width(hasSpan ? span : id);
-		var line = hasSpan ? f.parent(span) : -1;
-		var rtl = line >= 0 ? f.box(line).style.rtl : marker.style.rtl;
-		var px = marker.flags & Box.OUTSIDE == 0 ? x : rtl ? start + offset + 7 - size : start + width - offset - 7;
+		var px = marker.flags & Box.OUTSIDE != 0 && span >= 0 && f.kind(span) == Fragments.SPAN ? x - f.x(id) + 1 : x;
 		var x0 = Math.round(px), y0 = Math.round(baseline) - a + Std.int(3 * (a - offset) / 2);
 		var path = new Path();
 		switch symbol {

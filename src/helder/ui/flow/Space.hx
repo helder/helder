@@ -39,6 +39,8 @@ class Space {
 	// coordinates (where its floats are): what is known before the box's own margins are
 	public var left = 0.0;
 	public var top = 0.0;
+	// the list item's inline-start edge, relative to the anonymous block with its first line
+	public var outsideMarkerOffset = Math.NaN;
 	// the absolutely positioned boxes for the nearest positioned ancestor, and the fixed ones for the root
 	public var positioned:Null<Positioned> = null;
 	public var fixed:Null<Positioned> = null;
@@ -85,6 +87,7 @@ class Space {
 		fixed = parent.fixed;
 		left = parent.left;
 		top = parent.top;
+		outsideMarkerOffset = Math.NaN;
 		repeated = null;
 		fragmentation = null;
 		pageTop = 0;
