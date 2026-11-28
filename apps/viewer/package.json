@@ -6,9 +6,14 @@
   "author": "Ben Merckx",
   "homepage": "https://github.com/helder/helder/tree/main/apps/viewer",
   "haxe": {
-    "classPath": ["src"]
+    "classPath": [
+      "src"
+    ]
   },
   "helder": {
-    "main": "Main"
+    "main": "Main",
+    "defines": {
+      "helder.engine": "1"
+    }
   }
 }
