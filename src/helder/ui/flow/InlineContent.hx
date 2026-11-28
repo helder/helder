@@ -177,13 +177,18 @@ class InlineContent {
 	public inline function match(i:Int):Int
 		return iMatch[i];
 
+	// A line without bidi reordering visits the physical left edge first.
+	@:allow(helder.ui.flow.LineBuilder)
+	inline function opensAtStart(style:InlineStyle):Bool
+		return bidi || style.direction() != Rtl;
+
 	// An inline edge with any margin, border or padding keeps the line from being empty.
 	@:allow(helder.ui.flow.LineBuilder, helder.ui.flow.BlockLines)
 	inline function edged(item:Int):Bool {
 		var open = kind(item) == Open, b = open ? item : box(item);
 		if (b < 0) return false;
 		var st = styles[styleOf(b)];
-		return open ? st.marginStart() != 0 || st.borderStart() != 0 || st.paddingStart() != 0 : st.marginEnd() != 0 || st.borderEnd() != 0
+		return open == opensAtStart(st) ? st.marginStart() != 0 || st.borderStart() != 0 || st.paddingStart() != 0 : st.marginEnd() != 0 || st.borderEnd() != 0
 			|| st.paddingEnd() != 0;
 	}
 
@@ -1203,8 +1208,9 @@ class InlineContent {
 				case _:
 					var s = styles[iStyle[i]];
 					pWidth[p] = switch kind(i) {
-						case Open: s.marginStart() + s.borderStart() + s.paddingStart();
-						case Close: s.marginEnd() + s.borderEnd() + s.paddingEnd();
+						case Open | Close:
+							if ((kind(i) == Open) == opensAtStart(s)) s.marginStart() + s.borderStart() + s.paddingStart()
+							else s.marginEnd() + s.borderEnd() + s.paddingEnd();
 						case Atomic: s.marginStart() + atomicWidth(i) + s.marginEnd();
 						case _: 0;
 					}
