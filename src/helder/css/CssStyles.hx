@@ -36,40 +36,82 @@ class CssStyles {
 	// (the cascade's own viewport: not the media's size)
 	var fixedViewport = false;
 	// (the theme's tokens, custom properties by name ("--surface"), each element's where no ancestor declares it;
-	// their texts as given, what a theme changed compares)
+	// their values serialized, what a theme changed compares)
 	@:allow(helder.css) var theme:Null<Map<String, Array<CssValue>>> = null;
+	// (the elements whose style or a pseudo-element's read a token, and the tokens)
+	final readers = new ObjectMap<Element, Array<String>>();
 	var themeText:Map<String, String> = new Map();
 
-	// The theme's tokens (name without its "--" to value as CSS writes it,
-	// "#3b82f6", "8px"): custom properties every element has where none of
-	// its ancestors declares them, below every rule. The elements whose
-	// styles read a token that changed, to work out again (forget, then
-	// computed; what inherits from them is the caller's): none but those.
-	public function retheme(tokens:Null<Map<String, String>>):Array<Element> {
-		var next = tokens ?? new Map(), changed = new Map<String, Bool>();
-		for (k => v in next) if (themeText.get(k) != v) changed.set("--" + k, true);
-		for (k in themeText.keys()) if (!next.exists(k)) changed.set("--" + k, true);
-		themeText = next.copy();
-		var values = new Map<String, Array<CssValue>>();
-		for (k => v in next) {
-			var d = new Parser('--$k: $v').declarationList();
-			if (d.length == 1) values.set("--" + k, d[0].value);
+	// The theme's tokens (name without its "--" to its value's component
+	// values; no parser linked): custom properties every element has where
+	// none of its ancestors declares them, below every rule. The elements
+	// whose styles read a token that changed, to work out again (forget,
+	// then computed; what inherits from them is the caller's): none but
+	// those.
+	public function retheme(tokens:Null<Map<String, Array<CssValue>>>):Array<Element> {
+		var changed:Array<String> = [], texts = new Map<String, String>(), values:Null<Map<String, Array<CssValue>>> = null;
+		if (tokens != null) for (k in tokens.keys()) {
+			var v = tokens.get(k), t = themeKey(v);
+			texts.set(k, t);
+			if (themeText.get(k) != t) changed.push("--" + k);
+			(values ??= new Map()).set("--" + k, v);
 		}
-		theme = Lambda.count(values) == 0 ? null : values;
-		function reads(s:CssStyle):Bool {
-			if (s.reads != null) for (n in s.reads) if (changed.exists(n)) return true;
-			return false;
+		for (k in themeText.keys()) if (!texts.exists(k)) changed.push("--" + k);
+		themeText = texts;
+		theme = values;
+		var out:Array<Element> = [];
+		if (changed.length == 0) return out;
+		for (el in readers.keys()) {
+			var names = readers.get(el);
+			for (n in changed) if (names.indexOf(n) >= 0) {
+				out.push(el);
+				break;
+			}
 		}
-		var out = new ObjectMap<Element, Bool>();
-		if (Lambda.count(changed) == 0) return [];
-		for (el => s in cache) if (reads(s)) out.set(el, true);
-		for (m in pseudoCache) for (el => s in m) if (reads(s)) out.set(el, true);
-		// (the cascades shared by parent and rules whose style read one: worked out again)
-		for (k => bucket in shared) {
-			var kept = [for (x in bucket) if (!reads(x.style)) x];
-			if (kept.length != bucket.length) shared.set(k, kept);
+		// (the cascades shared by parent and rules: some read one, all worked out again, a theme changing seldom)
+		if (out.length > 0) shared.clear();
+		return out;
+	}
+
+	// (an element's style or a pseudo-element's that read tokens: their names kept by the element)
+	function reader(el:Element, s:CssStyle) {
+		var names = readers.get(el);
+		if (names == null) readers.set(el, names = []);
+		for (n in s.reads) if (names.indexOf(n) < 0) names.push(n);
+	}
+
+	// (a token's value as a key, what a theme changed compares: its tokens' kinds and values, no serializer linked;
+	// another value each time where it has more than a theme's tokens have)
+	static var others = 0;
+
+	// (a number as its bits: no float written out)
+	static function bits(out:StringBuf, tag:String, n:Float) {
+		var b = haxe.io.FPHelper.doubleToI64(n);
+		out.add(tag);
+		out.add(b.high);
+		out.add(":");
+		out.add(b.low);
+	}
+
+	static function themeKey(values:Array<CssValue>):String {
+		var out = new StringBuf();
+		for (v in values) switch v {
+			case Token(t):
+				switch t.kind {
+					case Hash(h, _): out.add("#" + h);
+					case Ident(i): out.add("i" + i);
+					case Number(n, _, _): bits(out, "n", n);
+					case Percentage(n, _, _): bits(out, "%", n);
+					case Dimension(n, _, _, u):
+						bits(out, "d", n);
+						out.add(u);
+					case Whitespace: out.add(" ");
+					case Comma: out.add(",");
+					case _: out.add("?" + others++);
+				}
+			case _: out.add("?" + others++);
 		}
-		return [for (el in out.keys()) el];
+		return out.toString();
 	}
 
 	// (the elements a declaration with a viewport unit styled: what another size styles again)
@@ -221,6 +263,7 @@ class CssStyles {
 					case _: computed(el);
 				}
 				m.set(el, s = style(el, pseudo, parent, false));
+				if (s.reads != null) reader(el, s);
 			}
 			return s;
 		}
@@ -230,6 +273,7 @@ class CssStyles {
 		var parent = p != null && p.nodeType == Node.ELEMENT_NODE ? computed(cast p) : null;
 		s = style(el, null, parent, document.documentElement == el);
 		cache.set(el, s);
+		if (s.reads != null) reader(el, s);
 		return s;
 	}
 

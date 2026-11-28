@@ -44,10 +44,10 @@ typedef DocumentViewOptions = {
 	?userAgent:helder.css.CssSheet,
 	// author sheets after the document's own
 	?author:Array<helder.css.CssSheet>,
-	// the theme's tokens: custom properties (name without its "--" to value) every element has where none of its
-	// ancestors declares them (retheme)
-	?theme:Map<String, String>,
-	// prefers-color-scheme's: light (the default) or dark
+	// the theme's tokens: custom properties (name without its "--" to its component values) every element has where
+	// none of its ancestors declares them (retheme)
+	?theme:Map<String, Array<helder.css.CssValue>>,
+	// prefers-color-scheme's where media isn't given: light (the default) or dark
 	?scheme:String
 }
 
@@ -681,7 +681,7 @@ class DocumentView {
 	// (prefers-color-scheme's, light or dark): what read a token that changed,
 	// or what a query that flips with the scheme matches, styled again, its
 	// boxes swapped and laid out at the last size. What it redid.
-	public function retheme(tokens:Null<Map<String, String>>, ?scheme:String):Int {
+	public function retheme(tokens:Null<Map<String, Array<helder.css.CssValue>>>, ?scheme:String):Int {
 		options.theme = tokens;
 		var flips = scheme != null && scheme != (options.scheme ?? "light");
 		if (scheme != null) options.scheme = scheme;
@@ -706,18 +706,9 @@ class DocumentView {
 		return redo;
 	}
 
-	// (what @media matches at this size: the options' media, else a screen of it; the scheme's)
-	function mediaOf(width:Float, height:Float):CssMediaContext {
-		var m = options.media;
-		return m == null ? {type: "screen", width: width, height: height, resolution: 1, color: 8, scheme: options.scheme} : {
-			type: m.type,
-			width: m.width,
-			height: m.height,
-			resolution: m.resolution,
-			color: m.color,
-			scheme: options.scheme ?? m.scheme
-		};
-	}
+	// (what @media matches at this size: the options' media (its own scheme), else a screen of it in the scheme)
+	function mediaOf(width:Float, height:Float):CssMediaContext
+		return options.media ?? {type: "screen", width: width, height: height, resolution: 1, color: 8, scheme: options.scheme};
 
 	// (the elements marked styled again, those their changes reach too, their
 	// boxes' styles swapped: what it takes, the most of it and redo)

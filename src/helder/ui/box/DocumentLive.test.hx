@@ -14,15 +14,15 @@ function tests() {
 	describe("DocumentView live", () -> {
 		test("a theme's token changed repaints its readers alone; a scheme flipped restyles what its query matches", () -> {
 			var v = DocumentView.html(Dom.parse('<!doctype html><style>#a { color: var(--fg) } @media (prefers-color-scheme: dark) { #b { color: #fff } }</style><p id=a>a</p><p id=b>b</p><p id=c>c</p>'),
-				{fonts: ahem(), theme: ["fg" => "#ff0000"]});
+				{fonts: ahem(), theme: ["fg" => helder.css.Css.values("#ff0000")]});
 			v.layout(300, 200);
 			v.watch();
 			var c = v.boxesOf(el(v, "c"))[0].style;
 			equals(v.boxesOf(el(v, "a"))[0].style.text.colour, 0xFFFF0000);
-			equals(v.retheme(["fg" => "#0000ff"]), DocumentView.PAINT);
+			equals(v.retheme(["fg" => helder.css.Css.values("#0000ff")]), DocumentView.PAINT);
 			equals(v.boxesOf(el(v, "a"))[0].style.text.colour, 0xFF0000FF);
 			equals(v.boxesOf(el(v, "c"))[0].style == c, true);
-			equals(v.retheme(["fg" => "#0000ff"], "dark") >= DocumentView.PAINT, true);
+			equals(v.retheme(["fg" => helder.css.Css.values("#0000ff")], "dark") >= DocumentView.PAINT, true);
 			equals(v.boxesOf(el(v, "b"))[0].style.text.colour, 0xFFFFFFFF);
 			equals(v.boxesOf(el(v, "c"))[0].style == c, true);
 		});

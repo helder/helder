@@ -67,19 +67,19 @@ class Theme {
 	public function length(name:String):Float
 		return value(name) ?? 0;
 
-	// Its tokens as CSS writes their values here (name without its "--": "#3b82f6ff", "8px"), what a document in
-	// its scope has as custom properties (DocumentView.retheme).
-	public function properties():Map<String, String> {
-		var out = new Map<String, String>();
+	// Its tokens' values here as CSS's component values (name without its "--": #3b82f6ff, 8px), what a document
+	// in its scope has as custom properties (DocumentView.retheme).
+	public function properties():Map<String, Array<helder.css.CssValue>> {
+		var out = new Map<String, Array<helder.css.CssValue>>();
 		for (k in light.keys()) {
-			var v = value(k);
-			out.set(k, switch kinds.get(k) {
+			var v = value(k), i = Std.int(v), text = number(v);
+			var kind:helder.css.CssToken.CssTokenKind = switch kinds.get(k) {
 				case "colour":
-					var c = Std.int(v);
-					"#" + StringTools.hex(c >> 16 & 0xFF, 2) + StringTools.hex(c >> 8 & 0xFF, 2) + StringTools.hex(c & 0xFF, 2) + StringTools.hex(c >>> 24, 2);
-				case "length": number(v) + "px";
-				case _: number(v);
-			});
+					Hash(StringTools.hex(i >> 16 & 0xFF, 2) + StringTools.hex(i >> 8 & 0xFF, 2) + StringTools.hex(i & 0xFF, 2) + StringTools.hex(i >>> 24, 2), false);
+				case "length": Dimension(v, i == v, text, "px");
+				case _: Number(v, i == v, text);
+			}
+			out.set(k, [Token(new helder.css.CssToken(kind, 0, 0))]);
 		}
 		return out;
 	}
