@@ -167,7 +167,7 @@ class TableFlow implements FormattingContext {
 					var cs = attr(cell, "colspan", 1, 1, 1000);
 					var rs = attr(cell, "rowspan", 1, 0, 65534);
 					if (rs == 0 || rs > rows.length - k) rs = rows.length - k;
-					g.cells.push({box: cell, row: ri, col: col, rows: rs, cols: cs, fragment: -1, height: 0, contentHeight: 0, baseline: Math.NaN});
+					g.cells.push({box: cell, row: ri, col: col, rows: rs, cols: cs, fragment: -1, height: 0, contentHeight: 0, baseline: Math.NaN, bottomEdge: 0});
 					for (dr in 0...rs) for (dc in 0...cs) g.take(ri + dr, col + dc);
 					col += cs;
 					cell = cell.next;
@@ -569,23 +569,28 @@ class TableFlow implements FormattingContext {
 			cell.fragment = f;
 			cell.contentHeight = Math.isNaN(cs.cellContentHeight) ? frags.height(f) : cs.cellContentHeight;
 			cell.height = Math.max(frags.height(f), cell.contentHeight);
-			var b = BlockFlow.firstBaseline(frags, f);
-			cell.baseline = Math.isNaN(b) ? frags.height(f) - bottomEdge(cell.box, cs) : b;
+			cell.bottomEdge = bottomEdge(cell.box, cs);
+			if (valign(cell.box) == "baseline") cell.baseline = cellBaseline(frags, f, cell.bottomEdge);
 		}
 		// (row heights: their own, their cells', the baseline's; a rowspan's last row taking what it needs)
 		var rowH = [for (r in 0...rows) Math.max(0, Lens.resolve(g.rows[r].style.model().height, Math.NaN, 0))];
-		var baselines = [for (_ in 0...rows) 0.0];
-		for (cell in g.cells) if (valign(cell.box) == "baseline") baselines[cell.row] = Math.max(baselines[cell.row], cell.baseline);
+		var baselines = [for (_ in 0...rows) Math.NEGATIVE_INFINITY];
+		var fallback = [for (_ in 0...rows) Math.POSITIVE_INFINITY];
 		for (cell in g.cells) {
-			if (cell.rows != 1) continue;
-			var need = valign(cell.box) == "baseline" ? baselines[cell.row] - cell.baseline + cell.height : cell.height;
+			if (!Math.isNaN(cell.baseline)) baselines[cell.row] = Math.max(baselines[cell.row], cell.baseline);
+			fallback[cell.row] = Math.min(fallback[cell.row], cell.bottomEdge);
+		}
+		for (cell in g.cells) {
+			var need = cell.rows == 1 ? cell.height : 0.0;
+			if (!Math.isNaN(cell.baseline)) need = cell.rows == 1 ? need + baselines[cell.row] - cell.baseline : baselines[cell.row];
 			rowH[cell.row] = Math.max(rowH[cell.row], need);
 		}
 		for (cell in g.cells) {
 			if (cell.rows == 1) continue;
 			var have = g.spacingV * (cell.rows - 1);
 			for (r in cell.row...cell.row + cell.rows) have += rowH[r];
-			var need = valign(cell.box) == "baseline" ? baselines[cell.row] - cell.baseline + cell.height : cell.height;
+			var need = cell.height;
+			if (!Math.isNaN(cell.baseline)) need += baselines[cell.row] - cell.baseline;
 			if (need > have) rowH[cell.row + cell.rows - 1] += need - have;
 		}
 		for (r in 0...rows) if (g.rows[r].style.rare.visibility == "collapse") rowH[r] = 0;
@@ -782,7 +787,7 @@ class TableFlow implements FormattingContext {
 				case "top": 0.0;
 				case "bottom": h - cell.contentHeight;
 				case "middle": (h - cell.contentHeight) / 2;
-				case _: baselines[cell.row] - cell.baseline;
+				case _: Math.isNaN(cell.baseline) ? 0.0 : baselines[cell.row] - cell.baseline;
 			}
 			if (shift != 0) {
 				var k = frags.first(f);
@@ -803,7 +808,12 @@ class TableFlow implements FormattingContext {
 		while (k != null) {
 			if (k == t) {
 				frags.adopt(wf, tf, 0, wy);
-				if (rows > 0) baseline = wy + rowY[0] + baselines[0];
+				for (r in 0...rows) if (shown[r]) {
+					// (a row without a baseline-aligned cell's content uses its lowest content edge after sizing)
+					var b = baselines[r] == Math.NEGATIVE_INFINITY ? Math.max(0, rowH[r] - fallback[r]) : baselines[r];
+					baseline = wy + rowY[r] + b;
+					break;
+				}
 				wy += gridH;
 			} else if (resumed && k.style.rare.captionSide != "bottom" || broken && k.style.rare.captionSide == "bottom") {
 				// (a caption above where it doesn't start, below where it doesn't end: none)
@@ -922,6 +932,19 @@ class TableFlow implements FormattingContext {
 		return (space.borders != null ? space.borders[2] : s.border[2]) + BlockFlow.res(s.padding[2], space.width);
 	}
 
+	static function cellBaseline(frags:Fragments, f:Int, bottomEdge:Float):Float {
+		var baseline = BlockFlow.firstBaseline(frags, f);
+		if (!Math.isNaN(baseline)) return baseline;
+		// (a cell with in-flow content but no line or table row aligns its content box's bottom)
+		var child = frags.first(f);
+		while (child >= 0) {
+			var box = frags.box(child);
+			if (!box.floating && !box.absolute) return frags.height(f) - bottomEdge;
+			child = frags.next(child);
+		}
+		return Math.NaN;
+	}
+
 	static function valign(b:Box):String
 		return switch b.style.verticalAlign().kind {
 			case "top" | "text-top": "top";
@@ -943,7 +966,7 @@ class TableFlow implements FormattingContext {
 
 // a column for distribute: its min-content and max-content widths, a percentage (0: none), whether a width is set
 typedef TableColumn = {min:Float, max:Float, pct:Float, fixed:Bool};
-private typedef Cell = {box:Box, row:Int, col:Int, rows:Int, cols:Int, fragment:Int, height:Float, contentHeight:Float, baseline:Float};
+private typedef Cell = {box:Box, row:Int, col:Int, rows:Int, cols:Int, fragment:Int, height:Float, contentHeight:Float, baseline:Float, bottomEdge:Float};
 
 private class Grid {
 	public final rows:Array<Box> = [];
