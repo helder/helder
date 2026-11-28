@@ -1,4 +1,4 @@
-package helder.ui.fast;
+package helder.ui;
 
 #if macro
 import haxe.macro.Context;
@@ -21,7 +21,7 @@ class Theme {
 	final light:Map<String, Float>;
 	final shade:Map<String, Float>;
 	// (one for each theme: what a style that reads tokens is resolved in)
-	@:allow(helder.ui.fast) final id:Int;
+	@:allow(helder.ui) final id:Int;
 	static var made = 0;
 
 	// the theme of no tokens, light
@@ -76,17 +76,17 @@ class Theme {
 		var file = locate(p, path.pos);
 		var f = ThemeFile.of(file);
 		var name = "Theme" + haxe.crypto.Md5.encode(file).substr(0, 12);
-		var exists = try Context.getType("helder.ui.fast.themes." + name) != null catch (_:Dynamic) false;
+		var exists = try Context.getType("helder.ui.themes." + name) != null catch (_:Dynamic) false;
 		if (!exists) {
 			var pos = Context.currentPos(), fields:Array<Field> = [], light:Array<Expr> = [], shade:Array<Expr> = [];
 			for (k in f.order) {
 				var t = f.tokens.get(k), field = camel(k, path.pos);
 				var type = switch t.kind {
 					case Color: macro :helder.gfx.Color;
-					case Length: macro :helder.ui.fast.Token.Length;
-					case Number: macro :helder.ui.fast.Token.Number;
+					case Length: macro :helder.ui.Token.Length;
+					case Number: macro :helder.ui.Token.Number;
 				}
-				fields.push({name: field, access: [APublic, AFinal], kind: FVar(macro :helder.ui.fast.Token<$type>, macro new helder.ui.fast.Token($v{k})), pos: pos});
+				fields.push({name: field, access: [APublic, AFinal], kind: FVar(macro :helder.ui.Token<$type>, macro new helder.ui.Token($v{k})), pos: pos});
 				light.push(macro $v{k} => $v{t.light});
 				if (t.dark != null) shade.push(macro $v{k} => $v{t.dark});
 			}
@@ -97,18 +97,18 @@ class Theme {
 				pos: pos
 			});
 			Context.defineType({
-				pack: ["helder", "ui", "fast", "themes"],
+				pack: ["helder", "ui", "themes"],
 				name: name,
 				pos: pos,
-				kind: TDClass({pack: ["helder", "ui", "fast"], name: "Theme"}),
+				kind: TDClass({pack: ["helder", "ui"], name: "Theme"}),
 				fields: fields
 			});
 		}
-		return macro new helder.ui.fast.themes.$name();
+		return macro new helder.ui.themes.$name();
 	}
 
 	#if macro
-	@:allow(helder.ui.fast) static function locate(p:String, pos:Position):String {
+	@:allow(helder.ui) static function locate(p:String, pos:Position):String {
 		var file = @:privateAccess helder.css.CssModule.locate(p, haxe.io.Path.directory(Context.getPosInfos(pos).file));
 		if (file == null) Context.error('"$p": no such file beside the module or under a class path', pos);
 		file = sys.FileSystem.fullPath(file);

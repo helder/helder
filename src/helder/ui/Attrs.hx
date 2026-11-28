@@ -1,11 +1,11 @@
-package helder.ui.fast;
+package helder.ui;
 
 import helder.gfx.Color;
-import helder.ui.fast.Style.Edges;
-import helder.ui.fast.Style.Size;
-import helder.ui.fast.Style.Props;
-import helder.ui.fast.Style.Tint;
-import helder.ui.fast.Style.TintValue;
+import helder.ui.Style.Edges;
+import helder.ui.Style.Size;
+import helder.ui.Style.Props;
+import helder.ui.Style.Tint;
+import helder.ui.Style.TintValue;
 import helder.ui.box.Len;
 
 using StringTools;

@@ -1,6 +1,6 @@
-package helder.ui.fast;
+package helder.ui;
 
-// Grid layout for fast nodes, linked where a program says grid (a style's
+// Grid layout for nodes, linked where a program says grid (a style's
 // display Grid or a grid field, written in a literal or markup's
 // attributes: Style.of and FastRenderer call use), so that a program
 // without it links no GridFlow; until then a grid lays out as flex.

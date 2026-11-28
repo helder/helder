@@ -1,4 +1,4 @@
-package helder.ui.fast;
+package helder.ui;
 
 // A theme's token: a custom property (--surface) of a type, a colour
 // (Token<Color>), a length in px (Token<Length>) or a number

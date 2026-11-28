@@ -1,1798 +1,941 @@
 package helder.ui;
 
-import helder.os.Edges;
 import helder.gfx.Color;
-
-// A node's style: flexbox layout (Layout) and how the node is drawn. Each
-// property's setter tells the node what changed (its layout, or only its
-// paint), so that only that is redone. The text properties from color on
-// are inherited: null takes the parent's (resolved by Node's font() and
-// textColor()). Generated once: a property is a field with a setter
-// calling the node's styleChanged; those rarely set are kept in a
-// StyleRare made when the first of them is (most nodes set none).
-class Style {
-	// the root's text properties
-	public static inline var DEFAULT_FAMILY = "sans-serif";
-	public static inline var DEFAULT_SIZE = 14.0;
-	public static inline var DEFAULT_WEIGHT = 400;
-	public static inline var DEFAULT_LINE_HEIGHT = 1.25;
-	public static inline var DEFAULT_COLOR:Color = 0xFF000000;
-
-	static final NO_TRACKS:Array<Grid.Track> = [];
-
-	final node:Node;
-	// (Rules writing a node's own token as what it resolves to: not the node's own value)
-	var resolving = false;
-	// (the colours a node may give as tokens, by StyleFields' ids: Node.ownColor)
-	static final BACKGROUND = StyleFields.NAMES.indexOf("background");
-	static final BORDER_COLOR = StyleFields.NAMES.indexOf("borderColor");
-	static final OUTLINE_COLOR = StyleFields.NAMES.indexOf("outlineColor");
-	static final COLOR = StyleFields.NAMES.indexOf("color");
-
-	@:allow(helder.ui.Node) function new(node:Node)
-		this.node = node;
-
-	// not laid out nor drawn when None
-	public var display(default, set):Display = Flex;
-
-	public var position(default, set):Position = Relative;
-
-	// the main axis (Column, as React Native and Yoga: a UI stacks)
-	public var flexDirection(default, set):Direction = Column;
-
-	// items flow into more lines when the main size is too small
-	public var flexWrap(default, set):Bool = false;
-
-	public var justifyContent(default, set):Justify = Normal;
-
-	// the children's default alignment across the main axis
-	public var alignItems(default, set):Align = Stretch;
-
-	// this node's alignment in its parent (Auto: the parent's alignItems)
-	public var alignSelf(default, set):Align = Align.Auto;
-
-	public var alignContent(get, set):AlignContent;
-
-	// the explicit grid's columns and rows (Grid.tracks: "1fr 200px auto"; none: one empty array shared)
-	public var gridTemplateColumns(get, set):Array<Grid.Track>;
-	public var gridTemplateRows(get, set):Array<Grid.Track>;
-
-	// the explicit grid's named areas (Grid.GridAreas.parse: "'head head' 'side main'"),
-	// which make it at least as many columns and rows (beyond the templates' sized as auto tracks)
-	public var gridTemplateAreas(get, set):Null<Grid.GridAreas>;
-
-	// the size of the tracks auto-placement adds beyond them
-	public var gridAutoColumns(get, set):Grid.Track;
-	public var gridAutoRows(get, set):Grid.Track;
-
-	// what auto-placement fills first: rows (each across, then the next) or columns
-	public var gridAutoFlow(get, set):Grid.GridFlow;
-
-	// the lines this node spans in a grid (Grid.GridPlacement.parse: "1 / 3", "span 2")
-	public var gridColumn(get, set):Grid.GridPlacement;
-	public var gridRow(get, set):Grid.GridPlacement;
-	// both (Grid.area: "header", "1 / 2 / 3 / 4")
-	public var gridArea(never, set):String;
-
-	// in a grid: the children's default alignment in their areas along a row, and this node's (Auto: its parent's justifyItems)
-	public var justifyItems(get, set):Align;
-	public var justifySelf(get, set):Align;
-
-	// flex-grow
-	public var flexGrow(default, set):Float = 0;
-
-	// flex-shrink
-	public var flexShrink(default, set):Float = 1;
-
-	// flex-basis (Auto: the main size, else the content's)
-	public var flexBasis(default, set):Dim = DimValue.Auto;
-
-	// grow, shrink and basis at once (CSS's flex shorthand): a number n is n 1 0%,
-	// as CSS's; markup also "none" (0 0 auto), "auto" (1 1 auto), "2 0 40px"
-	public var flex(never, set):Float;
-
-	// the border box's size
-	public var width(default, set):Dim = DimValue.Auto;
-
-	public var height(default, set):Dim = DimValue.Auto;
-
-	// (Auto: 0)
-	public var minWidth(default, set):Dim = DimValue.Auto;
-
-	public var minHeight(default, set):Dim = DimValue.Auto;
-
-	// (Auto: none)
-	public var maxWidth(default, set):Dim = DimValue.Auto;
-
-	public var maxHeight(default, set):Dim = DimValue.Auto;
-
-	// width / height when one of them is auto (0: none)
-	public var aspectRatio(get, set):Float;
-
-	public var padding(default, set):EdgesValue = Edges.ZERO;
-
-	public var margin(default, set):EdgesValue = Edges.ZERO;
-	// one side of each (CSS's padding-top...: Tailwind's pt-2 and px-4 from
-	// separate rules; a margin's side may be Edges.AUTO, ml-auto)
-	public var paddingTop(get, set):Float;
-	public var paddingRight(get, set):Float;
-	public var paddingBottom(get, set):Float;
-	public var paddingLeft(get, set):Float;
-	public var marginTop(get, set):Float;
-	public var marginRight(get, set):Float;
-	public var marginBottom(get, set):Float;
-	public var marginLeft(get, set):Float;
-
-	// on all four sides, inside the border box
-	public var borderWidth(default, set):Float = 0;
-
-	// each side's (CSS's border-top-width...; null: borderWidth on all four)
-	public var borders(get, set):Null<EdgesValue>;
-
-	// the border's widths as laid out and drawn: borders, else borderWidth on each side
-	public var borderEdges(default, null):Edges = Edges.ZERO;
-
-	// between lines (Column: between items)
-	public var rowGap(default, set):Float = 0;
-
-	// between items (Column: between lines)
-	public var columnGap(default, set):Float = 0;
-
-	// both gaps at once (CSS's gap shorthand; markup "8 12": the rows', then the columns')
-	public var gap(never, set):Float;
-
-	// Absolute: the offsets from the parent's padding box; Relative: shifts
-	public var left(get, set):Dim;
-
-	public var top(get, set):Dim;
-
-	public var right(get, set):Dim;
-
-	public var bottom(get, set):Dim;
-
-	// the four offsets at once (CSS's inset shorthand; markup "10 20": as margins write them)
-	public var inset(never, set):Dim;
-
-	// what overflows it, on both axes (CSS's shorthand); read, the two
-	// together: Scroll if either scrolls, else Hidden if either clips. As
-	// CSS's, both axes clip when either does; an axis scrolls by the wheel,
-	// the keys and a scrollbar only where it is Scroll (Hidden: by scrollTo)
-	public var overflow(default, set):Overflow = Visible;
-	public var overflowX(default, set):Overflow = Visible;
-	public var overflowY(default, set):Overflow = Visible;
-
-	public var background(default, set):Color = Color.TRANSPARENT;
-
-	public var borderColor(default, set):Color = Color.TRANSPARENT;
-
-	// how the border is drawn (BorderStyle: solid, dashed, dotted; null: Solid)
-	public var borderStyle(get, set):Null<BorderStyle>;
-
-	// the corners' radius
-	public var borderRadius(default, set):Float = 0;
-
-	// each corner's (CSS's border-radius with several values; null: radius on all four)
-	public var corners(get, set):Null<CornersValue>;
-
-	// of the node and its subtree
-	public var opacity(default, set):Float = 1;
-
-	public var cursor(default, set):Cursor = Cursor.Auto;
-
-	// over the background colour, under the border: a CSS gradient (Gradient.parse; null: none)
-	public var backgroundImage(get, set):Null<Gradient>;
-
-	// under the background (null: none)
-	public var boxShadow(get, set):Null<Shadow>;
-
-	// a line around the border box, over the node's content: outlineWidth
-	// wide (0: none), outlineOffset outside it (negative: inside), in
-	// outlineColor (null: the text colour), its corners the box's grown by
-	// both, as Chromium draws CSS's solid outline; markup's outline="2px
-	// solid red" sets them, outline="none" none
-	public var outlineWidth(get, set):Float;
-	public var outlineOffset(get, set):Float;
-	public var outlineColor(get, set):Null<Color>;
-	// a solid outline this wide in the text colour (CSS's shorthand; markup also "2px solid red", "none")
-	public var outline(never, set):Float;
-	// whether its text can be selected by the pointer (UserSelect; null: the parent's)
-	public var userSelect(get, set):Null<UserSelect>;
-	// how a text field is sized where this style gives no size (FieldSizing; null: Fixed)
-	public var fieldSizing(get, set):Null<FieldSizing>;
-	// a scroller's scrollbar: its thickness (ScrollbarWidth; null: Auto), its
-	// thumb's and track's colours (CSS's scrollbar-color, inherited; null:
-	// the parent's, else the window's, Ui.scrollbarColor, and no track)
-	public var scrollbarWidth(get, set):Null<ScrollbarWidth>;
-	// paged layout (a document host's; nothing in a window): where pages may
-	// break (PageBreak; null: Auto), the named page it is on (CSS's page)
-	public var breakBefore(get, set):Null<PageBreak>;
-	public var breakAfter(get, set):Null<PageBreak>;
-	public var breakInside(get, set):Null<PageBreak>;
-	public var page(get, set):Null<String>;
-	public var scrollbarColor(get, set):Null<Color>;
-	public var scrollbarTrackColor(get, set):Null<Color>;
-
-	// whether the window's focus ring or the outline is drawn (OutlineStyle; null: Auto)
-	public var outlineStyle(get, set):Null<OutlineStyle>;
-
-	// a ring around the border box (Tailwind's ring: a box-shadow of no
-	// blur, ringWidth wide, in ringColor, null: the text's; ringInset:
-	// inside), outside a gap of ringOffsetWidth in ringOffsetColor; drawn
-	// with the shadows as Tailwind composes them, the offset over the ring
-	// over the shadow, so that each comes from its own rule
-	public var ringWidth(get, set):Float;
-	public var ringColor(get, set):Null<Color>;
-	public var ringOffsetWidth(get, set):Float;
-	public var ringOffsetColor(get, set):Color;
-	public var ringInset(get, set):Bool;
-
-	// how the node and its subtree are drawn and hit, not laid out (Transform.parse; null: none)
-	public var transform(get, set):Null<Transform>;
-
-	// the point the transform is about: x and y in the border box (Transform.origin; null: its centre)
-	public var transformOrigin(get, set):Null<Array<Dim>>;
-
-	// inherited from here on: null takes the parent's (the root's defaults: Style.ROOT)
-	public var color(default, set):Null<Color> = null;
-
-	public var fontFamily(default, set):Null<String> = null;
-
-	public var fontSize(default, set):Null<Float> = null;
-
-	// 400 regular, 700 bold
-	public var fontWeight(default, set):Null<Int> = null;
-
-	// normal or italic (CSS's font-style)
-	public var fontStyle(default, set):Null<FontStyle> = null;
-
-	// a multiple of the font size (inherited as the multiple), or pixels
-	// (lineHeightPx, CSS's line-height: 24px, inherited as the pixels;
-	// over lineHeight where a node has both, as Tailwind's leading-6 is over
-	// text-sm's)
-	public var lineHeight(default, set):Null<Float> = null;
-	public var lineHeightPx(get, set):Null<Float>;
-	// pixels after each character, and on each space (CSS's letter-spacing,
-	// word-spacing); letterSpacingEm: a multiple of the node's font size
-	// (tracking-tight's -0.025em), inherited as the pixels it comes to, over
-	// letterSpacing where a node has both
-	public var letterSpacing(get, set):Null<Float>;
-	public var letterSpacingEm(get, set):Null<Float>;
-	public var wordSpacing(get, set):Null<Float>;
-
-	public var textAlign(default, set):Null<TextAlign> = null;
-
-	// where it is laid out among its siblings (CSS's order: lower first, ties
-	// in the tree's order); painted and hit in that order too; Tab still
-	// follows the tree
-	public var order(get, set):Int;
-
-	// painted over its siblings with lower ones, under those with higher (and
-	// hit the other way round), whatever their order (CSS's z-index among
-	// siblings: no stacking contexts across levels)
-	public var zIndex(get, set):Int;
-
-	// the inline direction, inherited (null: the parent's; Ltr at the root):
-	// Rtl mirrors rows, columns' cross axis, grids' columns and text's
-	// default alignment; margins, padding and offsets stay physical
-	public var direction(get, set):Null<Dir>;
-
-	// whether it is seen, inherited (null: the parent's; Visible at the
-	// root): Hidden keeps its place but draws, hits, focuses and shows
-	// nothing of it to assistive technology (its Visible descendants still are)
-	public var visibility(get, set):Null<Visibility>;
-
-	// whether the pointer finds it, inherited (null: the parent's; Auto at
-	// the root; CSS's pointer-events): None lets presses, hovers and the
-	// wheel through to what is under it (its Auto descendants still take them)
-	public var pointerEvents(get, set):Null<PointerEvents>;
-
-	// whether text wraps at its box's width, inherited (null: the parent's;
-	// Wrap at the root; CSS's text-wrap-mode): NoWrap lays each line out
-	// whole, its min-content width that wide (line breaks still break);
-	// Balance wraps it into lines of about one width (TextWrap)
-	public var textWrap(get, set):Null<TextWrap>;
-
-	// where a word too wide for its line may be cut, inherited (null: the
-	// parent's; BreakWord at the root, where CSS's is Normal: text stays in
-	// its box; CSS's overflow-wrap)
-	public var overflowWrap(get, set):Null<OverflowWrap>;
-
-	// where lines may break inside words, inherited (null: the parent's;
-	// Normal at the root; CSS's word-break): BreakAll between letters too,
-	// KeepAll not between CJK characters
-	public var wordBreak(get, set):Null<WordBreak>;
-
-	// whether words are hyphenated where lines break, inherited (null: the
-	// parent's; Manual at the root; CSS's hyphens): Auto by the patterns of
-	// the node's language (Node.lang), None not at soft hyphens either
-	public var hyphens(get, set):Null<Hyphens>;
-
-	// OpenType features, inherited, as CSS's font-feature-settings writes
-	// them ("'tnum'", "'liga' 0, 'ss01'"; null: the parent's; "normal": the
-	// default ones): their substitutions added, or liga, clig, calt and
-	// kern turned off (helder.text.FontFeature)
-	public var fontFeatureSettings(get, set):Null<String>;
-
-	// figures' forms, inherited, as CSS's font-variant-numeric writes them
-	// ("tabular-nums", "oldstyle-nums slashed-zero"; null: the parent's;
-	// "normal"): their features (tnum, onum, zero...), under
-	// fontFeatureSettings
-	public var fontVariantNumeric(get, set):Null<String>;
-
-	// its text's letters as shown, inherited (null: the parent's; None at
-	// the root; CSS's text-transform): upper or lower case, or each word's
-	// first in upper case; a text field's own text is shown as typed
-	public var textTransform(get, set):Null<TextTransform>;
-
-	// a line too wide for its box (CSS's text-overflow; not inherited):
-	// Ellipsis ends it in one within the box (with NoWrap, or a word too
-	// long to break); its intrinsic widths are the whole text's
-	public var textOverflow(get, set):TextOverflow;
-
-	// a text's lines at most (0: any), the last ending in an ellipsis when cut (CSS's line-clamp; not inherited)
-	public var lineClamp(get, set):Int;
-
-	// the lines drawn with the text in this node and its descendants, in
-	// this node's colour (TextDecoration's flags; 0: none; not inherited,
-	// as in CSS: it reaches the text inside)
-	public var textDecoration(get, set):Int;
-
-	// the colour of the lines textDecoration draws (null: the node's text
-	// colour; not inherited, as CSS's text-decoration-color)
-	public var textDecorationColor(get, set):Null<Color>;
-	// their thickness (auto: a tenth of the font size; a percentage of it;
-	// not inherited) and an underline's place below the baseline (auto: the
-	// font's; inherited), as CSS's text-decoration-thickness and
-	// text-underline-offset
-	public var textDecorationThickness(get, set):Dim;
-	public var textUnderlineOffset(get, set):Dim;
-
-	// shadows of the text in this node and its descendants and of its
-	// decorations, under them (Shadow.parse, as CSS's text-shadow: x, y,
-	// blur and a colour, the text's without one; null: the parent's;
-	// Shadow.NONE: none)
-	public var textShadow(get, set):Null<Shadow>;
-
-	// how its colours, opacity, transform and shadow ease to a new value
-	// once it has been drawn (Transition.parse, as CSS's transition; null:
-	// they jump; not inherited). While one moves, the property reads where
-	// it is; target, where it goes.
-	public var transition(get, set):Null<Transition>;
-
-	// --- the properties rarely set: in a StyleRare made when one is ---
-
-	var rare:Null<StyleRare> = null;
-
-	function more():StyleRare {
-		if (rare == null) rare = new StyleRare();
-		return rare;
-	}
-
-	// (what themes set of the rare properties, apart: shadows, outline, ring,
-	// transitions, transforms, pointer events, selection, z-index, text
-	// wrapping, corners and borders; a themed control needs none of the rest)
-	var themed:Null<StyleThemed> = null;
-
-	function theming():StyleThemed {
-		if (themed == null) themed = new StyleThemed();
-		return themed;
-	}
-
-	inline function get_gridTemplateColumns():Array<Grid.Track>
-		return rare == null ? NO_TRACKS : rare.gridTemplateColumns;
-
-	inline function get_gridTemplateRows():Array<Grid.Track>
-		return rare == null ? NO_TRACKS : rare.gridTemplateRows;
-
-	inline function get_gridTemplateAreas():Null<Grid.GridAreas>
-		return rare == null ? null : rare.gridTemplateAreas;
-
-	inline function get_gridAutoColumns():Grid.Track
-		return rare == null ? Grid.Track.AUTO : rare.gridAutoColumns;
-
-	inline function get_gridAutoRows():Grid.Track
-		return rare == null ? Grid.Track.AUTO : rare.gridAutoRows;
-
-	inline function get_gridAutoFlow():Grid.GridFlow
-		return rare == null ? Grid.GridFlow.Row : rare.gridAutoFlow;
-
-	inline function get_gridColumn():Grid.GridPlacement
-		return rare == null ? Grid.GridPlacement.AUTO : rare.gridColumn;
-
-	inline function get_gridRow():Grid.GridPlacement
-		return rare == null ? Grid.GridPlacement.AUTO : rare.gridRow;
-
-	inline function get_justifyItems():Align
-		return rare == null ? Align.Stretch : rare.justifyItems;
-
-	inline function get_justifySelf():Align
-		return rare == null ? Align.Auto : rare.justifySelf;
-
-	inline function get_alignContent():AlignContent
-		return rare == null ? Normal : rare.alignContent;
-
-	inline function get_aspectRatio():Float
-		return rare == null ? 0 : rare.aspectRatio;
-
-	inline function get_borders():Null<EdgesValue>
-		return themed == null ? null : themed.borders;
-
-	inline function get_corners():Null<CornersValue>
-		return themed == null ? null : themed.corners;
-
-	inline function get_backgroundImage():Null<Gradient>
-		return rare == null ? null : rare.backgroundImage;
-
-	inline function get_boxShadow():Null<Shadow>
-		return themed == null ? null : themed.boxShadow;
-
-	inline function get_outlineWidth():Float
-		return themed == null ? 0 : themed.outlineWidth;
-
-	inline function get_outlineOffset():Float
-		return themed == null ? 0 : themed.outlineOffset;
-
-	inline function get_outlineColor():Null<Color>
-		return themed == null ? null : themed.outlineColor;
-
-	inline function get_transform():Null<Transform>
-		return themed == null ? null : themed.transform;
-
-	inline function get_transformOrigin():Null<Array<Dim>>
-		return rare == null ? null : rare.transformOrigin;
-
-	inline function get_letterSpacing():Null<Float>
-		return rare == null ? null : rare.letterSpacing;
-
-	inline function get_wordSpacing():Null<Float>
-		return rare == null ? null : rare.wordSpacing;
-
-	inline function get_lineHeightPx():Null<Float>
-		return rare == null ? null : rare.lineHeightPx;
-
-	inline function get_letterSpacingEm():Null<Float>
-		return rare == null ? null : rare.letterSpacingEm;
-
-	inline function get_lineClamp():Int
-		return rare == null ? 0 : rare.lineClamp;
-
-	inline function get_direction():Null<Dir>
-		return rare == null ? null : rare.direction;
-
-	inline function get_userSelect():Null<UserSelect>
-		return themed == null ? null : themed.userSelect;
-
-	function set_userSelect(v:Null<UserSelect>):Null<UserSelect> {
-		if (v == userSelect) return v;
-		theming().userSelect = v;
-		return v;
-	}
-
-	inline function get_fieldSizing():Null<FieldSizing>
-		return rare == null ? null : rare.fieldSizing;
-
-	inline function get_breakBefore():Null<PageBreak>
-		return rare == null ? null : rare.breakBefore;
-
-	function set_breakBefore(v:Null<PageBreak>):Null<PageBreak> {
-		if (v == breakBefore) return v;
-		more().breakBefore = v;
-		return v;
-	}
-
-	inline function get_breakAfter():Null<PageBreak>
-		return rare == null ? null : rare.breakAfter;
-
-	function set_breakAfter(v:Null<PageBreak>):Null<PageBreak> {
-		if (v == breakAfter) return v;
-		more().breakAfter = v;
-		return v;
-	}
-
-	inline function get_breakInside():Null<PageBreak>
-		return rare == null ? null : rare.breakInside;
-
-	function set_breakInside(v:Null<PageBreak>):Null<PageBreak> {
-		if (v == breakInside) return v;
-		more().breakInside = v;
-		return v;
-	}
-
-	inline function get_page():Null<String>
-		return rare == null ? null : rare.page;
-
-	function set_page(v:Null<String>):Null<String> {
-		if (v == page) return v;
-		more().page = v;
-		return v;
-	}
-
-	inline function get_scrollbarWidth():Null<ScrollbarWidth>
-		return rare == null ? null : rare.scrollbarWidth;
-
-	function set_scrollbarWidth(v:Null<ScrollbarWidth>):Null<ScrollbarWidth> {
-		if (v == scrollbarWidth) return v;
-		more().scrollbarWidth = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	inline function get_scrollbarColor():Null<Color>
-		return rare == null ? null : rare.scrollbarColor;
-
-	function set_scrollbarColor(v:Null<Color>):Null<Color> {
-		if (v == scrollbarColor) return v;
-		more().scrollbarColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	inline function get_scrollbarTrackColor():Null<Color>
-		return rare == null ? null : rare.scrollbarTrackColor;
-
-	function set_scrollbarTrackColor(v:Null<Color>):Null<Color> {
-		if (v == scrollbarTrackColor) return v;
-		more().scrollbarTrackColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_fieldSizing(v:Null<FieldSizing>):Null<FieldSizing> {
-		if (v == fieldSizing) return v;
-		more().fieldSizing = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	inline function get_outlineStyle():Null<OutlineStyle>
-		return themed == null ? null : themed.outlineStyle;
-
-	inline function get_borderStyle():Null<BorderStyle>
-		return themed == null ? null : themed.borderStyle;
-
-	function set_borderStyle(v:Null<BorderStyle>):Null<BorderStyle> {
-		if (v == borderStyle) return v;
-		theming().borderStyle = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	inline function get_ringWidth():Float
-		return themed == null ? 0 : themed.ringWidth;
-
-	inline function get_ringColor():Null<Color>
-		return themed == null ? null : themed.ringColor;
-
-	inline function get_ringOffsetWidth():Float
-		return themed == null ? 0 : themed.ringOffsetWidth;
-
-	inline function get_ringOffsetColor():Color
-		return themed == null ? Color.WHITE : themed.ringOffsetColor;
-
-	inline function get_ringInset():Bool
-		return themed == null ? false : themed.ringInset;
-
-	function set_ringWidth(v:Float):Float {
-		if (themed != null && themed.transition != null && eases("ringWidth", ringWidth, v)) return v;
-		if (v == ringWidth) return v;
-		theming().ringWidth = v;
-		ringed();
-		return v;
-	}
-
-	function set_ringColor(v:Null<Color>):Null<Color> {
-		if (themed != null && themed.transition != null && eases("ringColor", ringColor, v)) return v;
-		if (v == ringColor) return v;
-		theming().ringColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_ringOffsetWidth(v:Float):Float {
-		if (v == ringOffsetWidth) return v;
-		theming().ringOffsetWidth = v;
-		ringed();
-		return v;
-	}
-
-	function set_ringOffsetColor(v:Color):Color {
-		if (v == ringOffsetColor) return v;
-		theming().ringOffsetColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_ringInset(v:Bool):Bool {
-		if (v == ringInset) return v;
-		theming().ringInset = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	// (how far outside its box a ring draws: the paint's culling widens bounds by the most seen, as for shadows)
-	function ringed() {
-		Ui.shadowReach = Math.max(Ui.shadowReach, ringWidth + ringOffsetWidth + 1);
-		node.styleChanged(false);
-	}
-
-	// its shadows as drawn, the last (the lowest) first: its ring and the
-	// ring's offset over its shadow (null: none)
-	public function paintedShadows():Null<Array<Shadow>> {
-		var r = themed;
-		if (r == null || r.ringWidth <= 0 && r.ringOffsetWidth <= 0) return r == null || r.boxShadow == null ? null : r.boxShadow.painted();
-		var all = r.boxShadow == null ? [] : r.boxShadow.painted();
-		if (r.ringWidth > 0)
-			all.push({spread: r.ringWidth + r.ringOffsetWidth, color: r.ringColor ?? node.textColor(), inset: r.ringInset});
-		if (r.ringOffsetWidth > 0) all.push({spread: r.ringOffsetWidth, color: r.ringOffsetColor, inset: r.ringInset});
-		return all;
-	}
-
-	function set_outlineStyle(v:Null<OutlineStyle>):Null<OutlineStyle> {
-		if (v == outlineStyle) return v;
-		theming().outlineStyle = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	inline function get_visibility():Null<Visibility>
-		return rare == null ? null : rare.visibility;
-
-	inline function get_pointerEvents():Null<PointerEvents>
-		return themed == null ? null : themed.pointerEvents;
-
-	inline function get_textWrap():Null<TextWrap>
-		return themed == null ? null : themed.textWrap;
-
-	inline function get_overflowWrap():Null<OverflowWrap>
-		return rare == null ? null : rare.overflowWrap;
-
-	inline function get_wordBreak():Null<WordBreak>
-		return rare == null ? null : rare.wordBreak;
-
-	inline function get_hyphens():Null<Hyphens>
-		return rare == null ? null : rare.hyphens;
-
-	inline function get_fontFeatureSettings():Null<String>
-		return rare == null ? null : rare.fontFeatureSettings;
-
-	inline function get_fontVariantNumeric():Null<String>
-		return rare == null ? null : rare.fontVariantNumeric;
-
-	// font-variant-numeric's keywords as font-feature-settings ("": normal)
-	public static function numericFeatures(v:String):String {
-		var out = [];
-		for (w in StringTools.trim(v).split(" ")) {
-			var tag = switch w {
-				case "normal" | "": continue;
-				case "lining-nums": "lnum";
-				case "oldstyle-nums": "onum";
-				case "proportional-nums": "pnum";
-				case "tabular-nums": "tnum";
-				case "diagonal-fractions": "frac";
-				case "stacked-fractions": "afrc";
-				case "ordinal": "ordn";
-				case "slashed-zero": "zero";
-				case _: throw "Style.fontVariantNumeric: " + v;
-			}
-			out.push("'" + tag + "'");
-		}
-		return out.join(", ");
-	}
-
-	inline function get_textTransform():Null<TextTransform>
-		return rare == null ? null : rare.textTransform;
-
-	inline function get_textOverflow():TextOverflow
-		return rare == null ? Clip : rare.textOverflow;
-
-	inline function get_order():Int
-		return rare == null ? 0 : rare.order;
-
-	inline function get_zIndex():Int
-		return themed == null ? 0 : themed.zIndex;
-
-	inline function get_textDecoration():Int
-		return rare == null ? 0 : rare.textDecoration;
-
-	inline function get_textDecorationThickness():Dim
-		return rare == null ? DimValue.Auto : rare.textDecorationThickness;
-
-	inline function get_textUnderlineOffset():Dim
-		return rare == null ? DimValue.Auto : rare.textUnderlineOffset;
-
-	inline function get_textDecorationColor():Null<Color>
-		return rare == null ? null : rare.textDecorationColor;
-
-	inline function get_textShadow():Null<Shadow>
-		return rare == null ? null : rare.textShadow;
-
-	inline function get_transition():Null<Transition>
-		return themed == null ? null : themed.transition;
-
-	function set_transition(v:Null<Transition>):Null<Transition> {
-		if (v == transition) return v;
-		theming().transition = v;
-		// (none: what moves there at once)
-		if (v == null && themed.moving != null) step(1e300);
-		return v;
-	}
-
-	// (drawn once: what changes from now on eases, under a transition; Ui's paint sets it)
-	@:allow(helder.ui.Ui) var drawn = false;
-	// (rules for starting asked of it: restyled once it is drawn)
-	@:allow(helder.ui.Rules) var starting = false;
-
-	// a property's value by its id (its place in StyleFields.NAMES), or the one it is moving to under a transition
-	public function targetAt(id:Int):Dynamic {
-		var mt = motionTarget(StyleFields.NAMES[id]);
-		if (mt != null) return mt;
-		if (themed != null && themed.moving != null) {
-			var name = StyleFields.NAMES[id];
-			for (run in themed.moving)
-				if (run.name == name) return run.to;
-		}
-		return StyleFields.getAt(this, id);
-	}
-
-	// a property's value (StyleFields' names), or the one it is moving to under a transition
-	public function target(name:String):Dynamic {
-		var mt = motionTarget(name);
-		if (mt != null) return mt;
-		if (themed != null && themed.moving != null)
-			for (run in themed.moving)
-				if (run.name == name) return run.to;
-		return StyleFields.get(this, name);
-	}
-
-	// (where a property moving under motion goes: null, not moving)
-	function motionTarget(name:String):Dynamic {
-		var p = node.present;
-		if (p == null) return null;
-		return switch name {
-			case "opacity" if (p.opacity != null && p.opacity.moving()): p.opacity.target;
-			case "borderRadius" if (p.radius != null && p.radius.moving()): p.radius.target;
-			case "background" if (p.background != null && p.background.moving()): p.background.target;
-			case "borderColor" if (p.border != null && p.border.moving()): p.border.target;
-			case "color" if (p.color != null && p.color.moving()): p.colorTo;
-			case _: null;
-		}
-	}
-
-	// (a change of an eased property, drawn, under a transition that names
-	// it: the property moving to it on the Clock from where it is, whether
-	// it does; the same value again: a run toward another one stopped)
-	function eases(name:String, from:Dynamic, to:Dynamic):Bool {
-		var r = themed;
-		if (r.stepping || helder.ui.motion.Motions.writing) return false;
-		var m = r.moving, i = -1;
-		if (m != null)
-			for (k in 0...m.length)
-				if (m[k].name == name) i = k;
-		var t = r.transition == null || !drawn || node.ui == null || from == null || to == null || from == to
-			|| (Clock.reducedMotion && !Transition.fades(name)) ? null : r.transition.timing(name);
-		if (t == null) {
-			if (i < 0) return false;
-			m.splice(i, 1);
-			return from == to;
-		}
-		if (i >= 0 && m[i].to == to) return true;
-		// (declared in a frame's update (a rule's restyle) after its tick:
-		// begun at the frame's time, so that the frame hands it to the
-		// compositor running; else at the next tick, the clock may have been idle)
-		var at = helder.ui.motion.Motions.updating && @:privateAccess ScreenContext.current.ticked ? Clock.now + t.delay : -1;
-		var run:Moving = {name: name, from: from, to: to, start: at, duration: t.duration, delay: t.delay, easing: t.easing};
-		if (i >= 0) m[i] = run else {
-			if (m == null) r.moving = m = [];
-			m.push(run);
-		}
-		if (!r.ticking) {
-			r.ticking = true;
-			Clock.addFor(node, step);
-		}
-		if (name == "transform" || name == "opacity") @:privateAccess node.willMove();
-		node.styleChanged(false);
-		return true;
-	}
-
-	// (the Clock's tick: each run's value at now; the ones done at their ends)
-	function step(now:Float):Bool {
-		var r = themed, m = r.moving;
-		r.stepping = true;
-		var i = 0;
-		while (m != null && i < m.length) {
-			var run = m[i];
-			// (the start is the first tick's time, after the delay: the clock may have been idle)
-			if (run.start < 0) run.start = (now >= 1e300 ? 0 : now) + run.delay;
-			var k = node.ui == null ? 1 : (now - run.start) / run.duration;
-			if (k >= 1) {
-				StyleFields.set(this, run.name, run.to);
-				m.splice(i, 1);
-				continue;
-			}
-			if (k > 0) StyleFields.set(this, run.name, Transition.between(run.name, run.from, run.to, Transition.ease(run.easing, k)));
-			i++;
-		}
-		r.stepping = false;
-		if (m == null || m.length == 0) {
-			r.moving = null;
-			r.ticking = false;
-			return false;
-		}
-		return true;
-	}
-
-	inline function get_left():Dim
-		return rare == null ? DimValue.Auto : rare.left;
-
-	inline function get_top():Dim
-		return rare == null ? DimValue.Auto : rare.top;
-
-	inline function get_right():Dim
-		return rare == null ? DimValue.Auto : rare.right;
-
-	inline function get_bottom():Dim
-		return rare == null ? DimValue.Auto : rare.bottom;
-
-	function set_display(v:Display):Display {
-		if (v == display) return v;
-		display = v;
-		node.styleChanged(true, false);
-		return v;
-	}
-
-	function set_position(v:Position):Position {
-		if (v == position) return v;
-		position = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_flexDirection(v:Direction):Direction {
-		if (v == flexDirection) return v;
-		flexDirection = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_flexWrap(v:Bool):Bool {
-		if (v == flexWrap) return v;
-		flexWrap = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_justifyContent(v:Justify):Justify {
-		if (v == justifyContent) return v;
-		justifyContent = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_alignItems(v:Align):Align {
-		if (v == alignItems) return v;
-		alignItems = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_alignSelf(v:Align):Align {
-		if (v == alignSelf) return v;
-		alignSelf = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_order(v:Int):Int {
-		if (v == order) return v;
-		more().order = v;
-		node.styleChanged(true);
-		// (the parent lays its children out in the new order)
-		if (node.parent != null) node.parent.markDirty();
-		return v;
-	}
-
-	function set_zIndex(v:Int):Int {
-		if (v == zIndex) return v;
-		theming().zIndex = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_direction(v:Null<Dir>):Null<Dir> {
-		if (v == direction) return v;
-		more().direction = v;
-		node.styleChanged(true);
-		// (inherited: every container under it lays out again, its rules for rtl hold or not)
-		@:privateAccess node.dirChanged();
-		if (node.ui != null) Rules.restyleTree(node);
-		return v;
-	}
-
-	function set_visibility(v:Null<Visibility>):Null<Visibility> {
-		if (v == visibility) return v;
-		more().visibility = v;
-		node.styleChanged(false);
-		// (what assistive technology sees changes)
-		Ui.accessEpoch++;
-		return v;
-	}
-
-	function set_pointerEvents(v:Null<PointerEvents>):Null<PointerEvents> {
-		if (v == pointerEvents) return v;
-		theming().pointerEvents = v;
-		return v;
-	}
-
-	function set_textWrap(v:Null<TextWrap>):Null<TextWrap> {
-		if (v == textWrap) return v;
-		theming().textWrap = v;
-		// (inherited: the text under it laid out again)
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_overflowWrap(v:Null<OverflowWrap>):Null<OverflowWrap> {
-		if (v == overflowWrap) return v;
-		more().overflowWrap = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_fontVariantNumeric(v:Null<String>):Null<String> {
-		if (v == fontVariantNumeric) return v;
-		if (v != null) numericFeatures(v);
-		more().fontVariantNumeric = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_fontFeatureSettings(v:Null<String>):Null<String> {
-		if (v == fontFeatureSettings) return v;
-		// (parsed now: a mistake throws where it is made)
-		if (v != null) helder.text.FontFeature.parse(v);
-		more().fontFeatureSettings = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_wordBreak(v:Null<WordBreak>):Null<WordBreak> {
-		if (v == wordBreak) return v;
-		more().wordBreak = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_hyphens(v:Null<Hyphens>):Null<Hyphens> {
-		if (v == hyphens) return v;
-		more().hyphens = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_textOverflow(v:TextOverflow):TextOverflow {
-		if (v == textOverflow) return v;
-		more().textOverflow = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_textTransform(v:Null<TextTransform>):Null<TextTransform> {
-		if (v == textTransform) return v;
-		more().textTransform = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_lineClamp(v:Int):Int {
-		if (v == lineClamp) return v;
-		more().lineClamp = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_alignContent(v:AlignContent):AlignContent {
-		if (v == alignContent) return v;
-		more().alignContent = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridTemplateColumns(v:Array<Grid.Track>):Array<Grid.Track> {
-		if (v == gridTemplateColumns) return v;
-		more().gridTemplateColumns = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridTemplateRows(v:Array<Grid.Track>):Array<Grid.Track> {
-		if (v == gridTemplateRows) return v;
-		more().gridTemplateRows = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridAutoColumns(v:Grid.Track):Grid.Track {
-		if (v == gridAutoColumns) return v;
-		more().gridAutoColumns = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridAutoRows(v:Grid.Track):Grid.Track {
-		if (v == gridAutoRows) return v;
-		more().gridAutoRows = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridAutoFlow(v:Grid.GridFlow):Grid.GridFlow {
-		if (v == gridAutoFlow) return v;
-		more().gridAutoFlow = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridColumn(v:Grid.GridPlacement):Grid.GridPlacement {
-		if (v == gridColumn) return v;
-		more().gridColumn = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridTemplateAreas(v:Null<Grid.GridAreas>):Null<Grid.GridAreas> {
-		if (v == gridTemplateAreas) return v;
-		more().gridTemplateAreas = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gridArea(v:String):String {
-		var a = Grid.area(v);
-		gridRow = a.row;
-		gridColumn = a.column;
-		return v;
-	}
-
-	function set_gridRow(v:Grid.GridPlacement):Grid.GridPlacement {
-		if (v == gridRow) return v;
-		more().gridRow = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_justifyItems(v:Align):Align {
-		if (v == justifyItems) return v;
-		more().justifyItems = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_justifySelf(v:Align):Align {
-		if (v == justifySelf) return v;
-		more().justifySelf = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_flexGrow(v:Float):Float {
-		if (v == flexGrow) return v;
-		flexGrow = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_flexShrink(v:Float):Float {
-		if (v == flexShrink) return v;
-		flexShrink = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_gap(v:Float):Float {
-		rowGap = columnGap = v;
-		return v;
-	}
-
-	function set_inset(v:Dim):Dim {
-		left = top = right = bottom = v;
-		return v;
-	}
-
-	function set_flex(v:Float):Float {
-		flexGrow = v;
-		flexShrink = 1;
-		flexBasis = DimValue.Percent(0);
-		return v;
-	}
-
-	function set_flexBasis(v:Dim):Dim {
-		if (v == flexBasis) return v;
-		flexBasis = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_width(v:Dim):Dim {
-		if (v == width) return v;
-		width = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_height(v:Dim):Dim {
-		if (v == height) return v;
-		height = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_minWidth(v:Dim):Dim {
-		if (v == minWidth) return v;
-		minWidth = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_minHeight(v:Dim):Dim {
-		if (v == minHeight) return v;
-		minHeight = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_maxWidth(v:Dim):Dim {
-		if (v == maxWidth) return v;
-		maxWidth = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_maxHeight(v:Dim):Dim {
-		if (v == maxHeight) return v;
-		maxHeight = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_aspectRatio(v:Float):Float {
-		if (v == aspectRatio) return v;
-		more().aspectRatio = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_padding(v:EdgesValue):EdgesValue {
-		if (false) return v;
-		padding = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	inline function get_paddingTop():Float
-		return padding.top;
-
-	inline function get_paddingRight():Float
-		return padding.right;
-
-	inline function get_paddingBottom():Float
-		return padding.bottom;
-
-	inline function get_paddingLeft():Float
-		return padding.left;
-
-	inline function get_marginTop():Float
-		return margin.top;
-
-	inline function get_marginRight():Float
-		return margin.right;
-
-	inline function get_marginBottom():Float
-		return margin.bottom;
-
-	inline function get_marginLeft():Float
-		return margin.left;
-
-	// (a side the same: NaN, auto, as auto)
-	static inline function sameSide(a:Float, b:Float):Bool
-		return a == b || Math.isNaN(a) && Math.isNaN(b);
-
-	function set_paddingTop(v:Float):Float {
-		var p = padding;
-		if (!sameSide(v, p.top)) padding = new Edges(v, p.right, p.bottom, p.left);
-		return v;
-	}
-
-	function set_paddingRight(v:Float):Float {
-		var p = padding;
-		if (!sameSide(v, p.right)) padding = new Edges(p.top, v, p.bottom, p.left);
-		return v;
-	}
-
-	function set_paddingBottom(v:Float):Float {
-		var p = padding;
-		if (!sameSide(v, p.bottom)) padding = new Edges(p.top, p.right, v, p.left);
-		return v;
-	}
-
-	function set_paddingLeft(v:Float):Float {
-		var p = padding;
-		if (!sameSide(v, p.left)) padding = new Edges(p.top, p.right, p.bottom, v);
-		return v;
-	}
-
-	function set_marginTop(v:Float):Float {
-		var m = margin;
-		if (!sameSide(v, m.top)) margin = new Edges(v, m.right, m.bottom, m.left);
-		return v;
-	}
-
-	function set_marginRight(v:Float):Float {
-		var m = margin;
-		if (!sameSide(v, m.right)) margin = new Edges(m.top, v, m.bottom, m.left);
-		return v;
-	}
-
-	function set_marginBottom(v:Float):Float {
-		var m = margin;
-		if (!sameSide(v, m.bottom)) margin = new Edges(m.top, m.right, v, m.left);
-		return v;
-	}
-
-	function set_marginLeft(v:Float):Float {
-		var m = margin;
-		if (!sameSide(v, m.left)) margin = new Edges(m.top, m.right, m.bottom, v);
-		return v;
-	}
-
-	function set_margin(v:EdgesValue):EdgesValue {
-		if (false) return v;
-		margin = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_borderWidth(v:Float):Float {
-		if (v == borderWidth) return v;
-		borderWidth = v;
-		if (borders == null) borderEdges = new Edges(v, v, v, v);
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_borders(v:Null<EdgesValue>):Null<EdgesValue> {
-		if (v == borders) return v;
-		theming().borders = v;
-		borderEdges = v == null ? new Edges(borderWidth, borderWidth, borderWidth, borderWidth) : v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_corners(v:Null<CornersValue>):Null<CornersValue> {
-		if (v == corners) return v;
-		theming().corners = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	// the corners as drawn: corners, else radius on each
-	public function cornerRadii():Corners
-		return corners != null ? corners : Corners.all(borderRadius);
-
-	// whether the corners or the border's sides differ (drawn by Canvas.rect's corners and sides)
-	public function irregular():Bool
-		return corners != null && !(corners : Corners).uniform() || borders != null && !(borderEdges.top == borderEdges.right
-			&& borderEdges.right == borderEdges.bottom && borderEdges.bottom == borderEdges.left);
-
-	function set_rowGap(v:Float):Float {
-		if (v == rowGap) return v;
-		rowGap = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_columnGap(v:Float):Float {
-		if (v == columnGap) return v;
-		columnGap = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_left(v:Dim):Dim {
-		if (v == left) return v;
-		more().left = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_top(v:Dim):Dim {
-		if (v == top) return v;
-		more().top = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_right(v:Dim):Dim {
-		if (v == right) return v;
-		more().right = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_bottom(v:Dim):Dim {
-		if (v == bottom) return v;
-		more().bottom = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_overflow(v:Overflow):Overflow {
-		if (v == overflow && v == overflowX && v == overflowY) return v;
-		overflow = overflowX = overflowY = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_overflowX(v:Overflow):Overflow {
-		if (v == overflowX) return v;
-		overflowX = v;
-		bothAxes();
-		return v;
-	}
-
-	function set_overflowY(v:Overflow):Overflow {
-		if (v == overflowY) return v;
-		overflowY = v;
-		bothAxes();
-		return v;
-	}
-
-	// (the two axes together, as overflow reads)
-	function bothAxes() {
-		@:bypassAccessor overflow = overflowX == Scroll || overflowY == Scroll ? Scroll : overflowX == Hidden || overflowY == Hidden ? Hidden : Visible;
-		node.styleChanged(true);
-	}
-
-	function set_background(v:Color):Color {
-		if (!resolving) @:privateAccess node.ownColor(BACKGROUND, v);
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveColor(node, helder.ui.motion.Motions.BACKGROUND, background, v)) return v;
-		if (themed != null && themed.transition != null && eases("background", background, v)) return v;
-		if (v == background) return v;
-		background = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_backgroundImage(v:Null<Gradient>):Null<Gradient> {
-		if (v == backgroundImage) return v;
-		more().backgroundImage = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_transform(v:Null<Transform>):Null<Transform> {
-		if (helder.ui.motion.Motions.on && v != transform) helder.ui.motion.Motions.moveTransform(node, transform, v);
-		if (themed != null && themed.transition != null && eases("transform", transform, v)) return v;
-		if (v == transform) return v;
-		theming().transform = v;
-		Ui.accessEpoch++;
-		@:privateAccess node.inkChanged(true);
-		return v;
-	}
-
-	function set_transformOrigin(v:Null<Array<Dim>>):Null<Array<Dim>> {
-		if (v == transformOrigin) return v;
-		more().transformOrigin = v;
-		@:privateAccess node.inkChanged(true);
-		return v;
-	}
-
-	function set_borderColor(v:Color):Color {
-		if (!resolving) @:privateAccess node.ownColor(BORDER_COLOR, v);
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveColor(node, helder.ui.motion.Motions.BORDER, borderColor, v)) return v;
-		if (themed != null && themed.transition != null && eases("borderColor", borderColor, v)) return v;
-		if (v == borderColor) return v;
-		borderColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_borderRadius(v:Float):Float {
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveFloat(node, helder.ui.motion.Motions.RADIUS, borderRadius, v)) return v;
-		if (v == borderRadius) return v;
-		borderRadius = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_opacity(v:Float):Float {
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveFloat(node, helder.ui.motion.Motions.OPACITY, opacity, v)) return v;
-		if (themed != null && themed.transition != null && eases("opacity", opacity, v)) return v;
-		if (v == opacity) return v;
-		if ((v <= 0) != (opacity <= 0)) Ui.accessEpoch++;
-		opacity = v;
-		@:privateAccess node.compositeChanged();
-		return v;
-	}
-
-	function set_cursor(v:Cursor):Cursor {
-		if (v == cursor) return v;
-		cursor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_outline(v:Float):Float {
-		outlineWidth = v;
-		outlineColor = null;
-		return v;
-	}
-
-	function set_outlineWidth(v:Float):Float {
-		if (v == outlineWidth) return v;
-		theming().outlineWidth = v;
-		outlined();
-		return v;
-	}
-
-	function set_outlineOffset(v:Float):Float {
-		if (v == outlineOffset) return v;
-		theming().outlineOffset = v;
-		outlined();
-		return v;
-	}
-
-	function set_outlineColor(v:Null<Color>):Null<Color> {
-		if (!resolving) @:privateAccess node.ownColor(OUTLINE_COLOR, v);
-		if (themed != null && themed.transition != null && eases("outlineColor", outlineColor, v)) return v;
-		if (v == outlineColor) return v;
-		theming().outlineColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	// (how far outside its box an outline draws: the paint's culling widens bounds by the most seen, as for shadows)
-	function outlined() {
-		if (outlineWidth > 0) Ui.shadowReach = Math.max(Ui.shadowReach, outlineWidth + Math.max(0, outlineOffset) + 1);
-		node.styleChanged(false);
-	}
-
-	function set_boxShadow(v:Null<Shadow>):Null<Shadow> {
-		if (themed != null && themed.transition != null && eases("boxShadow", boxShadow, v)) return v;
-		if (v == boxShadow) return v;
-		theming().boxShadow = v;
-		// (how far outside its box a shadow draws: the paint's culling widens bounds by the most seen)
-		var sh = v;
-		while (sh != null) {
-			if (!sh.inset) Ui.shadowReach = Math.max(Ui.shadowReach, Math.max(Math.abs(sh.x), Math.abs(sh.y)) + sh.spread + 1.5 * sh.blur + 1);
-			sh = sh.next;
-		}
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_color(v:Null<Color>):Null<Color> {
-		if (!resolving) @:privateAccess node.ownColor(COLOR, v);
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveTextColor(node, color, v)) return v;
-		if (themed != null && themed.transition != null && eases("color", color, v)) return v;
-		if (v == color) return v;
-		color = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_fontFamily(v:Null<String>):Null<String> {
-		if (v == fontFamily) return v;
-		fontFamily = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_fontSize(v:Null<Float>):Null<Float> {
-		if (v == fontSize) return v;
-		fontSize = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_fontWeight(v:Null<Int>):Null<Int> {
-		if (v == fontWeight) return v;
-		fontWeight = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_fontStyle(v:Null<FontStyle>):Null<FontStyle> {
-		if (v == fontStyle) return v;
-		fontStyle = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_letterSpacing(v:Null<Float>):Null<Float> {
-		if (v == letterSpacing) return v;
-		more().letterSpacing = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_wordSpacing(v:Null<Float>):Null<Float> {
-		if (v == wordSpacing) return v;
-		more().wordSpacing = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_lineHeightPx(v:Null<Float>):Null<Float> {
-		if (v == lineHeightPx) return v;
-		more().lineHeightPx = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_letterSpacingEm(v:Null<Float>):Null<Float> {
-		if (v == letterSpacingEm) return v;
-		more().letterSpacingEm = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_lineHeight(v:Null<Float>):Null<Float> {
-		if (v == lineHeight) return v;
-		lineHeight = v;
-		node.styleChanged(true);
-		return v;
-	}
-
-	function set_textDecorationThickness(v:Dim):Dim {
-		if (v == textDecorationThickness) return v;
-		more().textDecorationThickness = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_textUnderlineOffset(v:Dim):Dim {
-		if (v == textUnderlineOffset) return v;
-		more().textUnderlineOffset = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_textDecorationColor(v:Null<Color>):Null<Color> {
-		if (themed != null && themed.transition != null && eases("textDecorationColor", textDecorationColor, v)) return v;
-		if (v == textDecorationColor) return v;
-		more().textDecorationColor = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_textShadow(v:Null<Shadow>):Null<Shadow> {
-		if (v == textShadow) return v;
-		more().textShadow = v;
-		// (its reach outside the text's box, as a box shadow's)
-		var sh = v;
-		while (sh != null) {
-			Ui.shadowReach = Math.max(Ui.shadowReach, Math.max(Math.abs(sh.x), Math.abs(sh.y)) + 1.5 * sh.blur + 1);
-			sh = sh.next;
-		}
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_textDecoration(v:Int):Int {
-		if (v == textDecoration) return v;
-		more().textDecoration = v;
-		node.styleChanged(false);
-		return v;
-	}
-
-	function set_textAlign(v:Null<TextAlign>):Null<TextAlign> {
-		if (v == textAlign) return v;
-		// (justified: laid out again, its glyphs move)
-		var layout = v == Justify || textAlign == Justify;
-		textAlign = v;
-		node.styleChanged(layout);
-		return v;
-	}
-
-	// sets the properties p gives
-	public function set(p:StyleProps):Style {
-		if (p.display != null) display = p.display;
-		if (p.position != null) position = p.position;
-		if (p.flexDirection != null) flexDirection = p.flexDirection;
-		if (p.flexWrap != null) flexWrap = p.flexWrap;
-		if (p.justifyContent != null) justifyContent = p.justifyContent;
-		if (p.alignItems != null) alignItems = p.alignItems;
-		if (p.alignSelf != null) alignSelf = p.alignSelf;
-		if (p.alignContent != null) alignContent = p.alignContent;
-		if (p.flexGrow != null) flexGrow = p.flexGrow;
-		if (p.flexShrink != null) flexShrink = p.flexShrink;
-		if (p.flexBasis != null) flexBasis = p.flexBasis;
-		if (p.width != null) width = p.width;
-		if (p.height != null) height = p.height;
-		if (p.minWidth != null) minWidth = p.minWidth;
-		if (p.minHeight != null) minHeight = p.minHeight;
-		if (p.maxWidth != null) maxWidth = p.maxWidth;
-		if (p.maxHeight != null) maxHeight = p.maxHeight;
-		if (p.aspectRatio != null) aspectRatio = p.aspectRatio;
-		if (p.padding != null) padding = p.padding;
-		if (p.margin != null) margin = p.margin;
-		if (p.paddingTop != null) paddingTop = p.paddingTop;
-		if (p.paddingRight != null) paddingRight = p.paddingRight;
-		if (p.paddingBottom != null) paddingBottom = p.paddingBottom;
-		if (p.paddingLeft != null) paddingLeft = p.paddingLeft;
-		if (p.marginTop != null) marginTop = p.marginTop;
-		if (p.marginRight != null) marginRight = p.marginRight;
-		if (p.marginBottom != null) marginBottom = p.marginBottom;
-		if (p.marginLeft != null) marginLeft = p.marginLeft;
-		if (p.borderWidth != null) borderWidth = p.borderWidth;
-		if (p.borders != null) borders = p.borders;
-		if (p.rowGap != null) rowGap = p.rowGap;
-		if (p.columnGap != null) columnGap = p.columnGap;
-		if (p.left != null) left = p.left;
-		if (p.top != null) top = p.top;
-		if (p.right != null) right = p.right;
-		if (p.bottom != null) bottom = p.bottom;
-		if (p.overflow != null) overflow = p.overflow;
-		if (p.overflowX != null) overflowX = p.overflowX;
-		if (p.overflowY != null) overflowY = p.overflowY;
-		if (p.background != null) background = p.background;
-		if (p.backgroundImage != null) backgroundImage = p.backgroundImage;
-		if (p.borderColor != null) borderColor = p.borderColor;
-		if (p.borderRadius != null) borderRadius = p.borderRadius;
-		if (p.corners != null) corners = p.corners;
-		if (p.opacity != null) opacity = p.opacity;
-		if (p.cursor != null) cursor = p.cursor;
-		if (p.boxShadow != null) boxShadow = p.boxShadow;
-		if (p.outlineWidth != null) outlineWidth = p.outlineWidth;
-		if (p.outlineOffset != null) outlineOffset = p.outlineOffset;
-		if (p.outlineColor != null) outlineColor = p.outlineColor;
-		if (p.transform != null) transform = p.transform;
-		if (p.transformOrigin != null) transformOrigin = p.transformOrigin;
-		if (p.color != null) color = p.color;
-		if (p.fontFamily != null) fontFamily = p.fontFamily;
-		if (p.fontSize != null) fontSize = p.fontSize;
-		if (p.fontWeight != null) fontWeight = p.fontWeight;
-		if (p.fontStyle != null) fontStyle = p.fontStyle;
-		if (p.lineHeight != null) lineHeight = p.lineHeight;
-		if (p.letterSpacing != null) letterSpacing = p.letterSpacing;
-		if (p.wordSpacing != null) wordSpacing = p.wordSpacing;
-		if (p.lineHeightPx != null) lineHeightPx = p.lineHeightPx;
-		if (p.letterSpacingEm != null) letterSpacingEm = p.letterSpacingEm;
-		if (p.textAlign != null) textAlign = p.textAlign;
-		if (p.direction != null) direction = p.direction;
-		if (p.visibility != null) visibility = p.visibility;
-		if (p.outlineStyle != null) outlineStyle = p.outlineStyle;
-		if (p.borderStyle != null) borderStyle = p.borderStyle;
-		if (p.userSelect != null) userSelect = p.userSelect;
-		if (p.fieldSizing != null) fieldSizing = p.fieldSizing;
-		if (p.scrollbarWidth != null) scrollbarWidth = p.scrollbarWidth;
-		if (p.breakBefore != null) breakBefore = p.breakBefore;
-		if (p.breakAfter != null) breakAfter = p.breakAfter;
-		if (p.breakInside != null) breakInside = p.breakInside;
-		if (p.page != null) page = p.page;
-		if (p.scrollbarColor != null) scrollbarColor = p.scrollbarColor;
-		if (p.scrollbarTrackColor != null) scrollbarTrackColor = p.scrollbarTrackColor;
-		if (p.ringWidth != null) ringWidth = p.ringWidth;
-		if (p.ringColor != null) ringColor = p.ringColor;
-		if (p.ringOffsetWidth != null) ringOffsetWidth = p.ringOffsetWidth;
-		if (p.ringOffsetColor != null) ringOffsetColor = p.ringOffsetColor;
-		if (p.ringInset != null) ringInset = p.ringInset;
-		if (p.pointerEvents != null) pointerEvents = p.pointerEvents;
-		if (p.textWrap != null) textWrap = p.textWrap;
-		if (p.gap != null) gap = p.gap;
-		if (p.inset != null) inset = p.inset;
-		if (p.flex != null) flex = p.flex;
-		if (p.overflowWrap != null) overflowWrap = p.overflowWrap;
-		if (p.wordBreak != null) wordBreak = p.wordBreak;
-		if (p.hyphens != null) hyphens = p.hyphens;
-		if (p.fontFeatureSettings != null) fontFeatureSettings = p.fontFeatureSettings;
-		if (p.fontVariantNumeric != null) fontVariantNumeric = p.fontVariantNumeric;
-		if (p.textTransform != null) textTransform = p.textTransform;
-		if (p.textOverflow != null) textOverflow = p.textOverflow;
-		if (p.order != null) order = p.order;
-		if (p.zIndex != null) zIndex = p.zIndex;
-		if (p.textDecoration != null) textDecoration = p.textDecoration;
-		if (p.textShadow != null) textShadow = p.textShadow;
-		if (p.transition != null) transition = p.transition;
-		if (p.textDecorationColor != null) textDecorationColor = p.textDecorationColor;
-		if (p.textDecorationThickness != null) textDecorationThickness = p.textDecorationThickness;
-		if (p.textUnderlineOffset != null) textUnderlineOffset = p.textUnderlineOffset;
-		if (p.lineClamp != null) lineClamp = p.lineClamp;
-		if (p.gridTemplateColumns != null) gridTemplateColumns = p.gridTemplateColumns;
-		if (p.gridTemplateRows != null) gridTemplateRows = p.gridTemplateRows;
-		if (p.gridAutoColumns != null) gridAutoColumns = p.gridAutoColumns;
-		if (p.gridAutoRows != null) gridAutoRows = p.gridAutoRows;
-		if (p.gridAutoFlow != null) gridAutoFlow = p.gridAutoFlow;
-		if (p.gridColumn != null) gridColumn = p.gridColumn;
-		if (p.gridRow != null) gridRow = p.gridRow;
-		if (p.gridArea != null) gridArea = p.gridArea;
-		if (p.gridTemplateAreas != null) gridTemplateAreas = p.gridTemplateAreas;
-		if (p.justifyItems != null) justifyItems = p.justifyItems;
-		if (p.justifySelf != null) justifySelf = p.justifySelf;
-		return this;
+import helder.ui.Align;
+import helder.ui.AlignContent;
+import helder.ui.Direction;
+import helder.ui.Display;
+import helder.ui.FontStyle;
+import helder.ui.Justify;
+import helder.ui.Overflow;
+import helder.ui.Position;
+import helder.ui.TextAlign;
+import helder.ui.box.Len;
+import helder.ui.Token.Length;
+#if macro
+import haxe.macro.Context;
+import haxe.macro.Expr;
+#end
+
+// What a style says, each optional: unset, the initial value (an
+// inherited one's: the parent's). The inherited ones are the text's:
+// color, fontSize, fontWeight, fontFamily, fontStyle, lineHeight,
+// letterSpacing, textAlign, wrap. A literal given to Style.of or with()
+// is checked and made typed when the program is built (Props); another
+// is read when it runs.
+typedef StyleProps = {
+	// (Grid: laid out as flex, grid layout not linked yet)
+	?display:Display,
+	?flexDirection:Direction,
+	?flexWrap:Bool,
+	?alignItems:Align,
+	?alignSelf:Align,
+	?justifyContent:Justify,
+	?alignContent:AlignContent,
+	?flexGrow:Float,
+	?flexShrink:Float,
+	?flexBasis:Size,
+	?gap:Pixels,
+	?rowGap:Pixels,
+	?columnGap:Pixels,
+	?width:Size,
+	?height:Size,
+	?minWidth:Size,
+	?minHeight:Size,
+	?maxWidth:Size,
+	?maxHeight:Size,
+	?padding:Edges,
+	?margin:Edges,
+	?borderWidth:Edges,
+	?borderColor:Tint,
+	// (Solid where a width is set)
+	?borderStyle:helder.ui.BorderStyle,
+	?borderRadius:Corners,
+	?background:Tint,
+	// CSS's box-shadow: the first on top
+	?shadows:Array<Shadow>,
+	?outline:Outline,
+	?opacity:Float,
+	?overflow:Overflow,
+	?position:Position,
+	?top:Size,
+	?right:Size,
+	?bottom:Size,
+	?left:Size,
+	?zIndex:Int,
+	?color:Tint,
+	?fontSize:Pixels,
+	?fontWeight:Int,
+	?fontFamily:String,
+	?fontStyle:FontStyle,
+	// a multiple of the font size
+	?lineHeight:Float,
+	?letterSpacing:Pixels,
+	?textAlign:TextAlign,
+	// false: nowrap
+	?wrap:Bool,
+	// what a line cut at its end shows (Ellipsis: its box clips)
+	?textOverflow:helder.ui.TextOverflow,
+	// at most so many lines (0: no limit)
+	?lineClamp:Int,
+	// lines drawn through its text (TextDecoration's bits; 0: none)
+	?textDecoration:Int,
+	// the pointer over it (inherited)
+	?cursor:helder.ui.Cursor,
+	// whether the pointer finds it (inherited: None lets presses and hovers through, its Auto descendants aside)
+	?pointerEvents:helder.ui.PointerEvents,
+	// the inline direction (inherited): Rtl mirrors rows and aligns text right
+	?direction:helder.ui.Dir,
+	// figures' forms as CSS writes them ("tabular-nums"; inherited)
+	?fontVariantNumeric:String,
+	// width / height where one of them is auto
+	?aspectRatio:Float,
+	// a scroller's bar: Auto, Thin, None (none drawn or grabbed; the wheel still scrolls)
+	?scrollbarWidth:helder.ui.ScrollbarWidth,
+	// a grid's items in their areas, across (Stretch)
+	?justifyItems:Align,
+	?justifySelf:Align,
+	// a grid's tracks as CSS writes them ("1fr 200px", "repeat(3, 1fr)", "[a] minmax(100px, 1fr)"); grid layout linked where a program says grid
+	?gridTemplateColumns:String,
+	?gridTemplateRows:String,
+	// its areas: rows' names, CSS's strings ("'head head' 'side main'")
+	?gridTemplateAreas:String,
+	?gridAutoColumns:String,
+	?gridAutoRows:String,
+	?gridAutoFlow:String,
+	// an item's lines as CSS writes them ("1 / 3", "span 2", an area's name)
+	?gridColumn:String,
+	?gridRow:String,
+	?gridArea:String,
+	// its state variants, over it where the state is on (a later one's over an earlier's)
+	?hover:StyleProps,
+	?pressed:StyleProps,
+	?focus:StyleProps,
+	?disabled:StyleProps,
+	?selected:StyleProps,
+	?checked:StyleProps,
+	// a field's while it shows its placeholder
+	?placeholder:StyleProps,
+	// in a dark theme (Theme.dark: a CSS module's prefers-color-scheme: dark)
+	?dark:StyleProps,
+	// the nearest ancestor marked group's states
+	?group:StateProps
+}
+
+typedef StateProps = {
+	?hover:StyleProps,
+	?pressed:StyleProps,
+	?focus:StyleProps,
+	?disabled:StyleProps,
+	?selected:StyleProps,
+	?checked:StyleProps
+}
+
+// A colour: one, a theme's token (Token<Color>: its value in the theme in
+// scope), or the text's (current).
+enum TintValue {
+	Plain(argb:Int);
+	Token(name:String);
+	Current;
+}
+
+abstract Tint(TintValue) from TintValue to TintValue {
+	@:from static inline function ofColor(c:Color):Tint
+		return Plain(c);
+
+	@:from static inline function ofInt(c:Int):Tint
+		return Plain(c);
+
+	@:from static inline function ofToken(t:Token<Color>):Tint
+		return Token(t.name);
+
+	public static var current(get, never):Tint;
+
+	static inline function get_current():Tint
+		return Current;
+}
+
+// A length: px, or a percentage ("50%"); null: auto.
+abstract Size(Len) from Len to Len {
+	@:from static inline function ofFloat(v:Float):Size
+		return Px(v);
+
+	@:from static inline function ofInt(v:Int):Size
+		return Px(v);
+
+	@:from static inline function ofToken(t:Token<Length>):Size
+		return Px(Pixels.ofToken(t));
+
+	@:from static function ofString(s:String):Size {
+		var t = StringTools.trim(s);
+		if (t == "auto") return Auto;
+		if (StringTools.endsWith(t, "%")) return Percent(Std.parseFloat(t.substr(0, t.length - 1)));
+		var v = Std.parseFloat(StringTools.endsWith(t, "px") ? t.substr(0, t.length - 2) : t);
+		return Math.isNaN(v) ? Auto : Px(v);
 	}
 }
 
-// what a Style keeps of the properties rarely set (their defaults at first)
-private class StyleRare {
-	public var gridTemplateColumns:Array<Grid.Track> = @:privateAccess Style.NO_TRACKS;
-	public var gridTemplateRows:Array<Grid.Track> = @:privateAccess Style.NO_TRACKS;
-	public var gridTemplateAreas:Null<Grid.GridAreas> = null;
-	public var gridAutoColumns:Grid.Track = Grid.Track.AUTO;
-	public var gridAutoRows:Grid.Track = Grid.Track.AUTO;
-	public var gridAutoFlow:Grid.GridFlow = Grid.GridFlow.Row;
-	public var gridColumn:Grid.GridPlacement = Grid.GridPlacement.AUTO;
-	public var gridRow:Grid.GridPlacement = Grid.GridPlacement.AUTO;
-	public var justifyItems:Align = Align.Stretch;
-	public var justifySelf:Align = Align.Auto;
-	public var alignContent:AlignContent = Normal;
-	public var aspectRatio:Float = 0;
-	public var backgroundImage:Null<Gradient> = null;
-	public var transformOrigin:Null<Array<Dim>> = null;
-	public var letterSpacing:Null<Float> = null;
-	public var wordSpacing:Null<Float> = null;
-	public var lineHeightPx:Null<Float> = null;
-	public var letterSpacingEm:Null<Float> = null;
-	public var lineClamp:Int = 0;
-	public var direction:Null<Dir> = null;
-	public var visibility:Null<Visibility> = null;
-	public var fieldSizing:Null<FieldSizing> = null;
-	public var scrollbarWidth:Null<ScrollbarWidth> = null;
-	public var breakBefore:Null<PageBreak> = null;
-	public var breakAfter:Null<PageBreak> = null;
-	public var breakInside:Null<PageBreak> = null;
-	public var page:Null<String> = null;
-	public var scrollbarColor:Null<Color> = null;
-	public var scrollbarTrackColor:Null<Color> = null;
-	public var overflowWrap:Null<OverflowWrap> = null;
-	public var wordBreak:Null<WordBreak> = null;
-	public var hyphens:Null<Hyphens> = null;
-	public var fontFeatureSettings:Null<String> = null;
+// A length in px, or a theme's length token (Token<Length>): its value in
+// the theme in scope. (A token is a float far below any length, as
+// helder.ui's Length.token.)
+abstract Pixels(Float) from Float from Int to Float {
+	@:from @:allow(helder.ui) static function ofToken(t:Token<Length>):Pixels {
+		names ??= [];
+		ids ??= new Map();
+		var k = ids.get(t.name);
+		if (k == null) {
+			ids.set(t.name, k = names.length);
+			names.push(t.name);
+		}
+		return cast -(BASE + k);
+	}
+
+	static inline var BASE = 1e15;
+	// (no initializers: a style made in another class's static initializer may come first)
+	static var names:Array<String>;
+	static var ids:Map<String, Int>;
+
+	@:allow(helder.ui) static inline function isToken(v:Float):Bool
+		return v <= -BASE;
+
+	// (v in a theme: a token's value there, else itself)
+	@:allow(helder.ui) static inline function resolve(v:Float, theme:Theme):Float
+		return v <= -BASE ? theme.length(names[Std.int(-v - BASE)]) : v;
+}
+
+// Four corners' radii in px (top left, top right, bottom right, bottom
+// left): one for all, or all four.
+abstract Corners(Array<Float>) to Array<Float> {
+	inline function new(a:Array<Float>)
+		this = a;
+
+	@:from static inline function ofFloat(v:Float):Corners
+		return new Corners([v, v, v, v]);
+
+	@:from static inline function ofInt(v:Int):Corners
+		return new Corners([v, v, v, v]);
+
+	@:from static inline function ofToken(t:Token<Length>):Corners
+		return ofFloat(Pixels.ofToken(t));
+
+	@:from static function ofArray(a:Array<Pixels>):Corners
+		return new Corners(a.length == 1 ? [a[0], a[0], a[0], a[0]] : a.length == 2 ? [a[0], a[1], a[0], a[1]] : a.length == 3 ? [a[0], a[1], a[2], a[1]] : [a[0], a[1], a[2], a[3]]);
+}
+
+typedef Shadow = {
+	x:Pixels,
+	y:Pixels,
+	?blur:Pixels,
+	?spread:Pixels,
+	color:Tint,
+	?inset:Bool
+}
+
+// drawn outside the border box (offset further out), Solid unless said
+typedef Outline = {
+	width:Pixels,
+	color:Tint,
+	?style:helder.ui.BorderStyle,
+	?offset:Pixels
+}
+
+// Four sides' px (top, right, bottom, left): one for all, [vertical,
+// horizontal], or all four.
+abstract Edges(Array<Float>) to Array<Float> {
+	inline function new(a:Array<Float>)
+		this = a;
+
+	@:from static inline function ofFloat(v:Float):Edges
+		return new Edges([v, v, v, v]);
+
+	@:from static inline function ofInt(v:Int):Edges
+		return new Edges([v, v, v, v]);
+
+	@:from static inline function ofToken(t:Token<Length>):Edges
+		return ofFloat(Pixels.ofToken(t));
+
+
+	@:from static function ofArray(a:Array<Pixels>):Edges
+		return new Edges(switch a.length {
+			case 1: [a[0], a[0], a[0], a[0]];
+			case 2: [a[0], a[1], a[0], a[1]];
+			case 3: [a[0], a[1], a[2], a[1]];
+			case _: [a[0], a[1], a[2], a[3]];
+		});
+}
+
+// (what a style says as a class's fields: read fast and small where an
+// anonymous object's are neither; a literal made one when the program is
+// built, Style.of's)
+@:allow(helder.ui)
+final class Props {
+	public var display:Null<Display> = null;
+	public var flexDirection:Null<Direction> = null;
+	public var flexWrap:Null<Bool> = null;
+	public var alignItems:Null<Align> = null;
+	public var alignSelf:Null<Align> = null;
+	public var justifyContent:Null<Justify> = null;
+	public var alignContent:Null<AlignContent> = null;
+	public var flexGrow:Null<Float> = null;
+	public var flexShrink:Null<Float> = null;
+	public var flexBasis:Null<Size> = null;
+	public var gap:Null<Pixels> = null;
+	public var rowGap:Null<Pixels> = null;
+	public var columnGap:Null<Pixels> = null;
+	public var width:Null<Size> = null;
+	public var height:Null<Size> = null;
+	public var minWidth:Null<Size> = null;
+	public var minHeight:Null<Size> = null;
+	public var maxWidth:Null<Size> = null;
+	public var maxHeight:Null<Size> = null;
+	public var padding:Null<Edges> = null;
+	public var margin:Null<Edges> = null;
+	public var borderWidth:Null<Edges> = null;
+	public var borderColor:Null<Tint> = null;
+	public var borderStyle:Null<helder.ui.BorderStyle> = null;
+	public var borderRadius:Null<Corners> = null;
+	public var background:Null<Tint> = null;
+	public var shadows:Null<Array<Shadow>> = null;
+	public var outline:Null<Outline> = null;
+	public var opacity:Null<Float> = null;
+	public var overflow:Null<Overflow> = null;
+	public var position:Null<Position> = null;
+	public var top:Null<Size> = null;
+	public var right:Null<Size> = null;
+	public var bottom:Null<Size> = null;
+	public var left:Null<Size> = null;
+	public var zIndex:Null<Int> = null;
+	public var color:Null<Tint> = null;
+	public var fontSize:Null<Pixels> = null;
+	public var fontWeight:Null<Int> = null;
+	public var fontFamily:Null<String> = null;
+	public var fontStyle:Null<FontStyle> = null;
+	public var lineHeight:Null<Float> = null;
+	public var letterSpacing:Null<Pixels> = null;
+	public var textAlign:Null<TextAlign> = null;
+	public var wrap:Null<Bool> = null;
+	public var textOverflow:Null<helder.ui.TextOverflow> = null;
+	public var lineClamp:Null<Int> = null;
+	public var textDecoration:Null<Int> = null;
+	public var cursor:Null<helder.ui.Cursor> = null;
+	public var pointerEvents:Null<helder.ui.PointerEvents> = null;
+	public var direction:Null<helder.ui.Dir> = null;
 	public var fontVariantNumeric:Null<String> = null;
-	public var textTransform:Null<TextTransform> = null;
-	public var textOverflow:TextOverflow = Clip;
-	public var order:Int = 0;
-	public var textDecoration:Int = 0;
-	public var textShadow:Null<Shadow> = null;
-	public var textDecorationColor:Null<Color> = null;
-	// (the properties moving under it; whether the Clock steps them, whether a step is writing them)
-	public var textDecorationThickness:Dim = DimValue.Auto;
-	public var textUnderlineOffset:Dim = DimValue.Auto;
-	public var left:Dim = DimValue.Auto;
-	public var top:Dim = DimValue.Auto;
-	public var right:Dim = DimValue.Auto;
-	public var bottom:Dim = DimValue.Auto;
+	public var aspectRatio:Null<Float> = null;
+	public var scrollbarWidth:Null<helder.ui.ScrollbarWidth> = null;
+	public var justifyItems:Null<Align> = null;
+	public var justifySelf:Null<Align> = null;
+	public var gridTemplateColumns:Null<String> = null;
+	public var gridTemplateRows:Null<String> = null;
+	public var gridTemplateAreas:Null<String> = null;
+	public var gridAutoColumns:Null<String> = null;
+	public var gridAutoRows:Null<String> = null;
+	public var gridAutoFlow:Null<String> = null;
+	public var gridColumn:Null<String> = null;
+	public var gridRow:Null<String> = null;
+	public var gridArea:Null<String> = null;
+	public var hover:Null<Props> = null;
+	public var pressed:Null<Props> = null;
+	public var focus:Null<Props> = null;
+	public var disabled:Null<Props> = null;
+	public var selected:Null<Props> = null;
+	public var checked:Null<Props> = null;
+	public var placeholder:Null<Props> = null;
+	public var dark:Null<Props> = null;
+	public var group:Null<GroupProps> = null;
+
+	public function new() {}
+
+	// (an object's, read when the program runs: a style not given as a literal)
+	public static function from(p:Null<StyleProps>):Null<Props> {
+		if (p == null) return null;
+		var o = new Props();
+		o.display = p.display;
+		o.flexDirection = p.flexDirection;
+		o.flexWrap = p.flexWrap;
+		o.alignItems = p.alignItems;
+		o.alignSelf = p.alignSelf;
+		o.justifyContent = p.justifyContent;
+		o.alignContent = p.alignContent;
+		o.flexGrow = p.flexGrow;
+		o.flexShrink = p.flexShrink;
+		o.flexBasis = p.flexBasis;
+		o.gap = p.gap;
+		o.rowGap = p.rowGap;
+		o.columnGap = p.columnGap;
+		o.width = p.width;
+		o.height = p.height;
+		o.minWidth = p.minWidth;
+		o.minHeight = p.minHeight;
+		o.maxWidth = p.maxWidth;
+		o.maxHeight = p.maxHeight;
+		o.padding = p.padding;
+		o.margin = p.margin;
+		o.borderWidth = p.borderWidth;
+		o.borderColor = p.borderColor;
+		o.borderStyle = p.borderStyle;
+		o.borderRadius = p.borderRadius;
+		o.background = p.background;
+		o.shadows = p.shadows;
+		o.outline = p.outline;
+		o.opacity = p.opacity;
+		o.overflow = p.overflow;
+		o.position = p.position;
+		o.top = p.top;
+		o.right = p.right;
+		o.bottom = p.bottom;
+		o.left = p.left;
+		o.zIndex = p.zIndex;
+		o.color = p.color;
+		o.fontSize = p.fontSize;
+		o.fontWeight = p.fontWeight;
+		o.fontFamily = p.fontFamily;
+		o.fontStyle = p.fontStyle;
+		o.lineHeight = p.lineHeight;
+		o.letterSpacing = p.letterSpacing;
+		o.textAlign = p.textAlign;
+		o.wrap = p.wrap;
+		o.textOverflow = p.textOverflow;
+		o.lineClamp = p.lineClamp;
+		o.textDecoration = p.textDecoration;
+		o.cursor = p.cursor;
+		o.pointerEvents = p.pointerEvents;
+		o.direction = p.direction;
+		o.fontVariantNumeric = p.fontVariantNumeric;
+		o.aspectRatio = p.aspectRatio;
+		o.scrollbarWidth = p.scrollbarWidth;
+		o.justifyItems = p.justifyItems;
+		o.justifySelf = p.justifySelf;
+		o.gridTemplateColumns = p.gridTemplateColumns;
+		o.gridTemplateRows = p.gridTemplateRows;
+		o.gridTemplateAreas = p.gridTemplateAreas;
+		o.gridAutoColumns = p.gridAutoColumns;
+		o.gridAutoRows = p.gridAutoRows;
+		o.gridAutoFlow = p.gridAutoFlow;
+		o.gridColumn = p.gridColumn;
+		o.gridRow = p.gridRow;
+		o.gridArea = p.gridArea;
+		o.hover = from(p.hover);
+		o.pressed = from(p.pressed);
+		o.focus = from(p.focus);
+		o.disabled = from(p.disabled);
+		o.selected = from(p.selected);
+		o.checked = from(p.checked);
+		o.placeholder = from(p.placeholder);
+		o.dark = from(p.dark);
+		var g = p.group;
+		if (g != null) {
+			var q = new GroupProps();
+			q.hover = from(g.hover);
+			q.pressed = from(g.pressed);
+			q.focus = from(g.focus);
+			q.disabled = from(g.disabled);
+			q.selected = from(g.selected);
+			q.checked = from(g.checked);
+			o.group = q;
+		}
+		return o;
+	}
+}
+
+@:allow(helder.ui)
+final class GroupProps {
+	public var hover:Null<Props> = null;
+	public var pressed:Null<Props> = null;
+	public var focus:Null<Props> = null;
+	public var disabled:Null<Props> = null;
+	public var selected:Null<Props> = null;
+	public var checked:Null<Props> = null;
 
 	public function new() {}
 }
 
-// what a Style keeps of the rare properties themes set (Style.themed)
-private class StyleThemed {
-	public var borders:Null<EdgesValue> = null;
-	public var corners:Null<CornersValue> = null;
-	public var transform:Null<Transform> = null;
-	public var userSelect:Null<UserSelect> = null;
-	public var pointerEvents:Null<PointerEvents> = null;
-	public var textWrap:Null<TextWrap> = null;
-	public var zIndex:Int = 0;
-	public var boxShadow:Null<Shadow> = null;
-	public var outlineWidth:Float = 0;
-	public var outlineOffset:Float = 0;
-	public var outlineColor:Null<Color> = null;
-	public var outlineStyle:Null<OutlineStyle> = null;
-	public var borderStyle:Null<BorderStyle> = null;
-	public var ringWidth:Float = 0;
-	public var ringColor:Null<Color> = null;
-	public var ringOffsetWidth:Float = 0;
-	public var ringOffsetColor:Color = Color.WHITE;
-	public var ringInset = false;
-	public var transition:Null<Transition> = null;
-	public var moving:Null<Array<Moving>> = null;
-	public var ticking = false;
-	public var stepping = false;
+// A node's style: an immutable value, interned (equal styles are one
+// object, a style on a thousand rows resolved once for each state, parent
+// text and theme it meets), with its state variants. with() makes another
+// over it. A literal given to Style.of or with() is checked when the
+// program is built (a misspelt name, a value of another type: an error
+// there) and made as typed fields, no object read field by name at run
+// time.
+//
+//   final row = Style.of({flexDirection: Row, padding: [4, 6], hover: {background: 0xFFF4F4F5}});
+//   final picked = row.with({background: app.accent});  // app: a Theme.load
+final class Style {
+	// what it says, its variants in it
+	public final props:Props;
+	// (its interning key: what it says, written out)
+	final key:String;
 
-	public function new() {}
+	// (each by its key; before none, made of it)
+	static final interned = new Map<String, Style>();
+	static var internedCount = 0;
+
+	// the style that says nothing
+	public static final none = intern(new Props());
+
+	// (whether it reads the theme: a token, a dark variant; one that doesn't is resolved once for every theme)
+	@:allow(helder.ui) final themed:Bool;
+
+	function new(props:Props, key:String, themed:Bool) {
+		this.props = props;
+		this.key = key;
+		this.themed = themed;
+	}
+
+	// The style of props: the one made of the same before, else a new one.
+	public static macro function of(props:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
+		return switch props.expr {
+			case EObjectDecl(_) if (grid(props)): macro {
+					helder.ui.Grids.use();
+					helder.ui.Style.intern(${typed(props)});
+				};
+			case EObjectDecl(_): macro helder.ui.Style.intern(${typed(props)});
+			case _: macro helder.ui.Style.ofProps($props);
+		}
+
+	// (a style of props an object read when the program runs)
+	public static function ofProps(props:StyleProps):Style
+		return intern(Props.from(props));
+
+	// (props made typed: the one of the same before, else a style of them)
+	@:noCompletion public static function intern(p:Props):Style {
+		tokens = false;
+		var k = write(p);
+		var s = interned.get(k);
+		if (s != null) return s;
+		// (styles made of values that change every frame, a dragged width's: forgotten past a bound, their nodes
+		// keeping theirs, only sharing lost)
+		if (internedCount >= BOUND) {
+			interned.clear();
+			internedCount = 0;
+		}
+		interned.set(k, s = new Style(p, k, tokens || dark(p)));
+		internedCount++;
+		return s;
+	}
+
+	@:allow(helder.ui) static inline var BOUND = 4096;
+
+	// This style with p over it (a variant's too: merged); p a literal, an object, or a Style.
+	public macro function with(self:haxe.macro.Expr, p:haxe.macro.Expr):haxe.macro.Expr.ExprOf<Style>
+		return switch p.expr {
+			case EObjectDecl(_) if (grid(p)): macro {
+					helder.ui.Grids.use();
+					$self.over(${typed(p)});
+				};
+			case EObjectDecl(_): macro $self.over(${typed(p)});
+			case _ if (isStyle(p)): macro $self.over(($p : helder.ui.Style).props);
+			case _: macro $self.over(helder.ui.Style.Props.from($p));
+		}
+
+	// This style with typed props over it.
+	@:noCompletion public function over(p:Props):Style
+		return intern(merge(props, p));
+
+	#if macro
+	// (a literal as typed fields: each name one of Props', its value typed as that field is, where it is written)
+	static function typed(e:Expr):Expr {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: return macro helder.ui.Style.Props.from($e);
+		}
+		var sets = [macro var p = new helder.ui.Style.Props()];
+		for (f in fields) {
+			var n = f.field, v = f.expr;
+			if (VARIANTS.indexOf(n) >= 0) sets.push(macro @:pos(v.pos) p.$n = ${typed(v)}) else if (n == "group") sets.push(macro @:pos(v.pos) p.group = ${group(v)}) else if (FIELDS.indexOf(n) >= 0)
+				sets.push(macro @:pos(v.pos) p.$n = $v) else Context.error('helder.ui: a style has no field $n' + near(n), v.pos);
+		}
+		sets.push(macro p);
+		return macro @:pos(e.pos) $b{sets};
+	}
+
+	// (a literal that says grid, its variants' too: grid layout linked where it is written)
+	static function grid(e:Expr):Bool {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: return false;
+		}
+		for (f in fields) {
+			if (StringTools.startsWith(f.field, "grid") || grid(f.expr)) return true;
+			if (f.field == "display") switch f.expr.expr {
+				case EConst(CIdent("Grid")) | EField(_, "Grid"): return true;
+				case _:
+			}
+		}
+		return false;
+	}
+
+	static function group(e:Expr):Expr {
+		var fields = switch e.expr {
+			case EObjectDecl(f): f;
+			case _: Context.error("helder.ui: a style's group is a literal of its states' styles", e.pos);
+		}
+		var sets = [macro var g = new helder.ui.Style.GroupProps()];
+		for (f in fields) {
+			var n = f.field;
+			if (GROUP_STATES.indexOf(n) < 0) Context.error('helder.ui: a group has no state $n (${GROUP_STATES.join(", ")})', f.expr.pos);
+			sets.push(macro g.$n = ${typed(f.expr)});
+		}
+		sets.push(macro g);
+		return macro $b{sets};
+	}
+
+	static function isStyle(e:Expr):Bool
+		return try switch Context.follow(Context.typeof(e)) {
+			case TInst(_.get() => c, _): c.name == "Style" && c.pack.join(".") == "helder.ui";
+			case _: false;
+		} catch (_:Dynamic) false;
+
+	// (the field meant: one a letter or two away)
+	static function near(n:String):String {
+		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
+		return "";
+	}
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
+	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
+	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
+	#end
+
+	// a state's bit (Node.state's): hover, pressed, focus, disabled, selected, checked, placeholder; a group's, it shifted by GROUP
+	public static inline var HOVER = 1;
+	public static inline var PRESSED = 2;
+	public static inline var FOCUS = 4;
+	public static inline var DISABLED = 8;
+	public static inline var SELECTED = 16;
+	public static inline var CHECKED = 32;
+	public static inline var PLACEHOLDER = 64;
+	public static inline var GROUP = 8;
+	// (passed down with the group's states: an ancestor's pointerEvents None, what it inherits)
+	@:allow(helder.ui) static inline var PASS = 1 << 12;
+
+	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it
+	// in order; dark: the theme's tone)
+	public function at(mask:Int, dark = false):Props {
+		var p = props;
+		if (mask == 0 && (!dark || p.dark == null)) return p;
+		var out = p;
+		inline function over(bit:Int, v:Null<Props>)
+			if (mask & bit != 0 && v != null) out = merge(out, v);
+		if (dark && p.dark != null) out = merge(out, p.dark);
+		var g = p.group;
+		if (g != null) {
+			over(HOVER << GROUP, g.hover);
+			over(PRESSED << GROUP, g.pressed);
+			over(FOCUS << GROUP, g.focus);
+			over(DISABLED << GROUP, g.disabled);
+			over(SELECTED << GROUP, g.selected);
+			over(CHECKED << GROUP, g.checked);
+		}
+		over(HOVER, p.hover);
+		over(PRESSED, p.pressed);
+		over(FOCUS, p.focus);
+		over(DISABLED, p.disabled);
+		over(SELECTED, p.selected);
+		over(CHECKED, p.checked);
+		over(PLACEHOLDER, p.placeholder);
+		return out;
+	}
+
+	// (the states it has a variant for: what a change of the others leaves it as it is)
+	public var states(get, never):Int;
+
+	function get_states():Int {
+		var p = props, m = 0;
+		if (p.hover != null) m |= HOVER;
+		if (p.pressed != null) m |= PRESSED;
+		if (p.focus != null) m |= FOCUS;
+		if (p.disabled != null) m |= DISABLED;
+		if (p.selected != null) m |= SELECTED;
+		if (p.checked != null) m |= CHECKED;
+		if (p.placeholder != null) m |= PLACEHOLDER;
+		var g = p.group;
+		if (g != null) {
+			if (g.hover != null) m |= HOVER << GROUP;
+			if (g.pressed != null) m |= PRESSED << GROUP;
+			if (g.focus != null) m |= FOCUS << GROUP;
+			if (g.disabled != null) m |= DISABLED << GROUP;
+			if (g.selected != null) m |= SELECTED << GROUP;
+			if (g.checked != null) m |= CHECKED << GROUP;
+		}
+		return m;
+	}
+
+	// (b over a, field by field; variants merged too)
+	@:noCompletion public static function merge(a:Props, b:Props):Props {
+		var o = new Props();
+		o.display = b.display ?? a.display;
+		o.flexDirection = b.flexDirection ?? a.flexDirection;
+		o.flexWrap = b.flexWrap ?? a.flexWrap;
+		o.alignItems = b.alignItems ?? a.alignItems;
+		o.alignSelf = b.alignSelf ?? a.alignSelf;
+		o.justifyContent = b.justifyContent ?? a.justifyContent;
+		o.alignContent = b.alignContent ?? a.alignContent;
+		o.flexGrow = b.flexGrow ?? a.flexGrow;
+		o.flexShrink = b.flexShrink ?? a.flexShrink;
+		o.flexBasis = b.flexBasis ?? a.flexBasis;
+		o.gap = b.gap ?? a.gap;
+		o.rowGap = b.rowGap ?? (b.gap != null ? b.gap : a.rowGap);
+		o.columnGap = b.columnGap ?? (b.gap != null ? b.gap : a.columnGap);
+		o.width = b.width ?? a.width;
+		o.height = b.height ?? a.height;
+		o.minWidth = b.minWidth ?? a.minWidth;
+		o.minHeight = b.minHeight ?? a.minHeight;
+		o.maxWidth = b.maxWidth ?? a.maxWidth;
+		o.maxHeight = b.maxHeight ?? a.maxHeight;
+		o.padding = b.padding ?? a.padding;
+		o.margin = b.margin ?? a.margin;
+		o.borderWidth = b.borderWidth ?? a.borderWidth;
+		o.borderColor = b.borderColor ?? a.borderColor;
+		o.borderStyle = b.borderStyle ?? a.borderStyle;
+		o.borderRadius = b.borderRadius ?? a.borderRadius;
+		o.background = b.background ?? a.background;
+		o.shadows = b.shadows ?? a.shadows;
+		o.outline = b.outline ?? a.outline;
+		o.opacity = b.opacity ?? a.opacity;
+		o.overflow = b.overflow ?? a.overflow;
+		o.position = b.position ?? a.position;
+		o.top = b.top ?? a.top;
+		o.right = b.right ?? a.right;
+		o.bottom = b.bottom ?? a.bottom;
+		o.left = b.left ?? a.left;
+		o.zIndex = b.zIndex ?? a.zIndex;
+		o.color = b.color ?? a.color;
+		o.fontSize = b.fontSize ?? a.fontSize;
+		o.fontWeight = b.fontWeight ?? a.fontWeight;
+		o.fontFamily = b.fontFamily ?? a.fontFamily;
+		o.fontStyle = b.fontStyle ?? a.fontStyle;
+		o.lineHeight = b.lineHeight ?? a.lineHeight;
+		o.letterSpacing = b.letterSpacing ?? a.letterSpacing;
+		o.textAlign = b.textAlign ?? a.textAlign;
+		o.wrap = b.wrap ?? a.wrap;
+		o.textOverflow = b.textOverflow ?? a.textOverflow;
+		o.lineClamp = b.lineClamp ?? a.lineClamp;
+		o.textDecoration = b.textDecoration ?? a.textDecoration;
+		o.cursor = b.cursor ?? a.cursor;
+		o.pointerEvents = b.pointerEvents ?? a.pointerEvents;
+		o.direction = b.direction ?? a.direction;
+		o.fontVariantNumeric = b.fontVariantNumeric ?? a.fontVariantNumeric;
+		o.aspectRatio = b.aspectRatio ?? a.aspectRatio;
+		o.scrollbarWidth = b.scrollbarWidth ?? a.scrollbarWidth;
+		o.justifyItems = b.justifyItems ?? a.justifyItems;
+		o.justifySelf = b.justifySelf ?? a.justifySelf;
+		o.gridTemplateColumns = b.gridTemplateColumns ?? a.gridTemplateColumns;
+		o.gridTemplateRows = b.gridTemplateRows ?? a.gridTemplateRows;
+		o.gridTemplateAreas = b.gridTemplateAreas ?? a.gridTemplateAreas;
+		o.gridAutoColumns = b.gridAutoColumns ?? a.gridAutoColumns;
+		o.gridAutoRows = b.gridAutoRows ?? a.gridAutoRows;
+		o.gridAutoFlow = b.gridAutoFlow ?? a.gridAutoFlow;
+		o.gridColumn = b.gridColumn ?? a.gridColumn;
+		o.gridRow = b.gridRow ?? a.gridRow;
+		o.gridArea = b.gridArea ?? a.gridArea;
+		o.hover = both(a.hover, b.hover);
+		o.pressed = both(a.pressed, b.pressed);
+		o.focus = both(a.focus, b.focus);
+		o.disabled = both(a.disabled, b.disabled);
+		o.selected = both(a.selected, b.selected);
+		o.checked = both(a.checked, b.checked);
+		o.placeholder = both(a.placeholder, b.placeholder);
+		o.dark = both(a.dark, b.dark);
+		o.group = a.group == null ? b.group : b.group == null ? a.group : {
+			var g = new GroupProps();
+			g.hover = both(a.group.hover, b.group.hover);
+			g.pressed = both(a.group.pressed, b.group.pressed);
+			g.focus = both(a.group.focus, b.group.focus);
+			g.disabled = both(a.group.disabled, b.group.disabled);
+			g.selected = both(a.group.selected, b.group.selected);
+			g.checked = both(a.group.checked, b.group.checked);
+			g;
+		}
+		return o;
+	}
+
+	static function both(a:Null<Props>, b:Null<Props>):Null<Props>
+		return a == null ? b : b == null ? a : merge(a, b);
+
+	// (what it says written out: its key. Floats as their bits or integers:
+	// hxmc's Float to String throws in a static initializer, where styles are
+	// made)
+	@:allow(helder.ui) static function write(p:Null<Props>):String {
+		if (p == null) return "";
+		var out = new StringBuf();
+		if (p.display != null) word(out, "d", p.display);
+		if (p.flexDirection != null) word(out, "fd", p.flexDirection);
+		if (p.flexWrap != null) word(out, "fw", p.flexWrap);
+		if (p.alignItems != null) word(out, "ai", p.alignItems);
+		if (p.alignSelf != null) word(out, "as", p.alignSelf);
+		if (p.justifyContent != null) word(out, "jc", p.justifyContent);
+		if (p.alignContent != null) word(out, "ac", p.alignContent);
+		if (p.flexGrow != null) num(out, "fg", p.flexGrow);
+		if (p.flexShrink != null) num(out, "fs", p.flexShrink);
+		if (p.flexBasis != null) size(out, "fb", p.flexBasis);
+		if (p.gap != null) num(out, "g", p.gap);
+		if (p.rowGap != null) num(out, "rg", p.rowGap);
+		if (p.columnGap != null) num(out, "cg", p.columnGap);
+		if (p.width != null) size(out, "w", p.width);
+		if (p.height != null) size(out, "h", p.height);
+		if (p.minWidth != null) size(out, "mw", p.minWidth);
+		if (p.minHeight != null) size(out, "mh", p.minHeight);
+		if (p.maxWidth != null) size(out, "xw", p.maxWidth);
+		if (p.maxHeight != null) size(out, "xh", p.maxHeight);
+		if (p.padding != null) edges(out, "p", p.padding);
+		if (p.margin != null) edges(out, "m", p.margin);
+		if (p.borderWidth != null) edges(out, "bw", p.borderWidth);
+		if (p.borderColor != null) tint(out, "bc", p.borderColor);
+		if (p.borderStyle != null) word(out, "bs", p.borderStyle);
+		if (p.borderRadius != null) edges(out, "br", p.borderRadius);
+		if (p.background != null) tint(out, "bg", p.background);
+		if (p.shadows != null) for (sh in p.shadows) {
+			out.add("sh");
+			edges(out, sh.inset == true ? "i" : "", [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]);
+			tint(out, "", sh.color);
+		}
+		if (p.outline != null) {
+			var o = p.outline;
+			edges(out, "ol" + (o.style ?? Solid), [o.width, o.offset ?? 0]);
+			tint(out, "", o.color);
+		}
+		if (p.opacity != null) num(out, "o", p.opacity);
+		if (p.overflow != null) word(out, "ov", p.overflow);
+		if (p.position != null) word(out, "pos", p.position);
+		if (p.top != null) size(out, "t", p.top);
+		if (p.right != null) size(out, "r", p.right);
+		if (p.bottom != null) size(out, "b", p.bottom);
+		if (p.left != null) size(out, "l", p.left);
+		if (p.zIndex != null) word(out, "z", p.zIndex);
+		if (p.color != null) tint(out, "c", p.color);
+		if (p.fontSize != null) num(out, "fz", p.fontSize);
+		if (p.fontWeight != null) word(out, "fwt", p.fontWeight);
+		if (p.fontFamily != null) word(out, "ff", p.fontFamily);
+		if (p.fontStyle != null) word(out, "fst", p.fontStyle);
+		if (p.lineHeight != null) num(out, "lh", p.lineHeight);
+		if (p.letterSpacing != null) num(out, "ls", p.letterSpacing);
+		if (p.textAlign != null) word(out, "ta", p.textAlign);
+		if (p.wrap != null) word(out, "wr", p.wrap);
+		if (p.textOverflow != null) word(out, "to", p.textOverflow);
+		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
+		if (p.textDecoration != null) word(out, "td", p.textDecoration);
+		if (p.cursor != null) word(out, "cu", p.cursor);
+		if (p.pointerEvents != null) word(out, "pe", p.pointerEvents);
+		if (p.direction != null) word(out, "dir", p.direction);
+		if (p.fontVariantNumeric != null) word(out, "fvn", p.fontVariantNumeric);
+		if (p.aspectRatio != null) num(out, "ar", p.aspectRatio);
+		if (p.scrollbarWidth != null) word(out, "sbw", p.scrollbarWidth);
+		if (p.justifyItems != null) word(out, "ji", p.justifyItems);
+		if (p.justifySelf != null) word(out, "js", p.justifySelf);
+		if (p.gridTemplateColumns != null) word(out, "gtc", p.gridTemplateColumns);
+		if (p.gridTemplateRows != null) word(out, "gtr", p.gridTemplateRows);
+		if (p.gridTemplateAreas != null) word(out, "gta", p.gridTemplateAreas);
+		if (p.gridAutoColumns != null) word(out, "gac", p.gridAutoColumns);
+		if (p.gridAutoRows != null) word(out, "gar", p.gridAutoRows);
+		if (p.gridAutoFlow != null) word(out, "gaf", p.gridAutoFlow);
+		if (p.gridColumn != null) word(out, "gc", p.gridColumn);
+		if (p.gridRow != null) word(out, "gr", p.gridRow);
+		if (p.gridArea != null) word(out, "ga", p.gridArea);
+		inline function sub(name:String, v:Null<Props>)
+			if (v != null) {
+				out.add(name);
+				out.add("{");
+				out.add(write(v));
+				out.add("}");
+			}
+		sub("hover", p.hover);
+		sub("pressed", p.pressed);
+		sub("focus", p.focus);
+		sub("disabled", p.disabled);
+		sub("selected", p.selected);
+		sub("checked", p.checked);
+		sub("placeholder", p.placeholder);
+		sub("dark", p.dark);
+		var g = p.group;
+		if (g != null) {
+			out.add("group{");
+			sub("hover", g.hover);
+			sub("pressed", g.pressed);
+			sub("focus", g.focus);
+			sub("disabled", g.disabled);
+			sub("selected", g.selected);
+			sub("checked", g.checked);
+			out.add("}");
+		}
+		return out.toString();
+	}
+
+	// (a token seen by the last write)
+	static var tokens = false;
+
+	// (a dark variant anywhere in it)
+	static function dark(p:Null<Props>):Bool {
+		if (p == null) return false;
+		if (p.dark != null) return true;
+		for (v in [p.hover, p.pressed, p.focus, p.disabled, p.selected, p.checked, p.placeholder]) if (dark(v)) return true;
+		var g = p.group;
+		return g != null && (dark(g.hover) || dark(g.pressed) || dark(g.focus) || dark(g.disabled) || dark(g.selected) || dark(g.checked));
+	}
+
+	static function word(out:StringBuf, k:String, v:Any) {
+		out.add(k);
+		out.add("=");
+		out.add(v);
+		out.add(";");
+	}
+
+	static function float(out:StringBuf, v:Float) {
+		if (Pixels.isToken(v)) tokens = true;
+		var i = Std.int(v);
+		if (i == v) out.add(i) else {
+			var b = haxe.io.FPHelper.doubleToI64(v);
+			out.add("~");
+			out.add(b.high);
+			out.add(":");
+			out.add(b.low);
+		}
+	}
+
+	static function num(out:StringBuf, k:String, v:Float) {
+		out.add(k);
+		out.add("=");
+		float(out, v);
+		out.add(";");
+	}
+
+	static function size(out:StringBuf, k:String, v:Len) {
+		out.add(k);
+		switch v {
+			case Px(n):
+				out.add("=");
+				float(out, n);
+			case Percent(n):
+				out.add("%");
+				float(out, n);
+			case _:
+				out.add("=a");
+		}
+		out.add(";");
+	}
+
+	static function edges(out:StringBuf, k:String, v:Array<Float>) {
+		out.add(k);
+		out.add("=");
+		for (e in v) {
+			float(out, e);
+			out.add(",");
+		}
+		out.add(";");
+	}
+
+	static function tint(out:StringBuf, k:String, v:TintValue) {
+		out.add(k);
+		switch v {
+			case Plain(c):
+				out.add("=");
+				out.add(c);
+			case Token(name):
+				tokens = true;
+				out.add("$");
+				out.add(name);
+			case Current:
+				out.add("=current");
+		}
+		out.add(";");
+	}
 }
-
-// (a property moving under a transition: from where, to what, since when (-1: the next tick), its timing)
-private typedef Moving = {name:String, from:Dynamic, to:Dynamic, start:Float, duration:Float, delay:Float, easing:Array<Float>};

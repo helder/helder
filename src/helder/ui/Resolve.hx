@@ -1,11 +1,11 @@
-package helder.ui.fast;
+package helder.ui;
 
 import helder.css.CssTerm;
 import helder.ui.box.BoxStyle;
 import helder.ui.box.Len;
-import helder.ui.fast.Style.Pixels;
-import helder.ui.fast.Style.Props;
-import helder.ui.fast.Style.Tint;
+import helder.ui.Style.Pixels;
+import helder.ui.Style.Props;
+import helder.ui.Style.Tint;
 import helder.ui.flow.InlineBasicStyle;
 
 // A style resolved for a node: in its states, under its parent's text
@@ -22,7 +22,7 @@ class Resolve {
 
 	// what a change of one resolved style to another takes (Tree's): nothing, a paint, a paint order, a layout
 	// (a grid's terms into a box's rare part: Grids.fill, set by Grids.use)
-	@:allow(helder.ui.fast) static var grids:Null<(Props, () -> helder.ui.box.BoxRare) -> Void> = null;
+	@:allow(helder.ui) static var grids:Null<(Props, () -> helder.ui.box.BoxRare) -> Void> = null;
 
 	public static inline var NOTHING = 0;
 	public static inline var PAINT = 1;

@@ -1,4 +1,4 @@
-package helder.ui.fast;
+package helder.ui;
 
 import helder.css.CssTerm;
 

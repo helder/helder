@@ -1,4 +1,4 @@
-package helder.ui.fast;
+package helder.ui;
 
 #if macro
 import haxe.macro.Context;

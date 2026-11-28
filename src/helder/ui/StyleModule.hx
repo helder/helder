@@ -1,4 +1,4 @@
-package helder.ui.fast;
+package helder.ui;
 
 #if macro
 import haxe.io.Path;
@@ -13,7 +13,7 @@ import sys.FileSystem;
 using StringTools;
 #end
 
-// CSS modules for fast nodes: StyleModule.load("card.module.css") (beside
+// CSS modules for nodes: StyleModule.load("card.module.css") (beside
 // the calling file, else under a class path) is the module's classes as
 // Styles, compiled when the program is: {final card:Style, final
 // cardTitle:Style}, a dashed name camelCased, a misspelt one a type error.
@@ -77,8 +77,8 @@ private class Compile {
 		if (t != null) {
 			if (t.kind != kind) fail(Parser.startOf(v), '${d.name}: --$name is a ${t.kind}, not a $kind');
 			return switch kind {
-				case Color: macro(new helder.ui.fast.Token<helder.gfx.Color>($v{name}) : helder.ui.fast.Style.Tint);
-				case _: macro new helder.ui.fast.Token<helder.ui.fast.Token.Length>($v{name});
+				case Color: macro(new helder.ui.Token<helder.gfx.Color>($v{name}) : helder.ui.Style.Tint);
+				case _: macro new helder.ui.Token<helder.ui.Token.Length>($v{name});
 			}
 		}
 		if (comma >= 0) {
@@ -92,7 +92,7 @@ private class Compile {
 		var rules = new helder.css.Parser(text).sheet();
 		for (r in rules) rule(r, false);
 		var fields:Array<ObjectField> = [];
-		for (c in order) fields.push({field: camel(c, pos), expr: macro helder.ui.fast.Style.of(${style(c, [])})});
+		for (c in order) fields.push({field: camel(c, pos), expr: macro helder.ui.Style.of(${style(c, [])})});
 		return {expr: EObjectDecl(fields), pos: pos};
 	}
 
@@ -100,27 +100,27 @@ private class Compile {
 		switch r {
 			case Qualified(prelude, decls, nested):
 				var sel = selector(prelude);
-				var state = dark ? (sel.state == "" ? "dark" : fail(start(prelude), 'a fast style\'s dark variant has no states yet (.${sel.name}${sel.state})')) : sel.state;
+				var state = dark ? (sel.state == "" ? "dark" : fail(start(prelude), 'a style\'s dark variant has no states yet (.${sel.name}${sel.state})')) : sel.state;
 				add(sel.name, state, decls);
 				for (n in nested) switch n {
 					case Qualified(np, nd, _):
 						var s = nestedState(np);
-						if (dark) fail(start(np), "a fast style's dark variant has no states yet");
+						if (dark) fail(start(np), "a style's dark variant has no states yet");
 						add(sel.name, s, nd);
 					case Declarations(d):
 						add(sel.name, state, d);
 					case At(name, prelude, _):
-						fail(start(prelude), 'a fast style: no @$name inside a rule');
+						fail(start(prelude), 'a style: no @$name inside a rule');
 				}
 			case At("media", prelude, block):
 				var q = flat(prelude);
 				if (dark || q.indexOf("prefers-color-scheme") < 0 || q.indexOf("dark") < 0 || block == null)
-					fail(start(prelude), "a fast style's @media is (prefers-color-scheme: dark) alone");
+					fail(start(prelude), "a style's @media is (prefers-color-scheme: dark) alone");
 				for (b in block) rule(b, true);
 			case At(name, prelude, _):
-				fail(start(prelude), 'a fast style: no @$name (a class alone, its states, @media (prefers-color-scheme: dark))');
+				fail(start(prelude), 'a style: no @$name (a class alone, its states, @media (prefers-color-scheme: dark))');
 			case Declarations(d):
-				if (d.length > 0) fail(d[0].start, "a fast style: declarations outside a rule");
+				if (d.length > 0) fail(d[0].start, "a style: declarations outside a rule");
 		}
 
 	function add(name:String, state:String, decls:Array<CssDeclaration>) {
@@ -135,7 +135,7 @@ private class Compile {
 			if (!composed.exists(name)) composed.set(name, []);
 			for (v in words(d.value)) switch v {
 				case Token({kind: Ident("from")}) | Token({kind: Str(_)}):
-					fail(d.start, "composes: classes of the same file alone, for fast styles");
+					fail(d.start, "composes: classes of the same file alone, for styles");
 				case Token({kind: Ident(n)}): composed.get(name).push({name: n, at: d.start});
 				case _:
 			}
@@ -146,7 +146,7 @@ private class Compile {
 	function selector(prelude:Array<CssValue>):{name:String, state:String} {
 		var t = tokens(prelude), k = 0;
 		if (t.length < 2 || !t[0].kind.match(Delim(".")))
-			fail(t.length > 0 ? t[0].start : 0, "a fast style's rule is a class alone (.name), with one of its states");
+			fail(t.length > 0 ? t[0].start : 0, "a style's rule is a class alone (.name), with one of its states");
 		var name = switch t[1].kind {
 			case Ident(n): n;
 			case _: fail(t[1].start, "a class's name");
@@ -157,9 +157,9 @@ private class Compile {
 
 	function nestedState(prelude:Array<CssValue>):String {
 		var t = tokens(prelude);
-		if (t.length == 0 || !t[0].kind.match(Delim("&"))) fail(t.length > 0 ? t[0].start : 0, "a nested rule of a fast style is one of its states (&:hover)");
+		if (t.length == 0 || !t[0].kind.match(Delim("&"))) fail(t.length > 0 ? t[0].start : 0, "a nested rule of a style is one of its states (&:hover)");
 		var s = stateOf(t, 1);
-		if (s == "") fail(t[0].start, "a nested rule of a fast style is one of its states (&:hover)");
+		if (s == "") fail(t[0].start, "a nested rule of a style is one of its states (&:hover)");
 		return s;
 	}
 
@@ -169,9 +169,9 @@ private class Compile {
 			case Colon if (k + 2 < t.length && t[k + 1].kind.match(Colon)):
 				switch t[k + 2].kind {
 					case Ident("placeholder"):
-						if (k + 3 < t.length) fail(t[k + 3].start, "a fast style's rule is a class alone with one state");
+						if (k + 3 < t.length) fail(t[k + 3].start, "a style's rule is a class alone with one state");
 						return "placeholder";
-					case _: fail(t[k + 2].start, "a fast style's pseudo-element is ::placeholder alone");
+					case _: fail(t[k + 2].start, "a style's pseudo-element is ::placeholder alone");
 				}
 			case Colon if (k + 1 < t.length):
 				switch t[k + 1].kind {
@@ -180,7 +180,7 @@ private class Compile {
 					case Ident("focus") | Ident("focus-visible"): "focus";
 					case Ident("disabled"): "disabled";
 					case Ident("checked"): "checked";
-					case _: fail(t[k + 1].start, "a fast style's state is :hover, :active, :focus, :focus-visible, :disabled, :checked or [data-state=...]");
+					case _: fail(t[k + 1].start, "a style's state is :hover, :active, :focus, :focus-visible, :disabled, :checked or [data-state=...]");
 				}
 			case OpenSquare:
 				var s = [for (x in t.slice(k + 1)) switch x.kind {
@@ -192,13 +192,13 @@ private class Compile {
 					case "data-state=checked": "checked";
 					case "data-state=selected" | "aria-selected=true": "selected";
 					case "data-state=disabled": "disabled";
-					case _: fail(t[k].start, 'a fast style\'s state: no [$s]');
+					case _: fail(t[k].start, 'a style\'s state: no [$s]');
 				}
-			case _: fail(t[k].start, "a fast style's rule is a class alone (.name): no descendant, child or sibling selector");
+			case _: fail(t[k].start, "a style's rule is a class alone (.name): no descendant, child or sibling selector");
 		}
 		// (anything after the state: a compound or a combinator)
 		var end = t[k].kind.match(OpenSquare) ? Lambda.findIndex(t, x -> x.kind.match(CloseSquare)) + 1 : k + 2;
-		if (end < t.length) fail(t[end].start, "a fast style's rule is a class alone with one state: no descendant, child or sibling selector");
+		if (end < t.length) fail(t[end].start, "a style's rule is a class alone with one state: no descendant, child or sibling selector");
 		return state;
 	}
 
@@ -328,7 +328,7 @@ private class Compile {
 				case "line-height":
 					set("lineHeight", switch w[0] {
 						case Token({kind: Number(n, _, _)}): macro $v{n};
-						case _: fail(d.start, "a fast style's line-height is a number (a multiple of the font size)");
+						case _: fail(d.start, "a style's line-height is a number (a multiple of the font size)");
 					});
 				case "letter-spacing": set("letterSpacing", px(w[0], d));
 				case "text-align":
@@ -344,7 +344,7 @@ private class Compile {
 						case Token({kind: Ident("line-through")}): bits |= 2;
 						case Token({kind: Ident("overline")}): bits |= 4;
 						case Token({kind: Ident("none")}):
-						case _: fail(Parser.startOf(v), "a fast style's text-decoration: its lines alone");
+						case _: fail(Parser.startOf(v), "a style's text-decoration: its lines alone");
 					}
 					set("textDecoration", macro $v{bits});
 				case "cursor": set("cursor", macro($v{flat(d.value).trim()} : helder.ui.Cursor));
@@ -367,7 +367,7 @@ private class Compile {
 					if (nums.length == 0 || nums.length > 2 || nums.length == 2 && nums[1] == 0) fail(d.start, "aspect-ratio: a number, or a / b");
 					set("aspectRatio", macro $v{nums.length == 2 ? nums[0] / nums[1] : nums[0]});
 				case "scrollbar-width": set("scrollbarWidth", word(w, d, ["auto" => "Auto", "thin" => "Thin", "none" => "None"], "helder.ui.ScrollbarWidth"));
-				case name: fail(d.start, 'a fast style has no property $name');
+				case name: fail(d.start, 'a style has no property $name');
 			}
 			// (where it was written: a value's type error there)
 			var f = out.get(fieldOf(d.name));
@@ -406,14 +406,14 @@ private class Compile {
 	// (box-shadow's list: each two to four lengths, inset, a colour (currentcolor where none))
 	function shadows(w:Array<CssValue>, d:CssDeclaration):Expr {
 		if (w.length == 1 && w[0].match(Token({kind: Ident("none")}))) return macro [];
-		var list:Array<Expr> = [], lengths:Array<Expr> = [], inset = false, color:Expr = macro helder.ui.fast.Style.Tint.current;
+		var list:Array<Expr> = [], lengths:Array<Expr> = [], inset = false, color:Expr = macro helder.ui.Style.Tint.current;
 		function end() {
 			if (lengths.length < 2 || lengths.length > 4) fail(d.start, 'box-shadow: two to four lengths a shadow');
 			var blur = lengths[2] ?? macro 0.0, spread = lengths[3] ?? macro 0.0;
 			list.push(macro {x: ${lengths[0]}, y: ${lengths[1]}, blur: $blur, spread: $spread, color: $color, inset: $v{inset}});
 			lengths = [];
 			inset = false;
-			color = macro helder.ui.fast.Style.Tint.current;
+			color = macro helder.ui.Style.Tint.current;
 		}
 		for (v in w) switch v {
 			case Token({kind: Comma}): end();
@@ -443,7 +443,7 @@ private class Compile {
 
 	function px(v:CssValue, d:CssDeclaration):Expr
 		return switch v {
-			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> px(x, d))} : helder.ui.fast.Style.Pixels);
+			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> px(x, d))} : helder.ui.Style.Pixels);
 			case Token({kind: Dimension(n, _, _, "px")}): macro $v{n};
 			case Token({kind: Number(0, _, _)}): macro 0.0;
 			case _: fail(Parser.startOf(v), '${d.name}: a length in px');
@@ -451,7 +451,7 @@ private class Compile {
 
 	function length(v:CssValue, d:CssDeclaration):Expr
 		return switch v {
-			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> length(x, d))} : helder.ui.fast.Style.Size);
+			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> length(x, d))} : helder.ui.Style.Size);
 			case Token({kind: Dimension(n, _, _, "px")}): macro $v{n};
 			case Token({kind: Number(0, _, _)}): macro 0.0;
 			case Token({kind: Percentage(n, _, _)}): macro $v{n + "%"};
@@ -475,7 +475,7 @@ private class Compile {
 			case Function("var", args, _, _):
 				return token(v, args, d, Color, x -> colour(x, d));
 			case Token({kind: Ident("currentColor" | "currentcolor")}):
-				return macro helder.ui.fast.Style.Tint.current;
+				return macro helder.ui.Style.Tint.current;
 			case Token({kind: Ident("transparent")}):
 				return macro 0;
 			case _:
@@ -551,7 +551,7 @@ private typedef Parser = helder.css.Parser;
 private class OutlineParts {
 	public var width:Expr = macro 0.0;
 	public var style:Null<Expr> = null;
-	public var color:Expr = macro helder.ui.fast.Style.Tint.current;
+	public var color:Expr = macro helder.ui.Style.Tint.current;
 	public var offset:Expr = macro 0.0;
 
 	public function new() {}
