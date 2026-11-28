@@ -116,7 +116,18 @@ class WinLayersWindowCheck {
 			strict = was;
 		}
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
-		function blocked(what:String, before:Void->Void):Array<Float> {
+		// (the compositor scrolls no farther than what the program's last frame recorded (#479): the list recorded
+		// again around what is seen, a viewport each way as at first, so what the block scrolls fits, as #494)
+		function prime() {
+			var cl = @:privateAccess list.contentLayer;
+			if (cl != null) @:privateAccess {
+				cl.recordedAt = -1;
+				cl.x0 = cl.y0 = cl.x1 = cl.y1 = 0;
+			}
+			w.ui.requestFrame();
+		}
+		// (least: the frames expected while blocked)
+		function blocked(what:String, before:Void->Void, least = 10):Array<Float> {
 			var was = strict;
 			strict = was && (mode == "textured" || live());
 			var t0 = dc == null ? [] : dc.timing.copy(), f0 = layers == null ? 0 : layers.frames, q0 = layers == null ? 0 : layers.quadsTotal;
@@ -131,7 +142,7 @@ class WinLayersWindowCheck {
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
-			check('$what: frames presented while the program was blocked 300 ms', during.length >= 10, during.length + " frames");
+			check('$what: frames presented while the program was blocked 300 ms', during.length >= least, during.length + " frames");
 			var paced = gaps.length > 0 && median < 0.03, gap = "median gap " + Math.round(median * 10000) / 10 + " ms";
 			var bound = paced || c == null ? null : gpuBound(c, from, to);
 			if (bound == null) check('$what: at the display\'s pace', paced, gap) else {
@@ -250,9 +261,15 @@ class WinLayersWindowCheck {
 					phase = 1;
 					at = now;
 				case 1 if (now - at > 1):
-					// (the wheel while the program is blocked: the compositor scrolls)
+					prime();
+					phase = 11;
+					at = step;
+				case 11 if (step - at >= 3):
+					// (the wheel while the program is blocked: the compositor scrolls; a notch a jump of 40 points, one a frame,
+					// held at the edge of the viewport recorded past what is seen after some 7 of them, frames presented only
+					// as it moves: 6 expected, as AsyncScrollWindowCheck's, #494)
 					var inject:Null<Inject> = null;
-					var moved = blocked("a scroll", () -> inject = Inject.start(w.window, 300));
+					var moved = blocked("a scroll", () -> inject = Inject.start(w.window, 300), 6);
 					inject.join();
 					// (the compositor's offsets of the list as its frames drew it: the program has them at its next turn)
 					var was = strict;

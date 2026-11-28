@@ -117,6 +117,16 @@ class WaylandLayersWindowCheck {
 			strict = was;
 		}
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
+		// (the compositor scrolls no farther than what the program's last frame recorded (#479): the list recorded
+		// again around what is seen, a viewport each way as at first, so what the block scrolls fits, as #494)
+		function prime() {
+			var cl = @:privateAccess list.contentLayer;
+			if (cl != null) @:privateAccess {
+				cl.recordedAt = -1;
+				cl.x0 = cl.y0 = cl.x1 = cl.y1 = 0;
+			}
+			w.ui.requestFrame();
+		}
 		function blocked(what:String, before:Void->Void):Array<Float> {
 			var was = strict;
 			strict = was && (mode == "textured" || live());
@@ -236,11 +246,16 @@ class WaylandLayersWindowCheck {
 						check("the rounded scroller drawn", !Lambda.exists(scrolls, u -> u.key == round), "rounds false");
 						strict = was;
 					}
-					// (a finger's fling, then the program busy: the compositor glides)
+					prime();
+					phase = 21;
+					at = step;
+				case 21 if (step - at >= 3):
+					// (a finger's fling, then the program busy: the compositor glides, gently: about 150 points, within
+					// what was recorded)
 					var t = Timer.stamp() * 1000;
 					for (i in 0...8)
-						touch(w, i == 0 ? PointerDown : PointerMove, 120, 250 - i * 20, t + i * 16);
-					touch(w, PointerUp, 120, 250 - 7 * 20, t + 8 * 16);
+						touch(w, i == 0 ? PointerDown : PointerMove, 120, 250 - i * 8, t + i * 16);
+					touch(w, PointerUp, 120, 250 - 7 * 8, t + 8 * 16);
 					flung = list.scrollY;
 					var moved = blocked("a fling", () -> {});
 					var was = strict;
