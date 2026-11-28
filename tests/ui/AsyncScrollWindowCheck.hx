@@ -58,9 +58,19 @@ class AsyncScrollWindowCheck {
 			var o = c.offsets(list);
 			offsets.push(o == null ? -1 : o.y);
 		};
-		var blocked = false, primed = false, flung = 0.0, injected = 0;
+		var blocked = false, primed = false, flung = 0.0, injected = 0, begun = Timer.stamp();
 		App.run(() -> {
 			step++;
+			// (the first fling at rest and the block after it, however many turns that takes: before, a fling
+			// still moving some 30 turns on ended the check unblocked (on a loaded Xvfb, 2 runs in 8))
+			if (!blocked && step > 19) {
+				step = 19;
+				if (Timer.stamp() - begun > 10) {
+					check("the first fling at rest within 10 s", false);
+					w.close();
+					Sys.exit(1);
+				}
+			}
 			if (step == 10) {
 				// (a finger's fling: down, moves a frame apart, up; read as the main thread reads them)
 				var t = Timer.stamp() * 1000;
