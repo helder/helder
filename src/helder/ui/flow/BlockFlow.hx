@@ -194,7 +194,7 @@ class BlockFlow implements FormattingContext {
 		if (fr != null && box.parent != null && (scrolls(box.style) || contain.has(Layout) || contain.has(Size) || s.clips && !Math.isNaN(heightSpec)
 			&& space.pageTop + bt + pt + heightSpec <= fr.size + 0.01))
 			fr = new Unbroken(fr);
-		var pctBase = whole;
+		var pctBase = space.looseHeight ? Math.NaN : whole;
 		if (!Math.isNaN(pctBase)) pctBase = clampHeight(s, space.height, bpy, pctBase);
 		var frags = space.fragments;
 		var frag = frags.add(Fragments.BOX, box, w + bpx, 0);
@@ -845,14 +845,25 @@ class BlockFlow implements FormattingContext {
 			if (Math.isNaN(hs) && !Math.isNaN(top) && !Math.isNaN(bottom))
 				hs = Math.max(0, cbh - top - bottom - (Math.isNaN(mt) ? 0 : mt) - (Math.isNaN(mb) ? 0 : mb) - bpy);
 			if (!Math.isNaN(hs)) w = Ratio.width(b, clampHeight(s, cbh, bpy, hs), bpx, bpy);
+			// (no narrower than its content, its min-width auto, Sizing 4 §5.1)
+			if (!Math.isNaN(w) && Lens.isAuto(s.minWidth) && !b.style.clips) {
+				if (b.context != null) b.context.intrinsic(b, space) else intrinsic(b, space);
+				w = Math.max(w, b.minContent - bpx);
+			}
 		}
 		function shrink(avail:Float):Float {
 			if (b.context != null) b.context.intrinsic(b, space) else intrinsic(b, space);
 			return Math.min(Math.max(b.minContent, avail), b.maxContent) - bpx;
 		}
+		// (its self-alignment in the inset-modified containing block, both insets set: its own size, fit-content)
+		var jx = selfAligned(b, true, rtl), jy = selfAligned(b, false, rtl);
 		function horizontal(w:Float):{x:Float, w:Float} {
 			var l = left, r = right, a = ml, c = mr;
-			if (Math.isNaN(l) && Math.isNaN(w) && Math.isNaN(r)) {
+			// (not stretched: its own width, fit-content; auto margins then take the room, else it's aligned)
+			if (jx != "" && !Math.isNaN(l) && !Math.isNaN(r) && Math.isNaN(w)) w = shrink(cbw - l - r - (Math.isNaN(a) ? 0 : a) - (Math.isNaN(c) ? 0 : c));
+			if (jx != "" && !Math.isNaN(l) && !Math.isNaN(r) && !Math.isNaN(a) && !Math.isNaN(c)) {
+				l = aligned(l, cbw - l - r, w + bpx + a + c, jx, cbw);
+			} else if (Math.isNaN(l) && Math.isNaN(w) && Math.isNaN(r)) {
 				if (Math.isNaN(a)) a = 0;
 				if (Math.isNaN(c)) c = 0;
 				if (align != null) {
@@ -915,7 +926,8 @@ class BlockFlow implements FormattingContext {
 		cs.exclusions = null;
 		cs.left = 0;
 		cs.top = 0;
-		var stretch = !replaced && !ratio && Math.isNaN(size(s.height, cbh, s.borderBox, bpy)) && !Math.isNaN(top) && !Math.isNaN(bottom);
+		var selfY = jy != "" && !Math.isNaN(top) && !Math.isNaN(bottom) && !Math.isNaN(mt) && !Math.isNaN(mb);
+		var stretch = !replaced && !ratio && jy == "" && Math.isNaN(size(s.height, cbh, s.borderBox, bpy)) && !Math.isNaN(top) && !Math.isNaN(bottom);
 		if (stretch) {
 			var available = cbh - top - bottom - (Math.isNaN(mt) ? 0 : mt) - (Math.isNaN(mb) ? 0 : mb) - bpy;
 			cs.fixedHeight = clampHeight(s, cbh, bpy, Math.max(0, available)) + bpy;
@@ -931,6 +943,8 @@ class BlockFlow implements FormattingContext {
 			if (Math.isNaN(a)) a = 0;
 			t = sy;
 			if (align != null) t += (align[3] - (h + a + (Math.isNaN(c) ? 0 : c))) * align[5];
+		} else if (selfY) {
+			t = aligned(t, cbh - t - bt, h + a + c, jy, cbh);
 		} else if (!Math.isNaN(t) && !Math.isNaN(bt)) {
 			var rest = cbh - t - bt - h;
 			// (equal auto margins, negative too: §10.6.4 has no rule against it, unlike §10.3.7)
@@ -941,6 +955,33 @@ class BlockFlow implements FormattingContext {
 			if (Math.isNaN(t)) t = cbh - bt - a - c - h;
 		}
 		return {fragment: f, x: used.x, y: t + a};
+	}
+
+	// (an absolutely positioned box's justify-self or align-self, start and end as they fall in its containing
+	// block's left to right and top to bottom; "": normal, stretch, auto, which CSS 2.1's rules place)
+	static function selfAligned(b:Box, justify:Bool, rtl:Bool):String {
+		var v = justify ? b.style.justifySelf : b.style.alignSelf;
+		if (StringTools.startsWith(v, "safe ") || StringTools.startsWith(v, "unsafe ")) v = v.substr(v.indexOf(" ") + 1);
+		return switch v {
+			case "center": "center";
+			case "start" | "self-start" | "flex-start": justify && rtl ? "end" : "start";
+			case "end" | "self-end" | "flex-end": justify && rtl ? "start" : "end";
+			// (a baseline's fallback: start, last baseline's end)
+			case "baseline" | "first baseline": justify && rtl ? "end" : "start";
+			case "last baseline": justify && rtl ? "start" : "end";
+			case "left": justify ? "start" : "";
+			case "right": justify ? "end" : "";
+			case _: "";
+		}
+	}
+
+	// (where its margin box starts, size large, aligned in the inset-modified containing block from p0, room
+	// large; overflowing it, shifted into the containing block where it fits, at its start where it doesn't,
+	// as Position 3 §4.4 and Chromium)
+	static function aligned(p0:Float, room:Float, size:Float, how:String, cb:Float):Float {
+		var p = how == "end" ? p0 + room - size : how == "center" ? p0 + (room - size) / 2 : p0;
+		if (size > room) p = size > cb ? 0 : Math.max(0, Math.min(p, cb - size));
+		return p;
 	}
 
 	// (how far a fragment's content reaches down from its top: its border box, what overflows it unless it clips)

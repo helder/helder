@@ -27,21 +27,48 @@ class NodeBoxes {
 	final fonts = new FontMatch();
 	final contexts:Contexts;
 	final measured = new Measured();
+	// (the root's containing block, as a document's: the root a positioned box in it, as large as the window, its
+	// absolutely positioned children placed in its padding box as Layout places them)
+	final icb:Box;
 	var whole = 0;
+	var width = Math.NaN;
+	var height = Math.NaN;
 
 	function new() {
 		var flow = new helder.ui.flow.BlockFlow();
 		contexts = new Contexts(flow);
 		contexts.flex = new helder.ui.flow.FlexFlow(flow);
 		contexts.grid = new helder.ui.flow.GridFlow(flow);
+		var s = new BoxStyle();
+		@:privateAccess {
+			s.textPart = helder.ui.fast.Resolve.root;
+			s.displayRead = true;
+			s.displayOuter = BoxStyle.BLOCK;
+			s.displayInner = BoxStyle.FLOW;
+			s.layoutRead = true;
+			s.traits = BoxStyle.VISIBLE | BoxStyle.COLLAPSE | BoxStyle.WRAPS;
+			s.opacityValue = 1;
+		}
+		icb = new Box(Block, s, null);
 	}
 
 	// Layout.run's: the tree at root laid out at width by height (the root as large), its nodes told; false: nothing to do
 	public static function run(root:Node, width:Float, height:Float, text:TextEngine, ?scrollers:Array<Node>):Bool {
 		if (!root.dirty && root.lw == width && root.lh == height && !root.relaid) return false;
-		var e = root.boxes ?? (root.boxes = new NodeBoxes());
+		var e = root.laidBy ?? (root.laidBy = new NodeBoxes());
 		e.measured.text = text;
+		if (e.width != width || e.height != height) {
+			e.width = width;
+			e.height = height;
+			root.dirty = true;
+		}
+		// (laid out again where something in it changed: its cache let go with the root's)
+		if (root.dirty) e.icb.uncache();
 		var b = e.sync(root);
+		if (b.parent != e.icb) {
+			while (e.icb.first != null) e.icb.first.remove();
+			e.icb.append(b);
+		}
 		var f = e.fragments;
 		// (the layouts before kept for the cache, let go now and then)
 		if (f.count > 3 * e.whole + 4096) {
@@ -52,7 +79,7 @@ class NodeBoxes {
 		var space = new Space(f, e.fonts, width, height);
 		space.fixedWidth = width;
 		space.fixedHeight = height;
-		var id = (b.context ?? e.contexts.flow).layout(b, space);
+		var id = f.first(e.contexts.flow.layout(e.icb, space));
 		if (fresh) e.whole = f.count;
 		e.told(root, id);
 		root.lx = 0;
@@ -63,15 +90,33 @@ class NodeBoxes {
 
 	// (a node's box: made, or styled again with its children's where it is dirty; its ancestors' caches let go)
 	function sync(n:Node):Box {
-		var b = n.box;
+		var b = n.laidBox;
 		if (b != null && !n.dirty) return b;
 		var s = styleOf(n);
+		// (a fieldset's legend first in its column: outside the flex container in CSS, so no gap after it, as Layout
+		// has it: its bottom margin less the gap)
+		var p = n.parent;
+		if (n.legend && p != null && p.style.display != Grid && (p.style.flexDirection == Column || p.style.flexDirection == ColumnReverse)
+			&& firstShown(p) == n && p.style.rowGap != 0) {
+			s = build(n);
+			@:privateAccess s.margin[2] = Px(Len.Lens.resolve(s.margin[2], Math.NaN, 0) - p.style.rowGap);
+		}
+		// (the root as large as the window, whatever its style says, as Layout has it)
+		if (n.parent == null) {
+			s = build(n);
+			@:privateAccess {
+				s.width = Px(width);
+				s.height = Px(height);
+				s.minWidth = s.minHeight = Px(0);
+				s.maxWidth = s.maxHeight = Len.Auto;
+			}
+		}
 		var own = n.hasContent() && (n.children.length == 0 || n.contentOwnsChildren());
 		var kind:helder.ui.box.BoxKind = own || s.inner == BoxStyle.FLEX || s.inner == BoxStyle.GRID ? Container : Block;
 		if (b == null || b.kind != kind) {
 			b = new Box(kind, s, n);
 			b.flags |= Box.MADE;
-			n.box = b;
+			n.laidBox = b;
 		} else @:privateAccess b.restyle(s);
 		b.context = own ? measured : contexts.of(s.inner, _ -> {});
 		// (its children's boxes, in order: none for a node whose content they are, nor for those not shown)
@@ -84,6 +129,11 @@ class NodeBoxes {
 		// (round goes through it and what is in it: its children's places may have changed)
 		n.relaid = true;
 		return b;
+	}
+
+	static function firstShown(n:Node):Null<Node> {
+		for (c in n.children) if (c.style.display != None && c.style.position != Absolute) return c;
+		return null;
 	}
 
 	static function hide(n:Node) {
@@ -101,23 +151,25 @@ class NodeBoxes {
 		if (n.lw != f.width(id) || n.lh != f.height(id)) n.relaid = true;
 		n.lw = f.width(id);
 		n.lh = f.height(id);
-		if (id == n.boxFragment && !n.relaid) return;
-		n.boxFragment = id;
+		if (id == n.laidFragment && !n.relaid) return;
+		n.laidFragment = id;
 		// (content measured is its own, its extent left as Layout leaves it)
-		var b = n.box;
+		var b = n.laidBox;
 		if (b == null || b.context == measured) return;
 		// (as Layout's: from its content box's start, each child's end margin, what a child not clipping overflows)
 		var m = b.style.model(), padL = m.border[3] + Len.Lens.resolve(m.padding[3], n.lw, 0),
 			padT = m.border[0] + Len.Lens.resolve(m.padding[0], n.lw, 0);
-		var ext = [0.0, 0.0];
-		children(n, id, 0, 0, padL, padT, ext);
+		var ext = [0.0, 0.0, 0.0], rtl = n.rtl();
+		children(n, id, 0, 0, padL, padT, ext, rtl);
+		// (right to left: from what reaches furthest left to the content box's right edge)
+		if (rtl) ext[0] = n.lw - padL - m.border[1] - Len.Lens.resolve(m.padding[1], n.lw, 0) - ext[2];
 		@:privateAccess n.contentWidth = ext[0];
 		@:privateAccess n.contentHeight = ext[1];
 	}
 
 	// (the fragments under id, in order, through those of no node of their own (anonymous blocks, lines): each
 	// node's told its place, at dx, dy from n's border box)
-	function children(n:Node, id:Int, dx:Float, dy:Float, padL:Float, padT:Float, ext:Array<Float>) {
+	function children(n:Node, id:Int, dx:Float, dy:Float, padL:Float, padT:Float, ext:Array<Float>, rtl:Bool) {
 		var f = fragments, k = f.first(id);
 		while (k >= 0) {
 			var b = f.box(k), x = dx + f.x(k), y = dy + f.y(k);
@@ -128,7 +180,7 @@ class NodeBoxes {
 				c.ly = y;
 				told(c, k);
 				var cs = c.style, ow = c.lw, oh = c.lh;
-				if (cs.overflow == Visible) {
+				if (cs.overflow == Visible && !rtl) {
 					var cp:helder.os.Edges = cs.padding ?? helder.os.Edges.ZERO, cb = cs.borderEdges;
 					ow = Math.max(ow, c.contentWidth + cp.left + cb.left);
 					oh = Math.max(oh, c.contentHeight + cp.top + cb.top);
@@ -136,7 +188,8 @@ class NodeBoxes {
 				var cm:helder.os.Edges = cs.margin ?? helder.os.Edges.ZERO;
 				ext[0] = Math.max(ext[0], x - padL + ow + (Math.isNaN(cm.right) ? 0 : cm.right));
 				ext[1] = Math.max(ext[1], y - padT + oh + (Math.isNaN(cm.bottom) ? 0 : cm.bottom));
-			} else if (c == null) children(n, k, x, y, padL, padT, ext);
+				ext[2] = Math.min(ext[2], x - padL);
+			} else if (c == null) children(n, k, x, y, padL, padT, ext, rtl);
 			k = f.next(k);
 		}
 	}
@@ -154,6 +207,7 @@ class NodeBoxes {
 
 	static function styleOf(n:Node):BoxStyle {
 		var st = n.style;
+		if (NodeGrid.has(st)) return build(n);
 		kn = 0;
 		kh = 17;
 		var p:helder.os.Edges = st.padding ?? helder.os.Edges.ZERO, m:helder.os.Edges = st.margin ?? helder.os.Edges.ZERO, bw = st.borderEdges ?? helder.os.Edges.ZERO;
@@ -187,6 +241,9 @@ class NodeBoxes {
 		put(st.rowGap);
 		put(st.columnGap);
 		put(st.flexWrap ? 1 : 0);
+		put(st.aspectRatio);
+		put(int(st.justifyItems));
+		put(int(st.justifySelf));
 		dim(st.width);
 		dim(st.height);
 		dim(st.minWidth);
@@ -265,6 +322,19 @@ class NodeBoxes {
 			for (v in [p.top, p.right, p.bottom, p.left]) s.padding.push(Px(v));
 			for (v in [bw.top, bw.right, bw.bottom, bw.left]) s.border.push(v);
 			s.width = len(st.width);
+			var keyword = sizing(st.width);
+			var rare:Null<helder.ui.box.BoxRare> = null;
+			function rare1():helder.ui.box.BoxRare
+				return rare ??= new helder.ui.box.BoxRare();
+			if (keyword != "") rare1().widthKeyword = keyword;
+			var low = sizing(st.minWidth), high = sizing(st.maxWidth);
+			if (low != "") rare1().minWidthKeyword = low;
+			if (high != "") rare1().maxWidthKeyword = high;
+			if (st.aspectRatio > 0) {
+				s.ratio = st.aspectRatio;
+				s.ratioAuto = false;
+			}
+			if (NodeGrid.has(st)) NodeGrid.fill(st, rare1());
 			s.height = len(st.height);
 			s.minWidth = len(st.minWidth);
 			s.minHeight = len(st.minHeight);
@@ -276,7 +346,7 @@ class NodeBoxes {
 			s.growValue = st.flexGrow;
 			s.shrinkValue = st.flexShrink;
 			s.basisValue = len(st.flexBasis);
-			s.basisWord = st.flexBasis == DimValue.Auto ? "auto" : "";
+			s.basisWord = st.flexBasis == DimValue.Auto ? "auto" : sizing(st.flexBasis);
 			s.directionValue = switch st.flexDirection {
 				case Row: "row";
 				case RowReverse: "row-reverse";
@@ -303,10 +373,11 @@ class NodeBoxes {
 				case SpaceEvenly: "space-evenly";
 				case _: "normal";
 			});
-			s.aligns.push(align(st.alignItems, "stretch"));
+			// (a container's stretch, helder.ui's default: CSS's normal, which a grid's aspect-ratio items start at)
+			s.aligns.push(st.alignItems == Stretch ? "normal" : align(st.alignItems, "normal"));
 			s.aligns.push(align(st.alignSelf, "auto"));
-			s.aligns.push("legacy");
-			s.aligns.push("auto");
+			s.aligns.push(st.justifyItems == Stretch ? "normal" : align(st.justifyItems, "legacy"));
+			s.aligns.push(align(st.justifySelf, "auto"));
 			s.rowGapValue = Px(st.rowGap);
 			s.columnGapValue = Px(st.columnGap);
 			for (v in [st.top, st.right, st.bottom, st.left]) s.insets.push(len(v));
@@ -321,6 +392,7 @@ class NodeBoxes {
 			s.traits = (scroll || hidden ? BoxStyle.CLIPS : 0) | (scroll ? BoxStyle.SCROLLS : 0) | (hidden ? BoxStyle.HIDDEN_OVERFLOW : 0) | BoxStyle.VISIBLE
 				| BoxStyle.COLLAPSE | BoxStyle.WRAPS | (n.rtl() ? BoxStyle.RTL : 0);
 			s.opacityValue = 1;
+			if (rare != null) s.rareRead = rare;
 		}
 		return s;
 	}
@@ -329,13 +401,22 @@ class NodeBoxes {
 		return switch (d : DimValue) {
 			case Px(v): Px(v);
 			case Percent(v): Percent(v);
-			case Calc(p, px): px == 0 ? Percent(p) : p == 0 ? Px(px) : Len.Auto;
+			case Calc(p, px): px == 0 ? Percent(p) : p == 0 ? Px(px) : Len.Calc(helder.css.CssCalc.CssCalcNode.Sum([helder.css.CssCalc.CssCalcNode.Value(p, "%"), helder.css.CssCalc.CssCalcNode.Value(px, "px")]));
 			case _: Len.Auto;
+		}
+
+	// (min-content, max-content, fit-content as CSS writes them; "": another size)
+	static function sizing(d:Dim):String
+		return switch (d : DimValue) {
+			case MinContent: "min-content";
+			case MaxContent: "max-content";
+			case FitContent: "fit-content";
+			case _: "";
 		}
 
 	static function align(a:Align, fallback:String):String
 		return switch a {
-			case Auto: fallback == "stretch" ? "stretch" : "auto";
+			case Auto: fallback;
 			case Start: "flex-start";
 			case End: "flex-end";
 			case Center: "center";
@@ -359,13 +440,26 @@ private class Measured implements FormattingContext {
 		var bpx = s.border[1] + s.border[3] + Len.Lens.resolve(s.padding[1], cb, 0) + Len.Lens.resolve(s.padding[3], cb, 0);
 		var bpy = s.border[0] + s.border[2] + Len.Lens.resolve(s.padding[0], cb, 0) + Len.Lens.resolve(s.padding[2], cb, 0);
 		var w = space.fixedWidth, h = space.fixedHeight;
+		var maxW = helder.ui.flow.BlockFlow.size(s.maxWidth, cb, s.borderBox, bpx) + bpx;
+		if (Math.isNaN(h) && !space.ignoreHeight) h = Len.Lens.resolve(s.height, space.height, Math.NaN);
 		if (Math.isNaN(w)) {
 			var sw = Len.Lens.resolve(s.width, cb, Math.NaN);
+			// (its width its height's through its aspect ratio, else the room's)
+			if (Math.isNaN(sw) && !Math.isNaN(h)) sw = helder.ui.flow.Ratio.width(box, h - bpy, bpx, bpy) + bpx;
 			w = !Math.isNaN(sw) ? sw : cb - Len.Lens.resolve(s.margin[1], cb, 0) - Len.Lens.resolve(s.margin[3], cb, 0);
+			var minW = helder.ui.flow.BlockFlow.size(s.minWidth, cb, s.borderBox, bpx) + bpx;
+			if (!Math.isNaN(maxW) && w > maxW) w = maxW;
+			if (!Math.isNaN(minW) && w < minW) w = minW;
 		}
-		if (Math.isNaN(h) && !space.ignoreHeight) h = Len.Lens.resolve(s.height, space.height, Math.NaN);
+		// (its height its width's through its aspect ratio: its content's when taller, no more than its max-width
+		// gives through it, Sizing 4 §5.1)
+		var ratioH = Math.isNaN(h) && !space.ignoreHeight ? helder.ui.flow.Ratio.height(box, w - bpx, bpx, bpy) : Math.NaN;
 		// (its content box measured: its padding and border around it)
 		var size = n.measureContent(text, w - bpx, Math.isNaN(h) ? Math.NaN : h - bpy, w - bpx, Math.isNaN(h) ? Math.POSITIVE_INFINITY : h - bpy);
+		if (!Math.isNaN(ratioH)) {
+			var cap = helder.ui.flow.Ratio.height(box, maxW - bpx, bpx, bpy);
+			h = Math.max(ratioH, Math.isNaN(cap) ? size.height : Math.min(size.height, cap)) + bpy;
+		}
 		if (Math.isNaN(h)) h = size.height + bpy;
 		var lo = Len.Lens.resolve(s.minHeight, space.height, 0), hi = Len.Lens.resolve(s.maxHeight, space.height, Math.POSITIVE_INFINITY);
 		if (Math.isNaN(space.fixedHeight)) h = Math.max(lo, Math.min(hi, h));
@@ -388,7 +482,12 @@ private class Measured implements FormattingContext {
 		var n:Node = cast box.source, s = box.style.model();
 		var bpx = s.border[1] + s.border[3] + Len.Lens.resolve(s.padding[1], 0, 0) + Len.Lens.resolve(s.padding[3], 0, 0);
 		var max = n.measureContent(text, Math.NaN, Math.NaN, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY).width;
-		box.minContent = Math.min(n.minContentWidth(text), max) + bpx;
+		var min = Math.min(n.minContentWidth(text), max);
+		// (a height of its own through its aspect ratio: that width, its content's min-content when wider)
+		var bpy = s.border[0] + s.border[2] + Len.Lens.resolve(s.padding[0], 0, 0) + Len.Lens.resolve(s.padding[2], 0, 0);
+		var rw = helder.ui.flow.Ratio.width(box, helder.ui.flow.BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
+		if (!Math.isNaN(rw)) min = max = Math.max(rw, min);
+		box.minContent = min + bpx;
 		box.maxContent = max + bpx;
 	}
 }

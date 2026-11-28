@@ -20,6 +20,9 @@ class Space {
 	public var fixedHeight = Math.NaN;
 	// its own height (height, min-height, max-height) left out: its content's (a flex item's content size)
 	public var ignoreHeight = false;
+	// (its fixed height not definite for what is inside it: a flexed item of a column of no definite height,
+	// Flexbox §9.8; percentages of it are of an indefinite size)
+	public var looseHeight = false;
 	// the box's border widths instead of its style's (top, right, bottom, left): a cell's in
 	// the collapsing border model, half of what won on each side
 	public var borders:Null<Array<Float>> = null;

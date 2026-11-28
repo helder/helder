@@ -1676,11 +1676,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	#if helder.engine
 	// (its box in the CSS engine's tree: NodeBoxes')
-	@:allow(helder.ui) var box:Null<helder.ui.box.Box> = null;
+	@:allow(helder.ui) var laidBox:Null<helder.ui.box.Box> = null;
 	// (the fragment it was last told its place from: the same one, nothing in it moved)
-	@:allow(helder.ui) var boxFragment = -1;
+	@:allow(helder.ui) var laidFragment = -1;
 	// (a root's: the engine's state its tree is laid out with)
-	@:allow(helder.ui) var boxes:Null<NodeBoxes> = null;
+	@:allow(helder.ui) var laidBy:Null<NodeBoxes> = null;
 	#end
 
 	@:allow(helder.ui.Layout) function setLayout(x:Float, y:Float, w:Float, h:Float, ax:Float, ay:Float, cw:Float, ch:Float) {

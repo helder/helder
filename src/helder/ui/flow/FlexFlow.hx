@@ -65,17 +65,36 @@ class FlexFlow implements FormattingContext {
 		var resume = fr != null ? fr.resume(box) : null;
 		if (resume != null) bt = pt = 0;
 		var bpx = pl + pr + bl + br, bpy = pt + pb + bt + bb;
-		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : BlockFlow.size(s.height, space.height, s.borderBox, bpy);
+		// (measured for its content's height (ignoreHeight): its own height only where a wrapping column breaks)
+		var ownHeight = BlockFlow.size(s.height, space.height, s.borderBox, bpy);
+		var measuring = space.ignoreHeight && Math.isNaN(space.fixedHeight);
+		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : measuring ? Math.NaN : ownHeight;
 		if (!Math.isNaN(heightSpec)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var w = width(box, s, space, bpx, heightSpec);
 		BlockFlow.alignRootFloat(box, cb, w + bpx);
-		// (an aspect-ratio's auto height: its width's through it)
-		if (Math.isNaN(heightSpec)) {
+		// (an aspect-ratio's auto height: its width's through it; not when measured for its content, the content size
+		// suggestion a flex item's automatic minimum takes, §4.5)
+		if (Math.isNaN(heightSpec) && !measuring) {
 			var rh = Ratio.height(box, w, bpx, bpy);
+			// (no less than its content's, its min-height auto, Sizing 4 §5.1: its content measured at its width, no
+			// more than its max-width gives through the ratio; a wrapping one's lines are broken at the ratio's)
+			var flexWrap = box.style.flexWrap;
+			if (!Math.isNaN(rh) && Lens.isAuto(s.minHeight) && Lens.isAuto(s.height) && (flexWrap == "nowrap" || flexWrap == "")) {
+				var probe = space.child(space.width, space.height);
+				probe.fragmentation = null;
+				probe.ignoreHeight = true;
+				probe.fixedWidth = w + bpx;
+				var content = space.fragments.height(container(box, probe)) - bpy;
+				var cap = Ratio.height(box, nanTo(BlockFlow.size(s.maxWidth, space.width, s.borderBox, bpx), Math.NaN), bpx, bpy);
+				rh = Math.max(rh, Math.isNaN(cap) ? content : Math.min(content, cap));
+			}
 			if (!Math.isNaN(rh)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, rh);
 		}
-		var minH = BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy), maxH = BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy);
+		// (measured for its content: its own min and max height aside, as GridFlow's)
+		var minH = measuring ? Math.NaN : BlockFlow.size(s.minHeight, space.height, s.borderBox, bpy);
+		// (a wrapping column's lines still broken at it)
+		var ownMax = BlockFlow.size(s.maxHeight, space.height, s.borderBox, bpy), maxH = measuring ? Math.NaN : ownMax;
 		var frags = space.fragments;
 		var frag = frags.add(Fragments.BOX, box, w + bpx, 0);
 		var dir = box.style.flexDirection;
@@ -87,8 +106,12 @@ class FlexFlow implements FormattingContext {
 		var mainGap = row ? colGap : rowGap, crossGap = row ? rowGap : colGap;
 		// (the main size: definite or not; a column without a height breaks its lines at its max-height)
 		var mainSize = row ? w : heightSpec;
-		var mainLimit = row ? w : !Math.isNaN(heightSpec) ? heightSpec : !Math.isNaN(maxH) ? maxH : Math.POSITIVE_INFINITY;
+		var ratioH = measuring && Math.isNaN(ownHeight) ? Ratio.height(box, w, bpx, bpy) : Math.NaN;
+		var mainLimit = row ? w : !Math.isNaN(heightSpec) ? heightSpec : measuring
+			&& !Math.isNaN(ownHeight) ? BlockFlow.clampHeight(s, space.height, bpy, ownHeight) : !Math.isNaN(ratioH) ? ratioH : !Math.isNaN(ownMax) ? ownMax : Math.POSITIVE_INFINITY;
 		var crossSize = row ? heightSpec : w;
+		// (its height as its items' percentages see it: none where its own isn't definite)
+		var pctH = space.looseHeight ? Math.NaN : heightSpec;
 		// (absolutely positioned children: for the nearest positioned box; the others are items, in order)
 		var owner = box.parent == null || box.style.positioned || box.style.containment.containingBlock;
 		var positioned = owner ? new Positioned() : space.positioned ?? new Positioned();
@@ -98,9 +121,17 @@ class FlexFlow implements FormattingContext {
 		var abs:Array<Box> = [];
 		while (c != null) {
 			if (c.absolute) abs.push(c) else
-				items.push(item(c, row, w, heightSpec, crossSize, !wraps, space, index++));
+				items.push(item(c, row, w, pctH, crossSize, !wraps, space, index++));
 			c = c.next;
 		}
+		// (a column's items of no definite height, but those whose flex base size is a length: a basis in pixels, or
+		// none and a height in pixels, as Chromium has them)
+		if (!row && Math.isNaN(pctH))
+			for (it in items) {
+				var st = it.box.style, basis = BlockFlow.size(st.flexBasis, Math.NaN, false, 0);
+				it.looseMain = Math.isNaN(basis) && !(st.flexBasisKeyword == "auto" && !Math.isNaN(BlockFlow.size(st.model().height, Math.NaN, false, 0)))
+					&& Math.isNaN(Ratio.of(it.box));
+			}
 		// (a long document's cut into the items of a single row, each at the content's top: their tops the
 		// document's, as a block's children's; a sidebar and the document beside it, as ecmarkup's body)
 		if (space.lazy != null && row && !wraps && fr == null)
@@ -140,9 +171,11 @@ class FlexFlow implements FormattingContext {
 			for (it in l) {
 				measureCross(it, row, mainSize, crossSize, space);
 				var outer = it.cross + it.crossStart + it.crossEnd;
-				if (it.align == "baseline" && row && it.autoCross == 0) {
-					above = Math.max(above, it.baseline + it.crossStart);
-					below = Math.max(below, outer - it.baseline - it.crossStart);
+				// (a column's: its start edge across, as Chromium synthesizes it)
+				if (it.align == "baseline" && it.autoCross == 0) {
+					var b = row ? it.baseline : 0;
+					above = Math.max(above, b + it.crossStart);
+					below = Math.max(below, outer - b - it.crossStart);
 				} else
 					most = Math.max(most, outer);
 			}
@@ -224,7 +257,7 @@ class FlexFlow implements FormattingContext {
 				} else switch it.align {
 					case "flex-end": cpos += crossRoom;
 					case "center": cpos += crossRoom / 2;
-					case "baseline" if (row && it.autoCross == 0): cpos = lineBase[k] - it.baseline;
+					case "baseline" if (it.autoCross == 0): cpos = lineBase[k] - (row ? it.baseline : 0);
 					case _:
 				}
 				// (reversed: from the main end; wrap-reverse: lines from the cross end)
@@ -348,8 +381,10 @@ class FlexFlow implements FormattingContext {
 		var ml = BlockFlow.auto(s.margin[3], cb), mr = BlockFlow.auto(s.margin[1], cb);
 		var mt = BlockFlow.auto(s.margin[0], cb), mb = BlockFlow.auto(s.margin[2], cb);
 		var rtl = b.parent != null && b.parent.style.rtl;
-		// (main start and end: left and right in a row, mirrored right to left; top and bottom in a column)
-		var ms = row ? (rtl ? mr : ml) : mt, me = row ? (rtl ? ml : mr) : mb;
+		var pd = b.parent == null ? "" : b.parent.style.flexDirection, reverse = pd == "row-reverse" || pd == "column-reverse";
+		// (main start and end: left and right in a row, mirrored right to left; top and bottom in a column; a
+		// reversed axis's from its other side, its items placed from there)
+		var ms = row ? (rtl != reverse ? mr : ml) : (reverse ? mb : mt), me = row ? (rtl != reverse ? ml : mr) : (reverse ? mt : mb);
 		var cs = row ? mt : (rtl ? mr : ml), ce = row ? mb : (rtl ? ml : mr);
 		it.autoMain = (Math.isNaN(ms) ? 1 : 0) | (Math.isNaN(me) ? 2 : 0);
 		it.autoCross = (Math.isNaN(cs) ? 1 : 0) | (Math.isNaN(ce) ? 2 : 0);
@@ -365,14 +400,48 @@ class FlexFlow implements FormattingContext {
 		var mainLen = row ? s.width : s.height, crossLen = row ? s.height : s.width;
 		var mainSet = BlockFlow.size(mainLen, mainBase, s.borderBox, it.edgesMain);
 		var crossSet = BlockFlow.size(crossLen, crossBase, s.borderBox, it.edgesCross);
-		it.crossAuto = Math.isNaN(crossSet);
-		it.crossSet = Math.isNaN(crossSet) ? Math.NaN : crossSet + it.edgesCross;
+		// (auto as written: a percentage of an indefinite size is not stretched, Flexbox §9.4 step 11)
+		it.crossAuto = Lens.isAuto(crossLen);
 		it.minCross = nanTo(BlockFlow.size(row ? s.minHeight : s.minWidth, crossBase, s.borderBox, it.edgesCross), 0) + it.edgesCross;
 		it.maxCross = nanTo(BlockFlow.size(row ? s.maxHeight : s.maxWidth, crossBase, s.borderBox, it.edgesCross), Math.POSITIVE_INFINITY) + it.edgesCross;
+		// (width, min-width, max-width as min-content, max-content or fit-content: its content's, border box, the
+		// room within them for fit-content)
+		var r = st.rare, kw = r.widthKeyword, kmin = r.minWidthKeyword, kmax = r.maxWidthKeyword;
+		var keyMin = Math.NaN, keyMax = Math.NaN;
+		if (kw != "" || kmin != "" || kmax != "") {
+			var room = (row ? w : Math.isNaN(crossSize) ? Math.POSITIVE_INFINITY : crossSize) - (row ? it.mainStart + it.mainEnd : it.crossStart + it.crossEnd);
+			// (its content's, its own width aside)
+			var c = if (b.context == null || b.context == flow) flow.contentSizes(b, space) else if (b.context == this) contentSizes(b, space) else {
+				b.context.intrinsic(b, space);
+				{min: b.minContent, max: b.maxContent};
+			}
+			function sized(k:String):Float
+				return switch k {
+					case "min-content": c.min;
+					case "max-content": c.max;
+					case "fit-content": Math.min(Math.max(c.min, room), c.max);
+					case _: Math.NaN;
+				}
+			keyMin = sized(kmin);
+			keyMax = sized(kmax);
+			if (!row) {
+				if (!Math.isNaN(keyMin)) it.minCross = keyMin;
+				if (!Math.isNaN(keyMax)) it.maxCross = keyMax;
+			}
+			var k = sized(kw);
+			if (!Math.isNaN(k)) {
+				if (row) mainSet = k - it.edgesMain else {
+					crossSet = k - it.edgesCross;
+					it.crossAuto = false;
+				}
+			}
+		}
+		// (a cross size set: within its min and max, as any size is)
+		it.crossSet = Math.isNaN(crossSet) ? Math.NaN : clamp(crossSet + it.edgesCross, it.minCross, it.maxCross);
 		var self = logical(selfOf(b, row), b.parent.style.flexWrap == "wrap-reverse");
 		it.align = self;
 		// (its cross size for laying it out to measure its main size: set, or stretched in a column)
-		if (!row) it.cross = !it.crossAuto ? it.crossSet : self == "stretch" && it.autoCross == 0 && !Math.isNaN(crossSize) ? clamp(crossSize
+		if (!row) it.cross = !it.crossAuto ? it.crossSet : self == "stretch" && it.autoCross == 0 && single && !Math.isNaN(crossSize) ? clamp(crossSize
 			- it.crossStart - it.crossEnd, it.minCross, it.maxCross) : Math.NaN;
 		// (the flex base size: flex-basis, else its main size, else its content's)
 		var basis = st.flexBasisKeyword;
@@ -392,11 +461,14 @@ class FlexFlow implements FormattingContext {
 			var through = row ? Ratio.width(b, cross - it.edgesCross, bpx, bpy) : Ratio.height(b, cross - it.edgesCross, bpx, bpy);
 			if (!Math.isNaN(through)) base = through + it.edgesMain;
 		}
+		// (its height in a row where it is known: set, or stretched in a single line of a known height)
+		var definiteCross = !it.crossAuto ? it.crossSet : self == "stretch" && it.autoCross == 0 && single && !Math.isNaN(crossSize)
+			&& !(columnItem(b.parent) && looseColumns(b)) ? clamp(crossSize - it.crossStart - it.crossEnd, it.minCross, it.maxCross) : Math.NaN;
 		// (its content measured where its basis or its auto min is its content's: a whole document in an item, its
 		// basis set and clipping, not laid out for it)
 		var content:Null<{min:Float, max:Float}> = null;
 		function sizes()
-			return content != null ? content : content = contentMain(it, row, space, crossSize);
+			return content != null ? content : content = contentMain(it, row, space, crossSize, row ? definiteCross : Math.NaN, single);
 		// (content and max-content its max-content size, min-content its min, fit-content the room within them,
 		// stretch the room)
 		var room = nanTo(mainBase, Math.POSITIVE_INFINITY) - it.mainStart - it.mainEnd;
@@ -410,12 +482,24 @@ class FlexFlow implements FormattingContext {
 		it.basis = base;
 		// (min and max: an auto min its content's, no more than its own size; none when it clips)
 		var minLen = row ? s.minWidth : s.minHeight, maxLen = row ? s.maxWidth : s.maxHeight;
-		var minMain = BlockFlow.size(minLen, mainBase, s.borderBox, it.edgesMain);
+		var minMain = row && !Math.isNaN(keyMin) ? keyMin - it.edgesMain : BlockFlow.size(minLen, mainBase, s.borderBox, it.edgesMain);
 		if (Math.isNaN(minMain)) {
 			minMain = st.clips ? 0 : sizes().min - it.edgesMain;
 			if (!Math.isNaN(mainSet)) minMain = Math.min(minMain, mainSet);
+			// (an aspect-ratio item's content size suggestion within its min and max cross sizes through the
+			// ratio, §4.5)
+			if (!Math.isNaN(Ratio.of(b))) {
+				function through(cross:Float):Float
+					return row ? Ratio.width(b, cross - it.edgesCross, bpx, bpy) : Ratio.height(b, cross - it.edgesCross, bpx, bpy);
+				var lo = through(it.minCross), hi = it.maxCross == Math.POSITIVE_INFINITY ? Math.NaN : through(it.maxCross);
+				// (its definite cross size's through the ratio, the transferred size, no more than its content's)
+				var dc = row ? definiteCross : Math.NaN;
+				if (!Math.isNaN(dc) && !st.clips && Math.isNaN(mainSet)) minMain = Math.max(minMain, through(dc));
+				if (!Math.isNaN(hi)) minMain = Math.min(minMain, hi);
+				if (!Math.isNaN(lo)) minMain = Math.max(minMain, lo);
+			}
 		}
-		var maxMain = BlockFlow.size(maxLen, mainBase, s.borderBox, it.edgesMain);
+		var maxMain = row && !Math.isNaN(keyMax) ? keyMax - it.edgesMain : BlockFlow.size(maxLen, mainBase, s.borderBox, it.edgesMain);
 		it.maxMain = Math.isNaN(maxMain) ? Math.POSITIVE_INFINITY : maxMain + it.edgesMain;
 		it.minMain = Math.max(0, Math.min(minMain + it.edgesMain, it.maxMain));
 		if (!Math.isNaN(maxMain) && it.minMain > it.maxMain) it.minMain = it.maxMain;
@@ -425,12 +509,12 @@ class FlexFlow implements FormattingContext {
 
 	// (its content's main size, min and max, border box: in a row its min- and max-content widths; in a
 	// column its height laid out at its cross size)
-	function contentMain(it:Item, row:Bool, space:Space, crossSize:Float):{min:Float, max:Float} {
+	function contentMain(it:Item, row:Bool, space:Space, crossSize:Float, cross:Float, single:Bool):{min:Float, max:Float} {
 		var b = it.box;
 		if (row) {
 			// (its content's, its own width aside: the content size suggestion; an aspect-ratio's within
 			// its min and max height through it)
-			var c = if (b.context == null || b.context == flow) flow.contentSizes(b, space) else if (b.context == this) contentSizes(b, space) else {
+			var c = if (b.context == null || b.context == flow) flow.contentSizes(b, space) else if (b.context == this) contentSizes(b, space, cross) else {
 				b.context.intrinsic(b, space);
 				{min: b.minContent, max: b.maxContent};
 			}
@@ -446,6 +530,11 @@ class FlexFlow implements FormattingContext {
 		var h = space.fragments.height(f);
 		it.measured = f;
 		it.measuredWidth = cs.fixedWidth;
+		// (an aspect-ratio's: its basis its width's through the ratio, §9.2.3 E; its minimum no less than that where
+		// its width is definite (set or stretched) and its height auto, its content's, §4.5 and Sizing 4 §5.1)
+		var rh = Ratio.height(b, cs.fixedWidth - it.edgesCross, it.edgesCross, it.edgesMain);
+		if (!Math.isNaN(rh))
+			return {min: Math.isNaN(it.cross) ? h : Lens.isAuto(b.style.model().height) ? Math.max(h, rh + it.edgesMain) : rh + it.edgesMain, max: rh + it.edgesMain};
 		return {min: h, max: h};
 	}
 
@@ -461,7 +550,13 @@ class FlexFlow implements FormattingContext {
 	// (an item laid out at its main size, its cross size given (stretched) or its own)
 	function laid(it:Item, row:Bool, cross:Float, space:Space, mainSize:Float, crossSize:Float, stretched:Bool):Int {
 		var b = it.box;
-		var fw = row ? it.main : !Math.isNaN(cross) ? cross : !Math.isNaN(it.cross) ? it.cross : fit(it, crossSize, space);
+		var fw = row ? it.main : !Math.isNaN(cross) ? cross : !Math.isNaN(it.cross) ? it.cross : Math.NaN;
+		// (a column's aspect-ratio item, not stretched, its width its flexed height's through the ratio)
+		if (Math.isNaN(fw) && Lens.isAuto(b.style.model().width) && !Math.isNaN(it.main)) {
+			var rw = Ratio.width(b, it.main - it.edgesMain, it.edgesCross, it.edgesMain);
+			if (!Math.isNaN(rw)) fw = clamp(rw + it.edgesCross, it.minCross, it.maxCross);
+		}
+		if (Math.isNaN(fw)) fw = fit(it, crossSize, space);
 		// (a column's item at the height it was measured at, as wide: that layout is this one, unless what it
 		// holds takes a percentage of its height, indefinite when measured)
 		if (!row && it.measured >= 0 && fw == it.measuredWidth && Math.abs(space.fragments.height(it.measured) - it.main) < 1e-9
@@ -476,8 +571,10 @@ class FlexFlow implements FormattingContext {
 		}
 		if (row) {
 			if (!Math.isNaN(cross)) cs.fixedHeight = cross;
-		} else
+		} else {
 			cs.fixedHeight = it.main;
+			cs.looseHeight = it.looseMain;
+		}
 		var f = child(b, cs);
 		// (its cuts its last layout's: put back once every item is laid out, in their order)
 		if (lazy != null) it.cuts = lazy.take(cuts);
@@ -574,9 +671,10 @@ class FlexFlow implements FormattingContext {
 			case "flex-end" | "end": {start: free, between: 0};
 			case "center": {start: free / 2, between: 0};
 			case "space-between": free > 0 && count > 1 ? {start: 0, between: free / (count - 1)} : {start: 0, between: 0};
-			// (with no free space, their fallback: safe center, the start when overflowing)
-			case "space-around": free > 0 ? {start: free / count / 2, between: free / count} : {start: 0, between: 0};
-			case "space-evenly": free > 0 ? {start: free / (count + 1), between: free / (count + 1)} : {start: 0, between: 0};
+			// (with no free space, their fallback: safe center, the start when overflowing: the writing mode's, the
+			// other end of a reversed axis)
+			case "space-around": free > 0 ? {start: free / count / 2, between: free / count} : {start: reverse ? free : 0, between: 0};
+			case "space-evenly": free > 0 ? {start: free / (count + 1), between: free / (count + 1)} : {start: reverse ? free : 0, between: 0};
 			case _: {start: 0, between: 0};
 		}
 	}
@@ -642,7 +740,11 @@ class FlexFlow implements FormattingContext {
 		var w = BlockFlow.size(s.width, Math.NaN, s.borderBox, bpx);
 		// (an aspect-ratio's: its fixed height's through it, else its content's within its min and max height's)
 		var bpy = BlockFlow.fixed(s.padding[0]) + BlockFlow.fixed(s.padding[2]) + s.border[0] + s.border[2];
-		if (Math.isNaN(w)) w = Ratio.width(box, BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
+		if (Math.isNaN(w)) {
+			w = Ratio.width(box, BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy), bpx, bpy);
+			// (through its aspect ratio: no narrower than its content, its min-width auto, Sizing 4 §5.1)
+			if (!Math.isNaN(w) && Lens.isAuto(s.minWidth) && !box.style.clips) w = Math.max(w, contentSizes(box, space).min - bpx);
+		}
 		if (!Math.isNaN(w)) min = max = w else {
 			var c = contentSizes(box, space);
 			min = BlockFlow.transferred(box, s, c.min - bpx, Math.NaN, bpx, bpy);
@@ -663,7 +765,7 @@ class FlexFlow implements FormattingContext {
 
 	// Its items' min- and max-content contributions, side by side in a row (the largest when wrapping), the
 	// largest in a column; its own width aside, border box; not cached.
-	public function contentSizes(box:Box, space:Space):{min:Float, max:Float} {
+	public function contentSizes(box:Box, space:Space, height = Math.NaN):{min:Float, max:Float} {
 		var s = box.style.model();
 		var bpx = BlockFlow.fixed(s.padding[1]) + BlockFlow.fixed(s.padding[3]) + s.border[1] + s.border[3];
 		// (size or inline-size containment: as if empty, contain-intrinsic-width's, Contain 2 §3.1)
@@ -679,14 +781,45 @@ class FlexFlow implements FormattingContext {
 		// (a single row of a fixed height: an aspect-ratio's stretched item's width that height's through it, §9.8)
 		var bpy = BlockFlow.fixed(s.padding[0]) + BlockFlow.fixed(s.padding[2]) + s.border[0] + s.border[2];
 		var fixedCross = row && !wraps ? BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy) : Math.NaN;
+		// (a wrapping column of a known height, its own or its stretched one: its columns side by side, its items
+		// broken into them at that height, as Chromium sizes it; else as one column)
+		var columnH = row || !wraps ? Math.NaN : !Math.isNaN(height) ? height - bpy : BlockFlow.size(s.height, Math.NaN, s.borderBox, bpy);
+		if (!row && wraps && Math.isNaN(columnH)) columnH = BlockFlow.size(s.maxHeight, Math.NaN, s.borderBox, bpy);
 		var min = 0.0, max = 0.0, n = 0;
+		var colW = 0.0, colH = 0.0, columns = 0.0, rowGap = gap(box.style.rowGap, Math.NaN), inColumn = 0;
 		var c = box.first;
 		while (c != null) {
+			if (!c.absolute && !Math.isNaN(columnH)) {
+				if (c.context != null) c.context.intrinsic(c, space) else flow.intrinsic(c, space);
+				var m = c.style.model();
+				var edges = BlockFlow.fixed(m.margin[1]) + BlockFlow.fixed(m.margin[3]);
+				var cs = space.child(c.maxContent, columnH);
+				cs.fragmentation = null;
+				cs.fixedWidth = c.maxContent;
+				var ch = space.fragments.height(child(c, cs)) + BlockFlow.fixed(m.margin[0]) + BlockFlow.fixed(m.margin[2]);
+				var basis = BlockFlow.size(c.style.flexBasis, Math.NaN, m.borderBox, 0);
+				if (!Math.isNaN(basis)) ch = basis + BlockFlow.fixed(m.margin[0]) + BlockFlow.fixed(m.margin[2]);
+				if (inColumn > 0 && colH + rowGap + ch > columnH) {
+					columns += colW + colGap;
+					colW = colH = 0;
+					inColumn = 0;
+				}
+				colH += (inColumn > 0 ? rowGap : 0) + ch;
+				colW = Math.max(colW, c.maxContent + edges);
+				inColumn++;
+			}
 			if (!c.absolute) {
 				if (c.context != null) c.context.intrinsic(c, space) else flow.intrinsic(c, space);
 				var m = c.style.model();
 				var edges = BlockFlow.fixed(m.margin[1]) + BlockFlow.fixed(m.margin[3]);
 				var cmin = c.minContent + edges, cmax = c.maxContent + edges;
+				// (a wrapping column stretched to the row's height: its columns at that height)
+				if (!Math.isNaN(fixedCross) && c.context == this && Lens.isAuto(m.height) && selfOf(c, true) == "stretch" && columnWraps(c)
+					&& !(columnItem(box) && looseColumns(c))) {
+					var r = contentSizes(c, space, fixedCross - BlockFlow.fixed(m.margin[0]) - BlockFlow.fixed(m.margin[2]));
+					cmin = r.min + edges;
+					cmax = r.max + edges;
+				}
 				if (!Math.isNaN(fixedCross) && !Math.isNaN(Ratio.of(c)) && Lens.isAuto(m.height) && selfOf(c, true) == "stretch"
 					&& !Lens.isAuto(m.margin[0]) && !Lens.isAuto(m.margin[2])) {
 					var cbpx = m.border[1] + m.border[3] + BlockFlow.fixed(m.padding[1]) + BlockFlow.fixed(m.padding[3]);
@@ -698,10 +831,33 @@ class FlexFlow implements FormattingContext {
 				}
 				// (an item's set width, its basis in a row, within its min and max)
 				var set = BlockFlow.size(m.width, Math.NaN, m.borderBox, 0);
+				var basis = row ? BlockFlow.size(c.style.flexBasis, Math.NaN, m.borderBox, 0) : Math.NaN;
 				if (!Math.isNaN(set)) {
 					var bp = m.border[1] + m.border[3] + BlockFlow.fixed(m.padding[1]) + BlockFlow.fixed(m.padding[3]);
-					cmax = (m.borderBox ? set : set + bp) + edges;
+					// (a border box no narrower than its padding and border, within its min and max width, the min first)
+					var lo = nanTo(BlockFlow.size(m.minWidth, Math.NaN, m.borderBox, bp), 0) + bp;
+					var hi = nanTo(BlockFlow.size(m.maxWidth, Math.NaN, m.borderBox, bp), Math.POSITIVE_INFINITY) + bp;
+					cmax = clamp(m.borderBox ? Math.max(set, bp) : set + bp, lo, hi) + edges;
 					if (row && !c.style.clips) cmin = Math.min(cmin, cmax);
+				}
+				// (a row's item with a basis that is a length: its base size where its factor that way is 0, else its
+				// contribution, no less than its automatic minimum, as Chromium sums a row)
+				if (row && !Math.isNaN(basis)) {
+					var bp = m.border[1] + m.border[3] + BlockFlow.fixed(m.padding[1]) + BlockFlow.fixed(m.padding[3]);
+					var b = (m.borderBox ? Math.max(basis, bp) : basis + bp) + edges;
+					var grow = c.style.flexGrow, shrink = c.style.flexShrink;
+					var lo = nanTo(BlockFlow.size(m.minWidth, Math.NaN, m.borderBox, bp), Math.NaN);
+					if (Math.isNaN(lo)) {
+						// (its content's min-content, its own width aside: the content size suggestion)
+						var content = c.context == null || c.context == flow ? flow.contentSizes(c, space).min : c.context == this ? contentSizes(c, space).min : c.minContent;
+						lo = c.style.clips ? 0 : Math.min(content, Math.isNaN(set) ? Math.POSITIVE_INFINITY : (m.borderBox ? set : set + bp)) - bp;
+					}
+					lo += bp + edges;
+					var hi = nanTo(BlockFlow.size(m.maxWidth, Math.NaN, m.borderBox, bp), Math.POSITIVE_INFINITY) + bp + edges;
+					inline function factored(v:Float):Float
+						return clamp(v > b && grow == 0 || v < b && shrink == 0 ? b : v, lo, hi);
+					cmin = factored(cmin);
+					cmax = factored(cmax);
 				}
 				if (row && !wraps) {
 					min += cmin + (n > 0 ? colGap : 0);
@@ -717,7 +873,39 @@ class FlexFlow implements FormattingContext {
 			}
 			c = c.next;
 		}
+		if (!Math.isNaN(columnH)) max = columns + colW;
 		return {min: min + bpx, max: Math.max(min, max) + bpx};
+	}
+
+	// (whether a box is a flex column's item: its height that column's to share, its own layout measured first with
+	// its height left indefinite, as Chromium does, what it holds sized by that)
+	static function columnItem(b:Box):Bool {
+		var p = b.parent;
+		if (p == null || b.absolute || p.style.inner != BoxStyle.FLEX) return false;
+		var d = p.style.flexDirection;
+		return d == "column" || d == "column-reverse";
+	}
+
+	// (a wrapping column a column's row measures unbroken, as Chromium: no height in pixels, nothing in it a
+	// percentage of its height)
+	static function looseColumns(b:Box):Bool {
+		if (!columnWraps(b)) return true;
+		var m = b.style.model();
+		if (m.height.match(Px(_)) || Lens.relative(m.height) || Lens.relative(m.minHeight) || Lens.relative(m.maxHeight)) return false;
+		var c = b.first;
+		while (c != null) {
+			if (!c.absolute) {
+				var cm = c.style.model();
+				if (Lens.relative(cm.height) || Lens.relative(cm.minHeight) || Lens.relative(cm.maxHeight) || Lens.relative(c.style.flexBasis)) return false;
+			}
+			c = c.next;
+		}
+		return true;
+	}
+
+	static function columnWraps(b:Box):Bool {
+		var d = b.style.flexDirection, w = b.style.flexWrap;
+		return (d == "column" || d == "column-reverse") && w != "nowrap" && w != "";
 	}
 
 	static inline function clamp(v:Float, lo:Float, hi:Float):Float
@@ -735,6 +923,8 @@ private class Item {
 	public var shrink = 1.0;
 	public var mainStart = 0.0;
 	public var mainEnd = 0.0;
+	// (a column's item flexed in a column of no definite height: its height not definite)
+	public var looseMain = false;
 	public var crossStart = 0.0;
 	public var crossEnd = 0.0;
 	// (its auto margins: 1 at the start, 2 at the end)

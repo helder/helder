@@ -86,13 +86,38 @@ class GridFlow implements FormattingContext {
 		}
 		shims(items, st, space);
 		var rows = tracks(g.rows, items, false, heightSpec, heightSpec, rowGap, stretchRows, space, cols, false, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
+		// (the columns sized again where an aspect-ratio item's width follows from its rows' height, its
+		// contributions that width, once, §12.1 step 4; the rows kept, as Chromium keeps them)
+		var ratioed:Array<Box> = [];
+		for (it in items) {
+			var c = it.box, m = c.style.model();
+			if (Math.isNaN(Ratio.of(c)) || !Lens.isAuto(m.width) || !Lens.isAuto(m.height)) continue;
+			var ah = rowGap * (it.rowSpan - 1);
+			for (i in it.row...it.row + it.rowSpan) ah += rows[i];
+			var cbpx = m.border[1] + m.border[3] + BlockFlow.fixed(m.padding[1]) + BlockFlow.fixed(m.padding[3]);
+			var cbpy = m.border[0] + m.border[2] + BlockFlow.fixed(m.padding[0]) + BlockFlow.fixed(m.padding[2]);
+			var rw = Ratio.width(c, Math.max(0, ah - BlockFlow.fixed(m.margin[0]) - BlockFlow.fixed(m.margin[2]) - cbpy), cbpx, cbpy) + cbpx;
+			intrinsicOf(c, space);
+			if (Math.isNaN(rw) || Math.abs(rw - c.maxContent) < 1e-6) continue;
+			c.minContent = c.maxContent = rw;
+			ratioed.push(c);
+		}
+		if (ratioed.length > 0) {
+			cols = tracks(g.cols, items, true, w, w, colGap, stretchCols, space, null);
+			for (it in items) {
+				it.areaW = colGap * (it.colSpan - 1);
+				for (i in it.col...it.col + it.colSpan) it.areaW += cols[i];
+			}
+			for (c in ratioed) c.minContent = c.maxContent = Math.NaN;
+		}
 		var gridH = sum(rows, rowGap);
 		// (size containment: an auto height as if it had no items, its explicit rows and contain-intrinsic-height's)
 		if (Math.isNaN(heightSpec) && box.style.containment.has(Size))
 			gridH = Math.max(sum(tracks(g.rows, [], false, Math.NaN, Math.NaN, rowGap, false, space, cols), rowGap), box.style.intrinsicSize(false));
 		var h = !Math.isNaN(heightSpec) ? heightSpec : clamp(gridH, nanTo(minH, 0), nanTo(maxH, Math.POSITIVE_INFINITY));
 		// (an auto height its min-height made more: the rows stretched to it; fr rows sized again at it)
-		if (Math.isNaN(heightSpec) && (stretchRows && h > gridH + 1e-6 || Lambda.exists(g.rows, t -> t.max.match(Fr(_)))))
+		// (percentage rows too, of the height found, Grid 2 §7.2.1)
+		if (Math.isNaN(heightSpec) && (stretchRows && h > gridH + 1e-6 || Lambda.exists(g.rows, t -> t.max.match(Fr(_)) || t.max.match(Percent(_)) || t.min.match(Percent(_)))))
 			rows = tracks(g.rows, items, false, h, h, rowGap, stretchRows, space, cols);
 		// (the tracks' places: justify-content and align-content in the content box)
 		var colPos = positions(cols, colGap, w, st.justifyContent);
@@ -129,6 +154,8 @@ class GridFlow implements FormattingContext {
 				iw = clamp(Math.min(roomW, hi), Math.max(minCW, lo), maxCW);
 			}
 			if (ratio && normal) jy = "start";
+			// (its height its own, its width through the ratio, justify-self normal: not stretched)
+			if (Math.isNaN(iw) && ratio && !Math.isNaN(ih) && normalJustify(c)) iw = clamp(Ratio.width(c, ih - cbpy, cbpx, cbpy) + cbpx, minCW, maxCW);
 			if (Math.isNaN(iw)) {
 				if (jx == "stretch") iw = clamp(roomW, minCW, maxCW) else {
 					// (fit-content: its max-content width, no more than the area, no less than its min-content)
@@ -222,7 +249,9 @@ class GridFlow implements FormattingContext {
 				var r = area(g.rowLines, a.style, "grid-row", rowLines, rowEnds, g.shiftRows, g.rowMap, fullH);
 				var x0 = rtl ? fullW - c.to : c.from;
 				var one = new Positioned();
-				one.add(a, frag, bl + x0 + (rtl ? c.to - c.from : 0), bt + r.from);
+				// (its static place aligned in that area by its justify-self and align-self, Align 3 §5.1)
+				var fx = fraction(selfOf(a, true)), fy = fraction(selfOf(a, false));
+				one.add(a, frag, bl + x0, bt + r.from, [bl + x0, bt + r.from, c.to - c.from, r.to - r.from, rtl ? 1 - fx : fx, fy]);
 				flow.place(one, frag, space, bl + x0, bt + r.from, c.to - c.from, r.to - r.from, broken);
 				continue;
 			}
@@ -278,6 +307,8 @@ class GridFlow implements FormattingContext {
 			if (c.absolute) absolute.push(c) else items.push(new GridItem(c));
 			c = c.next;
 		}
+		// (placed in order-modified document order, Grid 2 §8.5: a stable sort by order)
+		if (Lambda.exists(items, i -> i.box.style.order != 0)) haxe.ds.ArraySort.sort(items, (a, b) -> a.box.style.order - b.box.style.order);
 		var areas = try {
 			var t = text(st, "grid-template-areas");
 			t == "none" || t == "" ? null : GridAreas.parse(t);
@@ -901,6 +932,9 @@ class GridFlow implements FormattingContext {
 			intrinsicOf(c, space);
 			cs.fixedWidth = Math.min(c.maxContent, Math.max(room, c.minContent));
 		}
+		// (within its min and max width, as it is placed)
+		var lo = nanTo(BlockFlow.size(m.minWidth, it.areaW, m.borderBox, bpx), 0) + bpx, hi = nanTo(BlockFlow.size(m.maxWidth, it.areaW, m.borderBox, bpx), Math.POSITIVE_INFINITY) + bpx;
+		cs.fixedWidth = clamp(cs.fixedWidth, lo, hi);
 		return flow.child(c, cs);
 	}
 
@@ -974,6 +1008,14 @@ class GridFlow implements FormattingContext {
 
 	// (justify-self or align-self, auto its container's -items; normal stretch; flow-start and -end, self-start and
 	// -end are start and end in a grid)
+	// (how far into the room an alignment puts a box: 0 at the start, 1 at the end)
+	static function fraction(how:String):Float
+		return switch how {
+			case "end": 1.0;
+			case "center": 0.5;
+			case _: 0.0;
+		}
+
 	static function selfOf(b:Box, justify:Bool):String {
 		var v = justify ? b.style.justifySelf : b.style.alignSelf;
 		if (v == "auto" || v == "normal" || v == "" || v == "legacy") v = justify ? b.parent.style.justifyItems : b.parent.style.alignItems;
@@ -981,14 +1023,21 @@ class GridFlow implements FormattingContext {
 		if (v.startsWith("legacy ")) v = v.substr(7);
 		return switch v {
 			case "normal" | "" | "legacy": "stretch";
-			case "flow-start" | "self-start" | "left" | "start": "start";
-			case "flow-end" | "self-end" | "right" | "end": "end";
+			// (flex-start and flex-end outside flexbox: start and end, Box Alignment 3 §6.1)
+			case "flow-start" | "self-start" | "left" | "start" | "flex-start": "start";
+			case "flow-end" | "self-end" | "right" | "end" | "flex-end": "end";
 			case "first baseline": "baseline";
 			case k: k;
 		}
 	}
 
 	// (align-self normal, its own or its container's align-items')
+	static function normalJustify(b:Box):Bool {
+		var v = b.style.justifySelf;
+		if (v == "auto" || v == "normal" || v == "") v = b.parent.style.justifyItems;
+		return v == "normal" || v == "" || v == "legacy";
+	}
+
 	static function normal(b:Box):Bool {
 		var v = b.style.alignSelf;
 		if (v == "auto" || v == "normal" || v == "") v = b.parent.style.alignItems;
