@@ -58,27 +58,6 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	public var selectionColor:Color = Color.rgba(0x3B82F6, 0.3);
 	// null: the text's colour (as Chromium's caret)
 	public var caretColor:Null<Color> = null;
-	// (the colours before a theme gave its own: put back when it takes them away)
-	var ownPlaceholder:Null<Color> = null;
-	var ownSelection:Null<Color> = null;
-
-	override function themePseudo(placeholder:Null<Color>, selection:Null<Color>) {
-		if (placeholder != null) {
-			if (ownPlaceholder == null) ownPlaceholder = placeholderColor;
-			placeholderColor = placeholder;
-		} else if (ownPlaceholder != null) {
-			placeholderColor = ownPlaceholder;
-			ownPlaceholder = null;
-		}
-		if (selection != null) {
-			if (ownSelection == null) ownSelection = selectionColor;
-			selectionColor = selection;
-		} else if (ownSelection != null) {
-			selectionColor = ownSelection;
-			ownSelection = null;
-		}
-		if (ui != null) ui.requestFrame();
-	}
 	public var onChange:Null<String->Void>;
 	// its words checked by the platform's spellchecker, the misspelled underlined
 	public var spellcheck(default, set) = false;
@@ -259,8 +238,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		super(text, tag);
 		focusable = true;
 		caret = anchor = this.text.length;
-		style.overflow = Hidden;
-		style.cursor = Text;
+		style = Style.of({overflow: Hidden, cursor: Text});
 		onKeyDown = key;
 		onTextInput = e -> {
 			edit(pasted(e.text), true);
@@ -363,12 +341,12 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	// the composition's underline, line by line, in p (drawn at x, y)
 	// the width inside the borders and padding
 	function innerWidth():Float
-		return Math.max(1, width - style.borderEdges.horizontal - style.padding.horizontal);
+		return Math.max(1, width - used.borderEdges.horizontal - used.paddingEdges.horizontal);
 
 	// the text's alignment in the box: its own, else the start side (as an
 	// input's; not inherited), justified lines from the left
 	function fieldAlign():TextAlign {
-		var a = style.textAlign ?? (rtl() ? Right : Left);
+		var a = props().textAlign ?? (rtl() ? Right : Left);
 		return a == Justify ? Left : a;
 	}
 
@@ -742,13 +720,13 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		} else if (selectionStart != editorStart || selectionEnd != editorEnd) editor.select(selectionStart, selectionEnd);
 		editorStart = selectionStart;
 		editorEnd = selectionEnd;
-		var f = font(), c = textColor(), a = style.textAlign ?? (rtl() ? Right : Left), bg = behind();
+		var f = font(), c = textColor(), a = props().textAlign ?? (rtl() ? Right : Left), bg = behind();
 		var key = f.family + "|" + f.size + "|" + f.weight + "|" + f.italic + "|" + (c : Int) + "|" + (bg : Int) + "|" + placeholder + "|" + (placeholderColor : Int) + "|" + a + "|" + secret;
 		if (key != editorStyle) {
 			editor.setStyle(f, c, bg, placeholder, placeholderColor, a, secret);
 			editorStyle = key;
 		}
-		var be = style.borderEdges, pad = style.padding;
+		var be = used.borderEdges, pad = used.paddingEdges;
 		var x = absX + be.left + pad.left, y = absY + be.top + pad.top;
 		var w = width - be.left - be.right - pad.left - pad.right, h = height - be.top - be.bottom - pad.top - pad.bottom;
 		// (in the system's layer tree: clipped and covered there, placed with the frame's layers)
@@ -784,7 +762,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	function behind():Color {
 		var n:Node = this;
 		while (n != null) {
-			var b = n.style.background;
+			var b:Color = n.used.backgroundColor;
 			if (b.a == 255) return b;
 			n = n.parent;
 		}

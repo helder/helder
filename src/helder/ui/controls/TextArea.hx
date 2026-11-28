@@ -37,7 +37,7 @@ class TextArea extends EditableText {
 	}
 
 	function innerHeight():Float
-		return Math.max(1, height - style.borderEdges.vertical - style.padding.vertical);
+		return Math.max(1, height - used.borderEdges.vertical - used.paddingEdges.vertical);
 
 	// (always wrapped, whatever it inherits: as a textarea's own pre-wrap)
 	override public function textWrap():TextWrap
@@ -83,9 +83,9 @@ class TextArea extends EditableText {
 	override function indexAt(px:Float, py:Float):Int {
 		var p = laidAt();
 		if (p == null) return caret;
-		var s = style;
-		var y = localY(px, py) - s.borderEdges.top - s.padding.top + offset;
-		return p.hit(localX(px, py) - s.borderEdges.left - s.padding.left - lineShift(p, y), y);
+		var s = used;
+		var y = localY(px, py) - s.borderEdges.top - s.paddingEdges.top + offset;
+		return p.hit(localX(px, py) - s.borderEdges.left - s.paddingEdges.left - lineShift(p, y), y);
 	}
 
 	// as wide as it is given (its text wrapped to that), rows lines high (or its lines', at least one)
@@ -94,7 +94,7 @@ class TextArea extends EditableText {
 		var p = layoutText(engine, w);
 		if (Math.isNaN(w)) w = p.width;
 		var lh = font().size * font().lineHeight;
-		var h = style.fieldSizing == Content ? Math.max(p.height, lh) : Math.max(rows, 1) * lh;
+		var h = props().fieldSizing == Content ? Math.max(p.height, lh) : Math.max(rows, 1) * lh;
 		return new Size(Math.max(w, 1), Math.isNaN(knownHeight) ? h : knownHeight);
 	}
 

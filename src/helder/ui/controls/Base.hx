@@ -1,7 +1,7 @@
 package helder.ui.controls;
 
 import helder.gfx.Color;
-import helder.ui.Shadow;
+import helder.ui.Style.ShadowLayer;
 import helder.ui.Transform;
 import helder.ui.controls.Recipe;
 import helder.ui.controls.Tokens;
@@ -11,8 +11,8 @@ import helder.ui.controls.Variant;
 // github.com/yappologistic/CUI): pure grays in
 // light and dark, a neutral accent (others to choose), soft rectangles on
 // a radius ladder (controls, panels, surfaces), two densities; solid
-// controls on a hairline of shadow; an opaque blue ring for the keyboard
-// alone, fading in; a press that darkens and barely gives, a toggle's
+// controls on a hairline of shadow; an opaque blue ring for the focus
+// (Style's focus: any, not the keyboard's alone); a press that darkens and barely gives, a toggle's
 // travel that springs; disabled controls faded, not recoloured. Its
 // values are helder's own.
 @:typescript.hide
@@ -21,15 +21,15 @@ class Base {
 		return Look.make(["button" => [t -> button(t)], "checkbox" => [t -> checkbox(t)], "switch" => [t -> toggle(t)], "pathbar" => [t -> pathBar(t)]],
 			touch());
 
-	// (the touch pieces' parts, a slot each: helder.ui.nav's bars and sheets,
-	// helder.ui.menu's touch menu; 44-point targets, the system's type sizes
-	// of iOS: 17 for a bar's title and a row, 32 for a large title; and the
-	// grid's marquee, GridScroll's, which has no look of its own; a
-	// composite field's box and its text field)
+	// (the framework's own parts, Look.part's: helder.ui.nav's bars and
+	// sheets, helder.ui.menu's touch menu; 44-point targets, the system's
+	// type sizes of iOS: 17 for a bar's title and a row, 32 for a large
+	// title; and the grid's marquee, GridScroll's, which has no look of its
+	// own; a composite field's box and its text field)
 	static function touch():Map<String, Array<Refs->Dynamic>> {
 		var parts = new Map<String, Array<Refs->Dynamic>>();
-		function part(slot:String, f:Refs->PartStyle)
-			parts.set(slot, [t -> f(t)]);
+		function part(name:String, f:Refs->PartStyle)
+			parts.set(name, [t -> f(t)]);
 		var item = (t:Refs) -> ({
 			flexDirection: Row, alignItems: Center, justifyContent: Center, minWidth: 44, height: 44, padding: [0, 10], borderRadius: 22, color: t.fg,
 			fontSize: 17, cursor: Pointer, pressed: {opacity: 0.5}, disabled: {opacity: t.disabledOpacity}, focus: ring(t)
@@ -48,11 +48,11 @@ class Base {
 		part("nav-item", item);
 		part("nav-bottom", t -> {background: t.surface});
 		part("sheet-scrim", t -> {background: t.scrim});
-		part("sheet", t -> {background: t.raised, color: t.fg, borderRadius: 14, boxShadow: lifted(0.25), padding: [6, 0, 0, 0]});
+		part("sheet", t -> {background: t.raised, color: t.fg, borderRadius: 14, shadows: lifted(0.25), padding: [6, 0, 0, 0]});
 		part("sheet-grabber", t -> {width: 36, height: 5, borderRadius: 3, background: t.edge, alignSelf: Center, margin: [0, 0, 8, 0], focus: ring(t)});
-		part("sheet-popover", t -> {background: t.raised, color: t.fg, borderRadius: t.radiusPanel, boxShadow: lifted(0.2), padding: [8, 0], overflow: Hidden});
-		part("touch-menu-preview", t -> {borderRadius: 12, boxShadow: lifted(0.3)});
-		part("touch-menu", t -> {background: t.raised, color: t.fg, borderRadius: 13, boxShadow: lifted(0.3)});
+		part("sheet-popover", t -> {background: t.raised, color: t.fg, borderRadius: t.radiusPanel, shadows: lifted(0.2), padding: [8, 0], overflow: Hidden});
+		part("touch-menu-preview", t -> {borderRadius: 12, shadows: lifted(0.3)});
+		part("touch-menu", t -> {background: t.raised, color: t.fg, borderRadius: 13, shadows: lifted(0.3)});
 		var row = (t:Refs, danger:Bool) -> ({
 			flexDirection: Row, alignItems: Center, height: 44, padding: [0, 16], columnGap: 12, fontSize: 16, color: danger ? t.danger : t.fg,
 			cursor: Pointer, borderColor: t.line, pressed: {background: t.press}, disabled: {opacity: t.disabledOpacity}, focus: {background: t.hover}
@@ -62,13 +62,11 @@ class Base {
 		part("touch-menu-separator", t -> {background: t.line});
 		part("grid-marquee", t -> {background: t.accentSoft, borderWidth: 1, borderColor: t.accent, borderRadius: 3});
 		// (DataGrid's cell editor, over the cell)
-		part("grid-editor", t -> {background: t.surface, color: t.fg, borderRadius: 1, fontFamily: t.mono, fontSize: t.size, selection: {background: t.focusSoft}});
+		part("grid-editor", t -> {background: t.surface, color: t.fg, borderRadius: 1, fontFamily: t.mono, fontSize: t.size});
 		// (a composite field, an icon and a text field in a box (a search
-		// field): one ring round the box at its radius while what is in it
-		// has the focus, as macOS rings one, none on the text field)
-		part("field-box", t -> {flexDirection: Row, alignItems: Center, columnGap: 7, padding: [0, 8], borderRadius: t.radius, background: t.fill, color: t.fg,
-			ringColor: CLEAR, focusWithin: {ringWidth: 3, ringColor: t.focusSoft, ringOffsetWidth: 0}});
-		// (HTML's text elements, NodeRenderer's slots for them: headings by
+		// field), no ring on the text field)
+		part("field-box", t -> {flexDirection: Row, alignItems: Center, columnGap: 7, padding: [0, 8], borderRadius: t.radius, background: t.fill, color: t.fg});
+		// (HTML's text elements, NodeRenderer's parts for them: headings by
 		// level, strong, em and code; a page's renderer has the browser's)
 		part("h1", t -> {fontSize: t.size * 2, fontWeight: 700, lineHeight: 1.2});
 		part("h2", t -> {fontSize: t.size * 1.5, fontWeight: 700, lineHeight: 1.2});
@@ -85,7 +83,7 @@ class Base {
 		// Tooltip: a small label under a control, its shortcut beside it)
 		part("slider", t -> {
 			flexDirection: Row, alignItems: Center, columnGap: t.gap, flexGrow: 1, minWidth: 0, height: t.control, padding: [0, t.pad], borderRadius: t.radius,
-			background: t.fill, color: t.fg, fontFamily: t.font, fontSize: t.size, overflow: Hidden, cursor: ResizeEW, userSelect: None, ringColor: CLEAR,
+			background: t.fill, color: t.fg, fontFamily: t.font, fontSize: t.size, overflow: Hidden, cursor: ResizeEW, userSelect: None,
 			hover: {background: t.fillHover}, focus: ring(t)
 		});
 		part("slider-fill", t -> {background: t.accentSoft});
@@ -94,12 +92,12 @@ class Base {
 		part("segmented", t -> {flexDirection: Row, padding: 2, columnGap: 2, borderRadius: t.radius + 2, background: t.fill, userSelect: None});
 		part("segmented-item", t -> {
 			flexDirection: Row, alignItems: Center, justifyContent: Center, columnGap: t.gap - 2, height: t.control - 4, padding: [0, t.pad],
-			borderRadius: t.radius, color: t.fg2, fontFamily: t.font, fontSize: t.size, cursor: Pointer, ringColor: CLEAR,
-			hover: {color: t.fg}, selected: {background: t.raised, color: t.fg, boxShadow: resting(0.08)}, focus: ring(t)
+			borderRadius: t.radius, color: t.fg2, fontFamily: t.font, fontSize: t.size, cursor: Pointer,
+			hover: {color: t.fg}, selected: {background: t.raised, color: t.fg, shadows: resting(0.08)}, focus: ring(t)
 		});
 		part("tooltip", t -> {
 			height: t.controlSm - 4, padding: [0, t.padSm], borderRadius: t.radius, background: t.raised, color: t.fg, fontFamily: t.font,
-			fontSize: t.small, borderWidth: 1, borderColor: t.edge, boxShadow: lifted(0.12)
+			fontSize: t.small, borderWidth: 1, borderColor: t.edge, shadows: lifted(0.12)
 		});
 		part("tooltip-keys", t -> {color: t.fg3, fontFamily: t.mono});
 		return parts;
@@ -116,19 +114,19 @@ class Base {
 		#end
 	}
 
-	// (the keyboard's ring: 2 px at a 2 px offset, the canvas between)
+	// (the focus ring: 2 px at a 2 px offset, the canvas between)
 	static function ring(t:Refs):PartStyle
-		return {ringWidth: 2, ringColor: t.focus, ringOffsetWidth: 2, ringOffsetColor: t.canvas};
+		return {shadows: [{x: 0, y: 0, spread: 2, color: t.canvas}, {x: 0, y: 0, spread: 4, color: t.focus}]};
 
 	// (what rests on the page casts a hairline of shadow; what floats more)
-	static function resting(alpha:Float):Shadow
-		return {y: 1, blur: 2, color: Color.rgba(0, alpha)};
+	static function resting(alpha:Float):Array<ShadowLayer>
+		return [{x: 0, y: 1, blur: 2, color: Color.rgba(0, alpha)}];
 
-	static function lifted(alpha:Float):Shadow
-		return {y: 1, blur: 2, color: Color.rgba(0, alpha), next: ({y: 2, blur: 6, color: Color.rgba(0, alpha / 2)} : Shadow)};
+	static function lifted(alpha:Float):Array<ShadowLayer>
+		return [{x: 0, y: 1, blur: 2, color: Color.rgba(0, alpha)}, {x: 0, y: 2, blur: 6, color: Color.rgba(0, alpha / 2)}];
 
 	static function button(t:Refs):ButtonRecipe {
-		var rest = resting(0.035), dark:PartStyle = {boxShadow: resting(0.18)};
+		var rest = resting(0.035), dark:PartStyle = {shadows: resting(0.18)};
 		return {
 			root: {
 				flexDirection: Row,
@@ -145,7 +143,6 @@ class Base {
 				background: CLEAR,
 				borderWidth: 1,
 				borderColor: CLEAR,
-				ringColor: CLEAR,
 				userSelect: None,
 				cursor: Pointer,
 				pressed: {transform: Transform.scale(t.pressScale)},
@@ -157,16 +154,16 @@ class Base {
 			variants: {
 				variant: {
 					// (a solid one lightens under the pointer and settles back when pressed)
-					primary: {root: {boxShadow: rest, dark: dark, background: t.accent, borderColor: t.accent, color: t.accentFg, hover: {background: t.accentStrong, borderColor: t.accentStrong},
+					primary: {root: {shadows: rest, dark: dark, background: t.accent, borderColor: t.accent, color: t.accentFg, hover: {background: t.accentStrong, borderColor: t.accentStrong},
 						pressed: {background: t.accent, borderColor: t.accent}}},
 					secondary: {root: {background: t.fill, borderColor: t.fill, hover: {background: t.fillHover, borderColor: t.fillHover},
 						pressed: {background: t.fillPress, borderColor: t.fillPress},
 						selected: {background: t.accentSoft, hover: {background: t.fillHover}, pressed: {background: t.fillPress}}}},
-					outline: {root: {boxShadow: rest, dark: dark, background: t.surface, borderColor: t.edge, hover: {background: t.hover, borderColor: t.edgeStrong},
+					outline: {root: {shadows: rest, dark: dark, background: t.surface, borderColor: t.edge, hover: {background: t.hover, borderColor: t.edgeStrong},
 						pressed: {background: t.press}, selected: {background: t.accentSoft, hover: {background: t.hover}, pressed: {background: t.press}}}},
 					ghost: {root: {hover: {background: t.hover}, pressed: {background: t.press},
 						selected: {background: t.accentSoft, color: t.fg, hover: {background: t.hover}, pressed: {background: t.press}}}},
-					danger: {root: {boxShadow: rest, dark: dark, background: t.danger, borderColor: t.danger, color: t.dangerFg, hover: {background: t.dangerStrong, borderColor: t.dangerStrong},
+					danger: {root: {shadows: rest, dark: dark, background: t.danger, borderColor: t.danger, color: t.dangerFg, hover: {background: t.dangerStrong, borderColor: t.dangerStrong},
 						pressed: {background: t.danger, borderColor: t.danger}}}
 				},
 				size: {
@@ -188,7 +185,7 @@ class Base {
 	static function pathBar(t:Refs):PathBarRecipe {
 		var segment:PartStyle = {
 			flexDirection: Row, alignItems: Center, height: 24, flexShrink: 0, padding: [0, 6], columnGap: 4, borderRadius: 6,
-			color: t.fg2, cursor: Pointer, ringColor: CLEAR, hover: {background: t.hover, color: t.fg}, focus: ring(t)
+			color: t.fg2, cursor: Pointer, hover: {background: t.hover, color: t.fg}, focus: ring(t)
 		};
 		return {
 			root: {height: 32, minWidth: 0, flexShrink: 0, flexDirection: Row, alignItems: Center, padding: [0, 6],
@@ -196,7 +193,7 @@ class Base {
 			segment: segment,
 			segmentIcon: {width: 14, height: 14, flexShrink: 0},
 			separator: {width: 11, height: 24, alignItems: Center, justifyContent: Center, flexShrink: 0, borderRadius: 6,
-				color: t.fg3, ringColor: CLEAR, focus: ring(t)},
+				color: t.fg3, focus: ring(t)},
 			overflow: segment,
 			current: {flexDirection: Row, alignItems: Center, height: 24, minWidth: 0, padding: [0, 6], columnGap: 4, borderRadius: 6,
 				color: t.fg, fontWeight: t.medium, overflow: Hidden},
@@ -232,7 +229,6 @@ class Base {
 				borderColor: t.edgeStrong,
 				background: t.surface,
 				color: t.accentFg,
-				ringColor: CLEAR,
 				hover: {borderColor: t.fg3},
 				pressed: {transform: Transform.scale(0.94)},
 				checked: {background: t.accent, borderColor: t.accent, hover: {background: t.accentStrong, borderColor: t.accentStrong}},
@@ -274,7 +270,6 @@ class Base {
 				padding: inset,
 				borderRadius: t.trackHeight / 2,
 				background: t.rail,
-				ringColor: CLEAR,
 				hover: {background: t.railHover},
 				checked: {background: t.accent, hover: {background: t.accentStrong}},
 				focus: ring(t)
@@ -284,8 +279,8 @@ class Base {
 				height: t.thumb,
 				borderRadius: t.thumb / 2,
 				background: t.knob,
-				boxShadow: lifted(0.14),
-				dark: {boxShadow: lifted(0.35)},
+				shadows: lifted(0.14),
+				dark: {shadows: lifted(0.35)},
 				transform: Transform.translate(0, 0),
 				pressed: {transform: Transform.scale(0.94)},
 				checked: {background: t.accentFg, transform: Transform.translate(travel, 0), pressed: {transform: Transform.translate(travel, 0)}}

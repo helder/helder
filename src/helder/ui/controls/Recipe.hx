@@ -1,42 +1,17 @@
 package helder.ui.controls;
 
 import haxe.DynamicAccess;
-import helder.ui.StyleProps;
+import helder.ui.Style.StyleProps;
 import helder.ui.controls.Props;
 import helder.ui.controls.Tokens;
 
-// A part's style: its properties, and under a state's name what changes
-// while it holds (nested: checked: {hover: ...}). The states are the
-// control's (hover, pressed, focus: the keyboard's ring, disabled,
-// checked, mixed, selected, open, invalid, readonly), and dark. A part's
-// state follows its control's: a knob is "hover" while its switch is.
-// draw: the part drawn by a shader of its own (PartShader.of: an escape hatch
-// that costs a pass and a draw a part; the default look has none).
+// A part's style: a Style's properties, and under a state's name what
+// changes while it holds (nested: checked: {hover: ...}). The states are
+// the control's (hover, pressed, focus, disabled, checked, mixed,
+// selected), placeholder and dark. A part's state follows its control's: a
+// knob is "hover" while its switch is (Compile).
 @:typescript.type("import('./style').PartStyle") @:typescript.dynamic
-typedef PartStyle = {
-	> StyleProps,
-	?hover:PartStyle,
-	?pressed:PartStyle,
-	?focus:PartStyle,
-	// (what holds the focus within it: a composite field's box, ringed as one)
-	?focusWithin:PartStyle,
-	?disabled:PartStyle,
-	?checked:PartStyle,
-	?mixed:PartStyle,
-	?selected:PartStyle,
-	?open:PartStyle,
-	?invalid:PartStyle,
-	?readonly:PartStyle,
-	?dark:PartStyle,
-	// (a text field's placeholder's colour, its selection's background)
-	?placeholder:PartStyle,
-	?selection:PartStyle,
-	?draw:PartDraw
-}
-
-// a part's own drawing: its node, under the part's children, given the
-// control's eased states and look (PartShader.of: a shader's)
-typedef PartDraw = (Eased, Look<Dynamic>) -> helder.ui.Node;
+typedef PartStyle = StyleProps;
 
 // a control's variants: by axis (variant, size, as the control's props
 // name them), each value's parts
@@ -71,7 +46,7 @@ typedef PathBarRecipe = {> PathBarParts, ?variants:VariantParts<PathBarParts>}
 // an accent, tokens, a recipe per control (its result merged over the
 // look's by part and state, property by property), a control's rendering
 // replaced (behaviour and accessibility kept: Toggle, Press), an app's
-// own parts (a slot each, its states its own)
+// own parts (Look.part: a name each, its states its own)
 @:typescript.type("import('./style').LookPatch") @:typescript.dynamic
 typedef Patch = {
 	?density:Tokens.Density,

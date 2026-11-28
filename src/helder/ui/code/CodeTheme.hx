@@ -1,10 +1,11 @@
 package helder.ui.code;
 
 import helder.gfx.Color;
+import helder.ui.Theme;
 import helder.syntax.Lexer.TokenClass;
 
-// A code editor's colours, by theme token: a StyleSheet's light and dark
-// colours of these names (without the dashes) win, else a look's token for
+// A code editor's colours, by theme token: a Theme's colours of these
+// names (without the dashes) win, else a look's token for
 // it (TOKENS: the page's and the gutter's, the selection, the cursor, the
 // diagnostics', the panels'; the syntax's have none), else the defaults here
 // (GitHub's light and dark): "code-background", "code-foreground", the
@@ -15,7 +16,7 @@ import helder.syntax.Lexer.TokenClass;
 // "code-selection", "code-cursor", "code-indent-guide", "code-whitespace",
 // the diagnostics' ("code-error", "code-warning", "code-info"), find's
 // ("code-find-match", "code-find-current") and "code-panel" (find's and go
-// to line's panel). Resolved once per sheet and appearance.
+// to line's panel). Resolved once per theme (light and dark are two).
 class CodeTheme {
 	public static final NAMES = [
 		"background", "foreground", "keyword", "string", "number", "comment", "type", "function", "tag", "attribute", "punctuation", "gutter", "line-number",
@@ -66,25 +67,21 @@ class CodeTheme {
 	public final colors:Array<Color> = [for (c in LIGHT) c];
 
 	// (what they were resolved from)
-	var sheet:Null<StyleSheet> = null;
-	var dark = false;
-	var resolved = false;
+	var theme:Null<Theme> = null;
 
 	public function new() {}
 
-	// the colours for a sheet and an appearance (again only when either changed)
-	public function resolve(sheet:Null<StyleSheet>, dark:Bool) {
-		if (resolved && sheet == this.sheet && dark == this.dark) return;
-		resolved = true;
-		this.sheet = sheet;
-		this.dark = dark;
-		var base = dark ? DARK : LIGHT;
-		var tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
-		// (a look's sheet: its palette by name, "surface" among them)
-		var look = tokens != null && tokens.exists("surface");
+	// the colours in a theme (again only when it changed; a token's colour 0: none)
+	public function resolve(theme:Theme) {
+		if (theme == this.theme) return;
+		this.theme = theme;
+		var base = theme.dark ? DARK : LIGHT;
+		// (a look's theme: its palette by name, "surface" among them)
+		var look = theme.color("surface") != 0;
 		for (k in 0...NAMES.length) {
-			var c = tokens == null ? null : tokens.get("code-" + NAMES[k]) ?? (TOKENS[k] == null || !look ? null : tokens.get(TOKENS[k]));
-			colors[k] = c != null ? c : base[k];
+			var c = theme.color("code-" + NAMES[k]);
+			if (c == 0 && look && TOKENS[k] != null) c = theme.color(TOKENS[k]);
+			colors[k] = c != 0 ? c : base[k];
 		}
 	}
 

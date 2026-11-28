@@ -39,7 +39,7 @@ class TextField extends EditableText {
 	override function indexAt(px:Float, py:Float):Int {
 		if (ui == null) return caret;
 		var p = layoutText(ui.text, Math.NaN);
-		var left = localX(px, py) - style.borderEdges.left - style.padding.left + scroll - aligned(p, innerWidth());
+		var left = localX(px, py) - used.borderEdges.left - used.paddingEdges.left + scroll - aligned(p, innerWidth());
 		return p.hit(left, 0);
 	}
 

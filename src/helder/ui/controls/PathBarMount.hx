@@ -2,6 +2,7 @@ package helder.ui.controls;
 
 import helder.ui.*;
 import helder.ui.actions.Actions.actions;
+import helder.ui.box.Len.Lens;
 import helder.ui.controls.Props;
 import helder.ui.controls.Variant.PathBarSize;
 import helder.ui.menu.Menu.MenuItem;
@@ -38,7 +39,9 @@ private typedef Crumb = {
 }
 
 private class PathBarNode extends Node {
-	final props:PathBarProps;
+	final options:PathBarProps;
+	final controls:Look<Dynamic>;
+	final size:String;
 	final editing:Signal<Bool>;
 	final canEdit:Bool;
 	final row = new Node("pathbar-segments");
@@ -52,17 +55,18 @@ private class PathBarNode extends Node {
 	var fittedWidth = -1.0;
 	var generation = -1;
 
-	public function new(props:PathBarProps) {
-		super(props.tag ?? "pathbar");
-		this.props = props;
-		canEdit = props.editable != false;
-		editing = props.editing ?? Graph.signal(false);
-		slot = "pathbar";
-		size = props.size ?? PathBarSize.Small;
-		semantics = {role: Navigation, label: props.label ?? "Path"};
-		if (Graph.use(Look.context) == null) theme = Look.base.sheet();
+	public function new(options:PathBarProps) {
+		super(options.tag ?? "pathbar");
+		this.options = options;
+		canEdit = options.editable != false;
+		editing = options.editing ?? Graph.signal(false);
+		controls = Look.current();
+		size = options.size ?? PathBarSize.Small;
+		style = piece("root");
+		semantics = {role: Navigation, label: options.label ?? "Path"};
+		if (Look.outside()) theme = controls.theme;
 
-		row.style.set({flexDirection: Row, alignItems: Center, width: "100%", minWidth: 0});
+		row.style = Style.of({flexDirection: Row, alignItems: Center, width: "100%", minWidth: 0});
 		append(row);
 		overflow = button("overflow", "Hidden folders", showOverflow);
 		overflow.append(caption("…"));
@@ -70,7 +74,7 @@ private class PathBarNode extends Node {
 		actions("pathbar", PathBarAction);
 		on(PathBarAction, a -> switch a {
 			case Navigate(i):
-				props.onNavigate(i);
+				options.onNavigate(i);
 				true;
 		});
 
@@ -82,7 +86,7 @@ private class PathBarNode extends Node {
 	public function bind() {
 		// (make the presses in the computation's owner, then put their nodes in the row)
 		Graph.renderEffect(() -> {
-			var segments = props.segments();
+			var segments = options.segments();
 			return {labels: [for (s in segments) s.label], crumbs: [for (i in 0...segments.length) crumb(segments[i], i, i == segments.length - 1)]};
 		}, data -> {
 			row.removeChildren();
@@ -105,41 +109,44 @@ private class PathBarNode extends Node {
 		});
 	}
 
+	// (a part's style in the bar's size)
+	function piece(part:String):Style
+		return controls.style("pathbar", null, size, part);
+
 	function crumb(s:PathSegment, index:Int, last:Bool):Crumb {
-		var n = last ? new Node("pathbar-current") : button("segment", s.label, _ -> props.onNavigate(index), true);
+		var n = last ? new Node("pathbar-current") : button("segment", s.label, _ -> options.onNavigate(index), true);
 		var label = caption(s.label);
 		if (last) {
-			n.slot = "pathbar-current";
+			n.style = piece("current");
 			n.semantics = {role: Label, label: s.label, current: true};
 			label.semantics = {hidden: true};
-			label.style.minWidth = 0;
-			label.style.textOverflow = Ellipsis;
+			label.style = label.style.with({minWidth: 0, textOverflow: Ellipsis});
 			if (canEdit) {
-				(n.props().cursor ?? Auto) = Text;
+				n.style = n.style.with({cursor: Text});
 				n.onClick = e -> if (e.button == 1) editing(true);
 			}
 		}
 		if (s.icon != null) {
 			var icon = new ImageNode();
-			icon.slot = "pathbar-segment-icon";
+			icon.style = piece("segmentIcon");
 			icon.svg = s.icon;
 			n.append(icon);
 		}
 		n.append(label);
-		return {segment: n, separator: last ? null : chevron(s.label, props.onSeparator == null ? null : anchor -> props.onSeparator(index, anchor))};
+		return {segment: n, separator: last ? null : chevron(s.label, options.onSeparator == null ? null : anchor -> options.onSeparator(index, anchor))};
 	}
 
 	static function caption(text:String):TextNode {
 		var n = new TextNode(text);
-		n.style.textWrap = NoWrap;
-		n.style.lineClamp = 1;
+		n.style = Style.of({textWrap: NoWrap, lineClamp: 1});
 		return n;
 	}
 
-	static function button(part:String, label:String, activate:Node->Void, link = false):Node {
-		var slot = 'pathbar-$part', n = new Node(slot);
-		var p = new Press(slot, null, () -> activate(n));
+	function button(part:String, label:String, activate:Node->Void, link = false):Node {
+		var n = new Node('pathbar-$part');
+		var p = new Press("pathbar", null, () -> activate(n));
 		p.label = label;
+		p.size = size;
 		if (link) {
 			@:privateAccess p.role = Link;
 			// (links normally take Enter alone; a path segment takes Space too)
@@ -148,17 +155,16 @@ private class PathBarNode extends Node {
 				p.press();
 			};
 		}
-		p.root(n);
+		p.root(n, part);
 		return n;
 	}
 
-	static function chevron(label:Null<String>, activate:Null<Node->Void>):Node {
+	function chevron(label:Null<String>, activate:Null<Node->Void>):Node {
 		var n = activate == null ? new Node("pathbar-separator") : button("separator", 'Children of $label', activate);
-		n.slot = "pathbar-separator";
-		if (activate != null) (n.props().cursor ?? Auto) = Pointer;
+		if (activate == null) n.style = piece("separator") else n.style = n.style.with({cursor: Pointer});
 		var icon = new ImageNode();
 		icon.svg = Icons.svg("chevron-right");
-		icon.style.set({width: 11, height: 11, flexShrink: 0});
+		icon.style = Style.of({width: 11, height: 11, flexShrink: 0});
 		icon.mirrored = true;
 		n.append(icon);
 		return n;
@@ -172,13 +178,13 @@ private class PathBarNode extends Node {
 	}
 
 	function startEditing() {
-		var f = new TextField(props.text == null ? labels.join("/") : props.text.peek());
+		var f = new TextField(options.text == null ? labels.join("/") : options.text.peek());
 		field = f;
-		f.slot = "pathbar-field";
+		f.style = f.style.with(piece("field"));
 		f.semantics.label = semantics.label;
 		f.onSubmit = text -> {
 			editing(false);
-			props.onSubmit(text);
+			options.onSubmit(text);
 		};
 		var key = f.onKeyDown, blur = f.onBlur;
 		f.onKeyDown = e -> {
@@ -192,7 +198,7 @@ private class PathBarNode extends Node {
 			blur(e);
 			if (field == f) editing(false);
 		};
-		row.style.display = None;
+		row.style = row.style.with({display: None});
 		append(f);
 		if (ui != null) ui.setFocus(f, false);
 		f.selectAll();
@@ -204,7 +210,7 @@ private class PathBarNode extends Node {
 		field = null;
 		if (ui != null && ui.focus == f) ui.setFocus(null);
 		remove(f);
-		row.style.display = Flex;
+		row.style = row.style.with({display: Flex});
 	}
 
 	override function attach(u:Null<Ui>) {
@@ -248,20 +254,20 @@ private class PathBarNode extends Node {
 
 	function show(n:Node, visible:Bool):Bool {
 		var display:Display = visible ? Flex : None;
-		if (n.style.display == display) return false;
-		n.style.display = display;
+		if (n.style.props.display == display) return false;
+		n.style = n.style.with({display: display});
 		if (!visible && ui.focus == n) ui.setFocus(overflow.used.none ? null : overflow, false);
 		return true;
 	}
 
 	// (the border box of a part at its full width, even while it is hidden)
 	function naturalWidth(n:Node):Float {
-		var s = n.used, given = s.width.resolve(fittedWidth);
+		var s = n.used, given = Lens.resolve(s.width, fittedWidth, Math.NaN);
 		var w = s.paddingEdges.left + s.paddingEdges.right + s.borderEdges.left + s.borderEdges.right;
 		if (!Math.isNaN(given)) return Math.max(given, w);
 		if (n is TextNode) return w + n.minContentWidth(ui.text);
 		for (i in 0...n.children.length)
-			w += naturalWidth(n.children[i]) + (i == 0 ? 0 : s.columnGap);
+			w += naturalWidth(n.children[i]) + (i == 0 ? 0 : Lens.resolve(s.columnGap, fittedWidth, 0));
 		return w;
 	}
 }

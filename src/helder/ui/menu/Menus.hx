@@ -210,7 +210,7 @@ class MenuBar {
 			if (native) {
 				ui.platform.menuBar([], _ -> {});
 				native = false;
-				node.style.display = Flex;
+				node.style = node.style.with({display: Flex});
 			}
 			return;
 		}
@@ -232,10 +232,10 @@ class MenuBar {
 		chosen = a;
 		if (ui.platform.menuBar(top, id -> if (id >= 0 && id < chosen.length) ui.dispatchAction(chosen[id]))) {
 			native = true;
-			node.style.display = None;
+			node.style = node.style.with({display: None});
 		} else {
 			native = false;
-			node.style.display = Flex;
+			node.style = node.style.with({display: Flex});
 		}
 	}
 
@@ -253,7 +253,7 @@ class MenuBar {
 		node.removeChildren();
 		titles.resize(0);
 		var dark = ui.dark;
-		node.style.set({
+		node.style = node.style.with({
 			flexDirection: Row,
 			alignItems: Center,
 			height: 28,
@@ -262,13 +262,13 @@ class MenuBar {
 			background: dark ? 0xFF202023 : 0xFFF4F4F5,
 			color: dark ? 0xFFE4E4E7 : 0xFF18181B,
 			fontSize: 13,
-			borders: [0.0, 0, 1, 0],
+			borderWidth: [0, 0, 1, 0],
 			borderColor: dark ? 0xFF2E2E33 : 0xFFE4E4E7,
 			flexShrink: 0
 		});
 		for (i in 0...menus.length) {
 			var t = new Node("menubar-item");
-			t.style.set({padding: [3.0, 9, 3, 9], borderRadius: 4, cursor: helder.ui.Cursor.Default});
+			t.style = helder.ui.Style.of({padding: [3.0, 9, 3, 9], borderRadius: 4, cursor: helder.ui.Cursor.Default});
 			t.semantics = {role: helder.ui.access.Role.MenuItem, label: menus[i].label, expanded: false};
 			t.append(new TextNode(menus[i].label, "menubar-label"));
 			var index = i;
@@ -326,7 +326,7 @@ class MenuBar {
 
 	function mark(i:Int, on:Bool) {
 		if (i < 0 || i >= titles.length) return;
-		titles[i].style.background = on ? (ui.dark ? 0xFF3F3F46 : 0xFFE4E4E7) : 0;
+		titles[i].style = titles[i].style.with({background: on ? (ui.dark ? 0xFF3F3F46 : 0xFFE4E4E7) : 0});
 		if (titles[i].semantics != null) titles[i].semantics.expanded = on;
 		ui.requestFrame();
 	}
@@ -345,7 +345,7 @@ class MenuBarMount implements helder.view.Flow.Mountable<Node> {
 
 	public function mount(parent:Node, before:Null<Node>):Array<Node> {
 		var box = new Node("menubar-box");
-		box.style.flexShrink = 0;
+		box.style = box.style.with({flexShrink: 0});
 		var i = before == null ? parent.children.length : parent.indexOf(before);
 		parent.insert(box, i < 0 ? parent.children.length : i);
 		var bar:Null<MenuBar> = null;

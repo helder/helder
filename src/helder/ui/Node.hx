@@ -179,7 +179,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (markup's style attributes, name and value in turn (parsed once for all the nodes given the same,
 	// Attrs.styled); its style with them over it, what is resolved)
 	var styleAttrs:Null<Array<Dynamic>> = null;
-	var look:Null<Style> = null;
+	var styled:Null<Style> = null;
 	// (its states, Style.HOVER...; what it was resolved under: its parent's text, the theme passed down, its
 	// group's states and what it inherits besides)
 	var states = 0;
@@ -245,7 +245,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	function set_style(v:Style):Style {
 		if (v == style) return v;
 		style = v;
-		refresh();
+		styleChanged();
 		return v;
 	}
 
@@ -261,21 +261,21 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			a.push(name);
 			a.push(value);
 		}
-		refresh();
+		styleChanged();
 		return true;
 	}
 
 	// (its style and attributes, interned: resolved again where they changed)
-	function refresh() {
+	function styleChanged() {
 		var next = styleAttrs == null ? style : Attrs.styled(style, styleAttrs);
-		if (next == look) return;
-		look = next;
+		if (next == styled) return;
+		styled = next;
 		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
 	}
 
 	// what its style says now, its states' variants over it (what helder.ui reads that the engine's style has not)
 	public function props():Style.Props
-		return (look ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs)).at(states | groupStates << Style.GROUP, scope().dark);
+		return (styled ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs)).at(states | groupStates << Style.GROUP, scope().dark);
 
 	// A state on or off: Style.HOVER, PRESSED, FOCUS, DISABLED, SELECTED, CHECKED, PLACEHOLDER.
 	public function state(bit:Int, on:Bool) {
@@ -302,9 +302,9 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return g;
 	}
 
-	// its subtree's theme: its own, else the one passed down
+	// its subtree's theme: its own (in the window's tone, dark or light: the one passed down's), else the one passed down
 	public inline function scope():Theme
-		return theme ?? passed ?? Theme.base;
+		return theme == null ? passed ?? Theme.base : theme.tone((passed ?? Theme.base).dark);
 
 	// (what its children inherit with its group's states: whether the pointer passes through it)
 	inline function groupBelow():Int
@@ -316,8 +316,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		under = text;
 		passed = theme;
 		groupStates = group;
-		look ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs);
-		var s = Resolve.of(look, states | group << Style.GROUP, text, scope(), kind()), was = used;
+		styled ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs);
+		var s = Resolve.of(styled, states | group << Style.GROUP, text, scope(), kind()), was = used;
 		if (s != was) restyled(was, s);
 		var t = s.text, th = scope(), below = groupBelow();
 		for (c in children) if (c.under != t || c.passed != th || c.groupStates != below) c.resolve(t, th, below);

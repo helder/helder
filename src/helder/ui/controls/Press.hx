@@ -14,10 +14,11 @@ import helder.view.graph.Signal;
 // not focusable either). Its states are signals (hovered: never by touch;
 // pressed: the pointer down on it and still over it, cancelled when it
 // leaves; focusVisible: focused from the keyboard) and eased amounts
-// (Eased). No look: root and part bind it to nodes, by ref, setting their
-// slots (the control's, "button"; its part's, "button-icon"), the root's
-// role, label, variant and size and its data-disabled (and a toggle's
-// data-selected), which a look's recipes read.
+// (Eased). Its look's: root and part bind it to nodes, by ref, giving
+// them the look's styles of the control's parts (Look.style, in its
+// variant and size), the root a group whose states its parts follow, its
+// role, label and data-disabled (and a selected one's data-state), which
+// set its states.
 //
 //   final p = Press.of(props, "button");
 //   <button ref={p.root}><image ref={p.part("icon")} .../></button>
@@ -27,8 +28,9 @@ class Press {
 	public final focusVisible:Signal<Bool>;
 	public final disabled:Read<Bool>;
 	public final eased:Eased;
-	public final slot:String;
-	// the look it was made under (Themed's, else Look.base): its states' times, its parts' draws
+	// the control's name in its look ("button")
+	public final control:String;
+	// the look it was made under (Themed's, else Look.base): its parts' styles, its states' times
 	public final look:Look<Dynamic>;
 	public var node(default, null):Null<Node> = null;
 	// set before root binds: the root's name for assistive technology, variant, size
@@ -37,23 +39,26 @@ class Press {
 	public var size:Null<String> = null;
 
 	final onPress:Null<Void->Void>;
+	// (no Themed above: its root takes the look's theme)
+	final outside:Bool;
 	var selected:Null<Read<Bool>>;
 	var role:Role = Button;
 
-	public function new(slot:String, ?disabled:Read<Bool>, ?onPress:Void->Void) {
-		this.slot = slot;
+	public function new(control:String, ?disabled:Read<Bool>, ?onPress:Void->Void) {
+		this.control = control;
 		this.disabled = disabled ?? (false : Read<Bool>);
 		this.onPress = onPress;
 		look = Look.current();
+		outside = Look.outside();
 		hovered = signal(false);
 		pressed = signal(false);
 		focusVisible = signal(false);
 		eased = new Eased(look.times());
 	}
 
-	// a press of props' (a replaced rendering's: Look's render) for a control named slot
-	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?selected:Read<Bool>, ?onPress:Void->Void}, slot:String):Press {
-		var p = new Press(slot, props.disabled, props.onPress);
+	// a press of props' (a replaced rendering's: Look's render) for a control
+	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?selected:Read<Bool>, ?onPress:Void->Void}, control:String):Press {
+		var p = new Press(control, props.disabled, props.onPress);
 		p.label = props.label;
 		p.selected = props.selected;
 		return p;
@@ -63,15 +68,13 @@ class Press {
 	public function press()
 		if (!disabled.peek()) activate(null);
 
-	// binds the control's root node
-	public function root(n:Node) {
+	// binds the control's root node (a composite's piece, pressed alone: its part's style)
+	public function root(n:Node, part = "root") {
 		node = n;
 		eased.node = n;
-		n.slot = slot;
-		var d = look.drawOf(slot);
-		if (d != null) n.insert(d(eased, look), 0);
-		if (variant != null) n.variant = variant;
-		if (size != null) n.size = size;
+		n.style = look.style(control, variant, size, part);
+		n.group = true;
+		if (outside) n.theme = look.theme;
 		if (n.semantics == null) n.semantics = ({} : Semantics);
 		var sem = n.semantics;
 		sem.role = role;
@@ -89,22 +92,15 @@ class Press {
 		});
 		if (selected != null) renderEffect(() -> selected(), on -> {
 			sem.checked = on;
-			n.setAttr("data-selected", on ? "" : null);
+			n.setAttr("data-state", on ? "selected" : null);
 		});
 		bound(n);
 		sync(true);
 	}
 
-	// binds a part: its slot, the control's followed by the part's name (a
-	// look's draw for it: its shader's node under its children)
-	public function part(name:String):Node->Void {
-		var s = slot + "-" + name;
-		return n -> {
-			n.slot = s;
-			var d = look.drawOf(s);
-			if (d != null) n.insert(d(eased, look), 0);
-		}
-	}
+	// binds a part ("icon"): its style, the control's part in its variant and size
+	public function part(name:String):Node->Void
+		return n -> n.style = look.style(control, variant, size, name);
 
 	// (what the root binds beyond a press: a toggle's state)
 	function bound(n:Node) {}

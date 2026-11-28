@@ -408,7 +408,7 @@ class CodeView extends Node {
 	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null) return;
 		var engine = ui.text;
-		codeTheme.resolve(sheet(), ui.dark);
+		codeTheme.resolve(scope());
 		metrics(engine);
 		var c = codeTheme.colors, lh = lineHeight;
 		viewW = width;

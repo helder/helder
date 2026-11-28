@@ -57,17 +57,17 @@ class Sheets implements Markup {
 		return new SheetMount(props);
 
 	@:noCompletion public static function Panel(props:{s:SheetState, children:Any}):UiView {
-		var s = props.s;
+		var s = props.s, look = Look.current();
 		// (the window resized while it is open, a phone turned: as tall as it lets it, at its detent)
 		renderEffect(() -> helder.ui.ScreenContext.current.height(), h -> s.resized(h));
 		return <view tag={s.props.tag ?? "sheet-layer"} position="absolute" left={0} top={0} right={0} bottom={0}
 			onKeyDown={e -> if (e.key == Key.ESCAPE) s.dismiss(0)}>
-			<view slot="sheet-scrim" tag="sheet-scrim" position="absolute" left={0} top={0} right={0} bottom={0} opacity={s.scrim()}
+			<view style={look.part("sheet-scrim")} tag="sheet-scrim" position="absolute" left={0} top={0} right={0} bottom={0} opacity={s.scrim()}
 				onPress={_ -> s.dismiss(0)}/>
-			<view slot="sheet" tag="sheet" role="dialog" aria-label={s.props.label} aria-modal position="absolute" left={0} right={0} bottom={0}
-				height={s.full()} transform={"translateY(" + s.offset() + "px)"} opacity={s.alpha()} paddingBottom="env(safe-area-inset-bottom)"
+			<view style={look.part("sheet")} tag="sheet" role="dialog" aria-label={s.props.label} aria-modal position="absolute" left={0} right={0} bottom={0}
+				height={s.full()} transform={"translateY(" + s.offset() + "px)"} opacity={s.alpha()} padding="6 0 env(safe-area-inset-bottom) 0"
 				ref={(n:Node) -> s.attach(n)}>
-				<view slot="sheet-grabber" tag="sheet-grabber" role="button" aria-label="Resize" focusable onPress={() -> s.cycle()}/>
+				<view style={look.part("sheet-grabber")} tag="sheet-grabber" role="button" aria-label="Resize" focusable onPress={() -> s.cycle()}/>
 				<view flexGrow={1} minHeight={0}>{props.children}</view>
 			</view>
 		</view>;
@@ -76,7 +76,7 @@ class Sheets implements Markup {
 	@:noCompletion public static function Floating(props:{s:SheetState, children:Any}):UiView {
 		// (the window resized while it is open: its most height the new window's share)
 		renderEffect(() -> helder.ui.ScreenContext.current.height(), h -> props.s.full(h * POPOVER_SHARE));
-		return <view slot="sheet-popover" tag={props.s.props.tag ?? "sheet-popover"} role="dialog" aria-label={props.s.props.label} width={POPOVER}
+		return <view style={Look.current().part("sheet-popover")} tag={props.s.props.tag ?? "sheet-popover"} role="dialog" aria-label={props.s.props.label} width={POPOVER}
 			maxHeight={props.s.full()} onKeyDown={e -> if (e.key == Key.ESCAPE) props.s.dismiss(0)}>{props.children}</view>;
 	}
 }
@@ -280,10 +280,10 @@ class SheetMount implements Mountable<Node> implements Markup {
 
 	public function mount(parent:Node, before:Null<Node>):Array<Node> {
 		var marker = new Node("sheet");
-		marker.style.display = None;
+		marker.style = marker.style.with({display: None});
 		var i = before == null ? parent.children.length : parent.indexOf(before);
 		parent.insert(marker, i < 0 ? parent.children.length : i);
-		var s = new SheetState(props), own = Graph.use(Look.context) == null;
+		var s = new SheetState(props), own = Look.outside();
 		var p:Null<Popup> = null, dispose:Null<Void->Void> = null;
 		function gone() {
 			if (p != null && p.ui != null) p.ui.close(p);
@@ -300,7 +300,7 @@ class SheetMount implements Mountable<Node> implements Markup {
 			var anchor = props.anchor == null ? null : props.anchor();
 			var floating = anchor != null && props.popover != false && SizeClass.current.peek() != Compact;
 			var q = p = new Popup(floating ? "sheet-popover-layer" : "sheet-layer");
-			q.theme = own ? Look.base.sheet() : marker.sheet();
+			q.theme = own ? Look.base.theme : marker.scope();
 			if (floating) {
 				q.anchor = anchor;
 				q.placement = Below;
@@ -310,7 +310,7 @@ class SheetMount implements Mountable<Node> implements Markup {
 				Graph.runWithOwner(home, () -> dispose = Render.render(<Sheets.Floating s={s}>{props.children}</Sheets.Floating>, q));
 			} else {
 				q.modal = true;
-				q.style.background = helder.gfx.Color.TRANSPARENT;
+				q.style = q.style.with({background: helder.gfx.Color.TRANSPARENT});
 				q.onDismiss = () -> s.dismiss(0);
 				Graph.runWithOwner(home, () -> dispose = Render.render(<Sheets.Panel s={s}>{props.children}</Sheets.Panel>, q));
 				s.show(u.height);

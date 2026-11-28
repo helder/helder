@@ -23,8 +23,8 @@ class Toggle extends Press {
 	final onChange:Null<Bool->Void>;
 	final own:Null<Signal<Bool>>;
 
-	public function new(slot:String, role:Role, ?checked:Read<Bool>, ?mixed:Read<Bool>, ?onChange:Bool->Void, ?disabled:Read<Bool>) {
-		super(slot, disabled, null);
+	public function new(control:String, role:Role, ?checked:Read<Bool>, ?mixed:Read<Bool>, ?onChange:Bool->Void, ?disabled:Read<Bool>) {
+		super(control, disabled, null);
 		this.role = role;
 		own = checked == null ? signal(false) : null;
 		this.checked = checked ?? (own : Read<Bool>);
@@ -32,11 +32,11 @@ class Toggle extends Press {
 		this.onChange = onChange;
 	}
 
-	// a toggle of props' (a replaced rendering's: Look's render) for a control
-	// named slot: a switch ("switch") or a checkbox (any other)
+	// a toggle of props' (a replaced rendering's: Look's render) for a
+	// control: a switch ("switch") or a checkbox (any other)
 	public static function of(props:{label:String, ?checked:Read<Bool>, ?indeterminate:Read<Bool>, ?onChange:Bool->Void, ?disabled:Read<Bool>},
-			slot:String):Toggle {
-		var t = new Toggle(slot, slot == "switch" ? Switch : CheckBox, props.checked, props.indeterminate, props.onChange, props.disabled);
+			control:String):Toggle {
+		var t = new Toggle(control, control == "switch" ? Switch : CheckBox, props.checked, props.indeterminate, props.onChange, props.disabled);
 		t.label = props.label;
 		return t;
 	}

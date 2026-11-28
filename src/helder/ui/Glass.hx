@@ -31,13 +31,17 @@ class Glass extends Node {
 
 	public function new() {
 		super("glass");
-		style.borderRadius = CAPSULE;
+		style = Style.of({borderRadius: CAPSULE});
 	}
 
-	public var clear(get, never):Bool;
+	// the system's clear glass, not regular (markup's variant="clear")
+	public var clear(default, set) = false;
 
-	inline function get_clear():Bool
-		return variant == "clear";
+	function set_clear(v:Bool):Bool {
+		clear = v;
+		paintChanged();
+		return v;
+	}
 
 	function set_tint(v:Null<Color>):Null<Color> {
 		tint = v;
@@ -52,7 +56,7 @@ class Glass extends Node {
 	}
 
 	// (its group's, if it is in one: drawn and placed by it)
-	function group():Null<GlassGroup> {
+	function merged():Null<GlassGroup> {
 		var p = parent;
 		while (p != null) {
 			if (p.glassGroup != null) return cast p.glassGroup;
@@ -62,8 +66,10 @@ class Glass extends Node {
 	}
 
 	// its corners' radius as drawn, in points (one for all: the system's glass has one)
-	public function radius():Float
-		return Math.min(style.borderRadius, Math.min(width, height) / 2);
+	public function radius():Float {
+		var c = NodePaint.corners(used, width, height, 0);
+		return Math.min(c == null ? 0 : c.topLeft, Math.min(width, height) / 2);
+	}
 
 	@:noCompletion override public function hasContent():Bool
 		return true;
@@ -74,7 +80,7 @@ class Glass extends Node {
 	}
 
 	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
-		if (systemLayer != null || native != null && native.grouped || group() != null) return;
+		if (systemLayer != null || native != null && native.grouped || merged() != null) return;
 		GlassDraw.draw(canvas, this);
 	}
 
@@ -96,7 +102,7 @@ class Glass extends Node {
 	// (after each layout: the system's glass made, its look and place kept in step)
 	override function syncNative() {
 		if (ui == null) return;
-		var g = group(), on = visible() && width > 0 && height > 0;
+		var g = merged(), on = visible() && width > 0 && height > 0;
 		if (!@:privateAccess ui.layered || g != null && g.native == null) {
 			if (native != null) {
 				drop();

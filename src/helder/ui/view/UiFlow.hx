@@ -20,9 +20,9 @@ class UiFlow {
 	// it in), placed by placement ("below", "above", "right", "left",
 	// "center"; gap pixels away), modal or not; onDismiss when a click
 	// outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
-	// the focus into it); a modal one's scrim its colour; the popup's
-	// slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color, ?slot:String,
+	// the focus into it); a modal one's scrim its colour; its theme the one where it is written. Its content
+	// is rendered once, kept while closed.
+	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color,
 			?onDismiss:Void->Void, ?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any}):Any
 		return new PopoverMount(props);
 
@@ -156,7 +156,7 @@ private class VirtualCells<T> implements Mountable<Node> {
 // the marker's Ui while open is true
 @:renderer(helder.ui.view.NodeRenderer)
 class PopoverMount implements Mountable<Node> {
-	final props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color, ?slot:String, ?onDismiss:Void->Void,
+	final props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?scrim:Color, ?onDismiss:Void->Void,
 		?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any};
 
 	public function new(props)
@@ -164,15 +164,14 @@ class PopoverMount implements Mountable<Node> {
 
 	public function mount(parent:Node, before:Null<Node>):Array<Node> {
 		var marker = new Node("popover");
-		marker.style.display = None;
+		marker.style = marker.style.with({display: None});
 		var i = before == null ? parent.children.length : parent.indexOf(before);
 		parent.insert(marker, i < 0 ? parent.children.length : i);
 		var p = new helder.ui.Popup(props.tag);
 		if (props.placement != null) p.placement = props.placement;
 		if (props.gap != null) p.gap = props.gap;
 		p.modal = props.modal == true;
-		if (props.scrim != null) p.style.background = props.scrim;
-		if (props.slot != null) p.slot = props.slot;
+		if (props.scrim != null) p.style = p.style.with({background: props.scrim});
 		p.onDismiss = props.onDismiss;
 		p.dismissOnOutside = props.dismissOnOutside != false;
 		p.anchor = props.anchor != null ? props.anchor : parent;
@@ -187,8 +186,8 @@ class PopoverMount implements Mountable<Node> {
 					p.atX = a.x;
 					p.atY = a.y;
 				}
-				// (the overlay is outside the tree it is for: the sheet where it is written, a <Themed>'s look, as nav's sheets have it)
-				p.theme = marker.sheet();
+				// (the overlay is outside the tree it is for: the theme where it is written, a <Themed>'s look's, as nav's sheets have it)
+				p.theme = marker.scope();
 				marker.ui.open(p);
 				if (props.onOpen != null) props.onOpen(p);
 			} else if (!on && p.ui != null) p.ui.close(p);
@@ -207,7 +206,7 @@ class PopoverMount implements Mountable<Node> {
 // a hidden node marking where content goes (before it)
 function anchorAt(parent:Node, before:Null<Node>, tag:String):Node {
 	var anchor = new Node(tag);
-	anchor.style.display = None;
+	anchor.style = anchor.style.with({display: None});
 	var i = before == null ? parent.children.length : parent.indexOf(before);
 	parent.insert(anchor, i < 0 ? parent.children.length : i);
 	return anchor;
@@ -230,11 +229,7 @@ class VirtualRows<T, K> implements Mountable<Node> {
 		var v = new VirtualScroll(p.tag, p.estimate != null ? p.estimate : p.itemHeight != null ? p.itemHeight : 44);
 		if (p.itemHeight != null) v.fixedHeight = p.itemHeight;
 		// (growing from 0: its rows' extent no part of its parent's size)
-		if (p.height != null) v.style.height = p.height else {
-			v.style.height = 0;
-			v.style.flexGrow = 1;
-			v.style.minHeight = 0;
-		}
+		v.style = p.height != null ? v.style.with({height: p.height}) : v.style.with({height: 0, flexGrow: 1, minHeight: 0});
 		if (p.overscan != null) v.overscan = p.overscan;
 		if (p.keep != null) v.keep = p.keep;
 		if (p.label != null) v.semantics.label = p.label;

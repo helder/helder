@@ -45,7 +45,7 @@ typedef SurfaceProps = {
 	?title:helder.view.graph.Read<String>,
 	?width:helder.view.graph.Read<Int>,
 	?height:helder.view.graph.Read<Int>,
-	?theme:helder.view.graph.Read<StyleSheet>,
+	?theme:helder.view.graph.Read<Theme>,
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Color>,

@@ -41,8 +41,9 @@ import helder.ui.access.Role;
 // autoFocus, tabIndex, selectable, dragData, tag, hidden (not rendered),
 // what the node is to assistive technology (role, href, ARIA's
 // attributes: aria-label, aria-checked, aria-valuenow... Semantics), and
-// what a theme styles it as (Rule: slot, variant, size, class, data-* and
-// aria-* attributes, data-state="checked"). A text node holds text: its
+// its states as data-* sets them (data-state="checked", data-disabled),
+// a group's (group: its states its descendants' style's group variants'),
+// its theme's tokens (theme: a Theme). A text node holds text: its
 // text children are its text, its elements its spans.
 //
 // Pay for what is used: markup's literal tags and attribute names are
@@ -116,7 +117,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "span": new TextNode("", "span");
 			case "scroll":
 				var n = new Node("scroll");
-				n.style.overflow = Scroll;
+				n.style = Style.of({overflow: Scroll});
 				n;
 			case "image": new ImageNode();
 			case "icon": new ImageNode(null, "icon");
@@ -136,7 +137,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// an element of HTML's name made as it is natively (Vocabulary.TAGS): its role
 	// (an explicit role wins, set after), a button focusable and pressed by
 	// Enter and Space (Ui's), a heading's level; headings, strong, em and
-	// code a slot of their own, which the controls' look styles (Base)
+	// code styled as the look's parts of their names (Look.part: Base's)
 	static function made(n:Node):Node {
 		var role:Null<helder.ui.access.Role> = switch n.tag {
 			case "button": Role.Button;
@@ -162,8 +163,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "legend": n.legend = true;
 			case "h1" | "h2" | "h3" | "h4" | "h5" | "h6":
 				semantics(n).level = Std.parseInt(n.tag.substr(1));
-				n.slot = n.tag;
-			case "strong" | "em" | "code": n.slot = n.tag;
+				n.style = helder.ui.controls.Look.current().part(n.tag);
+			case "strong" | "em" | "code": n.style = helder.ui.controls.Look.current().part(n.tag);
 			case _:
 		}
 		return n;
@@ -198,7 +199,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// (a hidden node)
 	public static function createMarker(name:String):Node {
 		var n = new Node(name);
-		n.style.display = None;
+		n.style = Style.of({display: None});
 		return n;
 	}
 
@@ -251,8 +252,9 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static inline function isNode(v:Dynamic):Bool
 		return Std.isOfType(v, Node);
 
+	// (a Style, or its props as an object)
 	public static function setStyle(n:Node, v:Dynamic)
-		if (v != null) n.style.set(v);
+		if (v != null) n.style = Std.isOfType(v, Style) ? v : Style.ofProps(v);
 
 	// Its own attributes (AttrMacro: an @:attribute function, named as the
 	// attribute, or as @:attribute("aria-label") gives it: helder.view.Vocabulary's
@@ -303,7 +305,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		n.dragData = v;
 
 	@:attribute static function style(n:Node, name:String, v:Dynamic)
-		if (v != null) n.style.set(v);
+		setStyle(n, v);
 
 	@:attribute static function text(n:Node, name:String, v:Dynamic)
 		if (Std.isOfType(n, TextNode)) (cast n : TextNode).text = v == null ? "" : Std.string(v) else noAttribute(n, name);
@@ -407,33 +409,27 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function id(n:Node, name:String, v:Dynamic)
 		semantics(n).identifier = v == null || v == false ? null : Std.string(v);
 
-	// (a label's for: a page's, none here; class a page's CSS's, a theme's
-	// data here as data-* is: Rules' "class=x")
+	// (a label's for: a page's, none here; class a page's CSS's, data here as data-* is)
 	@:attribute("for") static function htmlFor(n:Node, name:String, v:Dynamic) {}
 
 	@:attribute("class") static function className(n:Node, name:String, v:Dynamic)
 		n.setAttr("class", v == null || v == false || v == "" ? null : Std.string(v));
 
-	// (what a theme styles it as: Rule)
-	@:attribute static function slot(n:Node, name:String, v:Dynamic)
-		n.slot = v == null ? null : Std.string(v);
-
-	@:attribute static function variant(n:Node, name:String, v:Dynamic)
-		n.variant = v == null ? null : Std.string(v);
-
-	@:attribute static function size(n:Node, name:String, v:Dynamic)
-		n.size = v == null ? null : Std.string(v);
-
 	// (what draws its widgets: Host's names, auto, native or drawn)
 	@:attribute static function host(n:Node, name:String, v:Dynamic)
 		n.host = Host.fromString(v == null ? null : Std.string(v));
 
-	// (group="tabs" and peer mark a node whose states others' rules ask for)
+	// (its states its descendants' group variants': Node.group)
 	@:attribute static function group(n:Node, name:String, v:Dynamic)
-		setData(n, name, v);
+		n.group = v != null && v != false && v != "false";
 
+	// (a page's peer marker: data here)
 	@:attribute static function peer(n:Node, name:String, v:Dynamic)
 		setData(n, name, v);
+
+	// its subtree's tokens (Node.theme: a Theme, null its parent's)
+	@:attribute static function theme(n:Node, name:String, v:Dynamic)
+		n.theme = v;
 
 	public static function setData(n:Node, name:String, v:Dynamic)
 		n.setAttr(name, v == null || v == false ? null : v == true ? "" : Std.string(v));
@@ -490,7 +486,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// assistive technology's tree too); false: shown, as a flex box
 	@:attribute static function hidden(n:Node, name:String, v:Dynamic) {
 		var on = v == true || v == "true" || v == "";
-		if (on) n.style.display = None else if (n.used.none) n.style.display = Flex;
+		if (on) n.style = n.style.with({display: None}) else if (n.used.none) n.style = n.style.with({display: Flex});
 	}
 
 	// (a view's: the glass inside it drawn together, nearer than this many
@@ -537,10 +533,16 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function backGesture(n:Node, name:String, v:Dynamic)
 		webView(n, name).backGesture = !(v == false || v == "false");
 
+	// (glass's, <glass>: "clear", the system's clear glass, else regular)
+	@:attribute static function variant(n:Node, name:String, v:Dynamic) {
+		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
+		(cast n : Glass).clear = v == "clear";
+	}
+
 	// (glass's, <glass>: the colour it leans to, whether it answers a press)
 	@:attribute static function tint(n:Node, name:String, v:Dynamic) {
 		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
-		(cast n : Glass).tint = v == null ? null : @:privateAccess StyleAttrs.colorOf(v);
+		(cast n : Glass).tint = v == null ? null : Std.isOfType(v, Int) ? (v : Int) : helder.gfx.Color.parse(Std.string(v));
 	}
 
 	@:attribute static function interactive(n:Node, name:String, v:Dynamic) {

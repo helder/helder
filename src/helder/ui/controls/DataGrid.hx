@@ -27,11 +27,11 @@ import helder.ui.access.Role;
 // edits the cursor's cell (onEdit, or the grid's own editor: edit), a
 // character typed starts it with that character, Delete or Backspace clears
 // the selection (onClear), Escape collapses it. The editor is a TextField
-// inside the cell's ring (slot "grid-editor"; a press in it its own): Enter or Down keeps the text
+// inside the cell's ring (its look's part "grid-editor"; a press in it its own): Enter or Down keeps the text
 // (onCommit) and moves down, Up up, Tab right, Escape drops it.
 //
 // It has no look of its own beyond its tokens (GridTheme: "grid-*" colours
-// of the sheet) and its font (the style's, its figures tabular; the titles'
+// of the theme) and its font (the style's, its figures tabular; the titles'
 // family may be another). To
 // assistive technology a table, its name the label given, the cursor's
 // cell its value.
@@ -45,6 +45,9 @@ class DataGrid extends Node {
 	public static inline var LINK = 64;
 
 	public final gridTheme = new GridTheme();
+	// (the look it was made under: its editor's part; no Themed above: the editor takes its theme)
+	final look:Look<Dynamic>;
+	final outside:Bool;
 
 	public var columns(default, set):Array<GridColumn> = [];
 	public var rowCount(default, set) = 0;
@@ -147,11 +150,9 @@ class DataGrid extends Node {
 	public function new(?tag:String) {
 		super(tag ?? "data-grid");
 		focusable = true;
-		style.flexGrow = 1;
-		style.flexShrink = 1;
-		style.minHeight = 0;
-		style.minWidth = 0;
-		style.overflow = Hidden;
+		look = Look.current();
+		outside = Look.outside();
+		style = Style.of({flexGrow: 1, flexShrink: 1, minHeight: 0, minWidth: 0, overflow: Hidden});
 		semantics = {role: Role.Table, label: "Data"};
 		onKeyDown = key;
 		onTextInput = e -> {
@@ -387,10 +388,12 @@ class DataGrid extends Node {
 	// (the editor inside its cell's ring, its text where the cell's was: as
 	// much less padding as it is inset)
 	function place(f:Node) {
-		f.style.left = gutterW + lefts[editCol] - scrollLeft + INSET;
-		f.style.top = headerHeight + editRow * rowHeight - scrollTop + INSET;
-		f.style.width = Math.min(columns[editCol].width, bodyW()) - INSET * 2;
-		f.style.height = rowHeight - 1 - INSET * 2;
+		f.style = f.style.with({
+			left: gutterW + lefts[editCol] - scrollLeft + INSET,
+			top: headerHeight + editRow * rowHeight - scrollTop + INSET,
+			width: Math.min(columns[editCol].width, bodyW()) - INSET * 2,
+			height: rowHeight - 1 - INSET * 2
+		});
 	}
 
 	// a cell brought into view (col -1: only its row)
@@ -585,7 +588,7 @@ class DataGrid extends Node {
 					hoverArrow = arrowCol;
 					repaint();
 				}
-				style.cursor = edge >= 0 ? ResizeEW : col >= 0 || arrow ? Pointer : Default;
+				style = style.with({cursor: edge >= 0 ? ResizeEW : col >= 0 || arrow ? Pointer : Default});
 		}
 	}
 
@@ -687,12 +690,9 @@ class DataGrid extends Node {
 		editCol = col;
 		var t = text(row, col);
 		var f = new CellEditor(this, typed ?? (t ?? ""));
-		f.slot = "grid-editor";
-		f.style.position = Absolute;
+		f.style = f.style.with(look.part("grid-editor")).with({position: Absolute, padding: [0, PAD - INSET], textAlign: columns[col].align, cursor: Text});
+		if (outside) f.theme = look.theme;
 		place(f);
-		f.style.padding = [0, PAD - INSET];
-		f.style.textAlign = columns[col].align;
-		(f.props().cursor ?? Auto) = Text;
 		f.onBlur = e -> commitEdit(false);
 		editor = f;
 		append(f);
@@ -764,7 +764,7 @@ class DataGrid extends Node {
 	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null) return;
 		var engine = ui.text;
-		gridTheme.resolve(sheet(), ui.dark);
+		gridTheme.resolve(scope());
 		fonts(engine);
 		var c = gridTheme.colors, rh = rowHeight, hh = headerHeight;
 		var digits = Std.string(rowCount < 1 ? 1 : rowCount).length;

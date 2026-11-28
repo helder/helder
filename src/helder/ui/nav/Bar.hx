@@ -38,9 +38,9 @@ typedef NavScreenProps = {
 // the content; bars={false} hides them (a viewer's tap). The content
 // scrolls in a scroller of the screen's, insets left for the bars, or in
 // its own (scrolls={false}: one that calls scroller, a VirtualGrid's ref).
-// Its parts are slots (nav-screen, nav-bar, nav-bar-fill, nav-title,
-// nav-large, nav-large-title, nav-subtitle, nav-back, nav-back-title,
-// nav-item, nav-bottom), styled by the look (Look.base's parts).
+// Its parts are the look's (Look.part: nav-screen, nav-bar, nav-bar-fill,
+// nav-title, nav-large, nav-large-title, nav-subtitle, nav-back,
+// nav-back-title, nav-item, nav-bottom; Look.base's).
 class Bar implements Markup {
 	public static inline var HEIGHT = 44.0;
 
@@ -48,19 +48,20 @@ class Bar implements Markup {
 	public static final here:Context<Null<NavState>> = context((null : Null<NavState>));
 
 	public static function NavScreen(props:NavScreenProps):UiView {
-		var at = use(Screens.here), own = use(Look.context) == null;
+		var at = use(Screens.here), look = Look.current(), own = Look.outside();
 		var st = new NavState(at, props);
 		setContext(here, st);
 		var bars:Read<Bool> = props.bars == null ? () -> true : Read.of(props.bars);
 		var below = () -> at == null ? null : at.below()[0];
 		// (the large title and the header: the scroller's first content, or over its own scroller's top inset)
-		var top = props.large != true && props.header == null ? null : <view slot="nav-large" opacity={1 - st.collapsed()} flexShrink={0}
+		var top = props.large != true && props.header == null ? null : <view style={look.part("nav-large")} opacity={1 - st.collapsed()} flexShrink={0}
 			onResize={e -> st.sized(1, e.target.height)}>
-			{props.large == true ? <text slot="nav-large-title" role="heading" aria-level={1}>{props.title()}</text> : null}
-			{props.large == true && props.subtitle != null ? <text slot="nav-subtitle">{props.subtitle()}</text> : null}
+			{props.large == true ? <text style={look.part("nav-large-title")} role="heading" aria-level={1}>{props.title()}</text> : null}
+			{props.large == true && props.subtitle != null ? <text style={look.part("nav-subtitle")}>{props.subtitle()}</text> : null}
 			{props.header}
 		</view>;
-		return <view tag={props.tag ?? "nav-screen"} slot="nav-screen" flexGrow={1} position="relative" overflow="hidden" ref={(n:Node) -> if (own) n.theme = Look.base.sheet()}>
+		return <view tag={props.tag ?? "nav-screen"} style={look.part("nav-screen")} flexGrow={1} position="relative" overflow="hidden"
+			ref={(n:Node) -> if (own) n.theme = look.theme}>
 			{props.scrolls == false ? <>
 				{props.children}
 				{top == null ? null : <view position="absolute" left={0} right={0} top={st.barHeight()} transform={"translateY(" + (-st.offset()) + "px)"}>{top}</view>}
@@ -68,35 +69,35 @@ class Bar implements Markup {
 				{top}
 				{props.children}
 			</scroll>}
-			<view slot="nav-bar" position="absolute" left={0} top={0} right={0} paddingTop="env(safe-area-inset-top)" opacity={bars() ? 1 : 0}
+			<view style={look.part("nav-bar")} position="absolute" left={0} top={0} right={0} padding="env(safe-area-inset-top) 0 0 0" opacity={bars() ? 1 : 0}
 				pointerEvents={bars() ? "auto" : "none"} transition="opacity 200ms ease-out" onResize={e -> st.sized(0, e.target.height)}>
-				<view slot="nav-bar-fill" position="absolute" left={0} top={0} right={0} bottom={0} opacity={st.filled()} pointerEvents="none"/>
+				<view style={look.part("nav-bar-fill")} position="absolute" left={0} top={0} right={0} bottom={0} opacity={st.filled()} pointerEvents="none"/>
 				<view flexDirection="row" alignItems="center" height={HEIGHT} position="relative" zIndex={1} padding="0 8">
 					<Show when={below() != null}>
-						<button slot="nav-back" tag="nav-back" aria-label={"Back to " + (below()?.title() ?? "")}
+						<button style={look.part("nav-back")} tag="nav-back" aria-label={"Back to " + (below()?.title() ?? "")}
 							onPress={() -> at.back()} onLongPress={g -> if (g.state == Began) st.backMenu()}>
 							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
 								width={24} height={24}><path d="m15 18-6-6 6-6"/></svg>
-							<text slot="nav-back-title">{below()?.title() ?? ""}</text>
+							<text style={look.part("nav-back-title")}>{below()?.title() ?? ""}</text>
 						</button>
 					</Show>
 					{props.leading}
 					<view flexGrow={1}/>
 					{props.trailing}
-					<text slot="nav-title" tag="nav-title" position="absolute" left={96} right={96} pointerEvents="none" opacity={st.collapsed()}>{props.title()}</text>
+					<text style={look.part("nav-title")} tag="nav-title" position="absolute" left={96} right={96} pointerEvents="none" opacity={st.collapsed()}>{props.title()}</text>
 				</view>
 			</view>
-			{props.bottom != null ? <view slot="nav-bottom" position="absolute" left={0} right={0} bottom={0} paddingBottom="env(safe-area-inset-bottom)"
+			{props.bottom != null ? <view style={look.part("nav-bottom")} position="absolute" left={0} right={0} bottom={0} padding="0 0 env(safe-area-inset-bottom) 0"
 				opacity={bars() ? 1 : 0} pointerEvents={bars() ? "auto" : "none"} transition="opacity 200ms ease-out"
 				onResize={e -> st.sized(2, e.target.height)}>{props.bottom}</view> : null}
 		</view>;
 	}
 
 	// a bar's item: an icon or a label, 44 points square at least (a touch's)
-	public static function NavButton(props:{label:String, ?icon:helder.ui.Svg, ?tag:String, ?disabled:Read<Bool>, ?variant:String, onPress:Void->Void}):UiView {
+	public static function NavButton(props:{label:String, ?icon:helder.ui.Svg, ?tag:String, ?disabled:Read<Bool>, onPress:Void->Void}):UiView {
 		var off:Read<Bool> = props.disabled == null ? () -> false : Read.of(props.disabled);
-		return <button slot="nav-item" tag={props.tag} aria-label={props.label} focusable={!off()} data-disabled={off()}
-			variant={props.variant} onPress={() -> if (!off()) props.onPress()}>
+		return <button style={Look.current().part("nav-item")} tag={props.tag} aria-label={props.label} focusable={!off()} data-disabled={off()}
+			onPress={() -> if (!off()) props.onPress()}>
 			{props.icon != null ? <image src={props.icon} width={22} height={22}/> : <text>{props.label}</text>}
 		</button>;
 	}
@@ -149,8 +150,7 @@ class NavState {
 				return;
 			} else {
 				if (n.used.paddingPx(0) == top && n.used.paddingPx(2) == bottom) return;
-				n.used.paddingPx(0) = top;
-				n.used.paddingPx(2) = bottom;
+				n.style = n.style.with({padding: [top, n.used.paddingPx(1), bottom, n.used.paddingPx(3)]});
 			}
 			n.markDirty();
 		};
@@ -187,6 +187,6 @@ class NavState {
 		if (b == null || b.ui == null) return;
 		var below = h.below();
 		TouchMenu.open(b.ui, [for (k => s in below) {label: s.title.peek() == "" ? s.entry.path : s.title.peek(), run: () -> h.back(k)}], b.windowBounds(), null,
-			false, b.sheet());
+			false, b.scope());
 	}
 }

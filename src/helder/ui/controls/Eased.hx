@@ -6,10 +6,9 @@ import helder.ui.Node;
 // A control's states as amounts that ease between 0 and 1 (hover, pressed,
 // checked, focus: the keyboard's ring, open), each over its look's time
 // for it, on its window's clock; under reduced motion they jump. What a
-// recipe's states blend (colours, opacity, transforms, shadows, rings)
-// eases the same way, through the parts' transitions (Look); these are
-// for what draws itself: a part's shader (helder.ui.draw.PartShader), a
-// replaced rendering.
+// recipe's states blend (colours, opacity, transforms) eases the same way,
+// through the parts' transitions (Look); these are for what draws itself:
+// a replaced rendering.
 class Eased {
 	public static inline var HOVER = 0;
 	public static inline var PRESSED = 1;

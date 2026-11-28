@@ -398,7 +398,7 @@ class Interpreter implements Target<Step> {
 				var c:Code = p;
 				var n = span ? NodeRenderer.createElement("span") : NodeRenderer.createText("");
 				NodeRenderer.setText(n, "{" + c.code + "}");
-				n.style.color = Color.parse(ERROR);
+				n.style = n.style.with({color: Color.parse(ERROR)});
 				put(parent, n, before, out);
 				sources.set(n, c.at);
 				errors.push({at: c.at, message: '{${c.code}}: code, not run in a design'});
@@ -419,7 +419,7 @@ class Interpreter implements Target<Step> {
 		outline(n);
 		NodeRenderer.setAttribute(n, "padding", 4);
 		var t = new TextNode("<" + name + ">");
-		t.style.color = Color.parse(ERROR);
+		t.style = t.style.with({color: Color.parse(ERROR)});
 		n.insert(t, 0);
 		sources.set(n, at);
 		errors.push({at: at, message: '<$name> is code: not drawn in a design yet'});
@@ -432,7 +432,7 @@ class Interpreter implements Target<Step> {
 		outline(n);
 		NodeRenderer.setAttribute(n, "padding", 4);
 		var t = new TextNode(message);
-		t.style.color = Color.parse(ERROR);
+		t.style = t.style.with({color: Color.parse(ERROR)});
 		n.insert(t, 0);
 		errors.push({at: at, message: message});
 		return n;
@@ -445,8 +445,7 @@ class Interpreter implements Target<Step> {
 	}
 
 	static function outline(n:Node) {
-		n.style.outlineWidth = 1;
-		n.style.outlineColor = Color.parse(ERROR);
+		n.style = n.style.with({outline: {width: 1, color: Color.parse(ERROR)}});
 	}
 }
 

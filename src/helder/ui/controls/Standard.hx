@@ -5,7 +5,6 @@ import helder.ui.Node;
 import helder.ui.Svg;
 import helder.ui.view.UiFlow.Popover;
 import helder.view.graph.Read;
-import helder.ui.Rules;
 import helder.ui.controls.Variant;
 import helder.ui.controls.Props;
 import helder.ui.controls.Icons;
@@ -20,7 +19,7 @@ import helder.view.graph.Graph;
 // Tooltip. A look that replaces one's rendering
 // (render: {switch: Lamp}) is drawn instead, there and inside other
 // widgets. A look's own variants: look.Button's (Look). A control under
-// no look takes Look.base's sheet as its own.
+// no look takes Look.base's theme as its own.
 //
 //   <Button variant="primary" onPress={save}>Save</Button>
 //   <Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
@@ -31,7 +30,7 @@ import helder.view.graph.Graph;
 // (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
 class Standard implements Markup {
 	public static function Button(props:ButtonProps<BaseVariants>):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current();
 		var render:Null<ButtonProps<Dynamic>->UiView> = look.renderOf("button");
 		if (render != null) return render(cast props);
 		var p = Press.of(props, "button");
@@ -40,13 +39,8 @@ class Standard implements Markup {
 		var text = Std.isOfType(props.children, String), alone = props.children == null && props.icon != null;
 		return <button tag={props.tag} ref={(n:Node) -> {
 			p.root(n);
-			if (own) n.theme = look.sheet();
 			// (an icon alone: square, no padding)
-			if (alone) {
-				n.style.aspectRatio = 1;
-				n.style.padding = 0;
-				Rules.keep(n, ["padding"]);
-			}
+			if (alone) n.style = n.style.with({aspectRatio: 1, padding: 0});
 		}}>
 			<Show when={props.icon != null}><image ref={p.part("icon")} src={props.icon}/></Show>
 			<Show when={text}><text ref={p.part("label")}>{props.children}</text></Show>
@@ -58,17 +52,14 @@ class Standard implements Markup {
 		return <>{new PathBarMount(props)}</>;
 
 	public static function Checkbox(props:CheckboxProps<BaseVariants>):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current();
 		var render:Null<CheckboxProps<Dynamic>->UiView> = look.renderOf("checkbox");
 		if (render != null) return render(cast props);
 		var t = new Toggle("checkbox", helder.ui.access.Role.CheckBox, props.checked, props.indeterminate, props.onChange, props.disabled);
 		t.label = props.label;
 		t.variant = props.variant ?? look.defaultOf("checkbox", "variant");
 		t.size = props.size ?? look.defaultOf("checkbox", "size");
-		return <view tag={props.tag} ref={(n:Node) -> {
-			t.root(n);
-			if (own) n.theme = look.sheet();
-		}}>
+		return <view tag={props.tag} ref={(n:Node) -> t.root(n)}>
 			<view ref={t.part("box")}>
 				<image ref={t.part("mark")} src={() -> mark(t.mixed())}/>
 			</view>
@@ -77,17 +68,14 @@ class Standard implements Markup {
 	}
 
 	public static function Switch(props:SwitchProps<BaseVariants>):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current();
 		var render:Null<SwitchProps<Dynamic>->UiView> = look.renderOf("switch");
 		if (render != null) return render(cast props);
 		var t = new Toggle("switch", helder.ui.access.Role.Switch, props.checked, null, props.onChange, props.disabled);
 		t.label = props.label;
 		t.variant = props.variant ?? look.defaultOf("switch", "variant");
 		t.size = props.size ?? look.defaultOf("switch", "size");
-		return <view tag={props.tag} ref={(n:Node) -> {
-			t.root(n);
-			if (own) n.theme = look.sheet();
-		}}>
+		return <view tag={props.tag} ref={(n:Node) -> t.root(n)}>
 			<view ref={t.part("track")}><view ref={t.part("knob")}/></view>
 			<text aria-hidden ref={t.part("label")}>{props.label}</text>
 		</view>;
@@ -96,11 +84,11 @@ class Standard implements Markup {
 	// A number between min and max, shown as a field (its label inside on
 	// the left, its value on the right, the part up to it filled): a press
 	// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
-	// Home and End go to the ends. step 0: any value. Parts: "slider",
-	// "slider-fill", "slider-label", "slider-value".
+	// Home and End go to the ends. step 0: any value. Its look's parts:
+	// "slider", "slider-fill", "slider-label", "slider-value".
 	public static function Slider(props:{label:String, value:Read<Float>, min:Float, max:Float, ?step:Float, ?digits:Int, ?unit:String,
 		onChange:Float->Void, ?tag:String}):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current(), own = Look.outside();
 		var step = props.step ?? 0.0, range = props.max - props.min;
 		var digits = props.digits ?? (step >= 1 || step == 0 && range >= 20 ? 0 : step >= 0.1 ? 1 : 2);
 		var root:Null<Node> = null, dragging = false;
@@ -121,10 +109,10 @@ class Standard implements Markup {
 		}
 		function by(n:Float)
 			set(props.value() + n * (step > 0 ? step : range / 100));
-		return <view tag={props.tag} slot="slider" role="slider" aria-label={props.label} focusable aria-valuenow={props.value()} aria-valuemin={props.min}
-			aria-valuemax={props.max} ref={(n:Node) -> {
+		return <view tag={props.tag} style={look.part("slider")} role="slider" aria-label={props.label} focusable aria-valuenow={props.value()}
+			aria-valuemin={props.min} aria-valuemax={props.max} ref={(n:Node) -> {
 				root = n;
-				if (own) n.theme = look.sheet();
+				if (own) n.theme = look.theme;
 			}} onPointerDown={e -> {
 				root?.capture();
 				dragging = true;
@@ -136,19 +124,20 @@ class Standard implements Markup {
 					set(props.min) else if (e.key == Key.END) set(props.max) else return;
 				e.preventDefault();
 			}}>
-			<view slot="slider-fill" position="absolute" left={0} top={0} bottom={0} width={(fraction() * 100) + "%"} pointerEvents="none"/>
-			<text slot="slider-label" flexGrow={1} pointerEvents="none">{props.label}</text>
-			<text slot="slider-value" pointerEvents="none" fontVariantNumeric="tabular-nums">{format(props.value(), digits) + (props.unit ?? "")}</text>
+			<view style={look.part("slider-fill")} position="absolute" left={0} top={0} bottom={0} width={(fraction() * 100) + "%"} pointerEvents="none"/>
+			<text style={look.part("slider-label")} flexGrow={1} pointerEvents="none">{props.label}</text>
+			<text style={look.part("slider-value")} pointerEvents="none" fontVariantNumeric="tabular-nums">{format(props.value(), digits) + (props.unit ?? "")}</text>
 		</view>;
 	}
 
 	// One of a few options side by side, the chosen one selected: a press
 	// chooses, the arrow keys move between them (a radio group). compact:
-	// an option with an icon shows the icon alone. Parts: "segmented",
-	// "segmented-item" (selected: the chosen; an icon follows its colour).
+	// an option with an icon shows the icon alone. Its look's parts:
+	// "segmented", "segmented-item" (selected: the chosen; an icon follows its
+	// colour).
 	public static function Segmented(props:{label:String, value:Read<String>, options:Array<{value:String, label:String, ?icon:Svg, ?hint:String}>,
 		onChange:String->Void, ?tag:String, ?compact:Bool}):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current(), own = Look.outside();
 		function move(by:Int) {
 			var i = 0;
 			for (k in 0...props.options.length)
@@ -156,14 +145,16 @@ class Standard implements Markup {
 			var n = props.options.length;
 			props.onChange(props.options[(i + by + n) % n].value);
 		}
-		return <view tag={props.tag} slot="segmented" role="radiogroup" aria-label={props.label} ref={(n:Node) -> if (own) n.theme = look.sheet()} onKeyDown={e -> {
+		return <view tag={props.tag} style={look.part("segmented")} role="radiogroup" aria-label={props.label} ref={(n:Node) -> if (own) n.theme = look.theme}
+			onKeyDown={e -> {
 			if (e.key == Key.RIGHT || e.key == Key.DOWN) move(1) else if (e.key == Key.LEFT || e.key == Key.UP) move(-1) else return;
 			e.preventDefault();
 		}}>
 			<For each={props.options}>{(o:Read<{value:String, label:String, ?icon:Svg, ?hint:String}>) -> {
 				var option = o();
-				<button tag={props.tag == null ? null : props.tag + "-" + option.value} slot="segmented-item" role="radio" aria-label={option.hint ?? option.label}
-					aria-checked={props.value() == option.value} data-selected={props.value() == option.value ? "" : null}
+				<button tag={props.tag == null ? null : props.tag + "-" + option.value} style={look.part("segmented-item")} role="radio"
+					aria-label={option.hint ?? option.label} aria-checked={props.value() == option.value}
+					data-state={props.value() == option.value ? "selected" : null}
 					onPress={() -> props.onChange(option.value)}>
 					<Show when={option.icon != null}><image src={option.icon} width={14} height={14} flexShrink={0}/></Show>
 					<Show when={!(props.compact ?? false) || option.icon == null}><text>{option.label}</text></Show>
@@ -174,10 +165,10 @@ class Standard implements Markup {
 
 	// What a control does, said under it once the pointer rests on it (half
 	// a second), with its shortcut beside it: for a button that shows only an
-	// icon. A press or the pointer leaving hides it. Parts: "tooltip",
+	// icon. A press or the pointer leaving hides it. Its look's parts: "tooltip",
 	// "tooltip-keys".
 	public static function Tooltip(props:{label:String, ?keys:String, ?placement:helder.ui.Placement, ?children:Any}):UiView {
-		var look = Look.current(), own = Graph.use(Look.context) == null;
+		var look = Look.current(), own = Look.outside();
 		// (on the animation clock: the same in a headless run as on a screen)
 		var open = Graph.signal(false), hovered = -1.0;
 		function hide() {
@@ -196,10 +187,10 @@ class Standard implements Markup {
 		}} onPointerLeave={_ -> hide()} onPointerDown={_ -> hide()}>
 			{props.children}
 			<Popover open={open} placement={props.placement ?? Below} gap={6} dismissOnOutside={false}>
-				<view slot="tooltip" role="tooltip" flexDirection="row" alignItems="center" columnGap={8} pointerEvents="none"
-					ref={(n:Node) -> if (own) n.theme = look.sheet()}>
+				<view style={look.part("tooltip")} role="tooltip" flexDirection="row" alignItems="center" columnGap={8} pointerEvents="none"
+					ref={(n:Node) -> if (own) n.theme = look.theme}>
 					<text>{props.label}</text>
-					<Show when={props.keys != null}><text slot="tooltip-keys">{props.keys ?? ""}</text></Show>
+					<Show when={props.keys != null}><text style={look.part("tooltip-keys")}>{props.keys ?? ""}</text></Show>
 				</view>
 			</Popover>
 		</view>;
@@ -221,10 +212,10 @@ class Standard implements Markup {
 		return marks[mixed ? 1 : 0];
 	}
 
-		// a look for what it holds: its sheet, and the look its controls draw with
+	// a look for what it holds: its theme, and the look its controls draw with
 	public static function Themed(props:{look:Look<Dynamic>, ?children:Any}):UiView {
 		Graph.setContext(Look.context, props.look);
 		// (no taller nor wider than where it is put: a scroller inside it scrolls)
-		return <view flexGrow={1} minWidth={0} minHeight={0} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;
+		return <view flexGrow={1} minWidth={0} minHeight={0} ref={(n:Node) -> n.theme = props.look.theme}>{props.children}</view>;
 	}
 }

@@ -34,7 +34,7 @@ class ContextMenu {
 			#end
 			if (onOpen != null) onOpen();
 			var ui = n.ui;
-			open = TouchMenu.open(ui, TouchMenu.choices(ui, items(), n, destructive), n.windowBounds(), preview == null ? null : preview(), true, n.sheet(),
+			open = TouchMenu.open(ui, TouchMenu.choices(ui, items(), n, destructive), n.windowBounds(), preview == null ? null : preview(), true, n.scope(),
 				() -> open = null);
 		};
 		n.onPointerDown = e -> {

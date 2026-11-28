@@ -1,6 +1,7 @@
 package helder.ui.view;
 
 import helder.ui.*;
+import helder.ui.Style.StyleProps;
 import helder.view.graph.Signal;
 import helder.view.graph.Graph.*;
 
@@ -60,24 +61,11 @@ class States {
 	}
 
 	// applies style(states) to n now and whenever what it reads changes:
-	// the properties it gives set, those it gave before and no longer gives
-	// back to their defaults (an instance's own style, over a theme's rules)
+	// over the style it had when this was applied (what it no longer gives
+	// that style's again)
 	public static function apply(n:Node, style:Null<States->StyleProps>) {
 		if (style == null) return;
-		var s = of(n), set:Array<String> = [];
-		renderEffect(() -> style(s), (p:Null<StyleProps>) -> {
-			var now = p == null ? [] : Reflect.fields(p);
-			var fresh = new Node().style;
-			var dropped = false;
-			for (name in set)
-				if (now.indexOf(name) < 0 && StyleFields.NAMES.indexOf(name) >= 0) {
-					StyleFields.set(n.style, name, StyleFields.get(fresh, name));
-					dropped = true;
-				}
-			if (p != null) n.style.set(p);
-			set = now;
-			// (what it no longer gives: the theme's again)
-			if (dropped) @:privateAccess n.restyleLater();
-		});
+		var s = of(n), base = n.style;
+		renderEffect(() -> style(s), (p:Null<StyleProps>) -> n.style = p == null ? base : base.with(p));
 	}
 }

@@ -1,17 +1,18 @@
 package helder.ui.controls;
 
 import helder.gfx.Color;
+import helder.ui.Theme;
 
-// A data grid's colours, by theme token: a StyleSheet's light and dark
-// colours named "grid-" and one of NAMES win, else a look's token for it
-// (TOKENS: Look's sheet names its colours by the palette's names), else
-// the neutral defaults here. Resolved once per sheet and appearance.
+// A data grid's colours, by theme token: a Theme's colours named "grid-"
+// and one of NAMES win, else a look's token for it (TOKENS: Look's theme
+// names its colours by the palette's names), else the neutral defaults
+// here. Resolved once per theme (light and dark are two).
 class GridTheme {
 	public static final NAMES = [
 		"background", "foreground", "muted", "line", "header", "header-foreground", "gutter", "hover", "selection", "cursor", "edited", "added",
 		"deleted", "skeleton", "scrollbar", "resize"
 	];
-	// (the look's token each takes when the sheet gives no "grid-" colour)
+	// (the look's token each takes when the theme gives no "grid-" colour)
 	static final TOKENS:Array<Null<String>> = [
 		"surface", "fg", "fg3", "line", "surface", "fg2", "surface", "hover", "accentSoft", "accent", null, null, null, "hover", "edge", "accent"
 	];
@@ -46,25 +47,21 @@ class GridTheme {
 	// the colours now, by the indices above
 	public final colors:Array<Color> = [for (c in LIGHT) c];
 
-	var sheet:Null<StyleSheet> = null;
-	var dark = false;
-	var resolved = false;
+	var theme:Null<Theme> = null;
 
 	public function new() {}
 
-	// the colours for a sheet and an appearance; whether they changed
-	public function resolve(sheet:Null<StyleSheet>, dark:Bool):Bool {
-		if (resolved && sheet == this.sheet && dark == this.dark) return false;
-		resolved = true;
-		this.sheet = sheet;
-		this.dark = dark;
-		var base = dark ? DARK : LIGHT;
-		var tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
-		// (a look's sheet: its palette by name, "surface" among them)
-		var look = tokens != null && tokens.exists("surface");
+	// the colours in a theme; whether they changed (a token's colour 0: none)
+	public function resolve(theme:Theme):Bool {
+		if (theme == this.theme) return false;
+		this.theme = theme;
+		var base = theme.dark ? DARK : LIGHT;
+		// (a look's theme: its palette by name, "surface" among them)
+		var look = theme.color("surface") != 0;
 		for (k in 0...NAMES.length) {
-			var c = tokens == null ? null : tokens.get("grid-" + NAMES[k]) ?? (TOKENS[k] == null || !look ? null : tokens.get(TOKENS[k]));
-			colors[k] = c != null ? c : base[k];
+			var c = theme.color("grid-" + NAMES[k]);
+			if (c == 0 && look && TOKENS[k] != null) c = theme.color(TOKENS[k]);
+			colors[k] = c != 0 ? c : base[k];
 		}
 		return true;
 	}

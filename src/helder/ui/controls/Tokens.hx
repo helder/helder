@@ -1,14 +1,16 @@
 package helder.ui.controls;
 
 import helder.gfx.Color;
+import helder.ui.Theme;
+import helder.ui.Token;
 
 // A look's tokens: its colours (each a Tone, light and dark) and its other
-// values. A recipe reads them as Refs: the colours as token references
-// (Color.token, resolved with the window's light or dark values), the rest
-// as they are. A look's patch gives some of them (Look.with: tokens).
+// values. A recipe reads them as Refs: the colours as the look's theme's
+// tokens (Look.theme: light or dark as the window is), the rest as they
+// are. A look's patch gives some of them (Look.with: tokens).
 typedef Tokens = Palette<Tone> & Metrics;
 
-typedef Refs = Palette<Color> & Metrics;
+typedef Refs = Palette<Token<Color>> & Metrics;
 
 // the colours, by role: the window's base (canvas), what rests on it
 // (surface), what floats over it (raised), an inset well (fields), the
@@ -118,7 +120,7 @@ enum abstract Accent(String) to String {
 
 @:typescript.hide
 class TokenSet {
-	// the palette's names, as the sheet's colours are named
+	// the palette's names, as the theme's tokens are named
 	// (these tables made at their first read, not in the class's static init: a
 	// program's own static, a Look made from Look.base, may need them first)
 	public static var COLORS(get, never):Array<String>;
@@ -270,11 +272,23 @@ class TokenSet {
 		return out;
 	}
 
-	// what a recipe reads of tokens: references for the colours
+	// what a recipe reads of tokens: the colours as tokens
 	public static function refs(t:Tokens):Refs {
 		var r:Dynamic = Reflect.copy(t);
 		for (name in COLORS)
-			Reflect.setField(r, name, Color.token(name));
+			Reflect.setField(r, name, new Token<Color>(name));
 		return r;
+	}
+
+	// the colours as a theme's tokens, light and dark
+	public static function theme(t:Tokens):Theme {
+		var light = new Map<String, Float>(), dark = new Map<String, Float>(), tones = tones(t);
+		for (k in 0...tones.length) {
+			var c = tones[k];
+			if (c == null) continue;
+			light.set(COLORS[k], (c.light : Int));
+			dark.set(COLORS[k], (c.dark : Int));
+		}
+		return new Theme(light, dark);
 	}
 }

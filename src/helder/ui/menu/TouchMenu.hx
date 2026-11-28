@@ -5,7 +5,9 @@ import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.Popup;
 import helder.ui.SafeArea;
+import helder.ui.Theme;
 import helder.ui.Ui;
+import helder.ui.controls.Look;
 import helder.ui.actions.Actions;
 import helder.ui.menu.Menu;
 import helder.ui.view.UiView;
@@ -19,14 +21,14 @@ import helder.view.graph.Graph.*;
 typedef Choice = {label:String, ?checked:Bool, ?disabled:Bool, ?destructive:Bool, ?separated:Bool, run:Void->Void};
 
 // A menu for touch, iOS's and Android's long press menus: a column of
-// choices 44 points high (slot touch-menu, touch-menu-item: data-selected
-// checked, data-disabled; touch-menu-item-danger), a group's line between
-// them (touch-menu-separator), in a modal popup over
-// the window; taller than the window, as high as it and scrolled; the
-// window resized, dismissed. With a preview (a view at where its node is, lifted: slot
+// choices 44 points high (the look's parts touch-menu, touch-menu-item:
+// data-state checked, data-disabled; touch-menu-item-danger), a group's
+// line between them (touch-menu-separator), in a modal popup over the
+// window; taller than the window, as high as it and scrolled; the window
+// resized, dismissed. With a preview (a view at where its node is, lifted:
 // touch-menu-preview) the menu goes under it, or above it where there is
 // no room, the preview moved up to fit; blur puts a glass over what is
-// behind (slot touch-menu-scrim: a dimmed, blurred window). A press
+// behind (a dimmed, blurred window). A press
 // outside, Escape or a choice closes it. The platform's own menu
 // (UIContextMenuInteraction) is not used: helder draws it everywhere.
 class TouchMenu implements Markup {
@@ -73,16 +75,17 @@ class TouchMenu implements Markup {
 	}
 
 	// opens the menu for what is at rect (window points): its preview there
-	// when given; onClose once it is gone. The popup (ui.close(p) closes it
-	// too, onClose not called)
-	public static function open(ui:Ui, choices:Array<Choice>, rect:Rect, ?preview:Any, blur = true,
-			?theme:helder.ui.StyleSheet, ?onClose:Void->Void):Popup {
-		var p = new Popup("touch-menu-layer");
+	// when given, in a theme (the one where it is for: Node.scope); onClose
+	// once it is gone. The popup (ui.close(p) closes it too, onClose not
+	// called)
+	public static function open(ui:Ui, choices:Array<Choice>, rect:Rect, ?preview:Any, blur = true, ?theme:Theme, ?onClose:Void->Void):Popup {
+		var p = new Popup("touch-menu-layer"), look = Look.current();
 		p.modal = true;
 		// (a menu: dismissed as the window resizes, a phone turned, as the platforms' are; it was placed for the size it opened at)
 		p.menu = true;
-		p.style.background = helder.gfx.Color.TRANSPARENT;
-		if (theme != null) p.theme = theme;
+		p.style = p.style.with({background: helder.gfx.Color.TRANSPARENT});
+		// (the theme where it is for when a look's is in it, its palette's "surface" there; else the look's)
+		p.theme = theme != null && theme.color("surface") != 0 ? theme : look.theme;
 		var dispose:Null<Void->Void> = null;
 		function close() {
 			if (p.ui != null) ui.close(p);
@@ -96,7 +99,7 @@ class TouchMenu implements Markup {
 			close();
 			c.run();
 		};
-		dispose = Render.render(<Layer at={at} choices={choices} preview={preview} blur={blur} onPick={picked} onClose={close}/>, p);
+		dispose = Render.render(<Layer look={look} at={at} choices={choices} preview={preview} blur={blur} onPick={picked} onClose={close}/>, p);
 		ui.open(p);
 		return p;
 	}
@@ -129,27 +132,27 @@ class TouchMenu implements Markup {
 		return {px: px, py: py, pw: pw, ph: ph, mx: mx, my: my, mw: mw, mh: mh};
 	}
 
-	static function Layer(props:{at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
-		var a = props.at;
+	static function Layer(props:{look:Look<Dynamic>, at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
+		var a = props.at, look = props.look;
 		return <view tag="touch-menu-layer" position="absolute" left={0} top={0} right={0} bottom={0} onKeyDown={e -> if (e.key == Key.ESCAPE) props.onClose()}>
-			{props.blur ? <glass slot="touch-menu-scrim" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
+			{props.blur ? <glass tag="touch-menu-scrim" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
 				onPress={_ -> props.onClose()}/> : <view tag="touch-menu-scrim" position="absolute" left={0} top={0} right={0} bottom={0}
 				onPress={_ -> props.onClose()}/>}
-			{props.preview != null ? <view slot="touch-menu-preview" position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
+			{props.preview != null ? <view style={look.part("touch-menu-preview")} position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
 				transition="fade scale" onPress={_ -> props.onClose()}>{props.preview}</view> : null}
-			<view slot="touch-menu" tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} maxHeight={a.mh} overflow="scroll"
+			<view style={look.part("touch-menu")} tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} maxHeight={a.mh} overflow="scroll"
 				transition="fade scale">
-				{[for (c in props.choices) <Item choice={c} onPick={props.onPick}/>]}
+				{[for (c in props.choices) <Item look={look} choice={c} onPick={props.onPick}/>]}
 			</view>
 		</view>;
 	}
 
-	static function Item(props:{choice:Choice, onPick:Choice->Void}):UiView {
-		var c = props.choice;
+	static function Item(props:{look:Look<Dynamic>, choice:Choice, onPick:Choice->Void}):UiView {
+		var c = props.choice, look = props.look;
 		return <>
-			{c.separated == true ? <view slot="touch-menu-separator" role="separator" height={1} margin="4 0" flexShrink={0}/> : null}
-			<button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem" flexShrink={0}
-				aria-label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
+			{c.separated == true ? <view style={look.part("touch-menu-separator")} role="separator" height={1} margin="4 0" flexShrink={0}/> : null}
+			<button style={look.part(c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item")} tag={"menu-" + c.label} role="menuitem"
+				flexShrink={0} aria-label={c.label} focusable={c.disabled != true} data-state={c.checked == true ? "checked" : null}
 				data-disabled={c.disabled == true}
 				onPress={() -> if (c.disabled != true) props.onPick(c)}>
 				<text flexGrow={1}>{c.label}</text>

@@ -5,6 +5,7 @@ import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.platform.PlatformMenuItem;
 import helder.ui.Popup;
+import helder.ui.Style;
 import helder.ui.TextNode;
 import helder.ui.Ui;
 
@@ -65,7 +66,7 @@ class DrawnMenu {
 		this.chosen = chosen;
 		var dark = ui.dark;
 		popup = new Popup("menu");
-		popup.style.set({
+		popup.style = popup.style.with({
 			padding: 4,
 			borderRadius: 6,
 			minWidth: 180,
@@ -76,9 +77,9 @@ class DrawnMenu {
 			fontSize: 13,
 			// (taller than the window: as high as it, its items scrolled, as the platforms' menus are)
 			maxHeight: ui.height,
-			overflow: Scroll
+			overflow: Scroll,
+			shadows: [{x: 0, y: 4, blur: 16, color: helder.gfx.Color.rgba(0, 0.35)}]
 		});
-		popup.style.boxShadow = helder.ui.Shadow.parse("0 4px 16px rgba(0, 0, 0, 0.35)");
 		popup.semantics = {role: helder.ui.access.Role.Menu};
 		popup.menu = true;
 		popup.onDismiss = () -> close(false);
@@ -87,13 +88,13 @@ class DrawnMenu {
 			var it = items[i];
 			if (it.separator == true) {
 				var s = new Node("menu-separator");
-				s.style.set({height: 1, margin: [4.0, 6, 4, 6], background: dark ? 0xFF3F3F46 : 0xFFE4E4E7, flexShrink: 0});
+				s.style = Style.of({height: 1, margin: [4.0, 6, 4, 6], background: dark ? 0xFF3F3F46 : 0xFFE4E4E7, flexShrink: 0});
 				popup.append(s);
 				rows.push(null);
 				continue;
 			}
 			var row = new Node("menu-item");
-			row.style.set({
+			row.style = Style.of({
 				flexDirection: Row,
 				alignItems: Center,
 				height: 26,
@@ -112,12 +113,12 @@ class DrawnMenu {
 				expanded: it.items != null ? false : null
 			};
 			var check = new TextNode(it.checked == true ? "✓" : "", "menu-check");
-			check.style.set({width: 14});
+			check.style = Style.of({width: 14});
 			var label = new TextNode(it.label, "menu-label");
-			label.style.set({flexGrow: 1, lineClamp: 1});
+			label.style = Style.of({flexGrow: 1, lineClamp: 1});
 			var keys = new TextNode(it.items != null ? "›" : it.shortcut ?? "", "menu-keys");
-			keys.style.set({color: dark ? 0xFFA1A1AA : 0xFF71717A, marginLeft: 16});
-			if (it.disabled == true) row.style.opacity = 0.45;
+			keys.style = Style.of({color: dark ? 0xFFA1A1AA : 0xFF71717A, margin: [0, 0, 0, 16]});
+			if (it.disabled == true) row.style = row.style.with({opacity: 0.45});
 			row.append(check);
 			row.append(label);
 			row.append(keys);
@@ -136,11 +137,11 @@ class DrawnMenu {
 	function highlight(i:Int, open:Bool) {
 		// (a row it left as it closed, hovered after: the focus not taken back)
 		if (closed || i == active && (child != null || !open)) return;
-		if (active >= 0 && rows[active] != null) rows[active].style.background = 0;
+		if (active >= 0 && rows[active] != null) rows[active].style = rows[active].style.with({background: 0});
 		active = i;
 		var row = rows[i];
 		if (row == null) return;
-		row.style.background = ui.dark ? 0xFF3F3F46 : 0xFFE4E4E7;
+		row.style = row.style.with({background: ui.dark ? 0xFF3F3F46 : 0xFFE4E4E7});
 		if (child != null && child.anchorRow != row) {
 			if (child.anchorRow.semantics != null) child.anchorRow.semantics.expanded = false;
 			child.close(false, true);

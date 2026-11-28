@@ -14,7 +14,7 @@ import haxe.macro.Type;
 // at compile time. TypeScript's is Look<V> (the same, by its types).
 #if !macro
 @:typescript.type("Look<V>")
-@:forward(tokens, sheet, refs, Button, Checkbox, Switch)
+@:forward(tokens, theme, refs, style, part, Button, Checkbox, Switch)
 abstract LookOf<V>(Look<V>) from Look<V> to Look<V> to Look<Dynamic> {
 	public macro function with(ethis:haxe.macro.Expr, patch:haxe.macro.Expr):haxe.macro.Expr
 		return LookMacro.with(ethis, patch);
@@ -103,7 +103,7 @@ class LookMacro {
 			opt("switch", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("pathbar", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("render", renders),
-			// (an app's own parts: a slot each, its style a function of the tokens)
+			// (an app's own parts: Look.part's, each a function of the tokens)
 			opt("parts", macro :haxe.DynamicAccess<helder.ui.controls.Tokens.Refs->Dynamic>)
 		]);
 	}

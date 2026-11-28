@@ -114,7 +114,7 @@ class NodeBoxes {
 
 	// (the root's style: its own, as large as the window, made once for each size)
 	function rootStyle(n:Node):BoxStyle {
-		var look = @:privateAccess n.look ?? n.style;
+		var look = @:privateAccess n.styled ?? n.style;
 		var sized = look.with({width: width, height: height, minWidth: 0, minHeight: 0, maxWidth: "auto", maxHeight: "auto"});
 		return Resolve.of(sized, @:privateAccess n.states, Resolve.root, n.scope(), Resolve.VIEW);
 	}

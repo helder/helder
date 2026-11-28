@@ -1,6 +1,5 @@
 package helder.ui;
 
-import helder.os.Edges;
 import helder.os.Mods;
 import helder.ui.access.Role;
 import helder.view.graph.Graph;
@@ -60,13 +59,11 @@ class GridScroll extends VirtualScroll {
 		rowRole = Role.Row;
 		semantics.role = Role.Table;
 		semantics.multiselectable = true;
-		style.height = 0;
-		style.flexGrow = 1;
-		style.minHeight = 0;
-		style.minWidth = 0;
-		marquee.slot = "grid-marquee";
-		marquee.style.position = Absolute;
-		marquee.style.pointerEvents = None;
+		style = style.with({height: 0, flexGrow: 1, minHeight: 0, minWidth: 0});
+		// (the look's part; under no Themed, its theme the look's)
+		var look = helder.ui.controls.Look.current();
+		marquee.style = look.part("grid-marquee").with({position: Absolute, pointerEvents: None});
+		if (helder.ui.controls.Look.outside()) marquee.theme = look.theme;
 		marquee.semantics = {hidden: true};
 
 		onMakeRow = makeCells;
@@ -142,18 +139,11 @@ class GridScroll extends VirtualScroll {
 	function makeCells(row:Int, node:Node):GridRow {
 		var start = row * columns;
 		var end = Std.int(Math.min(start + columns, itemCount()));
-		node.style.flexDirection = Row;
-		node.style.alignItems = Start;
-		node.style.padding = new Edges(0, padding, 0, padding);
-		node.style.columnGap = gap;
+		node.style = node.style.with({flexDirection: Row, alignItems: Start, padding: [0, padding], columnGap: gap});
 		var g = new GridRow();
 		for (i in start...end) {
 			var cell = new Node("cell");
-			cell.slot = "grid-cell";
-			cell.style.width = pitch - gap;
-			cell.style.height = cellHeight;
-			cell.style.flexShrink = 0;
-			cell.style.minWidth = 0;
+			cell.style = Style.of({width: pitch - gap, height: cellHeight, flexShrink: 0, minWidth: 0});
 			cell.focusable = true;
 			cell.tabIndex = -1;
 			cell.semantics = {role: Role.Cell, posInSet: i + 1, setSize: itemCount()};
@@ -226,7 +216,7 @@ class GridScroll extends VirtualScroll {
 	}
 
 	override function settle():Bool {
-		var w = Math.max(0, width - style.borderEdges.horizontal - padding * 2);
+		var w = Math.max(0, width - used.borderEdges.horizontal - padding * 2);
 		var changed = false;
 		var cols = Std.int(Math.max(1, Math.floor((w + gap) / (cellWidth + gap))));
 		pitch = (w + gap) / cols;
@@ -236,7 +226,7 @@ class GridScroll extends VirtualScroll {
 		} else if (w != innerWidth) {
 			for (row in rows())
 				for (cell in row.node.children)
-					cell.style.width = pitch - gap;
+					cell.style = cell.style.with({width: pitch - gap});
 			changed = true;
 		}
 		innerWidth = w;
@@ -333,15 +323,12 @@ class GridScroll extends VirtualScroll {
 		var y = Math.max(0, Math.min(viewHeight(), d.y)) + scrollY;
 		var left = Math.min(x, d.fromX), right = Math.max(x, d.fromX);
 		var top = Math.min(y, d.contentY), bottom = Math.max(y, d.contentY);
-		marquee.style.left = left - style.borderEdges.left;
-		marquee.style.top = top - style.borderEdges.top;
-		marquee.style.width = right - left;
-		marquee.style.height = bottom - top;
+		marquee.style = marquee.style.with({left: left - used.borderEdges.left, top: top - used.borderEdges.top, width: right - left, height: bottom - top});
 
 		var keys = d.base.copy();
 		if (pitch > gap && fixedHeight > 0) {
-			var x0 = left - padding - style.borderEdges.left, x1 = right - padding - style.borderEdges.left;
-			var y0 = top - padding - style.borderEdges.top, y1 = bottom - padding - style.borderEdges.top;
+			var x0 = left - padding - used.borderEdges.left, x1 = right - padding - used.borderEdges.left;
+			var y0 = top - padding - used.borderEdges.top, y1 = bottom - padding - used.borderEdges.top;
 			// (start after the cells ending before the rectangle, stop at the cells starting after it)
 			var c0 = Std.int(Math.max(0, Math.floor((x0 + gap) / pitch)));
 			var c1 = Std.int(Math.min(columns, Math.ceil(x1 / pitch)));
