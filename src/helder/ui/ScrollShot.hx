@@ -95,7 +95,7 @@ class ScrollShot {
 			shot.focus = -2;
 			var p = f;
 			while (p != null && shot.focus == -2) {
-				if (p.style.overflow == Scroll) for (i in 0...shot.count)
+				if (p.used.scrolls) for (i in 0...shot.count)
 					if (shot.entries[i].node == p && shot.entries[i].kind == SCROLLER) shot.focus = i;
 				p = p.parent;
 			}
@@ -109,7 +109,7 @@ class ScrollShot {
 			var r = v.placed;
 			if (r == null) continue;
 			var sc = v.parent, at = -1;
-			while (sc != null && sc.style.overflow != Scroll)
+			while (sc != null && !sc.used.scrolls)
 				sc = sc.parent;
 			if (sc == null) continue;
 			for (i in 0...shot.count)
@@ -234,16 +234,16 @@ private class Taking {
 	// transparent over the page took its wheels otherwise); its children
 	// may take input again)
 	public function walk(n:Node, up:Int, outer:Int, x0:Float, y0:Float, x1:Float, y1:Float, on = true, seen = true) {
-		var s = n.style;
-		if (s.display == None || n.present != null && n.present.away) return;
+		var s = n.used;
+		if (s.none || n.present != null && n.present.away) return;
 		if (s.pointerEvents != null) on = s.pointerEvents == Auto;
 		if (s.visibility != null) seen = s.visibility == Visible;
 		var takes = on && seen;
 		var claims = takes ? claimsOf(n) : 0;
 		// (a scroller that takes none: nor do what it scrolls, laid out in its content)
-		if (s.overflow == Scroll && !takes) return;
-		if (s.overflow == Scroll) {
-			var mx = s.overflowX == Scroll ? Scrolling.maxScroll(n, true) : 0, my = s.overflowY == Scroll ? Scrolling.maxScroll(n, false) : 0;
+		if (s.scrolls && !takes) return;
+		if (s.scrolls) {
+			var mx = s.scrollsOn(true) ? Scrolling.maxScroll(n, true) : 0, my = s.scrollsOn(false) ? Scrolling.maxScroll(n, false) : 0;
 			if (mx > 0 || my > 0) {
 				var e = shot.add(n, ScrollShot.SCROLLER, up, outer), be = s.borderEdges;
 				var i = shot.count - 1;
@@ -260,8 +260,8 @@ private class Taking {
 				e.maxY = my;
 				e.scrollX = n.scrollX;
 				e.scrollY = n.scrollY;
-				e.scrollsX = s.overflowX == Scroll;
-				e.scrollsY = s.overflowY == Scroll;
+				e.scrollsX = s.scrollsOn(true);
+				e.scrollsY = s.scrollsOn(false);
 				e.rtl = n.rtl();
 				e.own = ui.mirrorOwn(n);
 				bars(n, e);
@@ -284,7 +284,7 @@ private class Taking {
 			e.clip(x0, y0, x1, y1);
 			outer = shot.count - 1;
 		}
-		if (s.overflow != Visible) {
+		if (s.clips) {
 			var be = s.borderEdges;
 			x0 = Math.max(x0, n.absX + be.left);
 			y0 = Math.max(y0, n.absY + be.top);
@@ -303,9 +303,9 @@ private class Taking {
 			return;
 		}
 		for (c in n.children)
-			if (c.style.position == Relative) walk(c, up, outer, x0, y0, x1, y1, on, seen);
+			if (c.used.position == "relative") walk(c, up, outer, x0, y0, x1, y1, on, seen);
 		for (c in n.children)
-			if (c.style.position != Relative) walk(c, up, outer, x0, y0, x1, y1, on, seen);
+			if (c.used.position != "relative") walk(c, up, outer, x0, y0, x1, y1, on, seen);
 	}
 
 	// (whether n is over a scroller painted before it that it is not in)

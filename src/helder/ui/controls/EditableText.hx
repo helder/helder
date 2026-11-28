@@ -795,8 +795,8 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	function clippedOut(x:Float, y:Float, w:Float, h:Float):Bool {
 		var p = parent;
 		while (p != null) {
-			if (p.style.overflow != Visible) {
-				var be = p.style.borderEdges;
+			if (p.used.clips) {
+				var be = p.used.borderEdges;
 				var x0 = p.absX + be.left, y0 = p.absY + be.top, x1 = p.absX + p.width - be.right, y1 = p.absY + p.height - be.bottom;
 				if (x < x0 - 0.5 || y < y0 - 0.5 || x + w > x1 + 0.5 || y + h > y1 + 0.5) return true;
 			}

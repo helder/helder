@@ -115,7 +115,7 @@ private class PathBarNode extends Node {
 			label.style.minWidth = 0;
 			label.style.textOverflow = Ellipsis;
 			if (canEdit) {
-				n.style.cursor = Text;
+				(n.props().cursor ?? Auto) = Text;
 				n.onClick = e -> if (e.button == 1) editing(true);
 			}
 		}
@@ -155,7 +155,7 @@ private class PathBarNode extends Node {
 	static function chevron(label:Null<String>, activate:Null<Node->Void>):Node {
 		var n = activate == null ? new Node("pathbar-separator") : button("separator", 'Children of $label', activate);
 		n.slot = "pathbar-separator";
-		if (activate != null) n.style.cursor = Pointer;
+		if (activate != null) (n.props().cursor ?? Auto) = Pointer;
 		var icon = new ImageNode();
 		icon.svg = Icons.svg("chevron-right");
 		icon.style.set({width: 11, height: 11, flexShrink: 0});
@@ -250,14 +250,14 @@ private class PathBarNode extends Node {
 		var display:Display = visible ? Flex : None;
 		if (n.style.display == display) return false;
 		n.style.display = display;
-		if (!visible && ui.focus == n) ui.setFocus(overflow.style.display == None ? null : overflow, false);
+		if (!visible && ui.focus == n) ui.setFocus(overflow.used.none ? null : overflow, false);
 		return true;
 	}
 
 	// (the border box of a part at its full width, even while it is hidden)
 	function naturalWidth(n:Node):Float {
-		var s = n.style, given = s.width.resolve(fittedWidth);
-		var w = s.padding.left + s.padding.right + s.borderEdges.left + s.borderEdges.right;
+		var s = n.used, given = s.width.resolve(fittedWidth);
+		var w = s.paddingEdges.left + s.paddingEdges.right + s.borderEdges.left + s.borderEdges.right;
 		if (!Math.isNaN(given)) return Math.max(given, w);
 		if (n is TextNode) return w + n.minContentWidth(ui.text);
 		for (i in 0...n.children.length)

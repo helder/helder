@@ -68,10 +68,9 @@ class Ui extends ScrollHost {
 	public var pointerY(default, null) = 0.0;
 	// the focus was moved by the keyboard: its ring shows
 	public var focusVisible(default, set) = false;
-	// the window's theme (StyleSheet: its rules for the nodes with a slot,
-	// its colours; a subtree's own wins, Node.theme), and whether the dark
-	// colours and the rules for "dark" apply
-	public var theme(default, set):Null<StyleSheet> = null;
+	// the window's theme: its tokens' values (a subtree's own wins, Node.theme), and whether its dark values and
+	// the styles' dark variants apply
+	public var theme(default, set):Theme = Theme.base;
 	public var dark(default, set) = false;
 	// whether its window is the key one (UiWindow's: macOS's key window, else
 	// always): Liquid Glass drawn flat, untinted, when not, as the system's
@@ -83,41 +82,33 @@ class Ui extends ScrollHost {
 		// (the focused node's rules for focus-visible, its ring)
 		if (focus != null) {
 			focus.layerChanged();
-			@:privateAccess focus.restyleLater();
 			focus.statesChanged();
 		}
 		return v;
 	}
 
-	// (the nodes whose rules apply again at the next update: Node.restyleLater)
-	var restyles:Array<Node> = [];
-
-	// applies the rules of the nodes waiting for it (update does, before layout)
-	public function flushRestyles() {
-		while (restyles.length > 0) {
-			var list = restyles;
-			restyles = [];
-			for (n in list) {
-				@:privateAccess n.restylePending = false;
-				Rules.restyle(n);
-			}
-		}
-	}
-
-	function set_theme(v:Null<StyleSheet>):Null<StyleSheet> {
+	function set_theme(v:Theme):Theme {
 		if (v == theme) return v;
 		theme = v;
-		Rules.restyleTree(root);
-		requestFrame();
+		themed();
 		return v;
 	}
 
 	function set_dark(v:Bool):Bool {
 		if (v == dark) return v;
 		dark = v;
-		Rules.restyleTree(root);
-		requestFrame();
+		themed();
 		return v;
+	}
+
+	// (its trees resolved again in the window's theme, light or dark: the root's, the layers' under the body's text)
+	function themed() {
+		var t = theme.tone(dark);
+		@:privateAccess {
+			root.resolve(Resolve.root, t, 0);
+			overlay.resolve(body == null ? Resolve.root : body.used.text, t, 0);
+		}
+		requestFrame();
 	}
 	// where widgets copy and paste text (UiWindow: the system's)
 	// the window's pixels to the UI's (a Retina display's 2): what drawings are rasterized at
@@ -203,7 +194,7 @@ class Ui extends ScrollHost {
 	function nearBar(target:Null<Node>) {
 		var n = target, over:Null<Node> = null;
 		while (n != null && over == null) {
-			if (n.style.overflow == Scroll && (overBar(n, false) || overBar(n, true))) over = n;
+			if (n.used.scrolls && (overBar(n, false) || overBar(n, true))) over = n;
 			n = n.parent;
 		}
 		if (over == barUnder) return;
@@ -329,18 +320,13 @@ class Ui extends ScrollHost {
 
 	public function resize(width:Float, height:Float) {
 		if (width == this.width && height == this.height) return;
-		var was = breakpoint(this.width);
 		this.width = width;
 		this.height = height;
 		context.resized(this, width, height);
 		root.markDirty();
 		overlay.markDirty();
 		if (overlay.children.length > 0) Popups.resized(this);
-		// (across a breakpoint: the rules for sm, md... hold or not)
-		if (breakpoint(width) != was) {
-			Rules.restyleTree(root);
-			Rules.restyleTree(overlay);
-		}
+
 	}
 
 	// its width the screen's (ScreenContext.width, SizeClass.current): a new
@@ -393,7 +379,6 @@ class Ui extends ScrollHost {
 		helder.view.graph.Graph.flush();
 		// (a touch's scroll let go moving: its glide's since the last)
 		if (touchScroll.gliding) @:privateAccess touchScroll.glide(now() * 1000);
-		flushRestyles();
 		// (a font replaced: every text laid out again)
 		var g = text == null ? 0 : text.generation();
 		if (g != fontGeneration) {
@@ -406,8 +391,7 @@ class Ui extends ScrollHost {
 		var settled = 0;
 		while (settlers.length > 0 && settled++ < SETTLES && settle()) {
 			helder.view.graph.Graph.flush();
-			flushRestyles();
-			layoutRun(root, width, height, text, rounded);
+				layoutRun(root, width, height, text, rounded);
 		}
 		if (root.inkStale) refreshInk(root);
 		if (overlay.children.length > 0) {
@@ -423,8 +407,7 @@ class Ui extends ScrollHost {
 		var again = 0;
 		while (@:privateAccess root.dirty && again++ < SETTLES) {
 			helder.view.graph.Graph.flush();
-			flushRestyles();
-			layoutRun(root, width, height, text, rounded);
+				layoutRun(root, width, height, text, rounded);
 			if (root.inkStale) refreshInk(root);
 			tellResized();
 		}
@@ -432,7 +415,6 @@ class Ui extends ScrollHost {
 		for (n in rounded)
 			if (!@:privateAccess trackpad.holds(n) && !mirrorHeld.exists(n)) Scrolling.clamp(n);
 		rounded.resize(0);
-		changes.resize(0);
 		reveal();
 		for (n in natives.copy())
 			n.syncNative();
@@ -696,7 +678,7 @@ class Ui extends ScrollHost {
 		var i = layers.length;
 		while (--i >= 0) {
 			var l = layers[i], n = l.node;
-			var gone = n.ui != this || (l.scroll ? n.style.overflow != Scroll || n.contentLayer != l : n.paintLayer != l || paintFrame - l.movedAt > IDLE);
+			var gone = n.ui != this || (l.scroll ? !n.used.scrolls || n.contentLayer != l : n.paintLayer != l || paintFrame - l.movedAt > IDLE);
 			if (!gone) continue;
 			layers.splice(i, 1);
 			if (l.scroll && n.contentLayer == l) n.contentLayer = null;
@@ -793,7 +775,7 @@ class Ui extends ScrollHost {
 			var rx0 = x0 - mw, rx1 = x1 + mw, ry0 = y0 - mh, ry1 = y1 + mh;
 			// (a scroller's: no farther than its scroll reaches, what is seen now kept)
 			if (l.scroll) {
-				var be = n.style.borderEdges;
+				var be = n.used.borderEdges;
 				var sx = Scrolling.scrollStart(n, true), sy = Scrolling.scrollStart(n, false);
 				rx0 = Math.max(rx0, Math.min(x0, n.absX + be.left + sx));
 				ry0 = Math.max(ry0, Math.min(y0, n.absY + be.top + sy));
@@ -828,7 +810,7 @@ class Ui extends ScrollHost {
 			if (overlay.children.length > 0) paintNode(overlay, l.list);
 			l.list.flights();
 		} else if (l.scroll) {
-			var st = n.style, bg = st.background, inset = false, sh = st.paintedShadows();
+			var st = n.used, bg = (st.backgroundColor : helder.gfx.Color), inset = false, sh = st.paintedShadows();
 			if (sh != null)
 				for (x in sh)
 					if (x.inset) inset = true;
@@ -842,7 +824,7 @@ class Ui extends ScrollHost {
 			l.by0 = n.absY - e;
 			l.bx1 = n.absX + nw + e;
 			l.by1 = n.absY + nh + e;
-			if (n.style.overflow == Visible)
+			if (!n.used.clips)
 				for (c in n.children) {
 					l.bx0 = Math.min(l.bx0, c.inkX0 - e);
 					l.by0 = Math.min(l.by0, c.inkY0 - e);
@@ -945,10 +927,8 @@ class Ui extends ScrollHost {
 
 	// (a node reached for the first time, in the walk that marks: what its first paint sets off)
 	function firstPaint(n:Node, entering:Bool) @:privateAccess {
-		var s = n.style;
-		if (s.drawn) return;
-		s.drawn = true;
-		if (s.starting) n.restyleLater();
+		if (n.drawn) return;
+		n.drawn = true;
 		if (entering && n.entering) {
 			helder.ui.motion.Motions.enter(n);
 			n.layerChanged(true);
@@ -1062,7 +1042,7 @@ class Ui extends ScrollHost {
 			return;
 		}
 		if (effects + requests + dl.live != e) dl.flag(at, DisplayList.NOCOPY);
-		if (n.style.position == Sticky) dl.flag(at, DisplayList.LOOSE);
+		if (n.used.position == "sticky") dl.flag(at, DisplayList.LOOSE);
 		n.paintedAt = ticks;
 		n.entry = at;
 		if (diffing) dl.diff(at, old, local, ticks, n.paintsLive());
@@ -1072,9 +1052,9 @@ class Ui extends ScrollHost {
 	// Recording a layer, what changes it is recorded too, and what a paint
 	// sets off (a first paint's, Node.drawnAt, a flight) left to the walk)
 	function drawNode(n:Node, canvas:Canvas) {
-		var s = n.style;
+		var s = n.used;
 		// (a span with spans of its own: drawn by its text, as the others)
-		if (s.display == None || n.width <= 0 && n.height <= 0 && (n.children.length == 0 || n.parent is TextNode)) return;
+		if (s.none || n.width <= 0 && n.height <= 0 && (n.children.length == 0 || n.parent is TextNode)) return;
 		var dl = recording, w = walk;
 		// (a moving node's own layer: drawn by the walk, with its transform and opacity then)
 		if (dl != null && n.paintLayer != null && !flying && ghosts == 0) {
@@ -1112,7 +1092,7 @@ class Ui extends ScrollHost {
 		var m = n.transformMatrix();
 		// (the compositor's walk: what moves on its own drawn at its opacity's 1, all of it, the compositor's to move;
 		// one unseen as its layer is stale: left out)
-		var mv = composing != null && dl == null && !flying && ghosts == 0 && (n.paintLayer != null || s.position == Sticky) ? Mover.of(n, m,
+		var mv = composing != null && dl == null && !flying && ghosts == 0 && (n.paintLayer != null || s.position == "sticky") ? Mover.of(n, m,
 			opacity) : null;
 		if (mv != null && opacity <= 0) {
 			var l = n.paintLayer;
@@ -1126,7 +1106,7 @@ class Ui extends ScrollHost {
 			nw = p.width();
 			nh = p.height();
 		}
-		if (dl != null && s.position == Sticky) stick(n);
+		if (dl != null && s.position == "sticky") stick(n);
 		// (its ink, widened by what rings, shadows and glyphs' overhang add, out of sight: left out)
 		if (!n.inkAll && mv == null) {
 			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
@@ -1151,7 +1131,7 @@ class Ui extends ScrollHost {
 			w.shift(dx, dy);
 			if (dl != null) dl.cullShift(dx, dy);
 		}
-		var grouped = n.children.length > 0 || n.exits != null || n.hasContent() && (s.background.a > 0 || s.borderWidth > 0 || s.backgroundImage != null);
+		var grouped = n.children.length > 0 || n.exits != null || n.hasContent() && ((s.backgroundColor >>> 24) > 0 || s.borderWidth > 0 || s.backgroundImage != null);
 		if (mv != null) mv.grouped = grouped && mv.fades();
 		var tagged = mv != null && composing.mover(mv);
 		if (tagged) w.all();
@@ -1208,7 +1188,7 @@ class Ui extends ScrollHost {
 	// (a sticky node recorded: its layer recorded again as its scroller scrolls)
 	function stick(n:Node) {
 		var sc = n.parent;
-		while (sc != null && sc.style.overflow != Scroll)
+		while (sc != null && !sc.used.scrolls)
 			sc = sc.parent;
 		var l = recordingLayer;
 		effects++;
@@ -1222,63 +1202,28 @@ class Ui extends ScrollHost {
 	// box, its content, its children clipped and scrolled, its scrollbars, its
 	// outline and focus ring)
 	function paintBody(n:Node, canvas:Canvas, p:Null<helder.ui.motion.Present>, nw:Float, nh:Float) {
-		var s = n.style, dl = recording, w = walk;
+		var u = n.used, s = NodePaint.styleOf(n), dl = recording, w = walk;
 		var wasHidden = hidden;
-		if (s.visibility != null) hidden = s.visibility == Hidden;
-		// (each corner's radius and each side's border, when the style gives them)
-		var cs = s.corners != null ? s.cornerRadii() : null, sides = s.borders != null ? s.borderEdges : null;
-		var be = s.borderEdges, bordered = be.top + be.right + be.bottom + be.left > 0 && s.borderColor.a > 0;
-		var borderStyle:BorderStyle = s.borderStyle ?? Solid;
-		// (the padding box's corners: each less the wider side meeting there)
-		var padR = Math.max(0, s.borderRadius - s.borderWidth), padC:Null<Corners> = null;
-		if (cs != null || sides != null) {
-			var c = s.cornerRadii();
-			padC = new Corners(Math.max(0, c.topLeft - Math.max(be.left, be.top)), Math.max(0, c.topRight - Math.max(be.top, be.right)),
-				Math.max(0, c.bottomRight - Math.max(be.right, be.bottom)), Math.max(0, c.bottomLeft - Math.max(be.bottom, be.left)));
-		}
-		// (the shadows outside: the last one first, under the others; not
-		// under the box, as CSS clips them, unless its background hides them)
-		var shadows = hidden ? null : s.paintedShadows();
-		var opaque = s.background.a == 255 && s.backgroundImage == null;
-		if (shadows != null)
-			for (sh in shadows) {
-				if (sh.inset) continue;
-				var o = sh.spread;
-				canvas.shadow(n.absX + sh.x - o, n.absY + sh.y - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? Math.max(0, s.borderRadius + o) : 0, sh.color,
-					sh.blur, cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0, cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0,
-						cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0, cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), opaque ? null : [sh.x, sh.y, o]);
-			}
-		if (hidden) {
-			// (nothing of its own)
-		} else if (s.backgroundImage != null && nw > 0 && nh > 0) {
-			// (the colour, the gradient over it, then the border over both)
-			if (s.background.a > 0) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, 0, 0, cs);
-			canvas.image(n.backgroundImage(scale), n.absX, n.absY, nw, nh, 0, 0, 1, 1, s.borderRadius, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
-		} else if (s.background.a > 0 && s.borderColor.a < 255 && be.top + be.right + be.bottom + be.left > 0) {
-			// (the background under the border too, as CSS's background-clip: border-box, seen through a translucent one)
-			canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, 0, 0, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
-		} else if (s.background.a > 0 || bordered)
-			canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, s.borderWidth, s.borderColor, cs, sides, borderStyle);
-		// (the shadows inside: in the padding box, over the background)
-		if (shadows != null)
-			for (sh in shadows)
-				if (sh.inset)
-					canvas.insetShadow(n.absX + be.left, n.absY + be.top, nw - be.horizontal, nh - be.vertical, padR, sh.color, sh.blur, sh.x, sh.y,
-						sh.spread, padC);
+		hidden = !u.visible;
+		var bt = u.borderPx(0), br = u.borderPx(1), bb = u.borderPx(2), bl = u.borderPx(3);
+		// (its box: the engine's painter's, from its style)
+		if (!hidden) NodePaint.box(canvas, s, n.absX, n.absY, nw, nh, scale);
+		var outer = NodePaint.corners(s, nw, nh, 0);
+		// (the padding box's corners: each less the widest side)
+		var padC = NodePaint.corners(s, nw, nh, Math.max(Math.max(bt, br), Math.max(bb, bl)));
+		var radius = outer == null ? 0.0 : outer.topLeft;
 		// (a matched element flying: its content as laid out, scaled to cover its frame, clipped to it)
 		var cover = p != null && p.flying && n.width > 0 && n.height > 0;
 		if (cover) {
 			var k = Math.max(nw / n.width, nh / n.height);
-			canvas.pushClip(n.absX, n.absY, nw, nh, s.borderRadius, cs);
+			canvas.pushClip(n.absX, n.absY, nw, nh, radius, outer);
 			canvas.pushTransform(k, 0, 0, k, n.absX + nw / 2 - k * (n.absX + n.width / 2), n.absY + nh / 2 - k * (n.absY + n.height / 2));
 			w.all();
 			if (dl != null) dl.cullAll();
 			nw = n.width;
 			nh = n.height;
 		}
-		var pad = s.padding;
+		var pt = u.paddingPx(0), pr = u.paddingPx(1), pb = u.paddingPx(2), pl = u.paddingPx(3);
 		// (its content as laid out: a size moving does not lay its text out again;
 		// a node of its own drawing, recorded, recorded again each frame)
 		if (n.hasContent() && !hidden) {
@@ -1286,28 +1231,27 @@ class Ui extends ScrollHost {
 				recordingLayer.volatile = true;
 				effects++;
 			}
-			n.paintContent(canvas, n.absX + be.left + pad.left, n.absY + be.top + pad.top, Math.max(0, n.width - be.left - be.right - pad.left - pad.right),
-				Math.max(0, n.height - be.top - be.bottom - pad.top - pad.bottom));
+			n.paintContent(canvas, n.absX + bl + pl, n.absY + bt + pt, Math.max(0, n.width - bl - br - pl - pr), Math.max(0, n.height - bt - bb - pt - pb));
 		}
 		// (a system layer of its own: its place among what is drawn, in the compositor's walk)
 		var sl = n.systemLayer, tc:Null<TextureCanvas> = dl != null ? dl : composing;
 		if (sl != null && tc != null && !hidden) {
-			var x = n.absX + be.left, y = n.absY + be.top, sw = n.width - be.horizontal, sh = n.height - be.vertical;
-			if (sl.content) tc.slot(sl, x + pad.left, y + pad.top, sw - pad.left - pad.right, sh - pad.top - pad.bottom)
+			var x = n.absX + bl, y = n.absY + bt, sw = n.width - bl - br, sh = n.height - bt - bb;
+			if (sl.content) tc.slot(sl, x + pl, y + pt, sw - pl - pr, sh - pt - pb)
 			else tc.slot(sl, x, y, sw, sh);
 		}
-		var clip = s.overflow != Visible;
+		var clip = u.clips;
 		// (the padding box: its corners' radii less the wider side meeting there)
 		if (clip) {
-			canvas.pushClip(n.absX + be.left, n.absY + be.top, nw - be.horizontal, nh - be.vertical, padR, padC);
-			w.clip(n.absX + be.left, n.absY + be.top, n.absX + nw - be.right, n.absY + nh - be.bottom);
-			if (dl != null) dl.cullClip(n.absX + be.left, n.absY + be.top, n.absX + nw - be.right, n.absY + nh - be.bottom);
+			canvas.pushClip(n.absX + bl, n.absY + bt, nw - bl - br, nh - bt - bb, padC == null ? 0 : padC.topLeft, padC);
+			w.clip(n.absX + bl, n.absY + bt, n.absX + nw - br, n.absY + nh - bb);
+			if (dl != null) dl.cullClip(n.absX + bl, n.absY + bt, n.absX + nw - br, n.absY + nh - bb);
 		}
 		// (stretched past an end, Android's: a scale along its axis, anchored at that end)
-		var stretched = s.overflow == Scroll && @:privateAccess stretcher.node == n ? @:privateAccess stretcher.amount : 0.0;
+		var stretched = u.scrolls && @:privateAccess stretcher.node == n ? @:privateAccess stretcher.amount : 0.0;
 		if (stretched != 0) {
 			var k = 1 + Math.abs(stretched), sx = @:privateAccess stretcher.alongX;
-			var anchor = sx ? (stretched < 0 ? n.absX + be.left : n.absX + nw - be.right) : (stretched < 0 ? n.absY + be.top : n.absY + nh - be.bottom);
+			var anchor = sx ? (stretched < 0 ? n.absX + bl : n.absX + nw - br) : (stretched < 0 ? n.absY + bt : n.absY + nh - bb);
 			if (sx) canvas.pushTransform(k, 0, 0, 1, anchor * (1 - k), 0) else canvas.pushTransform(1, 0, 0, k, 0, anchor * (1 - k));
 			// (scaled: what was out of sight may come in, everything drawn while it lasts)
 			w.all();
@@ -1318,7 +1262,7 @@ class Ui extends ScrollHost {
 			}
 		}
 		// (a scroller's content: its own layer, recorded, moved by the scroll as it is walked)
-		if (s.overflow == Scroll && dl != null && !flying && ghosts == 0) {
+		if (u.scrolls && dl != null && !flying && ghosts == 0) {
 			var l = n.contentLayer;
 			if (l == null) {
 				l = n.contentLayer = new Layer(n, true);
@@ -1327,13 +1271,13 @@ class Ui extends ScrollHost {
 			l.parent = recordingLayer;
 			dl.layer(l, hidden);
 		} else {
-			var sx = n.scrollX, sy = n.scrollY, scroll = s.overflow == Scroll && (sx != 0 || sy != 0);
+			var sx = n.scrollX, sy = n.scrollY, scroll = u.scrolls && (sx != 0 || sy != 0);
 			if (scroll) {
 				canvas.translate(-sx, -sy);
 				w.shift(-sx, -sy);
 				if (dl != null) dl.cullShift(-sx, -sy);
 			}
-			var g = s.overflow == Scroll && dl == null ? composing : null;
+			var g = u.scrolls && dl == null ? composing : null;
 			if (g != null && g.enter(n, 0)) {
 				w.save();
 				w.all();
@@ -1357,22 +1301,14 @@ class Ui extends ScrollHost {
 			nw = p.width();
 			nh = p.height();
 		}
-		if (s.overflow == Scroll && !hidden) {
+		if (u.scrolls && !hidden) {
 			if (dl != null) dl.bars(n, nw, nh) else if (!platformBars(n)) paintBars(n, canvas, nw, nh);
 		}
 		// (its outline over its content, the focus ring over that)
-		if (s.outlineWidth > 0 && !hidden && s.outlineStyle != None) {
-			var o = s.outlineOffset + s.outlineWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? Math.max(0, s.borderRadius + o) : 0, Color.TRANSPARENT,
-				s.outlineWidth, s.outlineColor ?? n.textColor(), cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0,
-					cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0, cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0,
-					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), null, s.outlineStyle == Dashed ? Dashed : s.outlineStyle == Dotted ? Dotted : Solid);
-		}
-		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && (s.outlineStyle == null || s.outlineStyle == Auto)) {
-			var o = focusRingOffset + focusRingWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? s.borderRadius + o : 0, Color.TRANSPARENT, focusRingWidth,
-				focusRingColor, cs == null ? null : new Corners(cs.topLeft > 0 ? cs.topLeft + o : 0, cs.topRight > 0 ? cs.topRight + o : 0,
-					cs.bottomRight > 0 ? cs.bottomRight + o : 0, cs.bottomLeft > 0 ? cs.bottomLeft + o : 0));
+		if (!hidden) NodePaint.outline(canvas, s, n.absX, n.absY, nw, nh, scale);
+		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && n.props().outlineStyle != None) {
+			var o = focusRingOffset + focusRingWidth, c = NodePaint.corners(s, nw, nh, -o);
+			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, c == null ? 0 : c.topLeft, Color.TRANSPARENT, focusRingWidth, focusRingColor, c);
 		}
 		hidden = wasHidden;
 	}
@@ -1386,10 +1322,10 @@ class Ui extends ScrollHost {
 		if (order != null) for (c in order) paintNode(c, canvas) else {
 			var positioned = false;
 			for (c in n.children)
-				if (c.style.position != Relative) positioned = true else paintNode(c, canvas);
+				if (c.used.position != "relative") positioned = true else paintNode(c, canvas);
 			if (positioned)
 				for (c in n.children)
-					if (c.style.position != Relative) paintNode(c, canvas);
+					if (c.used.position != "relative") paintNode(c, canvas);
 		}
 		if (n.exits == null) return;
 		if (dl != null) {
@@ -1412,7 +1348,7 @@ class Ui extends ScrollHost {
 
 	// (a scroller's scrollbars, over its content)
 	function paintBars(n:Node, canvas:Canvas, nw:Float, nh:Float) {
-		var s = n.style;
+		var s = n.used;
 		// (the compositor's walk: drawn shown, faded by the compositor as they would be here)
 		var shown = overlayBars ? composing != null ? 1.0 : barShown(n) : 1.0;
 		if (shown > 0) for (x in [false, true]) {
@@ -1476,7 +1412,7 @@ class Ui extends ScrollHost {
 		if (id == 0 && scrollbarLook != ScrollbarLook.Plain) {
 			var over:Null<Node> = null, n = hit(x, y);
 			while (n != null && over == null) {
-				if (n.style.overflow == Scroll && (overBar(n, false) || overBar(n, true))) over = n;
+				if (n.used.scrolls && (overBar(n, false) || overBar(n, true))) over = n;
 				n = n.parent;
 			}
 			if (over != barHover) {
@@ -2368,13 +2304,6 @@ class Ui extends ScrollHost {
 		return false;
 	}
 
-	// the nodes changed since the last update, as far as layout goes (Node.markDirty;
-	// more than Layout.CHANGES: all laid out again from the root)
-	@:allow(helder.ui.Layout) final changes:Array<Node> = [];
-
-	@:allow(helder.ui.Node) function changed(n:Node)
-		if (changes.length <= @:privateAccess Layout.CHANGES) changes.push(n);
-
 	// scrolls by dx, dy eased over scrollDuration (a scroll easing already: from where it is, to its end moved on)
 	public function scrollBy(n:Node, dx:Float, dy:Float)
 		Scrolling.scrollBy(this, n, dx, dy);
@@ -2499,7 +2428,7 @@ class Ui extends ScrollHost {
 	public function moveFocus(dir:Int, ?only:Node->Bool) {
 		var all:Array<Node> = [];
 		function collect(n:Node) {
-			if (n.style.display == None) return;
+			if (n.used.none) return;
 			if (n.focusable && n.visible() && (only == null || n == focus || only(n))) all.push(n);
 			for (c in n.children)
 				collect(c);
@@ -2669,7 +2598,7 @@ class Ui extends ScrollHost {
 		if (drag != null) return Default;
 		var n = capture != null ? capture : hover;
 		while (n != null) {
-			if (n.style.cursor != Auto) return n.style.cursor;
+			if ((n.props().cursor ?? Auto) != Auto) return (n.props().cursor ?? Auto);
 			if (pressCursor != Auto && pressable(n)) return n.semantics?.disabled == true ? Default : pressCursor;
 			// (a text of a selectable scope: the text's, as a browser's over text)
 			if (Std.isOfType(n, TextNode) && !Std.isOfType(n.parent, TextNode) && n.userSelect() != None && n.selectionScope() != null) return Text;
@@ -2856,13 +2785,13 @@ class Ui extends ScrollHost {
 	// a node left the tree: it no longer hovers, captures or has the focus
 	@:allow(helder.ui.Node) function setBody(n:Node) {
 		body = n;
-		@:privateAccess overlay.inheritedChanged();
+		@:privateAccess overlay.resolve(n.used.text, theme.tone(dark), 0);
 	}
 
 	@:allow(helder.ui.Node) function detached(n:Node) {
 		if (n == body) {
 			body = null;
-			@:privateAccess overlay.inheritedChanged();
+			@:privateAccess overlay.resolve(Resolve.root, theme.tone(dark), 0);
 		}
 		if (hover != null && contains(n, hover)) hover = null;
 		if (capture != null && contains(n, capture)) capture = null;

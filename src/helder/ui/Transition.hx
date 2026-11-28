@@ -18,6 +18,13 @@ import helder.gfx.Color;
 // enters and leaves instead: transition="fade scale", or with CSS's parts,
 // "fade, background-color 150ms".
 class Transition {
+	// (its key in a style's (Style.write): one for each, given when first asked)
+	var id = -1;
+	static var ids = 0;
+
+	function key():Int
+		return id < 0 ? id = ids++ : id;
+
 	// the Style properties that ease (as Style names them)
 	public static final EASED = ["background", "color", "borderColor", "outlineColor", "textDecorationColor", "opacity", "transform", "boxShadow", "ringColor", "ringWidth"];
 

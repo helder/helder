@@ -588,6 +588,8 @@ class CssBoxStyle extends BoxStyle {
 	override function readTraits():Int {
 		positionWord = keyword("position");
 		var f = keyword("float"), x = keyword("overflow-x"), y = keyword("overflow-y"), v = keyword("visibility"), c = keyword("white-space-collapse");
+		overflowXWord = x;
+		overflowYWord = y;
 		var positioned = positionWord != "static" && positionWord != "";
 		var moved = !anonymous && !(keyword("transform") == "none" && keyword("translate") == "none" && keyword("rotate") == "none" && keyword("scale") == "none");
 		// (paint containment clips as overflow does, to the padding box, Contain 2 §3.4)
@@ -648,6 +650,7 @@ class CssBoxStyle extends BoxStyle {
 		r.intrinsicHeight = size("contain-intrinsic-height");
 		r.pointerEvents = keyword("pointer-events");
 		r.visibility = keyword("visibility");
+		r.scrollbarWidth = keyword("scrollbar-width");
 		r.contentNormal = keyword("content") == "normal";
 		r.listStyleType = keyword("list-style-type");
 		r.textAlign = keyword("text-align");

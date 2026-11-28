@@ -692,7 +692,7 @@ class DataGrid extends Node {
 		place(f);
 		f.style.padding = [0, PAD - INSET];
 		f.style.textAlign = columns[col].align;
-		f.style.cursor = Text;
+		(f.props().cursor ?? Auto) = Text;
 		f.onBlur = e -> commitEdit(false);
 		editor = f;
 		append(f);

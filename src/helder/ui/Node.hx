@@ -18,7 +18,11 @@ import helder.image.Image;
 // (helder.view's markup: its renderer, NodeRenderer)
 @:rendered(helder.ui.view.NodeRenderer)
 class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) implements helder.view.Source.Located #end { #if ((hxmc.dev || helder.headless) && !macro) public var source:Null<helder.view.Source> = null; public var sourceComponent:Null<helder.view.Source.SourceComponent> = null; #end
-	@:noCompletion public final style:Style;
+	// its style (markup's style={...}; its style attributes over it: styleAttr): one Style, immutable, shared
+	public var style(default, set):Style = Style.none;
+	// its style resolved in its states, its theme and what it inherits from its parent: what layout, paint and
+	// the rest of helder.ui read (the engine's typed style)
+	public var used(default, null):helder.ui.box.BoxStyle;
 	public var parent(default, null):Null<Node>;
 	// (a leaf's: one empty array shared by all, replaced by its own when a child comes)
 	public var children(default, null):Array<Node> = NO_CHILDREN;
@@ -111,15 +115,10 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// a legend (a page's legend element): its parent's first, as a fieldset's
 	// rendered legend, no flex item (Layout: no gap after it in a column)
 	public var legend = false;
-	// what a theme styles it as (Rule, StyleSheet): the part it is
-	// ("button", "switch-thumb"), its variant and
-	// size ("destructive", "sm"); its attributes, the states rules match
-	// ("data-state" "checked", "data-disabled" present: attr, setAttr); and
-	// a theme for this subtree (null: the parent's, else the window's)
-	public var slot(default, set):Null<String> = null;
-	public var variant(default, set):Null<String> = null;
-	public var size(default, set):Null<String> = null;
-	public var theme(default, set):Null<StyleSheet> = null;
+	// its subtree's theme: its tokens' values (null: its parent's, else the window's, Ui.theme)
+	public var theme(default, set):Null<Theme> = null;
+	// its states are its descendants' group states (a style's group: {...})
+	public var group(default, set) = false;
 	// what draws the controls of this subtree (Host: Auto, the parent's; Ui.hostOf)
 	@:noCompletion public var host:Host = Auto;
 	// what it is to the keymap (helder.ui.actions: "Editor mode=full"; markup's key-context)
@@ -178,22 +177,20 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (its FocusHandle, kept by the Ui)
 	@:allow(helder.ui) var focusHandle:Null<FocusHandle> = null;
 	var attrs:Null<Map<String, String>> = null;
-	// (what the rules wrote: the properties and their values, Rules; a restyle asked for, done by Ui.update)
-	var themedIds:Null<Array<Int>> = null;
-	var themedValues:Null<Array<Dynamic>> = null;
-	// (the properties whose own values it holds over the rules at any value, its defaults too: Rules.keep)
-	var keptIds:Null<Array<Int>> = null;
-	var restylePending = false;
-	// (its own colours that are tokens: the property's id, the reference, what it last resolved to; Rules.restyle)
-	var tokenColors:Null<Array<Int>> = null;
-
-	// (asks for its rules to be applied again, at the next update: several changes, one restyle)
-	function restyleLater() {
-		if (ui == null || restylePending || slot == null && themedIds == null && tokenColors == null) return;
-		restylePending = true;
-		@:privateAccess ui.restyles.push(this);
-		ui.requestFrame();
-	}
+	// (markup's style attributes, name and value in turn (parsed once for all the nodes given the same,
+	// Attrs.styled); its style with them over it, what is resolved)
+	var styleAttrs:Null<Array<Dynamic>> = null;
+	var look:Null<Style> = null;
+	// (its states, Style.HOVER...; what it was resolved under: its parent's text, the theme passed down, its
+	// group's states and what it inherits besides)
+	var states = 0;
+	var under:Null<helder.ui.flow.InlineBasicStyle> = null;
+	var passed:Null<Theme> = null;
+	var groupStates = 0;
+	// (drawn since it came into a window: its entrance played then, Motions)
+	@:allow(helder.ui) var drawn = false;
+	// (its style as painted while a motion moves its background, border colour or radius: NodePaint's)
+	var scratch:Null<helder.ui.box.BoxStyle> = null;
 
 	// layout state (Layout): unrounded results, the measure cache, dirty
 	@:allow(helder.ui.Layout) var lx = 0.0;
@@ -237,8 +234,112 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	public function new(?tag:String) {
 		this.tag = tag == null ? "view" : tag;
-		style = new Style(this);
+		used = Resolve.of(Style.none, 0, Resolve.root, Theme.base, kind());
 	}
+
+	// --- style ---
+
+	// (how it resolves: a view, a text (TextNode's))
+	function kind():Int
+		return Resolve.VIEW;
+
+	function set_style(v:Style):Style {
+		if (v == style) return v;
+		style = v;
+		refresh();
+		return v;
+	}
+
+	// A style attribute (markup's: padding={8}, color="#3b82f6"), over its style; false: no such attribute.
+	public function styleAttr(name:String, value:Dynamic):Bool {
+		if (!Attrs.styles(name)) return false;
+		var a = styleAttrs ??= [], i = 0;
+		while (i < a.length && a[i] != name) i += 2;
+		if (i < a.length) {
+			if (a[i + 1] == value) return true;
+			a[i + 1] = value;
+		} else {
+			a.push(name);
+			a.push(value);
+		}
+		refresh();
+		return true;
+	}
+
+	// (its style and attributes, interned: resolved again where they changed)
+	function refresh() {
+		var next = styleAttrs == null ? style : Attrs.styled(style, styleAttrs);
+		if (next == look) return;
+		look = next;
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+	}
+
+	// what its style says now, its states' variants over it (what helder.ui reads that the engine's style has not)
+	public function props():Style.Props
+		return (look ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs)).at(states | groupStates << Style.GROUP, scope().dark);
+
+	// A state on or off: Style.HOVER, PRESSED, FOCUS, DISABLED, SELECTED, CHECKED, PLACEHOLDER.
+	public function state(bit:Int, on:Bool) {
+		var next = on ? states | bit : states & ~bit;
+		if (next == states) return;
+		states = next;
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+	}
+
+	public inline function has(bit:Int):Bool
+		return states & bit != 0;
+
+	function set_theme(t:Null<Theme>):Null<Theme> {
+		if (t == theme) return t;
+		theme = t;
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+		return t;
+	}
+
+	function set_group(g:Bool):Bool {
+		if (g == group) return g;
+		group = g;
+		resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+		return g;
+	}
+
+	// its subtree's theme: its own, else the one passed down
+	public inline function scope():Theme
+		return theme ?? passed ?? Theme.base;
+
+	// (what its children inherit with its group's states: whether the pointer passes through it)
+	inline function groupBelow():Int
+		return (group ? states : groupStates & ~(Style.PASS | Style.HIDE)) | (used.rare.pointerEvents == "none" ? Style.PASS : 0)
+			| (used.visible ? 0 : Style.HIDE);
+
+	// (its style resolved under what it inherits, then its children's where what they inherit changed)
+	@:allow(helder.ui) function resolve(text:helder.ui.flow.InlineBasicStyle, theme:Theme, group:Int) {
+		under = text;
+		passed = theme;
+		groupStates = group;
+		look ??= styleAttrs == null ? style : Attrs.styled(style, styleAttrs);
+		var s = Resolve.of(look, states | group << Style.GROUP, text, scope(), kind()), was = used;
+		if (s != was) restyled(was, s);
+		var t = s.text, th = scope(), below = groupBelow();
+		for (c in children) if (c.under != t || c.passed != th || c.groupStates != below) c.resolve(t, th, below);
+		if (ui != null && this == ui.body && ui.overlay.under != t) ui.overlay.resolve(t, th, ui.overlay.groupStates);
+	}
+
+	// (another resolved style: what the change takes, by Resolve.level)
+	function restyled(was:helder.ui.box.BoxStyle, now:helder.ui.box.BoxStyle) {
+		used = now;
+		var level = Resolve.level(was, now);
+		if (was.text != now.text) {
+			fontCache = null;
+			textBits = -1;
+		}
+		if (level == Resolve.LAYOUT) {
+			markDirty();
+			// (its parent's layout reads its style: margins, flex, position...)
+		} else if (level != Resolve.NOTHING) paintChanged();
+		if (was.none != now.none && parent != null) parent.markDirty();
+	}
+
 
 	// --- the tree ---
 
@@ -270,10 +371,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		var moved = child.parent != this;
 		child.parent = this;
 		child.attach(ui);
-		// (under another parent: what it inherits may differ, and the states of nodes around it)
-		if (moved) child.inheritedChanged();
-		if (moved && ui != null && @:privateAccess Rules.relational != 0) Rules.restyleTree(child);
-		Rules.placed(this, child, first, last, index + 1 < children.length ? children[index + 1] : null);
+		// (under another parent: what it inherits may differ)
+		if (moved) child.resolve(used.text, scope(), groupBelow());
 		// (entering, or revived while it was leaving)
 		if (motions && moved) helder.ui.motion.Motions.inserted(this, child);
 		markDirty();
@@ -303,10 +402,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 				changed = true;
 			}
 		}
-		if (changed) {
-			Rules.placed(this, null, children[0], children[children.length - 1]);
-			markDirty();
-		}
+		if (changed) markDirty();
 	}
 
 	public function remove(child:Node)
@@ -326,7 +422,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		children.splice(i, 1);
 		child.parent = null;
 		child.attach(null);
-		Rules.placed(this, child, first == child ? null : first, last == child ? null : last, i < children.length ? children[i] : null);
 		markDirty();
 	}
 
@@ -336,7 +431,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			c.attach(null);
 		}
 		children.resize(0);
-		Rules.placed(this, null, null, null);
 		markDirty();
 	}
 
@@ -347,11 +441,9 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		ui = u;
 		// (what it recorded before not copied: it may have changed while out)
 		paintedAt = -1;
-		if (u != null && slot == "body") u.setBody(this);
 		if (u != null && autofocus) u.setFocus(this, false);
-		// (out of a window: drawn anew when back, its starting rules again)
-		if (u == null) @:privateAccess style.drawn = false;
-		restyleLater();
+		// (out of a window: drawn anew when back)
+		if (u == null) drawn = false;
 		for (c in children)
 			c.attach(u);
 		if (glassGroup != null) glassGroup.attached(u);
@@ -816,7 +908,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			n = n.parent;
 		}
 		if (ui != null) {
-			ui.changed(this);
 			ui.requestFrame();
 			layerChanged();
 		}
@@ -828,7 +919,6 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (layout) {
 			markDirty();
 			// (its parent's layout reads its style: margins, flex, position...)
-			if (parent != null && ui != null) ui.changed(parent);
 			if (!inherited) return;
 			// (an inherited text property: the descendants' text changes too, the body's: the layers' too)
 			for (c in children)
@@ -939,7 +1029,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	function shows():Bool {
 		var n = this;
 		while (n != null) {
-			if (n.style.display == None) return false;
+			if (n.used.none) return false;
 			n = n.parent;
 		}
 		var b = windowBounds(), e = Ui.shadowReach + 16;
@@ -971,69 +1061,48 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	inline function inheritsFrom():Null<Node>
 		return ui != null && this == ui.overlay && ui.body != null ? ui.body : parent != null ? parent : leftFrom;
 
+	// its text's font, as its resolved style has it (its family, size, weight, line height, spacing, breaking,
+	// features) in its language
 	@:noCompletion public function font():Font {
 		if (fontCache != null) return fontCache;
-		// (unset: NaN, -1; no boxes)
-		var family:Null<String> = null, size = Math.NaN, weight = -1, italic = -1, lh = Math.NaN, ls = Math.NaN, ws = Math.NaN;
-		// (a line height in pixels, made a multiple of this font's size once it is known)
-		var lhPx = Math.NaN;
-		var ow:Null<OverflowWrap> = null, wb:Null<WordBreak> = null, ff:Null<String> = null, fvn:Null<String> = null;
-		var hy:Null<Hyphens> = null, lg:Null<String> = null;
+		var t = used.text;
+		var features = t.features == null ? "" : [for (f in t.features) "'" + f.tag + "' " + f.value].join(", ");
+		var lg = langHere();
+		return fontCache = new Font(t.families.length > 0 ? t.families[0] : "sans-serif", t.size, t.weight, t.style == Italic, t.size > 0
+			&& t.height == t.height ? t.height / t.size : 1.25, t.letters, t.words, switch t.overflow {
+				case Normal: OverflowWrap.Normal;
+				case Anywhere: OverflowWrap.Anywhere;
+				case _: OverflowWrap.BreakWord;
+			}, switch t.breakWord {
+				case BreakAll: WordBreak.BreakAll;
+				case KeepAll: WordBreak.KeepAll;
+				case _: WordBreak.Normal;
+			}, features, switch t.hyphen {
+				case None: Hyphens.None;
+				case Auto: Hyphens.Auto;
+				case _: Hyphens.Manual;
+			}, lg == null || lg == "" ? null : lg);
+	}
+
+	// (its language: its own or the nearest ancestor's)
+	function langHere():Null<String> {
 		var n = this;
 		while (n != null) {
-			var s = n.style;
-			if (family == null) family = s.fontFamily;
-			if (Math.isNaN(size) && s.fontSize != null) size = s.fontSize;
-			if (weight < 0 && s.fontWeight != null) weight = s.fontWeight;
-			if (italic < 0 && s.fontStyle != null) italic = s.fontStyle == Italic ? 1 : 0;
-			if (Math.isNaN(lh) && Math.isNaN(lhPx)) {
-				if (s.lineHeightPx != null) lhPx = s.lineHeightPx else if (s.lineHeight != null) lh = s.lineHeight;
-			}
-			if (Math.isNaN(ls)) {
-				if (s.letterSpacingEm != null) ls = s.letterSpacingEm * n.fontSizeHere() else if (s.letterSpacing != null) ls = s.letterSpacing;
-			}
-			if (Math.isNaN(ws) && s.wordSpacing != null) ws = s.wordSpacing;
-			if (ow == null) ow = s.overflowWrap;
-			if (wb == null) wb = s.wordBreak;
-			if (hy == null) hy = s.hyphens;
-			if (lg == null) lg = n.lang;
-			if (ff == null) ff = s.fontFeatureSettings;
-			if (fvn == null) fvn = s.fontVariantNumeric;
+			if (n.lang != null) return n.lang;
 			n = n.inheritsFrom();
 		}
-		if (Math.isNaN(size)) size = Style.DEFAULT_SIZE;
-		if (!Math.isNaN(lhPx)) lh = size > 0 ? lhPx / size : Style.DEFAULT_LINE_HEIGHT;
-		return fontCache = new Font(family == null ? Style.DEFAULT_FAMILY : family, size,
-			weight < 0 ? Style.DEFAULT_WEIGHT : weight, italic == 1, Math.isNaN(lh) ? Style.DEFAULT_LINE_HEIGHT : lh, Math.isNaN(ls) ? 0 : ls,
-			Math.isNaN(ws) ? 0 : ws, ow == null ? BreakWord : ow, wb == null ? WordBreak.Normal : wb, features(fvn, ff), hy == null ? Manual : hy,
-			lg == null || lg == "" ? null : lg);
+		return null;
 	}
 
-	// (the font size here: its own or the nearest ancestor's)
-	function fontSizeHere():Float {
-		var n = this;
-		while (n != null) {
-			if (n.style.fontSize != null) return n.style.fontSize;
-			n = n.inheritsFrom();
-		}
-		return Style.DEFAULT_SIZE;
-	}
-
-	// (the features asked for: font-variant-numeric's, then font-feature-settings', which win)
-	static function features(numeric:Null<String>, settings:Null<String>):String {
-		var a = numeric == null ? "" : Style.numericFeatures(numeric), b = settings == null || StringTools.trim(settings) == "normal" ? "" : settings;
-		return a == "" ? b : b == "" ? a : a + ", " + b;
-	}
-
-	// (the font, until it or an ancestor changes a text property: markDirty clears it)
+	// (the font, until what it inherits or its style changes)
 	var fontCache:Null<Font> = null;
 
-	// the text shadows its text casts (Style.textShadow, inherited; null: none)
-	@:noCompletion public function textShadow():Null<Shadow> {
+	// the text shadows its text casts (its style's, else its nearest ancestor's; null: none)
+	@:noCompletion public function textShadow():Null<Array<Style.ShadowLayer>> {
 		var n = this;
 		while (n != null) {
-			var sh = n.style.textShadow;
-			if (sh != null) return sh == Shadow.NONE ? null : sh;
+			var sh = n.props().textShadow;
+			if (sh != null) return sh.length == 0 ? null : sh;
 			n = n.inheritsFrom();
 		}
 		return null;
@@ -1043,105 +1112,89 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// it is drawn at x, y in color (or its spans' colors)
 	function paintTextShadows(canvas:Canvas, p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, ?colors:Array<Color>) {
 		var shadows = textShadow();
-		if (shadows != null)
-			for (sh in shadows.painted())
-				canvas.textShadow(p, x + sh.x, y + sh.y, width, align, sh.currentColor ? color : sh.color, sh.blur, sh.currentColor ? colors : null);
+		if (shadows == null) return;
+		var k = shadows.length;
+		while (--k >= 0) {
+			var sh = shadows[k], current = (sh.color : Style.TintValue).match(Current);
+			var c:Color = current ? color : @:privateAccess Resolve.tint(sh.color, scope(), color);
+			canvas.textShadow(p, x + sh.x, y + sh.y, width, align, c, sh.blur ?? 0, current ? colors : null);
+		}
 	}
 
 	public function textColor():Color {
+		// (a text colour moving: where it is, Motions)
 		var n = this;
 		while (n != null) {
-			// (a text colour moving: where it is, Motions)
 			var p = n.present;
 			if (p != null && p.color != null && p.color.moving()) return p.color.value();
-			if (n.style.color != null) return n.style.color;
 			n = n.inheritsFrom();
 		}
-		return Style.DEFAULT_COLOR;
+		return used.text.colour;
 	}
 
-	// whether it is seen: its visibility, else its nearest ancestor's (Style.visibility)
-	public function visible():Bool {
-		var n = this;
-		while (n != null) {
-			var v = n.style.visibility;
-			if (v != null) return v == Visible;
-			n = n.parent;
-		}
-		return true;
-	}
+	// whether it is seen: its visibility (inherited)
+	public inline function visible():Bool
+		return used.visible;
 
-	// whether the pointer finds it: seen, and its pointerEvents (else its
-	// nearest ancestor's) not None
-	public function hittable():Bool {
-		var n = this;
-		while (n != null) {
-			var p = n.style.pointerEvents;
-			if (p != null) return p == Auto && visible();
-			n = n.parent;
-		}
-		return visible();
-	}
+	// whether the pointer finds it: seen, and its pointerEvents (inherited) not None
+	public inline function hittable():Bool
+		return used.visible && used.rare.pointerEvents != "none";
 
-	// whether its text wraps: its textWrap, else its nearest ancestor's (Style.textWrap)
+	// whether its text wraps (inherited)
 	public inline function wraps():Bool
-		return textWrap() != NoWrap;
+		return used.text.wrap != NoWrap;
 
-	// how its text wraps: its textWrap, else its nearest ancestor's
-	public function textWrap():TextWrap
-		return cast (textInherited() >> 4) & 3;
+	// how its text wraps (inherited): Balance as its style says
+	public function textWrap():TextWrap {
+		if (used.text.wrap == NoWrap) return NoWrap;
+		var n = this;
+		while (n != null) {
+			var w = n.props().textWrap;
+			if (w != null) return w == Balance ? Balance : Wrap;
+			n = n.inheritsFrom();
+		}
+		return Wrap;
+	}
 
-	// how its text's letters are shown: its textTransform, else its nearest ancestor's
+	// how its text's letters are shown (inherited)
 	public function textTransform():TextTransform
-		return cast (textInherited() >> 2) & 3;
+		return switch used.text.transform {
+			case Uppercase: TextTransform.Uppercase;
+			case Lowercase: TextTransform.Lowercase;
+			case Capitalize: TextTransform.Capitalize;
+			case _: TextTransform.None;
+		}
 
-	// (its direction (0 none set, else Dir + 1), text transform and wrapping,
-	// inherited, found in one walk up and kept as bits: -1 not yet; cleared
-	// with fontCache, as their setters lay the subtree out again)
+	// (cleared with fontCache)
 	var textBits = -1;
 
-	function textInherited():Int {
-		if (textBits >= 0) return textBits;
-		var d = -1, t = -1, w = -1, n = this;
-		while (n != null && (d < 0 || t < 0 || w < 0)) {
-			var s = n.style;
-			if (d < 0 && s.direction != null) d = (cast s.direction : Int) + 1;
-			if (t < 0 && s.textTransform != null) t = (cast s.textTransform : Int);
-			if (w < 0 && s.textWrap != null) w = (cast s.textWrap : Int);
-			n = n.inheritsFrom();
+	public function textAlign():TextAlign
+		return switch used.text.align {
+			case Center: Center;
+			case Right: Right;
+			case Justify: Justify;
+			case Left: Left;
+			case End: rtl() ? Left : Right;
+			case _: rtl() ? Right : Left;
 		}
-		return textBits = (d < 0 ? 0 : d) | (t < 0 ? 0 : t) << 2 | (w < 0 ? 0 : w) << 4;
-	}
 
-	public function textAlign():TextAlign {
-		var n = this;
-		while (n != null) {
-			if (n.style.textAlign != null) return n.style.textAlign;
-			n = n.inheritsFrom();
-		}
-		return rtl() ? Right : Left;
-	}
-
-	// whether its inline direction is right to left (Style.dir, inherited)
 	// its text's user-select as set on it or an ancestor (Auto: none set)
 	public function userSelect():UserSelect {
 		var n = this;
 		while (n != null) {
-			var u = n.style.userSelect;
+			var u = n.props().userSelect;
 			if (u != null && u != Auto) return u;
 			n = n.inheritsFrom();
 		}
 		return Auto;
 	}
 
-	public function rtl():Bool
-		return dir() == Rtl;
+	public inline function rtl():Bool
+		return used.text.dir == Rtl;
 
-	// its direction as set on it or an ancestor (null: none set)
-	public function dir():Null<Dir> {
-		var d = textInherited() & 3;
-		return d == 0 ? null : cast d - 1;
-	}
+	// its direction (inherited)
+	public function dir():Dir
+		return rtl() ? Rtl : Ltr;
 
 	// a window position in this node's coordinates (from its border box's
 	// top left), its ancestors' scrolling and transforms (its own too) taken
@@ -1169,7 +1222,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 					px = tx;
 				}
 			}
-			if (i > 0 && a.style.overflow == Scroll) {
+			if (i > 0 && a.used.scrolls) {
 				px += a.scrollX;
 				py += a.scrollY;
 			}
@@ -1263,7 +1316,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		var x0 = absX, y0 = absY, x1 = absX + w, y1 = absY, x2 = absX, y2 = absY + h, x3 = absX + w, y3 = absY + h;
 		var a = this;
 		while (a != null) {
-			if (a != this && a.style.overflow == Scroll) {
+			if (a != this && a.used.scrolls) {
 				x0 -= a.scrollX;
 				x1 -= a.scrollX;
 				x2 -= a.scrollX;
@@ -1350,7 +1403,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// content box lets it go (its margins inside), as CSS sticks it
 	function stickyOffset():Array<Float> {
 		var p = parent, sc = parent;
-		while (sc != null && sc.style.overflow != Scroll)
+		while (sc != null && !sc.used.scrolls)
 			sc = sc.parent;
 		if (p == null) return [0, 0];
 		var out = [0.0, 0.0];
@@ -1360,12 +1413,12 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			// (the view: the scroller's content box, scrolled; else the window's)
 			var v0 = 0.0, v1 = ui == null ? 1e9 : x ? ui.width : ui.height;
 			if (sc != null) {
-				var ss = sc.style, be = ss.borderEdges, pad = ss.padding;
+				var ss = sc.used, be = ss.borderEdges, pad = ss.paddingEdges;
 				v0 = (x ? sc.absX + be.left + pad.left + sc.scrollX : sc.absY + be.top + pad.top + sc.scrollY);
 				v1 = (x ? sc.absX + sc.width - be.right - pad.right + sc.scrollX : sc.absY + sc.height - be.bottom - pad.bottom + sc.scrollY);
 			}
 			// (the parent's content box, its margins inside)
-			var ps = p.style, pbe = ps.borderEdges, ppad = ps.padding;
+			var ps = p.used, pbe = ps.borderEdges, ppad = ps.paddingEdges;
 			// (an auto margin: 0)
 			var m0 = x ? m.left : m.top, m1 = x ? m.right : m.bottom;
 			var c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + (Math.isNaN(m0) ? 0 : m0);
@@ -1488,11 +1541,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	@:allow(helder.ui) function inOrder():Array<Node> {
 		var any = false;
 		for (c in children)
-			if (c.style.order != 0) {
+			if (c.used.order != 0) {
 				any = true;
 				break;
 			}
-		return any ? sorted((a, b) -> a.style.order - b.style.order) : children;
+		return any ? sorted((a, b) -> a.used.order - b.used.order) : children;
 	}
 
 	// its children in the order they paint (Style.zIndex; then positioned ones
@@ -1501,14 +1554,14 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	@:allow(helder.ui) function paintOrder():Null<Array<Node>> {
 		var any = false;
 		for (c in children)
-			if (c.style.zIndex != 0 || c.style.order != 0) {
+			if ((c.used.zIndex() ?? 0) != 0 || c.used.order != 0) {
 				any = true;
 				break;
 			}
 		if (!any) return null;
 		inline function tier(n:Node):Int
-			return n.style.position != Relative ? 1 : 0;
-		return sorted((a, b) -> a.style.zIndex != b.style.zIndex ? a.style.zIndex - b.style.zIndex : tier(a) != tier(b) ? tier(a) - tier(b) : a.style.order - b.style.order);
+			return n.used.position != "relative" ? 1 : 0;
+		return sorted((a, b) -> (a.used.zIndex() ?? 0) != (b.used.zIndex() ?? 0) ? (a.used.zIndex() ?? 0) - (b.used.zIndex() ?? 0) : tier(a) != tier(b) ? tier(a) - tier(b) : a.used.order - b.used.order);
 	}
 
 	// (a stable sort of the children: insertion, children being few)
@@ -1557,7 +1610,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		for (pass in 0...2) {
 			var i = children.length;
 			while (--i >= 0) {
-				if ((children[i].style.position != Relative) != (pass == 0)) continue;
+				if ((children[i].used.position != "relative") != (pass == 0)) continue;
 				var c = children[i].hitTest(sx, sy);
 				if (c != null) return c;
 			}
@@ -1595,7 +1648,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		}
 		if (s.overflow == Visible)
 			for (k in children) {
-				if (k.style.display == None) continue;
+				if (k.used.none) continue;
 				if (k.inkAll) inkAll = true;
 				if (k.inkX0 < inkX0) inkX0 = k.inkX0;
 				if (k.inkY0 < inkY0) inkY0 = k.inkY0;
@@ -1647,8 +1700,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			items.reverse();
 		}
 		for (c in items) {
-			var cs = c.style;
-			if (cs.display == None || cs.position == Absolute) continue;
+			var cs = c.used;
+			if (cs.none || cs.position == "absolute") continue;
 			var b = c.firstBaseline();
 			return c.ly + (Math.isNaN(b) ? c.lh : b);
 		}
@@ -1705,11 +1758,15 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		this.hovered = hovered;
 		this.pressed = pressed;
 		this.focused = focused;
-		if (changed && ui != null) {
-			ui.requestFrame();
-			restyleLater();
+		if (!changed) return;
+		var bits = (hovered ? Style.HOVER : 0) | (pressed ? Style.PRESSED : 0) | (focused ? Style.FOCUS : 0);
+		var next = states & ~(Style.HOVER | Style.PRESSED | Style.FOCUS) | bits;
+		if (next != states) {
+			states = next;
+			resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
 		}
-		if (changed) statesChanged();
+		if (ui != null) ui.requestFrame();
+		statesChanged();
 	}
 
 	// called when its states (hover, press, focus, the focus ring's
@@ -1719,96 +1776,30 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	@:allow(helder.ui.view) var statesOf:Any = null;
 
 	@:allow(helder.ui.Ui) function statesChanged() {
-		Rules.related(this);
 		if (onStates != null) onStates();
 	}
 
-	// --- theme ---
+	// --- attributes ---
 
 	// an attribute (null: not set; "" when it is present without a value)
 	public function attr(name:String):Null<String>
 		return attrs == null ? null : attrs.get(name);
 
-	// sets an attribute (null: removes it); the rules matching it follow
+	// sets an attribute (null: removes it); data-state's checked and selected, data-disabled, its states
 	public function setAttr(name:String, value:Null<String>) {
 		if (attr(name) == value) return;
 		if (value == null) attrs.remove(name) else {
 			if (attrs == null) attrs = new Map();
 			attrs.set(name, value);
 		}
-		restyleLater();
-		// (a group or peer no longer: what its marking styled, again)
-		if (value == null && (name == "group" || name == "peer") && parent != null) Rules.restyleTree(parent);
+		var d = attr("data-state"), bits = (d == "checked" ? Style.CHECKED : 0) | (d == "selected" ? Style.SELECTED : 0)
+			| (attr("data-disabled") != null ? Style.DISABLED : 0);
+		var next = states & ~(Style.CHECKED | Style.SELECTED | Style.DISABLED) | bits;
+		if (next != states) {
+			states = next;
+			resolve(under ?? Resolve.root, passed ?? Theme.base, groupStates);
+		}
 		statesChanged();
-	}
-
-	// the theme it is styled by: its own or the nearest ancestor's, else the window's
-	public function sheet():Null<StyleSheet> {
-		var n = this;
-		while (n != null) {
-			if (n.theme != null) return n.theme;
-			n = n.parent;
-		}
-		return ui == null ? null : ui.theme;
-	}
-
-	function set_slot(v:Null<String>):Null<String> {
-		if (v == slot) return v;
-		slot = v;
-		if (ui != null && v == "body") ui.setBody(this);
-		restyleLater();
-		Rules.reslotted(this);
-		return v;
-	}
-
-	function set_variant(v:Null<String>):Null<String> {
-		if (v == variant) return v;
-		variant = v;
-		restyleLater();
-		Rules.related(this);
-		return v;
-	}
-
-	function set_size(v:Null<String>):Null<String> {
-		if (v == size) return v;
-		size = v;
-		restyleLater();
-		Rules.related(this);
-		return v;
-	}
-
-	function set_theme(v:Null<StyleSheet>):Null<StyleSheet> {
-		if (v == theme) return v;
-		theme = v;
-		Rules.restyleTree(this);
-		return v;
-	}
-
-	// (a theme's colours for its placeholder's text and its selection, null:
-	// none; EditableText's)
-	function themePseudo(placeholder:Null<Color>, selection:Null<Color>) {}
-
-	// (an own colour given, a token or not: Style's setters)
-	@:allow(helder.ui.Style) function ownColor(id:Int, v:Null<Color>) {
-		var t = tokenColors;
-		var k = 0;
-		if (t != null)
-			while (k < t.length && t[k] != id)
-				k += 3;
-		if (v == null || !v.isToken || v.tokenName() == "currentcolor") {
-			if (t != null && k < t.length) t.splice(k, 3);
-			return;
-		}
-		if (t == null) t = tokenColors = [];
-		if (k < t.length) {
-			t[k + 1] = v;
-			t[k + 2] = v;
-		} else {
-			t.push(id);
-			t.push(v);
-			t.push(v);
-		}
-		restyleLater();
 	}
 }
 

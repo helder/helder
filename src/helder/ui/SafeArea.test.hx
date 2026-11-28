@@ -38,16 +38,16 @@ function tests() {
 			var dispose = Render.render(Fixture.view(), ui.root);
 			ui.update();
 			var bar = ui.root.find("bar"), page = ui.root.find("page");
-			equals([bar.style.paddingTop, bar.style.paddingBottom, page.style.paddingLeft], [0.0, 12.0, 16.0]);
+			equals([bar.used.paddingPx(0), bar.used.paddingPx(2), page.used.paddingPx(3)], [0.0, 12.0, 16.0]);
 			// (a phone's: the notch, the home indicator)
 			SafeArea.set(47, 0, 34, 0);
 			ui.update();
-			equals([bar.style.paddingTop, bar.style.paddingBottom, page.style.paddingLeft], [47.0, 34.0, 16.0]);
+			equals([bar.used.paddingPx(0), bar.used.paddingPx(2), page.used.paddingPx(3)], [47.0, 34.0, 16.0]);
 			equals(bar.rect().height, 47.0 + 20 + 34);
 			// (turned: the notch at the left)
 			SafeArea.set(0, 47, 21, 47);
 			ui.update();
-			equals([bar.style.paddingTop, bar.style.paddingBottom, page.style.paddingLeft], [0.0, 21.0, 63.0]);
+			equals([bar.used.paddingPx(0), bar.used.paddingPx(2), page.used.paddingPx(3)], [0.0, 21.0, 63.0]);
 			dispose();
 		});
 		test("set: the signal only when they changed", () -> {

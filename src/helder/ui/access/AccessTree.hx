@@ -195,8 +195,8 @@ class AccessTree {
 	// seen: the parent visible (Style.visibility: a hidden node's own
 	// semantics left out, its visible descendants not)
 	function visit(n:Node, parent:AccessNode, sx:Float, sy:Float, inName:Bool, seen:Bool, ui:Ui) {
-		var s = n.style;
-		if (s.display == None || s.opacity <= 0) return;
+		var s = n.used;
+		if (s.none || s.opacity <= 0) return;
 		var sem = n.semantics;
 		if (sem != null && sem.hidden) return;
 		if (s.visibility != null) seen = s.visibility == Visible;
@@ -267,7 +267,7 @@ class AccessTree {
 			here = a;
 		}
 		var named = inName || (role != null && role.namedByContent());
-		if (s.overflow == Scroll) {
+		if (s.scrolls) {
 			sx += n.scrollX;
 			sy += n.scrollY;
 		}
@@ -289,7 +289,7 @@ class AccessTree {
 	// whether it or an ancestor has a transform
 	static function transformed(n:Null<Node>):Bool {
 		while (n != null) {
-			if (n.style.transform != null) return true;
+			if (n.props().transform != null) return true;
 			n = n.parent;
 		}
 		return false;
@@ -300,7 +300,7 @@ class AccessTree {
 		var parts = [];
 		function walk(m:Node) {
 			// (hidden text, a decoration such as a menu's triangle, is not part of the name)
-			if (m.style.display == None || m.semantics != null && m.semantics.hidden) return;
+			if (m.used.none || m.semantics != null && m.semantics.hidden) return;
 			if (Std.isOfType(m, TextNode)) {
 				if (!m.visible()) return;
 				var t = StringTools.trim((cast m : TextNode).allText());

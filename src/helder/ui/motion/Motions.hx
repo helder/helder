@@ -208,8 +208,8 @@ class Motions {
 		var ox = 0.0, oy = 0.0;
 		if (par != null) {
 			par.windowBoundsInto(scratch);
-			ox = scratch.x - (par.style.overflow == Scroll ? par.scrollX : 0);
-			oy = scratch.y - (par.style.overflow == Scroll ? par.scrollY : 0);
+			ox = scratch.x - (par.used.scrolls ? par.scrollX : 0);
+			oy = scratch.y - (par.used.scrolls ? par.scrollY : 0);
 		}
 		p.setEdges(src.x0 - ox, src.y0 - oy, src.x1 - src.x0, src.y1 - src.y0, 0, 0);
 		var spec = specOf(n) ?? MotionSpec.DEFAULT, c = curveOf(spec.layoutCurve(), n), t = Clock.now;
@@ -221,18 +221,18 @@ class Motions {
 		// (the one surface from now on: fully present)
 		if (p.presence != null) p.presence.set(1);
 		// (its radius and fill from the source's)
-		var s = n.style;
+		var s = n.used;
 		if (src.radius != s.borderRadius) {
 			var to = s.borderRadius;
 			if (p.radius == null) p.radius = new Track(src.radius, 1e-3) else p.radius.set(src.radius);
 			p.radius.animate(t, to, curveOf(spec.radiusCurve(), n));
 			write(() -> s.borderRadius = src.radius);
 		}
-		if (src.background != s.background && !src.background.isToken && !s.background.isToken) {
-			var to = s.background;
+		if (src.background != (s.backgroundColor : helder.gfx.Color) && !src.background.isToken && !(s.backgroundColor : helder.gfx.Color).isToken) {
+			var to = (s.backgroundColor : helder.gfx.Color);
 			if (p.background == null) p.background = new ColorTrack(src.background) else p.background.set(src.background);
 			p.background.animate(t, to, curveOf(spec.colorCurve(), n));
-			write(() -> s.background = src.background);
+			write(() -> (s.backgroundColor : helder.gfx.Color) = src.background);
 		}
 		activate(p);
 		return true;
@@ -283,7 +283,7 @@ class Motions {
 	// (Ui's paint: n, inserted into a drawn parent, drawn for the first time: entering by its transition's presence)
 	public static function enter(n:Node) {
 		@:privateAccess n.entering = false;
-		var tr = n.style.transition;
+		var tr = n.props().transition;
 		if (tr == null || tr.presence == null) return;
 		var p = present(n);
 		p.effect = tr.presence;
@@ -296,9 +296,9 @@ class Motions {
 
 	// (Node.remove: child about to be taken out of parent; whether it is kept drawn, a ghost, until its exit settles)
 	public static function removing(parent:Node, child:Node):Bool {
-		if (parent.ui == null || @:privateAccess child.drawnAt < 0 || child.style.display == None) return false;
+		if (parent.ui == null || @:privateAccess child.drawnAt < 0 || child.used.none) return false;
 		if (matchedCount > 0 && !Clock.reducedMotion) sourcesIn(child);
-		var tr = child.style.transition;
+		var tr = child.props().transition;
 		if (tr == null || tr.presence == null || underInstant(child)) return false;
 		var p = present(child);
 		p.effect = tr.presence;
@@ -321,7 +321,7 @@ class Motions {
 
 	// (n's matched nodes and its subtree's, drawn, kept as sources: where each was seen)
 	static function sourcesIn(n:Node) {
-		if (n.style.display == None) return;
+		if (n.used.none) return;
 		if (n.matched != null && @:privateAccess n.drawnAt >= 0) {
 			var child = n;
 			child.windowBoundsInto(scratch);
@@ -507,7 +507,7 @@ class Motions {
 	}
 
 	static function sampleAll(p:Present, now:Float) {
-		var n = p.node, s = n.style;
+		var n = p.node, s = n.used;
 		// (its edges moving: what it and its children riding them paint; its
 		// presence and transform's lanes: only how it is drawn)
 		if (p.l != null && (p.l.moving() || p.t.moving() || p.r.moving() || p.b.moving())) @:privateAccess n.layerChanged(true);
@@ -529,7 +529,7 @@ class Motions {
 		}
 		if (p.background != null && p.background.moving()) {
 			p.background.sample(now);
-			s.background = p.background.value();
+			(s.backgroundColor : helder.gfx.Color) = p.background.value();
 		}
 		if (p.border != null && p.border.moving()) {
 			p.border.sample(now);

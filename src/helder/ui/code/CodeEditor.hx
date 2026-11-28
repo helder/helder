@@ -536,7 +536,7 @@ class CodeEditor extends Node {
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
 		b.style.padding = [2, 6, 2, 6];
 		b.style.borderRadius = 4;
-		b.style.cursor = Pointer;
+		(b.props().cursor ?? Auto) = Pointer;
 		b.onClick = _ -> press();
 		b.append(new TextNode(text));
 		return b;

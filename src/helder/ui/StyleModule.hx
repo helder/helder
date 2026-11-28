@@ -334,7 +334,9 @@ private class Compile {
 				case "text-align":
 					set("textAlign", word(w, d, ["left" => "Left", "start" => "Left", "center" => "Center", "right" => "Right", "end" => "Right", "justify" => "Justify"],
 						"helder.ui.TextAlign"));
-				case "white-space" | "text-wrap" | "text-wrap-mode": set("wrap", macro $v{flat(d.value).trim() != "nowrap"});
+				case "white-space" | "text-wrap" | "text-wrap-mode":
+					var w = flat(d.value).trim();
+					set("textWrap", w == "nowrap" ? macro helder.ui.TextWrap.NoWrap : w == "balance" ? macro helder.ui.TextWrap.Balance : macro helder.ui.TextWrap.Wrap);
 				case "text-overflow": set("textOverflow", word(w, d, ["clip" => "Clip", "ellipsis" => "Ellipsis"], "helder.ui.TextOverflow"));
 				case "line-clamp" | "-webkit-line-clamp": set("lineClamp", int(w, d));
 				case "text-decoration" | "text-decoration-line":
@@ -383,7 +385,7 @@ private class Compile {
 			case "box-shadow": "shadows";
 			case "outline-width" | "outline-style" | "outline-color" | "outline-offset": "outline";
 			case "line-clamp" | "-webkit-line-clamp": "lineClamp";
-			case "white-space" | "text-wrap" | "text-wrap-mode": "wrap";
+			case "white-space" | "text-wrap" | "text-wrap-mode": "textWrap";
 			case "text-decoration-line": "textDecoration";
 			case n: camelName(n);
 		}
@@ -451,7 +453,7 @@ private class Compile {
 
 	function length(v:CssValue, d:CssDeclaration):Expr
 		return switch v {
-			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> length(x, d))} : helder.ui.Style.Size);
+			case Function("var", args, _, _): macro(${token(v, args, d, Length, x -> length(x, d))} : helder.ui.Style.Measure);
 			case Token({kind: Dimension(n, _, _, "px")}): macro $v{n};
 			case Token({kind: Number(0, _, _)}): macro 0.0;
 			case Token({kind: Percentage(n, _, _)}): macro $v{n + "%"};

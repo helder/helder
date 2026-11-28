@@ -253,7 +253,7 @@ private class SheetPan extends Pan {
 			var u = panel.ui;
 			var n = u == null ? null : @:privateAccess u.hit(fx, fy);
 			while (n != null && n != panel) {
-				if (n.style.overflow == Scroll && n.contentHeight > n.height + 1) inner = n;
+				if (n.used.scrolls && n.contentHeight > n.height + 1) inner = n;
 				n = n.parent;
 			}
 		}

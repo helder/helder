@@ -103,14 +103,14 @@ function tests() {
 			u.update();
 			u.update();
 			var s = top(u).find("nav-scroll"), title = top(u).find("nav-title");
-			equals(title.style.opacity, 0.0);
+			equals(title.used.opacity, 0.0);
 			// (the content below the bar and the large title)
-			equals(s.style.paddingTop, 44.0);
+			equals(s.used.paddingPx(0), 44.0);
 			assert(top(u).find("home").absY > 90);
 			u.wheel(195, 400, 0, 200);
 			Graph.flush();
 			u.update();
-			equals(title.style.opacity, 1.0);
+			equals(title.used.opacity, 1.0);
 			dispose();
 		});
 	});

@@ -65,9 +65,9 @@ function compiled(v:helder.view.View):Node {
 }
 
 function dump(n:Node):String {
-	var s = n.style;
+	var s = n.used;
 	var text = Std.isOfType(n, TextNode) ? "(" + (cast n : TextNode).text + ")" : "";
-	var self = n.tag + text + ' ${n.x},${n.y} ${n.width}x${n.height} ${hex(s.background)} ${s.color == null ? "-" : hex(s.color)} ${s.fontSize} ${s.fontWeight} ${s.borderRadius}';
+	var self = n.tag + text + ' ${n.x},${n.y} ${n.width}x${n.height} ${hex((s.backgroundColor : helder.gfx.Color))} ${s.color == null ? "-" : hex(s.color)} ${s.fontSize} ${s.fontWeight} ${s.borderRadius}';
 	return self + (n.children.length == 0 ? "" : " [" + [for (c in n.children) dump(c)].join(", ") + "]");
 }
 

@@ -133,7 +133,7 @@ class TextSelector {
 	// (the nearest ancestor of its focus's text that scrolls down and up)
 	function scroller(s:TextSelection):Null<Node> {
 		var n = s.focus.node(s.scope) ?? s.anchor.node(s.scope) ?? s.scope;
-		while (n != null && !(n.style.overflowY == Scroll && Scrolling.maxScroll(n, false) > 0))
+		while (n != null && !(n.used.scrollsOn(false) && Scrolling.maxScroll(n, false) > 0))
 			n = n.parent;
 		return n;
 	}

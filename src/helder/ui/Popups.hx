@@ -56,7 +56,7 @@ class Popups {
 	}
 
 	static function firstFocusable(n:Node):Null<Node> {
-		if (n.style.display == None) return null;
+		if (n.used.none) return null;
 		if (n.focusable && n.visible()) return n;
 		for (c in n.children) {
 			var f = firstFocusable(c);

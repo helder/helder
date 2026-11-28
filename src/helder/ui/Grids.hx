@@ -1,16 +1,11 @@
 package helder.ui;
 
-// Grid layout for nodes, linked where a program says grid (a style's
-// display Grid or a grid field, written in a literal or markup's
-// attributes: Style.of and FastRenderer call use), so that a program
-// without it links no GridFlow; until then a grid lays out as flex.
+// A style's grid terms, linked where a program says grid (a style's display
+// Grid or a grid field, written in a literal or markup's attributes:
+// Style.of and the renderer call use).
 class Grids {
-	public static function use() {
-		var c = Node.contexts();
-		if (c.grid != null) return;
-		c.grid = new helder.ui.flow.GridFlow(cast c.flow);
+	public static inline function use()
 		Resolve.grids = fill;
-	}
 
 	// (a style's grid as the terms GridFlow reads, GridTerms', into its box's rare part)
 	static function fill(p:Style.Props, rare:() -> helder.ui.box.BoxRare) {

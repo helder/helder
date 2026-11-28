@@ -490,7 +490,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// assistive technology's tree too); false: shown, as a flex box
 	@:attribute static function hidden(n:Node, name:String, v:Dynamic) {
 		var on = v == true || v == "true" || v == "";
-		if (on) n.style.display = None else if (n.style.display == None) n.style.display = Flex;
+		if (on) n.style.display = None else if (n.used.none) n.style.display = Flex;
 	}
 
 	// (a view's: the glass inside it drawn together, nearer than this many

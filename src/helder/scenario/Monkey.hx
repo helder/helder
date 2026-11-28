@@ -847,7 +847,7 @@ private class Screen {
 
 	// (its last row: the last child shown of its content, deepest first)
 	public function last(n:Node):Null<Node> {
-		var c = n.children.filter(k -> k.style.display != None && k.width > 0 && k.height > 0 && k.style.position != Absolute);
+		var c = n.children.filter(k -> !k.used.none && k.width > 0 && k.height > 0 && k.used.position != "absolute");
 		if (c.length == 1 && c[0].children.length > 1) return last(c[0]);
 		return c.length == 0 ? null : c[c.length - 1];
 	}

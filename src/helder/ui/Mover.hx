@@ -60,7 +60,7 @@ class Mover {
 		node = n;
 		this.drawn = drawn == null ? null : drawn.clone();
 		this.opacity = opacity;
-		var s = n.style, p = n.present;
+		var s = n.used, p = n.present;
 		x = n.absX;
 		y = n.absY;
 		w = p != null ? p.width() : n.width;
@@ -99,9 +99,9 @@ class Mover {
 			}
 			if (p.tx != null) lanes = [for (t in [p.tx, p.ty, p.sx, p.sy, p.rot]) track(t)];
 		}
-		sticky = s.position == Sticky;
+		sticky = s.position == "sticky";
 		var sc = n.parent;
-		while (sc != null && sc.style.overflow != Scroll)
+		while (sc != null && !sc.used.scrolls)
 			sc = sc.parent;
 		scroller = sticky ? sc : null;
 		if (sticky) insets(n, sc);
@@ -136,18 +136,18 @@ class Mover {
 	// its scroller's content box less the scroll, its parent's content box
 	// (its margins inside), its insets)
 	function insets(n:Node, sc:Null<Node>) {
-		var p = n.parent, s = n.style, m = s.margin;
+		var p = n.parent, s = n.used, m = s.margin;
 		for (axis in 0...2) {
 			var x = axis == 0;
 			var v0 = 0.0, v1 = n.ui == null ? 1e9 : x ? n.ui.width : n.ui.height;
 			if (sc != null) {
-				var ss = sc.style, be = ss.borderEdges, pad = ss.padding;
+				var ss = sc.used, be = ss.borderEdges, pad = ss.paddingEdges;
 				v0 = x ? sc.absX + be.left + pad.left : sc.absY + be.top + pad.top;
 				v1 = x ? sc.absX + sc.width - be.right - pad.right : sc.absY + sc.height - be.bottom - pad.bottom;
 			}
 			var c0 = 0.0, c1 = 0.0;
 			if (p != null) {
-				var ps = p.style, pbe = ps.borderEdges, ppad = ps.padding;
+				var ps = p.used, pbe = ps.borderEdges, ppad = ps.paddingEdges;
 				var m0 = x ? m.left : m.top, m1 = x ? m.right : m.bottom;
 				c0 = (x ? p.absX + pbe.left + ppad.left : p.absY + pbe.top + ppad.top) + (Math.isNaN(m0) ? 0 : m0);
 				c1 = (x ? p.absX + p.width - pbe.right - ppad.right : p.absY + p.height - pbe.bottom - ppad.bottom) - (Math.isNaN(m1) ? 0 : m1);

@@ -44,8 +44,8 @@ class UiInspector implements Inspector {
 	}
 
 	function visit(n:Node, parent:Int, depth:Int, path:String, opacity:Float, access:helder.ui.access.AccessTree, out:Array<InspectedNode>) {
-		var s = n.style;
-		if (s.display == None || n.present != null && n.present.away) return;
+		var s = n.used;
+		if (s.none || n.present != null && n.present.away) return;
 		var b = n.windowBounds();
 		var path = path == "" ? n.tag : path + "/" + n.tag;
 		var pr = n.present;
@@ -75,7 +75,7 @@ class UiInspector implements Inspector {
 			width: b.width,
 			height: b.height,
 			opacity: op,
-			fill: s.background == Color.TRANSPARENT ? null : hex(s.background),
+			fill: (s.backgroundColor : helder.gfx.Color) == Color.TRANSPARENT ? null : hex((s.backgroundColor : helder.gfx.Color)),
 			color: text != null ? hex(n.textColor()) : null,
 			hover: n.hovered,
 			press: n.pressed,

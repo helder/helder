@@ -34,34 +34,34 @@ typedef StyleProps = {
 	?alignContent:AlignContent,
 	?flexGrow:Float,
 	?flexShrink:Float,
-	?flexBasis:Size,
+	?flexBasis:Measure,
 	?gap:Pixels,
 	?rowGap:Pixels,
 	?columnGap:Pixels,
-	?width:Size,
-	?height:Size,
-	?minWidth:Size,
-	?minHeight:Size,
-	?maxWidth:Size,
-	?maxHeight:Size,
+	?width:Measure,
+	?height:Measure,
+	?minWidth:Measure,
+	?minHeight:Measure,
+	?maxWidth:Measure,
+	?maxHeight:Measure,
 	?padding:Edges,
 	?margin:Edges,
 	?borderWidth:Edges,
 	?borderColor:Tint,
 	// (Solid where a width is set)
 	?borderStyle:helder.ui.BorderStyle,
-	?borderRadius:Corners,
+	?borderRadius:Radii,
 	?background:Tint,
 	// CSS's box-shadow: the first on top
-	?shadows:Array<Shadow>,
+	?shadows:Array<ShadowLayer>,
 	?outline:Outline,
 	?opacity:Float,
 	?overflow:Overflow,
 	?position:Position,
-	?top:Size,
-	?right:Size,
-	?bottom:Size,
-	?left:Size,
+	?top:Measure,
+	?right:Measure,
+	?bottom:Measure,
+	?left:Measure,
 	?zIndex:Int,
 	?color:Tint,
 	?fontSize:Pixels,
@@ -73,7 +73,7 @@ typedef StyleProps = {
 	?letterSpacing:Pixels,
 	?textAlign:TextAlign,
 	// false: nowrap
-	?wrap:Bool,
+	?textWrap:helder.ui.TextWrap,
 	// what a line cut at its end shows (Ellipsis: its box clips)
 	?textOverflow:helder.ui.TextOverflow,
 	// at most so many lines (0: no limit)
@@ -107,6 +107,40 @@ typedef StyleProps = {
 	?gridColumn:String,
 	?gridRow:String,
 	?gridArea:String,
+	// seen or not (inherited): Hidden keeps its place, drawing and hitting nothing
+	?visibility:helder.ui.Visibility,
+	// whether its text can be selected by the pointer (inherited)
+	?userSelect:helder.ui.UserSelect,
+	// its letters' case as shown (inherited)
+	?textTransform:helder.ui.TextTransform,
+	?wordSpacing:Pixels,
+	// where a word too long breaks (inherited)
+	?overflowWrap:helder.ui.OverflowWrap,
+	?wordBreak:helder.ui.WordBreak,
+	?hyphens:helder.ui.Hyphens,
+	// its OpenType features as CSS writes them (inherited)
+	?fontFeatureSettings:String,
+	// its place among its siblings in layout and paint
+	?order:Int,
+	// the lines' colour (null: the text's)
+	?textDecorationColor:Tint,
+	?textDecorationThickness:Pixels,
+	?textUnderlineOffset:Pixels,
+	// a field's size where none is given: Fixed or Content
+	?fieldSizing:helder.ui.FieldSizing,
+	// the focus ring: Auto (the window's) or None
+	?outlineStyle:helder.ui.OutlineStyle,
+	// a scroller's thumb and track colours (inherited; null: the window's)
+	?scrollbarColor:Tint,
+	?scrollbarTrackColor:Tint,
+	// its text's shadows (inherited), CSS's text-shadow: the first on top
+	?textShadow:Array<ShadowLayer>,
+	// how it and its subtree are drawn and hit, not laid out (Transform.parse)
+	?transform:helder.ui.Transform,
+	// the point the transform is about: x, y in its border box (null: its centre)
+	?transformOrigin:Array<helder.ui.Dim>,
+	// what eases to a new value, and how it enters and leaves (Transition.parse)
+	?transition:helder.ui.Transition,
 	// its state variants, over it where the state is on (a later one's over an earlier's)
 	?hover:StyleProps,
 	?pressed:StyleProps,
@@ -156,17 +190,17 @@ abstract Tint(TintValue) from TintValue to TintValue {
 }
 
 // A length: px, or a percentage ("50%"); null: auto.
-abstract Size(Len) from Len to Len {
-	@:from static inline function ofFloat(v:Float):Size
+abstract Measure(Len) from Len to Len {
+	@:from static inline function ofFloat(v:Float):Measure
 		return Px(v);
 
-	@:from static inline function ofInt(v:Int):Size
+	@:from static inline function ofInt(v:Int):Measure
 		return Px(v);
 
-	@:from static inline function ofToken(t:Token<Length>):Size
+	@:from static inline function ofToken(t:Token<Length>):Measure
 		return Px(Pixels.ofToken(t));
 
-	@:from static function ofString(s:String):Size {
+	@:from static function ofString(s:String):Measure {
 		var t = StringTools.trim(s);
 		if (t == "auto") return Auto;
 		if (StringTools.endsWith(t, "%")) return Percent(Std.parseFloat(t.substr(0, t.length - 1)));
@@ -205,24 +239,24 @@ abstract Pixels(Float) from Float from Int to Float {
 
 // Four corners' radii in px (top left, top right, bottom right, bottom
 // left): one for all, or all four.
-abstract Corners(Array<Float>) to Array<Float> {
+abstract Radii(Array<Float>) to Array<Float> {
 	inline function new(a:Array<Float>)
 		this = a;
 
-	@:from static inline function ofFloat(v:Float):Corners
-		return new Corners([v, v, v, v]);
+	@:from static inline function ofFloat(v:Float):Radii
+		return new Radii([v, v, v, v]);
 
-	@:from static inline function ofInt(v:Int):Corners
-		return new Corners([v, v, v, v]);
+	@:from static inline function ofInt(v:Int):Radii
+		return new Radii([v, v, v, v]);
 
-	@:from static inline function ofToken(t:Token<Length>):Corners
+	@:from static inline function ofToken(t:Token<Length>):Radii
 		return ofFloat(Pixels.ofToken(t));
 
-	@:from static function ofArray(a:Array<Pixels>):Corners
-		return new Corners(a.length == 1 ? [a[0], a[0], a[0], a[0]] : a.length == 2 ? [a[0], a[1], a[0], a[1]] : a.length == 3 ? [a[0], a[1], a[2], a[1]] : [a[0], a[1], a[2], a[3]]);
+	@:from static function ofArray(a:Array<Pixels>):Radii
+		return new Radii(a.length == 1 ? [a[0], a[0], a[0], a[0]] : a.length == 2 ? [a[0], a[1], a[0], a[1]] : a.length == 3 ? [a[0], a[1], a[2], a[1]] : [a[0], a[1], a[2], a[3]]);
 }
 
-typedef Shadow = {
+typedef ShadowLayer = {
 	x:Pixels,
 	y:Pixels,
 	?blur:Pixels,
@@ -278,32 +312,32 @@ final class Props {
 	public var alignContent:Null<AlignContent> = null;
 	public var flexGrow:Null<Float> = null;
 	public var flexShrink:Null<Float> = null;
-	public var flexBasis:Null<Size> = null;
+	public var flexBasis:Null<Measure> = null;
 	public var gap:Null<Pixels> = null;
 	public var rowGap:Null<Pixels> = null;
 	public var columnGap:Null<Pixels> = null;
-	public var width:Null<Size> = null;
-	public var height:Null<Size> = null;
-	public var minWidth:Null<Size> = null;
-	public var minHeight:Null<Size> = null;
-	public var maxWidth:Null<Size> = null;
-	public var maxHeight:Null<Size> = null;
+	public var width:Null<Measure> = null;
+	public var height:Null<Measure> = null;
+	public var minWidth:Null<Measure> = null;
+	public var minHeight:Null<Measure> = null;
+	public var maxWidth:Null<Measure> = null;
+	public var maxHeight:Null<Measure> = null;
 	public var padding:Null<Edges> = null;
 	public var margin:Null<Edges> = null;
 	public var borderWidth:Null<Edges> = null;
 	public var borderColor:Null<Tint> = null;
 	public var borderStyle:Null<helder.ui.BorderStyle> = null;
-	public var borderRadius:Null<Corners> = null;
+	public var borderRadius:Null<Radii> = null;
 	public var background:Null<Tint> = null;
-	public var shadows:Null<Array<Shadow>> = null;
+	public var shadows:Null<Array<ShadowLayer>> = null;
 	public var outline:Null<Outline> = null;
 	public var opacity:Null<Float> = null;
 	public var overflow:Null<Overflow> = null;
 	public var position:Null<Position> = null;
-	public var top:Null<Size> = null;
-	public var right:Null<Size> = null;
-	public var bottom:Null<Size> = null;
-	public var left:Null<Size> = null;
+	public var top:Null<Measure> = null;
+	public var right:Null<Measure> = null;
+	public var bottom:Null<Measure> = null;
+	public var left:Null<Measure> = null;
 	public var zIndex:Null<Int> = null;
 	public var color:Null<Tint> = null;
 	public var fontSize:Null<Pixels> = null;
@@ -313,7 +347,7 @@ final class Props {
 	public var lineHeight:Null<Float> = null;
 	public var letterSpacing:Null<Pixels> = null;
 	public var textAlign:Null<TextAlign> = null;
-	public var wrap:Null<Bool> = null;
+	public var textWrap:Null<helder.ui.TextWrap> = null;
 	public var textOverflow:Null<helder.ui.TextOverflow> = null;
 	public var lineClamp:Null<Int> = null;
 	public var textDecoration:Null<Int> = null;
@@ -334,6 +368,26 @@ final class Props {
 	public var gridColumn:Null<String> = null;
 	public var gridRow:Null<String> = null;
 	public var gridArea:Null<String> = null;
+	public var visibility:Null<helder.ui.Visibility> = null;
+	public var userSelect:Null<helder.ui.UserSelect> = null;
+	public var textTransform:Null<helder.ui.TextTransform> = null;
+	public var wordSpacing:Null<Pixels> = null;
+	public var overflowWrap:Null<helder.ui.OverflowWrap> = null;
+	public var wordBreak:Null<helder.ui.WordBreak> = null;
+	public var hyphens:Null<helder.ui.Hyphens> = null;
+	public var fontFeatureSettings:Null<String> = null;
+	public var order:Null<Int> = null;
+	public var textDecorationColor:Null<Tint> = null;
+	public var textDecorationThickness:Null<Pixels> = null;
+	public var textUnderlineOffset:Null<Pixels> = null;
+	public var fieldSizing:Null<helder.ui.FieldSizing> = null;
+	public var outlineStyle:Null<helder.ui.OutlineStyle> = null;
+	public var scrollbarColor:Null<Tint> = null;
+	public var scrollbarTrackColor:Null<Tint> = null;
+	public var textShadow:Null<Array<ShadowLayer>> = null;
+	public var transform:Null<helder.ui.Transform> = null;
+	public var transformOrigin:Null<Array<helder.ui.Dim>> = null;
+	public var transition:Null<helder.ui.Transition> = null;
 	public var hover:Null<Props> = null;
 	public var pressed:Null<Props> = null;
 	public var focus:Null<Props> = null;
@@ -394,7 +448,7 @@ final class Props {
 		o.lineHeight = p.lineHeight;
 		o.letterSpacing = p.letterSpacing;
 		o.textAlign = p.textAlign;
-		o.wrap = p.wrap;
+		o.textWrap = p.textWrap;
 		o.textOverflow = p.textOverflow;
 		o.lineClamp = p.lineClamp;
 		o.textDecoration = p.textDecoration;
@@ -415,6 +469,26 @@ final class Props {
 		o.gridColumn = p.gridColumn;
 		o.gridRow = p.gridRow;
 		o.gridArea = p.gridArea;
+		o.visibility = p.visibility;
+		o.userSelect = p.userSelect;
+		o.textTransform = p.textTransform;
+		o.wordSpacing = p.wordSpacing;
+		o.overflowWrap = p.overflowWrap;
+		o.wordBreak = p.wordBreak;
+		o.hyphens = p.hyphens;
+		o.fontFeatureSettings = p.fontFeatureSettings;
+		o.order = p.order;
+		o.textDecorationColor = p.textDecorationColor;
+		o.textDecorationThickness = p.textDecorationThickness;
+		o.textUnderlineOffset = p.textUnderlineOffset;
+		o.fieldSizing = p.fieldSizing;
+		o.outlineStyle = p.outlineStyle;
+		o.scrollbarColor = p.scrollbarColor;
+		o.scrollbarTrackColor = p.scrollbarTrackColor;
+		o.textShadow = p.textShadow;
+		o.transform = p.transform;
+		o.transformOrigin = p.transformOrigin;
+		o.transition = p.transition;
 		o.hover = from(p.hover);
 		o.pressed = from(p.pressed);
 		o.focus = from(p.focus);
@@ -591,7 +665,7 @@ final class Style {
 		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
 		return "";
 	}
-	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"];
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition"];
 	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "placeholder", "dark"];
 	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked"];
 	#end
@@ -605,8 +679,10 @@ final class Style {
 	public static inline var CHECKED = 32;
 	public static inline var PLACEHOLDER = 64;
 	public static inline var GROUP = 8;
-	// (passed down with the group's states: an ancestor's pointerEvents None, what it inherits)
+	// (passed down with the group's states, what it inherits besides its text: an ancestor's pointerEvents None,
+	// its visibility Hidden)
 	@:allow(helder.ui) static inline var PASS = 1 << 12;
+	@:allow(helder.ui) static inline var HIDE = 1 << 13;
 
 	// (what it says in states: its own (mask's low bits) and its group's (shifted by GROUP), the variants over it
 	// in order; dark: the theme's tone)
@@ -707,7 +783,7 @@ final class Style {
 		o.lineHeight = b.lineHeight ?? a.lineHeight;
 		o.letterSpacing = b.letterSpacing ?? a.letterSpacing;
 		o.textAlign = b.textAlign ?? a.textAlign;
-		o.wrap = b.wrap ?? a.wrap;
+		o.textWrap = b.textWrap ?? a.textWrap;
 		o.textOverflow = b.textOverflow ?? a.textOverflow;
 		o.lineClamp = b.lineClamp ?? a.lineClamp;
 		o.textDecoration = b.textDecoration ?? a.textDecoration;
@@ -728,6 +804,26 @@ final class Style {
 		o.gridColumn = b.gridColumn ?? a.gridColumn;
 		o.gridRow = b.gridRow ?? a.gridRow;
 		o.gridArea = b.gridArea ?? a.gridArea;
+		o.visibility = b.visibility ?? a.visibility;
+		o.userSelect = b.userSelect ?? a.userSelect;
+		o.textTransform = b.textTransform ?? a.textTransform;
+		o.wordSpacing = b.wordSpacing ?? a.wordSpacing;
+		o.overflowWrap = b.overflowWrap ?? a.overflowWrap;
+		o.wordBreak = b.wordBreak ?? a.wordBreak;
+		o.hyphens = b.hyphens ?? a.hyphens;
+		o.fontFeatureSettings = b.fontFeatureSettings ?? a.fontFeatureSettings;
+		o.order = b.order ?? a.order;
+		o.textDecorationColor = b.textDecorationColor ?? a.textDecorationColor;
+		o.textDecorationThickness = b.textDecorationThickness ?? a.textDecorationThickness;
+		o.textUnderlineOffset = b.textUnderlineOffset ?? a.textUnderlineOffset;
+		o.fieldSizing = b.fieldSizing ?? a.fieldSizing;
+		o.outlineStyle = b.outlineStyle ?? a.outlineStyle;
+		o.scrollbarColor = b.scrollbarColor ?? a.scrollbarColor;
+		o.scrollbarTrackColor = b.scrollbarTrackColor ?? a.scrollbarTrackColor;
+		o.textShadow = b.textShadow ?? a.textShadow;
+		o.transform = b.transform ?? a.transform;
+		o.transformOrigin = b.transformOrigin ?? a.transformOrigin;
+		o.transition = b.transition ?? a.transition;
 		o.hover = both(a.hover, b.hover);
 		o.pressed = both(a.pressed, b.pressed);
 		o.focus = both(a.focus, b.focus);
@@ -810,7 +906,7 @@ final class Style {
 		if (p.lineHeight != null) num(out, "lh", p.lineHeight);
 		if (p.letterSpacing != null) num(out, "ls", p.letterSpacing);
 		if (p.textAlign != null) word(out, "ta", p.textAlign);
-		if (p.wrap != null) word(out, "wr", p.wrap);
+		if (p.textWrap != null) word(out, "wr", p.textWrap);
 		if (p.textOverflow != null) word(out, "to", p.textOverflow);
 		if (p.lineClamp != null) word(out, "lc", p.lineClamp);
 		if (p.textDecoration != null) word(out, "td", p.textDecoration);
@@ -831,6 +927,34 @@ final class Style {
 		if (p.gridColumn != null) word(out, "gc", p.gridColumn);
 		if (p.gridRow != null) word(out, "gr", p.gridRow);
 		if (p.gridArea != null) word(out, "ga", p.gridArea);
+		if (p.visibility != null) word(out, "vis", p.visibility);
+		if (p.userSelect != null) word(out, "us", p.userSelect);
+		if (p.textTransform != null) word(out, "ttf", p.textTransform);
+		if (p.wordSpacing != null) num(out, "ws", p.wordSpacing);
+		if (p.overflowWrap != null) word(out, "ow", p.overflowWrap);
+		if (p.wordBreak != null) word(out, "wbk", p.wordBreak);
+		if (p.hyphens != null) word(out, "hyp", p.hyphens);
+		if (p.fontFeatureSettings != null) word(out, "ffs", p.fontFeatureSettings);
+		if (p.order != null) word(out, "ord", p.order);
+		if (p.textDecorationColor != null) tint(out, "tdc", p.textDecorationColor);
+		if (p.textDecorationThickness != null) num(out, "tdt", p.textDecorationThickness);
+		if (p.textUnderlineOffset != null) num(out, "tuo", p.textUnderlineOffset);
+		if (p.fieldSizing != null) word(out, "fsz", p.fieldSizing);
+		if (p.outlineStyle != null) word(out, "os", p.outlineStyle);
+		if (p.scrollbarColor != null) tint(out, "sbc", p.scrollbarColor);
+		if (p.scrollbarTrackColor != null) tint(out, "sbt", p.scrollbarTrackColor);
+		if (p.textShadow != null) for (sh in p.textShadow) {
+			out.add("tsh");
+			edges(out, "", [sh.x, sh.y, sh.blur ?? 0, sh.spread ?? 0]);
+			tint(out, "", sh.color);
+		}
+		if (p.transform != null) word(out, "tf", @:privateAccess p.transform.key());
+		if (p.transformOrigin != null) for (d in p.transformOrigin) size(out, "tfo", switch (d : helder.ui.DimValue) {
+			case Px(v): Px(v);
+			case Percent(v): Percent(v);
+			case _: Auto;
+		});
+		if (p.transition != null) word(out, "tr", @:privateAccess p.transition.key());
 		inline function sub(name:String, v:Null<Props>)
 			if (v != null) {
 				out.add(name);

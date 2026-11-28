@@ -405,7 +405,7 @@ class ScrollMirror extends ScrollHost {
 		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Mods.SHIFT != 0;
 		var p:Null<Node> = n;
 		while (p != null) {
-			if (p.style.overflow == Scroll && Scrolling.canScroll(p, back ? -1 : 1, x)) return true;
+			if (p.used.scrolls && Scrolling.canScroll(p, back ? -1 : 1, x)) return true;
 			p = p.parent;
 		}
 		return false;

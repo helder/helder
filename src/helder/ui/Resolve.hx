@@ -47,7 +47,7 @@ class Resolve {
 	public static function of(style:Style, mask:Int, parent:InlineBasicStyle, theme:Theme, kind:Int):BoxStyle {
 		// (states it has no variant for change nothing: one resolution for them all; an ancestor's pointerEvents
 		// None kept, what it inherits)
-		var pass = mask & Style.PASS << Style.GROUP;
+		var pass = mask & (Style.PASS | Style.HIDE) << Style.GROUP;
 		mask = mask & style.states | pass;
 		// (one that reads no token and has no dark variant: the same in every theme)
 		if (!style.themed) theme = Theme.base;
@@ -66,7 +66,7 @@ class Resolve {
 			if (list[k] == mask && list[k + 1] == parent && list[k + 2] == theme && list[k + 3] == kind) return list[k + 4];
 			k += 5;
 		}
-		var s = make(style.at(mask, theme.dark), parent, theme, kind, pass != 0);
+		var s = make(style.at(mask, theme.dark), parent, theme, kind, pass >> Style.GROUP);
 		list.push(mask);
 		list.push(parent);
 		list.push(theme);
@@ -87,7 +87,7 @@ class Resolve {
 		return PAINT;
 	}
 
-	static function make(p:Props, parent:InlineBasicStyle, theme:Theme, kind:Int, passed:Bool):BoxStyle {
+	static function make(p:Props, parent:InlineBasicStyle, theme:Theme, kind:Int, passed:Int):BoxStyle {
 		var s = new Resolved(p);
 		var t = text(p, parent, theme);
 		// (its lengths in the theme: one a token's, its layout the theme's too)
@@ -96,7 +96,7 @@ class Resolve {
 			if (Pixels.isToken(v)) tokened = true;
 			return Pixels.resolve(v, theme);
 		}
-		function size(v:Null<Style.Size>):Len
+		function size(v:Null<Style.Measure>):Len
 			return switch (v : Null<Len>) {
 				case null: Auto;
 				case Px(n): Px(px(n));
@@ -110,7 +110,7 @@ class Resolve {
 		if (d == None) s.displayNone = true;
 		s.displayOuter = kind == SPAN ? BoxStyle.INLINE : BoxStyle.BLOCK;
 		// (grid where grid layout is linked, Grids.use: else, as before, flex)
-		s.displayInner = kind != VIEW || d == Block ? BoxStyle.FLOW : d == Grid && Node.contexts().grid != null ? BoxStyle.GRID : BoxStyle.FLEX;
+		s.displayInner = kind != VIEW || d == Block ? BoxStyle.FLOW : d == Grid ? BoxStyle.GRID : BoxStyle.FLEX;
 		// (the box model: border-box)
 		var pad = p.padding, mar = p.margin, bw = p.borderWidth;
 		for (k in 0...4) {
@@ -131,7 +131,7 @@ class Resolve {
 		}
 		s.modelRead = true;
 		// (flex and alignment)
-		s.orderValue = 0;
+		s.orderValue = p.order ?? 0;
 		s.growValue = p.flexGrow ?? 0;
 		s.shrinkValue = p.flexShrink ?? 1;
 		s.basisValue = size(p.flexBasis);
@@ -167,13 +167,22 @@ class Resolve {
 		var opacity = p.opacity ?? 1.0;
 		if (opacity < 1 || p.zIndex != null) bits |= BoxStyle.STACKS;
 		s.traits = bits;
+		s.overflowXWord = s.overflowYWord = ov == Scroll ? "scroll" : ov == Hidden ? "hidden" : "visible";
 		s.opacityValue = opacity;
 		// (what few boxes have: a z-index, a grid's terms)
 		var rare:Null<helder.ui.box.BoxRare> = null;
 		function rare1():helder.ui.box.BoxRare
 			return rare ??= new helder.ui.box.BoxRare();
 		if (p.zIndex != null) rare1().zIndex = p.zIndex;
-		if (p.pointerEvents == None || p.pointerEvents == null && passed) rare1().pointerEvents = "none";
+		if (p.pointerEvents == None || p.pointerEvents == null && passed & Style.PASS != 0) rare1().pointerEvents = "none";
+		if (p.scrollbarWidth != null && p.scrollbarWidth != Auto) rare1().scrollbarWidth = p.scrollbarWidth == Thin ? "thin" : "none";
+		if (p.scrollbarColor != null) rare1().scrollbarColor = tint(p.scrollbarColor, theme, t.colour);
+		if (p.scrollbarTrackColor != null) rare1().scrollbarTrackColor = tint(p.scrollbarTrackColor, theme, t.colour);
+		var hidden = p.visibility == Hidden || p.visibility == null && passed & Style.HIDE != 0;
+		if (hidden) {
+			rare1().visibility = "hidden";
+			s.traits &= ~BoxStyle.VISIBLE;
+		}
 		// (a grid's terms: Grids', linked where a program says grid)
 		if (grids != null) grids(p, rare1);
 		if (rare != null) s.rareRead = rare;
@@ -213,8 +222,9 @@ class Resolve {
 	// all that resolve it under that parent)
 	static function text(p:Props, parent:InlineBasicStyle, theme:Theme):InlineBasicStyle {
 		if (p.color == null && p.fontSize == null && p.fontWeight == null && p.fontFamily == null && p.fontStyle == null && p.lineHeight == null
-			&& p.letterSpacing == null && p.textAlign == null && p.wrap == null && p.textOverflow == null && p.lineClamp == null && p.textDecoration == null
-			&& p.direction == null && p.fontVariantNumeric == null) return parent;
+			&& p.letterSpacing == null && p.textAlign == null && p.textWrap == null && p.textOverflow == null && p.lineClamp == null && p.textDecoration == null
+			&& p.direction == null && p.fontVariantNumeric == null && p.wordSpacing == null && p.overflowWrap == null && p.wordBreak == null && p.hyphens == null
+			&& p.fontFeatureSettings == null && p.textTransform == null && p.textDecorationColor == null && p.textDecorationThickness == null) return parent;
 		var t = parent.copy();
 		if (p.fontSize != null) {
 			// (a line height a multiple of the size: the parent's multiple at the new size)
@@ -233,12 +243,41 @@ class Resolve {
 			case Justify: Justify;
 			case _: Left;
 		}
-		if (p.wrap != null) t.wrap = p.wrap ? Wrap : NoWrap;
+		if (p.textWrap != null) t.wrap = p.textWrap == NoWrap ? NoWrap : Wrap;
 		if (p.direction != null) t.dir = p.direction == Rtl ? Rtl : Ltr;
-		if (p.fontVariantNumeric != null) {
-			var tags = [for (w in p.fontVariantNumeric.split(" ")) for (tag in helder.ui.box.TextTerms.variant(w)) tag];
-			t.features = tags.length == 0 ? null : [for (tag in tags) ({tag: tag, value: 1} : helder.text.FontFeature)];
+		if (p.fontVariantNumeric != null || p.fontFeatureSettings != null) {
+			// (font-variant-numeric's, then font-feature-settings', which win)
+			var tags = p.fontVariantNumeric == null ? [] : [for (w in p.fontVariantNumeric.split(" ")) for (tag in helder.ui.box.TextTerms.variant(w)) tag];
+			var out:Array<helder.text.FontFeature> = [for (tag in tags) {tag: tag, value: 1}];
+			if (p.fontFeatureSettings != null) for (f in helder.text.FontFeature.parse(p.fontFeatureSettings)) {
+				for (o in out.copy()) if (o.tag == f.tag) out.remove(o);
+				out.push(f);
+			}
+			t.features = out.length == 0 ? null : out;
 		}
+		if (p.wordSpacing != null) t.words = Pixels.resolve(p.wordSpacing, theme);
+		if (p.overflowWrap != null) t.overflow = switch p.overflowWrap {
+			case Normal: Normal;
+			case Anywhere: Anywhere;
+			case _: BreakWord;
+		}
+		if (p.wordBreak != null) t.breakWord = switch p.wordBreak {
+			case BreakAll: BreakAll;
+			case KeepAll: KeepAll;
+			case _: Normal;
+		}
+		if (p.hyphens != null) t.hyphen = switch p.hyphens {
+			case None: None;
+			case Auto: Auto;
+			case _: Manual;
+		}
+		if (p.textTransform != null) t.transform = switch p.textTransform {
+			case Uppercase: Uppercase;
+			case Lowercase: Lowercase;
+			case Capitalize: Capitalize;
+			case _: None;
+		}
+		if (p.textDecorationThickness != null) t.decorationThickness = Pixels.resolve(p.textDecorationThickness, theme);
 		// (not inherited in CSS: a text's alone, its runs' in it)
 		if (p.textOverflow != null) t.textOverflowEnd = p.textOverflow == Clip ? Clip : Ellipsis;
 		if (p.lineClamp != null) t.clamp = p.lineClamp;
@@ -247,7 +286,7 @@ class Resolve {
 			t.decoration = (d & (helder.ui.TextDecoration.Underline : Int) != 0 ? 1 : 0) | (d & (helder.ui.TextDecoration.Overline : Int) != 0 ? 2 : 0) | (d & (helder.ui.TextDecoration.LineThrough : Int) != 0 ? 4 : 0);
 		}
 		if (p.color != null) t.colour = tint(p.color, theme, parent.colour);
-		t.decorationColour = t.colour;
+		t.decorationColour = p.textDecorationColor == null ? t.colour : tint(p.textDecorationColor, theme, t.colour);
 		return t;
 	}
 

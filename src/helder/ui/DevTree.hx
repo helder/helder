@@ -68,7 +68,7 @@ class DevTree {
 
 	static function node(n:Node, seen:haxe.ds.ObjectMap<Node, Int>):Dynamic {
 		var id = idOf(n, seen);
-		var s = n.style;
+		var s = n.used;
 		var o:Dynamic = {
 			id: id,
 			tag: n.tag,
@@ -81,7 +81,7 @@ class DevTree {
 				flexDirection: ["column", "row", "column-reverse", "row-reverse"][cast s.flexDirection],
 				flexGrow: s.flexGrow,
 				opacity: s.opacity,
-				background: color(s.background),
+				background: color((s.backgroundColor : helder.gfx.Color)),
 				color: s.color == null ? null : color(s.color),
 				fontSize: s.fontSize,
 			},

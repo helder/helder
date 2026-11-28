@@ -22,6 +22,10 @@ class BoxRare {
 	public var intrinsicHeight(default, null) = 0.0;
 	public var pointerEvents(default, null) = "auto";
 	public var visibility(default, null) = "visible";
+	// scrollbar-width (auto, thin, none); scrollbar-color's thumb and track (null: auto, the window's)
+	public var scrollbarWidth(default, null) = "auto";
+	public var scrollbarColor(default, null):Null<Int> = null;
+	public var scrollbarTrackColor(default, null):Null<Int> = null;
 	// generated content: content normal (a marker's own text), list-style-type
 	public var contentNormal(default, null) = true;
 	public var listStyleType(default, null) = "disc";

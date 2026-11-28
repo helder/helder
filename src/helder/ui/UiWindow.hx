@@ -651,9 +651,9 @@ class UiWindow {
 	// (n's box where it draws and the pointer finds it, else its children's;
 	// dx, dy: the scrolls it is under, in points)
 	function boxes(n:Node, dx:Float, dy:Float, out:Array<Int>) {
-		if (n.style.display == None || !n.visible()) return;
-		var st = n.style;
-		var draws = Type.getClass(n) != Node || st.background.a > 0 || st.background.isToken || st.borderWidth > 0 || st.backgroundImage != null
+		if (n.used.none || !n.visible()) return;
+		var st = n.used;
+		var draws = Type.getClass(n) != Node || (st.backgroundColor >>> 24) > 0 || (st.backgroundColor : helder.gfx.Color).isToken || st.borderWidth > 0 || st.backgroundImage != null
 			|| st.boxShadow != null;
 		if (draws && n.hittable()) {
 			var k = scale, x0 = Math.floor((n.absX - dx) * k), y0 = Math.floor((n.absY - dy) * k);
@@ -663,7 +663,7 @@ class UiWindow {
 			out.push(Math.ceil((n.absY - dy + n.height) * k) - y0);
 			return;
 		}
-		if (st.overflow == Scroll) {
+		if (st.scrolls) {
 			dx += n.scrollX;
 			dy += n.scrollY;
 		}

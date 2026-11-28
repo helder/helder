@@ -190,7 +190,7 @@ class MarkdownView extends Node {
 			return true;
 		}
 		var r = rows[i];
-		scroller.scrollY = Math.max(0, scroller.scrollY + r.rect().y - scroller.rect().y - scroller.style.padding.top);
+		scroller.scrollY = Math.max(0, scroller.scrollY + r.rect().y - scroller.rect().y - scroller.used.paddingEdges.top);
 		return true;
 	}
 
@@ -400,7 +400,7 @@ class MarkdownView extends Node {
 	}
 
 	function link(n:Node, href:String) {
-		n.style.cursor = Pointer;
+		(n.props().cursor ?? Auto) = Pointer;
 		n.onClick = e -> if (props.onLink != null) props.onLink(href);
 	}
 

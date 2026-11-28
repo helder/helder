@@ -87,7 +87,7 @@ class TextSelection {
 		if (ia != null && ib != null && ia != ib) return "\n";
 		// (side by side in a row: inline, as a paragraph's runs around a picture)
 		var p = a.parent;
-		if (p != null && p == b.parent && (p.style.flexDirection == Row || p.style.flexDirection == RowReverse))
+		if (p != null && p == b.parent && (p.used.flexDirection == "row" || p.used.flexDirection == "row-reverse"))
 			return ta == "" || tb == "" || StringTools.isSpace(ta, ta.length - 1) || StringTools.isSpace(tb, 0) ? "" : " ";
 		return "\n\n";
 	}
@@ -137,7 +137,7 @@ class TextSelection {
 				var hi = to != null && to.path.length > path.length && prefix(path, to.path) == 0 ? to.path[path.length] : v.count - 1;
 				for (i in (lo < 0 ? 0 : lo)...(hi >= v.count ? v.count : hi + 1)) {
 					var r = v.rowAt(i);
-					if (r != null && (which != SHOWN || r.node.style.display != None)) {
+					if (r != null && (which != SHOWN || !r.node.used.none)) {
 						path.push(i);
 						visit(r.node);
 						path.pop();
@@ -156,13 +156,13 @@ class TextSelection {
 			}
 			for (k in 0...n.children.length) {
 				var c = n.children[k];
-				if (c.style.display == None) continue;
+				if (c.used.none) continue;
 				path.push(k);
 				if (inRange()) visit(c);
 				path.pop();
 			}
 		}
-		if (scope.style.display != None) visit(scope);
+		if (!scope.used.none) visit(scope);
 	}
 
 	// (a subtree's path against a point's: before it, around it (0), after it)

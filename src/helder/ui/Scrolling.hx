@@ -17,7 +17,7 @@ class Scrolling {
 		ui.wheelNode = null;
 		var n = target;
 		while (n != null) {
-			if (n.style.overflow == Scroll && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) {
+			if (n.used.scrolls && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) {
 				ui.wheelNode = n;
 				// (a mouse's notch: glided to, slowing, from where a glide is heading)
 				if (eased) {
@@ -44,7 +44,7 @@ class Scrolling {
 		var alongX = Math.abs(deltaX) > Math.abs(deltaY);
 		n = target;
 		while (n != null) {
-			if (n.style.overflow == Scroll && (alongX ? n.style.overflowX : n.style.overflowY) == Scroll && maxScroll(n, alongX) > 0) {
+			if (n.used.scrolls && (alongX ? n.style.overflowX : n.style.overflowY) == Scroll && maxScroll(n, alongX) > 0) {
 				ui.overNode = n;
 				ui.overX = deltaX;
 				ui.overY = deltaY;
@@ -61,7 +61,7 @@ class Scrolling {
 
 	static function scrollsAt(ui:Ui, n:Null<Node>, deltaX:Float, deltaY:Float):Bool {
 		while (n != null) {
-			if (n.style.overflow == Scroll && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) return true;
+			if (n.used.scrolls && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) return true;
 			n = n.parent;
 		}
 		return false;
@@ -86,8 +86,8 @@ class Scrolling {
 		var page = key == Key.PAGE_UP || key == Key.PAGE_DOWN || key == Key.SPACE, edge = key == Key.HOME || key == Key.END;
 		if (!(x || page || edge || key == Key.UP || key == Key.DOWN)) return false;
 		while (n != null) {
-			if (n.style.overflow == Scroll) {
-				var s = n.style, view = (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.padding.horizontal : s.borderEdges.vertical + s.padding.vertical);
+			if (n.used.scrolls) {
+				var s = n.used, view = (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.paddingEdges.horizontal : s.borderEdges.vertical + s.paddingEdges.vertical);
 				var d = edge ? maxScroll(n, x) + 1 : page ? Math.max(1, view * 0.875) : ARROW_STEP;
 				if (back) d = -d;
 				if (canScroll(n, d, x)) {
@@ -133,7 +133,7 @@ class Scrolling {
 
 	// how far n scrolls on the axis (from scrollStart)
 	static function maxScroll(n:Node, x:Bool):Float {
-		var s = n.style, inset = x ? s.borderEdges.horizontal + s.padding.horizontal : s.borderEdges.vertical + s.padding.vertical;
+		var s = n.used, inset = x ? s.borderEdges.horizontal + s.paddingEdges.horizontal : s.borderEdges.vertical + s.paddingEdges.vertical;
 		var view = (x ? n.width : n.height) - inset;
 		// (less than half a pixel over: none, the box being rounded and the content not, as Chromium snaps scrollHeight)
 		var over = (x ? n.contentWidth : n.contentHeight) - view;
@@ -166,9 +166,9 @@ class Scrolling {
 	static function scrollIntoView(ui:Ui, n:Node) {
 		var p = n.parent, shiftX = 0.0, shiftY = 0.0;
 		while (p != null) {
-			if (p.style.overflow == Scroll) {
+			if (p.used.scrolls) {
 				for (x in [false, true]) {
-					var s = p.style, inset = x ? s.borderEdges.left + s.padding.left : s.borderEdges.top + s.padding.top;
+					var s = p.used, inset = x ? s.borderEdges.left + s.paddingEdges.left : s.borderEdges.top + s.paddingEdges.top;
 					var start = (x ? n.absX - p.absX - shiftX : n.absY - p.absY - shiftY) - inset, end = start + (x ? n.width : n.height);
 					var view = viewSize(p, x), cur = x ? p.scrollX : p.scrollY;
 					if (start < cur) setScroll(ui, p, x, start) else if (end > cur + view) setScroll(ui, p, x, Math.min(start, end - view));
@@ -185,11 +185,11 @@ class Scrolling {
 	// as little as that takes, glided over duration seconds (0: at once)
 	static function reveal(ui:Ui, n:Node, margin:Float, bottom:Float, duration:Float) {
 		var p = n.parent;
-		while (p != null && !(p.style.overflow == Scroll && p.style.overflowY == Scroll))
+		while (p != null && !(p.used.scrollsOn(false)))
 			p = p.parent;
 		if (p == null) return;
-		var b = n.windowBounds(), v = p.windowBounds(), s = p.style;
-		var top = v.y + s.borderEdges.top + s.padding.top, end = Math.min(v.y + v.height - s.borderEdges.bottom - s.padding.bottom, bottom);
+		var b = n.windowBounds(), v = p.windowBounds(), s = p.used;
+		var top = v.y + s.borderEdges.top + s.paddingEdges.top, end = Math.min(v.y + v.height - s.borderEdges.bottom - s.paddingEdges.bottom, bottom);
 		var d = 0.0;
 		if (b.y - margin < top) d = b.y - margin - top else if (b.y + b.height + margin > end) d = Math.min(b.y + b.height + margin - end, b.y - margin - top);
 		var y = clampTo(p, false, p.scrollY + d);
@@ -208,15 +208,15 @@ class Scrolling {
 	}
 
 	static function viewSize(n:Node, x:Bool):Float {
-		var s = n.style;
-		return (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.padding.horizontal : s.borderEdges.vertical + s.padding.vertical);
+		var s = n.used;
+		return (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.paddingEdges.horizontal : s.borderEdges.vertical + s.paddingEdges.vertical);
 	}
 
 	// a scrollbar's track on axis x (horizontal) or y: its start and length
 	// along the axis (absolute), its offset across it; right to left, the
 	// vertical one on the left, as Chromium has it
 	static function track(n:Node, x:Bool):Array<Float> {
-		var be = n.style.borderEdges, i = barInset(n), rtl = n.rtl(), b = barSize(n);
+		var be = n.used.borderEdges, i = barInset(n), rtl = n.rtl(), b = barSize(n);
 		// (the other axis's bar, if any, takes the corner: its track's width where it has one)
 		var corner = maxScroll(n, !x) > 0 ? (legacy(n) ? gutter(n) : b + i) : 0;
 		return x ? [n.absX + be.left + i + (rtl ? corner : 0), n.width - be.horizontal - 2 * i - corner, n.absY + n.height - be.bottom - i - b] : [
@@ -295,7 +295,7 @@ class Scrolling {
 	static function scrolled(n:Node, x:Bool):Float {
 		var d = 0.0, p = n.parent;
 		while (p != null) {
-			if (p.style.overflow == Scroll) d += x ? p.scrollX : p.scrollY;
+			if (p.used.scrolls) d += x ? p.scrollX : p.scrollY;
 			p = p.parent;
 		}
 		return d;
@@ -307,7 +307,7 @@ class Scrolling {
 		var n = target;
 		while (n != null) {
 			// (overlay scrollbars: found only while shown)
-			if (n.style.overflow == Scroll && (!ui.overlayBars || ui.barShown(n) > 0))
+			if (n.used.scrolls && (!ui.overlayBars || ui.barShown(n) > 0))
 				for (x in [false, true]) {
 					var t = thumb(n, x);
 					if (t == null) continue;
@@ -384,13 +384,13 @@ class Scrolling {
 	// (ox, oy: the scrolling of n's ancestors; x0 to y1: what clips it, on screen)
 	static function collect(ui:Ui, n:Node, ox:Float, oy:Float, x0:Float, y0:Float, x1:Float, y1:Float, layer:Bool, covered:Bool, parent:Null<ScrollView>,
 			out:Array<ScrollView>) {
-		var s = n.style;
-		if (s.display == None || n.present != null && n.present.away) return;
-		if (s.overflow != Visible) {
+		var s = n.used;
+		if (s.none || n.present != null && n.present.away) return;
+		if (s.clips) {
 			var be = s.borderEdges, bx = n.absX - ox + be.left, by = n.absY - oy + be.top;
 			var bw = n.width - be.horizontal, bh = n.height - be.vertical;
-			if (s.overflow == Scroll) {
-				var mx = s.overflowX == Scroll ? maxScroll(n, true) : 0, my = s.overflowY == Scroll ? maxScroll(n, false) : 0;
+			if (s.scrolls) {
+				var mx = s.scrollsOn(true) ? maxScroll(n, true) : 0, my = s.scrollsOn(false) ? maxScroll(n, false) : 0;
 				if ((mx > 0 || my > 0) && bx < x1 && by < y1 && bx + bw > x0 && by + bh > y0) {
 					var v = ui.scrollKept.get(n);
 					if (v == null) ui.scrollKept.set(n, v = new ScrollView(n));
@@ -428,9 +428,9 @@ class Scrolling {
 			return;
 		}
 		for (c in n.children)
-			if (c.style.position == Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
+			if (c.used.position == "relative") collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
 		for (c in n.children)
-			if (c.style.position != Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
+			if (c.used.position != "relative") collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
 	}
 
 	// whether a platform's drag at x, y moving the content by dx, dy (the
@@ -449,7 +449,7 @@ class Scrolling {
 		var first:Null<Node> = null, alongX = Math.abs(dx) > Math.abs(dy);
 		p = t;
 		while (p != null) {
-			if (p.style.overflow == Scroll) {
+			if (p.used.scrolls) {
 				if (canScroll(p, dx, true) || canScroll(p, dy, false)) return p == n;
 				var v = ui.scrollKept.get(p);
 				if (first == null && v != null && (alongX ? v.scrollsX : v.scrollsY)) first = p;
@@ -464,7 +464,7 @@ class Scrolling {
 	// finger's drag is TouchScroll's: its Wheel events, its glide)
 	static function nativeAt(ui:Ui, n:Null<Node>):Bool {
 		while (n != null) {
-			if (n.style.overflow == Scroll) {
+			if (n.used.scrolls) {
 				var v = ui.scrollKept.get(n);
 				if (v != null && v.pass == ui.scrollPass && !v.covered) return true;
 			}

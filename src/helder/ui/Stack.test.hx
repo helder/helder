@@ -46,15 +46,15 @@ function tests() {
 			function screens()
 				return [for (n in ui.root.find("stack").children) if (n.tag == "screen") n];
 			function still(n:helder.ui.Node)
-				return n.style.transform == null || n.style.transform.isIdentity();
+				return n.props().transform == null || n.props().transform.isIdentity();
 			r.go("/item/1", true);
 			Graph.flush();
 			Clock.tick(Clock.now + 0.01);
 			Clock.tick(Clock.now + 0.11);
 			var s = screens();
 			assert(still(s[0]) && still(s[1]), "not slid");
-			assert(s[1].style.opacity > 0.5 && s[1].style.opacity < 1, "faded in: " + s[1].style.opacity);
-			assert(s[0].style.opacity > 0 && s[0].style.opacity < 0.5, "faded out: " + s[0].style.opacity);
+			assert(s[1].used.opacity > 0.5 && s[1].used.opacity < 1, "faded in: " + s[1].used.opacity);
+			assert(s[0].used.opacity > 0 && s[0].used.opacity < 0.5, "faded out: " + s[0].used.opacity);
 			Clock.finish();
 			equals(shown(ui), "home (hidden), item-1");
 			r.back();

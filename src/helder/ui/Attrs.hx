@@ -2,7 +2,7 @@ package helder.ui;
 
 import helder.gfx.Color;
 import helder.ui.Style.Edges;
-import helder.ui.Style.Size;
+import helder.ui.Style.Measure;
 import helder.ui.Style.Props;
 import helder.ui.Style.Tint;
 import helder.ui.Style.TintValue;
@@ -55,7 +55,7 @@ class Attrs {
 			"display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis",
 			"gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth",
 			"borderColor", "borderStyle", "borderRadius", "shadows", "outline", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
-			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "wrap", "textWrap",
+			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textWrap",
 			"textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
 			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
 		]) n => true
@@ -192,8 +192,12 @@ class Attrs {
 				p.letterSpacing = num(v);
 			case "textAlign":
 				p.textAlign = v;
-			case "wrap" | "textWrap":
-				p.wrap = v == null ? null : v != false && v != "nowrap";
+			case "textWrap":
+				p.textWrap = v == null ? null : Std.isOfType(v, Int) ? (v : helder.ui.TextWrap) : switch Std.string(v) {
+					case "nowrap": NoWrap;
+					case "balance": Balance;
+					case _: Wrap;
+				}
 			case "textOverflow":
 				p.textOverflow = v == null ? null : v == "ellipsis" || v == helder.ui.TextOverflow.Ellipsis ? helder.ui.TextOverflow.Ellipsis : helder.ui.TextOverflow.Clip;
 			case "lineClamp":
@@ -279,7 +283,7 @@ class Attrs {
 		return Math.isNaN(f) ? null : f;
 	}
 
-	static function size(v:Dynamic):Null<Size> {
+	static function size(v:Dynamic):Null<Measure> {
 		if (v == null) return null;
 		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return (v : Float);
 		if (Std.isOfType(v, String)) return (v : String);

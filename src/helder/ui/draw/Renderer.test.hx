@@ -144,7 +144,7 @@ private class Owned {
 		if (entering) {
 			var n = new helder.ui.Node();
 			n.style.set({width: 4, height: 4, background: 0xFF808080});
-			n.style.transition = helder.ui.Transition.parse("fade");
+			n.props().transition = helder.ui.Transition.parse("fade");
 			side.append(n);
 		}
 		frame();

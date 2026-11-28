@@ -134,9 +134,9 @@ class Trackpad {
 	function latch(x:Float, y:Float, dx:Float, dy:Float):Null<Node> {
 		var n = ui.hit(x, y), first:Null<Node> = null, alongX = Math.abs(dx) > Math.abs(dy);
 		while (n != null) {
-			if (n.style.overflow == Scroll) {
+			if (n.used.scrolls) {
 				if (Scrolling.canScroll(n, dx, true) || Scrolling.canScroll(n, dy, false)) return n;
-				if (first == null && (alongX ? n.style.overflowX == Scroll && Scrolling.maxScroll(n, true) > 0 : n.style.overflowY == Scroll
+				if (first == null && (alongX ? n.used.scrollsOn(true) && Scrolling.maxScroll(n, true) > 0 : n.used.scrollsOn(false)
 					&& Scrolling.maxScroll(n, false) > 0)) first = n;
 			}
 			n = n.parent;

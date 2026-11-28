@@ -133,7 +133,7 @@ class Stories {
 			if (Std.isOfType(n, TextNode)) line += ' "${(cast n : TextNode).text}"';
 			out.push(line);
 			for (c in n.children)
-				if (c.style.display != None) walk(c, depth + 1);
+				if (!c.used.none) walk(c, depth + 1);
 		}
 		walk(m.ui.root, 0);
 		// (what it left running stopped: its owner disposed in its context)

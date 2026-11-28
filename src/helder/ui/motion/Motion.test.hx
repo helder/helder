@@ -210,9 +210,9 @@ function tests() {
 				frame(s, 0.016);
 				equals(bounds(s.b).y, 80.0, "b at its place at once");
 				frame(s, 0.016 + 0.075);
-				assert(Math.abs(s.b.style.opacity - 0.5) < 0.01, 'half faded half way: ${s.b.style.opacity}');
+				assert(Math.abs(s.b.used.opacity - 0.5) < 0.01, 'half faded half way: ${s.b.used.opacity}');
 				frame(s, 0.016 + 0.16);
-				equals(s.b.style.opacity, 0.0, "faded");
+				equals(s.b.used.opacity, 0.0, "faded");
 			} catch (e:Dynamic) {
 				Clock.reducedMotion = false;
 				throw e;
@@ -225,7 +225,7 @@ function tests() {
 		test("nothing animates on the first frame", () -> {
 			var ui = new Ui(null, 300, 300), c = new Rec();
 			var row = box(100, 20);
-			row.style.transition = Transition.parse("fade scale");
+			row.props().transition = Transition.parse("fade scale");
 			var list = new Node();
 			list.motion = MotionSpec.DEFAULT;
 			list.append(row);
@@ -245,7 +245,7 @@ function tests() {
 			tick(ui, c, t);
 			var row = box(100, 20);
 			row.style.background = 0xFF3366FF;
-			row.style.transition = Transition.parse("fade slide-up");
+			row.props().transition = Transition.parse("fade slide-up");
 			list.append(row);
 			tick(ui, c, t += 0.016);
 			// (a change between frames moves from the next frame on: absent, not drawn, in the first)
@@ -330,16 +330,16 @@ function tests() {
 			tick(ui, c, t);
 			card.style.opacity = 0.2;
 			card.style.borderRadius = 20;
-			card.style.transform = Transform.translate(50, 0);
+			card.props().transform = Transform.translate(50, 0);
 			tick(ui, c, t += 0.016);
 			tick(ui, c, t += 0.1);
-			assert(card.style.opacity < 1 && card.style.opacity > 0.2, 'opacity moving: ${card.style.opacity}');
+			assert(card.used.opacity < 1 && card.used.opacity > 0.2, 'opacity moving: ${card.used.opacity}');
 			assert(card.style.borderRadius > 0 && card.style.borderRadius < 20, 'radius moving: ${card.style.borderRadius}');
 			var b = card.windowBounds();
 			assert(b.x > 0 && b.x < 50, 'translated part of the way: ${b.x}');
 			ui.update();
 			Clock.finish();
-			equals(card.style.opacity, 0.2);
+			equals(card.used.opacity, 0.2);
 			equals(card.style.borderRadius, 20.0);
 			equals(card.windowBounds().x, 50.0);
 		});

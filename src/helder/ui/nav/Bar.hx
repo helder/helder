@@ -140,17 +140,17 @@ class NavState {
 		scrolls = n;
 		inner = own;
 		var v:Null<VirtualScroll> = Std.downcast(n, VirtualScroll);
-		var top0 = v != null ? @:privateAccess v.insetTop : n.style.paddingTop;
-		var bottom0 = v != null ? @:privateAccess v.insetBottom : n.style.paddingBottom;
+		var top0 = v != null ? @:privateAccess v.insetTop : n.used.paddingPx(0);
+		var bottom0 = v != null ? @:privateAccess v.insetBottom : n.used.paddingPx(2);
 		inset = () -> {
 			var top = top0 + heights[0] + (inner ? 0 : heights[1]), bottom = bottom0 + heights[2];
 			if (v != null) {
 				v.insets(top, bottom);
 				return;
 			} else {
-				if (n.style.paddingTop == top && n.style.paddingBottom == bottom) return;
-				n.style.paddingTop = top;
-				n.style.paddingBottom = bottom;
+				if (n.used.paddingPx(0) == top && n.used.paddingPx(2) == bottom) return;
+				n.used.paddingPx(0) = top;
+				n.used.paddingPx(2) = bottom;
 			}
 			n.markDirty();
 		};

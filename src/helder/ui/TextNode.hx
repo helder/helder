@@ -85,7 +85,7 @@ class TextNode extends Node {
 		var b = new StringBuf(), spans:Array<TextSpan> = [], colors:Array<Color> = [], key = new StringBuf(), pos = 0;
 		function walk(n:Node) {
 			for (c in n.children) {
-				if (!Std.isOfType(c, TextNode) || c.style.display == None) continue;
+				if (!Std.isOfType(c, TextNode) || c.used.none) continue;
 				var t:TextNode = cast c;
 				if (t.children.length > 0) {
 					walk(t);
@@ -109,7 +109,7 @@ class TextNode extends Node {
 		var pos = 0, found:Null<TextNode> = null;
 		function walk(n:Node) {
 			for (c in n.children) {
-				if (found != null || !Std.isOfType(c, TextNode) || c.style.display == None) continue;
+				if (found != null || !Std.isOfType(c, TextNode) || c.used.none) continue;
 				var t:TextNode = cast c;
 				if (t.children.length > 0) {
 					walk(t);
@@ -408,7 +408,7 @@ class TextNode extends Node {
 		var pos = 0;
 		function walk(n:Node) {
 			for (c in n.children) {
-				if (!Std.isOfType(c, TextNode) || c.style.display == None) continue;
+				if (!Std.isOfType(c, TextNode) || c.used.none) continue;
 				var t:TextNode = cast c, start = pos;
 				if (t.children.length > 0) walk(t) else pos += t.text.length;
 				add(t, start, pos);

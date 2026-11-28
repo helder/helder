@@ -11,6 +11,13 @@ import helder.canvas.Matrix;
 // bare number of degrees). A transform moves how a node and its subtree are
 // drawn and where the pointer hits them, not their layout.
 class Transform {
+	// (its key in a style's (Style.write): one for each, given when first asked)
+	var id = -1;
+	static var ids = 0;
+
+	function key():Int
+		return id < 0 ? id = ids++ : id;
+
 	// the functions in order: their names and arguments (lengths in pixels,
 	// or percentages where percent is set; angles in degrees)
 	final names:Array<String>;

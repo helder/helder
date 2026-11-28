@@ -31,10 +31,10 @@ function tests() {
 			var dispose = Render.render(Fixture.bar(), ui.root);
 			ui.update();
 			var bar = ui.root.find("bar");
-			equals([bar.style.paddingLeft, bar.rect().height], [12.0, 40.0]);
+			equals([bar.used.paddingPx(3), bar.rect().height], [12.0, 40.0]);
 			SafeArea.setTitlebar({x: 78, y: 0, width: 722, height: 28});
 			ui.update();
-			equals([bar.style.paddingLeft, bar.rect().height], [78.0, 28.0]);
+			equals([bar.used.paddingPx(3), bar.rect().height], [78.0, 28.0]);
 			dispose();
 		});
 		test("a drag region's press, a button in it the content's, the window's buttons theirs", () -> {

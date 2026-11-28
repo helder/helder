@@ -220,6 +220,43 @@ class BoxStyle {
 	var outlineOffsetValue = 0.0;
 	var outlineColorValue = 0;
 
+	// Its paint and box model written into another (made if null): a node's own while a motion moves its
+	// background, border colour or radius (helder.ui.NodePaint), the values over it, nothing interned.
+	public function paintInto(into:Null<BoxStyle>, bg:Int, borderColor:Int, radius:Float):BoxStyle {
+		var s = into ?? new BoxStyle();
+		if (!paintRead) readPaint();
+		model();
+		s.textPart = text;
+		s.traits = traits;
+		s.modelRead = true;
+		s.margin.resize(0);
+		s.padding.resize(0);
+		s.border.resize(0);
+		for (k in 0...4) {
+			s.margin.push(margin[k]);
+			s.padding.push(padding[k]);
+			s.border.push(border[k]);
+		}
+		s.paintRead = true;
+		s.bgColor = bg;
+		s.bgParts = bgParts;
+		s.bgClip = bgClip;
+		s.radiusTerms = radius != radius ? radiusTerms : radius > 0 ? [for (_ in 0...8) Dimension(radius, "px")] : null;
+		s.sideStyles.resize(0);
+		s.sideColors.resize(0);
+		for (k in 0...4) {
+			s.sideStyles.push(sideStyles[k]);
+			s.sideColors.push(borderColor);
+		}
+		s.shadowList = shadowList;
+		s.outlineStyleValue = outlineStyleValue;
+		s.outlineWidthValue = outlineWidthValue;
+		s.outlineOffsetValue = outlineOffsetValue;
+		s.outlineColorValue = outlineColorValue;
+		s.opacityValue = opacityValue;
+		return s;
+	}
+
 	// (the cascade's paint part: CssBoxStyle's; here its initial values, or what code set)
 	function readPaint() {
 		paintRead = true;
@@ -438,6 +475,38 @@ class BoxStyle {
 	public final padding:Array<Len> = [];
 	// top, right, bottom, left; 0 under a none or hidden style (the cascade's)
 	public final border:Array<Float> = [];
+
+	// a side's (0 top, 1 right, 2 bottom, 3 left) padding in px where it is a length (a percentage's 0: no box here)
+	public function paddingPx(side:Int):Float {
+		model();
+		return switch padding[side] {
+			case Px(v): v;
+			case _: 0;
+		}
+	}
+
+	// a side's border width
+	public inline function borderPx(side:Int):Float {
+		model();
+		return border[side];
+	}
+
+	// its border's widths and its padding as edges (top, right, bottom, left; horizontal, vertical), made once
+	public var borderEdges(get, never):helder.os.Edges;
+	public var paddingEdges(get, never):helder.os.Edges;
+
+	var bordersKept:Null<helder.os.Edges> = null;
+	var paddingsKept:Null<helder.os.Edges> = null;
+
+	function get_borderEdges():helder.os.Edges
+		return bordersKept ??= new helder.os.Edges(borderPx(0), borderPx(1), borderPx(2), borderPx(3));
+
+	function get_paddingEdges():helder.os.Edges
+		return paddingsKept ??= new helder.os.Edges(paddingPx(0), paddingPx(1), paddingPx(2), paddingPx(3));
+
+	// its border and padding across the axis: horizontal (left and right) or vertical
+	public function edgesAcross(x:Bool):Float
+		return x ? borderPx(1) + borderPx(3) + paddingPx(1) + paddingPx(3) : borderPx(0) + borderPx(2) + paddingPx(0) + paddingPx(2);
 	public var width(default, null) = Len.Auto;
 	public var height(default, null) = Len.Auto;
 	public var minWidth(default, null) = Len.Auto;
@@ -472,6 +541,9 @@ class BoxStyle {
 
 	var traits = -1;
 	var positionWord = "static";
+	// (overflow-x's and overflow-y's keywords, read with the traits)
+	var overflowXWord = "visible";
+	var overflowYWord = "visible";
 
 	static inline var FLOATING = 1;
 	static inline var CLIPS = 2;
@@ -543,6 +615,26 @@ class BoxStyle {
 
 	inline function get_scrolls():Bool
 		return trait(SCROLLS);
+
+	// overflow-x's and overflow-y's keywords (visible, hidden, clip, scroll, auto)
+	public var overflowX(get, never):String;
+	public var overflowY(get, never):String;
+
+	function get_overflowX():String {
+		if (traits < 0) traits = readTraits();
+		return overflowXWord;
+	}
+
+	function get_overflowY():String {
+		if (traits < 0) traits = readTraits();
+		return overflowYWord;
+	}
+
+	// it scrolls on the axis (overflow scroll or auto): the wheel, the keys, a scrollbar
+	public inline function scrollsOn(x:Bool):Bool {
+		var w = x ? overflowX : overflowY;
+		return w == "scroll" || w == "auto";
+	}
 
 	// overflow hidden, auto or scroll on either axis: a scroll container (clip makes none, Overflow 3 §3)
 	public var scrollContainer(get, never):Bool;
