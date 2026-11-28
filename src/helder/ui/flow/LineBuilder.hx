@@ -609,7 +609,7 @@ class LineBuilder {
 						var b = slot(item, cur, c.styleOf(item), STARTS);
 						sSpan[b] = fragment(BoxSpan, item, x, 0, b);
 						fragment(BoxStart, item, x, w, b);
-						sLeft[b] = x + s.marginStart();
+						sLeft[b] = x + (c.opensAtStart(s) ? s.marginStart() : s.marginEnd());
 						cur = b;
 						if (c.edged(item)) filled = true;
 					case Close:
@@ -619,7 +619,8 @@ class LineBuilder {
 						if (b > 0) {
 							fragment(BoxEnd, c.box(item), x, w, b);
 							sEdges[b] |= ENDS;
-							sRight[b] = x + w - c.styles[c.styleOf(c.box(item))].marginEnd();
+							var style = c.styles[c.styleOf(c.box(item))];
+							sRight[b] = x + w - (c.opensAtStart(style) ? style.marginEnd() : style.marginStart());
 							cur = sParent[b];
 						}
 						if (c.edged(item)) filled = true;
