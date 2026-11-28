@@ -200,7 +200,7 @@ class Node {
 		passed = theme;
 		groupStates = group;
 		look ??= attrs == null ? style : Attrs.styled(style, attrs);
-		var s = Resolve.of(look, states | group << Style.GROUP, text, scope(), kind), was = box.style;
+		var s = Resolve.of(look, states | group << Style.GROUP, text, scope(), spanned() ? Resolve.SPAN : kind), was = box.style;
 		if (s != was) restyled(was, s);
 		var t = s.text, th = scope(), below = groupBelow();
 		for (c in kids) if (c.under != t || c.passed != th || c.groupStates != below) c.resolve(t, th, below);
@@ -221,6 +221,7 @@ class Node {
 				old.parent.insert(fresh, old);
 				old.remove();
 			}
+			swapped(now);
 			level = Resolve.LAYOUT;
 		} else {
 			box.restyle(now);
@@ -262,8 +263,12 @@ class Node {
 		return b;
 	}
 
+	// (a text in a text: a run of it)
+	inline function spanned():Bool
+		return kind == Resolve.TEXT && parent != null && parent.kind == Resolve.TEXT;
+
 	function kindOf(s:BoxStyle):BoxKind
-		return s.inner == BoxStyle.FLEX || s.inner == BoxStyle.GRID ? Container : Block;
+		return s.outer == BoxStyle.INLINE ? Inline : s.inner == BoxStyle.FLEX || s.inner == BoxStyle.GRID ? Container : Block;
 
 	// (a box made for it: what it holds besides its style, IconNode's svg)
 	function dressed(b:Box) {}
