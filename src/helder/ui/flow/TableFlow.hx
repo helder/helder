@@ -140,12 +140,22 @@ class TableFlow implements FormattingContext {
 		var groups = (header != null ? [header] : []).concat(middle).concat(footer != null ? [footer] : []);
 		g.header = header;
 		g.footer = footer;
-		for (group in groups) {
-			var rows = group.style.part == BoxStyle.ROW ? [group] : group.children();
+		var groupIndex = 0;
+		while (groupIndex < groups.length) {
+			var group:Null<Box> = groups[groupIndex++];
+			var rows:Array<Box>;
+			if (group.style.part == BoxStyle.ROW) {
+				// (consecutive direct rows have the same implicit row group, including in XHTML)
+				rows = [group];
+				while (groupIndex < groups.length && groups[groupIndex].style.part == BoxStyle.ROW)
+					rows.push(groups[groupIndex++]);
+				group = null;
+			} else
+				rows = group.children();
 			var first = g.rows.length;
 			for (r in rows) {
 				g.rows.push(r);
-				g.rowGroups.push(group.style.part == BoxStyle.ROW ? null : group);
+				g.rowGroups.push(group);
 			}
 			// (cells into slots, past those a rowspan above holds; rowspan 0: to the group's end)
 			for (k in 0...rows.length) {
@@ -565,7 +575,7 @@ class TableFlow implements FormattingContext {
 		// (row heights: their own, their cells', the baseline's; a rowspan's last row taking what it needs)
 		var rowH = [for (r in 0...rows) Math.max(0, Lens.resolve(g.rows[r].style.model().height, Math.NaN, 0))];
 		var baselines = [for (_ in 0...rows) 0.0];
-		for (cell in g.cells) if (cell.rows == 1 && valign(cell.box) == "baseline") baselines[cell.row] = Math.max(baselines[cell.row], cell.baseline);
+		for (cell in g.cells) if (valign(cell.box) == "baseline") baselines[cell.row] = Math.max(baselines[cell.row], cell.baseline);
 		for (cell in g.cells) {
 			if (cell.rows != 1) continue;
 			var need = valign(cell.box) == "baseline" ? baselines[cell.row] - cell.baseline + cell.height : cell.height;
@@ -575,7 +585,8 @@ class TableFlow implements FormattingContext {
 			if (cell.rows == 1) continue;
 			var have = g.spacingV * (cell.rows - 1);
 			for (r in cell.row...cell.row + cell.rows) have += rowH[r];
-			if (cell.height > have) rowH[cell.row + cell.rows - 1] += cell.height - have;
+			var need = valign(cell.box) == "baseline" ? baselines[cell.row] - cell.baseline + cell.height : cell.height;
+			if (need > have) rowH[cell.row + cell.rows - 1] += need - have;
 		}
 		for (r in 0...rows) if (g.rows[r].style.rare.visibility == "collapse") rowH[r] = 0;
 		// (a grid without rows has no block-axis row spacing)
@@ -771,7 +782,7 @@ class TableFlow implements FormattingContext {
 				case "top": 0.0;
 				case "bottom": h - cell.contentHeight;
 				case "middle": (h - cell.contentHeight) / 2;
-				case _: cell.rows == 1 ? baselines[cell.row] - cell.baseline : 0.0;
+				case _: baselines[cell.row] - cell.baseline;
 			}
 			if (shift != 0) {
 				var k = frags.first(f);
