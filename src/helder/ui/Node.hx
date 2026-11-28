@@ -114,6 +114,16 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// a legend (a page's legend element): its parent's first, as a fieldset's
 	// rendered legend, no flex item (Layout: no gap after it in a column)
 	public var legend = false;
+	// the page's body: the node whose text the window's layers inherit, as a page's popups its body's (Ui.body)
+	public var body(default, set) = false;
+
+	function set_body(v:Bool):Bool {
+		if (v == body) return v;
+		body = v;
+		if (v && ui != null) ui.setBody(this);
+		return v;
+	}
+
 	// its subtree's theme: its tokens' values (null: its parent's, else the window's, Ui.theme)
 	public var theme(default, set):Null<Theme> = null;
 	// its states are its descendants' group states (a style's group: {...})
@@ -188,6 +198,30 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	var groupStates = 0;
 	// (drawn since it came into a window: its entrance played then, Motions)
 	@:allow(helder.ui) var drawn = false;
+	// its background gradient (its style's backgroundImage) drawn at its size in the window's pixels, at most
+	// GRADIENT_PIXELS of them (a large box's at a lower resolution, stretched over it: a gradient is smooth); null:
+	// none
+	@:noCompletion public function backgroundImage(scale:Float):Null<helder.image.Image> {
+		var g = props().backgroundImage;
+		if (g == null) return null;
+		var area = width * height * scale * scale, k = area > GRADIENT_PIXELS ? scale * Math.sqrt(GRADIENT_PIXELS / area) : scale;
+		var w = Std.int(Math.max(1, Math.round(width * k))), h = Std.int(Math.max(1, Math.round(height * k)));
+		if (gradientImage == null || gradientOf != g || gradientW != w || gradientH != h) {
+			gradientImage = g.render(w, h, k);
+			gradientOf = g;
+			gradientW = w;
+			gradientH = h;
+		}
+		return gradientImage;
+	}
+
+	static inline var GRADIENT_PIXELS = 262144.0;
+
+	var gradientImage:Null<helder.image.Image> = null;
+	var gradientOf:Null<Gradient> = null;
+	var gradientW = 0;
+	var gradientH = 0;
+
 	// (its style as painted while a motion moves its background, border colour or radius: NodePaint's)
 	var scratch:Null<helder.ui.box.BoxStyle> = null;
 
@@ -447,6 +481,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// (what it recorded before not copied: it may have changed while out)
 		paintedAt = -1;
 		if (u != null && autofocus) u.setFocus(this, false);
+		if (u != null && body) u.setBody(this);
 		// (out of a window: drawn anew when back)
 		if (u == null) drawn = false;
 		for (c in children)

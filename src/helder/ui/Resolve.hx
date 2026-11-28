@@ -22,7 +22,7 @@ class Resolve {
 
 	// what a change of one resolved style to another takes (Tree's): nothing, a paint, a paint order, a layout
 	// (a grid's terms into a box's rare part: Grids.fill, set by Grids.use)
-	@:allow(helder.ui) static var grids:Null<(Props, () -> helder.ui.box.BoxRare) -> Void> = null;
+	@:allow(helder.ui) static var grids:Null<(Props, () -> helder.ui.box.BoxRare) -> Void> = Grids.fill;
 
 	public static inline var NOTHING = 0;
 	public static inline var PAINT = 1;
@@ -114,7 +114,9 @@ class Resolve {
 		// (the box model: border-box)
 		var pad = p.padding, mar = p.margin, bw = p.borderWidth;
 		for (k in 0...4) {
-			s.margin.push(Px(mar == null ? 0 : px((mar : Array<Float>)[k])));
+			// (NaN: auto)
+			var m = mar == null ? 0.0 : (mar : Array<Float>)[k];
+			s.margin.push(m != m ? Auto : Px(px(m)));
 			s.padding.push(Px(pad == null ? 0 : px((pad : Array<Float>)[k])));
 			s.border.push(bw == null ? 0 : px((bw : Array<Float>)[k]));
 		}

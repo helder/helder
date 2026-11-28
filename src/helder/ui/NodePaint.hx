@@ -20,13 +20,18 @@ class NodePaint {
 		return painter;
 	}
 
-	// its shadows outside, background, shadows inside and border
-	public static function box(canvas:Canvas, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, scale:Float) {
-		if (s.backgroundColor >>> 24 == 0 && s.background == null && s.shadows == null && s.borderPx(0) + s.borderPx(1) + s.borderPx(2) + s.borderPx(3) == 0)
-			return;
+	// its shadows outside, background (its gradient over its colour: n's), shadows inside and border
+	public static function box(canvas:Canvas, n:Node, s:BoxStyle, x:Float, y:Float, w:Float, h:Float, scale:Float) {
+		var g = n.props().backgroundImage != null && w > 0 && h > 0 ? n.backgroundImage(scale) : null;
+		if (g == null && s.backgroundColor >>> 24 == 0 && s.background == null && s.shadows == null
+			&& s.borderPx(0) + s.borderPx(1) + s.borderPx(2) + s.borderPx(3) == 0) return;
 		var p = on(canvas, scale);
 		Borders.shadows(p, s, x, y, w, h, false);
 		Backgrounds.paint(p, s, x, y, w, h, _ -> null, null, false, false, false, false);
+		if (g != null) {
+			var c = corners(s, w, h, 0);
+			canvas.image(g, x, y, w, h, 0, 0, 1, 1, c == null ? 0 : c.topLeft, c);
+		}
 		Borders.shadows(p, s, x, y, w, h, true);
 		Borders.paint(p, s, x, y, w, h, false, false, false, false);
 	}

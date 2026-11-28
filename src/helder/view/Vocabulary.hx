@@ -68,7 +68,7 @@ class Vocabulary {
 	// the attributes every element takes, besides the style properties,
 	// ARIA's (aria-*), data-*, key, ref and style
 	public static final COMMON = [
-		"id", "class", "role", "hidden", "disabled", "required", "tabIndex", "autoFocus", "focusable", "selectable", "slot", "variant", "size",
+		"id", "class", "role", "hidden", "disabled", "required", "tabIndex", "autoFocus", "focusable", "selectable", "body",
 		"host", "group", "peer", "theme", "tag", "states", "keyContext", "actions", "trackFocus", "dragRegion", "dragData", "panAxis", "panMinPointers",
 		"motion", "motionLayout", "motionOpacity", "motionColor", "motionTransform", "motionRadius", "motionPresence", "lead", "trail", "instant",
 		"matched", "ride", "lang"
@@ -260,7 +260,7 @@ class Vocabulary {
 
 	// the attributes that are booleans (a flag alone true, {false} false)
 	public static final BOOLEANS = [
-		"hidden", "disabled", "required", "autoFocus", "focusable", "selectable", "dragRegion", "instant", "mirrored", "readOnly",
+		"hidden", "disabled", "required", "autoFocus", "focusable", "selectable", "body", "dragRegion", "instant", "mirrored", "readOnly",
 		"spellCheck", "autoCorrect", "inspectable", "zoom", "transparent", "backGesture", "interactive", "autoPlay", "loop", "muted", "layer"
 	];
 

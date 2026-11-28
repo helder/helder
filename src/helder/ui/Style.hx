@@ -141,6 +141,8 @@ typedef StyleProps = {
 	?transformOrigin:Array<helder.ui.Dim>,
 	// what eases to a new value, and how it enters and leaves (Transition.parse)
 	?transition:TransitionRef,
+	// a CSS gradient over the background colour, under the border (Gradient.parse)
+	?backgroundImage:GradientRef,
 	// its state variants, over it where the state is on (a later one's over an earlier's)
 	?hover:StyleProps,
 	?pressed:StyleProps,
@@ -172,9 +174,11 @@ typedef StateProps = {
 #if macro
 typedef TransformRef = Dynamic;
 typedef TransitionRef = Dynamic;
+typedef GradientRef = Dynamic;
 #else
 typedef TransformRef = helder.ui.Transform;
 typedef TransitionRef = helder.ui.Transition;
+typedef GradientRef = helder.ui.Gradient;
 #end
 
 // A colour: one, a theme's token (Token<Color>: its value in the theme in
@@ -400,6 +404,7 @@ final class Props {
 	public var transform:Null<TransformRef> = null;
 	public var transformOrigin:Null<Array<helder.ui.Dim>> = null;
 	public var transition:Null<TransitionRef> = null;
+	public var backgroundImage:Null<GradientRef> = null;
 	public var hover:Null<Props> = null;
 	public var pressed:Null<Props> = null;
 	public var focus:Null<Props> = null;
@@ -502,6 +507,7 @@ final class Props {
 		o.transform = p.transform;
 		o.transformOrigin = p.transformOrigin;
 		o.transition = p.transition;
+		o.backgroundImage = p.backgroundImage;
 		o.hover = from(p.hover);
 		o.pressed = from(p.pressed);
 		o.focus = from(p.focus);
@@ -681,7 +687,7 @@ final class Style {
 		for (f in FIELDS.concat(VARIANTS)) if (StringTools.startsWith(f.toLowerCase(), n.toLowerCase().substr(0, 3))) return '; did you mean $f?';
 		return "";
 	}
-	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition"];
+	static final FIELDS = ["display", "flexDirection", "flexWrap", "alignItems", "alignSelf", "justifyContent", "alignContent", "flexGrow", "flexShrink", "flexBasis", "gap", "rowGap", "columnGap", "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight", "padding", "margin", "borderWidth", "borderColor", "borderStyle", "borderRadius", "background", "shadows", "outline", "opacity", "overflow", "position", "top", "right", "bottom", "left", "zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows", "gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens", "fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle", "scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition", "backgroundImage"];
 	static final VARIANTS = ["hover", "pressed", "focus", "disabled", "selected", "checked", "mixed", "placeholder", "dark"];
 	static final GROUP_STATES = ["hover", "pressed", "focus", "disabled", "selected", "checked", "mixed"];
 	#end
@@ -858,6 +864,7 @@ final class Style {
 		o.transform = b.transform ?? a.transform;
 		o.transformOrigin = b.transformOrigin ?? a.transformOrigin;
 		o.transition = b.transition ?? a.transition;
+		o.backgroundImage = b.backgroundImage ?? a.backgroundImage;
 		o.hover = both(a.hover, b.hover);
 		o.pressed = both(a.pressed, b.pressed);
 		o.focus = both(a.focus, b.focus);
@@ -991,6 +998,7 @@ final class Style {
 			case _: Auto;
 		});
 		if (p.transition != null) word(out, "tr", @:privateAccess p.transition.key());
+		if (p.backgroundImage != null) word(out, "bgi", @:privateAccess p.backgroundImage.key());
 		inline function sub(name:String, v:Null<Props>)
 			if (v != null) {
 				out.add(name);

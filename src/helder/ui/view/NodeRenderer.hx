@@ -267,6 +267,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function focusable(n:Node, name:String, v:Dynamic)
 		n.focusable = v == true || v == "true";
 
+	// the page's body, whose text the window's layers inherit (Node.body)
+	@:attribute static function body(n:Node, name:String, v:Dynamic)
+		n.body = v == true || v == "true" || v == "";
+
 	// takes the focus once in a window (Node.autofocus)
 	@:attribute static function autoFocus(n:Node, name:String, v:Dynamic)
 		n.autofocus = v == true || v == "true";

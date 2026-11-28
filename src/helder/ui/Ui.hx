@@ -1208,7 +1208,7 @@ class Ui extends ScrollHost {
 		hidden = !u.visible;
 		var bt = u.borderPx(0), br = u.borderPx(1), bb = u.borderPx(2), bl = u.borderPx(3);
 		// (its box: the engine's painter's, from its style)
-		if (!hidden) NodePaint.box(canvas, s, n.absX, n.absY, nw, nh, scale);
+		if (!hidden) NodePaint.box(canvas, n, s, n.absX, n.absY, nw, nh, scale);
 		var outer = NodePaint.corners(s, nw, nh, 0);
 		// (the padding box's corners: each less the widest side)
 		var padC = NodePaint.corners(s, nw, nh, Math.max(Math.max(bt, br), Math.max(bb, bl)));

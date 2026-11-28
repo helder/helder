@@ -14,6 +14,13 @@ import helder.image.Image;
 // says. Colours are mixed with their alpha premultiplied. Drawn into an
 // Image the size of the box in the window's pixels (render).
 class Gradient {
+	// (its key in a style's (Style.write): one for each, given when first asked)
+	var id = -1;
+	static var ids = 0;
+
+	function key():Int
+		return id < 0 ? id = ids++ : id;
+
 	public final linear:Bool;
 	public final repeating:Bool;
 	// linear: the direction, in degrees clockwise from up

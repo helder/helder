@@ -8,7 +8,7 @@ class Grids {
 		Resolve.grids = fill;
 
 	// (a style's grid as the terms GridFlow reads, GridTerms', into its box's rare part)
-	static function fill(p:Style.Props, rare:() -> helder.ui.box.BoxRare) {
+	@:allow(helder.ui) static function fill(p:Style.Props, rare:() -> helder.ui.box.BoxRare) {
 		if (p.gridTemplateColumns != null) rare().gridTemplateColumns = GridTerms.tracks(p.gridTemplateColumns);
 		if (p.gridTemplateRows != null) rare().gridTemplateRows = GridTerms.tracks(p.gridTemplateRows);
 		if (p.gridTemplateAreas != null) rare().gridTemplateAreas = GridTerms.areas(p.gridTemplateAreas);

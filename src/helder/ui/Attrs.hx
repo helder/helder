@@ -57,7 +57,7 @@ class Attrs {
 			"borderColor", "borderStyle", "borderRadius", "shadows", "outline", "background", "backgroundColor", "opacity", "overflow", "position", "top", "right", "bottom", "left",
 			"zIndex", "color", "fontSize", "fontWeight", "fontFamily", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textWrap", "visibility", "userSelect", "textTransform", "wordSpacing", "overflowWrap", "wordBreak", "hyphens",
 			"fontFeatureSettings", "order", "textDecorationColor", "textDecorationThickness", "textUnderlineOffset", "fieldSizing", "outlineStyle",
-			"scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition",
+			"scrollbarColor", "scrollbarTrackColor", "textShadow", "transform", "transformOrigin", "transition", "backgroundImage", "flex", "inset",
 			"textOverflow", "lineClamp", "textDecoration", "cursor", "pointerEvents", "direction", "fontVariantNumeric", "aspectRatio", "scrollbarWidth", "justifyItems", "justifySelf", "gridTemplateColumns", "gridTemplateRows",
 			"gridTemplateAreas", "gridAutoColumns", "gridAutoRows", "gridAutoFlow", "gridColumn", "gridRow", "gridArea"
 		]) n => true
@@ -135,6 +135,27 @@ class Attrs {
 				p.transform = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transform.parse(v) : v;
 			case "transformOrigin":
 				p.transformOrigin = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transform.origin(v) : v;
+			case "backgroundImage":
+				p.backgroundImage = v == null ? null : Std.isOfType(v, String) ? helder.ui.Gradient.parse(v) : v;
+			case "flex":
+				// (CSS's shorthand: a number grows, "none" 0 0 auto, "auto" 1 1 auto, "2 0 40px")
+				var w = v == null ? [] : [for (x in Std.string(v).split(" ")) if (x != "") x];
+				if (w.length == 1 && (w[0] == "none" || w[0] == "auto")) {
+					p.flexGrow = p.flexShrink = w[0] == "none" ? 0 : 1;
+					p.flexBasis = "auto";
+				} else {
+					if (w.length > 0) p.flexGrow = num(w[0]);
+					p.flexShrink = w.length > 1 ? num(w[1]) : 1;
+					p.flexBasis = w.length > 2 ? size(w[2]) : w.length == 1 ? 0.0 : "auto";
+				}
+			case "inset":
+				var e:Null<Array<Float>> = edges(v);
+				if (e != null) {
+					p.top = e[0];
+					p.right = e[1];
+					p.bottom = e[2];
+					p.left = e[3];
+				}
 			case "transition":
 				p.transition = v == null ? null : Std.isOfType(v, String) ? helder.ui.Transition.parse(v) : v;
 			case "display":
@@ -185,7 +206,12 @@ class Attrs {
 			case "flexBasis":
 				p.flexBasis = size(v);
 			case "gap":
-				p.gap = num(v);
+				// (CSS's: one for both, else the rows', then the columns')
+				var w = v == null || !Std.isOfType(v, String) ? null : [for (x in (v : String).split(" ")) if (x != "") x];
+				if (w != null && w.length == 2) {
+					p.rowGap = num(w[0]);
+					p.columnGap = num(w[1]);
+				} else p.gap = num(v);
 			case "rowGap":
 				p.rowGap = num(v);
 			case "columnGap":
@@ -367,7 +393,8 @@ class Attrs {
 		if (v == null) return null;
 		if (Std.isOfType(v, Float) || Std.isOfType(v, Int)) return (v : Float);
 		if (Std.isOfType(v, Array)) return (v : Array<Float>);
-		return [for (w in Std.string(v).trim().split(" ")) if (w != "") num(w) ?? 0.0];
+		// (auto: NaN, a margin's)
+		return [for (w in Std.string(v).trim().split(" ")) if (w != "") w == "auto" ? Math.NaN : num(w) ?? 0.0];
 	}
 
 	static function tint(v:Dynamic):Null<Tint> {
