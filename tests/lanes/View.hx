@@ -57,7 +57,7 @@ class View {
 		for (island in [false, true]) {
 			var out = 'bin/ui/FastProbe${island ? "-island" : ""}';
 			exe(out, cps(["src", "tests/ui"]).concat(["-main", "FastProbe", "-dce", "full", "-D", "helder.release", "-D", "hxmc.symbols"])
-				.concat(island ? ["-D", "fast.island"] : []));
+				.concat(island ? ["-D", "fast.island"] : []).concat(targetArgs(HOST)));
 			var got = StringTools.trim(output(exePath(out, HOST), ["layout"]));
 			var expected = "laid out 480x";
 			if (!got.startsWith(expected) || got.indexOf("3 rows 3 items left") < 0) throw new Failed('$out: "$got", expected "$expected... 3 rows 3 items left"');
