@@ -379,6 +379,7 @@ class FrameWriter implements TextureCanvas {
 	// reading of them: glyphs, placed); a text engine's but helder's: nothing
 	function paragraph(p:Paragraph) {
 		var dp = Std.downcast(p, DrawParagraph), rp = Std.downcast(p, RunParagraph);
+		if (rp != null) rp.ready();
 		out.float(80, p.width);
 		out.float(81, p.height);
 		out.float(82, p.minWidth);

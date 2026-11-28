@@ -233,7 +233,7 @@ class UiWindow {
 		var k = window.surface.kind;
 		tiled = k != helder.os.Surface.SurfaceKind.Headless && k != helder.os.Surface.SurfaceKind.X11 && k != helder.os.Surface.SurfaceKind.Canvas;
 		#end
-		ui = new Ui(text == null ? new helder.ui.draw.DrawText() : text, width, height);
+		ui = new Ui(text == null ? TextEngines.standard() : text, width, height);
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)

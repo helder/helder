@@ -148,7 +148,7 @@ class Monkey {
 		var least = def.smallest ?? [240, 180];
 		minW = least[0];
 		minH = least[1];
-		text = new helder.ui.draw.DrawText();
+		text = helder.ui.TextEngines.standard();
 	}
 
 	inline function on(name:String):Bool

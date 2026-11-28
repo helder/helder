@@ -129,7 +129,7 @@ class StoreShots implements Markup {
 		if (!sys.FileSystem.exists(d)) sys.FileSystem.createDirectory(d);
 
 	// (one device, renderer and text engine for every shot, each shot's frames drawn into a target of its size)
-	static var gpu:Null<{device:Device, renderer:Renderer, text:DrawText}>;
+	static var gpu:Null<{device:Device, renderer:Renderer, text:helder.ui.TextEngine}>;
 
 	// a story at width x height pixels (scale: pixels a point), opaque, as a
 	// PNG; caption: its store caption in a band over it (when it has one)
@@ -137,7 +137,7 @@ class StoreShots implements Markup {
 		var g = gpu;
 		if (g == null) {
 			var d = Device.create(helder.os.Surface.headless(1, 1));
-			g = gpu = {device: d, renderer: new Renderer(d), text: new DrawText()};
+			g = gpu = {device: d, renderer: new Renderer(d), text: helder.ui.TextEngines.standard()};
 		}
 		final device = g.device, r = g.renderer, text = g.text;
 		r.groups = true;

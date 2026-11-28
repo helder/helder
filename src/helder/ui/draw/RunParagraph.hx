@@ -50,7 +50,11 @@ class RunParagraph implements Paragraph {
 	inline function get_lineCount()
 		return lines.length;
 
-	inline function get_minWidth()
+	// (its glyphs placed, before they are read: a paragraph that places them when first drawn, EngineParagraph)
+	public function ready() {}
+
+	// (not inline: the engine's paragraph measures it when asked, EngineParagraph)
+	function get_minWidth()
 		return min;
 
 	inline function get_baseline()

@@ -832,6 +832,7 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 
 	// (a RunParagraph's glyphs: glyphs()'s placing, from what it kept)
 	function placed(p:RunParagraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, colors:Null<Array<Color>>, blur:Float) {
+		p.ready();
 		var s = scale;
 		var size = p.size * s;
 		var ox = x + tx, oy = y + ty;
