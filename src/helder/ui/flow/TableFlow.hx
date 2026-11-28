@@ -65,16 +65,23 @@ class TableFlow implements FormattingContext {
 				max = Math.max(min, v);
 			case _:
 		}
-		var c = wrapper.first;
+		min = Math.max(min, captionMin(wrapper, t, space));
+		wrapper.minContent = min;
+		wrapper.maxContent = Math.max(min, max);
+	}
+
+	// (auto-width captions need room for their contents in the table's used width)
+	function captionMin(wrapper:Box, table:Box, space:Space, autoOnly = false):Float {
+		var min = 0.0, c = wrapper.first;
 		while (c != null) {
-			if (c != t) {
+			if (c != table && (!autoOnly || Lens.isAuto(c.style.model().width))) {
 				flow.intrinsic(c, space);
-				min = Math.max(min, c.minContent);
+				var m = c.style.model().margin;
+				min = Math.max(min, c.minContent + BlockFlow.fixed(m[1]) + BlockFlow.fixed(m[3]));
 			}
 			c = c.next;
 		}
-		wrapper.minContent = min;
-		wrapper.maxContent = Math.max(min, max);
+		return min;
 	}
 
 	static function tableOf(wrapper:Box):Null<Box> {
@@ -488,8 +495,10 @@ class TableFlow implements FormattingContext {
 		// (table-layout: fixed with a width: the columns' widths, not their content, §17.5.2.1)
 		var fixed = t.style.rare.tableLayout == "fixed" && !Math.isNaN(spec);
 		if (fixed) minW = outerH;
+		var minCaption = captionMin(wrapper, t, space, true);
+		minW = Math.max(minW, minCaption);
 		var w:Float;
-		if (!Math.isNaN(space.fixedWidth)) w = space.fixedWidth else if (!Math.isNaN(spec)) w = Math.max(spec, minW) else {
+		if (!Math.isNaN(space.fixedWidth)) w = Math.max(space.fixedWidth, minCaption) else if (!Math.isNaN(spec)) w = Math.max(spec, minW) else {
 			var available = cb - (Math.isNaN(ml) ? 0 : ml) - (Math.isNaN(mr) ? 0 : mr);
 			w = Math.max(minW, Math.min(maxW, available));
 		}
