@@ -185,11 +185,12 @@ class PagedView {
 			var space = spaceFor(cb.w, cb.h);
 			// (its fixed descendants: on every page already)
 			space.fixed = new Positioned();
-			var at = flow.positionedBox(d.box, space, cb.sx, cb.sy, cb.w, cb.h, d.align);
+			var at = flow.positionedBox(d.box, space, cb.sx, cb.sy, cb.w, cb.h, d.owner.style.rtl, d.align);
 			var x = cb.x + at.x, height = fragments.height(at.fragment);
 			var p = pageAt(cb.top + at.y);
 			var o = cb.top + at.y - top(p);
-			if (o + height <= pages[p].area[3] + 0.01) {
+			// (nested absolute boxes can reach into later pages even when this box fits)
+			if (o + BlockFlow.extent(fragments, at.fragment, true) <= pages[p].area[3] + 0.01) {
 				adopt(p, at.fragment, x, o);
 				continue;
 			}
@@ -296,7 +297,7 @@ class PagedView {
 			var at = fixed.places.get(b) ?? {x: 0.0, y: 0.0};
 			var space = spaceFor(fixed.width, fixed.height);
 			space.fixed = new Positioned();
-			var f = flow.positionedBox(b, space, at.x, at.y, fixed.width, fixed.height);
+			var f = flow.positionedBox(b, space, at.x, at.y, fixed.width, fixed.height, tree.root.style.rtl);
 			adopt(p, f.fragment, f.x, f.y);
 		}
 	}
