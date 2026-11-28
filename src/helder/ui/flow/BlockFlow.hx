@@ -1,5 +1,6 @@
 package helder.ui.flow;
 
+import haxe.ds.ObjectMap;
 import helder.ui.box.Box;
 import helder.ui.box.BoxKind;
 import helder.ui.box.BoxStyle;
@@ -715,11 +716,42 @@ class BlockFlow implements FormattingContext {
 	// deferred to its host when split, owner broken across fragmentainers, or when it doesn't fit)
 	public function place(list:Positioned, owner:Int, space:Space, cbx:Float, cby:Float, cbw:Float, cbh:Float, split = false) {
 		var frags = space.fragments, fr = space.fragmentation;
+		var spans:Null<ObjectMap<Box, {first:Int, last:Int}>> = null;
 		var k = 0;
 		while (k < list.boxes.length) {
 			var b = list.boxes[k];
-			var from = frags.absolute(list.fragments[k]), to = frags.absolute(owner);
-			var sx = from.x - to.x + list.xs[k] - cbx, sy = from.y - to.y + list.ys[k] - cby;
+			var source = list.fragments[k], target = owner;
+			var from = frags.absolute(source), to = frags.absolute(owner);
+			var x = cbx, y = cby, w = cbw, h = cbh;
+			var sx = from.x - to.x + list.xs[k], sy = from.y - to.y + list.ys[k];
+			if (fr == null && b.style.position == "absolute") {
+				var span = b.parent, limit = frags.box(owner);
+				while (span != null && span != limit && !(span.kind == Inline && span.style.positioned)) span = span.parent;
+				if (span != null && span != limit) {
+					if (spans == null) spans = positionedSpans(frags, owner);
+					var range = spans.get(span);
+					if (range != null) {
+						var bounds = inlineContainingBlock(frags, span, range.first, range.last);
+						x = bounds.x - to.x;
+						y = bounds.y - to.y;
+						w = bounds.w;
+						h = bounds.h;
+						target = range.first;
+						// (a direct inline candidate's static position was recorded in its line before relative offsets)
+						var p = b.parent, start = frags.box(source);
+						while (p != null && p != start && p != limit) {
+							if (p.kind == Inline) {
+								var off = offset(p, frags.width(source), Math.NaN);
+								sx += off.x;
+								sy += off.y;
+							}
+							p = p.parent;
+						}
+					}
+				}
+			}
+			sx -= x;
+			sy -= y;
 			if (space.repeated != null && b.style.position == "fixed") space.repeated.places.set(b, {x: sx, y: sy});
 			var d:Null<Deferred> = fr == null || b.style.position != "absolute" ? null : {box: b, owner: frags.box(owner), x: sx, y: sy, cbx: cbx, cby: cby, cbw: cbw,
 				cbh: cbh, align: list.aligns[k]};
@@ -728,11 +760,44 @@ class BlockFlow implements FormattingContext {
 				k++;
 				continue;
 			}
-			var f = positionedBox(b, space, sx, sy, cbw, cbh, list.aligns[k]);
-			if (d != null && space.pageTop + cby + f.y + frags.height(f.fragment) > fr.size + 0.01) fr.defer(d) else frags.adopt(owner, f.fragment, cbx + f.x,
-				cby + f.y);
+			var f = positionedBox(b, space, sx, sy, w, h, list.aligns[k]);
+			if (d != null && space.pageTop + y + f.y + frags.height(f.fragment) > fr.size + 0.01) fr.defer(d) else {
+				var at = target == owner ? to : frags.absolute(target);
+				frags.adopt(target, f.fragment, to.x - at.x + x + f.x, to.y - at.y + y + f.y);
+			}
 			k++;
 		}
+	}
+
+	// (one walk of the block's fragments, since multiple candidates can share an inline containing block)
+	static function positionedSpans(frags:Fragments, owner:Int):ObjectMap<Box, {first:Int, last:Int}> {
+		var spans = new ObjectMap<Box, {first:Int, last:Int}>();
+		function find(id:Int) {
+			var child = frags.first(id);
+			while (child >= 0) {
+				if (frags.kind(child) == Fragments.SPAN) {
+					var span = frags.box(child);
+					if (span.style.positioned) {
+						var range = spans.get(span);
+						if (range == null) spans.set(span, {first: child, last: child}) else range.last = child;
+					}
+				}
+				find(child);
+				child = frags.next(child);
+			}
+		}
+		find(owner);
+		return spans;
+	}
+
+	// (the padding edges at inline-start of the first fragment and inline-end of the last)
+	static function inlineContainingBlock(frags:Fragments, span:Box, first:Int, last:Int):{x:Float, y:Float, w:Float, h:Float} {
+		var a = frags.absolute(first), b = frags.absolute(last);
+		var border = span.style.model().border, rtl = span.style.rtl;
+		var x = (rtl ? b.x : a.x) + border[3];
+		var right = rtl ? a.x + frags.width(first) : b.x + frags.width(last);
+		var y = a.y + border[0];
+		return {x: x, y: y, w: Math.max(0, right - border[1] - x), h: Math.max(0, b.y + frags.height(last) - border[2] - y)};
 	}
 
 	// (a page's fixed boxes its layout didn't come to: at their static place on the page it did, else at x
