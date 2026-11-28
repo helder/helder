@@ -61,6 +61,7 @@ class GridFlow implements FormattingContext {
 			space.height, s.borderBox, bpy);
 		if (!Math.isNaN(heightSpec) && !space.ignoreHeight) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
 		var w = width(box, s, space, bpx, heightSpec);
+		BlockFlow.alignRootFloat(box, cb, w + bpx);
 		// (an aspect-ratio's auto height: its width's through it)
 		if (Math.isNaN(heightSpec) && Math.isNaN(space.fixedHeight)) {
 			var rh = Ratio.height(box, w, bpx, bpy);

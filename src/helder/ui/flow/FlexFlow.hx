@@ -69,6 +69,7 @@ class FlexFlow implements FormattingContext {
 		if (!Math.isNaN(heightSpec)) heightSpec = BlockFlow.clampHeight(s, space.height, bpy, heightSpec);
 		if (resume != null && !Math.isNaN(heightSpec)) heightSpec = Math.max(0, heightSpec - resume.consumed);
 		var w = width(box, s, space, bpx, heightSpec);
+		BlockFlow.alignRootFloat(box, cb, w + bpx);
 		// (an aspect-ratio's auto height: its width's through it)
 		if (Math.isNaN(heightSpec)) {
 			var rh = Ratio.height(box, w, bpx, bpy);

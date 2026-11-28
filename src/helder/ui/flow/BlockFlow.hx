@@ -161,6 +161,7 @@ class BlockFlow implements FormattingContext {
 		var heightSpec = !Math.isNaN(space.fixedHeight) ? Math.max(0, space.fixedHeight - bpy) : space.ignoreHeight ? Math.NaN : size(s.height,
 			space.height, s.borderBox, bpy + gone);
 		var w = width(box, s, space, bpx, bpy, heightSpec);
+		alignRootFloat(box, cb, w + bpx);
 		var root = formattingRoot(box);
 		// (a formatting context of its own a cut doesn't go into)
 		var apart = root && box.parent != null && !cutInto(box);
@@ -656,6 +657,13 @@ class BlockFlow implements FormattingContext {
 		return m.border[1] + m.border[3] + res(m.padding[1], cb) + res(m.padding[3], cb);
 	}
 
+	// (the root has no parent formatting context to place its float)
+	@:allow(helder.ui.flow.TableFlow)
+	static inline function alignRootFloat(box:Box, available:Float, width:Float) {
+		if (box.parent == null && box.floating && box.style.floatSide == "right")
+			box.marginLeft = available - width - box.marginRight;
+	}
+
 	// (in-flow and block-level: what makes a block container's contents blocks, not lines)
 	static inline function inFlowBlock(b:Box):Bool
 		return b.blockLevel && !b.floating && !b.absolute;
@@ -1030,6 +1038,7 @@ class BlockFlow implements FormattingContext {
 			box.marginLeft = Math.isNaN(ml) ? 0 : ml;
 			box.marginRight = Math.isNaN(mr) ? 0 : mr;
 		}
+		alignRootFloat(box, cb, size.w + bpx);
 		var mt = res(s.margin[0], cb), mb = res(s.margin[2], cb);
 		box.topPositive = mt > 0 ? mt : 0;
 		box.topNegative = mt < 0 ? mt : 0;
