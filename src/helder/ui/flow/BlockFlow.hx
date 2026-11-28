@@ -325,6 +325,11 @@ class BlockFlow implements FormattingContext {
 		var topPos = mt > 0 ? mt : 0.0, topNeg = mt < 0 ? mt : 0.0;
 		var pos = 0.0, neg = 0.0, y = 0.0;
 		var atTop = topCollapses, empty = true, baseline = Math.NaN;
+		var clearedThrough = false;
+		var clearPos = 0.0, clearNeg = 0.0;
+		// (a cleared empty box's top margin joins the next strut, but its clearance already used that margin)
+		inline function gap(pos:Float, neg:Float):Float
+			return clearedThrough ? Math.max(pos, clearPos) + Math.min(neg, clearNeg) - clearPos - clearNeg : pos + neg;
 		// (resumed past its content: only its height left, Fragmentation's after)
 		// (content-visibility: hidden: its contents neither laid out nor painted, its size containment's size)
 		var done = resume != null && resume.line == BreakToken.PAST || box.style.hidden;
@@ -393,7 +398,7 @@ class BlockFlow implements FormattingContext {
 						lazy.stop(box, c);
 						break;
 					}
-					if (lazy.cut(box, c, cy + y + (atTop ? 0 : pos))) break;
+				if (lazy.cut(box, c, cy + y + (atTop ? 0 : gap(pos, clearNeg)))) break;
 				}
 				var cs = c.style;
 				// (out of flow: a float placed beside the floats before it, an absolutely positioned box's static place kept;
@@ -404,20 +409,20 @@ class BlockFlow implements FormattingContext {
 						break;
 					}
 					last = c;
-					float(c, cy + y + (atTop ? 0 : pos + neg));
+					float(c, cy + y + (atTop ? 0 : gap(pos, neg)));
 					if (fr != null) fr.floated(reserve + space.pageTop + bt + pt + floatBottom - cy);
 					c = c.next;
 					continue;
 				}
 				if (c.absolute) {
 					// (its static place: the content edge on its side, the right one right to left)
-					absolute(c, bl + pl + (box.style.rtl ? w : 0), bt + pt + y + (atTop ? 0 : pos + neg));
+					absolute(c, bl + pl + (box.style.rtl ? w : 0), bt + pt + y + (atTop ? 0 : gap(pos, neg)));
 					c = c.next;
 					continue;
 				}
 				// (class A: between it and the in-flow sibling before it)
 				if (fr != null && fr.between(box, prev, c, reserve + space.pageTop + bt + pt + (prev == null && !atTop && !truncate && fr.resume(c) == null ? y
-					+ Math.max(pos, predict(c, w).pos) : y))) {
+					+ gap(Math.max(pos, predict(c, w).pos), clearNeg) : y))) {
 					broken = true;
 					break;
 				}
@@ -425,7 +430,7 @@ class BlockFlow implements FormattingContext {
 				// (where its border box will be: its top margins as they will collapse, or clearance, §9.5.2)
 				// (none when truncated, or resumed: a continuation's start has no margin)
 				var strut = truncate || fr != null && fr.resume(c) != null ? {pos: 0.0, neg: 0.0} : predict(c, w);
-				var py = atTop ? 0 : y + Math.max(pos, strut.pos) + Math.min(neg, strut.neg);
+				var py = atTop ? 0 : y + gap(Math.max(pos, strut.pos), Math.min(neg, strut.neg));
 				var clr = cs.clearSide;
 				var cleared = false;
 				if ((clr == "left" || clr == "right" || clr == "both") && !ex.empty) {
@@ -516,7 +521,7 @@ class BlockFlow implements FormattingContext {
 				neg = Math.min(neg, c.topNegative);
 				var off = offset(c, w, pctBase);
 				if (c.through && !cleared) {
-					frags.adopt(frag, cf, bl + pl + shift + c.marginLeft + off.x, bt + pt + y + (atTop ? 0 : pos + neg) + off.y);
+					frags.adopt(frag, cf, bl + pl + shift + c.marginLeft + off.x, bt + pt + y + (atTop ? 0 : gap(pos, neg)) + off.y);
 					pos = Math.max(pos, c.bottomPositive);
 					neg = Math.min(neg, c.bottomNegative);
 					c = c.next;
@@ -535,7 +540,7 @@ class BlockFlow implements FormattingContext {
 					topNeg = Math.min(topNeg, neg);
 					atTop = false;
 				} else
-					at = y + pos + neg;
+					at = y + gap(pos, neg);
 				// (a monolithic box's continuation: up by what the fragmentainers before took of it)
 				var mono = fr != null ? fr.resume(c) : null, before = mono != null && mono.line == BreakToken.MONO ? mono.consumed : 0.0;
 				at -= before;
@@ -566,6 +571,9 @@ class BlockFlow implements FormattingContext {
 				}
 				pos = c.bottomPositive;
 				neg = c.bottomNegative;
+				clearedThrough = cleared && c.through;
+				clearPos = clearedThrough ? c.topPositive : 0.0;
+				clearNeg = clearedThrough ? c.topNegative : 0.0;
 				c = c.next;
 			}
 			if (fr != null && fr.stopped) broken = true;
@@ -606,13 +614,15 @@ class BlockFlow implements FormattingContext {
 		}
 		var content = 0.0;
 		var bottomPos = mb > 0 ? mb : 0.0, bottomNeg = mb < 0 ? mb : 0.0;
+		// (clearance in a self-collapsing child parts the adjoining strut from its parent's bottom margin)
+		if (clearedThrough) bottomCollapses = false;
 		if (atTop) {
 			topPos = Math.max(topPos, pos);
 			topNeg = Math.min(topNeg, neg);
 		} else if (bottomCollapses) {
 			content = y;
 		} else
-			content = Math.max(0, y + pos + neg);
+			content = Math.max(0, y + gap(pos, neg));
 		// (a formatting context's root's auto height takes its floats in, §10.6.7)
 		if (root && !ex.empty) content = Math.max(content, ex.lowest() - cy);
 		// (size containment: its content's height contain-intrinsic-height's, not its children's)
