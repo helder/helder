@@ -783,7 +783,11 @@ class X11Window {
 			queueLock.release();
 			for (i in 0...events.length) {
 				LibC.memcpy(xev, BytesPtr.of(events[i], 0, X.EVENT_SIZE), (X.EVENT_SIZE : Int64));
+				// (back on the free list under its lock: the main thread pops it while it reads, a push beside a
+				// pop a buffer lost or a null popped)
+				queueLock.acquire();
 				free.push(events[i]);
+				queueLock.release();
 				preRouted = routes[2 * i];
 				preGesture = routes[2 * i + 1];
 				handle(onEvent);
