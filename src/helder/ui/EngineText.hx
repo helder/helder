@@ -58,7 +58,8 @@ class EngineText implements TextEngine {
 				plainCount++;
 			}
 		}
-		var p = new EngineParagraph(this, t.root, text, t.boxes, t.starts, t.spans, wrap ? maxWidth : cut >= 0 ? cut : Math.POSITIVE_INFINITY, font.size);
+		var p = new EngineParagraph(this, t.root, text, t.boxes, t.starts, t.spans, wrap ? maxWidth : cut >= 0 ? cut : Math.POSITIVE_INFINITY, font.size,
+			oneFont(font, spans));
 		// (its min-content width: its widest word as CSS's min-content has it (not broken where overflow-wrap
 		// alone would), whether it wraps or not)
 		var root = t.root;
@@ -237,6 +238,14 @@ class EngineText implements TextEngine {
 		return face == null ? font.family : face.family;
 	}
 
+	// (its spans, if any, in its own font: colours a CodeView's tokens have)
+	static function oneFont(font:Font, spans:Null<Array<TextSpan>>):Bool {
+		if (spans == null) return true;
+		var key = keyOf(font);
+		for (s in spans) if (s.font != font && keyOf(s.font) != key) return false;
+		return true;
+	}
+
 	static function keyOf(font:Font):String
 		return font.family + "|" + font.size + "|" + font.weight + "|" + font.italic + "|" + font.lineHeight + "|" + font.letterSpacing + "|"
 			+ font.wordSpacing + "|" + font.overflowWrap + "|" + font.wordBreak + "|" + font.hyphens + "|" + font.lang + "|" + font.features;
@@ -260,7 +269,7 @@ class EngineParagraph extends RunParagraph {
 	// (its min-content width, measured when asked: EngineText.layout's)
 	var measure:Null<Void->Float> = null;
 
-	function new(engine:EngineText, root:Box, text:String, boxes:Array<Box>, starts:Array<Int>, spanOf:Array<Int>, room:Float, size:Float) {
+	function new(engine:EngineText, root:Box, text:String, boxes:Array<Box>, starts:Array<Int>, spanOf:Array<Int>, room:Float, size:Float, oneFont:Bool) {
 		var id = engine.lay(root, room), f = engine.frags();
 		var lines:Array<RunLine> = [];
 		var widest = 0.0, first = Math.NaN;
@@ -277,7 +286,7 @@ class EngineParagraph extends RunParagraph {
 		}
 		// (one font: drawn at its exact baseline, its face's ascent and descent unrounded, as DrawText draws it, so
 		// that a text scaled is the larger one's; the lines' boxes the engine's, Blink's rounded metrics)
-		if (spanOf.length == 1 && spanOf[0] < 0 && lines.length > 0) {
+		if (oneFont && lines.length > 0) {
 			var t = root.style.text, fonts = engine.inlines(), font = fonts.idOf(t);
 			var a = fonts.ascent(font, true), d = fonts.descent(font, true);
 			var lh = Math.isNaN(t.height) ? fonts.normalLineHeight(font, true) : t.height;
@@ -406,7 +415,7 @@ class EngineParagraph extends RunParagraph {
 						}
 					}
 				}
-			} else collect(f, k, kx, lineBase, out, size, boxes, spanOf);
+			} else collect(f, k, kx, lineBase - f.y(k), out, size, boxes, spanOf);
 			k = f.next(k);
 		}
 	}
