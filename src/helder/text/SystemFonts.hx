@@ -241,8 +241,15 @@ class SystemFonts {
 
 	// (HELDER_NO_SYSTEM_FONTS: none of the system's, fontconfig's neither;
 	// HELDER_FONT_DIRS: those directories' alone)
+	// (the environment and the system's name: none in JavaScript, which has no system)
+	static inline function env(name:String):Null<String>
+		return #if sys Sys.getEnv(name) #else null #end;
+
+	static inline function systemName():String
+		return #if sys Sys.systemName() #else "" #end;
+
 	static function scannedNone():Bool {
-		var none = Sys.getEnv("HELDER_NO_SYSTEM_FONTS");
+		var none = env("HELDER_NO_SYSTEM_FONTS");
 		return none != null && none != "" && none != "0" || only() != null;
 	}
 
@@ -250,8 +257,8 @@ class SystemFonts {
 	// the platform's lookups off: the same faces on every machine, for
 	// golden images)
 	static function only():Null<Array<String>> {
-		var d = Sys.getEnv("HELDER_FONT_DIRS");
-		return d == null || d == "" ? null : d.split(Sys.systemName() == "Windows" ? ";" : ":");
+		var d = env("HELDER_FONT_DIRS");
+		return d == null || d == "" ? null : d.split(systemName() == "Windows" ? ";" : ":");
 	}
 
 	var moreFaces:Null<Array<FaceInfo>> = null;
@@ -341,23 +348,23 @@ class SystemFonts {
 	// (a face kept's file mapped, not copied into the heap: only the pages its glyphs and tables are read from
 	// resident, clean and the file's; mapped once and kept, never unmapped, so never rewritten while it is)
 	static function read(path:String):haxe.io.Bytes
-		return #if (target.name == "hxmc") hxmc.MappedFile.bytes(path) #else sys.io.File.getBytes(path) #end;
+		return #if (target.name == "hxmc") hxmc.MappedFile.bytes(path) #elseif sys sys.io.File.getBytes(path) #else null #end;
 
 	// --- discovery ---
 
 	public static function directories():Array<String> {
 		var dirs = only();
 		if (dirs != null) return dirs;
-		var home = Sys.getEnv("HOME");
-		return switch Sys.systemName() {
+		var home = env("HOME");
+		return switch systemName() {
 			case "Windows":
-				var win = Sys.getEnv("WINDIR") ?? "C:\\Windows";
-				var local = Sys.getEnv("LOCALAPPDATA");
+				var win = env("WINDIR") ?? "C:\\Windows";
+				var local = env("LOCALAPPDATA");
 				[win + "\\Fonts"].concat(local != null ? [local + "\\Microsoft\\Windows\\Fonts"] : []);
 			case "Mac":
 				["/System/Library/Fonts", "/Library/Fonts"].concat(home != null ? [home + "/Library/Fonts"] : []);
 			case _:
-				var xdg = Sys.getEnv("XDG_DATA_HOME");
+				var xdg = env("XDG_DATA_HOME");
 				// (Android's: /system/fonts, the product's and the system extension's)
 				["/usr/share/fonts", "/usr/local/share/fonts", "/system/fonts", "/product/fonts", "/system_ext/fonts"].concat(home != null ? [home + "/.fonts", home + "/.local/share/fonts"] : []).concat(xdg != null ? [xdg + "/fonts"] : []);
 		}
@@ -373,9 +380,11 @@ class SystemFonts {
 			return;
 		}
 		#end
+		// (JavaScript: no system to look on, the fonts added alone)
+		#if sys
 		// (HELDER_NO_SYSTEM_FONTS set: the system's not looked for, only the
 		// fonts added: a program's fallback tested as on a bare system)
-		var none = Sys.getEnv("HELDER_NO_SYSTEM_FONTS");
+		var none = env("HELDER_NO_SYSTEM_FONTS");
 		if (none != null && none != "" && none != "0") return;
 		// (the faces a last scan found, while its directories are as they were)
 		var file = cachePath();
@@ -400,6 +409,7 @@ class SystemFonts {
 		for (d in directories())
 			walk(d, 0);
 		if (file != null) writeCache(file, walked);
+		#end
 	}
 
 	// --- the scan kept: the faces found, with the times of the directories
@@ -420,10 +430,10 @@ class SystemFonts {
 	}
 
 	static function stamp(dir:String):String
-		return try Std.string(sys.FileSystem.stat(dir).mtime.getTime()) catch (_:Dynamic) "-";
+		return #if sys try Std.string(sys.FileSystem.stat(dir).mtime.getTime()) catch (_:Dynamic) "-" #else "-" #end;
 
 	function readCache(file:String):Bool {
-		var text = try sys.io.File.getContent(file) catch (_:Dynamic) null;
+		var text = #if sys try sys.io.File.getContent(file) catch (_:Dynamic) null #else null #end;
 		if (text == null) return false;
 		var lines = text.split("\n");
 		if (lines[0] != "helder-fonts 1") return false;
@@ -453,6 +463,7 @@ class SystemFonts {
 			if (!StringTools.startsWith(fi.path, "added:"))
 				b.add('f\t${fi.index}\t${fi.weight}\t${fi.italic ? 1 : 0}\t${fi.minWeight}\t${fi.maxWeight}\t${fi.family}\t${fi.subfamily}\t${fi.path}\n');
 		// (written whole, then put in place: another process may be reading it)
+		#if sys
 		var tmp = file + "." + Std.random(0x7FFFFFFF);
 		try {
 			sys.io.File.saveContent(tmp, b.toString());
@@ -460,6 +471,7 @@ class SystemFonts {
 		} catch (_:Dynamic) {
 			try sys.FileSystem.deleteFile(tmp) catch (_:Dynamic) {}
 		}
+		#end
 	}
 }
 
@@ -488,6 +500,9 @@ class FaceInfo {
 	// tables only (read from the file at their offsets)
 	public static function read(path:String):Array<FaceInfo> {
 		var out = [];
+		#if !sys
+		return out;
+		#else
 		var f = try sys.io.File.read(path, true) catch (e:Dynamic) null;
 		if (f == null) return out;
 		try {
@@ -557,6 +572,7 @@ class FaceInfo {
 		} catch (e:Dynamic) {}
 		f.close();
 		return out;
+		#end
 	}
 }
 

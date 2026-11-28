@@ -579,7 +579,7 @@ class BlockLines {
 				for (i in 0...run.count) {
 					var k = madeAt + i;
 					if (k >= made.count || made.id(k) != run.id(i) || Math.abs(made.x(k) - (runX + run.x(i))) > 1e-6 || made.y(k) != run.y(i) || made.start(k) != run.start(i) || made.end(k) != run.end(i)) {
-						if (differed++ < 20) Sys.println('BlockLines: a lazy run differs at glyph $i: ${k < made.count ? made.id(k) + " " + made.x(k) + " " + made.start(k) + "-" + made.end(k) : "none"} against ${run.id(i)} ${runX + run.x(i)} ${run.start(i)}-${run.end(i)} in "${c.text.substring(t0, t1)}"');
+						#if sys if (differed++ < 20) Sys.println('BlockLines: a lazy run differs at glyph $i: ${k < made.count ? made.id(k) + " " + made.x(k) + " " + made.start(k) + "-" + made.end(k) : "none"} against ${run.id(i)} ${runX + run.x(i)} ${run.start(i)}-${run.end(i)} in "${c.text.substring(t0, t1)}"'); #end
 						break;
 					}
 				}
@@ -636,12 +636,12 @@ class BlockLines {
 			run.push(glyphs.id(g), glyphs.x(g) - runX, glyphs.y(g), unit, end > unit ? end : unit + 1);
 		}
 		flush(n > 0 ? Math.max(l.fragmentWidth(f), glyphs.x(g0 + n - 1) + glyphs.advance(g0 + n - 1)) : l.fragmentWidth(f));
-		if (made != null && madeAt != made.count && differed++ < 20) Sys.println('BlockLines: a lazy run has ${made.count} glyphs against $madeAt in "${c.text.substring(t0, t1)}"');
+		#if sys if (made != null && madeAt != made.count && differed++ < 20) Sys.println('BlockLines: a lazy run has ${made.count} glyphs against $madeAt in "${c.text.substring(t0, t1)}"'); #end
 	}
 
 	// (a test's, HELDER_CHECK_TEXT: each lazy run made at once and compared with the line's glyphs, glyph for
 	// glyph; those compared and those that differed)
-	@:noCompletion public static var check = Sys.getEnv("HELDER_CHECK_TEXT") != null;
+	@:noCompletion public static var check = #if sys Sys.getEnv("HELDER_CHECK_TEXT") != null #else false #end;
 	@:noCompletion public static var checked = 0;
 	@:noCompletion public static var differed = 0;
 
