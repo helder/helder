@@ -121,6 +121,10 @@ class Node {
 		return c;
 	}
 
+	// (its parts for assistive technology that are no fast nodes, a DOM island's: null, none)
+	@:allow(helder.ui.fast) function accessOwn(tree:Tree, out:Array<helder.ui.access.AccessNode>):Null<Array<Int>>
+		return null;
+
 	// (a new node of its kind; what it has besides a node's copied to its clone)
 	function blank():Node
 		return new Node();
@@ -225,6 +229,11 @@ class Node {
 			level = Resolve.LAYOUT;
 		} else {
 			box.restyle(now);
+			// (flex to grid and back: the same kind of box, another formatting context)
+			if (now.inner != was.inner && box.container) {
+				box.context = contexts().of(now.inner, _ -> {});
+				level = Resolve.LAYOUT;
+			}
 			swapped(now);
 		}
 		if (was.none != now.none && parent != null) {

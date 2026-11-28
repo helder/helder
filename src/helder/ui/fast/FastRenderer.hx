@@ -27,6 +27,31 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case _: macro helder.ui.fast.FastRenderer.styled($n, $v);
 		}
 
+	// an attribute: its name written in markup known when built (a grid's linking grid layout, Grids)
+	public static macro function setProperty(n:haxe.macro.Expr, name:haxe.macro.Expr, v:haxe.macro.Expr):haxe.macro.Expr
+		return grid(name, v) ? macro {
+			helder.ui.fast.Grids.use();
+			helder.ui.fast.FastRenderer.setValue($n, $name, $v);
+		} : macro helder.ui.fast.FastRenderer.setValue($n, $name, $v);
+
+	// (the function setting one attribute, bound: a reactive one's)
+	public static macro function setter(name:haxe.macro.Expr):haxe.macro.Expr
+		return grid(name, null) ? macro {
+			helder.ui.fast.Grids.use();
+			helder.ui.fast.FastRenderer.setValue;
+		} : macro helder.ui.fast.FastRenderer.setValue;
+
+	#if macro
+	static function grid(name:haxe.macro.Expr, v:Null<haxe.macro.Expr>):Bool
+		return switch name.expr {
+			case EConst(CString(n, _)): StringTools.startsWith(n, "grid") || n == "display" && v != null && switch v.expr {
+					case EConst(CString("grid", _)): true;
+					case _: false;
+				};
+			case _: false;
+		}
+	#end
+
 	#if !macro
 	// (the neutral elements, view, text, button...: its own, made by createElement)
 	public static inline var neutralNative = true;
@@ -108,7 +133,7 @@ class FastRenderer #if !macro implements helder.view.Renders<Node> #end {
 		throw "helder.ui.fast: a style given when the program runs is a Style (Style.of({...})), or a list of them";
 	}
 
-	public static function setProperty(n:Node, name:String, v:Dynamic) {
+	@:noCompletion public static function setValue(n:Node, name:String, v:Dynamic) {
 		if (n.attr(name, v)) return;
 		switch name {
 			case "style": styled(n, v);

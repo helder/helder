@@ -20,6 +20,9 @@ class Resolve {
 	public static inline var SPAN = 2;
 
 	// what a change of one resolved style to another takes (Tree's): nothing, a paint, a paint order, a layout
+	// (a grid's terms into a box's rare part: Grids.fill, set by Grids.use)
+	@:allow(helder.ui.fast) static var grids:Null<(Props, () -> helder.ui.box.BoxRare) -> Void> = null;
+
 	public static inline var NOTHING = 0;
 	public static inline var PAINT = 1;
 	public static inline var ORDER = 2;
@@ -76,7 +79,8 @@ class Resolve {
 		var d = p.display;
 		if (d == None) s.displayNone = true;
 		s.displayOuter = kind == SPAN ? BoxStyle.INLINE : BoxStyle.BLOCK;
-		s.displayInner = kind != VIEW || d == Block ? BoxStyle.FLOW : BoxStyle.FLEX;
+		// (grid where grid layout is linked, Grids.use: else, as before, flex)
+		s.displayInner = kind != VIEW || d == Block ? BoxStyle.FLOW : d == Grid && Node.contexts().grid != null ? BoxStyle.GRID : BoxStyle.FLEX;
 		// (the box model: border-box)
 		var pad = p.padding, mar = p.margin, bw = p.borderWidth;
 		for (k in 0...4) {
@@ -109,8 +113,8 @@ class Resolve {
 		s.aligns.push(content(p.alignContent));
 		s.aligns.push(align(p.alignItems, "stretch"));
 		s.aligns.push(align(p.alignSelf, "auto"));
-		s.aligns.push("legacy");
-		s.aligns.push("auto");
+		s.aligns.push(p.justifyItems == null ? "legacy" : align(p.justifyItems, "legacy"));
+		s.aligns.push(align(p.justifySelf, "auto"));
 		var rg = p.rowGap ?? p.gap, cg = p.columnGap ?? p.gap;
 		s.rowGapValue = rg == null ? Auto : Px(rg);
 		s.columnGapValue = cg == null ? Auto : Px(cg);
@@ -130,11 +134,14 @@ class Resolve {
 		if (opacity < 1 || p.zIndex != null) bits |= BoxStyle.STACKS;
 		s.traits = bits;
 		s.opacityValue = opacity;
-		if (p.zIndex != null) {
-			var r = new helder.ui.box.BoxRare();
-			r.zIndex = p.zIndex;
-			s.rareRead = r;
-		}
+		// (what few boxes have: a z-index, a grid's terms)
+		var rare:Null<helder.ui.box.BoxRare> = null;
+		function rare1():helder.ui.box.BoxRare
+			return rare ??= new helder.ui.box.BoxRare();
+		if (p.zIndex != null) rare1().zIndex = p.zIndex;
+		// (a grid's terms: Grids', linked where a program says grid)
+		if (grids != null) grids(p, rare1);
+		if (rare != null) s.rareRead = rare;
 		// (paint: its background, corners, borders)
 		s.bgColor = p.background == null ? 0 : tint(p.background, theme, t.colour);
 		var r = p.borderRadius;
@@ -268,6 +275,18 @@ private class Resolved extends BoxStyle {
 		p.right = props.right;
 		p.bottom = props.bottom;
 		p.left = props.left;
+		p.display = props.display;
+		p.justifyItems = props.justifyItems;
+		p.justifySelf = props.justifySelf;
+		p.gridTemplateColumns = props.gridTemplateColumns;
+		p.gridTemplateRows = props.gridTemplateRows;
+		p.gridTemplateAreas = props.gridTemplateAreas;
+		p.gridAutoColumns = props.gridAutoColumns;
+		p.gridAutoRows = props.gridAutoRows;
+		p.gridAutoFlow = props.gridAutoFlow;
+		p.gridColumn = props.gridColumn;
+		p.gridRow = props.gridRow;
+		p.gridArea = props.gridArea;
 		return key = Style.write(p) + "|" + text.size + " " + text.height + " " + text.weight + " " + text.families.join(",") + " " + text.style + " " + text.letters
 			+ " " + text.align + " " + text.wrap + " " + text.textOverflowEnd + " " + text.clamp;
 	}

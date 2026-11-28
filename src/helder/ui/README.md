@@ -1698,6 +1698,17 @@ state variants (examples/todo-fast and mail-fast are examples/todo and mail so p
 </view></Fast></Surface>
 ```
 
+A grid is CSS's: `display: Grid` with `gridTemplateColumns`,
+`gridTemplateRows`, `gridTemplateAreas`, `gridAutoFlow` and an item's
+`gridColumn`, `gridRow` or `gridArea`, their values as CSS writes them
+(`"repeat(3, 1fr)"`, `"1 / 3"`, `"'head head' 'side main'"`), read by a
+parser of its own into the terms the engine's GridFlow lays out; grid
+layout is linked only where a program says grid (`Grids`). A text's
+spans are inline boxes of its paragraph (`<text>Saved <strong>3</strong>
+files</text>`). An `Island` holds a DOM document in a fast tree, its
+boxes in the tree's own: styled by HTML's cascade, its root inheriting
+the island's text, its text selected across it and the nodes around it.
+
 Markup on fast nodes sets an element's fixed attributes (strings, flags,
 literal numbers) once, on a template each mount clones
 (`FastRenderer.cloneNode`, `Node.clone`): a list's rows share the
