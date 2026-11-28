@@ -99,6 +99,15 @@ class ViewRuntime {
 	// (a boundary's fallback being put before its anchor: not its content)
 	static var fallbackOf:Null<helder.view.Mounted.Capture<HostNode>> = null;
 
+	// (each element site's template, its fixed attributes set: what its mounts clone, the renderer's cloneNode)
+	static final templates:Map<String, HostNode> = new Map();
+
+	public static function cloneOf(key:String, make:Void->HostNode):HostNode {
+		var t = templates.get(key);
+		if (t == null) templates.set(key, t = make());
+		return CLONE(t);
+	}
+
 	// n put in parent before before, pushed to out (into a boundary's content
 	// while its fallback shows: kept, put in place when it shows)
 	public static function put(parent:HostNode, n:HostNode, before:Null<HostNode>, out:Null<Array<HostNode>>) {

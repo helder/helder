@@ -101,6 +101,32 @@ class Node {
 	function textual():Bool
 		return false;
 
+	// A node as it was made, without its children: its style, attributes, states, focus and what it is to
+	// assistive technology (a markup template's clone, FastRenderer.cloneNode).
+	public function clone():Node {
+		// (its look worked out once, for all its clones: a list's rows one)
+		look ??= attrs == null ? style : Attrs.styled(style, attrs);
+		var c = blank();
+		c.tag = tag;
+		c.focusable = focusable;
+		c.tabIndex = tabIndex;
+		c.semantics = semantics?.copy();
+		c.states = states;
+		c.group = group;
+		c.theme = theme;
+		c.attrs = attrs?.copy();
+		c.style = style;
+		c.look = look;
+		copied(c);
+		return c;
+	}
+
+	// (a new node of its kind; what it has besides a node's copied to its clone)
+	function blank():Node
+		return new Node();
+
+	function copied(c:Node) {}
+
 	// Its children, in order.
 	public function children():Array<Node>
 		return kids.copy();

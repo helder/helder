@@ -56,6 +56,37 @@ package helder.ui.access;
 	// it has no role of its own)
 	public var identifier(default, set):Null<String> = null;
 
+	// Another with the same values (a template's node cloned).
+	public function copy():Semantics {
+		var c:Semantics = {};
+		c.role = role;
+		c.label = label;
+		c.description = description;
+		c.href = href;
+		c.checked = checked;
+		c.mixed = mixed;
+		c.selected = selected;
+		c.multiselectable = multiselectable;
+		c.expanded = expanded;
+		c.level = level;
+		c.disabled = disabled;
+		c.invalid = invalid;
+		c.required = required;
+		c.modal = modal;
+		c.valueNow = valueNow;
+		c.valueMin = valueMin;
+		c.valueMax = valueMax;
+		c.valueText = valueText;
+		c.secret = secret;
+		c.live = live;
+		c.current = current;
+		c.hidden = hidden;
+		c.posInSet = posInSet;
+		c.setSize = setSize;
+		c.identifier = identifier;
+		return c;
+	}
+
 	// (a change: the accessibility trees built again)
 	function set_role(v:Null<Role>):Null<Role> {
 		if (v != role) helder.ui.Ui.accessEpoch++;

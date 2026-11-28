@@ -61,6 +61,15 @@ package helder.view;
 //
 //   static function element_toonMaterial():N;
 //
+// Optional: a function cloneNode, a node as it was made without its
+// children: markup then sets an element's fixed attributes (strings, flags,
+// literal numbers and strings) once, on a template kept for that element's
+// place in its file, and each mount clones it (ViewRuntime.cloneOf), its
+// other attributes and its children set on the clone (Haxe's markup; the
+// TypeScript lowering and the interpreter make every element anew).
+//
+//   static function cloneNode(node:N):N;
+//
 // Optional: a function markEnds (its body empty): a region that ends its
 // parent gets a marker too, which hydration reads (the page's renderers:
 // helder.web's DOM and static ones); without it such a region needs none.

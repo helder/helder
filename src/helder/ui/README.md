@@ -1698,6 +1698,11 @@ state variants (examples/todo-fast and mail-fast are examples/todo and mail so p
 </view></Fast></Surface>
 ```
 
+Markup on fast nodes sets an element's fixed attributes (strings, flags,
+literal numbers) once, on a template each mount clones
+(`FastRenderer.cloneNode`, `Node.clone`): a list's rows share the
+template's resolved style, each with its own states and semantics.
+
 A `Tree` is the helder.ui node that hosts one: the engine's block, flex
 and inline layout, its paint order and reused display-list spans (a
 scroller's rows ordered a few pages around what it shows), hit testing,

@@ -779,6 +779,18 @@ class HaxeTarget implements Target<Expr> {
 	public function drawing(text:String, where:Where):Expr
 		return macro @:pos(at(where)) helder.canvas.Svg.parse($v{text});
 
+	public function clones(renderer:String):Bool
+		return HostMacro.info(renderer).clones;
+
+	// (keyed by the element's place in its file: one template a site)
+	public function template(name:String, at:Int, make:Array<Expr>, built:String):Null<Expr> {
+		var key = file + ":" + (base + at);
+		// (one block: the template's declaration in scope of its return)
+		var body = {expr: EBlock(make.concat([macro return $i{built}])), pos: pos};
+		var f = {expr: EFunction(FAnonymous, {args: [], ret: null, expr: body}), pos: pos};
+		return macro @:pos(pos) var $name = __RT__.cloneOf($v{key}, $f);
+	}
+
 	public function view(v:Planned<Expr>):Expr {
 		var holes = v.holes, body = v.body, renderer = v.renderer;
 		var parts = v.parts == null ? macro null : macro function():Array<Null<Any>> return ([$a{v.parts}] : Array<Null<Any>>);

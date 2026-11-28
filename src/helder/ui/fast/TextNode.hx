@@ -31,6 +31,12 @@ class TextNode extends Node {
 	override function textual():Bool
 		return true;
 
+	override function blank():Node
+		return new TextNode("");
+
+	override function copied(c:Node)
+		(cast c : TextNode).text = text;
+
 	// (null: in super(), its first style its box's)
 	override function swapped(now:BoxStyle)
 		if (run != null) run.restyle(now);

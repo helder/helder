@@ -192,8 +192,23 @@ class Plan<E> {
 		var e = target.ident(v);
 		var neutral = isNeutral(name);
 		if (neutral && target.checked()) words(name, attrs);
+		var create = neutral ? target.call(Neutral, "element", [target.string(name)], null) : target.call(Host, "createElement", [target.string(name)], null);
+		// (its fixed attributes set once, on a template its mounts clone: where the renderer clones, not live)
+		var made:Null<E> = null;
+		if (renderer != null && !target.liveOn() && target.clones(renderer)) {
+			var fixed = [for (a in attrs) if (fixedAttr(a)) a];
+			if (fixed.length > 0) {
+				var tv = v + "_t", make = [target.declare(tv, create, null)];
+				for (a in fixed) {
+					var s = attr(target.ident(tv), a, neutral ? name : null, name);
+					if (s != null) make.push(s);
+				}
+				made = target.template(v, at, make, tv);
+				if (made != null) attrs = [for (a in attrs) if (fixed.indexOf(a) < 0) a];
+			}
+		}
 		var out = [
-			target.declare(v, neutral ? target.call(Neutral, "element", [target.string(name)], null) : target.call(Host, "createElement", [target.string(name)], null), null),
+			made ?? target.declare(v, create, null),
 			top ? target.call(Runtime, "put", [parent, e, target.ident("__b"), target.ident("__o")], null) : target.call(Host, "insert", [parent, e, target.nil()], null)
 		];
 		var located = target.located(e, at);
@@ -214,6 +229,17 @@ class Plan<E> {
 		var t = fresh("t");
 		out.push(target.declare(t, target.call(Host, "holdsText", [e], null), null));
 		return out.concat(this.children(kids, e, target.nil(), target.nil(), target.ident(t), true));
+	}
+
+	// (an attribute the same on every mount: a string, a flag, a literal number or string; no event, key, ref or style)
+	function fixedAttr(a:PAttr):Bool {
+		var n = a.name;
+		if (n == "key" || n == "ref" || n == "style" || StringTools.startsWith(n, "on") && n.length > 2) return false;
+		return switch a.value {
+			case AStatic(_) | AFlag: !envValue(a.value);
+			case AExpr(code, at): target.isLiteral(target.code(code, at, inner(), true));
+			case ASpread(_, _): false;
+		}
 	}
 
 	// ui's renderer
@@ -732,6 +758,12 @@ interface Target<E> {
 	// a drawing (helder.canvas.Svg) of an <svg>'s text, fixed: read when
 	// compiled where the target can (Haxe's: Svg.parse), else when it runs
 	function drawing(text:String, where:Where):E;
+	// whether a renderer clones a node (its optional cloneNode): an element's fixed attributes then set once, on
+	// a template its mounts clone
+	function clones(renderer:String):Bool;
+	// var name = a clone of the template of the element at at, made the first time by make (whose last
+	// declaration is built, the template); null: the target makes none
+	function template(name:String, at:Int, make:Array<E>, built:String):Null<E>;
 	// an agnostic literal's statements for renderer (then) and for every
 	// other (otherwise), each renderer running its own (Haxe's: decided
 	// when the literal is made for it, the other not linked)
