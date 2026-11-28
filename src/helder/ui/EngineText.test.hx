@@ -16,14 +16,17 @@ function tests() {
 		{text: "", width: 100.0},
 		{text: "Task 12: water the plants and call back", width: 200.0}
 	];
+	// (the same sums in another order: their last bits apart on a target)
+	function near(a:Float, b:Float)
+		equals(Math.abs(a - b) < 1e-6, true, '$a, $b');
 	describe("engine text", () -> {
 		test("the same measures as DrawText's", () -> {
 			for (t in texts) {
 				var a = draw.layout(t.text, font, t.width), b = engine.layout(t.text, font, t.width);
-				equals(b.width, a.width);
-				equals(b.height, a.height);
+				near(b.width, a.width);
+				near(b.height, a.height);
 				equals(b.lineCount, a.lineCount);
-				equals(b.minWidth, a.minWidth);
+				near(b.minWidth, a.minWidth);
 				// (the engine's a whole pixel: its font's ascent rounded)
 				equals(b.baseline > a.baseline - 1 && b.baseline <= a.baseline + 0.5, true);
 			}
@@ -38,7 +41,13 @@ function tests() {
 		});
 		test("a selection's rectangles", () -> {
 			var t = "The quick brown fox jumps over the lazy dog", a = draw.layout(t, font, 120), b = engine.layout(t, font, 120);
-			equals(Std.string(b.selection(4, 30)), Std.string(a.selection(4, 30)));
+			var ra = a.selection(4, 30), rb = b.selection(4, 30);
+			equals(rb.length, ra.length);
+			for (i in 0...ra.length) {
+				near(rb[i].x, ra[i].x);
+				near(rb[i].y, ra[i].y);
+				near(rb[i].width, ra[i].width);
+			}
 		});
 		test("an empty text: a line of its height", () -> {
 			var p = engine.layout("", font, 100);
@@ -49,8 +58,8 @@ function tests() {
 		test("a span in its own font: as wide as DrawText lays it", () -> {
 			var bold = new Font("sans-serif", 14, 700, false, 1.25), spans = [new TextSpan(4, 9, bold)];
 			var a = draw.layout("The quick fox", font, Math.NaN, spans), b = engine.layout("The quick fox", font, Math.NaN, spans);
-			equals(b.width, a.width);
-			equals(b.caret(9).x, a.caret(9).x);
+			near(b.width, a.width);
+			near(b.caret(9).x, a.caret(9).x);
 		});
 	});
 }
