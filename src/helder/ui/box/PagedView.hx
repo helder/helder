@@ -36,6 +36,8 @@ typedef PagedViewOptions = {
 	?url:String,
 	// a stylesheet's text by its absolute URL (<link>, @import)
 	?load:(url:String) -> Null<String>,
+	// a stylesheet's source bytes and optional transport charset
+	?loadBytes:helder.css.CssSheet.CssSheetLoader,
 	// an image by its absolute URL
 	?image:(url:String) -> Null<Bitmap>,
 	// a font file by its absolute URL (@font-face's src)
@@ -116,6 +118,7 @@ class PagedView {
 				media: options.media ?? CssMedia.PRINT,
 				viewport: viewport,
 				load: options.load,
+				loadBytes: options.loadBytes,
 				url: options.url,
 				user: options.user,
 				hints: true

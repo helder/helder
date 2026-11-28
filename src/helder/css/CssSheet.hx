@@ -52,11 +52,17 @@ enum CssSheetRule {
 	FontPaletteValues(palette:CssFontPaletteValues);
 }
 
+typedef CssSheetLoader = (url:String) -> Null<{bytes:haxe.io.Bytes, ?charset:String}>;
+
 typedef CssSheetOptions = {
 	// the sheet's URL, what @import and url() resolve against
 	?url:String,
 	// an @import's text, by its absolute URL (null: not loaded)
-	?load:(url:String) -> Null<String>
+	?load:(url:String) -> Null<String>,
+	// an @import's source bytes and optional transport charset
+	?loadBytes:CssSheetLoader,
+	// the referring document's or stylesheet's encoding
+	?encoding:String
 }
 
 // A style sheet parsed once for the cascade (Cascade 5, Conditional 3):
@@ -80,6 +86,22 @@ class CssSheet {
 		// (its var()s read again when substituted: CssResolver's)
 		CssResolver.rereads();
 		return new Builder(origin, options ?? {}, 0).sheet(Css.sheet(text));
+	}
+
+	@:allow(helder.css)
+	static function fromUrl(url:String, origin:CssOrigin, options:CssSheetOptions, depth = 0):Null<CssSheet> {
+		var resource = options.loadBytes == null ? null : options.loadBytes(url);
+		var encoding = options.encoding;
+		var text:Null<String>;
+		if (resource != null) {
+			var decoded = Css.decode(resource.bytes, resource.charset, encoding);
+			text = decoded.text;
+			encoding = decoded.encoding;
+		} else
+			text = options.load == null ? null : options.load(url);
+		if (text == null) return null;
+		CssResolver.rereads();
+		return new Builder(origin, {url: url, load: options.load, loadBytes: options.loadBytes, encoding: encoding}, depth).sheet(Css.sheet(text));
 	}
 
 	// Rules read before (CssScope's, scoped) compiled as parse compiles text's.
@@ -233,7 +255,7 @@ private class Builder {
 	// @import url [layer | layer(name)] [supports(...)] [media]
 	function load(prelude:Array<CssValue>):Array<CssSheetRule> {
 		var items = [for (v in prelude) if (!v.match(Token(_.kind => Whitespace))) v];
-		if (items.length == 0 || options.load == null || depth > 16) return [];
+		if (items.length == 0 || (options.load == null && options.loadBytes == null) || depth > 16) return [];
 		var href = url(items[0]);
 		if (href == null) return [];
 		var k = 1, layer:Null<String> = null, anon = false;
@@ -261,10 +283,8 @@ private class Builder {
 		// (the media list: all after what was read)
 		var media = CssMedia.parse(prelude.slice(prelude.indexOf(items[k - 1]) + 1));
 		var absolute = CssUrl.resolve(options.url, href);
-		var text = options.load(absolute);
-		if (text == null) return [];
-		var sheet = new Builder(origin, {url: absolute, load: options.load}, depth + 1).sheet(Css.sheet(text));
-		return [Import(sheet, media, layer, anon)];
+		var sheet = CssSheet.fromUrl(absolute, origin, options, depth + 1);
+		return sheet == null ? [] : [Import(sheet, media, layer, anon)];
 	}
 
 	static function url(v:CssValue):Null<String>
