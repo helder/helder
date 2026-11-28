@@ -211,6 +211,7 @@ class BoxTree {
 		}
 		if (el.localName == "body") b.flags |= Box.BODY;
 		if (el.namespaceURI == SVG) b.flags |= Box.INLINE_SVG;
+		if (el.namespaceURI == XHTML && el.localName == "iframe") b.flags |= Box.EMBEDDED_DOCUMENT;
 	}
 
 	// (an HTML integer attribute, -1 where it is none or isn't one)
@@ -267,7 +268,8 @@ class BoxTree {
 				out.push(make(Break, s, el));
 			case InlineReplaced | BlockReplaced:
 				var b = make(kind, s, el);
-				if (el.namespaceURI == SVG) b.svg = BoxImages.of(el, styles) else source(b, el.getAttribute(el.localName == "object" ? "data" : "src"));
+				if (el.namespaceURI == SVG) b.svg = BoxImages.of(el, styles)
+				else if (b.flags & Box.EMBEDDED_DOCUMENT == 0) source(b, el.getAttribute(el.localName == "object" ? "data" : "src"));
 				if (b.image == null && b.svg == null && el.localName == "object") {
 					contents(el, s, out);
 					return;
@@ -307,7 +309,7 @@ class BoxTree {
 		var inlineLevel = s.outer == BoxStyle.INLINE;
 		if (html) switch el.localName {
 			case "br": return Break;
-			case "img": return inlineLevel ? InlineReplaced : BlockReplaced;
+			case "img" | "iframe": return inlineLevel ? InlineReplaced : BlockReplaced;
 			case "object" if (el.hasAttribute("data") && (load(el.getAttribute("data")) != null || vector(el.getAttribute("data")) != null)):
 				return inlineLevel ? InlineReplaced : BlockReplaced;
 			case _:

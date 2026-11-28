@@ -81,6 +81,7 @@ class Box {
 	public static inline var BODY = 4096;
 	// (an svg element in a document: drawn in the cascade's colour, not an image's black)
 	public static inline var INLINE_SVG = 8192;
+	public static inline var EMBEDDED_DOCUMENT = 16384;
 
 	public inline function markerPseudo():Bool
 		return pseudo == "marker" || pseudo == "before::marker" || pseudo == "after::marker";

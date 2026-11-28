@@ -1047,6 +1047,9 @@ class BlockFlow implements FormattingContext {
 			var n = natural(box.svg, cbw - bpx);
 			iw = n.w;
 			ih = n.h;
+		} else if (box.flags & Box.EMBEDDED_DOCUMENT != 0) {
+			iw = 300;
+			ih = 150;
 		}
 		// (size containment: no natural size but contain-intrinsic-size's, no natural ratio, Contain 2 §3.1)
 		if (box.style.containment.has(Size)) {
